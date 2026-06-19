@@ -1,0 +1,44 @@
+name: CI
+
+# Scoped exception: this repo is in the `iterahq` GitHub org, which is NOT on the
+# devfellowship-scoped dfl-runner fleet (org-scoped runners aren't available to
+# other orgs -> jobs would queue forever). So CI runs on ubuntu-latest. Same
+# rationale as the taigfs/* personal-repo carve-out (CLAUDE.md "🚦 CI green merge
+# policy"). devfellowship/* repos stay on dfl-runner — this carve-out is iterahq-only.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
