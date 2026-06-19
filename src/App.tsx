@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ObservabilityProvider } from "@devfellowship/observability";
 import HomePage from "./pages/HomePage";
+import ProgramPage from "./pages/ProgramPage";
+import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/auth/LoginPage";
@@ -34,7 +36,25 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/program/:slug"
+                  element={
+                    <RequireAuth>
+                      <ProgramPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
                   path="/lesson/:lessonId"
+                  element={
+                    <RequireAuth>
+                      <LessonPlayer />
+                    </RequireAuth>
+                  }
+                />
+                {/* Legacy gamified activity-engine demo (mock data) — kept for the
+                    reusable activity components; not part of the canonical nav. */}
+                <Route
+                  path="/demo/lesson/:lessonId"
                   element={
                     <RequireAuth>
                       <LessonPage />

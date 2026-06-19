@@ -68,6 +68,16 @@ export default {
         life: "hsl(var(--life))",
         streak: "hsl(var(--streak))",
         xp: "hsl(var(--xp))",
+        // Itera brand palette (João Oak evergreen) — literal hex so the design's
+        // bg-menta / text-verde-tech / bg-obsidiana utility classes resolve.
+        "verde-floresta": "#1C3A2A",
+        "verde-tech": "#3FD17F",
+        menta: "#62D996",
+        "azul-marinho": "#16321F",
+        gelo: "#F4EDE2",
+        obsidiana: "#141210",
+        clay: "#E0A86F",
+        "input-background": "#1C1916",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

@@ -9,3 +9,10 @@ export type { UseFixTheCodeCallbacks } from './useFixTheCode';
 export { useQualityReview } from './useQualityReview';
 export type { UseQualityReviewCallbacks } from './useQualityReview';
 export { useLessons } from './useLessons';
+export {
+  usePrograms,
+  useProgram,
+  useLessonContent,
+  useUserStats,
+  useBadges,
+} from './useContent';

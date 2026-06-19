@@ -1,105 +1,109 @@
+/**
+ * Itera dashboard (Discover) — João Oak's gamified home, wired to real
+ * itera.programs / xp_events / badges. Canonical labels: Program / Unit /
+ * Lesson / Activity. No more "iterate" header, no MOCK banners.
+ */
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Lesson } from '@/types';
-import { useLessons } from '@/hooks';
-import { Clock, Layers, ArrowRight } from 'lucide-react';
-import { Button } from '@devfellowship/components';
-import {
-  HomePageTopDataSlots,
-  HomePageBottomDataSlots,
-} from '@/components/data-layer/HomePageDataSlots';
-import { HomePageHeaderDataSlots } from '@/components/data-layer/HomePageHeaderDataSlots';
-import { LessonProgressBar } from '@/components/data-layer';
-import { previewLessonProgress } from '@/components/data-layer/preview.mock';
-import { PreviewSectionLabel } from '@/components/data-layer/PreviewSectionLabel';
+import { ChevronRight, Sparkles } from 'lucide-react';
+import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
+import { usePrograms, useUserStats, useBadges } from '@/hooks';
+import { useI18n } from '@/i18n';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { data: lessons = [], isPending, isError, refetch } = useLessons();
-
-  const handleStartLesson = (lessonId: string) => {
-    navigate(`/lesson/${lessonId}`);
-  };
+  const { t } = useI18n();
+  const { data: programs = [], isPending, isError, refetch } = usePrograms();
+  const { data: stats, isPending: statsLoading } = useUserStats();
+  const { data: badges, isPending: badgesLoading } = useBadges();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="shrink-0 border-b border-border bg-card/30">
-        <div className="container mx-auto px-4 py-4 md:py-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="text-2xl font-bold text-gradient">iterate</span>
-              <span className="text-sm text-muted-foreground">by DevFellowship</span>
-            </div>
-            <HomePageHeaderDataSlots />
-          </div>
-        </div>
-      </header>
+      <AppHeader active="discover" />
 
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-10 md:py-16">
-          <HomePageTopDataSlots />
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-5 md:py-8 space-y-8 md:space-y-12">
+          {/* Hero + stats */}
+          <section className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-3xl overflow-hidden border border-border"
+            >
+              <div className="relative bg-gradient-to-br from-obsidiana via-card to-obsidiana p-6 md:p-10 min-h-[220px] md:min-h-[260px] flex flex-col justify-end">
+                <div className="absolute inset-0 grid-pattern opacity-30" />
+                <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl opacity-30 bg-gradient-to-br from-menta to-verde-tech" />
+                <div className="relative max-w-lg">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] bg-menta/20 text-menta border border-menta/30">
+                    <Sparkles className="w-3 h-3" /> Itera
+                  </span>
+                  <h1
+                    className="font-display font-bold mt-3 text-foreground"
+                    style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', lineHeight: 1.1 }}
+                  >
+                    {t('home.heroTitle')}{' '}
+                    <span className="text-gradient">{t('home.heroAccent')}</span>
+                  </h1>
+                  <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-md">
+                    {t('home.heroSubtitle')}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
 
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Aprenda construindo
-              <br />
-              <span className="text-gradient">projetos reais</span>
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Microatividades que transformam você em um desenvolvedor melhor.
-              Cada decisão importa. Cada linha de código tem propósito.
-            </p>
-          </motion.div>
+            <StatsCard stats={stats} loading={statsLoading} />
+          </section>
 
-          <motion.div
-            className="max-w-4xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h2 className="text-lg font-semibold text-muted-foreground mb-6 text-center">
-              Escolha uma trilha para começar
-            </h2>
-
+          {/* Programs */}
+          <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>
             {isPending ? (
-              <div className="text-center text-muted-foreground py-12">
-                Carregando lições...
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer" />
+                ))}
               </div>
             ) : isError ? (
-              <div className="flex flex-col items-center gap-4 py-12">
-                <p className="text-muted-foreground text-center max-w-md">
-                  Não foi possível carregar as lições.
-                </p>
-                <Button onClick={() => refetch()}>Tentar de novo</Button>
+              <div className="flex flex-col items-center gap-4 py-12" data-testid="programs-error">
+                <p className="text-muted-foreground text-center max-w-md">{t('home.error')}</p>
+                <button
+                  onClick={() => refetch()}
+                  className="h-10 px-5 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+                >
+                  {t('common.retry')}
+                </button>
+              </div>
+            ) : programs.length === 0 ? (
+              <div
+                className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center"
+                data-testid="programs-empty"
+              >
+                <p className="font-display text-lg text-foreground">{t('home.empty')}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t('home.emptyHint')}</p>
               </div>
             ) : (
-              <div className="grid gap-6">
-                {lessons.map((lesson, index) => (
-                  <LessonCard
-                    key={lesson.id}
-                    lesson={lesson}
-                    index={index}
-                    onStart={() => handleStartLesson(lesson.id)}
-                  />
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="programs-grid">
+                {programs.map((p) => (
+                  <ProgramCard key={p.id} program={p} onClick={() => navigate(`/program/${p.slug}`)} />
                 ))}
               </div>
             )}
-          </motion.div>
+          </Section>
 
-          <HomePageBottomDataSlots />
+          {/* Badges */}
+          <Section title={t('badges.title')} subtitle={t('badges.subtitle')}>
+            <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+              <BadgeGrid badges={badges} loading={badgesLoading} />
+            </div>
+          </Section>
         </div>
       </main>
 
       <footer className="shrink-0 border-t border-border mt-auto">
-        <div className="container mx-auto px-4 py-6">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <span>Feito com</span>
-            <span className="text-primary">♥</span>
-            <span>pela comunidade DevFellowship</span>
+            <span>Itera</span>
+            <span className="text-verde-tech">/</span>
+            <span>by DevFellowship</span>
           </div>
         </div>
       </footer>
@@ -107,54 +111,27 @@ export default function HomePage() {
   );
 }
 
-interface LessonCardProps {
-  lesson: Lesson;
-  index: number;
-  onStart: () => void;
-}
-
-function LessonCard({ lesson, index, onStart }: LessonCardProps) {
+function Section({
+  title,
+  subtitle,
+  children,
+}: {
+  title: React.ReactNode;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <motion.div
-      className="card-interactive p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 * index }}
-      whileHover={{ scale: 1.01 }}
-    >
-      <div className="flex flex-col md:flex-row md:items-center gap-6">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-          <span className="text-4xl">🥊</span>
+    <section>
+      <div className="flex items-end justify-between mb-5">
+        <div>
+          <h3 className="font-display text-foreground">{title}</h3>
+          {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
-
-        <div className="flex-1">
-          <h3 className="text-xl font-bold text-foreground mb-2">{lesson.title}</h3>
-          <p className="text-muted-foreground mb-4">{lesson.description}</p>
-
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              <span>{lesson.estimatedMinutes} min</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Layers className="w-4 h-4" />
-              <span>{lesson.totalActivities} atividades</span>
-            </div>
-          </div>
-
-          <div className="mt-4 max-w-md" data-slot="T5">
-            <PreviewSectionLabel taskId="T5" />
-            <LessonProgressBar progress={previewLessonProgress} />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end">
-          <Button onClick={onStart}>
-            Começar
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+        <span className="hidden md:flex items-center text-xs text-menta gap-1">
+          <ChevronRight className="w-3 h-3" />
+        </span>
       </div>
-    </motion.div>
+      {children}
+    </section>
   );
 }

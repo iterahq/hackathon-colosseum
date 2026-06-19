@@ -18,4 +18,16 @@ export const queryKeys = {
   activities: {
     byLesson: (lessonId: string) => ['activities', { lessonId }] as const,
   },
+  // Canonical Itera content (real Supabase `itera.*`).
+  programs: {
+    all: ['programs'] as const,
+    bySlug: (slug: string) => ['programs', slug] as const,
+  },
+  lesson: {
+    byId: (id: string) => ['lesson', id] as const,
+  },
+  user: {
+    stats: ['user', 'stats'] as const,
+    badges: ['user', 'badges'] as const,
+  },
 } as const;

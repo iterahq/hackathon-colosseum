@@ -8,6 +8,7 @@ import { Button } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useI18n } from '@/i18n';
+import { Logo } from '@/components/branded';
 
 export default function LoginPage() {
   const { signInWithPassword, signInWithOAuth, configured } = useAuth();
@@ -39,24 +40,26 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-background px-4"
+      className="min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden"
       style={branding.loginBg ? { backgroundImage: `url(${branding.loginBg})`, backgroundSize: 'cover' } : undefined}
       data-testid="login-page"
     >
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 shadow-sm">
-        <div className="mb-6 flex flex-col items-center gap-2 text-center">
+      {!branding.loginBg && (
+        <>
+          <div className="absolute inset-0 grid-pattern opacity-30" />
+          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-menta to-verde-tech" />
+        </>
+      )}
+      <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-2xl">
+        <div className="mb-6 flex flex-col items-center gap-3 text-center">
           {branding.logoUrl ? (
             <img src={branding.logoUrl} alt={branding.name} className="h-10" data-testid="tenant-logo" />
           ) : (
-            <div
-              className="text-2xl font-bold tracking-tight"
-              style={accent ? { color: accent } : undefined}
-              data-testid="brand-name"
-            >
-              {branding.name}
+            <div data-testid="brand-name">
+              <Logo size={36} />
             </div>
           )}
-          <h1 className="text-lg font-semibold text-foreground">{t('auth.welcome')}</h1>
+          <h1 className="font-display text-xl font-bold text-foreground">{t('auth.welcome')}</h1>
           <p className="text-sm text-muted-foreground">{t('auth.subtitle')}</p>
         </div>
 

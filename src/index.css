@@ -2,106 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
-/* DFL Design System — synced from dfl-components-cli/src/index.css */
+/*
+ * Itera player theme — João Oak's evergreen design system.
+ *
+ * Single dark theme (the app ships `class="dark"` on <body>). Tokens mirror
+ * johnoak-itera/src/styles/theme.css: obsidiana panels, evergreen (verde-tech /
+ * menta) accents, Barlow Condensed display + Inter body. HSL channel values are
+ * used so shadcn `hsl(var(--x))` consumers keep working.
+ */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light fallback (rarely used — app forces dark) */
+    --background: 30 20% 4%;
+    --foreground: 40 38% 92%;
+    --card: 30 13% 7%;
+    --card-foreground: 40 38% 92%;
+    --popover: 30 13% 7%;
+    --popover-foreground: 40 38% 92%;
+    --primary: 146 60% 53%;
+    --primary-foreground: 30 20% 4%;
+    --secondary: 30 12% 9%;
+    --secondary-foreground: 40 38% 92%;
+    --muted: 30 12% 9%;
+    --muted-foreground: 38 9% 46%;
+    --accent: 146 35% 17%;
+    --accent-foreground: 146 60% 68%;
+    --destructive: 347 100% 66%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 38% 92%;
+    --input: 30 12% 9%;
+    --ring: 146 60% 53%;
+    --radius: 0.875rem;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 34 14% 5%;
+    --sidebar-foreground: 40 38% 92%;
+    --sidebar-primary: 146 60% 53%;
+    --sidebar-primary-foreground: 30 20% 4%;
+    --sidebar-accent: 30 12% 9%;
+    --sidebar-accent-foreground: 146 60% 68%;
+    --sidebar-border: 40 38% 92%;
+    --sidebar-ring: 146 60% 53%;
   }
 
+  /* The canonical Itera theme — evergreen on obsidiana. */
   .dark {
-    --background: 216 27.8% 7.1%;
-    --foreground: 207.7 35.1% 92.7%;
+    --background: 30 20% 4%;          /* #0A0908 */
+    --foreground: 40 38% 92%;         /* #F4EDE2 gelo */
 
-    --card: 215 21.4% 11%;
-    --card-foreground: 207.7 35.1% 92.7%;
+    --card: 30 13% 7%;               /* #141210 obsidiana */
+    --card-foreground: 40 38% 92%;
 
-    --popover: 215 21.4% 11%;
-    --popover-foreground: 207.7 35.1% 92.7%;
+    --popover: 30 13% 7%;
+    --popover-foreground: 40 38% 92%;
 
-    --primary: 33 90% 55%;
-    --primary-foreground: 0 0% 0%;
+    --primary: 146 60% 53%;          /* #3FD17F verde-tech */
+    --primary-foreground: 30 20% 4%;
 
-    --secondary: 215 15.4% 15.3%;
-    --secondary-foreground: 207.7 35.1% 92.7%;
+    --secondary: 30 12% 9%;          /* #1C1916 */
+    --secondary-foreground: 40 38% 92%;
 
-    --muted: 212.3 11.9% 21.4%;
-    --muted-foreground: 211.6 8.9% 58.2%;
+    --muted: 30 12% 9%;
+    --muted-foreground: 38 9% 46%;   /* #7D7568 */
 
-    --accent: 33 90% 55%;
-    --accent-foreground: 0 0% 0%;
+    --accent: 146 35% 17%;           /* #1C3A2A verde-floresta */
+    --accent-foreground: 146 56% 68%;/* #62D996 menta */
 
-    --destructive: 0 86% 60%;
+    --destructive: 347 100% 66%;     /* #ff5470 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 15.4% 15.3%;
-    --input: 215 15.4% 15.3%;
-    --ring: 270 90% 71%;
+    --border: 40 38% 92%;            /* used at low opacity via /8 etc. */
+    --input: 30 12% 9%;
+    --ring: 146 60% 53%;
 
-    --sidebar-background: 216 27.8% 7.1%;
-    --sidebar-foreground: 207.7 35.1% 92.7%;
-    --sidebar-primary: 33 90% 55%;
-    --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 215 15.4% 15.3%;
-    --sidebar-accent-foreground: 207.7 35.1% 92.7%;
-    --sidebar-border: 215 15.4% 15.3%;
-    --sidebar-ring: 270 90% 71%;
+    --success: 146 60% 53%;
+    --success-foreground: 30 20% 4%;
+    --success-dark: 146 35% 30%;
+    --warning: 33 70% 66%;           /* clay #E0A86F — human/info only */
+    --warning-foreground: 30 20% 4%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 4%;
-    --success-dark: 142 71% 30%;
-    --warning: 48 96% 53%;
-    --warning-foreground: 0 0% 4%;
-    --shadow-glow: 0 0 30px -5px hsl(33 90% 55% / 0.3);
+    /* Gamification accents */
+    --life: 347 100% 66%;
+    --streak: 25 95% 60%;            /* orange flame */
+    --xp: 146 56% 68%;               /* menta */
+
+    --shadow-glow: 0 0 30px -5px hsl(146 60% 53% / 0.3);
     --shadow-card: 0 4px 20px -2px hsl(0 0% 0% / 0.5);
-  }
-}
 
-@keyframes ds-shimmer {
-  0%   { background-position: -600px 0; }
-  100% { background-position:  600px 0; }
-}
-.ds-shimmer {
-  background: linear-gradient(90deg, #21262D 25%, #2D333B 50%, #21262D 75%);
-  background-size: 1200px 100%;
-  animation: ds-shimmer 1.6s infinite linear;
+    --sidebar-background: 34 14% 5%;
+    --sidebar-foreground: 40 38% 92%;
+    --sidebar-primary: 146 60% 53%;
+    --sidebar-primary-foreground: 30 20% 4%;
+    --sidebar-accent: 30 12% 9%;
+    --sidebar-accent-foreground: 146 56% 68%;
+    --sidebar-border: 40 38% 92%;
+    --sidebar-ring: 146 60% 53%;
+  }
 }
 
 @layer base {
@@ -116,75 +112,86 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0;
   }
 }
 
-/* Dark scrollbars */
+/* Brand utilities ported from João's theme.css */
+@layer utilities {
+  .font-display {
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .font-body {
+    font-family: 'Inter', sans-serif;
+  }
+  .glow-tech {
+    box-shadow: 0 0 24px rgba(63, 209, 127, 0.12);
+  }
+  .glow-menta {
+    box-shadow: 0 0 24px rgba(98, 217, 150, 0.15);
+  }
+  .gradient-tech {
+    background: linear-gradient(135deg, #1c3a2a 0%, #2e8f5c 60%, #3fd17f 100%);
+  }
+  .gradient-radial {
+    background: radial-gradient(circle at top right, rgba(63, 209, 127, 0.1), transparent 60%),
+      radial-gradient(circle at bottom left, rgba(224, 168, 111, 0.06), transparent 60%);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #62d996 0%, #3fd17f 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .grid-pattern {
+    background-image:
+      linear-gradient(rgba(244, 237, 226, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244, 237, 226, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+}
+
+/* Dark scrollbars (evergreen-tinted) */
 .dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .dark ::-webkit-scrollbar-track {
-  background: #0D1117;
+  background: #0a0908;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #30363D;
+  background: #2a2620;
   border-radius: 4px;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #484F58;
+  background: #3f3a32;
 }
 .dark {
-  scrollbar-color: #30363D #0D1117;
+  scrollbar-color: #2a2620 #0a0908;
 }
 
-@layer utilities {
-  /* Glow animation for current activity */
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 @keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 hsl(33 90% 55% / 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px hsl(33 90% 55% / 0);
-  }
+  0%, 100% { box-shadow: 0 0 20px rgba(63, 209, 127, 0.15); }
+  50% { box-shadow: 0 0 36px rgba(63, 209, 127, 0.3); }
 }
-
 @keyframes pop-in {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes update-glow {
-  0% {
-    box-shadow: 0 0 0 0 hsl(33 90% 55% / 0.6);
-  }
-  50% {
-    box-shadow: 0 0 20px 10px hsl(33 90% 55% / 0.3);
-  }
-  100% {
-    box-shadow: 0 0 0 0 hsl(33 90% 55% / 0);
-  }
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
 }
