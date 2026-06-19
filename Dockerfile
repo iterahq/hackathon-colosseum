@@ -23,6 +23,9 @@ RUN printf 'server {\n\
   listen 80;\n\
   root /usr/share/nginx/html;\n\
   index index.html;\n\
+  # ADR itera-edge-allow-framing-by-learn: scope embedding to learn.devfellowship.com\n\
+  # (+ localhost for dev). MUST NOT send X-Frame-Options (would block the iframe).\n\
+  add_header Content-Security-Policy "frame-ancestors '"'"'self'"'"' https://learn.devfellowship.com http://localhost:* http://127.0.0.1:*" always;\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
