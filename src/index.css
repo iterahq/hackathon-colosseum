@@ -45,58 +45,58 @@
     --sidebar-ring: 146 60% 53%;
   }
 
-  /* The canonical Itera theme — evergreen on obsidiana. */
+  /* The canonical Itera theme — evergreen on obsidiana.
+   * HSL channels recomputed to hit the EXACT brand hexes
+   * (brand.devfellowship.com/itera) — was slightly over-saturated before
+   * (#0C0A08 instead of #0A0908). */
   .dark {
-    --background: 30 20% 4%;          /* #0A0908 */
-    --foreground: 40 38% 92%;         /* #F4EDE2 gelo */
+    --background: 30 11% 4%;          /* #0A0908 bg */
+    --foreground: 37 45% 92%;         /* #F4EDE2 ink */
 
-    --card: 30 13% 7%;               /* #141210 obsidiana */
-    --card-foreground: 40 38% 92%;
+    --card: 30 11% 7%;               /* #141210 panel */
+    --card-foreground: 37 45% 92%;
 
-    --popover: 30 13% 7%;
-    --popover-foreground: 40 38% 92%;
+    --popover: 30 11% 7%;
+    --popover-foreground: 37 45% 92%;
 
-    --primary: 146 60% 53%;          /* #3FD17F verde-tech */
-    --primary-foreground: 30 20% 4%;
+    --primary: 146 61% 53%;          /* #3FD17F evergreen */
+    --primary-foreground: 30 11% 4%;
 
-    --secondary: 30 12% 9%;          /* #1C1916 */
-    --secondary-foreground: 40 38% 92%;
+    --secondary: 30 12% 10%;         /* #1C1916 panel-2 */
+    --secondary-foreground: 37 45% 92%;
 
-    --muted: 30 12% 9%;
-    --muted-foreground: 38 9% 46%;   /* #7D7568 */
+    --muted: 30 12% 10%;
+    --muted-foreground: 37 9% 45%;   /* #7D7568 muted */
 
-    --accent: 146 35% 17%;           /* #1C3A2A verde-floresta */
-    --accent-foreground: 146 56% 68%;/* #62D996 menta */
+    --accent: 148 35% 17%;           /* #1C3A2A evergreen-soft */
+    --accent-foreground: 146 61% 62%;/* #62D996 evergreen-hi */
 
     --destructive: 347 100% 66%;     /* #ff5470 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 38% 92%;            /* used at low opacity via /8 etc. */
-    --input: 30 12% 9%;
-    --ring: 146 60% 53%;
+    --border: 37 45% 92%;            /* ink — used at low opacity via /8 etc. */
+    --input: 30 12% 10%;
+    --ring: 146 61% 62%;             /* evergreen-hi ring (AAA on bg) */
 
-    --success: 146 60% 53%;
-    --success-foreground: 30 20% 4%;
-    --success-dark: 146 35% 30%;
-    --warning: 33 70% 66%;           /* clay #E0A86F — human/info only */
-    --warning-foreground: 30 20% 4%;
+    --success: 146 61% 53%;          /* evergreen */
+    --success-foreground: 30 11% 4%;
+    --success-dark: 148 35% 30%;
+    --warning: 30 65% 66%;           /* clay #E0A86F — Q&A / human-info ONLY */
+    --warning-foreground: 30 11% 4%;
 
-    /* Gamification accents */
+    /* Gamification accents — kept flat on the brand palette (no neon) */
     --life: 347 100% 66%;
-    --streak: 25 95% 60%;            /* orange flame */
-    --xp: 146 56% 68%;               /* menta */
+    --streak: 30 65% 66%;            /* clay-leaning flame (no orange neon) */
+    --xp: 146 61% 62%;               /* evergreen-hi */
 
-    --shadow-glow: 0 0 30px -5px hsl(146 60% 53% / 0.3);
-    --shadow-card: 0 4px 20px -2px hsl(0 0% 0% / 0.5);
-
-    --sidebar-background: 34 14% 5%;
-    --sidebar-foreground: 40 38% 92%;
-    --sidebar-primary: 146 60% 53%;
-    --sidebar-primary-foreground: 30 20% 4%;
-    --sidebar-accent: 30 12% 9%;
-    --sidebar-accent-foreground: 146 56% 68%;
-    --sidebar-border: 40 38% 92%;
-    --sidebar-ring: 146 60% 53%;
+    --sidebar-background: 30 11% 4%; /* #0A0908 */
+    --sidebar-foreground: 37 45% 92%;
+    --sidebar-primary: 146 61% 53%;
+    --sidebar-primary-foreground: 30 11% 4%;
+    --sidebar-accent: 30 12% 10%;
+    --sidebar-accent-foreground: 146 61% 62%;
+    --sidebar-border: 37 45% 92%;
+    --sidebar-ring: 146 61% 62%;
   }
 }
 
@@ -105,43 +105,81 @@
     @apply border-border;
   }
 
+  /*
+   * White-border fix: paint #0A0908 end-to-end on the document root, body AND
+   * #root so the brand bg covers the FULL viewport — no white canvas edge,
+   * gutter, overscroll bleed, or scrollbar-track gap. Previously only `body`
+   * had a bg, leaving html's default (white) canvas showing through on
+   * overscroll / at the scrollbar track / outside the body box.
+   */
+  html,
+  body,
+  #root {
+    @apply bg-background;
+    min-height: 100%;
+  }
+
+  html {
+    /* kill the white overscroll/rubber-band flash on macOS/iOS */
+    background-color: hsl(var(--background));
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Barlow Condensed', sans-serif;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
+    font-weight: 700;
   }
 }
 
-/* Brand utilities ported from João's theme.css */
+/*
+ * Brand utilities — Itera is STRICTLY FLAT (brand.devfellowship.com/itera):
+ * "Itera não tem gradiente de marca · O lockup é flat. Sempre flat ·
+ *  Nunca aplique sombra, glow, gradiente."
+ *
+ * The glow, gradient and text-gradient utilities are kept as NAMES (legacy
+ * call-sites resolve them) but neutered to FLAT brand equivalents so nothing
+ * renders a gradient/glow. New code should prefer the explicit brand tokens.
+ */
 @layer utilities {
   .font-display {
     font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: -0.01em;
   }
   .font-body {
     font-family: 'Inter', sans-serif;
   }
-  .glow-tech {
-    box-shadow: 0 0 24px rgba(63, 209, 127, 0.12);
+  .font-meta {
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
+  /* Glow → flat no-op (brand forbids glow/shadow) */
+  .glow-tech,
   .glow-menta {
-    box-shadow: 0 0 24px rgba(98, 217, 150, 0.15);
+    box-shadow: none;
   }
+  /* Brand gradients → flat evergreen-soft fill (no gradient) */
   .gradient-tech {
-    background: linear-gradient(135deg, #1c3a2a 0%, #2e8f5c 60%, #3fd17f 100%);
+    background: #1c3a2a; /* evergreen-soft */
   }
   .gradient-radial {
-    background: radial-gradient(circle at top right, rgba(63, 209, 127, 0.1), transparent 60%),
-      radial-gradient(circle at bottom left, rgba(224, 168, 111, 0.06), transparent 60%);
+    background: transparent;
   }
+  /* Wordmark/accent text → flat evergreen-hi (no gradient, AAA on bg) */
   .text-gradient {
-    background: linear-gradient(135deg, #62d996 0%, #3fd17f 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #62d996; /* evergreen-hi */
+    -webkit-text-fill-color: #62d996;
   }
   .grid-pattern {
     background-image:
@@ -155,8 +193,9 @@
   .scrollbar-hide {
     scrollbar-width: none;
   }
+  /* Legacy pulse/float animations → flat opacity pulse (no glow/box-shadow) */
   .animate-pulse-glow {
-    animation: pulse-glow 3s ease-in-out infinite;
+    animation: brand-pulse 2.4s ease-in-out infinite;
   }
   .animate-float {
     animation: float 4s ease-in-out infinite;
@@ -186,9 +225,10 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
 }
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(63, 209, 127, 0.15); }
-  50% { box-shadow: 0 0 36px rgba(63, 209, 127, 0.3); }
+/* Flat brand pulse — opacity only, NO box-shadow glow (brand forbids glow) */
+@keyframes brand-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 @keyframes pop-in {
   0% { transform: scale(0.8); opacity: 0; }

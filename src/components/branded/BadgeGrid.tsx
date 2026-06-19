@@ -1,5 +1,5 @@
 /**
- * Badge collection grid — João's Badge3D look, simplified to a gradient medal.
+ * Badge collection grid — flat brand medal (evergreen-soft tile, no gradient/glow).
  * Wired to real itera.badges + user_badges via useBadges. Empty-state aware.
  */
 import { Award, Lock } from 'lucide-react';
@@ -27,12 +27,12 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
           <div
             className={`relative w-16 h-16 rounded-2xl flex items-center justify-center ${
               b.earned
-                ? 'bg-gradient-to-br from-menta to-verde-tech glow-menta'
+                ? 'bg-evergreen-soft border border-evergreen/40'
                 : 'bg-obsidiana/60 border border-border'
             }`}
           >
             {b.earned ? (
-              <Award className="w-7 h-7 text-obsidiana" />
+              <Award className="w-7 h-7 text-evergreen-hi" />
             ) : (
               <Lock className="w-6 h-6 text-muted-foreground" />
             )}

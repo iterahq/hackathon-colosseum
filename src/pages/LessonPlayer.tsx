@@ -106,14 +106,14 @@ export default function LessonPlayer() {
             <p className="text-muted-foreground">{t('lesson.notFound')}</p>
             <button
               onClick={() => refetch()}
-              className="h-10 px-5 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+              className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
             >
               {t('common.retry')}
             </button>
           </div>
         ) : data ? (
           <>
-            <div className="mb-2 text-[12px] uppercase tracking-wider text-menta">
+            <div className="mb-2 font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
               {t('label.lesson')}
             </div>
             <h1 className="font-display font-bold text-foreground mb-6">{tText(data.title)}</h1>
@@ -129,8 +129,8 @@ export default function LessonPlayer() {
                 className="rounded-3xl border border-border bg-card p-10 text-center"
                 data-testid="lesson-complete"
               >
-                <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-menta to-verde-tech flex items-center justify-center glow-menta">
-                  <Trophy className="w-9 h-9 text-obsidiana" />
+                <div className="w-20 h-20 mx-auto rounded-3xl bg-evergreen-soft border border-evergreen/40 flex items-center justify-center">
+                  <Trophy className="w-9 h-9 text-evergreen-hi" />
                 </div>
                 <h2 className="font-display text-foreground mt-5">{t('lesson.complete')}</h2>
                 <p className="text-sm text-muted-foreground mt-2">
@@ -138,7 +138,7 @@ export default function LessonPlayer() {
                 </p>
                 <Link
                   to="/"
-                  className="mt-6 inline-flex h-11 px-6 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors items-center"
+                  className="mt-6 inline-flex h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center"
                 >
                   {t('nav.discover')}
                 </Link>
@@ -155,9 +155,9 @@ export default function LessonPlayer() {
                         key={a.id}
                         className={`h-2 flex-1 rounded-full transition-colors ${
                           isDone
-                            ? 'bg-gradient-to-r from-verde-tech to-menta'
+                            ? 'bg-evergreen'
                             : isCurrent
-                              ? 'bg-menta/50'
+                              ? 'bg-evergreen/40'
                               : 'bg-muted'
                         }`}
                       />

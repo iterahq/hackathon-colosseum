@@ -30,11 +30,11 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               className="relative rounded-3xl overflow-hidden border border-border"
             >
-              <div className="relative bg-gradient-to-br from-obsidiana via-card to-obsidiana p-6 md:p-10 min-h-[220px] md:min-h-[260px] flex flex-col justify-end">
+              {/* Flat brand hero: solid panel + subtle grid, NO gradient/blur/glow. */}
+              <div className="relative bg-obsidiana p-6 md:p-10 min-h-[220px] md:min-h-[260px] flex flex-col justify-end">
                 <div className="absolute inset-0 grid-pattern opacity-30" />
-                <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl opacity-30 bg-gradient-to-br from-menta to-verde-tech" />
                 <div className="relative max-w-lg">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] bg-menta/20 text-menta border border-menta/30">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
                     <Sparkles className="w-3 h-3" /> Itera
                   </span>
                   <h1
@@ -67,7 +67,7 @@ export default function HomePage() {
                 <p className="text-muted-foreground text-center max-w-md">{t('home.error')}</p>
                 <button
                   onClick={() => refetch()}
-                  className="h-10 px-5 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+                  className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
                 >
                   {t('common.retry')}
                 </button>

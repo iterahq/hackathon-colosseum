@@ -58,7 +58,7 @@ export default function ProgramPage() {
             <p className="text-muted-foreground">{t('program.notFound')}</p>
             <button
               onClick={() => refetch()}
-              className="h-10 px-5 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+              className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
             >
               {t('common.retry')}
             </button>
@@ -69,16 +69,14 @@ export default function ProgramPage() {
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative rounded-3xl overflow-hidden border border-border bg-gradient-to-br from-obsidiana via-card to-obsidiana p-6 md:p-8 mb-8"
+              className="relative rounded-3xl overflow-hidden border border-border bg-obsidiana p-6 md:p-8 mb-8"
             >
+              {/* Flat brand hero: solid panel + subtle grid (no gradient/blur/glow). */}
               <div className="absolute inset-0 grid-pattern opacity-30" />
-              <div
-                className={`absolute -top-16 -right-16 w-72 h-72 rounded-full blur-3xl opacity-30 bg-gradient-to-br ${program.accent ?? 'from-menta to-verde-tech'}`}
-              />
               <div className="relative flex items-center gap-5">
-                <ProgramIcon icon={program.icon} color={program.accent} size="lg" />
+                <ProgramIcon icon={program.icon} size="lg" />
                 <div>
-                  <span className="text-[13px] uppercase tracking-wider text-menta">
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
                     {t('label.program')}
                   </span>
                   <h1 className="font-display font-bold text-foreground mt-1">
@@ -141,7 +139,7 @@ function UnitBlock({
           {index + 1}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12px] uppercase tracking-wider text-muted-foreground">
+          <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {t('label.unit')}
           </div>
           <div className="font-display font-semibold truncate">{tText(unit.title)}</div>
@@ -175,7 +173,7 @@ function UnitBlock({
                       <Play className="w-4 h-4 fill-current ml-0.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                      <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                         {t('label.lesson')}
                       </div>
                       <div className="font-medium truncate">{tText(lesson.title)}</div>

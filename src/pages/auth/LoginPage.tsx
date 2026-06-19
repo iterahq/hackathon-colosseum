@@ -45,12 +45,10 @@ export default function LoginPage() {
       data-testid="login-page"
     >
       {!branding.loginBg && (
-        <>
-          <div className="absolute inset-0 grid-pattern opacity-30" />
-          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-menta to-verde-tech" />
-        </>
+        /* Flat brand backdrop: subtle grid only (no gradient/blur/glow orb). */
+        <div className="absolute inset-0 grid-pattern opacity-30" />
       )}
-      <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-2xl">
+      <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           {branding.logoUrl ? (
             <img src={branding.logoUrl} alt={branding.name} className="h-10" data-testid="tenant-logo" />

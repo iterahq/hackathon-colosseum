@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { ProjectStatus } from '@/enums';
 import { Button } from '@devfellowship/components';
+import { Logo } from '@/components/branded';
 
 interface HeaderProps {
   projectName: string;
@@ -9,24 +10,22 @@ interface HeaderProps {
   onBack?: () => void;
 }
 
+// Brand: status = ALWAYS a colored dot + text label (never color-only, never emoji).
 const statusConfig = {
-  [ProjectStatus.OK]: { 
-    color: 'text-success', 
-    bg: 'bg-success/20', 
+  [ProjectStatus.OK]: {
+    color: 'text-success',
+    dot: 'bg-success',
     label: 'OK',
-    icon: '🟢'
   },
-  [ProjectStatus.WARNING]: { 
-    color: 'text-warning', 
-    bg: 'bg-warning/20', 
+  [ProjectStatus.WARNING]: {
+    color: 'text-warning',
+    dot: 'bg-warning',
     label: 'WARNING',
-    icon: '🟡'
   },
-  [ProjectStatus.BROKEN]: { 
-    color: 'text-destructive', 
-    bg: 'bg-destructive/20', 
+  [ProjectStatus.BROKEN]: {
+    color: 'text-destructive',
+    dot: 'bg-destructive',
     label: 'BROKEN',
-    icon: '🔴'
   },
 };
 
@@ -55,8 +54,10 @@ export function Header({
           )}
           
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-gradient">iterate</span>
-            <span className="text-xs text-muted-foreground">by DevFellowship</span>
+            <Logo size={22} />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              by DevFellowship
+            </span>
           </div>
         </div>
 
@@ -69,8 +70,8 @@ export function Header({
 
         {/* Right section - Status */}
         <div className="flex items-center gap-2">
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.bg} ${status.color}`}>
-            <span>{status.icon}</span>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border border-border font-mono text-[11px] uppercase tracking-wider ${status.color}`}>
+            <span className={`w-2 h-2 rounded-full ${status.dot}`} />
             <span>{status.label}</span>
           </div>
         </div>

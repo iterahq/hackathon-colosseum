@@ -14,10 +14,15 @@ export default {
       },
     },
     extend: {
+      // Itera brand type system (brand.devfellowship.com/itera):
+      //   Barlow Condensed → display/headline/wordmark (600/700)
+      //   Inter            → body/UI/buttons (400–700)
+      //   JetBrains Mono   → meta/IDs/timestamps/code (400/500)
       fontFamily: {
-        sans: ['DM Sans', 'sans-serif'],
-        display: ['Nunito', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        body: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Barlow Condensed', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -68,8 +73,28 @@ export default {
         life: "hsl(var(--life))",
         streak: "hsl(var(--streak))",
         xp: "hsl(var(--xp))",
-        // Itera brand palette (João Oak evergreen) — literal hex so the design's
-        // bg-menta / text-verde-tech / bg-obsidiana utility classes resolve.
+        // Itera brand palette (brand.devfellowship.com/itera) — literal hex so
+        // the design's utility classes resolve. Canonical brand names + legacy
+        // (João Oak) aliases kept side-by-side so existing call-sites keep working.
+        //
+        //   evergreen      #3FD17F  primary · CTA · slash
+        //   evergreen-hi   #62D996  text-on-dark · hover · ring (AAA 11.4:1)
+        //   evergreen-soft #1C3A2A  subtle bg · line highlight
+        //   clay           #E0A86F  Q&A labels ONLY (never CTA, never green for Q&A)
+        //   bg             #0A0908  page
+        //   panel          #141210  card/sidebar
+        //   panel-2        #1C1916  raised card
+        //   ink            #F4EDE2  primary text
+        //   muted          #7D7568  meta/labels
+        evergreen: "#3FD17F",
+        "evergreen-hi": "#62D996",
+        "evergreen-soft": "#1C3A2A",
+        ink: "#F4EDE2",
+        panel: "#141210",
+        "panel-2": "#1C1916",
+        "brand-bg": "#0A0908",
+        "brand-muted": "#7D7568",
+        // Legacy (João Oak) aliases — same hex, kept for existing class names.
         "verde-floresta": "#1C3A2A",
         "verde-tech": "#3FD17F",
         menta: "#62D996",
@@ -115,9 +140,10 @@ export default {
           "0%": { transform: "translateX(100%)" },
           "100%": { transform: "translateX(0)" },
         },
+        // Flat brand pulse — opacity only, NO box-shadow glow (brand forbids glow)
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 hsl(33 90% 55% / 0.4)" },
-          "50%": { boxShadow: "0 0 0 8px hsl(33 90% 55% / 0)" },
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.6" },
         },
       },
       animation: {

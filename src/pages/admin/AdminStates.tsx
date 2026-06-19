@@ -22,7 +22,7 @@ export function AdminError({ onRetry }: { onRetry: () => void }) {
       <p className="text-muted-foreground">{t('admin.error')}</p>
       <button
         onClick={onRetry}
-        className="h-10 px-5 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+        className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
       >
         {t('common.retry')}
       </button>

@@ -65,7 +65,7 @@ export default function RosterPage() {
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-menta to-verde-tech text-obsidiana font-display font-bold flex items-center justify-center text-xs">
+                    <div className="w-8 h-8 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs">
                       {(l.name || '?').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -78,7 +78,7 @@ export default function RosterPage() {
                   <div className="flex items-center gap-2 min-w-[120px]">
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden max-w-[120px]">
                       <div
-                        className="h-full bg-gradient-to-r from-menta to-verde-tech rounded-full"
+                        className="h-full bg-evergreen rounded-full"
                         style={{ width: `${l.completionPct}%` }}
                       />
                     </div>

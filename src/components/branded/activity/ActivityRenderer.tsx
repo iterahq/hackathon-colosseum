@@ -37,9 +37,16 @@ export function ActivityRenderer({
   }
 }
 
-function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function KindBadge({ icon: Icon, label, qa = false }: { icon: LucideIcon; label: string; qa?: boolean }) {
+  // Brand: Q&A label = clay + JB Mono uppercase (clay is RESERVED for Q&A).
+  // Every other activity kind uses the evergreen eyebrow.
+  const cls = qa
+    ? 'bg-clay/15 text-clay border-clay/30'
+    : 'bg-evergreen-soft text-evergreen-hi border-evergreen/30';
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[13px] bg-menta/15 text-menta border border-menta/30">
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider border ${cls}`}
+    >
       <Icon className="w-3.5 h-3.5" /> {label}
     </span>
   );
@@ -48,10 +55,12 @@ function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
 function Shell({
   icon,
   label,
+  qa = false,
   children,
 }: {
   icon: LucideIcon;
   label: string;
+  qa?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -61,7 +70,7 @@ function Shell({
       className="rounded-3xl border border-border bg-card p-6 md:p-8"
       data-testid="activity-shell"
     >
-      <KindBadge icon={icon} label={label} />
+      <KindBadge icon={icon} label={label} qa={qa} />
       <div className="mt-5">{children}</div>
     </motion.div>
   );
@@ -121,7 +130,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   const isCorrect = submitted && selected === correctIdx;
 
   return (
-    <Shell icon={HelpCircle} label={t('activity.quiz')}>
+    <Shell icon={HelpCircle} label={t('activity.quiz')} qa>
       <h2 className="font-display text-foreground">
         {spec.question ?? spec.prompt ?? t('activity.quizPrompt')}
       </h2>
@@ -167,7 +176,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         <button
           disabled={selected === null}
           onClick={() => setSubmitted(true)}
-          className="mt-6 h-11 px-6 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="mt-6 h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           data-testid="quiz-submit"
         >
           {t('activity.submit')}
@@ -187,16 +196,17 @@ function CodePlaceholder({ activity, onComplete }: { activity: Activity; onCompl
       <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.code')}</h2>
       <div className="mt-4 rounded-2xl border border-border bg-[#0d0c0a] overflow-hidden">
         <div className="flex items-center gap-2 px-4 h-9 border-b border-border bg-obsidiana/60">
-          <span className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
-          <span className="w-2.5 h-2.5 rounded-full bg-clay/60" />
-          <span className="w-2.5 h-2.5 rounded-full bg-menta/60" />
+          {/* Flat brand: editor chrome dots use neutral muted (clay is reserved for Q&A). */}
+          <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+          <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+          <span className="w-2.5 h-2.5 rounded-full bg-evergreen/60" />
           <span className="ml-2 text-xs text-muted-foreground font-mono">{spec.language ?? 'code'}</span>
         </div>
         <pre className="p-4 font-mono text-sm text-menta overflow-x-auto whitespace-pre">
           {spec.starter ?? '// ...'}
         </pre>
       </div>
-      <div className="mt-4 flex items-center gap-2 text-sm text-clay">
+      <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
         <Construction className="w-4 h-4" /> {t('activity.codeSoon')}
       </div>
       <DoneButton done={activity.status === 'done'} onClick={() => onComplete(true)} />
@@ -217,7 +227,7 @@ function DoneButton({ done, onClick }: { done?: boolean; onClick: () => void }) 
   return (
     <button
       onClick={onClick}
-      className="mt-6 inline-flex items-center gap-2 h-11 px-6 rounded-full bg-menta text-obsidiana font-medium hover:bg-verde-tech transition-colors"
+      className="mt-6 inline-flex items-center gap-2 h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
       data-testid="activity-done"
     >
       <CheckCircle2 className="w-4 h-4" />

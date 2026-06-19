@@ -54,7 +54,7 @@ export default function CompletionPage() {
 
           <div className="h-2.5 rounded-full bg-muted overflow-hidden mb-4">
             <motion.div
-              className="h-full bg-gradient-to-r from-menta to-verde-tech rounded-full"
+              className="h-full bg-evergreen rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${p.completionPct}%` }}
               transition={{ duration: 0.5 }}

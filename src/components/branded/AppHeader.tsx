@@ -4,7 +4,7 @@
  * - Itera wordmark / tenant logo (white-label preserved from #1).
  * - Evergreen sliding nav pill (Discover / Library) — João's visual.
  * - Locale toggle (PT/EN) + sign out.
- * - Sticky, blurred, obsidiana background.
+ * - Sticky, flat obsidiana background (brand: no blur/glow/gradient).
  */
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -41,7 +41,7 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
   ] as const;
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border">
+    <header className="sticky top-0 z-50 bg-background border-b border-border">
       <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-8">
         <Link to="/" className="flex-shrink-0" data-testid="header-logo">
           <Logo size={28} logoUrl={branding.logoUrl} alt={branding.name} />
@@ -91,7 +91,7 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
               }`}
               data-testid="user-menu-trigger"
             >
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-menta to-verde-tech text-obsidiana font-display font-bold flex items-center justify-center text-xs md:text-sm">
+              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs md:text-sm">
                 {initials}
               </div>
               <ChevronDown
@@ -106,10 +106,10 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+                  className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-border bg-card overflow-hidden"
                 >
                   <div className="p-4 border-b border-border flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-menta to-verde-tech text-obsidiana font-display font-bold flex items-center justify-center">
+                    <div className="w-11 h-11 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center">
                       {initials}
                     </div>
                     <div className="min-w-0">

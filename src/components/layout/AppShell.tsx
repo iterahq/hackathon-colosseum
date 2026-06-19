@@ -48,16 +48,13 @@ export function AppShell({
             {activityButtons}
             
             {/* Progress Bar */}
-            <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border-2 border-border shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
-              <motion.div 
-                className="h-full bg-gradient-to-r from-primary via-primary to-orange-400 rounded-full relative"
+            <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden border border-border">
+              <motion.div
+                className="h-full bg-evergreen rounded-full relative"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}
-              >
-                {/* Shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
-              </motion.div>
+              />
             </div>
           </div>
         </div>

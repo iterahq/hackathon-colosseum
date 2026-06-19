@@ -68,7 +68,7 @@ export default function EngagementPage() {
             </div>
             <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-menta to-verde-tech rounded-full"
+                className="h-full bg-evergreen rounded-full"
                 style={{ width: `${(d.completions / maxCompletions) * 100}%` }}
               />
             </div>

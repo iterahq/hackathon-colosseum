@@ -25,21 +25,22 @@ const ICON_SIZES = { sm: 'w-5 h-5', md: 'w-7 h-7', lg: 'w-9 h-9', xl: 'w-11 h-11
 
 export function ProgramIcon({
   icon = 'code',
-  color = 'from-menta to-verde-tech',
   size = 'md',
   className = '',
 }: {
   icon?: string;
+  /** Legacy gradient-class prop — ignored under the flat brand (kept for callers). */
   color?: string;
   size?: keyof typeof SIZES;
   className?: string;
 }) {
   const Icon = ICON_MAP[icon] ?? Code;
+  // Flat brand: evergreen-soft tile + evergreen-hi glyph (no gradient/glow).
   return (
     <div
-      className={`relative flex items-center justify-center bg-gradient-to-br ${color} ${SIZES[size]} ${className}`}
+      className={`relative flex items-center justify-center bg-evergreen-soft border border-evergreen/30 ${SIZES[size]} ${className}`}
     >
-      <Icon className={`${ICON_SIZES[size]} text-obsidiana`} />
+      <Icon className={`${ICON_SIZES[size]} text-evergreen-hi`} />
     </div>
   );
 }
