@@ -30,4 +30,10 @@ export const queryKeys = {
     stats: ['user', 'stats'] as const,
     badges: ['user', 'badges'] as const,
   },
+  // Tenant-admin observability surface (plan #6). Scoped by tenantId.
+  admin: {
+    roster: (tenantId: string) => ['admin', 'roster', tenantId] as const,
+    completion: (tenantId: string) => ['admin', 'completion', tenantId] as const,
+    engagement: (tenantId: string) => ['admin', 'engagement', tenantId] as const,
+  },
 } as const;

@@ -9,16 +9,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Library, LogOut, ChevronDown, Languages } from 'lucide-react';
+import { Home, Library, LogOut, ChevronDown, Languages, ShieldCheck } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { useTenantBranding } from '@/auth/useTenantBranding';
+import { useMembership } from '@/hooks/useMembership';
+import { isTenantAdmin } from '@/services/membership.service';
 
-export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'library' }) {
+export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'library' | 'admin' }) {
   const { signOut, user } = useAuth();
   const { t, toggleLocale, locale } = useI18n();
   const { branding } = useTenantBranding();
+  const { data: memberships } = useMembership();
+  const showAdmin = isTenantAdmin(memberships ?? []);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -127,6 +131,20 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                     >
                       <Library className="w-4 h-4" /> {t('nav.discover')}
                     </button>
+                    {showAdmin && (
+                      <button
+                        onClick={() => {
+                          setOpen(false);
+                          navigate('/admin');
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 ${
+                          active === 'admin' ? 'text-menta' : ''
+                        }`}
+                        data-testid="nav-admin"
+                      >
+                        <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
+                      </button>
+                    )}
                   </div>
                   <div className="p-1.5 border-t border-border">
                     <button

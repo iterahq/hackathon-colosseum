@@ -17,6 +17,8 @@ db/
     0001_itera_schema_v1.sql   # schema itera.*: content + tenancy + IAM + gamification + results
     0002_itera_rls.sql         # RLS tenant isolation + identity helpers (SECURITY DEFINER)
     0003_itera_seed.sql        # pilot tenant + 1x program/unit/lesson/activities + tenant B
+    0004_tenant_admin_metrics.sql  # tenant_admin role + admin RLS (membership-join) + access-token claim hook
+    0005_tenant_admin_fixture.sql  # verification fixture: learners + results across tenant A/B
   scripts/
     apply-migrations.sh        # run every migrations/*.sql in order (idempotent)
     seed-smoke-user.sh         # create + link the ITERA_SMOKE_* auth user
