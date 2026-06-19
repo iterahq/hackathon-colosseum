@@ -1,0 +1,25 @@
+{
+  "_comment": "Fallback pilot-cohort fixture for db/seeds/fellowship-pilot.ts. Used when no DFL prod SELECT creds are present in env (DFL_SUPABASE_URL + DFL_SUPABASE_SERVICE_ROLE_KEY) and/or the separate cohort-seed task has not populated a real cohort. Each entry maps a DFL fellow -> an Itera-local learner under the `dfl-batch` tenant. `dfl_subject` is the DFL auth.users.id (opaque, ADR-4 — NOT an FK). The first entry is the CLAUDE_SMOKE_* e2e user (N>=1 guarantee). Placeholder fellows have synthetic dfl_subjects (uuid v4) and are safe no-ops if re-seeded.",
+  "tenant_slug": "dfl-batch",
+  "fellows": [
+    {
+      "email": "taigfs+claudemain-smoke@devfellowship.com",
+      "display_name": "Claude Smoke (pilot)",
+      "locale": "pt",
+      "dfl_subject": "00000000-0000-4000-8000-000000000001",
+      "note": "CLAUDE_SMOKE_* e2e user. dfl_subject is a placeholder until the real DFL auth uid is resolved via env creds; the email is the join key so re-seeding with the real uid is idempotent on (email)."
+    },
+    {
+      "email": "pilot-fellow-1@devfellowship.com",
+      "display_name": "Pilot Fellow 1",
+      "locale": "pt",
+      "dfl_subject": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "email": "pilot-fellow-2@devfellowship.com",
+      "display_name": "Pilot Fellow 2",
+      "locale": "pt",
+      "dfl_subject": "00000000-0000-4000-8000-000000000003"
+    }
+  ]
+}

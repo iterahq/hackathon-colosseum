@@ -19,6 +19,7 @@ import CompletionPage from "./pages/admin/CompletionPage";
 import EngagementPage from "./pages/admin/EngagementPage";
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
+import { EmbedBridge } from "./auth/EmbedBridge";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <EmbedBridge />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route

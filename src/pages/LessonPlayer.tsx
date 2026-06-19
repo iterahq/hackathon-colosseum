@@ -14,6 +14,7 @@ import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer
 import { useLessonContent } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getIteraUserId } from '@/services/iteraUser';
 import type { Activity } from '@/types/content';
 
 export default function LessonPlayer() {
@@ -39,15 +40,31 @@ export default function LessonPlayer() {
     if (!isSupabaseConfigured) return;
     try {
       const sb = getSupabase();
-      const { data: auth } = await sb.auth.getUser();
-      const userId = auth.user?.id;
+      // RLS keys itera.progress / itera.activity_results on itera.users.id
+      // (NOT the Supabase auth uid). Resolve the Itera-local user id first —
+      // writing the raw auth uid silently FK-fails.
+      const userId = await getIteraUserId();
       if (!userId) return;
+
+      // Progress: upsert with the CORRECT enum value. The progress_status enum
+      // is ('not_started','in_progress','completed') — 'done' is invalid.
       await sb
         .from('progress')
         .upsert(
-          { user_id: userId, activity_id: activityId, status: 'done', completed_at: new Date().toISOString() },
+          {
+            user_id: userId,
+            activity_id: activityId,
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+          },
           { onConflict: 'user_id,activity_id' }
         );
+
+      // Results: INSERT the row the Results-API pull reads (per-tenant key sees
+      // results of its members). Best-effort; one row per completion attempt.
+      await sb
+        .from('activity_results')
+        .insert({ user_id: userId, activity_id: activityId, passed: true, score_internal: null });
     } catch {
       /* best-effort — never block the learner */
     }

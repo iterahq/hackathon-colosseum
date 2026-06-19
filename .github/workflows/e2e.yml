@@ -1,0 +1,64 @@
+name: E2E (Itera↔Fellowship)
+
+# Heavy end-to-end harness (plan #7). Needs BOTH apps live (dfl-learn +
+# itera-api), the dfl-batch Results-API key, and learn login creds. It is
+# deliberately NOT part of the per-PR `ci.yml` gate — it runs MANUALLY
+# (workflow_dispatch) or on a daily SCHEDULE. The spec capability-probes its
+# substrate and SKIPS (not fails) when a prerequisite is absent, so a run on an
+# incomplete substrate is green-with-skips.
+#
+# Runner: ubuntu-latest. iterahq is NOT on the devfellowship-scoped dfl-runner
+# fleet (org-scoped self-hosted runners aren't available to other orgs), and
+# this is a public repo besides — same carve-out as ci.yml. devfellowship/*
+# repos stay on dfl-runner; this carve-out is iterahq-only.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *' # daily 06:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ITERA_API_URL: ${{ vars.ITERA_API_URL || 'https://api.iterahq.dev' }}
+      LEARN_BASE_URL: ${{ vars.LEARN_BASE_URL || 'https://learn.devfellowship.com' }}
+      DFL_BATCH_RESULTS_API_KEY: ${{ secrets.DFL_BATCH_RESULTS_API_KEY }}
+      CLAUDE_SMOKE_USERNAME: ${{ secrets.CLAUDE_SMOKE_USERNAME }}
+      CLAUDE_SMOKE_PASSWORD: ${{ secrets.CLAUDE_SMOKE_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npm run e2e:install
+
+      - name: Run E2E harness (capability-gated)
+        run: npm run e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -1,0 +1,49 @@
+/**
+ * Resolve the caller's ITERA-LOCAL user id (itera.users.id) for the signed-in
+ * Supabase auth session.
+ *
+ * WHY this exists: itera.progress.user_id and itera.activity_results.user_id are
+ * FKs to itera.users.id — NOT the Supabase auth uid. RLS resolves the link via
+ * itera.current_itera_user_id() (identities.provider_subject = auth.uid()::text).
+ * Writing the raw auth uid silently FK-fails. Resolve the Itera user id first.
+ *
+ * Strategy: call the SECURITY DEFINER RPC `current_itera_user_id` (granted to
+ * authenticated). Fall back to selecting our own itera.users row (RLS allows
+ * users_select_self). Returns null when not resolvable (no membership yet).
+ */
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+
+let _cached: string | null | undefined;
+
+export async function getIteraUserId(): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  if (_cached !== undefined) return _cached;
+
+  const sb = getSupabase();
+  try {
+    // Primary: the RLS helper RPC. db.schema='itera' is applied to .rpc() too.
+    const { data, error } = await sb.rpc('current_itera_user_id');
+    if (!error && typeof data === 'string' && data) {
+      _cached = data;
+      return data;
+    }
+  } catch {
+    /* fall through to the self-select fallback */
+  }
+
+  try {
+    // Fallback: RLS users_select_self returns exactly our own row.
+    const { data } = await sb.from('users').select('id').limit(1).maybeSingle();
+    const id = (data as { id?: string } | null)?.id ?? null;
+    _cached = id;
+    return id;
+  } catch {
+    _cached = null;
+    return null;
+  }
+}
+
+/** Test/embed hook: clear the memoized id (e.g. after a session change). */
+export function resetIteraUserIdCache(): void {
+  _cached = undefined;
+}

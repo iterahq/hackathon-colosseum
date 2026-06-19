@@ -28,3 +28,8 @@ docs
 # Environment
 .env
 .env.local
+
+# Playwright (e2e harness)
+/test-results/
+/playwright-report/
+/playwright/.cache/
