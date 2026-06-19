@@ -1,7 +1,9 @@
 # Stage 1: Build
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+# .npmrc carries legacy-peer-deps=true — required for `npm ci` to resolve the
+# peer-dep graph cleanly (else ERESOLVE). Must be copied BEFORE npm ci.
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
 RUN npm run build
