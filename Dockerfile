@@ -6,6 +6,14 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
+# Vite inlines import.meta.env.VITE_* at BUILD time, so these must be build args.
+# Dokploy passes the app's Build Args here (configured via the app's buildArgs).
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_OTEL_ENABLED=false
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+    VITE_OTEL_ENABLED=$VITE_OTEL_ENABLED
 RUN npm run build
 
 # Stage 2: Serve
