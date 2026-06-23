@@ -187,7 +187,10 @@ export async function getUserStats(): Promise<UserStats> {
   const [xp, badges, progress] = await Promise.all([
     sb.from('xp_events').select('amount'),
     sb.from('user_badges').select('badge_id'),
-    sb.from('progress').select('status').eq('status', 'done'),
+    // The itera.progress_status enum is ('not_started','in_progress','completed') —
+    // there is NO 'done' value, so filtering on 'done' always returned zero rows
+    // (completion counts stuck at 0). Use the real enum value.
+    sb.from('progress').select('status').eq('status', 'completed'),
   ]);
 
   const totalXp = asRows(xp.data).reduce((s, r) => s + num(r.amount), 0);

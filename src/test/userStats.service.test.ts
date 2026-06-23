@@ -1,0 +1,74 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+/**
+ * Regression test for the getUserStats enum bug.
+ *
+ * The itera.progress_status enum is ('not_started','in_progress','completed').
+ * getUserStats previously filtered progress on status='done' (the player's
+ * UI-state literal, NOT a DB value), so completion counts were ALWAYS 0.
+ * This fixture stores rows the way the DB does (status='completed') and asserts
+ * the query both (a) filters on the correct enum value and (b) returns a
+ * non-zero completedActivities count.
+ */
+
+// In-memory tables mimicking the itera.* schema PostgREST surface.
+const tables: Record<string, Record<string, unknown>[]> = {
+  xp_events: [{ amount: 30 }, { amount: 70 }],
+  user_badges: [{ badge_id: 'b1' }, { badge_id: 'b2' }, { badge_id: 'b3' }],
+  progress: [
+    { status: 'completed' },
+    { status: 'completed' },
+    { status: 'completed' },
+    { status: 'in_progress' },
+    { status: 'not_started' },
+  ],
+};
+
+// Capture the status value getUserStats filters progress on.
+let progressFilter: { col: string; val: unknown } | null = null;
+
+function makeQuery(table: string) {
+  let rows = [...(tables[table] ?? [])];
+  const builder: Record<string, unknown> = {
+    select() {
+      return builder;
+    },
+    eq(col: string, val: unknown) {
+      if (table === 'progress') progressFilter = { col, val };
+      rows = rows.filter((r) => r[col] === val);
+      return builder;
+    },
+    then(resolve: (v: { data: unknown; error: null }) => void) {
+      resolve({ data: rows, error: null });
+    },
+  };
+  return builder;
+}
+
+vi.mock('@/lib/supabase/client', () => ({
+  isSupabaseConfigured: true,
+  getSupabase: () => ({ from: (t: string) => makeQuery(t) }),
+}));
+
+import { getUserStats } from '@/services/programs.service';
+
+describe('getUserStats (progress enum bug)', () => {
+  beforeEach(() => {
+    progressFilter = null;
+    vi.clearAllMocks();
+  });
+
+  it("filters progress on the real enum value 'completed', not 'done'", async () => {
+    await getUserStats();
+    expect(progressFilter).toEqual({ col: 'status', val: 'completed' });
+    expect(progressFilter?.val).not.toBe('done');
+  });
+
+  it('counts completed activities (non-zero) and sums XP', async () => {
+    const stats = await getUserStats();
+    expect(stats.completedActivities).toBe(3); // 3 rows with status='completed'
+    expect(stats.completedActivities).toBeGreaterThan(0);
+    expect(stats.totalXp).toBe(100); // 30 + 70
+    expect(stats.badgeCount).toBe(3);
+  });
+});
