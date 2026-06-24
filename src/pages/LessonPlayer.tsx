@@ -95,15 +95,34 @@ export default function LessonPlayer() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* App navbar stays at the TOP. */}
       <AppHeader active="discover" />
-      <main className="flex-1 max-w-[900px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ChevronLeft className="w-4 h-4" /> {t('common.back')}
-        </button>
 
+      {/* Sticky lesson sub-header (back · LESSON · title) — consistent with the
+          course sub-header; keeps the player focused. */}
+      {data && (
+        <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur border-b border-border">
+          <div className="max-w-[900px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              aria-label={t('common.back')}
+              className="flex-shrink-0 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-0">
+              <div className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
+                {t('label.lesson')}
+              </div>
+              <div className="font-display font-semibold truncate leading-tight">
+                {tText(data.title)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 max-w-[760px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         {isPending ? (
           <div className="space-y-4">
             <div className="h-8 w-1/2 rounded-lg ds-shimmer" />
@@ -121,10 +140,6 @@ export default function LessonPlayer() {
           </div>
         ) : data ? (
           <>
-            <div className="mb-2 font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
-              {t('label.lesson')}
-            </div>
-            <h1 className="font-display font-bold text-foreground mb-6">{tText(data.title)}</h1>
 
             {activities.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground">
@@ -153,24 +168,32 @@ export default function LessonPlayer() {
               </motion.div>
             ) : (
               <>
-                {/* Progress pills */}
-                <div className="flex items-center gap-2 mb-6" data-testid="progress-pills">
-                  {activities.map((a, i) => {
-                    const isDone = doneIds.has(a.id);
-                    const isCurrent = i === index;
-                    return (
-                      <div
-                        key={a.id}
-                        className={`h-2 flex-1 rounded-full transition-colors ${
-                          isDone
-                            ? 'bg-evergreen'
-                            : isCurrent
-                              ? 'bg-evergreen/40'
-                              : 'bg-muted'
-                        }`}
-                      />
-                    );
-                  })}
+                {/* Progress header — step counter + activity-kind chip + pills */}
+                <div className="mb-5">
+                  <div className="flex items-center justify-between mb-2.5">
+                    {current && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
+                        {t(`activity.${current.kind}`)}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {index + 1} / {activities.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5" data-testid="progress-pills">
+                    {activities.map((a, i) => {
+                      const isDone = doneIds.has(a.id);
+                      const isCurrent = i === index;
+                      return (
+                        <div
+                          key={a.id}
+                          className={`h-2 flex-1 rounded-full transition-colors ${
+                            isDone ? 'bg-evergreen' : isCurrent ? 'bg-evergreen/40' : 'bg-muted'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {current && (
