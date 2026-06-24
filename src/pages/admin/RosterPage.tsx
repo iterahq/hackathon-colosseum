@@ -109,8 +109,10 @@ export default function RosterPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      {/* overflow-x-auto (not -hidden) so the table scrolls on narrow screens
+          instead of clipping the completion column; min-w keeps columns legible. */}
+      <div className="rounded-2xl border border-border bg-card overflow-x-auto scrollbar-hide">
+        <table className="w-full min-w-[520px] text-sm">
           <thead>
             <tr className="text-left text-[12px] uppercase tracking-wider text-muted-foreground border-b border-border">
               <th className="px-4 py-3 font-medium">{t('admin.col.learner')}</th>

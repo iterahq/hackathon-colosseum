@@ -54,14 +54,18 @@ export default function AdminLayout() {
             {t('admin.subtitle', { tenant: branding.name })}
           </p>
 
-          {/* Sub-nav */}
-          <div className="flex items-center gap-1.5 mb-6 border-b border-border" data-testid="admin-subnav">
+          {/* Sub-nav — scrolls horizontally on narrow screens so the tabs never
+              force page-wide overflow (mobile: tabs slide; ≥sm: all fit). */}
+          <div
+            className="flex items-center gap-1.5 mb-6 border-b border-border overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0"
+            data-testid="admin-subnav"
+          >
             {tabs.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
                 className={({ isActive }) =>
-                  `inline-flex items-center gap-2 px-4 h-10 -mb-px border-b-2 text-sm font-medium transition-colors ${
+                  `inline-flex flex-shrink-0 items-center gap-2 px-4 h-10 -mb-px border-b-2 text-sm font-medium transition-colors ${
                     isActive
                       ? 'border-menta text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
