@@ -5,7 +5,7 @@
  */
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight, Sparkles, CreditCard } from 'lucide-react';
 import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
@@ -47,6 +47,16 @@ export default function HomePage() {
                   <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-md">
                     {t('home.heroSubtitle')}
                   </p>
+                  {/* Self-serve subscribe CTA (PLG) → /subscribe. */}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/subscribe')}
+                    data-testid="home-subscribe-cta"
+                    className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {t('subscribe.cta')}
+                  </button>
                 </div>
               </div>
             </motion.div>

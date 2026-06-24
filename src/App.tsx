@@ -9,6 +9,8 @@ import ProgramPage from "./pages/ProgramPage";
 import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
 import NotFound from "./pages/NotFound";
+import SubscribePage from "./pages/SubscribePage";
+import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -56,6 +58,25 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <LessonPlayer />
+                    </RequireAuth>
+                  }
+                />
+                {/* Self-serve subscribe surface (PLG). Reuses itera-api
+                    POST /billing/checkout (Stripe SANDBOX) — see
+                    services/billing.service.ts. */}
+                <Route
+                  path="/subscribe"
+                  element={
+                    <RequireAuth>
+                      <SubscribePage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/subscribe/return"
+                  element={
+                    <RequireAuth>
+                      <SubscribeReturnPage />
                     </RequireAuth>
                   }
                 />
