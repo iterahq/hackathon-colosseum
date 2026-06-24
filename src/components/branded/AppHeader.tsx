@@ -29,6 +29,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useMembership } from '@/hooks/useMembership';
+import { useProfile } from '@/hooks/useProfile';
 import { isTenantAdmin } from '@/services/membership.service';
 
 export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'library' | 'admin' }) {
@@ -36,6 +37,7 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
   const { t, toggleLocale, locale } = useI18n();
   const { branding } = useTenantBranding();
   const { data: memberships } = useMembership();
+  const { data: profile } = useProfile();
   const showAdmin = isTenantAdmin(memberships ?? []);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -61,7 +63,11 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
     navigate(q ? `/?q=${encodeURIComponent(q)}` : '/');
   };
 
-  const initials = (user?.email ?? 'IT').slice(0, 2).toUpperCase();
+  // Identity shown in the header — mirrored from DFL on federated login
+  // (display_name + avatar_url from itera.users, pulled from DFL public.profiles).
+  const displayName = profile?.displayName ?? user?.email?.split('@')[0] ?? 'Learner';
+  const avatarUrl = profile?.avatarUrl ?? null;
+  const initials = (profile?.displayName ?? user?.email ?? 'IT').slice(0, 2).toUpperCase();
   const items = [{ id: 'discover', label: t('nav.discover'), icon: Home, to: '/' }] as const;
 
   return (
@@ -175,9 +181,19 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
               }`}
               data-testid="user-menu-trigger"
             >
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs md:text-sm">
-                {initials}
-              </div>
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-evergreen/40"
+                  data-testid="header-avatar"
+                />
+              ) : (
+                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs md:text-sm">
+                  {initials}
+                </div>
+              )}
               <ChevronDown
                 className={`hidden md:block w-3.5 h-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
               />
@@ -193,14 +209,26 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                   className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-border bg-card overflow-hidden"
                 >
                   <div className="p-4 border-b border-border flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center">
-                      {initials}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-display font-semibold truncate">
-                        {user?.email?.split('@')[0] ?? 'Learner'}
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        referrerPolicy="no-referrer"
+                        className="w-11 h-11 rounded-full object-cover border border-evergreen/40"
+                        data-testid="menu-avatar"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center">
+                        {initials}
                       </div>
-                      <div className="text-[13px] text-muted-foreground truncate">{branding.name}</div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-display font-semibold truncate" data-testid="menu-display-name">
+                        {displayName}
+                      </div>
+                      <div className="text-[13px] text-muted-foreground truncate">
+                        {profile?.email ?? user?.email ?? branding.name}
+                      </div>
                     </div>
                   </div>
                   <div className="p-1.5">
