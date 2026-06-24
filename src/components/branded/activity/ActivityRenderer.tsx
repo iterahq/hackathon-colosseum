@@ -225,7 +225,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         <button
           disabled={selected === null}
           onClick={() => setSubmitted(true)}
-          className="mt-6 h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           data-testid="quiz-submit"
         >
           {t('activity.submit')}
@@ -279,7 +279,7 @@ function DoneButton({ done, onClick }: { done?: boolean; onClick: () => void }) 
   return (
     <button
       onClick={onClick}
-      className="mt-6 inline-flex items-center gap-2 h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+      className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
       data-testid="activity-done"
     >
       <CheckCircle2 className="w-4 h-4" />

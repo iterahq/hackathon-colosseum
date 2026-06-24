@@ -188,7 +188,7 @@ export default function LessonPlayer() {
             <p className="text-muted-foreground">{t('lesson.notFound')}</p>
             <button
               onClick={() => refetch()}
-              className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              className="w-full h-12 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
             >
               {t('common.retry')}
             </button>
@@ -214,7 +214,7 @@ export default function LessonPlayer() {
               </p>
               <Link
                 to="/"
-                className="mt-6 inline-flex h-11 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center"
+                className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
               >
                 {t('nav.discover')}
               </Link>

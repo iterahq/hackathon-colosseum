@@ -27,9 +27,9 @@ import {
 import { useI18n } from '@/i18n';
 import type { Badge } from '@/types/content';
 
-// Flat-top hexagon (flat horizontal top + bottom edges, points at left/right) —
-// matches the orientation in João's mock.
-const HEX_CLIP = 'polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)';
+// Pointy-top hexagon (point at top + bottom, flat vertical-ish left/right edges)
+// — matches the orientation in João Pedro's badge mock.
+const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
 
 // Deterministic glyph per badge so each medal reads as distinct (mirrors the
 // mock's varied icons). Falls back to a generic Award/Lock if unmatched.
@@ -65,13 +65,27 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
         const Glyph = glyphFor(b, i);
         return (
           <div key={b.id} className="flex flex-col items-center gap-3 text-center">
-            <div className="relative h-[5rem] w-[4.5rem]">
+            {/* Hex medal — pointy-top hexagon with a coloured glow halo on
+                earned medals (drop-shadow reads through clip-path; box-shadow
+                does not, so the halo lives on the wrapper as a blurred clone). */}
+            <div className="relative h-[5.25rem] w-20">
+              {/* Glow halo — a blurred, scaled clone of the hex behind the face.
+                  Only on earned medals; reads as a soft coloured aura on the
+                  dark background. */}
+              {b.earned && (
+                <div
+                  className="pointer-events-none absolute inset-0 scale-110 bg-gradient-to-br from-sky-400 to-indigo-600 opacity-60 blur-md"
+                  style={{ clipPath: HEX_CLIP }}
+                  aria-hidden
+                />
+              )}
+
               {/* Outer rim — a slightly larger clipped layer behind the face that
                   gives both states a clean hex edge (clip-path eats borders). */}
               <div
                 className={`absolute inset-0 ${
                   b.earned
-                    ? 'bg-gradient-to-br from-sky-300/80 to-indigo-700/80'
+                    ? 'bg-gradient-to-br from-sky-300 to-indigo-700'
                     : 'bg-border'
                 }`}
                 style={{ clipPath: HEX_CLIP }}
@@ -82,7 +96,7 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
               <div
                 className={`absolute inset-[2px] flex items-center justify-center ${
                   b.earned
-                    ? 'bg-gradient-to-br from-sky-400 to-indigo-600 shadow-[0_8px_20px_-6px_rgba(56,109,224,0.55)]'
+                    ? 'bg-gradient-to-br from-sky-400 to-indigo-600'
                     : 'bg-obsidiana'
                 }`}
                 style={{ clipPath: HEX_CLIP }}

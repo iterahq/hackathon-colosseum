@@ -178,13 +178,16 @@ function PathNode({
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* short connector above */}
-      <div className="w-0.5 h-4 bg-border" />
-      {/* node + its label, stacked & centered, with a modest left/right zigzag */}
+      {/* node + its label, stacked & centered, with a modest left/right zigzag.
+          The short connector lives INSIDE this offset wrapper so it stays
+          centered on the node it leads into (the node zig-zags ±24px; a
+          connector outside the wrapper would dangle off-centre). */}
       <div
         className="flex flex-col items-center"
         style={{ transform: offset ? 'translateX(24px)' : 'translateX(-24px)' }}
       >
+        {/* short connector above the node, centred on the node */}
+        <div className="w-0.5 h-4 bg-border" />
         <motion.button
           whileHover={interactive ? { scale: 1.06 } : undefined}
           whileTap={interactive ? { scale: 0.96 } : undefined}
