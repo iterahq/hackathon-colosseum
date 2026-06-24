@@ -81,8 +81,10 @@ export function JudgeHeatmap({ verdict }: { verdict: JudgeVerdict }) {
         <p className="mt-4 text-sm text-muted-foreground whitespace-pre-wrap">{verdict.feedback}</p>
       )}
 
-      <p className="mt-3 text-[11px] text-muted-foreground/70 font-mono">
-        {verdict.model} · {pending ? 'pendente' : verdict.passed ? 'aprovado' : 'continue iterando'}
+      {/* Do NOT expose the underlying LLM model/provider id to end users.
+          Generic "AI Judge" label only — never render verdict.model here. */}
+      <p className="mt-3 text-[11px] text-muted-foreground/70">
+        AI Judge · {pending ? 'pendente' : verdict.passed ? 'aprovado' : 'continue iterando'}
       </p>
     </motion.div>
   );
