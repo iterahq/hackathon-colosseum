@@ -30,7 +30,7 @@
     --accent-foreground: 146 60% 68%;
     --destructive: 347 100% 66%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 38% 92%;
+    --border: 30 9% 13%;
     --input: 30 12% 9%;
     --ring: 146 60% 53%;
     --radius: 0.875rem;
@@ -41,7 +41,7 @@
     --sidebar-primary-foreground: 30 20% 4%;
     --sidebar-accent: 30 12% 9%;
     --sidebar-accent-foreground: 146 60% 68%;
-    --sidebar-border: 40 38% 92%;
+    --sidebar-border: 30 9% 13%;
     --sidebar-ring: 146 60% 53%;
   }
 
@@ -74,7 +74,13 @@
     --destructive: 347 100% 66%;     /* #ff5470 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 37 45% 92%;            /* ink — used at low opacity via /8 etc. */
+    /* Hairline border — subtle warm-obsidiana edge (#262320), matching João
+     * Pedro's design where panels are separated by a faint dark line, NOT a
+     * white outline. Previously this was the near-white ink (37 45% 92%) which
+     * rendered as glaring white borders on every `border-border` surface (the
+     * default applied by `* { @apply border-border }`). Accent borders that
+     * WANT brightness use explicit tokens (evergreen/40, foreground/8, etc.). */
+    --border: 30 9% 13%;             /* #262320 hairline */
     --input: 30 12% 10%;
     --ring: 146 61% 62%;             /* evergreen-hi ring (AAA on bg) */
 
@@ -95,7 +101,7 @@
     --sidebar-primary-foreground: 30 11% 4%;
     --sidebar-accent: 30 12% 10%;
     --sidebar-accent-foreground: 146 61% 62%;
-    --sidebar-border: 37 45% 92%;
+    --sidebar-border: 30 9% 13%;
     --sidebar-ring: 146 61% 62%;
   }
 }
