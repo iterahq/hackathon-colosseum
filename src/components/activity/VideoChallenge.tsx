@@ -7,6 +7,7 @@ import { GameButton } from '@/components/game/GameButton';
 import { CodeEditor } from '@/components/editor';
 import { VideoModal } from './VideoModal';
 import { ActivityType } from '@/enums';
+import { useI18n } from '@/i18n';
 
 interface VideoChallengeProps {
   activity: Activity;
@@ -14,6 +15,7 @@ interface VideoChallengeProps {
 }
 
 export function VideoChallenge({ activity, onComplete }: VideoChallengeProps) {
+  const { t } = useI18n();
   const [watched, setWatched] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [code, setCode] = useState(activity.aiGeneratedCode || '');
@@ -21,7 +23,7 @@ export function VideoChallenge({ activity, onComplete }: VideoChallengeProps) {
   const videoConfig = activity.videoConfig;
   
   if (!videoConfig) {
-    return <div>Video configuration missing</div>;
+    return <div>{t('activity.config.videoMissing')}</div>;
   }
 
   const handleVideoClose = () => {
@@ -36,14 +38,14 @@ export function VideoChallenge({ activity, onComplete }: VideoChallengeProps) {
     <ActivityGameCard
       type={ActivityType.VIDEO_CHALLENGE}
       title={activity.title}
-      question="Aplique o que você aprendeu no vídeo"
+      question={t('activity.video.instruction')}
       actions={
         <GameButton
           variant="primary"
           onClick={() => onComplete(code)}
           disabled={!watched}
         >
-          ✓ APLICAR
+          {t('activity.action.applyChallenge')}
         </GameButton>
       }
     >
@@ -98,7 +100,7 @@ export function VideoChallenge({ activity, onComplete }: VideoChallengeProps) {
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                 <div className="flex items-center gap-2 text-success font-bold">
                   <Check className="w-6 h-6" />
-                  <span>Assistido</span>
+                  <span>{t('activity.video.watched')}</span>
                 </div>
               </div>
             )}
@@ -107,9 +109,9 @@ export function VideoChallenge({ activity, onComplete }: VideoChallengeProps) {
 
         {/* Instructions */}
         <p className="text-sm text-muted-foreground shrink-0">
-          {watched 
-            ? '✅ Vídeo assistido! Agora implemente o mesmo pattern no código abaixo.' 
-            : 'Clique no vídeo para assistir, depois implemente o código.'}
+          {watched
+            ? t('activity.video.watchedHint')
+            : t('activity.video.unwatchedHint')}
         </p>
 
         {/* Code Editor */}

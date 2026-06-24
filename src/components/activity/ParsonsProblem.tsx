@@ -8,6 +8,7 @@ import {
   StatusInfo,
   TargetList,
 } from '@/components/atoms';
+import { useI18n } from '@/i18n';
 
 interface ParsonsProblemProps {
   activity: Activity;
@@ -15,6 +16,7 @@ interface ParsonsProblemProps {
 }
 
 export function ParsonsProblem({ activity, onSubmit }: ParsonsProblemProps) {
+  const { t } = useI18n();
   const { solutionOrder, submitted, isCorrect, handleSubmit, assembledCode, blocks, containerRef } = useParsonsProblem(activity, onSubmit);
   return (
     <ActivityGameCard
@@ -28,7 +30,7 @@ export function ParsonsProblem({ activity, onSubmit }: ParsonsProblemProps) {
             disabled={solutionOrder.length !== blocks.length}
             variant="primary"
           >
-            Enviar solução
+            {t('activity.action.submitSolution')}
           </GameButton>
         )
       }
@@ -38,7 +40,7 @@ export function ParsonsProblem({ activity, onSubmit }: ParsonsProblemProps) {
         <TargetList count={blocks.length} />
       </div>
 
-      {assembledCode && <AssembledCode assembledCode={assembledCode} title="Código Montado"/>}
+      {assembledCode && <AssembledCode assembledCode={assembledCode} title={t('activity.parsons.assembledCode')}/>}
 
 
       <ResultBanner submitted={submitted} isCorrect={isCorrect} />

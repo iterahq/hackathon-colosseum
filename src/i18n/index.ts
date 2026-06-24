@@ -4,7 +4,15 @@
  * No heavy framework; a small typed dictionary + a hook with a switchable
  * locale persisted to localStorage. Default locale follows the browser.
  */
-import { createContext, createElement, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  createElement,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 export type Locale = 'pt' | 'en';
 
@@ -140,6 +148,136 @@ const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.cancelBody': 'Você cancelou o pagamento. Pode tentar novamente quando quiser.',
     'subscribe.return.backHome': 'Voltar ao início',
     'subscribe.return.tryAgain': 'Tentar de novo',
+    // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
+    'subscribe.priceLabel': '{price}/mês',
+    'subscribe.priceLoading': 'Carregando o preço…',
+    // Profile / language preference (saved to the user profile, DB-backed).
+    'profile.language': 'Idioma',
+    'profile.languageSaved': 'Idioma salvo no seu perfil.',
+    'profile.languageError': 'Não foi possível salvar o idioma. Tente novamente.',
+    'lang.pt': 'Português',
+    'lang.en': 'Inglês',
+    // Activity components (swept from hardcoded literals).
+    'activity.visual.instruction': 'Aproxime seu código do design de referência',
+    'activity.visual.reference': 'Design de referência',
+    'activity.step.noSteps': 'Atividade sem passos configurados',
+    'activity.step.expectedPlaceholder': 'Digite o valor esperado',
+    'activity.breakfix.instruction': 'Encontre e corrija o bug no código',
+    'activity.fixcode.instruction': 'Corrija o código e envie quando estiver pronto',
+    'activity.blanks.hidePreview': 'Ocultar preview',
+    'activity.blanks.showPreview': 'Ver preview',
+    'activity.blanks.allCorrect': 'Todas as lacunas estão corretas.',
+    'activity.video.instruction': 'Aplique o que você aprendeu no vídeo',
+    'activity.fork.prompt': 'Qual abordagem você prefere?',
+    'game.result.backHome': 'Voltar ao Início 🏠',
+    // Activity components — additional swept literals.
+    'activity.config.visualMissing': 'Configuração visual ausente',
+    'activity.config.videoMissing': 'Configuração de vídeo ausente',
+    'activity.action.compare': '👁️ COMPARAR',
+    'activity.action.apply': 'Aplicar',
+    'activity.action.applyChallenge': '✓ APLICAR',
+    'activity.action.confirm': 'Confirmar',
+    'activity.action.applying': 'Aplicando...',
+    'activity.action.test': 'Testar',
+    'activity.action.testing': 'Testando...',
+    'activity.action.hint': 'Dica',
+    'activity.action.save': 'Salvar',
+    'activity.action.cancel': 'Cancelar',
+    'activity.action.approve': 'Aprovar',
+    'activity.action.edit': 'Editar',
+    'activity.action.regen': 'Regen',
+    'activity.action.back': 'Voltar',
+    'activity.action.advance': 'Avançar',
+    'activity.action.restart': 'Reiniciar',
+    'activity.action.validateCode': 'Validar código',
+    'activity.action.confirmFix': 'Confirmar correção',
+    'activity.action.submitSolution': 'Enviar solução',
+    'activity.visual.reference.short': 'Referência',
+    'activity.step.noStepsBody': 'Esta atividade não tem `steps` no dummy.',
+    'activity.step.yourAnswer': 'Sua resposta',
+    'activity.step.label': 'Passo {current} de {total} — {question}',
+    'activity.error.title': 'Error',
+    'activity.video.watched': 'Assistido',
+    'activity.video.watchedHint': '✅ Vídeo assistido! Agora implemente o mesmo pattern no código abaixo.',
+    'activity.video.unwatchedHint': 'Clique no vídeo para assistir, depois implemente o código.',
+    'activity.fork.impact': 'Impacto:',
+    'activity.best.prompt': 'Qual implementação você levaria para produção?',
+    'activity.constrained.instruction': 'Melhore o código nas regiões destacadas',
+    'activity.constrained.lines': 'Linhas {start}-{end}',
+    'activity.fixchoices.codeWithError': 'Código com erro:',
+    'activity.blanks.select': 'Selecione',
+    'activity.blanks.title': 'Fill the blanks',
+    'activity.blanks.blankLabel': 'Lacuna {n}',
+    'activity.blanks.lineLabel': 'linha {n}',
+    'activity.blanks.lineLabelCap': 'Linha {n}',
+    'activity.blanks.correct': 'Correto',
+    'activity.blanks.incorrectExpected': 'Incorreto. Resposta esperada:',
+    'activity.blanks.filledWaiting': 'Resposta preenchida, aguardando validação.',
+    'activity.blanks.previewTitle': 'Preview do código completo',
+    'activity.blanks.fillToCheck': 'Preencha e valide para conferir o resultado final.',
+    'activity.blanks.someIncorrect': 'Algumas lacunas ainda estão incorretas. Corrija os campos marcados em vermelho para continuar.',
+    'activity.parsons.assembledCode': 'Código Montado',
+    'activity.predict.outputPrompt': 'Qual será o output?',
+    'activity.quality.issuesFound': 'Problemas identificados:',
+    'activity.repl.defaultObjective': 'Execute os comandos corretos no terminal.',
+    'activity.repl.instructionsLabel': 'Instruções',
+    'activity.spotbug.findLine': 'Encontre a linha com o erro',
+    'activity.tof.true': 'Verdadeiro',
+    'activity.tof.false': 'Falso',
+    'activity.tof.continue': 'Continuar',
+    'activity.tof.correct': 'Correto!',
+    'activity.tof.incorrect': 'Incorreto!',
+    'activity.image.zoomedAlt': 'Imagem ampliada',
+    // Activity type badges (ActivityGameCard).
+    'activity.type.fillTheBlanks': 'FILL THE BLANKS',
+    'activity.type.qualityReview': 'QUALITY REVIEW',
+    'activity.type.trueOrFalse': 'TRUE OR FALSE',
+    'activity.type.constrainedEdit': 'CONSTRAINED EDIT',
+    'activity.type.decisionFork': 'DECISION FORK',
+    'activity.type.breakAndFix': 'BREAK & FIX',
+    'activity.type.fixTheCode': 'FIX THE CODE',
+    'activity.type.videoChallenge': 'VIDEO CHALLENGE',
+    'activity.type.visualImplementation': 'VISUAL IMPLEMENTATION',
+    'activity.type.fixWithChoices': 'FIX WITH CHOICES',
+    'activity.type.readAndChoose': 'READ AND CHOOSE',
+    'activity.type.parsonsProblem': 'PARSONS PROBLEM',
+    'activity.type.predictOutput': 'PREDICT OUTPUT',
+    'activity.type.replChallenge': 'TERMINAL CHALLENGE',
+    'activity.type.stepThrough': 'STEP THROUGH',
+    'activity.type.spotTheBug': 'SPOT THE BUG',
+    'activity.type.bestImplementation': 'BEST IMPLEMENTATION',
+    // Game components — swept literals.
+    'game.aiHistory.title': 'AI History',
+    'game.aiHistory.empty': 'Nenhuma mensagem ainda.',
+    'game.aiHistory.emptyHint': 'Complete atividades para ver o feedback do AI.',
+    'game.aiHistory.activity': 'Atividade {n}',
+    'game.celebration.title': 'INCRÍVEL!',
+    'game.celebration.continue': 'Continuar',
+    'game.header.home': 'Início',
+    'game.result.lessonComplete': '🎓 Lesson Completa!',
+    'game.result.activityComplete': '{title} Completa!',
+    'game.result.almostThere': 'Quase lá!',
+    'game.result.aiAssistant': 'AI Assistant',
+    'game.result.nextActivity': 'Próxima Activity →',
+    'game.result.tryAgain': 'Tentar Novamente',
+    'game.complete.title': 'LESSON COMPLETE!',
+    'game.complete.youCompleted': 'Você completou',
+    'game.complete.projectName': 'BoxShop',
+    'game.complete.projectSubtitle': 'E-commerce Frontend Completo',
+    'game.complete.yourProgress': 'Seu Progresso',
+    'game.complete.xpEarned': 'ganhos',
+    'game.complete.livesRemaining': 'vidas restantes',
+    'game.complete.streakUnit': 'dias',
+    'game.complete.streakLabel': 'streak',
+    'game.complete.timeUnit': 'min',
+    'game.complete.totalTime': 'tempo total',
+    'game.complete.decisionsMade': 'Decisões tomadas',
+    'game.complete.codeOnGithub': 'Seu código está no GitHub!',
+    'game.complete.openRepo': 'Abrir Repositório',
+    'game.complete.copied': 'Copiado!',
+    'game.complete.copyLink': 'Copiar Link',
+    'game.complete.backHome': '🏠 Voltar ao Início',
+    'game.complete.share': '📤 Compartilhar',
   },
   en: {
     'app.name': 'Itera',
@@ -272,20 +410,167 @@ const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.cancelBody': 'You canceled the payment. You can try again whenever you like.',
     'subscribe.return.backHome': 'Back to home',
     'subscribe.return.tryAgain': 'Try again',
+    // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
+    'subscribe.priceLabel': '{price}/mo',
+    'subscribe.priceLoading': 'Loading the price…',
+    // Profile / language preference (saved to the user profile, DB-backed).
+    'profile.language': 'Language',
+    'profile.languageSaved': 'Language saved to your profile.',
+    'profile.languageError': 'Could not save the language. Please try again.',
+    'lang.pt': 'Portuguese',
+    'lang.en': 'English',
+    // Activity components (swept from hardcoded literals).
+    'activity.visual.instruction': 'Match your code to the reference design',
+    'activity.visual.reference': 'Design reference',
+    'activity.step.noSteps': 'Activity has no configured steps',
+    'activity.step.expectedPlaceholder': 'Type the expected value',
+    'activity.breakfix.instruction': 'Find and fix the bug in the code',
+    'activity.fixcode.instruction': 'Fix the code and submit when you are ready',
+    'activity.blanks.hidePreview': 'Hide preview',
+    'activity.blanks.showPreview': 'Show preview',
+    'activity.blanks.allCorrect': 'All blanks are correct.',
+    'activity.video.instruction': 'Apply what you learned in the video',
+    'activity.fork.prompt': 'Which approach do you prefer?',
+    'game.result.backHome': 'Back to Home 🏠',
+    // Activity components — additional swept literals.
+    'activity.config.visualMissing': 'Visual configuration missing',
+    'activity.config.videoMissing': 'Video configuration missing',
+    'activity.action.compare': '👁️ COMPARE',
+    'activity.action.apply': 'Apply',
+    'activity.action.applyChallenge': '✓ APPLY',
+    'activity.action.confirm': 'Confirm',
+    'activity.action.applying': 'Applying...',
+    'activity.action.test': 'Test',
+    'activity.action.testing': 'Testing...',
+    'activity.action.hint': 'Hint',
+    'activity.action.save': 'Save',
+    'activity.action.cancel': 'Cancel',
+    'activity.action.approve': 'Approve',
+    'activity.action.edit': 'Edit',
+    'activity.action.regen': 'Regen',
+    'activity.action.back': 'Back',
+    'activity.action.advance': 'Next',
+    'activity.action.restart': 'Restart',
+    'activity.action.validateCode': 'Validate code',
+    'activity.action.confirmFix': 'Confirm fix',
+    'activity.action.submitSolution': 'Submit solution',
+    'activity.visual.reference.short': 'Reference',
+    'activity.step.noStepsBody': 'This activity has no `steps` in the dummy.',
+    'activity.step.yourAnswer': 'Your answer',
+    'activity.step.label': 'Step {current} of {total} — {question}',
+    'activity.error.title': 'Error',
+    'activity.video.watched': 'Watched',
+    'activity.video.watchedHint': '✅ Video watched! Now implement the same pattern in the code below.',
+    'activity.video.unwatchedHint': 'Click the video to watch, then implement the code.',
+    'activity.fork.impact': 'Impact:',
+    'activity.best.prompt': 'Which implementation would you ship to production?',
+    'activity.constrained.instruction': 'Improve the code in the highlighted regions',
+    'activity.constrained.lines': 'Lines {start}-{end}',
+    'activity.fixchoices.codeWithError': 'Code with error:',
+    'activity.blanks.select': 'Select',
+    'activity.blanks.title': 'Fill the blanks',
+    'activity.blanks.blankLabel': 'Blank {n}',
+    'activity.blanks.lineLabel': 'line {n}',
+    'activity.blanks.lineLabelCap': 'Line {n}',
+    'activity.blanks.correct': 'Correct',
+    'activity.blanks.incorrectExpected': 'Incorrect. Expected answer:',
+    'activity.blanks.filledWaiting': 'Answer filled in, awaiting validation.',
+    'activity.blanks.previewTitle': 'Full code preview',
+    'activity.blanks.fillToCheck': 'Fill in and validate to check the final result.',
+    'activity.blanks.someIncorrect': 'Some blanks are still incorrect. Fix the fields marked in red to continue.',
+    'activity.parsons.assembledCode': 'Assembled Code',
+    'activity.predict.outputPrompt': 'What will the output be?',
+    'activity.quality.issuesFound': 'Issues identified:',
+    'activity.repl.defaultObjective': 'Run the correct commands in the terminal.',
+    'activity.repl.instructionsLabel': 'Instructions',
+    'activity.spotbug.findLine': 'Find the line with the error',
+    'activity.tof.true': 'True',
+    'activity.tof.false': 'False',
+    'activity.tof.continue': 'Continue',
+    'activity.tof.correct': 'Correct!',
+    'activity.tof.incorrect': 'Incorrect!',
+    'activity.image.zoomedAlt': 'Zoomed image',
+    // Activity type badges (ActivityGameCard).
+    'activity.type.fillTheBlanks': 'FILL THE BLANKS',
+    'activity.type.qualityReview': 'QUALITY REVIEW',
+    'activity.type.trueOrFalse': 'TRUE OR FALSE',
+    'activity.type.constrainedEdit': 'CONSTRAINED EDIT',
+    'activity.type.decisionFork': 'DECISION FORK',
+    'activity.type.breakAndFix': 'BREAK & FIX',
+    'activity.type.fixTheCode': 'FIX THE CODE',
+    'activity.type.videoChallenge': 'VIDEO CHALLENGE',
+    'activity.type.visualImplementation': 'VISUAL IMPLEMENTATION',
+    'activity.type.fixWithChoices': 'FIX WITH CHOICES',
+    'activity.type.readAndChoose': 'READ AND CHOOSE',
+    'activity.type.parsonsProblem': 'PARSONS PROBLEM',
+    'activity.type.predictOutput': 'PREDICT OUTPUT',
+    'activity.type.replChallenge': 'TERMINAL CHALLENGE',
+    'activity.type.stepThrough': 'STEP THROUGH',
+    'activity.type.spotTheBug': 'SPOT THE BUG',
+    'activity.type.bestImplementation': 'BEST IMPLEMENTATION',
+    // Game components — swept literals.
+    'game.aiHistory.title': 'AI History',
+    'game.aiHistory.empty': 'No messages yet.',
+    'game.aiHistory.emptyHint': 'Complete activities to see AI feedback.',
+    'game.aiHistory.activity': 'Activity {n}',
+    'game.celebration.title': 'AWESOME!',
+    'game.celebration.continue': 'Continue',
+    'game.header.home': 'Home',
+    'game.result.lessonComplete': '🎓 Lesson Complete!',
+    'game.result.activityComplete': '{title} Complete!',
+    'game.result.almostThere': 'Almost there!',
+    'game.result.aiAssistant': 'AI Assistant',
+    'game.result.nextActivity': 'Next Activity →',
+    'game.result.tryAgain': 'Try Again',
+    'game.complete.title': 'LESSON COMPLETE!',
+    'game.complete.youCompleted': 'You completed',
+    'game.complete.projectName': 'BoxShop',
+    'game.complete.projectSubtitle': 'Complete E-commerce Frontend',
+    'game.complete.yourProgress': 'Your Progress',
+    'game.complete.xpEarned': 'earned',
+    'game.complete.livesRemaining': 'lives remaining',
+    'game.complete.streakUnit': 'days',
+    'game.complete.streakLabel': 'streak',
+    'game.complete.timeUnit': 'min',
+    'game.complete.totalTime': 'total time',
+    'game.complete.decisionsMade': 'Decisions made',
+    'game.complete.codeOnGithub': 'Your code is on GitHub!',
+    'game.complete.openRepo': 'Open Repository',
+    'game.complete.copied': 'Copied!',
+    'game.complete.copyLink': 'Copy Link',
+    'game.complete.backHome': '🏠 Back to Home',
+    'game.complete.share': '📤 Share',
   },
 };
 
+export const DEFAULT_LOCALE: Locale = 'pt';
+
+/**
+ * The startup locale. Default is **pt-BR** (the canonical app language). We only
+ * honor an explicit, persisted localStorage choice — a first-time visitor with
+ * no stored preference ALWAYS starts in pt (we deliberately do NOT auto-switch on
+ * navigator.language). The DB-backed per-user preference (itera.users.locale) is
+ * applied on top of this once the profile loads (see useLocaleSync), so the
+ * stored locale only matters before the profile resolves / when signed out.
+ */
 function detectLocale(): Locale {
   const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('itera.locale') : null;
   if (stored === 'pt' || stored === 'en') return stored;
-  const nav = typeof navigator !== 'undefined' ? navigator.language.toLowerCase() : 'en';
-  return nav.startsWith('pt') ? 'pt' : 'en';
+  return DEFAULT_LOCALE;
 }
 
 interface I18nState {
   locale: Locale;
-  setLocale: (l: Locale) => void;
+  /**
+   * Set the active locale. By default (`persist=true`) the change is written to
+   * localStorage AND propagated to the registered persist sink (the DB writer
+   * wired by useLocaleSync). Pass `persist=false` to HYDRATE from an external
+   * source of truth (the user's stored profile locale) without echoing it back.
+   */
+  setLocale: (l: Locale, persist?: boolean) => void;
   toggleLocale: () => void;
+  /** Register a sink that persists a user-initiated locale change (e.g. to the DB). */
+  registerPersistSink: (fn: ((l: Locale) => void) | null) => void;
   t: (key: string, vars?: Record<string, string>) => string;
   /** Resolve a bilingual jsonb bag ({ pt, en }) for the current locale. */
   tText: (bag: Record<string, string | undefined> | null | undefined) => string;
@@ -295,16 +580,23 @@ const I18nCtx = createContext<I18nState | undefined>(undefined);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(detectLocale);
+  // A mutable sink (registered by useLocaleSync) that persists user-initiated
+  // locale changes to the DB. Kept in a ref so changing it doesn't re-render.
+  const persistRef = useRef<((l: Locale) => void) | null>(null);
 
   const value = useMemo<I18nState>(() => {
-    const setLocale = (l: Locale) => {
+    const setLocale = (l: Locale, persist = true) => {
       setLocaleState(l);
       if (typeof localStorage !== 'undefined') localStorage.setItem('itera.locale', l);
+      if (persist && persistRef.current) persistRef.current(l);
     };
     return {
       locale,
       setLocale,
       toggleLocale: () => setLocale(locale === 'pt' ? 'en' : 'pt'),
+      registerPersistSink: (fn) => {
+        persistRef.current = fn;
+      },
       t: (key, vars) => {
         let str = resources[locale][key] ?? resources.en[key] ?? key;
         if (vars) for (const [k, v] of Object.entries(vars)) str = str.replace(`{${k}}`, v);

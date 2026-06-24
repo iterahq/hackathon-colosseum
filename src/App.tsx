@@ -24,8 +24,20 @@ import EngagementPage from "./pages/admin/EngagementPage";
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
+import { useLocaleSync } from "./hooks/useLocaleSync";
 
 const queryClient = new QueryClient();
+
+/**
+ * Side-effect-only component: hydrates the active locale from the user's saved
+ * profile (itera.users.locale) on load and persists user-initiated language
+ * changes back to the DB. Must live inside I18nProvider + AuthProvider +
+ * QueryClientProvider (it reads the profile via React Query). Renders nothing.
+ */
+function LocaleSync() {
+  useLocaleSync();
+  return null;
+}
 
 const App = () => (
   <ObservabilityProvider>
@@ -35,6 +47,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <LocaleSync />
             <BrowserRouter>
               <EmbedBridge />
               <Routes>

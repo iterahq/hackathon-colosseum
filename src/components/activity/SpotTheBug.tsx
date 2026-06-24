@@ -2,6 +2,7 @@ import 'prismjs/themes/prism-tomorrow.css';
 import { Activity } from '@/types';
 import { GameButton, ActivityGameCard } from '@/components/game';
 import { useSpotTheBug } from '@/hooks/useSpotTheBug';
+import { useI18n } from '@/i18n';
 
 type SpotTheBugProps = {
   activity: Activity;
@@ -10,7 +11,8 @@ type SpotTheBugProps = {
 };
 
 export function SpotTheBug({ activity, onSuccess, onError }: SpotTheBugProps) {
-  const { 
+  const { t } = useI18n();
+  const {
     challenge, 
     selectedLine, 
     setSelectedLine, 
@@ -27,11 +29,11 @@ export function SpotTheBug({ activity, onSuccess, onError }: SpotTheBugProps) {
   return (
     <ActivityGameCard
       type={activity.type}
-      title="Encontre a linha com o erro"
+      title={t('activity.spotbug.findLine')}
       question=""
       actions={
         <GameButton onClick={handleConfirm} variant="primary">
-          Confirmar
+          {t('activity.action.confirm')}
         </GameButton>
       }
     >

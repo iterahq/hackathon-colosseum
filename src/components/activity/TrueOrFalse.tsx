@@ -5,6 +5,7 @@ import { Activity } from "@/types";
 import { ActivityType } from "@/enums";
 import { ActivityGameCard } from "@/components/game/ActivityGameCard";
 import { useTrueOrFalse } from "@/hooks/useTrueOrFalse";
+import { useI18n } from "@/i18n";
 
 export interface TrueOrFalseProps {
     activity: Activity;
@@ -12,6 +13,7 @@ export interface TrueOrFalseProps {
 }
 
 export function TrueOrFalse({ activity, onSubmit }: TrueOrFalseProps) {
+    const { t } = useI18n();
     const { selected, submitted, isCorrect, explanation, correctAnswer, handleSelect, handleContinue } =
         useTrueOrFalse(activity);
 
@@ -27,7 +29,7 @@ export function TrueOrFalse({ activity, onSubmit }: TrueOrFalseProps) {
                     transition={{ duration: 0.3, delay: 0.1 }}
                     className="flex items-center justify-center gap-2 w-full rounded-xl bg-primary text-primary-foreground py-4 font-display font-bold text-base hover:bg-primary/90 active:scale-[0.98] transition-all duration-150"
                 >
-                    Continuar <ChevronRight size={18} />
+                    {t('activity.tof.continue')} <ChevronRight size={18} />
                 </motion.button>
             )}
         </AnimatePresence>
@@ -48,8 +50,8 @@ export function TrueOrFalse({ activity, onSubmit }: TrueOrFalseProps) {
             {/* Botões de resposta */}
             <div className="grid grid-cols-2 gap-4">
                 {[
-                    { value: true, label: "Verdadeiro", icon: "✅" },
-                    { value: false, label: "Falso", icon: "❌" },
+                    { value: true, label: t('activity.tof.true'), icon: "✅" },
+                    { value: false, label: t('activity.tof.false'), icon: "❌" },
                 ].map(({ value, label, icon }) => {
                     const isSelected = selected === value;
                     const isThisCorrect = value === correctAnswer;
@@ -116,7 +118,7 @@ export function TrueOrFalse({ activity, onSubmit }: TrueOrFalseProps) {
                                 ? <CheckCircle2 className="text-success shrink-0" size={20} />
                                 : <XCircle className="text-destructive shrink-0" size={20} />}
                             <span className={`font-display font-bold ${isCorrect ? "text-success" : "text-destructive"}`}>
-                                {isCorrect ? "Correto!" : "Incorreto!"}
+                                {isCorrect ? t('activity.tof.correct') : t('activity.tof.incorrect')}
                             </span>
                         </div>
                         {explanation && (

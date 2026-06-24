@@ -3,6 +3,7 @@ import { ActivityGameCard, GameButton } from '@/components/game';
 import { CodeDisplay } from '@/components/organisms';
 import VariablesDisplay from '@/components/molecules/VariablesDisplay/VariablesDisplay';
 import { useStepThrough } from '@/hooks/useStepThrough';
+import { useI18n } from '@/i18n';
 
 export interface StepThroughProps {
   activity: Activity;
@@ -10,6 +11,7 @@ export interface StepThroughProps {
 }
 
 export function StepThrough({ activity, onSubmit }: StepThroughProps) {
+  const { t } = useI18n();
   const {
     steps,
     currentStep,
@@ -29,11 +31,11 @@ export function StepThrough({ activity, onSubmit }: StepThroughProps) {
       <ActivityGameCard
         type={activity.type}
         title={activity.title}
-        question="Atividade sem passos configurados"
+        question={t('activity.step.noSteps')}
         actions={null}
       >
         <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
-          Esta atividade não tem `steps` no dummy.
+          {t('activity.step.noStepsBody')}
         </div>
       </ActivityGameCard>
     );
@@ -46,20 +48,24 @@ export function StepThrough({ activity, onSubmit }: StepThroughProps) {
     <ActivityGameCard
       type={activity.type}
       title={activity.title}
-      question={`Passo ${currentStep + 1} de ${steps.length} — ${currentStepData.question}`}
+      question={t('activity.step.label', {
+        current: String(currentStep + 1),
+        total: String(steps.length),
+        question: currentStepData.question,
+      })}
       actions={
         <>
           <GameButton onClick={goToPrevious} disabled={isFirstStep} variant="tertiary">
-            Voltar
+            {t('activity.action.back')}
           </GameButton>
           {!isLastStep && (
             <GameButton onClick={goToNext} variant="secondary">
-              Avançar
+              {t('activity.action.advance')}
             </GameButton>
           )}
           {isLastStep && (
             <GameButton onClick={handleSubmit} disabled={!canSubmit} variant="primary">
-              Enviar
+              {t('activity.submit')}
             </GameButton>
           )}
         </>
@@ -75,14 +81,14 @@ export function StepThrough({ activity, onSubmit }: StepThroughProps) {
 
           <div className="flex flex-col gap-2">
             <label className="text-sm font-bold text-foreground" htmlFor="step-answer">
-              Sua resposta
+              {t('activity.step.yourAnswer')}
             </label>
             <input
               id="step-answer"
               type="text"
               value={answers[currentStep] ?? ''}
               onChange={(e) => setAnswer(currentStep, e.target.value)}
-              placeholder="Digite o valor esperado"
+              placeholder={t('activity.step.expectedPlaceholder')}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameButton } from './GameButton';
+import { useI18n } from '@/i18n';
 
 interface ResultModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function ResultModal({
   onContinue,
   isLessonComplete = false,
 }: ResultModalProps) {
+  const { t } = useI18n();
   // Parse markdown-like syntax
   const renderFeedback = (content: string) => {
     const lines = content.split('\n');
@@ -113,11 +115,11 @@ export function ResultModal({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              {isSuccess 
-                ? isLessonComplete 
-                  ? '🎓 Lesson Completa!' 
-                  : `${activityTitle} Completa!`
-                : 'Quase lá!'}
+              {isSuccess
+                ? isLessonComplete
+                  ? t('game.result.lessonComplete')
+                  : t('game.result.activityComplete', { title: activityTitle })
+                : t('game.result.almostThere')}
             </motion.h2>
 
             {/* AI Feedback Card */}
@@ -129,7 +131,7 @@ export function ResultModal({
             >
               <div className="flex items-center gap-2 mb-3 text-muted-foreground text-sm font-semibold">
                 <span className="text-lg">🤖</span>
-                <span>AI Assistant</span>
+                <span>{t('game.result.aiAssistant')}</span>
               </div>
               <div className="text-sm text-foreground/90 leading-relaxed space-y-1">
                 {renderFeedback(aiFeedback)}
@@ -147,11 +149,11 @@ export function ResultModal({
                 onClick={onContinue}
                 className="w-full"
               >
-                {isSuccess 
-                  ? isLessonComplete 
-                    ? 'Voltar ao Início 🏠' 
-                    : 'Próxima Activity →' 
-                  : 'Tentar Novamente'}
+                {isSuccess
+                  ? isLessonComplete
+                    ? t('game.result.backHome')
+                    : t('game.result.nextActivity')
+                  : t('game.result.tryAgain')}
               </GameButton>
             </motion.div>
           </motion.div>

@@ -5,6 +5,7 @@ import { CodeEditor } from '@/components/editor/CodeEditor';
 import { ActivityGameCard } from '@/components/game';
 import { GameButton } from '@/components/game';
 import { AlertTriangle, Play, Terminal, Lightbulb } from 'lucide-react';
+import { useI18n } from '@/i18n';
 
 interface BreakAndFixProps {
   activity: Activity;
@@ -15,6 +16,7 @@ interface BreakAndFixProps {
 }
 
 export function BreakAndFix({ activity, errorMessage, onFix, onError, onRequestHint }: BreakAndFixProps) {
+  const { t } = useI18n();
   const [code, setCode] = useState(activity.aiGeneratedCode || '');
   const [isTesting, setIsTesting] = useState(false);
 
@@ -38,19 +40,19 @@ export function BreakAndFix({ activity, errorMessage, onFix, onError, onRequestH
     <ActivityGameCard
       type={activity.type}
       title={activity.title}
-      question="Encontre e corrija o bug no código"
+      question={t('activity.breakfix.instruction')}
       actions={
         <>
-          <GameButton 
-            onClick={handleTest} 
+          <GameButton
+            onClick={handleTest}
             disabled={isTesting}
             variant="primary"
             icon={<Play className="w-5 h-5" />}
           >
-            {isTesting ? 'Testando...' : 'Testar'}
+            {isTesting ? t('activity.action.testing') : t('activity.action.test')}
           </GameButton>
           <GameButton onClick={onRequestHint} variant="tertiary" icon={<Lightbulb className="w-5 h-5" />}>
-            Dica
+            {t('activity.action.hint')}
           </GameButton>
         </>
       }
@@ -64,7 +66,7 @@ export function BreakAndFix({ activity, errorMessage, onFix, onError, onRequestH
         >
           <div className="flex items-center gap-2 mb-2 text-destructive">
             <Terminal className="w-4 h-4" />
-            <span className="font-bold text-sm">Error</span>
+            <span className="font-bold text-sm">{t('activity.error.title')}</span>
           </div>
           <div className="font-mono text-xs text-destructive/80 whitespace-pre-wrap">
             {errorMessage}

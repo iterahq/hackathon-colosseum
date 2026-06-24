@@ -2,6 +2,7 @@ import { ActivityGameCard, GameButton } from '@/components/game';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { usePredictOutput } from '@/hooks/usePredictOutput';
 import { Activity } from '@/types';
+import { useI18n } from '@/i18n';
 
 interface PredictOutputProps {
   activity: Activity;
@@ -10,6 +11,7 @@ interface PredictOutputProps {
 }
 
 export function PredictOutput({ activity, onSubmit, onError }: PredictOutputProps) {
+  const { t } = useI18n();
   const { code, prediction, setPrediction, isCorrect } = usePredictOutput(activity);
 
 return(
@@ -30,7 +32,7 @@ return(
           disabled={!prediction}
           variant="primary"
         >
-          Confirmar
+          {t('activity.action.confirm')}
         </GameButton>
       }
     >
@@ -47,7 +49,7 @@ return(
 
         {/* Previsão do aluno */}
         <div className="flex flex-col gap-2 flex-1 overflow-hidden">
-          <p className="text-sm font-bold text-foreground">Qual será o output?</p>
+          <p className="text-sm font-bold text-foreground">{t('activity.predict.outputPrompt')}</p>
           <textarea
             value={prediction}
             onChange={(e) => setPrediction(e.target.value)}

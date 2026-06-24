@@ -5,6 +5,7 @@ import { GameButton } from '@/components/game';
 import { useQualityReview } from '@/hooks/useQualityReview';
 import { Check, Edit3, RefreshCw, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useI18n } from '@/i18n';
 
 export interface QualityReviewProps {
   activity: Activity;
@@ -14,6 +15,7 @@ export interface QualityReviewProps {
 }
 
 export function QualityReview({ activity, onApprove, onRegenerate, onEdit }: QualityReviewProps) {
+  const { t } = useI18n();
   const {
     code,
     setCode,
@@ -37,22 +39,22 @@ export function QualityReview({ activity, onApprove, onRegenerate, onEdit }: Qua
         isEditing ? (
           <>
             <GameButton onClick={saveEdit} variant="primary" icon={<Check className="w-5 h-5" />}>
-              Salvar
+              {t('activity.action.save')}
             </GameButton>
             <GameButton onClick={cancelEdit} variant="tertiary">
-              Cancelar
+              {t('activity.action.cancel')}
             </GameButton>
           </>
         ) : (
           <>
             <GameButton onClick={approve} variant="primary" icon={<Check className="w-5 h-5" />}>
-              Aprovar
+              {t('activity.action.approve')}
             </GameButton>
             <GameButton onClick={enterEditMode} variant="secondary" icon={<Edit3 className="w-5 h-5" />}>
-              Editar
+              {t('activity.action.edit')}
             </GameButton>
             <GameButton onClick={handleRegenerate} variant="tertiary" icon={<RefreshCw className="w-5 h-5" />}>
-              Regen
+              {t('activity.action.regen')}
             </GameButton>
           </>
         )
@@ -78,7 +80,7 @@ export function QualityReview({ activity, onApprove, onRegenerate, onEdit }: Qua
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-bold text-warning mb-2">Problemas identificados:</h4>
+                <h4 className="font-bold text-warning mb-2">{t('activity.quality.issuesFound')}</h4>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                   {activity.expectedIssues.map((issue, i) => (
                     <li key={i}>{issue}</li>

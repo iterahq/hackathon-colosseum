@@ -10,15 +10,24 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React here.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getIteraUserId } from '@/services/iteraUser';
+import type { Locale } from '@/i18n';
 
 export interface MyProfile {
   displayName: string | null;
   avatarUrl: string | null;
   email: string | null;
+  /** The user's saved language preference (itera.users.locale). Default 'pt'. */
+  locale: Locale | null;
 }
 
 const str = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() ? v.trim() : null;
+
+/** Coerce an arbitrary stored locale to the supported set (default pt). */
+function toLocale(v: unknown): Locale | null {
+  return v === 'en' ? 'en' : v === 'pt' ? 'pt' : null;
+}
 
 /**
  * The current user's Itera profile (own row only, per RLS). Null when not
@@ -30,7 +39,7 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from('users')
-    .select('display_name, avatar_url, email')
+    .select('display_name, avatar_url, email, locale')
     .maybeSingle();
   if (error) {
     // Don't hard-fail the header on a transient/RLS read issue.
@@ -42,5 +51,23 @@ export async function getMyProfile(): Promise<MyProfile | null> {
     displayName: str(row.display_name),
     avatarUrl: str(row.avatar_url),
     email: str(row.email),
+    locale: toLocale(row.locale),
   };
+}
+
+/**
+ * Persist the user's language preference to their Itera profile
+ * (itera.users.locale). Self-update is allowed by RLS `users_update_self`
+ * (id = itera.current_itera_user_id()). Resolves the Itera user id first (the
+ * row PK is NOT the auth uid) and scopes the UPDATE to it. Returns true on a
+ * confirmed write; false when not configured / not resolvable / RLS-blocked —
+ * the caller keeps the localStorage fallback either way (never hard-fails the UI).
+ */
+export async function updateMyLocale(locale: Locale): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const iteraUserId = await getIteraUserId();
+  if (!iteraUserId) return false;
+  const sb = getSupabase();
+  const { error } = await sb.from('users').update({ locale }).eq('id', iteraUserId);
+  return !error;
 }

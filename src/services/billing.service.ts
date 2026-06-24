@@ -37,6 +37,24 @@ export interface CheckoutRequest {
   successUrl?: string;
   /** Where Stripe returns the learner on cancel. Defaults to the surface below. */
   cancelUrl?: string;
+  /**
+   * Active UI language — FALLBACK only for price/currency selection. The user's
+   * stored profile locale (itera.users.locale) is the server-side source of
+   * truth; this is used only when the profile locale is unset.
+   */
+  locale?: string;
+}
+
+/** Resolved seat price for the active language (for display before checkout). */
+export interface SeatPricing {
+  /** Normalized language: 'pt' | 'en'. */
+  locale: string;
+  /** ISO currency of the price: 'brl' | 'usd'. */
+  currency: string;
+  /** Amount in minor units (cents). */
+  unitAmount: number;
+  /** Billing interval (always 'month' here). */
+  interval: string;
 }
 
 export interface CheckoutResponse {
@@ -79,11 +97,13 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
   const fallback = defaultReturnUrls(origin);
 
   // PLG checkout is single-seat server-side; `seats` is accepted on the type for
-  // back-compat but not sent (the /plg endpoint ignores it).
-  const body = {
+  // back-compat but not sent (the /plg endpoint ignores it). `locale` is sent as
+  // a FALLBACK for price/currency selection (the profile locale wins server-side).
+  const body: Record<string, unknown> = {
     success_url: req.successUrl ?? fallback.successUrl,
     cancel_url: req.cancelUrl ?? fallback.cancelUrl,
   };
+  if (req.locale) body.locale = req.locale;
 
   let res: Response;
   try {
@@ -121,4 +141,62 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
     throw new Error('Checkout response did not include a redirect URL.');
   }
   return { checkoutUrl: parsed.checkout_url, sessionId: parsed.session_id ?? '' };
+}
+
+/**
+ * Resolve the seat price for a language so the subscribe UI can show the right
+ * currency/amount BEFORE redirecting to Checkout (pt → BRL R$100, en → USD $20).
+ * Calls the itera-api `GET /plg/pricing?locale=` (auth-gated, user JWT). Returns
+ * null on any failure so the UI degrades gracefully (the button still works —
+ * the server picks the price authoritatively at checkout time).
+ */
+export async function getPricing(locale: string): Promise<SeatPricing | null> {
+  if (!isSupabaseConfigured) return null;
+  const { data: sessionData } = await getSupabase().auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return null;
+
+  let res: Response;
+  try {
+    res = await fetch(`${ITERA_API_URL}/plg/pricing?locale=${encodeURIComponent(locale)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  try {
+    const j = (await res.json()) as {
+      locale?: string;
+      currency?: string;
+      unit_amount?: number;
+      interval?: string;
+    };
+    if (typeof j.unit_amount !== 'number' || !j.currency) return null;
+    return {
+      locale: j.locale ?? locale,
+      currency: j.currency,
+      unitAmount: j.unit_amount,
+      interval: j.interval ?? 'month',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Format a seat price for display in the active locale. Uses Intl so BRL renders
+ * as "R$ 100,00" and USD as "$20.00" with the right separators.
+ */
+export function formatPrice(pricing: SeatPricing, displayLocale: string): string {
+  const intlLocale = displayLocale === 'en' ? 'en-US' : 'pt-BR';
+  try {
+    return new Intl.NumberFormat(intlLocale, {
+      style: 'currency',
+      currency: pricing.currency.toUpperCase(),
+    }).format(pricing.unitAmount / 100);
+  } catch {
+    // Fallback: plain amount + currency code.
+    return `${(pricing.unitAmount / 100).toFixed(2)} ${pricing.currency.toUpperCase()}`;
+  }
 }

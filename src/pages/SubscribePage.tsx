@@ -14,23 +14,44 @@
  *
  * No Stripe key ever touches the frontend — the session is created server-side.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, CreditCard } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
-import { createCheckout } from '@/services/billing.service';
+import { createCheckout, getPricing, formatPrice, type SeatPricing } from '@/services/billing.service';
 
 export default function SubscribePage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pricing, setPricing] = useState<SeatPricing | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
+
+  // Language-aware price display: re-fetch whenever the active language changes
+  // (pt → BRL R$100, en → USD $20). Degrades silently — the button still works.
+  useEffect(() => {
+    let alive = true;
+    setPricingLoading(true);
+    getPricing(locale)
+      .then((p) => {
+        if (alive) setPricing(p);
+      })
+      .finally(() => {
+        if (alive) setPricingLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [locale]);
 
   async function handleSubscribe() {
     setError(null);
     setLoading(true);
     try {
-      const { checkoutUrl } = await createCheckout({ seats: 1 });
+      // Send the active language as a price-selection FALLBACK (the user's stored
+      // profile locale is the server-side source of truth).
+      const { checkoutUrl } = await createCheckout({ seats: 1, locale });
       // Full-page navigation to the hosted Stripe Checkout (SANDBOX).
       window.location.assign(checkoutUrl);
     } catch (err) {
@@ -58,6 +79,25 @@ export default function SubscribePage() {
             {t('subscribe.title')}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">{t('subscribe.subtitle')}</p>
+
+          {/* Language-aware price (pt → BRL R$100/mo, en → USD $20/mo). */}
+          <div className="mt-5" data-testid="subscribe-price">
+            {pricingLoading ? (
+              <span className="text-sm text-muted-foreground">{t('subscribe.priceLoading')}</span>
+            ) : pricing ? (
+              <span className="inline-flex items-baseline gap-1">
+                <span
+                  className="font-display font-bold text-3xl text-foreground"
+                  data-testid="subscribe-price-amount"
+                >
+                  {formatPrice(pricing, locale)}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  /{locale === 'en' ? 'mo' : 'mês'}
+                </span>
+              </span>
+            ) : null}
+          </div>
 
           <button
             type="button"

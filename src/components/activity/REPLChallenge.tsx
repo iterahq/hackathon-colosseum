@@ -6,6 +6,7 @@ import { useREPLChallenge } from '@/hooks/useREPLChallenge';
 import { TerminalTitleBar } from '@/components/molecules/TerminalTitleBar/TerminalTitleBar';
 import { TerminalOutput } from '@/components/molecules/TerminalOutput/TerminalOutput';
 import { CommandStep } from '@/components/molecules/CommandSteps/CommandSteps';
+import { useI18n } from '@/i18n';
 
 interface REPLChallengeProps {
   activity: Activity;
@@ -13,6 +14,7 @@ interface REPLChallengeProps {
 }
 
 export function REPLChallenge({ activity, onSubmit }: REPLChallengeProps) {
+  const { t } = useI18n();
   const {
     lines, input, setInput, currentStep, stepStatus, done,
     commands, prompt, inputRef, scrollRef,
@@ -23,14 +25,14 @@ export function REPLChallenge({ activity, onSubmit }: REPLChallengeProps) {
     <ActivityGameCard
       type={ActivityType.REPL_CHALLENGE}
       title={activity.title}
-      question={activity.objective || 'Execute os comandos corretos no terminal.'}
+      question={activity.objective || t('activity.repl.defaultObjective')}
       actions={
         <button
           onClick={handleReset}
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-sm font-medium"
         >
           <RotateCcw className="w-4 h-4" />
-          Reiniciar
+          {t('activity.action.restart')}
         </button>
       }
     >
@@ -38,7 +40,7 @@ export function REPLChallenge({ activity, onSubmit }: REPLChallengeProps) {
 
         <div className="w-64 shrink-0 flex flex-col gap-3 overflow-y-auto pr-1">
           <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Instruções</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">{t('activity.repl.instructionsLabel')}</p>
             <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">
               {activity.instructions}
             </p>

@@ -34,7 +34,7 @@ import { isTenantAdmin } from '@/services/membership.service';
 
 export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'library' | 'admin' }) {
   const { signOut, user } = useAuth();
-  const { t, toggleLocale, locale } = useI18n();
+  const { t, toggleLocale, setLocale, locale } = useI18n();
   const { branding } = useTenantBranding();
   const { data: memberships } = useMembership();
   const { data: profile } = useProfile();
@@ -255,19 +255,53 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                         <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
                       </button>
                     )}
-                    {/* Locale toggle — preserved here (the standalone PT/EN pill
-                        was replaced by the parity gear). */}
+                    {/* Language preference — saved to the user PROFILE
+                        (itera.users.locale, DB-backed via useLocaleSync). A
+                        two-option selector (Português / Inglês), not just a
+                        toggle. `locale-toggle` testid kept for back-compat e2e. */}
+                    <div className="px-3 pt-2 pb-1">
+                      <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                        <Languages className="w-4 h-4" /> {t('profile.language')}
+                      </span>
+                    </div>
+                    <div className="px-2 pb-1.5 grid grid-cols-2 gap-1.5" data-testid="locale-selector">
+                      <button
+                        type="button"
+                        onClick={() => setLocale('pt')}
+                        aria-pressed={locale === 'pt'}
+                        data-testid="locale-option-pt"
+                        className={`flex items-center justify-center gap-2 h-9 rounded-xl text-sm transition-colors border ${
+                          locale === 'pt'
+                            ? 'border-evergreen/50 bg-evergreen-soft text-evergreen-hi'
+                            : 'border-border text-muted-foreground hover:text-foreground hover:bg-obsidiana/60'
+                        }`}
+                      >
+                        <span className="font-mono text-xs">PT</span> {t('lang.pt')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLocale('en')}
+                        aria-pressed={locale === 'en'}
+                        data-testid="locale-option-en"
+                        className={`flex items-center justify-center gap-2 h-9 rounded-xl text-sm transition-colors border ${
+                          locale === 'en'
+                            ? 'border-evergreen/50 bg-evergreen-soft text-evergreen-hi'
+                            : 'border-border text-muted-foreground hover:text-foreground hover:bg-obsidiana/60'
+                        }`}
+                      >
+                        <span className="font-mono text-xs">EN</span> {t('lang.en')}
+                      </button>
+                    </div>
+                    {/* Back-compat single-toggle (hidden) — older e2e selectors. */}
                     <button
+                      type="button"
                       onClick={toggleLocale}
-                      className="w-full flex items-center justify-between gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
                       data-testid="locale-toggle"
+                      className="sr-only"
+                      aria-hidden="true"
+                      tabIndex={-1}
                     >
-                      <span className="flex items-center gap-3">
-                        <Languages className="w-4 h-4" /> {t('nav.language')}
-                      </span>
-                      <span className="font-mono text-xs text-evergreen-hi">
-                        {locale === 'pt' ? 'PT' : 'EN'}
-                      </span>
+                      {locale === 'pt' ? 'PT' : 'EN'}
                     </button>
                   </div>
                   <div className="p-1.5 border-t border-border">

@@ -2,6 +2,7 @@ import { useBestImplementation } from "@/hooks/useBestImplementation";
 import { Activity } from "@/types";
 import { ActivityType } from "@/enums";
 import { ActivityGameCard, GameButton } from "@/components/game";
+import { useI18n } from "@/i18n";
 
 interface BestImplementationProps {
     activity: Activity;
@@ -9,6 +10,7 @@ interface BestImplementationProps {
 };
 
 export function BestImplementation({ activity, onSubmit }: BestImplementationProps) {
+    const { t } = useI18n();
     const {
         selectedId,
         setSelectedId,
@@ -24,14 +26,14 @@ export function BestImplementation({ activity, onSubmit }: BestImplementationPro
         <ActivityGameCard
             type={activity.type}
             title={activity.title}
-            question="Qual implementação você levaria para produção?"
+            question={t('activity.best.prompt')}
             actions={
                 <GameButton
                     onClick={handleSubmit}
                     disabled={!selectedId || isSubmitted}
                     variant="primary"
                 >
-                    Confirmar
+                    {t('activity.action.confirm')}
                 </GameButton>
             }
         >
