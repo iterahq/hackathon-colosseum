@@ -12,7 +12,7 @@
 import { motion } from 'framer-motion';
 import { BookOpen, Check, Lock, Flag, GitBranch, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import type { ProgramDetail, Lesson, Unit } from '@/types/content';
+import type { ProgramDetail, Lesson, Unit, ActivityKind } from '@/types/content';
 
 type NodeState = 'done' | 'current' | 'locked';
 
@@ -33,6 +33,15 @@ interface TreeSection {
 function lessonDone(lesson: Lesson): boolean {
   const acts = lesson.activities ?? [];
   return acts.length > 0 && acts.every((a) => a.status === 'done');
+}
+
+/**
+ * Representative activity kind for the eyebrow shown under a node. There is no
+ * lesson-level kind in the model, so we use the first activity's kind. Falls
+ * back to `document` when a lesson has no activities yet.
+ */
+function lessonKind(lesson: Lesson): ActivityKind {
+  return lesson.activities?.[0]?.kind ?? 'document';
 }
 
 function buildSections(program: ProgramDetail): { sections: TreeSection[]; firstCurrent: string | null } {
@@ -126,6 +135,7 @@ export function SkillTree({
                 node={node}
                 offset={ni % 2 === 0 ? 0 : 1}
                 title={tText(node.lesson.title)}
+                kindLabel={t(`activity.${lessonKind(node.lesson)}`)}
                 onClick={() => node.state !== 'locked' && onOpenLesson(node.lesson.id)}
               />
             ))}
@@ -154,11 +164,13 @@ function PathNode({
   node,
   offset,
   title,
+  kindLabel,
   onClick,
 }: {
   node: TreeNode;
   offset: 0 | 1;
   title: string;
+  kindLabel: string;
   onClick: () => void;
 }) {
   const { state } = node;
@@ -166,13 +178,13 @@ function PathNode({
 
   return (
     <div className="flex flex-col items-center w-full">
-      {/* connector above */}
-      <div className="w-0.5 h-7 bg-border" />
+      {/* short connector above */}
+      <div className="w-0.5 h-4 bg-border" />
+      {/* node + its label, stacked & centered, with a modest left/right zigzag */}
       <div
-        className="flex items-center gap-4"
-        style={{ transform: offset ? 'translateX(56px)' : 'translateX(-56px)' }}
+        className="flex flex-col items-center"
+        style={{ transform: offset ? 'translateX(24px)' : 'translateX(-24px)' }}
       >
-        {offset === 1 && <NodeLabel title={title} state={state} side="left" />}
         <motion.button
           whileHover={interactive ? { scale: 1.06 } : undefined}
           whileTap={interactive ? { scale: 0.96 } : undefined}
@@ -196,7 +208,7 @@ function PathNode({
             <BookOpen className="w-6 h-6" />
           )}
         </motion.button>
-        {offset === 0 && <NodeLabel title={title} state={state} side="right" />}
+        <NodeLabel title={title} kindLabel={kindLabel} state={state} />
       </div>
     </div>
   );
@@ -204,22 +216,25 @@ function PathNode({
 
 function NodeLabel({
   title,
+  kindLabel,
   state,
-  side,
 }: {
   title: string;
+  kindLabel: string;
   state: NodeState;
-  side: 'left' | 'right';
 }) {
   return (
-    <div className={`hidden sm:block max-w-[180px] ${side === 'left' ? 'text-right' : 'text-left'}`}>
-      <div
-        className={`text-sm font-medium leading-tight truncate ${
+    <div className="mt-1.5 flex flex-col items-center text-center max-w-[160px]">
+      <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground leading-none">
+        {kindLabel}
+      </span>
+      <span
+        className={`mt-0.5 text-xs font-medium leading-tight line-clamp-2 ${
           state === 'locked' ? 'text-muted-foreground' : 'text-foreground'
         }`}
       >
         {title}
-      </div>
+      </span>
     </div>
   );
 }
