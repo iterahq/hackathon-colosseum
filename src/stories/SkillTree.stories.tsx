@@ -1,0 +1,59 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { SkillTree } from '@/components/branded';
+import type { ProgramDetail, Activity } from '@/types/content';
+
+const act = (id: string, status: Activity['status']): Activity => ({
+  id,
+  lessonId: 'l',
+  ordinal: 0,
+  kind: 'document',
+  spec: {},
+  rubric: null,
+  status,
+});
+
+const program: ProgramDetail = {
+  id: 'p1',
+  tenantId: 't1',
+  slug: 'tech-fluency',
+  title: { en: 'Tech Fluency: Speak Dev, AI & GitHub' },
+  createdAt: new Date().toISOString(),
+  icon: 'code',
+  units: [
+    {
+      id: 'u1',
+      programId: 'p1',
+      ordinal: 0,
+      title: { en: '01 · The Words Devs Use' },
+      lessons: [
+        { id: 'l1', unitId: 'u1', ordinal: 0, title: { en: 'What is a "repo"?' }, activities: [act('a1', 'done')] },
+        { id: 'l2', unitId: 'u1', ordinal: 1, title: { en: 'Branch, commit, merge' }, activities: [act('a2', 'done')] },
+        { id: 'l3', unitId: 'u1', ordinal: 2, title: { en: 'Pull requests' }, activities: [act('a3', 'todo')] },
+      ],
+    },
+    {
+      id: 'u2',
+      programId: 'p1',
+      ordinal: 1,
+      title: { en: '02 · How Code Gets Built' },
+      lessons: [
+        { id: 'l4', unitId: 'u2', ordinal: 0, title: { en: 'Idea to ship' }, activities: [act('a4', 'todo')] },
+        { id: 'l5', unitId: 'u2', ordinal: 1, title: { en: 'CI / CD basics' }, activities: [act('a5', 'todo')] },
+      ],
+    },
+  ],
+};
+
+const meta: Meta<typeof SkillTree> = {
+  title: 'Branded/SkillTree',
+  component: SkillTree,
+  render: (args) => (
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      <SkillTree {...args} />
+    </div>
+  ),
+};
+export default meta;
+type Story = StoryObj<typeof SkillTree>;
+
+export const Default: Story = { args: { program, onOpenLesson: () => {} } };
