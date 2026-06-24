@@ -15,6 +15,7 @@ import { useLessonContent } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
+import { awardActivityXp } from '@/services/gamification.service';
 import type { Activity } from '@/types/content';
 
 export default function LessonPlayer() {
@@ -65,6 +66,13 @@ export default function LessonPlayer() {
       await sb
         .from('activity_results')
         .insert({ user_id: userId, activity_id: activityId, passed: true, score_internal: null });
+
+      // XP: award once per activity. awardActivityXp delegates to the IDEMPOTENT
+      // SECURITY DEFINER RPC (partial unique index on xp_events(user_id, reason)
+      // + ON CONFLICT DO NOTHING), so re-completing never double-awards — which
+      // is why we don't gate on a not-completed -> completed transition
+      // client-side. Best-effort; failure never blocks the learner.
+      await awardActivityXp(activityId);
     } catch {
       /* best-effort — never block the learner */
     }
