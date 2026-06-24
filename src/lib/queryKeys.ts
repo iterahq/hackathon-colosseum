@@ -36,4 +36,8 @@ export const queryKeys = {
     completion: (tenantId: string) => ['admin', 'completion', tenantId] as const,
     engagement: (tenantId: string) => ['admin', 'engagement', tenantId] as const,
   },
+  // PLG subscription entitlement (gating). Scoped by the auth user id.
+  entitlement: {
+    mine: (userId: string) => ['entitlement', userId] as const,
+  },
 } as const;

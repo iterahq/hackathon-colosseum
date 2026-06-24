@@ -3,12 +3,13 @@
  *
  * Padrão do projeto: componente → hook → service → fetch. No React here.
  *
- * This service triggers a Stripe Checkout by calling the EXISTING itera-api
- * billing endpoint — it does NOT reinvent billing:
+ * This service triggers a Stripe Checkout by calling the itera-api **PLG**
+ * self-serve endpoint — it does NOT reinvent billing:
  *
- *     POST ${VITE_ITERA_API_URL}/billing/checkout
- *       body:  { seats, email?, success_url?, cancel_url? }
- *       resp:  { checkout_url, session_id }
+ *     POST ${VITE_ITERA_API_URL}/plg/checkout
+ *       headers: Authorization: Bearer <Itera user access_token>
+ *       body:    { success_url?, cancel_url? }
+ *       resp:    { checkout_url, session_id, tenant_id }
  *
  * The Stripe Checkout Session is created SERVER-SIDE by itera-api against the
  * Stripe **SANDBOX** (TEST mode, ADR-2). The frontend NEVER holds a Stripe key
@@ -16,15 +17,12 @@
  * hosted Checkout URL. Live cutover is gated separately on the Itera CNPJ.
  *
  * Auth: we forward the signed-in learner's Supabase access_token as the Bearer
- * credential (same JWT the player uses everywhere). The frontend MUST NOT carry
- * a per-tenant API key.
- *
- * ⚠️ KNOWN SERVER GAP (drift — flagged in the PR): itera-api's `/billing/checkout`
- * currently authenticates with the per-tenant API KEY (`requireTenantKey`), not
- * a learner JWT. So a self-serve learner JWT will be rejected (401) until a
- * learner-authenticated self-serve checkout path lands server-side. This client
- * is written to the documented contract and degrades gracefully (surfaces the
- * error to the UI) so it activates the moment the server accepts a learner JWT.
+ * credential (same JWT the player uses everywhere). `/plg/checkout` verifies the
+ * Itera USER JWT (ADR-5) and resolves the caller's personal tenant — NO
+ * per-tenant API key. (This replaced the earlier `/billing/checkout` call, which
+ * is tenant-key-authenticated and rejected a learner JWT with 401; the PLG path
+ * landed in itera-api alongside this change — plan
+ * 20260624-itera-plg-subscribe-flow.)
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -80,15 +78,16 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
       : 'https://app.iterahq.dev';
   const fallback = defaultReturnUrls(origin);
 
+  // PLG checkout is single-seat server-side; `seats` is accepted on the type for
+  // back-compat but not sent (the /plg endpoint ignores it).
   const body = {
-    seats: Math.max(1, Math.floor(req.seats ?? 1)),
     success_url: req.successUrl ?? fallback.successUrl,
     cancel_url: req.cancelUrl ?? fallback.cancelUrl,
   };
 
   let res: Response;
   try {
-    res = await fetch(`${ITERA_API_URL}/billing/checkout`, {
+    res = await fetch(`${ITERA_API_URL}/plg/checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

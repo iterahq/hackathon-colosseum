@@ -16,6 +16,7 @@ import DflCallbackPage from "./pages/auth/DflCallbackPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
+import { RequireSubscription } from "./auth/RequireSubscription";
 import AdminLayout from "./pages/admin/AdminLayout";
 import RosterPage from "./pages/admin/RosterPage";
 import CompletionPage from "./pages/admin/CompletionPage";
@@ -41,11 +42,17 @@ const App = () => (
                 {/* "Sign in with DFL" callback — exchanges the DFL token (from
                     the URL fragment) for an Itera session. Public (pre-auth). */}
                 <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
+                {/* Learner surfaces — RequireAuth → RequireSubscription. A
+                    signed-in user with no active subscription is redirected to
+                    /subscribe (tenant-admins/owners are exempt). PLG gate:
+                    plan 20260624-itera-plg-subscribe-flow. */}
                 <Route
                   path="/"
                   element={
                     <RequireAuth>
-                      <HomePage />
+                      <RequireSubscription>
+                        <HomePage />
+                      </RequireSubscription>
                     </RequireAuth>
                   }
                 />
@@ -53,7 +60,9 @@ const App = () => (
                   path="/program/:slug"
                   element={
                     <RequireAuth>
-                      <ProgramPage />
+                      <RequireSubscription>
+                        <ProgramPage />
+                      </RequireSubscription>
                     </RequireAuth>
                   }
                 />
@@ -61,13 +70,16 @@ const App = () => (
                   path="/lesson/:lessonId"
                   element={
                     <RequireAuth>
-                      <LessonPlayer />
+                      <RequireSubscription>
+                        <LessonPlayer />
+                      </RequireSubscription>
                     </RequireAuth>
                   }
                 />
-                {/* Self-serve subscribe surface (PLG). Reuses itera-api
-                    POST /billing/checkout (Stripe SANDBOX) — see
-                    services/billing.service.ts. */}
+                {/* Self-serve subscribe surface (PLG). Calls itera-api
+                    POST /plg/checkout (user-JWT, Stripe SANDBOX) — see
+                    services/billing.service.ts. Public-after-auth (NOT
+                    subscription-gated, else it'd be a redirect loop). */}
                 <Route
                   path="/subscribe"
                   element={
