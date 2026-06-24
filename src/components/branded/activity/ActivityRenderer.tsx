@@ -17,12 +17,23 @@
  *              options: [{ id|label, text|label, isCorrect }], explanation? }
  *   code:     { language?: string, starter?: string, prompt?: string }
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, GitBranch, Code2, CheckCircle2, XCircle, Construction } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { useAuth } from '@/auth/AuthContext';
+import {
+  iteraApiConfigured,
+  listSeeds,
+  generateContext,
+  judge,
+  type Seed,
+  type GeneratedBrief,
+  type JudgeVerdict,
+} from '@/api/iteraApi';
+import { JudgeHeatmap } from './JudgeHeatmap';
 
 export function ActivityRenderer({
   activity,
@@ -91,6 +102,16 @@ function DocumentActivity({ activity, onComplete }: { activity: Activity; onComp
   const { t } = useI18n();
   const spec = activity.spec as { prompt?: string; body?: string };
   const isDone = activity.status === 'done';
+
+  // AI-judge open-scope path: only when the rubric opts in AND the itera-api is
+  // configured. Otherwise fall through to the existing read-only "Mark done"
+  // behavior (ADR player-judge-surface-guarded — zero regression for course #1).
+  const rubric = (activity.rubric ?? {}) as { mode?: string };
+  const isAiJudge = rubric.mode === 'ai-judge' && iteraApiConfigured();
+  if (isAiJudge) {
+    return <AiJudgeDocumentActivity activity={activity} onComplete={onComplete} />;
+  }
+
   return (
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
       <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.document')}</h2>
@@ -100,6 +121,146 @@ function DocumentActivity({ activity, onComplete }: { activity: Activity; onComp
         </div>
       )}
       <DoneButton done={isDone} onClick={() => onComplete(true)} />
+    </Shell>
+  );
+}
+
+/**
+ * Open-scope document activity wired to the AI-generation + AI-judge loop:
+ *  1) learner optionally picks a domain -> AI generates a contextualized brief
+ *     (scenario + an imperfect ER to critique);
+ *  2) learner writes their data-spec in a textarea;
+ *  3) Submit -> AI judge -> render the heat-map (per-criterion) + feedback.
+ * Fluid heat-map (not a hard gate): a pass calls onComplete(true) to advance.
+ */
+function AiJudgeDocumentActivity({
+  activity,
+  onComplete,
+}: {
+  activity: Activity;
+  onComplete: (c: boolean) => void;
+}) {
+  const { t } = useI18n();
+  const { session } = useAuth();
+  const spec = activity.spec as { prompt?: string; body?: string };
+
+  const [seeds, setSeeds] = useState<Seed[]>([]);
+  const [brief, setBrief] = useState<GeneratedBrief | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [content, setContent] = useState('');
+  const [verdict, setVerdict] = useState<JudgeVerdict | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listSeeds(activity.id).then(setSeeds).catch(() => setSeeds([]));
+  }, [activity.id]);
+
+  const token = session?.access_token ?? '';
+
+  async function onPickSeed(seedId: string) {
+    if (!token) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      const b = await generateContext(activity.id, seedId, token);
+      setBrief(b);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function onSubmit() {
+    if (!token || content.trim().length === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const v = await judge(
+        activity.id,
+        content,
+        token,
+        brief
+          ? { seed: brief.seed, domain: brief.domain, scenario: brief.scenario, proposed_er: brief.proposed_er }
+          : undefined
+      );
+      setVerdict(v);
+      if (v.passed) onComplete(true);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Shell kind="document" icon={FileText} label={t('activity.document')}>
+      <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.document')}</h2>
+      {spec.body && (
+        <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
+          {spec.body}
+        </div>
+      )}
+
+      {/* 1) Domain picker -> AI-generated brief */}
+      {seeds.length > 0 && !brief && (
+        <div className="mt-5">
+          <p className="text-sm text-muted-foreground mb-2">
+            Escolha um domínio — a IA vai gerar um cenário e um modelo (com falha) pra você criticar:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {seeds.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onPickSeed(s.id)}
+                disabled={generating}
+                className="px-3 py-1.5 rounded-full border border-evergreen/30 bg-evergreen-soft text-evergreen-hi text-sm hover:bg-evergreen-soft/70 disabled:opacity-50"
+                data-testid="seed-pick"
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {generating && <p className="text-xs text-muted-foreground mt-2">Gerando cenário…</p>}
+        </div>
+      )}
+
+      {brief && (
+        <div className="mt-5 rounded-2xl border border-border bg-obsidiana/40 p-4" data-testid="generated-brief">
+          <p className="font-mono text-[11px] uppercase tracking-wider text-menta mb-2">
+            Cenário gerado · {brief.domain}
+          </p>
+          <p className="text-sm text-foreground">{brief.scenario}</p>
+          <pre className="mt-3 font-mono text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">
+            {brief.proposed_er}
+          </pre>
+        </div>
+      )}
+
+      {/* 2) Learner submission */}
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Escreva seu data-spec.md: por que você modelou assim + as correções concretas que fez…"
+        rows={8}
+        className="mt-5 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+        data-testid="judge-submission-input"
+      />
+
+      {error && <p className="mt-2 text-sm text-clay">{error}</p>}
+
+      <button
+        onClick={onSubmit}
+        disabled={submitting || content.trim().length === 0}
+        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi disabled:opacity-50"
+        data-testid="judge-submit"
+      >
+        {submitting ? 'Avaliando…' : 'Enviar para avaliação da IA'}
+      </button>
+
+      {/* 3) Heat-map verdict */}
+      {verdict && <JudgeHeatmap verdict={verdict} />}
     </Shell>
   );
 }
