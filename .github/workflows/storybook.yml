@@ -1,0 +1,61 @@
+name: Storybook
+
+# Builds the Storybook static site and deploys it to the existing Cloudflare
+# Pages project `itera-storybook` (custom domain: storybook.iterahq.dev). The
+# Pages project has NO git integration (direct/wrangler upload), so this
+# workflow is the deploy mechanism on push to `main`. PRs build-only (no deploy)
+# so storybook breakage is caught before merge without publishing a preview.
+#
+# Required repo secrets (already configured): CLOUDFLARE_ACCOUNT_ID,
+# CLOUDFLARE_API_TOKEN (token must have Account > Cloudflare Pages: Edit).
+#
+# Scoped exception: this repo is in the `iterahq` GitHub org, which is NOT on the
+# devfellowship-scoped dfl-runner fleet (org-scoped runners aren't available to
+# other orgs -> jobs would queue forever). So CI runs on ubuntu-latest. Same
+# rationale as the taigfs/* personal-repo carve-out (CLAUDE.md "🚦 CI green merge
+# policy"). devfellowship/* repos stay on dfl-runner — this carve-out is iterahq-only.
+on:
+  pull_request:
+    paths:
+      - '.storybook/**'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/storybook.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storybook-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Deploy to Cloudflare Pages
+        # Only publish from main; PRs build-only (gate, no publish).
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy storybook-static --project-name=itera-storybook --branch=main
