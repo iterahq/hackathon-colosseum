@@ -1,8 +1,25 @@
 /**
  * The colored "face" of a program card — a rounded gradient tile with a lucide
- * icon, mirroring João's CourseIcon visual.
+ * icon, matching João Pedro's "Your in-progress courses" card icons.
+ *
+ * Each program `icon` maps to a category gradient (green/teal for security &
+ * code, purple/magenta for design, magenta/indigo for AI, etc.). The gradient
+ * is scoped to THIS card face only (the brand's flat rule still governs panels,
+ * headers, CTAs) — the design explicitly uses colorful gradient course icons,
+ * which Tainan asked to match 100%.
  */
-import { Code, Layers, Rocket, Cpu, Sparkles, BookOpen } from 'lucide-react';
+import {
+  Code,
+  Layers,
+  Rocket,
+  Cpu,
+  Sparkles,
+  BookOpen,
+  Shield,
+  Wand2,
+  Brain,
+  Cloud,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -12,7 +29,31 @@ const ICON_MAP: Record<string, LucideIcon> = {
   cpu: Cpu,
   sparkles: Sparkles,
   book: BookOpen,
+  shield: Shield,
+  wand: Wand2,
+  brain: Brain,
+  cloud: Cloud,
 };
+
+/** Category gradient + label per icon (mirrors João's course-card palette). */
+export const ICON_CATEGORY: Record<string, { gradient: string; label: string }> = {
+  shield: { gradient: 'from-emerald-400 to-teal-600', label: 'Cybersecurity' },
+  code: { gradient: 'from-emerald-400 to-green-700', label: 'Frontend' },
+  layers: { gradient: 'from-sky-400 to-indigo-600', label: 'Cloud' },
+  cloud: { gradient: 'from-sky-400 to-blue-600', label: 'Cloud' },
+  wand: { gradient: 'from-fuchsia-400 to-purple-700', label: 'Design' },
+  sparkles: { gradient: 'from-fuchsia-500 to-indigo-600', label: 'AI / ML' },
+  brain: { gradient: 'from-fuchsia-500 to-indigo-600', label: 'AI / ML' },
+  cpu: { gradient: 'from-violet-400 to-purple-700', label: 'Data' },
+  rocket: { gradient: 'from-amber-400 to-orange-600', label: 'DevOps' },
+  book: { gradient: 'from-emerald-400 to-teal-600', label: 'Foundations' },
+};
+
+const DEFAULT_CATEGORY = { gradient: 'from-emerald-400 to-teal-600', label: 'Program' };
+
+export function categoryFor(icon = 'code') {
+  return ICON_CATEGORY[icon] ?? DEFAULT_CATEGORY;
+}
 
 const SIZES = {
   sm: 'w-12 h-12 rounded-xl',
@@ -27,20 +68,30 @@ export function ProgramIcon({
   icon = 'code',
   size = 'md',
   className = '',
+  flat = false,
 }: {
   icon?: string;
-  /** Legacy gradient-class prop — ignored under the flat brand (kept for callers). */
-  color?: string;
   size?: keyof typeof SIZES;
   className?: string;
+  /** Render the flat evergreen tile (legacy look) instead of the gradient. */
+  flat?: boolean;
 }) {
   const Icon = ICON_MAP[icon] ?? Code;
-  // Flat brand: evergreen-soft tile + evergreen-hi glyph (no gradient/glow).
+  if (flat) {
+    return (
+      <div
+        className={`relative flex items-center justify-center bg-evergreen-soft border border-evergreen/30 ${SIZES[size]} ${className}`}
+      >
+        <Icon className={`${ICON_SIZES[size]} text-evergreen-hi`} />
+      </div>
+    );
+  }
+  const { gradient } = categoryFor(icon);
   return (
     <div
-      className={`relative flex items-center justify-center bg-evergreen-soft border border-evergreen/30 ${SIZES[size]} ${className}`}
+      className={`relative flex items-center justify-center bg-gradient-to-br ${gradient} ${SIZES[size]} ${className}`}
     >
-      <Icon className={`${ICON_SIZES[size]} text-evergreen-hi`} />
+      <Icon className={`${ICON_SIZES[size]} text-white`} strokeWidth={2} />
     </div>
   );
 }
