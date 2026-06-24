@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
 import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
+import DflCallbackPage from "./pages/auth/DflCallbackPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
@@ -37,6 +38,9 @@ const App = () => (
               <EmbedBridge />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                {/* "Sign in with DFL" callback — exchanges the DFL token (from
+                    the URL fragment) for an Itera session. Public (pre-auth). */}
+                <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
                 <Route
                   path="/"
                   element={

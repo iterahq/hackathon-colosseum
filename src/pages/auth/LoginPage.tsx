@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
+import { loginWithDfl } from '@/auth/dflFederation';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useI18n } from '@/i18n';
 import { Logo } from '@/components/branded';
@@ -116,7 +117,7 @@ export default function LoginPage() {
             type="button"
             variant="outline"
             className="w-full"
-            onClick={() => signInWithOAuth('keycloak')}
+            onClick={() => loginWithDfl(from)}
             data-testid="oauth-dfl"
           >
             {t('auth.signInWith', { provider: 'DFL' })}
