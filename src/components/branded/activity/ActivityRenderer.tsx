@@ -3,15 +3,23 @@
  * `kind`. Implemented now: document, diagram, quiz. Code is a consistent
  * placeholder (judge0 lands later). Canonical labels throughout.
  *
+ * Presentation lives inside the LessonPlayer's FOCUSED, centered chrome (the
+ * full-width progress bar + X + hearts live in LessonPlayer). The QUIZ is the
+ * hero: it renders inline (a green-mono "TRUE OR FALSE?"-style label derived
+ * from the quiz spec, the bold question, and the options as side-by-side
+ * buttons for a 2-option quiz / a stacked list otherwise) — NO card shell. The
+ * other kinds keep their rounded card but inherit the same centered layout.
+ *
  * `spec` shapes (from the seed data):
  *   document: { prompt: string, body?: string }
  *   diagram:  { prompt: string, mermaid?: string, imageUrl?: string }
- *   quiz:     { prompt: string, question?: string, options: [{ id|label, text|label, isCorrect }], explanation? }
+ *   quiz:     { prompt: string, question?: string, label?: string,
+ *              options: [{ id|label, text|label, isCorrect }], explanation? }
  *   code:     { language?: string, starter?: string, prompt?: string }
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, GitBranch, HelpCircle, Code2, CheckCircle2, XCircle, Construction } from 'lucide-react';
+import { FileText, GitBranch, Code2, CheckCircle2, XCircle, Construction } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
@@ -53,11 +61,13 @@ function KindBadge({ icon: Icon, label, qa = false }: { icon: LucideIcon; label:
 }
 
 function Shell({
+  kind,
   icon,
   label,
   qa = false,
   children,
 }: {
+  kind: string;
   icon: LucideIcon;
   label: string;
   qa?: boolean;
@@ -69,6 +79,7 @@ function Shell({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-3xl border border-border bg-card p-6 md:p-8"
       data-testid="activity-shell"
+      data-activity-kind={kind}
     >
       <KindBadge icon={icon} label={label} qa={qa} />
       <div className="mt-5">{children}</div>
@@ -81,7 +92,7 @@ function DocumentActivity({ activity, onComplete }: { activity: Activity; onComp
   const spec = activity.spec as { prompt?: string; body?: string };
   const isDone = activity.status === 'done';
   return (
-    <Shell icon={FileText} label={t('activity.document')}>
+    <Shell kind="document" icon={FileText} label={t('activity.document')}>
       <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.document')}</h2>
       {spec.body && (
         <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
@@ -98,7 +109,7 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
   const spec = activity.spec as { prompt?: string; mermaid?: string; imageUrl?: string };
   const isDone = activity.status === 'done';
   return (
-    <Shell icon={GitBranch} label={t('activity.diagram')}>
+    <Shell kind="diagram" icon={GitBranch} label={t('activity.diagram')}>
       <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.diagram')}</h2>
       <div className="mt-4 rounded-2xl border border-border bg-obsidiana/60 p-4 grid-pattern">
         {spec.imageUrl ? (
@@ -119,9 +130,21 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
 
 type QuizOption = { id?: string; label?: string; text?: string; isCorrect?: boolean };
 
+/**
+ * QUIZ — the hero activity. Renders inline (no card shell) inside the focused
+ * column: a green-mono uppercase label, the bold question, then the options.
+ * A 2-option quiz renders as side-by-side buttons (the True/False target); a
+ * quiz with more options falls back to a responsive grid/stacked list.
+ */
 function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
   const { t } = useI18n();
-  const spec = activity.spec as { prompt?: string; question?: string; options?: QuizOption[]; explanation?: string };
+  const spec = activity.spec as {
+    prompt?: string;
+    question?: string;
+    label?: string;
+    options?: QuizOption[];
+    explanation?: string;
+  };
   const options = useMemo(() => spec.options ?? [], [spec.options]);
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -129,12 +152,35 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   const correctIdx = options.findIndex((o) => o.isCorrect);
   const isCorrect = submitted && selected === correctIdx;
 
+  // Small green-mono label above the question. Prefer the spec's own label;
+  // a 2-option quiz defaults to the canonical "TRUE OR FALSE?" eyebrow.
+  const eyebrow =
+    spec.label ?? (options.length === 2 ? t('quiz.trueOrFalse') : t('activity.quizPrompt'));
+  const question = spec.question ?? spec.prompt ?? t('activity.quizPrompt');
+  const sideBySide = options.length === 2;
+
   return (
-    <Shell icon={HelpCircle} label={t('activity.quiz')} qa>
-      <h2 className="font-display text-foreground">
-        {spec.question ?? spec.prompt ?? t('activity.quizPrompt')}
-      </h2>
-      <div className="mt-4 space-y-2.5" data-testid="quiz-options">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      data-testid="activity-quiz"
+      data-activity-kind="quiz"
+    >
+      {/* Question card — subtle border, slightly-lighter dark bg. */}
+      <div className="rounded-3xl border border-border bg-card p-6 md:p-7">
+        <div className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi" data-testid="quiz-eyebrow">
+          {eyebrow}
+        </div>
+        <h2 className="font-display font-bold text-xl md:text-2xl text-foreground mt-2" data-testid="quiz-question">
+          {question}
+        </h2>
+      </div>
+
+      {/* Options */}
+      <div
+        className={`mt-5 ${sideBySide ? 'grid grid-cols-2 gap-4' : 'space-y-2.5'}`}
+        data-testid="quiz-options"
+      >
         {options.map((o, i) => {
           const label = o.text ?? o.label ?? String(o.id ?? i + 1);
           const chosen = selected === i;
@@ -145,29 +191,32 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
               key={i}
               disabled={submitted}
               onClick={() => setSelected(i)}
-              className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-colors ${
+              data-testid="quiz-option"
+              className={`rounded-2xl border px-5 transition-colors ${
+                sideBySide
+                  ? 'h-16 flex items-center justify-center text-center font-display font-bold text-lg'
+                  : 'w-full flex items-center gap-3 py-4 text-left'
+              } ${
                 showCorrect
                   ? 'border-verde-tech bg-verde-tech/10'
                   : showWrong
                     ? 'border-destructive bg-destructive/10'
                     : chosen
                       ? 'border-menta bg-menta/10'
-                      : 'border-border bg-obsidiana/40 hover:border-verde-tech/50'
+                      : 'border-border bg-card hover:border-verde-tech/50'
               }`}
             >
-              <span className="flex-1">{label}</span>
-              {showCorrect && <CheckCircle2 className="w-5 h-5 text-menta" />}
-              {showWrong && <XCircle className="w-5 h-5 text-destructive" />}
+              <span className={sideBySide ? '' : 'flex-1'}>{label}</span>
+              {!sideBySide && showCorrect && <CheckCircle2 className="w-5 h-5 text-menta" />}
+              {!sideBySide && showWrong && <XCircle className="w-5 h-5 text-destructive" />}
             </button>
           );
         })}
-        {options.length === 0 && (
-          <p className="text-sm text-muted-foreground">{spec.prompt}</p>
-        )}
+        {options.length === 0 && <p className="text-sm text-muted-foreground">{spec.prompt}</p>}
       </div>
 
       {submitted && spec.explanation && (
-        <p className="mt-4 text-sm text-muted-foreground rounded-xl bg-obsidiana/60 border border-border p-4">
+        <p className="mt-4 text-sm text-muted-foreground rounded-xl bg-card border border-border p-4">
           {spec.explanation}
         </p>
       )}
@@ -184,7 +233,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
       ) : (
         <DoneButton done={activity.status === 'done'} onClick={() => onComplete(isCorrect)} />
       )}
-    </Shell>
+    </motion.div>
   );
 }
 
@@ -192,7 +241,7 @@ function CodePlaceholder({ activity, onComplete }: { activity: Activity; onCompl
   const { t } = useI18n();
   const spec = activity.spec as { language?: string; starter?: string; prompt?: string };
   return (
-    <Shell icon={Code2} label={t('activity.code')}>
+    <Shell kind="code" icon={Code2} label={t('activity.code')}>
       <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.code')}</h2>
       <div className="mt-4 rounded-2xl border border-border bg-[#0d0c0a] overflow-hidden">
         <div className="flex items-center gap-2 px-4 h-9 border-b border-border bg-obsidiana/60">
@@ -216,7 +265,10 @@ function CodePlaceholder({ activity, onComplete }: { activity: Activity; onCompl
 
 function UnknownActivity({ activity }: { activity: Activity }) {
   return (
-    <div className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground">
+    <div
+      className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"
+      data-activity-kind="unknown"
+    >
       Unsupported activity kind: {activity.kind}
     </div>
   );

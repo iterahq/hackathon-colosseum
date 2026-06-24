@@ -97,9 +97,13 @@ test.describe('Itera↔Fellowship federated loop', () => {
     const frame = page.frameLocator('iframe').first();
 
     // Positive assertion: a known Itera activity/lesson DOM node is present.
-    // (progress-pills + activity renderer; or the lesson-complete card.)
+    // (the focused-chrome progress bar + activity renderer; or the
+    // lesson-complete card.) NOTE: the player was rebuilt to a focused-centered
+    // chrome — the old `progress-pills` header was replaced by a full-width
+    // `lesson-progress` bar, and every activity renderer now carries
+    // `data-activity-kind`.
     const activityNode = frame
-      .locator('[data-testid="progress-pills"], [data-testid="lesson-complete"], [data-activity-kind]')
+      .locator('[data-testid="lesson-progress"], [data-testid="lesson-complete"], [data-activity-kind]')
       .first();
     await expect(
       activityNode,
