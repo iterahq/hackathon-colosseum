@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { ChevronRight } from 'lucide-react';
 import { BadgeGrid } from '@/components/branded';
 import type { Badge } from '@/types/content';
 
@@ -23,8 +24,23 @@ const meta: Meta<typeof BadgeGrid> = {
   title: 'Branded/BadgeGrid',
   component: BadgeGrid,
   render: (args) => (
-    <div className="rounded-3xl border border-border bg-card p-8" style={{ maxWidth: 720 }}>
-      <BadgeGrid {...args} />
+    <div style={{ maxWidth: 820 }}>
+      <div className="mb-5 flex items-end justify-between">
+        <div>
+          <h3 className="font-display text-foreground">Your badge collection</h3>
+          <p className="mt-1 text-sm text-muted-foreground">Earn one for each completed course</p>
+        </div>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-sm font-medium text-menta transition-colors hover:text-evergreen-hi"
+        >
+          See all
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+        <BadgeGrid {...args} />
+      </div>
     </div>
   ),
 };

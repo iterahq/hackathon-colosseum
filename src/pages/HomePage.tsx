@@ -107,7 +107,11 @@ export default function HomePage() {
           </Section>
 
           {/* Badges */}
-          <Section title={t('badges.title')} subtitle={t('badges.subtitle')}>
+          <Section
+            title={t('badges.title')}
+            subtitle={t('badges.subtitle')}
+            seeAllLabel={t('badges.seeAll')}
+          >
             <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
               <BadgeGrid badges={badges} loading={badgesLoading} />
             </div>
@@ -131,10 +135,12 @@ export default function HomePage() {
 function Section({
   title,
   subtitle,
+  seeAllLabel,
   children,
 }: {
   title: React.ReactNode;
   subtitle?: string;
+  seeAllLabel?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -144,9 +150,15 @@ function Section({
           <h3 className="font-display text-foreground">{title}</h3>
           {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
         </div>
-        <span className="hidden md:flex items-center text-xs text-menta gap-1">
-          <ChevronRight className="w-3 h-3" />
-        </span>
+        {seeAllLabel && (
+          <button
+            type="button"
+            className="hidden md:inline-flex items-center gap-1 text-sm font-medium text-menta hover:text-evergreen-hi transition-colors"
+          >
+            {seeAllLabel}
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
       {children}
     </section>
