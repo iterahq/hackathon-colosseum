@@ -15,13 +15,40 @@ export function StatsCard({ stats, loading }: { stats?: UserStats; loading?: boo
   const name = user?.email?.split('@')[0] ?? 'Learner';
   const initials = (user?.email ?? 'IT').slice(0, 2).toUpperCase();
 
-  // Flat brand: a single evergreen accent for signals (no amber/sky/orange —
-  // those are forbidden saturations). Glyphs in evergreen-hi, meta in mono.
+  // Welcome-card stat tiles — João Pedro's design gives each signal its OWN
+  // accent (more colorful than the all-evergreen version). We stay on the
+  // brand's sanctioned gamification tokens: streak = clay flame (--streak),
+  // XP = evergreen-hi (--xp), badges = clay/gold trophy, completed = menta.
+  // Each tile gets a faint tinted icon-chip + matching glyph + matching number.
   const tiles = [
-    { icon: Flame, n: stats?.streakDays ?? 0, l: t('stats.streak') },
-    { icon: Sparkles, n: stats?.totalXp ?? 0, l: t('stats.xp') },
-    { icon: Trophy, n: stats?.badgeCount ?? 0, l: t('stats.badges') },
-    { icon: ListChecks, n: stats?.completedActivities ?? 0, l: t('stats.completed') },
+    {
+      icon: Flame,
+      n: stats?.streakDays ?? 0,
+      l: t('stats.streak'),
+      ic: 'text-streak',
+      chip: 'bg-streak/10 border-streak/25',
+    },
+    {
+      icon: Sparkles,
+      n: stats?.totalXp ?? 0,
+      l: t('stats.xp'),
+      ic: 'text-evergreen-hi',
+      chip: 'bg-evergreen/10 border-evergreen/30',
+    },
+    {
+      icon: Trophy,
+      n: stats?.badgeCount ?? 0,
+      l: t('stats.badges'),
+      ic: 'text-warning',
+      chip: 'bg-warning/10 border-warning/25',
+    },
+    {
+      icon: ListChecks,
+      n: stats?.completedActivities ?? 0,
+      l: t('stats.completed'),
+      ic: 'text-menta',
+      chip: 'bg-menta/10 border-menta/25',
+    },
   ];
 
   return (
@@ -49,8 +76,14 @@ export function StatsCard({ stats, loading }: { stats?: UserStats; loading?: boo
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
           {tiles.map((s, i) => (
             <div key={i} className="rounded-2xl bg-obsidiana/60 p-3 border border-border">
-              <s.icon className="w-4 h-4 text-evergreen-hi" />
-              <div className="font-display font-bold text-2xl mt-2">{loading ? '–' : s.n}</div>
+              <div
+                className={`w-8 h-8 rounded-xl border flex items-center justify-center ${s.chip}`}
+              >
+                <s.icon className={`w-4 h-4 ${s.ic}`} />
+              </div>
+              <div className={`font-display font-bold text-2xl mt-2.5 ${s.ic}`}>
+                {loading ? '–' : s.n}
+              </div>
               <div className="font-mono text-[11px] tracking-wider uppercase text-muted-foreground mt-0.5">
                 {s.l}
               </div>

@@ -1,15 +1,29 @@
 /**
- * Branded Itera app header (replaces the inherited "iterate" header).
+ * Branded Itera app header — parity with João Pedro's design navbar.
  *
- * - Itera wordmark / tenant logo (white-label preserved from #1).
- * - Evergreen sliding nav pill (Discover / Library) — João's visual.
- * - Locale toggle (PT/EN) + sign out.
- * - Sticky, flat obsidiana background (brand: no blur/glow/gradient).
+ * LEFT:   Itera wordmark / tenant logo + sliding evergreen nav pill (Discover).
+ * CENTER: Search field (Search courses, topics, badges…) → /?q=… (HomePage
+ *         filters its program grid; real feature, not decoration).
+ * RIGHT:  role pill (Learner / Admin — reflects real membership) · notifications
+ *         bell · settings gear (opens the same menu that hosts the PT/EN locale
+ *         toggle — the locale feature is PRESERVED, just relocated) · avatar +
+ *         chevron menu (Discover / Admin / Sign out).
+ * Sticky, flat obsidiana background (brand: no blur/glow/gradient).
  */
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Library, LogOut, ChevronDown, Languages, ShieldCheck } from 'lucide-react';
+import {
+  Home,
+  Library,
+  LogOut,
+  ChevronDown,
+  Languages,
+  ShieldCheck,
+  Search,
+  Bell,
+  Settings,
+} from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
@@ -24,7 +38,9 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
   const { data: memberships } = useMembership();
   const showAdmin = isTenantAdmin(memberships ?? []);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,14 +51,23 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
+  // Keep the input in sync if the URL ?q= changes elsewhere.
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  const submitSearch = (value: string) => {
+    const q = value.trim();
+    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/');
+  };
+
   const initials = (user?.email ?? 'IT').slice(0, 2).toUpperCase();
-  const items = [
-    { id: 'discover', label: t('nav.discover'), icon: Home, to: '/' },
-  ] as const;
+  const items = [{ id: 'discover', label: t('nav.discover'), icon: Home, to: '/' }] as const;
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-8">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-6">
+        {/* LEFT — logo + nav pill */}
         <Link to="/" className="flex-shrink-0" data-testid="header-logo">
           <Logo size={28} logoUrl={branding.logoUrl} alt={branding.name} />
         </Link>
@@ -72,11 +97,70 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
           })}
         </nav>
 
-        <div className="flex items-center gap-1.5 md:gap-2 ml-auto">
+        {/* CENTER — search (parity with design; filters HomePage via ?q=) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitSearch(query);
+          }}
+          className="hidden md:flex flex-1 max-w-xl mx-auto"
+          role="search"
+        >
+          <label className="relative w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('nav.search')}
+              data-testid="nav-search"
+              aria-label={t('nav.search')}
+              className="w-full h-9 pl-10 pr-4 rounded-full bg-card border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-verde-tech/60 transition-colors"
+            />
+          </label>
+        </form>
+
+        {/* RIGHT — role pill · bell · settings · avatar */}
+        <div className="flex items-center gap-1.5 md:gap-2.5 ml-auto md:ml-0">
+          {/* Role pill — reflects real membership (Learner / Admin) */}
+          <span
+            data-testid="role-pill"
+            className={`hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-full border text-xs font-medium ${
+              showAdmin
+                ? 'border-evergreen/40 bg-evergreen-soft text-evergreen-hi'
+                : 'border-border bg-card text-muted-foreground'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${showAdmin ? 'bg-evergreen' : 'bg-menta'}`} />
+            {showAdmin ? t('role.admin') : t('role.learner')}
+          </span>
+
+          {/* Notifications bell */}
+          <button
+            type="button"
+            aria-label={t('nav.notifications')}
+            data-testid="nav-bell"
+            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+          </button>
+
+          {/* Settings gear → opens the menu (locale toggle lives there) */}
+          <button
+            type="button"
+            aria-label={t('nav.settings')}
+            data-testid="nav-settings"
+            onClick={() => setOpen((v) => !v)}
+            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Mobile-only compact locale toggle (the gear/menu carries it on ≥sm) */}
           <button
             onClick={toggleLocale}
-            className="flex items-center gap-1.5 px-3 h-9 rounded-full border border-border text-xs font-medium hover:border-verde-tech transition-colors"
-            data-testid="locale-toggle"
+            className="sm:hidden flex items-center gap-1.5 px-3 h-9 rounded-full border border-border text-xs font-medium hover:border-verde-tech transition-colors"
+            data-testid="locale-toggle-mobile"
             aria-label="Toggle language"
           >
             <Languages className="w-3.5 h-3.5" />
@@ -116,9 +200,7 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                       <div className="font-display font-semibold truncate">
                         {user?.email?.split('@')[0] ?? 'Learner'}
                       </div>
-                      <div className="text-[13px] text-muted-foreground truncate">
-                        {branding.name}
-                      </div>
+                      <div className="text-[13px] text-muted-foreground truncate">{branding.name}</div>
                     </div>
                   </div>
                   <div className="p-1.5">
@@ -145,6 +227,20 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                         <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
                       </button>
                     )}
+                    {/* Locale toggle — preserved here (the standalone PT/EN pill
+                        was replaced by the parity gear). */}
+                    <button
+                      onClick={toggleLocale}
+                      className="w-full flex items-center justify-between gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
+                      data-testid="locale-toggle"
+                    >
+                      <span className="flex items-center gap-3">
+                        <Languages className="w-4 h-4" /> {t('nav.language')}
+                      </span>
+                      <span className="font-mono text-xs text-evergreen-hi">
+                        {locale === 'pt' ? 'PT' : 'EN'}
+                      </span>
+                    </button>
                   </div>
                   <div className="p-1.5 border-t border-border">
                     <button

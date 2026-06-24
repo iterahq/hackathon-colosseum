@@ -4,7 +4,7 @@
  * Lesson / Activity. No more "iterate" header, no MOCK banners.
  */
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Sparkles, CreditCard } from 'lucide-react';
 import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
@@ -12,10 +12,17 @@ import { useI18n } from '@/i18n';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
-  const { data: programs = [], isPending, isError, refetch } = usePrograms();
+  const { t, tText } = useI18n();
+  const [searchParams] = useSearchParams();
+  const q = (searchParams.get('q') ?? '').trim().toLowerCase();
+  const { data: allPrograms = [], isPending, isError, refetch } = usePrograms();
   const { data: stats, isPending: statsLoading } = useUserStats();
   const { data: badges, isPending: badgesLoading } = useBadges();
+
+  // Navbar search filters the program grid (real feature behind ?q=).
+  const programs = q
+    ? allPrograms.filter((p) => tText(p.title).toLowerCase().includes(q))
+    : allPrograms;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
