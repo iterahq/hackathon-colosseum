@@ -16,7 +16,7 @@ import {
 
 export type Locale = 'pt' | 'en';
 
-const resources: Record<Locale, Record<string, string>> = {
+export const resources: Record<Locale, Record<string, string>> = {
   pt: {
     'app.name': 'Itera',
     'app.tagline': 'Aprenda fazendo.',
@@ -33,6 +33,15 @@ const resources: Record<Locale, Record<string, string>> = {
     'auth.welcome': 'Bem-vindo de volta',
     'auth.subtitle': 'Entre para continuar aprendendo.',
     'auth.error': 'Não foi possível entrar. Verifique suas credenciais.',
+    'auth.signUp': 'Criar conta',
+    'auth.signUpWith': 'Criar conta com {provider}',
+    'auth.signUpTitle': 'Crie sua conta',
+    'auth.signUpSubtitle': 'Comece a aprender em poucos minutos.',
+    'auth.signUpError': 'Não foi possível criar a conta. Tente novamente.',
+    'auth.haveAccount': 'Já tem conta?',
+    'auth.noAccount': 'Não tem conta?',
+    'auth.toLogin': 'Entrar',
+    'auth.toSignup': 'Criar conta',
     'home.title': 'Suas lições',
     'home.subtitle': 'Continue de onde parou.',
     'common.loading': 'Carregando…',
@@ -64,7 +73,7 @@ const resources: Record<Locale, Record<string, string>> = {
     'home.heroTitle': 'Aprenda construindo',
     'home.heroAccent': 'projetos reais',
     'home.heroSubtitle':
-      'Microatividades que transformam você em um desenvolvedor melhor. Cada decisão importa.',
+      'Microatividades que elevam suas habilidades — uma decisão de cada vez. Cada escolha importa.',
     'home.pickUp': 'Escolha um programa para começar',
     'home.yourPrograms': 'Seus programas',
     'home.programsSubtitle': 'Trilhas de aprendizado da sua organização',
@@ -311,6 +320,15 @@ const resources: Record<Locale, Record<string, string>> = {
     'auth.welcome': 'Welcome back',
     'auth.subtitle': 'Sign in to keep learning.',
     'auth.error': 'Could not sign in. Check your credentials.',
+    'auth.signUp': 'Create account',
+    'auth.signUpWith': 'Sign up with {provider}',
+    'auth.signUpTitle': 'Create your account',
+    'auth.signUpSubtitle': 'Start learning in just a few minutes.',
+    'auth.signUpError': 'Could not create your account. Please try again.',
+    'auth.haveAccount': 'Already have an account?',
+    'auth.noAccount': "Don't have an account?",
+    'auth.toLogin': 'Sign in',
+    'auth.toSignup': 'Create account',
     'home.title': 'Your lessons',
     'home.subtitle': 'Pick up where you left off.',
     'common.loading': 'Loading…',
@@ -342,7 +360,7 @@ const resources: Record<Locale, Record<string, string>> = {
     'home.heroTitle': 'Learn by building',
     'home.heroAccent': 'real projects',
     'home.heroSubtitle':
-      'Microactivities that turn you into a better developer. Every decision matters.',
+      'Microactivities that level up your skills — one decision at a time. Every choice matters.',
     'home.pickUp': 'Choose a program to start',
     'home.yourPrograms': 'Your programs',
     'home.programsSubtitle': "Your organization's learning tracks",

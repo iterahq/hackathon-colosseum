@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
 import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
+import SignupPage from "./pages/auth/SignupPage";
 import DflCallbackPage from "./pages/auth/DflCallbackPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -53,6 +54,11 @@ const App = () => (
               <EmbedBridge />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                {/* Self-serve registration — public (pre-auth), same level as
+                    /login. The landing site points "Criar conta" here; a new
+                    visitor signs up then lands on `from` (default "/"), the gate
+                    routing them to /subscribe (FIX B, round-3 focus group). */}
+                <Route path="/signup" element={<SignupPage />} />
                 {/* "Sign in with DFL" callback — exchanges the DFL token (from
                     the URL fragment) for an Itera session. Public (pre-auth). */}
                 <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
