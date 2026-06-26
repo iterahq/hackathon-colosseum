@@ -14,6 +14,10 @@ ARG VITE_OTEL_ENABLED=false
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_OTEL_ENABLED=$VITE_OTEL_ENABLED
+# Belt-and-suspenders cache-bust: a changing GIT_SHA busts the build layer
+# cache on every commit (defends against BuildKit content-hash cross-commit matches).
+ARG GIT_SHA
+ENV VITE_BUILD_SHA=$GIT_SHA
 RUN npm run build
 
 # Stage 2: Serve
