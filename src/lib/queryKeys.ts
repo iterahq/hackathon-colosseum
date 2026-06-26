@@ -23,6 +23,10 @@ export const queryKeys = {
     all: ['programs'] as const,
     bySlug: (slug: string) => ['programs', slug] as const,
   },
+  // Self-serve catalog (membership-independent, via SECURITY DEFINER RPC).
+  catalog: {
+    all: ['catalog'] as const,
+  },
   lesson: {
     byId: (id: string) => ['lesson', id] as const,
   },

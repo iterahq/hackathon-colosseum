@@ -100,27 +100,109 @@ function Shell({
 
 function DocumentActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
   const { t } = useI18n();
-  const spec = activity.spec as { prompt?: string; body?: string };
+  const spec = activity.spec as { prompt?: string; body?: string; title?: string };
   const isDone = activity.status === 'done';
 
   // AI-judge open-scope path: only when the rubric opts in AND the itera-api is
-  // configured. Otherwise fall through to the existing read-only "Mark done"
-  // behavior (ADR player-judge-surface-guarded — zero regression for course #1).
-  const rubric = (activity.rubric ?? {}) as { mode?: string };
+  // configured. Otherwise fall through to the reflection path below (ADR
+  // player-judge-surface-guarded — zero regression for course #1).
+  const rubric = (activity.rubric ?? {}) as { mode?: string; min_words?: number };
   const isAiJudge = rubric.mode === 'ai-judge' && iteraApiConfigured();
   if (isAiJudge) {
     return <AiJudgeDocumentActivity activity={activity} onComplete={onComplete} />;
   }
 
+  // Reflection path: a document activity with a `min_words` rubric (or no rubric
+  // at all) is a "write what you learned" prompt. Round-1 finding #2: it used to
+  // render the prompt + a "Mark done" button but NO text input, so the activity
+  // was a hollow stub. We now render a real textarea and gate completion on the
+  // word count. With no min_words it's a free-form reflection (any non-empty
+  // text enables completion). A read-only document (has a body, no prompt) keeps
+  // the simple "Mark done" affordance.
+  const minWords = typeof rubric.min_words === 'number' ? rubric.min_words : 0;
+  const isReflection = Boolean(spec.prompt) || minWords > 0;
+  if (isReflection) {
+    return (
+      <ReflectionDocumentActivity
+        activity={activity}
+        spec={spec}
+        minWords={minWords}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   return (
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.document')}</h2>
+      <h2 className="font-display text-foreground">{spec.prompt ?? spec.title ?? t('activity.document')}</h2>
       {spec.body && (
         <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
           {spec.body}
         </div>
       )}
       <DoneButton done={isDone} onClick={() => onComplete(true)} />
+    </Shell>
+  );
+}
+
+/** Count words in a free-text reflection (whitespace-split, trimmed). */
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
+}
+
+/**
+ * A "write what you learned" document activity with a REAL text input. Completion
+ * is gated on the rubric's min_words (or any non-empty text when min_words is 0).
+ * Fixes round-1 finding #2 (hollow stub: prompt + button, no input).
+ */
+function ReflectionDocumentActivity({
+  activity,
+  spec,
+  minWords,
+  onComplete,
+}: {
+  activity: Activity;
+  spec: { prompt?: string; body?: string; title?: string };
+  minWords: number;
+  onComplete: (c: boolean) => void;
+}) {
+  const { t } = useI18n();
+  const [text, setText] = useState('');
+  const isDone = activity.status === 'done';
+  const words = countWords(text);
+  const meetsMin = words >= Math.max(minWords, 1);
+
+  return (
+    <Shell kind="document" icon={FileText} label={t('activity.document')}>
+      <h2 className="font-display text-foreground">{spec.prompt ?? spec.title ?? t('activity.document')}</h2>
+      {spec.body && (
+        <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
+          {spec.body}
+        </div>
+      )}
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={t('activity.reflectionPlaceholder')}
+        rows={6}
+        data-testid="document-reflection-input"
+        className="mt-5 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+      />
+
+      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+        <span data-testid="document-word-count">
+          {words} {t('activity.words')}
+        </span>
+        {minWords > 0 && (
+          <span data-testid="document-min-words" className={meetsMin ? 'text-evergreen-hi' : ''}>
+            {t('activity.minWords')}: {minWords}
+          </span>
+        )}
+      </div>
+
+      <DoneButton done={isDone} disabled={!meetsMin} onClick={() => onComplete(true)} />
     </Shell>
   );
 }
@@ -435,12 +517,21 @@ function UnknownActivity({ activity }: { activity: Activity }) {
   );
 }
 
-function DoneButton({ done, onClick }: { done?: boolean; onClick: () => void }) {
+function DoneButton({
+  done,
+  onClick,
+  disabled = false,
+}: {
+  done?: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
   const { t } = useI18n();
   return (
     <button
       onClick={onClick}
-      className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+      disabled={disabled}
+      className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       data-testid="activity-done"
     >
       <CheckCircle2 className="w-4 h-4" />

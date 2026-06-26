@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ObservabilityProvider } from "@devfellowship/observability";
 import HomePage from "./pages/HomePage";
+import CatalogPage from "./pages/CatalogPage";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
@@ -65,6 +66,20 @@ const App = () => (
                     <RequireAuth>
                       <RequireSubscription>
                         <HomePage />
+                      </RequireSubscription>
+                    </RequireAuth>
+                  }
+                />
+                {/* Self-serve catalog — browse + enroll into catalog courses
+                    (round-1 finding #1). Subscription-gated like the other
+                    learner surfaces: a paying user reaches the catalog and can
+                    discover/enroll the flagship (itera-tenant) courses. */}
+                <Route
+                  path="/catalog"
+                  element={
+                    <RequireAuth>
+                      <RequireSubscription>
+                        <CatalogPage />
                       </RequireSubscription>
                     </RequireAuth>
                   }

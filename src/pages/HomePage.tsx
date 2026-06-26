@@ -5,7 +5,7 @@
  */
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Sparkles, CreditCard } from 'lucide-react';
+import { ChevronRight, Sparkles, CreditCard, GraduationCap } from 'lucide-react';
 import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
@@ -96,6 +96,18 @@ export default function HomePage() {
               >
                 <p className="font-display text-lg text-foreground">{t('home.empty')}</p>
                 <p className="text-sm text-muted-foreground mt-2">{t('home.emptyHint')}</p>
+                {/* Empty dashboard → send the user to the catalog to discover +
+                    enroll (round-1 finding #1: the flagship lives in another
+                    tenant and was otherwise undiscoverable). */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/catalog')}
+                  data-testid="programs-empty-browse"
+                  className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  {t('nav.catalog')}
+                </button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="programs-grid">

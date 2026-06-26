@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home,
   Library,
+  GraduationCap,
   LogOut,
   ChevronDown,
   Languages,
@@ -32,7 +33,11 @@ import { useMembership } from '@/hooks/useMembership';
 import { useProfile } from '@/hooks/useProfile';
 import { isTenantAdmin } from '@/services/membership.service';
 
-export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'library' | 'admin' }) {
+export function AppHeader({
+  active = 'discover',
+}: {
+  active?: 'discover' | 'catalog' | 'library' | 'admin';
+}) {
   const { signOut, user } = useAuth();
   const { t, toggleLocale, setLocale, locale } = useI18n();
   const { branding } = useTenantBranding();
@@ -68,7 +73,10 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
   const displayName = profile?.displayName ?? user?.email?.split('@')[0] ?? 'Learner';
   const avatarUrl = profile?.avatarUrl ?? null;
   const initials = (profile?.displayName ?? user?.email ?? 'IT').slice(0, 2).toUpperCase();
-  const items = [{ id: 'discover', label: t('nav.discover'), icon: Home, to: '/' }] as const;
+  const items = [
+    { id: 'discover', label: t('nav.discover'), icon: Home, to: '/' },
+    { id: 'catalog', label: t('nav.catalog'), icon: GraduationCap, to: '/catalog' },
+  ] as const;
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -240,6 +248,18 @@ export function AppHeader({ active = 'discover' }: { active?: 'discover' | 'libr
                       className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
                     >
                       <Library className="w-4 h-4" /> {t('nav.discover')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setOpen(false);
+                        navigate('/catalog');
+                      }}
+                      data-testid="nav-catalog"
+                      className={`w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 ${
+                        active === 'catalog' ? 'text-menta' : ''
+                      }`}
+                    >
+                      <GraduationCap className="w-4 h-4" /> {t('nav.catalog')}
                     </button>
                     {showAdmin && (
                       <button
