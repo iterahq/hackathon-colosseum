@@ -5,7 +5,7 @@
  *   ┌──────────────────────────────────────────────────────────────┐
  *   │ ✕            ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░  (full-width progress)   ♥ 5 │
  *   │                                                                │
- *   │                ⑃ PULL · FEATURE/<branch>                       │
+ *   │                LIÇÃO                                            │
  *   │                Superposition                                   │
  *   │                ┌──────── question card ────────┐              │
  *   │                │ TRUE OR FALSE?                 │              │
@@ -29,7 +29,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Trophy } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
-import { useLessonContent } from '@/hooks';
+import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
@@ -38,17 +38,6 @@ import type { Activity } from '@/types/content';
 
 /** Decorative lives count — inert chrome (no lives backend). */
 const DECORATIVE_HEARTS = 5;
-
-/** Slugify a lesson/unit title into a FEATURE/<branch> name for the eyebrow. */
-function toBranchName(raw: string | undefined): string {
-  const slug = (raw ?? '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return (slug || 'main').toUpperCase();
-}
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -75,8 +64,9 @@ export default function LessonPlayer() {
 
   const current = activities[index];
 
-  // Eyebrow branch name — derived from the lesson title (chrome flavour only).
-  const branch = useMemo(() => `FEATURE/${toBranchName(tText(data?.title))}`, [data, tText]);
+  // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
+  // resolves to null on the last lesson or any failure (CTA falls back to Finish).
+  const { data: nextLesson } = useNextLesson(lessonId);
 
   // Progress fill: completed activities + the current one in flight.
   const progressPct = activities.length
@@ -243,22 +233,40 @@ export default function LessonPlayer() {
               <p className="text-sm text-muted-foreground mt-2">
                 {doneIds.size}/{activities.length} {t('label.activities').toLowerCase()}
               </p>
-              <Link
-                to="/"
-                className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
-              >
-                {t('nav.discover')}
-              </Link>
+              {/* End-of-lesson CTA (round-3 finding #4): when a next lesson exists,
+                  offer "Próxima lição" routing straight into it; otherwise the
+                  course is over → "Concluir" back to the dashboard. The old CTA
+                  always sent the learner to "Descobrir" (dashboard), which read
+                  as confusing on a "5/5 lições concluídas" screen. */}
+              {nextLesson ? (
+                <Link
+                  to={`/lesson/${nextLesson.id}`}
+                  className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
+                  data-testid="lesson-next-cta"
+                >
+                  {t('lesson.nextLesson')}
+                </Link>
+              ) : (
+                <Link
+                  to="/"
+                  className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
+                  data-testid="lesson-finish-cta"
+                >
+                  {t('lesson.finishCourse')}
+                </Link>
+              )}
             </motion.div>
           ) : (
             <>
-              {/* Eyebrow: ⑃ PULL · FEATURE/<branch> (green JB-Mono uppercase). */}
+              {/* Eyebrow: learner-friendly "LIÇÃO" label (green JB-Mono uppercase).
+                  Canonical labels per ADR `frontend-canonical-labels-always` —
+                  the git-metaphor "PULL · FEATURE/<branch>" was dropped (round-3
+                  finding #1: it read as "am I in the right place?" to non-devs). */}
               <div
                 className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi"
                 data-testid="lesson-eyebrow"
               >
-                <span aria-hidden="true">⑃ </span>
-                {t('lesson.eyebrowAction')} <span className="text-muted-foreground">·</span> {branch}
+                {t('lesson.eyebrow')}
               </div>
 
               {/* Big bold display title = the lesson title. */}

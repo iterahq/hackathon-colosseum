@@ -196,6 +196,65 @@ export async function getLessonWithActivities(lessonId: string): Promise<{
   return { id: str(row.id), title: bag(row.title_i18n), activities };
 }
 
+/**
+ * Resolve the lesson that comes AFTER `lessonId` within the same program, in
+ * canonical reading order (unit.ordinal, then lesson.ordinal). Returns the next
+ * lesson's id + title, or `null` when this is the last lesson of the program
+ * (or the lesson / program can't be resolved). Best-effort: any failure resolves
+ * to `null` so the end-of-lesson CTA gracefully falls back to "Concluir".
+ *
+ * Used by the lesson player's completion screen (round-3 finding #4) to offer
+ * "Próxima lição" instead of always bouncing the learner to the dashboard.
+ */
+export async function getNextLesson(
+  lessonId: string
+): Promise<{ id: string; title: import('@/types/content').I18nText } | null> {
+  if (!isSupabaseConfigured) return null;
+  const sb = getSupabase();
+
+  // 1) Locate the current lesson's unit + ordinal, and walk up to the program.
+  const { data: cur, error: curErr } = await sb
+    .from('lessons')
+    .select('id, ordinal, unit:units ( id, ordinal, program_id )')
+    .eq('id', lessonId)
+    .maybeSingle();
+  if (curErr || !cur) return null;
+
+  const curRow = cur as Row;
+  const curUnit = (curRow.unit && typeof curRow.unit === 'object' ? (curRow.unit as Row) : null);
+  if (!curUnit) return null;
+  const programId = str(curUnit.program_id);
+  const curUnitOrd = num(curUnit.ordinal);
+  const curLessonOrd = num(curRow.ordinal);
+  if (!programId) return null;
+
+  // 2) Pull every lesson in the program (with its unit ordinal) and pick the
+  //    first one strictly after the current position in (unit, lesson) order.
+  const { data: units, error: unitsErr } = await sb
+    .from('units')
+    .select('ordinal, lessons:lessons ( id, ordinal, title_i18n )')
+    .eq('program_id', programId)
+    .order('ordinal', { ascending: true });
+  if (unitsErr || !units) return null;
+
+  type Flat = { id: string; title: import('@/types/content').I18nText; unitOrd: number; lessonOrd: number };
+  const flat: Flat[] = asRows(units)
+    .flatMap((u) =>
+      asRows(u.lessons).map((l) => ({
+        id: str(l.id),
+        title: bag(l.title_i18n),
+        unitOrd: num(u.ordinal),
+        lessonOrd: num(l.ordinal),
+      }))
+    )
+    .sort((a, b) => (a.unitOrd - b.unitOrd) || (a.lessonOrd - b.lessonOrd));
+
+  const next = flat.find(
+    (l) => l.unitOrd > curUnitOrd || (l.unitOrd === curUnitOrd && l.lessonOrd > curLessonOrd)
+  );
+  return next ? { id: next.id, title: next.title } : null;
+}
+
 /** Derived gamification stats for the signed-in user (best-effort, RLS-scoped). */
 export async function getUserStats(): Promise<UserStats> {
   if (!isSupabaseConfigured) {

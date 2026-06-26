@@ -13,6 +13,7 @@ export {
   usePrograms,
   useProgram,
   useLessonContent,
+  useNextLesson,
   useUserStats,
   useBadges,
 } from './useContent';

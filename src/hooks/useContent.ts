@@ -9,6 +9,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   getBadges,
   getLessonWithActivities,
+  getNextLesson,
   getProgramBySlug,
   getPrograms,
   getUserStats,
@@ -31,6 +32,20 @@ export function useLessonContent(lessonId: string | undefined) {
     queryKey: queryKeys.lesson.byId(lessonId ?? ''),
     queryFn: () => getLessonWithActivities(lessonId as string),
     enabled: Boolean(lessonId),
+  });
+}
+
+/**
+ * The lesson that comes after `lessonId` in the same program (canonical order),
+ * or `null` when it's the last one. Powers the end-of-lesson "Próxima lição" CTA
+ * (round-3 finding #4). Stale-cached generously — program structure is static.
+ */
+export function useNextLesson(lessonId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.lesson.next(lessonId ?? ''),
+    queryFn: () => getNextLesson(lessonId as string),
+    enabled: Boolean(lessonId),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

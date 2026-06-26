@@ -29,6 +29,7 @@ export const queryKeys = {
   },
   lesson: {
     byId: (id: string) => ['lesson', id] as const,
+    next: (id: string) => ['lesson', id, 'next'] as const,
   },
   user: {
     stats: ['user', 'stats'] as const,
