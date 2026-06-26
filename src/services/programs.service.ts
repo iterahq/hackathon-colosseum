@@ -10,6 +10,7 @@
  * render a clean empty/error state.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { normalizeProgressStatus } from '@/utils/normalizeProgressStatus';
 import type {
   Activity,
   Badge,
@@ -129,6 +130,24 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
     }))
     .sort((x, y) => x.ordinal - y.ordinal);
 
+  // Derive per-activity progress status for the signed-in user so the SkillTree
+  // can compute lesson-done / unlock-the-next-lesson. WITHOUT this, every
+  // activity.status was undefined → no lesson ever read as 'done' → the program
+  // stuck at 0/N and lesson 2 stayed LOCKED even after lesson 1 was completed.
+  // RLS scopes itera.progress to the caller's own rows. Best-effort: progress
+  // failures must not blank out the course tree.
+  const activityIds = units.flatMap((u) =>
+    (u.lessons ?? []).flatMap((l) => (l.activities ?? []).map((a) => a.id))
+  );
+  const progress = await getLessonProgress(activityIds);
+  for (const u of units) {
+    for (const l of u.lessons ?? []) {
+      for (const a of l.activities ?? []) {
+        a.status = progress[a.id] ?? a.status;
+      }
+    }
+  }
+
   return {
     id: str(row.id),
     tenantId: str(row.tenant_id),
@@ -221,7 +240,14 @@ export async function getBadges(): Promise<Badge[]> {
   }));
 }
 
-/** Map of activityId → status for a lesson (current user). */
+/**
+ * Map of activityId → UI ProgressStatus for the current user.
+ *
+ * The DB enum ('not_started','in_progress','completed') is NORMALIZED into the
+ * canonical UI value ('todo','in_progress','done') via normalizeProgressStatus.
+ * Returning the raw 'completed' was the unlock-gate bug: SkillTree checks
+ * `status === 'done'`, which never matched the DB's 'completed'.
+ */
 export async function getLessonProgress(activityIds: string[]): Promise<Record<string, ProgressStatus>> {
   if (!isSupabaseConfigured || activityIds.length === 0) return {};
   const sb = getSupabase();
@@ -230,6 +256,6 @@ export async function getLessonProgress(activityIds: string[]): Promise<Record<s
     .select('activity_id, status')
     .in('activity_id', activityIds);
   const map: Record<string, ProgressStatus> = {};
-  for (const r of asRows(data)) map[str(r.activity_id)] = str(r.status) as ProgressStatus;
+  for (const r of asRows(data)) map[str(r.activity_id)] = normalizeProgressStatus(str(r.status));
   return map;
 }

@@ -32,7 +32,11 @@ interface TreeSection {
 
 function lessonDone(lesson: Lesson): boolean {
   const acts = lesson.activities ?? [];
-  return acts.length > 0 && acts.every((a) => a.status === 'done');
+  // Activity status arrives normalized to the canonical UI value ('done') by the
+  // data layer (getProgramBySlug → getLessonProgress → normalizeProgressStatus).
+  // We also accept the raw DB value 'completed' defensively so a missed
+  // normalization upstream can never silently re-lock a finished lesson.
+  return acts.length > 0 && acts.every((a) => a.status === 'done' || (a.status as string) === 'completed');
 }
 
 /**

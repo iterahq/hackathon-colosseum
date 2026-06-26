@@ -60,11 +60,17 @@ export default function LessonPlayer() {
   const [index, setIndex] = useState(0);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
+  // True when the last persistProgress write FAILED — we surface a retry instead
+  // of a false success trophy (round-2 nit: never celebrate an unsaved completion).
+  const [saveError, setSaveError] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setIndex(0);
     setDoneIds(new Set());
     setCompleted(false);
+    setSaveError(false);
+    setSaving(false);
   }, [lessonId]);
 
   const current = activities[index];
@@ -77,19 +83,24 @@ export default function LessonPlayer() {
     ? Math.round(((completed ? activities.length : index) / activities.length) * 100)
     : 0;
 
-  async function persistProgress(activityId: string) {
-    if (!isSupabaseConfigured) return;
+  /**
+   * Persist completion of one activity. Returns TRUE only when the progress row
+   * actually landed (so the caller can avoid showing a false success trophy).
+   * activity_results + XP stay best-effort — they don't gate the celebration.
+   */
+  async function persistProgress(activityId: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
     try {
       const sb = getSupabase();
       // RLS keys itera.progress / itera.activity_results on itera.users.id
       // (NOT the Supabase auth uid). Resolve the Itera-local user id first —
       // writing the raw auth uid silently FK-fails.
       const userId = await getIteraUserId();
-      if (!userId) return;
+      if (!userId) return false;
 
       // Progress: upsert with the CORRECT enum value. The progress_status enum
       // is ('not_started','in_progress','completed') — 'done' is invalid.
-      await sb
+      const { error: progressError } = await sb
         .from('progress')
         .upsert(
           {
@@ -100,6 +111,10 @@ export default function LessonPlayer() {
           },
           { onConflict: 'user_id,activity_id' }
         );
+      // The progress write is the load-bearing one (it drives lesson-done /
+      // unlock). If it failed, report failure so we never celebrate an unsaved
+      // completion.
+      if (progressError) return false;
 
       // Results: INSERT the row the Results-API pull reads (per-tenant key sees
       // results of its members). Best-effort; one row per completion attempt.
@@ -113,24 +128,40 @@ export default function LessonPlayer() {
       // is why we don't gate on a not-completed -> completed transition
       // client-side. Best-effort; failure never blocks the learner.
       await awardActivityXp(activityId);
+      return true;
     } catch {
-      /* best-effort — never block the learner */
+      return false;
     }
   }
 
-  function handleComplete(correct: boolean) {
-    if (!current) return;
+  async function handleComplete(correct: boolean) {
+    if (!current || saving) return;
+    const isLast = index >= activities.length - 1;
+
     if (correct) {
-      const next = new Set(doneIds);
-      next.add(current.id);
-      setDoneIds(next);
-      void persistProgress(current.id);
+      setSaving(true);
+      const ok = await persistProgress(current.id);
+      setSaving(false);
+      if (ok) {
+        setDoneIds((prev) => new Set(prev).add(current.id));
+        setSaveError(false);
+      } else {
+        // The completion did NOT persist — surface a retry, do NOT advance and do
+        // NOT show a success trophy. Re-running handleComplete retries the write.
+        setSaveError(true);
+        return;
+      }
     }
-    if (index < activities.length - 1) {
+
+    if (!isLast) {
       setIndex((i) => i + 1);
     } else {
       setCompleted(true);
     }
+  }
+
+  function retrySave() {
+    void handleComplete(true);
   }
 
   return (
@@ -237,6 +268,24 @@ export default function LessonPlayer() {
               >
                 {tText(data.title)}
               </h1>
+
+              {saveError && (
+                <div
+                  className="mt-7 rounded-2xl border border-clay/40 bg-clay/10 px-4 py-3 text-sm text-foreground flex items-center justify-between gap-3"
+                  role="alert"
+                  data-testid="lesson-save-error"
+                >
+                  <span>{t('lesson.saveError')}</span>
+                  <button
+                    onClick={retrySave}
+                    disabled={saving}
+                    data-testid="lesson-save-retry"
+                    className="flex-shrink-0 h-9 px-4 rounded-full bg-evergreen text-obsidiana text-sm font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-60"
+                  >
+                    {t('lesson.retrySave')}
+                  </button>
+                </div>
+              )}
 
               {current && (
                 <div className="mt-7">
