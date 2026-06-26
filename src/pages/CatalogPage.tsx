@@ -9,16 +9,15 @@
  * the course's tenant). After enroll the course opens normally (tenant RLS lets
  * the user read + play it). Subscription-gated like the other learner surfaces.
  */
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, GraduationCap, CheckCircle2, ArrowRight } from 'lucide-react';
-import { AppHeader, ProgramIcon } from '@/components/branded';
+import { GraduationCap, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AppHeader, ProgramCard } from '@/components/branded';
 import { useCatalog, useEnroll } from '@/hooks/useCatalog';
 import { useI18n } from '@/i18n';
 import type { CatalogProgram } from '@/types/catalog';
 
 export default function CatalogPage() {
-  const { t, tText } = useI18n();
+  const { t } = useI18n();
   const { data: programs = [], isPending, isError, refetch } = useCatalog();
 
   return (
@@ -64,7 +63,7 @@ export default function CatalogPage() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="catalog-grid">
               {programs.map((p) => (
-                <CatalogCard key={p.id} program={p} title={tText(p.title)} />
+                <CatalogCard key={p.id} program={p} />
               ))}
             </div>
           )}
@@ -74,7 +73,14 @@ export default function CatalogPage() {
   );
 }
 
-function CatalogCard({ program, title }: { program: CatalogProgram; title: string }) {
+/**
+ * One catalog course rendered with the shared rich {@link ProgramCard}. Catalog
+ * programs are not-yet-enrolled → no per-user progress (ProgramCard shows the
+ * not-started look: level tag, no progress bar). The Enroll / Open CTA + inline
+ * error live in the card's `footer` slot. An already-enrolled card also makes
+ * the hero clickable so it opens the course directly (parity with HomePage).
+ */
+function CatalogCard({ program }: { program: CatalogProgram }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const enroll = useEnroll();
@@ -91,36 +97,14 @@ function CatalogCard({ program, title }: { program: CatalogProgram; title: strin
     }
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-4"
-      data-testid="catalog-card"
-      data-program-slug={program.slug}
-    >
-      <div className="flex items-start gap-3">
-        <ProgramIcon icon={program.icon} size="md" />
-        <div className="min-w-0">
-          <h3 className="font-display font-semibold text-foreground leading-tight">{title}</h3>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-3">
-            <span className="inline-flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" /> {program.unitCount} {t('catalog.units')}
-            </span>
-            <span>·</span>
-            <span>
-              {program.activityCount} {t('catalog.activities')}
-            </span>
-          </p>
-        </div>
-      </div>
-
+  const footer = (
+    <div data-program-slug={program.slug} data-testid="catalog-card" className="space-y-3">
       {program.alreadyEnrolled ? (
         <button
           type="button"
           onClick={goToCourse}
           data-testid="catalog-open"
-          className="mt-auto inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi font-medium hover:bg-evergreen-soft/70 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi font-medium hover:bg-evergreen-soft/70 transition-colors"
         >
           <CheckCircle2 className="w-4 h-4" /> {t('catalog.open')}
         </button>
@@ -130,7 +114,7 @@ function CatalogCard({ program, title }: { program: CatalogProgram; title: strin
           onClick={onEnroll}
           disabled={enroll.isPending}
           data-testid="catalog-enroll"
-          className="mt-auto inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-50"
         >
           {enroll.isPending ? (
             t('catalog.enrolling')
@@ -147,6 +131,14 @@ function CatalogCard({ program, title }: { program: CatalogProgram; title: strin
           {t('catalog.enrollError')}
         </p>
       )}
-    </motion.div>
+    </div>
+  );
+
+  return (
+    <ProgramCard
+      program={program}
+      onClick={program.alreadyEnrolled ? goToCourse : undefined}
+      footer={footer}
+    />
   );
 }

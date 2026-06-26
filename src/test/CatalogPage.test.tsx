@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,10 +25,25 @@ vi.mock('@/hooks/useCatalog', () => ({
   useEnroll: () => useEnroll(),
 }));
 
-// AppHeader pulls auth/membership/branding hooks; stub it.
+// AppHeader pulls auth/membership/branding hooks; stub it. ProgramCard is the
+// shared rich card — stub it to a thin shell that renders its title + footer
+// slot so the enroll/open CTAs (in the footer) stay assertable here. (The rich
+// card itself is covered by ProgramCard.test.tsx + the catalog e2e.)
 vi.mock('@/components/branded', () => ({
   AppHeader: () => <div data-testid="app-header" />,
   ProgramIcon: () => <div data-testid="program-icon" />,
+  ProgramCard: ({
+    program,
+    footer,
+  }: {
+    program: { title: { pt?: string; en?: string } };
+    footer?: ReactNode;
+  }) => (
+    <div data-testid="program-card">
+      <span>{program.title.pt ?? program.title.en}</span>
+      {footer}
+    </div>
+  ),
 }));
 
 function renderPage() {
