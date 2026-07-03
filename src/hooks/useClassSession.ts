@@ -57,6 +57,11 @@ export function useClassSession(
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // Latest identity, read inside the channel effect / track without making the
+  // channel re-subscribe when identity resolves late (which reused a still-
+  // joined channel → `.on()`-after-`subscribe()` crash — see the effect below).
+  const identityRef = useRef<Identity | undefined>(identity);
+  identityRef.current = identity;
 
   const applySession = useCallback((s: ClassSession | null) => {
     if (!s) return;
@@ -92,7 +97,8 @@ export function useClassSession(
   useEffect(() => {
     if (!sessionId || !isSupabaseConfigured) return;
     const sb = getSupabase();
-    const presenceKey = identity?.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
+    const presenceKey =
+      identityRef.current?.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
 
     const channel = sb.channel(`class:${sessionId}`, {
       config: { presence: { key: presenceKey }, broadcast: { self: true } },
@@ -131,11 +137,12 @@ export function useClassSession(
       .subscribe((s) => {
         const isJoined = s === 'SUBSCRIBED';
         setConnected(isJoined);
-        if (isJoined && identity) {
+        const id = identityRef.current;
+        if (isJoined && id) {
           void channel.track({
-            user_id: identity.userId,
-            name: identity.name,
-            is_instructor: identity.isInstructor === true,
+            user_id: id.userId,
+            name: id.name,
+            is_instructor: id.isInstructor === true,
             at: new Date().toISOString(),
           });
         }
@@ -146,10 +153,30 @@ export function useClassSession(
       channelRef.current = null;
       void sb.removeChannel(channel);
     };
-    // identity fields are primitives; re-subscribe only when the session or the
-    // identifying user changes (name/instructor changes are cosmetic in presence).
+    // Subscribe ONCE per session. `class:<id>` is a SHARED broadcast/presence
+    // topic (can't be uniquified like the badge channel), and realtime-js
+    // dedupes by topic + removeChannel() is async — so re-running this effect
+    // (e.g. when identity resolves after sessionId) would reuse the still-
+    // joined channel and `.on('postgres_changes'|'presence', …)` would THROW
+    // ("after `subscribe()`"). Identity is read via identityRef and tracked in
+    // the effect below, so it never needs to be a dependency here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, identity?.userId]);
+  }, [sessionId]);
+
+  // Track (or re-track) presence identity once the channel is connected and
+  // identity is known — without tearing down / re-subscribing the channel.
+  useEffect(() => {
+    const channel = channelRef.current;
+    if (!channel || !connected || !identity) return;
+    void channel.track({
+      user_id: identity.userId,
+      name: identity.name,
+      is_instructor: identity.isInstructor === true,
+      at: new Date().toISOString(),
+    });
+    // Track on the primitive identity fields, not the object reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, identity?.userId, identity?.name, identity?.isInstructor]);
 
   const broadcast = useCallback(
     (activityId: string) => {

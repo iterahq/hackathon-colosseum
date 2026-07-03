@@ -67,8 +67,18 @@ export function useActiveLiveClass() {
   useEffect(() => {
     if (!enabled || !isSupabaseConfigured) return;
     const sb = getSupabase();
+    // Unique topic per subscription instance. realtime-js dedupes channels by
+    // topic AND removeChannel() is async (unsubscribe → teardown), so a FIXED
+    // topic ('live-class-watch') can resolve to a still-`isJoined()` stale
+    // channel on effect re-run (e.g. `enabled` flips false→true when auth
+    // resolves, cleaning up + re-running in the same tick). Calling
+    // `.on('postgres_changes', …)` on an already-subscribed channel THROWS
+    // ("cannot add `postgres_changes` callbacks … after `subscribe()`") and
+    // crashes the app. A unique topic guarantees a fresh channel every time —
+    // the topic name is only a client-side identifier for postgres_changes.
+    const topic = `live-class-watch-${Math.random().toString(36).slice(2, 10)}`;
     const channel = sb
-      .channel('live-class-watch')
+      .channel(topic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'itera', table: 'class_sessions' },
