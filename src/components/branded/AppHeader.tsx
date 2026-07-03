@@ -31,7 +31,7 @@ import { useI18n } from '@/i18n';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useMembership } from '@/hooks/useMembership';
 import { useProfile } from '@/hooks/useProfile';
-import { isTenantAdmin } from '@/services/membership.service';
+import { isTenantAdmin, highestRole } from '@/services/membership.service';
 
 export function AppHeader({
   active = 'discover',
@@ -44,6 +44,19 @@ export function AppHeader({
   const { data: memberships } = useMembership();
   const { data: profile } = useProfile();
   const showAdmin = isTenantAdmin(memberships ?? []);
+  // Role pill reflects the user's HIGHEST-privilege role (loop-2 fix #5) — an
+  // instructor must read as "Instrutor", not "Aluno". `showAdmin` still gates the
+  // /admin nav on tenant_admin/owner only (an instructor doesn't see /admin).
+  const role = highestRole(memberships ?? []);
+  const roleIsPrivileged = role !== 'learner';
+  const roleKey =
+    role === 'owner' || role === 'tenant_admin'
+      ? 'role.admin'
+      : role === 'instructor'
+        ? 'role.instructor'
+        : role === 'author'
+          ? 'role.author'
+          : 'role.learner';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -136,17 +149,18 @@ export function AppHeader({
 
         {/* RIGHT — role pill · bell · settings · avatar */}
         <div className="flex items-center gap-1.5 md:gap-2.5 ml-auto md:ml-0">
-          {/* Role pill — reflects real membership (Learner / Admin) */}
+          {/* Role pill — reflects the highest-privilege membership role. */}
           <span
             data-testid="role-pill"
+            data-role={role}
             className={`hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-full border text-xs font-medium ${
-              showAdmin
+              roleIsPrivileged
                 ? 'border-evergreen/40 bg-evergreen-soft text-evergreen-hi'
                 : 'border-border bg-card text-muted-foreground'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${showAdmin ? 'bg-evergreen' : 'bg-menta'}`} />
-            {showAdmin ? t('role.admin') : t('role.learner')}
+            <span className={`w-1.5 h-1.5 rounded-full ${roleIsPrivileged ? 'bg-evergreen' : 'bg-menta'}`} />
+            {t(roleKey)}
           </span>
 
           {/* Notifications bell */}

@@ -28,6 +28,7 @@ import EngagementPage from "./pages/admin/EngagementPage";
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
+import { LiveClassSignal } from "./components/branded";
 import { useLocaleSync } from "./hooks/useLocaleSync";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,10 @@ const App = () => (
             <LocaleSync />
             <BrowserRouter>
               <EmbedBridge />
+              {/* App-wide "a class went live" signal — toasts on any route when a
+                  live class starts (loop-2 fix #6). Enabled-tenant gating is
+                  inherited from useActiveLiveClass. */}
+              <LiveClassSignal />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as

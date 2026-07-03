@@ -140,3 +140,28 @@ export function instructorTenantIds(
 export function isInstructor(memberships: Membership[]): boolean {
   return instructorTenantId(memberships) !== null;
 }
+
+/**
+ * Every role, most-privileged first. Drives the header role pill (loop-2 fix #5):
+ * an instructor account must NOT read as "Aluno". Owner/tenant_admin/instructor
+ * outrank author, which outranks learner.
+ */
+const ROLE_PRIORITY: Record<MemberRole, number> = {
+  owner: 0,
+  tenant_admin: 1,
+  instructor: 2,
+  author: 3,
+  learner: 4,
+};
+
+/**
+ * The user's HIGHEST-privilege role across all their memberships. Defaults to
+ * `learner` when the user holds no membership (safe floor). Deterministic — the
+ * five roles form a total order so there are no ties.
+ */
+export function highestRole(memberships: Membership[]): MemberRole {
+  if (!memberships || memberships.length === 0) return 'learner';
+  return [...memberships].sort(
+    (a, b) => (ROLE_PRIORITY[a.role] ?? 99) - (ROLE_PRIORITY[b.role] ?? 99)
+  )[0].role;
+}

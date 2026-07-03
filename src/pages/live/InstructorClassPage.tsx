@@ -27,6 +27,8 @@ import {
   GraduationCap,
   Loader2,
   Presentation,
+  Link2,
+  Check,
 } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
@@ -356,6 +358,21 @@ function ClassControl({
   const canNext = idx >= 0 && idx < activities.length - 1;
   const startAt = idx < 0 && activities.length > 0; // pointer not set yet
 
+  // Shareable direct-join link (loop-2 fix #6, instructor affordance): a copyable
+  // `/live/:id` URL the professor can drop into chat so students jump straight in.
+  const [copied, setCopied] = useState(false);
+  const joinUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/live/${session.id}` : `/live/${session.id}`;
+  async function copyJoinLink() {
+    try {
+      await navigator.clipboard?.writeText(joinUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — no-op */
+    }
+  }
+
   return (
     <div className="grid lg:grid-cols-[1.6fr_1fr] gap-6" data-testid="instructor-control">
       {/* LEFT — the stage */}
@@ -503,6 +520,22 @@ function ClassControl({
           className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-clay/50 transition-colors"
         >
           <Radio className="w-4 h-4" /> {t('live.instructor.preview')}
+        </button>
+
+        <button
+          onClick={copyJoinLink}
+          data-testid="instructor-copy-link"
+          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4 text-menta" /> {t('live.instructor.copyLinkDone')}
+            </>
+          ) : (
+            <>
+              <Link2 className="w-4 h-4" /> {t('live.instructor.copyLink')}
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -108,27 +108,40 @@ export default function LiveSessionPage() {
           <X className="w-4 h-4" />
         </button>
 
-        {/* LIVE pill + presence count (center-ish, top). */}
+        {/* LIVE pill + presence count (center-ish, top). Once the session ends
+            the pill flips to a muted "Encerrada" — no live styling, no pulsing
+            dot, no presence count (loop-2 fix #7). */}
         <div
           className="absolute top-2.5 left-1/2 -translate-x-1/2 h-9 flex items-center gap-2"
           data-testid="live-indicator"
+          data-status={ended ? 'ended' : 'live'}
         >
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium ${
-              connected
-                ? 'border-clay/50 bg-clay/10 text-clay'
-                : 'border-border bg-card text-muted-foreground'
-            }`}
-          >
-            <span className="relative flex h-2 w-2" aria-hidden="true">
-              {connected && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay opacity-75" />
-              )}
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
+          {ended ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-border bg-card text-xs font-medium text-muted-foreground"
+              data-testid="live-indicator-ended"
+            >
+              <span className="inline-flex h-2 w-2 rounded-full bg-muted-foreground" aria-hidden="true" />
+              {t('live.status.ended')}
             </span>
-            {t('live.badge.label')}
-            <span className="opacity-70">· {roster.length}</span>
-          </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium ${
+                connected
+                  ? 'border-clay/50 bg-clay/10 text-clay'
+                  : 'border-border bg-card text-muted-foreground'
+              }`}
+            >
+              <span className="relative flex h-2 w-2" aria-hidden="true">
+                {connected && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay opacity-75" />
+                )}
+                <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
+              </span>
+              {t('live.badge.label')}
+              <span className="opacity-70">· {roster.length}</span>
+            </span>
+          )}
         </div>
 
         <div

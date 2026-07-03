@@ -527,15 +527,26 @@ function DoneButton({
   disabled?: boolean;
 }) {
   const { t } = useI18n();
+  // Once completed, the button LOCKS into a "Concluída ✓" state (loop-2 fix #8):
+  // in live mode the activity stays on screen after completing (the professor's
+  // pointer is what advances), so a still-clickable Done button was confusing.
+  // The locked look is a positive "completed" state (menta), NOT the greyed-out
+  // "requirement unmet" disabled style.
+  const locked = Boolean(done);
   return (
     <button
       onClick={onClick}
-      disabled={disabled}
-      className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      disabled={disabled || locked}
+      data-locked={locked ? 'true' : undefined}
+      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium transition-colors ${
+        locked
+          ? 'bg-menta/15 text-menta border border-menta/40 cursor-default'
+          : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed'
+      }`}
       data-testid="activity-done"
     >
       <CheckCircle2 className="w-4 h-4" />
-      {done ? t('activity.done') : t('activity.markDone')}
+      {locked ? t('activity.done') : t('activity.markDone')}
     </button>
   );
 }

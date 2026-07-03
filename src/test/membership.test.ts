@@ -5,6 +5,7 @@ import {
   instructorTenantId,
   instructorTenantIds,
   isInstructor,
+  highestRole,
   type Membership,
 } from '@/services/membership.service';
 
@@ -122,5 +123,60 @@ describe('instructorTenantId determinism (multiple staff memberships)', () => {
     ).toEqual([DFL, PERSONAL]);
     // learner tenant is never included.
     expect(instructorTenantIds(memberships)).not.toContain('learner-tenant');
+  });
+});
+
+// loop-2 fix #5 — header role pill reflects highest-privilege role.
+describe('highestRole (role pill)', () => {
+  it('defaults to learner with no memberships', () => {
+    expect(highestRole([])).toBe('learner');
+  });
+
+  it('returns instructor for an instructor account (NOT learner — the bug)', () => {
+    expect(highestRole([{ tenantId: TA, role: 'instructor' }])).toBe('instructor');
+  });
+
+  it('owner/tenant_admin outrank instructor which outranks author/learner', () => {
+    expect(
+      highestRole([
+        { tenantId: TA, role: 'learner' },
+        { tenantId: TB, role: 'instructor' },
+      ])
+    ).toBe('instructor');
+    expect(
+      highestRole([
+        { tenantId: TA, role: 'instructor' },
+        { tenantId: TB, role: 'tenant_admin' },
+      ])
+    ).toBe('tenant_admin');
+    expect(
+      highestRole([
+        { tenantId: TA, role: 'tenant_admin' },
+        { tenantId: TB, role: 'owner' },
+      ])
+    ).toBe('owner');
+    expect(
+      highestRole([
+        { tenantId: TA, role: 'author' },
+        { tenantId: TB, role: 'learner' },
+      ])
+    ).toBe('author');
+  });
+
+  it('a pure learner reads as learner', () => {
+    expect(highestRole([{ tenantId: TA, role: 'learner' }])).toBe('learner');
+  });
+
+  it('is order-independent', () => {
+    const a: Membership[] = [
+      { tenantId: TA, role: 'owner' },
+      { tenantId: TB, role: 'learner' },
+    ];
+    const b: Membership[] = [
+      { tenantId: TB, role: 'learner' },
+      { tenantId: TA, role: 'owner' },
+    ];
+    expect(highestRole(a)).toBe(highestRole(b));
+    expect(highestRole(a)).toBe('owner');
   });
 });

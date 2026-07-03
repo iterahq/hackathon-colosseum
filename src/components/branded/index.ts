@@ -6,3 +6,4 @@ export { StatsCard } from './StatsCard';
 export { BadgeGrid } from './BadgeGrid';
 export { SkillTree } from './SkillTree';
 export { LiveClassBadge } from './LiveClassBadge';
+export { LiveClassSignal } from './LiveClassSignal';
