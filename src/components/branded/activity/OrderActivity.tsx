@@ -1,0 +1,137 @@
+/**
+ * Order — reorder a scrambled sequence into `correct_order` (plan: ≈ "unscramble").
+ * Reorder via native drag (grip handle) OR the up/down buttons (keyboard/touch
+ * accessible). Submit compares the current order to `correct_order`. Reuses
+ * InstructionPanel + `onComplete(correct)`.
+ *
+ * `initial*` props are story-only hooks for the answered/correct/incorrect states.
+ */
+import { useState } from 'react';
+import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircle } from 'lucide-react';
+import { useI18n } from '@/i18n';
+import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
+import { InstructionPanel } from './InstructionPanel';
+import { ActivityShell, DoneButton } from './parts';
+
+export function OrderActivity({
+  activity,
+  onComplete,
+  initialOrder,
+  initialSubmitted = false,
+}: {
+  activity: Activity;
+  onComplete: (correct: boolean) => void;
+  initialOrder?: string[];
+  initialSubmitted?: boolean;
+}) {
+  const { t } = useI18n();
+  const spec = activity.spec as unknown as OrderSpec;
+  const items = spec?.items ?? [];
+  const correctOrder = spec?.correct_order ?? [];
+  const byId = (id: string): ChoiceOption | undefined => items.find((i) => i.id === id);
+
+  const [order, setOrder] = useState<string[]>(initialOrder ?? items.map((i) => i.id));
+  const [submitted, setSubmitted] = useState(initialSubmitted);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const isDone = activity.status === 'done';
+  const locked = submitted || isDone;
+
+  function move(from: number, to: number) {
+    if (locked || to < 0 || to >= order.length) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      const [x] = next.splice(from, 1);
+      next.splice(to, 0, x);
+      return next;
+    });
+  }
+
+  const isCorrect =
+    submitted && order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
+
+  return (
+    <ActivityShell kind="order" icon={ListOrdered} label={t('activity.order')}>
+      <InstructionPanel spec={spec?.instruction} />
+      <p className="mt-4 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+        {t('activity.orderHint')}
+      </p>
+
+      <ol className="mt-3 space-y-2.5" data-testid="order-list">
+        {order.map((id, idx) => {
+          const o = byId(id);
+          const posCorrect = submitted && correctOrder[idx] === id;
+          const posWrong = submitted && correctOrder[idx] !== id;
+          return (
+            <li
+              key={id}
+              draggable={!locked}
+              onDragStart={() => setDragIndex(idx)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragIndex !== null && dragIndex !== idx) move(dragIndex, idx);
+                setDragIndex(null);
+              }}
+              data-testid="order-item"
+              data-position={idx}
+              className={`flex items-center gap-3 py-3 px-4 rounded-2xl border transition-colors ${
+                posCorrect
+                  ? 'border-verde-tech bg-verde-tech/10'
+                  : posWrong
+                    ? 'border-destructive bg-destructive/10'
+                    : 'border-border bg-card'
+              } ${locked ? '' : 'cursor-grab active:cursor-grabbing'}`}
+            >
+              {!locked && <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+              <span className="font-mono text-xs text-menta w-5 flex-shrink-0">{idx + 1}</span>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {o?.image_url && (
+                  <img src={o.image_url} alt={o.label ?? id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+                )}
+                {o?.label && <span className="truncate">{o.label}</span>}
+                {o?.audio_url && <audio src={o.audio_url} controls className="h-7 max-w-[8rem]" />}
+              </div>
+              {posCorrect && <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />}
+              {posWrong && <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
+              {!locked && (
+                <span className="flex flex-col flex-shrink-0">
+                  <button
+                    onClick={() => move(idx, idx - 1)}
+                    disabled={idx === 0}
+                    data-testid="order-up"
+                    aria-label={t('activity.moveUp')}
+                    className="text-muted-foreground hover:text-menta disabled:opacity-30"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => move(idx, idx + 1)}
+                    disabled={idx === order.length - 1}
+                    data-testid="order-down"
+                    aria-label={t('activity.moveDown')}
+                    className="text-muted-foreground hover:text-menta disabled:opacity-30"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </span>
+              )}
+            </li>
+          );
+        })}
+        {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
+      </ol>
+
+      {!submitted ? (
+        <button
+          disabled={order.length === 0}
+          onClick={() => setSubmitted(true)}
+          data-testid="order-submit"
+          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {t('activity.submit')}
+        </button>
+      ) : (
+        <DoneButton done={isDone} onClick={() => onComplete(isCorrect)} />
+      )}
+    </ActivityShell>
+  );
+}

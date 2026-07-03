@@ -34,6 +34,14 @@ import {
   type JudgeVerdict,
 } from '@/api/iteraApi';
 import { JudgeHeatmap } from './JudgeHeatmap';
+// v1 general learning-activity taxonomy (plan 20260703). These CONVERGE on the
+// shared InstructionPanel primitive + the `onComplete(correct)` contract.
+import { ConceptActivity } from './ConceptActivity';
+import { VideoActivity } from './VideoActivity';
+import { SingleChoiceActivity } from './SingleChoiceActivity';
+import { MultiChoiceActivity } from './MultiChoiceActivity';
+import { MatchActivity } from './MatchActivity';
+import { OrderActivity } from './OrderActivity';
 
 export function ActivityRenderer({
   activity,
@@ -51,6 +59,19 @@ export function ActivityRenderer({
       return <QuizActivity activity={activity} onComplete={onComplete} />;
     case 'code':
       return <CodePlaceholder activity={activity} onComplete={onComplete} />;
+    // v1 general learning-activity taxonomy:
+    case 'concept':
+      return <ConceptActivity activity={activity} onComplete={onComplete} />;
+    case 'video':
+      return <VideoActivity activity={activity} onComplete={onComplete} />;
+    case 'single_choice':
+      return <SingleChoiceActivity activity={activity} onComplete={onComplete} />;
+    case 'multi_choice':
+      return <MultiChoiceActivity activity={activity} onComplete={onComplete} />;
+    case 'match':
+      return <MatchActivity activity={activity} onComplete={onComplete} />;
+    case 'order':
+      return <OrderActivity activity={activity} onComplete={onComplete} />;
     default:
       return <UnknownActivity activity={activity} />;
   }
