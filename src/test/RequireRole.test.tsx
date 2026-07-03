@@ -10,7 +10,7 @@ const authState = {
   configured: true,
 };
 const membershipState = {
-  data: [] as { tenantId: string; role: string }[],
+  data: [] as { tenantId: string; role: string; isPersonal?: boolean }[],
   isPending: false,
 };
 
@@ -57,6 +57,18 @@ describe('RequireRole (V4/V5 route guard)', () => {
 
   it('redirects a learner away from /admin to "/" (V5)', () => {
     membershipState.data = [{ tenantId: 'TA', role: 'learner' }];
+    renderGuard();
+    expect(screen.queryByTestId('admin-content')).not.toBeInTheDocument();
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+  });
+
+  it('redirects a federated learner who owns a personal plg tenant away from /admin (leak closed)', () => {
+    // The bug shape: learner in dfl-batch + auto-granted personal `plg-<uid>` owner.
+    // Owning a personal billing tenant must not open the /admin observability surface.
+    membershipState.data = [
+      { tenantId: 'dfl-batch', role: 'learner', isPersonal: false },
+      { tenantId: 'plg-abc123', role: 'owner', isPersonal: true },
+    ];
     renderGuard();
     expect(screen.queryByTestId('admin-content')).not.toBeInTheDocument();
     expect(screen.getByTestId('home')).toBeInTheDocument();

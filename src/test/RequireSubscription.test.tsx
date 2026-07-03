@@ -25,7 +25,7 @@ const entitlementState = {
   isPending: false,
 };
 const membershipState = {
-  data: [] as { tenantId: string; role: string }[],
+  data: [] as { tenantId: string; role: string; isPersonal?: boolean }[],
   isPending: false,
 };
 
@@ -81,6 +81,19 @@ describe('RequireSubscription (PLG gate)', () => {
     membershipState.data = [{ tenantId: 'T', role: 'tenant_admin' }];
     renderGuard();
     expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('does NOT exempt a federated learner who owns a personal plg tenant (leak closed)', () => {
+    // The bug shape: learner in dfl-batch + auto-granted personal `plg-<uid>` owner.
+    // Owning a personal billing tenant must not bypass the PLG seat paywall.
+    entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+    membershipState.data = [
+      { tenantId: 'dfl-batch', role: 'learner', isPersonal: false },
+      { tenantId: 'plg-abc123', role: 'owner', isPersonal: true },
+    ];
+    renderGuard();
+    expect(screen.queryByTestId('player')).not.toBeInTheDocument();
+    expect(screen.getByTestId('subscribe')).toBeInTheDocument();
   });
 
   it('redirects an unauthenticated user to /login', () => {

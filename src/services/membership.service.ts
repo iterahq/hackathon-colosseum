@@ -8,6 +8,25 @@
  * is the suspenders) — plan ADR-7.
  *
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React here.
+ *
+ * ── Personal (PLG) tenants are NOT admin surfaces ──────────────────────────────
+ * The auth-insert provisioning trigger (`itera.handle_new_federated_user`) creates
+ * a PERSONAL billing tenant (`slug = 'plg-<uid>'`) with an `owner` membership for
+ * self-serve signups. BUT that trigger fires on `auth.users` INSERT — BEFORE the
+ * DFL federation code (`POST /v1/embed/session`) attaches the `dfl` identity +
+ * dfl-batch learner membership — and a federated fellow is created by itera-api as
+ * a plain `provider=email` auth user with NO `dfl_sub` yet. So the trigger CANNOT
+ * tell a federated DFL learner from a genuine PLG signup at insert time, and it
+ * mis-grants federated fellows a personal `plg-<uid>` OWNER tenant.
+ *
+ * A personal tenant is a billing container, NOT a professor/admin surface. Owning
+ * one must never confer admin/host/paywall-exempt affordances in ANOTHER tenant
+ * (e.g. dfl-batch) where the user is only a learner. Therefore every affordance
+ * resolver below IGNORES personal-tenant memberships (`isPersonal`). This closes
+ * the leak regardless of what the trigger does. A genuine solo PLG user still OWNS
+ * their tenant (the membership is intact) — they just don't get a paywall bypass
+ * (they must subscribe — that's the PLG model) nor a cohort-admin surface for a
+ * tenant that has no cohort.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -21,6 +40,23 @@ export type MemberRole =
 export interface Membership {
   tenantId: string;
   role: MemberRole;
+  /**
+   * True when this is the user's PERSONAL auto-provisioned PLG tenant
+   * (`slug = 'plg-<uid>'`). Personal-tenant memberships never confer
+   * admin/host/paywall-exempt affordances. Defaults to `false`/undefined when the
+   * tenant kind is unknown (synthetic/test rows) — treated as non-personal.
+   */
+  isPersonal?: boolean;
+  /** Whether the tenant has the live-class feature enabled (`tenants.live_class_enabled`). */
+  liveClassEnabled?: boolean;
+}
+
+/** Prefix the provisioning trigger uses for a user's PERSONAL PLG tenant slug. */
+export const PERSONAL_TENANT_SLUG_PREFIX = 'plg-';
+
+/** True when a tenant slug identifies a personal auto-provisioned PLG tenant. */
+export function isPersonalTenantSlug(slug: string | null | undefined): boolean {
+  return typeof slug === 'string' && slug.startsWith(PERSONAL_TENANT_SLUG_PREFIX);
 }
 
 type Row = Record<string, unknown>;
@@ -31,39 +67,63 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
  * The current user's memberships (own rows only, per RLS). Empty when not
  * configured / not signed in / no membership.
  *
- * Explicitly ORDERed (role, then tenant_id) so the row set is DETERMINISTIC —
- * PLG auto-creates a personal `owner` tenant per user (live_class_enabled=false),
- * so a real instructor can hold >1 staff membership. Without an order, the
- * "first staff membership" resolver (instructorTenantId) could non-deterministically
- * target the wrong tenant. (loop-1 fix #4.)
+ * Embeds the tenant `slug` + `live_class_enabled` (via the
+ * `memberships_tenant_id_fkey` FK; `itera.tenants` is public-read) so callers can
+ * distinguish a PERSONAL PLG tenant (`plg-<uid>`) from a real/managed tenant. This
+ * is what lets the affordance resolvers ignore a leaked personal-owner membership.
+ *
+ * Explicitly ORDERed (role, then tenant_id) so the row set is DETERMINISTIC.
  */
 export async function getMyMemberships(): Promise<Membership[]> {
   if (!isSupabaseConfigured) return [];
   const sb = getSupabase();
   const { data, error } = await sb
     .from('memberships')
-    .select('tenant_id, role')
+    .select('tenant_id, role, tenants(slug, live_class_enabled)')
     .order('role', { ascending: true })
     .order('tenant_id', { ascending: true });
   if (error) throw new Error(error.message);
-  return asRows(data).map((r) => ({
-    tenantId: str(r.tenant_id),
-    role: str(r.role) as MemberRole,
-  }));
+  return asRows(data).map((r) => {
+    // The embedded tenant may arrive as an object or a single-element array
+    // depending on PostgREST's inference of the relationship cardinality.
+    const t = Array.isArray(r.tenants)
+      ? (r.tenants[0] as Row | undefined)
+      : (r.tenants as Row | undefined);
+    const slug = str(t?.slug);
+    return {
+      tenantId: str(r.tenant_id),
+      role: str(r.role) as MemberRole,
+      isPersonal: isPersonalTenantSlug(slug),
+      liveClassEnabled: t?.live_class_enabled === true,
+    };
+  });
+}
+
+/** Admin/owner roles that (in a NON-personal tenant) may view the /admin surface. */
+const ADMIN_ROLES: ReadonlySet<string> = new Set(['tenant_admin', 'owner']);
+
+/** A membership that confers admin affordances: an admin/owner role in a NON-personal tenant. */
+function isManagedAdminMembership(m: Membership): boolean {
+  return ADMIN_ROLES.has(m.role) && !m.isPersonal;
 }
 
 /**
- * The tenant the user administers (first membership with role tenant_admin/owner).
- * Returns null when the user is not a tenant admin.
+ * The tenant the user administers (first tenant_admin/owner membership in a
+ * NON-personal tenant). Returns null when the user administers no real tenant.
+ * A personal `plg-<uid>` owner tenant is NOT an admin surface (see file header).
  */
 export function adminTenantId(memberships: Membership[]): string | null {
-  const m = memberships.find((x) => x.role === 'tenant_admin' || x.role === 'owner');
+  const m = memberships.find(isManagedAdminMembership);
   return m ? m.tenantId : null;
 }
 
-/** True when the user holds a role that may view the /admin observability surface. */
+/**
+ * True when the user holds a role that may view the /admin observability surface —
+ * i.e. tenant_admin/owner of a REAL (non-personal) tenant. Owning only a personal
+ * `plg-<uid>` billing tenant does NOT count (closes the federated-learner leak).
+ */
 export function isTenantAdmin(memberships: Membership[]): boolean {
-  return memberships.some((m) => m.role === 'tenant_admin' || m.role === 'owner');
+  return memberships.some(isManagedAdminMembership);
 }
 
 /** Staff roles that may run a live class, in preference order (lower = preferred). */
@@ -74,46 +134,37 @@ const STAFF_ROLE_PRIORITY: Record<string, number> = {
 };
 
 /**
- * The tenant the user may RUN a live class for (a staff role —
- * instructor/tenant_admin/owner). Returns null when the user holds none.
- * This is the app-layer mirror of the migration's current_instructor_tenant_ids().
- *
- * DETERMINISTIC selection (loop-1 fix #4): PLG auto-creates a personal `owner`
- * tenant (live_class_enabled=false) per user, so a real instructor can qualify
- * in >1 tenant. To avoid targeting the wrong tenant, we pick by:
- *   1. live-class-enabled tenants first (when `enabledTenantIds` is provided) —
- *      the strongest signal that this is the real teaching tenant;
- *   2. then role priority (instructor > tenant_admin > owner) — the PLG personal
- *      tenant is `owner`, so a real instructor/admin membership wins;
+ * A membership that may RUN a live class. Staff role AND the tenant is a real
+ * teaching surface — either NON-personal, or a personal tenant that has explicitly
+ * enabled live classes (a genuine solo PLG user hosting in their OWN tenant, once
+ * `live_class_enabled` is turned on). A leaked personal `owner` tenant with live
+ * classes disabled is EXCLUDED, so a federated dfl-batch learner never gets a host
+ * affordance from it.
+ */
+function isStaffTeachingMembership(m: Membership): boolean {
+  if (!(m.role in STAFF_ROLE_PRIORITY)) return false;
+  if (m.isPersonal && m.liveClassEnabled !== true) return false;
+  return true;
+}
+
+/**
+ * The tenant the user may RUN a live class for. Returns null when the user holds
+ * no qualifying staff membership. DETERMINISTIC selection:
+ *   1. live-class-enabled tenants first (when `enabledTenantIds` is provided);
+ *   2. then role priority (instructor > tenant_admin > owner);
  *   3. then tenant_id lexical order — a stable final tie-break.
- * When >1 tenant still qualifies at the top, the caller can surface a picker;
- * this function at minimum guarantees a stable, repeatable choice.
  */
 export function instructorTenantId(
   memberships: Membership[],
   opts?: { enabledTenantIds?: Iterable<string> }
 ): string | null {
-  const enabled = opts?.enabledTenantIds ? new Set(opts.enabledTenantIds) : null;
-  const staff = memberships.filter((m) => m.role in STAFF_ROLE_PRIORITY);
-  if (staff.length === 0) return null;
-
-  const sorted = [...staff].sort((a, b) => {
-    if (enabled) {
-      const ea = enabled.has(a.tenantId) ? 0 : 1;
-      const eb = enabled.has(b.tenantId) ? 0 : 1;
-      if (ea !== eb) return ea - eb;
-    }
-    const ra = STAFF_ROLE_PRIORITY[a.role];
-    const rb = STAFF_ROLE_PRIORITY[b.role];
-    if (ra !== rb) return ra - rb;
-    return a.tenantId.localeCompare(b.tenantId);
-  });
-  return sorted[0].tenantId;
+  const list = instructorTenantIds(memberships, opts);
+  return list.length > 0 ? list[0] : null;
 }
 
 /**
- * Every tenant the user may RUN a live class for (all staff memberships,
- * deterministically ordered). Enables a future tenant picker when >1 qualifies.
+ * Every tenant the user may RUN a live class for (all qualifying staff
+ * memberships, deterministically ordered). Enables a future tenant picker.
  */
 export function instructorTenantIds(
   memberships: Membership[],
@@ -121,7 +172,7 @@ export function instructorTenantIds(
 ): string[] {
   const enabled = opts?.enabledTenantIds ? new Set(opts.enabledTenantIds) : null;
   return memberships
-    .filter((m) => m.role in STAFF_ROLE_PRIORITY)
+    .filter(isStaffTeachingMembership)
     .sort((a, b) => {
       if (enabled) {
         const ea = enabled.has(a.tenantId) ? 0 : 1;
@@ -136,7 +187,7 @@ export function instructorTenantIds(
     .map((m) => m.tenantId);
 }
 
-/** True when the user may run a live class (holds a staff role in some tenant). */
+/** True when the user may run a live class (holds a qualifying staff role). */
 export function isInstructor(memberships: Membership[]): boolean {
   return instructorTenantId(memberships) !== null;
 }
@@ -155,13 +206,15 @@ const ROLE_PRIORITY: Record<MemberRole, number> = {
 };
 
 /**
- * The user's HIGHEST-privilege role across all their memberships. Defaults to
- * `learner` when the user holds no membership (safe floor). Deterministic — the
- * five roles form a total order so there are no ties.
+ * The user's HIGHEST-privilege role across their REAL (non-personal) memberships.
+ * Personal `plg-<uid>` owner tenants are ignored so a federated dfl-batch learner
+ * who was mis-granted a personal owner tenant still reads as "Aluno", not "Admin".
+ * Defaults to `learner` when the user holds no real membership (safe floor).
  */
 export function highestRole(memberships: Membership[]): MemberRole {
-  if (!memberships || memberships.length === 0) return 'learner';
-  return [...memberships].sort(
+  const real = (memberships ?? []).filter((m) => !m.isPersonal);
+  if (real.length === 0) return 'learner';
+  return [...real].sort(
     (a, b) => (ROLE_PRIORITY[a.role] ?? 99) - (ROLE_PRIORITY[b.role] ?? 99)
   )[0].role;
 }

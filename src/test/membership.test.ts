@@ -6,6 +6,7 @@ import {
   instructorTenantIds,
   isInstructor,
   highestRole,
+  isPersonalTenantSlug,
   type Membership,
 } from '@/services/membership.service';
 
@@ -178,5 +179,100 @@ describe('highestRole (role pill)', () => {
     ];
     expect(highestRole(a)).toBe(highestRole(b));
     expect(highestRole(a)).toBe('owner');
+  });
+});
+
+// ── Personal (PLG) tenants confer NO admin/host/paywall affordances ─────────────
+// Bug: the auth-insert trigger mis-grants a federated DFL fellow a personal
+// `plg-<uid>` OWNER tenant (it can't distinguish federation from PLG at insert
+// time). A dfl-batch LEARNER who owns such a personal tenant must NOT read as an
+// admin / see the host button / bypass the paywall. A real dfl-batch instructor
+// still does; a genuine solo PLG owner still owns their tenant.
+describe('personal PLG tenant does not leak professor/admin affordances', () => {
+  const DFL_BATCH = 'dfl-batch-tenant-id';
+  const PLG = 'plg-abc123personal';
+
+  // The exact leak shape: learner in the pilot tenant + mis-granted personal owner.
+  const leakedFederatedLearner: Membership[] = [
+    { tenantId: DFL_BATCH, role: 'learner', isPersonal: false, liveClassEnabled: true },
+    { tenantId: PLG, role: 'owner', isPersonal: true, liveClassEnabled: false },
+  ];
+  // A real teaching-tenant instructor (the account that SHOULD keep affordances).
+  const realInstructor: Membership[] = [
+    { tenantId: DFL_BATCH, role: 'instructor', isPersonal: false, liveClassEnabled: true },
+  ];
+  // A genuine solo PLG user: owner of ONLY their personal tenant.
+  const soloPlgOwner: Membership[] = [
+    { tenantId: PLG, role: 'owner', isPersonal: true, liveClassEnabled: false },
+  ];
+
+  it('isTenantAdmin: personal owner does NOT count; real tenant admin/owner does', () => {
+    expect(isTenantAdmin(leakedFederatedLearner)).toBe(false); // the leak — closed
+    expect(isTenantAdmin(soloPlgOwner)).toBe(false); // personal-only owner is not an admin surface
+    expect(isTenantAdmin([{ tenantId: DFL_BATCH, role: 'owner', isPersonal: false }])).toBe(true);
+    expect(isTenantAdmin([{ tenantId: DFL_BATCH, role: 'tenant_admin', isPersonal: false }])).toBe(true);
+    expect(isTenantAdmin(realInstructor)).toBe(false); // instructor never sees /admin (unchanged)
+  });
+
+  it('adminTenantId: never returns a personal tenant', () => {
+    expect(adminTenantId(leakedFederatedLearner)).toBeNull();
+    expect(adminTenantId(soloPlgOwner)).toBeNull();
+    expect(adminTenantId([{ tenantId: DFL_BATCH, role: 'tenant_admin', isPersonal: false }])).toBe(DFL_BATCH);
+  });
+
+  it('host affordance (instructorTenantId): hidden for the leaked personal owner', () => {
+    // No host button for a federated learner mis-granted a personal owner tenant.
+    expect(
+      instructorTenantId(leakedFederatedLearner, { enabledTenantIds: [DFL_BATCH] })
+    ).toBeNull();
+    // A real dfl-batch instructor still resolves the teaching tenant.
+    expect(
+      instructorTenantId(realInstructor, { enabledTenantIds: [DFL_BATCH] })
+    ).toBe(DFL_BATCH);
+    // Solo PLG owner with live classes DISABLED gets no host button (not wired) …
+    expect(instructorTenantId(soloPlgOwner)).toBeNull();
+    // … but ONCE their own tenant enables live classes, they CAN host it.
+    expect(
+      instructorTenantId(
+        [{ tenantId: PLG, role: 'owner', isPersonal: true, liveClassEnabled: true }],
+        { enabledTenantIds: [PLG] }
+      )
+    ).toBe(PLG);
+  });
+
+  it('instructorTenantIds: excludes the disabled personal tenant, keeps real staff', () => {
+    expect(
+      instructorTenantIds(leakedFederatedLearner, { enabledTenantIds: [DFL_BATCH] })
+    ).toEqual([]);
+    expect(
+      instructorTenantIds(
+        [
+          { tenantId: DFL_BATCH, role: 'instructor', isPersonal: false, liveClassEnabled: true },
+          { tenantId: PLG, role: 'owner', isPersonal: true, liveClassEnabled: false },
+        ],
+        { enabledTenantIds: [DFL_BATCH] }
+      )
+    ).toEqual([DFL_BATCH]);
+  });
+
+  it('isInstructor: false for the leaked personal owner, true for a real instructor', () => {
+    expect(isInstructor(leakedFederatedLearner)).toBe(false);
+    expect(isInstructor(realInstructor)).toBe(true);
+  });
+
+  it('highestRole (role pill): leaked federated learner reads as learner, not owner', () => {
+    expect(highestRole(leakedFederatedLearner)).toBe('learner');
+    // Personal-only owner has no real membership → safe learner floor.
+    expect(highestRole(soloPlgOwner)).toBe('learner');
+    // Real staff role still wins.
+    expect(highestRole(realInstructor)).toBe('instructor');
+  });
+
+  it('isPersonalTenantSlug detects the plg-<uid> naming', () => {
+    expect(isPersonalTenantSlug('plg-abc123')).toBe(true);
+    expect(isPersonalTenantSlug('dfl-batch')).toBe(false);
+    expect(isPersonalTenantSlug('acme')).toBe(false);
+    expect(isPersonalTenantSlug(null)).toBe(false);
+    expect(isPersonalTenantSlug(undefined)).toBe(false);
   });
 });
