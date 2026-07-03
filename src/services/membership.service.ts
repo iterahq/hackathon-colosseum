@@ -55,3 +55,20 @@ export function adminTenantId(memberships: Membership[]): string | null {
 export function isTenantAdmin(memberships: Membership[]): boolean {
   return memberships.some((m) => m.role === 'tenant_admin' || m.role === 'owner');
 }
+
+/**
+ * The tenant the user may RUN a live class for (first membership with a staff
+ * role — instructor/tenant_admin/owner). Returns null when the user holds none.
+ * This is the app-layer mirror of the migration's current_instructor_tenant_ids().
+ */
+export function instructorTenantId(memberships: Membership[]): string | null {
+  const m = memberships.find(
+    (x) => x.role === 'instructor' || x.role === 'tenant_admin' || x.role === 'owner'
+  );
+  return m ? m.tenantId : null;
+}
+
+/** True when the user may run a live class (holds a staff role in some tenant). */
+export function isInstructor(memberships: Membership[]): boolean {
+  return instructorTenantId(memberships) !== null;
+}

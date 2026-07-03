@@ -31,9 +31,7 @@ import { X, Heart, Trophy } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
-import { getIteraUserId } from '@/services/iteraUser';
-import { awardActivityXp } from '@/services/gamification.service';
+import { persistActivityProgress } from '@/services/progress.service';
 import type { Activity } from '@/types/content';
 
 /** Decorative lives count — inert chrome (no lives backend). */
@@ -73,64 +71,15 @@ export default function LessonPlayer() {
     ? Math.round(((completed ? activities.length : index) / activities.length) * 100)
     : 0;
 
-  /**
-   * Persist completion of one activity. Returns TRUE only when the progress row
-   * actually landed (so the caller can avoid showing a false success trophy).
-   * activity_results + XP stay best-effort — they don't gate the celebration.
-   */
-  async function persistProgress(activityId: string): Promise<boolean> {
-    if (!isSupabaseConfigured) return false;
-    try {
-      const sb = getSupabase();
-      // RLS keys itera.progress / itera.activity_results on itera.users.id
-      // (NOT the Supabase auth uid). Resolve the Itera-local user id first —
-      // writing the raw auth uid silently FK-fails.
-      const userId = await getIteraUserId();
-      if (!userId) return false;
-
-      // Progress: upsert with the CORRECT enum value. The progress_status enum
-      // is ('not_started','in_progress','completed') — 'done' is invalid.
-      const { error: progressError } = await sb
-        .from('progress')
-        .upsert(
-          {
-            user_id: userId,
-            activity_id: activityId,
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,activity_id' }
-        );
-      // The progress write is the load-bearing one (it drives lesson-done /
-      // unlock). If it failed, report failure so we never celebrate an unsaved
-      // completion.
-      if (progressError) return false;
-
-      // Results: INSERT the row the Results-API pull reads (per-tenant key sees
-      // results of its members). Best-effort; one row per completion attempt.
-      await sb
-        .from('activity_results')
-        .insert({ user_id: userId, activity_id: activityId, passed: true, score_internal: null });
-
-      // XP: award once per activity. awardActivityXp delegates to the IDEMPOTENT
-      // SECURITY DEFINER RPC (partial unique index on xp_events(user_id, reason)
-      // + ON CONFLICT DO NOTHING), so re-completing never double-awards — which
-      // is why we don't gate on a not-completed -> completed transition
-      // client-side. Best-effort; failure never blocks the learner.
-      await awardActivityXp(activityId);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async function handleComplete(correct: boolean) {
     if (!current || saving) return;
     const isLast = index >= activities.length - 1;
 
     if (correct) {
       setSaving(true);
-      const ok = await persistProgress(current.id);
+      // Shared per-user persistence (itera.progress + best-effort results/XP) —
+      // identical write path used by the live-class session page.
+      const ok = await persistActivityProgress(current.id);
       setSaving(false);
       if (ok) {
         setDoneIds((prev) => new Set(prev).add(current.id));

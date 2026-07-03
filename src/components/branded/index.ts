@@ -5,3 +5,4 @@ export { ProgramCard } from './ProgramCard';
 export { StatsCard } from './StatsCard';
 export { BadgeGrid } from './BadgeGrid';
 export { SkillTree } from './SkillTree';
+export { LiveClassBadge } from './LiveClassBadge';

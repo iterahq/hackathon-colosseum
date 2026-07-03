@@ -9,6 +9,8 @@ import CatalogPage from "./pages/CatalogPage";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
+import LiveSessionPage from "./pages/LiveSessionPage";
+import InstructorClassPage from "./pages/live/InstructorClassPage";
 import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
 import SubscribeReturnPage from "./pages/SubscribeReturnPage";
@@ -130,6 +132,34 @@ const App = () => (
                     </RequireAuth>
                   }
                 />
+                {/* Live-class / real-time cohort mode (plan 20260702-…).
+                    Professor control surface — instructor-gated. Static
+                    `/live/instructor` is declared BEFORE the dynamic
+                    `/live/:sessionId` so it is never captured as a sessionId.
+                    The per-tenant enable gate is enforced in-app (the page shows
+                    a "not enabled" state for a non-enabled tenant). */}
+                <Route
+                  path="/live/instructor"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="instructor">
+                        <InstructorClassPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                {/* Student live-session surface — reuses the activity components in
+                    session mode (server-authoritative pointer). Auth-gated only;
+                    RLS + the in-app enable gate scope visibility. */}
+                <Route
+                  path="/live/:sessionId"
+                  element={
+                    <RequireAuth>
+                      <LiveSessionPage />
+                    </RequireAuth>
+                  }
+                />
+
                 {/* Tenant-admin observability (plan #6) — role-gated, READ-ONLY,
                     single-tenant. NO authoring routes exist here by design
                     (authoring lives in dfl-lms-admin) — ADR-5. RequireAuth →

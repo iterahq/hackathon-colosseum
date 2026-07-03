@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   adminTenantId,
   isTenantAdmin,
+  instructorTenantId,
+  isInstructor,
   type Membership,
 } from '@/services/membership.service';
 
@@ -31,5 +33,21 @@ describe('membership role helpers', () => {
     const m: Membership[] = [{ tenantId: TB, role: 'learner' }];
     expect(isTenantAdmin(m)).toBe(false);
     expect(adminTenantId(m)).toBeNull();
+  });
+
+  it('instructorTenantId returns the tenant for instructor/tenant_admin/owner, else null', () => {
+    // An instructor may run a live class (a learner may NOT).
+    expect(instructorTenantId([{ tenantId: TA, role: 'instructor' }])).toBe(TA);
+    expect(instructorTenantId([{ tenantId: TA, role: 'tenant_admin' }])).toBe(TA);
+    expect(instructorTenantId([{ tenantId: TA, role: 'owner' }])).toBe(TA);
+    expect(instructorTenantId([{ tenantId: TA, role: 'learner' }])).toBeNull();
+    expect(instructorTenantId([{ tenantId: TA, role: 'author' }])).toBeNull();
+    expect(instructorTenantId([])).toBeNull();
+  });
+
+  it('isInstructor mirrors instructorTenantId presence', () => {
+    expect(isInstructor([{ tenantId: TA, role: 'instructor' }])).toBe(true);
+    expect(isInstructor([{ tenantId: TB, role: 'learner' }])).toBe(false);
+    expect(isInstructor([])).toBe(false);
   });
 });

@@ -6,7 +6,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Sparkles, CreditCard, GraduationCap } from 'lucide-react';
-import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
+import { AppHeader, ProgramCard, StatsCard, BadgeGrid, LiveClassBadge } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
 
@@ -41,9 +41,14 @@ export default function HomePage() {
               <div className="relative bg-obsidiana p-6 md:p-10 min-h-[220px] md:min-h-[260px] flex flex-col justify-end">
                 <div className="absolute inset-0 grid-pattern opacity-30" />
                 <div className="relative max-w-lg">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
-                    <Sparkles className="w-3 h-3" /> Itera
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
+                      <Sparkles className="w-3 h-3" /> Itera
+                    </span>
+                    {/* Live-class badge — only renders when a live class is active
+                        + the user's tenant has the feature enabled (plan piece #4). */}
+                    <LiveClassBadge />
+                  </div>
                   <h1
                     className="font-display font-bold mt-3 text-foreground"
                     style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', lineHeight: 1.1 }}
