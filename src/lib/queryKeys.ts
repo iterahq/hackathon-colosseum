@@ -50,7 +50,10 @@ export const queryKeys = {
     active: ['live-class', 'active'] as const,
     enabled: (userId: string) => ['live-class', 'enabled', userId] as const,
     session: (id: string) => ['live-class', 'session', id] as const,
-    completers: (activityId: string) => ['live-class', 'completers', activityId] as const,
+    completers: (activityId: string, presence = '') =>
+      ['live-class', 'completers', activityId, presence] as const,
+    enabledTenantIds: (userId: string) =>
+      ['live-class', 'enabled-tenant-ids', userId] as const,
     mySessions: (tenantId: string) => ['live-class', 'my-sessions', tenantId] as const,
   },
 } as const;

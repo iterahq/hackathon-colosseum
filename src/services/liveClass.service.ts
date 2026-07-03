@@ -77,6 +77,31 @@ export async function isLiveClassEnabledForUser(): Promise<boolean> {
 }
 
 /**
+ * The set of the user's tenant ids that have live_class_enabled=true. Feeds the
+ * DETERMINISTIC instructor-tenant resolver (membership.service.instructorTenantId)
+ * so a real instructor targets the enabled teaching tenant (e.g. dfl-batch), never
+ * their PLG-auto-created personal `owner` tenant (enabled=false). (loop-1 fix #4.)
+ */
+export async function getEnabledTenantIds(): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  const sb = getSupabase();
+  const { data: mem, error: memErr } = await sb.from('memberships').select('tenant_id');
+  if (memErr) return [];
+  const tenantIds = asRows(mem).map((m) => str(m.tenant_id)).filter(Boolean);
+  if (tenantIds.length === 0) return [];
+
+  const { data: tenants, error: tErr } = await sb
+    .from('tenants')
+    .select('id, live_class_enabled')
+    .in('id', tenantIds);
+  if (tErr) return [];
+  return asRows(tenants)
+    .filter((t) => t.live_class_enabled === true)
+    .map((t) => str(t.id))
+    .filter(Boolean);
+}
+
+/**
  * The active LIVE session visible to the current user (global + tenant-scoped via
  * RLS), or null. Returns null when the feature is disabled for the user's tenant
  * (the enable gate) — so the badge never shows for a non-enabled tenant.
@@ -126,8 +151,35 @@ export async function getMySessions(tenantId: string): Promise<ClassSession[]> {
 }
 
 /**
- * Start a live session: insert as `live` pointing at `firstActivityId` (or null).
+ * The lesson's FIRST activity id by ordinal (lowest ordinal, id tie-break), or
+ * null when the lesson has no activities. Server-side belt for the start-race:
+ * if the caller couldn't resolve the first activity (useLessonContent hadn't
+ * resolved when Start was clicked), we still default the pointer here so a
+ * started session is never stuck on a null pointer. (loop-1 fix #1b.)
+ */
+export async function getFirstActivityId(lessonId: string): Promise<string | null> {
+  if (!isSupabaseConfigured || !lessonId) return null;
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('activities')
+    .select('id, ordinal')
+    .eq('lesson_id', lessonId)
+    .order('ordinal', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(1);
+  if (error) return null;
+  const first = asRows(data)[0];
+  return first ? strOrNull(first.id) : null;
+}
+
+/**
+ * Start a live session: insert as `live` pointing at `firstActivityId`.
  * scope defaults to 'global' for v1. Returns the created session.
+ *
+ * Robustness (loop-1 fix #1): if `firstActivityId` is null (the lesson content
+ * hadn't resolved client-side when Start was clicked), we resolve the lesson's
+ * first activity server-side BEFORE inserting — so a started session always has
+ * a non-null pointer and no student is stranded on "Aguardando o professor".
  */
 export async function startClassSession(params: {
   tenantId: string;
@@ -137,13 +189,14 @@ export async function startClassSession(params: {
   scope?: ClassScope;
 }): Promise<ClassSession> {
   const sb = getSupabase();
+  const pointer = params.firstActivityId ?? (await getFirstActivityId(params.lessonId));
   const { data, error } = await sb
     .from('class_sessions')
     .insert({
       tenant_id: params.tenantId,
       lesson_id: params.lessonId,
       instructor_id: params.instructorId,
-      current_activity_id: params.firstActivityId ?? null,
+      current_activity_id: pointer,
       status: 'live',
       scope: params.scope ?? 'global',
       started_at: new Date().toISOString(),
@@ -192,17 +245,28 @@ export interface ClassCompleter {
 }
 
 /**
- * For a tenant + activity, the tenant's learners flagged done on THAT activity.
+ * For a tenant + activity, the learners flagged done on THAT activity.
  * Reads memberships/users/progress/activity_results under the instructor READ
  * policies (migration 0013). Completion = progress.status='completed' OR
  * activity_results.passed. Mirrors admin.service's completion signal.
+ *
+ * PRESENCE-SCOPED (loop-1 fix #2): when `presentUserIds` is provided (the live
+ * presence roster — students actually in the session), the roster + denominator
+ * are restricted to those learners. This stops the instructor view from (a)
+ * counting the WHOLE tenant cohort as the denominator (e.g. "2/6" when only 3
+ * joined) and (b) LEAKING the names of absent learners into the live view. When
+ * omitted (no roster yet), it falls back to the full tenant learner set.
  */
 export async function getClassActivityCompleters(
   tenantId: string,
-  activityId: string
+  activityId: string,
+  presentUserIds?: string[]
 ): Promise<ClassCompleter[]> {
   if (!isSupabaseConfigured || !activityId) return [];
   const sb = getSupabase();
+
+  const presentSet =
+    presentUserIds && presentUserIds.length > 0 ? new Set(presentUserIds) : null;
 
   const { data: mem } = await sb
     .from('memberships')
@@ -211,7 +275,10 @@ export async function getClassActivityCompleters(
   const learnerIds = asRows(mem)
     .filter((m) => str(m.role) === 'learner')
     .map((m) => str(m.user_id))
-    .filter(Boolean);
+    .filter(Boolean)
+    // Scope to who's actually in the room (present-first), so the denominator
+    // and the shown names never include absent learners.
+    .filter((id) => (presentSet ? presentSet.has(id) : true));
   if (learnerIds.length === 0) return [];
 
   const { data: users } = await sb

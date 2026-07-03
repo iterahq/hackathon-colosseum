@@ -34,7 +34,12 @@ import { useMembership } from '@/hooks/useMembership';
 import { instructorTenantId } from '@/services/membership.service';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { usePrograms, useProgram, useLessonContent } from '@/hooks';
-import { useMySessions, useClassCompleters, useLiveClassEnabled } from '@/hooks/useLiveClass';
+import {
+  useMySessions,
+  useClassCompleters,
+  useLiveClassEnabled,
+  useEnabledTenantIds,
+} from '@/hooks/useLiveClass';
 import { useClassSession } from '@/hooks/useClassSession';
 import { queryKeys } from '@/lib/queryKeys';
 import {
@@ -48,7 +53,12 @@ import type { Activity } from '@/types/content';
 export default function InstructorClassPage() {
   const { t } = useI18n();
   const { data: memberships } = useMembership();
-  const tenantId = instructorTenantId(memberships ?? []);
+  const { data: enabledTenantIds } = useEnabledTenantIds();
+  // Deterministic instructor tenant: prefer a live-class-enabled tenant (dfl-batch)
+  // over the PLG-auto-created personal `owner` tenant. (loop-1 fix #4.)
+  const tenantId = instructorTenantId(memberships ?? [], {
+    enabledTenantIds: enabledTenantIds ?? [],
+  });
   const identity = useIteraIdentity();
   const { data: enabled, isPending: enabledPending } = useLiveClassEnabled();
   const { data: sessions, isPending, refetch } = useMySessions(tenantId);
@@ -135,7 +145,7 @@ function StartClass({
   const [error, setError] = useState<string | null>(null);
 
   const { data: program } = useProgram(slug || undefined);
-  const { data: lesson } = useLessonContent(lessonId || undefined);
+  const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
 
   const lessons = useMemo(
     () =>
@@ -145,17 +155,26 @@ function StartClass({
     [program]
   );
 
+  // The lesson's first activity — resolved only once useLessonContent lands. We
+  // GUARD Start on this being non-null so a professor can't start a class whose
+  // pointer would be null (the race that stranded students on "Aguardando o
+  // professor"). Belt; the service also defaults the pointer server-side. (fix #1a.)
+  const firstActivityId = (lesson?.activities ?? [])[0]?.id ?? null;
+  const lessonActivitiesLoading = Boolean(lessonId) && !firstActivityId && lessonFetching;
+  const lessonHasNoActivities =
+    Boolean(lessonId) && !lessonFetching && (lesson?.activities?.length ?? 0) === 0;
+  const canStart = Boolean(lessonId && instructorId && firstActivityId) && !starting;
+
   async function handleStart() {
-    if (!lessonId || !instructorId) return;
+    if (!lessonId || !instructorId || !firstActivityId) return;
     setStarting(true);
     setError(null);
     try {
-      const first = (lesson?.activities ?? [])[0]?.id ?? null;
       await startClassSession({
         tenantId,
         lessonId,
         instructorId,
-        firstActivityId: first,
+        firstActivityId,
         scope: 'global',
       });
       onStarted();
@@ -226,13 +245,36 @@ function StartClass({
         </p>
       )}
 
+      {lessonActivitiesLoading && (
+        <p
+          className="flex items-center gap-2 text-sm text-muted-foreground mb-4"
+          data-testid="instructor-start-loading-activities"
+        >
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          {t('live.instructor.start.loadingActivities')}
+        </p>
+      )}
+      {lessonHasNoActivities && (
+        <p
+          className="text-sm text-destructive mb-4"
+          data-testid="instructor-start-no-activities"
+          role="alert"
+        >
+          {t('live.instructor.start.noActivities')}
+        </p>
+      )}
+
       <button
         onClick={handleStart}
-        disabled={!lessonId || !instructorId || starting}
+        disabled={!canStart}
         data-testid="instructor-start-btn"
         className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
       >
-        {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+        {starting || lessonActivitiesLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Play className="w-4 h-4" />
+        )}
         {t('live.instructor.start.cta')}
       </button>
     </div>
@@ -271,7 +313,15 @@ function ClassControl({
   );
   const current = idx >= 0 ? activities[idx] : null;
 
-  const { data: completers = [] } = useClassCompleters(tenantId, currentActivityId);
+  // Scope "who's done" to the live presence roster (students actually in the
+  // room) — the denominator is present-first, not the whole tenant cohort, and
+  // absent learners' names never leak into the live view. (loop-1 fix #2.)
+  const presentUserIds = useMemo(() => roster.map((m) => m.userId), [roster]);
+  const { data: completers = [] } = useClassCompleters(
+    tenantId,
+    currentActivityId,
+    presentUserIds
+  );
   const doneCount = completers.filter((c) => c.done).length;
 
   const [busy, setBusy] = useState(false);

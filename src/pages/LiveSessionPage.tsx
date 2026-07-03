@@ -40,6 +40,7 @@ export default function LiveSessionPage() {
   );
 
   const { data: lesson } = useLessonContent(session?.lessonId);
+  const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
   const current = useMemo(
@@ -184,9 +185,20 @@ export default function LiveSessionPage() {
               {tText(lesson?.title)}
             </h1>
 
-            {!currentActivityId || !current ? (
-              // The professor hasn't pointed at an activity yet (or it's between
-              // activities) — hold the student on a calm "waiting" state.
+            {current ? null : !lessonLoaded ? (
+              // Late-join / reconnect: the durable session may ALREADY carry a
+              // live pointer, but the lesson content hasn't resolved yet. Show an
+              // activity SKELETON (not the "waiting" state) so a joiner with a
+              // live pointer goes straight to the activity once it lands — no
+              // false "Aguardando o professor…" flash. (loop-1 fix #3.)
+              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
+                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
+                <div className="h-40 rounded-2xl ds-shimmer" />
+                <div className="h-12 rounded-full ds-shimmer" />
+              </div>
+            ) : !currentActivityId ? (
+              // Lesson is loaded and there's genuinely NO pointer — the professor
+              // hasn't pointed at an activity yet. Hold on a calm "waiting" state.
               <div
                 className="mt-8 rounded-3xl border border-dashed border-clay/40 bg-clay/5 p-12 text-center"
                 data-testid="live-waiting"
@@ -196,6 +208,16 @@ export default function LiveSessionPage() {
                 <p className="text-sm text-muted-foreground mt-1">{t('live.waiting.subtitle')}</p>
               </div>
             ) : (
+              // Lesson loaded, pointer set, but the activity isn't in the list
+              // (transient pointer/lesson mismatch) — skeleton rather than a
+              // misleading "waiting" state.
+              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
+                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
+                <div className="h-40 rounded-2xl ds-shimmer" />
+                <div className="h-12 rounded-full ds-shimmer" />
+              </div>
+            )}
+            {current && (
               <div className="mt-7">
                 {/* key on the activity id so a force-advance fully remounts the
                     renderer (fresh state) — the student loses the prior activity. */}

@@ -3,6 +3,7 @@ import {
   adminTenantId,
   isTenantAdmin,
   instructorTenantId,
+  instructorTenantIds,
   isInstructor,
   type Membership,
 } from '@/services/membership.service';
@@ -49,5 +50,77 @@ describe('membership role helpers', () => {
     expect(isInstructor([{ tenantId: TA, role: 'instructor' }])).toBe(true);
     expect(isInstructor([{ tenantId: TB, role: 'learner' }])).toBe(false);
     expect(isInstructor([])).toBe(false);
+  });
+});
+
+// loop-1 fix #4 — deterministic instructor-tenant resolution.
+describe('instructorTenantId determinism (multiple staff memberships)', () => {
+  const DFL = 'dfl-batch-tenant';
+  const PERSONAL = 'personal-plg-tenant';
+
+  it('prefers a live-class-enabled tenant over a non-enabled personal owner tenant', () => {
+    // The PLG shape: a real instructor in dfl-batch PLUS an auto-created personal
+    // `owner` tenant. Even though `owner` is a staff role, the enabled tenant wins.
+    const memberships: Membership[] = [
+      { tenantId: PERSONAL, role: 'owner' },
+      { tenantId: DFL, role: 'instructor' },
+    ];
+    expect(
+      instructorTenantId(memberships, { enabledTenantIds: [DFL] })
+    ).toBe(DFL);
+  });
+
+  it('still prefers the enabled tenant regardless of membership row order', () => {
+    const memberships: Membership[] = [
+      { tenantId: DFL, role: 'instructor' },
+      { tenantId: PERSONAL, role: 'owner' },
+    ];
+    expect(instructorTenantId(memberships, { enabledTenantIds: [DFL] })).toBe(DFL);
+  });
+
+  it('falls back to role priority (instructor > owner) when no enabled set is given', () => {
+    const memberships: Membership[] = [
+      { tenantId: PERSONAL, role: 'owner' },
+      { tenantId: DFL, role: 'instructor' },
+    ];
+    expect(instructorTenantId(memberships)).toBe(DFL);
+  });
+
+  it('is deterministic for two same-role tenants (lexical tenantId tie-break)', () => {
+    const A = 'aaaa-tenant';
+    const B = 'bbbb-tenant';
+    const order1: Membership[] = [
+      { tenantId: B, role: 'instructor' },
+      { tenantId: A, role: 'instructor' },
+    ];
+    const order2: Membership[] = [
+      { tenantId: A, role: 'instructor' },
+      { tenantId: B, role: 'instructor' },
+    ];
+    expect(instructorTenantId(order1)).toBe(A);
+    expect(instructorTenantId(order2)).toBe(A);
+  });
+
+  it('does not mutate the input array', () => {
+    const memberships: Membership[] = [
+      { tenantId: PERSONAL, role: 'owner' },
+      { tenantId: DFL, role: 'instructor' },
+    ];
+    const snapshot = memberships.map((m) => m.tenantId);
+    instructorTenantId(memberships, { enabledTenantIds: [DFL] });
+    expect(memberships.map((m) => m.tenantId)).toEqual(snapshot);
+  });
+
+  it('instructorTenantIds returns all staff tenants, enabled-first then role priority', () => {
+    const memberships: Membership[] = [
+      { tenantId: PERSONAL, role: 'owner' },
+      { tenantId: DFL, role: 'instructor' },
+      { tenantId: 'learner-tenant', role: 'learner' },
+    ];
+    expect(
+      instructorTenantIds(memberships, { enabledTenantIds: [DFL] })
+    ).toEqual([DFL, PERSONAL]);
+    // learner tenant is never included.
+    expect(instructorTenantIds(memberships)).not.toContain('learner-tenant');
   });
 });

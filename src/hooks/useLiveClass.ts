@@ -17,6 +17,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import {
   getActiveLiveClass,
   getClassActivityCompleters,
+  getEnabledTenantIds,
   getMySessions,
   isLiveClassEnabledForUser,
 } from '@/services/liveClass.service';
@@ -28,6 +29,21 @@ export function useLiveClassEnabled() {
   return useQuery({
     queryKey: queryKeys.liveClass.enabled(session?.user?.id ?? 'anon'),
     queryFn: isLiveClassEnabledForUser,
+    enabled: configured && Boolean(session),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * The user's live-class-enabled tenant ids — feeds the deterministic
+ * instructor-tenant resolver so a real instructor targets the enabled teaching
+ * tenant (dfl-batch), not their PLG personal `owner` tenant. (loop-1 fix #4.)
+ */
+export function useEnabledTenantIds() {
+  const { session, configured } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.liveClass.enabledTenantIds(session?.user?.id ?? 'anon'),
+    queryFn: getEnabledTenantIds,
     enabled: configured && Boolean(session),
     staleTime: 5 * 60 * 1000,
   });
@@ -78,14 +94,28 @@ export function useMySessions(tenantId: string | null | undefined) {
   });
 }
 
-/** Who's done on the current activity (instructor "who's done" view). Polls. */
+/**
+ * Who's done on the current activity (instructor "who's done" view). Polls.
+ *
+ * PRESENCE-SCOPED (loop-1 fix #2): pass the live presence roster's user ids so
+ * the denominator + names are restricted to who's actually in the room — the
+ * whole tenant cohort is NOT counted and absent learners are NOT leaked. The
+ * present ids are folded into the query key so a roster change re-scopes.
+ */
 export function useClassCompleters(
   tenantId: string | null | undefined,
-  activityId: string | null | undefined
+  activityId: string | null | undefined,
+  presentUserIds?: string[]
 ) {
+  const present = (presentUserIds ?? []).filter(Boolean).slice().sort();
   return useQuery({
-    queryKey: queryKeys.liveClass.completers(activityId ?? ''),
-    queryFn: () => getClassActivityCompleters(tenantId as string, activityId as string),
+    queryKey: queryKeys.liveClass.completers(activityId ?? '', present.join(',')),
+    queryFn: () =>
+      getClassActivityCompleters(
+        tenantId as string,
+        activityId as string,
+        present.length > 0 ? present : undefined
+      ),
     enabled: Boolean(tenantId && activityId),
     refetchInterval: 8_000,
   });
