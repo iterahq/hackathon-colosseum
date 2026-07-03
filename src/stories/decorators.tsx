@@ -10,7 +10,7 @@ import React from 'react';
 import type { Decorator } from '@storybook/react';
 
 export const withActivityWidth: Decorator = (Story) => (
-  <div style={{ maxWidth: 640, width: '100%', margin: '0 auto' }}>
+  <div style={{ width: 'min(640px, 100%)', margin: '0 auto' }}>
     <Story />
   </div>
 );

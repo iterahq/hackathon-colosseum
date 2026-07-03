@@ -36,7 +36,7 @@ export function ActivityShell({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-3xl border border-border bg-card p-6 md:p-8"
+      className="w-full rounded-3xl border border-border bg-card p-6 md:p-8"
       data-testid="activity-shell"
       data-activity-kind={kind}
     >
