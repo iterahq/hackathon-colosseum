@@ -49,7 +49,7 @@ const program: ProgramDetail = {
 };
 
 const meta: Meta<typeof SkillTree> = {
-  title: 'Branded/SkillTree',
+  title: 'Organisms/SkillTree',
   component: SkillTree,
   render: (args) => (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>

@@ -16,7 +16,7 @@ const base: Program = {
 };
 
 const meta: Meta<typeof ProgramCard> = {
-  title: 'Branded/ProgramCard',
+  title: 'Molecules/ProgramCard',
   component: ProgramCard,
   parameters: { layout: 'centered' },
   render: (args) => (

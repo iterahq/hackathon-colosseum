@@ -1,20 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MultiChoiceActivity } from '@/components/branded/activity/MultiChoiceActivity';
 import { makeActivity, noop } from './activityFixtures';
+import { withActivityWidth } from './decorators';
 
 /**
  * MultiChoice — pick one-or-more. Correct only when the selected SET equals the
  * correct set. Stories: default / answered / correct / incorrect / disabled.
  */
 const meta: Meta<typeof MultiChoiceActivity> = {
-  title: 'Activity/MultiChoice',
+  title: 'Organisms/Activities/MultiChoice',
   component: MultiChoiceActivity,
+  decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof MultiChoiceActivity>;
-
-const wrap = { maxWidth: 640 } as const;
 
 const SPEC = {
   instruction: { text: 'Quais são boas práticas de modelagem relacional?' },
@@ -28,41 +28,29 @@ const SPEC = {
 };
 
 export const Default: Story = {
-  render: () => (
-    <div style={wrap}>
-      <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} />
-    </div>
-  ),
+  render: () => <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} />,
 };
 
 export const Answered: Story = {
   render: () => (
-    <div style={wrap}>
-      <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'b']} />
-    </div>
+    <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'b']} />
   ),
 };
 
 export const Correct: Story = {
   render: () => (
-    <div style={wrap}>
-      <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'b', 'd']} initialSubmitted />
-    </div>
+    <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'b', 'd']} initialSubmitted />
   ),
 };
 
 export const Incorrect: Story = {
   render: () => (
-    <div style={wrap}>
-      <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'c']} initialSubmitted />
-    </div>
+    <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} initialSelectedIds={['a', 'c']} initialSubmitted />
   ),
 };
 
 export const Disabled: Story = {
   render: () => (
-    <div style={wrap}>
-      <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC, 'done')} onComplete={noop} initialSelectedIds={['a', 'b', 'd']} initialSubmitted />
-    </div>
+    <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC, 'done')} onComplete={noop} initialSelectedIds={['a', 'b', 'd']} initialSubmitted />
   ),
 };

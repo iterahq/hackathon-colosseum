@@ -43,7 +43,7 @@ const programs: (ProgramCardData & { slug: string; alreadyEnrolled: boolean })[]
   },
 ];
 
-const meta: Meta = { title: 'Branded/CatalogGrid', parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Organisms/CatalogGrid', parameters: { layout: 'fullscreen' } };
 export default meta;
 type Story = StoryObj;
 

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ProgramIcon } from '@/components/branded';
 
 const meta: Meta<typeof ProgramIcon> = {
-  title: 'Branded/ProgramIcon',
+  title: 'Atoms/ProgramIcon',
   component: ProgramIcon,
   parameters: { layout: 'centered' },
 };

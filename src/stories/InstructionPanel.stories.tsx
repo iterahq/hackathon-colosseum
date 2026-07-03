@@ -8,7 +8,7 @@ import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_VIDEO } from './activityFixtures';
  * form below is a first-class variation the general activity types compose.
  */
 const meta: Meta<typeof InstructionPanel> = {
-  title: 'Activity/InstructionPanel',
+  title: 'Molecules/InstructionPanel',
   component: InstructionPanel,
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };

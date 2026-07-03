@@ -1,20 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { OrderActivity } from '@/components/branded/activity/OrderActivity';
 import { makeActivity, noop } from './activityFixtures';
+import { withActivityWidth } from './decorators';
 
 /**
  * Order — reorder a scrambled sequence. Stories: default (scrambled) / answered
  * (reordered, not submitted) / correct / incorrect / disabled.
  */
 const meta: Meta<typeof OrderActivity> = {
-  title: 'Activity/Order',
+  title: 'Organisms/Activities/Order',
   component: OrderActivity,
+  decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof OrderActivity>;
-
-const wrap = { maxWidth: 640 } as const;
 
 // Items are presented scrambled; correct_order is the intended sequence.
 const SPEC = {
@@ -29,41 +29,29 @@ const SPEC = {
 };
 
 export const Default: Story = {
-  render: () => (
-    <div style={wrap}>
-      <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} />
-    </div>
-  ),
+  render: () => <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} />,
 };
 
 export const Answered: Story = {
   render: () => (
-    <div style={wrap}>
-      <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's4', 's3']} />
-    </div>
+    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's4', 's3']} />
   ),
 };
 
 export const Correct: Story = {
   render: () => (
-    <div style={wrap}>
-      <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
-    </div>
+    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
   ),
 };
 
 export const Incorrect: Story = {
   render: () => (
-    <div style={wrap}>
-      <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s2', 's1', 's3', 's4']} initialSubmitted />
-    </div>
+    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s2', 's1', 's3', 's4']} initialSubmitted />
   ),
 };
 
 export const Disabled: Story = {
   render: () => (
-    <div style={wrap}>
-      <OrderActivity activity={makeActivity('order', SPEC, 'done')} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
-    </div>
+    <OrderActivity activity={makeActivity('order', SPEC, 'done')} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
   ),
 };

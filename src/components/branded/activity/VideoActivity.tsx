@@ -2,7 +2,11 @@
  * Video — a video-only activity (watch). A subset of Concept promoted to its
  * own kind: renders the video prominently, with an optional InstructionPanel
  * for surrounding context. Non-interactive → completes correct after watch.
+ *
+ * Skeleton: a pulse placeholder reserves space at the video's natural height
+ * (h-[28rem]) while the media loads, preventing layout shift.
  */
+import { useState } from 'react';
 import { Video as VideoIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, VideoSpec } from '@/types/content';
@@ -19,6 +23,8 @@ export function VideoActivity({
   const { t } = useI18n();
   const spec = activity.spec as unknown as VideoSpec;
   const isDone = activity.status === 'done';
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
   return (
     <ActivityShell kind="video" icon={VideoIcon} label={t('activity.video')}>
       {spec?.instruction && (
@@ -31,7 +37,19 @@ export function VideoActivity({
           className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden"
           data-testid="video-player"
         >
-          <video src={spec.video_url} controls className="w-full max-h-[28rem] bg-black" />
+          {!videoLoaded && (
+            <div
+              className="w-full h-[28rem] animate-pulse bg-muted-foreground/10"
+              aria-hidden="true"
+              data-testid="video-skeleton"
+            />
+          )}
+          <video
+            src={spec.video_url}
+            controls
+            className={`w-full max-h-[28rem] bg-black transition-opacity duration-300 ${videoLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+            onLoadedMetadata={() => setVideoLoaded(true)}
+          />
         </div>
       ) : (
         <div className="flex items-center justify-center gap-3 py-12 text-muted-foreground rounded-2xl border border-border bg-obsidiana/60">

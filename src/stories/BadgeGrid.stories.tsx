@@ -21,7 +21,7 @@ const badges: Badge[] = [
 ];
 
 const meta: Meta<typeof BadgeGrid> = {
-  title: 'Branded/BadgeGrid',
+  title: 'Molecules/BadgeGrid',
   component: BadgeGrid,
   render: (args) => (
     <div style={{ maxWidth: 820 }}>

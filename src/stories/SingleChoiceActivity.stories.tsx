@@ -1,20 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { SingleChoiceActivity } from '@/components/branded/activity/SingleChoiceActivity';
 import { SAMPLE_IMAGE_A, SAMPLE_IMAGE_B, SAMPLE_IMAGE_C, makeActivity, noop } from './activityFixtures';
+import { withActivityWidth } from './decorators';
 
 /**
  * SingleChoice — pick exactly one. Stories cover default / answered / correct /
  * incorrect / disabled, plus an image-option variation and an instruction panel.
  */
 const meta: Meta<typeof SingleChoiceActivity> = {
-  title: 'Activity/SingleChoice',
+  title: 'Organisms/Activities/SingleChoice',
   component: SingleChoiceActivity,
+  decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof SingleChoiceActivity>;
-
-const wrap = { maxWidth: 640 } as const;
 
 const SPEC = {
   instruction: { text: 'Qual estrutura evita duplicar dados entre tabelas?' },
@@ -27,60 +27,46 @@ const SPEC = {
 };
 
 export const Default: Story = {
-  render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} />
-    </div>
-  ),
+  render: () => <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} />,
 };
 
 export const Answered: Story = {
   render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="a" />
-    </div>
+    <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="a" />
   ),
 };
 
 export const Correct: Story = {
   render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="b" initialSubmitted />
-    </div>
+    <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="b" initialSubmitted />
   ),
 };
 
 export const Incorrect: Story = {
   render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="a" initialSubmitted />
-    </div>
+    <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} initialSelectedId="a" initialSubmitted />
   ),
 };
 
 export const Disabled: Story = {
   render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity activity={makeActivity('single_choice', SPEC, 'done')} onComplete={noop} initialSelectedId="b" initialSubmitted />
-    </div>
+    <SingleChoiceActivity activity={makeActivity('single_choice', SPEC, 'done')} onComplete={noop} initialSelectedId="b" initialSubmitted />
   ),
 };
 
 export const ImageOptions: Story = {
   render: () => (
-    <div style={wrap}>
-      <SingleChoiceActivity
-        activity={makeActivity('single_choice', {
-          instruction: { text: 'Qual imagem representa um relacionamento 1:N?' },
-          options: [
-            { id: 'a', label: 'Opção A', image_url: SAMPLE_IMAGE_A },
-            { id: 'b', label: 'Opção B', image_url: SAMPLE_IMAGE_B },
-            { id: 'c', label: 'Opção C', image_url: SAMPLE_IMAGE_C },
-          ],
-          correct_option_id: 'c',
-        })}
-        onComplete={noop}
-      />
-    </div>
+    <SingleChoiceActivity
+      activity={makeActivity('single_choice', {
+        instruction: { text: 'Qual imagem representa um relacionamento 1:N?' },
+        options: [
+          { id: 'a', label: 'Opção A', image_url: SAMPLE_IMAGE_A },
+          { id: 'b', label: 'Opção B', image_url: SAMPLE_IMAGE_B },
+          { id: 'c', label: 'Opção C', image_url: SAMPLE_IMAGE_C },
+        ],
+        correct_option_id: 'c',
+      })}
+      onComplete={noop}
+    />
   ),
 };

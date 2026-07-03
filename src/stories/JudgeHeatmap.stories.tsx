@@ -8,7 +8,7 @@ import type { JudgeVerdict } from '@/api/iteraApi';
  * data-spec -> 90 (3/3 PASS); WEAK/denormalized -> 20 (normalization FAIL'd).
  */
 const meta: Meta<typeof JudgeHeatmap> = {
-  title: 'Activity/JudgeHeatmap',
+  title: 'Organisms/JudgeHeatmap',
   component: JudgeHeatmap,
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };

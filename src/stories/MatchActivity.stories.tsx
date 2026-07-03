@@ -1,20 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MatchActivity } from '@/components/branded/activity/MatchActivity';
 import { makeActivity, noop } from './activityFixtures';
+import { withActivityWidth } from './decorators';
 
 /**
  * Match — connect left cards to right cards. Stories: default (unconnected),
  * partially connected (answered), all-correct, incorrect, disabled.
  */
 const meta: Meta<typeof MatchActivity> = {
-  title: 'Activity/Match',
+  title: 'Organisms/Activities/Match',
   component: MatchActivity,
+  decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof MatchActivity>;
-
-const wrap = { maxWidth: 640 } as const;
 
 const SPEC = {
   instruction: { text: 'Associe cada termo à sua definição.' },
@@ -36,56 +36,44 @@ const SPEC = {
 };
 
 export const Default: Story = {
-  render: () => (
-    <div style={wrap}>
-      <MatchActivity activity={makeActivity('match', SPEC)} onComplete={noop} />
-    </div>
-  ),
+  render: () => <MatchActivity activity={makeActivity('match', SPEC)} onComplete={noop} />,
 };
 
 export const PartiallyConnected: Story = {
   render: () => (
-    <div style={wrap}>
-      <MatchActivity activity={makeActivity('match', SPEC)} onComplete={noop} initialConnections={{ pk: 'r-pk' }} />
-    </div>
+    <MatchActivity activity={makeActivity('match', SPEC)} onComplete={noop} initialConnections={{ pk: 'r-pk' }} />
   ),
 };
 
 export const Correct: Story = {
   render: () => (
-    <div style={wrap}>
-      <MatchActivity
-        activity={makeActivity('match', SPEC)}
-        onComplete={noop}
-        initialConnections={{ pk: 'r-pk', fk: 'r-fk', idx: 'r-idx' }}
-        initialSubmitted
-      />
-    </div>
+    <MatchActivity
+      activity={makeActivity('match', SPEC)}
+      onComplete={noop}
+      initialConnections={{ pk: 'r-pk', fk: 'r-fk', idx: 'r-idx' }}
+      initialSubmitted
+    />
   ),
 };
 
 export const Incorrect: Story = {
   render: () => (
-    <div style={wrap}>
-      <MatchActivity
-        activity={makeActivity('match', SPEC)}
-        onComplete={noop}
-        initialConnections={{ pk: 'r-fk', fk: 'r-pk', idx: 'r-idx' }}
-        initialSubmitted
-      />
-    </div>
+    <MatchActivity
+      activity={makeActivity('match', SPEC)}
+      onComplete={noop}
+      initialConnections={{ pk: 'r-fk', fk: 'r-pk', idx: 'r-idx' }}
+      initialSubmitted
+    />
   ),
 };
 
 export const Disabled: Story = {
   render: () => (
-    <div style={wrap}>
-      <MatchActivity
-        activity={makeActivity('match', SPEC, 'done')}
-        onComplete={noop}
-        initialConnections={{ pk: 'r-pk', fk: 'r-fk', idx: 'r-idx' }}
-        initialSubmitted
-      />
-    </div>
+    <MatchActivity
+      activity={makeActivity('match', SPEC, 'done')}
+      onComplete={noop}
+      initialConnections={{ pk: 'r-pk', fk: 'r-fk', idx: 'r-idx' }}
+      initialSubmitted
+    />
   ),
 };
