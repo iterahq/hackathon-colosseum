@@ -24,6 +24,7 @@ import {
   Search,
   Bell,
   Settings,
+  Video,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
@@ -31,7 +32,8 @@ import { useI18n } from '@/i18n';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useMembership } from '@/hooks/useMembership';
 import { useProfile } from '@/hooks/useProfile';
-import { isTenantAdmin, highestRole } from '@/services/membership.service';
+import { isTenantAdmin, highestRole, instructorTenantId } from '@/services/membership.service';
+import { useEnabledTenantIds } from '@/hooks/useLiveClass';
 
 export function AppHeader({
   active = 'discover',
@@ -42,8 +44,11 @@ export function AppHeader({
   const { t, toggleLocale, setLocale, locale } = useI18n();
   const { branding } = useTenantBranding();
   const { data: memberships } = useMembership();
+  const { data: enabledTenantIds } = useEnabledTenantIds();
   const { data: profile } = useProfile();
   const showAdmin = isTenantAdmin(memberships ?? []);
+  const canStartLiveClass =
+    instructorTenantId(memberships ?? [], { enabledTenantIds: enabledTenantIds ?? [] }) !== null;
   // Role pill reflects the user's HIGHEST-privilege role (loop-2 fix #5) — an
   // instructor must read as "Instrutor", not "Aluno". `showAdmin` still gates the
   // /admin nav on tenant_admin/owner only (an instructor doesn't see /admin).
@@ -287,6 +292,20 @@ export function AppHeader({
                         data-testid="nav-admin"
                       >
                         <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
+                      </button>
+                    )}
+                    {/* Instructor/admin shortcut to start a live class — only visible
+                        when the user holds a staff role in a live_class_enabled tenant. */}
+                    {canStartLiveClass && (
+                      <button
+                        onClick={() => {
+                          setOpen(false);
+                          navigate('/live/instructor');
+                        }}
+                        data-testid="nav-start-live-class"
+                        className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 text-evergreen-hi"
+                      >
+                        <Video className="w-4 h-4" /> {t('live.instructor.start.cta')}
                       </button>
                     )}
                     {/* Language preference — saved to the user PROFILE

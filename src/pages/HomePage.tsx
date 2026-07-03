@@ -5,10 +5,13 @@
  */
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Sparkles, CreditCard, GraduationCap } from 'lucide-react';
+import { ChevronRight, Sparkles, Video, GraduationCap } from 'lucide-react';
 import { AppHeader, ProgramCard, StatsCard, BadgeGrid, LiveClassBadge } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
+import { useMembership } from '@/hooks/useMembership';
+import { useEnabledTenantIds } from '@/hooks/useLiveClass';
+import { instructorTenantId } from '@/services/membership.service';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -18,6 +21,11 @@ export default function HomePage() {
   const { data: allPrograms = [], isPending, isError, refetch } = usePrograms();
   const { data: stats, isPending: statsLoading } = useUserStats();
   const { data: badges, isPending: badgesLoading } = useBadges();
+  const { data: memberships } = useMembership();
+  const { data: enabledTenantIds } = useEnabledTenantIds();
+  // Show "start live class" only to instructors/admins of a live_class_enabled tenant.
+  const canStartLiveClass =
+    instructorTenantId(memberships ?? [], { enabledTenantIds: enabledTenantIds ?? [] }) !== null;
 
   // Navbar search filters the program grid (real feature behind ?q=).
   const programs = q
@@ -59,16 +67,20 @@ export default function HomePage() {
                   <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-md">
                     {t('home.heroSubtitle')}
                   </p>
-                  {/* Self-serve subscribe CTA (PLG) → /subscribe. */}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/subscribe')}
-                    data-testid="home-subscribe-cta"
-                    className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    {t('subscribe.cta')}
-                  </button>
+                  {/* Instructor/admin: prominent entry point to start a live class.
+                      Only rendered when the user is an instructor/admin in a
+                      live_class_enabled tenant. Students never see this. */}
+                  {canStartLiveClass && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/live/instructor')}
+                      data-testid="home-start-live-class"
+                      className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                    >
+                      <Video className="w-4 h-4" />
+                      {t('live.instructor.start.cta')}
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
