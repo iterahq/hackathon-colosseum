@@ -15,7 +15,7 @@ import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useMembership } from '@/hooks/useMembership';
-import { isTenantAdmin, type MemberRole } from '@/services/membership.service';
+import { isTenantAdmin, canAuthor, type MemberRole } from '@/services/membership.service';
 
 export function RequireRole({
   role = 'tenant_admin',
@@ -44,10 +44,14 @@ export function RequireRole({
   // Unauthenticated should already be caught by RequireAuth; defensively send to login.
   if (!session) return <Navigate to="/login" replace />;
 
+  // `author` is not a single-role check: authors AND instructors (+ admins/owners)
+  // qualify — mirrors itera.current_author_tenant_ids() (the DB RLS authority).
   const allowed =
     role === 'tenant_admin'
       ? isTenantAdmin(memberships ?? [])
-      : (memberships ?? []).some((m) => m.role === role);
+      : role === 'author'
+        ? canAuthor(memberships ?? [])
+        : (memberships ?? []).some((m) => m.role === role);
 
   if (!allowed) return <Navigate to={fallback} replace />;
 

@@ -56,4 +56,12 @@ export const queryKeys = {
       ['live-class', 'enabled-tenant-ids', userId] as const,
     mySessions: (tenantId: string) => ['live-class', 'my-sessions', tenantId] as const,
   },
+  // Author review canvas (plan 20260706 — per-unit review+comment surface).
+  author: {
+    programs: ['author', 'programs'] as const,
+    unitCanvas: (unitId: string) => ['author', 'unit-canvas', unitId] as const,
+    unitVersions: (unitId: string) => ['author', 'unit-versions', unitId] as const,
+    unitComments: (unitId: string) => ['author', 'unit-comments', unitId] as const,
+    activityTest: (activityId: string) => ['author', 'activity-test', activityId] as const,
+  },
 } as const;

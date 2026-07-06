@@ -109,6 +109,12 @@ export interface Activity {
   rubric: Record<string, unknown> | null;
   /** Derived from itera.progress for the current user. */
   status?: ProgressStatus;
+  /**
+   * Content lifecycle (`itera.activities.status`): 'draft' | 'published'.
+   * Only populated on the author review canvas (getUnitCanvas); the student
+   * read paths leave it undefined. Students only ever read 'published' rows.
+   */
+  publishStatus?: 'draft' | 'published';
 }
 
 export interface Lesson {

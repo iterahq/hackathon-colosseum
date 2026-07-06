@@ -25,6 +25,9 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import RosterPage from "./pages/admin/RosterPage";
 import CompletionPage from "./pages/admin/CompletionPage";
 import EngagementPage from "./pages/admin/EngagementPage";
+import AuthorHomePage from "./pages/author/AuthorHomePage";
+import UnitCanvasPage from "./pages/author/UnitCanvasPage";
+import ActivityTestPage from "./pages/author/ActivityTestPage";
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
@@ -184,6 +187,44 @@ const App = () => (
                   <Route path="programs" element={<CompletionPage />} />
                   <Route path="engagement" element={<EngagementPage />} />
                 </Route>
+
+                {/* Author review+comment canvas + per-kind TEST (plan
+                    20260706). Role-gated to `author` (authors AND instructors
+                    qualify via itera.current_author_tenant_ids — RequireRole
+                    checks the un-wired `author` role). ADR-5 reconciled: this
+                    is activity CONTENT review/comment/test + a publish toggle,
+                    NOT structure authoring (that stays in dfl-lms-admin) and NOT
+                    a content editor (edits go via itera-mcp). */}
+                <Route
+                  path="/author"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="author">
+                        <AuthorHomePage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/author/units/:unitId/canvas"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="author">
+                        <UnitCanvasPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/author/activities/:activityId/test"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="author">
+                        <ActivityTestPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
 
                 {/* Legacy gamified activity-engine demo (mock data) — kept for the
                     reusable activity components; not part of the canonical nav. */}

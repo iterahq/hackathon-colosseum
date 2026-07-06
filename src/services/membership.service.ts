@@ -126,6 +126,28 @@ export function isTenantAdmin(memberships: Membership[]): boolean {
   return memberships.some(isManagedAdminMembership);
 }
 
+/**
+ * Roles that may use the `/author/*` review canvas. Mirrors the Itera RLS
+ * function `itera.current_author_tenant_ids()` (author, instructor, tenant_admin,
+ * owner) — the DB is the authority for the data; this is the app-layer belt.
+ */
+const AUTHOR_ROLES: ReadonlySet<string> = new Set([
+  'author',
+  'instructor',
+  'tenant_admin',
+  'owner',
+]);
+
+/**
+ * True when the user may use the author surface — holds an author-capable role
+ * (author/instructor/tenant_admin/owner) in a REAL (non-personal) tenant. A
+ * leaked personal `plg-<uid>` owner does NOT qualify (same leak guard as
+ * isTenantAdmin), so a federated dfl-batch learner never sees the authoring UI.
+ */
+export function canAuthor(memberships: Membership[]): boolean {
+  return (memberships ?? []).some((m) => AUTHOR_ROLES.has(m.role) && !m.isPersonal);
+}
+
 /** Staff roles that may run a live class, in preference order (lower = preferred). */
 const STAFF_ROLE_PRIORITY: Record<string, number> = {
   instructor: 0,
