@@ -5,13 +5,12 @@
  */
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, Sparkles, Video, GraduationCap } from 'lucide-react';
-import { AppHeader, ProgramCard, StatsCard, BadgeGrid, LiveClassBadge } from '@/components/branded';
+import { ChevronRight, Sparkles, GraduationCap, Radio } from 'lucide-react';
+import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
-import { useMembership } from '@/hooks/useMembership';
-import { useEnabledTenantIds } from '@/hooks/useLiveClass';
-import { instructorTenantId } from '@/services/membership.service';
+import { useActiveLiveClass } from '@/hooks/useLiveClass';
+import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -21,11 +20,6 @@ export default function HomePage() {
   const { data: allPrograms = [], isPending, isError, refetch } = usePrograms();
   const { data: stats, isPending: statsLoading } = useUserStats();
   const { data: badges, isPending: badgesLoading } = useBadges();
-  const { data: memberships } = useMembership();
-  const { data: enabledTenantIds } = useEnabledTenantIds();
-  // Show "start live class" only to instructors/admins of a live_class_enabled tenant.
-  const canStartLiveClass =
-    instructorTenantId(memberships ?? [], { enabledTenantIds: enabledTenantIds ?? [] }) !== null;
 
   // Navbar search filters the program grid (real feature behind ?q=).
   const programs = q
@@ -53,9 +47,6 @@ export default function HomePage() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
                       <Sparkles className="w-3 h-3" /> Itera
                     </span>
-                    {/* Live-class badge — only renders when a live class is active
-                        + the user's tenant has the feature enabled (plan piece #4). */}
-                    <LiveClassBadge />
                   </div>
                   <h1
                     className="font-display font-bold mt-3 text-foreground"
@@ -67,26 +58,16 @@ export default function HomePage() {
                   <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-md">
                     {t('home.heroSubtitle')}
                   </p>
-                  {/* Instructor/admin: prominent entry point to start a live class.
-                      Only rendered when the user is an instructor/admin in a
-                      live_class_enabled tenant. Students never see this. */}
-                  {canStartLiveClass && (
-                    <button
-                      type="button"
-                      onClick={() => navigate('/live/instructor')}
-                      data-testid="home-start-live-class"
-                      className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                    >
-                      <Video className="w-4 h-4" />
-                      {t('live.instructor.start.cta')}
-                    </button>
-                  )}
                 </div>
               </div>
             </motion.div>
 
             <StatsCard stats={stats} loading={statsLoading} />
           </section>
+
+          {/* Live-class block — appears between hero and programs when a class is active.
+              Instructor re-entry → /live/instructor; student join → /live/:id. */}
+          <LiveClassBlock />
 
           {/* Programs */}
           <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>
@@ -158,6 +139,58 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/**
+ * Dedicated live-class banner shown between the hero and the programs grid.
+ * Returns null when no class is active — no layout space consumed.
+ *
+ * - Instructor: navigates to /live/instructor (control panel re-entry).
+ * - Student:    navigates to /live/:id (join the session).
+ */
+function LiveClassBlock() {
+  const navigate = useNavigate();
+  const { t } = useI18n();
+  const identity = useIteraIdentity();
+  const { data: active } = useActiveLiveClass();
+
+  if (!active) return null;
+
+  const isInstructor = active.instructorId === identity.userId;
+  const target = isInstructor ? '/live/instructor' : `/live/${active.id}`;
+  const ctaLabel = isInstructor ? t('live.block.returnCta') : t('live.block.joinCta');
+  const ctaTestId = isInstructor ? 'live-class-return' : 'live-class-join';
+
+  return (
+    <section data-testid="live-class-block">
+      <div className="rounded-3xl border border-clay/50 bg-clay/5 p-6 flex items-center justify-between gap-4">
+        {/* left: pulse indicator + label + subtitle */}
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="relative flex-shrink-0">
+            <span className="block w-3 h-3 rounded-full bg-red-500 animate-ping absolute" />
+            <span className="block w-3 h-3 rounded-full bg-red-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-red-500 font-bold">
+              {t('live.badge.label')}
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5 truncate">{t('live.block.subtitle')}</p>
+          </div>
+        </div>
+
+        {/* right: CTA */}
+        <button
+          type="button"
+          onClick={() => navigate(target)}
+          data-testid={ctaTestId}
+          className="flex-shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+        >
+          <Radio className="w-4 h-4" />
+          {ctaLabel}
+        </button>
+      </div>
+    </section>
   );
 }
 

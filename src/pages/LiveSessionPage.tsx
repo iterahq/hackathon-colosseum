@@ -48,6 +48,14 @@ export default function LiveSessionPage() {
     [activities, currentActivityId]
   );
 
+  // Redirect instructor to the instructor control surface — never show them the
+  // student view. Handles "re-entry" after accidentally navigating here directly.
+  useEffect(() => {
+    if (session && identity.userId && session.instructorId === identity.userId) {
+      navigate('/live/instructor', { replace: true });
+    }
+  }, [session, identity.userId, navigate]);
+
   // Per-activity local "done" flag (result writes stay per-user). Reset whenever
   // the professor force-advances to a different activity.
   const [doneId, setDoneId] = useState<string | null>(null);

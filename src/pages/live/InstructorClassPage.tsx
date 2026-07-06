@@ -515,14 +515,6 @@ function ClassControl({
         </div>
 
         <button
-          onClick={() => navigate(`/live/${session.id}`)}
-          data-testid="instructor-preview"
-          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-clay/50 transition-colors"
-        >
-          <Radio className="w-4 h-4" /> {t('live.instructor.preview')}
-        </button>
-
-        <button
           onClick={copyJoinLink}
           data-testid="instructor-copy-link"
           className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors"
