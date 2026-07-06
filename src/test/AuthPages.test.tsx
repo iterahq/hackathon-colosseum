@@ -7,14 +7,11 @@ import LoginPage from '@/pages/auth/LoginPage';
 import SignupPage from '@/pages/auth/SignupPage';
 
 /**
- * FIX B (round-3 focus group) — a self-serve visitor must reach a REAL sign-up
- * flow, not the login-only page. Asserts:
- *  (a) /signup renders a registration form with a heading distinct from the
- *      login "Bem-vindo de volta" heading,
- *  (b) submitting the signup form calls signUpWithPassword (mocked AuthContext),
- *  (c) login ↔ signup cross-links navigate between the two routes.
- * Plus FIX A: the home hero subtitle (pt+en) no longer forces "desenvolvedor"/
- * "developer" copy on everyone.
+ * Auth page tests — subscription-gated login (plan 20260706-iterahq-subscription-gated-login):
+ *
+ * FIX A: the home hero subtitle (pt+en) no longer forces "desenvolvedor"/"developer" copy.
+ * Auth gate: Google login removed, signup removed, DFL is primary CTA, subscribe-cta present.
+ * Sign-in still works for existing subscribers.
  */
 
 const navigate = vi.fn();
@@ -24,15 +21,15 @@ vi.mock('react-router-dom', async (orig) => ({
 }));
 
 // Mock the auth context — we never hit Supabase in unit tests.
+// signUpWithPassword is intentionally absent: it no longer exists in AuthContext.
 const signInWithPassword = vi.fn();
-const signUpWithPassword = vi.fn();
 const signInWithOAuth = vi.fn();
 vi.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
     signInWithPassword,
-    signUpWithPassword,
     signInWithOAuth,
     configured: true,
+    isDflFederated: false,
   }),
 }));
 
@@ -55,7 +52,6 @@ function renderAt(initial: string) {
 beforeEach(() => {
   navigate.mockReset();
   signInWithPassword.mockReset();
-  signUpWithPassword.mockReset();
   signInWithOAuth.mockReset();
 });
 
@@ -66,50 +62,36 @@ describe('FIX A — audience-neutral hero copy', () => {
   });
 });
 
-describe('FIX B — /signup registration flow', () => {
-  it('renders a registration form with a heading distinct from "Bem-vindo de volta"', () => {
-    renderAt('/signup');
-    expect(screen.getByTestId('signup-page')).toBeInTheDocument();
-    expect(screen.getByTestId('signup-form')).toBeInTheDocument();
-    // Distinct heading: signup says "Crie sua conta", NOT the login welcome.
-    expect(screen.getByText('Crie sua conta')).toBeInTheDocument();
-    expect(screen.queryByText('Bem-vindo de volta')).not.toBeInTheDocument();
-  });
-
-  it('submitting the signup form calls signUpWithPassword and navigates on success', async () => {
-    signUpWithPassword.mockResolvedValue({ error: null });
-    renderAt('/signup');
-
-    fireEvent.change(screen.getByTestId('email-input'), {
-      target: { value: 'new@user.dev' },
-    });
-    fireEvent.change(screen.getByTestId('password-input'), {
-      target: { value: 'sup3rsecret' },
-    });
-    fireEvent.click(screen.getByTestId('submit-signup'));
-
-    await waitFor(() =>
-      expect(signUpWithPassword).toHaveBeenCalledWith('new@user.dev', 'sup3rsecret')
-    );
-    expect(signInWithPassword).not.toHaveBeenCalled();
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
-  });
-
-  it('the login page links to /signup', () => {
+describe('subscription-gated auth — login page', () => {
+  it('renders the login page with the sign-in form', () => {
     renderAt('/login');
     expect(screen.getByTestId('login-page')).toBeInTheDocument();
-    expect(screen.getByText('Bem-vindo de volta')).toBeInTheDocument();
-    const link = screen.getByTestId('goto-signup');
-    expect(link).toHaveAttribute('href', '/signup');
+    expect(screen.getByTestId('login-form')).toBeInTheDocument();
   });
 
-  it('the signup page links to /login', () => {
-    renderAt('/signup');
-    const link = screen.getByTestId('goto-login');
-    expect(link).toHaveAttribute('href', '/login');
+  it('does NOT have a Google OAuth button', () => {
+    renderAt('/login');
+    expect(screen.queryByTestId('oauth-google')).not.toBeInTheDocument();
   });
 
-  it('the login page still signs IN via signInWithPassword (no regression)', async () => {
+  it('does NOT have a link to /signup (goto-signup testId absent)', () => {
+    renderAt('/login');
+    expect(screen.queryByTestId('goto-signup')).not.toBeInTheDocument();
+  });
+
+  it('DOES have a DFL login button (oauth-dfl testId present)', () => {
+    renderAt('/login');
+    expect(screen.getByTestId('oauth-dfl')).toBeInTheDocument();
+  });
+
+  it('DOES have a subscribe CTA linking to iterahq.dev', () => {
+    renderAt('/login');
+    const cta = screen.getByTestId('subscribe-cta');
+    expect(cta).toBeInTheDocument();
+    expect(cta).toHaveAttribute('href', 'https://iterahq.dev');
+  });
+
+  it('signs in via signInWithPassword and navigates on success (no regression)', async () => {
     signInWithPassword.mockResolvedValue({ error: null });
     renderAt('/login');
 
@@ -124,6 +106,15 @@ describe('FIX B — /signup registration flow', () => {
     await waitFor(() =>
       expect(signInWithPassword).toHaveBeenCalledWith('old@user.dev', 'mypassword')
     );
-    expect(signUpWithPassword).not.toHaveBeenCalled();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/', { replace: true }));
+  });
+});
+
+describe('subscription-gated auth — /signup route', () => {
+  it('redirects /signup to /login', () => {
+    renderAt('/signup');
+    // After redirect, the login page should be rendered (SignupPage is <Navigate to="/login">)
+    expect(screen.getByTestId('login-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('signup-page')).not.toBeInTheDocument();
   });
 });

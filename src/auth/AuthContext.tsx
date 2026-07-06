@@ -2,8 +2,11 @@
  * Itera auth context — wraps Supabase Auth (password + federated providers).
  *
  * - Password auth works E2E (the foundation gate).
- * - Federated IdP (DFL OIDC / social) is wired via signInWithOAuth; minimal/stubbed
- *   for the foundation (ADR-103 — DFL is ONE IdP among several).
+ * - Federated IdP (DFL OIDC / Azure / Keycloak) is wired via signInWithOAuth.
+ *   Google login has been removed — DFL federation is the primary IdP.
+ * - isDflFederated: true when this browser session was bootstrapped via the DFL
+ *   embed bridge (itera_dfl_session localStorage flag). DFL members are entitled
+ *   to access without a separate Itera subscription.
  * - On a session, the user's Itera-local identity lives in itera.users; the
  *   tenant_id + role claims ride in the JWT for RLS (ADR-103).
  */
@@ -23,9 +26,10 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   configured: boolean;
+  /** True when the session was established via the DFL embed bridge (D2). */
+  isDflFederated: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithOAuth: (provider: 'google' | 'azure' | 'keycloak') => Promise<{ error: string | null }>;
+  signInWithOAuth: (provider: 'azure' | 'keycloak') => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -57,14 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       loading,
       configured: isSupabaseConfigured,
+      isDflFederated: localStorage.getItem('itera_dfl_session') === '1' && Boolean(session),
       async signInWithPassword(email, password) {
         if (!isSupabaseConfigured) return { error: 'Supabase not configured' };
         const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-        return { error: error?.message ?? null };
-      },
-      async signUpWithPassword(email, password) {
-        if (!isSupabaseConfigured) return { error: 'Supabase not configured' };
-        const { error } = await getSupabase().auth.signUp({ email, password });
         return { error: error?.message ?? null };
       },
       async signInWithOAuth(provider) {
@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         if (!isSupabaseConfigured) return;
+        localStorage.removeItem('itera_dfl_session');
         await getSupabase().auth.signOut();
         setSession(null);
       },

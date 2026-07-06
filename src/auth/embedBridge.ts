@@ -134,6 +134,9 @@ export async function exchangeDflToken(dflToken: string): Promise<boolean> {
     console.warn('[itera/embed] setSession failed:', error.message);
     return false;
   }
+  // Mark this browser session as DFL-federated so the entitlement gate passes (D2).
+  // AuthContext reads this flag via isDflFederated; it's cleared on signOut.
+  try { localStorage.setItem('itera_dfl_session', '1'); } catch { /* storage blocked */ }
   return true;
 }
 

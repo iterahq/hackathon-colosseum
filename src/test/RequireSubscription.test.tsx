@@ -4,10 +4,13 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { RequireSubscription } from '@/auth/RequireSubscription';
 
 /**
- * PLG subscription gate (plan 20260624-itera-plg-subscribe-flow). Verifies:
+ * PLG subscription gate (plan 20260624-itera-plg-subscribe-flow +
+ * 20260706-iterahq-subscription-gated-login). Verifies:
  *   - active subscription -> renders the player,
  *   - no active subscription -> redirected to /subscribe,
  *   - tenant-admin -> exempt (renders even without a subscription),
+ *   - DFL-federated user -> entitled (D2 — DFL membership = subscription),
+ *   - grandfathered user (created_at before gate date) -> entitled (D3),
  *   - unconfigured -> pass-through (mock/dev).
  */
 
@@ -15,6 +18,7 @@ const authState = {
   session: null as unknown,
   loading: false,
   configured: true,
+  isDflFederated: false,
 };
 const entitlementState = {
   data: { active: false, status: null, currentPeriodEnd: null } as {
@@ -54,9 +58,10 @@ function renderGuard() {
 
 describe('RequireSubscription (PLG gate)', () => {
   beforeEach(() => {
-    authState.session = { user: { id: 'u1' } };
+    authState.session = { user: { id: 'u1', created_at: '2027-01-01T00:00:00Z' } };
     authState.loading = false;
     authState.configured = true;
+    authState.isDflFederated = false;
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     entitlementState.isPending = false;
     membershipState.data = [{ tenantId: 'T', role: 'learner' }];
@@ -105,6 +110,24 @@ describe('RequireSubscription (PLG gate)', () => {
 
   it('passes through when Supabase is not configured (mock/dev)', () => {
     authState.configured = false;
+    renderGuard();
+    expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('a DFL-federated user is entitled (isDflFederated=true bypasses paywall)', () => {
+    // D2: DFL membership IS the subscription — no itera payment needed.
+    authState.isDflFederated = true;
+    entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+    renderGuard();
+    expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('a grandfathered user (created_at before gate date) is entitled', () => {
+    // D3: accounts created before 2026-07-06 bypass the paywall.
+    // Gate date = '2026-07-06' (default, VITE_SUBSCRIPTION_GATE_DATE not set in tests).
+    authState.isDflFederated = false;
+    authState.session = { user: { id: 'u1', created_at: '2020-01-01T00:00:00Z' } };
+    entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     renderGuard();
     expect(screen.getByTestId('player')).toBeInTheDocument();
   });
