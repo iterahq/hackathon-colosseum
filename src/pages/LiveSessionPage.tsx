@@ -17,6 +17,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Radio, Loader2 } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { LiveReception } from '@/components/live/LiveReception';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -220,16 +221,9 @@ export default function LiveSessionPage() {
                 <div className="h-12 rounded-full ds-shimmer" />
               </div>
             ) : !currentActivityId ? (
-              // Lesson is loaded and there's genuinely NO pointer — the professor
-              // hasn't pointed at an activity yet. Hold on a calm "waiting" state.
-              <div
-                className="mt-8 rounded-3xl border border-dashed border-clay/40 bg-clay/5 p-12 text-center"
-                data-testid="live-waiting"
-              >
-                <Loader2 className="w-6 h-6 mx-auto animate-spin text-clay" />
-                <p className="font-display text-lg text-foreground mt-4">{t('live.waiting.title')}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('live.waiting.subtitle')}</p>
-              </div>
+              // Lesson loaded, no pointer yet — the class is in RECEPTION until the
+              // instructor begins the first activity.
+              <LiveReception roster={roster} />
             ) : (
               // Lesson loaded, pointer set, but the activity isn't in the list
               // (transient pointer/lesson mismatch) — skeleton rather than a

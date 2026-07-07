@@ -178,7 +178,6 @@ function StartClass({
         tenantId,
         lessonId,
         instructorId,
-        firstActivityId,
         scope: 'global',
       });
       onStarted();

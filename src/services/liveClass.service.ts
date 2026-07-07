@@ -176,30 +176,26 @@ export async function getFirstActivityId(lessonId: string): Promise<string | nul
 }
 
 /**
- * Start a live session: insert as `live` pointing at `firstActivityId`.
- * scope defaults to 'global' for v1. Returns the created session.
- *
- * Robustness (loop-1 fix #1): if `firstActivityId` is null (the lesson content
- * hadn't resolved client-side when Start was clicked), we resolve the lesson's
- * first activity server-side BEFORE inserting — so a started session always has
- * a non-null pointer and no student is stranded on "Aguardando o professor".
+ * Start a live session in RECEPTION: insert as `live` with a NULL pointer so
+ * students land on a reception/lobby screen instead of jumping straight into the
+ * first activity. The instructor leaves reception by advancing to the first
+ * activity ("Começar aula"). The null pointer is the intended pre-start state
+ * here — it supersedes the loop-1 fix #1 that auto-defaulted the pointer.
  */
 export async function startClassSession(params: {
   tenantId: string;
   lessonId: string;
   instructorId: string;
-  firstActivityId?: string | null;
   scope?: ClassScope;
 }): Promise<ClassSession> {
   const sb = getSupabase();
-  const pointer = params.firstActivityId ?? (await getFirstActivityId(params.lessonId));
   const { data, error } = await sb
     .from('class_sessions')
     .insert({
       tenant_id: params.tenantId,
       lesson_id: params.lessonId,
       instructor_id: params.instructorId,
-      current_activity_id: pointer,
+      current_activity_id: null,
       status: 'live',
       scope: params.scope ?? 'global',
       started_at: new Date().toISOString(),
