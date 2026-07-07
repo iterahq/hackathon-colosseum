@@ -1,14 +1,27 @@
 /**
  * Per-UNIT review + comment canvas (plan 20260706, Phase 4 / ADR-6).
  *
- * Grid: rows = the unit's lessons, columns = each lesson's activities. Each cell
- * renders the activity via the shared `ActivityRenderer` (preview, noop
- * onComplete) with an index + comment-count + status badge. A Figma-style
- * Comment mode captures a relative anchor (0..1) on click → CommentModal →
- * persists to itera.activity_comments (unit-version-stamped). A right sidebar
- * lists the selected version's comments with Bump / Copy-all / resolve / delete.
- * Per-activity Publish/Unpublish flips itera.activities.status. Refresh re-reads
- * the graph so external MCP edits appear (NO realtime — TanStack Query + manual).
+ * A REAL pannable / zoomable canvas (mirrors the Lesson Studio Course Canvas —
+ * `dfl-lesson-studio` `CanvasReview.tsx`, same `react-zoom-pan-pinch` engine).
+ * The unit's lessons + activities are laid out as live cards on an infinite
+ * surface: rows = lessons, each row a horizontal flow of activity cards. Each
+ * card renders the activity LIVE via the shared `ActivityRenderer` (preview,
+ * noop onComplete) so the author SEES the real thing — no CI/CD render routine,
+ * the HTML is rendered on-the-fly in-browser.
+ *
+ * Interactions: drag empty space to pan · scroll/two-finger to pan · ⌘/ctrl +
+ * scroll or trackpad pinch to zoom · zoom in/out/fit buttons (bottom-right).
+ * Layout: computed auto-flow by lesson (no saved per-card positions yet — that
+ * would be an itera-schema change, deferred; see PR body).
+ *
+ * A Figma-style Comment mode captures a relative anchor (0..1) on click →
+ * CommentModal → persists to itera.activity_comments (unit-version-stamped).
+ * The anchor math is transform-safe: getBoundingClientRect returns the VISUAL
+ * (scaled) rect, so (clientX-left)/width stays a correct 0..1 fraction at any
+ * zoom. A right sidebar lists the selected version's comments with Bump /
+ * Copy-all / resolve / delete. Per-activity Publish/Unpublish flips
+ * itera.activities.status. Refresh re-reads the graph so external MCP edits
+ * appear (NO realtime — TanStack Query + manual).
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -19,7 +32,15 @@ import {
   FlaskConical,
   Eye,
   EyeOff,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
 } from 'lucide-react';
+import {
+  TransformWrapper,
+  TransformComponent,
+  type ReactZoomPanPinchRef,
+} from 'react-zoom-pan-pinch';
 import { Badge, Button } from '@devfellowship/components';
 import { AppHeader } from '@/components/branded';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
@@ -47,6 +68,16 @@ import type { ActivityComment } from '@/types/comments';
 
 const noop = (_correct: boolean) => {};
 
+// Trackpad pinch-to-zoom sensitivity (mirrors dfl-lesson-studio CanvasReview).
+// macOS maps a trackpad pinch to `wheel` events with `ctrlKey === true`; the lib
+// zooms those (centered on the cursor) even when plain-wheel zoom is disabled so
+// the wheel can pan instead. Bumping the smoothStep lands a pinch in 1-2
+// gestures without overshooting the min/max clamp.
+const PINCH_ZOOM_SENSITIVITY = 0.0035;
+const CANVAS_MIN_SCALE = 0.2;
+const CANVAS_MAX_SCALE = 2;
+const CANVAS_INITIAL_SCALE = 0.7;
+
 export default function UnitCanvasPage() {
   const { unitId } = useParams<{ unitId: string }>();
   const { locale } = useI18n();
@@ -67,6 +98,7 @@ export default function UnitCanvasPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [target, setTarget] = useState<CommentModalTarget | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [scale, setScale] = useState(CANVAS_INITIAL_SCALE);
 
   // Memoized so the stable identity doesn't churn the effect/memo deps below.
   const versions = useMemo(() => versionsQ.data ?? [], [versionsQ.data]);
@@ -165,6 +197,9 @@ export default function UnitCanvasPage() {
               {canvas ? `${pick(canvas.program.title)} · ${pick(canvas.unit.title)}` : 'Unit canvas'}
             </h1>
           </div>
+          <span className="hidden lg:inline text-[11px] font-mono text-muted-foreground/70">
+            drag to pan · scroll to pan · ⌘/pinch to zoom · C to comment
+          </span>
           <div className="flex items-center gap-2 ml-auto">
             <Button
               variant={commentMode ? 'default' : 'outline'}
@@ -193,75 +228,162 @@ export default function UnitCanvasPage() {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        {/* Grid */}
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-[1400px] w-full mx-auto px-4 md:px-6 py-6" data-testid="canvas-grid">
-            {canvasQ.isPending && <p className="text-sm text-muted-foreground">Loading unit…</p>}
-            {canvasQ.isError && (
-              <div className="text-sm text-muted-foreground">
+        {/* Pan / zoom canvas */}
+        <main
+          className="relative flex-1 overflow-hidden bg-muted/20"
+          style={{
+            // Figma-style dotted grid so it reads as an infinite canvas.
+            backgroundImage:
+              'radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        >
+          {/* Loading / error / empty states — overlaid, NOT inside the transform
+              so they stay centered and readable regardless of pan/zoom. */}
+          {canvasQ.isPending && (
+            <div className="absolute inset-0 grid place-items-center">
+              <p className="text-sm text-muted-foreground">Loading unit…</p>
+            </div>
+          )}
+          {canvasQ.isError && (
+            <div className="absolute inset-0 grid place-items-center">
+              <div className="text-sm text-muted-foreground text-center">
                 Could not load this unit.{' '}
                 <button className="underline" onClick={() => canvasQ.refetch()}>
                   Try again
                 </button>
               </div>
-            )}
-            {canvas && canvas.lessons.length === 0 && (
+            </div>
+          )}
+          {canvas && canvas.lessons.length === 0 && (
+            <div className="absolute inset-0 grid place-items-center">
               <p className="text-sm text-muted-foreground" data-testid="canvas-empty">
                 This unit has no lessons yet.
               </p>
-            )}
+            </div>
+          )}
 
-            <div className="flex flex-col gap-8">
-              {canvas?.lessons.map((lesson) => (
-                <section key={lesson.id} data-testid="canvas-row" data-lesson-id={lesson.id}>
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-menta tabular-nums">
-                      L{String(lesson.ordinal).padStart(2, '0')}
+          {canvas && canvas.lessons.length > 0 && (
+            <TransformWrapper
+              minScale={CANVAS_MIN_SCALE}
+              maxScale={CANVAS_MAX_SCALE}
+              initialScale={CANVAS_INITIAL_SCALE}
+              limitToBounds={false}
+              centerOnInit
+              wheel={{ wheelDisabled: true, smoothStep: PINCH_ZOOM_SENSITIVITY }}
+              panning={{ velocityDisabled: true, wheelPanning: true }}
+              doubleClick={{ disabled: true }}
+              onTransformed={(_ref: ReactZoomPanPinchRef, s: { scale: number }) =>
+                setScale(s.scale)
+              }
+            >
+              {({ zoomIn, zoomOut, resetTransform }) => (
+                <>
+                  {/* Zoom controls (bottom-right) — mirror of Lesson Studio. */}
+                  <div className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card/90 p-1.5 shadow-lg backdrop-blur-sm">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => zoomIn()}
+                      aria-label="Zoom in"
+                      data-testid="canvas-zoom-in"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </Button>
+                    <span
+                      className="text-[10px] font-mono tabular-nums text-muted-foreground"
+                      data-testid="canvas-zoom-readout"
+                    >
+                      {Math.round(scale * 100)}%
                     </span>
-                    <h2 className="text-sm font-semibold text-foreground truncate">
-                      {pick(lesson.title)}
-                    </h2>
-                    <span className="text-[11px] font-mono text-muted-foreground">
-                      {lesson.activities.length} activit
-                      {lesson.activities.length === 1 ? 'y' : 'ies'}
-                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => zoomOut()}
+                      aria-label="Zoom out"
+                      data-testid="canvas-zoom-out"
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => resetTransform()}
+                      aria-label="Reset view"
+                      data-testid="canvas-zoom-reset"
+                    >
+                      <Maximize className="h-4 w-4" />
+                    </Button>
                   </div>
 
-                  {lesson.activities.length === 0 ? (
-                    <p className="text-xs text-muted-foreground pl-1">No activities.</p>
-                  ) : (
-                    <div className="flex gap-4 overflow-x-auto pb-2">
-                      {lesson.activities.map((activity) => (
-                        <ActivityCell
-                          key={activity.id}
-                          activity={activity}
-                          commentMode={commentMode}
-                          commentCount={commentCounts.get(activity.id) ?? 0}
-                          pins={versionComments.filter((c) => c.activityId === activity.id)}
-                          onPublishToggle={(next) =>
-                            setStatus.mutate({ activityId: activity.id, status: next })
-                          }
-                          onCommentClick={(anchorX, anchorY) =>
-                            setTarget({
-                              activityId: activity.id,
-                              lessonId: lesson.id,
-                              programId: canvas.program.id,
-                              lessonTitle: pick(lesson.title),
-                              lessonOrdinal: lesson.ordinal,
-                              activityOrdinal: activity.ordinal,
-                              activityKind: activity.kind,
-                              anchorX,
-                              anchorY,
-                            })
-                          }
-                        />
+                  <TransformComponent
+                    wrapperClass="!w-full !h-full"
+                    contentClass="!w-auto !h-auto"
+                  >
+                    <div
+                      className="flex flex-col gap-14 p-16"
+                      data-testid="canvas-grid"
+                    >
+                      {canvas.lessons.map((lesson) => (
+                        <section
+                          key={lesson.id}
+                          data-testid="canvas-row"
+                          data-lesson-id={lesson.id}
+                        >
+                          <div className="flex items-baseline gap-2 mb-3">
+                            <span className="text-[11px] font-mono uppercase tracking-wider text-menta tabular-nums">
+                              L{String(lesson.ordinal).padStart(2, '0')}
+                            </span>
+                            <h2 className="text-sm font-semibold text-foreground truncate">
+                              {pick(lesson.title)}
+                            </h2>
+                            <span className="text-[11px] font-mono text-muted-foreground">
+                              {lesson.activities.length} activit
+                              {lesson.activities.length === 1 ? 'y' : 'ies'}
+                            </span>
+                          </div>
+
+                          {lesson.activities.length === 0 ? (
+                            <p className="text-xs text-muted-foreground pl-1">No activities.</p>
+                          ) : (
+                            <div className="flex gap-6">
+                              {lesson.activities.map((activity) => (
+                                <ActivityCell
+                                  key={activity.id}
+                                  activity={activity}
+                                  commentMode={commentMode}
+                                  commentCount={commentCounts.get(activity.id) ?? 0}
+                                  pins={versionComments.filter(
+                                    (c) => c.activityId === activity.id,
+                                  )}
+                                  onPublishToggle={(next) =>
+                                    setStatus.mutate({ activityId: activity.id, status: next })
+                                  }
+                                  onCommentClick={(anchorX, anchorY) =>
+                                    setTarget({
+                                      activityId: activity.id,
+                                      lessonId: lesson.id,
+                                      programId: canvas.program.id,
+                                      lessonTitle: pick(lesson.title),
+                                      lessonOrdinal: lesson.ordinal,
+                                      activityOrdinal: activity.ordinal,
+                                      activityKind: activity.kind,
+                                      anchorX,
+                                      anchorY,
+                                    })
+                                  }
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </section>
                       ))}
                     </div>
-                  )}
-                </section>
-              ))}
-            </div>
-          </div>
+                  </TransformComponent>
+                </>
+              )}
+            </TransformWrapper>
+          )}
         </main>
 
         {/* Comment sidebar */}
