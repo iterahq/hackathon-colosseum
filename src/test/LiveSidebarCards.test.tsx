@@ -42,4 +42,13 @@ describe('LiveAnswerersCard', () => {
     expect(list.querySelectorAll('li')).toHaveLength(3);
     expect(list.querySelector('[data-state="wrong"]')?.textContent).toContain('Beto');
   });
+
+  it('hideCorrectness counts answered (done + wrong) instead of only done', () => {
+    render(
+      <I18nProvider>
+        <LiveAnswerersCard answerers={answerers} hideCorrectness />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('live-answerers-count').textContent).toBe('2/3');
+  });
 });

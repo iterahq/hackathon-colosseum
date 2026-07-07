@@ -80,11 +80,12 @@ export default function LiveSessionPage() {
   // Play the advance cue when the professor moves the class to a NEW activity
   // (not on first mount / leaving reception).
   const prevActivityRef = useRef<string | null>(null);
+  const { onAdvance } = sound;
   useEffect(() => {
     const prev = prevActivityRef.current;
-    if (currentActivityId && prev && prev !== currentActivityId) sound.onAdvance();
+    if (currentActivityId && prev && prev !== currentActivityId) onAdvance();
     prevActivityRef.current = currentActivityId;
-  }, [currentActivityId, sound]);
+  }, [currentActivityId, onAdvance]);
 
   // Per-activity local answer state (result writes stay per-user). Reset whenever
   // the professor force-advances to a different activity.
@@ -303,7 +304,7 @@ export default function LiveSessionPage() {
             {current && (
               <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
                 <LiveRosterCard roster={roster} selfUserId={identity.userId} />
-                <LiveAnswerersCard answerers={peerAnswerers} />
+                <LiveAnswerersCard answerers={peerAnswerers} hideCorrectness />
                 <LiveSoundToggle />
               </aside>
             )}
