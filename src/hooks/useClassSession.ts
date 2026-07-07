@@ -18,25 +18,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
+import type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
-export interface ClassPresenceMember {
-  userId: string;
-  name: string;
-  isInstructor: boolean;
-}
-
-export interface UseClassSession {
-  session: ClassSession | null;
-  currentActivityId: string | null;
-  status: ClassSession['status'] | null;
-  roster: ClassPresenceMember[];
-  connected: boolean;
-  loading: boolean;
-  /** Fast-path advance: broadcast the new pointer to all joined clients. */
-  broadcast: (activityId: string) => void;
-  /** Force a re-read of the durable session row (e.g. after a professor action). */
-  refetch: () => void;
-}
+export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
 interface Identity {
   userId: string;
@@ -45,6 +29,7 @@ interface Identity {
 }
 
 const ADVANCE_EVENT = 'advance';
+const COMPLETED_EVENT = 'completed';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -56,6 +41,7 @@ export function useClassSession(
   const [roster, setRoster] = useState<ClassPresenceMember[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [completions, setCompletions] = useState<Record<string, string[]>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -108,6 +94,15 @@ export function useClassSession(
       .on('broadcast', { event: ADVANCE_EVENT }, ({ payload }) => {
         const next = (payload as { current_activity_id?: string | null })?.current_activity_id;
         if (typeof next === 'string' || next === null) setCurrentActivityId(next ?? null);
+      })
+      .on('broadcast', { event: COMPLETED_EVENT }, ({ payload }) => {
+        const p = payload as { activity_id?: string; user_id?: string } | null;
+        if (!p?.activity_id || !p.user_id) return;
+        setCompletions((prev) => {
+          const done = prev[p.activity_id!] ?? [];
+          if (done.includes(p.user_id!)) return prev;
+          return { ...prev, [p.activity_id!]: [...done, p.user_id!] };
+        });
       })
       .on(
         'postgres_changes',
@@ -193,6 +188,22 @@ export function useClassSession(
     []
   );
 
+  const broadcastCompletion = useCallback((activityId: string) => {
+    const channel = channelRef.current;
+    const userId = identityRef.current?.userId;
+    if (!channel || !userId) return;
+    setCompletions((prev) => {
+      const done = prev[activityId] ?? [];
+      if (done.includes(userId)) return prev;
+      return { ...prev, [activityId]: [...done, userId] };
+    });
+    void channel.send({
+      type: 'broadcast',
+      event: COMPLETED_EVENT,
+      payload: { activity_id: activityId, user_id: userId },
+    });
+  }, []);
+
   return {
     session,
     currentActivityId,
@@ -200,7 +211,9 @@ export function useClassSession(
     roster,
     connected,
     loading,
+    completions,
     broadcast,
+    broadcastCompletion,
     refetch,
   };
 }

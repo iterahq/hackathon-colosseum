@@ -32,12 +32,13 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading } = useClassSession(
-    sessionId,
-    identity.userId
-      ? { userId: identity.userId, name: identity.name, isInstructor: false }
-      : undefined
-  );
+  const { session, currentActivityId, status, roster, connected, loading, broadcastCompletion } =
+    useClassSession(
+      sessionId,
+      identity.userId
+        ? { userId: identity.userId, name: identity.name, isInstructor: false }
+        : undefined
+    );
 
   const { data: lesson } = useLessonContent(session?.lessonId);
   const lessonLoaded = Boolean(lesson);
@@ -75,6 +76,7 @@ export default function LiveSessionPage() {
       await persistActivityProgress(current.id);
       setSaving(false);
       setDoneId(current.id);
+      broadcastCompletion(current.id);
     }
   }
 
