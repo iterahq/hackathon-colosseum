@@ -19,12 +19,16 @@ import { X, Heart, Radio, Loader2 } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveTimer } from '@/components/live/LiveTimer';
+import { LiveRosterCard } from '@/components/live/LiveRosterCard';
+import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
+import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import type { Activity } from '@/types/content';
+import type { ClassCompleter } from '@/types/liveClass';
 
 const DECORATIVE_HEARTS = 5;
 
@@ -34,7 +38,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, answers, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -45,6 +49,16 @@ export default function LiveSessionPage() {
   const { data: lesson } = useLessonContent(session?.lessonId);
   const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
+
+  // Peers' live progress on the current activity — sourced from the broadcast
+  // answers (learners can't read others' rows under RLS), mapped over the present
+  // learner roster.
+  const peerAnswerers = useMemo(() => {
+    const learners: ClassCompleter[] = roster
+      .filter((m) => !m.isInstructor)
+      .map((m) => ({ userId: m.userId, name: m.name, done: false }));
+    return mergeLiveAnswers(learners, currentActivityId ? answers[currentActivityId] : undefined);
+  }, [roster, answers, currentActivityId]);
 
   const current = useMemo(
     () => activities.find((a) => a.id === currentActivityId) ?? null,
@@ -166,21 +180,21 @@ export default function LiveSessionPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 pt-14 md:pt-20">
+      <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20">
         {loading ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
+          <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground max-w-2xl mx-auto">
             <Loader2 className="w-6 h-6 animate-spin" />
             <p>{t('live.connecting')}</p>
           </div>
         ) : !session ? (
-          <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground" data-testid="live-not-found">
+          <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground max-w-2xl mx-auto" data-testid="live-not-found">
             {t('live.notFound')}
           </div>
         ) : ended ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-3xl border border-border bg-card p-10 text-center"
+            className="rounded-3xl border border-border bg-card p-10 text-center max-w-xl mx-auto"
             data-testid="live-ended"
           >
             <div className="w-20 h-20 mx-auto rounded-3xl bg-clay/10 border border-clay/40 flex items-center justify-center">
@@ -196,7 +210,14 @@ export default function LiveSessionPage() {
             </button>
           </motion.div>
         ) : (
-          <>
+          <div
+            className={
+              current
+                ? 'grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6 lg:gap-8 items-start'
+                : 'max-w-2xl mx-auto'
+            }
+          >
+            <div className={current ? 'min-w-0 w-full max-w-2xl mx-auto lg:mx-0' : ''}>
             <div
               className="font-mono text-[11px] uppercase tracking-wider text-clay"
               data-testid="live-eyebrow"
@@ -264,7 +285,14 @@ export default function LiveSessionPage() {
                 )}
               </div>
             )}
-          </>
+            </div>
+            {current && (
+              <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
+                <LiveRosterCard roster={roster} selfUserId={identity.userId} />
+                <LiveAnswerersCard answerers={peerAnswerers} />
+              </aside>
+            )}
+          </div>
         )}
       </main>
     </div>
