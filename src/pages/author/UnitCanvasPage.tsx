@@ -181,7 +181,7 @@ export default function UnitCanvasPage() {
 
       {/* Toolbar */}
       <div className="border-b border-border bg-card/40">
-        <div className="max-w-[1400px] w-full mx-auto px-4 md:px-6 py-3 flex items-center gap-3 flex-wrap">
+        <div className="w-full px-4 py-3 flex items-center gap-3 flex-wrap">
           <Link
             to="/author"
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

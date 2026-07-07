@@ -98,7 +98,7 @@ export function AppHeader({
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
-      <div className="max-w-[1400px] mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center gap-3 md:gap-6">
+      <div className="w-full px-4 h-14 md:h-16 flex items-center gap-3 md:gap-6">
         {/* LEFT — logo + nav pill */}
         <Link to="/" className="flex-shrink-0" data-testid="header-logo">
           <Logo size={28} logoUrl={branding.logoUrl} alt={branding.name} />
