@@ -20,6 +20,11 @@ export interface ClassAnswerer {
   state: ClassAnswerState;
 }
 
+export interface ClassTimer {
+  activityId: string;
+  deadline: number;
+}
+
 export interface UseClassSession {
   session: ClassSession | null;
   currentActivityId: string | null;
@@ -28,7 +33,10 @@ export interface UseClassSession {
   connected: boolean;
   loading: boolean;
   answers: Record<string, Record<string, boolean>>;
+  timer: ClassTimer | null;
   broadcast: (activityId: string) => void;
   broadcastAnswer: (activityId: string, correct: boolean) => void;
+  broadcastTimer: (activityId: string, durationSeconds: number) => void;
+  clearTimer: (activityId: string) => void;
   refetch: () => void;
 }

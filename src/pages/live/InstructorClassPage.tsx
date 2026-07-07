@@ -52,6 +52,8 @@ import {
   type ClassSession,
 } from '@/services/liveClass.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
+import { LiveTimer } from '@/components/live/LiveTimer';
+import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -303,10 +305,11 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, broadcast, refetch } = useClassSession(
-    session.id,
-    instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
-  );
+  const { currentActivityId, roster, connected, answers, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+    useClassSession(
+      session.id,
+      instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
+    );
   const { data: lesson } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -428,6 +431,17 @@ function ClassControl({
               <p className="text-foreground mt-1.5 font-medium">
                 {activityLabel(current, tText) || t('live.instructor.control.untitled')}
               </p>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <LiveTimerControls
+                running={Boolean(timer && current && timer.activityId === current.id)}
+                onStart={(s) => current && broadcastTimer(current.id, s)}
+                onStop={() => current && clearTimer(current.id)}
+              />
+              {timer && current && timer.activityId === current.id && (
+                <LiveTimer deadline={timer.deadline} />
+              )}
             </div>
 
             {/* Pointer controls */}

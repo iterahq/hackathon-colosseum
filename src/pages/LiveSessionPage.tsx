@@ -18,6 +18,7 @@ import { motion } from 'framer-motion';
 import { X, Heart, Radio, Loader2 } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveReception } from '@/components/live/LiveReception';
+import { LiveTimer } from '@/components/live/LiveTimer';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -33,7 +34,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -237,6 +238,11 @@ export default function LiveSessionPage() {
             )}
             {current && (
               <div className="mt-7">
+                {timer && timer.activityId === current.id && (
+                  <div className="mb-5 flex justify-center">
+                    <LiveTimer deadline={timer.deadline} />
+                  </div>
+                )}
                 {/* key on the activity id so a force-advance fully remounts the
                     renderer (fresh state) — the student loses the prior activity. */}
                 <ActivityRenderer

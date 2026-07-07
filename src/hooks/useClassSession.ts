@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
-import type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
+import type { ClassPresenceMember, ClassTimer, UseClassSession } from '@/types/liveClass';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -30,6 +30,8 @@ interface Identity {
 
 const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
+const TIMER_EVENT = 'timer';
+const TIMER_STOP_EVENT = 'timer-stop';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -42,6 +44,7 @@ export function useClassSession(
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
+  const [timer, setTimer] = useState<ClassTimer | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -97,7 +100,10 @@ export function useClassSession(
         // `null` (return-to-reception) is NOT accepted here — it can only come
         // from the durable session row (postgres_changes / refetch), so a spoofed
         // broadcast on this public channel can't shove the class back to the lobby.
-        if (typeof next === 'string') setCurrentActivityId(next);
+        if (typeof next === 'string') {
+          setCurrentActivityId(next);
+          setTimer(null);
+        }
       })
       .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
         const p = payload as { activity_id?: string; user_id?: string; correct?: boolean } | null;
@@ -106,6 +112,16 @@ export function useClassSession(
           ...prev,
           [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.correct === true },
         }));
+      })
+      .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
+        const p = payload as { activity_id?: string; deadline?: number } | null;
+        if (!p?.activity_id || typeof p.deadline !== 'number') return;
+        setTimer({ activityId: p.activity_id, deadline: p.deadline });
+      })
+      .on('broadcast', { event: TIMER_STOP_EVENT }, ({ payload }) => {
+        const p = payload as { activity_id?: string } | null;
+        if (!p?.activity_id) return;
+        setTimer((prev) => (prev && prev.activityId === p.activity_id ? null : prev));
       })
       .on(
         'postgres_changes',
@@ -187,6 +203,7 @@ export function useClassSession(
       const channel = channelRef.current;
       // Optimistic local update for the professor's own screen.
       setCurrentActivityId(activityId);
+      setTimer(null);
       if (!channel) return;
       void channel.send({
         type: 'broadcast',
@@ -196,6 +213,29 @@ export function useClassSession(
     },
     []
   );
+
+  const broadcastTimer = useCallback((activityId: string, durationSeconds: number) => {
+    const channel = channelRef.current;
+    if (!channel) return;
+    const deadline = Date.now() + durationSeconds * 1000;
+    setTimer({ activityId, deadline });
+    void channel.send({
+      type: 'broadcast',
+      event: TIMER_EVENT,
+      payload: { activity_id: activityId, deadline },
+    });
+  }, []);
+
+  const clearTimer = useCallback((activityId: string) => {
+    const channel = channelRef.current;
+    setTimer((prev) => (prev && prev.activityId === activityId ? null : prev));
+    if (!channel) return;
+    void channel.send({
+      type: 'broadcast',
+      event: TIMER_STOP_EVENT,
+      payload: { activity_id: activityId },
+    });
+  }, []);
 
   const broadcastAnswer = useCallback((activityId: string, correct: boolean) => {
     const channel = channelRef.current;
@@ -220,8 +260,11 @@ export function useClassSession(
     connected,
     loading,
     answers,
+    timer,
     broadcast,
     broadcastAnswer,
+    broadcastTimer,
+    clearTimer,
     refetch,
   };
 }
