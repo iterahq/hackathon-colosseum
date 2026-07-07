@@ -15,6 +15,9 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import type { ClassCompleter } from '@/types/liveClass';
+
+export type { ClassCompleter } from '@/types/liveClass';
 
 export type ClassSessionStatus = 'pending' | 'live' | 'ended';
 export type ClassScope = 'global' | 'tenant';
@@ -237,12 +240,6 @@ export async function endClassSession(sessionId: string): Promise<ClassSession> 
 }
 
 /* ── "Who's done on the current activity" (instructor view) ───────────────── */
-
-export interface ClassCompleter {
-  userId: string;
-  name: string;
-  done: boolean;
-}
 
 /**
  * For a tenant + activity, the learners flagged done on THAT activity.

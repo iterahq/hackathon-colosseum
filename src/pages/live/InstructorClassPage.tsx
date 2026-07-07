@@ -50,6 +50,7 @@ import {
   endClassSession,
   type ClassSession,
 } from '@/services/liveClass.service';
+import { mergeLiveCompletions } from '@/utils/mergeLiveCompletions';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -302,7 +303,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, broadcast, refetch } = useClassSession(
+  const { currentActivityId, roster, connected, completions, broadcast, refetch } = useClassSession(
     session.id,
     instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
   );
@@ -319,10 +320,14 @@ function ClassControl({
   // room) — the denominator is present-first, not the whole tenant cohort, and
   // absent learners' names never leak into the live view. (loop-1 fix #2.)
   const presentUserIds = useMemo(() => roster.map((m) => m.userId), [roster]);
-  const { data: completers = [] } = useClassCompleters(
+  const { data: polled = [] } = useClassCompleters(
     tenantId,
     currentActivityId,
     presentUserIds
+  );
+  const completers = useMemo(
+    () => mergeLiveCompletions(polled, currentActivityId ? completions[currentActivityId] ?? [] : []),
+    [polled, completions, currentActivityId]
   );
   const doneCount = completers.filter((c) => c.done).length;
 
