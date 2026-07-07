@@ -54,6 +54,7 @@ import {
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -418,20 +419,25 @@ function ClassControl({
           </div>
         ) : (
           <>
-            <div className="text-[11px] uppercase tracking-wider text-clay font-mono">
-              {t('live.instructor.control.activity')} {idx + 1}/{activities.length}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-clay font-mono">
+                {t('live.instructor.control.activity')} {idx + 1}/{activities.length}
+              </span>
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-mono">
+                {t('live.instructor.preview.label')}
+              </span>
             </div>
-            <div
-              className="mt-2 rounded-2xl border border-border bg-background p-5"
-              data-testid="instructor-current-activity"
-            >
-              <div className="text-xs uppercase tracking-wide text-muted-foreground font-mono">
-                {current?.kind}
+            {current && (
+              // A read-only MIRROR of exactly what learners see (same renderer),
+              // so the professor drives from the student's own screen.
+              <div
+                className="mt-3 rounded-2xl border border-border bg-background/60 p-4 md:p-5 pointer-events-none select-none"
+                data-testid="instructor-activity-preview"
+                aria-hidden="true"
+              >
+                <ActivityRenderer key={current.id} activity={current} onComplete={() => {}} />
               </div>
-              <p className="text-foreground mt-1.5 font-medium">
-                {activityLabel(current, tText) || t('live.instructor.control.untitled')}
-              </p>
-            </div>
+            )}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <LiveTimerControls
@@ -559,21 +565,6 @@ function ClassControl({
 }
 
 /* ── tiny presentational helpers ────────────────────────────────────────── */
-
-function activityLabel(
-  activity: Activity | null,
-  tText: (bag: Record<string, string | undefined> | null | undefined) => string
-): string {
-  if (!activity) return '';
-  const spec = activity.spec as Record<string, unknown>;
-  const prompt = typeof spec.prompt === 'string' ? spec.prompt : '';
-  const question = typeof spec.question === 'string' ? spec.question : '';
-  const titleBag =
-    spec.title && typeof spec.title === 'object'
-      ? (spec.title as Record<string, string | undefined>)
-      : null;
-  return prompt || question || (titleBag ? tText(titleBag) : '');
-}
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex items-center justify-center py-20">{children}</div>;
