@@ -429,11 +429,13 @@ function ClassControl({
             </div>
             {current && (
               // A read-only MIRROR of exactly what learners see (same renderer),
-              // so the professor drives from the student's own screen.
+              // so the professor drives from the student's own screen. `inert`
+              // blocks pointer + keyboard focus AND hides it from the a11y tree
+              // (the renderer's inner buttons must never be tabbable/announced).
               <div
-                className="mt-3 rounded-2xl border border-border bg-background/60 p-4 md:p-5 pointer-events-none select-none"
+                className="mt-3 rounded-2xl border border-border bg-background/60 p-4 md:p-5 select-none"
                 data-testid="instructor-activity-preview"
-                aria-hidden="true"
+                {...{ inert: '' }}
               >
                 <ActivityRenderer key={current.id} activity={current} onComplete={() => {}} />
               </div>
