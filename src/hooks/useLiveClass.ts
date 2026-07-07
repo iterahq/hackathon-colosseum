@@ -115,16 +115,21 @@ export function useMySessions(tenantId: string | null | undefined) {
 export function useClassCompleters(
   tenantId: string | null | undefined,
   activityId: string | null | undefined,
-  presentUserIds?: string[]
+  presentUserIds?: string[],
+  sinceIso?: string | null
 ) {
   const present = (presentUserIds ?? []).filter(Boolean).slice().sort();
   return useQuery({
-    queryKey: queryKeys.liveClass.completers(activityId ?? '', present.join(',')),
+    queryKey: queryKeys.liveClass.completers(
+      activityId ?? '',
+      `${present.join(',')}|${sinceIso ?? ''}`
+    ),
     queryFn: () =>
       getClassActivityCompleters(
         tenantId as string,
         activityId as string,
-        present.length > 0 ? present : undefined
+        present.length > 0 ? present : undefined,
+        sinceIso ?? undefined
       ),
     enabled: Boolean(tenantId && activityId),
     refetchInterval: 8_000,

@@ -257,7 +257,8 @@ export async function endClassSession(sessionId: string): Promise<ClassSession> 
 export async function getClassActivityCompleters(
   tenantId: string,
   activityId: string,
-  presentUserIds?: string[]
+  presentUserIds?: string[],
+  since?: string
 ): Promise<ClassCompleter[]> {
   if (!isSupabaseConfigured || !activityId) return [];
   const sb = getSupabase();
@@ -283,17 +284,22 @@ export async function getClassActivityCompleters(
     .select('id, display_name, email')
     .in('id', learnerIds);
 
+  // `since` = the session's started_at, so a new class of the same lesson starts
+  // fresh instead of inheriting prior completions of the same activity.
+  const progressBase = sb
+    .from('progress')
+    .select('user_id, status')
+    .eq('activity_id', activityId)
+    .in('user_id', learnerIds);
+  const resultsBase = sb
+    .from('activity_results')
+    .select('user_id, passed')
+    .eq('activity_id', activityId)
+    .in('user_id', learnerIds);
+
   const [{ data: progress }, { data: results }] = await Promise.all([
-    sb
-      .from('progress')
-      .select('user_id, status')
-      .eq('activity_id', activityId)
-      .in('user_id', learnerIds),
-    sb
-      .from('activity_results')
-      .select('user_id, passed')
-      .eq('activity_id', activityId)
-      .in('user_id', learnerIds),
+    since ? progressBase.gte('completed_at', since) : progressBase,
+    since ? resultsBase.gte('created_at', since) : resultsBase,
   ]);
 
   const doneIds = new Set<string>();

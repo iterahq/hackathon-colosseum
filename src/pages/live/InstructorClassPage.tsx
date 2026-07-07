@@ -323,7 +323,8 @@ function ClassControl({
   const { data: polled = [] } = useClassCompleters(
     tenantId,
     currentActivityId,
-    presentUserIds
+    presentUserIds,
+    session.startedAt
   );
   const completers = useMemo(
     () => mergeLiveCompletions(polled, currentActivityId ? completions[currentActivityId] ?? [] : []),
