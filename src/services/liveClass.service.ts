@@ -155,10 +155,9 @@ export async function getMySessions(tenantId: string): Promise<ClassSession[]> {
 
 /**
  * The lesson's FIRST activity id by ordinal (lowest ordinal, id tie-break), or
- * null when the lesson has no activities. Server-side belt for the start-race:
- * if the caller couldn't resolve the first activity (useLessonContent hadn't
- * resolved when Start was clicked), we still default the pointer here so a
- * started session is never stuck on a null pointer. (loop-1 fix #1b.)
+ * null when the lesson has no activities. No longer used to seed the start
+ * pointer (sessions now open in reception with a null pointer); kept as the
+ * canonical first-activity resolver for callers that need it.
  */
 export async function getFirstActivityId(lessonId: string): Promise<string | null> {
   if (!isSupabaseConfigured || !lessonId) return null;

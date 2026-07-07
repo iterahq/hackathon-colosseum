@@ -3,13 +3,16 @@ import { DoorOpen, Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
+const MAX_CHIPS = 24;
+
 interface LiveReceptionProps {
   roster: ClassPresenceMember[];
 }
 
 export function LiveReception({ roster }: LiveReceptionProps) {
   const { t } = useI18n();
-  const learners = roster.filter((m) => !m.isInstructor);
+  const shown = roster.slice(0, MAX_CHIPS);
+  const overflow = roster.length - shown.length;
 
   return (
     <motion.div
@@ -32,16 +35,30 @@ export function LiveReception({ roster }: LiveReceptionProps) {
         <span className="text-muted-foreground">{t('live.reception.inRoom')}</span>
       </div>
 
-      {learners.length > 0 && (
+      {roster.length > 0 && (
         <ul className="mt-4 flex flex-wrap items-center justify-center gap-2" data-testid="live-reception-roster">
-          {learners.map((m) => (
+          {shown.map((m) => (
             <li
               key={m.userId}
-              className="px-3 h-8 inline-flex items-center rounded-full bg-card border border-border text-xs text-foreground"
+              className={`px-3 h-8 inline-flex items-center gap-1.5 rounded-full border text-xs ${
+                m.isInstructor
+                  ? 'border-clay/50 bg-clay/10 text-clay'
+                  : 'border-border bg-card text-foreground'
+              }`}
             >
               {m.name}
+              {m.isInstructor && (
+                <span className="text-[10px] uppercase tracking-wide font-mono opacity-80">
+                  {t('role.instructor')}
+                </span>
+              )}
             </li>
           ))}
+          {overflow > 0 && (
+            <li className="px-3 h-8 inline-flex items-center rounded-full bg-card border border-border text-xs text-muted-foreground">
+              +{overflow}
+            </li>
+          )}
         </ul>
       )}
     </motion.div>

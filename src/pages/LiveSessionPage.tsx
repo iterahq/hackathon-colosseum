@@ -209,25 +209,26 @@ export default function LiveSessionPage() {
               {tText(lesson?.title)}
             </h1>
 
-            {current ? null : !lessonLoaded ? (
-              // Late-join / reconnect: the durable session may ALREADY carry a
-              // live pointer, but the lesson content hasn't resolved yet. Show an
-              // activity SKELETON (not the "waiting" state) so a joiner with a
-              // live pointer goes straight to the activity once it lands — no
-              // false "Aguardando o professor…" flash. (loop-1 fix #3.)
+            {current ? null : !currentActivityId ? (
+              // No pointer — the class is in RECEPTION until the instructor begins.
+              // The durable read completed under `loading`, so a null pointer here
+              // is real (not a not-yet-loaded flicker) — show the reception, never
+              // an activity skeleton (which would wrongly signal "an activity is
+              // coming").
+              <LiveReception roster={roster} />
+            ) : !lessonLoaded ? (
+              // Pointer set but the lesson content hasn't resolved yet (late-join /
+              // reconnect) — activity SKELETON so a joiner with a live pointer goes
+              // straight to the activity once it lands. (loop-1 fix #3.)
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
                 <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
                 <div className="h-40 rounded-2xl ds-shimmer" />
                 <div className="h-12 rounded-full ds-shimmer" />
               </div>
-            ) : !currentActivityId ? (
-              // Lesson loaded, no pointer yet — the class is in RECEPTION until the
-              // instructor begins the first activity.
-              <LiveReception roster={roster} />
             ) : (
               // Lesson loaded, pointer set, but the activity isn't in the list
               // (transient pointer/lesson mismatch) — skeleton rather than a
-              // misleading "waiting" state.
+              // misleading state.
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
                 <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
                 <div className="h-40 rounded-2xl ds-shimmer" />
