@@ -6,6 +6,12 @@ import { formatMmss } from '@/utils/formatMmss';
 
 interface LiveTimerProps {
   deadline: number;
+  /**
+   * Fires once when the countdown reaches 0. SECURITY: keep this purely cosmetic
+   * (e.g. a sound). The timer rides a PUBLIC broadcast channel, so a learner can
+   * spoof "time's up" — never wire this to auto-submit, lock answers, or scoring.
+   * Only a server-authoritative timer (durable + RLS) may drive consequences.
+   */
   onExpire?: () => void;
 }
 

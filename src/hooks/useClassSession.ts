@@ -19,6 +19,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
 import type { ClassPresenceMember, ClassTimer, UseClassSession } from '@/types/liveClass';
+import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -114,14 +115,11 @@ export function useClassSession(
         }));
       })
       .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
-        const p = payload as { activity_id?: string; deadline?: number } | null;
-        if (!p?.activity_id || typeof p.deadline !== 'number') return;
-        setTimer({ activityId: p.activity_id, deadline: p.deadline });
+        const next = parseTimerEvent(payload);
+        if (next) setTimer(next);
       })
       .on('broadcast', { event: TIMER_STOP_EVENT }, ({ payload }) => {
-        const p = payload as { activity_id?: string } | null;
-        if (!p?.activity_id) return;
-        setTimer((prev) => (prev && prev.activityId === p.activity_id ? null : prev));
+        setTimer((prev) => timerAfterStop(prev, payload));
       })
       .on(
         'postgres_changes',
@@ -216,9 +214,11 @@ export function useClassSession(
 
   const broadcastTimer = useCallback((activityId: string, durationSeconds: number) => {
     const channel = channelRef.current;
-    if (!channel) return;
     const deadline = Date.now() + durationSeconds * 1000;
+    // Optimistic local update first (mirrors clearTimer/broadcast) so the
+    // professor's own screen reflects the timer even if the channel just blipped.
     setTimer({ activityId, deadline });
+    if (!channel) return;
     void channel.send({
       type: 'broadcast',
       event: TIMER_EVENT,
