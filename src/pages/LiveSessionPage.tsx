@@ -32,7 +32,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, broadcastCompletion } =
+  const { session, currentActivityId, status, roster, connected, loading, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -57,27 +57,27 @@ export default function LiveSessionPage() {
     }
   }, [session, identity.userId, navigate]);
 
-  // Per-activity local "done" flag (result writes stay per-user). Reset whenever
+  // Per-activity local answer state (result writes stay per-user). Reset whenever
   // the professor force-advances to a different activity.
-  const [doneId, setDoneId] = useState<string | null>(null);
+  const [answered, setAnswered] = useState<{ id: string; correct: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    setDoneId(null);
+    setAnswered(null);
     setSaving(false);
   }, [currentActivityId]);
 
   async function handleComplete(correct: boolean) {
     if (!current || saving) return;
-    // Force-advance model: completing does NOT move the student forward — the
-    // professor's pointer is the only thing that advances. We just persist the
-    // per-user result and mark this activity done locally.
+    // Force-advance model: answering does NOT move the student forward — only the
+    // professor's pointer advances. We persist a correct result, and broadcast
+    // EVERY answer (right or wrong) so the professor sees who has responded.
+    setAnswered({ id: current.id, correct });
     if (correct) {
       setSaving(true);
       await persistActivityProgress(current.id);
       setSaving(false);
-      setDoneId(current.id);
-      broadcastCompletion(current.id);
     }
+    broadcastAnswer(current.id, correct);
   }
 
   const progressPct = activities.length
@@ -246,15 +246,19 @@ export default function LiveSessionPage() {
                     renderer (fresh state) — the student loses the prior activity. */}
                 <ActivityRenderer
                   key={current.id}
-                  activity={{ ...current, status: doneId === current.id ? 'done' : current.status }}
+                  activity={{
+                    ...current,
+                    status: answered?.id === current.id && answered.correct ? 'done' : current.status,
+                  }}
                   onComplete={handleComplete}
                 />
-                {doneId === current.id && (
+                {answered?.id === current.id && (
                   <p
-                    className="mt-5 text-center text-sm text-menta"
-                    data-testid="live-done-hint"
+                    className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
+                    data-testid="live-answered-hint"
+                    data-correct={answered.correct ? 'true' : 'false'}
                   >
-                    {t('live.done.waitForNext')}
+                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}
                   </p>
                 )}
               </div>

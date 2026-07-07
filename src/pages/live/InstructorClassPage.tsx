@@ -23,6 +23,7 @@ import {
   Square,
   Users,
   CheckCircle2,
+  XCircle,
   Circle,
   GraduationCap,
   Loader2,
@@ -50,7 +51,7 @@ import {
   endClassSession,
   type ClassSession,
 } from '@/services/liveClass.service';
-import { mergeLiveCompletions } from '@/utils/mergeLiveCompletions';
+import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -303,7 +304,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, completions, broadcast, refetch } = useClassSession(
+  const { currentActivityId, roster, connected, answers, broadcast, refetch } = useClassSession(
     session.id,
     instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
   );
@@ -326,11 +327,11 @@ function ClassControl({
     presentUserIds,
     session.startedAt
   );
-  const completers = useMemo(
-    () => mergeLiveCompletions(polled, currentActivityId ? completions[currentActivityId] ?? [] : []),
-    [polled, completions, currentActivityId]
+  const answerers = useMemo(
+    () => mergeLiveAnswers(polled, currentActivityId ? answers[currentActivityId] : undefined),
+    [polled, answers, currentActivityId]
   );
-  const doneCount = completers.filter((c) => c.done).length;
+  const doneCount = answerers.filter((a) => a.state === 'done').length;
 
   const [busy, setBusy] = useState(false);
 
@@ -499,21 +500,25 @@ function ClassControl({
               {t('live.instructor.done.title')}
             </h3>
             <span className="ml-auto font-mono text-sm tabular-nums text-clay" data-testid="instructor-done-count">
-              {doneCount}/{completers.length}
+              {doneCount}/{answerers.length}
             </span>
           </div>
-          {completers.length === 0 ? (
+          {answerers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('live.instructor.done.empty')}</p>
           ) : (
             <ul className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="instructor-done-list">
-              {completers.map((c) => (
-                <li key={c.userId} className="flex items-center gap-2 text-sm">
-                  {c.done ? (
+              {answerers.map((a) => (
+                <li key={a.userId} className="flex items-center gap-2 text-sm" data-state={a.state}>
+                  {a.state === 'done' ? (
                     <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />
+                  ) : a.state === 'wrong' ? (
+                    <XCircle className="w-4 h-4 text-clay flex-shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   )}
-                  <span className={c.done ? 'text-foreground' : 'text-muted-foreground'}>{c.name}</span>
+                  <span className={a.state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}>
+                    {a.name}
+                  </span>
                 </li>
               ))}
             </ul>

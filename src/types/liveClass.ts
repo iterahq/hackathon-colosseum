@@ -12,6 +12,14 @@ export interface ClassCompleter {
   done: boolean;
 }
 
+export type ClassAnswerState = 'pending' | 'wrong' | 'done';
+
+export interface ClassAnswerer {
+  userId: string;
+  name: string;
+  state: ClassAnswerState;
+}
+
 export interface UseClassSession {
   session: ClassSession | null;
   currentActivityId: string | null;
@@ -19,8 +27,8 @@ export interface UseClassSession {
   roster: ClassPresenceMember[];
   connected: boolean;
   loading: boolean;
-  completions: Record<string, string[]>;
+  answers: Record<string, Record<string, boolean>>;
   broadcast: (activityId: string) => void;
-  broadcastCompletion: (activityId: string) => void;
+  broadcastAnswer: (activityId: string, correct: boolean) => void;
   refetch: () => void;
 }

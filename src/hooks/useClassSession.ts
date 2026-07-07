@@ -29,7 +29,7 @@ interface Identity {
 }
 
 const ADVANCE_EVENT = 'advance';
-const COMPLETED_EVENT = 'completed';
+const ANSWERED_EVENT = 'answered';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -41,7 +41,7 @@ export function useClassSession(
   const [roster, setRoster] = useState<ClassPresenceMember[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [completions, setCompletions] = useState<Record<string, string[]>>({});
+  const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -95,14 +95,13 @@ export function useClassSession(
         const next = (payload as { current_activity_id?: string | null })?.current_activity_id;
         if (typeof next === 'string' || next === null) setCurrentActivityId(next ?? null);
       })
-      .on('broadcast', { event: COMPLETED_EVENT }, ({ payload }) => {
-        const p = payload as { activity_id?: string; user_id?: string } | null;
+      .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
+        const p = payload as { activity_id?: string; user_id?: string; correct?: boolean } | null;
         if (!p?.activity_id || !p.user_id) return;
-        setCompletions((prev) => {
-          const done = prev[p.activity_id!] ?? [];
-          if (done.includes(p.user_id!)) return prev;
-          return { ...prev, [p.activity_id!]: [...done, p.user_id!] };
-        });
+        setAnswers((prev) => ({
+          ...prev,
+          [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.correct === true },
+        }));
       })
       .on(
         'postgres_changes',
@@ -188,19 +187,18 @@ export function useClassSession(
     []
   );
 
-  const broadcastCompletion = useCallback((activityId: string) => {
+  const broadcastAnswer = useCallback((activityId: string, correct: boolean) => {
     const channel = channelRef.current;
     const userId = identityRef.current?.userId;
     if (!channel || !userId) return;
-    setCompletions((prev) => {
-      const done = prev[activityId] ?? [];
-      if (done.includes(userId)) return prev;
-      return { ...prev, [activityId]: [...done, userId] };
-    });
+    setAnswers((prev) => ({
+      ...prev,
+      [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
+    }));
     void channel.send({
       type: 'broadcast',
-      event: COMPLETED_EVENT,
-      payload: { activity_id: activityId, user_id: userId },
+      event: ANSWERED_EVENT,
+      payload: { activity_id: activityId, user_id: userId, correct },
     });
   }, []);
 
@@ -211,9 +209,9 @@ export function useClassSession(
     roster,
     connected,
     loading,
-    completions,
+    answers,
     broadcast,
-    broadcastCompletion,
+    broadcastAnswer,
     refetch,
   };
 }
