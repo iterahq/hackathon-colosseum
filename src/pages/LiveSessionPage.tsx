@@ -12,7 +12,7 @@
  * Result writes are UNCHANGED (persistActivityProgress → itera.progress /
  * activity_results). Live mode only controls WHICH activity is on screen.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Radio, Loader2 } from 'lucide-react';
@@ -21,9 +21,11 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
+import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
@@ -73,6 +75,17 @@ export default function LiveSessionPage() {
     }
   }, [session, identity.userId, navigate]);
 
+  const sound = useLiveSound();
+
+  // Play the advance cue when the professor moves the class to a NEW activity
+  // (not on first mount / leaving reception).
+  const prevActivityRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevActivityRef.current;
+    if (currentActivityId && prev && prev !== currentActivityId) sound.onAdvance();
+    prevActivityRef.current = currentActivityId;
+  }, [currentActivityId, sound]);
+
   // Per-activity local answer state (result writes stay per-user). Reset whenever
   // the professor force-advances to a different activity.
   const [answered, setAnswered] = useState<{ id: string; correct: boolean } | null>(null);
@@ -88,6 +101,7 @@ export default function LiveSessionPage() {
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) so the professor sees who has responded.
     setAnswered({ id: current.id, correct });
+    sound.onAnswer(correct);
     if (correct) {
       setSaving(true);
       await persistActivityProgress(current.id);
@@ -261,7 +275,7 @@ export default function LiveSessionPage() {
               <div className="mt-7">
                 {timer && timer.activityId === current.id && (
                   <div className="mb-5 flex justify-center">
-                    <LiveTimer deadline={timer.deadline} />
+                    <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
                   </div>
                 )}
                 {/* key on the activity id so a force-advance fully remounts the
@@ -290,6 +304,7 @@ export default function LiveSessionPage() {
               <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
                 <LiveRosterCard roster={roster} selfUserId={identity.userId} />
                 <LiveAnswerersCard answerers={peerAnswerers} />
+                <LiveSoundToggle />
               </aside>
             )}
           </div>

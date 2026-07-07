@@ -52,6 +52,8 @@ import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
+import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -308,6 +310,7 @@ function ClassControl({
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
     );
+  const sound = useLiveSound();
   const { data: lesson } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -444,7 +447,7 @@ function ClassControl({
                 onStop={() => current && clearTimer(current.id)}
               />
               {timer && current && timer.activityId === current.id && (
-                <LiveTimer deadline={timer.deadline} />
+                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
               )}
             </div>
 
@@ -499,6 +502,8 @@ function ClassControl({
             </>
           )}
         </button>
+
+        <LiveSoundToggle />
       </div>
     </div>
   );
