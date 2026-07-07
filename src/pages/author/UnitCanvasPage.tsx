@@ -30,8 +30,6 @@ import {
   MessageSquarePlus,
   RefreshCw,
   FlaskConical,
-  Eye,
-  EyeOff,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -53,7 +51,6 @@ import {
   useToggleResolved,
   useDeleteComment,
   useBumpVersion,
-  useSetActivityStatus,
 } from '@/hooks/useAuthorCanvas';
 import {
   buildActivityRefs,
@@ -92,7 +89,6 @@ export default function UnitCanvasPage() {
   const toggleResolved = useToggleResolved(unitId);
   const deleteComment = useDeleteComment(unitId);
   const bumpVersion = useBumpVersion(unitId, tenantId);
-  const setStatus = useSetActivityStatus(unitId);
 
   const [commentMode, setCommentMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -351,14 +347,12 @@ export default function UnitCanvasPage() {
                                 <ActivityCell
                                   key={activity.id}
                                   activity={activity}
+                                  unitId={unitId}
                                   commentMode={commentMode}
                                   commentCount={commentCounts.get(activity.id) ?? 0}
                                   pins={versionComments.filter(
                                     (c) => c.activityId === activity.id,
                                   )}
-                                  onPublishToggle={(next) =>
-                                    setStatus.mutate({ activityId: activity.id, status: next })
-                                  }
                                   onCommentClick={(anchorX, anchorY) =>
                                     setTarget({
                                       activityId: activity.id,
@@ -418,23 +412,36 @@ export default function UnitCanvasPage() {
   );
 }
 
-/** One activity cell: ActivityRenderer preview + badges + publish + test + comment overlay. */
+/**
+ * One activity cell — rendered BARE on the canvas (no card border/background, no
+ * inner frame): the live activity IS the object floating on the surface. The
+ * only chrome is a LIGHTWEIGHT control strip that stays hidden at rest and is
+ * revealed on hover (plus a faint selection ring), carrying just enough to
+ * identify the activity (#index · kind · status) and reach the Test button.
+ * The publish/unpublish toggle was removed (Tainan directive) — Test is the
+ * single retained action.
+ */
 function ActivityCell({
   activity,
+  unitId,
   commentMode,
   commentCount,
   pins,
-  onPublishToggle,
   onCommentClick,
 }: {
   activity: Activity;
+  unitId: string | undefined;
   commentMode: boolean;
   commentCount: number;
   pins: ActivityComment[];
-  onPublishToggle: (next: 'draft' | 'published') => void;
   onCommentClick: (anchorX: number, anchorY: number) => void;
 }) {
   const published = activity.publishStatus === 'published';
+
+  // Carry the originating unit so the Test view's Back returns to THIS canvas.
+  const testHref = unitId
+    ? `/author/activities/${activity.id}/test?unit=${unitId}`
+    : `/author/activities/${activity.id}/test`;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -449,29 +456,38 @@ function ActivityCell({
       data-activity-id={activity.id}
       data-activity-kind={activity.kind}
       data-status={activity.publishStatus ?? 'unknown'}
-      className="relative w-[320px] shrink-0 rounded-2xl border border-border bg-card/40 p-3"
+      className="group relative w-[640px] shrink-0"
     >
-      {/* Header row: index + status + comment badges */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
-          #{String(activity.ordinal).padStart(2, '0')}
-        </span>
-        <Badge variant={published ? 'default' : 'secondary'} data-testid="cell-status-badge">
-          {published ? 'published' : 'draft'}
-        </Badge>
-        {commentCount > 0 && (
-          <Badge variant="outline" data-testid="cell-comment-badge">
-            {commentCount} 💬
+      {/* Hover-revealed control strip — the only chrome. Hidden at rest; the
+          default resting state is just the bare activity below. */}
+      <div className="pointer-events-none absolute -top-9 left-0 right-0 z-20 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
+          <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
+            #{String(activity.ordinal).padStart(2, '0')}
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground/70">
+            {activity.kind}
+          </span>
+          <Badge variant={published ? 'default' : 'secondary'} data-testid="cell-status-badge">
+            {published ? 'published' : 'draft'}
           </Badge>
-        )}
-        <span className="ml-auto text-[10px] font-mono text-muted-foreground/70">
-          {activity.kind}
-        </span>
+          {commentCount > 0 && (
+            <Badge variant="outline" data-testid="cell-comment-badge">
+              {commentCount} 💬
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 px-2" asChild data-testid="cell-test-link">
+            <Link to={testHref}>
+              <FlaskConical className="mr-1.5 h-3.5 w-3.5" /> Test
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Preview (static) + comment-capture overlay */}
-      <div className="relative overflow-hidden rounded-xl border border-border/60 bg-background max-h-[300px]">
-        <div className="pointer-events-none select-none scale-[0.85] origin-top">
+      {/* Bare live activity + comment-capture overlay. No card/frame — just a
+          faint ring on hover/select so it's still identifiable & selectable. */}
+      <div className="relative rounded-xl ring-1 ring-transparent transition-shadow group-hover:ring-border group-focus-within:ring-border">
+        <div className="pointer-events-none select-none">
           <ActivityRenderer activity={activity} onComplete={noop} />
         </div>
 
@@ -495,35 +511,9 @@ function ActivityCell({
             aria-label="Add comment on this activity"
             data-testid="cell-comment-overlay"
             onClick={handleOverlayClick}
-            className="absolute inset-0 cursor-crosshair bg-clay/5 hover:bg-clay/10"
+            className="absolute inset-0 cursor-crosshair rounded-xl bg-clay/5 hover:bg-clay/10"
           />
         )}
-      </div>
-
-      {/* Footer actions */}
-      <div className="flex items-center gap-2 mt-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1"
-          onClick={() => onPublishToggle(published ? 'draft' : 'published')}
-          data-testid="cell-publish-toggle"
-        >
-          {published ? (
-            <>
-              <EyeOff className="mr-1.5 h-3.5 w-3.5" /> Unpublish
-            </>
-          ) : (
-            <>
-              <Eye className="mr-1.5 h-3.5 w-3.5" /> Publish
-            </>
-          )}
-        </Button>
-        <Button variant="ghost" size="sm" asChild data-testid="cell-test-link">
-          <Link to={`/author/activities/${activity.id}/test`}>
-            <FlaskConical className="mr-1.5 h-3.5 w-3.5" /> Test
-          </Link>
-        </Button>
       </div>
     </div>
   );
