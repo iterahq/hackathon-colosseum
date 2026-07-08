@@ -11,6 +11,19 @@ interface LiveRosterCardProps {
 
 export function LiveRosterCard({ roster, selfUserId, bare = false }: LiveRosterCardProps) {
   const { t } = useI18n();
+  const groups = [
+    {
+      key: 'instructors',
+      label: t('live.instructor.roster.instructors'),
+      members: roster.filter((m) => m.isInstructor),
+    },
+    {
+      key: 'learners',
+      label: t('live.instructor.roster.learners'),
+      members: roster.filter((m) => !m.isInstructor),
+    },
+  ].filter((g) => g.members.length > 0);
+
   return (
     <div className={bare ? 'p-5' : 'rounded-3xl border border-border bg-card p-5'} data-testid="live-roster-card">
       <div className="flex items-center gap-2 mb-3">
@@ -23,25 +36,31 @@ export function LiveRosterCard({ roster, selfUserId, bare = false }: LiveRosterC
       {roster.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.roster.empty')}</p>
       ) : (
-        <ul className="space-y-1.5 max-h-56 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-roster-list">
-          {roster.map((m) => (
-            <li key={m.userId} className="flex items-center gap-2 text-sm text-foreground">
-              <span className="w-1.5 h-1.5 rounded-full bg-menta flex-shrink-0" />
-              {m.name}
-              {m.userId === selfUserId ? (
-                <span className="text-[10px] uppercase tracking-wide text-clay font-mono">
-                  · {t('live.instructor.roster.you')}
-                </span>
-              ) : (
-                m.isInstructor && (
-                  <span className="text-[10px] uppercase tracking-wide text-clay font-mono">
-                    · {t('role.instructor')}
-                  </span>
-                )
-              )}
-            </li>
+        <div
+          className="space-y-3 max-h-56 overflow-y-auto lg:max-h-none lg:overflow-visible"
+          data-testid="live-roster-list"
+        >
+          {groups.map((g) => (
+            <div key={g.key} data-testid={`live-roster-${g.key}`}>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono mb-1.5">
+                {g.label}
+              </p>
+              <ul className="space-y-1.5">
+                {g.members.map((m) => (
+                  <li key={m.userId} className="flex items-center gap-2 text-sm text-foreground">
+                    <span className="w-1.5 h-1.5 rounded-full bg-menta flex-shrink-0" />
+                    {m.name}
+                    {m.userId === selfUserId && (
+                      <span className="text-[10px] uppercase tracking-wide text-clay font-mono">
+                        · {t('live.instructor.roster.you')}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
