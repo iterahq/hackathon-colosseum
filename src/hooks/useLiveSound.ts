@@ -3,9 +3,9 @@ import { useSoundEffects } from './useSoundEffects';
 import { useLiveMuted } from './useLiveMuted';
 
 /**
- * Live-class sound cues, gated by the shared mute preference:
- * answer success/error, time's-up, and advance-to-next. Reuses the app's
- * `useSoundEffects` for the actual clips.
+ * Live-class sound cues, gated by the shared mute preference: answer
+ * success/error, a warning in the final seconds, time's-up, and advance-to-next.
+ * Reuses the app's `useSoundEffects` for the actual clips.
  */
 export function useLiveSound() {
   const { playSuccess, playError, playClick } = useSoundEffects();
@@ -20,6 +20,10 @@ export function useLiveSound() {
     [muted, playSuccess, playError]
   );
 
+  const onWarn = useCallback(() => {
+    if (!muted) playClick();
+  }, [muted, playClick]);
+
   const onTimeUp = useCallback(() => {
     if (!muted) playError();
   }, [muted, playError]);
@@ -28,5 +32,5 @@ export function useLiveSound() {
     if (!muted) playClick();
   }, [muted, playClick]);
 
-  return { muted, toggleMuted, onAnswer, onTimeUp, onAdvance };
+  return { muted, toggleMuted, onAnswer, onWarn, onTimeUp, onAdvance };
 }

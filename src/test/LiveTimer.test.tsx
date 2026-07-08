@@ -11,10 +11,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function renderTimer(deadlineMs: number, onExpire?: () => void) {
+function renderTimer(deadlineMs: number, onExpire?: () => void, onWarn?: () => void) {
   return render(
     <I18nProvider>
-      <LiveTimer deadline={deadlineMs} onExpire={onExpire} />
+      <LiveTimer deadline={deadlineMs} onExpire={onExpire} onWarn={onWarn} />
     </I18nProvider>
   );
 }
@@ -37,5 +37,20 @@ describe('LiveTimer', () => {
     });
     expect(screen.getByTestId('live-timer').getAttribute('data-done')).toBe('true');
     expect(onExpire).toHaveBeenCalledTimes(1);
+  });
+
+  it('enters the warning state and fires onWarn once in the final 5s', () => {
+    const onWarn = vi.fn();
+    renderTimer(8_000, undefined, onWarn);
+    expect(screen.getByTestId('live-timer').getAttribute('data-warning')).toBe('false');
+    expect(onWarn).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(4_000); // 4s left → within the final 5s
+    });
+    expect(screen.getByTestId('live-timer').getAttribute('data-warning')).toBe('true');
+    act(() => {
+      vi.advanceTimersByTime(2_000); // still counting inside the window
+    });
+    expect(onWarn).toHaveBeenCalledTimes(1);
   });
 });
