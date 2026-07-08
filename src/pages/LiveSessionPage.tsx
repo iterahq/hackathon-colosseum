@@ -307,7 +307,8 @@ export default function LiveSessionPage() {
             )}
             {current && (
               <div className="mt-7">
-                {((timer && timer.activityId === current.id) || (!answered && activityStartedAt)) && (
+                {((timer && timer.activityId === current.id) ||
+                  (!answered && !locked && activityStartedAt)) && (
                   <div className="mb-5 flex items-center justify-center gap-3">
                     {timer && timer.activityId === current.id && (
                       <LiveTimer deadline={timer.deadline} onExpire={handleTimeUp} />
