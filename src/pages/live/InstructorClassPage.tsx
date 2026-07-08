@@ -47,11 +47,13 @@ import {
   type ClassSession,
 } from '@/services/liveClass.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
+import { rankByTiming } from '@/utils/rankByTiming';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveRankingCard } from '@/components/live/LiveRankingCard';
 import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
@@ -348,6 +350,10 @@ function ClassControl({
     [polled, answers, elapsed, currentActivityId]
   );
 
+  // Class-wide speed leaderboard of the present learners (cumulative across every
+  // activity answered so far), so by the end of the class it's the final ranking.
+  const ranking = useMemo(() => rankByTiming(roster, elapsed, answers), [roster, elapsed, answers]);
+
   const [busy, setBusy] = useState(false);
 
   async function goTo(activityId: string) {
@@ -504,6 +510,7 @@ function ClassControl({
       <div className="space-y-5">
         <LiveRosterCard roster={roster} selfUserId={instructorId ?? undefined} />
         <LiveAnswerersCard answerers={answerers} />
+        <LiveRankingCard ranking={ranking} />
 
         <button
           onClick={copyJoinLink}

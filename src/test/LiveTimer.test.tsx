@@ -39,18 +39,26 @@ describe('LiveTimer', () => {
     expect(onExpire).toHaveBeenCalledTimes(1);
   });
 
-  it('enters the warning state and fires onWarn once in the final 5s', () => {
+  it('ticks onWarn once per second across the final 5s (5,4,3,2,1)', () => {
     const onWarn = vi.fn();
     renderTimer(8_000, undefined, onWarn);
     expect(screen.getByTestId('live-timer').getAttribute('data-warning')).toBe('false');
     expect(onWarn).not.toHaveBeenCalled();
     act(() => {
-      vi.advanceTimersByTime(4_000); // 4s left → within the final 5s
+      vi.advanceTimersByTime(3_000); // 5s left → first tick
     });
     expect(screen.getByTestId('live-timer').getAttribute('data-warning')).toBe('true');
-    act(() => {
-      vi.advanceTimersByTime(2_000); // still counting inside the window
-    });
     expect(onWarn).toHaveBeenCalledTimes(1);
+    // Each real second commits separately → one tick per second (4,3,2,1).
+    for (let i = 0; i < 4; i++) {
+      act(() => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+    expect(onWarn).toHaveBeenCalledTimes(5);
+    act(() => {
+      vi.advanceTimersByTime(2_000); // hits 0 → no extra tick
+    });
+    expect(onWarn).toHaveBeenCalledTimes(5);
   });
 });
