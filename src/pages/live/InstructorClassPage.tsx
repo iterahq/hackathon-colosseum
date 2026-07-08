@@ -16,15 +16,10 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Radio,
   Play,
   ChevronLeft,
   ChevronRight,
   Square,
-  Users,
-  CheckCircle2,
-  XCircle,
-  Circle,
   GraduationCap,
   Loader2,
   Presentation,
@@ -54,6 +49,11 @@ import {
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { LiveRosterCard } from '@/components/live/LiveRosterCard';
+import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
+import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -153,6 +153,14 @@ function StartClass({
   const { data: program } = useProgram(slug || undefined);
   const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
 
+  // Only programs of the teaching tenant — starting a class on another tenant's
+  // catalog program would leave its learners with an empty (RLS-blocked) activity
+  // (black screen), since they can't read cross-tenant content.
+  const tenantPrograms = useMemo(
+    () => programs.filter((p) => p.tenantId === tenantId),
+    [programs, tenantId]
+  );
+
   const lessons = useMemo(
     () =>
       (program?.units ?? [])
@@ -215,7 +223,7 @@ function StartClass({
           className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-5"
         >
           <option value="">{t('live.instructor.start.programPlaceholder')}</option>
-          {programs.map((p) => (
+          {tenantPrograms.map((p) => (
             <option key={p.id} value={p.slug}>
               {tText(p.title)}
             </option>
@@ -305,11 +313,12 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
     );
+  const sound = useLiveSound();
   const { data: lesson } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -330,10 +339,14 @@ function ClassControl({
     session.startedAt
   );
   const answerers = useMemo(
-    () => mergeLiveAnswers(polled, currentActivityId ? answers[currentActivityId] : undefined),
-    [polled, answers, currentActivityId]
+    () =>
+      mergeLiveAnswers(
+        polled,
+        currentActivityId ? answers[currentActivityId] : undefined,
+        currentActivityId ? elapsed[currentActivityId] : undefined
+      ),
+    [polled, answers, elapsed, currentActivityId]
   );
-  const doneCount = answerers.filter((a) => a.state === 'done').length;
 
   const [busy, setBusy] = useState(false);
 
@@ -418,20 +431,27 @@ function ClassControl({
           </div>
         ) : (
           <>
-            <div className="text-[11px] uppercase tracking-wider text-clay font-mono">
-              {t('live.instructor.control.activity')} {idx + 1}/{activities.length}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-clay font-mono">
+                {t('live.instructor.control.activity')} {idx + 1}/{activities.length}
+              </span>
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-mono">
+                {t('live.instructor.preview.label')}
+              </span>
             </div>
-            <div
-              className="mt-2 rounded-2xl border border-border bg-background p-5"
-              data-testid="instructor-current-activity"
-            >
-              <div className="text-xs uppercase tracking-wide text-muted-foreground font-mono">
-                {current?.kind}
+            {current && (
+              // A read-only MIRROR of exactly what learners see (same renderer),
+              // so the professor drives from the student's own screen. `inert`
+              // blocks pointer + keyboard focus AND hides it from the a11y tree
+              // (the renderer's inner buttons must never be tabbable/announced).
+              <div
+                className="mt-3 rounded-2xl border border-border bg-background/60 p-4 md:p-5 select-none"
+                data-testid="instructor-activity-preview"
+                {...{ inert: '' }}
+              >
+                <ActivityRenderer key={current.id} activity={current} onComplete={() => {}} />
               </div>
-              <p className="text-foreground mt-1.5 font-medium">
-                {activityLabel(current, tText) || t('live.instructor.control.untitled')}
-              </p>
-            </div>
+            )}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <LiveTimerControls
@@ -440,7 +460,7 @@ function ClassControl({
                 onStop={() => current && clearTimer(current.id)}
               />
               {timer && current && timer.activityId === current.id && (
-                <LiveTimer deadline={timer.deadline} />
+                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
               )}
             </div>
 
@@ -477,66 +497,8 @@ function ClassControl({
 
       {/* RIGHT — presence + who's done */}
       <div className="space-y-5">
-        <div className="rounded-3xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="w-4 h-4 text-menta" />
-            <h3 className="font-display text-foreground text-sm">
-              {t('live.instructor.roster.inRoom')}
-            </h3>
-            <span className="ml-auto font-mono text-sm tabular-nums text-menta" data-testid="instructor-presence-count">
-              {roster.length}
-            </span>
-          </div>
-          {roster.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('live.instructor.roster.empty')}</p>
-          ) : (
-            <ul className="space-y-1.5" data-testid="instructor-presence-list">
-              {roster.map((m) => (
-                <li key={m.userId} className="flex items-center gap-2 text-sm text-foreground">
-                  <span className="w-1.5 h-1.5 rounded-full bg-menta" />
-                  {m.name}
-                  {m.isInstructor && (
-                    <span className="text-[10px] uppercase tracking-wide text-clay font-mono">
-                      · {t('live.instructor.roster.you')}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-3xl border border-border bg-card p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Radio className="w-4 h-4 text-clay" />
-            <h3 className="font-display text-foreground text-sm">
-              {t('live.instructor.done.title')}
-            </h3>
-            <span className="ml-auto font-mono text-sm tabular-nums text-clay" data-testid="instructor-done-count">
-              {doneCount}/{answerers.length}
-            </span>
-          </div>
-          {answerers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t('live.instructor.done.empty')}</p>
-          ) : (
-            <ul className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="instructor-done-list">
-              {answerers.map((a) => (
-                <li key={a.userId} className="flex items-center gap-2 text-sm" data-state={a.state}>
-                  {a.state === 'done' ? (
-                    <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />
-                  ) : a.state === 'wrong' ? (
-                    <XCircle className="w-4 h-4 text-clay flex-shrink-0" />
-                  ) : (
-                    <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  )}
-                  <span className={a.state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}>
-                    {a.name}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <LiveRosterCard roster={roster} selfUserId={instructorId ?? undefined} />
+        <LiveAnswerersCard answerers={answerers} />
 
         <button
           onClick={copyJoinLink}
@@ -553,27 +515,14 @@ function ClassControl({
             </>
           )}
         </button>
+
+        <LiveSoundToggle />
       </div>
     </div>
   );
 }
 
 /* ── tiny presentational helpers ────────────────────────────────────────── */
-
-function activityLabel(
-  activity: Activity | null,
-  tText: (bag: Record<string, string | undefined> | null | undefined) => string
-): string {
-  if (!activity) return '';
-  const spec = activity.spec as Record<string, unknown>;
-  const prompt = typeof spec.prompt === 'string' ? spec.prompt : '';
-  const question = typeof spec.question === 'string' ? spec.question : '';
-  const titleBag =
-    spec.title && typeof spec.title === 'object'
-      ? (spec.title as Record<string, string | undefined>)
-      : null;
-  return prompt || question || (titleBag ? tText(titleBag) : '');
-}
 
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex items-center justify-center py-20">{children}</div>;
