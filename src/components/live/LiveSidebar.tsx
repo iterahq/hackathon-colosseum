@@ -15,8 +15,6 @@ interface LiveSidebarProps {
   selfUserId?: string;
   /** Instructor only — hidden during reception (no current activity). */
   hasActivity?: boolean;
-  activityIndex?: number;
-  activityCount?: number;
   kind?: string;
   ranking?: ClassRanking;
   copied?: boolean;
@@ -42,8 +40,6 @@ export function LiveSidebar({
   answerers,
   selfUserId,
   hasActivity = true,
-  activityIndex = 0,
-  activityCount = 0,
   kind = '',
   ranking,
   copied = false,
@@ -67,13 +63,7 @@ export function LiveSidebar({
         <div className="shrink-0 divide-y divide-border border-b border-border">
           {controls}
           {showActivity && (
-            <LiveActivityStatsCard
-              bare
-              activityIndex={activityIndex}
-              activityCount={activityCount}
-              kind={kind}
-              answerers={answerers}
-            />
+            <LiveActivityStatsCard bare kind={kind} answerers={answerers} />
           )}
         </div>
       )}

@@ -5,8 +5,6 @@ import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 interface InstructorControlsProps {
   /** Reception (pointer not set yet) — only "Begin" is shown. */
   inReception: boolean;
-  activityIndex: number;
-  activityCount: number;
   answeredCount: number;
   presentCount: number;
   busy: boolean;
@@ -29,8 +27,6 @@ interface InstructorControlsProps {
  */
 export function InstructorControls({
   inReception,
-  activityIndex,
-  activityCount,
   answeredCount,
   presentCount,
   busy,
@@ -75,13 +71,10 @@ export function InstructorControls({
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex-1 flex flex-col items-center leading-none">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono tabular-nums">
-            {activityIndex + 1}/{activityCount}
-          </span>
+        <div className="flex-1 flex items-center justify-center leading-none">
           {presentCount > 0 && (
             <span
-              className={`mt-0.5 text-[10px] font-mono tabular-nums ${allAnswered ? 'text-menta' : 'text-muted-foreground'}`}
+              className={`text-xs font-mono tabular-nums ${allAnswered ? 'text-menta' : 'text-muted-foreground'}`}
               data-testid="instructor-answered-count"
             >
               ✓ {answeredCount}/{presentCount}

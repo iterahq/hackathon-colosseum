@@ -5,8 +5,6 @@ import { InstructorControls } from '@/components/live/InstructorControls';
 
 const base = {
   inReception: false,
-  activityIndex: 0,
-  activityCount: 5,
   answeredCount: 0,
   presentCount: 0,
   busy: false,
@@ -36,11 +34,10 @@ describe('InstructorControls', () => {
     expect(screen.queryByTestId('instructor-prev')).toBeNull();
   });
 
-  it('running shows prev/next + N/M and disables prev at the first activity', () => {
-    controls({ activityIndex: 2, activityCount: 5, canPrev: false });
+  it('running shows prev/next and disables prev at the first activity', () => {
+    controls({ canPrev: false });
     expect(screen.getByTestId('instructor-next')).toBeTruthy();
     expect(screen.getByTestId('instructor-prev')).toBeDisabled();
-    expect(screen.getByTestId('instructor-controls').textContent).toContain('3/5');
   });
 
   it('flags Next as ready + shows the ✓ chip when everyone present has answered', () => {

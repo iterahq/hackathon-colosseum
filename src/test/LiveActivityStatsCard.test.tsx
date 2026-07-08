@@ -14,21 +14,14 @@ const answerers: ClassAnswerer[] = [
 function renderCard(over: Partial<React.ComponentProps<typeof LiveActivityStatsCard>> = {}) {
   return render(
     <I18nProvider>
-      <LiveActivityStatsCard
-        activityIndex={1}
-        activityCount={27}
-        kind="single_choice"
-        answerers={answerers}
-        {...over}
-      />
+      <LiveActivityStatsCard kind="single_choice" answerers={answerers} {...over} />
     </I18nProvider>
   );
 }
 
 describe('LiveActivityStatsCard', () => {
-  it('shows the activity position (N/M) and the humanised kind', () => {
+  it('shows the humanised activity kind', () => {
     renderCard();
-    expect(screen.getByTestId('live-stats-position').textContent).toBe('2/27');
     expect(screen.getByTestId('live-activity-stats').textContent).toContain('single choice');
   });
 

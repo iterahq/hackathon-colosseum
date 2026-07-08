@@ -3,8 +3,6 @@ import { useI18n } from '@/i18n';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 interface LiveActivityStatsCardProps {
-  activityIndex: number;
-  activityCount: number;
   /** The current activity kind (e.g. `single_choice`) — the "which slide" cue. */
   kind: string;
   answerers: ClassAnswerer[];
@@ -19,8 +17,6 @@ interface LiveActivityStatsCardProps {
  * room" surface the professor drives from (the Open English reference).
  */
 export function LiveActivityStatsCard({
-  activityIndex,
-  activityCount,
   kind,
   answerers,
   bare = false,
@@ -42,14 +38,9 @@ export function LiveActivityStatsCard({
 
   return (
     <div className={bare ? 'p-5' : 'rounded-3xl border border-clay/40 bg-card p-5'} data-testid="live-activity-stats">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="w-4 h-4 text-clay" />
-          <h3 className="font-display text-foreground text-sm">{t('live.instructor.stats.title')}</h3>
-        </div>
-        <span className="font-mono text-sm tabular-nums text-clay" data-testid="live-stats-position">
-          {activityIndex + 1}/{activityCount}
-        </span>
+      <div className="flex items-center gap-2 mb-3">
+        <LayoutGrid className="w-4 h-4 text-clay" />
+        <h3 className="font-display text-foreground text-sm">{t('live.instructor.stats.title')}</h3>
       </div>
 
       <div className="flex items-center justify-between gap-2 mb-4">

@@ -7,6 +7,9 @@ interface LiveSessionChromeProps {
   connected: boolean;
   presenceCount: number;
   ended: boolean;
+  /** Current activity position (0-based) + total, for the header N/M cue. */
+  activityIndex?: number;
+  activityCount?: number;
   onClose: () => void;
 }
 
@@ -22,9 +25,12 @@ export function LiveSessionChrome({
   connected,
   presenceCount,
   ended,
+  activityIndex = 0,
+  activityCount = 0,
   onClose,
 }: LiveSessionChromeProps) {
   const { t } = useI18n();
+  const showPosition = !ended && activityCount > 0 && activityIndex >= 0;
 
   return (
     <header className="relative z-30">
@@ -81,6 +87,14 @@ export function LiveSessionChrome({
             </span>
             {t('live.badge.label')}
             <span className="opacity-70">· {presenceCount}</span>
+          </span>
+        )}
+        {showPosition && (
+          <span
+            className="inline-flex items-center px-2.5 h-8 rounded-full border border-border bg-card text-xs font-mono tabular-nums text-muted-foreground"
+            data-testid="live-position"
+          >
+            {activityIndex + 1}/{activityCount}
           </span>
         )}
       </div>

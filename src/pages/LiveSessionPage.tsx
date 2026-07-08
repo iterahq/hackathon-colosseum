@@ -150,6 +150,8 @@ export default function LiveSessionPage() {
         connected={connected}
         presenceCount={roster.length}
         ended={ended}
+        activityIndex={activities.findIndex((a) => a.id === currentActivityId)}
+        activityCount={activities.length}
         onClose={() => navigate('/')}
       />
 
