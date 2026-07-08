@@ -12,7 +12,7 @@
  * Result writes are UNCHANGED (persistActivityProgress → itera.progress /
  * activity_results). Live mode only controls WHICH activity is on screen.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Radio, Loader2 } from 'lucide-react';
@@ -97,14 +97,27 @@ export default function LiveSessionPage() {
   );
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Set when the professor's countdown hits 0 for the current activity — the
+  // learner is then locked out of answering. Resets on advance.
+  const [timeUp, setTimeUp] = useState(false);
   useEffect(() => {
     setAnswered(null);
     setSaving(false);
+    setTimeUp(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [currentActivityId]);
 
+  // Time ran out before the learner answered → the activity is locked.
+  const locked = timeUp && !answered;
+
+  const { onTimeUp } = sound;
+  const handleTimeUp = useCallback(() => {
+    onTimeUp();
+    setTimeUp(true);
+  }, [onTimeUp]);
+
   async function handleComplete(correct: boolean) {
-    if (!current || saving) return;
+    if (!current || saving || locked) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) + how long the learner took, so the professor
@@ -297,21 +310,32 @@ export default function LiveSessionPage() {
                 {((timer && timer.activityId === current.id) || (!answered && activityStartedAt)) && (
                   <div className="mb-5 flex items-center justify-center gap-3">
                     {timer && timer.activityId === current.id && (
-                      <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
+                      <LiveTimer deadline={timer.deadline} onExpire={handleTimeUp} />
                     )}
-                    {!answered && activityStartedAt && <LiveStopwatch startedAt={activityStartedAt} />}
+                    {!answered && !locked && activityStartedAt && (
+                      <LiveStopwatch startedAt={activityStartedAt} />
+                    )}
                   </div>
                 )}
                 {/* key on the activity id so a force-advance fully remounts the
-                    renderer (fresh state) — the student loses the prior activity. */}
-                <ActivityRenderer
-                  key={current.id}
-                  activity={{
-                    ...current,
-                    status: answered?.id === current.id && answered.correct ? 'done' : current.status,
-                  }}
-                  onComplete={handleComplete}
-                />
+                    renderer (fresh state) — the student loses the prior activity.
+                    Once time is up (locked), the renderer is `inert` so the learner
+                    can no longer type or submit — they wait for the professor. */}
+                <div {...(locked ? { inert: '' } : {})}>
+                  <ActivityRenderer
+                    key={current.id}
+                    activity={{
+                      ...current,
+                      status: answered?.id === current.id && answered.correct ? 'done' : current.status,
+                    }}
+                    onComplete={handleComplete}
+                  />
+                </div>
+                {locked && (
+                  <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
+                    {t('live.timer.lockedHint')}
+                  </p>
+                )}
                 {answered?.id === current.id && (
                   <p
                     className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
