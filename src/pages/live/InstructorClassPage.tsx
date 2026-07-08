@@ -2,17 +2,18 @@
  * Professor control surface (`/live/instructor`) — the INSTRUCTOR side of the
  * real-time cohort mode (plan 20260702-…). Instructor-gated (RequireRole).
  *
- * The batch professor runs the class from here, so it ships real onboarding /
- * empty-states — not a dev-only minimal surface:
- *   - No live class yet   → "Start a class": pick a program → lesson → Start.
- *   - Live class running  → the CONTROL panel: the current activity + prev/next
- *     pointer, End, a live presence roster, and a "who's done on the current
- *     activity" view (reuses the admin-style completion query).
+ *   - No live class yet   → the onboarding dashboard: pick a program → lesson
+ *     → Start (AppHeader + hero shell).
+ *   - Live class running  → the FULL-SCREEN immersive surface: the exact chrome
+ *     + activity stage the learners see (LiveSessionChrome + LiveActivityStage,
+ *     read-only), a live roster / who's-done / speed-ranking aside, and a fixed
+ *     presenter control bar. On screen-share the cohort sees the same thing,
+ *     minus the bar — the parity the TL asked for.
  *
  * The instructor advances the server-authoritative pointer (durable
  * advanceClassSession) AND broadcasts it (fast path) so every student jumps.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Play, GraduationCap, Loader2, Presentation } from 'lucide-react';
@@ -313,14 +314,21 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, status, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
     );
   const sound = useLiveSound();
-  const { data: lesson } = useLessonContent(session.lessonId);
+  const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
+
+  // If the session ends out-of-band (another tab/device), leave the live
+  // surface — never strand the professor in a "LIVE" chrome whose controls
+  // silently no-op. onEnded() refetches → falls back to the onboarding dashboard.
+  useEffect(() => {
+    if (status === 'ended') onEnded();
+  }, [status, onEnded]);
 
   const idx = useMemo(
     () => activities.findIndex((a) => a.id === currentActivityId),
@@ -382,7 +390,6 @@ function ClassControl({
 
   const canPrev = idx > 0;
   const canNext = idx >= 0 && idx < activities.length - 1;
-  const startAt = idx < 0 && activities.length > 0; // pointer not set yet
 
   // Shareable direct-join link (loop-2 fix #6, instructor affordance): a copyable
   // `/live/:id` URL the professor can drop into chat so students jump straight in.
@@ -403,7 +410,16 @@ function ClassControl({
   // learners get). Reception (idx < 0) shows an empty bar.
   const progressPct =
     activities.length && idx >= 0 ? Math.round(((idx + 1) / activities.length) * 100) : 0;
-  const inReception = startAt || !current;
+  const ended = status === 'ended';
+  // Begin exists ONLY before a pointer is set; once set we're in the activity
+  // (or briefly its loading skeleton), never back in the lobby.
+  const inReception = !currentActivityId;
+  const lessonLoading = Boolean(currentActivityId) && !current && lessonPending;
+  // Present learners who have answered the current activity — powers the
+  // "advance now" cue on the control bar (the professor's version of watching
+  // the room fill in, without looking away from the stage).
+  const answeredCount = answerers.filter((a) => a.state !== 'pending').length;
+  const presentCount = answerers.length;
 
   return (
     // Full-screen immersive surface — the SAME chrome + stage the learners see
@@ -414,11 +430,14 @@ function ClassControl({
         progressPct={progressPct}
         connected={connected}
         presenceCount={roster.length}
-        ended={false}
-        onClose={() => navigate('/')}
+        ended={ended}
+        onClose={() => {
+          // Guard against an accidental close abandoning a live presentation.
+          if (ended || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
+        }}
       />
 
-      <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20 pb-28">
+      <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20 pb-44 sm:pb-28">
         <div
           className={
             current
@@ -444,13 +463,21 @@ function ClassControl({
               <LiveActivityStage
                 activity={current}
                 readOnly
-                testid="instructor-activity-preview"
+                testid="instructor-activity-stage"
                 timerSlot={
                   timer && timer.activityId === current.id ? (
                     <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
                   ) : undefined
                 }
               />
+            ) : lessonLoading ? (
+              // Pointer set, lesson content still resolving (refresh mid-class) —
+              // the SAME skeleton the learners get, never the lobby.
+              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
+                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
+                <div className="h-40 rounded-2xl ds-shimmer" />
+                <div className="h-12 rounded-full ds-shimmer" />
+              </div>
             ) : (
               // Reception — the SAME lobby the learners wait in before start.
               <LiveReception roster={roster} />
@@ -471,6 +498,8 @@ function ClassControl({
         inReception={inReception}
         activityIndex={idx}
         activityCount={activities.length}
+        answeredCount={answeredCount}
+        presentCount={presentCount}
         busy={busy}
         canPrev={canPrev}
         canNext={canNext}
