@@ -48,6 +48,10 @@ import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
+// Interim default until the timer duration is chosen at class creation and
+// stored on the session (backlog: timer_seconds + creation selector + gating).
+const DEFAULT_TIMER_SECONDS = 60;
+
 export default function InstructorClassPage() {
   const { t } = useI18n();
   const { data: memberships } = useMembership();
@@ -506,6 +510,7 @@ function ClassControl({
               canPrev={canPrev}
               canNext={canNext}
               timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+              timerSeconds={DEFAULT_TIMER_SECONDS}
               onBegin={() => activities[0] && goTo(activities[0].id)}
               onPrev={() => canPrev && goTo(activities[idx - 1].id)}
               onNext={() => canNext && goTo(activities[idx + 1].id)}

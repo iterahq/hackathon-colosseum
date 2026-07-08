@@ -13,6 +13,8 @@ interface InstructorControlsProps {
   canPrev: boolean;
   canNext: boolean;
   timerRunning: boolean;
+  /** Pre-set lesson timer duration (seconds); 0 = the lesson has no timer. */
+  timerSeconds: number;
   onBegin: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -35,6 +37,7 @@ export function InstructorControls({
   canPrev,
   canNext,
   timerRunning,
+  timerSeconds,
   onBegin,
   onPrev,
   onNext,
@@ -61,18 +64,18 @@ export function InstructorControls({
 
   return (
     <div className="p-5 space-y-3" data-testid="instructor-controls">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
         <button
           onClick={onPrev}
           disabled={!canPrev || busy}
           data-testid="instructor-prev"
           aria-label={t('live.instructor.control.prev')}
-          className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-border bg-background text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
+          className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-full border border-border bg-background text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex flex-col items-center leading-none">
+        <div className="flex-1 flex flex-col items-center leading-none">
           <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono tabular-nums">
             {activityIndex + 1}/{activityCount}
           </span>
@@ -91,16 +94,23 @@ export function InstructorControls({
           disabled={!canNext || busy}
           data-testid="instructor-next"
           data-ready={allAnswered ? 'true' : 'false'}
-          aria-label={t('live.instructor.control.next')}
-          className={`inline-flex items-center justify-center w-10 h-10 rounded-full bg-clay text-white hover:bg-clay/90 transition-colors disabled:opacity-40 ${
+          className={`inline-flex items-center gap-1.5 h-10 pl-4 pr-3 shrink-0 rounded-full bg-clay text-white text-sm font-medium hover:bg-clay/90 transition-colors disabled:opacity-40 ${
             allAnswered && canNext ? 'ring-2 ring-menta ring-offset-2 ring-offset-card animate-pulse' : ''
           }`}
         >
+          {t('live.instructor.control.next')}
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      <LiveTimerControls running={timerRunning} onStart={onStartTimer} onStop={onStopTimer} />
+      {timerSeconds > 0 && (
+        <LiveTimerControls
+          running={timerRunning}
+          seconds={timerSeconds}
+          onStart={onStartTimer}
+          onStop={onStopTimer}
+        />
+      )}
     </div>
   );
 }
