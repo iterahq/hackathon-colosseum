@@ -15,6 +15,8 @@ interface LiveSidebarProps {
   selfUserId?: string;
   /** Instructor only — hidden during reception (no current activity). */
   hasActivity?: boolean;
+  activityIndex?: number;
+  activityCount?: number;
   kind?: string;
   ranking?: ClassRanking;
   copied?: boolean;
@@ -40,6 +42,8 @@ export function LiveSidebar({
   answerers,
   selfUserId,
   hasActivity = true,
+  activityIndex = 0,
+  activityCount = 0,
   kind = '',
   ranking,
   copied = false,
@@ -61,6 +65,16 @@ export function LiveSidebar({
           participant lists below scroll (so navigation never scrolls away). */}
       {isInstructor && (controls || showActivity) && (
         <div className="shrink-0 divide-y divide-border border-b border-border">
+          {showActivity && activityCount > 0 && (
+            <div className="py-2.5 flex justify-center">
+              <span
+                className="font-mono text-sm tabular-nums text-clay"
+                data-testid="live-position"
+              >
+                {activityIndex + 1}/{activityCount}
+              </span>
+            </div>
+          )}
           {controls}
           {showActivity && (
             <LiveActivityStatsCard bare kind={kind} answerers={answerers} />

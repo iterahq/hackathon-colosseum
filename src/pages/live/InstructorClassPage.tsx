@@ -435,8 +435,6 @@ function ClassControl({
         connected={connected}
         presenceCount={roster.length}
         ended={ended}
-        activityIndex={idx}
-        activityCount={activities.length}
         onClose={() => {
           // Guard against an accidental close abandoning a live presentation.
           if (ended || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
@@ -490,6 +488,8 @@ function ClassControl({
         <LiveSidebar
           role="instructor"
           hasActivity={Boolean(current)}
+          activityIndex={idx}
+          activityCount={activities.length}
           kind={current?.kind ?? ''}
           roster={roster}
           answerers={answerers}
