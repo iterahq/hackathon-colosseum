@@ -208,13 +208,12 @@ export default function LiveSessionPage() {
           )}
         </div>
 
-        <div
-          className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-1.5 text-foreground"
-          data-testid="live-hearts"
-          aria-hidden="true"
-        >
-          <Heart className="w-4 h-4 fill-clay text-clay" />
-          <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
+        <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-3">
+          {!ended && <LiveSoundToggle compact />}
+          <div className="flex items-center gap-1.5 text-foreground" data-testid="live-hearts" aria-hidden="true">
+            <Heart className="w-4 h-4 fill-clay text-clay" />
+            <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
+          </div>
         </div>
       </header>
 
@@ -357,7 +356,6 @@ export default function LiveSessionPage() {
               <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
                 <LiveRosterCard roster={roster} selfUserId={identity.userId} />
                 <LiveAnswerersCard answerers={peerAnswerers} hideCorrectness />
-                <LiveSoundToggle />
               </aside>
             )}
           </div>

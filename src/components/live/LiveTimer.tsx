@@ -17,7 +17,7 @@ interface LiveTimerProps {
    * (issue #57). Never wire onExpire to durable scoring while the channel is public.
    */
   onExpire?: () => void;
-  /** Fires once when the countdown crosses into the final WARN_SECONDS. */
+  /** Fires once per second during the final countdown (at 5,4,3,2,1). */
   onWarn?: () => void;
 }
 
@@ -27,11 +27,11 @@ export function LiveTimer({ deadline, onExpire, onWarn }: LiveTimerProps) {
   const done = remaining <= 0;
   const warning = !done && remaining <= WARN_SECONDS;
   const firedRef = useRef(false);
-  const warnedRef = useRef(false);
+  const lastTickRef = useRef(0);
 
   useEffect(() => {
     firedRef.current = false;
-    warnedRef.current = false;
+    lastTickRef.current = 0;
   }, [deadline]);
 
   useEffect(() => {
@@ -42,11 +42,12 @@ export function LiveTimer({ deadline, onExpire, onWarn }: LiveTimerProps) {
   }, [done, onExpire]);
 
   useEffect(() => {
-    if (warning && !warnedRef.current) {
-      warnedRef.current = true;
+    // Tick once per remaining second inside the window (5,4,3,2,1).
+    if (!done && remaining >= 1 && remaining <= WARN_SECONDS && remaining !== lastTickRef.current) {
+      lastTickRef.current = remaining;
       onWarn?.();
     }
-  }, [warning, onWarn]);
+  }, [remaining, done, onWarn]);
 
   return (
     <div
