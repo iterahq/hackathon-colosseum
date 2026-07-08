@@ -397,9 +397,22 @@ function ClassControl({
             </span>
             {t('live.badge.label')}
           </span>
-          <span className="text-xs text-muted-foreground font-mono">
-            {tText(lesson?.title)}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground font-mono">
+              {tText(lesson?.title)}
+            </span>
+            {/* End is reachable in EVERY state (reception included) so an abandoned
+                session is never a dead end — the professor ends it and starts a
+                fresh instance of the same lesson (a new class must be new data). */}
+            <button
+              onClick={handleEnd}
+              disabled={busy}
+              data-testid="instructor-end"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-destructive/40 bg-destructive/10 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+            >
+              <Square className="w-3 h-3" /> {t('live.instructor.control.end')}
+            </button>
+          </div>
         </div>
 
         {startAt ? (
@@ -448,14 +461,6 @@ function ClassControl({
                 className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-clay text-white text-sm font-medium hover:bg-clay/90 transition-colors disabled:opacity-40"
               >
                 {t('live.instructor.control.next')} <ChevronRight className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleEnd}
-                disabled={busy}
-                data-testid="instructor-end"
-                className="ml-auto inline-flex items-center gap-1.5 h-11 px-4 rounded-full border border-destructive/40 bg-destructive/10 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
-              >
-                <Square className="w-3.5 h-3.5" /> {t('live.instructor.control.end')}
               </button>
             </div>
           </>
