@@ -460,7 +460,7 @@ function ClassControl({
                 onStop={() => current && clearTimer(current.id)}
               />
               {timer && current && timer.activityId === current.id && (
-                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
+                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
               )}
             </div>
 
