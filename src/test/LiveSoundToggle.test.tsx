@@ -48,7 +48,7 @@ describe('LiveSoundToggle', () => {
     );
     fireEvent.click(screen.getByTestId('live-sound-toggle'));
     expect(h.toggleMuted).toHaveBeenCalledTimes(1);
-    expect(h.play).toHaveBeenCalledWith('success', expect.any(Number));
+    expect(h.play).toHaveBeenCalledWith('chime', expect.any(Number));
   });
 
   it('stays silent when muting', () => {

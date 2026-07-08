@@ -21,7 +21,7 @@ export function LiveSoundToggle({ compact = false }: LiveSoundToggleProps) {
     // directly so the just-flipped mute preference doesn't gate it away).
     const turningOn = muted;
     toggleMuted();
-    if (turningOn) play('success', 0.4 * (volume || 1));
+    if (turningOn) play('chime', 0.4 * (volume || 1));
   };
 
   const handleVolume = (v: number) => {
