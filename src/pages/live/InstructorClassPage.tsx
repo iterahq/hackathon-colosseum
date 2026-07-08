@@ -47,6 +47,7 @@ import { InstructorControlBar } from '@/components/live/InstructorControlBar';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
 import { LiveRankingCard } from '@/components/live/LiveRankingCard';
+import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
@@ -441,7 +442,7 @@ function ClassControl({
         <div
           className={
             current
-              ? 'grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6 lg:gap-8 items-start'
+              ? 'grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 items-start'
               : 'max-w-2xl mx-auto'
           }
         >
@@ -486,6 +487,12 @@ function ClassControl({
 
           {current && (
             <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
+              <LiveActivityStatsCard
+                activityIndex={idx}
+                activityCount={activities.length}
+                kind={current.kind}
+                answerers={answerers}
+              />
               <LiveRosterCard roster={roster} selfUserId={instructorId ?? undefined} />
               <LiveAnswerersCard answerers={answerers} />
               <LiveRankingCard ranking={ranking} />
