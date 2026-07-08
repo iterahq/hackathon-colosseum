@@ -313,7 +313,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
@@ -339,8 +339,13 @@ function ClassControl({
     session.startedAt
   );
   const answerers = useMemo(
-    () => mergeLiveAnswers(polled, currentActivityId ? answers[currentActivityId] : undefined),
-    [polled, answers, currentActivityId]
+    () =>
+      mergeLiveAnswers(
+        polled,
+        currentActivityId ? answers[currentActivityId] : undefined,
+        currentActivityId ? elapsed[currentActivityId] : undefined
+      ),
+    [polled, answers, elapsed, currentActivityId]
   );
 
   const [busy, setBusy] = useState(false);

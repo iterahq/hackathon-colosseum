@@ -1,5 +1,6 @@
 import { Radio, CheckCircle2, XCircle, Circle, CircleDot } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { formatMmss } from '@/utils/formatMmss';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 interface LiveAnswerersCardProps {
@@ -46,6 +47,14 @@ export function LiveAnswerersCard({ answerers, hideCorrectness = false }: LiveAn
                 <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               )}
               <span className={a.state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}>{a.name}</span>
+              {!hideCorrectness && a.state !== 'pending' && typeof a.elapsedMs === 'number' && (
+                <span
+                  className="ml-auto font-mono text-xs tabular-nums text-muted-foreground"
+                  data-testid="live-answerer-elapsed"
+                >
+                  {formatMmss(Math.round(a.elapsedMs / 1000))}
+                </span>
+              )}
             </li>
           ))}
         </ul>

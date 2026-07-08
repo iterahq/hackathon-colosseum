@@ -24,4 +24,10 @@ describe('mergeLiveAnswers', () => {
     const out = mergeLiveAnswers(base, { u2: false });
     expect(out.find((a) => a.userId === 'u2')?.state).toBe('done');
   });
+
+  it('maps per-learner elapsed time when provided', () => {
+    const out = mergeLiveAnswers(base, { u1: true }, { u1: 45000 });
+    expect(out.find((a) => a.userId === 'u1')?.elapsedMs).toBe(45000);
+    expect(out.find((a) => a.userId === 'u2')?.elapsedMs).toBeUndefined();
+  });
 });

@@ -19,6 +19,7 @@ import { X, Heart, Radio, Loader2 } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveTimer } from '@/components/live/LiveTimer';
+import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
 import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
@@ -29,6 +30,7 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
+import { formatMmss } from '@/utils/formatMmss';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
@@ -87,28 +89,35 @@ export default function LiveSessionPage() {
     prevActivityRef.current = currentActivityId;
   }, [currentActivityId, onAdvance]);
 
-  // Per-activity local answer state (result writes stay per-user). Reset whenever
-  // the professor force-advances to a different activity.
-  const [answered, setAnswered] = useState<{ id: string; correct: boolean } | null>(null);
+  // Per-activity local answer state (result writes stay per-user) + the moment
+  // the current activity opened for THIS learner (the elapsed-time origin). Both
+  // reset whenever the professor force-advances to a different activity.
+  const [answered, setAnswered] = useState<{ id: string; correct: boolean; elapsedMs: number } | null>(
+    null
+  );
+  const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     setAnswered(null);
     setSaving(false);
+    setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [currentActivityId]);
 
   async function handleComplete(correct: boolean) {
     if (!current || saving) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
-    // EVERY answer (right or wrong) so the professor sees who has responded.
-    setAnswered({ id: current.id, correct });
+    // EVERY answer (right or wrong) + how long the learner took, so the professor
+    // sees who responded and their time.
+    const elapsedMs = activityStartedAt ? Date.now() - activityStartedAt : 0;
+    setAnswered({ id: current.id, correct, elapsedMs });
     sound.onAnswer(correct);
     if (correct) {
       setSaving(true);
       await persistActivityProgress(current.id);
       setSaving(false);
     }
-    broadcastAnswer(current.id, correct);
+    broadcastAnswer(current.id, correct, elapsedMs);
   }
 
   const progressPct = activities.length
@@ -285,9 +294,12 @@ export default function LiveSessionPage() {
             )}
             {current && (
               <div className="mt-7">
-                {timer && timer.activityId === current.id && (
-                  <div className="mb-5 flex justify-center">
-                    <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
+                {((timer && timer.activityId === current.id) || (!answered && activityStartedAt)) && (
+                  <div className="mb-5 flex items-center justify-center gap-3">
+                    {timer && timer.activityId === current.id && (
+                      <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
+                    )}
+                    {!answered && activityStartedAt && <LiveStopwatch startedAt={activityStartedAt} />}
                   </div>
                 )}
                 {/* key on the activity id so a force-advance fully remounts the
@@ -306,7 +318,10 @@ export default function LiveSessionPage() {
                     data-testid="live-answered-hint"
                     data-correct={answered.correct ? 'true' : 'false'}
                   >
-                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}
+                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+                    <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+                      · {t('live.elapsed.you', { time: formatMmss(Math.round(answered.elapsedMs / 1000)) })}
+                    </span>
                   </p>
                 )}
               </div>
