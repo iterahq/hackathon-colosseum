@@ -18,7 +18,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
-import type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
+import type { ClassPresenceMember, ClassTimer, UseClassSession } from '@/types/liveClass';
+import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -30,6 +31,8 @@ interface Identity {
 
 const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
+const TIMER_EVENT = 'timer';
+const TIMER_STOP_EVENT = 'timer-stop';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -42,6 +45,8 @@ export function useClassSession(
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
+  const [elapsed, setElapsed] = useState<Record<string, Record<string, number>>>({});
+  const [timer, setTimer] = useState<ClassTimer | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -97,15 +102,36 @@ export function useClassSession(
         // `null` (return-to-reception) is NOT accepted here — it can only come
         // from the durable session row (postgres_changes / refetch), so a spoofed
         // broadcast on this public channel can't shove the class back to the lobby.
-        if (typeof next === 'string') setCurrentActivityId(next);
+        if (typeof next === 'string') {
+          setCurrentActivityId(next);
+          setTimer(null);
+        }
       })
       .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
-        const p = payload as { activity_id?: string; user_id?: string; correct?: boolean } | null;
+        const p = payload as {
+          activity_id?: string;
+          user_id?: string;
+          correct?: boolean;
+          elapsed_ms?: number;
+        } | null;
         if (!p?.activity_id || !p.user_id) return;
         setAnswers((prev) => ({
           ...prev,
           [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.correct === true },
         }));
+        if (typeof p.elapsed_ms === 'number') {
+          setElapsed((prev) => ({
+            ...prev,
+            [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.elapsed_ms! },
+          }));
+        }
+      })
+      .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
+        const next = parseTimerEvent(payload);
+        if (next) setTimer(next);
+      })
+      .on('broadcast', { event: TIMER_STOP_EVENT }, ({ payload }) => {
+        setTimer((prev) => timerAfterStop(prev, payload));
       })
       .on(
         'postgres_changes',
@@ -187,6 +213,7 @@ export function useClassSession(
       const channel = channelRef.current;
       // Optimistic local update for the professor's own screen.
       setCurrentActivityId(activityId);
+      setTimer(null);
       if (!channel) return;
       void channel.send({
         type: 'broadcast',
@@ -197,20 +224,54 @@ export function useClassSession(
     []
   );
 
-  const broadcastAnswer = useCallback((activityId: string, correct: boolean) => {
+  const broadcastTimer = useCallback((activityId: string, durationSeconds: number) => {
     const channel = channelRef.current;
-    const userId = identityRef.current?.userId;
-    if (!channel || !userId) return;
-    setAnswers((prev) => ({
-      ...prev,
-      [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
-    }));
+    const deadline = Date.now() + durationSeconds * 1000;
+    // Optimistic local update first (mirrors clearTimer/broadcast) so the
+    // professor's own screen reflects the timer even if the channel just blipped.
+    setTimer({ activityId, deadline });
+    if (!channel) return;
     void channel.send({
       type: 'broadcast',
-      event: ANSWERED_EVENT,
-      payload: { activity_id: activityId, user_id: userId, correct },
+      event: TIMER_EVENT,
+      payload: { activity_id: activityId, deadline },
     });
   }, []);
+
+  const clearTimer = useCallback((activityId: string) => {
+    const channel = channelRef.current;
+    setTimer((prev) => (prev && prev.activityId === activityId ? null : prev));
+    if (!channel) return;
+    void channel.send({
+      type: 'broadcast',
+      event: TIMER_STOP_EVENT,
+      payload: { activity_id: activityId },
+    });
+  }, []);
+
+  const broadcastAnswer = useCallback(
+    (activityId: string, correct: boolean, elapsedMs?: number) => {
+      const channel = channelRef.current;
+      const userId = identityRef.current?.userId;
+      if (!channel || !userId) return;
+      setAnswers((prev) => ({
+        ...prev,
+        [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
+      }));
+      if (typeof elapsedMs === 'number') {
+        setElapsed((prev) => ({
+          ...prev,
+          [activityId]: { ...(prev[activityId] ?? {}), [userId]: elapsedMs },
+        }));
+      }
+      void channel.send({
+        type: 'broadcast',
+        event: ANSWERED_EVENT,
+        payload: { activity_id: activityId, user_id: userId, correct, elapsed_ms: elapsedMs },
+      });
+    },
+    []
+  );
 
   return {
     session,
@@ -220,8 +281,12 @@ export function useClassSession(
     connected,
     loading,
     answers,
+    elapsed,
+    timer,
     broadcast,
     broadcastAnswer,
+    broadcastTimer,
+    clearTimer,
     refetch,
   };
 }
