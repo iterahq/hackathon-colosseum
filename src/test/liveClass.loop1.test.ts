@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
  * loop-1 fixes for the live-class data layer:
- *  - fix #1b — startClassSession defaults the pointer server-side (getFirstActivityId)
- *    when the caller passes a null firstActivityId (the start-race), so a started
- *    session is NEVER inserted with current_activity_id=null.
+ *  - getFirstActivityId — resolves the lesson's first activity by ordinal.
+ *  - startClassSession — now starts in RECEPTION (null pointer); students land on
+ *    the lobby until the instructor begins (supersedes the old fix #1 auto-pointer).
  *  - fix #2  — getClassActivityCompleters scopes the roster + denominator to the
  *    live presence roster (present learners only) and never leaks absent names.
  *
@@ -127,26 +127,16 @@ describe('getFirstActivityId (fix #1b)', () => {
   });
 });
 
-describe('startClassSession pointer default (fix #1 — start race)', () => {
-  it('defaults current_activity_id to the first activity when firstActivityId is null', async () => {
+describe('startClassSession (reception — supersedes fix #1)', () => {
+  it('starts in reception with a null pointer so students see the lobby, not the first activity', async () => {
     await startClassSession({
       tenantId: TENANT,
       lessonId: LESSON,
       instructorId: 'instr',
-      firstActivityId: null,
     });
     expect(insertedSession).not.toBeNull();
-    expect(insertedSession?.current_activity_id).toBe(ACT_1);
-  });
-
-  it('honors an explicit firstActivityId when provided (no server lookup override)', async () => {
-    await startClassSession({
-      tenantId: TENANT,
-      lessonId: LESSON,
-      instructorId: 'instr',
-      firstActivityId: ACT_2,
-    });
-    expect(insertedSession?.current_activity_id).toBe(ACT_2);
+    expect(insertedSession?.current_activity_id).toBeNull();
+    expect(insertedSession?.status).toBe('live');
   });
 });
 

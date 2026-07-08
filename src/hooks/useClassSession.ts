@@ -93,7 +93,11 @@ export function useClassSession(
     channel
       .on('broadcast', { event: ADVANCE_EVENT }, ({ payload }) => {
         const next = (payload as { current_activity_id?: string | null })?.current_activity_id;
-        if (typeof next === 'string' || next === null) setCurrentActivityId(next ?? null);
+        // Only a real activity id is honored from the broadcast fast-path. A
+        // `null` (return-to-reception) is NOT accepted here — it can only come
+        // from the durable session row (postgres_changes / refetch), so a spoofed
+        // broadcast on this public channel can't shove the class back to the lobby.
+        if (typeof next === 'string') setCurrentActivityId(next);
       })
       .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
         const p = payload as { activity_id?: string; user_id?: string; correct?: boolean } | null;
@@ -131,8 +135,14 @@ export function useClassSession(
       .subscribe((s) => {
         const isJoined = s === 'SUBSCRIBED';
         setConnected(isJoined);
+        if (!isJoined) return;
+        // Realtime does NOT replay postgres_changes after a socket blip, so a
+        // client that reconnects (or joins late) can miss an advance — including
+        // leaving the reception. Re-read the durable row on every (re)subscribe
+        // so it always converges instead of getting stranded in the lobby.
+        void getClassSession(sessionId).then(applySession);
         const id = identityRef.current;
-        if (isJoined && id) {
+        if (id) {
           void channel.track({
             user_id: id.userId,
             name: id.name,

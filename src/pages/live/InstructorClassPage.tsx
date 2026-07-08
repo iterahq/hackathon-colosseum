@@ -159,10 +159,10 @@ function StartClass({
     [program]
   );
 
-  // The lesson's first activity — resolved only once useLessonContent lands. We
-  // GUARD Start on this being non-null so a professor can't start a class whose
-  // pointer would be null (the race that stranded students on "Aguardando o
-  // professor"). Belt; the service also defaults the pointer server-side. (fix #1a.)
+  // The lesson's first activity — resolved once useLessonContent lands. We GUARD
+  // Start on this being non-null so a professor can't start a class on a lesson
+  // with no activities. Since sessions open in reception (null pointer), this
+  // client-side guard is now the ONLY check that the lesson has content to run.
   const firstActivityId = (lesson?.activities ?? [])[0]?.id ?? null;
   const lessonActivitiesLoading = Boolean(lessonId) && !firstActivityId && lessonFetching;
   const lessonHasNoActivities =
@@ -178,7 +178,6 @@ function StartClass({
         tenantId,
         lessonId,
         instructorId,
-        firstActivityId,
         scope: 'global',
       });
       onStarted();
