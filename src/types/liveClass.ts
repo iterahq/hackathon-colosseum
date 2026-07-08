@@ -27,6 +27,23 @@ export interface ClassTimer {
   deadline: number;
 }
 
+export interface ClassRankingEntry {
+  userId: string;
+  name: string;
+  /** Cumulative answer time across the activities the learner has answered, in ms. */
+  totalMs: number;
+  answeredCount: number;
+  correctCount: number;
+  /** 1-based position (fastest cumulative time first). */
+  rank: number;
+}
+
+export interface ClassRanking {
+  ranked: ClassRankingEntry[];
+  /** Present learners who have not answered anything yet (no timing to rank). */
+  waiting: { userId: string; name: string }[];
+}
+
 export interface UseClassSession {
   session: ClassSession | null;
   currentActivityId: string | null;
