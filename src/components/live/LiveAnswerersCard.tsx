@@ -32,7 +32,7 @@ export function LiveAnswerersCard({ answerers, hideCorrectness = false, bare = f
       {answerers.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.done.empty')}</p>
       ) : (
-        <ul className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="live-answerers-list">
+        <ul className="space-y-1.5 max-h-64 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-answerers-list">
           {answerers.map((a) => (
             <li key={a.userId} className="flex items-center gap-2 text-sm" data-state={a.state}>
               {hideCorrectness ? (

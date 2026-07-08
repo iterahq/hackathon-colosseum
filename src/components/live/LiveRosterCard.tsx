@@ -23,7 +23,7 @@ export function LiveRosterCard({ roster, selfUserId, bare = false }: LiveRosterC
       {roster.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.roster.empty')}</p>
       ) : (
-        <ul className="space-y-1.5" data-testid="live-roster-list">
+        <ul className="space-y-1.5 max-h-56 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-roster-list">
           {roster.map((m) => (
             <li key={m.userId} className="flex items-center gap-2 text-sm text-foreground">
               <span className="w-1.5 h-1.5 rounded-full bg-menta flex-shrink-0" />

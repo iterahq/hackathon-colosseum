@@ -58,31 +58,37 @@ export function LiveSidebar({
 
   return (
     <aside
-      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card overflow-y-auto divide-y divide-border pt-12 lg:pt-14 pb-8"
+      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh pt-12 lg:pt-14"
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
     >
-      {isInstructor && controls}
-
-      {showActivity && (
-        <LiveActivityStatsCard
-          bare
-          activityIndex={activityIndex}
-          activityCount={activityCount}
-          kind={kind}
-          answerers={answerers}
-        />
+      {/* Pinned top: flow controls + activity stats stay put while the
+          participant lists below scroll (so navigation never scrolls away). */}
+      {isInstructor && (controls || showActivity) && (
+        <div className="shrink-0 divide-y divide-border border-b border-border">
+          {controls}
+          {showActivity && (
+            <LiveActivityStatsCard
+              bare
+              activityIndex={activityIndex}
+              activityCount={activityCount}
+              kind={kind}
+              answerers={answerers}
+            />
+          )}
+        </div>
       )}
 
-      <LiveRosterCard bare roster={roster} selfUserId={selfUserId} />
-
-      {(!isInstructor || hasActivity) && (
-        <LiveAnswerersCard bare answerers={answerers} hideCorrectness={!isInstructor} />
-      )}
-
-      {showActivity && ranking && <LiveRankingCard bare ranking={ranking} />}
+      {/* Scrollable middle: this is where scale lives (many learners). */}
+      <div className="flex-1 min-h-0 lg:overflow-y-auto divide-y divide-border">
+        <LiveRosterCard bare roster={roster} selfUserId={selfUserId} />
+        {(!isInstructor || hasActivity) && (
+          <LiveAnswerersCard bare answerers={answerers} hideCorrectness={!isInstructor} />
+        )}
+        {showActivity && ranking && <LiveRankingCard bare ranking={ranking} />}
+      </div>
 
       {isInstructor && (
-        <div className="p-5 space-y-2.5">
+        <div className="shrink-0 border-t border-border p-5 space-y-2.5">
           <button
             onClick={onCopyLink}
             data-testid="instructor-copy-link"

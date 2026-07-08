@@ -33,7 +33,7 @@ export function LiveRankingCard({ ranking, bare = false }: LiveRankingCardProps)
       {ranked.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.ranking.empty')}</p>
       ) : (
-        <ol className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="live-ranking-list">
+        <ol className="space-y-1.5 max-h-64 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-ranking-list">
           {ranked.map((r) => (
             <li
               key={r.userId}
