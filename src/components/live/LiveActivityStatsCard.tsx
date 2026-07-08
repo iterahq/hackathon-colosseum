@@ -8,6 +8,8 @@ interface LiveActivityStatsCardProps {
   /** The current activity kind (e.g. `single_choice`) — the "which slide" cue. */
   kind: string;
   answerers: ClassAnswerer[];
+  /** Render as a flush section inside a sidebar panel (drops the card chrome). */
+  bare?: boolean;
 }
 
 /**
@@ -21,6 +23,7 @@ export function LiveActivityStatsCard({
   activityCount,
   kind,
   answerers,
+  bare = false,
 }: LiveActivityStatsCardProps) {
   const { t } = useI18n();
 
@@ -38,7 +41,7 @@ export function LiveActivityStatsCard({
   ];
 
   return (
-    <div className="rounded-3xl border border-clay/40 bg-card p-5" data-testid="live-activity-stats">
+    <div className={bare ? 'p-5' : 'rounded-3xl border border-clay/40 bg-card p-5'} data-testid="live-activity-stats">
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <LayoutGrid className="w-4 h-4 text-clay" />

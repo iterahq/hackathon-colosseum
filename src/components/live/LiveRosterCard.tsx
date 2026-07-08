@@ -5,12 +5,14 @@ import type { ClassPresenceMember } from '@/types/liveClass';
 interface LiveRosterCardProps {
   roster: ClassPresenceMember[];
   selfUserId?: string;
+  /** Render as a flush section inside a sidebar panel (drops the card chrome). */
+  bare?: boolean;
 }
 
-export function LiveRosterCard({ roster, selfUserId }: LiveRosterCardProps) {
+export function LiveRosterCard({ roster, selfUserId, bare = false }: LiveRosterCardProps) {
   const { t } = useI18n();
   return (
-    <div className="rounded-3xl border border-border bg-card p-5" data-testid="live-roster-card">
+    <div className={bare ? 'p-5' : 'rounded-3xl border border-border bg-card p-5'} data-testid="live-roster-card">
       <div className="flex items-center gap-2 mb-3">
         <Users className="w-4 h-4 text-menta" />
         <h3 className="font-display text-foreground text-sm">{t('live.instructor.roster.inRoom')}</h3>

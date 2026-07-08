@@ -44,10 +44,7 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { InstructorControlBar } from '@/components/live/InstructorControlBar';
-import { LiveRosterCard } from '@/components/live/LiveRosterCard';
-import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
-import { LiveRankingCard } from '@/components/live/LiveRankingCard';
-import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
+import { InstructorSidebar } from '@/components/live/InstructorSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
@@ -438,15 +435,11 @@ function ClassControl({
         }}
       />
 
-      <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20 pb-44 sm:pb-28">
-        <div
-          className={
-            current
-              ? 'grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 items-start'
-              : 'max-w-2xl mx-auto'
-          }
-        >
-          <div className={current ? 'min-w-0 w-full max-w-2xl mx-auto lg:mx-0' : ''}>
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* The activity stays CENTERED in the space left of the sidebar —
+            learner-identical stage, just centered rather than in a fixed grid. */}
+        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-44 lg:pb-28">
+          <div className="max-w-2xl mx-auto">
             <div
               className="font-mono text-[11px] uppercase tracking-wider text-clay"
               data-testid="live-eyebrow"
@@ -484,22 +477,20 @@ function ClassControl({
               <LiveReception roster={roster} />
             )}
           </div>
+        </main>
 
-          {current && (
-            <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
-              <LiveActivityStatsCard
-                activityIndex={idx}
-                activityCount={activities.length}
-                kind={current.kind}
-                answerers={answerers}
-              />
-              <LiveRosterCard roster={roster} selfUserId={instructorId ?? undefined} />
-              <LiveAnswerersCard answerers={answerers} />
-              <LiveRankingCard ranking={ranking} />
-            </aside>
-          )}
-        </div>
-      </main>
+        {current && (
+          <InstructorSidebar
+            activityIndex={idx}
+            activityCount={activities.length}
+            kind={current.kind}
+            roster={roster}
+            answerers={answerers}
+            ranking={ranking}
+            selfUserId={instructorId ?? undefined}
+          />
+        )}
+      </div>
 
       <InstructorControlBar
         inReception={inReception}

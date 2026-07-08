@@ -29,7 +29,7 @@ export function LiveSessionChrome({
   const { t } = useI18n();
 
   return (
-    <header className="relative">
+    <header className="relative z-30">
       <div
         className="h-1 w-full bg-muted"
         role="progressbar"
