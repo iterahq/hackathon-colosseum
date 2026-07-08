@@ -153,6 +153,14 @@ function StartClass({
   const { data: program } = useProgram(slug || undefined);
   const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
 
+  // Only programs of the teaching tenant — starting a class on another tenant's
+  // catalog program would leave its learners with an empty (RLS-blocked) activity
+  // (black screen), since they can't read cross-tenant content.
+  const tenantPrograms = useMemo(
+    () => programs.filter((p) => p.tenantId === tenantId),
+    [programs, tenantId]
+  );
+
   const lessons = useMemo(
     () =>
       (program?.units ?? [])
@@ -215,7 +223,7 @@ function StartClass({
           className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-5"
         >
           <option value="">{t('live.instructor.start.programPlaceholder')}</option>
-          {programs.map((p) => (
+          {tenantPrograms.map((p) => (
             <option key={p.id} value={p.slug}>
               {tText(p.title)}
             </option>

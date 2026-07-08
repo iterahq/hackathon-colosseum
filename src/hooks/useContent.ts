@@ -32,6 +32,10 @@ export function useLessonContent(lessonId: string | undefined) {
     queryKey: queryKeys.lesson.byId(lessonId ?? ''),
     queryFn: () => getLessonWithActivities(lessonId as string),
     enabled: Boolean(lessonId),
+    // A not-found / RLS-blocked lesson (e.g. a live class started on another
+    // tenant's content) throws — don't burn ~7s of retries leaving the learner
+    // on a blank skeleton; settle fast so the "unavailable" state can show.
+    retry: false,
   });
 }
 
