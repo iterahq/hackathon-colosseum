@@ -244,6 +244,7 @@ export default function LiveSessionPage() {
                 }}
                 readOnly={locked}
                 onComplete={handleComplete}
+                onSubmit={sound.onSubmit}
                 timerSlot={
                   (timer && timer.activityId === current.id) ||
                   (!answered && !locked && activityStartedAt) ? (

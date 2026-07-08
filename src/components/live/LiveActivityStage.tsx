@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, MouseEvent } from 'react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { Activity } from '@/types/content';
 
@@ -12,6 +12,12 @@ interface LiveActivityStageProps {
    */
   readOnly?: boolean;
   onComplete?: (correct: boolean) => void;
+  /**
+   * Fired when the learner clicks an activity's "Enviar" (the `*-submit` button)
+   * — the intermediate step before the correct/wrong confirm. Caught by
+   * delegation so we don't thread a prop through every activity kind.
+   */
+  onSubmit?: () => void;
   /** The centered timer/stopwatch row above the activity (page composes it). */
   timerSlot?: ReactNode;
   /** Hints/notes below the activity (answered/locked on the learner side). */
@@ -31,10 +37,16 @@ export function LiveActivityStage({
   activity,
   readOnly = false,
   onComplete,
+  onSubmit,
   timerSlot,
   footer,
   testid,
 }: LiveActivityStageProps) {
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (readOnly || !onSubmit) return;
+    if ((e.target as HTMLElement).closest('[data-testid$="-submit"]')) onSubmit();
+  };
+
   return (
     <div className="mt-7">
       {timerSlot && <div className="mb-5 flex items-center justify-center gap-3">{timerSlot}</div>}
@@ -44,6 +56,7 @@ export function LiveActivityStage({
       <div
         className={readOnly ? 'select-none' : undefined}
         data-testid={testid}
+        onClick={handleClick}
         {...(readOnly ? { inert: '' } : {})}
       >
         <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} />

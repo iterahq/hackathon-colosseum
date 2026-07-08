@@ -21,6 +21,11 @@ export function useLiveSound() {
     [muted, volume, play]
   );
 
+  // The intermediate "answer sent" step (before the correct/wrong confirm).
+  const onSubmit = useCallback(() => {
+    if (!muted) play('submit', 0.35 * volume);
+  }, [muted, volume, play]);
+
   const onWarn = useCallback(() => {
     if (!muted) play('click', 0.2 * volume);
   }, [muted, volume, play]);
@@ -33,5 +38,5 @@ export function useLiveSound() {
     if (!muted) play('click', 0.2 * volume);
   }, [muted, volume, play]);
 
-  return { muted, toggleMuted, onAnswer, onWarn, onTimeUp, onAdvance };
+  return { muted, toggleMuted, onAnswer, onSubmit, onWarn, onTimeUp, onAdvance };
 }
