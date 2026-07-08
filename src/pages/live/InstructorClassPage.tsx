@@ -479,17 +479,20 @@ function ClassControl({
           </div>
         </main>
 
-        {current && (
-          <InstructorSidebar
-            activityIndex={idx}
-            activityCount={activities.length}
-            kind={current.kind}
-            roster={roster}
-            answerers={answerers}
-            ranking={ranking}
-            selfUserId={instructorId ?? undefined}
-          />
-        )}
+        <InstructorSidebar
+          hasActivity={Boolean(current)}
+          activityIndex={idx}
+          activityCount={activities.length}
+          kind={current?.kind ?? ''}
+          roster={roster}
+          answerers={answerers}
+          ranking={ranking}
+          selfUserId={instructorId ?? undefined}
+          copied={copied}
+          busy={busy}
+          onCopyLink={copyJoinLink}
+          onEnd={handleEnd}
+        />
       </div>
 
       <InstructorControlBar
@@ -502,14 +505,11 @@ function ClassControl({
         canPrev={canPrev}
         canNext={canNext}
         timerRunning={Boolean(timer && current && timer.activityId === current.id)}
-        copied={copied}
         onBegin={() => activities[0] && goTo(activities[0].id)}
         onPrev={() => canPrev && goTo(activities[idx - 1].id)}
         onNext={() => canNext && goTo(activities[idx + 1].id)}
         onStartTimer={(s) => current && broadcastTimer(current.id, s)}
         onStopTimer={() => current && clearTimer(current.id)}
-        onCopyLink={copyJoinLink}
-        onEnd={handleEnd}
       />
     </div>
   );

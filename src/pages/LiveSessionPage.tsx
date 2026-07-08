@@ -21,6 +21,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
+import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
 import { useLessonContent } from '@/hooks';
@@ -154,14 +155,16 @@ export default function LiveSessionPage() {
         onClose={() => navigate('/')}
       />
 
-      <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
+          <div className="max-w-2xl mx-auto">
         {loading ? (
-          <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground max-w-2xl mx-auto">
+          <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
             <p>{t('live.connecting')}</p>
           </div>
         ) : !session ? (
-          <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground max-w-2xl mx-auto" data-testid="live-not-found">
+          <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground" data-testid="live-not-found">
             {t('live.notFound')}
           </div>
         ) : ended ? (
@@ -184,14 +187,7 @@ export default function LiveSessionPage() {
             </button>
           </motion.div>
         ) : (
-          <div
-            className={
-              current
-                ? 'grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6 lg:gap-8 items-start'
-                : 'max-w-2xl mx-auto'
-            }
-          >
-            <div className={current ? 'min-w-0 w-full max-w-2xl mx-auto lg:mx-0' : ''}>
+          <>
             <div
               className="font-mono text-[11px] uppercase tracking-wider text-clay"
               data-testid="live-eyebrow"
@@ -286,16 +282,18 @@ export default function LiveSessionPage() {
                 }
               />
             )}
-            </div>
-            {current && (
-              <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
-                <LiveRosterCard roster={roster} selfUserId={identity.userId} />
-                <LiveAnswerersCard answerers={peerAnswerers} hideCorrectness />
-              </aside>
-            )}
-          </div>
+          </>
         )}
-      </main>
+          </div>
+        </main>
+
+        {!loading && session && !ended && current && (
+          <LiveSidebar>
+            <LiveRosterCard bare roster={roster} selfUserId={identity.userId} />
+            <LiveAnswerersCard bare answerers={peerAnswerers} hideCorrectness />
+          </LiveSidebar>
+        )}
+      </div>
     </div>
   );
 }

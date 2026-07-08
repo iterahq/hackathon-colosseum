@@ -13,14 +13,11 @@ const base = {
   canPrev: false,
   canNext: true,
   timerRunning: false,
-  copied: false,
   onBegin: vi.fn(),
   onPrev: vi.fn(),
   onNext: vi.fn(),
   onStartTimer: vi.fn(),
   onStopTimer: vi.fn(),
-  onCopyLink: vi.fn(),
-  onEnd: vi.fn(),
 };
 
 function bar(over: Partial<typeof base> = {}) {
@@ -32,13 +29,13 @@ function bar(over: Partial<typeof base> = {}) {
 }
 
 describe('InstructorControlBar', () => {
-  it('reception shows only begin + copy + end (no pointer/timer controls)', () => {
+  it('reception shows only begin (no pointer/timer controls; share + end live in the sidebar)', () => {
     bar({ inReception: true });
     expect(screen.getByTestId('instructor-begin-btn')).toBeTruthy();
-    expect(screen.getByTestId('instructor-copy-link')).toBeTruthy();
-    expect(screen.getByTestId('instructor-end')).toBeTruthy();
     expect(screen.queryByTestId('instructor-next')).toBeNull();
     expect(screen.queryByTestId('instructor-prev')).toBeNull();
+    expect(screen.queryByTestId('instructor-copy-link')).toBeNull();
+    expect(screen.queryByTestId('instructor-end')).toBeNull();
   });
 
   it('running shows prev/next + N/M and disables prev at the first activity', () => {
