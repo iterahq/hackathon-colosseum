@@ -116,7 +116,7 @@ export default function LiveSessionPage() {
   }, [onTimeUp, currentActivityId]);
 
   async function handleComplete(correct: boolean) {
-    if (!current || saving || locked) return;
+    if (!current || saving || locked || answered?.id === current.id) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) + how long the learner took, so the professor
@@ -242,7 +242,7 @@ export default function LiveSessionPage() {
                   ...current,
                   status: answered?.id === current.id && answered.correct ? 'done' : current.status,
                 }}
-                readOnly={locked}
+                readOnly={locked || answered?.id === current.id}
                 onComplete={handleComplete}
                 onSubmit={sound.onSubmit}
                 timerSlot={
