@@ -44,7 +44,7 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { InstructorControlBar } from '@/components/live/InstructorControlBar';
-import { InstructorSidebar } from '@/components/live/InstructorSidebar';
+import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
@@ -479,7 +479,8 @@ function ClassControl({
           </div>
         </main>
 
-        <InstructorSidebar
+        <LiveSidebar
+          role="instructor"
           hasActivity={Boolean(current)}
           activityIndex={idx}
           activityCount={activities.length}

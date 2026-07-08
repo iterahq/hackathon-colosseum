@@ -22,8 +22,6 @@ import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
-import { LiveRosterCard } from '@/components/live/LiveRosterCard';
-import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -288,10 +286,12 @@ export default function LiveSessionPage() {
         </main>
 
         {!loading && session && !ended && current && (
-          <LiveSidebar>
-            <LiveRosterCard bare roster={roster} selfUserId={identity.userId} />
-            <LiveAnswerersCard bare answerers={peerAnswerers} hideCorrectness />
-          </LiveSidebar>
+          <LiveSidebar
+            role="learner"
+            roster={roster}
+            answerers={peerAnswerers}
+            selfUserId={identity.userId}
+          />
         )}
       </div>
     </div>
