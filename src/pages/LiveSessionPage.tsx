@@ -29,7 +29,7 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
-import { formatMmss } from '@/utils/formatMmss';
+import { formatDuration } from '@/utils/formatDuration';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
@@ -272,7 +272,7 @@ export default function LiveSessionPage() {
                       >
                         {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
                         <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-                          · {t('live.elapsed.you', { time: formatMmss(Math.round(answered.elapsedMs / 1000)) })}
+                          · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
                         </span>
                       </p>
                     )}

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link2, Check, Square } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
@@ -22,6 +23,8 @@ interface LiveSidebarProps {
   busy?: boolean;
   onCopyLink?: () => void;
   onEnd?: () => void;
+  /** Instructor flow controls, rendered as the top section (no bottom bar). */
+  controls?: ReactNode;
 }
 
 /**
@@ -47,6 +50,7 @@ export function LiveSidebar({
   busy = false,
   onCopyLink,
   onEnd,
+  controls,
 }: LiveSidebarProps) {
   const { t } = useI18n();
   const isInstructor = role === 'instructor';
@@ -54,9 +58,11 @@ export function LiveSidebar({
 
   return (
     <aside
-      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card overflow-y-auto divide-y divide-border pt-12 lg:pt-14 pb-24"
+      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card overflow-y-auto divide-y divide-border pt-12 lg:pt-14 pb-8"
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
     >
+      {isInstructor && controls}
+
       {showActivity && (
         <LiveActivityStatsCard
           bare

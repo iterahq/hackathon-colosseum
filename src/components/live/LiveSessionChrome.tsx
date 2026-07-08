@@ -1,8 +1,6 @@
-import { X, Heart } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
-
-const DECORATIVE_HEARTS = 5;
 
 interface LiveSessionChromeProps {
   progressPct: number;
@@ -89,10 +87,6 @@ export function LiveSessionChrome({
 
       <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-3">
         {!ended && <LiveSoundToggle compact />}
-        <div className="flex items-center gap-1.5 text-foreground" data-testid="live-hearts" aria-hidden="true">
-          <Heart className="w-4 h-4 fill-clay text-clay" />
-          <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
-        </div>
       </div>
     </header>
   );

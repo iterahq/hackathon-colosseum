@@ -13,7 +13,7 @@
  * The instructor advances the server-authoritative pointer (durable
  * advanceClassSession) AND broadcasts it (fast path) so every student jumps.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Play, GraduationCap, Loader2, Presentation } from 'lucide-react';
@@ -43,7 +43,7 @@ import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
-import { InstructorControlBar } from '@/components/live/InstructorControlBar';
+import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
@@ -65,6 +65,8 @@ export default function InstructorClassPage() {
     () => (sessions ?? []).find((s) => s.status === 'live') ?? null,
     [sessions]
   );
+  // Stable so ClassControl's out-of-band-end effect doesn't loop on re-render.
+  const handleEnded = useCallback(() => refetch(), [refetch]);
 
   // A running class takes over the full screen — the immersive learner surface
   // plus the presenter controls. The dashboard shell (AppHeader + hero) is only
@@ -76,7 +78,7 @@ export default function InstructorClassPage() {
         tenantId={tenantId}
         instructorId={identity.userId}
         instructorName={identity.name}
-        onEnded={() => refetch()}
+        onEnded={handleEnded}
       />
     );
   }
@@ -438,7 +440,7 @@ function ClassControl({
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* The activity stays CENTERED in the space left of the sidebar —
             learner-identical stage, just centered rather than in a fixed grid. */}
-        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-44 lg:pb-28">
+        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
           <div className="max-w-2xl mx-auto">
             <div
               className="font-mono text-[11px] uppercase tracking-wider text-clay"
@@ -493,25 +495,26 @@ function ClassControl({
           busy={busy}
           onCopyLink={copyJoinLink}
           onEnd={handleEnd}
+          controls={
+            <InstructorControls
+              inReception={inReception}
+              activityIndex={idx}
+              activityCount={activities.length}
+              answeredCount={answeredCount}
+              presentCount={presentCount}
+              busy={busy}
+              canPrev={canPrev}
+              canNext={canNext}
+              timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+              onBegin={() => activities[0] && goTo(activities[0].id)}
+              onPrev={() => canPrev && goTo(activities[idx - 1].id)}
+              onNext={() => canNext && goTo(activities[idx + 1].id)}
+              onStartTimer={(s) => current && broadcastTimer(current.id, s)}
+              onStopTimer={() => current && clearTimer(current.id)}
+            />
+          }
         />
       </div>
-
-      <InstructorControlBar
-        inReception={inReception}
-        activityIndex={idx}
-        activityCount={activities.length}
-        answeredCount={answeredCount}
-        presentCount={presentCount}
-        busy={busy}
-        canPrev={canPrev}
-        canNext={canNext}
-        timerRunning={Boolean(timer && current && timer.activityId === current.id)}
-        onBegin={() => activities[0] && goTo(activities[0].id)}
-        onPrev={() => canPrev && goTo(activities[idx - 1].id)}
-        onNext={() => canNext && goTo(activities[idx + 1].id)}
-        onStartTimer={(s) => current && broadcastTimer(current.id, s)}
-        onStopTimer={() => current && clearTimer(current.id)}
-      />
     </div>
   );
 }

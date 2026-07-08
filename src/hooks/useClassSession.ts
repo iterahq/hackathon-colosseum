@@ -95,6 +95,28 @@ export function useClassSession(
       config: { presence: { key: presenceKey }, broadcast: { self: true } },
     });
 
+    // Rebuild the roster from the full presence state. Wired to sync/join/leave
+    // (not just sync) so a LATE joiner — whose initial `sync` can land before the
+    // server relays the already-present members — still converges once presence
+    // settles; a stable member (e.g. the professor) never re-tracks to re-trigger it.
+    const syncRoster = () => {
+      const state = channel.presenceState() as Record<string, Array<Record<string, unknown>>>;
+      const members: ClassPresenceMember[] = [];
+      const seen = new Set<string>();
+      for (const key of Object.keys(state)) {
+        const meta = state[key]?.[0] ?? {};
+        const uid = typeof meta.user_id === 'string' ? meta.user_id : key;
+        if (seen.has(uid)) continue;
+        seen.add(uid);
+        members.push({
+          userId: uid,
+          name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
+          isInstructor: meta.is_instructor === true,
+        });
+      }
+      setRoster(members);
+    };
+
     channel
       .on('broadcast', { event: ADVANCE_EVENT }, ({ payload }) => {
         const next = (payload as { current_activity_id?: string | null })?.current_activity_id;
@@ -141,27 +163,17 @@ export function useClassSession(
           if (row && row.id) applySession(mapSession(row));
         }
       )
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState() as Record<string, Array<Record<string, unknown>>>;
-        const members: ClassPresenceMember[] = [];
-        const seen = new Set<string>();
-        for (const key of Object.keys(state)) {
-          const meta = state[key]?.[0] ?? {};
-          const uid = typeof meta.user_id === 'string' ? meta.user_id : key;
-          if (seen.has(uid)) continue;
-          seen.add(uid);
-          members.push({
-            userId: uid,
-            name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
-            isInstructor: meta.is_instructor === true,
-          });
-        }
-        setRoster(members);
-      })
+      .on('presence', { event: 'sync' }, syncRoster)
+      .on('presence', { event: 'join' }, syncRoster)
+      .on('presence', { event: 'leave' }, syncRoster)
       .subscribe((s) => {
         const isJoined = s === 'SUBSCRIBED';
         setConnected(isJoined);
         if (!isJoined) return;
+        // Belt-and-suspenders: re-read presence shortly after joining, in case
+        // the initial `sync` landed before the existing members were relayed.
+        setTimeout(syncRoster, 400);
+        setTimeout(syncRoster, 1500);
         // Realtime does NOT replay postgres_changes after a socket blip, so a
         // client that reconnects (or joins late) can miss an advance — including
         // leaving the reception. Re-read the durable row on every (re)subscribe
