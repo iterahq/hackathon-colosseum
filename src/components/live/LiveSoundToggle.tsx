@@ -1,6 +1,7 @@
 import { Volume2, VolumeX } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useLiveMuted } from '@/hooks/useLiveMuted';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 
 interface LiveSoundToggleProps {
   /** Icon-only round button for the always-visible header slot. */
@@ -10,12 +11,21 @@ interface LiveSoundToggleProps {
 export function LiveSoundToggle({ compact = false }: LiveSoundToggleProps) {
   const { t } = useI18n();
   const [muted, toggleMuted] = useLiveMuted();
+  const { playSuccess } = useSoundEffects();
   const label = muted ? t('live.sound.off') : t('live.sound.on');
+
+  const handleToggle = () => {
+    // Confirm-chime when turning sound back ON (muting stays silent — played
+    // directly so the just-flipped mute preference doesn't gate it away).
+    const turningOn = muted;
+    toggleMuted();
+    if (turningOn) playSuccess();
+  };
 
   return (
     <button
       type="button"
-      onClick={toggleMuted}
+      onClick={handleToggle}
       data-testid="live-sound-toggle"
       data-muted={muted ? 'true' : 'false'}
       aria-pressed={muted}
