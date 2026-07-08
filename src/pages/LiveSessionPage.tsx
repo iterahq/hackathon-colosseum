@@ -48,7 +48,7 @@ export default function LiveSessionPage() {
         : undefined
     );
 
-  const { data: lesson } = useLessonContent(session?.lessonId);
+  const { data: lesson, isPending: lessonPending } = useLessonContent(session?.lessonId);
   const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -253,8 +253,8 @@ export default function LiveSessionPage() {
               // an activity skeleton (which would wrongly signal "an activity is
               // coming").
               <LiveReception roster={roster} />
-            ) : !lessonLoaded ? (
-              // Pointer set but the lesson content hasn't resolved yet (late-join /
+            ) : lessonPending ? (
+              // Pointer set and the lesson content is still resolving (late-join /
               // reconnect) — activity SKELETON so a joiner with a live pointer goes
               // straight to the activity once it lands. (loop-1 fix #3.)
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
@@ -262,10 +262,21 @@ export default function LiveSessionPage() {
                 <div className="h-40 rounded-2xl ds-shimmer" />
                 <div className="h-12 rounded-full ds-shimmer" />
               </div>
+            ) : !lessonLoaded || activities.length === 0 ? (
+              // The lesson read SETTLED with no readable content — the class was
+              // started on content this learner can't access (e.g. another tenant's
+              // program, RLS-blocked). Show a clear message instead of an endless
+              // skeleton (which reads as a black screen).
+              <div
+                className="mt-8 rounded-3xl border border-dashed border-clay/40 bg-clay/5 p-12 text-center"
+                data-testid="live-unavailable"
+              >
+                <p className="font-display text-lg text-foreground">{t('live.unavailable.title')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('live.unavailable.subtitle')}</p>
+              </div>
             ) : (
-              // Lesson loaded, pointer set, but the activity isn't in the list
-              // (transient pointer/lesson mismatch) — skeleton rather than a
-              // misleading state.
+              // Lesson loaded with activities, pointer set, but this activity isn't
+              // in the list yet (transient pointer/lesson mismatch) — brief skeleton.
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
                 <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
                 <div className="h-40 rounded-2xl ds-shimmer" />
