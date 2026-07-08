@@ -1,0 +1,54 @@
+import type { ReactNode } from 'react';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import type { Activity } from '@/types/content';
+
+interface LiveActivityStageProps {
+  activity: Activity;
+  /**
+   * Read-only mirror: the activity renders EXACTLY as the learner sees it, just
+   * `inert` (no pointer/keyboard, hidden from a11y) and unselectable — no frame,
+   * no "preview" box. Used by the instructor surface and by the learner once the
+   * timer locks the activity.
+   */
+  readOnly?: boolean;
+  onComplete?: (correct: boolean) => void;
+  /** The centered timer/stopwatch row above the activity (page composes it). */
+  timerSlot?: ReactNode;
+  /** Hints/notes below the activity (answered/locked on the learner side). */
+  footer?: ReactNode;
+  /** Overrides the inner wrapper testid (kept for the instructor mirror). */
+  testid?: string;
+}
+
+const noop = () => {};
+
+/**
+ * The activity "stage" shared by the learner and instructor surfaces so both see
+ * the same thing — same renderer, same timer placement, same width. The only
+ * difference is `readOnly` (the professor + a locked learner don't interact).
+ */
+export function LiveActivityStage({
+  activity,
+  readOnly = false,
+  onComplete,
+  timerSlot,
+  footer,
+  testid,
+}: LiveActivityStageProps) {
+  return (
+    <div className="mt-7">
+      {timerSlot && <div className="mb-5 flex items-center justify-center gap-3">{timerSlot}</div>}
+      {/* key on the activity id so a force-advance fully remounts the renderer
+          (fresh state). `inert` blocks interaction + hides the inner controls
+          from the a11y tree when read-only. */}
+      <div
+        className={readOnly ? 'select-none' : undefined}
+        data-testid={testid}
+        {...(readOnly ? { inert: '' } : {})}
+      >
+        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} />
+      </div>
+      {footer}
+    </div>
+  );
+}

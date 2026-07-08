@@ -15,14 +15,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { X, Heart, Radio, Loader2 } from 'lucide-react';
-import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { Radio, Loader2 } from 'lucide-react';
 import { LiveReception } from '@/components/live/LiveReception';
+import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
+import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
-import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -34,7 +34,6 @@ import { formatMmss } from '@/utils/formatMmss';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
-const DECORATIVE_HEARTS = 5;
 
 export default function LiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -146,76 +145,14 @@ export default function LiveSessionPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Immersive chrome — same as the solo player, plus a LIVE indicator. */}
-      <header className="relative">
-        <div
-          className="h-1 w-full bg-muted"
-          role="progressbar"
-          aria-valuenow={progressPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          data-testid="live-progress"
-        >
-          <div
-            className="h-full bg-clay transition-[width] duration-300"
-            style={{ width: `${progressPct}%` }}
-            data-testid="live-progress-fill"
-          />
-        </div>
-
-        <button
-          onClick={() => navigate('/')}
-          aria-label={t('common.back')}
-          data-testid="live-close"
-          className="absolute top-2.5 left-3 md:left-4 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* LIVE pill + presence count (center-ish, top). Once the session ends
-            the pill flips to a muted "Encerrada" — no live styling, no pulsing
-            dot, no presence count (loop-2 fix #7). */}
-        <div
-          className="absolute top-2.5 left-1/2 -translate-x-1/2 h-9 flex items-center gap-2"
-          data-testid="live-indicator"
-          data-status={ended ? 'ended' : 'live'}
-        >
-          {ended ? (
-            <span
-              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-border bg-card text-xs font-medium text-muted-foreground"
-              data-testid="live-indicator-ended"
-            >
-              <span className="inline-flex h-2 w-2 rounded-full bg-muted-foreground" aria-hidden="true" />
-              {t('live.status.ended')}
-            </span>
-          ) : (
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium ${
-                connected
-                  ? 'border-clay/50 bg-clay/10 text-clay'
-                  : 'border-border bg-card text-muted-foreground'
-              }`}
-            >
-              <span className="relative flex h-2 w-2" aria-hidden="true">
-                {connected && (
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay opacity-75" />
-                )}
-                <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
-              </span>
-              {t('live.badge.label')}
-              <span className="opacity-70">· {roster.length}</span>
-            </span>
-          )}
-        </div>
-
-        <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-3">
-          {!ended && <LiveSoundToggle compact />}
-          <div className="flex items-center gap-1.5 text-foreground" data-testid="live-hearts" aria-hidden="true">
-            <Heart className="w-4 h-4 fill-clay text-clay" />
-            <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
-          </div>
-        </div>
-      </header>
+      {/* Immersive chrome — shared verbatim with the instructor surface. */}
+      <LiveSessionChrome
+        progressPct={progressPct}
+        connected={connected}
+        presenceCount={roster.length}
+        ended={ended}
+        onClose={() => navigate('/')}
+      />
 
       <main className="flex-1 w-full mx-auto max-w-5xl px-4 md:px-6 pt-14 md:pt-20">
         {loading ? (
@@ -306,50 +243,48 @@ export default function LiveSessionPage() {
               </div>
             )}
             {current && (
-              <div className="mt-7">
-                {((timer && timer.activityId === current.id) ||
-                  (!answered && !locked && activityStartedAt)) && (
-                  <div className="mb-5 flex items-center justify-center gap-3">
-                    {timer && timer.activityId === current.id && (
-                      <LiveTimer deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
+              <LiveActivityStage
+                activity={{
+                  ...current,
+                  status: answered?.id === current.id && answered.correct ? 'done' : current.status,
+                }}
+                readOnly={locked}
+                onComplete={handleComplete}
+                timerSlot={
+                  (timer && timer.activityId === current.id) ||
+                  (!answered && !locked && activityStartedAt) ? (
+                    <>
+                      {timer && timer.activityId === current.id && (
+                        <LiveTimer deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
+                      )}
+                      {!answered && !locked && activityStartedAt && (
+                        <LiveStopwatch startedAt={activityStartedAt} />
+                      )}
+                    </>
+                  ) : undefined
+                }
+                footer={
+                  <>
+                    {locked && (
+                      <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
+                        {t('live.timer.lockedHint')}
+                      </p>
                     )}
-                    {!answered && !locked && activityStartedAt && (
-                      <LiveStopwatch startedAt={activityStartedAt} />
+                    {answered?.id === current.id && (
+                      <p
+                        className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
+                        data-testid="live-answered-hint"
+                        data-correct={answered.correct ? 'true' : 'false'}
+                      >
+                        {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+                        <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+                          · {t('live.elapsed.you', { time: formatMmss(Math.round(answered.elapsedMs / 1000)) })}
+                        </span>
+                      </p>
                     )}
-                  </div>
-                )}
-                {/* key on the activity id so a force-advance fully remounts the
-                    renderer (fresh state) — the student loses the prior activity.
-                    Once time is up (locked), the renderer is `inert` so the learner
-                    can no longer type or submit — they wait for the professor. */}
-                <div {...(locked ? { inert: '' } : {})}>
-                  <ActivityRenderer
-                    key={current.id}
-                    activity={{
-                      ...current,
-                      status: answered?.id === current.id && answered.correct ? 'done' : current.status,
-                    }}
-                    onComplete={handleComplete}
-                  />
-                </div>
-                {locked && (
-                  <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
-                    {t('live.timer.lockedHint')}
-                  </p>
-                )}
-                {answered?.id === current.id && (
-                  <p
-                    className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
-                    data-testid="live-answered-hint"
-                    data-correct={answered.correct ? 'true' : 'false'}
-                  >
-                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
-                    <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-                      · {t('live.elapsed.you', { time: formatMmss(Math.round(answered.elapsedMs / 1000)) })}
-                    </span>
-                  </p>
-                )}
-              </div>
+                  </>
+                }
+              />
             )}
             </div>
             {current && (
