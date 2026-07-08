@@ -97,24 +97,25 @@ export default function LiveSessionPage() {
   );
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  // Set when the professor's countdown hits 0 for the current activity — the
-  // learner is then locked out of answering. Resets on advance.
-  const [timeUp, setTimeUp] = useState(false);
+  // The activity id whose countdown expired (locks that activity for the learner).
+  // Keyed on the id — NOT a bare boolean — so an advance right after a timeout
+  // never paints the NEXT activity as locked for a frame while an effect catches up.
+  const [timeUpFor, setTimeUpFor] = useState<string | null>(null);
   useEffect(() => {
     setAnswered(null);
     setSaving(false);
-    setTimeUp(false);
+    setTimeUpFor(null);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [currentActivityId]);
 
-  // Time ran out before the learner answered → the activity is locked.
-  const locked = timeUp && !answered;
+  // Time ran out before the learner answered THIS activity → it's locked.
+  const locked = timeUpFor !== null && timeUpFor === current?.id && !answered;
 
   const { onTimeUp } = sound;
   const handleTimeUp = useCallback(() => {
     onTimeUp();
-    setTimeUp(true);
-  }, [onTimeUp]);
+    setTimeUpFor(currentActivityId);
+  }, [onTimeUp, currentActivityId]);
 
   async function handleComplete(correct: boolean) {
     if (!current || saving || locked) return;
