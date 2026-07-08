@@ -45,6 +45,7 @@ export function useClassSession(
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
+  const [elapsed, setElapsed] = useState<Record<string, Record<string, number>>>({});
   const [timer, setTimer] = useState<ClassTimer | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
@@ -107,12 +108,23 @@ export function useClassSession(
         }
       })
       .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
-        const p = payload as { activity_id?: string; user_id?: string; correct?: boolean } | null;
+        const p = payload as {
+          activity_id?: string;
+          user_id?: string;
+          correct?: boolean;
+          elapsed_ms?: number;
+        } | null;
         if (!p?.activity_id || !p.user_id) return;
         setAnswers((prev) => ({
           ...prev,
           [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.correct === true },
         }));
+        if (typeof p.elapsed_ms === 'number') {
+          setElapsed((prev) => ({
+            ...prev,
+            [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.elapsed_ms! },
+          }));
+        }
       })
       .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
         const next = parseTimerEvent(payload);
@@ -237,20 +249,29 @@ export function useClassSession(
     });
   }, []);
 
-  const broadcastAnswer = useCallback((activityId: string, correct: boolean) => {
-    const channel = channelRef.current;
-    const userId = identityRef.current?.userId;
-    if (!channel || !userId) return;
-    setAnswers((prev) => ({
-      ...prev,
-      [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
-    }));
-    void channel.send({
-      type: 'broadcast',
-      event: ANSWERED_EVENT,
-      payload: { activity_id: activityId, user_id: userId, correct },
-    });
-  }, []);
+  const broadcastAnswer = useCallback(
+    (activityId: string, correct: boolean, elapsedMs?: number) => {
+      const channel = channelRef.current;
+      const userId = identityRef.current?.userId;
+      if (!channel || !userId) return;
+      setAnswers((prev) => ({
+        ...prev,
+        [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
+      }));
+      if (typeof elapsedMs === 'number') {
+        setElapsed((prev) => ({
+          ...prev,
+          [activityId]: { ...(prev[activityId] ?? {}), [userId]: elapsedMs },
+        }));
+      }
+      void channel.send({
+        type: 'broadcast',
+        event: ANSWERED_EVENT,
+        payload: { activity_id: activityId, user_id: userId, correct, elapsed_ms: elapsedMs },
+      });
+    },
+    []
+  );
 
   return {
     session,
@@ -260,6 +281,7 @@ export function useClassSession(
     connected,
     loading,
     answers,
+    elapsed,
     timer,
     broadcast,
     broadcastAnswer,

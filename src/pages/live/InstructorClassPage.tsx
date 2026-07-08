@@ -52,6 +52,8 @@ import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
+import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 
 export default function InstructorClassPage() {
@@ -151,6 +153,14 @@ function StartClass({
   const { data: program } = useProgram(slug || undefined);
   const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
 
+  // Only programs of the teaching tenant — starting a class on another tenant's
+  // catalog program would leave its learners with an empty (RLS-blocked) activity
+  // (black screen), since they can't read cross-tenant content.
+  const tenantPrograms = useMemo(
+    () => programs.filter((p) => p.tenantId === tenantId),
+    [programs, tenantId]
+  );
+
   const lessons = useMemo(
     () =>
       (program?.units ?? [])
@@ -213,7 +223,7 @@ function StartClass({
           className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-5"
         >
           <option value="">{t('live.instructor.start.programPlaceholder')}</option>
-          {programs.map((p) => (
+          {tenantPrograms.map((p) => (
             <option key={p.id} value={p.slug}>
               {tText(p.title)}
             </option>
@@ -303,11 +313,12 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
     );
+  const sound = useLiveSound();
   const { data: lesson } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -328,8 +339,13 @@ function ClassControl({
     session.startedAt
   );
   const answerers = useMemo(
-    () => mergeLiveAnswers(polled, currentActivityId ? answers[currentActivityId] : undefined),
-    [polled, answers, currentActivityId]
+    () =>
+      mergeLiveAnswers(
+        polled,
+        currentActivityId ? answers[currentActivityId] : undefined,
+        currentActivityId ? elapsed[currentActivityId] : undefined
+      ),
+    [polled, answers, elapsed, currentActivityId]
   );
 
   const [busy, setBusy] = useState(false);
@@ -444,7 +460,7 @@ function ClassControl({
                 onStop={() => current && clearTimer(current.id)}
               />
               {timer && current && timer.activityId === current.id && (
-                <LiveTimer deadline={timer.deadline} />
+                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
               )}
             </div>
 
@@ -499,6 +515,8 @@ function ClassControl({
             </>
           )}
         </button>
+
+        <LiveSoundToggle />
       </div>
     </div>
   );

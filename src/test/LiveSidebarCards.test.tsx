@@ -42,4 +42,30 @@ describe('LiveAnswerersCard', () => {
     expect(list.querySelectorAll('li')).toHaveLength(3);
     expect(list.querySelector('[data-state="wrong"]')?.textContent).toContain('Beto');
   });
+
+  it('hideCorrectness counts answered (done + wrong) instead of only done', () => {
+    render(
+      <I18nProvider>
+        <LiveAnswerersCard answerers={answerers} hideCorrectness />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('live-answerers-count').textContent).toBe('2/3');
+  });
+
+  it('shows elapsed time to the instructor, hides it from peers', () => {
+    const withTime: ClassAnswerer[] = [{ userId: 'a', name: 'Ana', state: 'done', elapsedMs: 65000 }];
+    const instr = render(
+      <I18nProvider>
+        <LiveAnswerersCard answerers={withTime} />
+      </I18nProvider>
+    );
+    expect(instr.getByTestId('live-answerer-elapsed').textContent).toBe('1:05');
+    instr.unmount();
+    render(
+      <I18nProvider>
+        <LiveAnswerersCard answerers={withTime} hideCorrectness />
+      </I18nProvider>
+    );
+    expect(screen.queryByTestId('live-answerer-elapsed')).toBeNull();
+  });
 });

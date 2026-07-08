@@ -12,21 +12,25 @@
  * Result writes are UNCHANGED (persistActivityProgress → itera.progress /
  * activity_results). Live mode only controls WHICH activity is on screen.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Radio, Loader2 } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveTimer } from '@/components/live/LiveTimer';
+import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveRosterCard } from '@/components/live/LiveRosterCard';
 import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
+import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
+import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
+import { formatMmss } from '@/utils/formatMmss';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
@@ -46,7 +50,7 @@ export default function LiveSessionPage() {
         : undefined
     );
 
-  const { data: lesson } = useLessonContent(session?.lessonId);
+  const { data: lesson, isPending: lessonPending } = useLessonContent(session?.lessonId);
   const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -73,27 +77,47 @@ export default function LiveSessionPage() {
     }
   }, [session, identity.userId, navigate]);
 
-  // Per-activity local answer state (result writes stay per-user). Reset whenever
-  // the professor force-advances to a different activity.
-  const [answered, setAnswered] = useState<{ id: string; correct: boolean } | null>(null);
+  const sound = useLiveSound();
+
+  // Play the advance cue when the professor moves the class to a NEW activity
+  // (not on first mount / leaving reception).
+  const prevActivityRef = useRef<string | null>(null);
+  const { onAdvance } = sound;
+  useEffect(() => {
+    const prev = prevActivityRef.current;
+    if (currentActivityId && prev && prev !== currentActivityId) onAdvance();
+    prevActivityRef.current = currentActivityId;
+  }, [currentActivityId, onAdvance]);
+
+  // Per-activity local answer state (result writes stay per-user) + the moment
+  // the current activity opened for THIS learner (the elapsed-time origin). Both
+  // reset whenever the professor force-advances to a different activity.
+  const [answered, setAnswered] = useState<{ id: string; correct: boolean; elapsedMs: number } | null>(
+    null
+  );
+  const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     setAnswered(null);
     setSaving(false);
+    setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [currentActivityId]);
 
   async function handleComplete(correct: boolean) {
     if (!current || saving) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
-    // EVERY answer (right or wrong) so the professor sees who has responded.
-    setAnswered({ id: current.id, correct });
+    // EVERY answer (right or wrong) + how long the learner took, so the professor
+    // sees who responded and their time.
+    const elapsedMs = activityStartedAt ? Date.now() - activityStartedAt : 0;
+    setAnswered({ id: current.id, correct, elapsedMs });
+    sound.onAnswer(correct);
     if (correct) {
       setSaving(true);
       await persistActivityProgress(current.id);
       setSaving(false);
     }
-    broadcastAnswer(current.id, correct);
+    broadcastAnswer(current.id, correct, elapsedMs);
   }
 
   const progressPct = activities.length
@@ -238,8 +262,8 @@ export default function LiveSessionPage() {
               // an activity skeleton (which would wrongly signal "an activity is
               // coming").
               <LiveReception roster={roster} />
-            ) : !lessonLoaded ? (
-              // Pointer set but the lesson content hasn't resolved yet (late-join /
+            ) : lessonPending ? (
+              // Pointer set and the lesson content is still resolving (late-join /
               // reconnect) — activity SKELETON so a joiner with a live pointer goes
               // straight to the activity once it lands. (loop-1 fix #3.)
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
@@ -247,10 +271,21 @@ export default function LiveSessionPage() {
                 <div className="h-40 rounded-2xl ds-shimmer" />
                 <div className="h-12 rounded-full ds-shimmer" />
               </div>
+            ) : !lessonLoaded || activities.length === 0 ? (
+              // The lesson read SETTLED with no readable content — the class was
+              // started on content this learner can't access (e.g. another tenant's
+              // program, RLS-blocked). Show a clear message instead of an endless
+              // skeleton (which reads as a black screen).
+              <div
+                className="mt-8 rounded-3xl border border-dashed border-clay/40 bg-clay/5 p-12 text-center"
+                data-testid="live-unavailable"
+              >
+                <p className="font-display text-lg text-foreground">{t('live.unavailable.title')}</p>
+                <p className="text-sm text-muted-foreground mt-1">{t('live.unavailable.subtitle')}</p>
+              </div>
             ) : (
-              // Lesson loaded, pointer set, but the activity isn't in the list
-              // (transient pointer/lesson mismatch) — skeleton rather than a
-              // misleading state.
+              // Lesson loaded with activities, pointer set, but this activity isn't
+              // in the list yet (transient pointer/lesson mismatch) — brief skeleton.
               <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
                 <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
                 <div className="h-40 rounded-2xl ds-shimmer" />
@@ -259,9 +294,12 @@ export default function LiveSessionPage() {
             )}
             {current && (
               <div className="mt-7">
-                {timer && timer.activityId === current.id && (
-                  <div className="mb-5 flex justify-center">
-                    <LiveTimer deadline={timer.deadline} />
+                {((timer && timer.activityId === current.id) || (!answered && activityStartedAt)) && (
+                  <div className="mb-5 flex items-center justify-center gap-3">
+                    {timer && timer.activityId === current.id && (
+                      <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} />
+                    )}
+                    {!answered && activityStartedAt && <LiveStopwatch startedAt={activityStartedAt} />}
                   </div>
                 )}
                 {/* key on the activity id so a force-advance fully remounts the
@@ -280,7 +318,10 @@ export default function LiveSessionPage() {
                     data-testid="live-answered-hint"
                     data-correct={answered.correct ? 'true' : 'false'}
                   >
-                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}
+                    {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+                    <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+                      · {t('live.elapsed.you', { time: formatMmss(Math.round(answered.elapsedMs / 1000)) })}
+                    </span>
                   </p>
                 )}
               </div>
@@ -289,7 +330,8 @@ export default function LiveSessionPage() {
             {current && (
               <aside className="space-y-5 lg:pt-1" data-testid="live-sidebar">
                 <LiveRosterCard roster={roster} selfUserId={identity.userId} />
-                <LiveAnswerersCard answerers={peerAnswerers} />
+                <LiveAnswerersCard answerers={peerAnswerers} hideCorrectness />
+                <LiveSoundToggle />
               </aside>
             )}
           </div>
