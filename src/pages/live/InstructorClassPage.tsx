@@ -2,30 +2,21 @@
  * Professor control surface (`/live/instructor`) — the INSTRUCTOR side of the
  * real-time cohort mode (plan 20260702-…). Instructor-gated (RequireRole).
  *
- * The batch professor runs the class from here, so it ships real onboarding /
- * empty-states — not a dev-only minimal surface:
- *   - No live class yet   → "Start a class": pick a program → lesson → Start.
- *   - Live class running  → the CONTROL panel: the current activity + prev/next
- *     pointer, End, a live presence roster, and a "who's done on the current
- *     activity" view (reuses the admin-style completion query).
+ *   - No live class yet   → the onboarding dashboard: pick a program → lesson
+ *     → Start (AppHeader + hero shell).
+ *   - Live class running  → the FULL-SCREEN immersive surface: the exact chrome
+ *     + activity stage the learners see (LiveSessionChrome + LiveActivityStage,
+ *     read-only), a live roster / who's-done / speed-ranking aside, and a fixed
+ *     presenter control bar. On screen-share the cohort sees the same thing,
+ *     minus the bar — the parity the TL asked for.
  *
  * The instructor advances the server-authoritative pointer (durable
  * advanceClassSession) AND broadcasts it (fast path) so every student jumps.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  Square,
-  GraduationCap,
-  Loader2,
-  Presentation,
-  Link2,
-  Check,
-} from 'lucide-react';
+import { Play, GraduationCap, Loader2, Presentation } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
@@ -49,14 +40,17 @@ import {
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByTiming } from '@/utils/rankByTiming';
 import { LiveTimer } from '@/components/live/LiveTimer';
-import { LiveTimerControls } from '@/components/live/LiveTimerControls';
-import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
-import { LiveRosterCard } from '@/components/live/LiveRosterCard';
-import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
-import { LiveRankingCard } from '@/components/live/LiveRankingCard';
-import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
+import { LiveReception } from '@/components/live/LiveReception';
+import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
+import { LiveActivityStage } from '@/components/live/LiveActivityStage';
+import { InstructorControls } from '@/components/live/InstructorControls';
+import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
+
+// Interim default until the timer duration is chosen at class creation and
+// stored on the session (backlog: timer_seconds + creation selector + gating).
+const DEFAULT_TIMER_SECONDS = 60;
 
 export default function InstructorClassPage() {
   const { t } = useI18n();
@@ -75,6 +69,23 @@ export default function InstructorClassPage() {
     () => (sessions ?? []).find((s) => s.status === 'live') ?? null,
     [sessions]
   );
+  // Stable so ClassControl's out-of-band-end effect doesn't loop on re-render.
+  const handleEnded = useCallback(() => refetch(), [refetch]);
+
+  // A running class takes over the full screen — the immersive learner surface
+  // plus the presenter controls. The dashboard shell (AppHeader + hero) is only
+  // the pre-start onboarding (pick a program → start).
+  if (liveSession && tenantId) {
+    return (
+      <ClassControl
+        session={liveSession}
+        tenantId={tenantId}
+        instructorId={identity.userId}
+        instructorName={identity.name}
+        onEnded={handleEnded}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -113,14 +124,6 @@ export default function InstructorClassPage() {
             testid="instructor-disabled"
             title={t('live.instructor.disabled.title')}
             subtitle={t('live.instructor.disabled.subtitle')}
-          />
-        ) : liveSession ? (
-          <ClassControl
-            session={liveSession}
-            tenantId={tenantId}
-            instructorId={identity.userId}
-            instructorName={identity.name}
-            onEnded={() => refetch()}
           />
         ) : (
           <StartClass
@@ -315,14 +318,21 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, status, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
     );
   const sound = useLiveSound();
-  const { data: lesson } = useLessonContent(session.lessonId);
+  const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
+
+  // If the session ends out-of-band (another tab/device), leave the live
+  // surface — never strand the professor in a "LIVE" chrome whose controls
+  // silently no-op. onEnded() refetches → falls back to the onboarding dashboard.
+  useEffect(() => {
+    if (status === 'ended') onEnded();
+  }, [status, onEnded]);
 
   const idx = useMemo(
     () => activities.findIndex((a) => a.id === currentActivityId),
@@ -384,7 +394,6 @@ function ClassControl({
 
   const canPrev = idx > 0;
   const canNext = idx >= 0 && idx < activities.length - 1;
-  const startAt = idx < 0 && activities.length > 0; // pointer not set yet
 
   // Shareable direct-join link (loop-2 fix #6, instructor affordance): a copyable
   // `/live/:id` URL the professor can drop into chat so students jump straight in.
@@ -401,134 +410,113 @@ function ClassControl({
     }
   }
 
+  // Pointer-based progress for the shared chrome bar (same visual language the
+  // learners get). Reception (idx < 0) shows an empty bar.
+  const progressPct =
+    activities.length && idx >= 0 ? Math.round(((idx + 1) / activities.length) * 100) : 0;
+  const ended = status === 'ended';
+  // Begin exists ONLY before a pointer is set; once set we're in the activity
+  // (or briefly its loading skeleton), never back in the lobby.
+  const inReception = !currentActivityId;
+  const lessonLoading = Boolean(currentActivityId) && !current && lessonPending;
+  // Present learners who have answered the current activity — powers the
+  // "advance now" cue on the control bar (the professor's version of watching
+  // the room fill in, without looking away from the stage).
+  const answeredCount = answerers.filter((a) => a.state !== 'pending').length;
+  const presentCount = answerers.length;
+
   return (
-    <div className="grid lg:grid-cols-[1.6fr_1fr] gap-6" data-testid="instructor-control">
-      {/* LEFT — the stage */}
-      <div className="rounded-3xl border border-clay/40 bg-card p-6 md:p-8">
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <span
-            className={`inline-flex items-center gap-2 px-3 h-8 rounded-full border text-xs font-medium ${
-              connected ? 'border-clay/50 bg-clay/10 text-clay' : 'border-border bg-background text-muted-foreground'
-            }`}
-            data-testid="instructor-live-pill"
-          >
-            <span className="relative flex h-2 w-2" aria-hidden="true">
-              {connected && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay opacity-75" />}
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
-            </span>
-            {t('live.badge.label')}
-          </span>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground font-mono">
+    // Full-screen immersive surface — the SAME chrome + stage the learners see
+    // (Tainan: "igual à do aluno, só que com mais controles"). The only extra is
+    // the fixed presenter bar at the bottom; on screen-share the cohort sees this.
+    <div className="min-h-screen bg-background flex flex-col" data-testid="instructor-control">
+      <LiveSessionChrome
+        progressPct={progressPct}
+        connected={connected}
+        presenceCount={roster.length}
+        ended={ended}
+        onClose={() => {
+          // Guard against an accidental close abandoning a live presentation.
+          if (ended || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
+        }}
+      />
+
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* The activity stays CENTERED in the space left of the sidebar —
+            learner-identical stage, just centered rather than in a fixed grid. */}
+        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
+          <div className="max-w-2xl mx-auto">
+            <div
+              className="font-mono text-[11px] uppercase tracking-wider text-clay"
+              data-testid="live-eyebrow"
+            >
+              {t('live.eyebrow')}
+            </div>
+            <h1
+              className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5"
+              data-testid="live-title"
+            >
               {tText(lesson?.title)}
-            </span>
-            {/* End is reachable in EVERY state (reception included) so an abandoned
-                session is never a dead end — the professor ends it and starts a
-                fresh instance of the same lesson (a new class must be new data). */}
-            <button
-              onClick={handleEnd}
-              disabled={busy}
-              data-testid="instructor-end"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-destructive/40 bg-destructive/10 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
-            >
-              <Square className="w-3 h-3" /> {t('live.instructor.control.end')}
-            </button>
-          </div>
-        </div>
+            </h1>
 
-        {startAt ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">{t('live.instructor.control.notStarted')}</p>
-            <button
-              onClick={() => goTo(activities[0].id)}
-              disabled={busy}
-              data-testid="instructor-begin-btn"
-              className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
-            >
-              <Play className="w-4 h-4" /> {t('live.instructor.control.begin')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] uppercase tracking-wider text-clay font-mono">
-                {t('live.instructor.control.activity')} {idx + 1}/{activities.length}
-              </span>
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-mono">
-                {t('live.instructor.preview.label')}
-              </span>
-            </div>
-            {current && (
-              // A read-only MIRROR of exactly what learners see (same renderer),
-              // so the professor drives from the student's own screen. `inert`
-              // blocks pointer + keyboard focus AND hides it from the a11y tree
-              // (the renderer's inner buttons must never be tabbable/announced).
-              <div
-                className="mt-3 rounded-2xl border border-border bg-background/60 p-4 md:p-5 select-none"
-                data-testid="instructor-activity-preview"
-                {...{ inert: '' }}
-              >
-                <ActivityRenderer key={current.id} activity={current} onComplete={() => {}} />
-              </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <LiveTimerControls
-                running={Boolean(timer && current && timer.activityId === current.id)}
-                onStart={(s) => current && broadcastTimer(current.id, s)}
-                onStop={() => current && clearTimer(current.id)}
+            {current ? (
+              <LiveActivityStage
+                activity={current}
+                readOnly
+                testid="instructor-activity-stage"
+                timerSlot={
+                  timer && timer.activityId === current.id ? (
+                    <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
+                  ) : undefined
+                }
               />
-              {timer && current && timer.activityId === current.id && (
-                <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
-              )}
-            </div>
+            ) : lessonLoading ? (
+              // Pointer set, lesson content still resolving (refresh mid-class) —
+              // the SAME skeleton the learners get, never the lobby.
+              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
+                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
+                <div className="h-40 rounded-2xl ds-shimmer" />
+                <div className="h-12 rounded-full ds-shimmer" />
+              </div>
+            ) : (
+              // Reception — the SAME lobby the learners wait in before start.
+              <LiveReception roster={roster} />
+            )}
+          </div>
+        </main>
 
-            {/* Pointer controls */}
-            <div className="flex items-center gap-2.5 mt-6">
-              <button
-                onClick={() => canPrev && goTo(activities[idx - 1].id)}
-                disabled={!canPrev || busy}
-                data-testid="instructor-prev"
-                className="inline-flex items-center gap-1.5 h-11 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
-              >
-                <ChevronLeft className="w-4 h-4" /> {t('live.instructor.control.prev')}
-              </button>
-              <button
-                onClick={() => canNext && goTo(activities[idx + 1].id)}
-                disabled={!canNext || busy}
-                data-testid="instructor-next"
-                className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-clay text-white text-sm font-medium hover:bg-clay/90 transition-colors disabled:opacity-40"
-              >
-                {t('live.instructor.control.next')} <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* RIGHT — presence + who's done */}
-      <div className="space-y-5">
-        <LiveRosterCard roster={roster} selfUserId={instructorId ?? undefined} />
-        <LiveAnswerersCard answerers={answerers} />
-        <LiveRankingCard ranking={ranking} />
-
-        <button
-          onClick={copyJoinLink}
-          data-testid="instructor-copy-link"
-          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check className="w-4 h-4 text-menta" /> {t('live.instructor.copyLinkDone')}
-            </>
-          ) : (
-            <>
-              <Link2 className="w-4 h-4" /> {t('live.instructor.copyLink')}
-            </>
-          )}
-        </button>
-
-        <LiveSoundToggle />
+        <LiveSidebar
+          role="instructor"
+          hasActivity={Boolean(current)}
+          activityIndex={idx}
+          activityCount={activities.length}
+          kind={current?.kind ?? ''}
+          roster={roster}
+          answerers={answerers}
+          ranking={ranking}
+          selfUserId={instructorId ?? undefined}
+          copied={copied}
+          busy={busy}
+          onCopyLink={copyJoinLink}
+          onEnd={handleEnd}
+          controls={
+            <InstructorControls
+              inReception={inReception}
+              answeredCount={answeredCount}
+              presentCount={presentCount}
+              busy={busy}
+              canPrev={canPrev}
+              canNext={canNext}
+              timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+              timerSeconds={DEFAULT_TIMER_SECONDS}
+              onBegin={() => activities[0] && goTo(activities[0].id)}
+              onPrev={() => canPrev && goTo(activities[idx - 1].id)}
+              onNext={() => canNext && goTo(activities[idx + 1].id)}
+              onStartTimer={(s) => current && broadcastTimer(current.id, s)}
+              onStopTimer={() => current && clearTimer(current.id)}
+            />
+          }
+        />
       </div>
     </div>
   );

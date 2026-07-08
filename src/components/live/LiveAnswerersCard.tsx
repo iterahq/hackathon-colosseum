@@ -10,16 +10,18 @@ interface LiveAnswerersCardProps {
    * never who got it wrong. The instructor view keeps the full correctness.
    */
   hideCorrectness?: boolean;
+  /** Render as a flush section inside a sidebar panel (drops the card chrome). */
+  bare?: boolean;
 }
 
-export function LiveAnswerersCard({ answerers, hideCorrectness = false }: LiveAnswerersCardProps) {
+export function LiveAnswerersCard({ answerers, hideCorrectness = false, bare = false }: LiveAnswerersCardProps) {
   const { t } = useI18n();
   const answeredCount = hideCorrectness
     ? answerers.filter((a) => a.state !== 'pending').length
     : answerers.filter((a) => a.state === 'done').length;
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5" data-testid="live-answerers-card">
+    <div className={bare ? 'p-5' : 'rounded-3xl border border-border bg-card p-5'} data-testid="live-answerers-card">
       <div className="flex items-center gap-2 mb-3">
         <Radio className="w-4 h-4 text-clay" />
         <h3 className="font-display text-foreground text-sm">{t('live.instructor.done.title')}</h3>
@@ -30,7 +32,7 @@ export function LiveAnswerersCard({ answerers, hideCorrectness = false }: LiveAn
       {answerers.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.done.empty')}</p>
       ) : (
-        <ul className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="live-answerers-list">
+        <ul className="space-y-1.5 max-h-64 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-answerers-list">
           {answerers.map((a) => (
             <li key={a.userId} className="flex items-center gap-2 text-sm" data-state={a.state}>
               {hideCorrectness ? (

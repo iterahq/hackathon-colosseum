@@ -83,6 +83,20 @@ describe('View-as-student key removed from i18n', () => {
   it('live.instructor.preview is absent from EN translations', () => {
     expect(resources.en['live.instructor.preview']).toBeUndefined();
   });
+
+  // The instructor stage now mirrors the learner screen (no framed "preview"),
+  // so these keys were retired — assert they don't creep back.
+  const retired = [
+    'live.instructor.preview.label',
+    'live.instructor.control.notStarted',
+    'live.instructor.control.activity',
+  ] as const;
+  for (const key of retired) {
+    it(`${key} is absent from both locales`, () => {
+      expect(resources.pt[key]).toBeUndefined();
+      expect(resources.en[key]).toBeUndefined();
+    });
+  }
 });
 
 /* ── 4. New live.block.* keys present in both locales ───────────────────── */

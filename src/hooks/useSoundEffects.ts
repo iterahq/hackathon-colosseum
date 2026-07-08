@@ -6,6 +6,10 @@ const SOUNDS = {
   error: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
   click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
   celebration: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+  // Soft single bell — a gentle "sound is back on" cue.
+  chime: 'https://assets.mixkit.co/active_storage/sfx/1114/1114-preview.mp3',
+  // Light "answer sent" tone — distinct from the success/error confirm cue.
+  submit: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
 };
 
 type SoundType = keyof typeof SOUNDS;

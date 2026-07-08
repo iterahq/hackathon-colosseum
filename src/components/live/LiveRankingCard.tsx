@@ -5,6 +5,8 @@ import type { ClassRanking } from '@/types/liveClass';
 
 interface LiveRankingCardProps {
   ranking: ClassRanking;
+  /** Render as a flush section inside a sidebar panel (drops the card chrome). */
+  bare?: boolean;
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -14,12 +16,12 @@ const MEDALS = ['🥇', '🥈', '🥉'];
  * cumulative time first). Peer times stay off the student surface — this mirrors
  * why the answerers card hides correctness/elapsed from students.
  */
-export function LiveRankingCard({ ranking }: LiveRankingCardProps) {
+export function LiveRankingCard({ ranking, bare = false }: LiveRankingCardProps) {
   const { t } = useI18n();
   const { ranked, waiting } = ranking;
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5" data-testid="live-ranking-card">
+    <div className={bare ? 'p-5' : 'rounded-3xl border border-border bg-card p-5'} data-testid="live-ranking-card">
       <div className="flex items-center gap-2 mb-3">
         <Trophy className="w-4 h-4 text-clay" />
         <h3 className="font-display text-foreground text-sm">{t('live.instructor.ranking.title')}</h3>
@@ -31,7 +33,7 @@ export function LiveRankingCard({ ranking }: LiveRankingCardProps) {
       {ranked.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('live.instructor.ranking.empty')}</p>
       ) : (
-        <ol className="space-y-1.5 max-h-64 overflow-y-auto" data-testid="live-ranking-list">
+        <ol className="space-y-1.5 max-h-64 overflow-y-auto lg:max-h-none lg:overflow-visible" data-testid="live-ranking-list">
           {ranked.map((r) => (
             <li
               key={r.userId}
