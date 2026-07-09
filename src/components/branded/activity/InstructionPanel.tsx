@@ -61,7 +61,7 @@ export function InstructionPanel({
           <img
             src={image_url}
             alt={text ?? 'instruction'}
-            className={`w-full max-h-80 object-contain mx-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
+            className={`w-full object-cover mx-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100 h-64' : 'opacity-0 h-0'}`}
             onLoad={() => setImageLoaded(true)}
           />
         </div>
