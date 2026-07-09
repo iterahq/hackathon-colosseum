@@ -87,7 +87,7 @@ export function OrderActivity({
                 {o?.image_url && (
                   <img src={o.image_url} alt={o.label ?? id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
                 )}
-                {o?.label && <span className="truncate">{o.label}</span>}
+                {o?.label && <span className="flex-1 min-w-0 break-words">{o.label}</span>}
                 {o?.audio_url && <audio src={o.audio_url} controls className="h-7 max-w-[8rem]" />}
               </div>
               {posCorrect && <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />}
