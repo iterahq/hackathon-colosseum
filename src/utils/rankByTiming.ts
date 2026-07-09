@@ -16,7 +16,7 @@ export function rankByTiming(
 
   const entries = roster
     .filter((m) => !m.isInstructor)
-    .map(({ userId, name }) => {
+    .map(({ userId, name, avatarUrl }) => {
       let totalMs = 0;
       let timedCount = 0;
       let answeredCount = 0;
@@ -33,7 +33,7 @@ export function rankByTiming(
           if (answer) correctCount += 1;
         }
       }
-      return { userId, name, totalMs, timedCount, answeredCount, correctCount };
+      return { userId, name, avatarUrl, totalMs, timedCount, answeredCount, correctCount };
     });
 
   const ranked = entries
@@ -47,6 +47,7 @@ export function rankByTiming(
     .map((e, i) => ({
       userId: e.userId,
       name: e.name,
+      avatarUrl: e.avatarUrl,
       totalMs: e.totalMs,
       answeredCount: e.answeredCount,
       correctCount: e.correctCount,
@@ -55,7 +56,7 @@ export function rankByTiming(
 
   const waiting = entries
     .filter((e) => e.timedCount === 0)
-    .map(({ userId, name }) => ({ userId, name }))
+    .map(({ userId, name, avatarUrl }) => ({ userId, name, avatarUrl }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return { ranked, waiting };

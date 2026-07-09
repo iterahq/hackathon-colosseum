@@ -18,16 +18,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
-import type { ClassPresenceMember, ClassTimer, UseClassSession } from '@/types/liveClass';
+import type {
+  ClassIdentity as Identity,
+  ClassPresenceMember,
+  ClassTimer,
+  UseClassSession,
+} from '@/types/liveClass';
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
-
-interface Identity {
-  userId: string;
-  name: string;
-  isInstructor?: boolean;
-}
 
 const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
@@ -111,6 +110,7 @@ export function useClassSession(
         members.push({
           userId: uid,
           name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
+          avatarUrl: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
           isInstructor: meta.is_instructor === true,
         });
       }
@@ -184,6 +184,7 @@ export function useClassSession(
           void channel.track({
             user_id: id.userId,
             name: id.name,
+            avatar_url: id.avatarUrl ?? null,
             is_instructor: id.isInstructor === true,
             at: new Date().toISOString(),
           });
@@ -213,12 +214,13 @@ export function useClassSession(
     void channel.track({
       user_id: identity.userId,
       name: identity.name,
+      avatar_url: identity.avatarUrl ?? null,
       is_instructor: identity.isInstructor === true,
       at: new Date().toISOString(),
     });
     // Track on the primitive identity fields, not the object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, identity?.userId, identity?.name, identity?.isInstructor]);
+  }, [connected, identity?.userId, identity?.name, identity?.avatarUrl, identity?.isInstructor]);
 
   const broadcast = useCallback(
     (activityId: string) => {

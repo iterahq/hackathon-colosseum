@@ -1,14 +1,24 @@
 import type { ClassSession } from '@/services/liveClass.service';
 
+/** Identity a client tracks into presence (self). */
+export interface ClassIdentity {
+  userId: string;
+  name: string;
+  avatarUrl?: string | null;
+  isInstructor?: boolean;
+}
+
 export interface ClassPresenceMember {
   userId: string;
   name: string;
+  avatarUrl: string | null;
   isInstructor: boolean;
 }
 
 export interface ClassCompleter {
   userId: string;
   name: string;
+  avatarUrl: string | null;
   done: boolean;
 }
 
@@ -17,6 +27,7 @@ export type ClassAnswerState = 'pending' | 'wrong' | 'done';
 export interface ClassAnswerer {
   userId: string;
   name: string;
+  avatarUrl: string | null;
   state: ClassAnswerState;
   /** How long the learner took to answer this activity, in ms (when known). */
   elapsedMs?: number;
@@ -30,6 +41,7 @@ export interface ClassTimer {
 export interface ClassRankingEntry {
   userId: string;
   name: string;
+  avatarUrl: string | null;
   /** Cumulative answer time across the activities the learner has answered, in ms. */
   totalMs: number;
   answeredCount: number;
@@ -41,7 +53,7 @@ export interface ClassRankingEntry {
 export interface ClassRanking {
   ranked: ClassRankingEntry[];
   /** Present learners who have not answered anything yet (no timing to rank). */
-  waiting: { userId: string; name: string }[];
+  waiting: { userId: string; name: string; avatarUrl: string | null }[];
 }
 
 export interface UseClassSession {

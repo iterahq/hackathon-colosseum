@@ -1,6 +1,7 @@
 import { Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { formatMmss } from '@/utils/formatMmss';
+import { LiveAvatar } from '@/components/live/LiveAvatar';
 import type { ClassRanking } from '@/types/liveClass';
 
 interface LiveRankingCardProps {
@@ -44,6 +45,7 @@ export function LiveRankingCard({ ranking, bare = false }: LiveRankingCardProps)
               <span className="w-6 text-center font-mono tabular-nums text-muted-foreground flex-shrink-0">
                 {MEDALS[r.rank - 1] ?? r.rank}
               </span>
+              <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
               <span className="text-foreground truncate">{r.name}</span>
               <span className="ml-auto flex items-center gap-2 flex-shrink-0">
                 <span className="font-mono text-xs tabular-nums text-muted-foreground">
@@ -66,6 +68,7 @@ export function LiveRankingCard({ ranking, bare = false }: LiveRankingCardProps)
           {waiting.map((w) => (
             <li key={w.userId} className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="w-6 text-center flex-shrink-0">·</span>
+              <LiveAvatar name={w.name} avatarUrl={w.avatarUrl} size="w-5 h-5" />
               <span className="truncate">{w.name}</span>
               <span className="ml-auto text-xs">{t('live.instructor.ranking.waiting')}</span>
             </li>

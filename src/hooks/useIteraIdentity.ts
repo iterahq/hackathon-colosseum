@@ -7,12 +7,9 @@ import { useEffect, useState } from 'react';
 import { getIteraUserId } from '@/services/iteraUser';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/auth/AuthContext';
+import type { IteraIdentity } from '@/types/iteraIdentity';
 
-export interface IteraIdentity {
-  userId: string | null;
-  name: string;
-  loading: boolean;
-}
+export type { IteraIdentity } from '@/types/iteraIdentity';
 
 export function useIteraIdentity(): IteraIdentity {
   const { user } = useAuth();
@@ -36,5 +33,5 @@ export function useIteraIdentity(): IteraIdentity {
   const name =
     profile?.displayName ?? user?.email?.split('@')[0] ?? 'Aluno';
 
-  return { userId, name, loading };
+  return { userId, name, avatarUrl: profile?.avatarUrl ?? null, loading };
 }

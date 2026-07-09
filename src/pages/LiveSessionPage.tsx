@@ -44,7 +44,7 @@ export default function LiveSessionPage() {
     useClassSession(
       sessionId,
       identity.userId
-        ? { userId: identity.userId, name: identity.name, isInstructor: false }
+        ? { userId: identity.userId, name: identity.name, avatarUrl: identity.avatarUrl, isInstructor: false }
         : undefined
     );
 

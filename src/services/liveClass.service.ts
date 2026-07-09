@@ -276,7 +276,7 @@ export async function getClassActivityCompleters(
 
   const { data: users } = await sb
     .from('users')
-    .select('id, display_name, email')
+    .select('id, display_name, email, avatar_url')
     .in('id', learnerIds);
 
   // `since` = the session's started_at, so a new class of the same lesson starts
@@ -307,6 +307,7 @@ export async function getClassActivityCompleters(
       return {
         userId: uid,
         name: str(u.display_name) || str(u.email) || uid.slice(0, 8),
+        avatarUrl: strOrNull(u.avatar_url),
         done: doneIds.has(uid),
       } satisfies ClassCompleter;
     })

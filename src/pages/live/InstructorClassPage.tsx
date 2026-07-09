@@ -82,6 +82,7 @@ export default function InstructorClassPage() {
         tenantId={tenantId}
         instructorId={identity.userId}
         instructorName={identity.name}
+        instructorAvatarUrl={identity.avatarUrl}
         onEnded={handleEnded}
       />
     );
@@ -306,12 +307,14 @@ function ClassControl({
   tenantId,
   instructorId,
   instructorName,
+  instructorAvatarUrl,
   onEnded,
 }: {
   session: ClassSession;
   tenantId: string;
   instructorId: string | null;
   instructorName: string;
+  instructorAvatarUrl: string | null;
   onEnded: () => void;
 }) {
   const { t, tText } = useI18n();
@@ -321,7 +324,9 @@ function ClassControl({
   const { currentActivityId, status, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
-      instructorId ? { userId: instructorId, name: instructorName, isInstructor: true } : undefined
+      instructorId
+        ? { userId: instructorId, name: instructorName, avatarUrl: instructorAvatarUrl, isInstructor: true }
+        : undefined
     );
   const sound = useLiveSound();
   const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);

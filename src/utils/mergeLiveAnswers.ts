@@ -5,10 +5,10 @@ export function mergeLiveAnswers(
   liveAnswers: Record<string, boolean> | undefined,
   liveElapsed?: Record<string, number>
 ): ClassAnswerer[] {
-  return completers.map(({ userId, name, done }) => {
+  return completers.map(({ userId, name, avatarUrl, done }) => {
     const live = liveAnswers?.[userId];
     const state = done || live === true ? 'done' : live === false ? 'wrong' : 'pending';
     const elapsedMs = liveElapsed?.[userId];
-    return { userId, name, state, elapsedMs };
+    return { userId, name, avatarUrl, state, elapsedMs };
   });
 }

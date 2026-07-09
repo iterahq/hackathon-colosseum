@@ -1,6 +1,7 @@
 import { Radio, CheckCircle2, XCircle, Circle, CircleDot } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { formatMmss } from '@/utils/formatMmss';
+import { LiveAvatar } from '@/components/live/LiveAvatar';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 interface LiveAnswerersCardProps {
@@ -48,6 +49,7 @@ export function LiveAnswerersCard({ answerers, hideCorrectness = false, bare = f
               ) : (
                 <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               )}
+              <LiveAvatar name={a.name} avatarUrl={a.avatarUrl} size="w-6 h-6" />
               <span className={a.state === 'pending' ? 'text-muted-foreground' : 'text-foreground'}>{a.name}</span>
               {!hideCorrectness && a.state !== 'pending' && typeof a.elapsedMs === 'number' && (
                 <span

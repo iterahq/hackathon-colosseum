@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { DoorOpen, Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { LiveAvatar } from '@/components/live/LiveAvatar';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 const MAX_CHIPS = 24;
@@ -40,12 +41,13 @@ export function LiveReception({ roster }: LiveReceptionProps) {
           {shown.map((m) => (
             <li
               key={m.userId}
-              className={`px-3 h-8 inline-flex items-center gap-1.5 rounded-full border text-xs ${
+              className={`pl-1 pr-3 h-8 inline-flex items-center gap-1.5 rounded-full border text-xs ${
                 m.isInstructor
                   ? 'border-clay/50 bg-clay/10 text-clay'
                   : 'border-border bg-card text-foreground'
               }`}
             >
+              <LiveAvatar name={m.name} avatarUrl={m.avatarUrl} size="w-6 h-6" />
               {m.name}
               {m.isInstructor && (
                 <span className="text-[10px] uppercase tracking-wide font-mono opacity-80">

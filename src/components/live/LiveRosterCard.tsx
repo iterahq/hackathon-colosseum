@@ -1,5 +1,6 @@
 import { Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { LiveAvatar } from '@/components/live/LiveAvatar';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 interface LiveRosterCardProps {
@@ -48,7 +49,7 @@ export function LiveRosterCard({ roster, selfUserId, bare = false }: LiveRosterC
               <ul className="space-y-1.5">
                 {g.members.map((m) => (
                   <li key={m.userId} className="flex items-center gap-2 text-sm text-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-menta flex-shrink-0" />
+                    <LiveAvatar name={m.name} avatarUrl={m.avatarUrl} size="w-6 h-6" />
                     {m.name}
                     {m.userId === selfUserId && (
                       <span className="text-[10px] uppercase tracking-wide text-clay font-mono">
