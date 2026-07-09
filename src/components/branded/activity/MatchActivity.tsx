@@ -1,21 +1,36 @@
 /**
  * Match — connect cards on the LEFT to cards on the RIGHT (plan: card-select
  * matching, NOT a free canvas). Tap a left card to arm it, then tap a right
- * card to form a connection; tap a connected card again to clear it. Each right
- * card maps to at most one left. Submit checks every connection against
- * `spec.pairs`. Reuses InstructionPanel + `onComplete(correct)`.
+ * card to form a pair. Pairs are shown with a NUMBER badge (1, 2, 3…) on BOTH
+ * cards, in the order the learner created them. Tapping EITHER card of an
+ * existing pair DESELECTS that pair (removes the number from both), freeing
+ * them to be re-paired. Submit checks every pair against `spec.pairs`.
+ *
+ * UX contract (2026-07 rework):
+ *   • Pre-submit (idle + pairing): NEUTRAL styling only — no correctness/pair
+ *     colors. Cards use the theme's default card bg; the armed card gets a
+ *     neutral (ink, not green) selection ring. Pairing is conveyed purely by
+ *     the ordinal number badge — NOT by colored dots.
+ *   • Post-submit (result): keep the numbers and show correctness with ONE
+ *     clean signal — the badge morphs to GREEN+check (correct) or RED+cross
+ *     (incorrect), with a matching light card border. Shape (✓/✗) carries the
+ *     meaning so it never relies on color alone (a11y). No stacked dot + icon +
+ *     bg-fill overload.
  *
  * `initial*` props are story-only hooks for the answered/correct/incorrect states.
  */
 import { useState } from 'react';
-import { CheckCircle2, Link2, XCircle } from 'lucide-react';
+import { Check, Link2, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, DoneButton } from './parts';
 
-// Distinct connection accent colors (cycled) so paired cards read as linked.
-const LINK_COLORS = ['#3FD17F', '#62D996', '#E0A86F', '#7CA9E0', '#C88BE0', '#E0C36E'];
+/** One learner-created pairing, kept in creation order so numbering is stable. */
+interface MadePair {
+  left_id: string;
+  right_id: string;
+}
 
 function CardBody({ option }: { option: ChoiceOption }) {
   return (
@@ -23,11 +38,49 @@ function CardBody({ option }: { option: ChoiceOption }) {
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="flex-1 min-w-0 break-words">{option.label}</span>}
+      {option.label && <span className="truncate">{option.label}</span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" onClick={(e) => e.stopPropagation()} />
       )}
     </div>
+  );
+}
+
+/**
+ * The pairing indicator that sits on each paired card.
+ * Pre-submit: neutral pill with the ordinal number.
+ * Post-submit: green(✓)/red(✗) chip carrying number + correctness together —
+ * the single correctness signal (color + glyph, so not color-alone).
+ */
+function PairBadge({ n, state }: { n: number; state: 'neutral' | 'correct' | 'incorrect' }) {
+  const base =
+    'inline-flex items-center gap-1 h-6 min-w-6 px-1.5 rounded-full text-xs font-mono font-semibold flex-shrink-0 border';
+  if (state === 'correct') {
+    return (
+      <span className={`${base} bg-verde-tech text-obsidiana border-verde-tech`} data-testid="match-badge" data-state="correct">
+        <Check className="w-3 h-3" strokeWidth={3} aria-hidden />
+        {n}
+        <span className="sr-only"> — correct</span>
+      </span>
+    );
+  }
+  if (state === 'incorrect') {
+    return (
+      <span
+        className={`${base} bg-destructive text-destructive-foreground border-destructive`}
+        data-testid="match-badge"
+        data-state="incorrect"
+      >
+        <X className="w-3 h-3" strokeWidth={3} aria-hidden />
+        {n}
+        <span className="sr-only"> — incorrect</span>
+      </span>
+    );
+  }
+  return (
+    <span className={`${base} bg-ink/10 text-ink border-border`} data-testid="match-badge" data-state="neutral">
+      {n}
+    </span>
   );
 }
 
@@ -39,7 +92,7 @@ export function MatchActivity({
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
-  /** left_id -> right_id */
+  /** left_id -> right_id (story/test hook; converted to ordered pairs on init) */
   initialConnections?: Record<string, string>;
   initialSubmitted?: boolean;
 }) {
@@ -49,27 +102,29 @@ export function MatchActivity({
   const right = spec?.right ?? [];
   const pairs = spec?.pairs ?? [];
 
-  const [connections, setConnections] = useState<Record<string, string>>(initialConnections ?? {});
+  const [made, setMade] = useState<MadePair[]>(() =>
+    Object.entries(initialConnections ?? {}).map(([left_id, right_id]) => ({ left_id, right_id })),
+  );
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
   const locked = submitted || isDone;
 
-  // Assign a stable color index per left card (by connection order in left[]).
-  const colorForLeft = (leftId: string) => LINK_COLORS[left.findIndex((l) => l.id === leftId) % LINK_COLORS.length];
-  const rightToLeft: Record<string, string> = {};
-  for (const [l, r] of Object.entries(connections)) rightToLeft[r] = l;
+  // Which pair index (0-based) a given card belongs to, or -1.
+  const leftPairIndex = (id: string) => made.findIndex((p) => p.left_id === id);
+  const rightPairIndex = (id: string) => made.findIndex((p) => p.right_id === id);
+
+  function removeAt(index: number) {
+    setMade((prev) => prev.filter((_, i) => i !== index));
+  }
 
   function tapLeft(id: string) {
     if (locked) return;
-    if (connections[id]) {
-      // clear an existing connection on re-tap
-      setConnections((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      setArmedLeft(id);
+    const idx = leftPairIndex(id);
+    if (idx !== -1) {
+      // Tapping a paired card deselects the WHOLE pair (clears both cards).
+      removeAt(idx);
+      setArmedLeft(null);
       return;
     }
     setArmedLeft((cur) => (cur === id ? null : id));
@@ -77,28 +132,37 @@ export function MatchActivity({
 
   function tapRight(id: string) {
     if (locked) return;
-    if (rightToLeft[id]) {
-      // clear the connection that uses this right card
-      setConnections((prev) => {
-        const next = { ...prev };
-        delete next[rightToLeft[id]];
-        return next;
-      });
+    const idx = rightPairIndex(id);
+    if (idx !== -1) {
+      // Tapping a paired card deselects the WHOLE pair (clears both cards).
+      removeAt(idx);
       return;
     }
     if (!armedLeft) return;
-    setConnections((prev) => ({ ...prev, [armedLeft]: id }));
+    setMade((prev) => [...prev, { left_id: armedLeft, right_id: id }]);
     setArmedLeft(null);
   }
 
-  const isPairCorrect = (leftId: string) => pairs.some((p) => p.left_id === leftId && p.right_id === connections[leftId]);
-  const allCorrect =
-    submitted &&
-    pairs.length > 0 &&
-    Object.keys(connections).length === pairs.length &&
-    pairs.every((p) => connections[p.left_id] === p.right_id);
+  const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
+  const allCorrect = submitted && pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
 
-  const canSubmit = Object.keys(connections).length === Math.min(left.length, pairs.length || left.length);
+  const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
+
+  // Badge state for a paired card (neutral pre-submit; green/red after submit).
+  const badgeState = (idx: number): 'neutral' | 'correct' | 'incorrect' => {
+    if (idx === -1 || !submitted) return 'neutral';
+    return isPairCorrect(made[idx]) ? 'correct' : 'incorrect';
+  };
+
+  // Card frame classes. Pre-submit: neutral (+ neutral ink ring when armed).
+  // Post-submit: light green/red border echoing the badge (single signal).
+  function cardClasses(idx: number, armed: boolean) {
+    if (submitted && idx !== -1) {
+      return isPairCorrect(made[idx]) ? 'border-verde-tech/60 bg-card' : 'border-destructive/60 bg-card';
+    }
+    if (armed) return 'border-ink/50 bg-panel-2 ring-2 ring-ink/20';
+    return 'border-border bg-card hover:border-ink/30';
+  }
 
   return (
     <ActivityShell kind="match" icon={Link2} label={t('activity.match')}>
@@ -110,11 +174,9 @@ export function MatchActivity({
       <div className="mt-4 grid grid-cols-2 gap-4" data-testid="match-columns">
         <div className="space-y-2.5" data-testid="match-left">
           {left.map((o) => {
-            const connected = Boolean(connections[o.id]);
+            const idx = leftPairIndex(o.id);
+            const connected = idx !== -1;
             const armed = armedLeft === o.id;
-            const color = connected ? colorForLeft(o.id) : undefined;
-            const ok = submitted && connected && isPairCorrect(o.id);
-            const bad = submitted && connected && !isPairCorrect(o.id);
             return (
               <button
                 key={o.id}
@@ -122,22 +184,10 @@ export function MatchActivity({
                 disabled={locked}
                 data-testid="match-left-card"
                 data-connected={connected ? 'true' : undefined}
-                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${
-                  ok
-                    ? 'border-verde-tech bg-verde-tech/10'
-                    : bad
-                      ? 'border-destructive bg-destructive/10'
-                      : armed
-                        ? 'border-menta bg-menta/10 ring-2 ring-menta/40'
-                        : 'border-border bg-card hover:border-verde-tech/50'
-                }`}
+                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, armed)}`}
               >
                 <CardBody option={o} />
-                {connected && (
-                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
-                )}
-                {ok && <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />}
-                {bad && <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
+                {connected && <PairBadge n={idx + 1} state={badgeState(idx)} />}
               </button>
             );
           })}
@@ -145,23 +195,19 @@ export function MatchActivity({
 
         <div className="space-y-2.5" data-testid="match-right">
           {right.map((o) => {
-            const usedByLeft = rightToLeft[o.id];
-            const color = usedByLeft ? colorForLeft(usedByLeft) : undefined;
+            const idx = rightPairIndex(o.id);
+            const connected = idx !== -1;
             return (
               <button
                 key={o.id}
                 onClick={() => tapRight(o.id)}
                 disabled={locked}
                 data-testid="match-right-card"
-                data-connected={usedByLeft ? 'true' : undefined}
-                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${
-                  usedByLeft ? 'border-menta bg-menta/5' : 'border-border bg-card hover:border-verde-tech/50'
-                }`}
+                data-connected={connected ? 'true' : undefined}
+                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, false)}`}
               >
                 <CardBody option={o} />
-                {usedByLeft && (
-                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: color }} />
-                )}
+                {connected && <PairBadge n={idx + 1} state={badgeState(idx)} />}
               </button>
             );
           })}
