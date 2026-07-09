@@ -114,7 +114,7 @@ describe('MatchActivity — pairing UX', () => {
     expect(badgeIn('Beta').getAttribute('data-state')).toBe('incorrect');
   });
 
-  it('completes correct only when every pair matches spec', () => {
+  it('completes correct only when every pair matches spec — in ONE submit click', () => {
     const onComplete = renderMatch();
     fireEvent.click(card('Alpha'));
     fireEvent.click(card('DefA'));
@@ -122,8 +122,13 @@ describe('MatchActivity — pairing UX', () => {
     fireEvent.click(card('DefB'));
     fireEvent.click(card('Gamma'));
     fireEvent.click(card('DefC'));
+    // ONE-STEP: submit grades AND completes — no second "Marcar como concluída".
     fireEvent.click(screen.getByTestId('match-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
+    const btn = screen.getByTestId('match-submit') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent ?? '').toMatch(/Enviado/i);
   });
 });

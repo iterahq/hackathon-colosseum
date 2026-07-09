@@ -12,7 +12,7 @@ import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, DoneButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
@@ -51,7 +51,14 @@ export function SingleChoiceActivity({
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
 
-  const isCorrect = submitted && selected === spec?.correct_option_id;
+  // ONE-STEP: "Enviar" grades AND completes in the same click (no second
+  // "Marcar como concluída" step). Grade off the CURRENT selection — `isCorrect`
+  // above is gated on `submitted`, which isn't set yet at click time.
+  function handleSubmit() {
+    if (submitted || isDone) return;
+    setSubmitted(true);
+    onComplete(selected === spec?.correct_option_id);
+  }
 
   return (
     <ActivityShell kind="single_choice" icon={ListChecks} label={t('activity.singleChoice')}>
@@ -90,18 +97,12 @@ export function SingleChoiceActivity({
         )}
       </div>
 
-      {!submitted ? (
-        <button
-          disabled={selected === null}
-          onClick={() => setSubmitted(true)}
-          data-testid="single-choice-submit"
-          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t('activity.submit')}
-        </button>
-      ) : (
-        <DoneButton done={isDone} onClick={() => onComplete(isCorrect)} />
-      )}
+      <SubmitButton
+        submitted={submitted || isDone}
+        disabled={selected === null}
+        onSubmit={handleSubmit}
+        testId="single-choice-submit"
+      />
     </ActivityShell>
   );
 }

@@ -79,3 +79,42 @@ export function DoneButton({
     </button>
   );
 }
+
+/**
+ * The ONE-STEP submit affordance for graded kinds (single/multi choice, match,
+ * order, quiz). Clicking "Enviar" both grades the answer (revealing the
+ * green/red result) AND fires the completion side-effect in the SAME action —
+ * there is NO separate "Marcar como concluída" step. Once `submitted`, the
+ * button LOCKS into a disabled positive "Enviado" state (mirrors DoneButton's
+ * locked look). Pre-submit it is disabled until the learner has a valid answer.
+ */
+export function SubmitButton({
+  submitted,
+  disabled = false,
+  onSubmit,
+  testId,
+}: {
+  submitted: boolean;
+  disabled?: boolean;
+  onSubmit: () => void;
+  testId?: string;
+}) {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={submitted ? undefined : onSubmit}
+      disabled={submitted || disabled}
+      data-submitted={submitted ? 'true' : undefined}
+      data-testid={testId}
+      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium transition-colors ${
+        submitted
+          ? 'bg-menta/15 text-menta border border-menta/40 cursor-default'
+          : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed'
+      }`}
+    >
+      {submitted && <CheckCircle2 className="w-4 h-4" />}
+      {submitted ? t('activity.sent') : t('activity.submit')}
+    </button>
+  );
+}

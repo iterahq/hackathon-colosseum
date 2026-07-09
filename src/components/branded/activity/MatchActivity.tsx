@@ -24,7 +24,7 @@ import { Check, Link2, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, DoneButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 /** One learner-created pairing, kept in creation order so numbering is stable. */
 interface MadePair {
@@ -144,9 +144,17 @@ export function MatchActivity({
   }
 
   const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
-  const allCorrect = submitted && pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
 
   const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
+
+  // ONE-STEP: "Enviar" grades AND completes in the same click (no second
+  // "Marcar como concluída"). Grade off the CURRENT pairs — the submitted-gated
+  // result flags aren't set yet at click time.
+  function handleSubmit() {
+    if (locked) return;
+    setSubmitted(true);
+    onComplete(pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect));
+  }
 
   // Badge state for a paired card (neutral pre-submit; green/red after submit).
   const badgeState = (idx: number): 'neutral' | 'correct' | 'incorrect' => {
@@ -214,18 +222,12 @@ export function MatchActivity({
         </div>
       </div>
 
-      {!submitted ? (
-        <button
-          disabled={!canSubmit}
-          onClick={() => setSubmitted(true)}
-          data-testid="match-submit"
-          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t('activity.submit')}
-        </button>
-      ) : (
-        <DoneButton done={isDone} onClick={() => onComplete(Boolean(allCorrect))} />
-      )}
+      <SubmitButton
+        submitted={locked}
+        disabled={!canSubmit}
+        onSubmit={handleSubmit}
+        testId="match-submit"
+      />
     </ActivityShell>
   );
 }

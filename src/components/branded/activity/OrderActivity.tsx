@@ -11,7 +11,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircl
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, DoneButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 export function OrderActivity({
   activity,
@@ -46,8 +46,13 @@ export function OrderActivity({
     });
   }
 
-  const isCorrect =
-    submitted && order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
+  // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
+  // CURRENT order (the old submitted-gated flag isn't set yet at click time).
+  function handleSubmit() {
+    if (locked) return;
+    setSubmitted(true);
+    onComplete(order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]));
+  }
 
   return (
     <ActivityShell kind="order" icon={ListOrdered} label={t('activity.order')}>
@@ -120,18 +125,12 @@ export function OrderActivity({
         {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
       </ol>
 
-      {!submitted ? (
-        <button
-          disabled={order.length === 0}
-          onClick={() => setSubmitted(true)}
-          data-testid="order-submit"
-          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t('activity.submit')}
-        </button>
-      ) : (
-        <DoneButton done={isDone} onClick={() => onComplete(isCorrect)} />
-      )}
+      <SubmitButton
+        submitted={locked}
+        disabled={order.length === 0}
+        onSubmit={handleSubmit}
+        testId="order-submit"
+      />
     </ActivityShell>
   );
 }

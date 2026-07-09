@@ -37,7 +37,10 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     expect(screen.getByTestId('video-player')).toBeInTheDocument();
   });
 
-  it('single_choice: correct selection completes correct', () => {
+  // ONE-STEP (2026-07): a single "Enviar" click grades AND completes — there is
+  // NO second "Marcar como concluída" button. The submit button then locks to a
+  // disabled "Enviado" state. These assert onComplete fires on the submit click.
+  it('single_choice: correct selection completes correct on submit (one step)', () => {
     const onComplete = renderActivity(
       makeActivity('single_choice', {
         options: [
@@ -49,11 +52,18 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     fireEvent.click(screen.getByText('B'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    // No second completion button, and the submit button is now the locked
+    // "Enviado" state.
+    expect(screen.queryByTestId('activity-done')).toBeNull();
+    const btn = screen.getByTestId('single-choice-submit') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.getAttribute('data-submitted')).toBe('true');
+    expect(btn.textContent ?? '').toMatch(/Enviado/i);
   });
 
-  it('single_choice: wrong selection completes incorrect', () => {
+  it('single_choice: wrong selection completes incorrect on submit (one step)', () => {
     const onComplete = renderActivity(
       makeActivity('single_choice', {
         options: [
@@ -65,11 +75,25 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(false);
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('multi_choice: exact set completes correct', () => {
+  it('single_choice: submit is disabled until an answer is selected', () => {
+    renderActivity(
+      makeActivity('single_choice', {
+        options: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
+        correct_option_id: 'b',
+      }),
+    );
+    const btn = screen.getByTestId('single-choice-submit') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+  });
+
+  it('multi_choice: exact set completes correct on submit (one step)', () => {
     const onComplete = renderActivity(
       makeActivity('multi_choice', {
         options: [
@@ -83,11 +107,11 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByText('C'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 
-  it('order: correct sequence completes correct via move buttons', () => {
+  it('order: correct sequence completes correct on submit (one step)', () => {
     const onComplete = renderActivity(
       makeActivity('order', {
         items: [
@@ -100,11 +124,11 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     // initial order = [b, a]; move the first item (b) down to get [a, b].
     fireEvent.click(screen.getAllByTestId('order-down')[0]);
     fireEvent.click(screen.getByTestId('order-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 
-  it('match: connecting the right pairs completes correct', () => {
+  it('match: connecting the right pairs completes correct on submit (one step)', () => {
     const onComplete = renderActivity(
       makeActivity('match', {
         left: [{ id: 'l1', label: 'Left1' }],
@@ -115,7 +139,27 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     fireEvent.click(screen.getByText('Left1'));
     fireEvent.click(screen.getByText('Right1'));
     fireEvent.click(screen.getByTestId('match-submit'));
-    fireEvent.click(screen.getByTestId('activity-done'));
     expect(onComplete).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
+  });
+
+  it('quiz: submit grades AND completes in one step, then locks to "Enviado"', () => {
+    const onComplete = renderActivity(
+      makeActivity('quiz', {
+        question: 'Pick B',
+        options: [
+          { id: 'a', label: 'A', isCorrect: false },
+          { id: 'b', label: 'B', isCorrect: true },
+        ],
+      }),
+    );
+    fireEvent.click(screen.getByText('B'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
+    const btn = screen.getByTestId('quiz-submit') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent ?? '').toMatch(/Enviado/i);
   });
 });

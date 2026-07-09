@@ -11,7 +11,7 @@ import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, DoneButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -52,10 +52,16 @@ export function MultiChoiceActivity({
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
 
-  const isCorrect = submitted && sameSet(selected, correctIds);
-
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
+  // CURRENT selection (submitted-gated `isCorrect` isn't set yet at click time).
+  function handleSubmit() {
+    if (submitted || isDone) return;
+    setSubmitted(true);
+    onComplete(sameSet(selected, correctIds));
   }
 
   return (
@@ -106,18 +112,12 @@ export function MultiChoiceActivity({
         )}
       </div>
 
-      {!submitted ? (
-        <button
-          disabled={selected.length === 0}
-          onClick={() => setSubmitted(true)}
-          data-testid="multi-choice-submit"
-          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {t('activity.submit')}
-        </button>
-      ) : (
-        <DoneButton done={isDone} onClick={() => onComplete(isCorrect)} />
-      )}
+      <SubmitButton
+        submitted={submitted || isDone}
+        disabled={selected.length === 0}
+        onSubmit={handleSubmit}
+        testId="multi-choice-submit"
+      />
     </ActivityShell>
   );
 }

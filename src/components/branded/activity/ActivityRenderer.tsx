@@ -42,6 +42,7 @@ import { SingleChoiceActivity } from './SingleChoiceActivity';
 import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
+import { SubmitButton } from './parts';
 
 export function ActivityRenderer({
   activity,
@@ -414,7 +415,16 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   const [submitted, setSubmitted] = useState(false);
 
   const correctIdx = options.findIndex((o) => o.isCorrect);
-  const isCorrect = submitted && selected === correctIdx;
+  const isDone = activity.status === 'done';
+
+  // ONE-STEP: "Enviar" grades AND completes in the same click (no second
+  // "Marcar como concluída"). Grade off the CURRENT selection — the
+  // submitted-gated result flags aren't set yet at click time.
+  function handleSubmit() {
+    if (submitted || isDone) return;
+    setSubmitted(true);
+    onComplete(selected === correctIdx);
+  }
 
   // Small green-mono label above the question. Prefer the spec's own label;
   // a 2-option quiz defaults to the canonical "TRUE OR FALSE?" eyebrow.
@@ -485,18 +495,12 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         </p>
       )}
 
-      {!submitted ? (
-        <button
-          disabled={selected === null}
-          onClick={() => setSubmitted(true)}
-          className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          data-testid="quiz-submit"
-        >
-          {t('activity.submit')}
-        </button>
-      ) : (
-        <DoneButton done={activity.status === 'done'} onClick={() => onComplete(isCorrect)} />
-      )}
+      <SubmitButton
+        submitted={submitted || isDone}
+        disabled={selected === null}
+        onSubmit={handleSubmit}
+        testId="quiz-submit"
+      />
     </motion.div>
   );
 }
