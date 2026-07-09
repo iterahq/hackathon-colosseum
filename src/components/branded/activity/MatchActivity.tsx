@@ -34,11 +34,11 @@ interface MadePair {
 
 function CardBody({ option }: { option: ChoiceOption }) {
   return (
-    <div className="flex items-center gap-2 min-w-0">
+    <div className="flex items-start gap-2 min-w-0 flex-1">
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="truncate">{option.label}</span>}
+      {option.label && <span className="min-w-0 whitespace-normal break-words">{option.label}</span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" onClick={(e) => e.stopPropagation()} />
       )}
@@ -180,7 +180,7 @@ export function MatchActivity({
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-4" data-testid="match-columns">
-        <div className="space-y-2.5" data-testid="match-left">
+        <div className="grid gap-2.5 auto-rows-fr content-start" data-testid="match-left">
           {left.map((o) => {
             const idx = leftPairIndex(o.id);
             const connected = idx !== -1;
@@ -192,7 +192,7 @@ export function MatchActivity({
                 disabled={locked}
                 data-testid="match-left-card"
                 data-connected={connected ? 'true' : undefined}
-                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, armed)}`}
+                className={`w-full h-full flex items-start justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, armed)}`}
               >
                 <CardBody option={o} />
                 {connected && <PairBadge n={idx + 1} state={badgeState(idx)} />}
@@ -201,7 +201,7 @@ export function MatchActivity({
           })}
         </div>
 
-        <div className="space-y-2.5" data-testid="match-right">
+        <div className="grid gap-2.5 auto-rows-fr content-start" data-testid="match-right">
           {right.map((o) => {
             const idx = rightPairIndex(o.id);
             const connected = idx !== -1;
@@ -212,7 +212,7 @@ export function MatchActivity({
                 disabled={locked}
                 data-testid="match-right-card"
                 data-connected={connected ? 'true' : undefined}
-                className={`w-full flex items-center justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, false)}`}
+                className={`w-full h-full flex items-start justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, false)}`}
               >
                 <CardBody option={o} />
                 {connected && <PairBadge n={idx + 1} state={badgeState(idx)} />}

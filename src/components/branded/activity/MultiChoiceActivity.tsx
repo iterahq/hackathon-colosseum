@@ -21,11 +21,11 @@ function sameSet(a: string[], b: string[]): boolean {
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
-    <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="flex items-start gap-3 flex-1 min-w-0">
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="flex-1 min-w-0">{option.label}</span>}
+      {option.label && <span className="flex-1 min-w-0 whitespace-normal break-words">{option.label}</span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-8 max-w-[10rem]" onClick={(e) => e.stopPropagation()} />
       )}
@@ -71,7 +71,7 @@ export function MultiChoiceActivity({
         {t('activity.selectAll')}
       </p>
 
-      <div className="mt-3 space-y-2.5" data-testid="multi-choice-options">
+      <div className="mt-3 grid gap-2.5 auto-rows-fr" data-testid="multi-choice-options">
         {options.map((o) => {
           const chosen = selected.includes(o.id);
           const isCorrectOpt = correctIds.includes(o.id);
@@ -84,7 +84,7 @@ export function MultiChoiceActivity({
               onClick={() => toggle(o.id)}
               data-testid="multi-choice-option"
               data-selected={chosen ? 'true' : undefined}
-              className={`w-full flex items-center gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
+              className={`w-full h-full flex items-start gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
                 showCorrect
                   ? 'border-verde-tech bg-verde-tech/10'
                   : showWrong
