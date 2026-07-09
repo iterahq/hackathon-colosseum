@@ -23,7 +23,7 @@ function CardBody({ option }: { option: ChoiceOption }) {
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="truncate">{option.label}</span>}
+      {option.label && <span className="flex-1 min-w-0 break-words">{option.label}</span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" onClick={(e) => e.stopPropagation()} />
       )}
