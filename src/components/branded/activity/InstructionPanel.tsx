@@ -11,9 +11,13 @@
  * evergreen/menta accents, JB-mono eyebrow voice inherited from the shell.
  *
  * Media loading: image and video elements are preceded by a pulse skeleton
- * that reserves space at the expected height (h-64 / h-72) so the layout
- * does not shift when the media arrives. The skeleton disappears once the
- * element fires its load event.
+ * that reserves space at the expected size (image: aspect-[4/3], video:
+ * h-72) so the layout does not shift when the media arrives. The skeleton
+ * disappears once the element fires its load event.
+ *
+ * Instruction image container: fixed 4:3 aspect ratio (roughly 800x600 —
+ * the provisional standard, "dps adaptamos"), object-cover crop-to-fill.
+ * Taller than the previous fixed h-64 so cover crops less aggressively.
  */
 import { useState } from 'react';
 import type { InstructionPanelSpec } from '@/types/content';
@@ -57,11 +61,11 @@ export function InstructionPanel({
 
       {image_url && (
         <div className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden" data-testid="instruction-image">
-          {!imageLoaded && <MediaSkeleton height="h-64" />}
+          {!imageLoaded && <MediaSkeleton height="aspect-[4/3]" />}
           <img
             src={image_url}
             alt={text ?? 'instruction'}
-            className={`w-full object-cover mx-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100 h-64' : 'opacity-0 h-0'}`}
+            className={`w-full object-cover mx-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100 aspect-[4/3]' : 'opacity-0 h-0'}`}
             onLoad={() => setImageLoaded(true)}
           />
         </div>
