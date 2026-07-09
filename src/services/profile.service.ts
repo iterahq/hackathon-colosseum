@@ -36,10 +36,16 @@ function toLocale(v: unknown): Locale | null {
  */
 export async function getMyProfile(): Promise<MyProfile | null> {
   if (!isSupabaseConfigured) return null;
+  // The row PK is NOT the auth uid, and the users SELECT policy returns more than
+  // the caller's row (roster visibility), so an unscoped maybeSingle() errors on
+  // multiple rows. Resolve the Itera user id and scope the read to it.
+  const iteraUserId = await getIteraUserId();
+  if (!iteraUserId) return null;
   const sb = getSupabase();
   const { data, error } = await sb
     .from('users')
     .select('display_name, avatar_url, email, locale')
+    .eq('id', iteraUserId)
     .maybeSingle();
   if (error) {
     // Don't hard-fail the header on a transient/RLS read issue.
