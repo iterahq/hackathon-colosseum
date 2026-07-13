@@ -34,3 +34,6 @@ docs
 /playwright-report/
 /playwright/.cache/
 storybook-static
+
+# Graphify cache/output
+/graphify-out/

@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Radio, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
@@ -30,6 +30,8 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
+import { rankByScore } from '@/utils/rankByScore';
+import { LivePodium } from '@/components/live/LivePodium';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { isGenericName } from '@/utils/isGenericName';
@@ -44,7 +46,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, answers, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, answers, elapsed, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -153,6 +155,7 @@ export default function LiveSessionPage() {
     : 0;
 
   const ended = status === 'ended';
+  const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
 
   // Pre-class name+avatar step: shown once when the learner has no real name yet
@@ -201,17 +204,13 @@ export default function LiveSessionPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="rounded-3xl border border-border bg-card p-10 text-center max-w-xl mx-auto"
+            className="rounded-3xl border border-border bg-card p-8 md:p-10 max-w-xl mx-auto"
             data-testid="live-ended"
           >
-            <div className="w-20 h-20 mx-auto rounded-3xl bg-clay/10 border border-clay/40 flex items-center justify-center">
-              <Radio className="w-9 h-9 text-clay" />
-            </div>
-            <h2 className="font-display text-foreground mt-5">{t('live.ended.title')}</h2>
-            <p className="text-sm text-muted-foreground mt-2">{t('live.ended.subtitle')}</p>
+            <LivePodium ranking={podiumRanking} />
             <button
               onClick={() => navigate('/')}
-              className="mt-6 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              className="mt-8 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
             >
               {t('live.ended.cta')}
             </button>

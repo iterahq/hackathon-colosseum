@@ -39,6 +39,8 @@ import {
 } from '@/services/liveClass.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByTiming } from '@/utils/rankByTiming';
+import { rankByScore } from '@/utils/rankByScore';
+import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
@@ -336,8 +338,8 @@ function ClassControl({
   // surface — never strand the professor in a "LIVE" chrome whose controls
   // silently no-op. onEnded() refetches → falls back to the onboarding dashboard.
   useEffect(() => {
-    if (status === 'ended') onEnded();
-  }, [status, onEnded]);
+    if (status === 'ended' && !showPodium) onEnded();
+  }, [status, onEnded, showPodium]);
 
   const idx = useMemo(
     () => activities.findIndex((a) => a.id === currentActivityId),
@@ -381,6 +383,7 @@ function ClassControl({
   // Class-wide speed leaderboard of the present learners (cumulative across every
   // activity answered so far), so by the end of the class it's the final ranking.
   const ranking = useMemo(() => rankByTiming(roster, elapsed, answers), [roster, elapsed, answers]);
+  const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
 
   // Reveal the answer on the professor's own mirror when the timer stops (manual
   // stop → stoppedFor via self-broadcast; natural expiry → expiredFor).
@@ -394,6 +397,8 @@ function ClassControl({
   const revealCurrent = Boolean(current && (stoppedFor === current.id || expiredFor === current.id));
 
   const [busy, setBusy] = useState(false);
+  // Armed only when THIS instructor ends the class, so an out-of-band end still bounces.
+  const [showPodium, setShowPodium] = useState(false);
 
   async function goTo(activityId: string) {
     if (busy) return;
@@ -413,12 +418,18 @@ function ClassControl({
     setBusy(true);
     try {
       await endClassSession(session.id);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.mySessions(tenantId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.active });
-      onEnded();
+      // Defer invalidation to handleLeavePodium; doing it now unmounts this control before the podium renders.
+      setShowPodium(true);
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleLeavePodium() {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.mySessions(tenantId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.active });
+    onEnded();
+    navigate('/');
   }
 
   const canPrev = idx > 0;
@@ -444,6 +455,7 @@ function ClassControl({
   const progressPct =
     activities.length && idx >= 0 ? Math.round(((idx + 1) / activities.length) * 100) : 0;
   const ended = status === 'ended';
+  const onPodium = ended || showPodium;
   // Begin exists ONLY before a pointer is set; once set we're in the activity
   // (or briefly its loading skeleton), never back in the lobby.
   const inReception = !currentActivityId;
@@ -463,7 +475,7 @@ function ClassControl({
         progressPct={progressPct}
         connected={connected}
         presenceCount={roster.length}
-        ended={ended}
+        ended={onPodium}
         activityIndex={idx}
         activityCount={activities.length}
         timerSlot={
@@ -473,7 +485,7 @@ function ClassControl({
         }
         onClose={() => {
           // Guard against an accidental close abandoning a live presentation.
-          if (ended || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
+          if (onPodium || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
         }}
       />
 
@@ -495,7 +507,17 @@ function ClassControl({
               {tText(lesson?.title)}
             </h1>
 
-            {current ? (
+            {onPodium ? (
+              <div className="mt-8" data-testid="instructor-podium">
+                <LivePodium ranking={podiumRanking} />
+                <button
+                  onClick={handleLeavePodium}
+                  className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                >
+                  {t('live.ended.cta')}
+                </button>
+              </div>
+            ) : current ? (
               <LiveActivityStage
                 activity={current}
                 readOnly
