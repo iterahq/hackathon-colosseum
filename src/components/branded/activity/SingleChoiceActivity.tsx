@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
+import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -36,20 +37,23 @@ function OptionMedia({ option }: { option: ChoiceOption }) {
 export function SingleChoiceActivity({
   activity,
   onComplete,
+  reveal = false,
   initialSelectedId,
   initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  reveal?: boolean;
   initialSelectedId?: string;
   initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as SingleChoiceSpec;
-  const options = spec?.options ?? [];
+  const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
   const [selected, setSelected] = useState<string | null>(initialSelectedId ?? null);
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
+  const shown = submitted || reveal;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída" step). Grade off the CURRENT selection — `isCorrect`
@@ -67,12 +71,12 @@ export function SingleChoiceActivity({
       <div className="mt-5 grid gap-2.5 auto-rows-fr" data-testid="single-choice-options">
         {options.map((o) => {
           const chosen = selected === o.id;
-          const showCorrect = submitted && o.id === spec?.correct_option_id;
-          const showWrong = submitted && chosen && o.id !== spec?.correct_option_id;
+          const showCorrect = shown && o.id === spec?.correct_option_id;
+          const showWrong = shown && chosen && o.id !== spec?.correct_option_id;
           return (
             <button
               key={o.id}
-              disabled={submitted || isDone}
+              disabled={submitted || isDone || reveal}
               onClick={() => setSelected(o.id)}
               data-testid="single-choice-option"
               data-selected={chosen ? 'true' : undefined}
@@ -99,7 +103,7 @@ export function SingleChoiceActivity({
 
       <SubmitButton
         submitted={submitted || isDone}
-        disabled={selected === null}
+        disabled={selected === null || reveal}
         onSubmit={handleSubmit}
         testId="single-choice-submit"
       />

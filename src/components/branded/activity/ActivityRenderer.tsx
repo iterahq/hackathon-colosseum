@@ -47,9 +47,12 @@ import { SubmitButton } from './parts';
 export function ActivityRenderer({
   activity,
   onComplete,
+  reveal = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  /** Reveal the correct answer (timer stopped/expired) even without a submission. */
+  reveal?: boolean;
 }) {
   switch (activity.kind) {
     case 'document':
@@ -66,13 +69,13 @@ export function ActivityRenderer({
     case 'video':
       return <VideoActivity activity={activity} onComplete={onComplete} />;
     case 'single_choice':
-      return <SingleChoiceActivity activity={activity} onComplete={onComplete} />;
+      return <SingleChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'multi_choice':
-      return <MultiChoiceActivity activity={activity} onComplete={onComplete} />;
+      return <MultiChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'match':
-      return <MatchActivity activity={activity} onComplete={onComplete} />;
+      return <MatchActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'order':
-      return <OrderActivity activity={activity} onComplete={onComplete} />;
+      return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     default:
       return <UnknownActivity activity={activity} />;
   }

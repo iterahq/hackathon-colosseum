@@ -11,6 +11,8 @@ interface LiveActivityStageProps {
    * timer locks the activity.
    */
   readOnly?: boolean;
+  /** Reveal the correct answer (timer stopped/expired) even without a submission. */
+  reveal?: boolean;
   onComplete?: (correct: boolean) => void;
   /**
    * Fired when the learner clicks an activity's "Enviar" (the `*-submit` button)
@@ -36,6 +38,7 @@ const noop = () => {};
 export function LiveActivityStage({
   activity,
   readOnly = false,
+  reveal = false,
   onComplete,
   onSubmit,
   timerSlot,
@@ -59,7 +62,7 @@ export function LiveActivityStage({
         onClick={handleClick}
         {...(readOnly ? { inert: '' } : {})}
       >
-        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} />
+        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} />
       </div>
       {footer}
     </div>

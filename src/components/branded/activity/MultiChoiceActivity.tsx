@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
+import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -36,21 +37,24 @@ function OptionMedia({ option }: { option: ChoiceOption }) {
 export function MultiChoiceActivity({
   activity,
   onComplete,
+  reveal = false,
   initialSelectedIds,
   initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  reveal?: boolean;
   initialSelectedIds?: string[];
   initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as MultiChoiceSpec;
-  const options = spec?.options ?? [];
+  const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
   const correctIds = spec?.correct_option_ids ?? [];
   const [selected, setSelected] = useState<string[]>(initialSelectedIds ?? []);
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
+  const shown = submitted || reveal;
 
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -75,12 +79,12 @@ export function MultiChoiceActivity({
         {options.map((o) => {
           const chosen = selected.includes(o.id);
           const isCorrectOpt = correctIds.includes(o.id);
-          const showCorrect = submitted && isCorrectOpt;
-          const showWrong = submitted && chosen && !isCorrectOpt;
+          const showCorrect = shown && isCorrectOpt;
+          const showWrong = shown && chosen && !isCorrectOpt;
           return (
             <button
               key={o.id}
-              disabled={submitted || isDone}
+              disabled={submitted || isDone || reveal}
               onClick={() => toggle(o.id)}
               data-testid="multi-choice-option"
               data-selected={chosen ? 'true' : undefined}
@@ -114,7 +118,7 @@ export function MultiChoiceActivity({
 
       <SubmitButton
         submitted={submitted || isDone}
-        disabled={selected.length === 0}
+        disabled={selected.length === 0 || reveal}
         onSubmit={handleSubmit}
         testId="multi-choice-submit"
       />

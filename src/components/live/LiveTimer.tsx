@@ -19,9 +19,11 @@ interface LiveTimerProps {
   onExpire?: () => void;
   /** Fires once per second during the final countdown (at 5,4,3,2,1). */
   onWarn?: () => void;
+  /** Larger sizing for the top-chrome hero placement. */
+  prominent?: boolean;
 }
 
-export function LiveTimer({ deadline, onExpire, onWarn }: LiveTimerProps) {
+export function LiveTimer({ deadline, onExpire, onWarn, prominent = false }: LiveTimerProps) {
   const { t } = useI18n();
   const remaining = useCountdown(deadline);
   const done = remaining <= 0;
@@ -51,7 +53,9 @@ export function LiveTimer({ deadline, onExpire, onWarn }: LiveTimerProps) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 px-3 h-9 rounded-full border text-sm font-mono tabular-nums transition-colors ${
+      className={`inline-flex items-center gap-2 rounded-full border font-mono tabular-nums transition-colors ${
+        prominent ? 'px-3 h-9 text-sm md:px-5 md:h-10 md:text-lg font-semibold' : 'px-3 h-9 text-sm'
+      } ${
         done || warning
           ? 'border-destructive/50 bg-destructive/10 text-destructive'
           : 'border-clay/50 bg-clay/10 text-clay'

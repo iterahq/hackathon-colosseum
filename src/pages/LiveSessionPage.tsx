@@ -30,6 +30,7 @@ import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { formatDuration } from '@/utils/formatDuration';
+import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
@@ -40,7 +41,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, answers, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, answers, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -58,7 +59,7 @@ export default function LiveSessionPage() {
   const peerAnswerers = useMemo(() => {
     const learners: ClassCompleter[] = roster
       .filter((m) => !m.isInstructor)
-      .map((m) => ({ userId: m.userId, name: m.name, done: false }));
+      .map((m) => ({ userId: m.userId, name: m.name, avatarUrl: m.avatarUrl, done: false }));
     return mergeLiveAnswers(learners, currentActivityId ? answers[currentActivityId] : undefined);
   }, [roster, answers, currentActivityId]);
 
@@ -100,20 +101,30 @@ export default function LiveSessionPage() {
   // never paints the NEXT activity as locked for a frame while an effect catches up.
   const [timeUpFor, setTimeUpFor] = useState<string | null>(null);
   useEffect(() => {
-    setAnswered(null);
+    // Restore the learner's own persisted answer (refresh protection) — a page
+    // reload must NOT re-open an answered activity nor re-fire its broadcast.
+    const stored =
+      sessionId && currentActivityId ? readStoredAnswer(sessionId, currentActivityId) : null;
+    setAnswered(stored && currentActivityId ? { id: currentActivityId, ...stored } : null);
     setSaving(false);
     setTimeUpFor(null);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
-  }, [currentActivityId]);
+  }, [sessionId, currentActivityId]);
 
   // Time ran out before the learner answered THIS activity → it's locked.
   const locked = timeUpFor !== null && timeUpFor === current?.id && !answered;
 
   const { onTimeUp } = sound;
   const handleTimeUp = useCallback(() => {
-    onTimeUp();
+    // Already answered THIS activity → no "time's up" sound (only the lock).
+    if (answered?.id !== currentActivityId) onTimeUp();
     setTimeUpFor(currentActivityId);
-  }, [onTimeUp, currentActivityId]);
+  }, [onTimeUp, currentActivityId, answered]);
+
+  // Professor stopped the timer → lock + reveal the correct answer for everyone.
+  useEffect(() => {
+    if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
+  }, [stoppedFor, current]);
 
   async function handleComplete(correct: boolean) {
     if (!current || saving || locked || answered?.id === current.id) return;
@@ -123,6 +134,7 @@ export default function LiveSessionPage() {
     // sees who responded and their time.
     const elapsedMs = activityStartedAt ? Date.now() - activityStartedAt : 0;
     setAnswered({ id: current.id, correct, elapsedMs });
+    if (sessionId) storeAnswer(sessionId, current.id, { correct, elapsedMs });
     sound.onAnswer(correct);
     if (correct) {
       setSaving(true);
@@ -132,15 +144,13 @@ export default function LiveSessionPage() {
     broadcastAnswer(current.id, correct, elapsedMs);
   }
 
+  const activityIdx = currentActivityId ? activities.findIndex((a) => a.id === currentActivityId) : -1;
   const progressPct = activities.length
-    ? Math.round(
-        ((currentActivityId ? activities.findIndex((a) => a.id === currentActivityId) + 1 : 0) /
-          activities.length) *
-          100
-      )
+    ? Math.round(((activityIdx >= 0 ? activityIdx + 1 : 0) / activities.length) * 100)
     : 0;
 
   const ended = status === 'ended';
+  const timerRunning = Boolean(timer && current && timer.activityId === current.id);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -150,6 +160,13 @@ export default function LiveSessionPage() {
         connected={connected}
         presenceCount={roster.length}
         ended={ended}
+        activityIndex={activityIdx}
+        activityCount={activities.length}
+        timerSlot={
+          timerRunning && timer && current ? (
+            <LiveTimer prominent deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
+          ) : undefined
+        }
         onClose={() => navigate('/')}
       />
 
@@ -243,19 +260,14 @@ export default function LiveSessionPage() {
                   status: answered?.id === current.id && answered.correct ? 'done' : current.status,
                 }}
                 readOnly={locked || answered?.id === current.id}
+                reveal={timeUpFor !== null && timeUpFor === current.id}
                 onComplete={handleComplete}
                 onSubmit={sound.onSubmit}
                 timerSlot={
-                  (timer && timer.activityId === current.id) ||
-                  (!answered && !locked && activityStartedAt) ? (
-                    <>
-                      {timer && timer.activityId === current.id && (
-                        <LiveTimer deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
-                      )}
-                      {!answered && !locked && activityStartedAt && (
-                        <LiveStopwatch startedAt={activityStartedAt} />
-                      )}
-                    </>
+                  // The countdown now lives prominently in the top chrome; here we
+                  // only keep the personal stopwatch (elapsed) while unanswered.
+                  !answered && !locked && activityStartedAt ? (
+                    <LiveStopwatch startedAt={activityStartedAt} />
                   ) : undefined
                 }
                 footer={

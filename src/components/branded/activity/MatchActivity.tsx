@@ -23,6 +23,7 @@ import { useState } from 'react';
 import { Check, Link2, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
+import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -87,19 +88,23 @@ function PairBadge({ n, state }: { n: number; state: 'neutral' | 'correct' | 'in
 export function MatchActivity({
   activity,
   onComplete,
+  reveal = false,
   initialConnections,
   initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  reveal?: boolean;
   /** left_id -> right_id (story/test hook; converted to ordered pairs on init) */
   initialConnections?: Record<string, string>;
   initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as MatchSpec;
-  const left = spec?.left ?? [];
-  const right = spec?.right ?? [];
+  // Shuffle each column independently so the correct row-alignment
+  // (left[i] ↔ right[i]) never leaks the answer. Correctness is id-keyed.
+  const [left] = useState(() => seededShuffle(spec?.left ?? [], Math.random().toString(36)));
+  const [right] = useState(() => seededShuffle(spec?.right ?? [], Math.random().toString(36)));
   const pairs = spec?.pairs ?? [];
 
   const [made, setMade] = useState<MadePair[]>(() =>
@@ -108,11 +113,15 @@ export function MatchActivity({
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
-  const locked = submitted || isDone;
+  const locked = submitted || isDone || reveal;
+  const shown = submitted || reveal;
+  // Reveal without a submission shows the ANSWER KEY (spec pairs, all green),
+  // not the learner's empty/partial pairing.
+  const displayedPairs: MadePair[] = reveal && !submitted ? pairs : made;
 
   // Which pair index (0-based) a given card belongs to, or -1.
-  const leftPairIndex = (id: string) => made.findIndex((p) => p.left_id === id);
-  const rightPairIndex = (id: string) => made.findIndex((p) => p.right_id === id);
+  const leftPairIndex = (id: string) => displayedPairs.findIndex((p) => p.left_id === id);
+  const rightPairIndex = (id: string) => displayedPairs.findIndex((p) => p.right_id === id);
 
   function removeAt(index: number) {
     setMade((prev) => prev.filter((_, i) => i !== index));
@@ -158,15 +167,15 @@ export function MatchActivity({
 
   // Badge state for a paired card (neutral pre-submit; green/red after submit).
   const badgeState = (idx: number): 'neutral' | 'correct' | 'incorrect' => {
-    if (idx === -1 || !submitted) return 'neutral';
-    return isPairCorrect(made[idx]) ? 'correct' : 'incorrect';
+    if (idx === -1 || !shown) return 'neutral';
+    return isPairCorrect(displayedPairs[idx]) ? 'correct' : 'incorrect';
   };
 
   // Card frame classes. Pre-submit: neutral (+ neutral ink ring when armed).
   // Post-submit: light green/red border echoing the badge (single signal).
   function cardClasses(idx: number, armed: boolean) {
-    if (submitted && idx !== -1) {
-      return isPairCorrect(made[idx]) ? 'border-verde-tech/60 bg-card' : 'border-destructive/60 bg-card';
+    if (shown && idx !== -1) {
+      return isPairCorrect(displayedPairs[idx]) ? 'border-verde-tech/60 bg-card' : 'border-destructive/60 bg-card';
     }
     if (armed) return 'border-ink/50 bg-panel-2 ring-2 ring-ink/20';
     return 'border-border bg-card hover:border-ink/30';
@@ -223,8 +232,8 @@ export function MatchActivity({
       </div>
 
       <SubmitButton
-        submitted={locked}
-        disabled={!canSubmit}
+        submitted={submitted || isDone}
+        disabled={!canSubmit || reveal}
         onSubmit={handleSubmit}
         testId="match-submit"
       />

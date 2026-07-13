@@ -46,6 +46,9 @@ export function useClassSession(
   const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
   const [elapsed, setElapsed] = useState<Record<string, Record<string, number>>>({});
   const [timer, setTimer] = useState<ClassTimer | null>(null);
+  // The activity whose timer was just STOPPED by the professor — cue to reveal
+  // the correct answer to everyone. Cleared on advance.
+  const [stoppedFor, setStoppedFor] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -127,6 +130,7 @@ export function useClassSession(
         if (typeof next === 'string') {
           setCurrentActivityId(next);
           setTimer(null);
+          setStoppedFor(null);
         }
       })
       .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
@@ -154,6 +158,8 @@ export function useClassSession(
       })
       .on('broadcast', { event: TIMER_STOP_EVENT }, ({ payload }) => {
         setTimer((prev) => timerAfterStop(prev, payload));
+        const p = payload as { activity_id?: unknown } | null;
+        if (p && typeof p.activity_id === 'string') setStoppedFor(p.activity_id);
       })
       .on(
         'postgres_changes',
@@ -228,6 +234,7 @@ export function useClassSession(
       // Optimistic local update for the professor's own screen.
       setCurrentActivityId(activityId);
       setTimer(null);
+      setStoppedFor(null);
       if (!channel) return;
       void channel.send({
         type: 'broadcast',
@@ -255,6 +262,7 @@ export function useClassSession(
   const clearTimer = useCallback((activityId: string) => {
     const channel = channelRef.current;
     setTimer((prev) => (prev && prev.activityId === activityId ? null : prev));
+    setStoppedFor(activityId);
     if (!channel) return;
     void channel.send({
       type: 'broadcast',
@@ -297,6 +305,7 @@ export function useClassSession(
     answers,
     elapsed,
     timer,
+    stoppedFor,
     broadcast,
     broadcastAnswer,
     broadcastTimer,

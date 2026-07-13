@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
@@ -7,6 +8,11 @@ interface LiveSessionChromeProps {
   connected: boolean;
   presenceCount: number;
   ended: boolean;
+  /** Current activity position (0-based) + total, for the N/M cue. */
+  activityIndex?: number;
+  activityCount?: number;
+  /** A prominent running timer, rendered beside the LIVE pill (top-center). */
+  timerSlot?: ReactNode;
   onClose: () => void;
 }
 
@@ -22,9 +28,14 @@ export function LiveSessionChrome({
   connected,
   presenceCount,
   ended,
+  activityIndex,
+  activityCount,
+  timerSlot,
   onClose,
 }: LiveSessionChromeProps) {
   const { t } = useI18n();
+  const showPosition =
+    typeof activityIndex === 'number' && activityIndex >= 0 && (activityCount ?? 0) > 0;
 
   return (
     <header className="relative z-30">
@@ -80,9 +91,17 @@ export function LiveSessionChrome({
               <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
             </span>
             {t('live.badge.label')}
-            <span className="opacity-70">· {presenceCount}</span>
+            {/* Presence count hides on phones so pill + prominent timer never
+                overflow onto the close button / sound toggle; N/M stays. */}
+            <span className="opacity-70 hidden sm:inline">· {presenceCount}</span>
+            {showPosition && (
+              <span className="opacity-70 font-mono tabular-nums" data-testid="live-position-chrome">
+                · {(activityIndex as number) + 1}/{activityCount}
+              </span>
+            )}
           </span>
         )}
+        {!ended && timerSlot}
       </div>
 
       <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-3">

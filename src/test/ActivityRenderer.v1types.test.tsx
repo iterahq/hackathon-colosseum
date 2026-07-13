@@ -121,8 +121,12 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
         correct_order: ['a', 'b'],
       }),
     );
-    // initial order = [b, a]; move the first item (b) down to get [a, b].
-    fireEvent.click(screen.getAllByTestId('order-down')[0]);
+    // Options render in a per-learner shuffled order, so drive the list into the
+    // correct sequence regardless of the starting order: if 'First' isn't on top,
+    // move it up (2 items → one nudge is enough).
+    if (!screen.getAllByTestId('order-item')[0].textContent?.includes('First')) {
+      fireEvent.click(screen.getAllByTestId('order-down')[0]);
+    }
     fireEvent.click(screen.getByTestId('order-submit'));
     expect(onComplete).toHaveBeenCalledWith(true);
     expect(screen.queryByTestId('activity-done')).toBeNull();

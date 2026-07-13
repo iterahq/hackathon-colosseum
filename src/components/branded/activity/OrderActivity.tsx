@@ -10,17 +10,20 @@ import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
+import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
 export function OrderActivity({
   activity,
   onComplete,
+  reveal = false,
   initialOrder,
   initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  reveal?: boolean;
   initialOrder?: string[];
   initialSubmitted?: boolean;
 }) {
@@ -30,11 +33,17 @@ export function OrderActivity({
   const correctOrder = spec?.correct_order ?? [];
   const byId = (id: string): ChoiceOption | undefined => items.find((i) => i.id === id);
 
-  const [order, setOrder] = useState<string[]>(initialOrder ?? items.map((i) => i.id));
+  const [order, setOrder] = useState<string[]>(
+    () => initialOrder ?? seededShuffle(items, Math.random().toString(36)).map((i) => i.id),
+  );
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const isDone = activity.status === 'done';
-  const locked = submitted || isDone;
+  const locked = submitted || isDone || reveal;
+  const shown = submitted || reveal;
+  // Reveal without a submission shows the ANSWER KEY (the correct sequence),
+  // not the learner's untouched shuffle graded red.
+  const displayOrder = reveal && !submitted ? correctOrder : order;
 
   function move(from: number, to: number) {
     if (locked || to < 0 || to >= order.length) return;
@@ -62,10 +71,10 @@ export function OrderActivity({
       </p>
 
       <ol className="mt-3 space-y-2.5" data-testid="order-list">
-        {order.map((id, idx) => {
+        {displayOrder.map((id, idx) => {
           const o = byId(id);
-          const posCorrect = submitted && correctOrder[idx] === id;
-          const posWrong = submitted && correctOrder[idx] !== id;
+          const posCorrect = shown && correctOrder[idx] === id;
+          const posWrong = shown && correctOrder[idx] !== id;
           return (
             <li
               key={id}
@@ -126,8 +135,8 @@ export function OrderActivity({
       </ol>
 
       <SubmitButton
-        submitted={locked}
-        disabled={order.length === 0}
+        submitted={submitted || isDone}
+        disabled={order.length === 0 || reveal}
         onSubmit={handleSubmit}
         testId="order-submit"
       />

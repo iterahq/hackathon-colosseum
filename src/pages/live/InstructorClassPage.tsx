@@ -321,7 +321,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, answers, elapsed, timer, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, status, roster, connected, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -355,19 +355,43 @@ function ClassControl({
     presentUserIds,
     session.startedAt
   );
-  const answerers = useMemo(
-    () =>
-      mergeLiveAnswers(
-        polled,
-        currentActivityId ? answers[currentActivityId] : undefined,
-        currentActivityId ? elapsed[currentActivityId] : undefined
-      ),
-    [polled, answers, elapsed, currentActivityId]
-  );
+  // Presence-first: everyone in the room appears (as pending / 0 answers) even
+  // before they answer the first activity; the polled DB read only UPGRADES
+  // done-state + names/avatars for tenant learners it knows.
+  const answerers = useMemo(() => {
+    const polledById = new Map(polled.map((c) => [c.userId, c]));
+    const base = roster
+      .filter((m) => !m.isInstructor)
+      .map(
+        (m) =>
+          polledById.get(m.userId) ?? {
+            userId: m.userId,
+            name: m.name,
+            avatarUrl: m.avatarUrl,
+            done: false,
+          }
+      );
+    return mergeLiveAnswers(
+      base,
+      currentActivityId ? answers[currentActivityId] : undefined,
+      currentActivityId ? elapsed[currentActivityId] : undefined
+    );
+  }, [roster, polled, answers, elapsed, currentActivityId]);
 
   // Class-wide speed leaderboard of the present learners (cumulative across every
   // activity answered so far), so by the end of the class it's the final ranking.
   const ranking = useMemo(() => rankByTiming(roster, elapsed, answers), [roster, elapsed, answers]);
+
+  // Reveal the answer on the professor's own mirror when the timer stops (manual
+  // stop → stoppedFor via self-broadcast; natural expiry → expiredFor).
+  const [expiredFor, setExpiredFor] = useState<string | null>(null);
+  const handleInstructorExpire = useCallback(() => {
+    sound.onTimeUp();
+    setExpiredFor(currentActivityId);
+  }, [sound, currentActivityId]);
+  // Revisiting an activity (prev/next) must NOT auto-reveal from a stale expiry.
+  useEffect(() => setExpiredFor(null), [currentActivityId]);
+  const revealCurrent = Boolean(current && (stoppedFor === current.id || expiredFor === current.id));
 
   const [busy, setBusy] = useState(false);
 
@@ -440,6 +464,13 @@ function ClassControl({
         connected={connected}
         presenceCount={roster.length}
         ended={ended}
+        activityIndex={idx}
+        activityCount={activities.length}
+        timerSlot={
+          timer && current && timer.activityId === current.id ? (
+            <LiveTimer prominent deadline={timer.deadline} onExpire={handleInstructorExpire} onWarn={sound.onWarn} />
+          ) : undefined
+        }
         onClose={() => {
           // Guard against an accidental close abandoning a live presentation.
           if (ended || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
@@ -468,12 +499,8 @@ function ClassControl({
               <LiveActivityStage
                 activity={current}
                 readOnly
+                reveal={revealCurrent}
                 testid="instructor-activity-stage"
-                timerSlot={
-                  timer && timer.activityId === current.id ? (
-                    <LiveTimer deadline={timer.deadline} onExpire={sound.onTimeUp} onWarn={sound.onWarn} />
-                  ) : undefined
-                }
               />
             ) : lessonLoading ? (
               // Pointer set, lesson content still resolving (refresh mid-class) —
