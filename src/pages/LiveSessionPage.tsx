@@ -17,6 +17,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Radio, Loader2 } from 'lucide-react';
 import { LiveReception } from '@/components/live/LiveReception';
+import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveTimer } from '@/components/live/LiveTimer';
@@ -31,6 +32,8 @@ import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
+import { isGenericName } from '@/utils/isGenericName';
+import { useProfile } from '@/hooks/useProfile';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
@@ -152,6 +155,18 @@ export default function LiveSessionPage() {
   const ended = status === 'ended';
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
 
+  // Pre-class name+avatar step: shown once when the learner has no real name yet
+  // (Itera override). Skipped while the profile query is still resolving so a
+  // real name never flashes the gate.
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const [gatePassed, setGatePassed] = useState(false);
+  const gateNeeded =
+    Boolean(session) &&
+    !ended &&
+    !gatePassed &&
+    !profileLoading &&
+    isGenericName(profile?.displayName, profile?.email);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
@@ -201,6 +216,12 @@ export default function LiveSessionPage() {
               {t('live.ended.cta')}
             </button>
           </motion.div>
+        ) : gateNeeded ? (
+          <LiveNameGate
+            initialName={isGenericName(profile?.displayName, profile?.email) ? '' : profile?.displayName ?? ''}
+            initialAvatarUrl={profile?.avatarUrl}
+            onDone={() => setGatePassed(true)}
+          />
         ) : (
           <>
             <div

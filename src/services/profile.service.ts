@@ -77,3 +77,26 @@ export async function updateMyLocale(locale: Locale): Promise<boolean> {
   const { error } = await sb.from('users').update({ locale }).eq('id', iteraUserId);
   return !error;
 }
+
+/**
+ * Persist the learner's chosen display name + avatar to their Itera profile.
+ * This IS the Itera "override": itera.users is seeded from DFL on federated
+ * login (the base); writing here overrides it, and every read (getMyProfile,
+ * the presence roster) then reflects the override. Self-update via RLS
+ * `users_update_self`; the row PK is NOT the auth uid, so we scope by it.
+ */
+export async function updateMyProfile(patch: {
+  displayName?: string;
+  avatarUrl?: string;
+}): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const iteraUserId = await getIteraUserId();
+  if (!iteraUserId) return false;
+  const update: Record<string, string> = {};
+  if (patch.displayName !== undefined) update.display_name = patch.displayName;
+  if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl;
+  if (Object.keys(update).length === 0) return false;
+  const sb = getSupabase();
+  const { error } = await sb.from('users').update(update).eq('id', iteraUserId);
+  return !error;
+}

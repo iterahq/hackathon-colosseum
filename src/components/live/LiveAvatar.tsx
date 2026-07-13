@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface LiveAvatarProps {
   name: string;
   avatarUrl?: string | null;
@@ -8,15 +10,18 @@ interface LiveAvatarProps {
 /**
  * A small round participant avatar for the live-class surfaces (roster,
  * answerers, ranking, reception). Shows the user's photo when known, falling
- * back to the first initial on a muted disc. Raw <img> (the pattern already
- * used by AppHeader) to stay theme-safe under itera's Tailwind.
+ * back to the first initial on a muted disc — including when the image fails to
+ * load (flaky network / dead avatar URL). Raw <img> (the pattern already used
+ * by AppHeader) to stay theme-safe under itera's Tailwind.
  */
 export function LiveAvatar({ name, avatarUrl, size = 'w-6 h-6' }: LiveAvatarProps) {
-  if (avatarUrl) {
+  const [broken, setBroken] = useState(false);
+  if (avatarUrl && !broken) {
     return (
       <img
         src={avatarUrl}
         alt={name}
+        onError={() => setBroken(true)}
         className={`${size} rounded-full object-cover flex-shrink-0 border border-border`}
         data-testid="live-avatar"
       />
