@@ -60,12 +60,14 @@ export function InstructionPanel({
       )}
 
       {image_url && (
-        <div className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden" data-testid="instruction-image">
-          {!imageLoaded && <MediaSkeleton height="aspect-[4/3]" />}
+        <div className="relative rounded-2xl border border-border overflow-hidden h-64 md:h-72" data-testid="instruction-image">
+          {!imageLoaded && (
+            <div className="absolute inset-0 animate-pulse bg-muted-foreground/10" aria-hidden="true" data-testid="media-skeleton" />
+          )}
           <img
             src={image_url}
             alt={text ?? 'instruction'}
-            className={`w-full object-cover mx-auto transition-opacity duration-300 ${imageLoaded ? 'opacity-100 aspect-[4/3]' : 'opacity-0 h-0'}`}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             onLoad={() => setImageLoaded(true)}
           />
         </div>
