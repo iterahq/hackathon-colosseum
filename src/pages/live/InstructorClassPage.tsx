@@ -334,6 +334,9 @@ function ClassControl({
   const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
+  // Armed only when THIS instructor ends the class, so an out-of-band end still bounces.
+  const [showPodium, setShowPodium] = useState(false);
+
   // If the session ends out-of-band (another tab/device), leave the live
   // surface — never strand the professor in a "LIVE" chrome whose controls
   // silently no-op. onEnded() refetches → falls back to the onboarding dashboard.
@@ -397,8 +400,6 @@ function ClassControl({
   const revealCurrent = Boolean(current && (stoppedFor === current.id || expiredFor === current.id));
 
   const [busy, setBusy] = useState(false);
-  // Armed only when THIS instructor ends the class, so an out-of-band end still bounces.
-  const [showPodium, setShowPodium] = useState(false);
 
   async function goTo(activityId: string) {
     if (busy) return;
