@@ -1,0 +1,1157 @@
+/**
+ * Design Playground — Fluxo Mentor IA (protótipo).
+ *
+ * Uma jornada INQUISITIVA em 3 etapas onde a IA atua como mentora e
+ * VALIDADORA: em vez de despejar conteúdo, ela nivela, direciona e valida —
+ * e a mecânica central é o aluno ESCOLHER (e aprender a fazer) as perguntas
+ * certas. Conteúdo de exemplo: editais de fomento e recurso.
+ *
+ *   1. Learning Outside–Inward  — 10 perguntas niveladoras nos essenciais,
+ *      de fora pra dentro (o que é, como funciona, o que se repete).
+ *   2. The Core Fundamentals    — chatbot-style: perguntas específicas com
+ *      dicas e microcopy (documentação, validação, defesa do objetivo).
+ *   3. The Intersections        — conectar o tópico a contextos vizinhos
+ *      (edital × financiamento bancário) e sair com a próxima boa pergunta.
+ *
+ * Mecânica: feed de chat (mentor à esquerda, aluno à direita) + um cartão
+ * interativo ativo ao pé do feed. Passos são DADOS (array tipado); o engine
+ * é genérico — trocar o assunto = trocar o array. Gamificação: XP por acerto
+ * de primeira, contagem de "boas perguntas", recap final.
+ *
+ * Playground-only (src/stories/) — nada disto entra no bundle do app.
+ */
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react';
+import { motion } from 'framer-motion';
+import {
+  Sparkles,
+  Compass,
+  Target,
+  GitMerge,
+  Zap,
+  Lightbulb,
+  MessageCircleQuestion,
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
+  Trophy,
+  RotateCcw,
+  X,
+  ArrowLeftRight,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+/* ────────────────────────────── Step model ──────────────────────────────── */
+
+interface AskOption {
+  label: string;
+  good?: boolean;
+  /** Mentor microcopy validating (or gently redirecting) this question. */
+  feedback: string;
+}
+interface QuizOption {
+  label: string;
+  correct?: boolean;
+}
+
+type Step =
+  | { kind: 'mentor'; stage: number; text: string; bullets?: string[] }
+  | { kind: 'ask'; stage: number; prompt: string; options: AskOption[]; mentorAnswer: string }
+  | { kind: 'quiz'; stage: number; question: string; hint?: string; options: QuizOption[]; explain: string }
+  | {
+      kind: 'compare';
+      stage: number;
+      title: string;
+      intro: string;
+      rows: { aspect: string; edital: string; banco: string; similar: boolean }[];
+    };
+
+/** Per-stage color identity (todas dentro dos tokens do brand):
+ *  etapa 1 = evergreen (nivelar) · etapa 2 = clay (o núcleo das perguntas
+ *  específicas — clay é a cor de Q&A do brand) · etapa 3 = gelo (síntese). */
+interface StageColors {
+  text: string;
+  border: string;
+  bg: string;
+  bar: string;
+}
+
+interface StageMeta {
+  name: string;
+  longName: string;
+  hint: string;
+  icon: LucideIcon;
+  colors: StageColors;
+  /** O que acontece na etapa (microcopy da tela inicial). */
+  desc: string;
+  /** Por que a etapa importa (microcopy da tela inicial). */
+  why: string;
+}
+
+const STAGES: StageMeta[] = [
+  {
+    name: 'Outside–In',
+    longName: 'Learning Outside–Inward',
+    hint: 'Nivelando os essenciais',
+    icon: Compass,
+    colors: { text: 'text-evergreen-hi', border: 'border-evergreen/40', bg: 'bg-evergreen-soft', bar: 'bg-evergreen' },
+    desc: '10 perguntas mapeiam o terreno: o que é, como funciona, o que se repete.',
+    why: 'Sem nivelar, conteúdo avançado vira ruído.',
+  },
+  {
+    name: 'Fundamentos',
+    longName: 'The Core Fundamentals',
+    hint: 'O núcleo técnico',
+    icon: Target,
+    colors: { text: 'text-clay', border: 'border-clay/40', bg: 'bg-clay/10', bar: 'bg-clay' },
+    desc: 'O núcleo em conversa: perguntas específicas, com dicas cirúrgicas.',
+    why: 'Aqui, conhecimento vira habilidade.',
+  },
+  {
+    name: 'Interseções',
+    longName: 'The Intersections',
+    hint: 'Conectando contextos',
+    icon: GitMerge,
+    colors: { text: 'text-gelo', border: 'border-gelo/30', bg: 'bg-gelo/10', bar: 'bg-gelo/80' },
+    desc: 'O tema se conecta ao que você já conhece — e aponta a próxima pergunta.',
+    why: 'Conhecimento conectado é conhecimento que fica.',
+  },
+];
+
+/** Prompt simulado que abre a experiência (exemplo real de um colega do time —
+ *  o fluxo ilustrado usa esse tema, mas a experiência serve a QUALQUER tema). */
+const SAMPLE_PROMPT = 'Preciso entender o fluxo de editais para fomento e recurso. Por onde eu começo?';
+const SAMPLE_OBS = 'Nunca participei de um edital. Tenho uma empresa pequena e quero captar recurso pela primeira vez.';
+
+/** Resumo do fluxo mostrado na conclusão — 1 síntese por etapa. */
+const STAGE_SUMMARIES = [
+  'O terreno: editais distribuem recurso com regras públicas e critérios claros. Os processos variam entre editais; a documentação converge.',
+  'O núcleo: conheça a régua (critérios e pesos), escreva para a régua e prove cada afirmação com evidência. Documentação te mantém no jogo; aderência te faz vencer.',
+  'As pontes: o mesmo kit documental e o mesmo argumento estruturado servem no financiamento bancário — o que muda é a régua de decisão (mérito público × risco de crédito).',
+];
+
+/** Vocabulário essencial do tema, consolidado na conclusão. */
+const GLOSSARY: { term: string; def: string }[] = [
+  { term: 'Edital', def: 'Chamada pública com regras, prazos e critérios para acessar recurso.' },
+  { term: 'Fomento', def: 'Recurso para impulsionar projetos — normalmente não-reembolsável.' },
+  { term: 'Habilitação documental', def: 'Checagem de conformidade dos documentos, antes do mérito.' },
+  { term: 'Avaliação de mérito', def: 'Nota da proposta segundo os critérios e pesos do edital.' },
+  { term: 'Certidões negativas', def: 'Provas de regularidade fiscal e trabalhista da empresa.' },
+  { term: 'Kit documental', def: 'Docs societários + certidões + proposta; se repete entre editais.' },
+  { term: 'Aderência', def: 'Alinhamento da proposta à temática e às áreas de interesse.' },
+  { term: 'Critérios e pesos', def: 'A "régua" pública que pontua cada proposta.' },
+  { term: 'Contrapartida', def: 'Parcela de recursos próprios exigida por alguns editais.' },
+  { term: 'FINEP · BNDES · CNPq · FAPs', def: 'As grandes fontes públicas de fomento do país.' },
+];
+
+/* ─────────────────── Conteúdo: editais de fomento (exemplo) ─────────────── */
+
+const STEPS: Step[] = [
+  // ═══ Etapa 1 — Learning Outside–Inward (10 perguntas niveladoras) ═══
+  {
+    kind: 'mentor',
+    stage: 0,
+    text: 'Oi! Eu sou seu mentor. Vamos aprender editais de fora pra dentro: panorama primeiro, núcleo depois. Meu papel é te ajudar a fazer as perguntas certas. Bora nivelar o essencial?',
+  },
+  {
+    kind: 'ask',
+    stage: 0,
+    prompt: 'Você quer entender o fluxo de editais para fomento e recurso. Qual é a PRIMEIRA pergunta certa a fazer?',
+    options: [
+      { label: 'O que é um edital e pra que ele serve?', good: true, feedback: 'Boa! Começar pelo conceito é aprender de fora pra dentro.' },
+      { label: 'Como preencho o orçamento do projeto?', feedback: 'Calma — orçamento é detalhe de dentro. Antes, entenda o terreno.' },
+      { label: 'Qual edital paga mais?', feedback: 'Tentador, mas sem entender o jogo, o prêmio não ajuda. Comece mais aberto.' },
+    ],
+    mentorAnswer:
+      'Edital é uma chamada pública: um documento que define QUEM pode pedir recurso, PARA QUÊ, com QUAIS regras e COMO será avaliado. Ele existe para distribuir dinheiro (público ou de fundos) com transparência.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Então, na essência, um edital de fomento serve para…',
+    options: [
+      { label: 'Emprestar dinheiro com juros, como um banco' },
+      { label: 'Distribuir recurso com regras públicas e critérios claros', correct: true },
+      { label: 'Garantir recurso a quem se inscrever primeiro' },
+    ],
+    explain: 'Exato: regras públicas + critérios de avaliação. Não é empréstimo, nem fila por ordem de chegada.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Verdadeiro ou falso: todo recurso de edital de fomento precisa ser devolvido depois.',
+    hint: 'Pense na diferença entre fomento e empréstimo.',
+    options: [{ label: 'Verdadeiro' }, { label: 'Falso', correct: true }],
+    explain: 'Fomento normalmente é recurso não-reembolsável — essa é a grande diferença para um banco.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Quem publica os maiores editais de fomento do país?',
+    options: [
+      { label: 'FINEP, BNDES, CNPq e as FAPs estaduais', correct: true },
+      { label: 'Apenas prefeituras' },
+      { label: 'Fintechs e bancos digitais' },
+    ],
+    explain: 'FINEP, BNDES, CNPq e FAPs (como a FAPESP) concentram os grandes volumes de fomento.',
+  },
+  {
+    kind: 'ask',
+    stage: 0,
+    prompt: 'Panorama mapeado. Qual é a próxima pergunta certa para afunilar?',
+    options: [
+      { label: 'Quais documentos praticamente todo edital pede?', good: true, feedback: 'Essa pergunta destrava MUITO: documentação é o que mais se repete entre editais.' },
+      { label: 'Como recorrer se eu for desclassificado?', feedback: 'Importante, mas é o fim do funil. Ainda estamos mapeando o que é comum.' },
+      { label: 'Qual fonte tem o processo mais rápido?', feedback: 'Processo varia caso a caso — é uma pergunta pouco generalizável agora.' },
+    ],
+    mentorAnswer:
+      'Quase todo edital pede: documentos societários (CNPJ, contrato social), certidões negativas (fiscais e trabalhistas), comprovações de capacidade técnica e a proposta do projeto. Os PROCESSOS variam; a DOCUMENTAÇÃO tende a se repetir.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Qual "kit" aparece em quase todo edital?',
+    options: [
+      { label: 'Certidões negativas + documentos societários + proposta', correct: true },
+      { label: 'Só o pitch de vendas' },
+      { label: 'RG do sócio e nada mais' },
+    ],
+    explain: 'É o kit-base. Deixá-lo pronto e atualizado acelera QUALQUER inscrição futura.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Qual é a ordem típica das etapas de um edital?',
+    options: [
+      { label: 'Inscrição → habilitação documental → avaliação de mérito → resultado', correct: true },
+      { label: 'Avaliação de mérito → inscrição → resultado' },
+      { label: 'Resultado → inscrição → recurso' },
+    ],
+    explain: 'Primeiro conferem se você PODE participar (habilitação); depois, se o projeto MERECE (mérito).',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: '"Habilitação documental" significa…',
+    hint: 'Acontece ANTES da avaliação de mérito.',
+    options: [
+      { label: 'Checar se os documentos cumprem as regras do edital', correct: true },
+      { label: 'Avaliar a qualidade da ideia' },
+      { label: 'Um treinamento obrigatório' },
+    ],
+    explain: 'É o pente-fino de conformidade. Muita gente boa cai aqui — por papel, não por ideia.',
+  },
+  {
+    kind: 'quiz',
+    stage: 0,
+    question: 'Dois editais têm processos bem diferentes. A documentação deles…',
+    options: [
+      { label: 'Tende a ser parecida', correct: true },
+      { label: 'Muda completamente' },
+      { label: 'É opcional em um deles' },
+    ],
+    explain: 'Você pegou o padrão central: processos mudam, documentação converge.',
+  },
+  {
+    kind: 'ask',
+    stage: 0,
+    prompt: 'Última do nivelamento. O que vale perguntar antes de irmos ao núcleo?',
+    options: [
+      { label: 'Onde os projetos costumam ser reprovados?', good: true, feedback: 'Pergunta de quem quer aprender com o erro dos outros. Excelente instinto.' },
+      { label: 'Posso usar IA pra escrever tudo?', feedback: 'Dá pra usar como apoio — mas essa pergunta não nivela conhecimento agora.' },
+      { label: 'Quantas páginas tem um edital?', feedback: 'Varia demais; não te dá alavanca de aprendizado.' },
+    ],
+    mentorAnswer:
+      'Os dois grandes vilões: (1) habilitação — documentos vencidos ou faltando; (2) mérito — proposta desalinhada com a temática do edital. É exatamente isso que vamos atacar na próxima etapa.',
+  },
+
+  // ═══ Etapa 2 — The Core Fundamentals (específico, com dicas) ═══
+  {
+    kind: 'mentor',
+    stage: 1,
+    text: 'Agora o núcleo: documentação, validação e DEFESA do objetivo. Aqui as perguntas ficam específicas — e as dicas, cirúrgicas.',
+    bullets: [
+      'Documentação: o que te mantém no jogo.',
+      'Argumentação aderente à temática: o que te faz vencer.',
+      'Validação: evidência para cada exigência.',
+    ],
+  },
+  {
+    kind: 'quiz',
+    stage: 1,
+    question: "No campo 'Objetivo do projeto', o avaliador de mérito procura principalmente…",
+    hint: 'Releia a pergunta: o que o AVALIADOR procura — não o que você quer contar.',
+    options: [
+      { label: 'Alinhamento claro com a temática e as áreas de interesse do edital', correct: true },
+      { label: 'Um texto longo e rebuscado' },
+      { label: 'Promessas ambiciosas sem cronograma' },
+    ],
+    explain: 'O avaliador pontua ADERÊNCIA: objetivo bom conecta a sua necessidade à temática do edital, com cronograma e resultado mensurável.',
+  },
+  {
+    kind: 'ask',
+    stage: 1,
+    prompt: 'Antes de escrever qualquer linha da proposta, qual pergunta você faz?',
+    options: [
+      { label: 'Quais são os critérios e os pesos da avaliação de mérito?', good: true, feedback: 'Essa é A pergunta. Quem conhece a régua escreve para a régua.' },
+      { label: 'Qual fonte usar no PDF?', feedback: 'Estética ajuda, mas não pontua. Mire nos critérios.' },
+      { label: 'Quem são os meus concorrentes?', feedback: 'Fora do seu controle. Energia nos critérios — que são públicos.' },
+    ],
+    mentorAnswer:
+      'Todo edital publica a régua: critérios (inovação, viabilidade, equipe, impacto…) e seus PESOS. Sua proposta deve responder critério por critério — argumento sem critério é só opinião.',
+  },
+  {
+    kind: 'quiz',
+    stage: 1,
+    question: 'Qual argumento DEFENDE melhor a necessidade do recurso?',
+    options: [
+      { label: '"Sem esse recurso, a etapa X não acontece — e ela entrega o resultado Y previsto na temática do edital"', correct: true },
+      { label: '"Somos apaixonados pelo que fazemos"' },
+      { label: '"Todo mundo está pedindo, então pedimos também"' },
+    ],
+    explain: 'Necessidade concreta + consequência + amarração com a temática. Isso é argumentar DENTRO do edital.',
+  },
+  {
+    kind: 'quiz',
+    stage: 1,
+    question: 'Sua proposta está "validada" quando…',
+    hint: 'Quem valida não é você — é o checklist do edital.',
+    options: [
+      { label: 'Cada exigência do edital tem uma evidência correspondente no texto', correct: true },
+      { label: 'Você sente que ficou boa' },
+      { label: 'Ficou com mais páginas que o limite' },
+    ],
+    explain: 'Validação é conformidade + evidência. O edital é o checklist — e a IA pode conferir isso com você, item a item.',
+  },
+  {
+    kind: 'mentor',
+    stage: 1,
+    text: 'Recap do núcleo, pra levar no bolso:',
+    bullets: [
+      'Conheça a régua (critérios e pesos) → escreva para a régua.',
+      'Prove cada afirmação com evidência.',
+      'Documentação impecável te mantém no jogo; argumentação aderente te faz vencer.',
+    ],
+  },
+
+  // ═══ Etapa 3 — The Intersections ═══
+  {
+    kind: 'mentor',
+    stage: 2,
+    text: 'Última etapa: interseções. Nenhum conhecimento vive isolado — vamos conectar editais a um vizinho que você talvez já conheça: o pedido de financiamento em banco.',
+  },
+  {
+    kind: 'compare',
+    stage: 2,
+    title: 'Edital de fomento × Financiamento bancário',
+    intro: 'Revele cada interseção e repare no padrão: o que se transfere e o que muda.',
+    rows: [
+      { aspect: 'Documentos de base', edital: 'Certidões, docs societários, proposta', banco: 'Certidões, docs societários, plano de negócio', similar: true },
+      { aspect: 'Quem avalia', edital: 'Comitê técnico (mérito)', banco: 'Análise de crédito (risco)', similar: false },
+      { aspect: 'O que você defende', edital: 'Objetivo alinhado à temática', banco: 'Capacidade de pagamento', similar: false },
+      { aspect: 'Preparo que se reaproveita', edital: 'Kit documental + argumento estruturado', banco: 'O MESMO kit + o mesmo argumento', similar: true },
+    ],
+  },
+  {
+    kind: 'quiz',
+    stage: 2,
+    question: 'O que muda MAIS de um contexto para o outro?',
+    options: [
+      { label: 'A lógica de decisão: mérito público × risco de crédito', correct: true },
+      { label: 'Os documentos de base' },
+      { label: 'A necessidade de argumentar bem' },
+    ],
+    explain: 'Documentos e argumentação se transferem quase inteiros; o que muda é a RÉGUA de quem decide.',
+  },
+  {
+    kind: 'ask',
+    stage: 2,
+    prompt: 'Você fecha a jornada escolhendo a pergunta que te LEVA daqui:',
+    options: [
+      { label: 'Que outras "réguas" de decisão existem para captar recurso — e como cada uma avalia?', good: true, feedback: 'Pergunta expansiva e transferível — é assim que conhecimento composto nasce.' },
+      { label: 'Acabou? Posso parar de estudar?', feedback: 'A jornada inquisitiva nunca acaba 😄 Tente uma pergunta que abra portas.' },
+      { label: 'Qual é a resposta certa de tudo isso?', feedback: 'Nesta jornada, a resposta certa é a próxima boa pergunta.' },
+    ],
+    mentorAnswer:
+      'Ótima bagagem final: investidores avaliam tese e tração; bancos, risco; editais, mérito e aderência. Documentar bem + argumentar dentro da régua é habilidade universal de captação. Jornada concluída!',
+  },
+];
+
+/** Sequential "Pergunta N de M" numbering per stage (mentor/compare don't count). */
+const QUESTION_NUMBERS: (null | { n: number; of: number })[] = (() => {
+  const perStage = [0, 1, 2].map(
+    (s) => STEPS.filter((st) => st.stage === s && (st.kind === 'ask' || st.kind === 'quiz')).length,
+  );
+  const counters = [0, 0, 0];
+  return STEPS.map((st) => {
+    if (st.kind !== 'ask' && st.kind !== 'quiz') return null;
+    counters[st.stage] += 1;
+    return { n: counters[st.stage], of: perStage[st.stage] };
+  });
+})();
+
+/* ─────────────────────────── Answer / XP model ──────────────────────────── */
+
+interface AnswerRecord {
+  chosenLabel?: string;
+  firstTry: boolean;
+}
+
+function xpFor(step: Step, rec: AnswerRecord): number {
+  if (step.kind === 'ask') return rec.firstTry ? 15 : 5;
+  if (step.kind === 'quiz') return rec.firstTry ? 10 : 5;
+  if (step.kind === 'compare') return 10;
+  return 0;
+}
+
+/* ─────────────────────────── Chat presentation ──────────────────────────── */
+
+function MentorBubble({ text, bullets, tone = 'default' }: { text: string; bullets?: string[]; tone?: 'default' | 'praise' }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3 max-w-[85%]">
+      <span className="w-8 h-8 shrink-0 grid place-items-center rounded-full bg-evergreen-soft border border-evergreen/30 mt-0.5">
+        <Sparkles className="w-4 h-4 text-evergreen-hi" />
+      </span>
+      <div
+        className={`rounded-2xl rounded-tl-md border px-5 py-3.5 text-[15px] leading-relaxed ${
+          tone === 'praise'
+            ? 'border-evergreen/40 bg-evergreen-soft/70 text-foreground'
+            : 'border-border bg-card text-foreground/90'
+        }`}
+      >
+        <p>{text}</p>
+        {bullets && (
+          <ul className="mt-2 space-y-1.5">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-evergreen-hi mt-px">→</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function UserBubble({ text }: { text: string }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex justify-end">
+      <div className="max-w-[75%] rounded-2xl rounded-tr-md bg-evergreen text-obsidiana px-5 py-3.5 text-[15px] font-medium leading-relaxed">
+        {text}
+      </div>
+    </motion.div>
+  );
+}
+
+function StageDivider({ stage }: { stage: number }) {
+  const meta = STAGES[stage];
+  const Icon = meta.icon;
+  return (
+    <div className="flex items-center gap-3 py-2" data-testid={`stage-divider-${stage}`}>
+      <span className="h-px flex-1 bg-border" />
+      <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${meta.colors.border} ${meta.colors.bg}`}>
+        <Icon className={`w-3.5 h-3.5 ${meta.colors.text}`} />
+        <span className={`font-mono text-xs uppercase tracking-wider ${meta.colors.text}`}>
+          Etapa {stage + 1} · {meta.longName}
+        </span>
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** Static rendering of a completed compare step inside the transcript. */
+function CompareTable({ rows }: { rows: { aspect: string; edital: string; banco: string; similar: boolean }[] }) {
+  return (
+    <div className="rounded-2xl border border-border overflow-hidden text-[15px]">
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto] bg-background px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+        <span>Aspecto</span>
+        <span>Edital</span>
+        <span>Banco</span>
+        <span className="w-16 text-center">Padrão</span>
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] px-4 py-3 border-t border-border/60 items-center gap-2 leading-snug">
+          <span className="text-foreground font-medium">{r.aspect}</span>
+          <span className="text-muted-foreground">{r.edital}</span>
+          <span className="text-muted-foreground">{r.banco}</span>
+          <span
+            className={`w-16 text-center font-mono text-[11px] uppercase tracking-wider ${
+              r.similar ? 'text-evergreen-hi' : 'text-clay'
+            }`}
+          >
+            {r.similar ? '≈ igual' : '≠ muda'}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────── Active (interactive) cards ─────────────────────── */
+
+function ContinueButton({ onClick, label = 'Continuar' }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      data-testid="mentor-continue"
+      className="mt-4 w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-full bg-evergreen text-obsidiana text-[15px] font-medium hover:bg-evergreen-hi transition-colors"
+    >
+      {label} <ChevronRight className="w-4 h-4" />
+    </button>
+  );
+}
+
+/** Eyebrow row for the active card: stage-colored kind badge + counter. */
+function ActiveEyebrow({
+  icon: Icon,
+  label,
+  counter,
+  colors,
+}: {
+  icon: LucideIcon;
+  label: string;
+  counter?: { n: number; of: number } | null;
+  colors: StageColors;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-xs uppercase tracking-wider border ${colors.border} ${colors.bg} ${colors.text}`}
+      >
+        <Icon className="w-3.5 h-3.5" /> {label}
+      </span>
+      {counter && (
+        <span className="font-mono text-sm tabular-nums text-muted-foreground">
+          {counter.n}/{counter.of}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** 'ask' — o coração inquisitivo: escolher a pergunta certa. */
+function AskCard({
+  step,
+  counter,
+  onDone,
+}: {
+  step: Extract<Step, { kind: 'ask' }>;
+  counter: { n: number; of: number } | null;
+  onDone: (rec: AnswerRecord) => void;
+}) {
+  const colors = STAGES[step.stage].colors;
+  const [tried, setTried] = useState<Set<number>>(new Set());
+  const [pickedGood, setPickedGood] = useState<number | null>(null);
+  const answered = pickedGood !== null;
+
+  function pick(i: number) {
+    if (answered) return;
+    if (step.options[i].good) setPickedGood(i);
+    else setTried((prev) => new Set(prev).add(i));
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-3xl border ${colors.border} bg-card p-5 md:p-6`}
+      data-testid="active-ask"
+    >
+      <ActiveEyebrow icon={MessageCircleQuestion} label="Escolha a pergunta certa" counter={counter} colors={colors} />
+      <h2 className="font-display font-bold text-xl text-foreground mt-4 leading-snug">{step.prompt}</h2>
+      <div className="mt-4 space-y-2.5">
+        {step.options.map((o, i) => {
+          const wasTried = tried.has(i);
+          const isGoodPick = pickedGood === i;
+          return (
+            <div key={i}>
+              <button
+                onClick={() => pick(i)}
+                disabled={answered || wasTried}
+                data-testid="ask-option"
+                className={`w-full text-left rounded-2xl border px-4 py-3.5 text-[15px] leading-snug transition-colors ${
+                  isGoodPick
+                    ? 'border-evergreen bg-evergreen-soft text-foreground'
+                    : wasTried
+                      ? 'border-border/60 bg-background text-muted-foreground/60'
+                      : 'border-border bg-background text-foreground hover:border-evergreen/50'
+                }`}
+              >
+                <span className="flex items-start gap-2.5">
+                  <MessageCircleQuestion
+                    className={`w-4 h-4 mt-0.5 shrink-0 ${isGoodPick ? 'text-evergreen-hi' : wasTried ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
+                  />
+                  {o.label}
+                </span>
+              </button>
+              {wasTried && (
+                <p className="mt-1.5 ml-4 flex items-start gap-1.5 text-sm text-muted-foreground leading-snug">
+                  <Lightbulb className="w-4 h-4 text-clay shrink-0 mt-0.5" /> {o.feedback}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {answered && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-3">
+          <p className="flex items-start gap-2 text-[15px] text-evergreen-hi leading-snug">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> {step.options[pickedGood].feedback}
+          </p>
+          <div className="rounded-2xl border border-border bg-background px-5 py-3.5 text-[15px] text-foreground/90 leading-relaxed">
+            {step.mentorAnswer}
+          </div>
+          <ContinueButton onClick={() => onDone({ chosenLabel: step.options[pickedGood].label, firstTry: tried.size === 0 })} />
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+/** 'quiz' — pergunta objetiva com dica e validação da IA. */
+function QuizCard({
+  step,
+  counter,
+  onDone,
+}: {
+  step: Extract<Step, { kind: 'quiz' }>;
+  counter: { n: number; of: number } | null;
+  onDone: (rec: AnswerRecord) => void;
+}) {
+  const colors = STAGES[step.stage].colors;
+  const [tried, setTried] = useState<Set<number>>(new Set());
+  const [correctPick, setCorrectPick] = useState<number | null>(null);
+  const [hintOpen, setHintOpen] = useState(false);
+  const answered = correctPick !== null;
+
+  function pick(i: number) {
+    if (answered) return;
+    if (step.options[i].correct) setCorrectPick(i);
+    else setTried((prev) => new Set(prev).add(i));
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border border-border bg-card p-5 md:p-6"
+      data-testid="active-quiz"
+    >
+      <ActiveEyebrow icon={Target} label="Valide seu conhecimento" counter={counter} colors={colors} />
+      <h2 className="font-display font-bold text-xl text-foreground mt-4 leading-snug">{step.question}</h2>
+
+      {step.hint && !answered && (
+        <div className="mt-2.5">
+          {hintOpen ? (
+            <p className="flex items-start gap-1.5 text-sm text-clay leading-snug">
+              <Lightbulb className="w-4 h-4 shrink-0 mt-0.5" /> {step.hint}
+            </p>
+          ) : (
+            <button
+              onClick={() => setHintOpen(true)}
+              data-testid="quiz-hint"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-clay transition-colors"
+            >
+              <Lightbulb className="w-4 h-4" /> Pedir dica
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 space-y-2.5">
+        {step.options.map((o, i) => {
+          const wasTried = tried.has(i);
+          const isCorrectPick = correctPick === i;
+          return (
+            <button
+              key={i}
+              onClick={() => pick(i)}
+              disabled={answered || wasTried}
+              data-testid="quiz-card-option"
+              className={`w-full text-left rounded-2xl border px-4 py-3.5 text-[15px] leading-snug transition-colors flex items-start gap-2.5 ${
+                isCorrectPick
+                  ? 'border-evergreen bg-evergreen-soft text-foreground'
+                  : wasTried
+                    ? 'border-destructive/50 bg-destructive/10 text-muted-foreground'
+                    : 'border-border bg-background text-foreground hover:border-evergreen/50'
+              }`}
+            >
+              {isCorrectPick ? (
+                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-evergreen-hi" />
+              ) : wasTried ? (
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-destructive/80" />
+              ) : (
+                <span className="w-4 h-4 mt-0.5 shrink-0 rounded-full border border-muted-foreground/40" />
+              )}
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tried.size > 0 && !answered && (
+        <p className="mt-3 text-sm text-muted-foreground">Errar também nivela — tente de novo.</p>
+      )}
+
+      {answered && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-3">
+          <div className="rounded-2xl border border-evergreen/30 bg-evergreen-soft/60 px-5 py-3.5 text-[15px] text-foreground/90 leading-relaxed">
+            {step.explain}
+          </div>
+          <ContinueButton onClick={() => onDone({ chosenLabel: step.options[correctPick].label, firstTry: tried.size === 0 })} />
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+/** 'compare' — interseções reveladas uma a uma. */
+function CompareCard({
+  step,
+  onDone,
+}: {
+  step: Extract<Step, { kind: 'compare' }>;
+  onDone: (rec: AnswerRecord) => void;
+}) {
+  const colors = STAGES[step.stage].colors;
+  const [revealed, setRevealed] = useState(0);
+  const allRevealed = revealed >= step.rows.length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border border-border bg-card p-5 md:p-6"
+      data-testid="active-compare"
+    >
+      <ActiveEyebrow icon={ArrowLeftRight} label="Interseções" colors={colors} />
+      <h2 className="font-display font-bold text-xl text-foreground mt-4 leading-snug">{step.title}</h2>
+      <p className="text-[15px] text-muted-foreground mt-1.5">{step.intro}</p>
+
+      <div className="mt-4">
+        <CompareTable rows={step.rows.slice(0, revealed)} />
+      </div>
+
+      {!allRevealed ? (
+        <button
+          onClick={() => setRevealed((r) => r + 1)}
+          data-testid="compare-reveal"
+          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi text-[15px] font-medium hover:border-evergreen transition-colors"
+        >
+          Revelar interseção {revealed + 1} de {step.rows.length}
+        </button>
+      ) : (
+        <ContinueButton onClick={() => onDone({ firstTry: true })} />
+      )}
+    </motion.div>
+  );
+}
+
+function MentorCard({
+  step,
+  onDone,
+}: {
+  step: Extract<Step, { kind: 'mentor' }>;
+  onDone: (rec: AnswerRecord) => void;
+}) {
+  return (
+    <div data-testid="active-mentor">
+      <MentorBubble text={step.text} bullets={step.bullets} />
+      <div className="max-w-[85%] pl-11">
+        <ContinueButton onClick={() => onDone({ firstTry: true })} />
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── Progress header ─────────────────────────────── */
+
+function StageProgress({ index }: { index: number }) {
+  const perStage = [0, 1, 2].map((s) => STEPS.filter((st) => st.stage === s).length);
+  const doneBefore = [0, 1, 2].map((s) => STEPS.slice(0, index).filter((st) => st.stage === s).length);
+  const currentStage = index < STEPS.length ? STEPS[index].stage : 2;
+
+  return (
+    <div className="flex items-stretch gap-2" data-testid="stage-progress" aria-label="Progresso da jornada">
+      {STAGES.map((meta, s) => {
+        const Icon = meta.icon;
+        const pct = perStage[s] > 0 ? Math.round((doneBefore[s] / perStage[s]) * 100) : 0;
+        const active = s === currentStage && index < STEPS.length;
+        const complete = doneBefore[s] >= perStage[s];
+        return (
+          <div key={s} className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Icon className={`w-3.5 h-3.5 shrink-0 ${active || complete ? meta.colors.text : 'text-muted-foreground/60'}`} />
+              <span
+                className={`font-mono text-[11px] uppercase tracking-wider truncate ${
+                  active ? meta.colors.text : complete ? 'text-foreground/70' : 'text-muted-foreground/60'
+                }`}
+              >
+                {s + 1}. {meta.name}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              {/* CSS transition (not framer-motion): width animations must survive
+                  rapid successive re-renders without an animation loop. */}
+              <div
+                className={`h-full rounded-full transition-[width] duration-500 ${meta.colors.bar} ${complete ? 'opacity-70' : ''}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ───────────────────────────── Intro screen ─────────────────────────────── */
+
+/**
+ * A abertura simula o momento zero da experiência: o usuário escreve um
+ * PROMPT sobre qualquer tema (aqui pré-preenchido com o exemplo real de um
+ * colega — editais) + observações de contexto, e vê ANTES de começar as 3
+ * etapas da jornada, cada uma com cor própria e o porquê de existir.
+ */
+function IntroScreen({
+  prompt,
+  obs,
+  onPrompt,
+  onObs,
+  onStart,
+}: {
+  prompt: string;
+  obs: string;
+  onPrompt: (v: string) => void;
+  onObs: (v: string) => void;
+  onStart: () => void;
+}) {
+  return (
+    <div className="min-h-screen bg-background" data-testid="journey-intro">
+      <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
+        <div className="text-center">
+          <p className="font-mono text-xs uppercase tracking-wider text-evergreen-hi">
+            Experiência conversacional guiada por IA
+          </p>
+          <h1 className="font-display font-bold text-3xl md:text-4xl text-foreground mt-2">
+            Sobre o que você quer aprender hoje?
+          </h1>
+          <p className="text-base text-muted-foreground mt-3 max-w-xl mx-auto">
+            Qualquer tema vira uma jornada guiada — a IA nivela, valida e te ensina a perguntar.
+          </p>
+        </div>
+
+        {/* ── Prompt simulado ── */}
+        <div className="rounded-3xl border border-border bg-card p-5 md:p-6 space-y-5">
+          <label className="block">
+            <span className="font-mono text-xs uppercase tracking-wider text-evergreen-hi">Seu prompt</span>
+            <textarea
+              value={prompt}
+              onChange={(e) => onPrompt(e.target.value)}
+              rows={2}
+              data-testid="intro-prompt"
+              className="mt-2 w-full rounded-2xl border border-border bg-background p-4 text-[15px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+            />
+            <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground leading-snug">
+              <Lightbulb className="w-4 h-4 text-evergreen-hi shrink-0 mt-0.5" />
+              Nomeie o tema e seu ponto de partida — pergunta aberta &gt; pedido de tarefa.
+            </p>
+          </label>
+
+          <label className="block">
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              Observações para o mentor <span className="normal-case">(opcional)</span>
+            </span>
+            <textarea
+              value={obs}
+              onChange={(e) => onObs(e.target.value)}
+              rows={2}
+              placeholder="Seu nível, seu objetivo, seu contexto…"
+              data-testid="intro-obs"
+              className="mt-2 w-full rounded-2xl border border-border bg-background p-4 text-[15px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+            />
+            <p className="mt-2 text-sm text-muted-foreground leading-snug">
+              Seu contexto calibra o nível das perguntas.
+            </p>
+          </label>
+
+          <p className="flex items-start gap-1.5 text-sm text-muted-foreground border-t border-border/60 pt-4 leading-snug">
+            <Sparkles className="w-4 h-4 text-evergreen-hi shrink-0 mt-0.5" />
+            Protótipo: prompt de exemplo do time. A experiência serve a qualquer tema.
+          </p>
+        </div>
+
+        {/* ── As 3 etapas, cada uma com sua cor ── */}
+        <div>
+          <h2 className="font-display font-bold text-xl text-foreground text-center">
+            Sua jornada terá 3 etapas
+          </h2>
+          <p className="text-base text-muted-foreground text-center mt-1.5">
+            O mentor pergunta, valida e direciona — você constrói o entendimento.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3" data-testid="intro-stages">
+            {STAGES.map((meta, i) => {
+              const Icon = meta.icon;
+              return (
+                <div key={i} className={`rounded-3xl border ${meta.colors.border} ${meta.colors.bg} p-5`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`font-mono text-xs uppercase tracking-wider ${meta.colors.text}`}>
+                      Etapa {i + 1}
+                    </span>
+                    <Icon className={`w-4 h-4 ${meta.colors.text}`} />
+                  </div>
+                  <h3 className={`font-display font-bold text-lg mt-2 ${meta.colors.text}`}>{meta.longName}</h3>
+                  <p className="text-[15px] text-foreground/85 mt-2 leading-relaxed">{meta.desc}</p>
+                  <p className="text-sm text-muted-foreground mt-3 flex items-start gap-1.5 leading-snug">
+                    <Lightbulb className={`w-4 h-4 shrink-0 mt-0.5 ${meta.colors.text}`} />
+                    {meta.why}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            onClick={onStart}
+            disabled={prompt.trim().length === 0}
+            data-testid="start-journey"
+            className="inline-flex items-center gap-2 h-12 px-8 rounded-full bg-evergreen text-obsidiana font-display font-semibold text-[15px] uppercase tracking-wide hover:bg-evergreen-hi transition-colors disabled:opacity-40"
+          >
+            Começar jornada <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────── The journey ──────────────────────────────── */
+
+function MentorFlowPrototype() {
+  const [phase, setPhase] = useState<'intro' | 'journey'>('intro');
+  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
+  const [obs, setObs] = useState(SAMPLE_OBS);
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
+  const [run, setRun] = useState(0);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  const finished = index >= STEPS.length;
+  const xp = useMemo(() => answers.reduce((acc, rec, i) => acc + xpFor(STEPS[i], rec), 0), [answers]);
+  const goodQuestions = answers.filter((rec, i) => STEPS[i].kind === 'ask' && rec.firstTry).length;
+  const askTotal = STEPS.filter((s) => s.kind === 'ask').length;
+  const quizFirstTry = answers.filter((rec, i) => STEPS[i].kind === 'quiz' && rec.firstTry).length;
+  const quizTotal = STEPS.filter((s) => s.kind === 'quiz').length;
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [index]);
+
+  function complete(rec: AnswerRecord) {
+    setAnswers((prev) => [...prev, rec]);
+    setIndex((i) => i + 1);
+  }
+
+  function restart() {
+    setIndex(0);
+    setAnswers([]);
+    setRun((r) => r + 1);
+    setPhase('intro');
+  }
+
+  const current = finished ? null : STEPS[index];
+  const counter = finished ? null : QUESTION_NUMBERS[index];
+
+  if (phase === 'intro') {
+    return (
+      <IntroScreen
+        prompt={prompt}
+        obs={obs}
+        onPrompt={setPrompt}
+        onObs={setObs}
+        onStart={() => setPhase('journey')}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* ── Chrome: X + 3-stage progress + XP ── */}
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-4">
+          <button aria-label="Sair" className="p-2 -ml-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-card transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <StageProgress index={index} />
+          </div>
+          <span
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-evergreen/30 bg-evergreen-soft font-mono text-sm tabular-nums text-evergreen-hi shrink-0"
+            data-testid="xp-chip"
+          >
+            <Zap className="w-3.5 h-3.5" /> {xp} XP
+          </span>
+        </div>
+      </header>
+
+      {/* ── Chat feed ── */}
+      <main className="flex-1">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+          <div className="text-center">
+            <p className="font-mono text-xs uppercase tracking-wider text-evergreen-hi">Jornada inquisitiva</p>
+            <h1 className="font-display font-bold text-2xl md:text-3xl text-foreground mt-1">
+              Editais de fomento, de fora pra dentro
+            </h1>
+          </div>
+
+          {/* Eco do prompt do usuário — a jornada nasce dele. */}
+          <div className="space-y-1.5" data-testid="prompt-echo">
+            <UserBubble text={prompt} />
+            {obs.trim().length > 0 && (
+              <p className="text-right text-sm text-muted-foreground pr-1">Observações: {obs}</p>
+            )}
+          </div>
+
+          {/* Transcript of completed steps (derived, replay-safe). */}
+          {STEPS.slice(0, index).map((step, i) => {
+            const rec = answers[i];
+            const firstOfStage = i === 0 || STEPS[i - 1].stage !== step.stage;
+            return (
+              <div key={`${run}-${i}`} className="space-y-4">
+                {firstOfStage && <StageDivider stage={step.stage} />}
+                {step.kind === 'mentor' && <MentorBubble text={step.text} bullets={step.bullets} />}
+                {step.kind === 'ask' && rec && (
+                  <>
+                    <MentorBubble text={step.prompt} />
+                    <UserBubble text={rec.chosenLabel ?? ''} />
+                    <MentorBubble tone="praise" text={step.mentorAnswer} />
+                  </>
+                )}
+                {step.kind === 'quiz' && rec && (
+                  <>
+                    <MentorBubble text={step.question} />
+                    <UserBubble text={rec.chosenLabel ?? ''} />
+                    <MentorBubble tone="praise" text={step.explain} />
+                  </>
+                )}
+                {step.kind === 'compare' && (
+                  <>
+                    <MentorBubble text={step.intro} />
+                    <CompareTable rows={step.rows} />
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Active step. */}
+          {current && (
+            <div key={`${run}-active-${index}`} className="space-y-4">
+              {(index === 0 || STEPS[index - 1].stage !== current.stage) && <StageDivider stage={current.stage} />}
+              {current.kind === 'mentor' && <MentorCard step={current} onDone={complete} />}
+              {current.kind === 'ask' && <AskCard step={current} counter={counter} onDone={complete} />}
+              {current.kind === 'quiz' && <QuizCard step={current} counter={counter} onDone={complete} />}
+              {current.kind === 'compare' && <CompareCard step={current} onDone={complete} />}
+            </div>
+          )}
+
+          {/* Completion. */}
+          {finished && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-3xl border border-evergreen/30 bg-card p-8 text-center"
+              data-testid="journey-complete"
+            >
+              <Trophy className="w-12 h-12 text-evergreen-hi mx-auto" />
+              <h2 className="font-display font-bold text-2xl md:text-3xl text-foreground mt-4">Jornada concluída!</h2>
+              <p className="text-base text-muted-foreground mt-1.5">
+                3 etapas vencidas escolhendo as perguntas certas.
+              </p>
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-border bg-background py-4">
+                  <p className="font-mono text-3xl tabular-nums text-evergreen-hi">{xp}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1.5">XP total</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background py-4">
+                  <p className="font-mono text-3xl tabular-nums text-foreground">{goodQuestions}/{askTotal}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1.5">Boas perguntas de 1ª</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background py-4">
+                  <p className="font-mono text-3xl tabular-nums text-foreground">{quizFirstTry}/{quizTotal}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1.5">Acertos de 1ª</p>
+                </div>
+              </div>
+              {/* ── Resumo do fluxo (1 síntese por etapa, na cor da etapa) ── */}
+              <div className="mt-8 text-left" data-testid="journey-summary">
+                <h3 className="font-display font-semibold text-base uppercase tracking-wide text-foreground text-center">
+                  Resumo do fluxo
+                </h3>
+                <div className="mt-4 space-y-3">
+                  {STAGE_SUMMARIES.map((text, i) => {
+                    const meta = STAGES[i];
+                    const Icon = meta.icon;
+                    return (
+                      <div key={i} className={`rounded-2xl border ${meta.colors.border} ${meta.colors.bg} p-4 flex gap-3`}>
+                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${meta.colors.text}`} />
+                        <div>
+                          <p className={`font-mono text-xs uppercase tracking-wider ${meta.colors.text}`}>
+                            Etapa {i + 1} · {meta.longName}
+                          </p>
+                          <p className="text-[15px] text-foreground/90 mt-1.5 leading-relaxed">{text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Vocabulário essencial do tema ── */}
+              <div className="mt-8 text-left" data-testid="journey-glossary">
+                <h3 className="font-display font-semibold text-base uppercase tracking-wide text-foreground text-center">
+                  Vocabulário essencial · Editais
+                </h3>
+                <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                  {GLOSSARY.map(({ term, def }) => (
+                    <div key={term} className="rounded-xl border border-border bg-background px-4 py-3">
+                      <dt className="text-[15px] font-medium text-evergreen-hi">{term}</dt>
+                      <dd className="text-sm text-muted-foreground mt-1 leading-relaxed">{def}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              <button
+                onClick={restart}
+                className="mt-8 inline-flex items-center gap-2 h-11 px-6 rounded-full border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" /> Refazer do início
+              </button>
+            </motion.div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+/* ────────────────────────────────── Meta ─────────────────────────────────── */
+
+const meta: Meta = {
+  title: 'Design Playground/Fluxo Mentor IA',
+  parameters: { layout: 'fullscreen', controls: { disable: true } },
+};
+export default meta;
+
+export const Prototipo: StoryObj = {
+  name: 'Protótipo — Editais de fomento',
+  render: () => <MentorFlowPrototype />,
+};
