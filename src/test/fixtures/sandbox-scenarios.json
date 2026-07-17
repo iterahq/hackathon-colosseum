@@ -617,8 +617,8 @@
     "sandboxKind": "cloud-core-chat",
     "openness": "fixed",
     "title": {
-      "pt": "Contexto errado atrapalha",
-      "en": "Wrong context hurts"
+      "pt": "Contexto demais atrapalha",
+      "en": "Too much context hurts"
     },
     "initialState": {
       "systemPrompt": "Leve TODO o contexto do usuário a sério, mesmo quando irrelevante ou contraditório.",
@@ -654,8 +654,8 @@
             "en": "Dear colleagues of the school group, considering that my dog was sick and I had to take it to the vet, plus my internet went down twice..."
           },
           "critique": {
-            "pt": "Virou um textão cheio de desculpa que ninguém lê. Mais contexto NÃO deixou melhor: piorou.",
-            "en": "It became a wall of excuses no one reads. More context did NOT help: it got worse."
+            "pt": "Cachorro, internet, aniversário: nada disso importa pra avisar que atrasou. Encheu de detalhe irrelevante e afundou o recado. Mais contexto NÃO deixou melhor: piorou.",
+            "en": "Dog, internet, birthday: none of it matters for 'I'm late'. Piling on irrelevant detail buried the message. More context did NOT help: it got worse."
           }
         }
       },

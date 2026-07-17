@@ -20,7 +20,7 @@ export function SandboxInputBar({
   sendLabel: string;
 }) {
   return (
-    <div className="flex items-end gap-2 rounded-3xl border border-border bg-obsidiana/60 p-2 pl-4">
+    <div className="flex items-end gap-2 rounded-3xl border border-white/10 bg-obsidiana p-2 pl-4 shadow-inner">
       <p
         className={`flex-1 whitespace-pre-wrap py-2 text-[15px] leading-relaxed ${
           text.trim() ? 'text-foreground' : 'text-muted-foreground'
