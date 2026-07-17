@@ -13,7 +13,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, ResultBanner, SubmitButton } from './parts';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
@@ -54,6 +54,10 @@ export function SingleChoiceActivity({
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
   const shown = submitted || reveal;
+  // Only meaningful once ACTUALLY submitted this session — feeds the
+  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  const isCorrect = selected === spec?.correct_option_id;
+  const gradeResult = submitted ? isCorrect : undefined;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída" step). Grade off the CURRENT selection — `isCorrect`
@@ -61,7 +65,7 @@ export function SingleChoiceActivity({
   function handleSubmit() {
     if (submitted || isDone) return;
     setSubmitted(true);
-    onComplete(selected === spec?.correct_option_id);
+    onComplete(isCorrect);
   }
 
   return (
@@ -101,8 +105,11 @@ export function SingleChoiceActivity({
         )}
       </div>
 
+      {/* BOTTOM ZONE — feedback right above the action (P3). */}
+      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
+        correct={gradeResult}
         disabled={selected === null || reveal}
         onSubmit={handleSubmit}
         testId="single-choice-submit"

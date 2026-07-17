@@ -12,7 +12,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, ResultBanner, SubmitButton } from './parts';
 
 export function OrderActivity({
   activity,
@@ -55,12 +55,17 @@ export function OrderActivity({
     });
   }
 
+  // Only meaningful once ACTUALLY submitted this session — feeds the
+  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  const isOrderCorrect = order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
+  const gradeResult = submitted ? isOrderCorrect : undefined;
+
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
   // CURRENT order (the old submitted-gated flag isn't set yet at click time).
   function handleSubmit() {
     if (locked) return;
     setSubmitted(true);
-    onComplete(order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]));
+    onComplete(isOrderCorrect);
   }
 
   return (
@@ -134,8 +139,11 @@ export function OrderActivity({
         {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
       </ol>
 
+      {/* BOTTOM ZONE — feedback right above the action (P3). */}
+      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
+        correct={gradeResult}
         disabled={order.length === 0 || reveal}
         onSubmit={handleSubmit}
         testId="order-submit"
