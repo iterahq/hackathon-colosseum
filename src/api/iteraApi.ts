@@ -121,11 +121,29 @@ export function judge(
  * The AI responder result — BYOC ("Bring Your Own Context") step 1.
  * `responder_available:false` means the model degraded server-side and
  * `response` is a graceful fallback message (the call is still HTTP 200).
+ *
+ * `context_good` / `reason` (OPTIONAL): the itera-api `/v1/embed/respond`
+ * contract is being extended (parallel track) to return a deterministic
+ * ground-truth verdict — established ONCE, at generation time, alongside the
+ * response itself — instead of the player having to make a SECOND, separate
+ * `/v1/embed/judge` call at step 2. That second call is what caused the
+ * "contradictory feedback" bug (a red FAIL header next to a judge `feedback`
+ * string that praised a correct rating): the judge's own `passed` boolean and
+ * its free-form `feedback` text came from the same LLM call but could
+ * disagree with each other. Consuming `context_good` sidesteps that — see
+ * `useSandboxScenarioLive.rate()`. Fields are OPTIONAL and consumed
+ * DEFENSIVELY (`typeof === 'boolean'`) since this contract may not be live at
+ * every deploy — older/unupgraded responses simply omit them and the player
+ * falls back to the pre-existing judge-based path, unchanged.
  */
 export interface RespondResult {
   response: string;
   model: string;
   responder_available: boolean;
+  /** Deterministic ground truth: did the learner's context produce a good response? */
+  context_good?: boolean;
+  /** Human-readable WHY behind `context_good`, generated alongside it. */
+  reason?: string;
 }
 
 /**

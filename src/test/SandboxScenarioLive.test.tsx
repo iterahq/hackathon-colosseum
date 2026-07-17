@@ -56,6 +56,16 @@ function renderLive(onComplete = vi.fn(), activity = makeActivity()) {
 function mockRespond(response: string, available = true) {
   respond.mockResolvedValueOnce({ response, model: 'test/model', responder_available: available });
 }
+/** A respond() result that ALSO carries the deterministic ground-truth fields. */
+function mockRespondWithContextGood(response: string, contextGood: boolean, reason: string, available = true) {
+  respond.mockResolvedValueOnce({
+    response,
+    model: 'test/model',
+    responder_available: available,
+    context_good: contextGood,
+    reason,
+  });
+}
 function mockJudge(passed: boolean, available = true) {
   judge.mockResolvedValueOnce({
     result_id: 'r',
@@ -238,6 +248,97 @@ describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => 
     // The learner can still rate; the flow continues.
     const outcome = await rateAndSettle('bad');
     expect(outcome).toBeInTheDocument();
+  }, 20000);
+});
+
+describe('SandboxScenarioLiveActivity — context_good deterministic ground truth (#5 fix)', () => {
+  // Regression coverage for the bug Tainan flagged: a red "NÃO FOI DESSA VEZ"
+  // header next to judge `feedback` text that praised a CORRECT judgment. The
+  // fix consumes `context_good` (established ONCE, at generation time,
+  // alongside `reason`) as the ground truth instead of making a second
+  // `/v1/embed/judge` call whose `passed` boolean could disagree with its own
+  // `feedback` text. These tests assert the JUDGE NETWORK CALL IS SKIPPED
+  // entirely when `context_good` is present, and that the header/outcome is
+  // fully consistent with it — no more contradiction is possible by
+  // construction (single source of truth).
+
+  it('context_good:true + rated good → PASS, judge() never called, reason surfaces as feedback', async () => {
+    mockRespondWithContextGood('A precise, on-topic answer.', true, 'The response directly answers the specific context given.');
+    const onComplete = renderLive();
+
+    await sendInput('Rich, specific context.');
+    const outcome = await rateAndSettle('good');
+
+    expect(outcome.getAttribute('data-outcome')).toBe('pass');
+    expect(outcome.getAttribute('data-judge-verdict')).toBe('good');
+    expect(outcome.getAttribute('data-learner-rating')).toBe('good');
+    expect(screen.getByTestId('byoc-feedback')).toHaveTextContent(
+      'The response directly answers the specific context given.',
+    );
+    // The deterministic path never hits the network judge — no possibility
+    // of the passed/feedback pair disagreeing with each other.
+    expect(judge).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('byoc-continue'));
+    expect(onComplete).toHaveBeenCalledWith(true);
+  }, 20000);
+
+  it('context_good:false + rated good → FAIL (header/reason consistent, no contradiction possible)', async () => {
+    mockRespondWithContextGood('A vague, generic non-answer.', false, 'The response ignores the specific context and stays generic.');
+    renderLive();
+
+    await sendInput('.');
+    const outcome = await rateAndSettle('good');
+
+    expect(outcome.getAttribute('data-outcome')).toBe('fail');
+    expect(outcome.getAttribute('data-judge-verdict')).toBe('bad');
+    expect(screen.getByTestId('byoc-feedback')).toHaveTextContent(
+      'The response ignores the specific context and stays generic.',
+    );
+    expect(judge).not.toHaveBeenCalled();
+  }, 20000);
+
+  it('context_good:false + rated bad (learner correctly judged a bad response) → PASS', async () => {
+    mockRespondWithContextGood('A vague, generic non-answer.', false, 'Generic, does not use the given context.');
+    renderLive();
+
+    await sendInput('.');
+    const outcome = await rateAndSettle('bad');
+
+    expect(outcome.getAttribute('data-outcome')).toBe('pass');
+    expect(judge).not.toHaveBeenCalled();
+  }, 20000);
+
+  it('retry after context_good path re-uses the SAME ground truth (no second respond/judge call)', async () => {
+    mockRespondWithContextGood('A precise, on-topic answer.', true, 'Directly on-topic.');
+    renderLive();
+
+    await sendInput('rich context');
+    let outcome = await rateAndSettle('bad');
+    expect(outcome.getAttribute('data-outcome')).toBe('fail');
+
+    fireEvent.click(screen.getByTestId('byoc-retry'));
+    await waitFor(() => expect(screen.getByTestId('byoc-eval')).toBeInTheDocument());
+    outcome = await rateAndSettle('good');
+    expect(outcome.getAttribute('data-outcome')).toBe('pass');
+    // Neither respond() nor judge() fired again for the retry — same response,
+    // same ground truth, purely a client-side re-comparison.
+    expect(respond).toHaveBeenCalledTimes(1);
+    expect(judge).not.toHaveBeenCalled();
+  }, 20000);
+
+  it('context_good ABSENT (legacy respond() shape) falls back to the judge()-based path unchanged', async () => {
+    // No context_good/reason fields at all — simulates an itera-api deploy
+    // that hasn't shipped the contract extension yet.
+    mockRespond('A precise, on-topic answer.', true);
+    mockJudge(true);
+    renderLive();
+
+    await sendInput('rich context');
+    const outcome = await rateAndSettle('good');
+
+    expect(outcome.getAttribute('data-outcome')).toBe('pass');
+    expect(judge).toHaveBeenCalledTimes(1);
   }, 20000);
 });
 

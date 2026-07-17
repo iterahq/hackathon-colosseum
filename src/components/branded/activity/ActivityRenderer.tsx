@@ -44,7 +44,7 @@ import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
 import { SandboxScenarioActivity } from './SandboxScenarioActivity';
-import { SubmitButton } from './parts';
+import { ResultBanner, SubmitButton } from './parts';
 
 export function ActivityRenderer({
   activity,
@@ -423,6 +423,10 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
 
   const correctIdx = options.findIndex((o) => o.isCorrect);
   const isDone = activity.status === 'done';
+  // Only meaningful once ACTUALLY submitted this session — feeds the
+  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  const isQuizCorrect = selected === correctIdx;
+  const gradeResult = submitted ? isQuizCorrect : undefined;
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída"). Grade off the CURRENT selection — the
@@ -430,7 +434,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   function handleSubmit() {
     if (submitted || isDone) return;
     setSubmitted(true);
-    onComplete(selected === correctIdx);
+    onComplete(isQuizCorrect);
   }
 
   // Small green-mono label above the question. Prefer the spec's own label;
@@ -502,8 +506,11 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         </p>
       )}
 
+      {/* BOTTOM ZONE — feedback right above the action (P3). */}
+      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
+        correct={gradeResult}
         disabled={selected === null}
         onSubmit={handleSubmit}
         testId="quiz-submit"

@@ -4,8 +4,9 @@
  * ADDITIVE sibling of Samuel's deterministic `SandboxScenarioActivity`. It does
  * NOT modify his component, hook, or the `@iterahq/activity-spec` runtime — it
  * REUSES his presentational primitives (`ActivityShell`, `SandboxChatLog`,
- * `SandboxBubble`, `useAssistantStream`) and the shared `Message` type, and only
- * ADDS the real-LLM behavior via `useSandboxScenarioLive`.
+ * `SandboxBubble`, `useAssistantStream`, and now `SandboxWindow`/
+ * `SandboxClearButton`) and the shared `Message` type, and only ADDS the
+ * real-LLM behavior via `useSandboxScenarioLive`.
  *
  * Flow (Tainan's BYOC design):
  *   Step 1 — the learner writes their OWN context/input and sends → the REAL AI
@@ -16,9 +17,15 @@
  *            the judge's WHY. A wrong rating can be reconsidered (retry). On a
  *            pass (or an unverifiable judge) an explicit "Continuar" fires
  *            `onComplete(true)`. Honors `reveal` (live-class mode).
+ *
+ * LAYOUT — the same "Cloud Cowork" 3-zone law as the deterministic sibling
+ * (plan 20260717-iterahq-activities-visual-ux-redesign): instruction ABOVE the
+ * window (top zone) → the isolated OS-style window with the transcript AND the
+ * composer INSIDE it (middle zone) → the rating buttons / outcome OUTWARD
+ * below the window, near the action (bottom zone, P3).
  */
 import { useEffect, useState } from 'react';
-import { ArrowUp, CheckCircle2, MessageSquare, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { CheckCircle2, MessageSquare, RotateCcw, Send, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { t, type Locale } from '@iterahq/activity-spec/runtime';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
@@ -26,6 +33,8 @@ import type { Activity } from '@/types/content';
 import { ActivityShell } from '@/components/branded/activity/parts';
 import { SandboxChatLog } from '@/components/branded/activity/sandbox/SandboxChatLog';
 import { SandboxBubble } from '@/components/branded/activity/sandbox/SandboxBubble';
+import { SandboxClearButton } from '@/components/branded/activity/sandbox/SandboxClearButton';
+import { SandboxWindow } from '@/components/branded/activity/sandbox/SandboxWindow';
 import { useAssistantStream } from '@/components/branded/activity/sandbox/useAssistantStream';
 import { useSandboxScenarioLive } from './useSandboxScenarioLive';
 import type { ByocLiveSpec } from './byocLive';
@@ -76,6 +85,8 @@ export function SandboxScenarioLiveActivity({
   const readOnly = reveal || isDone;
   const showContinue = s.won;
   const canSend = input.trim() !== '' && s.phase === 'compose' && !readOnly;
+  const showCompose = s.phase === 'compose' && !readOnly;
+  const showEval = s.phase === 'evaluate' && !readOnly && streamedOnce && !stream.active;
 
   function doSend() {
     if (!canSend) return;
@@ -86,93 +97,106 @@ export function SandboxScenarioLiveActivity({
 
   return (
     <ActivityShell kind="sandbox_scenario" icon={MessageSquare} label={tr('activity.sandboxScenario')}>
-      <div className="flex h-[68dvh] min-h-[380px] flex-col" data-testid="byoc-live" data-openness="byoc">
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1" data-testid="byoc-scroll">
-          <SandboxChatLog
-            messages={s.messages}
-            streamIndex={stream.streamIndex}
-            dots={stream.dots}
-            revealed={stream.revealed}
-          />
+      <div className="flex flex-col gap-4" data-testid="byoc-live" data-openness="byoc">
+        {/* TOP ZONE — instruction lives OUTSIDE/above the sandbox window (P4c),
+            same law as the deterministic sibling. */}
+        {showCompose && <p className="text-[15px] font-medium text-foreground">{composePrompt}</p>}
+        {showEval && <p className="text-[15px] font-medium text-foreground">{ratePrompt}</p>}
 
-          {/* Step-1 "AI is thinking" — the real responder call is in flight and no
-              assistant message exists yet, so useAssistantStream can't animate it. */}
-          {s.phase === 'responding' && (
-            <div className="pt-3" data-testid="byoc-responding">
-              <SandboxBubble role="assistant" text="" dots />
-            </div>
-          )}
-        </div>
+        {/* MIDDLE ZONE — the isolated "Cloud Cowork" window: transcript AND the
+            composer live INSIDE it, 100% width (P1, P4a/b). */}
+        <SandboxWindow>
+          <div className="h-[40dvh] min-h-[260px] max-h-[420px] overflow-y-auto pr-1" data-testid="byoc-scroll">
+            <SandboxChatLog
+              messages={s.messages}
+              streamIndex={stream.streamIndex}
+              dots={stream.dots}
+              revealed={stream.revealed}
+            />
 
-        <div className="shrink-0 pt-4">
-          {/* Non-fatal degrade note — never hard-blocks the learner. */}
-          {!s.responderAvailable && s.phase !== 'compose' && (
-            <p className="mb-2 text-xs text-muted-foreground" data-testid="byoc-responder-degraded">
-              {tx({ pt: 'A IA respondeu em modo degradado.', en: 'The AI answered in degraded mode.' })}
-            </p>
-          )}
+            {/* Step-1 "AI is thinking" — the real responder call is in flight and no
+                assistant message exists yet, so useAssistantStream can't animate it. */}
+            {s.phase === 'responding' && (
+              <div className="pt-3" data-testid="byoc-responding">
+                <SandboxBubble role="assistant" text="" dots />
+              </div>
+            )}
+          </div>
 
-          {/* Compose (step 1) */}
-          {s.phase === 'compose' && !readOnly && (
-            <div className="flex flex-col gap-3">
-              <p className="text-[15px] font-medium text-foreground">{composePrompt}</p>
-              <div className="flex items-end gap-2 rounded-3xl border border-white/10 bg-obsidiana p-2 pl-4 shadow-inner">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  // Enter (without Shift) submits AND clears the field (doSend
-                  // clears via setInput('')); Shift+Enter keeps the multiline
-                  // newline. `isComposing` guards IME composition so confirming
-                  // a candidate with Enter never submits mid-composition.
-                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    doSend();
-                  }
-                }}
-                rows={2}
-                placeholder={placeholder}
-                data-testid="byoc-input"
-                className="flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
-              />
-              <button
-                type="button"
-                disabled={!canSend}
-                onClick={doSend}
-                data-testid="byoc-send"
-                aria-label={tx({ pt: 'Enviar', en: 'Send' })}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-              >
-                <ArrowUp className="h-5 w-5" />
-              </button>
+          {showCompose && (
+            <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-3">
+              <div className="flex justify-end">
+                <SandboxClearButton
+                  onClear={() => setInput('')}
+                  disabled={input.trim() === ''}
+                  label={tx({ pt: 'Limpar', en: 'Clear' })}
+                />
+              </div>
+              <div className="flex w-full items-end gap-2 rounded-3xl border border-white/10 bg-obsidiana p-2 pl-4 shadow-inner">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Enter (without Shift) submits AND clears the field (doSend
+                    // clears via setInput('')); Shift+Enter keeps the multiline
+                    // newline. `isComposing` guards IME composition so confirming
+                    // a candidate with Enter never submits mid-composition.
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      doSend();
+                    }
+                  }}
+                  rows={2}
+                  placeholder={placeholder}
+                  data-testid="byoc-input"
+                  className="flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={!canSend}
+                  onClick={doSend}
+                  data-testid="byoc-send"
+                  aria-label={tx({ pt: 'Enviar', en: 'Send' })}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                >
+                  <Send className="h-5 w-5" />
+                </button>
               </div>
             </div>
+          )}
+        </SandboxWindow>
+
+        {/* BOTTOM ZONE — the rating buttons / settled outcome, right above the
+            action (P2/P3). */}
+        <div className="flex flex-col gap-3">
+          {/* Non-fatal degrade note — never hard-blocks the learner. */}
+          {!s.responderAvailable && s.phase !== 'compose' && (
+            <p className="text-xs text-muted-foreground" data-testid="byoc-responder-degraded">
+              {tx({ pt: 'A IA respondeu em modo degradado.', en: 'The AI answered in degraded mode.' })}
+            </p>
           )}
 
           {/* Evaluate (step 2) — two buttons: good / bad. Held back until the
               streamed response has fully surfaced, so the learner reads the whole
               answer before judging it. */}
-          {s.phase === 'evaluate' && !readOnly && streamedOnce && !stream.active && (
-            <div className="flex flex-col gap-3" data-testid="byoc-eval">
-              <p className="text-[15px] font-medium text-foreground">{ratePrompt}</p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => s.rate('good')}
-                  data-testid="byoc-rate-good"
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-evergreen/50"
-                >
-                  <ThumbsUp className="h-5 w-5 text-menta" /> {goodLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => s.rate('bad')}
-                  data-testid="byoc-rate-bad"
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-destructive/50"
-                >
-                  <ThumbsDown className="h-5 w-5 text-destructive" /> {badLabel}
-                </button>
-              </div>
+          {showEval && (
+            <div className="flex gap-3" data-testid="byoc-eval">
+              <button
+                type="button"
+                onClick={() => s.rate('good')}
+                data-testid="byoc-rate-good"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-evergreen/50"
+              >
+                <ThumbsUp className="h-5 w-5 text-menta" /> {goodLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => s.rate('bad')}
+                data-testid="byoc-rate-bad"
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-destructive/50"
+              >
+                <ThumbsDown className="h-5 w-5 text-destructive" /> {badLabel}
+              </button>
             </div>
           )}
 
@@ -239,7 +263,7 @@ export function SandboxScenarioLiveActivity({
               onClick={() => onComplete(true)}
               data-testid="byoc-continue"
               data-locked={isDone ? 'true' : undefined}
-              className={`mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
+              className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
                 isDone
                   ? 'cursor-default border border-menta/40 bg-menta/15 text-menta'
                   : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'

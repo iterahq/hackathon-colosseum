@@ -25,7 +25,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, ResultBanner, SubmitButton } from './parts';
 
 /** One learner-created pairing, kept in creation order so numbering is stable. */
 interface MadePair {
@@ -156,13 +156,18 @@ export function MatchActivity({
 
   const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
 
+  // Only meaningful once ACTUALLY submitted this session — feeds the
+  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  const isMatchCorrect = pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
+  const gradeResult = submitted ? isMatchCorrect : undefined;
+
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
   // "Marcar como concluída"). Grade off the CURRENT pairs — the submitted-gated
   // result flags aren't set yet at click time.
   function handleSubmit() {
     if (locked) return;
     setSubmitted(true);
-    onComplete(pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect));
+    onComplete(isMatchCorrect);
   }
 
   // Badge state for a paired card (neutral pre-submit; green/red after submit).
@@ -231,8 +236,11 @@ export function MatchActivity({
         </div>
       </div>
 
+      {/* BOTTOM ZONE — feedback right above the action (P3). */}
+      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
+        correct={gradeResult}
         disabled={!canSubmit || reveal}
         onSubmit={handleSubmit}
         testId="match-submit"

@@ -12,7 +12,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, ResultBanner, SubmitButton } from './parts';
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -55,6 +55,11 @@ export function MultiChoiceActivity({
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const isDone = activity.status === 'done';
   const shown = submitted || reveal;
+  // Only meaningful once ACTUALLY submitted this session (never for a merely
+  // -`isDone` render, where `selected` may be empty/unknown) — feeds the
+  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  const isCorrect = sameSet(selected, correctIds);
+  const gradeResult = submitted ? isCorrect : undefined;
 
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -65,7 +70,7 @@ export function MultiChoiceActivity({
   function handleSubmit() {
     if (submitted || isDone) return;
     setSubmitted(true);
-    onComplete(sameSet(selected, correctIds));
+    onComplete(isCorrect);
   }
 
   return (
@@ -116,8 +121,11 @@ export function MultiChoiceActivity({
         )}
       </div>
 
+      {/* BOTTOM ZONE — feedback right above the action (P3). */}
+      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
+        correct={gradeResult}
         disabled={selected.length === 0 || reveal}
         onSubmit={handleSubmit}
         testId="multi-choice-submit"
