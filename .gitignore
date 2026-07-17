@@ -37,3 +37,6 @@ storybook-static
 
 # Graphify cache/output
 /graphify-out/
+
+# E2E proof screenshots (generated)
+e2e-*-proof.png
