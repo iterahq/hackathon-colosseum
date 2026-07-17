@@ -4,6 +4,7 @@ WORKDIR /app
 # .npmrc carries legacy-peer-deps=true — required for `npm ci` to resolve the
 # peer-dep graph cleanly (else ERESOLVE). Must be copied BEFORE npm ci.
 COPY package.json package-lock.json .npmrc ./
+COPY vendor ./vendor
 RUN npm ci
 COPY . .
 # Vite inlines import.meta.env.VITE_* at BUILD time, so these must be build args.
