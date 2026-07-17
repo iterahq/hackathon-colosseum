@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Link2, Check, Square } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Link2, Check, Square, Users, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
 import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
@@ -29,12 +29,9 @@ interface LiveSidebarProps {
 
 /**
  * The single right-hand sidebar for the live class — one panel whose stacked
- * SECTIONS are split by hairlines (not floating cards). Both surfaces render the
- * same component; the `role` decides what shows:
- *   - learner: presence + who's-answered (correctness hidden).
- *   - instructor: + activity stats, speed ranking, and the manage actions
- *     (share link / end) at the foot; the activity-specific sections drop out
- *     during reception.
+ * SECTIONS are split by hairlines. `role` decides what shows: learner sees
+ * presence + who's-answered (correctness hidden); instructor adds activity
+ * stats, speed ranking and the manage actions (share link / end) at the foot.
  */
 export function LiveSidebar({
   role,
@@ -56,11 +53,40 @@ export function LiveSidebar({
   const isInstructor = role === 'instructor';
   const showActivity = isInstructor && hasActivity;
 
+  // On phones the learner's classroom panel is OPTIONAL: it collapses to a
+  // compact bar (few data) so it never eats half the screen from the activity.
+  // Instructor and every `lg` breakpoint keep the full sticky sidebar.
+  const collapsible = !isInstructor;
+  const [open, setOpen] = useState(false);
+  const bodyClass = collapsible
+    ? `min-h-0 divide-y divide-border lg:flex-1 lg:block lg:max-h-none lg:overflow-y-auto ${
+        open ? 'max-h-[45vh] overflow-y-auto' : 'hidden'
+      }`
+    : 'flex-1 min-h-0 lg:overflow-y-auto divide-y divide-border';
+
   return (
     <aside
-      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh pt-12 lg:pt-14"
+      className={`w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-14 ${
+        isInstructor ? 'pt-12' : ''
+      }`}
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
     >
+      {collapsible && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          data-testid="live-sidebar-toggle"
+          className="lg:hidden flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-muted-foreground"
+        >
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            <Users className="w-4 h-4" /> {t('live.sidebar.classroom')}
+            <span className="text-muted-foreground/70">· {t('live.sidebar.online', { count: String(roster.length) })}</span>
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      )}
+
       {/* Pinned top: flow controls + activity stats stay put while the
           participant lists below scroll (so navigation never scrolls away). */}
       {isInstructor && (controls || showActivity) && (
@@ -83,7 +109,7 @@ export function LiveSidebar({
       )}
 
       {/* Scrollable middle: this is where scale lives (many learners). */}
-      <div className="flex-1 min-h-0 lg:overflow-y-auto divide-y divide-border">
+      <div className={bodyClass}>
         <LiveRosterCard bare roster={roster} selfUserId={selfUserId} />
         {(!isInstructor || hasActivity) && (
           <LiveAnswerersCard bare answerers={answerers} hideCorrectness={!isInstructor} />
