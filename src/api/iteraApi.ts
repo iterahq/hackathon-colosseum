@@ -116,3 +116,29 @@ export function judge(
     token
   );
 }
+
+/**
+ * The AI responder result — BYOC ("Bring Your Own Context") step 1.
+ * `responder_available:false` means the model degraded server-side and
+ * `response` is a graceful fallback message (the call is still HTTP 200).
+ */
+export interface RespondResult {
+  response: string;
+  model: string;
+  responder_available: boolean;
+}
+
+/**
+ * BYOC step 1 — the REAL AI responder. POSTs the learner's own input/context to
+ * itera-api `POST /v1/embed/respond` (Phase-1 endpoint, iterahq/itera-api #16)
+ * and returns the model's genuine free-form response. Same DFL-JWT auth as
+ * `judge()`; the server graceful-degrades (never 5xx on a model hiccup). ADDITIVE
+ * — this is a NEW export; nothing existing in this module changes.
+ */
+export function respond(input: string, token: string, system?: string): Promise<RespondResult> {
+  return postJson<RespondResult>(
+    "/v1/embed/respond",
+    { input, ...(system ? { system } : {}) },
+    token
+  );
+}

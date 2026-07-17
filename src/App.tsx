@@ -28,6 +28,9 @@ import EngagementPage from "./pages/admin/EngagementPage";
 import AuthorHomePage from "./pages/author/AuthorHomePage";
 import UnitCanvasPage from "./pages/author/UnitCanvasPage";
 import ActivityTestPage from "./pages/author/ActivityTestPage";
+// ADDITIVE (BYOC live wiring): opt-in sibling of the /test route that exercises
+// the REAL responder+judge live path. Does not replace or alter /test.
+import LiveActivityTestPage from "./pages/author/LiveActivityTestPage";
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
@@ -221,6 +224,19 @@ const App = () => (
                     <RequireAuth>
                       <RequireRole role="author">
                         <ActivityTestPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                {/* ADDITIVE (BYOC live wiring) — opt-in LIVE test route. Same
+                    role gate as /test; mounts the live harness (real
+                    responder+judge). Sibling of /test, not a replacement. */}
+                <Route
+                  path="/author/activities/:activityId/test-live"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="author">
+                        <LiveActivityTestPage />
                       </RequireRole>
                     </RequireAuth>
                   }
