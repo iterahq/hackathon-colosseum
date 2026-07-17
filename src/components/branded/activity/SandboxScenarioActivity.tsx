@@ -6,7 +6,7 @@
  * no service-role: the judge runs in the browser over a local `ChatModel`.
  *
  * Flow: the learner composes a prompt (slots/choices), sends it, then RATES the
- * answer (fraca / mais ou menos / forte). A wrong rating is rejected with a
+ * answer (fraca / forte). A wrong rating is rejected with a
  * critique + retry; a correct one unlocks the next step. Answers never wear a
  * quality badge — judging them is the exercise. When `success` flips true an
  * explicit "Continuar" fires `onComplete(true)`. Honors `reveal` (live mode).

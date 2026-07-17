@@ -51,7 +51,7 @@ async function login(page: Page): Promise<void> {
 }
 
 /** Rate the current evaluate step; assert a wrong pick is rejected before the right one. */
-async function evaluate(page: Page, correct: 'ruim' | 'meia-boca' | 'top', wrong: 'ruim' | 'meia-boca' | 'top') {
+async function evaluate(page: Page, correct: 'ruim' | 'top', wrong: 'ruim' | 'top') {
   await page.locator('[data-testid="sandbox-eval"]').waitFor({ state: 'visible', timeout: 15_000 });
   await page.locator(`[data-testid="sandbox-rate-${wrong}"]`).click();
   await expect(page.locator('[data-testid="sandbox-eval-wrong"]')).toBeVisible({ timeout: 10_000 });

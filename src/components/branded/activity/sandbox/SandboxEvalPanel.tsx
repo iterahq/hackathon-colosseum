@@ -3,7 +3,6 @@ import { t, type I18n, type Locale, type Quality } from '@iterahq/activity-spec/
 
 const RATINGS: { q: Quality; emoji: string; label: I18n }[] = [
   { q: 'ruim', emoji: '👎', label: { pt: 'fraca', en: 'weak' } },
-  { q: 'meia-boca', emoji: '😐', label: { pt: 'mais ou menos', en: 'so-so' } },
   { q: 'top', emoji: '🔥', label: { pt: 'forte', en: 'strong' } },
 ];
 
@@ -13,8 +12,8 @@ const DEFAULT_CRITIQUE: I18n = {
 };
 
 /**
- * The "avaliar" turn: the learner rates the last answer (fraca / mais ou menos /
- * forte). A correct rating advances; a wrong one is rejected with the canned
+ * The "avaliar" turn: the learner rates the last answer (fraca / forte).
+ * A correct rating advances; a wrong one is rejected with the canned
  * critique + a retry, so the student re-judges instead of coasting through.
  */
 export function SandboxEvalPanel({

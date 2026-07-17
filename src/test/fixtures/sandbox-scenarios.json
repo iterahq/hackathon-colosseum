@@ -114,8 +114,8 @@
       {
         "id": "avaliar-vago",
         "prompt": {
-          "pt": "Essa resposta foi fraca, mais ou menos ou forte?",
-          "en": "Was that answer weak, so-so or strong?"
+          "pt": "Essa resposta foi fraca ou forte?",
+          "en": "Was that answer weak or strong?"
         },
         "mode": "evaluate",
         "unlock": {
@@ -444,7 +444,7 @@
       },
       "cannedResults": {
         "sem-exemplo": {
-          "quality": "meia-boca",
+          "quality": "ruim",
           "text": {
             "pt": "Cidade de Deus (2002) é um filme brasileiro dirigido por Fernando Meirelles e Kátia Lund que retrata a vida na favela homônima do Rio de Janeiro entre os anos 60 e 80, acompanhando dois amigos que seguem caminhos opostos. Aclamado pela crítica, foi indicado a quatro Oscars.",
             "en": "City of God (2002) is a Brazilian film by Fernando Meirelles and Kátia Lund depicting life in the Rio favela from the 60s to 80s."
