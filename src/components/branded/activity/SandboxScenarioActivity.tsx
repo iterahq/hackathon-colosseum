@@ -45,77 +45,83 @@ export function SandboxScenarioActivity({
 
   return (
     <ActivityShell kind="sandbox_scenario" icon={MessageSquare} label={tr('activity.sandboxScenario')}>
-      <SandboxChatLog
-        messages={s.model.messages}
-        streamIndex={stream.streamIndex}
-        dots={stream.dots}
-        revealed={stream.revealed}
-        done={s.done}
-        stepLabel={s.currentStep ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}` : undefined}
-        coachPrompt={s.currentStep ? t(s.currentStep.prompt, locale) : undefined}
-        coachHint={s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined}
-      />
-
-      {!s.done && !stream.active && s.mode === 'evaluate' && (
-        <div className="mt-5">
-          <SandboxEvalPanel
-            locale={locale}
-            picked={s.lastEval?.rating}
-            wrong={s.evalWrong}
-            critique={s.critique}
-            onRate={s.rate}
-            onRetry={s.retry}
+      {/* The chat owns a fixed viewport-relative height so its transcript scrolls
+          INSIDE this panel — a long conversation never grows the page's Y-scroll.
+          The composer stays pinned at the bottom like a real chat. */}
+      <div className="flex h-[68dvh] min-h-[380px] flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1" data-testid="sandbox-scroll">
+          <SandboxChatLog
+            messages={s.model.messages}
+            streamIndex={stream.streamIndex}
+            dots={stream.dots}
+            revealed={stream.revealed}
+            done={s.done}
+            stepLabel={s.currentStep ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}` : undefined}
+            coachPrompt={s.currentStep ? t(s.currentStep.prompt, locale) : undefined}
+            coachHint={s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined}
           />
+          {s.done && <SandboxReveal scenario={scenario} locale={locale} lines={s.revealLines} />}
         </div>
-      )}
 
-      {!s.done && !stream.active && s.mode === 'compose' && (
-        <div className="mt-5 flex flex-col gap-3">
-          <SandboxSlotPanel
-            scenario={scenario}
-            model={s.model}
-            locale={locale}
-            visibleSlots={new Set(s.exposedSlotIds)}
-            activeSlots={s.needs.slots}
-            disabled={s.readOnly}
-            onSet={s.onSet}
-          />
-          <SandboxChoiceChips
-            scenario={scenario}
-            model={s.model}
-            locale={locale}
-            visibleChoices={new Set(s.exposedChoiceIds)}
-            disabled={s.readOnly}
-            onChoose={s.onChoose}
-          />
-          <SandboxInputBar
-            text={s.inputText}
-            placeholder={t({ pt: 'escreva seu pedido…', en: 'type your ask…' }, locale)}
-            canSend={s.canSend}
-            onSend={s.send}
-            sendLabel={t({ pt: 'Enviar', en: 'Send' }, locale)}
-          />
+        <div className="shrink-0 pt-4">
+          {!s.done && !stream.active && s.mode === 'evaluate' && (
+            <SandboxEvalPanel
+              locale={locale}
+              picked={s.lastEval?.rating}
+              wrong={s.evalWrong}
+              critique={s.critique}
+              onRate={s.rate}
+              onRetry={s.retry}
+            />
+          )}
+
+          {!s.done && !stream.active && s.mode === 'compose' && (
+            <div className="flex flex-col gap-3">
+              <SandboxSlotPanel
+                scenario={scenario}
+                model={s.model}
+                locale={locale}
+                visibleSlots={new Set(s.exposedSlotIds)}
+                activeSlots={s.needs.slots}
+                disabled={s.readOnly}
+                onSet={s.onSet}
+              />
+              <SandboxChoiceChips
+                scenario={scenario}
+                model={s.model}
+                locale={locale}
+                visibleChoices={new Set(s.exposedChoiceIds)}
+                disabled={s.readOnly}
+                onChoose={s.onChoose}
+              />
+              <SandboxInputBar
+                text={s.inputText}
+                placeholder={t({ pt: 'escreva seu pedido…', en: 'type your ask…' }, locale)}
+                canSend={s.canSend}
+                onSend={s.send}
+                sendLabel={t({ pt: 'Enviar', en: 'Send' }, locale)}
+              />
+            </div>
+          )}
+
+          {showContinue && (
+            <button
+              type="button"
+              onClick={() => onComplete(true)}
+              data-testid="sandbox-continue"
+              data-locked={isDone ? 'true' : undefined}
+              className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
+                isDone
+                  ? 'cursor-default border border-menta/40 bg-menta/15 text-menta'
+                  : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
+              }`}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              {isDone ? tr('activity.done') : tr('activity.continue')}
+            </button>
+          )}
         </div>
-      )}
-
-      {s.done && <SandboxReveal scenario={scenario} locale={locale} lines={s.revealLines} />}
-
-      {showContinue && (
-        <button
-          type="button"
-          onClick={() => onComplete(true)}
-          data-testid="sandbox-continue"
-          data-locked={isDone ? 'true' : undefined}
-          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
-            isDone
-              ? 'cursor-default border border-menta/40 bg-menta/15 text-menta'
-              : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
-          }`}
-        >
-          <CheckCircle2 className="h-4 w-4" />
-          {isDone ? tr('activity.done') : tr('activity.continue')}
-        </button>
-      )}
+      </div>
     </ActivityShell>
   );
 }

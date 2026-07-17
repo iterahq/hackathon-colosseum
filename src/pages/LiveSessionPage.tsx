@@ -190,7 +190,7 @@ export default function LiveSessionPage() {
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
-          <div className="max-w-2xl mx-auto">
+          <div className={`mx-auto ${current?.kind === 'sandbox_scenario' ? 'max-w-4xl' : 'max-w-2xl'}`}>
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
