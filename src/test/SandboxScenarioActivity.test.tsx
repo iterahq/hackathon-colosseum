@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
@@ -29,7 +29,14 @@ function renderActivity(activity: Activity, onComplete = vi.fn()) {
   return onComplete;
 }
 
+/** Send the composed prompt, then wait for the typewriter stream to finish so the eval panel appears. */
+async function send() {
+  fireEvent.click(screen.getByTestId('sandbox-send'));
+  await waitFor(() => expect(screen.getByTestId('sandbox-rate-ruim')).toBeInTheDocument(), { timeout: 5000 });
+}
+
 describe('SandboxScenarioActivity', () => {
+
   it('the shared schema accepts a valid scenario and rejects a broken one', () => {
     expect(safeParseActivitySpec('sandbox_scenario', c1).success).toBe(true);
     expect(safeParseActivitySpec('sandbox_scenario', { id: 'x' }).success).toBe(false);
@@ -43,19 +50,19 @@ describe('SandboxScenarioActivity', () => {
   it('dispatches to the sandbox shell and gates "Continuar" until success', () => {
     renderActivity(makeActivity(c1));
     expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('sandbox_scenario');
-    expect((screen.getByTestId('sandbox-continue') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
   });
 
-  it('runs c1 to success and fires onComplete(true)', () => {
+  it('runs c1 to success and fires onComplete(true)', async () => {
     const onComplete = renderActivity(makeActivity(c1));
 
     // Step 1: send the base prompt as-is (weak answer).
-    fireEvent.click(screen.getByTestId('sandbox-send'));
+    await send();
     // Step 2: rate the weak answer correctly → advances.
     fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
     // Step 3: add the context chip and send again (strong answer).
     fireEvent.click(screen.getByText(/redação de escola/i));
-    fireEvent.click(screen.getByTestId('sandbox-send'));
+    await send();
     // Step 4: rate the strong answer correctly → flips `success` true.
     fireEvent.click(screen.getByTestId('sandbox-rate-top'));
 
@@ -64,12 +71,12 @@ describe('SandboxScenarioActivity', () => {
     expect(cta.disabled).toBe(false);
     fireEvent.click(cta);
     expect(onComplete).toHaveBeenCalledWith(true);
-  });
+  }, 15000);
 
-  it('rejects a wrong rating with a critique + retry', () => {
+  it('rejects a wrong rating with a critique + retry', async () => {
     renderActivity(makeActivity(c1));
 
-    fireEvent.click(screen.getByTestId('sandbox-send'));
+    await send();
     // Mis-rate the weak answer as strong → rejected.
     fireEvent.click(screen.getByTestId('sandbox-rate-top'));
     expect(screen.getByTestId('sandbox-eval-wrong')).toBeInTheDocument();
@@ -77,5 +84,5 @@ describe('SandboxScenarioActivity', () => {
     fireEvent.click(screen.getByTestId('sandbox-eval-retry'));
     fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
     expect(screen.queryByTestId('sandbox-eval-wrong')).not.toBeInTheDocument();
-  });
+  }, 15000);
 });
