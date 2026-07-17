@@ -6,16 +6,21 @@ import { SandboxChoiceChips } from './SandboxChoiceChips';
 import { SandboxEvalPanel } from './SandboxEvalPanel';
 import type { useSandboxScenario } from './useSandboxScenario';
 
+/** The compose affordance each sandbox activity type offers the learner. */
+export type SandboxVariant = 'ai' | 'options' | 'words';
+
 /**
  * Everything that is NOT the message exchange: the step header, the compose
- * panels (slots/choices/composer) or the rating panel, and the coach hint. Lives
- * OUTSIDE the chat so the transcript reads like a real conversation. Hint sits in
- * a side column on wide screens, below on narrow.
+ * panel and the rating panel, and the coach hint. Lives OUTSIDE the chat so the
+ * transcript reads like a real conversation. Hint sits in a side column on wide
+ * screens, below on narrow. `variant` picks the compose panel: `words` fills
+ * slots, `options` picks choice chips, `ai` composes free (input bar only).
  */
 export function SandboxControls({
   s,
   scenario,
   locale,
+  variant,
   stepLabel,
   coachPrompt,
   coachHint,
@@ -23,6 +28,7 @@ export function SandboxControls({
   s: ReturnType<typeof useSandboxScenario>;
   scenario: Scenario;
   locale: Locale;
+  variant: SandboxVariant;
   stepLabel?: string;
   coachPrompt?: string;
   coachHint?: string;
@@ -52,23 +58,27 @@ export function SandboxControls({
 
         {s.mode === 'compose' && (
           <div className="flex flex-col gap-3">
-            <SandboxSlotPanel
-              scenario={scenario}
-              model={s.model}
-              locale={locale}
-              visibleSlots={new Set(s.exposedSlotIds)}
-              activeSlots={s.needs.slots}
-              disabled={s.readOnly}
-              onSet={s.onSet}
-            />
-            <SandboxChoiceChips
-              scenario={scenario}
-              model={s.model}
-              locale={locale}
-              visibleChoices={new Set(s.exposedChoiceIds)}
-              disabled={s.readOnly}
-              onChoose={s.onChoose}
-            />
+            {variant === 'words' && (
+              <SandboxSlotPanel
+                scenario={scenario}
+                model={s.model}
+                locale={locale}
+                visibleSlots={new Set(s.exposedSlotIds)}
+                activeSlots={s.needs.slots}
+                disabled={s.readOnly}
+                onSet={s.onSet}
+              />
+            )}
+            {variant === 'options' && (
+              <SandboxChoiceChips
+                scenario={scenario}
+                model={s.model}
+                locale={locale}
+                visibleChoices={new Set(s.exposedChoiceIds)}
+                disabled={s.readOnly}
+                onChoose={s.onChoose}
+              />
+            )}
             <SandboxInputBar
               text={s.inputText}
               placeholder={t({ pt: 'escreva seu pedido…', en: 'type your ask…' }, locale)}
