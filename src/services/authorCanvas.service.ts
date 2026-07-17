@@ -11,6 +11,7 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import type { Activity, I18nText, Program } from '@/types/content';
 
 type Row = Record<string, unknown>;
@@ -46,12 +47,16 @@ function client() {
 
 function mapActivity(a: Row): Activity {
   const status = str(a.status);
+  const kind = str(a.kind) as Activity['kind'];
+  const rawSpec = a.spec && typeof a.spec === 'object' ? (a.spec as Record<string, unknown>) : {};
   return {
     id: str(a.id),
     lessonId: str(a.lesson_id),
     ordinal: num(a.ordinal),
-    kind: str(a.kind) as Activity['kind'],
-    spec: a.spec && typeof a.spec === 'object' ? (a.spec as Record<string, unknown>) : {},
+    kind,
+    // The sandbox runtime resolves its own bilingual bags; every other kind
+    // renders spec strings directly, so collapse bags before they reach the DOM.
+    spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
     rubric:
       a.rubric && typeof a.rubric === 'object' ? (a.rubric as Record<string, unknown>) : null,
     publishStatus: status === 'published' ? 'published' : status === 'draft' ? 'draft' : undefined,
