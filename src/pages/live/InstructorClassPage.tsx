@@ -532,6 +532,16 @@ function ClassControl({
                 readOnly={current.kind !== 'sandbox_scenario'}
                 reveal={revealCurrent}
                 testid="instructor-activity-stage"
+                footer={
+                  current.kind === 'sandbox_scenario' ? (
+                    <p
+                      className="mt-4 text-center text-sm text-muted-foreground"
+                      data-testid="instructor-mirror-hint"
+                    >
+                      {t('live.instructor.mirrorHint')}
+                    </p>
+                  ) : undefined
+                }
               />
             ) : lessonLoading ? (
               // Pointer set, lesson content still resolving (refresh mid-class) —

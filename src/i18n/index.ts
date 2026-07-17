@@ -82,6 +82,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.copyLinkDone': 'Link copiado ✓',
     'live.badge.enter': 'Entrar na aula',
     'live.eyebrow': 'Aula ao vivo',
+    'live.instructor.mirrorHint':
+      'Isto é só um espelho do que a turma vê. Para avançar, use os controles na barra lateral.',
     'live.connecting': 'Conectando à aula…',
     'live.notFound': 'Esta aula não está disponível.',
     'live.waiting.title': 'A aula vai começar',
@@ -480,6 +482,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.copyLinkDone': 'Link copied ✓',
     'live.badge.enter': 'Enter class',
     'live.eyebrow': 'Live class',
+    'live.instructor.mirrorHint':
+      'This is only a mirror of what the class sees. To advance, use the controls in the sidebar.',
     'live.connecting': 'Connecting to the class…',
     'live.notFound': 'This class is not available.',
     'live.waiting.title': 'The class is about to begin',
