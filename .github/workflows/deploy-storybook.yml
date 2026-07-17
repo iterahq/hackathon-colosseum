@@ -1,0 +1,56 @@
+name: Deploy Storybook
+
+# Builds the static Storybook and deploys it to the Cloudflare Pages project
+# `itera-storybook` (served at https://storybook.iterahq.dev) on every push to main.
+# Closes the deploy-hygiene gap where storybook.iterahq.dev had no auto-deploy.
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something that affects Storybook changes.
+    paths:
+      - 'src/**'
+      - '.storybook/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tailwind.config.ts'
+      - 'tsconfig*.json'
+      - '.github/workflows/deploy-storybook.yml'
+  workflow_dispatch: {}
+
+# Avoid overlapping deploys clobbering each other.
+concurrency:
+  group: deploy-storybook-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Scoped exception: personal/external iterahq repo, not on the dfl-runner fleet.
+    # iterahq CI runs on ubuntu-latest (matches the repo's existing ci.yml).
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy storybook-static --project-name=itera-storybook --branch=main
