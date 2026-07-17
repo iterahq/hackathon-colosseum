@@ -15,7 +15,9 @@ import type { Activity } from '@/types/content';
  *
  * Content hooks are mocked; we drive the player through a single-activity lesson
  * and assert the chrome + CTA. The ActivityRenderer is stubbed to a button that
- * fires onComplete(true) so we reach the completion screen deterministically.
+ * fires onComplete(true); the lesson activity is a GRADED kind ("quiz"), so the
+ * submit surfaces the global fixed FeedbackFooter — its "Continuar" CTA is what
+ * advances (the Duolingo review-then-continue beat), NOT the submit itself.
  */
 
 const useLessonContent = vi.fn();
@@ -110,6 +112,8 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
     useNextLesson.mockReturnValue({ data: { id: 'lesson-2', title: { pt: 'Commit' } } });
     renderPlayer();
     fireEvent.click(screen.getByTestId('stub-complete'));
+    // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
     // for the chained state updates to settle under slower CI runners (the
     // default 1000ms waitFor occasionally races the persist on CI).
@@ -123,6 +127,8 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
     useNextLesson.mockReturnValue({ data: null });
     renderPlayer();
     fireEvent.click(screen.getByTestId('stub-complete'));
+    // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
     // for the chained state updates to settle under slower CI runners (the
     // default 1000ms waitFor occasionally races the persist on CI).
@@ -136,10 +142,43 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
   it('never shows the old "Descobrir" CTA on the completion screen', async () => {
     renderPlayer();
     fireEvent.click(screen.getByTestId('stub-complete'));
+    // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
     // for the chained state updates to settle under slower CI runners (the
     // default 1000ms waitFor occasionally races the persist on CI).
     await waitFor(() => expect(screen.getByTestId('lesson-complete')).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByTestId('lesson-complete').textContent ?? '').not.toMatch(/Descobrir/i);
+  });
+});
+
+describe('LessonPlayer — global feedback footer (Duolingo pattern)', () => {
+  it('holds on the activity showing the fixed footer after a graded submit — does NOT auto-advance', async () => {
+    // Two-activity lesson so "advance" is observable (index moves, not complete).
+    useLessonContent.mockReturnValue({
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Pulses' },
+        activities: [
+          { id: 'a1', lessonId: 'lesson-1', ordinal: 1, kind: 'quiz', spec: {}, rubric: null },
+          { id: 'a2', lessonId: 'lesson-1', ordinal: 2, kind: 'quiz', spec: {}, rubric: null },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderPlayer();
+    fireEvent.click(screen.getByTestId('stub-complete'));
+    // The footer appears; the lesson has NOT completed and did not skip ahead.
+    const footer = await screen.findByTestId('feedback-footer');
+    expect(footer.getAttribute('data-correct')).toBe('true');
+    expect(screen.queryByTestId('lesson-complete')).toBeNull();
+    // Continue advances to the 2nd activity → the stub re-mounts (still present),
+    // and the footer is cleared for the fresh activity.
+    fireEvent.click(screen.getByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(screen.queryByTestId('feedback-footer')).toBeNull(), { timeout: 5000 });
+    expect(screen.getByTestId('stub-complete')).toBeTruthy();
+    expect(screen.queryByTestId('lesson-complete')).toBeNull();
   });
 });

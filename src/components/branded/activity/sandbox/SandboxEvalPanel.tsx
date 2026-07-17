@@ -1,9 +1,14 @@
 import { RotateCcw } from 'lucide-react';
 import { t, type I18n, type Locale, type Quality } from '@iterahq/activity-spec/runtime';
 
-const RATINGS: { q: Quality; emoji: string; label: I18n }[] = [
-  { q: 'ruim', emoji: '👎', label: { pt: 'fraca', en: 'weak' } },
-  { q: 'top', emoji: '🔥', label: { pt: 'forte', en: 'strong' } },
+// Standardized rating options (Tainan 2026-07): TEXT LABELS ONLY — no emoji.
+// The two buttons are visually IDENTICAL (neutral, MultiChoice-option style)
+// until the learner picks, so neither valence is telegraphed as "the right
+// judgment" (the exercise IS the judgment). The correctness color (green/red)
+// lands only AFTER the pick is graded against the canned verdict.
+const RATINGS: { q: Quality; label: I18n }[] = [
+  { q: 'ruim', label: { pt: 'fraca', en: 'weak' } },
+  { q: 'top', label: { pt: 'forte', en: 'strong' } },
 ];
 
 const DEFAULT_CRITIQUE: I18n = {
@@ -35,7 +40,11 @@ export function SandboxEvalPanel({
     <div className="flex flex-col gap-3" data-testid="sandbox-eval">
       <div className="flex flex-wrap gap-2.5">
         {RATINGS.map((r) => {
+          // A pick is graded synchronously (canned verdict), so `picked` implies
+          // the verdict is known: picked + wrong → red, picked + right → green.
+          // Unpicked buttons stay neutral (the MultiChoice-option look).
           const active = picked === r.q;
+          const verdict = active ? (wrong ? 'incorrect' : 'correct') : 'neutral';
           return (
             <button
               key={r.q}
@@ -43,11 +52,15 @@ export function SandboxEvalPanel({
               disabled={wrong}
               onClick={() => onRate(r.q)}
               data-testid={`sandbox-rate-${r.q}`}
-              className={`flex flex-1 basis-24 flex-col items-center gap-1 rounded-2xl border px-3 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                active ? 'border-menta bg-menta/15 text-menta' : 'border-border bg-card text-foreground hover:border-evergreen/50'
+              data-state={verdict}
+              className={`flex flex-1 basis-24 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
+                verdict === 'correct'
+                  ? 'border-verde-tech bg-verde-tech/10 text-menta'
+                  : verdict === 'incorrect'
+                    ? 'border-destructive bg-destructive/10 text-destructive'
+                    : 'border-border bg-card text-foreground hover:border-verde-tech/50'
               }`}
             >
-              <span className="text-2xl">{r.emoji}</span>
               {t(r.label, locale)}
             </button>
           );

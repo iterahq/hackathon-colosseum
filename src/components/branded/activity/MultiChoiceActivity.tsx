@@ -12,7 +12,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, ResultBanner, SubmitButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -57,7 +57,8 @@ export function MultiChoiceActivity({
   const shown = submitted || reveal;
   // Only meaningful once ACTUALLY submitted this session (never for a merely
   // -`isDone` render, where `selected` may be empty/unknown) — feeds the
-  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  // the graded result (feeds the SubmitButton's locked color + the shell's
+  // global FeedbackFooter via onComplete).
   const isCorrect = sameSet(selected, correctIds);
   const gradeResult = submitted ? isCorrect : undefined;
 
@@ -121,8 +122,6 @@ export function MultiChoiceActivity({
         )}
       </div>
 
-      {/* BOTTOM ZONE — feedback right above the action (P3). */}
-      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
         correct={gradeResult}

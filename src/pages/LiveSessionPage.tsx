@@ -20,6 +20,11 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
+import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import {
+  isFooterGradedKind,
+  type FooterResult,
+} from '@/components/branded/activity/activityFeedbackKinds';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
@@ -202,6 +207,29 @@ export default function LiveSessionPage() {
   // to the viewport with the scroll living INSIDE the stage — never the page.
   const onSandbox = current?.kind === 'sandbox_scenario';
 
+  // Global fixed feedback footer (Duolingo pattern), shared with the async
+  // player. In LIVE mode the learner does NOT self-advance (the instructor
+  // force-advances the cohort), so the footer shows the green/red signal + the
+  // "wait for the next one" hint instead of a CTA. Driven off the durable
+  // `answered` state (so it survives a reload), gated to the graded MCQ kinds —
+  // the sandbox keeps its own inline outcome + the below-stage hint.
+  const footerGraded = isFooterGradedKind(current?.kind);
+  const answeredHere = Boolean(current && answered?.id === current.id);
+  const footerResult: FooterResult | null =
+    footerGraded && answeredHere && answered ? { correct: answered.correct } : null;
+  const answeredWaitHint = answered ? (
+    <span
+      className={answered.correct ? 'text-menta' : 'text-clay'}
+      data-testid="live-answered-hint"
+      data-correct={answered.correct ? 'true' : 'false'}
+    >
+      {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+      <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+        · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+      </span>
+    </span>
+  ) : undefined;
+
   return (
     <div className={`bg-background flex flex-col ${onSandbox ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
@@ -223,8 +251,8 @@ export default function LiveSessionPage() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main
           className={`flex-1 min-h-0 px-4 md:px-8 ${
-            onSandbox ? 'overflow-y-auto pt-6 pb-6' : 'lg:overflow-y-auto pt-14 md:pt-20 pb-8'
-          }`}
+            onSandbox ? 'overflow-y-auto pt-6 pb-6' : 'lg:overflow-y-auto pt-14 md:pt-20'
+          } ${footerResult ? 'pb-40' : onSandbox ? '' : 'pb-8'}`}
         >
           <div className={`mx-auto ${current?.kind === 'sandbox_scenario' ? 'max-w-4xl' : 'max-w-2xl'}`}>
         {loading ? (
@@ -339,7 +367,11 @@ export default function LiveSessionPage() {
                         {t('live.timer.lockedHint')}
                       </p>
                     )}
-                    {answered?.id === current.id && (
+                    {/* For GRADED (MCQ) kinds the answered hint moves into the
+                        global fixed FeedbackFooter below. Non-graded kinds (the
+                        sandbox) keep it inline here so their below-stage hint
+                        isn't lost. */}
+                    {!footerGraded && answered?.id === current.id && (
                       <p
                         className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
                         data-testid="live-answered-hint"
@@ -369,6 +401,11 @@ export default function LiveSessionPage() {
           />
         )}
       </div>
+
+      {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
+          Live/force-advance mode: green/red + the "wait for the next one" hint
+          (no self-advance CTA — the instructor advances the cohort). */}
+      {!ended && <FeedbackFooter result={footerResult} waitHint={answeredWaitHint} />}
     </div>
   );
 }

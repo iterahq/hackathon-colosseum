@@ -12,7 +12,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, ResultBanner, SubmitButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 export function OrderActivity({
   activity,
@@ -56,7 +56,8 @@ export function OrderActivity({
   }
 
   // Only meaningful once ACTUALLY submitted this session — feeds the
-  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  // the graded result (feeds the SubmitButton's locked color + the shell's
+  // global FeedbackFooter via onComplete).
   const isOrderCorrect = order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
   const gradeResult = submitted ? isOrderCorrect : undefined;
 
@@ -139,8 +140,6 @@ export function OrderActivity({
         {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
       </ol>
 
-      {/* BOTTOM ZONE — feedback right above the action (P3). */}
-      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
         correct={gradeResult}

@@ -29,6 +29,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Trophy } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import {
+  isFooterGradedKind,
+  type FooterResult,
+} from '@/components/branded/activity/activityFeedbackKinds';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
@@ -51,6 +56,11 @@ export default function LessonPlayer() {
   // of a false success trophy (round-2 nit: never celebrate an unsaved completion).
   const [saveError, setSaveError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // The settled result for the GLOBAL fixed feedback footer (Duolingo pattern).
+  // A graded activity's `onComplete(correct)` sets this; the activity STAYS on
+  // screen showing its graded state, and only the footer's "Continuar" advances.
+  // Non-graded kinds (concept/video/document) advance immediately (no footer).
+  const [pending, setPending] = useState<FooterResult | null>(null);
 
   useEffect(() => {
     setIndex(0);
@@ -58,9 +68,15 @@ export default function LessonPlayer() {
     setCompleted(false);
     setSaveError(false);
     setSaving(false);
+    setPending(null);
   }, [lessonId]);
 
   const current = activities[index];
+
+  // Clear a stale footer whenever the activity on screen changes.
+  useEffect(() => {
+    setPending(null);
+  }, [current?.id]);
 
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
@@ -71,7 +87,24 @@ export default function LessonPlayer() {
     ? Math.round(((completed ? activities.length : index) / activities.length) * 100)
     : 0;
 
-  async function handleComplete(correct: boolean) {
+  // The activity emits its graded result UP here. GRADED kinds (MCQ family)
+  // hold on screen and surface the fixed footer; the footer's "Continuar" is
+  // what actually advances (the Duolingo review-then-continue beat). Every other
+  // kind (concept/video/document "mark done", sandbox — which owns its own
+  // terminal CTA) advances immediately as before.
+  function handleComplete(correct: boolean) {
+    if (!current || saving) return;
+    if (isFooterGradedKind(current.kind)) {
+      setPending({ correct });
+      return;
+    }
+    void advance(correct);
+  }
+
+  // Persist (on a correct answer) + move to the next activity / completion. This
+  // is the old `handleComplete` body; it now runs on the footer's "Continuar"
+  // for graded kinds, or immediately for non-graded ones.
+  async function advance(correct: boolean) {
     if (!current || saving) return;
     const isLast = index >= activities.length - 1;
 
@@ -86,12 +119,13 @@ export default function LessonPlayer() {
         setSaveError(false);
       } else {
         // The completion did NOT persist — surface a retry, do NOT advance and do
-        // NOT show a success trophy. Re-running handleComplete retries the write.
+        // NOT show a success trophy (the footer stays up). Retrying re-runs this.
         setSaveError(true);
         return;
       }
     }
 
+    setPending(null);
     if (!isLast) {
       setIndex((i) => i + 1);
     } else {
@@ -99,8 +133,13 @@ export default function LessonPlayer() {
     }
   }
 
+  function handleContinue() {
+    if (!pending) return;
+    void advance(pending.correct);
+  }
+
   function retrySave() {
-    void handleComplete(true);
+    void advance(pending?.correct ?? true);
   }
 
   return (
@@ -146,7 +185,8 @@ export default function LessonPlayer() {
       </header>
 
       {/* ── Centered focused column ── */}
-      <main className="flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 pt-10 md:pt-16">
+      {/* pb leaves room so the fixed FeedbackFooter never clips the SubmitButton. */}
+      <main className="flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 pt-10 md:pt-16 pb-40">
         {isPending ? (
           <div className="space-y-4">
             <div className="h-5 w-1/3 rounded ds-shimmer" />
@@ -257,6 +297,12 @@ export default function LessonPlayer() {
           )
         ) : null}
       </main>
+
+      {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
+          Slides up green/red after a graded submit; "Continuar" advances. */}
+      {!completed && (
+        <FeedbackFooter result={pending} onContinue={handleContinue} busy={saving} />
+      )}
     </div>
   );
 }

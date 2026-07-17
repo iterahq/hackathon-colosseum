@@ -13,7 +13,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, ResultBanner, SubmitButton } from './parts';
+import { ActivityShell, SubmitButton } from './parts';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
@@ -55,7 +55,8 @@ export function SingleChoiceActivity({
   const isDone = activity.status === 'done';
   const shown = submitted || reveal;
   // Only meaningful once ACTUALLY submitted this session — feeds the
-  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  // the graded result (feeds the SubmitButton's locked color + the shell's
+  // global FeedbackFooter via onComplete).
   const isCorrect = selected === spec?.correct_option_id;
   const gradeResult = submitted ? isCorrect : undefined;
 
@@ -105,8 +106,6 @@ export function SingleChoiceActivity({
         )}
       </div>
 
-      {/* BOTTOM ZONE — feedback right above the action (P3). */}
-      <ResultBanner show={submitted} correct={gradeResult} />
       <SubmitButton
         submitted={submitted || isDone}
         correct={gradeResult}

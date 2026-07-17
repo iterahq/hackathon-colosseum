@@ -25,7 +25,7 @@
  * below the window, near the action (bottom zone, P3).
  */
 import { useEffect, useState } from 'react';
-import { CheckCircle2, MessageSquare, RotateCcw, Send, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { CheckCircle2, MessageSquare, RotateCcw, Send } from 'lucide-react';
 import { t, type Locale } from '@iterahq/activity-spec/runtime';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
@@ -178,24 +178,28 @@ export function SandboxScenarioLiveActivity({
 
           {/* Evaluate (step 2) — two buttons: good / bad. Held back until the
               streamed response has fully surfaced, so the learner reads the whole
-              answer before judging it. */}
+              answer before judging it. Standardized (Tainan 2026-07): TEXT LABELS
+              ONLY, both visually IDENTICAL (neutral MultiChoice-option style) so
+              neither valence is telegraphed as "the right judgment" before the
+              learner picks — the judge's verdict (context_good comparison) then
+              drives the green/red correctness in the outcome panel below. */}
           {showEval && (
             <div className="flex gap-3" data-testid="byoc-eval">
               <button
                 type="button"
                 onClick={() => s.rate('good')}
                 data-testid="byoc-rate-good"
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-evergreen/50"
+                className="flex flex-1 items-center justify-center rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-verde-tech/50"
               >
-                <ThumbsUp className="h-5 w-5 text-menta" /> {goodLabel}
+                {goodLabel}
               </button>
               <button
                 type="button"
                 onClick={() => s.rate('bad')}
                 data-testid="byoc-rate-bad"
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-destructive/50"
+                className="flex flex-1 items-center justify-center rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:border-verde-tech/50"
               >
-                <ThumbsDown className="h-5 w-5 text-destructive" /> {badLabel}
+                {badLabel}
               </button>
             </div>
           )}

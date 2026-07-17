@@ -44,7 +44,7 @@ import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
 import { SandboxScenarioActivity } from './SandboxScenarioActivity';
-import { ResultBanner, SubmitButton } from './parts';
+import { SubmitButton } from './parts';
 
 export function ActivityRenderer({
   activity,
@@ -423,8 +423,9 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
 
   const correctIdx = options.findIndex((o) => o.isCorrect);
   const isDone = activity.status === 'done';
-  // Only meaningful once ACTUALLY submitted this session — feeds the
-  // bottom-zone feedback (P3): the ResultBanner + the SubmitButton's color.
+  // Only meaningful once submitted — feeds the SubmitButton's locked color and
+  // the shell's global FeedbackFooter (via onComplete). The inline result strip
+  // was removed; correctness now surfaces in the viewport-fixed footer.
   const isQuizCorrect = selected === correctIdx;
   const gradeResult = submitted ? isQuizCorrect : undefined;
 
@@ -506,8 +507,8 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         </p>
       )}
 
-      {/* BOTTOM ZONE — feedback right above the action (P3). */}
-      <ResultBanner show={submitted} correct={gradeResult} />
+      {/* BOTTOM ZONE — just the action. The correct/incorrect message lives in
+          the global viewport-fixed FeedbackFooter (shell level), NOT inline. */}
       <SubmitButton
         submitted={submitted || isDone}
         correct={gradeResult}
