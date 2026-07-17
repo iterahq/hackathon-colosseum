@@ -31,6 +31,7 @@ import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
+import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
@@ -116,9 +117,6 @@ export default function LiveSessionPage() {
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [sessionId, currentActivityId]);
 
-  // Time ran out before the learner answered THIS activity → it's locked.
-  const locked = timeUpFor !== null && timeUpFor === current?.id && !answered;
-
   const { onTimeUp } = sound;
   const handleTimeUp = useCallback(() => {
     // Already answered THIS activity → no "time's up" sound (only the lock).
@@ -131,8 +129,19 @@ export default function LiveSessionPage() {
     if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
   }, [stoppedFor, current]);
 
+  const timerRunning = Boolean(timer && current && timer.activityId === current.id);
+  const expired = timeUpFor !== null && timeUpFor === current?.id;
+  const hasAnswered = answered?.id === current?.id;
+  const gate = learnerActivityGate({
+    kind: current?.kind ?? '',
+    timerRunning,
+    expired,
+    answered: hasAnswered,
+  });
+  const { started, preStart, locked } = gate;
+
   async function handleComplete(correct: boolean) {
-    if (!current || saving || locked || answered?.id === current.id) return;
+    if (!current || saving || !gate.canComplete) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) + how long the learner took, so the professor
@@ -156,7 +165,14 @@ export default function LiveSessionPage() {
 
   const ended = status === 'ended';
   const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
-  const timerRunning = Boolean(timer && current && timer.activityId === current.id);
+
+  // Measure the personal stopwatch from the START signal (timer begins), so the
+  // podium's elapsed time is fair — not counting the pause before the professor
+  // starts the round.
+  useEffect(() => {
+    if (started && !answered) setActivityStartedAt(Date.now());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started]);
 
   // Pre-class name+avatar step: shown once when the learner has no real name yet
   // (Itera override). Skipped while the profile query is still resolving so a
@@ -287,19 +303,25 @@ export default function LiveSessionPage() {
                   ...current,
                   status: answered?.id === current.id && answered.correct ? 'done' : current.status,
                 }}
-                readOnly={locked || answered?.id === current.id}
+                readOnly={gate.readOnly}
                 reveal={timeUpFor !== null && timeUpFor === current.id}
                 onComplete={handleComplete}
                 onSubmit={sound.onSubmit}
                 timerSlot={
                   // The countdown now lives prominently in the top chrome; here we
-                  // only keep the personal stopwatch (elapsed) while unanswered.
-                  !answered && !locked && activityStartedAt ? (
+                  // only keep the personal stopwatch (elapsed) once the activity is
+                  // started and still unanswered.
+                  !answered && !locked && !preStart && activityStartedAt ? (
                     <LiveStopwatch startedAt={activityStartedAt} />
                   ) : undefined
                 }
                 footer={
                   <>
+                    {preStart && (
+                      <p className="mt-5 text-center text-sm text-muted-foreground" data-testid="live-waitstart-hint">
+                        {t('live.waitForStart')}
+                      </p>
+                    )}
                     {locked && (
                       <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
                         {t('live.timer.lockedHint')}

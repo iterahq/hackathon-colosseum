@@ -62,6 +62,31 @@ export interface ClassRanking {
   waiting: { userId: string; name: string; avatarUrl: string | null }[];
 }
 
+/** Inputs to the learner-side interaction gate (see utils/liveActivityGate). */
+export interface LearnerGateInput {
+  /** The activity kind (`sandbox_scenario` is facilitator-driven → never pre-start gated). */
+  kind: string;
+  /** A countdown is currently running for THIS activity. */
+  timerRunning: boolean;
+  /** The countdown for THIS activity has run out (or the professor revealed it). */
+  expired: boolean;
+  /** The learner already answered THIS activity. */
+  answered: boolean;
+}
+
+export interface LearnerGate {
+  /** The timer has started (or already ran) — the learner may engage. */
+  started: boolean;
+  /** Advanced-to but not yet started — inert, showing a "wait for the professor" hint. */
+  preStart: boolean;
+  /** Time ran out before the learner answered — inert + revealed. */
+  locked: boolean;
+  /** The activity stage renders read-only (inert). */
+  readOnly: boolean;
+  /** A completion may be persisted/broadcast (never pre-start, locked, or already answered). */
+  canComplete: boolean;
+}
+
 export interface UseClassSession {
   session: ClassSession | null;
   currentActivityId: string | null;
