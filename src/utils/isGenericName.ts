@@ -10,6 +10,9 @@ export function isGenericName(name: string | null | undefined, email?: string | 
   if (lower === 'aluno' || lower === 'student') return true;
   // The uid-slice fallback (first 8 hex chars of the user id).
   if (/^[0-9a-f]{8}$/i.test(n)) return true;
+  // The provisioning default `User <8-hex-uid-slice>` (e.g. "User c0c08d9d") —
+  // stored verbatim in itera.users.display_name, so it arrives as a "real" name.
+  if (/^user\s+[0-9a-f]{8}$/i.test(n)) return true;
   // The email local-part fallback — matched case-SENSITIVELY: the fallback uses
   // the raw local part verbatim, so a real "Ana" (email ana@) is NOT flagged,
   // while the raw "samuelstefanodocarmo" fallback is.

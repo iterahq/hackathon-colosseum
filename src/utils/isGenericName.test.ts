@@ -15,6 +15,12 @@ describe('isGenericName', () => {
     expect(isGenericName('27104cb1')).toBe(true);
   });
 
+  it('flags the "User <uid-slice>" provisioning default', () => {
+    expect(isGenericName('User c0c08d9d')).toBe(true);
+    expect(isGenericName('user a1b2c3d4')).toBe(true);
+    expect(isGenericName('USER 27104CB1')).toBe(true);
+  });
+
   it('flags the email local-part fallback', () => {
     expect(isGenericName('samuelstefanodocarmo', 'samuelstefanodocarmo@gmail.com')).toBe(true);
   });
@@ -23,5 +29,8 @@ describe('isGenericName', () => {
     expect(isGenericName('Samuel Stefano')).toBe(false);
     expect(isGenericName('Ana', 'ana@x.com')).toBe(false);
     expect(isGenericName('Tainan Fidelis', 'taigfs@gmail.com')).toBe(false);
+    // "User" as part of a real chosen name is NOT the provisioning default.
+    expect(isGenericName('User Silva')).toBe(false);
+    expect(isGenericName('Userson')).toBe(false);
   });
 });
