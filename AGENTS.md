@@ -42,5 +42,24 @@
 <!-- END GENERATED:agents/base -->
 
 <!-- BEGIN MANUAL:repo/agent-notes -->
-<!-- repo-specific notes live here -->
+
+## Story/Component ownership
+
+Two distinct spaces for Storybook stories — follow this split, it is
+enforced by `.github/CODEOWNERS`:
+
+- **`design-playground/`** (repo root) — the designer's brainstorm space.
+  **johnoak (designer) always deploys his changes HERE**, free to
+  experiment without review gates. Discovered via its own glob entry in
+  `.storybook/main.ts`, separate from the canonical `src/**` glob.
+- **`src/stories/` + `src/components/`** — the canonical stories and
+  components folders. **Updatable only by developers (`@taigfs` and
+  `@SamuelStefano`).** If you are acting on behalf of the designer, do not
+  write to these paths — route the change through a developer instead.
+- Agents: when asked to move/adapt a design-playground story into the
+  canonical set, do so as a normal reviewed PR path (a developer merges
+  it) — never widen `design-playground/`'s CODEOWNERS to cover canonical
+  paths, and never remove the canonical CODEOWNERS entries to "unblock" a
+  designer change.
+
 <!-- END MANUAL:repo/agent-notes -->

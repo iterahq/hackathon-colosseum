@@ -137,6 +137,32 @@ Regras:
 - Não criar tipo novo de `ActivityType` sem: enum + componente + hook + dummy + case em `LessonPage`.
 - Não mexer em `src/components/ui/` (shadcn/ui gerenciado).
 
+## Story/Component ownership
+
+This repo has two distinct spaces for Storybook stories — agents and humans
+MUST follow this split:
+
+- **`design-playground/`** (repo root) — the **designer's brainstorm space**.
+  **johnoak (designer) always deploys his changes HERE.** He is free to
+  experiment, prototype, and iterate without review gates. Stories here are
+  discovered by Storybook via a dedicated glob entry in
+  `.storybook/main.ts` (`../design-playground/**/*.stories.@(ts|tsx)`) —
+  kept separate from the canonical `src/**` glob on purpose.
+- **`src/stories/` + `src/components/`** — the **canonical** stories and
+  components folders. **Updatable only by developers (`@taigfs` and
+  `@SamuelStefano`).** Designer changes to canonical components/stories must
+  go through a developer (open a PR, tag a developer as reviewer/co-author —
+  don't push directly to `src/stories/` or `src/components/` as the
+  designer).
+- This is enforced by `.github/CODEOWNERS` (`design-playground/` →
+  `@johnoak`; `src/stories/` + `src/components/` → `@taigfs`
+  `@SamuelStefano`). Do not weaken or remove those CODEOWNERS entries
+  without explicit sign-off from a developer.
+- When promoting a design-playground experiment into the canonical set, a
+  developer moves/adapts the story into `src/stories/` (and the component
+  into `src/components/`) as part of a normal reviewed PR — it does not
+  happen by widening design-playground's write access.
+
 <!-- END MANUAL:repo/local-notes -->## Edge Functions
 
 Edge functions are owned by `dfl-schema`. Do NOT add or modify files under `supabase/functions/` in this repo.

@@ -40,7 +40,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { Activity, ActivityKind } from '@/types/content';
-import { SAMPLE_IMAGE, SAMPLE_VIDEO } from './activityFixtures';
+import { SAMPLE_IMAGE, SAMPLE_VIDEO } from '@/stories/activityFixtures';
 
 /** Decorative lives count — mirrors LessonPlayer's inert chrome. */
 const DECORATIVE_HEARTS = 5;

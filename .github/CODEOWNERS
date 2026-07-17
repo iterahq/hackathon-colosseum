@@ -1,0 +1,16 @@
+# CODEOWNERS — enforces the Story/Component ownership split.
+# See "Story/Component ownership" in CLAUDE.md / AGENTS.md.
+#
+# design-playground/ is the designer's brainstorm space — johnoak deploys
+# his changes there freely.
+#
+# src/stories/ and src/components/ are the canonical stories/components
+# folders — updatable only by developers. Designer changes to canonical
+# components go through a developer.
+
+# Designer brainstorm space
+/design-playground/ @johnoak
+
+# Canonical stories + components — developers only
+/src/stories/ @taigfs @SamuelStefano
+/src/components/ @taigfs @SamuelStefano
