@@ -9,12 +9,16 @@
 /**
  * Canonical `itera.activity_kind` enum values.
  *
- * The first four are the original dev/coding-flavored kinds. The rest are the
- * v1 GENERAL learning-activity taxonomy (plan `20260703-itera-activity-types-system`,
- * Q4 = Itera-native names). Adding a value here is 1 of the COORDINATED 3-point
- * change — it must stay in sync with (a) the `itera.activity_kind` enum in the
- * Itera Supabase project (`kjefmwlopzeaqgqtlbdn`, migration `0014_activity_kinds_v1.sql`)
- * and (b) `ACTIVITY_KINDS` in `iterahq/itera-mcp:src/tools/activities.ts`.
+ * The first four are the original dev/coding-flavored kinds. The next six are
+ * the v1 GENERAL learning-activity taxonomy (plan `20260703-itera-activity-types-system`,
+ * Q4 = Itera-native names). `sandbox_scenario` is the deterministic sandbox chat
+ * activity (plan `plano-sandbox-studio-2026-07-15`), whose `spec` is a `Scenario`
+ * run by the shared `@iterahq/activity-spec/runtime`. Adding a value here is 1 of
+ * the COORDINATED 3-point change — it must stay in sync with (a) the
+ * `itera.activity_kind` enum in the Itera Supabase project (`kjefmwlopzeaqgqtlbdn`,
+ * migrations `0014_activity_kinds_v1.sql` + `0016_activity_kind_sandbox_scenario.sql`)
+ * and (b) `ACTIVITY_KINDS` in `iterahq/itera-mcp:src/tools/activities.ts`. Both
+ * (this union and the mcp array) now mirror `ACTIVITY_KINDS` from the package.
  */
 export type ActivityKind =
   | 'diagram'
@@ -27,7 +31,9 @@ export type ActivityKind =
   | 'multi_choice'
   | 'match'
   | 'order'
-  | 'video';
+  | 'video'
+  // deterministic sandbox chat activity (runs @iterahq/activity-spec/runtime):
+  | 'sandbox_scenario';
 
 /**
  * The shared `InstructionPanel` primitive spec — a flexible context block reused

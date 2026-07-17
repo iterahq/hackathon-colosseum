@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  packages: read
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -29,10 +30,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Lint
         run: npm run lint

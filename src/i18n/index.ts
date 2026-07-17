@@ -235,6 +235,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.moveDown': 'Mover para baixo',
     'activity.noOptions': 'Nenhuma opção configurada',
     'activity.noItems': 'Nenhum item configurado',
+    // sandbox_scenario (plano-sandbox-studio-2026-07-15)
+    'activity.sandboxScenario': 'Sandbox',
+    'activity.step': 'Passo',
+    'activity.continue': 'Continuar',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Painel do administrador',
     'admin.title': 'Observabilidade da sua organização',
@@ -629,6 +633,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.moveDown': 'Move down',
     'activity.noOptions': 'No options configured',
     'activity.noItems': 'No items configured',
+    // sandbox_scenario (plano-sandbox-studio-2026-07-15)
+    'activity.sandboxScenario': 'Sandbox',
+    'activity.step': 'Step',
+    'activity.continue': 'Continue',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Admin dashboard',
     'admin.title': "Your organization's observability",

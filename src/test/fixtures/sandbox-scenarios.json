@@ -1,0 +1,1322 @@
+{
+  "c1": {
+    "id": "c1",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "fixed",
+    "title": {
+      "pt": "O pedido vago",
+      "en": "The vague ask"
+    },
+    "initialState": {
+      "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Oi! Manda um pedido pra eu responder.",
+            "en": "Hi! Send me a request."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "me ajuda",
+        "en": "help me"
+      },
+      "cannedResults": {
+        "vago": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder.",
+            "en": "Help with what? I need to know what you want help with."
+          },
+          "critique": {
+            "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca.",
+            "en": "It bounced a question back instead of helping. That's a weak answer."
+          }
+        },
+        "especifico": {
+          "quality": "top",
+          "text": {
+            "pt": "Boa! Pra uma redação de escola sobre meio ambiente, começa com uma pergunta que faça o leitor pensar: 'E se amanhã acabasse a água?'. Depois traz um dado real, uma história curta e fecha com o que dá pra fazer no bairro. Quer que eu escreva um parágrafo de exemplo?",
+            "en": "Nice! For a school essay on the environment, start with a question that makes the reader think: 'What if the water ran out tomorrow?'. Then bring a real fact, a short story, and close with what can be done in your neighborhood."
+          },
+          "critique": {
+            "pt": "Ela te deu um caminho pronto pro teu pedido. Isso é resposta forte.",
+            "en": "It handed you a ready path for your ask. That's a strong answer."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "choseOption": {
+                "id": "add-especifico"
+              }
+            },
+            "use": "especifico"
+          }
+        ],
+        "fallback": "vago"
+      }
+    },
+    "choices": [
+      {
+        "id": "add-especifico",
+        "label": {
+          "pt": "📝 pra uma redação de escola sobre meio ambiente",
+          "en": "📝 for a school essay about the environment"
+        },
+        "appends": {
+          "pt": "É pra uma redação de escola sobre meio ambiente.",
+          "en": "It's for a school essay about the environment."
+        }
+      },
+      {
+        "id": "add-oi",
+        "label": {
+          "pt": "👋 oi, tudo bem?",
+          "en": "👋 hi, how are you?"
+        },
+        "appends": {
+          "pt": "Oi, tudo bem?",
+          "en": "Hi, how are you?"
+        }
+      },
+      {
+        "id": "add-agora",
+        "label": {
+          "pt": "⏰ me ajuda agora",
+          "en": "⏰ help me now"
+        },
+        "appends": {
+          "pt": "Preciso agora.",
+          "en": "I need it now."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "rodar-vago",
+        "prompt": {
+          "pt": "Manda o pedido do jeito que tá: 'me ajuda'.",
+          "en": "Send the prompt as-is."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-vago",
+        "prompt": {
+          "pt": "Essa resposta foi fraca, mais ou menos ou forte?",
+          "en": "Was that answer weak, so-so or strong?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "montar-especifico",
+        "prompt": {
+          "pt": "Agora escolhe UMA coisa pra adicionar no pedido e manda de novo.",
+          "en": "Now pick ONE thing to add and send again."
+        },
+        "hint": {
+          "pt": "Só uma delas ajuda de verdade. Qual?",
+          "en": "Only one actually helps. Which?"
+        },
+        "mode": "compose",
+        "expose": {
+          "choices": [
+            "add-especifico",
+            "add-oi",
+            "add-agora"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-especifico",
+        "prompt": {
+          "pt": "E essa resposta, como ficou?",
+          "en": "And this answer, how was it?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-especifico"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Uma palavra a mais mudou a resposta inteira. Isso é contexto.",
+        "en": "One extra word changed the whole answer. That's context."
+      }
+    }
+  },
+  "c2": {
+    "id": "c2",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "parametrized",
+    "title": {
+      "pt": "Quem sou eu",
+      "en": "Who am I"
+    },
+    "initialState": {
+      "systemPrompt": "Responda a mesma pergunta adaptando o tom e o exemplo para a pessoa que perguntou.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Escolhe quem tá perguntando e manda a pergunta.",
+            "en": "Pick who's asking and send the question."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Como eu explico o que é juros?",
+        "en": "How do I explain interest?"
+      },
+      "cannedResults": {
+        "sem-persona": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Juros é a porcentagem cobrada sobre um valor emprestado, calculada de forma simples ou composta ao longo do tempo.",
+            "en": "Interest is the percentage charged on a loaned amount, computed simple or compound over time."
+          },
+          "critique": {
+            "pt": "Genérica: serve pra qualquer um e pra ninguém. Sem saber pra quem é, ela chuta.",
+            "en": "Generic: fits anyone and no one. Without knowing who it's for, it guesses."
+          }
+        },
+        "irmao-pequeno": {
+          "quality": "top",
+          "text": {
+            "pt": "Imagina que você emprestou 10 figurinhas pro seu amigo. Ele te devolve 10 e mais 1 de 'agradecimento' por ter esperado. Essa 1 a mais é o juro. Quanto mais tempo ele demora, mais figurinhas de agradecimento você pede.",
+            "en": "Imagine you lent 10 stickers to a friend. He gives back 10 plus 1 extra as a thank-you. That extra one is interest."
+          },
+          "critique": {
+            "pt": "Ela usou um exemplo que uma criança entende. Isso é resposta forte pra esse contexto.",
+            "en": "It used an example a kid gets. That's a strong answer for this context."
+          }
+        },
+        "cliente-loja": {
+          "quality": "top",
+          "text": {
+            "pt": "Quando você parcela em 3x sem juros, você paga o mesmo preço da vista. Se for 3x COM juros de 5% ao mês, um produto de R$100 vira R$115,76 no final. Vale a pena se você não tem o valor à vista agora, mas custa mais.",
+            "en": "When you split in 3x with no interest, you pay the cash price. With 5%/month interest, R$100 becomes R$115.76."
+          },
+          "critique": {
+            "pt": "Ela falou a língua de quem tá numa loja. Isso é resposta forte pra esse contexto.",
+            "en": "It spoke the language of someone in a store. Strong answer for this context."
+          }
+        },
+        "prova-escola": {
+          "quality": "top",
+          "text": {
+            "pt": "Juros simples: J = C × i × t (capital × taxa × tempo). Ex: R$200 a 2% ao mês por 3 meses = R$12 de juros. Juros compostos rendem sobre os juros anteriores, por isso crescem mais rápido.",
+            "en": "Simple interest: J = C × i × t. Ex: R$200 at 2%/month for 3 months = R$12. Compound interest grows on prior interest."
+          },
+          "critique": {
+            "pt": "Ela deu a fórmula que cai na prova. Isso é resposta forte pra esse contexto.",
+            "en": "It gave the formula that shows up on a test. Strong answer for this context."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "irmao-pequeno"
+              }
+            },
+            "use": "irmao-pequeno"
+          },
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "cliente-loja"
+              }
+            },
+            "use": "cliente-loja"
+          },
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "prova-escola"
+              }
+            },
+            "use": "prova-escola"
+          }
+        ],
+        "fallback": "sem-persona"
+      }
+    },
+    "steps": [
+      {
+        "id": "rodar-sem-persona",
+        "prompt": {
+          "pt": "Manda a pergunta SEM dizer quem tá perguntando.",
+          "en": "Send the question WITHOUT saying who's asking."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-sem-persona",
+        "prompt": {
+          "pt": "Essa resposta serviu bem? Avalia.",
+          "en": "Did that answer serve well? Rate it."
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "escolher-persona",
+        "prompt": {
+          "pt": "Agora escolhe quem tá perguntando e manda de novo.",
+          "en": "Now pick who's asking and send again."
+        },
+        "hint": {
+          "pt": "Cada pessoa precisa de uma explicação diferente.",
+          "en": "Each person needs a different explanation."
+        },
+        "mode": "compose",
+        "expose": {
+          "slots": [
+            "persona"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-com-persona",
+        "prompt": {
+          "pt": "E agora, com o contexto de quem é?",
+          "en": "And now, with the persona context?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-com-persona"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "A pergunta era a MESMA. Quem pergunta mudou tudo.",
+        "en": "Same question. Who asks changed everything."
+      }
+    },
+    "slots": [
+      {
+        "id": "persona",
+        "label": {
+          "pt": "Quem tá perguntando?",
+          "en": "Who's asking?"
+        },
+        "kind": "select",
+        "options": [
+          "irmao-pequeno",
+          "cliente-loja",
+          "prova-escola"
+        ],
+        "optionLabels": {
+          "irmao-pequeno": {
+            "pt": "meu irmão pequeno",
+            "en": "my little brother"
+          },
+          "cliente-loja": {
+            "pt": "um cliente na loja",
+            "en": "a customer at the store"
+          },
+          "prova-escola": {
+            "pt": "prova de escola",
+            "en": "school test"
+          }
+        },
+        "required": true
+      }
+    ]
+  },
+  "c3": {
+    "id": "c3",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "fixed",
+    "title": {
+      "pt": "Mostra um exemplo",
+      "en": "Show an example"
+    },
+    "initialState": {
+      "systemPrompt": "Se o usuário mostrar um exemplo do formato que quer, responda no MESMO formato. Se não, responda em texto corrido.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Pede um resumo de um filme e vê como eu respondo.",
+            "en": "Ask for a movie summary."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Me faz um resumo do filme Cidade de Deus.",
+        "en": "Summarize the movie City of God."
+      },
+      "cannedResults": {
+        "sem-exemplo": {
+          "quality": "meia-boca",
+          "text": {
+            "pt": "Cidade de Deus (2002) é um filme brasileiro dirigido por Fernando Meirelles e Kátia Lund que retrata a vida na favela homônima do Rio de Janeiro entre os anos 60 e 80, acompanhando dois amigos que seguem caminhos opostos. Aclamado pela crítica, foi indicado a quatro Oscars.",
+            "en": "City of God (2002) is a Brazilian film by Fernando Meirelles and Kátia Lund depicting life in the Rio favela from the 60s to 80s."
+          },
+          "critique": {
+            "pt": "Não tá errada, mas é um textão. Você não disse o formato, então ela chutou.",
+            "en": "Not wrong, but it's a wall of text. You didn't say the format, so it guessed."
+          }
+        },
+        "com-exemplo": {
+          "quality": "top",
+          "text": {
+            "pt": "🎬 Cidade de Deus\n📅 2002\n📍 Favela do RJ, anos 60-80\n👥 Buscapé (fotógrafo) x Zé Pequeno (traficante)\n⭐ 4 indicações ao Oscar\n💡 Vale ver: mostra a favela por dentro, sem romantizar.",
+            "en": "🎬 City of God\n📅 2002\n📍 Rio favela, 60s-80s\n👥 Rocket x Li'l Zé\n⭐ 4 Oscar noms"
+          },
+          "critique": {
+            "pt": "Ela copiou o formato do teu exemplo. Um exemplo vale mais que mil explicações.",
+            "en": "It copied your example's format. One example beats a thousand explanations."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "choseOption": {
+                "id": "add-exemplo-formato"
+              }
+            },
+            "use": "com-exemplo"
+          }
+        ],
+        "fallback": "sem-exemplo"
+      }
+    },
+    "choices": [
+      {
+        "id": "add-exemplo-formato",
+        "label": {
+          "pt": "🎬 colar um exemplo no formato que eu quero",
+          "en": "🎬 paste an example format"
+        },
+        "appends": {
+          "pt": "Quero no mesmo formato deste exemplo:\n🎬 Tropa de Elite\n📅 2007\n📍 RJ\n👥 Capitão Nascimento (BOPE) x tráfico\n⭐ Urso de Ouro em Berlim\n💡 Vale ver: mostra o outro lado da guerra ao tráfico.",
+          "en": "I want the same format as this example:\n🎬 Elite Squad\n📅 2007\n📍 Rio\n👥 Captain Nascimento (BOPE)\n⭐ Golden Bear"
+        }
+      },
+      {
+        "id": "add-por-favor",
+        "label": {
+          "pt": "🙏 por favor caprichado",
+          "en": "🙏 please make it nice"
+        },
+        "appends": {
+          "pt": "Caprichado, por favor.",
+          "en": "Make it nice, please."
+        }
+      },
+      {
+        "id": "add-rapido",
+        "label": {
+          "pt": "⚡ resumido e rápido",
+          "en": "⚡ short and fast"
+        },
+        "appends": {
+          "pt": "Bem resumido.",
+          "en": "Keep it short."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "rodar-sem-exemplo",
+        "prompt": {
+          "pt": "Manda o pedido do jeito que tá.",
+          "en": "Send it as-is."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-sem-exemplo",
+        "prompt": {
+          "pt": "Como ficou essa resposta?",
+          "en": "How was that answer?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "montar-com-exemplo",
+        "prompt": {
+          "pt": "Escolhe UMA coisa pra adicionar e manda de novo.",
+          "en": "Pick ONE thing to add and send again."
+        },
+        "hint": {
+          "pt": "Só uma delas mostra o FORMATO que você quer.",
+          "en": "Only one shows the FORMAT you want."
+        },
+        "mode": "compose",
+        "expose": {
+          "choices": [
+            "add-exemplo-formato",
+            "add-por-favor",
+            "add-rapido"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-com-exemplo",
+        "prompt": {
+          "pt": "E com o exemplo colado antes?",
+          "en": "And with the example pasted first?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-com-exemplo"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Um exemplo do que você quer vale mais que mil explicações.",
+        "en": "One example beats a thousand explanations."
+      }
+    }
+  },
+  "c4": {
+    "id": "c4",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "fixed",
+    "title": {
+      "pt": "Contexto errado atrapalha",
+      "en": "Wrong context hurts"
+    },
+    "initialState": {
+      "systemPrompt": "Leve TODO o contexto do usuário a sério, mesmo quando irrelevante ou contraditório.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Você precisa de ajuda com uma mensagem pro grupo do trabalho da escola. Vamos ver.",
+            "en": "You need help with a school group message."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Escreve uma mensagem curta pro grupo do trabalho de escola avisando que atrasei a minha parte.",
+        "en": "Write a short message to my school group saying I'm late."
+      },
+      "cannedResults": {
+        "limpo": {
+          "quality": "top",
+          "text": {
+            "pt": "Galera, desculpa aí, minha parte vai atrasar um dia. Mando amanhã até 18h sem falta. 🙏",
+            "en": "Hey, sorry, my part will be late by a day. Sending tomorrow by 6pm. 🙏"
+          },
+          "critique": {
+            "pt": "Curta, clara, faz o trabalho. Com o pedido limpo, ela acertou em cheio.",
+            "en": "Short, clear, does the job. With a clean ask, it nailed it."
+          }
+        },
+        "poluido": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Prezados colegas do grupo de trabalho escolar, considerando que meu cachorro passou mal ontem e precisei levar ao veterinário, além do fato de que minha internet caiu duas vezes durante a semana e do compromisso familiar de aniversário da minha tia no sábado, venho por meio desta comunicar, com o devido pesar e ciente das implicações, o atraso na entrega da minha parcela contributiva, solicitando desde já a compreensão de todos os integrantes...",
+            "en": "Dear colleagues of the school group, considering that my dog was sick and I had to take it to the vet, plus my internet went down twice..."
+          },
+          "critique": {
+            "pt": "Virou um textão cheio de desculpa que ninguém lê. Mais contexto NÃO deixou melhor: piorou.",
+            "en": "It became a wall of excuses no one reads. More context did NOT help: it got worse."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "choseOption": {
+                "id": "add-tudo-que-aconteceu"
+              }
+            },
+            "use": "poluido"
+          }
+        ],
+        "fallback": "limpo"
+      }
+    },
+    "choices": [
+      {
+        "id": "add-tudo-que-aconteceu",
+        "label": {
+          "pt": "➕ adicionar TUDO que aconteceu essa semana",
+          "en": "➕ add EVERYTHING that happened"
+        },
+        "appends": {
+          "pt": "Contexto: meu cachorro passou mal e fui no veterinário, minha internet caiu duas vezes, e sábado tem aniversário da minha tia.",
+          "en": "Context: my dog got sick and I went to the vet, my internet dropped twice, and Saturday is my aunt's birthday."
+        }
+      },
+      {
+        "id": "add-emoji",
+        "label": {
+          "pt": "😀 pedir mais emoji",
+          "en": "😀 ask for more emoji"
+        },
+        "appends": {
+          "pt": "Coloca bastante emoji.",
+          "en": "Add lots of emoji."
+        }
+      },
+      {
+        "id": "add-formal",
+        "label": {
+          "pt": "🎩 deixar bem formal",
+          "en": "🎩 make it very formal"
+        },
+        "appends": {
+          "pt": "Deixa bem formal.",
+          "en": "Make it very formal."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "rodar-limpo",
+        "prompt": {
+          "pt": "Manda o pedido limpo, do jeito que tá.",
+          "en": "Send the clean ask, as-is."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-limpo",
+        "prompt": {
+          "pt": "Essa mensagem serviu? Avalia.",
+          "en": "Did that message work? Rate it."
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "montar-poluido",
+        "prompt": {
+          "pt": "Agora despeja TUDO que aconteceu na semana e manda de novo.",
+          "en": "Now dump EVERYTHING and send again."
+        },
+        "hint": {
+          "pt": "Será que mais contexto sempre melhora? Testa.",
+          "en": "Does more context always help? Test it."
+        },
+        "mode": "compose",
+        "expose": {
+          "choices": [
+            "add-tudo-que-aconteceu",
+            "add-emoji",
+            "add-formal"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-poluido",
+        "prompt": {
+          "pt": "E agora, com TUDO junto? Melhorou ou piorou?",
+          "en": "And now, with everything? Better or worse?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-poluido"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Contexto NÃO é 'quanto mais melhor'. É escolher o que importa e tirar o resto.",
+        "en": "Context isn't 'more is better'. It's picking what matters."
+      }
+    }
+  },
+  "c5": {
+    "id": "c5",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "parametrized",
+    "title": {
+      "pt": "Teu caso, tua pergunta",
+      "en": "Your case, your question"
+    },
+    "initialState": {
+      "systemPrompt": "Se o usuário escolher onde e qual é a situação, responda usando esse contexto. Se não, responda genérico.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Escolhe onde você quer aplicar isso e qual é a situação.",
+            "en": "Pick where and what the situation is."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Me ajuda a resolver isso.",
+        "en": "Help me solve this."
+      },
+      "cannedResults": {
+        "generico": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Pra eu ajudar, preciso saber: qual o problema, quem tá envolvido, o que você já tentou, e o que você quer que aconteça.",
+            "en": "To help, I need: the problem, who's involved, what you tried, and what you want to happen."
+          },
+          "critique": {
+            "pt": "Ela te devolveu um questionário. Sem o teu contexto, não tem como ajudar de verdade.",
+            "en": "It handed you a questionnaire. Without your context, it can't really help."
+          }
+        },
+        "personalizado": {
+          "quality": "top",
+          "text": {
+            "pt": "Agora sim. No {{area}}, sobre \"{{situacao}}\", dá pra montar um caminho: (1) separa o problema principal do resto; (2) dá um primeiro passo pequeno hoje; (3) se depende de outra pessoa, fala direto e sem rodeio. Quer que eu escreva a mensagem ou o plano pra isso?",
+            "en": "Now we're talking. In {{area}}, about \"{{situacao}}\", here's a path: (1) split the main problem from the rest; (2) take one small step today; (3) if it needs someone else, be direct. Want me to draft the message or plan?"
+          },
+          "critique": {
+            "pt": "Ela respondeu O TEU caso, com as tuas palavras. Teu contexto virou tua resposta.",
+            "en": "It answered YOUR case, in your words. Your context became your answer."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "slotFilled": {
+                "slot": "situacao"
+              }
+            },
+            "use": "personalizado"
+          }
+        ],
+        "fallback": "generico"
+      }
+    },
+    "steps": [
+      {
+        "id": "rodar-generico",
+        "prompt": {
+          "pt": "Manda o pedido sem escolher a situação.",
+          "en": "Send without picking the situation."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-generico",
+        "prompt": {
+          "pt": "Essa resposta resolveu algo? Avalia.",
+          "en": "Did it solve anything? Rate it."
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "montar-personalizado",
+        "prompt": {
+          "pt": "Agora escolhe ONDE e QUAL é a situação, e manda de novo.",
+          "en": "Now pick WHERE and WHICH situation, and send again."
+        },
+        "hint": {
+          "pt": "Quanto mais teu, melhor a IA responde.",
+          "en": "The more it's yours, the better the AI answers."
+        },
+        "mode": "compose",
+        "expose": {
+          "slots": [
+            "area",
+            "situacao"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-personalizado",
+        "prompt": {
+          "pt": "E agora, com o teu contexto?",
+          "en": "And now, with your context?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-personalizado"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "IA genérica dá resposta genérica. Teu contexto vira tua resposta.",
+        "en": "Generic in, generic out. Your context = your answer."
+      }
+    },
+    "slots": [
+      {
+        "id": "area",
+        "label": {
+          "pt": "Onde?",
+          "en": "Where?"
+        },
+        "kind": "select",
+        "options": [
+          "whatsapp-familia",
+          "escola-professor",
+          "grupo-amigos",
+          "jogo-online",
+          "negocio-de-casa"
+        ],
+        "optionLabels": {
+          "whatsapp-familia": {
+            "pt": "WhatsApp da família",
+            "en": "family WhatsApp"
+          },
+          "escola-professor": {
+            "pt": "escola / professor",
+            "en": "school / teacher"
+          },
+          "grupo-amigos": {
+            "pt": "grupo de amigos",
+            "en": "friend group"
+          },
+          "jogo-online": {
+            "pt": "jogo online",
+            "en": "online game"
+          },
+          "negocio-de-casa": {
+            "pt": "negócio de casa",
+            "en": "home business"
+          }
+        },
+        "required": true
+      },
+      {
+        "id": "situacao",
+        "label": {
+          "pt": "O que tá acontecendo?",
+          "en": "What's happening?"
+        },
+        "kind": "select",
+        "options": [
+          "briga-amigo",
+          "cobranca-atrasada",
+          "combinar-preco",
+          "pedir-ajuda",
+          "desmarcar"
+        ],
+        "optionLabels": {
+          "briga-amigo": {
+            "pt": "briguei com alguém e quero resolver",
+            "en": "I fought with someone and want to fix it"
+          },
+          "cobranca-atrasada": {
+            "pt": "preciso cobrar algo que atrasou",
+            "en": "I need to chase something that's late"
+          },
+          "combinar-preco": {
+            "pt": "quero combinar um preço sem parecer chato",
+            "en": "I want to agree a price without sounding pushy"
+          },
+          "pedir-ajuda": {
+            "pt": "preciso pedir ajuda sem dar rodeio",
+            "en": "I need to ask for help directly"
+          },
+          "desmarcar": {
+            "pt": "preciso desmarcar sem magoar",
+            "en": "I need to cancel without hurting anyone"
+          }
+        },
+        "required": true
+      }
+    ]
+  },
+  "c6": {
+    "id": "c6",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "byoc",
+    "title": {
+      "pt": "Missão final: teu problema, teu contexto",
+      "en": "Final mission: your problem, your context"
+    },
+    "initialState": {
+      "systemPrompt": "Só responda com qualidade TOP se o usuário der: (1) quem ele é, (2) pra quem/pra quê é, (3) um exemplo do formato que quer.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Missão: monta um pedido completo — quem você é, o que quer, e um exemplo de formato. Aí eu respondo do jeito que serve pra você.",
+            "en": "Mission: build a full prompt — who you are, what you want, a format example."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Preciso de ajuda com isso.",
+        "en": "I need help with this."
+      },
+      "cannedResults": {
+        "faltando-tudo": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Não deu pra entender. Me diz quem você é, o que precisa e me mostra um exemplo do que espera.",
+            "en": "I couldn't get it. Tell me who you are, what you need, and show an example."
+          },
+          "critique": {
+            "pt": "Sem quem você é, o que quer e um exemplo, ela não tem como acertar. Faltou tudo.",
+            "en": "Without who you are, what you want and an example, it can't hit the mark."
+          }
+        },
+        "completo": {
+          "quality": "top",
+          "text": {
+            "pt": "Fechou! Você me deu tudo que eu precisava:\n\n👤 quem é você: {{quem-sou}}\n🎯 o que quer resolver: {{o-que-quero}}\n📄 e um exemplo do formato\n\nCom isso eu respondo do TEU jeito, e não uma resposta genérica. Repara: foi você quem deu o contexto — eu só usei.",
+            "en": "Done! You gave me everything:\n\n👤 who you are: {{quem-sou}}\n🎯 what you want: {{o-que-quero}}\n📄 and a format example\n\nNow I answer YOUR way. You gave the context — I just used it."
+          },
+          "critique": {
+            "pt": "Você montou pergunta + contexto + exemplo. Por isso ela respondeu do teu jeito. Resposta forte.",
+            "en": "You built question + context + example. That's why it answered your way. Strong answer."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "all": [
+                {
+                  "slotFilled": {
+                    "slot": "quem-sou"
+                  }
+                },
+                {
+                  "slotFilled": {
+                    "slot": "o-que-quero"
+                  }
+                },
+                {
+                  "slotFilled": {
+                    "slot": "exemplo-formato"
+                  }
+                }
+              ]
+            },
+            "use": "completo"
+          }
+        ],
+        "fallback": "faltando-tudo"
+      }
+    },
+    "steps": [
+      {
+        "id": "rodar-vazio",
+        "prompt": {
+          "pt": "Manda o pedido sem montar nada.",
+          "en": "Send without building anything."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar-vazio",
+        "prompt": {
+          "pt": "Deu pra usar essa resposta? Avalia.",
+          "en": "Could you use that answer? Rate it."
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "montar-completo",
+        "prompt": {
+          "pt": "Monta o pedido completo: quem você é, o que quer e um exemplo. Depois manda.",
+          "en": "Build the full ask, then send."
+        },
+        "hint": {
+          "pt": "Prompt = pergunta + contexto + exemplo.",
+          "en": "Prompt = question + context + example."
+        },
+        "mode": "compose",
+        "expose": {
+          "slots": [
+            "quem-sou",
+            "o-que-quero",
+            "exemplo-formato"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      },
+      {
+        "id": "avaliar-completo",
+        "prompt": {
+          "pt": "E o pedido completo, como respondeu?",
+          "en": "And the full ask, how did it answer?"
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "gte": 2
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-completo"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Prompt = pergunta + contexto + exemplo. Agora você sabe montar.",
+        "en": "Prompt = question + context + example."
+      },
+      "masterLine": [
+        "quem sou eu",
+        "o que quero resolver, pra quem",
+        "um exemplo do formato que eu quero",
+        "= resposta que serve"
+      ]
+    },
+    "slots": [
+      {
+        "id": "quem-sou",
+        "label": {
+          "pt": "Quem é você?",
+          "en": "Who are you?"
+        },
+        "kind": "select",
+        "options": [
+          "estudante",
+          "vendedor",
+          "criador",
+          "atleta"
+        ],
+        "optionLabels": {
+          "estudante": {
+            "pt": "estudante do ensino médio",
+            "en": "high-school student"
+          },
+          "vendedor": {
+            "pt": "vendo coisas pela internet",
+            "en": "I sell things online"
+          },
+          "criador": {
+            "pt": "faço conteúdo / arte",
+            "en": "I make content / art"
+          },
+          "atleta": {
+            "pt": "jogo/treino um esporte",
+            "en": "I play/train a sport"
+          }
+        },
+        "required": true
+      },
+      {
+        "id": "o-que-quero",
+        "label": {
+          "pt": "O que quer resolver?",
+          "en": "What to solve?"
+        },
+        "kind": "select",
+        "options": [
+          "mensagem-dificil",
+          "organizar-estudos",
+          "divulgar-algo",
+          "planejar-semana"
+        ],
+        "optionLabels": {
+          "mensagem-dificil": {
+            "pt": "escrever uma mensagem difícil",
+            "en": "write a hard message"
+          },
+          "organizar-estudos": {
+            "pt": "organizar meus estudos",
+            "en": "organize my studies"
+          },
+          "divulgar-algo": {
+            "pt": "divulgar algo que eu faço",
+            "en": "promote something I do"
+          },
+          "planejar-semana": {
+            "pt": "planejar minha semana",
+            "en": "plan my week"
+          }
+        },
+        "required": true
+      },
+      {
+        "id": "exemplo-formato",
+        "label": {
+          "pt": "Exemplo do formato que você quer",
+          "en": "Format example"
+        },
+        "kind": "select",
+        "options": [
+          "lista",
+          "mensagem-pronta",
+          "passo-a-passo",
+          "tabela"
+        ],
+        "optionLabels": {
+          "lista": {
+            "pt": "uma lista de tópicos",
+            "en": "a bullet list"
+          },
+          "mensagem-pronta": {
+            "pt": "uma mensagem pronta pra copiar",
+            "en": "a ready-to-copy message"
+          },
+          "passo-a-passo": {
+            "pt": "um passo a passo",
+            "en": "a step-by-step"
+          },
+          "tabela": {
+            "pt": "uma tabela",
+            "en": "a table"
+          }
+        },
+        "required": true
+      }
+    ]
+  }
+}

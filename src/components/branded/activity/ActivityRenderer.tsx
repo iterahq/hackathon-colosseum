@@ -18,6 +18,7 @@
  *   code:     { language?: string, starter?: string, prompt?: string }
  */
 import { useEffect, useMemo, useState } from 'react';
+import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import { motion } from 'framer-motion';
 import { FileText, GitBranch, Code2, CheckCircle2, XCircle, Construction } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -42,6 +43,7 @@ import { SingleChoiceActivity } from './SingleChoiceActivity';
 import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
+import { SandboxScenarioActivity } from './SandboxScenarioActivity';
 import { SubmitButton } from './parts';
 
 export function ActivityRenderer({
@@ -76,6 +78,8 @@ export function ActivityRenderer({
       return <MatchActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'order':
       return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'sandbox_scenario':
+      return <SandboxScenarioGuard activity={activity} onComplete={onComplete} reveal={reveal} />;
     default:
       return <UnknownActivity activity={activity} />;
   }
@@ -532,6 +536,35 @@ function CodePlaceholder({ activity, onComplete }: { activity: Activity; onCompl
       <DoneButton done={activity.status === 'done'} onClick={() => onComplete(true)} />
     </Shell>
   );
+}
+
+/**
+ * Validate the sandbox `spec` against the shared per-kind Zod schema before
+ * handing it to the runtime — an authoring mistake renders a friendly card
+ * instead of a runtime crash. Valid specs pass straight through.
+ */
+function SandboxScenarioGuard({
+  activity,
+  onComplete,
+  reveal,
+}: {
+  activity: Activity;
+  onComplete: (c: boolean) => void;
+  reveal?: boolean;
+}) {
+  const parsed = safeParseActivitySpec('sandbox_scenario', activity.spec);
+  if (!parsed.success) {
+    return (
+      <div
+        className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"
+        data-testid="sandbox-invalid"
+        data-activity-kind="sandbox_scenario"
+      >
+        Este cenário está com a configuração inválida e não pôde ser carregado.
+      </div>
+    );
+  }
+  return <SandboxScenarioActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
 }
 
 function UnknownActivity({ activity }: { activity: Activity }) {

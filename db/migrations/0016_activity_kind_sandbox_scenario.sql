@@ -1,0 +1,24 @@
+-- ============================================================================
+-- Itera activity taxonomy — add the `sandbox_scenario` activity_kind value.
+-- Plan: plano-sandbox-studio-2026-07-15 (DR-SANDBOX-01, Round 3 — student
+-- player consumes the shared @iterahq/activity-spec/runtime for the sandbox
+-- chat activity). A Scenario lives in `itera.activities.spec jsonb`; the
+-- learner result lives in `activity_results.feedback jsonb` — ZERO new tables.
+-- Applies to the ITERA Supabase project (kjefmwlopzeaqgqtlbdn) ONLY.
+-- NOT dfl-schema. NOT DFL prod (yoojxnggaxcqtsyjdrdx).
+--
+-- This is point 1 of the COORDINATED 3-point change. The other two:
+--   2. `ActivityKind` union in iterahq/itera-player:src/types/content.ts
+--   3. `ACTIVITY_KINDS` in iterahq/itera-mcp:src/tools/activities.ts
+--      (both now IMPORT `ACTIVITY_KINDS` from @iterahq/activity-spec, which
+--       already carries 'sandbox_scenario' — this migration makes the DB enum
+--       catch up so the package stays the single source of truth).
+--
+-- 🚨 APPLY NOTE: `ALTER TYPE … ADD VALUE` CANNOT run inside a transaction block,
+-- so this file must be applied as a single autocommit statement — NOT via the
+-- txn-wrapping `itera-supabase-helpers migrate`. Use `query` for the line.
+-- `IF NOT EXISTS` makes it additive + idempotent (re-runnable no-op). New enum
+-- values also can't be USED in the same txn they're added.
+-- ============================================================================
+
+ALTER TYPE itera.activity_kind ADD VALUE IF NOT EXISTS 'sandbox_scenario';
