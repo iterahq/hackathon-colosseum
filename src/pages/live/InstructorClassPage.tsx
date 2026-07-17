@@ -519,9 +519,11 @@ function ClassControl({
                 </button>
               </div>
             ) : current ? (
+              // sandbox_scenario is facilitator-driven: the instructor drives the
+              // chat live on the projector, so its stage stays interactive.
               <LiveActivityStage
                 activity={current}
-                readOnly
+                readOnly={current.kind !== 'sandbox_scenario'}
                 reveal={revealCurrent}
                 testid="instructor-activity-stage"
               />
