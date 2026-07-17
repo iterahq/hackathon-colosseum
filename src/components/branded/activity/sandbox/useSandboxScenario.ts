@@ -48,6 +48,16 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
   const choicesReady = choices.length === 0 || choices.some((c) => model.choicesMade.has(c.id));
   const canSend = !readOnly && needs.send && slotsReady && choicesReady;
 
+  // Whether there's any in-progress compose state (a filled slot or a chosen
+  // choice, for the CURRENTLY exposed set) worth clearing — the "Limpar"
+  // affordance (plan 20260717-iterahq-activities-visual-ux-redesign, P4f).
+  // Never touches messages/evaluations/success — purely resets the not-yet-sent
+  // composition, mirroring the Git-sandbox LIMPAR pattern.
+  const canClear =
+    !readOnly &&
+    (exposedSlotIds.some((id) => (model.slots[id] ?? '').trim() !== '') ||
+      exposedChoiceIds.some((id) => model.choicesMade.has(id)));
+
   const revealLines = scenario.reveal.masterLine ?? [];
 
   const runIndex = model.runs.length - 1;
@@ -74,6 +84,7 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
     exposedSlotIds,
     exposedChoiceIds,
     canSend,
+    canClear,
     revealLines,
     lastEval,
     evalWrong,
@@ -97,5 +108,7 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
     rate: (q: Quality) => guard(() => evaluate(scenario, model, q)),
     // Clear the current answer's rating so the learner can judge again.
     retry: () => guard(() => ({ ...model, evaluations: model.evaluations.filter((e) => e.runIndex !== runIndex) })),
+    // "Limpar" — reset the CURRENTLY exposed slots/choices without sending.
+    clear: () => guard(() => resetInputs(scenario, model, { slots: exposedSlotIds, choices: exposedChoiceIds })),
   };
 }
