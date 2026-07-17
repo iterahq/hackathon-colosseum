@@ -240,3 +240,41 @@ describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => 
     expect(outcome).toBeInTheDocument();
   }, 20000);
 });
+
+describe('SandboxScenarioLiveActivity — Enter-to-submit composer', () => {
+  it('Enter (no Shift) submits the composed input and advances to the eval step', async () => {
+    mockRespond('A precise, on-topic answer using the given context.', true);
+    renderLive();
+
+    const input = screen.getByTestId('byoc-input');
+    fireEvent.change(input, { target: { value: 'a real, well-scoped context' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Enter fired doSend → the responder ran and the eval step surfaced.
+    await waitFor(() => expect(screen.getByTestId('byoc-eval')).toBeInTheDocument(), { timeout: 8000 });
+    expect(respond).toHaveBeenCalledWith('a real, well-scoped context', 'test-token', undefined);
+  }, 20000);
+
+  it('Shift+Enter does NOT submit — it keeps the newline for multiline input', () => {
+    renderLive();
+
+    const input = screen.getByTestId('byoc-input');
+    fireEvent.change(input, { target: { value: 'line one' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+
+    // Still composing: the composer is present and no responder call fired.
+    expect(screen.getByTestId('byoc-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('byoc-eval')).not.toBeInTheDocument();
+    expect(respond).not.toHaveBeenCalled();
+  });
+
+  it('Enter on an empty composer does nothing (no submit)', () => {
+    renderLive();
+
+    const input = screen.getByTestId('byoc-input');
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(respond).not.toHaveBeenCalled();
+    expect(screen.getByTestId('byoc-input')).toBeInTheDocument();
+  });
+});

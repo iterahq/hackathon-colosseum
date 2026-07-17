@@ -121,7 +121,14 @@ export function SandboxScenarioLiveActivity({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) doSend();
+                  // Enter (without Shift) submits AND clears the field (doSend
+                  // clears via setInput('')); Shift+Enter keeps the multiline
+                  // newline. `isComposing` guards IME composition so confirming
+                  // a candidate with Enter never submits mid-composition.
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    doSend();
+                  }
                 }}
                 rows={2}
                 placeholder={placeholder}
