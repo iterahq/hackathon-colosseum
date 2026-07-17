@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { InstructorControls } from '@/components/live/InstructorControls';
 
@@ -11,11 +11,15 @@ const base = {
   canPrev: false,
   canNext: true,
   timerRunning: false,
+  revealed: false,
+  timerSeconds: 0,
   onBegin: vi.fn(),
   onPrev: vi.fn(),
   onNext: vi.fn(),
   onStartTimer: vi.fn(),
   onStopTimer: vi.fn(),
+  onReveal: vi.fn(),
+  onReset: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {
@@ -55,5 +59,40 @@ describe('InstructorControls', () => {
   it('hides the answered chip when no learners are present yet', () => {
     controls({ presentCount: 0, answeredCount: 0 });
     expect(screen.queryByTestId('instructor-answered-count')).toBeNull();
+  });
+
+  it('reveal + reset are hidden in reception and shown once running', () => {
+    const { rerender } = controls({ inReception: true });
+    expect(screen.queryByTestId('instructor-reveal')).toBeNull();
+    expect(screen.queryByTestId('instructor-reset')).toBeNull();
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} inReception={false} />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('instructor-reveal')).toBeTruthy();
+    expect(screen.getByTestId('instructor-reset')).toBeTruthy();
+  });
+
+  it('reveal fires onReveal and disables once the answer is revealed', () => {
+    const onReveal = vi.fn();
+    const { rerender } = controls({ onReveal });
+    fireEvent.click(screen.getByTestId('instructor-reveal'));
+    expect(onReveal).toHaveBeenCalledOnce();
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} onReveal={onReveal} revealed />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('instructor-reveal')).toBeDisabled();
+  });
+
+  it('reset fires onReset even after the answer is revealed (redo the round)', () => {
+    const onReset = vi.fn();
+    controls({ onReset, revealed: true });
+    const resetBtn = screen.getByTestId('instructor-reset');
+    expect(resetBtn).not.toBeDisabled();
+    fireEvent.click(resetBtn);
+    expect(onReset).toHaveBeenCalledOnce();
   });
 });

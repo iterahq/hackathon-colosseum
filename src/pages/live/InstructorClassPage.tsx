@@ -325,7 +325,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, status, roster, connected, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, resetActivity, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -614,12 +614,15 @@ function ClassControl({
               canPrev={canPrev}
               canNext={canNext}
               timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+              revealed={revealCurrent}
               timerSeconds={DEFAULT_TIMER_SECONDS}
               onBegin={() => activities[0] && goTo(activities[0].id)}
               onPrev={() => canPrev && goTo(activities[idx - 1].id)}
               onNext={() => canNext && goTo(activities[idx + 1].id)}
               onStartTimer={(s) => current && broadcastTimer(current.id, s)}
               onStopTimer={() => current && clearTimer(current.id)}
+              onReveal={() => current && clearTimer(current.id)}
+              onReset={() => current && resetActivity(current.id)}
             />
           }
         />

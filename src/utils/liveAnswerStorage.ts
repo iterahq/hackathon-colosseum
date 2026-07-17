@@ -38,3 +38,15 @@ export function storeAnswer(
     // Storage unavailable (private mode/quota) — refresh protection degrades only.
   }
 }
+
+/** Drop the stored answer for one activity — the professor reset it to redo. */
+export function clearStoredAnswer(sessionId: string, activityId: string): void {
+  try {
+    const all = readAll(sessionId);
+    if (!(activityId in all)) return;
+    delete all[activityId];
+    localStorage.setItem(keyFor(sessionId), JSON.stringify(all));
+  } catch {
+    // Storage unavailable — nothing to clear.
+  }
+}

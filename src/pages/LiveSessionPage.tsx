@@ -34,7 +34,7 @@ import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { formatDuration } from '@/utils/formatDuration';
-import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
+import { readStoredAnswer, storeAnswer, clearStoredAnswer } from '@/utils/liveAnswerStorage';
 import { isGenericName } from '@/utils/isGenericName';
 import { useProfile } from '@/hooks/useProfile';
 import type { Activity } from '@/types/content';
@@ -47,7 +47,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, answers, elapsed, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer } =
     useClassSession(
       sessionId,
       identity.userId
@@ -128,6 +128,18 @@ export default function LiveSessionPage() {
   useEffect(() => {
     if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
   }, [stoppedFor, current]);
+
+  // Professor reset THIS activity → drop the learner's own answered/expired state
+  // (and its refresh-protection copy) so they can redo it. Keyed on the reset
+  // nonce so a repeat reset of the same activity re-fires.
+  useEffect(() => {
+    if (!resetSignal || !currentActivityId || resetSignal.activityId !== currentActivityId) return;
+    setAnswered(null);
+    setTimeUpFor(null);
+    setSaving(false);
+    setActivityStartedAt(Date.now());
+    if (sessionId) clearStoredAnswer(sessionId, currentActivityId);
+  }, [resetSignal, currentActivityId, sessionId]);
 
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
   const expired = timeUpFor !== null && timeUpFor === current?.id;

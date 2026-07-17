@@ -1,4 +1,4 @@
-import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Eye, RotateCcw } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 
@@ -11,6 +11,8 @@ interface InstructorControlsProps {
   canPrev: boolean;
   canNext: boolean;
   timerRunning: boolean;
+  /** The current activity's answer is already revealed to the class. */
+  revealed: boolean;
   /** Pre-set lesson timer duration (seconds); 0 = the lesson has no timer. */
   timerSeconds: number;
   onBegin: () => void;
@@ -18,6 +20,8 @@ interface InstructorControlsProps {
   onNext: () => void;
   onStartTimer: (seconds: number) => void;
   onStopTimer: () => void;
+  onReveal: () => void;
+  onReset: () => void;
 }
 
 /**
@@ -33,12 +37,15 @@ export function InstructorControls({
   canPrev,
   canNext,
   timerRunning,
+  revealed,
   timerSeconds,
   onBegin,
   onPrev,
   onNext,
   onStartTimer,
   onStopTimer,
+  onReveal,
+  onReset,
 }: InstructorControlsProps) {
   const { t } = useI18n();
   const allAnswered = presentCount > 0 && answeredCount >= presentCount;
@@ -104,6 +111,25 @@ export function InstructorControls({
           onStop={onStopTimer}
         />
       )}
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onReveal}
+          disabled={busy || revealed}
+          data-testid="instructor-reveal"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-border bg-background text-sm text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
+        >
+          <Eye className="w-3.5 h-3.5" /> {t('live.instructor.control.reveal')}
+        </button>
+        <button
+          onClick={onReset}
+          disabled={busy}
+          data-testid="instructor-reset"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-border bg-background text-sm text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> {t('live.instructor.control.reset')}
+        </button>
+      </div>
     </div>
   );
 }
