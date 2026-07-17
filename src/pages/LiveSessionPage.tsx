@@ -170,8 +170,12 @@ export default function LiveSessionPage() {
     !profileLoading &&
     isGenericName(profile?.displayName, profile?.email);
 
+  // The sandbox owns a fixed viewport-relative height, so its surface is pinned
+  // to the viewport with the scroll living INSIDE the stage — never the page.
+  const onSandbox = current?.kind === 'sandbox_scenario';
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className={`bg-background flex flex-col ${onSandbox ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
       <LiveSessionChrome
         progressPct={progressPct}
@@ -189,7 +193,11 @@ export default function LiveSessionPage() {
       />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
+        <main
+          className={`flex-1 min-h-0 px-4 md:px-8 ${
+            onSandbox ? 'overflow-y-auto pt-6 pb-6' : 'lg:overflow-y-auto pt-14 md:pt-20 pb-8'
+          }`}
+        >
           <div className={`mx-auto ${current?.kind === 'sandbox_scenario' ? 'max-w-4xl' : 'max-w-2xl'}`}>
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
