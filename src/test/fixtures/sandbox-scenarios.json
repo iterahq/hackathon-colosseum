@@ -1318,5 +1318,97 @@
         "required": true
       }
     ]
+  },
+  "cIA": {
+    "id": "cIA",
+    "sandboxKind": "cloud-core-chat",
+    "openness": "byoc",
+    "title": {
+      "pt": "Conversa aberta",
+      "en": "Open chat"
+    },
+    "initialState": {
+      "systemPrompt": "Responda de forma direta ao pedido do usuário.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Manda seu pedido que eu respondo.",
+            "en": "Send your ask and I'll answer."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Me explica o que é contexto pra uma IA.",
+        "en": "Explain what context is for an AI."
+      },
+      "cannedResults": {
+        "resposta": {
+          "quality": "top",
+          "text": {
+            "pt": "Contexto é tudo que você conta pra IA além do pedido: quem você é, pra quem é, e um exemplo do que espera. Quanto mais claro o contexto, melhor a resposta.",
+            "en": "Context is everything you tell the AI beyond the ask: who you are, who it's for, and an example. The clearer the context, the better the answer."
+          },
+          "critique": {
+            "pt": "Resposta direta e completa. Boa.",
+            "en": "Direct and complete. Good."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [],
+        "fallback": "resposta"
+      }
+    },
+    "steps": [
+      {
+        "id": "rodar",
+        "prompt": {
+          "pt": "Manda o pedido do jeito que tá.",
+          "en": "Send the ask as-is."
+        },
+        "mode": "compose",
+        "expose": {},
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      },
+      {
+        "id": "avaliar",
+        "prompt": {
+          "pt": "Essa resposta foi boa? Avalia.",
+          "en": "Was that answer good? Rate it."
+        },
+        "mode": "evaluate",
+        "unlock": {
+          "all": [
+            {
+              "ranPromptCount": {
+                "eq": 1
+              }
+            },
+            {
+              "evaluated": {
+                "correct": true
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Você conversou direto com a IA. Simples assim.",
+        "en": "You chatted straight with the AI. Simple as that."
+      }
+    }
   }
 }
