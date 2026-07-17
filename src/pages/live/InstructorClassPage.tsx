@@ -493,8 +493,8 @@ function ClassControl({
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* The activity stays CENTERED in the space left of the sidebar —
             learner-identical stage, just centered rather than in a fixed grid. */}
-        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pt-14 md:pt-20 pb-8">
-          <div className="max-w-2xl mx-auto">
+        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pb-8 flex flex-col">
+          <div className="max-w-2xl w-full mx-auto my-auto py-10">
             <div
               className="font-mono text-[11px] uppercase tracking-wider text-clay"
               data-testid="live-eyebrow"
