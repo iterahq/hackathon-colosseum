@@ -38,4 +38,14 @@ describe('LiveActivityStatsCard', () => {
     renderCard({ answerers: [] });
     expect(screen.getByTestId('live-stats-answered').textContent).toContain('0/0');
   });
+
+  it('collapses correct/wrong into one responded bucket for the learner', () => {
+    renderCard({ hideCorrectness: true });
+    const card = screen.getByTestId('live-activity-stats').textContent ?? '';
+    // 2 correct + 1 wrong = 3 responded; the wrong label never leaks.
+    expect(card).toContain('responderam');
+    expect(card).not.toContain('erraram');
+    expect(card).not.toContain('acertaram');
+    expect(screen.getByTestId('live-stats-answered').textContent).toContain('3/4');
+  });
 });

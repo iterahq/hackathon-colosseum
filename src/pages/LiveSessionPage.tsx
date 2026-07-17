@@ -398,6 +398,8 @@ export default function LiveSessionPage() {
             roster={roster}
             answerers={peerAnswerers}
             selfUserId={identity.userId}
+            hasActivity={!!current}
+            kind={current?.kind ?? ''}
           />
         )}
       </div>

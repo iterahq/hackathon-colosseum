@@ -53,9 +53,8 @@ export function LiveSidebar({
   const isInstructor = role === 'instructor';
   const showActivity = isInstructor && hasActivity;
 
-  // On phones the learner's classroom panel is OPTIONAL: it collapses to a
-  // compact bar (few data) so it never eats half the screen from the activity.
-  // Instructor and every `lg` breakpoint keep the full sticky sidebar.
+  // On phones the learner panel collapses to a compact bar so it never eats
+  // half the screen; instructor and every `lg` breakpoint keep the full sidebar.
   const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
   const bodyClass = collapsible
@@ -87,8 +86,7 @@ export function LiveSidebar({
         </button>
       )}
 
-      {/* Pinned top: flow controls + activity stats stay put while the
-          participant lists below scroll (so navigation never scrolls away). */}
+      {/* Pinned top: flow controls + activity stats stay put while lists scroll. */}
       {isInstructor && (controls || showActivity) && (
         <div className="shrink-0 divide-y divide-border border-b border-border">
           {showActivity && activityCount > 0 && (
@@ -108,8 +106,10 @@ export function LiveSidebar({
         </div>
       )}
 
-      {/* Scrollable middle: this is where scale lives (many learners). */}
       <div className={bodyClass}>
+        {!isInstructor && hasActivity && (
+          <LiveActivityStatsCard bare hideCorrectness kind={kind} answerers={answerers} />
+        )}
         <LiveRosterCard bare roster={roster} selfUserId={selfUserId} />
         {(!isInstructor || hasActivity) && (
           <LiveAnswerersCard bare answerers={answerers} hideCorrectness={!isInstructor} />

@@ -8,18 +8,25 @@ interface LiveActivityStatsCardProps {
   answerers: ClassAnswerer[];
   /** Render as a flush section inside a sidebar panel (drops the card chrome). */
   bare?: boolean;
+  /**
+   * Learner view: collapse the correct/wrong split into a single "responded"
+   * bucket (aula1 Opção A — a learner never sees who got it right or wrong).
+   */
+  hideCorrectness?: boolean;
 }
 
 /**
- * Instructor-only at-a-glance panel: which activity is on screen (N/M + kind)
- * and how the room is answering right now — correct / wrong / still-thinking,
- * with a live distribution bar. The learner never sees this; it's the "run the
- * room" surface the professor drives from (the Open English reference).
+ * At-a-glance panel: which activity is on screen (N/M + kind) and how the room
+ * is answering right now. The instructor sees the full correct / wrong /
+ * still-thinking distribution (the "run the room" surface); the learner gets the
+ * same participation pulse with `hideCorrectness` — responded / waiting only,
+ * never the correctness split.
  */
 export function LiveActivityStatsCard({
   kind,
   answerers,
   bare = false,
+  hideCorrectness = false,
 }: LiveActivityStatsCardProps) {
   const { t } = useI18n();
 
@@ -30,11 +37,16 @@ export function LiveActivityStatsCard({
   const answered = correct + wrong;
   const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
 
-  const stats = [
-    { key: 'correct', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: correct, label: t('live.instructor.stats.correct') },
-    { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-clay" />, value: wrong, label: t('live.instructor.stats.wrong') },
-    { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
-  ];
+  const stats = hideCorrectness
+    ? [
+        { key: 'answered', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: answered, label: t('live.stats.responded') },
+        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
+      ]
+    : [
+        { key: 'correct', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: correct, label: t('live.instructor.stats.correct') },
+        { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-clay" />, value: wrong, label: t('live.instructor.stats.wrong') },
+        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
+      ];
 
   return (
     <div className={bare ? 'p-5' : 'rounded-3xl border border-clay/40 bg-card p-5'} data-testid="live-activity-stats">
@@ -52,13 +64,20 @@ export function LiveActivityStatsCard({
         </span>
       </div>
 
-      {/* Live distribution bar — correct / wrong / still-thinking. */}
+      {/* Distribution bar — instructor: correct / wrong split; learner: a single
+          "responded" fill so it never leaks correctness. */}
       <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden flex" aria-hidden="true">
-        <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(correct)}%` }} />
-        <div className="h-full bg-clay transition-[width] duration-300" style={{ width: `${pct(wrong)}%` }} />
+        {hideCorrectness ? (
+          <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(answered)}%` }} />
+        ) : (
+          <>
+            <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(correct)}%` }} />
+            <div className="h-full bg-clay transition-[width] duration-300" style={{ width: `${pct(wrong)}%` }} />
+          </>
+        )}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+      <div className={`mt-3 grid gap-2 text-center ${hideCorrectness ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {stats.map((s) => (
           <div key={s.key} className="flex flex-col items-center gap-0.5">
             <div className="flex items-center gap-1">
