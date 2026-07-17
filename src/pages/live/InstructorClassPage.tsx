@@ -13,7 +13,7 @@
  * The instructor advances the server-authoritative pointer (durable
  * advanceClassSession) AND broadcasts it (fast path) so every student jumps.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Play, GraduationCap, Loader2, Presentation } from 'lucide-react';
@@ -40,6 +40,7 @@ import {
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByTiming } from '@/utils/rankByTiming';
 import { rankByScore } from '@/utils/rankByScore';
+import { mergeSeenLearners } from '@/utils/liveRoster';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -49,6 +50,7 @@ import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
+import type { ClassPresenceMember } from '@/types/liveClass';
 
 // Interim default until the timer duration is chosen at class creation and
 // stored on the session (backlog: timer_seconds + creation selector + gating).
@@ -386,7 +388,31 @@ function ClassControl({
   // Class-wide speed leaderboard of the present learners (cumulative across every
   // activity answered so far), so by the end of the class it's the final ranking.
   const ranking = useMemo(() => rankByTiming(roster, elapsed, answers), [roster, elapsed, answers]);
-  const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
+
+  // Every learner who was EVER present — presence drains on `leave` (students
+  // disconnect the instant the class ends), which would empty the live roster
+  // and make the final podium vanish. Accumulating here keeps their names.
+  const seenLearnersRef = useRef<Map<string, ClassPresenceMember>>(new Map());
+  useEffect(() => {
+    seenLearnersRef.current = mergeSeenLearners(seenLearnersRef.current, roster);
+  }, [roster]);
+
+  // Frozen podium data, captured the moment the class ends. Rendering the podium
+  // off live state would let it drain to empty as students leave; the snapshot
+  // pins the final standings. (Bug: "ranking não aparece ao encerrar a aula".)
+  const [podiumSnapshot, setPodiumSnapshot] = useState<{
+    roster: ClassPresenceMember[];
+    elapsed: typeof elapsed;
+    answers: typeof answers;
+  } | null>(null);
+  const podiumRanking = useMemo(() => {
+    const src = podiumSnapshot ?? {
+      roster: [...seenLearnersRef.current.values()],
+      elapsed,
+      answers,
+    };
+    return rankByScore(src.roster, src.elapsed, src.answers);
+  }, [podiumSnapshot, elapsed, answers]);
 
   // Reveal the answer on the professor's own mirror when the timer stops (manual
   // stop → stoppedFor via self-broadcast; natural expiry → expiredFor).
@@ -419,6 +445,13 @@ function ClassControl({
     setBusy(true);
     try {
       await endClassSession(session.id);
+      // Freeze the standings NOW, while presence is still full, so students
+      // disconnecting can't drain the podium out from under the professor.
+      setPodiumSnapshot({
+        roster: [...seenLearnersRef.current.values()],
+        elapsed,
+        answers,
+      });
       // Defer invalidation to handleLeavePodium; doing it now unmounts this control before the podium renders.
       setShowPodium(true);
     } finally {
