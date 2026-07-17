@@ -1,6 +1,7 @@
 import type { Locale, Scenario } from '@iterahq/activity-spec/runtime';
 import { SandboxSlotPanel } from './SandboxSlotPanel';
 import { SandboxChoiceChips } from './SandboxChoiceChips';
+import { SandboxSeedChip } from './SandboxSeedChip';
 import { SandboxEvalPanel } from './SandboxEvalPanel';
 import type { useSandboxScenario } from './useSandboxScenario';
 
@@ -14,7 +15,8 @@ export type SandboxVariant = 'ai' | 'options' | 'words';
  * instruction ABOVE it (see `SandboxScenarioShell`, plan
  * 20260717-iterahq-activities-visual-ux-redesign P4). `variant` picks the
  * compose panel: `words` fills slots, `options` picks choice chips, `ai`
- * composes free (no extra panel — just the window composer).
+ * composes free — nothing to fill in, so the scenario's fixed `basePrompt`
+ * shows up as a seed chip here instead (never pre-filled into the composer).
  */
 export function SandboxControls({
   s,
@@ -37,6 +39,15 @@ export function SandboxControls({
           critique={s.critique}
           onRate={s.rate}
           onRetry={s.retry}
+        />
+      )}
+
+      {s.mode === 'compose' && variant === 'ai' && s.needsSeedClick && (
+        <SandboxSeedChip
+          text={s.seedText ?? ''}
+          active={s.seedInserted}
+          disabled={s.readOnly}
+          onToggle={s.onToggleSeed}
         />
       )}
 

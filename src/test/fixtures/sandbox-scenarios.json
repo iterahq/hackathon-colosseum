@@ -65,8 +65,8 @@
       {
         "id": "add-especifico",
         "label": {
-          "pt": "📝 pra uma redação de escola sobre meio ambiente",
-          "en": "📝 for a school essay about the environment"
+          "pt": "pra uma redação de escola sobre meio ambiente",
+          "en": "for a school essay about the environment"
         },
         "appends": {
           "pt": "É pra uma redação de escola sobre meio ambiente.",
@@ -76,8 +76,8 @@
       {
         "id": "add-oi",
         "label": {
-          "pt": "👋 oi, tudo bem?",
-          "en": "👋 hi, how are you?"
+          "pt": "oi, tudo bem?",
+          "en": "hi, how are you?"
         },
         "appends": {
           "pt": "Oi, tudo bem?",
@@ -87,8 +87,8 @@
       {
         "id": "add-agora",
         "label": {
-          "pt": "⏰ me ajuda agora",
-          "en": "⏰ help me now"
+          "pt": "me ajuda agora",
+          "en": "help me now"
         },
         "appends": {
           "pt": "Preciso agora.",
@@ -97,42 +97,6 @@
       }
     ],
     "steps": [
-      {
-        "id": "rodar-vago",
-        "prompt": {
-          "pt": "Manda o pedido do jeito que tá: 'me ajuda'.",
-          "en": "Send the prompt as-is."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-vago",
-        "prompt": {
-          "pt": "Essa resposta foi fraca ou forte?",
-          "en": "Was that answer weak or strong?"
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
       {
         "id": "montar-especifico",
         "prompt": {
@@ -168,7 +132,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {
@@ -297,42 +261,6 @@
     },
     "steps": [
       {
-        "id": "rodar-sem-persona",
-        "prompt": {
-          "pt": "Manda a pergunta SEM dizer quem tá perguntando.",
-          "en": "Send the question WITHOUT saying who's asking."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-sem-persona",
-        "prompt": {
-          "pt": "Essa resposta serviu bem? Avalia.",
-          "en": "Did that answer serve well? Rate it."
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
-      {
         "id": "escolher-persona",
         "prompt": {
           "pt": "Agora escolhe quem tá perguntando e manda de novo.",
@@ -365,7 +293,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {
@@ -485,8 +413,8 @@
       {
         "id": "add-exemplo-formato",
         "label": {
-          "pt": "🎬 colar um exemplo no formato que eu quero",
-          "en": "🎬 paste an example format"
+          "pt": "colar um exemplo no formato que eu quero",
+          "en": "paste an example format"
         },
         "appends": {
           "pt": "Quero no mesmo formato deste exemplo:\n🎬 Tropa de Elite\n📅 2007\n📍 RJ\n👥 Capitão Nascimento (BOPE) x tráfico\n⭐ Urso de Ouro em Berlim\n💡 Vale ver: mostra o outro lado da guerra ao tráfico.",
@@ -496,8 +424,8 @@
       {
         "id": "add-por-favor",
         "label": {
-          "pt": "🙏 por favor caprichado",
-          "en": "🙏 please make it nice"
+          "pt": "por favor caprichado",
+          "en": "please make it nice"
         },
         "appends": {
           "pt": "Caprichado, por favor.",
@@ -507,8 +435,8 @@
       {
         "id": "add-rapido",
         "label": {
-          "pt": "⚡ resumido e rápido",
-          "en": "⚡ short and fast"
+          "pt": "resumido e rápido",
+          "en": "short and fast"
         },
         "appends": {
           "pt": "Bem resumido.",
@@ -517,42 +445,6 @@
       }
     ],
     "steps": [
-      {
-        "id": "rodar-sem-exemplo",
-        "prompt": {
-          "pt": "Manda o pedido do jeito que tá.",
-          "en": "Send it as-is."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-sem-exemplo",
-        "prompt": {
-          "pt": "Como ficou essa resposta?",
-          "en": "How was that answer?"
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
       {
         "id": "montar-com-exemplo",
         "prompt": {
@@ -588,7 +480,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {
@@ -678,8 +570,8 @@
       {
         "id": "add-tudo-que-aconteceu",
         "label": {
-          "pt": "➕ adicionar TUDO que aconteceu essa semana",
-          "en": "➕ add EVERYTHING that happened"
+          "pt": "adicionar TUDO que aconteceu essa semana",
+          "en": "add EVERYTHING that happened"
         },
         "appends": {
           "pt": "Contexto: meu cachorro passou mal e fui no veterinário, minha internet caiu duas vezes, e sábado tem aniversário da minha tia.",
@@ -689,8 +581,8 @@
       {
         "id": "add-emoji",
         "label": {
-          "pt": "😀 pedir mais emoji",
-          "en": "😀 ask for more emoji"
+          "pt": "pedir mais emoji",
+          "en": "ask for more emoji"
         },
         "appends": {
           "pt": "Coloca bastante emoji.",
@@ -700,8 +592,8 @@
       {
         "id": "add-formal",
         "label": {
-          "pt": "🎩 deixar bem formal",
-          "en": "🎩 make it very formal"
+          "pt": "deixar bem formal",
+          "en": "make it very formal"
         },
         "appends": {
           "pt": "Deixa bem formal.",
@@ -710,42 +602,6 @@
       }
     ],
     "steps": [
-      {
-        "id": "rodar-limpo",
-        "prompt": {
-          "pt": "Manda o pedido limpo, do jeito que tá.",
-          "en": "Send the clean ask, as-is."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-limpo",
-        "prompt": {
-          "pt": "Essa mensagem serviu? Avalia.",
-          "en": "Did that message work? Rate it."
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
       {
         "id": "montar-poluido",
         "prompt": {
@@ -781,7 +637,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {
@@ -869,42 +725,6 @@
     },
     "steps": [
       {
-        "id": "rodar-generico",
-        "prompt": {
-          "pt": "Manda o pedido sem escolher a situação.",
-          "en": "Send without picking the situation."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-generico",
-        "prompt": {
-          "pt": "Essa resposta resolveu algo? Avalia.",
-          "en": "Did it solve anything? Rate it."
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
-      {
         "id": "montar-personalizado",
         "prompt": {
           "pt": "Agora escolhe ONDE e QUAL é a situação, e manda de novo.",
@@ -938,7 +758,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {
@@ -1118,42 +938,6 @@
     },
     "steps": [
       {
-        "id": "rodar-vazio",
-        "prompt": {
-          "pt": "Manda o pedido sem montar nada.",
-          "en": "Send without building anything."
-        },
-        "mode": "compose",
-        "expose": {},
-        "unlock": {
-          "ranPrompt": {
-            "withContext": false
-          }
-        }
-      },
-      {
-        "id": "avaliar-vazio",
-        "prompt": {
-          "pt": "Deu pra usar essa resposta? Avalia.",
-          "en": "Could you use that answer? Rate it."
-        },
-        "mode": "evaluate",
-        "unlock": {
-          "all": [
-            {
-              "ranPromptCount": {
-                "eq": 1
-              }
-            },
-            {
-              "evaluated": {
-                "correct": true
-              }
-            }
-          ]
-        }
-      },
-      {
         "id": "montar-completo",
         "prompt": {
           "pt": "Monta o pedido completo: quem você é, o que quer e um exemplo. Depois manda.",
@@ -1188,7 +972,7 @@
           "all": [
             {
               "ranPromptCount": {
-                "gte": 2
+                "eq": 1
               }
             },
             {

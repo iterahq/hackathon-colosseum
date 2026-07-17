@@ -7,14 +7,26 @@ import type { Activity } from '@/types/content';
 import scenarios from './fixtures/sandbox-scenarios.json';
 
 /**
- * sandbox_scenario. Drives the real `@iterahq/activity-spec/runtime` through
- * scenario c1 ("the vague ask") to success on the compose→evaluate pedagogy:
- * send the base prompt, RATE the weak answer, add context, send again, RATE the
- * strong answer. Asserts the branded chat dispatches, the CTA is gated until
- * success, the reveal shows, and onComplete(true) fires. Also asserts the shared
- * per-kind schema accepts c1 and rejects a broken spec.
+ * sandbox_scenario. `SandboxScenarioActivity` is a thin dispatcher (PR
+ * "Split sandbox_scenario into three activity types") that picks the concrete
+ * component off the scenario's authoring shape: `slots` → SandboxAICompleteWords
+ * (c2/c5/c6), `choices` → SandboxAIWithOptions (c1/c3/c4), neither → SandboxAI
+ * (cIA). A sandbox activity is ALWAYS exactly 2 steps (compose, evaluate) — the
+ * fixtures were migrated off the old 4-step (two compose→evaluate rounds)
+ * shape, matching the prod content migration; for the choices/slots variants
+ * the KEPT round is the one that actually exercises the chip/slot mechanic
+ * (the plain "no context" baseline round is dropped — the dedicated `cIA`
+ * fixture already covers "no context" for the `ai` variant).
+ *
+ * Also asserts: the composer NEVER starts pre-filled with the scenario's fixed
+ * `basePrompt` — Tainan: "sempre o usuário tem que inserir". For the `ai`
+ * variant (no choices/slots) the base prompt shows up as a seed chip below the
+ * window; for `options`/`words` variants the composed preview stays hidden
+ * until the learner has picked a choice / filled a slot.
  */
-const c1 = (scenarios as Record<string, unknown>).c1 as Record<string, unknown>;
+const c1 = (scenarios as Record<string, unknown>).c1 as Record<string, unknown>; // options variant (choices)
+const c2 = (scenarios as Record<string, unknown>).c2 as Record<string, unknown>; // words variant (slots)
+const cIA = (scenarios as Record<string, unknown>).cIA as Record<string, unknown>; // ai variant (pure seed)
 
 function makeActivity(spec: Record<string, unknown>): Activity {
   return { id: 't-sandbox', lessonId: 'l', ordinal: 0, kind: 'sandbox_scenario', spec, rubric: null };
@@ -29,16 +41,16 @@ function renderActivity(activity: Activity, onComplete = vi.fn()) {
   return onComplete;
 }
 
-/** Send the composed prompt, then wait for the typewriter stream to finish so the eval panel appears. */
-async function send() {
-  fireEvent.click(screen.getByTestId('sandbox-send'));
+/** Wait for the typewriter stream to finish so the eval panel appears. */
+async function waitForEvalPanel() {
   await waitFor(() => expect(screen.getByTestId('sandbox-rate-ruim')).toBeInTheDocument(), { timeout: 5000 });
 }
 
-describe('SandboxScenarioActivity', () => {
-
-  it('the shared schema accepts a valid scenario and rejects a broken one', () => {
+describe('SandboxScenarioActivity dispatcher', () => {
+  it('the shared schema accepts valid scenarios (each authoring shape) and rejects a broken one', () => {
     expect(safeParseActivitySpec('sandbox_scenario', c1).success).toBe(true);
+    expect(safeParseActivitySpec('sandbox_scenario', c2).success).toBe(true);
+    expect(safeParseActivitySpec('sandbox_scenario', cIA).success).toBe(true);
     expect(safeParseActivitySpec('sandbox_scenario', { id: 'x' }).success).toBe(false);
   });
 
@@ -47,58 +59,153 @@ describe('SandboxScenarioActivity', () => {
     expect(screen.getByTestId('sandbox-invalid')).toBeInTheDocument();
   });
 
-  it('dispatches to the sandbox shell and gates "Continuar" until success', () => {
+  it('dispatches to the sandbox shell and gates "Continuar" until success (options variant, c1)', () => {
     renderActivity(makeActivity(c1));
     expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('sandbox_scenario');
     expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
   });
 
-  it('runs c1 to success and fires onComplete(true)', async () => {
-    const onComplete = renderActivity(makeActivity(c1));
+  // Every scenario is now exactly 2 steps regardless of authoring shape.
+  it.each([
+    ['ai (cIA)', cIA],
+    ['options (c1)', c1],
+    ['words (c2)', c2],
+  ])('step indicator reads "1/2" for the %s variant', (_label, spec) => {
+    renderActivity(makeActivity(spec));
+    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/2');
+  });
 
-    // Step 1: send the base prompt as-is (weak answer).
-    await send();
-    // Step 2: rate the weak answer correctly → advances.
-    fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
-    // Step 3: add the context chip and send again (strong answer).
-    fireEvent.click(screen.getByText(/redação de escola/i));
-    await send();
-    // Step 4: rate the strong answer correctly → flips `success` true.
-    fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+  describe('ai variant (no choices/slots) — the seed chip', () => {
+    // Tainan: "sempre o usuário tem que inserir" — the composer must NEVER
+    // start pre-filled with the step's fixed basePrompt. It shows up as a chip
+    // BELOW the sandbox window instead; clicking the chip is what inserts it
+    // into the (previously empty) composer.
+    it('composer starts EMPTY — the seed/base prompt is a chip, not pre-filled text', () => {
+      renderActivity(makeActivity(cIA));
 
-    expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
-    const cta = screen.getByTestId('sandbox-continue') as HTMLButtonElement;
-    expect(cta.disabled).toBe(false);
-    fireEvent.click(cta);
-    expect(onComplete).toHaveBeenCalledWith(true);
-  }, 15000);
+      // Empty means the placeholder shows, NOT the fixed basePrompt text.
+      expect(screen.getByTestId('sandbox-input-preview').textContent).toMatch(/escreva seu pedido/i);
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(true);
 
-  it('rejects a wrong rating with a critique + retry', async () => {
-    renderActivity(makeActivity(c1));
+      const seedChip = screen.getByTestId('sandbox-seed-chip');
+      fireEvent.click(seedChip);
 
-    await send();
-    // Mis-rate the weak answer as strong → rejected.
-    fireEvent.click(screen.getByTestId('sandbox-rate-top'));
-    expect(screen.getByTestId('sandbox-eval-wrong')).toBeInTheDocument();
-    // Retry, then rate correctly → advances past the eval step.
-    fireEvent.click(screen.getByTestId('sandbox-eval-retry'));
-    fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
-    expect(screen.queryByTestId('sandbox-eval-wrong')).not.toBeInTheDocument();
-  }, 15000);
+      expect(screen.getByTestId('sandbox-input-preview').textContent).not.toBe('');
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('runs cIA to success (click seed chip → send → rate) and fires onComplete(true)', async () => {
+      const onComplete = renderActivity(makeActivity(cIA));
+
+      fireEvent.click(screen.getByTestId('sandbox-seed-chip'));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      // cIA's fallback canned result is quality "top" — correct rating is "forte".
+      fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+
+      expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
+      const cta = screen.getByTestId('sandbox-continue') as HTMLButtonElement;
+      expect(cta.disabled).toBe(false);
+      fireEvent.click(cta);
+      expect(onComplete).toHaveBeenCalledWith(true);
+    }, 15000);
+  });
+
+  describe('options variant (c1) — choice chips', () => {
+    // Same pre-fill rule applies to a step that exposes choices: the composed
+    // preview (base prompt + pick) must stay hidden until the learner has
+    // actually picked a chip — not appear the instant the step mounts.
+    it('composer starts EMPTY until a choice chip is picked', () => {
+      renderActivity(makeActivity(c1));
+
+      expect(screen.getByTestId('sandbox-input-preview').textContent).toMatch(/escreva seu pedido/i);
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.queryByTestId('sandbox-seed-chip')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByText(/redação de escola/i));
+
+      expect(screen.getByTestId('sandbox-input-preview').textContent).not.toBe('');
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('choice chips render emoji-free', () => {
+      renderActivity(makeActivity(c1));
+      const chips = screen.getByTestId('sandbox-choices');
+      expect(chips.textContent).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+    });
+
+    it('runs c1 to success (pick the right chip → send → rate) and fires onComplete(true)', async () => {
+      const onComplete = renderActivity(makeActivity(c1));
+
+      // Only "add-especifico" actually helps (top quality); the other two are distractors.
+      fireEvent.click(screen.getByText(/redação de escola/i));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+
+      expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
+      const cta = screen.getByTestId('sandbox-continue') as HTMLButtonElement;
+      expect(cta.disabled).toBe(false);
+      fireEvent.click(cta);
+      expect(onComplete).toHaveBeenCalledWith(true);
+    }, 15000);
+
+    it('rejects a wrong rating with a critique + retry', async () => {
+      renderActivity(makeActivity(c1));
+
+      fireEvent.click(screen.getByText(/redação de escola/i));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      // Mis-rate the strong answer as weak → rejected.
+      fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
+      expect(screen.getByTestId('sandbox-eval-wrong')).toBeInTheDocument();
+      // Retry, then rate correctly → advances past the eval step.
+      fireEvent.click(screen.getByTestId('sandbox-eval-retry'));
+      fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+      expect(screen.queryByTestId('sandbox-eval-wrong')).not.toBeInTheDocument();
+    }, 15000);
+  });
+
+  describe('words variant (c2) — slot panel', () => {
+    it('composer starts EMPTY until the slot is filled', () => {
+      renderActivity(makeActivity(c2));
+
+      expect(screen.getByTestId('sandbox-input-preview').textContent).toMatch(/escreva seu pedido/i);
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.click(screen.getByText(/meu irmão pequeno/i));
+
+      expect(screen.getByTestId('sandbox-input-preview').textContent).not.toBe('');
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    it('runs c2 to success (fill the slot → send → rate) and fires onComplete(true)', async () => {
+      const onComplete = renderActivity(makeActivity(c2));
+
+      fireEvent.click(screen.getByText(/meu irmão pequeno/i));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+
+      expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('sandbox-continue'));
+      expect(onComplete).toHaveBeenCalledWith(true);
+    }, 15000);
+  });
 
   // Regression lock (P5 clarification, plan 20260717-iterahq-activities-visual-ux-redesign):
   // the step indicator/composer MUST read off `scenario.steps.length` — never
-  // hard-capped to 2. The instance-data migration to 2-step specs is a
-  // SEPARATE track; this component must keep rendering whatever step count
-  // the spec actually has, both before and after that migration lands.
-  it('step indicator is DATA-DRIVEN off scenario.steps.length — never hard-capped (4-step fixture reads "1/4")', () => {
-    renderActivity(makeActivity(c1)); // c1 fixture has 4 steps
+  // hard-capped to 2, independent of whatever shape a given fixture has.
+  it('step indicator is DATA-DRIVEN off scenario.steps.length — never hard-capped (a synthetic 4-step spec reads "1/4")', () => {
+    const fourStep = {
+      ...cIA,
+      steps: [
+        ...(cIA.steps as Record<string, unknown>[]),
+        { ...(cIA.steps as Record<string, unknown>[])[0], id: 'rodar-2' },
+        { ...(cIA.steps as Record<string, unknown>[])[1], id: 'avaliar-2' },
+      ],
+    };
+    renderActivity(makeActivity(fourStep));
     expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/4');
-  });
-
-  it('a 2-step spec (post-migration shape) reads "1/2" — same component, no code change needed', () => {
-    const twoStep = { ...c1, steps: (c1.steps as unknown[]).slice(0, 2) };
-    renderActivity(makeActivity(twoStep));
-    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/2');
   });
 });

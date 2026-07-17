@@ -1,6 +1,11 @@
 import { t, type ChatModel, type Locale, type Scenario } from '@iterahq/activity-spec/runtime';
 
-/** The scenario's context-tweak choices as chips (drive step-unlock predicates). */
+/**
+ * The scenario's context-tweak choices as chips (drive step-unlock
+ * predicates). Same rounded-full pill pattern as `SandboxSeedChip`/
+ * `SandboxSlotPanel`'s select options — the standard ITERA chip look, not an
+ * ad-hoc card.
+ */
 export function SandboxChoiceChips({
   scenario,
   model,
@@ -28,8 +33,8 @@ export function SandboxChoiceChips({
             type="button"
             disabled={disabled}
             onClick={() => onChoose(c.id)}
-            className={`rounded-2xl border px-4 py-2.5 text-left text-sm font-medium transition-colors disabled:opacity-60 ${
-              active ? 'border-menta bg-menta/10 text-foreground' : 'border-border bg-card text-foreground hover:border-evergreen/50'
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+              active ? 'border-evergreen bg-evergreen text-obsidiana' : 'border-border bg-card text-foreground hover:border-evergreen/50'
             }`}
           >
             {t(c.label, locale)}

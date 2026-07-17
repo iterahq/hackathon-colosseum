@@ -9,6 +9,7 @@ import {
   resetInputs,
   sendPrompt,
   setSlot,
+  t,
   type ChatModel,
   type Locale,
   type Quality,
@@ -27,6 +28,13 @@ const NO_NEEDS: StepNeeds = { send: false, evaluate: false, slots: new Set(), ch
  */
 export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: boolean, isDone: boolean) {
   const [model, setModel] = useState<ChatModel>(() => initialModel(scenario, locale));
+  // Which compose steps the learner has explicitly clicked the seed chip for —
+  // "sempre o usuário tem que inserir" (Tainan): the composer NEVER starts
+  // pre-filled with the step's fixed basePrompt. The base prompt only shows up
+  // as a clickable chip BELOW the sandbox window; clicking it is what actually
+  // inserts it into the composer. Keyed by step id so a later compose step
+  // (if the spec ever has one) starts fresh.
+  const [seedInsertedSteps, setSeedInsertedSteps] = useState<Set<string>>(() => new Set());
 
   const won = isSuccess(scenario, model);
   const done = won || reveal;
@@ -44,19 +52,37 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
   const slots = (scenario.slots ?? []).filter((s) => exposedSlotIds.includes(s.id));
   const choices = (scenario.choices ?? []).filter((c) => exposedChoiceIds.includes(c.id));
 
+  const anySlotFilled = exposedSlotIds.some((id) => (model.slots[id] ?? '').trim() !== '');
+  const anyChoiceChosen = exposedChoiceIds.some((id) => model.choicesMade.has(id));
   const slotsReady = slots.every((s) => (model.slots[s.id] ?? '') !== '');
   const choicesReady = choices.length === 0 || choices.some((c) => model.choicesMade.has(c.id));
-  const canSend = !readOnly && needs.send && slotsReady && choicesReady;
 
-  // Whether there's any in-progress compose state (a filled slot or a chosen
-  // choice, for the CURRENTLY exposed set) worth clearing — the "Limpar"
-  // affordance (plan 20260717-iterahq-activities-visual-ux-redesign, P4f).
-  // Never touches messages/evaluations/success — purely resets the not-yet-sent
-  // composition, mirroring the Git-sandbox LIMPAR pattern.
-  const canClear =
-    !readOnly &&
-    (exposedSlotIds.some((id) => (model.slots[id] ?? '').trim() !== '') ||
-      exposedChoiceIds.some((id) => model.choicesMade.has(id)));
+  // A "pure seed" compose step is one with nothing to build (no exposed
+  // slots/choices) — its only content is the scenario's fixed `basePrompt`.
+  // That fixed text must NEVER appear pre-filled in the composer; the learner
+  // has to click the seed chip below the window first.
+  const needsSeedClick = mode === 'compose' && exposedSlotIds.length === 0 && exposedChoiceIds.length === 0;
+  const seedInserted = !!currentStep && seedInsertedSteps.has(currentStep.id);
+  const seedText = needsSeedClick ? t(scenario.initialState.basePrompt, locale) : undefined;
+
+  // "sempre o usuário tem que inserir" (Tainan) applies to EVERY compose step,
+  // not just pure-seed ones: a step that exposes choices/slots must not show
+  // the composed preview (which always starts with the fixed `basePrompt`)
+  // until the learner has actually picked/filled something — otherwise the
+  // base prompt sits there pre-filled the instant the step mounts, before any
+  // chip/slot interaction. Once the learner has acted, the full composed text
+  // (base + their pick) is exactly what's about to be sent — showing it then
+  // is the intended live preview, not a pre-fill.
+  const hasComposedSomething = needsSeedClick ? seedInserted : anyChoiceChosen || anySlotFilled;
+
+  const canSend = !readOnly && needs.send && slotsReady && choicesReady && (!needsSeedClick || seedInserted);
+
+  // Whether there's any in-progress compose state (a filled slot, a chosen
+  // choice, or an inserted seed, for the CURRENTLY exposed set) worth clearing
+  // — the "Limpar" affordance (plan 20260717-iterahq-activities-visual-ux-redesign,
+  // P4f). Never touches messages/evaluations/success — purely resets the
+  // not-yet-sent composition, mirroring the Git-sandbox LIMPAR pattern.
+  const canClear = !readOnly && (anySlotFilled || anyChoiceChosen || (needsSeedClick && seedInserted));
 
   const revealLines = scenario.reveal.masterLine ?? [];
 
@@ -68,6 +94,19 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
 
   const guard = (fn: () => ChatModel) => {
     if (!readOnly) setModel(fn());
+  };
+
+  // Toggle the seed chip for the CURRENT compose step — clicking it inserts
+  // the fixed basePrompt into the (previously empty) composer; clicking again
+  // (or "Limpar") removes it. Mirrors `onChoose`'s toggle semantics.
+  const onToggleSeed = () => {
+    if (readOnly || !currentStep) return;
+    setSeedInsertedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(currentStep.id)) next.delete(currentStep.id);
+      else next.add(currentStep.id);
+      return next;
+    });
   };
 
   return {
@@ -83,13 +122,20 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
     choices,
     exposedSlotIds,
     exposedChoiceIds,
+    needsSeedClick,
+    seedInserted,
+    seedText,
     canSend,
     canClear,
     revealLines,
     lastEval,
     evalWrong,
     critique,
-    inputText: composeUserText(scenario, model, locale),
+    // Never pre-filled: until the learner has clicked the seed chip / picked a
+    // choice / filled a slot, the composer shows nothing, regardless of what
+    // `composeUserText` would produce (it always starts with the fixed
+    // basePrompt).
+    inputText: hasComposedSomething ? composeUserText(scenario, model, locale) : '',
     onSet: (slot: string, value: string) => guard(() => setSlot(scenario, model, slot, value)),
     // Exposed choices are single-select: picking one clears the siblings so the
     // learner adds ONE thing; tapping the active chip clears it.
@@ -98,6 +144,7 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
         const cleared = resetInputs(scenario, model, { choices: exposedChoiceIds });
         return model.choicesMade.has(id) ? cleared : chooseOption(scenario, cleared, id);
       }),
+    onToggleSeed,
     send: () =>
       guard(() =>
         resetInputs(scenario, sendPrompt(scenario, model, locale), {
@@ -108,7 +155,18 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
     rate: (q: Quality) => guard(() => evaluate(scenario, model, q)),
     // Clear the current answer's rating so the learner can judge again.
     retry: () => guard(() => ({ ...model, evaluations: model.evaluations.filter((e) => e.runIndex !== runIndex) })),
-    // "Limpar" — reset the CURRENTLY exposed slots/choices without sending.
-    clear: () => guard(() => resetInputs(scenario, model, { slots: exposedSlotIds, choices: exposedChoiceIds })),
+    // "Limpar" — reset the CURRENTLY exposed slots/choices (and the seed
+    // insertion, if any) without sending.
+    clear: () => {
+      if (readOnly) return;
+      if (currentStep && seedInsertedSteps.has(currentStep.id)) {
+        setSeedInsertedSteps((prev) => {
+          const next = new Set(prev);
+          next.delete(currentStep.id);
+          return next;
+        });
+      }
+      setModel(resetInputs(scenario, model, { slots: exposedSlotIds, choices: exposedChoiceIds }));
+    },
   };
 }
