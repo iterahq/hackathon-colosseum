@@ -85,4 +85,20 @@ describe('SandboxScenarioActivity', () => {
     fireEvent.click(screen.getByTestId('sandbox-rate-ruim'));
     expect(screen.queryByTestId('sandbox-eval-wrong')).not.toBeInTheDocument();
   }, 15000);
+
+  // Regression lock (P5 clarification, plan 20260717-iterahq-activities-visual-ux-redesign):
+  // the step indicator/composer MUST read off `scenario.steps.length` — never
+  // hard-capped to 2. The instance-data migration to 2-step specs is a
+  // SEPARATE track; this component must keep rendering whatever step count
+  // the spec actually has, both before and after that migration lands.
+  it('step indicator is DATA-DRIVEN off scenario.steps.length — never hard-capped (4-step fixture reads "1/4")', () => {
+    renderActivity(makeActivity(c1)); // c1 fixture has 4 steps
+    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/4');
+  });
+
+  it('a 2-step spec (post-migration shape) reads "1/2" — same component, no code change needed', () => {
+    const twoStep = { ...c1, steps: (c1.steps as unknown[]).slice(0, 2) };
+    renderActivity(makeActivity(twoStep));
+    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/2');
+  });
 });
