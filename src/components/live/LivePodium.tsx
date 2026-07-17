@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
+import { formatMmss } from '@/utils/formatMmss';
 import type { ClassRanking } from '@/types/liveClass';
 
 // Left→right render order of the top three: 2nd, 1st, 3rd.
@@ -49,6 +50,9 @@ export function LivePodium({ ranking }: { ranking: ClassRanking }) {
                 <span className="font-mono text-xs tabular-nums text-clay">
                   {t('live.podium.score', { n: String(entry.correctCount) })}
                 </span>
+                <span className="font-mono text-[10px] tabular-nums text-muted-foreground" data-testid="live-podium-time">
+                  {formatMmss(entry.totalMs / 1000)}
+                </span>
                 <div
                   className={`mt-2 w-full ${BAR_HEIGHTS[rankIdx]} rounded-t-2xl bg-clay/15 border border-clay/40 flex items-start justify-center pt-2`}
                 >
@@ -67,7 +71,10 @@ export function LivePodium({ ranking }: { ranking: ClassRanking }) {
               <span className="w-6 text-center font-mono tabular-nums text-muted-foreground flex-shrink-0">{r.rank}</span>
               <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
               <span className="text-foreground flex-1 min-w-0 break-words">{r.name}</span>
-              <span className="ml-auto font-mono text-xs tabular-nums text-clay flex-shrink-0">
+              <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground flex-shrink-0">
+                {formatMmss(r.totalMs / 1000)}
+              </span>
+              <span className="font-mono text-xs tabular-nums text-clay flex-shrink-0">
                 {t('live.podium.score', { n: String(r.correctCount) })}
               </span>
             </li>

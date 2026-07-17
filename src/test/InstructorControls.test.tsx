@@ -20,6 +20,7 @@ const base = {
   onStopTimer: vi.fn(),
   onReveal: vi.fn(),
   onReset: vi.fn(),
+  onShowPodium: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {
@@ -94,5 +95,18 @@ describe('InstructorControls', () => {
     expect(resetBtn).not.toBeDisabled();
     fireEvent.click(resetBtn);
     expect(onReset).toHaveBeenCalledOnce();
+  });
+
+  it('podium button fires onShowPodium while running and is hidden in reception', () => {
+    const onShowPodium = vi.fn();
+    const { rerender } = controls({ onShowPodium });
+    fireEvent.click(screen.getByTestId('instructor-show-podium'));
+    expect(onShowPodium).toHaveBeenCalledOnce();
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} inReception onShowPodium={onShowPodium} />
+      </I18nProvider>
+    );
+    expect(screen.queryByTestId('instructor-show-podium')).toBeNull();
   });
 });

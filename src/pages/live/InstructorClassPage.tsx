@@ -338,6 +338,9 @@ function ClassControl({
 
   // Armed only when THIS instructor ends the class, so an out-of-band end still bounces.
   const [showPodium, setShowPodium] = useState(false);
+  // Intermediate standings shown mid-class (professor-triggered), dismissed with
+  // "back to class" — distinct from `showPodium`, which is the terminal end screen.
+  const [podiumInterlude, setPodiumInterlude] = useState(false);
 
   // If the session ends out-of-band (another tab/device), leave the live
   // surface — never strand the professor in a "LIVE" chrome whose controls
@@ -489,7 +492,7 @@ function ClassControl({
   const progressPct =
     activities.length && idx >= 0 ? Math.round(((idx + 1) / activities.length) * 100) : 0;
   const ended = status === 'ended';
-  const onPodium = ended || showPodium;
+  const onPodium = ended || showPodium || podiumInterlude;
   // Begin exists ONLY before a pointer is set; once set we're in the activity
   // (or briefly its loading skeleton), never back in the lobby.
   const inReception = !currentActivityId;
@@ -509,7 +512,7 @@ function ClassControl({
         progressPct={progressPct}
         connected={connected}
         presenceCount={roster.length}
-        ended={onPodium}
+        ended={ended || showPodium}
         activityIndex={idx}
         activityCount={activities.length}
         timerSlot={
@@ -518,8 +521,9 @@ function ClassControl({
           ) : undefined
         }
         onClose={() => {
-          // Guard against an accidental close abandoning a live presentation.
-          if (onPodium || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
+          // Guard against an accidental close abandoning a live presentation
+          // (the mid-class podium interlude still counts as live).
+          if (ended || showPodium || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
         }}
       />
 
@@ -550,12 +554,22 @@ function ClassControl({
             {onPodium ? (
               <div className="mt-8" data-testid="instructor-podium">
                 <LivePodium ranking={podiumRanking} />
-                <button
-                  onClick={handleLeavePodium}
-                  className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                >
-                  {t('live.ended.cta')}
-                </button>
+                {podiumInterlude && !ended && !showPodium ? (
+                  <button
+                    onClick={() => setPodiumInterlude(false)}
+                    data-testid="instructor-podium-resume"
+                    className="mt-8 mx-auto block h-12 px-8 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors"
+                  >
+                    {t('live.podium.resume')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleLeavePodium}
+                    className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                  >
+                    {t('live.ended.cta')}
+                  </button>
+                )}
               </div>
             ) : current ? (
               // sandbox_scenario is facilitator-driven: the instructor drives the
@@ -623,6 +637,7 @@ function ClassControl({
               onStopTimer={() => current && clearTimer(current.id)}
               onReveal={() => current && clearTimer(current.id)}
               onReset={() => current && resetActivity(current.id)}
+              onShowPodium={() => setPodiumInterlude(true)}
             />
           }
         />

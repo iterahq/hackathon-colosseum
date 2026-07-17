@@ -46,6 +46,21 @@ describe('LivePodium', () => {
     expect(rest[0]).toHaveTextContent('Duda');
   });
 
+  it('shows each place cumulative answer time (mm:ss)', () => {
+    renderPodium({
+      ranked: [
+        entry('a', 'Ana', 3, 1), // 1000ms → 0:01
+        entry('b', 'Bruno', 2, 2), // 2000ms → 0:02
+        entry('c', 'Caio', 2, 3), // 3000ms → 0:03
+        entry('d', 'Duda', 1, 4), // 4000ms → 0:04
+      ],
+      waiting: [],
+    });
+    const times = screen.getAllByTestId('live-podium-time').map((n) => n.textContent);
+    expect(times).toContain('0:01');
+    expect(screen.getByTestId('live-podium-row')).toHaveTextContent('0:04');
+  });
+
   it('shows the empty state when nobody answered', () => {
     renderPodium({ ranked: [], waiting: [] });
     expect(screen.getByTestId('live-podium-empty')).toBeInTheDocument();
