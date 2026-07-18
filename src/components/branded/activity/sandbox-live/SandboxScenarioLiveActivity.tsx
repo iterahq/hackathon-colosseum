@@ -24,12 +24,13 @@
  * composer INSIDE it (middle zone) → the rating buttons / outcome OUTWARD
  * below the window, near the action (bottom zone, P3).
  */
-import { useEffect, useState } from 'react';
-import { CheckCircle2, MessageSquare, RotateCcw, Send } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { MessageSquare, RotateCcw, Send } from 'lucide-react';
 import { t, type Locale } from '@iterahq/activity-spec/runtime';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { ActivityShell } from '@/components/branded/activity/parts';
 import { SandboxChatLog } from '@/components/branded/activity/sandbox/SandboxChatLog';
 import { SandboxBubble } from '@/components/branded/activity/sandbox/SandboxBubble';
@@ -45,7 +46,7 @@ export function SandboxScenarioLiveActivity({
   reveal = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   /** Reveal the success state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
 }) {
@@ -83,10 +84,27 @@ export function SandboxScenarioLiveActivity({
   const badLabel = spec.badLabel ? t(spec.badLabel, locale as Locale) : tx({ pt: 'Ruim', en: 'Bad' });
 
   const readOnly = reveal || isDone;
-  const showContinue = s.won;
   const canSend = input.trim() !== '' && s.phase === 'compose' && !readOnly;
   const showCompose = s.phase === 'compose' && !readOnly;
   const showEval = s.phase === 'evaluate' && !readOnly && streamedOnce && !stream.active;
+
+  // The terminal verdict + "Continuar" now live in the SHELL's fixed
+  // FeedbackFooter (the Duolingo pattern shared with the MCQ family, PR #117 —
+  // extended to the sandbox per Tainan 2026-07-18), NOT an in-window CTA. When
+  // the learner's rating settles to a continue-eligible outcome (`won` = the
+  // `context_good` PASS, or an unverifiable judge, or a force-reveal), the
+  // activity emits its verdict UP exactly once; the shell holds and slides the
+  // footer up, whose "Continuar" advances. A FAIL keeps `won` false → the
+  // in-window retry loop is untouched. The judge's WHY rides along as the footer
+  // explanation (and still shows in the in-window outcome panel).
+  const settledCorrect = s.outcome === 'fail' ? false : true;
+  const emittedRef = useRef(false);
+  useEffect(() => {
+    if (s.won && !emittedRef.current) {
+      emittedRef.current = true;
+      onComplete(settledCorrect, s.feedback ? { explanation: s.feedback } : undefined);
+    }
+  }, [s.won, settledCorrect, s.feedback, onComplete]);
 
   function doSend() {
     if (!canSend) return;
@@ -261,22 +279,9 @@ export function SandboxScenarioLiveActivity({
             </div>
           )}
 
-          {showContinue && (
-            <button
-              type="button"
-              onClick={() => onComplete(true)}
-              data-testid="byoc-continue"
-              data-locked={isDone ? 'true' : undefined}
-              className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
-                isDone
-                  ? 'cursor-default border border-menta/40 bg-menta/15 text-menta'
-                  : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
-              }`}
-            >
-              <CheckCircle2 className="h-4 w-4" />
-              {isDone ? tr('activity.done') : tr('activity.continue')}
-            </button>
-          )}
+          {/* The terminal "Continuar" moved to the shell's fixed FeedbackFooter
+              (no in-window CTA → no double-CTA). The in-window outcome panel
+              above stays; the send button is the only remaining in-window action. */}
         </div>
       </div>
     </ActivityShell>

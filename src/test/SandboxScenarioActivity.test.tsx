@@ -59,10 +59,14 @@ describe('SandboxScenarioActivity dispatcher', () => {
     expect(screen.getByTestId('sandbox-invalid')).toBeInTheDocument();
   });
 
-  it('dispatches to the sandbox shell and gates "Continuar" until success (options variant, c1)', () => {
-    renderActivity(makeActivity(c1));
+  it('dispatches to the sandbox shell and does NOT emit its verdict until success (options variant, c1)', () => {
+    const onComplete = renderActivity(makeActivity(c1));
     expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('sandbox_scenario');
+    // The terminal "Continuar" moved to the shell/harness fixed footer — it is
+    // never rendered inside the activity — and the verdict is emitted UP only
+    // once the learner has actually succeeded.
     expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   // Every scenario is now exactly 2 steps regardless of authoring shape.
@@ -94,7 +98,7 @@ describe('SandboxScenarioActivity dispatcher', () => {
       expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
     });
 
-    it('runs cIA to success (click seed chip → send → rate) and fires onComplete(true)', async () => {
+    it('runs cIA to success (click seed chip → send → rate) and emits onComplete(true) UP for the footer', async () => {
       const onComplete = renderActivity(makeActivity(cIA));
 
       fireEvent.click(screen.getByTestId('sandbox-seed-chip'));
@@ -104,10 +108,12 @@ describe('SandboxScenarioActivity dispatcher', () => {
       fireEvent.click(screen.getByTestId('sandbox-rate-top'));
 
       expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
-      const cta = screen.getByTestId('sandbox-continue') as HTMLButtonElement;
-      expect(cta.disabled).toBe(false);
-      fireEvent.click(cta);
-      expect(onComplete).toHaveBeenCalledWith(true);
+      // No in-window CTA any more — the settled verdict is emitted UP (with the
+      // reveal recap as the footer explanation) for the shell/harness footer.
+      await waitFor(() =>
+        expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ explanation: expect.any(String) })),
+      );
+      expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
     }, 15000);
   });
 
@@ -134,7 +140,7 @@ describe('SandboxScenarioActivity dispatcher', () => {
       expect(chips.textContent).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
     });
 
-    it('runs c1 to success (pick the right chip → send → rate) and fires onComplete(true)', async () => {
+    it('runs c1 to success (pick the right chip → send → rate) and emits onComplete(true) UP for the footer', async () => {
       const onComplete = renderActivity(makeActivity(c1));
 
       // Only "add-especifico" actually helps (top quality); the other two are distractors.
@@ -144,10 +150,10 @@ describe('SandboxScenarioActivity dispatcher', () => {
       fireEvent.click(screen.getByTestId('sandbox-rate-top'));
 
       expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
-      const cta = screen.getByTestId('sandbox-continue') as HTMLButtonElement;
-      expect(cta.disabled).toBe(false);
-      fireEvent.click(cta);
-      expect(onComplete).toHaveBeenCalledWith(true);
+      await waitFor(() =>
+        expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ explanation: expect.any(String) })),
+      );
+      expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
     }, 15000);
 
     it('rejects a wrong rating with a critique + retry', async () => {
@@ -179,7 +185,7 @@ describe('SandboxScenarioActivity dispatcher', () => {
       expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
     });
 
-    it('runs c2 to success (fill the slot → send → rate) and fires onComplete(true)', async () => {
+    it('runs c2 to success (fill the slot → send → rate) and emits onComplete(true) UP for the footer', async () => {
       const onComplete = renderActivity(makeActivity(c2));
 
       fireEvent.click(screen.getByText(/meu irmão pequeno/i));
@@ -188,8 +194,10 @@ describe('SandboxScenarioActivity dispatcher', () => {
       fireEvent.click(screen.getByTestId('sandbox-rate-top'));
 
       expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('sandbox-continue'));
-      expect(onComplete).toHaveBeenCalledWith(true);
+      await waitFor(() =>
+        expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ explanation: expect.any(String) })),
+      );
+      expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
     }, 15000);
   });
 

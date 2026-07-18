@@ -166,7 +166,7 @@ describe('LiveActivityRenderer — additive dispatch (delegates non-live to the 
 });
 
 describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => {
-  it('good response + rated good → PASS, Continuar fires onComplete(true)', async () => {
+  it('good response + rated good → PASS, emits onComplete(true) UP for the footer', async () => {
     mockRespond('A precise, on-topic answer using the given context.', true);
     mockJudge(true);
     const onComplete = renderLive();
@@ -179,20 +179,25 @@ describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => 
     expect(outcome.getAttribute('data-learner-rating')).toBe('good');
     expect(screen.getByTestId('byoc-feedback')).toBeInTheDocument();
 
-    const cta = screen.getByTestId('byoc-continue') as HTMLButtonElement;
-    fireEvent.click(cta);
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // The terminal "Continuar" moved to the shell/harness fixed footer — the
+    // activity emits its settled verdict UP (with the judge WHY as explanation).
+    await waitFor(() =>
+      expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ explanation: expect.any(String) })),
+    );
+    expect(screen.queryByTestId('byoc-continue')).not.toBeInTheDocument();
   }, 20000);
 
   it('good response + rated bad → FAIL, retry then rate good → PASS', async () => {
     mockRespond('A precise, on-topic answer.', true);
     mockJudge(true); // first judge: response is good
-    renderLive();
+    const onComplete = renderLive();
 
     await sendInput('rich context');
     let outcome = await rateAndSettle('bad');
     expect(outcome.getAttribute('data-outcome')).toBe('fail');
     expect(screen.getByTestId('byoc-feedback')).toBeInTheDocument();
+    // A FAIL keeps the retry loop in-window and does NOT emit its verdict yet.
+    expect(onComplete).not.toHaveBeenCalled();
 
     // Retry → re-rate correctly. Second judge call returns good again.
     mockJudge(true);
@@ -200,7 +205,8 @@ describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => 
     await waitFor(() => expect(screen.getByTestId('byoc-eval')).toBeInTheDocument());
     outcome = await rateAndSettle('good');
     expect(outcome.getAttribute('data-outcome')).toBe('pass');
-    expect(screen.getByTestId('byoc-continue')).toBeInTheDocument();
+    // Now that it settled to a PASS, the verdict is emitted UP for the footer.
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true, expect.anything()));
   }, 20000);
 
   it('bad response + rated bad → PASS (garbage/empty context path)', async () => {
@@ -234,8 +240,8 @@ describe('SandboxScenarioLiveActivity — full 2-step flow (mocked LLM)', () => 
     const outcome = await rateAndSettle('good');
     expect(outcome.getAttribute('data-outcome')).toBe('unverified');
 
-    fireEvent.click(screen.getByTestId('byoc-continue'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // An unverifiable judge still lets the learner continue → verdict emitted UP.
+    await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true, expect.anything()));
   }, 20000);
 
   it('responder degraded → surfaces a note but never hard-blocks', async () => {
@@ -279,8 +285,14 @@ describe('SandboxScenarioLiveActivity — context_good deterministic ground trut
     // of the passed/feedback pair disagreeing with each other.
     expect(judge).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByTestId('byoc-continue'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // Settled to PASS → the verdict is emitted UP for the shell/harness footer,
+    // carrying the `reason` as the footer explanation.
+    await waitFor(() =>
+      expect(onComplete).toHaveBeenCalledWith(
+        true,
+        expect.objectContaining({ explanation: 'The response directly answers the specific context given.' }),
+      ),
+    );
   }, 20000);
 
   it('context_good:false + rated good → FAIL (header/reason consistent, no contradiction possible)', async () => {

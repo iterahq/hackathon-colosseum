@@ -32,6 +32,7 @@ import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
+  type ActivityCompleteDetail,
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
 import { useLessonContent, useNextLesson } from '@/hooks';
@@ -87,15 +88,17 @@ export default function LessonPlayer() {
     ? Math.round(((completed ? activities.length : index) / activities.length) * 100)
     : 0;
 
-  // The activity emits its graded result UP here. GRADED kinds (MCQ family)
-  // hold on screen and surface the fixed footer; the footer's "Continuar" is
-  // what actually advances (the Duolingo review-then-continue beat). Every other
-  // kind (concept/video/document "mark done", sandbox — which owns its own
-  // terminal CTA) advances immediately as before.
-  function handleComplete(correct: boolean) {
+  // The activity emits its graded result UP here. GRADED kinds (MCQ family +
+  // the sandbox_scenario terminal verdict) hold on screen and surface the fixed
+  // footer; the footer's "Continuar" is what actually advances (the Duolingo
+  // review-then-continue beat). The optional `detail` lets the activity ride its
+  // own settled explanation (the sandbox reveal recap) into the footer without
+  // the shell recomputing it. Every other kind (concept/video/document "mark
+  // done") advances immediately as before.
+  function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving) return;
     if (isFooterGradedKind(current.kind)) {
-      setPending({ correct });
+      setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
     }
     void advance(correct);

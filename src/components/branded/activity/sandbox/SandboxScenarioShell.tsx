@@ -13,10 +13,12 @@
  * rating panel OUTWARD below the window (bottom zone). Step count is entirely
  * DATA-DRIVEN off `scenario.steps.length`.
  */
-import { CheckCircle2, MessageSquare } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { t, type Scenario } from '@iterahq/activity-spec/runtime';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { ActivityShell } from '../parts';
 import { SandboxChatLog } from './SandboxChatLog';
 import { SandboxClearButton } from './SandboxClearButton';
@@ -35,7 +37,7 @@ export function SandboxScenarioShell({
   reveal = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   variant: SandboxVariant;
   /** Reveal the success state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
@@ -46,8 +48,25 @@ export function SandboxScenarioShell({
   const s = useSandboxScenario(scenario, locale, reveal, isDone);
   const stream = useAssistantStream(s.model.messages);
 
-  const showContinue = s.won || reveal || isDone;
   const showControls = !s.done && !stream.active;
+
+  // The terminal verdict now surfaces in the SHELL's fixed FeedbackFooter (the
+  // Duolingo pattern, PR #117 for the MCQ family — extended to the sandbox per
+  // Tainan 2026-07-18), NOT an in-window "Continuar" button. When the sandbox
+  // settles (the learner judged correctly → `won`, or the class force-revealed),
+  // it emits its verdict UP exactly once; the shell holds on the activity and
+  // slides the footer up, whose "Continuar" is what actually advances. The
+  // deterministic terminal is always a success, so `correct` is true; the reveal
+  // recap rides along as the footer explanation (and still shows in-window).
+  const recap = t(scenario.reveal.recap, locale);
+  const settled = s.won || reveal || isDone;
+  const emittedRef = useRef(false);
+  useEffect(() => {
+    if (settled && !emittedRef.current) {
+      emittedRef.current = true;
+      onComplete(true, { explanation: recap });
+    }
+  }, [settled, recap, onComplete]);
   // Data-driven — reads `scenario.steps.length` directly; never hard-capped.
   const stepLabel = s.currentStep ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}` : undefined;
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
@@ -109,24 +128,9 @@ export function SandboxScenarioShell({
           <SandboxControls s={s} scenario={scenario} locale={locale} variant={variant} />
         )}
 
+        {/* Post-success reveal recap stays in-window (the celebratory card); the
+            terminal "Continuar" moved to the shell's fixed FeedbackFooter. */}
         {s.done && <SandboxReveal scenario={scenario} locale={locale} lines={s.revealLines} />}
-
-        {showContinue && (
-          <button
-            type="button"
-            onClick={() => onComplete(true)}
-            data-testid="sandbox-continue"
-            data-locked={isDone ? 'true' : undefined}
-            className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full font-medium transition-colors ${
-              isDone
-                ? 'cursor-default border border-menta/40 bg-menta/15 text-menta'
-                : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
-            }`}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            {isDone ? tr('activity.done') : tr('activity.continue')}
-          </button>
-        )}
       </div>
     </ActivityShell>
   );

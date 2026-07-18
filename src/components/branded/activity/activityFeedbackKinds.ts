@@ -9,10 +9,14 @@
 
 /**
  * The graded activity kinds whose answer feedback surfaces in the fixed footer.
- * The `sandbox_scenario` kinds are intentionally EXCLUDED — the sandbox owns its
- * own in-window terminal "Continuar" affordance (already a full-width bottom
- * CTA) and its own inline rating verdict, so layering the shell footer on top
- * would double the CTA.
+ *
+ * `sandbox_scenario` is INCLUDED (Tainan 2026-07-18): its terminal verdict +
+ * "Continuar" now live in the same shell footer as the MCQ family, so
+ * feedback-in-footer is consistent for ALL activity types (the Duolingo / chess
+ * reference). The sandbox's in-window terminal "Continuar" CTA was removed to
+ * avoid a double-CTA — the activity emits its settled verdict UP via
+ * `onComplete(correct, detail)` and the shell drives the footer. (Superseded the
+ * earlier deliberate exclusion that kept the sandbox's own bottom CTA.)
  */
 export const FOOTER_GRADED_KINDS: ReadonlySet<string> = new Set([
   'single_choice',
@@ -20,6 +24,7 @@ export const FOOTER_GRADED_KINDS: ReadonlySet<string> = new Set([
   'order',
   'match',
   'quiz',
+  'sandbox_scenario',
 ]);
 
 /** Whether an activity kind's feedback should surface in the fixed footer. */
@@ -32,5 +37,19 @@ export interface FooterResult {
   /** Overrides the default correct/incorrect headline. */
   message?: string;
   /** Optional secondary explanation line. */
+  explanation?: string;
+}
+
+/**
+ * The optional richer verdict an activity may hand UP alongside the `correct`
+ * boolean, so the shell footer can carry the activity's own settled explanation
+ * (the sandbox reveal recap / the BYOC judge feedback) without the shell having
+ * to recompute it. Additive + optional — every existing `onComplete(correct)`
+ * caller stays valid.
+ */
+export interface ActivityCompleteDetail {
+  /** Overrides the default correct/incorrect headline. */
+  message?: string;
+  /** A secondary explanation line (reveal recap / judge WHY). */
   explanation?: string;
 }

@@ -16,26 +16,37 @@ import { useCallback, useState } from 'react';
 import { CheckCircle2, FlaskConical, RotateCcw, XCircle } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { LiveActivityRenderer } from '@/components/branded/activity/LiveActivityRenderer';
+import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
 
 /** A single in-memory attempt result — never persisted (player side). */
 export interface TestAttempt {
   correct: boolean;
   at: number;
+  detail?: ActivityCompleteDetail;
 }
 
 export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const [footerDismissed, setFooterDismissed] = useState(false);
 
-  const handleComplete = useCallback((correct: boolean) => {
-    setAttempt({ correct, at: Date.now() });
+  const handleComplete = useCallback((correct: boolean, detail?: ActivityCompleteDetail) => {
+    setAttempt({ correct, at: Date.now(), detail });
   }, []);
 
   const reset = useCallback(() => {
     setAttempt(null);
+    setFooterDismissed(false);
     setRunKey((k) => k + 1);
   }, []);
+
+  // The BYOC sandbox surfaces its terminal verdict + "Continuar" in the shared
+  // fixed FeedbackFooter (same as the live class) — carry the `byoc-continue`
+  // testid so the e2e continue-locator resolves to the footer CTA.
+  const showSandboxFooter =
+    activity.kind === 'sandbox_scenario' && !!attempt && !footerDismissed;
 
   return (
     <div className="flex flex-col gap-4" data-testid="live-activity-test-harness">
@@ -47,6 +58,14 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
       <div key={runKey}>
         <LiveActivityRenderer activity={activity} onComplete={handleComplete} forceLive />
       </div>
+
+      {showSandboxFooter && attempt && (
+        <FeedbackFooter
+          result={{ correct: attempt.correct, message: attempt.detail?.message, explanation: attempt.detail?.explanation }}
+          onContinue={() => setFooterDismissed(true)}
+          continueTestId="byoc-continue"
+        />
+      )}
 
       {attempt && (
         <div

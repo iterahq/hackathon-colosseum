@@ -211,8 +211,11 @@ export default function LiveSessionPage() {
   // player. In LIVE mode the learner does NOT self-advance (the instructor
   // force-advances the cohort), so the footer shows the green/red signal + the
   // "wait for the next one" hint instead of a CTA. Driven off the durable
-  // `answered` state (so it survives a reload), gated to the graded MCQ kinds —
-  // the sandbox keeps its own inline outcome + the below-stage hint.
+  // `answered` state (so it survives a reload), gated to the footer-graded kinds
+  // — now including `sandbox_scenario` (Tainan 2026-07-18): the sandbox's
+  // terminal verdict rides the same wait-mode footer as the MCQ family, its
+  // in-window reveal recap/outcome panel stays, and the below-stage hint moves
+  // into the footer.
   const footerGraded = isFooterGradedKind(current?.kind);
   const answeredHere = Boolean(current && answered?.id === current.id);
   const footerResult: FooterResult | null =
