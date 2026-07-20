@@ -15,33 +15,19 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
-import type { ClassCompleter } from '@/types/liveClass';
+import type { ClassCompleter, ClassScope, ClassSession, ClassSessionStatus } from '@/types/liveClass';
 
-export type { ClassCompleter } from '@/types/liveClass';
-
-export type ClassSessionStatus = 'pending' | 'live' | 'ended';
-export type ClassScope = 'global' | 'tenant';
-
-export interface ClassSession {
-  id: string;
-  tenantId: string;
-  lessonId: string;
-  instructorId: string;
-  currentActivityId: string | null;
-  status: ClassSessionStatus;
-  scope: ClassScope;
-  startedAt: string | null;
-  endedAt: string | null;
-  createdAt: string;
-}
+export type { ClassCompleter, ClassScope, ClassSession, ClassSessionStatus } from '@/types/liveClass';
 
 type Row = Record<string, unknown>;
 const asRows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : []);
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
+const posIntOrNull = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null;
 
 const SELECT_COLS =
-  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, started_at, ended_at, created_at';
+  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, podium_every, started_at, ended_at, created_at';
 
 export function mapSession(row: Row): ClassSession {
   return {
@@ -52,6 +38,7 @@ export function mapSession(row: Row): ClassSession {
     currentActivityId: strOrNull(row.current_activity_id),
     status: (str(row.status) || 'pending') as ClassSessionStatus,
     scope: (str(row.scope) || 'global') as ClassScope,
+    podiumEvery: posIntOrNull(row.podium_every),
     startedAt: strOrNull(row.started_at),
     endedAt: strOrNull(row.ended_at),
     createdAt: str(row.created_at),
@@ -186,8 +173,13 @@ export async function startClassSession(params: {
   lessonId: string;
   instructorId: string;
   scope?: ClassScope;
+  podiumEvery?: number | null;
 }): Promise<ClassSession> {
   const sb = getSupabase();
+  const podiumEvery =
+    typeof params.podiumEvery === 'number' && Number.isInteger(params.podiumEvery) && params.podiumEvery >= 1
+      ? params.podiumEvery
+      : null;
   const { data, error } = await sb
     .from('class_sessions')
     .insert({
@@ -197,6 +189,7 @@ export async function startClassSession(params: {
       current_activity_id: null,
       status: 'live',
       scope: params.scope ?? 'global',
+      podium_every: podiumEvery,
       started_at: new Date().toISOString(),
     })
     .select(SELECT_COLS)

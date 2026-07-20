@@ -24,6 +24,7 @@ const liveRow = {
   current_activity_id: 'act-1',
   status: 'live',
   scope: 'global',
+  podium_every: 3,
   started_at: '2026-07-02T10:00:00Z',
   ended_at: null,
   created_at: '2026-07-02T09:59:00Z',
@@ -123,6 +124,7 @@ describe('mapSession', () => {
       currentActivityId: 'act-1',
       status: 'live',
       scope: 'global',
+      podiumEvery: 3,
       startedAt: '2026-07-02T10:00:00Z',
       endedAt: null,
       createdAt: '2026-07-02T09:59:00Z',
@@ -131,5 +133,10 @@ describe('mapSession', () => {
 
   it('coerces a null current_activity_id to null', () => {
     expect(mapSession({ ...liveRow, current_activity_id: null }).currentActivityId).toBeNull();
+  });
+
+  it('coerces an absent/invalid podium_every to null', () => {
+    expect(mapSession({ ...liveRow, podium_every: null }).podiumEvery).toBeNull();
+    expect(mapSession({ ...liveRow, podium_every: 0 }).podiumEvery).toBeNull();
   });
 });

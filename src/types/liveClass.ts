@@ -1,4 +1,20 @@
-import type { ClassSession } from '@/services/liveClass.service';
+export type ClassSessionStatus = 'pending' | 'live' | 'ended';
+export type ClassScope = 'global' | 'tenant';
+
+/** The durable/reconnect truth for a live cohort class (itera.class_sessions). */
+export interface ClassSession {
+  id: string;
+  tenantId: string;
+  lessonId: string;
+  instructorId: string;
+  currentActivityId: string | null;
+  status: ClassSessionStatus;
+  scope: ClassScope;
+  podiumEvery: number | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
 
 /** Identity a client tracks into presence (self). */
 export interface ClassIdentity {

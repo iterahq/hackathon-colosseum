@@ -157,6 +157,7 @@ function StartClass({
   const { data: programs = [], isPending } = usePrograms();
   const [slug, setSlug] = useState<string>('');
   const [lessonId, setLessonId] = useState<string>('');
+  const [podiumEvery, setPodiumEvery] = useState<number>(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -199,6 +200,7 @@ function StartClass({
         lessonId,
         instructorId,
         scope: 'global',
+        podiumEvery: podiumEvery > 0 ? podiumEvery : null,
       });
       onStarted();
     } catch (e) {
@@ -261,6 +263,27 @@ function StartClass({
           </option>
         ))}
       </select>
+
+      {/* Step 3 — automatic intermediate podium cadence (P3-3b). */}
+      <label className="block text-[13px] font-medium text-muted-foreground mb-1.5">
+        {t('live.instructor.start.podiumEvery')}
+      </label>
+      <select
+        value={podiumEvery}
+        onChange={(e) => setPodiumEvery(Number(e.target.value))}
+        data-testid="instructor-podium-every-select"
+        className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-1.5"
+      >
+        <option value={0}>{t('live.instructor.start.podiumEveryOff')}</option>
+        {[2, 3, 5].map((n) => (
+          <option key={n} value={n}>
+            {t('live.instructor.start.podiumEveryN', { n: String(n) })}
+          </option>
+        ))}
+      </select>
+      <p className="text-[12px] text-muted-foreground mb-6">
+        {t('live.instructor.start.podiumEveryHint')}
+      </p>
 
       {error && (
         <p className="text-sm text-destructive mb-4" data-testid="instructor-start-error" role="alert">
@@ -434,10 +457,19 @@ function ClassControl({
     if (busy) return;
     setBusy(true);
     try {
+      const targetIdx = activities.findIndex((a) => a.id === activityId);
       await advanceClassSession(session.id, activityId); // durable
       broadcast(activityId); // fast path
       refetch();
       void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.mySessions(tenantId) });
+      // P3-3b — auto-podium every N: when advancing FORWARD onto an activity that
+      // closes a block of N (0-based index is a positive multiple of N), pop the
+      // intermediate standings. It's an overlay dismissed with "resume", exactly
+      // like the manual Pódio button.
+      const every = session.podiumEvery ?? 0;
+      if (every >= 1 && targetIdx > 0 && targetIdx > idx && targetIdx % every === 0) {
+        setPodiumInterlude(true);
+      }
     } finally {
       setBusy(false);
     }
