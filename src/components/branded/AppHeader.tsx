@@ -25,6 +25,7 @@ import {
   Bell,
   Settings,
   Video,
+  UserRound,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
@@ -259,6 +260,16 @@ export function AppHeader({
                     </div>
                   </div>
                   <div className="p-1.5">
+                    <button
+                      onClick={() => {
+                        setOpen(false);
+                        navigate('/profile');
+                      }}
+                      data-testid="nav-profile"
+                      className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
+                    >
+                      <UserRound className="w-4 h-4" /> {t('nav.profile')}
+                    </button>
                     <button
                       onClick={() => {
                         setOpen(false);

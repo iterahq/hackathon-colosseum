@@ -35,6 +35,12 @@ export const queryKeys = {
     stats: ['user', 'stats'] as const,
     badges: ['user', 'badges'] as const,
   },
+  // Self-profile (itera.users own row). Root 'profile' matches the historical
+  // inline key so invalidateQueries({ queryKey: ['profile'] }) keeps working.
+  profile: {
+    all: ['profile'] as const,
+    mine: (userId: string) => ['profile', userId] as const,
+  },
   // Tenant-admin observability surface (plan #6). Scoped by tenantId.
   admin: {
     roster: (tenantId: string) => ['admin', 'roster', tenantId] as const,

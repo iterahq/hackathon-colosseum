@@ -13,6 +13,7 @@ import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
 import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
+import ProfilePage from "./pages/ProfilePage";
 import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
@@ -120,6 +121,17 @@ const App = () => (
                       <RequireSubscription>
                         <LessonPlayer />
                       </RequireSubscription>
+                    </RequireAuth>
+                  }
+                />
+                {/* Self-profile — edit display name + photo/gamified icon.
+                    Auth-gated only (NOT subscription-gated): identity stays
+                    editable without an active plan, like /subscribe. */}
+                <Route
+                  path="/profile"
+                  element={
+                    <RequireAuth>
+                      <ProfilePage />
                     </RequireAuth>
                   }
                 />

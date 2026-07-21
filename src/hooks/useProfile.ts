@@ -6,11 +6,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMyProfile } from '@/services/profile.service';
 import { useAuth } from '@/auth/AuthContext';
+import { queryKeys } from '@/lib/queryKeys';
 
 export function useProfile() {
   const { session, configured } = useAuth();
   return useQuery({
-    queryKey: ['profile', session?.user?.id ?? 'anon'],
+    queryKey: queryKeys.profile.mine(session?.user?.id ?? 'anon'),
     queryFn: getMyProfile,
     enabled: configured && Boolean(session),
     staleTime: 60_000,
