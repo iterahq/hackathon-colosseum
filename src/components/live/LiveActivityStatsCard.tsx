@@ -1,5 +1,6 @@
 import { LayoutGrid, CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { activityKindLabelKey } from '@/utils/activityKindLabel';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 interface LiveActivityStatsCardProps {
@@ -56,8 +57,8 @@ export function LiveActivityStatsCard({
       </div>
 
       <div className="flex items-center justify-between gap-2 mb-4">
-        <span className="inline-flex items-center px-2 h-6 rounded-full border border-border bg-background text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          {kind.replace(/_/g, ' ')}
+        <span className="inline-flex items-center px-2 h-6 rounded-full border border-border bg-background text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          {t(activityKindLabelKey(kind))}
         </span>
         <span className="text-xs text-muted-foreground" data-testid="live-stats-answered">
           {t('live.instructor.stats.answered', { answered, total })}

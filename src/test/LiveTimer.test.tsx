@@ -39,6 +39,23 @@ describe('LiveTimer', () => {
     expect(onExpire).toHaveBeenCalledTimes(1);
   });
 
+  it('ramps calm → hurry (≤10s) → urgent (≤5s)', () => {
+    renderTimer(15_000);
+    const el = () => screen.getByTestId('live-timer');
+    expect(el().getAttribute('data-hurry')).toBe('false');
+    expect(el().getAttribute('data-warning')).toBe('false');
+    act(() => {
+      vi.advanceTimersByTime(6_000); // 9s left → hurry
+    });
+    expect(el().getAttribute('data-hurry')).toBe('true');
+    expect(el().getAttribute('data-warning')).toBe('false');
+    act(() => {
+      vi.advanceTimersByTime(5_000); // 4s left → urgent
+    });
+    expect(el().getAttribute('data-hurry')).toBe('false');
+    expect(el().getAttribute('data-warning')).toBe('true');
+  });
+
   it('ticks onWarn once per second across the final 5s (5,4,3,2,1)', () => {
     const onWarn = vi.fn();
     renderTimer(8_000, undefined, onWarn);

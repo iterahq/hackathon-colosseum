@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { formatMmss } from '@/utils/formatMmss';
 
 const WARN_SECONDS = 5;
+const HURRY_SECONDS = 10;
 
 interface LiveTimerProps {
   deadline: number;
@@ -28,6 +29,10 @@ export function LiveTimer({ deadline, onExpire, onWarn, prominent = false }: Liv
   const remaining = useCountdown(deadline);
   const done = remaining <= 0;
   const warning = !done && remaining <= WARN_SECONDS;
+  // Three-stage urgency ramp: calm → attention (≤10s) → urgent (≤5s). The
+  // mid "hurry" stage gives the room a heads-up before the red pulse instead
+  // of jumping straight from calm to alarm.
+  const hurry = !done && !warning && remaining <= HURRY_SECONDS;
   const firedRef = useRef(false);
   const lastTickRef = useRef(0);
 
@@ -58,11 +63,14 @@ export function LiveTimer({ deadline, onExpire, onWarn, prominent = false }: Liv
       } ${
         done || warning
           ? 'border-destructive/50 bg-destructive/10 text-destructive'
-          : 'border-clay/50 bg-clay/10 text-clay'
+          : hurry
+            ? 'border-clay/50 bg-clay/10 text-clay'
+            : 'border-border bg-card text-muted-foreground'
       } ${warning ? 'animate-pulse' : ''}`}
       data-testid="live-timer"
       data-done={done ? 'true' : 'false'}
       data-warning={warning ? 'true' : 'false'}
+      data-hurry={hurry ? 'true' : 'false'}
       role="timer"
       aria-live={done ? 'assertive' : 'off'}
     >
