@@ -47,6 +47,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
+import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 import type { ClassPresenceMember } from '@/types/liveClass';
@@ -324,7 +325,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, resetActivity, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, resetActivity, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -508,6 +509,7 @@ function ClassControl({
     // (Tainan: "igual à do aluno, só que com mais controles"). The only extra is
     // the fixed presenter bar at the bottom; on screen-share the cohort sees this.
     <div className="min-h-screen bg-background flex flex-col" data-testid="instructor-control">
+      <LiveReconnectBanner show={reconnecting} />
       <LiveSessionChrome
         progressPct={progressPct}
         connected={connected}

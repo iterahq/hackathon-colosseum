@@ -39,6 +39,7 @@ import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
+import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer, clearStoredAnswer } from '@/utils/liveAnswerStorage';
 import { isGenericName } from '@/utils/isGenericName';
@@ -53,7 +54,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer, setHandRaised } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer, setHandRaised } =
     useClassSession(
       sessionId,
       identity.userId
@@ -245,6 +246,7 @@ export default function LiveSessionPage() {
 
   return (
     <div className={`bg-background flex flex-col ${onSandbox ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
+      <LiveReconnectBanner show={reconnecting} />
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
       <LiveSessionChrome
         progressPct={progressPct}

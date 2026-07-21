@@ -117,6 +117,8 @@ export interface UseClassSession {
   status: ClassSession['status'] | null;
   roster: ClassPresenceMember[];
   connected: boolean;
+  /** A previously-joined channel dropped and is being rebuilt (show the banner). */
+  reconnecting: boolean;
   loading: boolean;
   answers: Record<string, Record<string, boolean>>;
   /** Per activity → per learner: how long they took to answer, in ms. */
