@@ -236,7 +236,16 @@ export function AppHeader({
                   transition={{ duration: 0.15 }}
                   className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-border bg-card overflow-hidden"
                 >
-                  <div className="p-4 border-b border-border flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      navigate('/profile');
+                    }}
+                    data-testid="menu-profile-shortcut"
+                    aria-label={t('nav.profile')}
+                    className="w-full p-4 border-b border-border flex items-center gap-3 text-left hover:bg-obsidiana/60 transition-colors"
+                  >
                     {avatarUrl ? (
                       <img
                         src={avatarUrl}
@@ -257,8 +266,9 @@ export function AppHeader({
                       <div className="text-[13px] text-muted-foreground truncate">
                         {profile?.email ?? user?.email ?? branding.name}
                       </div>
+                      <div className="text-[11px] text-menta">{t('profile.viewProfile')}</div>
                     </div>
-                  </div>
+                  </button>
                   <div className="p-1.5">
                     <button
                       onClick={() => {

@@ -12,14 +12,10 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import type { Locale } from '@/i18n';
+import type { MyProfile } from '@/types/myprofile';
+import { validateAvatarFile, avatarExtension } from '@/utils/avatarFile';
 
-export interface MyProfile {
-  displayName: string | null;
-  avatarUrl: string | null;
-  email: string | null;
-  /** The user's saved language preference (itera.users.locale). Default 'pt'. */
-  locale: Locale | null;
-}
+export type { MyProfile };
 
 const str = (v: unknown): string | null =>
   typeof v === 'string' && v.trim() ? v.trim() : null;
@@ -44,7 +40,7 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from('users')
-    .select('display_name, avatar_url, email, locale')
+    .select('display_name, avatar_url, dfl_avatar_url, email, locale')
     .eq('id', iteraUserId)
     .maybeSingle();
   if (error) {
@@ -56,6 +52,7 @@ export async function getMyProfile(): Promise<MyProfile | null> {
   return {
     displayName: str(row.display_name),
     avatarUrl: str(row.avatar_url),
+    dflAvatarUrl: str(row.dfl_avatar_url),
     email: str(row.email),
     locale: toLocale(row.locale),
   };
@@ -99,4 +96,31 @@ export async function updateMyProfile(patch: {
   const sb = getSupabase();
   const { error } = await sb.from('users').update(update).eq('id', iteraUserId);
   return !error;
+}
+
+/**
+ * Upload a learner-chosen photo to the public `avatars` bucket and return its
+ * public URL (the caller then saves it as avatarUrl via updateMyProfile). The
+ * object is stored under a folder named after the caller's auth uid so the
+ * storage RLS (owner-scoped write) accepts it; a fixed filename per user
+ * (`avatar.<ext>`) with upsert keeps one photo per learner instead of piling up
+ * orphans. Throws on a rejected file or a storage error so the mutation surfaces
+ * isError to the UI.
+ */
+export async function uploadAvatar(file: File): Promise<string> {
+  if (!isSupabaseConfigured) throw new Error('supabase-not-configured');
+  const reason = validateAvatarFile(file);
+  if (reason) throw new Error(`avatar-${reason}`);
+  const sb = getSupabase();
+  const { data: auth } = await sb.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) throw new Error('not-authenticated');
+  const path = `${uid}/avatar.${avatarExtension(file.type)}`;
+  const { error } = await sb.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+  const { data } = sb.storage.from('avatars').getPublicUrl(path);
+  // Cache-bust so the header/preview reflect a re-upload to the same path.
+  return `${data.publicUrl}?v=${Date.now()}`;
 }

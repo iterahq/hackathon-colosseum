@@ -1,22 +1,27 @@
 /**
  * Form state for the /profile page: hydrates the draft from the loaded profile
- * once, tracks name/avatar/photo edits, validates the photo URL (https-only)
- * and persists via useUpdateProfile. Component stays render-only.
+ * once, tracks name/avatar edits, and persists via useUpdateProfile. The avatar
+ * can be set three ways — a bundled preset icon, an uploaded photo (Supabase
+ * storage, via useUploadAvatar), or the fellow's DFL ("Learn") photo. A revert
+ * restores the last SAVED avatar so a mis-click is undoable. Component stays
+ * render-only.
  */
 import { useEffect, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
-import { PROFILE_AVATAR_PRESETS } from '@/consts/profileAvatars';
-import { isSafePhotoUrl } from '@/utils/safePhotoUrl';
+import { useUploadAvatar } from '@/hooks/useUploadAvatar';
 
 export function useProfileForm() {
   const query = useProfile();
   const update = useUpdateProfile();
+  const upload = useUploadAvatar();
   const { data: profile, isPending } = query;
 
   const [name, setName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
+  // The last SAVED avatar — the target of "revert". Seeded at hydration and
+  // advanced on every successful save.
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState('');
   const [saved, setSaved] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -24,14 +29,13 @@ export function useProfileForm() {
     if (hydrated || isPending) return;
     setName(profile?.displayName ?? '');
     setAvatarUrl(profile?.avatarUrl ?? '');
-    if (profile?.avatarUrl && !PROFILE_AVATAR_PRESETS.includes(profile.avatarUrl)) {
-      setPhotoUrl(profile.avatarUrl);
-    }
+    setSavedAvatarUrl(profile?.avatarUrl ?? '');
     setHydrated(true);
   }, [hydrated, isPending, profile]);
 
-  const photoInvalid = photoUrl.trim().length > 0 && !isSafePhotoUrl(photoUrl);
-  const canSave = name.trim().length >= 2 && !update.isPending && !photoInvalid;
+  const dflAvatarUrl = profile?.dflAvatarUrl ?? null;
+  const canSave = name.trim().length >= 2 && !update.isPending && !upload.isPending;
+  const canRevert = hydrated && avatarUrl !== savedAvatarUrl;
 
   const editName = (value: string) => {
     setName(value);
@@ -40,13 +44,26 @@ export function useProfileForm() {
 
   const pickPreset = (url: string) => {
     setAvatarUrl(url);
-    setPhotoUrl('');
     setSaved(false);
   };
 
-  const editPhotoUrl = (value: string) => {
-    setPhotoUrl(value);
-    if (isSafePhotoUrl(value)) setAvatarUrl(value.trim());
+  const useLearnPhoto = () => {
+    if (!dflAvatarUrl) return;
+    setAvatarUrl(dflAvatarUrl);
+    setSaved(false);
+  };
+
+  const uploadPhoto = (file: File) => {
+    upload.mutate(file, {
+      onSuccess: (url) => {
+        setAvatarUrl(url);
+        setSaved(false);
+      },
+    });
+  };
+
+  const revert = () => {
+    setAvatarUrl(savedAvatarUrl);
     setSaved(false);
   };
 
@@ -54,7 +71,12 @@ export function useProfileForm() {
     if (!canSave) return;
     update.mutate(
       { displayName: name.trim(), avatarUrl },
-      { onSuccess: () => setSaved(true) }
+      {
+        onSuccess: () => {
+          setSavedAvatarUrl(avatarUrl);
+          setSaved(true);
+        },
+      }
     );
   };
 
@@ -63,15 +85,19 @@ export function useProfileForm() {
     profile,
     name,
     avatarUrl,
-    photoUrl,
-    photoInvalid,
+    dflAvatarUrl,
     canSave,
+    canRevert,
     saved,
     saving: update.isPending,
     saveError: update.isError,
+    uploading: upload.isPending,
+    uploadError: upload.isError,
     editName,
     pickPreset,
-    editPhotoUrl,
+    useLearnPhoto,
+    uploadPhoto,
+    revert,
     save,
   };
 }
