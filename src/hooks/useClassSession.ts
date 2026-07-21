@@ -60,6 +60,23 @@ export function useClassSession(
   // joined channel → `.on()`-after-`subscribe()` crash — see the effect below).
   const identityRef = useRef<Identity | undefined>(identity);
   identityRef.current = identity;
+  // Presence is re-tracked wholesale, so the hand state must ride along on every
+  // track() (identity refresh, reconnect) — not just the explicit toggle.
+  const handRaisedRef = useRef(false);
+
+  const trackPresence = useCallback(() => {
+    const channel = channelRef.current;
+    const id = identityRef.current;
+    if (!channel || !id) return;
+    void channel.track({
+      user_id: id.userId,
+      name: id.name,
+      avatar_url: id.avatarUrl ?? null,
+      is_instructor: id.isInstructor === true,
+      hand_raised: handRaisedRef.current,
+      at: new Date().toISOString(),
+    });
+  }, []);
 
   const applySession = useCallback((s: ClassSession | null) => {
     if (!s) return;
@@ -128,7 +145,8 @@ export function useClassSession(
       const members: ClassPresenceMember[] = [];
       const seen = new Set<string>();
       for (const key of Object.keys(state)) {
-        const meta = state[key]?.[0] ?? {};
+        // Re-tracking (hand raise/lower) APPENDS a new meta — the newest is last.
+        const meta = state[key]?.at(-1) ?? {};
         const uid = typeof meta.user_id === 'string' ? meta.user_id : key;
         if (seen.has(uid)) continue;
         seen.add(uid);
@@ -137,6 +155,7 @@ export function useClassSession(
           name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
           avatarUrl: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
           isInstructor: meta.is_instructor === true,
+          handRaised: meta.hand_raised === true,
         });
       }
       setRoster(members);
@@ -213,16 +232,7 @@ export function useClassSession(
         // leaving the reception. Re-read the durable row on every (re)subscribe
         // so it always converges instead of getting stranded in the lobby.
         void getClassSession(sessionId).then(applySession);
-        const id = identityRef.current;
-        if (id) {
-          void channel.track({
-            user_id: id.userId,
-            name: id.name,
-            avatar_url: id.avatarUrl ?? null,
-            is_instructor: id.isInstructor === true,
-            at: new Date().toISOString(),
-          });
-        }
+        trackPresence();
       });
 
     channelRef.current = channel;
@@ -243,18 +253,19 @@ export function useClassSession(
   // Track (or re-track) presence identity once the channel is connected and
   // identity is known — without tearing down / re-subscribing the channel.
   useEffect(() => {
-    const channel = channelRef.current;
-    if (!channel || !connected || !identity) return;
-    void channel.track({
-      user_id: identity.userId,
-      name: identity.name,
-      avatar_url: identity.avatarUrl ?? null,
-      is_instructor: identity.isInstructor === true,
-      at: new Date().toISOString(),
-    });
+    if (!connected || !identity) return;
+    trackPresence();
     // Track on the primitive identity fields, not the object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, identity?.userId, identity?.name, identity?.avatarUrl, identity?.isInstructor]);
+
+  const setHandRaised = useCallback(
+    (raised: boolean) => {
+      handRaisedRef.current = raised;
+      trackPresence();
+    },
+    [trackPresence]
+  );
 
   const broadcast = useCallback(
     (activityId: string) => {
@@ -356,6 +367,7 @@ export function useClassSession(
     broadcastTimer,
     clearTimer,
     resetActivity,
+    setHandRaised,
     refetch,
   };
 }

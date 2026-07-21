@@ -66,6 +66,30 @@ describe('LiveRankedRosterCard', () => {
     expect(screen.getAllByTestId('live-ranked-time')[0].textContent).toContain('0:07');
   });
 
+  it('badges raised hands on their rows and counts them in the header', () => {
+    render(
+      <I18nProvider>
+        <LiveRankedRosterCard
+          ranking={ranking}
+          answerers={answerers}
+          instructors={instructors}
+          raisedUserIds={['b', 'c']}
+        />
+      </I18nProvider>
+    );
+    expect(screen.getAllByTestId('live-hand-badge')).toHaveLength(2);
+    expect(screen.getByTestId('live-hand-count')).toHaveTextContent('2');
+    expect(screen.getAllByTestId('live-ranked-row')[0]).not.toContainElement(
+      screen.getAllByTestId('live-hand-badge')[0]
+    );
+  });
+
+  it('renders no hand badges when nobody raised one', () => {
+    renderCard(false);
+    expect(screen.queryAllByTestId('live-hand-badge')).toHaveLength(0);
+    expect(screen.queryByTestId('live-hand-count')).toBeNull();
+  });
+
   it('shows the empty state when nobody is in the room', () => {
     render(
       <I18nProvider>

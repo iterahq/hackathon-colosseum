@@ -38,6 +38,7 @@ import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
+import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer, clearStoredAnswer } from '@/utils/liveAnswerStorage';
 import { isGenericName } from '@/utils/isGenericName';
@@ -52,7 +53,7 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer } =
+  const { session, currentActivityId, status, roster, connected, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer, setHandRaised } =
     useClassSession(
       sessionId,
       identity.userId
@@ -111,6 +112,14 @@ export default function LiveSessionPage() {
   // Keyed on the id — NOT a bare boolean — so an advance right after a timeout
   // never paints the NEXT activity as locked for a frame while an effect catches up.
   const [timeUpFor, setTimeUpFor] = useState<string | null>(null);
+  // Raised hand (presence-tracked). Auto-lowers whenever the class advances.
+  const [handRaised, setHandRaisedLocal] = useState(false);
+  const toggleHand = useCallback(() => {
+    setHandRaisedLocal((prev) => {
+      setHandRaised(!prev);
+      return !prev;
+    });
+  }, [setHandRaised]);
   useEffect(() => {
     // Restore the learner's own persisted answer (refresh protection) — a page
     // reload must NOT re-open an answered activity nor re-fire its broadcast.
@@ -119,8 +128,10 @@ export default function LiveSessionPage() {
     setAnswered(stored && currentActivityId ? { id: currentActivityId, ...stored } : null);
     setSaving(false);
     setTimeUpFor(null);
+    setHandRaisedLocal(false);
+    setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
-  }, [sessionId, currentActivityId]);
+  }, [sessionId, currentActivityId, setHandRaised]);
 
   const { onTimeUp } = sound;
   const handleTimeUp = useCallback(() => {
@@ -401,6 +412,10 @@ export default function LiveSessionPage() {
           />
         )}
       </div>
+
+      {!loading && session && !ended && current && (
+        <LiveHandButton raised={handRaised} onToggle={toggleHand} />
+      )}
 
       {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
           Live/force-advance mode: green/red + the "wait for the next one" hint

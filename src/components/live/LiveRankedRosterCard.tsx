@@ -17,6 +17,8 @@ interface LiveRankedRosterCardProps {
   showDetail?: boolean;
   /** Render as a flush section inside a sidebar panel (drops the card chrome). */
   bare?: boolean;
+  /** Learners with their hand currently raised (presence) — badged with ✋. */
+  raisedUserIds?: string[];
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -34,9 +36,17 @@ export function LiveRankedRosterCard({
   selfUserId,
   showDetail = false,
   bare = false,
+  raisedUserIds,
 }: LiveRankedRosterCardProps) {
   const { t } = useI18n();
   const stateById = new Map(answerers.map((a) => [a.userId, a.state]));
+  const raised = new Set(raisedUserIds ?? []);
+  const handBadge = (userId: string) =>
+    raised.has(userId) ? (
+      <span data-testid="live-hand-badge" className="flex-shrink-0" aria-label={t('live.hand.raised')}>
+        ✋
+      </span>
+    ) : null;
   const youTag = (userId: string) =>
     userId === selfUserId ? (
       <span className="text-[10px] uppercase tracking-wide text-clay font-mono flex-shrink-0">
@@ -49,6 +59,11 @@ export function LiveRankedRosterCard({
       <div className="flex items-center gap-2 mb-3">
         <Trophy className="w-4 h-4 text-clay" />
         <h3 className="font-display text-foreground text-sm">{t('live.rankedRoster.title')}</h3>
+        {raised.size > 0 && (
+          <span className="font-mono text-xs tabular-nums text-clay" data-testid="live-hand-count">
+            ✋ {raised.size}
+          </span>
+        )}
         <span className="ml-auto font-mono text-sm tabular-nums text-menta" data-testid="live-roster-count">
           {ranking.ranked.length + ranking.waiting.length + instructors.length}
         </span>
@@ -86,6 +101,7 @@ export function LiveRankedRosterCard({
               </span>
               <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
               <span className="text-foreground flex-1 min-w-0 break-words">{r.name}</span>
+              {handBadge(r.userId)}
               {youTag(r.userId)}
               <span className="ml-auto flex items-center gap-2 flex-shrink-0">
                 {showDetail && (
@@ -112,6 +128,7 @@ export function LiveRankedRosterCard({
               <span className="w-6 text-center flex-shrink-0">·</span>
               <LiveAvatar name={w.name} avatarUrl={w.avatarUrl} size="w-6 h-6" />
               <span className="flex-1 min-w-0 break-words">{w.name}</span>
+              {handBadge(w.userId)}
               {youTag(w.userId)}
               <span className="ml-auto flex-shrink-0">
                 {ANSWER_STATE_ICONS[answerStateVariant(stateById.get(w.userId), showDetail)]}

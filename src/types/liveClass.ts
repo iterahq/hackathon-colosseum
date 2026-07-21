@@ -29,6 +29,8 @@ export interface ClassPresenceMember {
   name: string;
   avatarUrl: string | null;
   isInstructor: boolean;
+  /** The learner currently has their hand raised (presence-tracked). */
+  handRaised?: boolean;
 }
 
 export interface ClassCompleter {
@@ -129,5 +131,7 @@ export interface UseClassSession {
   broadcastTimer: (activityId: string, durationSeconds: number) => void;
   clearTimer: (activityId: string) => void;
   resetActivity: (activityId: string) => void;
+  /** Re-track presence with the hand raised/lowered (learner side). */
+  setHandRaised: (raised: boolean) => void;
   refetch: () => void;
 }

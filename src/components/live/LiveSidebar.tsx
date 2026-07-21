@@ -49,7 +49,6 @@ export function LiveSidebar({
   const isInstructor = role === 'instructor';
   const showActivity = isInstructor && hasActivity;
 
-  // On phones the learner panel collapses to a compact bar.
   const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
   const bodyClass = collapsible
@@ -111,6 +110,7 @@ export function LiveSidebar({
             ranking={ranking}
             answerers={answerers}
             instructors={roster.filter((m) => m.isInstructor)}
+            raisedUserIds={roster.filter((m) => m.handRaised).map((m) => m.userId)}
             selfUserId={selfUserId}
             showDetail={isInstructor}
           />
