@@ -1,5 +1,5 @@
 /**
- * Durable live-class records (migration 0019): the learner's own answers
+ * Durable live-class records (migration 0020): the learner's own answers
  * (right AND wrong) + attendance, and the instructor's post-class report read.
  *
  * Writes are BEST-EFFORT — a failed record never blocks the live experience

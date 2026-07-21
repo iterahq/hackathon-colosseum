@@ -1,6 +1,6 @@
 /**
  * Post-class report (`/live/instructor/report/:sessionId`) — instructor-gated.
- * Aggregates the durable rows (class_answers + class_attendance, migration 0019)
+ * Aggregates the durable rows (class_answers + class_attendance, migration 0020)
  * client-side via buildClassReport; RLS keeps it staff-only server-side.
  */
 import { useMemo } from 'react';

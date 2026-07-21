@@ -90,7 +90,7 @@ export interface ClassRanking {
   waiting: { userId: string; name: string; avatarUrl: string | null }[];
 }
 
-/* ── Post-class report (durable answers + attendance, migration 0019) ─────── */
+/* ── Post-class report (durable answers + attendance, migration 0020) ─────── */
 
 export interface ClassAnswerRecord {
   activityId: string;
