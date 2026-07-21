@@ -1,6 +1,6 @@
 import type { ClassPresenceMember, ClassRanking } from '@/types/liveClass';
 
-// Score-first (correct answers, time only breaks ties), unlike speed-first rankByTiming.
+// Score-first: correct answers decide the order; total time only breaks ties.
 export function rankByScore(
   roster: ClassPresenceMember[],
   elapsed: Record<string, Record<string, number>>,

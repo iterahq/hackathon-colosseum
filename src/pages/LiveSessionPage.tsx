@@ -150,12 +150,11 @@ export default function LiveSessionPage() {
   const expired = timeUpFor !== null && timeUpFor === current?.id;
   const hasAnswered = answered?.id === current?.id;
   const gate = learnerActivityGate({
-    kind: current?.kind ?? '',
     timerRunning,
     expired,
     answered: hasAnswered,
   });
-  const { started, preStart, locked } = gate;
+  const { started, locked } = gate;
 
   async function handleComplete(correct: boolean) {
     if (!current || saving || !gate.canComplete) return;
@@ -183,9 +182,9 @@ export default function LiveSessionPage() {
   const ended = status === 'ended';
   const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
 
-  // Measure the personal stopwatch from the START signal (timer begins), so the
-  // podium's elapsed time is fair — not counting the pause before the professor
-  // starts the round.
+  // Restart the personal stopwatch whenever a timer round starts, so the
+  // podium's elapsed time reflects the timed round rather than time spent
+  // idling on the activity before the professor armed it.
   useEffect(() => {
     if (started && !answered) setActivityStartedAt(Date.now());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -354,17 +353,12 @@ export default function LiveSessionPage() {
                   // The countdown now lives prominently in the top chrome; here we
                   // only keep the personal stopwatch (elapsed) once the activity is
                   // started and still unanswered.
-                  !answered && !locked && !preStart && activityStartedAt ? (
+                  !answered && !locked && activityStartedAt ? (
                     <LiveStopwatch startedAt={activityStartedAt} />
                   ) : undefined
                 }
                 footer={
                   <>
-                    {preStart && (
-                      <p className="mt-5 text-center text-sm text-muted-foreground" data-testid="live-waitstart-hint">
-                        {t('live.waitForStart')}
-                      </p>
-                    )}
                     {locked && (
                       <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
                         {t('live.timer.lockedHint')}
@@ -400,6 +394,7 @@ export default function LiveSessionPage() {
             role="learner"
             roster={roster}
             answerers={peerAnswerers}
+            ranking={podiumRanking}
             selfUserId={identity.userId}
             hasActivity={!!current}
             kind={current?.kind ?? ''}

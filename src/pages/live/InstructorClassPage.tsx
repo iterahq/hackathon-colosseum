@@ -38,7 +38,6 @@ import {
   type ClassSession,
 } from '@/services/liveClass.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
-import { rankByTiming } from '@/utils/rankByTiming';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
 import { LivePodium } from '@/components/live/LivePodium';
@@ -157,7 +156,6 @@ function StartClass({
   const { data: programs = [], isPending } = usePrograms();
   const [slug, setSlug] = useState<string>('');
   const [lessonId, setLessonId] = useState<string>('');
-  const [podiumEvery, setPodiumEvery] = useState<number>(0);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,7 +198,6 @@ function StartClass({
         lessonId,
         instructorId,
         scope: 'global',
-        podiumEvery: podiumEvery > 0 ? podiumEvery : null,
       });
       onStarted();
     } catch (e) {
@@ -263,27 +260,6 @@ function StartClass({
           </option>
         ))}
       </select>
-
-      {/* Step 3 — automatic intermediate podium cadence (P3-3b). */}
-      <label className="block text-[13px] font-medium text-muted-foreground mb-1.5">
-        {t('live.instructor.start.podiumEvery')}
-      </label>
-      <select
-        value={podiumEvery}
-        onChange={(e) => setPodiumEvery(Number(e.target.value))}
-        data-testid="instructor-podium-every-select"
-        className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-1.5"
-      >
-        <option value={0}>{t('live.instructor.start.podiumEveryOff')}</option>
-        {[2, 3, 5].map((n) => (
-          <option key={n} value={n}>
-            {t('live.instructor.start.podiumEveryN', { n: String(n) })}
-          </option>
-        ))}
-      </select>
-      <p className="text-[12px] text-muted-foreground mb-6">
-        {t('live.instructor.start.podiumEveryHint')}
-      </p>
 
       {error && (
         <p className="text-sm text-destructive mb-4" data-testid="instructor-start-error" role="alert">
@@ -361,9 +337,6 @@ function ClassControl({
 
   // Armed only when THIS instructor ends the class, so an out-of-band end still bounces.
   const [showPodium, setShowPodium] = useState(false);
-  // Intermediate standings shown mid-class (professor-triggered), dismissed with
-  // "back to class" — distinct from `showPodium`, which is the terminal end screen.
-  const [podiumInterlude, setPodiumInterlude] = useState(false);
 
   // If the session ends out-of-band (another tab/device), leave the live
   // surface — never strand the professor in a "LIVE" chrome whose controls
@@ -411,10 +384,6 @@ function ClassControl({
     );
   }, [roster, polled, answers, elapsed, currentActivityId]);
 
-  // Class-wide speed leaderboard of the present learners (cumulative across every
-  // activity answered so far), so by the end of the class it's the final ranking.
-  const ranking = useMemo(() => rankByTiming(roster, elapsed, answers), [roster, elapsed, answers]);
-
   // Every learner who was EVER present — presence drains on `leave` (students
   // disconnect the instant the class ends), which would empty the live roster
   // and make the final podium vanish. Accumulating here keeps their names.
@@ -431,14 +400,22 @@ function ClassControl({
     elapsed: typeof elapsed;
     answers: typeof answers;
   } | null>(null);
+  // Live ranking for the sidebar. Merges the CURRENT roster in directly (not
+  // just the ref) so a fresh joiner appears immediately — the ref-updating
+  // effect runs after render, and the ref alone isn't a memo dependency.
+  const liveRanking = useMemo(
+    () =>
+      rankByScore(
+        [...mergeSeenLearners(seenLearnersRef.current, roster).values()],
+        elapsed,
+        answers
+      ),
+    [roster, elapsed, answers]
+  );
   const podiumRanking = useMemo(() => {
-    const src = podiumSnapshot ?? {
-      roster: [...seenLearnersRef.current.values()],
-      elapsed,
-      answers,
-    };
-    return rankByScore(src.roster, src.elapsed, src.answers);
-  }, [podiumSnapshot, elapsed, answers]);
+    if (!podiumSnapshot) return liveRanking;
+    return rankByScore(podiumSnapshot.roster, podiumSnapshot.elapsed, podiumSnapshot.answers);
+  }, [podiumSnapshot, liveRanking]);
 
   // Reveal the answer on the professor's own mirror when the timer stops (manual
   // stop → stoppedFor via self-broadcast; natural expiry → expiredFor).
@@ -457,19 +434,10 @@ function ClassControl({
     if (busy) return;
     setBusy(true);
     try {
-      const targetIdx = activities.findIndex((a) => a.id === activityId);
       await advanceClassSession(session.id, activityId); // durable
       broadcast(activityId); // fast path
       refetch();
       void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.mySessions(tenantId) });
-      // P3-3b — auto-podium every N: when advancing FORWARD onto an activity that
-      // closes a block of N (0-based index is a positive multiple of N), pop the
-      // intermediate standings. It's an overlay dismissed with "resume", exactly
-      // like the manual Pódio button.
-      const every = session.podiumEvery ?? 0;
-      const hitsCheckpoint =
-        every >= 1 && targetIdx > 0 && targetIdx > idx && targetIdx % every === 0;
-      setPodiumInterlude(hitsCheckpoint);
     } finally {
       setBusy(false);
     }
@@ -524,7 +492,7 @@ function ClassControl({
   const progressPct =
     activities.length && idx >= 0 ? Math.round(((idx + 1) / activities.length) * 100) : 0;
   const ended = status === 'ended';
-  const onPodium = ended || showPodium || podiumInterlude;
+  const onPodium = ended || showPodium;
   // Begin exists ONLY before a pointer is set; once set we're in the activity
   // (or briefly its loading skeleton), never back in the lobby.
   const inReception = !currentActivityId;
@@ -553,8 +521,7 @@ function ClassControl({
           ) : undefined
         }
         onClose={() => {
-          // Guard against an accidental close abandoning a live presentation
-          // (the mid-class podium interlude still counts as live).
+          // Guard against an accidental close abandoning a live presentation.
           if (ended || showPodium || window.confirm(t('live.instructor.leaveConfirm'))) navigate('/');
         }}
       />
@@ -586,22 +553,12 @@ function ClassControl({
             {onPodium ? (
               <div className="mt-8" data-testid="instructor-podium">
                 <LivePodium ranking={podiumRanking} />
-                {podiumInterlude && !ended && !showPodium ? (
-                  <button
-                    onClick={() => setPodiumInterlude(false)}
-                    data-testid="instructor-podium-resume"
-                    className="mt-8 mx-auto block h-12 px-8 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors"
-                  >
-                    {t('live.podium.resume')}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleLeavePodium}
-                    className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                  >
-                    {t('live.ended.cta')}
-                  </button>
-                )}
+                <button
+                  onClick={handleLeavePodium}
+                  className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                >
+                  {t('live.ended.cta')}
+                </button>
               </div>
             ) : current ? (
               // sandbox_scenario is facilitator-driven: the instructor drives the
@@ -645,7 +602,7 @@ function ClassControl({
           kind={current?.kind ?? ''}
           roster={roster}
           answerers={answerers}
-          ranking={ranking}
+          ranking={liveRanking}
           selfUserId={instructorId ?? undefined}
           copied={copied}
           busy={busy}
@@ -669,7 +626,6 @@ function ClassControl({
               onStopTimer={() => current && clearTimer(current.id)}
               onReveal={() => current && clearTimer(current.id)}
               onReset={() => current && resetActivity(current.id)}
-              onShowPodium={() => setPodiumInterlude(true)}
             />
           }
         />

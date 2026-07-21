@@ -1,4 +1,4 @@
-import { Play, ChevronLeft, ChevronRight, Eye, RotateCcw, Trophy } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Eye, RotateCcw } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 
@@ -22,8 +22,6 @@ interface InstructorControlsProps {
   onStopTimer: () => void;
   onReveal: () => void;
   onReset: () => void;
-  /** Surface the intermediate standings mid-class (dismissed with "back to class"). */
-  onShowPodium: () => void;
 }
 
 /**
@@ -48,7 +46,6 @@ export function InstructorControls({
   onStopTimer,
   onReveal,
   onReset,
-  onShowPodium,
 }: InstructorControlsProps) {
   const { t } = useI18n();
   const allAnswered = presentCount > 0 && answeredCount >= presentCount;
@@ -133,15 +130,6 @@ export function InstructorControls({
           <RotateCcw className="w-3.5 h-3.5" /> {t('live.instructor.control.reset')}
         </button>
       </div>
-
-      <button
-        onClick={onShowPodium}
-        disabled={busy}
-        data-testid="instructor-show-podium"
-        className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-clay/40 bg-clay/10 text-sm text-clay hover:bg-clay/20 transition-colors disabled:opacity-40"
-      >
-        <Trophy className="w-3.5 h-3.5" /> {t('live.instructor.control.podium')}
-      </button>
     </div>
   );
 }

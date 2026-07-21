@@ -3,9 +3,7 @@ import { Link2, Check, Square, Users, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
 import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
-import { LiveRosterCard } from '@/components/live/LiveRosterCard';
-import { LiveAnswerersCard } from '@/components/live/LiveAnswerersCard';
-import { LiveRankingCard } from '@/components/live/LiveRankingCard';
+import { LiveRankedRosterCard } from '@/components/live/LiveRankedRosterCard';
 
 interface LiveSidebarProps {
   /** Learner and instructor share this ONE sidebar; the role toggles sections. */
@@ -28,10 +26,8 @@ interface LiveSidebarProps {
 }
 
 /**
- * The single right-hand sidebar for the live class — one panel whose stacked
- * SECTIONS are split by hairlines. `role` decides what shows: learner sees
- * presence + who's-answered (correctness hidden); instructor adds activity
- * stats, speed ranking and the manage actions (share link / end) at the foot.
+ * The single right-hand live-class sidebar. Both roles see ONE ranked class
+ * list (podium order, kept live); the instructor adds stats + manage actions.
  */
 export function LiveSidebar({
   role,
@@ -53,8 +49,7 @@ export function LiveSidebar({
   const isInstructor = role === 'instructor';
   const showActivity = isInstructor && hasActivity;
 
-  // On phones the learner panel collapses to a compact bar so it never eats
-  // half the screen; instructor and every `lg` breakpoint keep the full sidebar.
+  // On phones the learner panel collapses to a compact bar.
   const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
   const bodyClass = collapsible
@@ -110,11 +105,16 @@ export function LiveSidebar({
         {!isInstructor && hasActivity && (
           <LiveActivityStatsCard bare hideCorrectness kind={kind} answerers={answerers} />
         )}
-        <LiveRosterCard bare roster={roster} selfUserId={selfUserId} />
-        {(!isInstructor || hasActivity) && (
-          <LiveAnswerersCard bare answerers={answerers} hideCorrectness={!isInstructor} />
+        {ranking && (
+          <LiveRankedRosterCard
+            bare
+            ranking={ranking}
+            answerers={answerers}
+            instructors={roster.filter((m) => m.isInstructor)}
+            selfUserId={selfUserId}
+            showDetail={isInstructor}
+          />
         )}
-        {showActivity && ranking && <LiveRankingCard bare ranking={ranking} />}
       </div>
 
       {isInstructor && (

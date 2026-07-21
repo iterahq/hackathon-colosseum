@@ -2,28 +2,26 @@ import type { LearnerGate, LearnerGateInput } from '@/types/liveClass';
 
 /**
  * The learner-side interaction gate for a live activity — the single source of
- * truth for when a student may answer, when the stage is inert, and when a
- * completion may be persisted/broadcast. Pure so it can be unit-tested without
- * rendering the whole page.
+ * truth for when a student may answer and when a completion may be
+ * persisted/broadcast. Pure so it can be unit-tested without rendering the page.
  *
- * Two invariants it encodes (from the Educar+ pilot feedback):
- *   - PRE-START (P0-2): an activity the instructor advanced to but hasn't STARTED
- *     (no timer yet) is inert — no answering before the go signal.
- *     `sandbox_scenario` is facilitator-driven, so it's exempt.
- *   - EXPIRY LOCKS, NEVER COMPLETES (P0-1): when the countdown runs out before the
- *     learner answered, the activity locks (read-only) but is NEVER auto-completed
- *     or advanced — `canComplete` stays false, so nothing persists/broadcasts.
+ * Invariants (Educar+ pilot feedback, round 2):
+ *   - INTERACTIVE ON ARRIVAL: the moment the instructor advances to an activity
+ *     the learner can answer it — there is NO pre-start gate. (Round-1 shipped a
+ *     timer-armed gate and it made every activity read-only in practice, since
+ *     concept/sandbox rounds never get a timer.)
+ *   - EXPIRY LOCKS, NEVER COMPLETES: when a countdown the instructor DID start
+ *     runs out before the learner answered, the activity locks (read-only) but
+ *     is NEVER auto-completed or advanced — `canComplete` stays false.
  */
 export function learnerActivityGate({
-  kind,
   timerRunning,
   expired,
   answered,
 }: LearnerGateInput): LearnerGate {
   const started = timerRunning || expired;
-  const preStart = kind !== 'sandbox_scenario' && !started;
   const locked = expired && !answered;
-  const readOnly = locked || answered || preStart;
-  const canComplete = !preStart && !locked && !answered;
-  return { started, preStart, locked, readOnly, canComplete };
+  const readOnly = locked || answered;
+  const canComplete = !locked && !answered;
+  return { started, locked, readOnly, canComplete };
 }
