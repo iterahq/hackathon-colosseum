@@ -18,6 +18,8 @@ import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
 import SignupPage from "./pages/auth/SignupPage";
 import DflCallbackPage from "./pages/auth/DflCallbackPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
@@ -73,6 +75,11 @@ const App = () => (
                     visitor signs up then lands on `from` (default "/"), the gate
                     routing them to /subscribe (FIX B, round-3 focus group). */}
                 <Route path="/signup" element={<SignupPage />} />
+                {/* Password recovery — /auth/forgot requests the email link
+                    (public); /auth/reset is where the link lands (the recovery
+                    token signs the user in via detectSessionInUrl). */}
+                <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
+                <Route path="/auth/reset" element={<ResetPasswordPage />} />
                 {/* "Sign in with DFL" callback — exchanges the DFL token (from
                     the URL fragment) for an Itera session. Public (pre-auth). */}
                 <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
