@@ -61,6 +61,7 @@ export const queryKeys = {
     enabledTenantIds: (userId: string) =>
       ['live-class', 'enabled-tenant-ids', userId] as const,
     mySessions: (tenantId: string) => ['live-class', 'my-sessions', tenantId] as const,
+    report: (sessionId: string) => ['live-class', 'report', sessionId] as const,
   },
   // Author review canvas (plan 20260706 — per-unit review+comment surface).
   author: {

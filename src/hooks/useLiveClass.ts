@@ -21,6 +21,8 @@ import {
   getMySessions,
   isLiveClassEnabledForUser,
 } from '@/services/liveClass.service';
+import { getClassReportData } from '@/services/classReport.service';
+import { getClassSession } from '@/services/liveClass.service';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { useAuth } from '@/auth/AuthContext';
 
@@ -133,5 +135,23 @@ export function useClassCompleters(
       ),
     enabled: Boolean(tenantId && activityId),
     refetchInterval: 8_000,
+  });
+}
+
+/** One session by id (RLS-scoped). Null when not visible / not found. */
+export function useClassSessionById(sessionId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.liveClass.session(sessionId ?? ''),
+    queryFn: () => getClassSession(sessionId as string),
+    enabled: Boolean(sessionId),
+  });
+}
+
+/** Raw durable rows for one ended session (instructor report page). */
+export function useClassReport(sessionId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.liveClass.report(sessionId ?? ''),
+    queryFn: () => getClassReportData(sessionId as string),
+    enabled: Boolean(sessionId),
   });
 }

@@ -48,6 +48,7 @@ import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
+import { InstructorReportsCard } from '@/components/live/InstructorReportsCard';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 import type { ClassPresenceMember } from '@/types/liveClass';
@@ -131,11 +132,14 @@ export default function InstructorClassPage() {
             subtitle={t('live.instructor.disabled.subtitle')}
           />
         ) : (
-          <StartClass
-            tenantId={tenantId}
-            instructorId={identity.userId}
-            onStarted={() => refetch()}
-          />
+          <>
+            <StartClass
+              tenantId={tenantId}
+              instructorId={identity.userId}
+              onStarted={() => refetch()}
+            />
+            <InstructorReportsCard sessions={sessions ?? []} />
+          </>
         )}
       </main>
     </div>
