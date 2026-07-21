@@ -42,7 +42,7 @@ export function SandboxControls({
         />
       )}
 
-      {s.mode === 'compose' && variant === 'ai' && s.needsSeedClick && (
+      {s.mode === 'compose' && s.needsSeedClick && (
         <SandboxSeedChip
           text={s.seedText ?? ''}
           active={s.seedInserted}

@@ -467,9 +467,9 @@ function ClassControl({
       // intermediate standings. It's an overlay dismissed with "resume", exactly
       // like the manual Pódio button.
       const every = session.podiumEvery ?? 0;
-      if (every >= 1 && targetIdx > 0 && targetIdx > idx && targetIdx % every === 0) {
-        setPodiumInterlude(true);
-      }
+      const hitsCheckpoint =
+        every >= 1 && targetIdx > 0 && targetIdx > idx && targetIdx % every === 0;
+      setPodiumInterlude(hitsCheckpoint);
     } finally {
       setBusy(false);
     }

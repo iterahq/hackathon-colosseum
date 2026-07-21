@@ -140,6 +140,36 @@ describe('SandboxScenarioActivity dispatcher', () => {
       expect(chips.textContent).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
     });
 
+    // Prod "The vague ask" (c1) opens with a compose step that exposes NOTHING —
+    // the learner must click the basePrompt seed chip to send. The seed chip used
+    // to render only for the `ai` variant, so an options-shaped scenario with a
+    // leading pure-seed step had no clickable affordance → "primeira fase sem
+    // respostas, não consigo fazer nada".
+    it('renders the seed chip on a leading pure-seed step of an options scenario', () => {
+      const withLeadingSeed = {
+        ...(c1 as Record<string, unknown>),
+        steps: [
+          {
+            id: 'rodar-vago',
+            mode: 'compose',
+            expose: {},
+            prompt: { pt: 'Manda o pedido do jeito que tá.', en: 'Send it as-is.' },
+            unlock: { ranPrompt: { withContext: false } },
+          },
+          ...(((c1 as Record<string, unknown>).steps as unknown[]) ?? []),
+        ],
+      } as Record<string, unknown>;
+
+      renderActivity(makeActivity(withLeadingSeed));
+
+      const chip = screen.getByTestId('sandbox-seed-chip');
+      expect(chip).toBeInTheDocument();
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.click(chip);
+      expect((screen.getByTestId('sandbox-send') as HTMLButtonElement).disabled).toBe(false);
+    });
+
     it('runs c1 to success (pick the right chip → send → rate) and emits onComplete(true) UP for the footer', async () => {
       const onComplete = renderActivity(makeActivity(c1));
 
