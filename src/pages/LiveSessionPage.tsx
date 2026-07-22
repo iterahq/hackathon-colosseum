@@ -40,6 +40,7 @@ import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
+import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
@@ -418,6 +419,8 @@ export default function LiveSessionPage() {
           />
         )}
       </div>
+
+      {!loading && session && <LiveSoundDock />}
 
       {!loading && session && !ended && current && (
         <LiveHandButton raised={handRaised} onToggle={toggleHand} />

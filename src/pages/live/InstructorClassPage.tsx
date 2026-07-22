@@ -45,6 +45,7 @@ import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
+import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
@@ -637,6 +638,8 @@ function ClassControl({
           }
         />
       </div>
+
+      <LiveSoundDock />
     </div>
   );
 }

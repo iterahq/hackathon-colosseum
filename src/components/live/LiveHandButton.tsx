@@ -16,7 +16,7 @@ export function LiveHandButton({ raised, onToggle }: LiveHandButtonProps) {
       data-testid="live-hand-btn"
       data-raised={raised ? 'true' : 'false'}
       aria-pressed={raised}
-      className={`fixed bottom-5 left-5 z-40 inline-flex items-center gap-2 h-11 pl-3.5 pr-4 rounded-full border text-sm font-medium shadow-lg transition-colors ${
+      className={`fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 h-11 pl-3.5 pr-4 rounded-full border text-sm font-medium shadow-lg transition-colors ${
         raised
           ? 'bg-clay text-white border-clay animate-pulse'
           : 'bg-card text-foreground border-border hover:border-clay/50'

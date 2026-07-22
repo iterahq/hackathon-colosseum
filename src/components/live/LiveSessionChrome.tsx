@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
 
 interface LiveSessionChromeProps {
   progressPct: number;
@@ -18,7 +17,7 @@ interface LiveSessionChromeProps {
 
 /**
  * The immersive top chrome of a live class — progress bar, close, the LIVE
- * pill + presence count, a mute toggle and the decorative hearts. Shared by the
+ * pill + presence count and position cue. Shared by the
  * learner surface AND the instructor surface so the professor sees the SAME
  * frame the students do (screen-share parity); the professor just adds controls
  * around this, never a different shell.
@@ -102,10 +101,6 @@ export function LiveSessionChrome({
           </span>
         )}
         {!ended && timerSlot}
-      </div>
-
-      <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-3">
-        {!ended && <LiveSoundToggle compact />}
       </div>
     </header>
   );

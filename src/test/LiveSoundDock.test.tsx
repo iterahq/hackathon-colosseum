@@ -5,9 +5,12 @@ import { I18nProvider } from '@/i18n';
 const h = vi.hoisted(() => ({
   muted: true,
   volume: 1,
+  musicOn: true,
   play: vi.fn(),
   toggleMuted: vi.fn(),
   setVolume: vi.fn(),
+  toggleMusic: vi.fn(),
+  bgMusic: vi.fn(),
 }));
 
 vi.mock('@/hooks/useSoundEffects', () => ({
@@ -28,24 +31,39 @@ vi.mock('@/hooks/useLiveVolume', () => ({
   useLiveVolume: () => [h.volume, h.setVolume],
 }));
 
-import { LiveSoundToggle } from '@/components/live/LiveSoundToggle';
+vi.mock('@/hooks/useLiveMusicEnabled', () => ({
+  useLiveMusicEnabled: () => [h.musicOn, h.toggleMusic],
+}));
+
+vi.mock('@/hooks/useBackgroundMusic', () => ({
+  useBackgroundMusic: (opts: unknown) => h.bgMusic(opts),
+}));
+
+import { LiveSoundDock } from '@/components/live/LiveSoundDock';
+
+function renderDock() {
+  return render(
+    <I18nProvider>
+      <LiveSoundDock />
+    </I18nProvider>
+  );
+}
 
 beforeEach(() => {
   h.play.mockClear();
   h.toggleMuted.mockClear();
   h.setVolume.mockClear();
+  h.toggleMusic.mockClear();
+  h.bgMusic.mockClear();
   h.muted = true;
   h.volume = 1;
+  h.musicOn = true;
 });
 
-describe('LiveSoundToggle', () => {
+describe('LiveSoundDock', () => {
   it('plays a confirm chime when turning sound back ON', () => {
     h.muted = true; // the click unmutes
-    render(
-      <I18nProvider>
-        <LiveSoundToggle />
-      </I18nProvider>
-    );
+    renderDock();
     fireEvent.click(screen.getByTestId('live-sound-toggle'));
     expect(h.toggleMuted).toHaveBeenCalledTimes(1);
     expect(h.play).toHaveBeenCalledWith('chime', expect.any(Number));
@@ -53,25 +71,33 @@ describe('LiveSoundToggle', () => {
 
   it('stays silent when muting', () => {
     h.muted = false; // the click mutes
-    render(
-      <I18nProvider>
-        <LiveSoundToggle />
-      </I18nProvider>
-    );
+    renderDock();
     fireEvent.click(screen.getByTestId('live-sound-toggle'));
     expect(h.toggleMuted).toHaveBeenCalledTimes(1);
     expect(h.play).not.toHaveBeenCalled();
   });
 
-  it('exposes a volume slider (compact) that updates the shared volume', () => {
+  it('exposes a volume slider that updates the shared volume', () => {
     h.muted = false;
-    render(
-      <I18nProvider>
-        <LiveSoundToggle compact />
-      </I18nProvider>
-    );
-    const slider = screen.getByTestId('live-volume-slider');
-    fireEvent.change(slider, { target: { value: '0.3' } });
+    renderDock();
+    fireEvent.change(screen.getByTestId('live-volume-slider'), { target: { value: '0.3' } });
     expect(h.setVolume).toHaveBeenCalledWith(0.3);
+  });
+
+  it('toggles background music and previews a chime when enabling it', () => {
+    h.muted = false;
+    h.musicOn = false; // the click enables music
+    renderDock();
+    fireEvent.click(screen.getByTestId('live-music-toggle'));
+    expect(h.toggleMusic).toHaveBeenCalledTimes(1);
+    expect(h.play).toHaveBeenCalledWith('chime', expect.any(Number));
+  });
+
+  it('drives the background-music loop from the mute + music prefs', () => {
+    h.muted = false;
+    h.volume = 0.5;
+    h.musicOn = true;
+    renderDock();
+    expect(h.bgMusic).toHaveBeenCalledWith({ enabled: true, muted: false, volume: 0.5 });
   });
 });
