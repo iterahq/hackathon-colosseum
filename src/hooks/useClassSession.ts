@@ -1,7 +1,9 @@
 /**
  * useClassSession — the real-time synchronicity layer for a live cohort class.
  *
- * ONE Supabase Realtime channel `class:<sessionId>` carries three concerns:
+ * ONE PRIVATE Supabase Realtime channel `class:<sessionId>` (gated by
+ * realtime.messages RLS, migration 0022 — only session participants may join /
+ * send) carries three concerns:
  *   1. broadcast  — the FAST path. The professor broadcasts `{ current_activity_id }`
  *      on advance; every student re-points instantly (no DB round-trip).
  *   2. postgres_changes — the DURABLE / reconnect truth. We also subscribe to the
@@ -174,8 +176,14 @@ export function useClassSession(
       const presenceKey =
         identityRef.current?.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
 
+      // Private channel: joining/sending is gated by realtime.messages RLS
+      // (migration 0022) so only session participants can broadcast/track. Make
+      // sure the realtime socket carries the user's JWT before the private join;
+      // supabase-js sets it on init, but this closes the first-load race (a
+      // failed join just retries via scheduleRetry once auth lands).
+      void sb.realtime.setAuth();
       const channel = sb.channel(`class:${sessionId}`, {
-        config: { presence: { key: presenceKey }, broadcast: { self: true } },
+        config: { private: true, presence: { key: presenceKey }, broadcast: { self: true } },
       });
       current = channel;
 
@@ -210,7 +218,8 @@ export function useClassSession(
           // Only a real activity id is honored from the broadcast fast-path. A
           // `null` (return-to-reception) is NOT accepted here — it can only come
           // from the durable session row (postgres_changes / refetch), so a spoofed
-          // broadcast on this public channel can't shove the class back to the lobby.
+          // broadcast (now limited to session participants) can't shove the class
+          // back to the lobby.
           if (typeof next === 'string') {
             setCurrentActivityId(next);
             setTimer(null);

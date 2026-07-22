@@ -52,6 +52,7 @@ vi.mock('@/lib/supabase/client', () => ({
   getSupabase: () => ({
     channel: () => makeChannel(),
     removeChannel: () => Promise.resolve(),
+    realtime: { setAuth: () => Promise.resolve() },
   }),
 }));
 
