@@ -15,8 +15,11 @@ export function useLiveSound() {
 
   const onAnswer = useCallback(
     (correct: boolean) => {
-      if (muted) return;
-      play(correct ? 'success' : 'error', (correct ? 0.4 : 0.3) * volume);
+      if (muted || volume === 0) return;
+      // Pass/fail is the key learner feedback — play it at a clearly audible
+      // level (like the async lesson flow) instead of scaling it down into
+      // near-silence at the low default music volume.
+      play(correct ? 'success' : 'error', correct ? 0.4 : 0.3);
     },
     [muted, volume, play]
   );

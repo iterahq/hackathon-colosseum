@@ -54,7 +54,7 @@ export function useBackgroundMusic({ enabled, muted, volume }: BackgroundMusicOp
   // Track the target level in a ref so the running scheduler reads the latest
   // volume without being torn down and rebuilt on every slider tick.
   const levelRef = useRef(0);
-  levelRef.current = active ? 0.05 : 0;
+  levelRef.current = active ? 0.05 * volume : 0;
 
   useEffect(() => {
     if (masterRef.current && ctxRef.current) {
@@ -82,10 +82,10 @@ export function useBackgroundMusic({ enabled, muted, volume }: BackgroundMusicOp
       master.gain.setTargetAtTime(levelRef.current, ctx.currentTime, 0.08);
       while (nextTime < ctx.currentTime + SCHEDULE_AHEAD) {
         const mel = toFreq(MELODY[step % MELODY.length]);
-        blip(ctx, master, nextTime, mel, STEP * 0.9, 'square', 0.5);
+        blip(ctx, master, nextTime, mel, STEP * 0.9, 'triangle', 0.35);
         if (step % 2 === 0) {
           const bass = toFreq(BASS[(step / 2) % BASS.length] - 12);
-          blip(ctx, master, nextTime, bass, STEP * 1.6, 'triangle', 0.6);
+          blip(ctx, master, nextTime, bass, STEP * 1.6, 'sine', 0.4);
         }
         nextTime += STEP;
         step += 1;

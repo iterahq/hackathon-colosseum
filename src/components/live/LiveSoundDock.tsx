@@ -44,7 +44,7 @@ export function LiveSoundDock() {
 
   return (
     <div className="fixed bottom-5 left-5 z-40 group" data-testid="live-sound-dock">
-      <div className="absolute left-0 bottom-full w-44 pb-2 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+      <div className="absolute left-0 bottom-full w-44 pb-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-3 shadow-lg">
           <div className="flex items-center gap-2">
             <VolumeX className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -52,7 +52,7 @@ export function LiveSoundDock() {
               type="range"
               min={0}
               max={1}
-              step={0.05}
+              step={0.01}
               value={volume}
               onChange={(e) => handleVolume(parseFloat(e.target.value))}
               data-testid="live-volume-slider"
