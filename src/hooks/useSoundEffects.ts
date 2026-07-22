@@ -2,7 +2,8 @@ import { useCallback, useRef } from 'react';
 
 // Sound URLs - using free sound effects
 const SOUNDS = {
-  success: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+  // Warm, gentle reward chime on passing an exercise (agradável, not sharp).
+  success: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
   error: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
   click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
   celebration: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
