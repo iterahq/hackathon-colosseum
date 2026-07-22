@@ -1,7 +1,7 @@
 /**
  * Activity renderer — dispatches an itera.activities row to the right view by
- * `kind`. Implemented now: document, diagram, quiz. Code is a consistent
- * placeholder (judge0 lands later). Canonical labels throughout.
+ * `kind`. Implemented now: document, diagram, quiz, code (a client-only
+ * react-live snack in a sandboxed iframe). Canonical labels throughout.
  *
  * Presentation lives inside the LessonPlayer's FOCUSED, centered chrome (the
  * full-width progress bar + X + hearts live in LessonPlayer). The QUIZ is the
@@ -20,7 +20,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import { motion } from 'framer-motion';
-import { FileText, GitBranch, Code2, CheckCircle2, XCircle, Construction } from 'lucide-react';
+import { FileText, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
@@ -44,6 +44,7 @@ import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
 import { SandboxScenarioActivity } from './SandboxScenarioActivity';
+import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { SubmitButton } from './parts';
 
 export function ActivityRenderer({
@@ -64,7 +65,7 @@ export function ActivityRenderer({
     case 'quiz':
       return <QuizActivity activity={activity} onComplete={onComplete} />;
     case 'code':
-      return <CodePlaceholder activity={activity} onComplete={onComplete} />;
+      return <CodeSnackActivity activity={activity} onComplete={onComplete} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
       return <ConceptActivity activity={activity} onComplete={onComplete} />;
@@ -517,32 +518,6 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         testId="quiz-submit"
       />
     </motion.div>
-  );
-}
-
-function CodePlaceholder({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
-  const { t } = useI18n();
-  const spec = activity.spec as { language?: string; starter?: string; prompt?: string };
-  return (
-    <Shell kind="code" icon={Code2} label={t('activity.code')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.code')}</h2>
-      <div className="mt-4 rounded-2xl border border-border bg-[#0d0c0a] overflow-hidden">
-        <div className="flex items-center gap-2 px-4 h-9 border-b border-border bg-obsidiana/60">
-          {/* Flat brand: editor chrome dots use neutral muted (clay is reserved for Q&A). */}
-          <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
-          <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
-          <span className="w-2.5 h-2.5 rounded-full bg-evergreen/60" />
-          <span className="ml-2 text-xs text-muted-foreground font-mono">{spec.language ?? 'code'}</span>
-        </div>
-        <pre className="p-4 font-mono text-sm text-menta overflow-x-auto whitespace-pre">
-          {spec.starter ?? '// ...'}
-        </pre>
-      </div>
-      <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-        <Construction className="w-4 h-4" /> {t('activity.codeSoon')}
-      </div>
-      <DoneButton done={activity.status === 'done'} onClick={() => onComplete(true)} />
-    </Shell>
   );
 }
 
