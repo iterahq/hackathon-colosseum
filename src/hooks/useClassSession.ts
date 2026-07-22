@@ -22,10 +22,12 @@ import type {
   ClassIdentity as Identity,
   ClassPresenceMember,
   ClassTimer,
+  StagedAnswer,
   UseClassSession,
 } from '@/types/liveClass';
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
+import { gatherStageContent } from '@/utils/stageAnswerContent';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -33,6 +35,14 @@ const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
 const TIMER_EVENT = 'timer';
 const TIMER_STOP_EVENT = 'timer-stop';
+// Peer-to-peer "pull to stage" (ADR-3/4): request → student replies → instructor
+// gates → all render. Same accepted trust model as ADVANCE/ANSWERED on this
+// public per-session channel (a cohort member could spoof); the nonce + target
+// echo below only reject STALE/MISMATCHED replies, not a determined spoofer.
+const STAGE_REQUEST_EVENT = 'stage-request';
+const STAGE_ANSWER_EVENT = 'stage-answer';
+const STAGE_SHOW_EVENT = 'stage-show';
+const STAGE_CLEAR_EVENT = 'stage-clear';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -53,7 +63,18 @@ export function useClassSession(
   // The activity whose timer was just STOPPED by the professor — cue to reveal
   // the correct answer to everyone. Cleared on advance.
   const [stoppedFor, setStoppedFor] = useState<string | null>(null);
+  const [stagedAnswer, setStagedAnswer] = useState<StagedAnswer | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // The instructor's in-flight pull: the nonce armed by requestStage + which
+  // learner it targeted. A stage-answer is only gated to stage-show when BOTH
+  // the userId matches the target AND the nonce echoes back (rejects stale replies).
+  const pendingStageRef = useRef<{ nonce: string; targetUserId: string } | null>(null);
+  // Read inside broadcast handlers so a stage-show is only honored for the CURRENT
+  // activity — without making the channel effect depend on currentActivityId.
+  const currentActivityIdRef = useRef<string | null>(null);
+  currentActivityIdRef.current = currentActivityId;
+  const sessionIdRef = useRef<string | undefined>(sessionId);
+  sessionIdRef.current = sessionId;
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
   // joined channel → `.on()`-after-`subscribe()` crash — see the effect below).
@@ -194,6 +215,8 @@ export function useClassSession(
             setCurrentActivityId(next);
             setTimer(null);
             setStoppedFor(null);
+            setStagedAnswer(null);
+            pendingStageRef.current = null;
           }
         })
         .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
@@ -223,6 +246,75 @@ export function useClassSession(
           setTimer((prev) => timerAfterStop(prev, payload));
           const p = payload as { activity_id?: unknown } | null;
           if (p && typeof p.activity_id === 'string') setStoppedFor(p.activity_id);
+        })
+        // stage-request (instructor → all): the TARGETED learner replies with its
+        // OWN answer for the current activity — only if it actually has one.
+        .on('broadcast', { event: STAGE_REQUEST_EVENT }, ({ payload }) => {
+          const p = payload as
+            | { activityId?: string; targetUserId?: string; nonce?: string }
+            | null;
+          const id = identityRef.current;
+          const sid = sessionIdRef.current;
+          if (!p?.activityId || !p.targetUserId || !p.nonce || !id || !sid) return;
+          if (p.targetUserId !== id.userId || p.activityId !== currentActivityIdRef.current) return;
+          const gathered = gatherStageContent(sid, p.activityId);
+          if (!gathered) return;
+          void channel.send({
+            type: 'broadcast',
+            event: STAGE_ANSWER_EVENT,
+            payload: {
+              activityId: p.activityId,
+              userId: id.userId,
+              nonce: p.nonce,
+              kind: gathered.kind,
+              content: gathered.content,
+              author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
+            },
+          });
+        })
+        // stage-answer → THE GATE: only the instructor honors it, and only when the
+        // reply's userId + nonce match the in-flight pull. It then re-broadcasts
+        // stage-show so a learner can NEVER stage arbitrary content on the class.
+        .on('broadcast', { event: STAGE_ANSWER_EVENT }, ({ payload }) => {
+          const pending = pendingStageRef.current;
+          const p = payload as
+            | { activityId?: string; userId?: string; nonce?: string; kind?: string; content?: string; author?: unknown }
+            | null;
+          if (!pending || !p?.userId || !p.nonce || !p.activityId) return;
+          if (p.userId !== pending.targetUserId || p.nonce !== pending.nonce) return;
+          if (p.activityId !== currentActivityIdRef.current) return;
+          pendingStageRef.current = null;
+          void channel.send({
+            type: 'broadcast',
+            event: STAGE_SHOW_EVENT,
+            payload: {
+              activityId: p.activityId,
+              kind: p.kind,
+              content: p.content,
+              author: p.author,
+            },
+          });
+        })
+        // stage-show (instructor → all): the ONLY source clients render the stage
+        // from — honored only for the current activity.
+        .on('broadcast', { event: STAGE_SHOW_EVENT }, ({ payload }) => {
+          const p = payload as
+            | { activityId?: string; kind?: string; content?: string; author?: { userId?: string; name?: string; avatarUrl?: string | null } }
+            | null;
+          if (!p?.activityId || typeof p.kind !== 'string' || typeof p.content !== 'string') return;
+          if (p.activityId !== currentActivityIdRef.current) return;
+          const a = p.author;
+          if (!a?.userId || typeof a.name !== 'string') return;
+          setStagedAnswer({
+            activityId: p.activityId,
+            kind: p.kind,
+            content: p.content,
+            author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
+          });
+        })
+        .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
+          setStagedAnswer(null);
+          pendingStageRef.current = null;
         })
         .on(
           'postgres_changes',
@@ -318,6 +410,31 @@ export function useClassSession(
     [trackPresence]
   );
 
+  // Instructor pulls a learner's answer to the stage: arm a nonce for the target
+  // and broadcast stage-request. The matching stage-answer (gated in the channel
+  // handler) is what flips the class to stage-show.
+  const requestStage = useCallback((targetUserId: string) => {
+    const channel = channelRef.current;
+    const activityId = currentActivityIdRef.current;
+    if (!channel || !activityId || !targetUserId) return;
+    const nonce =
+      (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    pendingStageRef.current = { nonce, targetUserId };
+    void channel.send({
+      type: 'broadcast',
+      event: STAGE_REQUEST_EVENT,
+      payload: { activityId, targetUserId, nonce },
+    });
+  }, []);
+
+  const clearStage = useCallback(() => {
+    const channel = channelRef.current;
+    pendingStageRef.current = null;
+    setStagedAnswer(null);
+    if (!channel) return;
+    void channel.send({ type: 'broadcast', event: STAGE_CLEAR_EVENT, payload: {} });
+  }, []);
+
   const broadcast = useCallback(
     (activityId: string) => {
       const channel = channelRef.current;
@@ -397,11 +514,14 @@ export function useClassSession(
     elapsed,
     timer,
     stoppedFor,
+    stagedAnswer,
     broadcast,
     broadcastAnswer,
     broadcastTimer,
     clearTimer,
     setHandRaised,
+    requestStage,
+    clearStage,
     refetch,
   };
 }

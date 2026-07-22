@@ -20,6 +20,7 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
+import { LiveStage } from '@/components/live/LiveStage';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
@@ -62,7 +63,7 @@ export default function LiveSessionPage() {
   // present as instructor — otherwise their presence enters the podium/ranking.
   const { data: memberships } = useMembership();
   const staff = isStaffInstructor(memberships ?? []);
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, broadcastAnswer, setHandRaised } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stagedAnswer, broadcastAnswer, setHandRaised } =
     useClassSession(
       sessionId,
       identity.userId
@@ -267,6 +268,8 @@ export default function LiveSessionPage() {
         }
         onClose={() => navigate('/')}
       />
+
+      {stagedAnswer && !ended && <LiveStage staged={stagedAnswer} />}
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main

@@ -56,6 +56,21 @@ export interface ClassTimer {
   deadline: number;
 }
 
+/** Author of a staged answer (shown on the identity bar — NOT anonymous). */
+export interface StagedAuthor {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+/** The answer pulled to the class stage: `code` carries raw source, else a summary. */
+export interface StagedAnswer {
+  activityId: string;
+  kind: string;
+  content: string;
+  author: StagedAuthor;
+}
+
 /** The learner's own persisted answer for one activity (refresh protection). */
 export interface StoredLiveAnswer {
   correct: boolean;
@@ -167,11 +182,17 @@ export interface UseClassSession {
   timer: ClassTimer | null;
   /** Activity whose timer the professor just stopped — reveal the answer. */
   stoppedFor: string | null;
+  /** The answer pulled to the stage right now (whole class sees it) — or null. */
+  stagedAnswer: StagedAnswer | null;
   broadcast: (activityId: string) => void;
   broadcastAnswer: (activityId: string, correct: boolean, elapsedMs?: number) => void;
   broadcastTimer: (activityId: string, durationSeconds: number) => void;
   clearTimer: (activityId: string) => void;
   /** Re-track presence with the hand raised/lowered (learner side). */
   setHandRaised: (raised: boolean) => void;
+  /** Instructor: pull a learner's answer for the current activity onto the stage. */
+  requestStage: (targetUserId: string) => void;
+  /** Instructor: dismiss the staged answer for everyone. */
+  clearStage: () => void;
   refetch: () => void;
 }
