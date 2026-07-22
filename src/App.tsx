@@ -11,6 +11,7 @@ import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
 import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
+import InstructorReportPage from "./pages/live/InstructorReportPage";
 import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
 import ProfilePage from "./pages/ProfilePage";
@@ -174,6 +175,18 @@ const App = () => (
                     <RequireAuth>
                       <RequireRole role="instructor">
                         <InstructorClassPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                {/* Post-class report — instructor-gated, reads the durable
+                    class_answers/class_attendance rows (RLS staff-scoped). */}
+                <Route
+                  path="/live/instructor/report/:sessionId"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="instructor">
+                        <InstructorReportPage />
                       </RequireRole>
                     </RequireAuth>
                   }

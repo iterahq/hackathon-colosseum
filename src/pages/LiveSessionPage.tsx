@@ -34,6 +34,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
+import { recordClassAttendance, recordClassAnswer } from '@/services/classReport.service';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
@@ -88,6 +89,13 @@ export default function LiveSessionPage() {
       navigate('/live/instructor', { replace: true });
     }
   }, [session, identity.userId, navigate]);
+
+  // Durable attendance row (first join wins) — best-effort, never blocks the UI.
+  useEffect(() => {
+    if (session?.id && identity.userId && status === 'live') {
+      void recordClassAttendance(session.id);
+    }
+  }, [session?.id, identity.userId, status]);
 
   const sound = useLiveSound();
 
@@ -184,6 +192,8 @@ export default function LiveSessionPage() {
       setSaving(false);
     }
     broadcastAnswer(current.id, correct, elapsedMs);
+    // Durable copy (right AND wrong) for the post-class report — best-effort.
+    if (sessionId) void recordClassAnswer(sessionId, current.id, correct, elapsedMs);
   }
 
   const activityIdx = currentActivityId ? activities.findIndex((a) => a.id === currentActivityId) : -1;

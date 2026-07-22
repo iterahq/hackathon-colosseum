@@ -90,6 +90,57 @@ export interface ClassRanking {
   waiting: { userId: string; name: string; avatarUrl: string | null }[];
 }
 
+/* ── Post-class report (durable answers + attendance, migration 0020) ─────── */
+
+export interface ClassAnswerRecord {
+  activityId: string;
+  userId: string;
+  correct: boolean;
+  elapsedMs: number | null;
+  createdAt: string;
+}
+
+export interface ClassAttendanceRecord {
+  userId: string;
+  joinedAt: string;
+}
+
+export interface ClassReportUser {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+/** Raw per-session report inputs (service) — aggregated in TS by buildClassReport. */
+export interface ClassReportData {
+  answers: ClassAnswerRecord[];
+  attendance: ClassAttendanceRecord[];
+  users: ClassReportUser[];
+}
+
+export interface ClassReportParticipant {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  joinedAt: string | null;
+  answeredCount: number;
+  correctCount: number;
+  totalMs: number;
+}
+
+export interface ClassReportActivityStat {
+  activityId: string;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+}
+
+export interface ClassReport {
+  participants: ClassReportParticipant[];
+  perActivity: ClassReportActivityStat[];
+  totals: { participants: number; answers: number; correctPct: number };
+}
+
 /** Inputs to the learner-side interaction gate (see utils/liveActivityGate). */
 export interface LearnerGateInput {
   /** A countdown is currently running for THIS activity. */
