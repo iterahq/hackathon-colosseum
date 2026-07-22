@@ -4,11 +4,12 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import ProfilePage from '@/pages/ProfilePage';
-import { getMyProfile, updateMyProfile } from '@/services/profile.service';
+import { getMyProfile, updateMyProfile, uploadAvatar } from '@/services/profile.service';
 
 vi.mock('@/services/profile.service', () => ({
   getMyProfile: vi.fn(),
   updateMyProfile: vi.fn().mockResolvedValue(true),
+  uploadAvatar: vi.fn(),
 }));
 
 vi.mock('@/auth/AuthContext', () => ({
@@ -38,6 +39,7 @@ describe('ProfilePage', () => {
     vi.mocked(getMyProfile).mockResolvedValue({
       displayName: 'Ana',
       avatarUrl: 'https://photos.example/ana.png',
+      dflAvatarUrl: 'https://learn.example/ana-learn.png',
       email: 'ana@example.com',
       locale: 'pt',
     });
@@ -52,7 +54,6 @@ describe('ProfilePage', () => {
       'src',
       'https://photos.example/ana.png'
     );
-    expect(screen.getByTestId('profile-photo-input')).toHaveValue('https://photos.example/ana.png');
   });
 
   it('saves a picked preset icon + edited name', async () => {
@@ -72,34 +73,50 @@ describe('ProfilePage', () => {
     await screen.findByTestId('profile-saved');
   });
 
-  it('rejects a non-https photo URL and blocks save', async () => {
+  it('pulls the Learn photo and saves it as the avatar', async () => {
     renderPage();
     await screen.findByTestId('profile-name-input');
-    fireEvent.change(screen.getByTestId('profile-photo-input'), {
-      target: { value: 'javascript:alert(1)' },
-    });
-    expect(screen.getByTestId('profile-photo-invalid')).toBeInTheDocument();
-    expect(screen.getByTestId('profile-save')).toBeDisabled();
-    expect(updateMyProfile).not.toHaveBeenCalled();
-  });
-
-  it('re-sets the photo from a valid https URL', async () => {
-    renderPage();
-    await screen.findByTestId('profile-name-input');
-    fireEvent.change(screen.getByTestId('profile-photo-input'), {
-      target: { value: 'https://cdn.example/nova-foto.jpg' },
-    });
+    fireEvent.click(screen.getByTestId('profile-use-learn-photo'));
     expect(screen.getByTestId('profile-avatar-preview')).toHaveAttribute(
       'src',
-      'https://cdn.example/nova-foto.jpg'
+      'https://learn.example/ana-learn.png'
     );
     fireEvent.click(screen.getByTestId('profile-save'));
     await waitFor(() =>
       expect(updateMyProfile).toHaveBeenCalledWith({
         displayName: 'Ana',
-        avatarUrl: 'https://cdn.example/nova-foto.jpg',
+        avatarUrl: 'https://learn.example/ana-learn.png',
       })
     );
+  });
+
+  it('uploads a chosen photo and previews it', async () => {
+    vi.mocked(uploadAvatar).mockResolvedValue('https://cdn.example/uploaded.png?v=1');
+    renderPage();
+    await screen.findByTestId('profile-name-input');
+    const file = new File(['x'], 'me.png', { type: 'image/png' });
+    fireEvent.change(screen.getByTestId('profile-photo-file'), { target: { files: [file] } });
+    await waitFor(() => expect(uploadAvatar).toHaveBeenCalledWith(file));
+    await waitFor(() =>
+      expect(screen.getByTestId('profile-avatar-preview')).toHaveAttribute(
+        'src',
+        'https://cdn.example/uploaded.png?v=1'
+      )
+    );
+  });
+
+  it('reverts an avatar change back to the last saved photo', async () => {
+    renderPage();
+    await screen.findByTestId('profile-name-input');
+    const options = screen.getAllByTestId('profile-avatar-option');
+    fireEvent.click(options[1]);
+    // A revert affordance appears once the draft differs from the saved avatar.
+    fireEvent.click(screen.getByTestId('profile-revert'));
+    expect(screen.getByTestId('profile-avatar-preview')).toHaveAttribute(
+      'src',
+      'https://photos.example/ana.png'
+    );
+    expect(screen.queryByTestId('profile-revert')).not.toBeInTheDocument();
   });
 
   it('shows the error state with retry when the profile fails to load', async () => {

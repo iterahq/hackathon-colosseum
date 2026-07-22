@@ -6,6 +6,7 @@
  * plan, like /subscribe). Logic in useProfileForm — page is render-only.
  */
 import { motion } from 'framer-motion';
+import { Undo2 } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { useProfileForm } from '@/hooks/useProfileForm';
@@ -71,11 +72,25 @@ export default function ProfilePage() {
 
             <ProfileAvatarPicker
               avatarUrl={f.avatarUrl}
-              photoUrl={f.photoUrl}
-              photoInvalid={f.photoInvalid}
+              dflAvatarUrl={f.dflAvatarUrl}
+              uploading={f.uploading}
+              uploadError={f.uploadError}
               onPickPreset={f.pickPreset}
-              onPhotoUrl={f.editPhotoUrl}
+              onUploadFile={f.uploadPhoto}
+              onUseLearnPhoto={f.useLearnPhoto}
             />
+
+            {f.canRevert && (
+              <button
+                type="button"
+                onClick={f.revert}
+                data-testid="profile-revert"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Undo2 className="w-4 h-4" />
+                {t('profile.revert')}
+              </button>
+            )}
 
             {f.saveError && (
               <p className="text-sm text-destructive" data-testid="profile-save-error">
