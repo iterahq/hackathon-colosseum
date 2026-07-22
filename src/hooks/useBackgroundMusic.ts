@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 /**
  * Generative gamified background music for the live class — a light chiptune
  * arpeggio + bassline synthesised with the Web Audio API (no asset download).
- * Kept quiet on purpose (master gain ≈ 0.12 × volume); silenced when muted,
+ * Kept quiet on purpose (master gain ≈ 0.05 × volume); silenced when muted,
  * disabled, or volume 0. Because browsers block autoplay, the AudioContext
  * resumes on the first user gesture.
  */
@@ -54,7 +54,7 @@ export function useBackgroundMusic({ enabled, muted, volume }: BackgroundMusicOp
   // Track the target level in a ref so the running scheduler reads the latest
   // volume without being torn down and rebuilt on every slider tick.
   const levelRef = useRef(0);
-  levelRef.current = active ? 0.12 * volume : 0;
+  levelRef.current = active ? 0.05 * volume : 0;
 
   useEffect(() => {
     if (masterRef.current && ctxRef.current) {

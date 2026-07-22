@@ -7,14 +7,16 @@ function clamp(v: number): number {
   return Math.min(1, Math.max(0, v));
 }
 
+const DEFAULT_VOLUME = 0.1;
+
 function read(): number {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw === null) return 1;
+    if (raw === null) return DEFAULT_VOLUME;
     const v = parseFloat(raw);
-    return Number.isFinite(v) ? clamp(v) : 1;
+    return Number.isFinite(v) ? clamp(v) : DEFAULT_VOLUME;
   } catch {
-    return 1;
+    return DEFAULT_VOLUME;
   }
 }
 
@@ -40,7 +42,7 @@ export function useLiveVolume(): [number, (v: number) => void] {
       return () => listeners.delete(cb);
     },
     read,
-    () => 1
+    () => DEFAULT_VOLUME
   );
   return [volume, write];
 }
