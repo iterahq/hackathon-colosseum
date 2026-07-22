@@ -21,7 +21,6 @@ import { getClassSession, mapSession, type ClassSession } from '@/services/liveC
 import type {
   ClassIdentity as Identity,
   ClassPresenceMember,
-  ClassResetSignal,
   ClassTimer,
   UseClassSession,
 } from '@/types/liveClass';
@@ -34,7 +33,6 @@ const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
 const TIMER_EVENT = 'timer';
 const TIMER_STOP_EVENT = 'timer-stop';
-const RESET_EVENT = 'reset';
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -55,9 +53,6 @@ export function useClassSession(
   // The activity whose timer was just STOPPED by the professor — cue to reveal
   // the correct answer to everyone. Cleared on advance.
   const [stoppedFor, setStoppedFor] = useState<string | null>(null);
-  // The latest professor reset — consumers watch this to drop their per-activity
-  // answered/expired state so the class can redo it. Cleared on advance.
-  const [resetSignal, setResetSignal] = useState<ClassResetSignal | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // Latest identity, read inside the channel effect / track without making the
   // channel re-subscribe when identity resolves late (which reused a still-
@@ -93,23 +88,6 @@ export function useClassSession(
     if (!sessionId) return;
     void getClassSession(sessionId).then(applySession);
   }, [sessionId, applySession]);
-
-  // Drop every LIVE trace of one activity so the class can redo it: its answer /
-  // timing aggregates, a running or stopped timer, and a bumped reset signal the
-  // learner surface watches to clear its own answered/expired state.
-  const clearActivityLiveState = useCallback((activityId: string) => {
-    const drop = (prev: Record<string, Record<string, unknown>>) => {
-      if (!(activityId in prev)) return prev;
-      const next = { ...prev };
-      delete next[activityId];
-      return next;
-    };
-    setAnswers((prev) => drop(prev) as Record<string, Record<string, boolean>>);
-    setElapsed((prev) => drop(prev) as Record<string, Record<string, number>>);
-    setTimer((prev) => (prev && prev.activityId === activityId ? null : prev));
-    setStoppedFor((prev) => (prev === activityId ? null : prev));
-    setResetSignal((prev) => ({ activityId, nonce: (prev?.nonce ?? 0) + 1 }));
-  }, []);
 
   // Initial durable read.
   useEffect(() => {
@@ -216,7 +194,6 @@ export function useClassSession(
             setCurrentActivityId(next);
             setTimer(null);
             setStoppedFor(null);
-            setResetSignal(null);
           }
         })
         .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
@@ -246,11 +223,6 @@ export function useClassSession(
           setTimer((prev) => timerAfterStop(prev, payload));
           const p = payload as { activity_id?: unknown } | null;
           if (p && typeof p.activity_id === 'string') setStoppedFor(p.activity_id);
-        })
-        .on('broadcast', { event: RESET_EVENT }, ({ payload }) => {
-          const p = payload as { activity_id?: unknown } | null;
-          if (!p || typeof p.activity_id !== 'string') return;
-          clearActivityLiveState(p.activity_id);
         })
         .on(
           'postgres_changes',
@@ -389,22 +361,6 @@ export function useClassSession(
     });
   }, []);
 
-  const resetActivity = useCallback(
-    (activityId: string) => {
-      // Optimistic local clear first (mirrors clearTimer/broadcast) so the
-      // professor's own screen resets even if the channel just blipped.
-      clearActivityLiveState(activityId);
-      const channel = channelRef.current;
-      if (!channel) return;
-      void channel.send({
-        type: 'broadcast',
-        event: RESET_EVENT,
-        payload: { activity_id: activityId },
-      });
-    },
-    [clearActivityLiveState]
-  );
-
   const broadcastAnswer = useCallback(
     (activityId: string, correct: boolean, elapsedMs?: number) => {
       const channel = channelRef.current;
@@ -441,12 +397,10 @@ export function useClassSession(
     elapsed,
     timer,
     stoppedFor,
-    resetSignal,
     broadcast,
     broadcastAnswer,
     broadcastTimer,
     clearTimer,
-    resetActivity,
     setHandRaised,
     refetch,
   };

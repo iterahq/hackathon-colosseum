@@ -40,6 +40,7 @@ import {
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
+import { isAnswerableLiveKind } from '@/utils/isAnswerableLiveKind';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -329,7 +330,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, resetActivity, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -624,14 +625,14 @@ function ClassControl({
               canNext={canNext}
               timerRunning={Boolean(timer && current && timer.activityId === current.id)}
               revealed={revealCurrent}
-              timerSeconds={DEFAULT_TIMER_SECONDS}
+              canReveal={isAnswerableLiveKind(current?.kind)}
+              timerSeconds={isAnswerableLiveKind(current?.kind) ? DEFAULT_TIMER_SECONDS : 0}
               onBegin={() => activities[0] && goTo(activities[0].id)}
               onPrev={() => canPrev && goTo(activities[idx - 1].id)}
               onNext={() => canNext && goTo(activities[idx + 1].id)}
               onStartTimer={(s) => current && broadcastTimer(current.id, s)}
               onStopTimer={() => current && clearTimer(current.id)}
               onReveal={() => current && clearTimer(current.id)}
-              onReset={() => current && resetActivity(current.id)}
             />
           }
         />
