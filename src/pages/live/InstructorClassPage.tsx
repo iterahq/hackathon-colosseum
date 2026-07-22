@@ -47,6 +47,8 @@ import { LiveReception } from '@/components/live/LiveReception';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
+import { LiveStage } from '@/components/live/LiveStage';
+import { LiveStagePicker } from '@/components/live/LiveStagePicker';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
@@ -331,7 +333,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, broadcast, broadcastTimer, clearTimer, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -390,6 +392,15 @@ function ClassControl({
       currentActivityId ? elapsed[currentActivityId] : undefined
     );
   }, [roster, polled, answers, elapsed, currentActivityId]);
+
+  // Learners eligible to be pulled to the stage: present, non-instructor, and
+  // who have ALREADY answered the current activity (the broadcast `answers` map
+  // is the eligibility source). Identity (name/avatar) comes from the roster.
+  const stageEligible = useMemo<ClassPresenceMember[]>(() => {
+    const answered = currentActivityId ? answers[currentActivityId] : undefined;
+    if (!answered) return [];
+    return roster.filter((m) => !m.isInstructor && answered[m.userId] !== undefined);
+  }, [roster, answers, currentActivityId]);
 
   // Every learner who was EVER present — presence drains on `leave` (students
   // disconnect the instant the class ends), which would empty the live roster
@@ -534,6 +545,8 @@ function ClassControl({
         }}
       />
 
+      {stagedAnswer && !onPodium && <LiveStage staged={stagedAnswer} onClear={clearStage} />}
+
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* The activity stays CENTERED in the space left of the sidebar —
             learner-identical stage, just centered rather than in a fixed grid. */}
@@ -617,24 +630,34 @@ function ClassControl({
           onCopyLink={copyJoinLink}
           onEnd={handleEnd}
           controls={
-            <InstructorControls
-              inReception={inReception}
-              answeredCount={answeredCount}
-              presentCount={presentCount}
-              busy={busy}
-              canPrev={canPrev}
-              canNext={canNext}
-              timerRunning={Boolean(timer && current && timer.activityId === current.id)}
-              revealed={revealCurrent}
-              canReveal={isAnswerableLiveKind(current?.kind)}
-              timerSeconds={isAnswerableLiveKind(current?.kind) ? DEFAULT_TIMER_SECONDS : 0}
-              onBegin={() => activities[0] && goTo(activities[0].id)}
-              onPrev={() => canPrev && goTo(activities[idx - 1].id)}
-              onNext={() => canNext && goTo(activities[idx + 1].id)}
-              onStartTimer={(s) => current && broadcastTimer(current.id, s)}
-              onStopTimer={() => current && clearTimer(current.id)}
-              onReveal={() => current && clearTimer(current.id)}
-            />
+            <>
+              <InstructorControls
+                inReception={inReception}
+                answeredCount={answeredCount}
+                presentCount={presentCount}
+                busy={busy}
+                canPrev={canPrev}
+                canNext={canNext}
+                timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+                revealed={revealCurrent}
+                canReveal={isAnswerableLiveKind(current?.kind)}
+                timerSeconds={isAnswerableLiveKind(current?.kind) ? DEFAULT_TIMER_SECONDS : 0}
+                onBegin={() => activities[0] && goTo(activities[0].id)}
+                onPrev={() => canPrev && goTo(activities[idx - 1].id)}
+                onNext={() => canNext && goTo(activities[idx + 1].id)}
+                onStartTimer={(s) => current && broadcastTimer(current.id, s)}
+                onStopTimer={() => current && clearTimer(current.id)}
+                onReveal={() => current && clearTimer(current.id)}
+              />
+              {current && (
+                <LiveStagePicker
+                  answered={stageEligible}
+                  staged={Boolean(stagedAnswer)}
+                  onPull={requestStage}
+                  onClear={clearStage}
+                />
+              )}
+            </>
           }
         />
       </div>
