@@ -54,6 +54,7 @@ export const queryKeys = {
   // Live-class / real-time cohort mode (plan 20260702-…).
   liveClass: {
     active: ['live-class', 'active'] as const,
+    nextScheduled: ['live-class', 'next-scheduled'] as const,
     enabled: (userId: string) => ['live-class', 'enabled', userId] as const,
     session: (id: string) => ['live-class', 'session', id] as const,
     completers: (activityId: string, presence = '') =>

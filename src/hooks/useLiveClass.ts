@@ -19,6 +19,7 @@ import {
   getClassActivityCompleters,
   getEnabledTenantIds,
   getMySessions,
+  getNextScheduledClass,
   isLiveClassEnabledForUser,
 } from '@/services/liveClass.service';
 import { getClassReportData } from '@/services/classReport.service';
@@ -86,6 +87,7 @@ export function useActiveLiveClass() {
         { event: '*', schema: 'itera', table: 'class_sessions' },
         () => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.active });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.liveClass.nextScheduled });
         }
       )
       .subscribe();
@@ -95,6 +97,23 @@ export function useActiveLiveClass() {
   }, [enabled, queryClient]);
 
   return query;
+}
+
+/**
+ * The next upcoming SCHEDULED class → drives the home "Próxima aula" card. Null
+ * when none / disabled. Kept fresh by the useActiveLiveClass realtime watch
+ * (shared class_sessions subscription) plus a slow poll safety net.
+ */
+export function useNextScheduledClass() {
+  const { session, configured } = useAuth();
+  const enabled = configured && Boolean(session);
+  return useQuery({
+    queryKey: queryKeys.liveClass.nextScheduled,
+    queryFn: getNextScheduledClass,
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
+    refetchOnWindowFocus: true,
+  });
 }
 
 /** The instructor's own sessions in a tenant (professor surface). */

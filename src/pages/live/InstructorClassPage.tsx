@@ -16,7 +16,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Play, GraduationCap, Loader2, Presentation } from 'lucide-react';
+import { Play, GraduationCap, Loader2, Presentation, CalendarClock } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
@@ -33,10 +33,13 @@ import { useClassSession } from '@/hooks/useClassSession';
 import { queryKeys } from '@/lib/queryKeys';
 import {
   startClassSession,
+  scheduleClassSession,
+  startScheduledClass,
   advanceClassSession,
   endClassSession,
   type ClassSession,
 } from '@/services/liveClass.service';
+import { formatScheduledAt } from '@/utils/formatScheduledAt';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
@@ -140,6 +143,7 @@ export default function InstructorClassPage() {
             <StartClass
               tenantId={tenantId}
               instructorId={identity.userId}
+              sessions={sessions ?? []}
               onStarted={() => refetch()}
             />
             <InstructorReportsCard sessions={sessions ?? []} />
@@ -155,18 +159,29 @@ export default function InstructorClassPage() {
 function StartClass({
   tenantId,
   instructorId,
+  sessions,
   onStarted,
 }: {
   tenantId: string;
   instructorId: string | null;
+  sessions: ClassSession[];
   onStarted: () => void;
 }) {
-  const { t, tText } = useI18n();
+  const { t, tText, locale } = useI18n();
   const { data: programs = [], isPending } = usePrograms();
   const [slug, setSlug] = useState<string>('');
   const [lessonId, setLessonId] = useState<string>('');
+  const [scheduledAt, setScheduledAt] = useState<string>('');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pending = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.status === 'pending' && s.scheduledAt)
+        .sort((a, b) => (a.scheduledAt ?? '').localeCompare(b.scheduledAt ?? '')),
+    [sessions]
+  );
 
   const { data: program } = useProgram(slug || undefined);
   const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
@@ -215,6 +230,42 @@ function StartClass({
       setStarting(false);
     }
   }
+
+  async function handleSchedule() {
+    if (!lessonId || !instructorId || !firstActivityId || !scheduledAt) return;
+    setStarting(true);
+    setError(null);
+    try {
+      await scheduleClassSession({
+        tenantId,
+        lessonId,
+        instructorId,
+        scheduledAt: new Date(scheduledAt).toISOString(),
+        scope: 'global',
+      });
+      setScheduledAt('');
+      onStarted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('live.instructor.start.error'));
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function handleStartScheduled(sessionId: string) {
+    setStarting(true);
+    setError(null);
+    try {
+      await startScheduledClass(sessionId);
+      onStarted();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('live.instructor.start.error'));
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  const canSchedule = Boolean(lessonId && instructorId && firstActivityId && scheduledAt) && !starting;
 
   return (
     <div className="rounded-3xl border border-border bg-card p-6 md:p-8 max-w-2xl" data-testid="instructor-start">
@@ -295,19 +346,72 @@ function StartClass({
         </p>
       )}
 
-      <button
-        onClick={handleStart}
-        disabled={!canStart}
-        data-testid="instructor-start-btn"
-        className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
-      >
-        {starting || lessonActivitiesLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Play className="w-4 h-4" />
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={handleStart}
+          disabled={!canStart}
+          data-testid="instructor-start-btn"
+          className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
+        >
+          {starting || lessonActivitiesLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Play className="w-4 h-4" />
+          )}
+          {t('live.instructor.start.cta')}
+        </button>
+      </div>
+
+      {/* Schedule for later — same lesson selection, but sets a future start time
+          instead of going live now. Learners see a "próxima aula" cue on the home. */}
+      <div className="mt-6 pt-6 border-t border-border">
+        <label className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground mb-1.5">
+          <CalendarClock className="w-4 h-4 text-clay" />
+          {t('live.instructor.schedule.label')}
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            data-testid="instructor-schedule-input"
+            className="h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60"
+          />
+          <button
+            onClick={handleSchedule}
+            disabled={!canSchedule}
+            data-testid="instructor-schedule-btn"
+            className="inline-flex items-center gap-2 h-11 px-5 rounded-full border border-clay/50 text-sm font-medium text-clay hover:bg-clay/10 transition-colors disabled:opacity-50"
+          >
+            <CalendarClock className="w-4 h-4" />
+            {t('live.instructor.schedule.cta')}
+          </button>
+        </div>
+
+        {pending.length > 0 && (
+          <ul className="mt-5 space-y-2.5" data-testid="instructor-scheduled-list">
+            {pending.map((s) => (
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
+              >
+                <span className="text-sm text-foreground truncate">
+                  {formatScheduledAt(s.scheduledAt, locale)}
+                </span>
+                <button
+                  onClick={() => handleStartScheduled(s.id)}
+                  disabled={starting}
+                  data-testid="instructor-scheduled-start"
+                  className="flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-clay text-white text-sm font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  {t('live.instructor.schedule.startNow')}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
-        {t('live.instructor.start.cta')}
-      </button>
+      </div>
     </div>
   );
 }

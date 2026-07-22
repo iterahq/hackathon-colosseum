@@ -125,10 +125,17 @@ describe('mapSession', () => {
       status: 'live',
       scope: 'global',
       podiumEvery: 3,
+      scheduledAt: null,
       startedAt: '2026-07-02T10:00:00Z',
       endedAt: null,
       createdAt: '2026-07-02T09:59:00Z',
     });
+  });
+
+  it('maps a scheduled_at timestamp to scheduledAt', () => {
+    expect(mapSession({ ...liveRow, scheduled_at: '2026-08-15T18:30:00Z' }).scheduledAt).toBe(
+      '2026-08-15T18:30:00Z'
+    );
   });
 
   it('coerces a null current_activity_id to null', () => {

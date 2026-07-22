@@ -27,7 +27,7 @@ const posIntOrNull = (v: unknown): number | null =>
   typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null;
 
 const SELECT_COLS =
-  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, podium_every, started_at, ended_at, created_at';
+  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, podium_every, scheduled_at, started_at, ended_at, created_at';
 
 export function mapSession(row: Row): ClassSession {
   return {
@@ -39,6 +39,7 @@ export function mapSession(row: Row): ClassSession {
     status: (str(row.status) || 'pending') as ClassSessionStatus,
     scope: (str(row.scope) || 'global') as ClassScope,
     podiumEvery: posIntOrNull(row.podium_every),
+    scheduledAt: strOrNull(row.scheduled_at),
     startedAt: strOrNull(row.started_at),
     endedAt: strOrNull(row.ended_at),
     createdAt: str(row.created_at),
@@ -195,6 +196,85 @@ export async function startClassSession(params: {
     .select(SELECT_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? 'Could not start the class session.');
+  return mapSession(data as Row);
+}
+
+/**
+ * Schedule a class for a FUTURE time: insert as `pending` with a scheduled_at
+ * and no started_at. Tenant learners then see a "Próxima aula" card; the
+ * instructor later flips it live via startScheduledClass. Rides the same
+ * class_sessions RLS (0013) — only the tenant's instructor can insert.
+ */
+export async function scheduleClassSession(params: {
+  tenantId: string;
+  lessonId: string;
+  instructorId: string;
+  scheduledAt: string;
+  scope?: ClassScope;
+  podiumEvery?: number | null;
+}): Promise<ClassSession> {
+  const sb = getSupabase();
+  const podiumEvery =
+    typeof params.podiumEvery === 'number' && Number.isInteger(params.podiumEvery) && params.podiumEvery >= 1
+      ? params.podiumEvery
+      : null;
+  const { data, error } = await sb
+    .from('class_sessions')
+    .insert({
+      tenant_id: params.tenantId,
+      lesson_id: params.lessonId,
+      instructor_id: params.instructorId,
+      current_activity_id: null,
+      status: 'pending',
+      scope: params.scope ?? 'global',
+      podium_every: podiumEvery,
+      scheduled_at: params.scheduledAt,
+      started_at: null,
+    })
+    .select(SELECT_COLS)
+    .single();
+  if (error || !data) throw new Error(error?.message ?? 'Could not schedule the class session.');
+  return mapSession(data as Row);
+}
+
+/**
+ * The next upcoming SCHEDULED (pending) class visible to the current user
+ * (tenant-scoped via RLS), soonest first, or null. Gated by the feature flag so
+ * the "Próxima aula" card never shows for a non-enabled tenant.
+ */
+export async function getNextScheduledClass(): Promise<ClassSession | null> {
+  if (!isSupabaseConfigured) return null;
+  if (!(await isLiveClassEnabledForUser())) return null;
+  const sb = getSupabase();
+  // 2h grace so a just-overdue class still shows (instructor about to start),
+  // but a long-abandoned pending session drops off instead of masking the next one.
+  const floor = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await sb
+    .from('class_sessions')
+    .select(SELECT_COLS)
+    .eq('status', 'pending')
+    .not('scheduled_at', 'is', null)
+    .gte('scheduled_at', floor)
+    .order('scheduled_at', { ascending: true })
+    .limit(1);
+  if (error || !data || data.length === 0) return null;
+  return mapSession(data[0] as Row);
+}
+
+/**
+ * Flip a scheduled (pending) class LIVE now: status='live' + started_at. Opens
+ * in reception (null pointer) exactly like startClassSession.
+ */
+export async function startScheduledClass(sessionId: string): Promise<ClassSession> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('class_sessions')
+    .update({ status: 'live', started_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('status', 'pending')
+    .select(SELECT_COLS)
+    .single();
+  if (error || !data) throw new Error(error?.message ?? 'Could not start the scheduled class.');
   return mapSession(data as Row);
 }
 

@@ -11,6 +11,7 @@ import { usePrograms, useUserStats, useBadges } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
+import { NextScheduledClassBlock } from '@/components/live/NextScheduledClassBlock';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -68,6 +69,9 @@ export default function HomePage() {
           {/* Live-class block — appears between hero and programs when a class is active.
               Instructor re-entry → /live/instructor; student join → /live/:id. */}
           <LiveClassBlock />
+
+          {/* Scheduled-class notice — only when nothing is live yet. */}
+          <NextScheduledClassBlock />
 
           {/* Programs */}
           <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>

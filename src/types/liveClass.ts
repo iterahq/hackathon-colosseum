@@ -11,6 +11,8 @@ export interface ClassSession {
   status: ClassSessionStatus;
   scope: ClassScope;
   podiumEvery: number | null;
+  /** Intended start time for a scheduled (pending) class; null when started immediately. */
+  scheduledAt: string | null;
   startedAt: string | null;
   endedAt: string | null;
   createdAt: string;
