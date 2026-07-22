@@ -12,6 +12,7 @@ const base = {
   canNext: true,
   timerRunning: false,
   revealed: false,
+  canReveal: true,
   timerSeconds: 0,
   onBegin: vi.fn(),
   onPrev: vi.fn(),
@@ -19,7 +20,6 @@ const base = {
   onStartTimer: vi.fn(),
   onStopTimer: vi.fn(),
   onReveal: vi.fn(),
-  onReset: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {
@@ -61,17 +61,21 @@ describe('InstructorControls', () => {
     expect(screen.queryByTestId('instructor-answered-count')).toBeNull();
   });
 
-  it('reveal + reset are hidden in reception and shown once running', () => {
+  it('reveal is hidden in reception and shown once running', () => {
     const { rerender } = controls({ inReception: true });
     expect(screen.queryByTestId('instructor-reveal')).toBeNull();
-    expect(screen.queryByTestId('instructor-reset')).toBeNull();
     rerender(
       <I18nProvider>
         <InstructorControls {...base} inReception={false} />
       </I18nProvider>
     );
     expect(screen.getByTestId('instructor-reveal')).toBeTruthy();
-    expect(screen.getByTestId('instructor-reset')).toBeTruthy();
+  });
+
+  it('reveal is hidden for content activities (nothing to reveal)', () => {
+    controls({ canReveal: false });
+    expect(screen.queryByTestId('instructor-reveal')).toBeNull();
+    expect(screen.getByTestId('instructor-next')).toBeTruthy();
   });
 
   it('reveal fires onReveal and disables once the answer is revealed', () => {
@@ -87,13 +91,9 @@ describe('InstructorControls', () => {
     expect(screen.getByTestId('instructor-reveal')).toBeDisabled();
   });
 
-  it('reset fires onReset even after the answer is revealed (redo the round)', () => {
-    const onReset = vi.fn();
-    controls({ onReset, revealed: true });
-    const resetBtn = screen.getByTestId('instructor-reset');
-    expect(resetBtn).not.toBeDisabled();
-    fireEvent.click(resetBtn);
-    expect(onReset).toHaveBeenCalledOnce();
+  it('has no reset button — resets were removed from the live flow', () => {
+    controls({ revealed: true });
+    expect(screen.queryByTestId('instructor-reset')).toBeNull();
   });
 
   it('has no mid-class podium button — the podium only shows at the end of class', () => {

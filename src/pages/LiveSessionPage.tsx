@@ -42,8 +42,10 @@ import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { formatDuration } from '@/utils/formatDuration';
-import { readStoredAnswer, storeAnswer, clearStoredAnswer } from '@/utils/liveAnswerStorage';
+import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { isGenericName } from '@/utils/isGenericName';
+import { useMembership } from '@/hooks/useMembership';
+import { isInstructor as isStaffInstructor } from '@/services/membership.service';
 import { useProfile } from '@/hooks/useProfile';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
@@ -55,11 +57,15 @@ export default function LiveSessionPage() {
   const { t, tText } = useI18n();
 
   const identity = useIteraIdentity();
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, resetSignal, answers, elapsed, broadcastAnswer, setHandRaised } =
+  // Staff (instructor/admin/owner) who lands on the student surface must still
+  // present as instructor — otherwise their presence enters the podium/ranking.
+  const { data: memberships } = useMembership();
+  const staff = isStaffInstructor(memberships ?? []);
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, broadcastAnswer, setHandRaised } =
     useClassSession(
       sessionId,
       identity.userId
-        ? { userId: identity.userId, name: identity.name, avatarUrl: identity.avatarUrl, isInstructor: false }
+        ? { userId: identity.userId, name: identity.name, avatarUrl: identity.avatarUrl, isInstructor: staff }
         : undefined
     );
 
@@ -153,18 +159,6 @@ export default function LiveSessionPage() {
   useEffect(() => {
     if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
   }, [stoppedFor, current]);
-
-  // Professor reset THIS activity → drop the learner's own answered/expired state
-  // (and its refresh-protection copy) so they can redo it. Keyed on the reset
-  // nonce so a repeat reset of the same activity re-fires.
-  useEffect(() => {
-    if (!resetSignal || !currentActivityId || resetSignal.activityId !== currentActivityId) return;
-    setAnswered(null);
-    setTimeUpFor(null);
-    setSaving(false);
-    setActivityStartedAt(Date.now());
-    if (sessionId) clearStoredAnswer(sessionId, currentActivityId);
-  }, [resetSignal, currentActivityId, sessionId]);
 
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
   const expired = timeUpFor !== null && timeUpFor === current?.id;

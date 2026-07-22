@@ -7,7 +7,7 @@
  * On success navigates to the `from` location (default '/').
  */
 import { useState, type FormEvent } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { Button } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { loginWithDfl } from '@/auth/dflFederation';
@@ -15,7 +15,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { useI18n } from '@/i18n';
 
 export default function AuthPage() {
-  const { signInWithPassword, configured } = useAuth();
+  const { session, loading, signInWithPassword, configured } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,7 +24,15 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
+  const rawFrom = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
+  // location.state is client-controlled and `from` reaches the DFL federate URL
+  // as the post-login redirect — only an in-app path ever passes through.
+  const from = rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : '/';
+
+  // Already signed in (e.g. /login opened from the URL-bar autocomplete in a new
+  // tab) → straight to the app. Without this the persisted session LOOKS lost:
+  // the form renders and the user "logs in again".
+  if (!loading && session) return <Navigate to={from} replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
