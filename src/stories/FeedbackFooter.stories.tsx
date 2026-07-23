@@ -11,7 +11,8 @@ import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
  * of the preview iframe.
  */
 const meta: Meta<typeof FeedbackFooter> = {
-  title: 'Organisms/Activities/FeedbackFooter',
+  title: 'Organisms/Activities/9 · Partes compartilhadas/FeedbackFooter',
+  id: 'activities-partes-feedback-footer',
   component: FeedbackFooter,
   parameters: { layout: 'fullscreen', backgrounds: { default: 'dark' } },
 };

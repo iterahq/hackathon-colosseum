@@ -5,14 +5,20 @@ import { makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * SandboxAIWithOptions — the learner adds context by picking ONE choice chip
- * (`scenario.choices`), sends, then rates the answer. Drive it in the canvas
- * (send → rate → pick a chip → send → rate) to reach the reveal.
+ * CONTRATO `sandbox_scenario` — variante com `choices[]`.
+ *
+ * A autoria entrega chips de contexto: o aluno escolhe UM, envia e avalia a
+ * resposta. É a mesma família de contrato do sandbox aberto, mas a presença de
+ * `choices` muda o que a autoria precisa preencher e o componente escolhido.
+ *
+ * Runtime determinístico (`cannedResults`) — sem mock de rede; dá para percorrer
+ * envio → avaliação → chip → envio → avaliação → reveal no canvas.
  */
 const bySlug = scenarios as Record<string, Record<string, unknown>>;
 
 const meta: Meta<typeof SandboxAIWithOptionsActivity> = {
-  title: 'Organisms/Activities/Sandbox/WithOptions',
+  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · Contexto por opções',
+  id: 'activities-ia-sandbox-opcoes',
   component: SandboxAIWithOptionsActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },

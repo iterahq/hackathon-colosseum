@@ -1,19 +1,49 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
-import { makeActivity, noop, SAMPLE_IMAGE, SAMPLE_VIDEO } from './activityFixtures';
+import { makeActivity, noop } from './activityFixtures';
+import {
+  CODE_SPEC,
+  CONCEPT_SPEC,
+  DIAGRAM_MERMAID_SPEC,
+  DOCUMENT_READING_SPEC,
+  DOCUMENT_WRITING_RUBRIC,
+  DOCUMENT_WRITING_SPEC,
+  MATCH_SPEC,
+  MULTI_CHOICE_SPEC,
+  ORDER_SPEC,
+  QUIZ_TRUE_FALSE_SPEC,
+  SANDBOX_CHOICES_SPEC,
+  SINGLE_CHOICE_SPEC,
+  VIDEO_SPEC,
+} from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * ActivityRenderer — the dispatch organism that routes an `Activity` row to the
- * correct view by `kind`. This story exercises one representative scenario per
- * activity kind so you can see the full catalogue in one place.
+ * `ActivityRenderer` — o DISPATCHER: recebe uma row de `itera.activities` e
+ * escolhe a view pelo `kind`. Esta página existe para ver o catálogo inteiro de
+ * contratos de uma vez; a cobertura exaustiva de variantes mora nas stories de
+ * cada contrato, agrupadas por FUNÇÃO pedagógica na sidebar:
  *
- * ActivityRenderer already exists in the codebase — this story reuses it rather
- * than duplicating rendering logic. The individual kind stories
- * (Organisms/Activities/*) exist for exhaustive variant coverage.
+ *   0 · Dispatcher            → esta página (um exemplar por contrato)
+ *   1 · Exposição             → Concept · Video · Diagram · Document (leitura)
+ *   2 · Escolha               → SingleChoice · MultiChoice · Quiz
+ *   3 · Associação            → Match
+ *   4 · Ordenação             → Order
+ *   5 · Produção              → Document (redação) · Code
+ *   6 · Cenário com IA        → Sandbox (IA aberta · opções · slots · BYOC ao vivo)
+ *   9 · Partes compartilhadas → FeedbackFooter
+ *
+ * Critério do agrupamento: o CONTRATO que a ferramenta de autoria precisa
+ * entregar. Schema/metadata diferente → contrato diferente → story própria.
+ * Variação do mesmo schema (com ou sem imagem, 2 ou 4 opções, respondida ou em
+ * branco) → variante DENTRO da story, nunca uma activity nova.
+ *
+ * Todos os specs vêm de `./contractFixtures.ts` e são validados contra
+ * `safeParseActivitySpec` em `src/test/activityContractFixtures.test.ts`.
  */
 const meta: Meta<typeof ActivityRenderer> = {
-  title: 'Organisms/Activities/ActivityRenderer',
+  title: 'Organisms/Activities/0 · Dispatcher (todos os contratos)',
+  id: 'activities-dispatcher',
   component: ActivityRenderer,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
@@ -22,92 +52,90 @@ const meta: Meta<typeof ActivityRenderer> = {
 export default meta;
 type Story = StoryObj<typeof ActivityRenderer>;
 
-/** kind = concept — display-only, no interaction. */
+/* 1 · Exposição ---------------------------------------------------- */
+
+/** kind = concept — exibição pura, sem interação além de concluir. */
 export const Concept: Story = {
-  args: {
-    activity: makeActivity('concept', {
-      instruction: { text: 'Um modelo de dados descreve como as entidades se relacionam.', image_url: SAMPLE_IMAGE },
-    }),
-  },
+  args: { activity: makeActivity('concept', CONCEPT_SPEC) },
 };
 
-/** kind = video — watch-only; DoneButton unlocks completion. */
+/** kind = video — assistir e concluir. */
 export const Video: Story = {
-  args: {
-    activity: makeActivity('video', {
-      video_url: SAMPLE_VIDEO,
-      instruction: { text: 'Assista à introdução ao modelo relacional.' },
-    }),
-  },
+  args: { activity: makeActivity('video', VIDEO_SPEC) },
 };
 
-/** kind = single_choice — pick exactly one correct answer. */
+/** kind = diagram — diagrama (mermaid ou imagem) para leitura. */
+export const Diagram: Story = {
+  args: { activity: makeActivity('diagram', DIAGRAM_MERMAID_SPEC) },
+};
+
+/** kind = document SEM prompt/rubric — leitura pura. */
+export const DocumentLeitura: Story = {
+  args: { activity: makeActivity('document', DOCUMENT_READING_SPEC) },
+};
+
+/* 2 · Escolha ------------------------------------------------------ */
+
+/** kind = single_choice — exatamente uma correta. */
 export const SingleChoice: Story = {
-  args: {
-    activity: makeActivity('single_choice', {
-      instruction: { text: 'Qual estrutura evita duplicar dados entre tabelas?' },
-      options: [
-        { id: 'a', label: 'Copiar as colunas para cada tabela' },
-        { id: 'b', label: 'Usar uma chave estrangeira (FK)' },
-        { id: 'c', label: 'Duplicar a tabela inteira' },
-      ],
-      correct_option_id: 'b',
-    }),
-  },
+  args: { activity: makeActivity('single_choice', SINGLE_CHOICE_SPEC) },
 };
 
-/** kind = multi_choice — pick all that apply. */
+/** kind = multi_choice — o conjunto marcado precisa bater com o esperado. */
 export const MultiChoice: Story = {
-  args: {
-    activity: makeActivity('multi_choice', {
-      instruction: { text: 'Quais são boas práticas de modelagem relacional?' },
-      options: [
-        { id: 'a', label: 'Normalizar para evitar redundância' },
-        { id: 'b', label: 'Usar chaves estrangeiras para relações' },
-        { id: 'c', label: 'Copiar dados entre todas as tabelas' },
-        { id: 'd', label: 'Definir chaves primárias' },
-      ],
-      correct_option_ids: ['a', 'b', 'd'],
-    }),
-  },
+  args: { activity: makeActivity('multi_choice', MULTI_CHOICE_SPEC) },
 };
 
-/** kind = match — connect left items to right items. */
+/** kind = quiz — correção embutida em `options[].isCorrect`. */
+export const Quiz: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
+};
+
+/* 3 · Associação · 4 · Ordenação ----------------------------------- */
+
+/** kind = match — ligar a coluna da esquerda à da direita. */
 export const Match: Story = {
+  args: { activity: makeActivity('match', MATCH_SPEC) },
+};
+
+/** kind = order — reordenar a sequência embaralhada. */
+export const Order: Story = {
+  args: { activity: makeActivity('order', ORDER_SPEC) },
+};
+
+/* 5 · Produção ----------------------------------------------------- */
+
+/** kind = document COM prompt + rubric.min_words — textarea com contador. */
+export const DocumentRedacao: Story = {
   args: {
-    activity: makeActivity('match', {
-      instruction: { text: 'Associe cada termo à sua definição.' },
-      left: [
-        { id: 'pk', label: 'Chave primária' },
-        { id: 'fk', label: 'Chave estrangeira' },
-        { id: 'idx', label: 'Índice' },
-      ],
-      right: [
-        { id: 'r-idx', label: 'Acelera buscas por coluna' },
-        { id: 'r-pk', label: 'Identifica unicamente uma linha' },
-        { id: 'r-fk', label: 'Referencia a PK de outra tabela' },
-      ],
-      pairs: [
-        { left_id: 'pk', right_id: 'r-pk' },
-        { left_id: 'fk', right_id: 'r-fk' },
-        { left_id: 'idx', right_id: 'r-idx' },
-      ],
-    }),
+    activity: makeActivity('document', DOCUMENT_WRITING_SPEC, undefined, DOCUMENT_WRITING_RUBRIC),
   },
 };
 
-/** kind = order — drag-to-reorder a scrambled sequence. */
-export const Order: Story = {
+/** kind = code — Monaco + preview React ao vivo em iframe isolado. */
+export const Code: Story = {
+  args: { activity: makeActivity('code', CODE_SPEC) },
+};
+
+/* 6 · Cenário com IA ----------------------------------------------- */
+
+/**
+ * kind = sandbox_scenario — o dispatcher valida o Scenario no Zod e, dentro do
+ * kind, escolhe o componente pela forma da autoria (`slots` → completar
+ * palavras, `choices` → chips de contexto, nenhum dos dois → compose livre).
+ */
+export const SandboxScenario: Story = {
+  args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC) },
+};
+
+/* Borda ------------------------------------------------------------ */
+
+/** kind desconhecido — o fallback explícito do dispatcher. */
+export const KindDesconhecido: Story = {
   args: {
-    activity: makeActivity('order', {
-      instruction: { text: 'Ordene as etapas de modelagem de dados.' },
-      items: [
-        { id: 's3', label: '3. Normalizar as tabelas' },
-        { id: 's1', label: '1. Identificar as entidades' },
-        { id: 's4', label: '4. Definir chaves e relações' },
-        { id: 's2', label: '2. Listar os atributos' },
-      ],
-      correct_order: ['s1', 's2', 's3', 's4'],
-    }),
+    activity: {
+      ...makeActivity('concept', CONCEPT_SPEC),
+      kind: 'nao_existe' as never,
+    },
   },
 };

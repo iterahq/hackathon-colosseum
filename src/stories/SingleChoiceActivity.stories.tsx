@@ -1,30 +1,30 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { SingleChoiceActivity } from '@/components/branded/activity/SingleChoiceActivity';
-import { SAMPLE_IMAGE_A, SAMPLE_IMAGE_B, SAMPLE_IMAGE_C, makeActivity, noop } from './activityFixtures';
+import { makeActivity, noop } from './activityFixtures';
+import { SINGLE_CHOICE_IMAGE_SPEC, SINGLE_CHOICE_SPEC as SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * SingleChoice — pick exactly one. Stories cover default / answered / correct /
- * incorrect / disabled, plus an image-option variation and an instruction panel.
+ * CONTRATO `single_choice` — escolha de EXATAMENTE uma opção.
+ *
+ *   { instruction?, options: [{ id, label?, image_url?, audio_url? }], correct_option_id }
+ *
+ * Contrato tipado no `@iterahq/activity-spec`: os ids das opções são únicos e
+ * `correct_option_id` precisa referenciar um deles.
+ *
+ * As stories abaixo são VARIAÇÕES do mesmo contrato — estados (em branco /
+ * respondida / correta / incorreta / concluída) e opções com imagem em vez de
+ * só texto. Nenhuma delas é uma activity diferente.
  */
 const meta: Meta<typeof SingleChoiceActivity> = {
-  title: 'Organisms/Activities/SingleChoice',
+  title: 'Organisms/Activities/2 · Escolha/SingleChoice',
+  id: 'activities-escolha-single-choice',
   component: SingleChoiceActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof SingleChoiceActivity>;
-
-const SPEC = {
-  instruction: { text: 'Qual estrutura evita duplicar dados entre tabelas?' },
-  options: [
-    { id: 'a', label: 'Copiar as colunas para cada tabela' },
-    { id: 'b', label: 'Usar uma chave estrangeira (FK)' },
-    { id: 'c', label: 'Duplicar a tabela inteira' },
-  ],
-  correct_option_id: 'b',
-};
 
 export const Default: Story = {
   render: () => <SingleChoiceActivity activity={makeActivity('single_choice', SPEC)} onComplete={noop} />,
@@ -57,15 +57,7 @@ export const Disabled: Story = {
 export const ImageOptions: Story = {
   render: () => (
     <SingleChoiceActivity
-      activity={makeActivity('single_choice', {
-        instruction: { text: 'Qual imagem representa um relacionamento 1:N?' },
-        options: [
-          { id: 'a', label: 'Opção A', image_url: SAMPLE_IMAGE_A },
-          { id: 'b', label: 'Opção B', image_url: SAMPLE_IMAGE_B },
-          { id: 'c', label: 'Opção C', image_url: SAMPLE_IMAGE_C },
-        ],
-        correct_option_id: 'c',
-      })}
+      activity={makeActivity('single_choice', SINGLE_CHOICE_IMAGE_SPEC)}
       onComplete={noop}
     />
   ),

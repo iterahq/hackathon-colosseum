@@ -12,7 +12,8 @@ import { withActivityWidth } from './decorators';
  * Organisms/Activities alongside the other kinds per the activity_kind enum.
  */
 const meta: Meta<typeof ConceptActivity> = {
-  title: 'Organisms/Activities/Concept',
+  title: 'Organisms/Activities/1 · Exposição/Concept',
+  id: 'activities-exposicao-concept',
   component: ConceptActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },

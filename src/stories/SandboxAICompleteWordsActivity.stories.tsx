@@ -5,14 +5,19 @@ import { makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * SandboxAICompleteWords — the learner assembles the prompt by filling slots
- * (`scenario.slots`: select chips or free text), sends, then rates the answer.
- * Drive it in the canvas (send → rate → fill slots → send → rate) to the reveal.
+ * CONTRATO `sandbox_scenario` — variante com `slots[]`.
+ *
+ * A autoria entrega lacunas (`select` com opções, ou texto livre) que o aluno
+ * preenche para montar o prompt, envia e avalia a resposta. A presença de
+ * `slots` é o que muda o contrato de autoria e o componente escolhido.
+ *
+ * Runtime determinístico (`cannedResults`) — sem mock de rede.
  */
 const bySlug = scenarios as Record<string, Record<string, unknown>>;
 
 const meta: Meta<typeof SandboxAICompleteWordsActivity> = {
-  title: 'Organisms/Activities/Sandbox/CompleteWords',
+  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · Completar palavras',
+  id: 'activities-ia-sandbox-slots',
   component: SandboxAICompleteWordsActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },

@@ -44,6 +44,21 @@ const preview: Preview = {
     backgrounds: { disable: true },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     layout: 'fullscreen',
+    options: {
+      /**
+       * Ordena a sidebar pelo CAMINHO do título (alfanumérico, com `numeric`
+       * para os prefixos "1 ·", "2 ·" … dos grupos de função pedagógica das
+       * activities), mas PRESERVA a ordem em que as stories foram escritas
+       * dentro de cada arquivo — sem isso o Storybook usaria a ordem do glob e
+       * os grupos numerados apareceriam fora de sequência.
+       *
+       * ⚠️ Sem anotação de tipo nos parâmetros: o Storybook extrai ESTE literal
+       * do arquivo e roda `eval` nele durante o build do índice — sintaxe de TS
+       * aqui quebra o `build-storybook` com "SyntaxError: Unexpected token ':'".
+       */
+      storySort: (a, b) =>
+        a.title === b.title ? 0 : a.title.localeCompare(b.title, 'pt', { numeric: true }),
+    },
   },
   decorators: [withProviders, withTheme],
 };

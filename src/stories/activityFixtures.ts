@@ -14,11 +14,19 @@ export const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/
 export const SAMPLE_AUDIO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3';
 
 let seq = 0;
-/** Build a minimal Activity row wrapping a `kind` + `spec` for a story. */
+/**
+ * Build a minimal Activity row wrapping a `kind` + `spec` for a story.
+ *
+ * `rubric` is part of the AUTHORING CONTRACT for some kinds (notably `document`,
+ * where `rubric.min_words` / `rubric.mode` switches the renderer entirely), so
+ * stories can pass it as the 4th argument. Defaults to `null` — the existing
+ * 3-arg call sites keep working unchanged.
+ */
 export function makeActivity(
   kind: ActivityKind,
   spec: Record<string, unknown>,
   status?: Activity['status'],
+  rubric?: Record<string, unknown> | null,
 ): Activity {
   seq += 1;
   return {
@@ -27,7 +35,7 @@ export function makeActivity(
     ordinal: 0,
     kind,
     spec,
-    rubric: null,
+    rubric: rubric ?? null,
     status,
   };
 }

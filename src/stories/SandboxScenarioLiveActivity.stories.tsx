@@ -2,9 +2,18 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { AuthProvider } from '@/auth/AuthContext';
 import { SandboxScenarioLiveActivity } from '@/components/branded/activity/sandbox-live/SandboxScenarioLiveActivity';
 import { makeActivity, noop } from './activityFixtures';
+import { SANDBOX_BYOC_SPEC as BYOC_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
+ * CONTRATO `sandbox_scenario` — variante BYOC AO VIVO (contrato próprio).
+ *
+ * Aqui a autoria entrega `openness: 'byoc'` (ou `live: true`) + títulos/prompts,
+ * e NÃO entrega `initialState`/`cannedResults`: a resposta vem de um LLM real
+ * via itera-api, não de uma tabela determinística. Por isso este spec é
+ * reconhecido por `isByocLive()` e NÃO passa no `SandboxScenarioSpecSchema` —
+ * é a única exceção documentada no registro de fixtures.
+ *
  * SandboxScenarioLive — the BYOC ("Bring Your Own Context") live composer.
  * Same "Cloud Cowork" window chrome as the deterministic `SandboxScenario`
  * (plan 20260717-iterahq-activities-visual-ux-redesign): instruction above,
@@ -17,14 +26,9 @@ import { withActivityWidth } from './decorators';
  * shows a fallback answer, which is enough to drive the full compose → rate →
  * settle flow live in the canvas without any network mocking.
  */
-const BYOC_SPEC = {
-  openness: 'byoc',
-  title: { pt: 'Contexto muda tudo', en: 'Context changes everything' },
-  prompt: { pt: 'Traga seu contexto e envie — a IA vai responder de verdade.', en: 'Bring your context and send — the AI will really respond.' },
-};
-
 const meta: Meta<typeof SandboxScenarioLiveActivity> = {
-  title: 'Organisms/Activities/SandboxScenarioLive',
+  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · BYOC ao vivo',
+  id: 'activities-ia-sandbox-byoc-live',
   component: SandboxScenarioLiveActivity,
   decorators: [
     withActivityWidth,

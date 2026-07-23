@@ -1,0 +1,102 @@
+import type { Meta, StoryObj } from '@storybook/react';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { makeActivity, noop } from './activityFixtures';
+import { QUIZ_TRUE_FALSE_SPEC } from './contractFixtures';
+import { withActivityWidth } from './decorators';
+
+/**
+ * CONTRATO `quiz` — a activity "herói": pergunta única + opções com a correção
+ * embutida em cada opção.
+ *
+ *   { label?, question? | prompt, options: [{ id?, text? | label?, isCorrect? }], explanation? }
+ *
+ * Por que é um contrato SEPARADO de `single_choice` (e não uma variação dele):
+ *   - a correção vem de `options[].isCorrect`, e não de um `correct_option_id`;
+ *   - o enunciado é `question`/`prompt` (string), e não um InstructionPanel;
+ *   - ele aceita `label` (a tarja verde-mono acima da pergunta) e `explanation`
+ *     (o texto que aparece depois de responder), que single_choice não tem.
+ * A ferramenta de autoria precisa entregar um JSON diferente → activity diferente.
+ *
+ * `quiz` ainda é stub LOOSE no `@iterahq/activity-spec` (`z.record(z.unknown())`),
+ * então o Zod aceita qualquer objeto. Os fixtures abaixo foram montados a partir
+ * do que o `QuizActivity` de fato LÊ (ver o switch do ActivityRenderer).
+ *
+ * `QuizActivity` não é exportado — a story renderiza o dispatcher REAL
+ * (`ActivityRenderer`) com `kind: 'quiz'`, que é exatamente o caminho de produção.
+ */
+const meta: Meta<typeof ActivityRenderer> = {
+  title: 'Organisms/Activities/2 · Escolha/Quiz',
+  id: 'activities-escolha-quiz',
+  component: ActivityRenderer,
+  decorators: [withActivityWidth],
+  parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
+  args: { onComplete: noop },
+};
+export default meta;
+type Story = StoryObj<typeof ActivityRenderer>;
+
+/** Duas opções → layout lado a lado + tarja "VERDADEIRO OU FALSO?" automática. */
+export const VerdadeiroOuFalso: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
+};
+
+/** Variação do mesmo contrato: 3+ opções → lista empilhada com ícone de acerto. */
+export const MultiplasOpcoes: Story = {
+  args: {
+    activity: makeActivity('quiz', {
+      question: 'Qual coluna serve melhor como chave primária de uma tabela de alunos?',
+      options: [
+        { id: 'a', text: 'O nome completo do aluno', isCorrect: false },
+        { id: 'b', text: 'O número de matrícula', isCorrect: true },
+        { id: 'c', text: 'A turma em que ele estuda', isCorrect: false },
+        { id: 'd', text: 'A data de nascimento', isCorrect: false },
+      ],
+      explanation: 'Nome e data de nascimento podem se repetir; a matrícula é única por aluno.',
+    }),
+  },
+};
+
+/** Variação: `label` sobrescreve a tarja padrão. */
+export const TarjaCustomizada: Story = {
+  args: {
+    activity: makeActivity('quiz', {
+      label: 'REVISÃO RÁPIDA',
+      question: 'Uma tabela pode ter mais de uma chave estrangeira?',
+      options: [
+        { id: 'sim', text: 'Sim', isCorrect: true },
+        { id: 'nao', text: 'Não', isCorrect: false },
+      ],
+    }),
+  },
+};
+
+/** Variação: `explanation` aparece só depois do envio — responda no canvas. */
+export const ComExplicacao: Story = {
+  args: {
+    activity: makeActivity('quiz', {
+      label: 'PENSE UM POUCO',
+      question: 'Guardar o mesmo endereço em três tabelas diferentes é uma boa ideia?',
+      options: [
+        { id: 'sim', text: 'Sim', isCorrect: false },
+        { id: 'nao', text: 'Não', isCorrect: true },
+      ],
+      explanation:
+        'Se o endereço mudar, você teria que lembrar de corrigir em três lugares. Guarde uma vez e referencie.',
+    }),
+  },
+};
+
+/** Variação de ESTADO: activity já concluída → o envio fica travado. */
+export const Concluida: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC, 'done') },
+};
+
+/** Borda: `options` vazio → o renderer cai no texto do `prompt`. */
+export const SemOpcoes: Story = {
+  args: {
+    activity: makeActivity('quiz', {
+      prompt: 'Este quiz foi publicado sem opções — a autoria precisa preencher `options`.',
+      options: [],
+    }),
+  },
+};

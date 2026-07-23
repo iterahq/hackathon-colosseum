@@ -8,7 +8,8 @@ import { withActivityWidth } from './decorators';
  * context, missing-video fallback, and the completed (locked) state.
  */
 const meta: Meta<typeof VideoActivity> = {
-  title: 'Organisms/Activities/Video',
+  title: 'Organisms/Activities/1 · Exposição/Video',
+  id: 'activities-exposicao-video',
   component: VideoActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },

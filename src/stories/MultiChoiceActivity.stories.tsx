@@ -1,31 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MultiChoiceActivity } from '@/components/branded/activity/MultiChoiceActivity';
 import { makeActivity, noop } from './activityFixtures';
+import { MULTI_CHOICE_SPEC as SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * MultiChoice — pick one-or-more. Correct only when the selected SET equals the
- * correct set. Stories: default / answered / correct / incorrect / disabled.
+ * CONTRATO `multi_choice` — escolha de UMA OU MAIS opções.
+ *
+ *   { instruction?, options: [{ id, label?, image_url?, audio_url? }], correct_option_ids[] }
+ *
+ * É contrato próprio (e não variação do single_choice) porque a autoria entrega
+ * uma LISTA de corretas — e a correção só é verdadeira quando o CONJUNTO
+ * marcado é igual ao conjunto esperado.
+ *
+ * As stories abaixo são variações de ESTADO do mesmo contrato.
  */
 const meta: Meta<typeof MultiChoiceActivity> = {
-  title: 'Organisms/Activities/MultiChoice',
+  title: 'Organisms/Activities/2 · Escolha/MultiChoice',
+  id: 'activities-escolha-multi-choice',
   component: MultiChoiceActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
 type Story = StoryObj<typeof MultiChoiceActivity>;
-
-const SPEC = {
-  instruction: { text: 'Quais são boas práticas de modelagem relacional?' },
-  options: [
-    { id: 'a', label: 'Normalizar para evitar redundância' },
-    { id: 'b', label: 'Usar chaves estrangeiras para relações' },
-    { id: 'c', label: 'Copiar dados entre todas as tabelas' },
-    { id: 'd', label: 'Definir chaves primárias' },
-  ],
-  correct_option_ids: ['a', 'b', 'd'],
-};
 
 export const Default: Story = {
   render: () => <MultiChoiceActivity activity={makeActivity('multi_choice', SPEC)} onComplete={noop} />,
