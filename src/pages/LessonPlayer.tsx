@@ -38,10 +38,47 @@ import {
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
-import type { Activity } from '@/types/content';
+import type { Activity, ActivityKind } from '@/types/content';
 
 /** Decorative lives count — inert chrome (no lives backend). */
 const DECORATIVE_HEARTS = 5;
+
+/**
+ * Activity kinds that need a WIDE reading column instead of the prose measure.
+ *
+ * The focused column is `max-w-2xl` (672px) because that is the comfortable
+ * measure for text, prompts and stacked options. A `code` snack, though, is a
+ * SPLIT PANE (Monaco on the left, live preview on the right) nested inside that
+ * same column, so it only gets HALF of it.
+ *
+ * Measured at 1440x900 with the real Monaco build (each pane =
+ * `(min(vw, cap) − 48 page padding − 48 card padding − 16 grid gap) / 2`):
+ *
+ *   | column cap    | pane  | Monaco content | `<h1 className="…">` wraps into |
+ *   |---------------|-------|----------------|---------------------------------|
+ *   | max-w-2xl 672 | 280px | 212px          | 4 visual lines                  |
+ *   | max-w-5xl1024 | 456px | 388px          | 2 visual lines                  |
+ *   | max-w-6xl1152 | 520px | 452px          | 2 visual lines                  |
+ *   | max-w-7xl1280 | 584px | 516px          | 1 — no wrap                     |
+ *
+ * `max-w-7xl` is therefore the smallest cap that stops the reference starter
+ * line from wrapping at all, which is the whole point: a beginner reads a
+ * wrapped line as "my code is broken".
+ *
+ * Widening is opt-in PER KIND (not "any kind that embeds an editor") so the
+ * prose measure of every other activity is untouched.
+ */
+const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['code']);
+
+/**
+ * Tailwind max-width for the focused column. `max-w-*` only CAPS the width —
+ * the column still shrinks to the viewport below the cap, so the wide variant
+ * stays responsive (on a phone the split pane just stacks, `grid-cols-1`) and
+ * never overflows horizontally.
+ */
+function columnMaxWidthClass(kind: ActivityKind | undefined): string {
+  return kind && WIDE_COLUMN_KINDS.has(kind) ? 'max-w-7xl' : 'max-w-2xl';
+}
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -77,6 +114,10 @@ export default function LessonPlayer() {
   // chrome — the site's default vertical breathing room just pushes the window
   // into a scroll. Trim the top/bottom padding for the sandbox kind.
   const isSandbox = current?.kind === 'sandbox_scenario';
+  // Width of the focused column follows the activity KIND (see
+  // `columnMaxWidthClass`). The completion/loading/error states are plain prose
+  // cards, so they always keep the narrow measure.
+  const maxWidthClass = columnMaxWidthClass(completed ? undefined : current?.kind);
 
   // Clear a stale footer whenever the activity on screen changes.
   useEffect(() => {
@@ -194,7 +235,8 @@ export default function LessonPlayer() {
       {/* ── Centered focused column ── */}
       {/* pb leaves room so the fixed FeedbackFooter never clips the SubmitButton. */}
       <main
-        className={`flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 ${
+        data-testid="lesson-main"
+        className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
           isSandbox ? 'pt-4' : 'pt-10 md:pt-16'
         } ${pending ? 'pb-40' : isSandbox ? 'pb-4' : 'pb-40'}`}
       >

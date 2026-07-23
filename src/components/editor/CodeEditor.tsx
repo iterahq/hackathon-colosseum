@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import Editor from '@monaco-editor/react';
+import { configureTypeScriptDefaults, modelPathFor } from './monacoTypescript';
 
 interface CodeEditorProps {
   value: string;
@@ -7,7 +9,27 @@ interface CodeEditorProps {
   readOnly?: boolean;
   highlightLines?: number[];
   fontSize?: number;
+  /**
+   * Re-enable TypeScript SEMANTIC diagnostics (type-checking) for this editor.
+   *
+   * OFF by default: these editors have no tsconfig, no module graph and run
+   * code against runtime-injected globals, so type-checking only produces false
+   * errors under correct lesson code (see `./monacoTypescript`). Syntax
+   * validation is ALWAYS on, so real mistakes still surface. A future
+   * "fix the type error" exercise can opt back in.
+   */
+  semanticValidation?: boolean;
 }
+
+/**
+ * Monotonic per-page counter backing each editor's unique Monaco model URI.
+ *
+ * `useId()` is not enough: it only guarantees uniqueness inside ONE React root,
+ * and a Storybook docs page mounts many roots. Two editors resolving to the
+ * same model URI would silently SHARE their content, so uniqueness has to be
+ * absolute.
+ */
+let modelSeq = 0;
 
 export function CodeEditor({
   value,
@@ -16,7 +38,15 @@ export function CodeEditor({
   readOnly = false,
   highlightLines = [],
   fontSize = 14,
+  semanticValidation = false,
 }: CodeEditorProps) {
+  // Claimed lazily once per mounted editor; stable across re-renders.
+  const instanceIdRef = useRef<number>();
+  if (instanceIdRef.current === undefined) {
+    instanceIdRef.current = ++modelSeq;
+  }
+  const path = modelPathFor(language, instanceIdRef.current);
+
   const handleEditorChange = (newValue: string | undefined) => {
     if (onChange && newValue !== undefined) {
       onChange(newValue);
@@ -27,7 +57,8 @@ export function CodeEditor({
     <div className="editor-container h-full" style={{ minHeight: '300px' }}>
       <Editor
         height="100%"
-        language={language === 'typescript' ? 'typescript' : language}
+        language={language}
+        path={path}
         value={value}
         onChange={handleEditorChange}
         theme="vs-dark"
@@ -57,6 +88,8 @@ export function CodeEditor({
           },
         }}
         beforeMount={(monaco) => {
+          configureTypeScriptDefaults(monaco, semanticValidation);
+
           monaco.editor.defineTheme('iterate-dark', {
             base: 'vs-dark',
             inherit: true,
@@ -81,7 +114,7 @@ export function CodeEditor({
         }}
         onMount={(editor, monaco) => {
           monaco.editor.setTheme('iterate-dark');
-          
+
           if (highlightLines.length > 0) {
             editor.createDecorationsCollection(
               highlightLines.map(line => ({
