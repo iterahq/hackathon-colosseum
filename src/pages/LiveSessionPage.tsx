@@ -41,6 +41,7 @@ import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
+import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { formatDuration } from '@/utils/formatDuration';
@@ -239,13 +240,16 @@ export default function LiveSessionPage() {
     footerGraded && answeredHere && answered ? { correct: answered.correct } : null;
   const answeredWaitHint = answered ? (
     <span
-      className={answered.correct ? 'text-menta' : 'text-clay'}
+      className="inline-flex items-center gap-2 justify-end flex-wrap"
       data-testid="live-answered-hint"
       data-correct={answered.correct ? 'true' : 'false'}
     >
-      {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
-      <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-        · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+      <LiveWaitingIndicator correct={answered.correct} />
+      <span className={answered.correct ? 'text-menta' : 'text-clay'}>
+        {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+        <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+          · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+        </span>
       </span>
     </span>
   ) : undefined;
@@ -294,7 +298,7 @@ export default function LiveSessionPage() {
             className="rounded-3xl border border-border bg-card p-8 md:p-10 max-w-xl mx-auto"
             data-testid="live-ended"
           >
-            <LivePodium ranking={podiumRanking} />
+            <LivePodium ranking={podiumRanking} selfUserId={identity.userId ?? undefined} />
             <button
               onClick={() => navigate('/')}
               className="mt-8 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
@@ -390,16 +394,19 @@ export default function LiveSessionPage() {
                         sandbox) keep it inline here so their below-stage hint
                         isn't lost. */}
                     {!footerGraded && answered?.id === current.id && (
-                      <p
-                        className={`mt-5 text-center text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
+                      <div
+                        className={`mt-5 flex flex-wrap items-center justify-center gap-2 text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
                         data-testid="live-answered-hint"
                         data-correct={answered.correct ? 'true' : 'false'}
                       >
-                        {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
-                        <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-                          · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+                        <LiveWaitingIndicator correct={answered.correct} />
+                        <span>
+                          {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
+                          <span className="text-muted-foreground" data-testid="live-answered-elapsed">
+                            · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+                          </span>
                         </span>
-                      </p>
+                      </div>
                     )}
                   </>
                 }

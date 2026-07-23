@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Trophy, Crown } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { formatMmss } from '@/utils/formatMmss';
@@ -9,8 +9,10 @@ import type { ClassRanking } from '@/types/liveClass';
 const PODIUM_ORDER = [1, 0, 2];
 const MEDALS = ['🥇', '🥈', '🥉'];
 const BAR_HEIGHTS = ['h-32 md:h-40', 'h-24 md:h-28', 'h-16 md:h-20'];
+// Gold / silver / bronze tints so each step reads as its own tier.
+const BAR_TINTS = ['bg-amber-400/15 border-amber-400/50 text-amber-500', 'bg-slate-300/15 border-slate-400/50 text-slate-400', 'bg-orange-400/15 border-orange-500/50 text-orange-500'];
 
-export function LivePodium({ ranking }: { ranking: ClassRanking }) {
+export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; selfUserId?: string }) {
   const { t } = useI18n();
   const top = ranking.ranked.slice(0, 3);
   const rest = ranking.ranked.slice(3);
@@ -32,6 +34,8 @@ export function LivePodium({ ranking }: { ranking: ClassRanking }) {
           {PODIUM_ORDER.map((rankIdx) => {
             const entry = top[rankIdx];
             if (!entry) return null;
+            const isSelf = Boolean(selfUserId) && entry.userId === selfUserId;
+            const isWinner = rankIdx === 0;
             return (
               <motion.div
                 key={entry.userId}
@@ -41,22 +45,37 @@ export function LivePodium({ ranking }: { ranking: ClassRanking }) {
                 className="flex flex-col items-center w-24 md:w-28"
                 data-testid="live-podium-place"
                 data-rank={entry.rank}
+                data-self={isSelf ? 'true' : 'false'}
               >
-                <span className="text-2xl" aria-hidden="true">
-                  {MEDALS[rankIdx]}
-                </span>
-                <LiveAvatar name={entry.name} avatarUrl={entry.avatarUrl} size="w-12 h-12" />
+                {isWinner ? (
+                  <motion.span
+                    aria-hidden="true"
+                    className="text-amber-400"
+                    animate={{ y: [0, -4, 0], rotate: [-6, 6, -6] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Crown className="w-6 h-6" fill="currentColor" />
+                  </motion.span>
+                ) : (
+                  <span className="text-2xl" aria-hidden="true">
+                    {MEDALS[rankIdx]}
+                  </span>
+                )}
+                <div className={isSelf ? 'rounded-full ring-2 ring-menta ring-offset-2 ring-offset-card' : ''}>
+                  <LiveAvatar name={entry.name} avatarUrl={entry.avatarUrl} size="w-12 h-12" />
+                </div>
                 <span className="mt-1.5 text-sm text-foreground text-center break-words w-full">{entry.name}</span>
+                {isSelf && (
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>
+                )}
                 <span className="font-mono text-xs tabular-nums text-clay">
                   {t('live.podium.score', { n: String(entry.correctCount) })}
                 </span>
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground" data-testid="live-podium-time">
                   {formatMmss(entry.totalMs / 1000)}
                 </span>
-                <div
-                  className={`mt-2 w-full ${BAR_HEIGHTS[rankIdx]} rounded-t-2xl bg-clay/15 border border-clay/40 flex items-start justify-center pt-2`}
-                >
-                  <span className="font-display text-clay">{entry.rank}</span>
+                <div className={`mt-2 w-full ${BAR_HEIGHTS[rankIdx]} rounded-t-2xl border flex items-start justify-center pt-2 ${BAR_TINTS[rankIdx]}`}>
+                  <span className="font-display">{entry.rank}</span>
                 </div>
               </motion.div>
             );
@@ -66,19 +85,31 @@ export function LivePodium({ ranking }: { ranking: ClassRanking }) {
 
       {rest.length > 0 && (
         <ol className="mt-6 max-w-md mx-auto space-y-1.5" data-testid="live-podium-rest">
-          {rest.map((r) => (
-            <li key={r.userId} className="flex items-center gap-2 text-sm" data-testid="live-podium-row" data-rank={r.rank}>
-              <span className="w-6 text-center font-mono tabular-nums text-muted-foreground flex-shrink-0">{r.rank}</span>
-              <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
-              <span className="text-foreground flex-1 min-w-0 break-words">{r.name}</span>
-              <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground flex-shrink-0">
-                {formatMmss(r.totalMs / 1000)}
-              </span>
-              <span className="font-mono text-xs tabular-nums text-clay flex-shrink-0">
-                {t('live.podium.score', { n: String(r.correctCount) })}
-              </span>
-            </li>
-          ))}
+          {rest.map((r) => {
+            const isSelf = Boolean(selfUserId) && r.userId === selfUserId;
+            return (
+              <li
+                key={r.userId}
+                className={`flex items-center gap-2 text-sm rounded-xl px-2 py-1 ${isSelf ? 'bg-menta/10 ring-1 ring-menta/40' : ''}`}
+                data-testid="live-podium-row"
+                data-rank={r.rank}
+                data-self={isSelf ? 'true' : 'false'}
+              >
+                <span className="w-6 text-center font-mono tabular-nums text-muted-foreground flex-shrink-0">{r.rank}</span>
+                <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
+                <span className="text-foreground flex-1 min-w-0 break-words">
+                  {r.name}
+                  {isSelf && <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>}
+                </span>
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground flex-shrink-0">
+                  {formatMmss(r.totalMs / 1000)}
+                </span>
+                <span className="font-mono text-xs tabular-nums text-clay flex-shrink-0">
+                  {t('live.podium.score', { n: String(r.correctCount) })}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>

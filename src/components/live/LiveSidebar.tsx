@@ -59,9 +59,7 @@ export function LiveSidebar({
 
   return (
     <aside
-      className={`w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-14 ${
-        isInstructor ? 'pt-12' : ''
-      }`}
+      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-4"
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
     >
       {collapsible && (

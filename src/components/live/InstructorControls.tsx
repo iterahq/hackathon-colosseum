@@ -1,4 +1,4 @@
-import { Play, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Eye, AlertTriangle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 
@@ -50,6 +50,13 @@ export function InstructorControls({
 }: InstructorControlsProps) {
   const { t } = useI18n();
   const allAnswered = presentCount > 0 && answeredCount >= presentCount;
+  const remaining = Math.max(0, presentCount - answeredCount);
+  // Force-advance strands anyone who hasn't answered — confirm before skipping them.
+  const pendingBlockNext = canNext && presentCount > 0 && !allAnswered;
+  const handleNext = () =>
+    pendingBlockNext && !window.confirm(t('live.instructor.control.nextConfirm', { remaining: String(remaining) }))
+      ? undefined
+      : onNext();
 
   if (inReception) {
     return (
@@ -91,7 +98,7 @@ export function InstructorControls({
         </div>
 
         <button
-          onClick={onNext}
+          onClick={handleNext}
           disabled={!canNext || busy}
           data-testid="instructor-next"
           data-ready={allAnswered ? 'true' : 'false'}
@@ -103,6 +110,17 @@ export function InstructorControls({
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
+
+      {pendingBlockNext && (
+        <p
+          className="flex items-center justify-center gap-1.5 text-xs text-clay"
+          data-testid="instructor-wait-all"
+          role="status"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          {t('live.instructor.control.waitAll', { remaining: String(remaining) })}
+        </p>
+      )}
 
       {timerSeconds > 0 && (
         <LiveTimerControls
