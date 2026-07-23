@@ -43,9 +43,24 @@
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@DevFellowship" />
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!--
+      Fontes da marca servidas do NOSSO domínio (`public/vendor/fonts/`), nunca
+      de uma CDN pública: numa rede de escola que só libera o app + o Supabase,
+      o <link> pro Google caía e TODA a tipografia degradava pro fallback do
+      sistema. Mesma decisão do React UMD/Tailwind Play (ADR-12/ADR-14) e do
+      Monaco (ADR-24). Regerar: `npm run vendor:fonts`.
+      (Hostnames omitidos de propósito: um grep de auditoria por CDN externa no
+      `dist/` deve dar zero — ver src/test/fontsSelfHost.test.ts.)
+
+      Preload só das duas faces que SEMPRE renderizam no primeiro paint — Inter
+      (corpo, arquivo variável) e Barlow Condensed 700 (h1–h6) — pra cortar o
+      flash do `font-display: swap`. As demais ficam sob demanda via
+      unicode-range/peso. `crossorigin` é obrigatório mesmo same-origin: fonte é
+      buscada em modo CORS e sem ele o preload seria descartado e baixado 2x.
+    -->
+    <link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/inter-variable-latin.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/barlow-condensed-700-latin.woff2" crossorigin>
+    <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   </head>
 
   <body class="dark">

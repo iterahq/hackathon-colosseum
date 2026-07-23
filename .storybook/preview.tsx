@@ -5,6 +5,9 @@ import '../src/index.css';
 // Mesma configuração do bootstrap do app (src/main.tsx): o Monaco vem de
 // `/vendor/monaco/vs` (self-hosted), nunca da jsDelivr. Ver src/lib/monaco-loader.ts.
 import '../src/lib/monaco-loader';
+// As fontes da marca também são self-hosted (`/vendor/fonts/fonts.css`); como o
+// preview do Storybook tem `iframe.html` próprio, o <link> mora em
+// `.storybook/preview-head.html` — não há import de CSS pra elas aqui.
 import { I18nProvider } from '../src/i18n';
 import { AuthProvider } from '../src/auth/AuthContext';
 

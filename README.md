@@ -62,7 +62,8 @@ Nada de que o aluno precisa para trabalhar vem de CDN pública em runtime — a
 aula roda em rede de escola/comunidade, onde CDN bloqueada é cenário realista.
 Além do React UMD + Tailwind Play (commitados, usados pelo `<iframe>` de
 preview do snack), o **Monaco Editor** é servido do nosso domínio em
-`/vendor/monaco/vs`.
+`/vendor/monaco/vs` e as **fontes da marca** (Barlow Condensed · Inter ·
+JetBrains Mono) em `/vendor/fonts/`.
 
 Os ~16 MB do Monaco **não são commitados**: `scripts/vendor-monaco.ts` copia
 `monaco-editor/min/vs` para `public/vendor/monaco/vs` no build (plugin
@@ -73,6 +74,18 @@ regerar à mão:
 ```sh
 npm run vendor:monaco        # idempotente; `-- --force` recopia do zero
 ```
+
+As fontes, ao contrário, **são commitadas** (~313 KB): não há pacote npm delas,
+então gerá-las no build só moveria o fetch externo de runtime para a CI. Para
+atualizar pesos/subsets, edite `FAMILIES` em `scripts/vendor-fonts.ts` e rode:
+
+```sh
+npm run vendor:fonts         # rebaixa os .woff2 + regera fonts.css (precisa de rede)
+```
+
+O `<link>` para `/vendor/fonts/fonts.css` existe em **dois** lugares:
+`index.html` (app) e `.storybook/preview-head.html` (o Storybook tem
+`iframe.html` próprio).
 
 Detalhes e regras de manutenção em `CLAUDE.md` → "Zero fetch de CDN externa em
 runtime".

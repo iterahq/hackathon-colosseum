@@ -176,6 +176,7 @@ O que já é servido do nosso domínio, a partir de `public/vendor/`:
 | --- | --- | --- |
 | React UMD (`react` + `react-dom`) | preview do snack (`<iframe sandbox>`) | commitado |
 | Tailwind Play (`tailwind-play-cdn.js`) | preview do snack | commitado |
+| **Fontes da marca** (`vendor/fonts/*.woff2`, ~313 KB) | Barlow Condensed · Inter · JetBrains Mono | **commitado** |
 | **Monaco Editor** (`vendor/monaco/vs`, ~16 MB) | editor de código | **gerado no build** (`.gitignore`) |
 
 ### Monaco — por que existe `scripts/vendor-monaco.ts`
@@ -204,8 +205,38 @@ O fix tem três peças, e as três precisam continuar existindo:
 `src/test/monacoSelfHost.test.ts` tranca as três pernas. Se ele quebrar, o
 editor voltou a depender de CDN — não silencie o teste.
 
-**Pendente (menos grave):** as Google Fonts (`fonts.googleapis.com`/`fonts.gstatic.com`)
-ainda são fetch externo. Sem elas a tipografia degrada, mas o app segue usável.
+### Fontes — por que existe `scripts/vendor-fonts.ts`
+
+O `index.html` carregava um `<link>` pro CSS do Google Fonts, que puxa os
+`.woff2` do gstatic. Medido em produção (2026-07-23) com tudo bloqueado exceto
+o app e o Supabase: **zero faces carregadas** — a Barlow Condensed dos títulos
+renderizava com a MESMA largura do `sans-serif` do sistema (1027.97px vs 760px
+da fonte real). Fallback silencioso: nada quebra, mas a aula fica com cara de
+página quebrada.
+
+Diferente do Monaco, os `.woff2` **são commitados**. Motivo: não existe pacote
+npm dessas fontes no projeto. Um script no `prebuild` teria que buscá-las do
+gstatic NA HORA DO BUILD — só moveria a dependência externa de runtime pra CI, e
+quebraria qualquer build atrás da mesma rede restrita que estamos endurecendo.
+São 12 arquivos / ~313 KB, imutáveis (as URLs do gstatic são versionadas por
+revisão da família). O Monaco é o oposto: 16 MB copiáveis offline do
+`node_modules`, então gerar no build é melhor.
+
+- **`scripts/vendor-fonts.ts`** (`npm run vendor:fonts`) rebaixa os `.woff2` +
+  gera `public/vendor/fonts/fonts.css`. **NÃO** roda no `prebuild` — build não
+  pode depender de rede. Rodar à mão e commitar o diff.
+- **Escopo**: a const `FAMILIES` espelha EXATAMENTE o que o `<link>` do Google
+  servia (Barlow Condensed 400/500/600/700, Inter 400/500/600/700, JetBrains
+  Mono 400/500) → renderização idêntica por construção. Subsets `latin` +
+  `latin-ext`. ⚠️ Os acentos do PT (ç, õ, ã) moram em U+00C0–U+00FF, ou seja no
+  subset **`latin`** — não no `latin-ext`.
+- **Dois `<link>`**: `index.html` (app) **e** `.storybook/preview-head.html` — o
+  Storybook tem `iframe.html` próprio e não herda o do app.
+- Comentários evitam os hostnames literais de propósito, pra um grep de
+  auditoria por CDN externa no `dist/`/`storybook-static/` dar zero.
+
+`src/test/fontsSelfHost.test.ts` tranca tudo isso (sem rede). Se ele quebrar, a
+tipografia voltou a depender de CDN — não silencie o teste.
 
 <!-- END MANUAL:repo/local-notes -->## Edge Functions
 

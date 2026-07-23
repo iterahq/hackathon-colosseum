@@ -1,0 +1,17 @@
+<!--
+  O Storybook tem o SEU PRÓPRIO `iframe.html` — ele NÃO reusa o `index.html` do
+  app, então o <link> das fontes precisa ser repetido aqui, senão as stories
+  renderiam no fallback do sistema e a auditoria visual mentiria sobre a
+  tipografia real.
+
+  Servidas de `public/vendor/fonts/` (o `staticDirs: ['../public']` do
+  `.storybook/main.ts` monta `public/` na raiz do preview), nunca de uma CDN
+  pública de fontes — ver `scripts/vendor-fonts.ts` e o `index.html`.
+
+  (Sem o hostname literal no comentário de propósito: o Storybook injeta este
+  arquivo VERBATIM no `iframe.html`, e um grep de auditoria por CDN externa no
+  `storybook-static/` acusaria falso-positivo.)
+-->
+<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/inter-variable-latin.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="/vendor/fonts/barlow-condensed-700-latin.woff2" crossorigin>
+<link rel="stylesheet" href="/vendor/fonts/fonts.css">
