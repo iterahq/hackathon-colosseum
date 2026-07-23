@@ -30,7 +30,7 @@ export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; sel
           {t('live.podium.empty')}
         </p>
       ) : (
-        <div className="mt-10 flex items-end justify-center gap-3 md:gap-4">
+        <div className="mt-10 flex items-end justify-center gap-2 sm:gap-3 md:gap-4">
           {PODIUM_ORDER.map((rankIdx) => {
             const entry = top[rankIdx];
             if (!entry) return null;
@@ -42,7 +42,7 @@ export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; sel
                 initial={{ opacity: 0, y: 28 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 * (2 - rankIdx), type: 'spring', stiffness: 220, damping: 22 }}
-                className="flex flex-col items-center w-24 md:w-28"
+                className="flex flex-col items-center w-20 sm:w-24 md:w-28"
                 data-testid="live-podium-place"
                 data-rank={entry.rank}
                 data-self={isSelf ? 'true' : 'false'}
