@@ -296,6 +296,13 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.score': '{passed} de {total}',
     'code.checks.retry': 'Tentar de novo',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
+    // Recomeçar ≠ tentar de novo: "Tentar de novo" volta a editar SEM perder
+    // nada; este aqui joga fora o que a pessoa escreveu e traz o código inicial
+    // de volta — por isso pergunta antes.
+    'code.reset.action': 'Recomeçar do código inicial',
+    'code.reset.confirmPrompt': 'Isso apaga o que você escreveu e traz o código inicial de volta. Quer recomeçar?',
+    'code.reset.confirm': 'Sim, recomeçar',
+    'code.reset.cancel': 'Continuar editando',
     'activity.submit': 'Enviar',
     'activity.sent': 'Enviado',
     'activity.correct': 'Resposta correta!',
@@ -794,6 +801,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.score': '{passed} of {total}',
     'code.checks.retry': 'Try again',
     'code.checks.continueAnyway': 'Continue anyway',
+    'code.reset.action': 'Start over from the first code',
+    'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',
+    'code.reset.confirm': 'Yes, start over',
+    'code.reset.cancel': 'Keep editing',
     'activity.submit': 'Submit',
     'activity.sent': 'Sent',
     'activity.correct': 'Correct answer!',

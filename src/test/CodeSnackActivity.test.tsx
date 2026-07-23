@@ -50,9 +50,17 @@ vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
   };
 });
 
+// The persistence layer is stubbed here so these tests stay about the snack's
+// lifecycle. `readCodeSnapshot` answers "nothing saved" by default, which is the
+// first-open case; the restore behaviour itself is covered against REAL
+// localStorage in `CodeSnackRestore.test.tsx`.
 const saveCodeSnapshot = vi.fn();
+const clearCodeSnapshot = vi.fn();
+const readCodeSnapshot = vi.fn(() => null as { code: string } | null);
 vi.mock('@/services/codeSnapshot.service', () => ({
   saveCodeSnapshot: (...args: unknown[]) => saveCodeSnapshot(...args),
+  clearCodeSnapshot: (...args: unknown[]) => clearCodeSnapshot(...args),
+  readCodeSnapshot: (id: string) => readCodeSnapshot(id),
 }));
 
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
@@ -74,6 +82,8 @@ describe('CodeSnackActivity', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     saveCodeSnapshot.mockClear();
+    clearCodeSnapshot.mockClear();
+    readCodeSnapshot.mockClear();
   });
   afterEach(() => {
     vi.runOnlyPendingTimers();
@@ -154,6 +164,8 @@ describe('CodeSnackActivity — deterministic checks', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     saveCodeSnapshot.mockClear();
+    clearCodeSnapshot.mockClear();
+    readCodeSnapshot.mockClear();
     preview.results = [];
     preview.requests = [];
     preview.silent = false;
@@ -334,5 +346,135 @@ describe('CodeSnackActivity — deterministic checks', () => {
     });
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
     expect(screen.getByTestId('code-checks-retry')).toBeInTheDocument();
+  });
+});
+
+/**
+ * "Recomeçar do código inicial" — the escape hatch for a learner who broke the
+ * starter beyond repair. It is a DIFFERENT control from "Tentar de novo": that
+ * one preserves the work, this one discards it (and therefore asks first).
+ */
+describe('CodeSnackActivity — recomeçar do código inicial', () => {
+  const STARTER = 'const inicio = 1';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    saveCodeSnapshot.mockClear();
+    clearCodeSnapshot.mockClear();
+    readCodeSnapshot.mockClear();
+    preview.results = [];
+    preview.requests = [];
+    preview.silent = false;
+  });
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  function type(value: string) {
+    act(() => {
+      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value } });
+    });
+  }
+  const editor = () => screen.getByTestId('mock-editor') as HTMLTextAreaElement;
+
+  it('asks before discarding — one tap alone changes nothing', () => {
+    renderSnack({ prompt: 'p', starter: STARTER });
+    type('meu trabalho');
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+
+    expect(screen.getByTestId('code-reset-prompt')).toBeInTheDocument();
+    expect(editor().value).toBe('meu trabalho');
+    expect(clearCodeSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('cancelling keeps the work exactly where it was', () => {
+    renderSnack({ prompt: 'p', starter: STARTER });
+    type('meu trabalho');
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset-cancel'));
+    });
+
+    expect(screen.queryByTestId('code-reset-prompt')).not.toBeInTheDocument();
+    expect(editor().value).toBe('meu trabalho');
+    expect(clearCodeSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('confirming brings the starter back AND drops the saved snapshot', () => {
+    renderSnack({ prompt: 'p', starter: STARTER });
+    type('destruí tudo');
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledWith('t-code', 'destruí tudo');
+    saveCodeSnapshot.mockClear();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset-confirm'));
+    });
+
+    expect(editor().value).toBe(STARTER);
+    expect(clearCodeSnapshot).toHaveBeenCalledWith('t-code');
+    // …and the autosave must NOT write the starter straight back, which would
+    // leave a snapshot behind for something the learner just discarded.
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(saveCodeSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('the learner can keep working right after recomeçar', () => {
+    renderSnack({ prompt: 'p', starter: STARTER });
+    type('lixo');
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset-confirm'));
+    });
+
+    type('segunda tentativa');
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledWith('t-code', 'segunda tentativa');
+  });
+
+  it('walks the feedback screen back to editing with the starter', () => {
+    const CHECKS = [{ id: 'a', label: 'checa', selector: 'button', assert: { type: 'text', equals: 'x' } }];
+    preview.results = [{ id: 'a', passed: false }];
+    renderSnack({ prompt: 'p', starter: STARTER, checks: CHECKS });
+    type('tentativa quebrada');
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-submit'));
+    });
+    expect(screen.getByTestId('code-checks-feedback')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset-confirm'));
+    });
+
+    expect(screen.queryByTestId('code-checks-feedback')).not.toBeInTheDocument();
+    expect(editor().value).toBe(STARTER);
+    expect(screen.getByTestId('code-submit')).toBeEnabled();
+  });
+
+  it('is offered on the ungraded snack too', () => {
+    renderSnack({ prompt: 'p', starter: STARTER });
+    expect(screen.getByTestId('activity-done')).toBeInTheDocument();
+    expect(screen.getByTestId('code-reset')).toBeEnabled();
   });
 });

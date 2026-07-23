@@ -8,11 +8,13 @@ import { useCodeSnack } from '@/hooks/useCodeSnack';
 import { DoneButton } from '@/components/branded/activity/parts';
 import { CodeLivePreview } from './CodeLivePreview';
 import { CodeChecksFeedback } from './CodeChecksFeedback';
+import { CodeResetControl } from './CodeResetControl';
 
 /**
- * The split-pane snack surface: Monaco (seeded from `spec.starter`) + optional
- * help link on the LEFT, a live preview on the RIGHT. Thin view over
- * `useCodeSnack` (source + debounced autosave + the graded lifecycle).
+ * The split-pane snack surface: Monaco (seeded from the learner's saved work,
+ * falling back to `spec.starter`) + optional help link and the "recomeçar"
+ * escape hatch on the LEFT, a live preview on the RIGHT. Thin view over
+ * `useCodeSnack` (source + autosave/restore + the graded lifecycle).
  *
  * Two shapes, decided by whether the spec ships `checks`:
  *   • NO checks  → exactly what it was: edit, preview, "Marcar como concluída".
@@ -41,6 +43,7 @@ export function CodeSnackPane({
     submit,
     receiveResults,
     retry,
+    resetToStarter,
     complete,
   } = useCodeSnack(activity.id, spec, { onComplete });
   const isDone = activity.status === 'done';
@@ -77,6 +80,13 @@ export function CodeSnackPane({
               <ExternalLink className="w-3.5 h-3.5" /> {spec.help.label}
             </a>
           )}
+          {/* Spent once the activity is settled/done, and held back mid-grading
+              so a reset cannot land between the submit and its verdicts. */}
+          <CodeResetControl
+            onReset={resetToStarter}
+            disabled={isDone || phase === 'submitting' || phase === 'settled'}
+            className="mt-2"
+          />
         </div>
 
         <div className="h-[360px] overflow-hidden rounded-2xl border border-border">

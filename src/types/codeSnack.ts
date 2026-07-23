@@ -7,7 +7,15 @@ export interface CodeSnapshot {
 
 export interface UseCodeSnackCallbacks {
   onComplete: (correct: boolean) => void;
-  /** Persist a debounced snapshot of the source. Defaults to the local snapshot store. */
+  /**
+   * Persist a debounced snapshot of the source. Defaults to the local snapshot
+   * store (`codeSnapshot.service`).
+   *
+   * ⚠️ Write-side ONLY. Restoring on open and clearing on "recomeçar" always go
+   * to the local snapshot store, so an override that writes somewhere ELSE would
+   * hand the learner back the wrong source. If a remote sink is ever needed,
+   * move all three (read/write/clear) together instead of overriding just this.
+   */
   onAutosave?: (code: string) => void;
 }
 
