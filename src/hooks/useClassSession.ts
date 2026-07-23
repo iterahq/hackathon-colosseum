@@ -29,7 +29,7 @@ import type {
 } from '@/types/liveClass';
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
-import { gatherStageContent } from '@/utils/stageAnswerContent';
+import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -45,6 +45,10 @@ const STAGE_REQUEST_EVENT = 'stage-request';
 const STAGE_ANSWER_EVENT = 'stage-answer';
 const STAGE_SHOW_EVENT = 'stage-show';
 const STAGE_CLEAR_EVENT = 'stage-clear';
+// The pull is peer-to-peer: only a client that is ONLINE can answer it. A learner
+// who closed the tab / lost the network never replies, so give up after a grace
+// window and tell the professor — an endless spinner reads as a broken feature.
+const STAGE_REPLY_TIMEOUT_MS = 6000;
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -66,11 +70,16 @@ export function useClassSession(
   // the correct answer to everyone. Cleared on advance.
   const [stoppedFor, setStoppedFor] = useState<string | null>(null);
   const [stagedAnswer, setStagedAnswer] = useState<StagedAnswer | null>(null);
+  // Instructor-side UX for the in-flight pull: who we're waiting on, and who we
+  // gave up on (see STAGE_REPLY_TIMEOUT_MS).
+  const [stagePendingUserId, setStagePendingUserId] = useState<string | null>(null);
+  const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // The instructor's in-flight pull: the nonce armed by requestStage + which
   // learner it targeted. A stage-answer is only gated to stage-show when BOTH
   // the userId matches the target AND the nonce echoes back (rejects stale replies).
   const pendingStageRef = useRef<{ nonce: string; targetUserId: string } | null>(null);
+  const stageTimeoutRef = useRef<number | null>(null);
   // Read inside broadcast handlers so a stage-show is only honored for the CURRENT
   // activity — without making the channel effect depend on currentActivityId.
   const currentActivityIdRef = useRef<string | null>(null);
@@ -83,8 +92,10 @@ export function useClassSession(
   const identityRef = useRef<Identity | undefined>(identity);
   identityRef.current = identity;
   // Presence is re-tracked wholesale, so the hand state must ride along on every
-  // track() (identity refresh, reconnect) — not just the explicit toggle.
+  // track() (identity refresh, reconnect) — not just the explicit toggle. Same
+  // for the activity the learner has started working on.
   const handRaisedRef = useRef(false);
+  const workingOnRef = useRef<string | null>(null);
 
   const trackPresence = useCallback(() => {
     const channel = channelRef.current;
@@ -96,8 +107,17 @@ export function useClassSession(
       avatar_url: id.avatarUrl ?? null,
       is_instructor: id.isInstructor === true,
       hand_raised: handRaisedRef.current,
+      working_on: workingOnRef.current,
       at: new Date().toISOString(),
     });
+  }, []);
+
+  // Clears the "waiting for the peer's reply" timer without touching the nonce
+  // gate — used by every path that ends a pull (reply, clear, advance, unmount).
+  const clearStageTimeout = useCallback(() => {
+    if (stageTimeoutRef.current === null) return;
+    clearTimeout(stageTimeoutRef.current);
+    stageTimeoutRef.current = null;
   }, []);
 
   const applySession = useCallback((s: ClassSession | null) => {
@@ -207,6 +227,7 @@ export function useClassSession(
             avatarUrl: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
             isInstructor: meta.is_instructor === true,
             handRaised: meta.hand_raised === true,
+            workingOn: typeof meta.working_on === 'string' ? meta.working_on : null,
           });
         }
         setRoster(members);
@@ -226,6 +247,9 @@ export function useClassSession(
             setStoppedFor(null);
             setStagedAnswer(null);
             pendingStageRef.current = null;
+            clearStageTimeout();
+            setStagePendingUserId(null);
+            setStageUnreachableUserId(null);
           }
         })
         .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
@@ -257,7 +281,10 @@ export function useClassSession(
           if (p && typeof p.activity_id === 'string') setStoppedFor(p.activity_id);
         })
         // stage-request (instructor → all): the TARGETED learner replies with its
-        // OWN answer for the current activity — only if it actually has one.
+        // OWN work for the current activity — finished OR in progress OR an
+        // explicit empty state (ADR-4 revised). The learner is still the only one
+        // who can answer for itself; what changed is that "no answer yet" is now
+        // a real reply instead of silence.
         .on('broadcast', { event: STAGE_REQUEST_EVENT }, ({ payload }) => {
           const p = payload as
             | { activityId?: string; targetUserId?: string; nonce?: string }
@@ -267,7 +294,6 @@ export function useClassSession(
           if (!p?.activityId || !p.targetUserId || !p.nonce || !id || !sid) return;
           if (p.targetUserId !== id.userId || p.activityId !== currentActivityIdRef.current) return;
           const gathered = gatherStageContent(sid, p.activityId);
-          if (!gathered) return;
           void channel.send({
             type: 'broadcast',
             event: STAGE_ANSWER_EVENT,
@@ -277,6 +303,7 @@ export function useClassSession(
               nonce: p.nonce,
               kind: gathered.kind,
               content: gathered.content,
+              status: gathered.status,
               author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
             },
           });
@@ -287,12 +314,23 @@ export function useClassSession(
         .on('broadcast', { event: STAGE_ANSWER_EVENT }, ({ payload }) => {
           const pending = pendingStageRef.current;
           const p = payload as
-            | { activityId?: string; userId?: string; nonce?: string; kind?: string; content?: string; author?: unknown }
+            | {
+                activityId?: string;
+                userId?: string;
+                nonce?: string;
+                kind?: string;
+                content?: string;
+                status?: unknown;
+                author?: unknown;
+              }
             | null;
           if (!pending || !p?.userId || !p.nonce || !p.activityId) return;
           if (p.userId !== pending.targetUserId || p.nonce !== pending.nonce) return;
           if (p.activityId !== currentActivityIdRef.current) return;
           pendingStageRef.current = null;
+          clearStageTimeout();
+          setStagePendingUserId(null);
+          setStageUnreachableUserId(null);
           void channel.send({
             type: 'broadcast',
             event: STAGE_SHOW_EVENT,
@@ -300,6 +338,7 @@ export function useClassSession(
               activityId: p.activityId,
               kind: p.kind,
               content: p.content,
+              status: parseStageStatus(p.status),
               author: p.author,
             },
           });
@@ -308,7 +347,13 @@ export function useClassSession(
         // from — honored only for the current activity.
         .on('broadcast', { event: STAGE_SHOW_EVENT }, ({ payload }) => {
           const p = payload as
-            | { activityId?: string; kind?: string; content?: string; author?: { userId?: string; name?: string; avatarUrl?: string | null } }
+            | {
+                activityId?: string;
+                kind?: string;
+                content?: string;
+                status?: unknown;
+                author?: { userId?: string; name?: string; avatarUrl?: string | null };
+              }
             | null;
           if (!p?.activityId || typeof p.kind !== 'string' || typeof p.content !== 'string') return;
           if (p.activityId !== currentActivityIdRef.current) return;
@@ -318,12 +363,16 @@ export function useClassSession(
             activityId: p.activityId,
             kind: p.kind,
             content: p.content,
+            status: parseStageStatus(p.status),
             author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
           });
         })
         .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
           setStagedAnswer(null);
           pendingStageRef.current = null;
+          clearStageTimeout();
+          setStagePendingUserId(null);
+          setStageUnreachableUserId(null);
         })
         .on(
           'postgres_changes',
@@ -419,30 +468,65 @@ export function useClassSession(
     [trackPresence]
   );
 
-  // Instructor pulls a learner's answer to the stage: arm a nonce for the target
+  // Learner side: announce (via presence) that there IS local work for this
+  // activity, so the professor's picker can show "em andamento" before pulling.
+  // Guarded on a real change — the code snack autosaves every 600ms and we do
+  // NOT want a presence re-track per keystroke burst.
+  const setWorkingOn = useCallback(
+    (activityId: string | null) => {
+      if (workingOnRef.current === activityId) return;
+      workingOnRef.current = activityId;
+      trackPresence();
+    },
+    [trackPresence]
+  );
+
+  // Instructor pulls a learner's work to the stage: arm a nonce for the target
   // and broadcast stage-request. The matching stage-answer (gated in the channel
   // handler) is what flips the class to stage-show.
-  const requestStage = useCallback((targetUserId: string) => {
-    const channel = channelRef.current;
-    const activityId = currentActivityIdRef.current;
-    if (!channel || !activityId || !targetUserId) return;
-    const nonce =
-      (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    pendingStageRef.current = { nonce, targetUserId };
-    void channel.send({
-      type: 'broadcast',
-      event: STAGE_REQUEST_EVENT,
-      payload: { activityId, targetUserId, nonce },
-    });
-  }, []);
+  const requestStage = useCallback(
+    (targetUserId: string) => {
+      const channel = channelRef.current;
+      const activityId = currentActivityIdRef.current;
+      if (!channel || !activityId || !targetUserId) return;
+      const nonce =
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      pendingStageRef.current = { nonce, targetUserId };
+      setStagePendingUserId(targetUserId);
+      setStageUnreachableUserId(null);
+      clearStageTimeout();
+      // Nobody can answer for an offline learner (the snapshot lives in THEIR
+      // localStorage), so a silent request would spin forever. Give up loudly.
+      stageTimeoutRef.current = window.setTimeout(() => {
+        stageTimeoutRef.current = null;
+        // Only abandon the pull we armed — a newer request already took over.
+        if (pendingStageRef.current?.nonce !== nonce) return;
+        pendingStageRef.current = null;
+        setStagePendingUserId(null);
+        setStageUnreachableUserId(targetUserId);
+      }, STAGE_REPLY_TIMEOUT_MS);
+      void channel.send({
+        type: 'broadcast',
+        event: STAGE_REQUEST_EVENT,
+        payload: { activityId, targetUserId, nonce },
+      });
+    },
+    [clearStageTimeout]
+  );
 
   const clearStage = useCallback(() => {
     const channel = channelRef.current;
     pendingStageRef.current = null;
+    clearStageTimeout();
+    setStagePendingUserId(null);
+    setStageUnreachableUserId(null);
     setStagedAnswer(null);
     if (!channel) return;
     void channel.send({ type: 'broadcast', event: STAGE_CLEAR_EVENT, payload: {} });
-  }, []);
+  }, [clearStageTimeout]);
+
+  // A pull left in flight when the page unmounts must not fire into a dead tree.
+  useEffect(() => clearStageTimeout, [clearStageTimeout]);
 
   const broadcast = useCallback(
     (activityId: string) => {
@@ -524,11 +608,14 @@ export function useClassSession(
     timer,
     stoppedFor,
     stagedAnswer,
+    stagePendingUserId,
+    stageUnreachableUserId,
     broadcast,
     broadcastAnswer,
     broadcastTimer,
     clearTimer,
     setHandRaised,
+    setWorkingOn,
     requestStage,
     clearStage,
     refetch,

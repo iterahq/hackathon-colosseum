@@ -15,6 +15,13 @@ export type { CodeSnapshot } from '@/types/codeSnack';
 
 const keyFor = (activityId: string) => `itera.code.snapshot:${activityId}`;
 
+/**
+ * Fired on every autosave. The live session page listens so it can presence-track
+ * "this learner has work in progress" — a DOM event keeps the signal decoupled
+ * (no callback threaded through ActivityRenderer just to reach the live layer).
+ */
+export const CODE_SNAPSHOT_EVENT = 'itera:code-snapshot-saved';
+
 export function readCodeSnapshot(activityId: string): CodeSnapshot | null {
   try {
     const raw = localStorage.getItem(keyFor(activityId));
@@ -33,6 +40,9 @@ export function saveCodeSnapshot(activityId: string, code: string): void {
   try {
     const snapshot: CodeSnapshot = { code, savedAt: new Date().toISOString() };
     localStorage.setItem(keyFor(activityId), JSON.stringify(snapshot));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(CODE_SNAPSHOT_EVENT, { detail: { activityId } }));
+    }
   } catch {
     // Storage unavailable (private mode/quota) — autosave degrades only.
   }

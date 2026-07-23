@@ -46,6 +46,8 @@ import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
+import { gatherStageContent } from '@/utils/stageAnswerContent';
+import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { isGenericName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
@@ -64,7 +66,7 @@ export default function LiveSessionPage() {
   // present as instructor — otherwise their presence enters the podium/ranking.
   const { data: memberships } = useMembership();
   const staff = isStaffInstructor(memberships ?? []);
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stagedAnswer, broadcastAnswer, setHandRaised } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stagedAnswer, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -150,6 +152,25 @@ export default function LiveSessionPage() {
     setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [sessionId, currentActivityId, setHandRaised]);
+
+  // Tell the room (via presence) whether this learner already has local work for
+  // the current activity, so the professor's stage picker can show "em andamento"
+  // BEFORE pulling — instead of only "concluiu / nada". Event-driven off the code
+  // snack's autosave (no polling); setWorkingOn no-ops unless the value changes,
+  // so at most one presence re-track per activity.
+  useEffect(() => {
+    if (!sessionId || !currentActivityId) {
+      setWorkingOn(null);
+      return;
+    }
+    const sync = () => {
+      const { status } = gatherStageContent(sessionId, currentActivityId);
+      setWorkingOn(status === 'not_started' ? null : currentActivityId);
+    };
+    sync();
+    window.addEventListener(CODE_SNAPSHOT_EVENT, sync);
+    return () => window.removeEventListener(CODE_SNAPSHOT_EVENT, sync);
+  }, [sessionId, currentActivityId, setWorkingOn]);
 
   const { onTimeUp } = sound;
   const handleTimeUp = useCallback(() => {

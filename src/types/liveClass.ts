@@ -33,6 +33,13 @@ export interface ClassPresenceMember {
   isInstructor: boolean;
   /** The learner currently has their hand raised (presence-tracked). */
   handRaised?: boolean;
+  /**
+   * Activity the learner already has local work for (presence-tracked). Lets the
+   * professor's stage picker tell "em andamento" apart from "não começou" BEFORE
+   * pulling, instead of choosing blind. Null/absent = no work yet (or a client on
+   * the previous build, which never tracks it).
+   */
+  workingOn?: string | null;
 }
 
 export interface ClassCompleter {
@@ -65,11 +72,36 @@ export interface StagedAuthor {
   avatarUrl: string | null;
 }
 
-/** The answer pulled to the class stage: `code` carries raw source, else a summary. */
+/**
+ * How far along the staged work is. `in_progress` is a DRAFT — the stage must
+ * label it, otherwise the class reads a classmate's half-written attempt as a
+ * final answer (pedagogically the worst outcome of pulling WIP).
+ */
+export type StageWorkStatus = 'submitted' | 'in_progress' | 'not_started';
+
+/** What a learner replies with on `stage-request` (see utils/stageAnswerContent). */
+export interface StageContent {
+  /** `code` | `answer` | `empty` (nothing local yet). */
+  kind: string;
+  content: string;
+  status: StageWorkStatus;
+}
+
+/** One row of the instructor's stage picker: a present learner + their state. */
+export interface StagePickerLearner {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  state: StageWorkStatus;
+}
+
+/** The work pulled to the class stage: `code` carries raw source, else a summary. */
 export interface StagedAnswer {
   activityId: string;
   kind: string;
   content: string;
+  /** Draft vs finished vs untouched — drives the "em andamento" badge. */
+  status: StageWorkStatus;
   author: StagedAuthor;
 }
 
@@ -184,17 +216,23 @@ export interface UseClassSession {
   timer: ClassTimer | null;
   /** Activity whose timer the professor just stopped — reveal the answer. */
   stoppedFor: string | null;
-  /** The answer pulled to the stage right now (whole class sees it) — or null. */
+  /** The work pulled to the stage right now (whole class sees it) — or null. */
   stagedAnswer: StagedAnswer | null;
+  /** Instructor: learner whose pull is in flight (awaiting their reply) — or null. */
+  stagePendingUserId: string | null;
+  /** Instructor: learner whose pull timed out (offline / unreachable) — or null. */
+  stageUnreachableUserId: string | null;
   broadcast: (activityId: string) => void;
   broadcastAnswer: (activityId: string, correct: boolean, elapsedMs?: number) => void;
   broadcastTimer: (activityId: string, durationSeconds: number) => void;
   clearTimer: (activityId: string) => void;
   /** Re-track presence with the hand raised/lowered (learner side). */
   setHandRaised: (raised: boolean) => void;
-  /** Instructor: pull a learner's answer for the current activity onto the stage. */
+  /** Re-track presence with the activity the learner has local work for (learner side). */
+  setWorkingOn: (activityId: string | null) => void;
+  /** Instructor: pull a learner's work for the current activity onto the stage. */
   requestStage: (targetUserId: string) => void;
-  /** Instructor: dismiss the staged answer for everyone. */
+  /** Instructor: dismiss the staged work for everyone. */
   clearStage: () => void;
   refetch: () => void;
 }

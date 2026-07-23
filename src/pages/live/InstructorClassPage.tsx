@@ -44,6 +44,7 @@ import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
 import { isAnswerableLiveKind } from '@/utils/isAnswerableLiveKind';
+import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -58,7 +59,7 @@ import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { InstructorReportsCard } from '@/components/live/InstructorReportsCard';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
-import type { ClassPresenceMember } from '@/types/liveClass';
+import type { ClassPresenceMember, StagePickerLearner } from '@/types/liveClass';
 
 // Interim default until the timer duration is chosen at class creation and
 // stored on the session (backlog: timer_seconds + creation selector + gating).
@@ -437,7 +438,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stagePendingUserId, stageUnreachableUserId, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -497,14 +498,18 @@ function ClassControl({
     );
   }, [roster, polled, answers, elapsed, currentActivityId]);
 
-  // Learners eligible to be pulled to the stage: present, non-instructor, and
-  // who have ALREADY answered the current activity (the broadcast `answers` map
-  // is the eligibility source). Identity (name/avatar) comes from the roster.
-  const stageEligible = useMemo<ClassPresenceMember[]>(() => {
-    const answered = currentActivityId ? answers[currentActivityId] : undefined;
-    if (!answered) return [];
-    return roster.filter((m) => !m.isInstructor && answered[m.userId] !== undefined);
-  }, [roster, answers, currentActivityId]);
+  // Learners pullable to the stage: EVERYONE present (ADR-4 revised — the
+  // professor follows work in progress too), each tagged concluiu / em andamento
+  // / não começou so the choice is informed instead of blind.
+  const stageLearners = useMemo<StagePickerLearner[]>(
+    () =>
+      buildStagePickerLearners(
+        roster,
+        currentActivityId,
+        currentActivityId ? answers[currentActivityId] : undefined
+      ),
+    [roster, answers, currentActivityId]
+  );
 
   // Every learner who was EVER present — presence drains on `leave` (students
   // disconnect the instant the class ends), which would empty the live roster
@@ -755,8 +760,10 @@ function ClassControl({
               />
               {current && (
                 <LiveStagePicker
-                  answered={stageEligible}
+                  learners={stageLearners}
                   staged={Boolean(stagedAnswer)}
+                  pendingUserId={stagePendingUserId}
+                  unreachableUserId={stageUnreachableUserId}
                   onPull={requestStage}
                   onClear={clearStage}
                 />

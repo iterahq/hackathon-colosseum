@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
 /**
@@ -7,6 +7,10 @@ import { renderHook, act, waitFor } from '@testing-library/react';
  * handlers + `.send()` payloads so we can drive stage-request/answer/show/clear
  * and assert the gate: only a matching (nonce+target) stage-answer produces a
  * stage-show, stagedAnswer is only ever set from stage-show, and clearStage resets.
+ *
+ * ADR-4 revised (2026-07-23): the professor also pulls WORK IN PROGRESS, so the
+ * reply now always happens — carrying an explicit `status` (submitted /
+ * in_progress / not_started). The security gate is UNCHANGED and re-asserted here.
  */
 
 const SESSION = 'session-1';
@@ -223,12 +227,167 @@ describe('useClassSession — pull to stage', () => {
       nonce: 'n1',
       kind: 'answer',
       content: 'correct',
+      status: 'submitted',
     });
   });
 
-  it('a student with no answer does not reply to stage-request', async () => {
+  it('ignores a stage-request aimed at ANOTHER learner (never answers for a peer)', async () => {
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
+    );
     await mountAs({ userId: STUDENT, isInstructor: false });
-    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: 'someone-else', nonce: 'n1' });
+
     expect(sent.find((s) => s.event === 'stage-answer')).toBeUndefined();
+  });
+});
+
+describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
+  it('replies with the DRAFT code snapshot when the learner has not submitted yet', async () => {
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const saudacao = "oi";', savedAt: new Date().toISOString() })
+    );
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    const answer = sent.find((s) => s.event === 'stage-answer');
+    expect(answer!.payload).toMatchObject({
+      kind: 'code',
+      content: 'const saudacao = "oi";',
+      status: 'in_progress',
+    });
+  });
+
+  it('marks the same snapshot as submitted once the learner has answered', async () => {
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const saudacao = "oi";', savedAt: new Date().toISOString() })
+    );
+    localStorage.setItem(
+      `itera.live.answers:${SESSION}`,
+      JSON.stringify({ [ACTIVITY]: { correct: true, elapsedMs: 900 } })
+    );
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'code',
+      status: 'submitted',
+    });
+  });
+
+  it('a learner who has not started replies with an explicit empty state', async () => {
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    const answer = sent.find((s) => s.event === 'stage-answer');
+    expect(answer).toBeTruthy();
+    expect(answer!.payload).toMatchObject({ kind: 'empty', content: '', status: 'not_started' });
+  });
+
+  it('carries the in_progress status through the instructor gate into stage-show', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'code',
+      content: 'const cor = "verde";',
+      status: 'in_progress',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    expect(sent.find((s) => s.event === 'stage-show')!.payload).toMatchObject({
+      status: 'in_progress',
+    });
+  });
+
+  it('defaults a status-less stage-show to submitted (client on the previous build)', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'answer',
+      content: 'correct',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    expect(result.current.stagedAnswer).toMatchObject({ status: 'submitted' });
+  });
+});
+
+describe('useClassSession — an unreachable learner fails loudly', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('resolves the pull to stageUnreachableUserId when nobody replies', async () => {
+    const hook = renderHook(() =>
+      useClassSession(SESSION, {
+        userId: INSTRUCTOR,
+        name: INSTRUCTOR,
+        avatarUrl: null,
+        isInstructor: true,
+      })
+    );
+    // The initial durable read is a resolved promise — flush it under fake timers.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const { result } = hook;
+
+    act(() => result.current.requestStage(STUDENT));
+    expect(result.current.stagePendingUserId).toBe(STUDENT);
+    expect(result.current.stageUnreachableUserId).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(result.current.stagePendingUserId).toBeNull();
+    expect(result.current.stageUnreachableUserId).toBe(STUDENT);
+  });
+
+  it('a reply that lands before the timeout clears the pending state instead', async () => {
+    const hook = renderHook(() =>
+      useClassSession(SESSION, {
+        userId: INSTRUCTOR,
+        name: INSTRUCTOR,
+        avatarUrl: null,
+        isInstructor: true,
+      })
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const { result } = hook;
+
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'empty',
+      content: '',
+      status: 'not_started',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(result.current.stagePendingUserId).toBeNull();
+    expect(result.current.stageUnreachableUserId).toBeNull();
   });
 });

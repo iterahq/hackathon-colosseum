@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { Circle, Pencil, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -13,14 +13,20 @@ interface LiveStageProps {
 
 /**
  * The shared "on stage" surface (ADR-3/4): an identity bar naming the author
- * (NOT anonymous — the whole class sees whose answer it is) plus the staged
- * answer. `code` shows a read-only Monaco + the SAME sandboxed live preview the
- * learner sees; other kinds show a design-system summary card. Rendered by both
- * the learner and instructor pages directly below the navbar.
+ * (NOT anonymous — the whole class sees whose work it is) plus the staged work.
+ * `code` shows a read-only Monaco + the SAME sandboxed live preview the learner
+ * sees; other kinds show a design-system summary card. Rendered by both the
+ * learner and instructor pages directly below the navbar.
+ *
+ * Since the professor can now pull WORK IN PROGRESS (ADR-4 revised), the identity
+ * bar carries an explicit "em andamento" badge: a classmate's half-written draft
+ * on the projector must never be read by the class as a finished answer.
  */
 export function LiveStage({ staged, onClear }: LiveStageProps) {
   const { t } = useI18n();
   const isCode = staged.kind === 'code';
+  const isEmpty = staged.kind === 'empty' || staged.status === 'not_started';
+  const isDraft = staged.status === 'in_progress';
 
   return (
     <div data-testid="live-stage">
@@ -33,9 +39,20 @@ export function LiveStage({ staged, onClear }: LiveStageProps) {
           <p className="text-[11px] uppercase tracking-wider font-mono text-clay leading-none">
             {t('live.stage.onStage')}
           </p>
-          <p className="text-sm font-medium text-foreground truncate mt-0.5">
-            {staged.author.name}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{staged.author.name}</p>
+            {/* clay = the human-info token (never the green CTA color), so the
+                badge reads as context rather than as a success state. */}
+            {(isDraft || isEmpty) && (
+              <span
+                data-testid="live-stage-status"
+                className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full border border-clay/50 bg-clay/15 text-[10px] font-medium uppercase tracking-wide text-clay"
+              >
+                {isEmpty ? <Circle className="w-2.5 h-2.5" /> : <Pencil className="w-2.5 h-2.5" />}
+                {isEmpty ? t('live.stage.status.notStarted') : t('live.stage.status.inProgress')}
+              </span>
+            )}
+          </div>
         </div>
         {onClear && (
           <button
@@ -50,7 +67,16 @@ export function LiveStage({ staged, onClear }: LiveStageProps) {
       </div>
 
       <div className="px-4 md:px-8 py-6">
-        {isCode ? (
+        {isEmpty ? (
+          // The learner is in the room but hasn't touched this activity. Say so
+          // plainly — the pull resolving to "nothing" is information, not a bug.
+          <div
+            className="mx-auto max-w-2xl rounded-3xl border border-dashed border-border bg-card p-6 text-center"
+            data-testid="live-stage-empty"
+          >
+            <p className="text-sm text-muted-foreground">{t('live.stage.empty')}</p>
+          </div>
+        ) : isCode ? (
           <div className="mx-auto max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
               <CodeEditor value={staged.content} language="typescript" readOnly />
