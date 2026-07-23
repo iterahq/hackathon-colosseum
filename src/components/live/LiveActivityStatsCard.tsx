@@ -45,7 +45,7 @@ export function LiveActivityStatsCard({
       ]
     : [
         { key: 'correct', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: correct, label: t('live.instructor.stats.correct') },
-        { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-clay" />, value: wrong, label: t('live.instructor.stats.wrong') },
+        { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-destructive" />, value: wrong, label: t('live.instructor.stats.wrong') },
         { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
       ];
 
@@ -73,7 +73,7 @@ export function LiveActivityStatsCard({
         ) : (
           <>
             <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(correct)}%` }} />
-            <div className="h-full bg-clay transition-[width] duration-300" style={{ width: `${pct(wrong)}%` }} />
+            <div className="h-full bg-destructive transition-[width] duration-300" style={{ width: `${pct(wrong)}%` }} />
           </>
         )}
       </div>
