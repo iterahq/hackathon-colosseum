@@ -8,7 +8,7 @@ const AUTOSAVE_DEBOUNCE_MS = 600;
 /**
  * Owns the code-snack's editable source, debounced autosave, and completion
  * wiring. The MVP has no grading — completion is the learner clicking Done. The
- * live preview (react-live inside a sandboxed iframe) is pure view; this hook
+ * live preview (sucrase transpile + a self-contained sandboxed iframe) is pure view; this hook
  * only feeds it the current `code`.
  */
 export function useCodeSnack(

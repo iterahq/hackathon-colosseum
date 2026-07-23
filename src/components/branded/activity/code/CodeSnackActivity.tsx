@@ -7,7 +7,7 @@ import { CodeSnackPane } from './CodeSnackPane';
  * `code` — a single-file, client-only React code snack. Validates the spec
  * against the shared Zod schema (a friendly card on an authoring mistake instead
  * of a crash), then hands off to the split-pane surface: Monaco on the left, a
- * live react-live preview (inside a sandboxed iframe) on the right. No grading in
+ * live preview (sucrase-transpiled, inside a sandboxed iframe) on the right. No grading in
  * the MVP — Done completes; source is autosaved (debounced) for a later pull.
  */
 export function CodeSnackActivity({

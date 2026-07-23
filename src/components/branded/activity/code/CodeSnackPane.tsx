@@ -10,7 +10,7 @@ import { CodeLivePreview } from './CodeLivePreview';
 
 /**
  * The split-pane snack surface: Monaco (seeded from `spec.starter`) + optional
- * help link on the LEFT, a live react-live preview on the RIGHT. Thin view over
+ * help link on the LEFT, a live sandboxed-iframe preview on the RIGHT. Thin view over
  * `useCodeSnack` (source + debounced autosave + completion).
  */
 export function CodeSnackPane({

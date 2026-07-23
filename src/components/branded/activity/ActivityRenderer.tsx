@@ -1,7 +1,7 @@
 /**
  * Activity renderer — dispatches an itera.activities row to the right view by
  * `kind`. Implemented now: document, diagram, quiz, code (a client-only
- * react-live snack in a sandboxed iframe). Canonical labels throughout.
+ * code snack in a sandboxed iframe). Canonical labels throughout.
  *
  * Presentation lives inside the LessonPlayer's FOCUSED, centered chrome (the
  * full-width progress bar + X + hearts live in LessonPlayer). The QUIZ is the

@@ -11,9 +11,9 @@ import { transpileSnack } from '@/utils/transpileSnack';
  * parent cannot portal React into its `contentDocument` (verified: access is
  * null). The iframe is therefore a SELF-CONTAINED runtime (see
  * `CODE_PREVIEW_IFRAME_HTML`): vendored React UMD + the Tailwind Play CDN render
- * the code INSIDE the sandbox. react-live's runtime transpiler (sucrase) turns
- * the single-file JSX into plain JS in the PARENT; the transpiled source crosses
- * the isolation boundary only via `postMessage`.
+ * the code INSIDE the sandbox. Transpilation is sucrase (a direct dependency),
+ * which turns the single-file JSX into plain JS in the PARENT; the transpiled
+ * source crosses the isolation boundary only via `postMessage`.
  */
 export function CodeLivePreview({ code }: { code: string }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
