@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import {
@@ -74,6 +74,7 @@ function activity(kind: ActivityKind): Activity {
 const useLessonContent = vi.fn();
 const useClassSession = vi.fn();
 const useMySessions = vi.fn();
+const useClassSessionById = vi.fn();
 
 vi.mock('@/hooks', () => ({
   useLessonContent: (id?: string) => useLessonContent(id),
@@ -83,6 +84,7 @@ vi.mock('@/hooks', () => ({
 vi.mock('@/hooks/useClassSession', () => ({ useClassSession: () => useClassSession() }));
 vi.mock('@/hooks/useLiveClass', () => ({
   useMySessions: () => useMySessions(),
+  useClassSessionById: () => useClassSessionById(),
   useClassCompleters: () => ({ data: [] }),
   useLiveClassEnabled: () => ({ data: true, isPending: false }),
   useEnabledTenantIds: () => ({ data: ['tenant-1'] }),
@@ -122,7 +124,10 @@ vi.mock('@/components/live/LiveActivityStage', () => ({
 
 // Import AFTER the mocks are registered.
 import LiveSessionPage from '@/pages/LiveSessionPage';
-import InstructorClassPage from '@/pages/live/InstructorClassPage';
+// The instructor activity column moved to the routed session view (plan
+// 20260723-itera-live-routed-session-and-index) — the index no longer renders
+// the live session inline.
+import InstructorSessionPage from '@/pages/live/InstructorSessionPage';
 
 function mockLive(kind: ActivityKind) {
   useLessonContent.mockReturnValue({
@@ -159,6 +164,19 @@ function mockLive(kind: ActivityKind) {
     isPending: false,
     refetch: vi.fn(),
   });
+  // The routed instructor session view loads the session by id (RLS-scoped).
+  useClassSessionById.mockReturnValue({
+    data: {
+      id: 'sess-1',
+      tenantId: 'tenant-1',
+      lessonId: LESSON_ID,
+      instructorId: 'user-1',
+      status: 'live',
+      startedAt: '2026-07-23T14:00:00.000Z',
+      createdAt: '2026-07-23T14:00:00.000Z',
+    },
+    isPending: false,
+  });
 }
 
 function wrap(node: React.ReactNode) {
@@ -180,7 +198,19 @@ function renderLearner() {
 }
 
 function renderInstructor() {
-  wrap(<InstructorClassPage />);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/live/instructor/sess-1']}>
+        <I18nProvider>
+          <Routes>
+            <Route path="/live/instructor" element={<div data-testid="index-route" />} />
+            <Route path="/live/instructor/:sessionId" element={<InstructorSessionPage />} />
+          </Routes>
+        </I18nProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
   return screen.getByTestId('instructor-main');
 }
 
@@ -188,6 +218,7 @@ beforeEach(() => {
   useLessonContent.mockReset();
   useClassSession.mockReset();
   useMySessions.mockReset();
+  useClassSessionById.mockReset();
 });
 
 /* ── Learner surface — where tomorrow's cohort actually sits ─────────────── */
@@ -228,7 +259,7 @@ describe('LiveSessionPage — focused column width by activity kind', () => {
 
 /* ── Instructor surface — the professor projects the same snack ──────────── */
 
-describe('InstructorClassPage — focused column width by activity kind', () => {
+describe('InstructorSessionPage — focused column width by activity kind', () => {
   it('widens the column for a code activity', () => {
     mockLive('code');
     const main = renderInstructor();

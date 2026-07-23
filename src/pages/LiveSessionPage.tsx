@@ -94,11 +94,12 @@ export default function LiveSessionPage() {
     [activities, currentActivityId]
   );
 
-  // Redirect instructor to the instructor control surface — never show them the
-  // student view. Handles "re-entry" after accidentally navigating here directly.
+  // Redirect instructor to the instructor control surface for THIS session —
+  // never show them the student view. Handles "re-entry" after accidentally
+  // navigating here directly (deep-links straight to the routed session view).
   useEffect(() => {
     if (session && identity.userId && session.instructorId === identity.userId) {
-      navigate('/live/instructor', { replace: true });
+      navigate(`/live/instructor/${session.id}`, { replace: true });
     }
   }, [session, identity.userId, navigate]);
 

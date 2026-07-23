@@ -40,6 +40,26 @@ function renderGuard() {
   );
 }
 
+// The same guard, role="instructor" — protects the two /live/instructor routes
+// (index + routed session) in App.tsx (plan 20260723-itera-live-routed-…).
+function renderInstructorGuard() {
+  return render(
+    <MemoryRouter initialEntries={['/live/instructor']}>
+      <Routes>
+        <Route
+          path="/live/instructor"
+          element={
+            <RequireRole role="instructor">
+              <div data-testid="instructor-content">INSTRUCTOR OK</div>
+            </RequireRole>
+          }
+        />
+        <Route path="/" element={<div data-testid="home">HOME</div>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
 describe('RequireRole (V4/V5 route guard)', () => {
   beforeEach(() => {
     authState.session = { user: { id: 'u1' } };
@@ -86,6 +106,19 @@ describe('RequireRole (V4/V5 route guard)', () => {
     membershipState.data = [{ tenantId: 'TA', role: 'tenant_admin' }];
     renderGuard();
     expect(screen.queryByTestId('admin-content')).not.toBeInTheDocument();
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+  });
+
+  it('role="instructor" renders for a staff instructor (guards /live/instructor)', () => {
+    membershipState.data = [{ tenantId: 'T1', role: 'instructor' }];
+    renderInstructorGuard();
+    expect(screen.getByTestId('instructor-content')).toBeInTheDocument();
+  });
+
+  it('role="instructor" redirects a plain learner away from /live/instructor', () => {
+    membershipState.data = [{ tenantId: 'T1', role: 'learner' }];
+    renderInstructorGuard();
+    expect(screen.queryByTestId('instructor-content')).not.toBeInTheDocument();
     expect(screen.getByTestId('home')).toBeInTheDocument();
   });
 });

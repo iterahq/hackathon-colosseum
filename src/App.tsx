@@ -11,6 +11,7 @@ import LessonPlayer from "./pages/LessonPlayer";
 import LessonPage from "./pages/LessonPage";
 import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
+import InstructorSessionPage from "./pages/live/InstructorSessionPage";
 import InstructorReportPage from "./pages/live/InstructorReportPage";
 import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
@@ -180,13 +181,29 @@ const App = () => (
                   }
                 />
                 {/* Post-class report — instructor-gated, reads the durable
-                    class_answers/class_attendance rows (RLS staff-scoped). */}
+                    class_answers/class_attendance rows (RLS staff-scoped).
+                    Declared BEFORE the dynamic `/live/instructor/:sessionId` so
+                    the static `report` segment always wins for report paths. */}
                 <Route
                   path="/live/instructor/report/:sessionId"
                   element={
                     <RequireAuth>
                       <RequireRole role="instructor">
                         <InstructorReportPage />
+                      </RequireRole>
+                    </RequireAuth>
+                  }
+                />
+                {/* Instructor view of ONE session — deep-linkable, reloadable
+                    (plan 20260723-itera-live-routed-session-and-index). Loads the
+                    session by :sessionId; an ended / not-found id redirects to the
+                    index with a notice (never a 404). */}
+                <Route
+                  path="/live/instructor/:sessionId"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="instructor">
+                        <InstructorSessionPage />
                       </RequireRole>
                     </RequireAuth>
                   }
