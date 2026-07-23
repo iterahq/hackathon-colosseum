@@ -270,6 +270,11 @@ export default function LiveSessionPage() {
             <LiveTimer prominent deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
           ) : undefined
         }
+        handSlot={
+          !loading && session && !ended && current ? (
+            <LiveHandButton raised={handRaised} onToggle={toggleHand} />
+          ) : undefined
+        }
         onClose={() => navigate('/')}
       />
 
@@ -431,10 +436,6 @@ export default function LiveSessionPage() {
       </div>
 
       {!loading && session && <LiveSoundDock />}
-
-      {!loading && session && !ended && current && (
-        <LiveHandButton raised={handRaised} onToggle={toggleHand} />
-      )}
 
       {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
           Live/force-advance mode: green/red + the "wait for the next one" hint

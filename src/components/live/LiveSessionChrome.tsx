@@ -12,6 +12,8 @@ interface LiveSessionChromeProps {
   activityCount?: number;
   /** A prominent running timer, rendered beside the LIVE pill (top-center). */
   timerSlot?: ReactNode;
+  /** Learner hand-raise toggle, pinned beside the timer (top-center). */
+  handSlot?: ReactNode;
   onClose: () => void;
 }
 
@@ -30,6 +32,7 @@ export function LiveSessionChrome({
   activityIndex,
   activityCount,
   timerSlot,
+  handSlot,
   onClose,
 }: LiveSessionChromeProps) {
   const { t } = useI18n();
@@ -101,6 +104,7 @@ export function LiveSessionChrome({
           </span>
         )}
         {!ended && timerSlot}
+        {!ended && handSlot}
       </div>
     </header>
   );
