@@ -6,11 +6,17 @@ import { useLiveMusicEnabled } from '@/hooks/useLiveMusicEnabled';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 
+// Discrete volume presets — tappable percentage chips replace the drag slider,
+// which was fiddly on touch (no hover to reveal it, hard to land a value).
+const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1] as const;
+
 /**
- * Floating bottom-left sound dock for the live class: a mute toggle, a volume
- * slider that opens UPWARD on hover/focus, and a background-music switch. Also
- * HOSTS the gamified background-music loop, so mounting the dock on a live
- * surface starts (and gates) the soundtrack. Shared by learner + instructor.
+ * Sound dock for the live class, pinned top-right of the immersive chrome (was a
+ * bottom-left floater that fought the content/footer on phones): a mute toggle,
+ * a panel that opens DOWNWARD with tappable volume percentages, and a
+ * background-music switch. Also HOSTS the gamified background-music loop, so
+ * mounting the dock on a live surface starts (and gates) the soundtrack. Shared
+ * by learner + instructor.
  */
 export function LiveSoundDock() {
   const { t } = useI18n();
@@ -22,6 +28,7 @@ export function LiveSoundDock() {
   useBackgroundMusic({ enabled: musicOn, muted, volume });
 
   const label = muted ? t('live.sound.off') : t('live.sound.on');
+  const volumePct = Math.round(volume * 100);
 
   const handleToggle = () => {
     // Confirm-chime when turning sound back ON (muting stays silent — played
@@ -43,23 +50,57 @@ export function LiveSoundDock() {
   };
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 group" data-testid="live-sound-dock">
-      <div className="absolute left-0 bottom-full w-44 pb-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+    <div className="fixed top-2.5 right-3 md:right-4 z-40 group" data-testid="live-sound-dock">
+      <button
+        type="button"
+        onClick={handleToggle}
+        data-testid="live-sound-toggle"
+        data-muted={muted ? 'true' : 'false'}
+        aria-pressed={muted}
+        aria-label={label}
+        title={label}
+        className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
+      >
+        {muted ? (
+          <VolumeX className="w-4 h-4" />
+        ) : volume < 0.5 ? (
+          <Volume1 className="w-4 h-4 text-menta" />
+        ) : (
+          <Volume2 className="w-4 h-4 text-menta" />
+        )}
+      </button>
+
+      <div className="absolute right-0 top-full w-48 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-3 shadow-lg">
-          <div className="flex items-center gap-2">
-            <VolumeX className="w-3.5 h-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => handleVolume(parseFloat(e.target.value))}
-              data-testid="live-volume-slider"
-              aria-label={t('live.sound.volume')}
-              className="flex-1 accent-menta cursor-pointer"
-            />
-            <Volume2 className="w-3.5 h-3.5 text-menta shrink-0" aria-hidden="true" />
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              {t('live.sound.volume')}
+            </span>
+            <span className="font-mono text-[11px] tabular-nums text-menta" data-testid="live-volume-value">
+              {volumePct}%
+            </span>
+          </div>
+          <div className="grid grid-cols-5 gap-1" role="group" aria-label={t('live.sound.volume')}>
+            {VOLUME_STEPS.map((step) => {
+              const pct = Math.round(step * 100);
+              const active = volumePct === pct;
+              return (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => handleVolume(step)}
+                  data-testid={`live-volume-${pct}`}
+                  aria-pressed={active}
+                  className={`rounded-lg border py-1.5 text-[11px] font-medium tabular-nums transition-colors ${
+                    active
+                      ? 'border-menta/50 bg-menta/10 text-menta'
+                      : 'border-border text-muted-foreground hover:text-foreground hover:border-menta/40'
+                  }`}
+                >
+                  {pct}%
+                </button>
+              );
+            })}
           </div>
           <button
             type="button"
@@ -78,25 +119,6 @@ export function LiveSoundDock() {
           </button>
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={handleToggle}
-        data-testid="live-sound-toggle"
-        data-muted={muted ? 'true' : 'false'}
-        aria-pressed={muted}
-        aria-label={label}
-        title={label}
-        className="inline-flex items-center justify-center w-11 h-11 rounded-full border border-border bg-card text-muted-foreground shadow-lg hover:border-menta/50 hover:text-foreground transition-colors"
-      >
-        {muted ? (
-          <VolumeX className="w-4 h-4" />
-        ) : volume < 0.5 ? (
-          <Volume1 className="w-4 h-4 text-menta" />
-        ) : (
-          <Volume2 className="w-4 h-4 text-menta" />
-        )}
-      </button>
     </div>
   );
 }

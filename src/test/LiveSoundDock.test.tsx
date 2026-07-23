@@ -77,11 +77,11 @@ describe('LiveSoundDock', () => {
     expect(h.play).not.toHaveBeenCalled();
   });
 
-  it('exposes a volume slider that updates the shared volume', () => {
+  it('exposes tappable volume percentages that update the shared volume', () => {
     h.muted = false;
     renderDock();
-    fireEvent.change(screen.getByTestId('live-volume-slider'), { target: { value: '0.3' } });
-    expect(h.setVolume).toHaveBeenCalledWith(0.3);
+    fireEvent.click(screen.getByTestId('live-volume-25'));
+    expect(h.setVolume).toHaveBeenCalledWith(0.25);
   });
 
   it('toggles background music and previews a chime when enabling it', () => {
