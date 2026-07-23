@@ -301,7 +301,7 @@ export default function LiveSessionPage() {
           ) : undefined
         }
         handSlot={
-          !loading && session && !ended && current ? (
+          !loading && session && !ended ? (
             <LiveHandButton raised={handRaised} onToggle={toggleHand} />
           ) : undefined
         }
