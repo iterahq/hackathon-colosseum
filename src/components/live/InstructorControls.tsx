@@ -1,6 +1,7 @@
 import { Play, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
+import { AddTimeControl } from '@/components/live/AddTimeControl';
 
 interface InstructorControlsProps {
   /** Reception (pointer not set yet) — only "Begin" is shown. */
@@ -22,6 +23,12 @@ interface InstructorControlsProps {
   onNext: () => void;
   onStartTimer: (seconds: number) => void;
   onStopTimer: () => void;
+  /**
+   * Add `seconds` to the shared countdown. When running it extends the time
+   * left; when stopped it grows the next start's duration. Same channel as the
+   * timer itself — the parent wires it to a re-broadcast.
+   */
+  onAddTime: (seconds: number) => void;
   onReveal: () => void;
 }
 
@@ -46,6 +53,7 @@ export function InstructorControls({
   onNext,
   onStartTimer,
   onStopTimer,
+  onAddTime,
   onReveal,
 }: InstructorControlsProps) {
   const { t } = useI18n();
@@ -107,12 +115,19 @@ export function InstructorControls({
       </div>
 
       {timerSeconds > 0 && (
-        <LiveTimerControls
-          running={timerRunning}
-          seconds={timerSeconds}
-          onStart={onStartTimer}
-          onStop={onStopTimer}
-        />
+        <div className="flex items-center gap-2">
+          {/* The start/stop button keeps the row's width; the add-time popover
+              trigger is the icon-only affordance beside it. */}
+          <div className="flex-1 min-w-0">
+            <LiveTimerControls
+              running={timerRunning}
+              seconds={timerSeconds}
+              onStart={onStartTimer}
+              onStop={onStopTimer}
+            />
+          </div>
+          <AddTimeControl running={timerRunning} onAddTime={onAddTime} />
+        </div>
       )}
 
       {canReveal && (

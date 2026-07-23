@@ -19,6 +19,7 @@ const base = {
   onNext: vi.fn(),
   onStartTimer: vi.fn(),
   onStopTimer: vi.fn(),
+  onAddTime: vi.fn(),
   onReveal: vi.fn(),
 };
 
@@ -132,6 +133,60 @@ describe('InstructorControls', () => {
     controls({ timerSeconds: 300, onStartTimer });
     fireEvent.click(screen.getByTestId('live-timer-start'));
     expect(onStartTimer).toHaveBeenCalledWith(300);
+  });
+
+  // ── Add-time popover (professor "+tempo") ──────────────────────────────
+  it('shows the add-time trigger only when the activity has a timer', () => {
+    const { rerender } = controls({ timerSeconds: 0 });
+    expect(screen.queryByTestId('instructor-add-time')).toBeNull();
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} timerSeconds={60} />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('instructor-add-time')).toBeTruthy();
+  });
+
+  it('the add-time trigger is icon-only but has an accessible label', () => {
+    controls({ timerSeconds: 60 });
+    const btn = screen.getByTestId('instructor-add-time');
+    // No visible text — labelled for a11y via aria-label + title.
+    expect(btn.textContent).toBe('');
+    expect(btn.getAttribute('aria-label')).toBeTruthy();
+    expect(btn.getAttribute('title')).toBeTruthy();
+  });
+
+  it('a quick increment adds those exact seconds (does not SET)', () => {
+    const onAddTime = vi.fn();
+    controls({ timerSeconds: 60, onAddTime });
+    fireEvent.click(screen.getByTestId('instructor-add-time')); // open popover
+    fireEvent.click(screen.getByTestId('instructor-add-time-quick-30'));
+    expect(onAddTime).toHaveBeenCalledWith(30);
+    fireEvent.click(screen.getByTestId('instructor-add-time-quick-120'));
+    expect(onAddTime).toHaveBeenCalledWith(120);
+  });
+
+  it('a free value in seconds adds that amount and clears the field', () => {
+    const onAddTime = vi.fn();
+    controls({ timerSeconds: 60, onAddTime });
+    fireEvent.click(screen.getByTestId('instructor-add-time'));
+    const input = screen.getByTestId('instructor-add-time-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '45' } });
+    fireEvent.click(screen.getByTestId('instructor-add-time-submit'));
+    expect(onAddTime).toHaveBeenCalledWith(45);
+    expect(input.value).toBe('');
+  });
+
+  it('the free-value add is disabled for empty / non-positive input', () => {
+    const onAddTime = vi.fn();
+    controls({ timerSeconds: 60, onAddTime });
+    fireEvent.click(screen.getByTestId('instructor-add-time'));
+    expect(screen.getByTestId('instructor-add-time-submit')).toBeDisabled();
+    const input = screen.getByTestId('instructor-add-time-input');
+    fireEvent.change(input, { target: { value: '0' } });
+    expect(screen.getByTestId('instructor-add-time-submit')).toBeDisabled();
+    fireEvent.change(input, { target: { value: '10' } });
+    expect(screen.getByTestId('instructor-add-time-submit')).not.toBeDisabled();
   });
 
   it('has no reset button — resets were removed from the live flow', () => {

@@ -46,6 +46,7 @@ import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
 import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
+import { remainingSeconds, extendedTimerSeconds } from '@/utils/addLiveTime';
 import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
@@ -557,6 +558,34 @@ function ClassControl({
   useEffect(() => setExpiredFor(null), [currentActivityId]);
   const revealCurrent = Boolean(current && (stoppedFor === current.id || expiredFor === current.id));
 
+  // Seconds the professor added while the clock was STOPPED — folded into the
+  // next start's duration (so the start button label already shows the total).
+  // Reset per activity, and consumed the moment the timer actually launches.
+  const [timerBonus, setTimerBonus] = useState(0);
+  useEffect(() => setTimerBonus(0), [currentActivityId]);
+  const timerActive = Boolean(timer && current && timer.activityId === current.id);
+  const baseTimerSeconds = liveTimerSeconds(current?.kind, current?.spec);
+
+  // The professor's "+tempo" popover ADDS seconds — never sets. Running →
+  // extend the live remaining and re-broadcast through the SAME timer channel
+  // (broadcastTimer) so the whole class sees the countdown grow. Stopped →
+  // grow the next start's duration.
+  const handleAddTime = useCallback(
+    (addSeconds: number) => {
+      if (!current || addSeconds <= 0) return;
+      if (timer && timer.activityId === current.id) {
+        // Running: extend the LIVE remaining and re-broadcast a fresh deadline
+        // through the SAME channel the start uses — the class sees it grow.
+        const left = remainingSeconds(timer.deadline, Date.now());
+        broadcastTimer(current.id, extendedTimerSeconds(left, addSeconds));
+      } else {
+        // Stopped: fold into the next start's duration (start button reflects it).
+        setTimerBonus((b) => b + addSeconds);
+      }
+    },
+    [current, timer, broadcastTimer]
+  );
+
   const [busy, setBusy] = useState(false);
 
   async function goTo(activityId: string) {
@@ -752,7 +781,7 @@ function ClassControl({
                 busy={busy}
                 canPrev={canPrev}
                 canNext={canNext}
-                timerRunning={Boolean(timer && current && timer.activityId === current.id)}
+                timerRunning={timerActive}
                 revealed={revealCurrent}
                 // NOT `isAnswerableLiveKind`: a `code` round is answerable (it
                 // gets a 5-min countdown) but has NO answer to put on screen, so
@@ -760,12 +789,20 @@ function ClassControl({
                 // full control of the clock through the timer's own "Parar"
                 // button below. See `hasRevealableAnswer`.
                 canReveal={hasRevealableAnswer(current?.kind)}
-                timerSeconds={liveTimerSeconds(current?.kind, current?.spec)}
+                // Base per-activity duration PLUS any seconds the professor
+                // pre-added while stopped — the start button label reflects the
+                // real launch duration (the "obvious in UI" part).
+                timerSeconds={baseTimerSeconds > 0 ? extendedTimerSeconds(baseTimerSeconds, timerBonus) : 0}
                 onBegin={() => activities[0] && goTo(activities[0].id)}
                 onPrev={() => canPrev && goTo(activities[idx - 1].id)}
                 onNext={() => canNext && goTo(activities[idx + 1].id)}
-                onStartTimer={(s) => current && broadcastTimer(current.id, s)}
+                onStartTimer={(s) => {
+                  if (!current) return;
+                  broadcastTimer(current.id, s);
+                  setTimerBonus(0); // consumed by this launch
+                }}
                 onStopTimer={() => current && clearTimer(current.id)}
+                onAddTime={handleAddTime}
                 onReveal={() => current && clearTimer(current.id)}
               />
               {current && (
