@@ -44,6 +44,7 @@ import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
 import { isAnswerableLiveKind } from '@/utils/isAnswerableLiveKind';
+import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
@@ -61,9 +62,9 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 import type { ClassPresenceMember, StagePickerLearner } from '@/types/liveClass';
 
-// Interim default until the timer duration is chosen at class creation and
-// stored on the session (backlog: timer_seconds + creation selector + gating).
-const DEFAULT_TIMER_SECONDS = 60;
+// The countdown duration is resolved PER ACTIVITY by `liveTimerSeconds`:
+// per-kind default (code = 5 min, everything else 1 min) with an optional
+// `spec.timer_seconds` override. Backlog: a selector at class creation.
 
 export default function InstructorClassPage() {
   const { t } = useI18n();
@@ -750,7 +751,7 @@ function ClassControl({
                 timerRunning={Boolean(timer && current && timer.activityId === current.id)}
                 revealed={revealCurrent}
                 canReveal={isAnswerableLiveKind(current?.kind)}
-                timerSeconds={isAnswerableLiveKind(current?.kind) ? DEFAULT_TIMER_SECONDS : 0}
+                timerSeconds={liveTimerSeconds(current?.kind, current?.spec)}
                 onBegin={() => activities[0] && goTo(activities[0].id)}
                 onPrev={() => canPrev && goTo(activities[idx - 1].id)}
                 onNext={() => canNext && goTo(activities[idx + 1].id)}

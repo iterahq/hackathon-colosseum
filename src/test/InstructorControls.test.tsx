@@ -91,6 +91,30 @@ describe('InstructorControls', () => {
     expect(screen.getByTestId('instructor-reveal')).toBeDisabled();
   });
 
+  it('hides the timer controls when the activity has no timer (0s)', () => {
+    controls({ timerSeconds: 0 });
+    expect(screen.queryByTestId('live-timer-controls')).toBeNull();
+  });
+
+  it('labels the start button with mm:ss and does not break past a minute', () => {
+    // Locale-agnostic: PT 'Iniciar tempo ({time})' / EN 'Start timer ({time})'.
+    const { rerender } = controls({ timerSeconds: 60 });
+    expect(screen.getByTestId('live-timer-start').textContent).toContain('1:00');
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} timerSeconds={300} />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('live-timer-start').textContent).toContain('5:00');
+  });
+
+  it('starts the timer with the activity duration it was given (5 min for code)', () => {
+    const onStartTimer = vi.fn();
+    controls({ timerSeconds: 300, onStartTimer });
+    fireEvent.click(screen.getByTestId('live-timer-start'));
+    expect(onStartTimer).toHaveBeenCalledWith(300);
+  });
+
   it('has no reset button — resets were removed from the live flow', () => {
     controls({ revealed: true });
     expect(screen.queryByTestId('instructor-reset')).toBeNull();
