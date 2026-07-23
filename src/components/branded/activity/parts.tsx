@@ -36,12 +36,14 @@ export function ActivityShell({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full rounded-3xl border border-border bg-card p-6 md:p-8"
+      className={`w-full rounded-3xl border border-border bg-card px-6 md:px-8 ${
+        kind === 'sandbox_scenario' ? 'py-4 md:py-5' : 'py-6 md:py-8'
+      }`}
       data-testid="activity-shell"
       data-activity-kind={kind}
     >
       <KindBadge icon={icon} label={label} />
-      <div className="mt-5">{children}</div>
+      <div className={kind === 'sandbox_scenario' ? 'mt-3' : 'mt-5'}>{children}</div>
     </motion.div>
   );
 }

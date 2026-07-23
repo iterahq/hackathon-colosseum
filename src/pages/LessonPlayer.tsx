@@ -73,6 +73,10 @@ export default function LessonPlayer() {
   }, [lessonId]);
 
   const current = activities[index];
+  // Sandbox activities own a fixed-height window and read best flush to the
+  // chrome — the site's default vertical breathing room just pushes the window
+  // into a scroll. Trim the top/bottom padding for the sandbox kind.
+  const isSandbox = current?.kind === 'sandbox_scenario';
 
   // Clear a stale footer whenever the activity on screen changes.
   useEffect(() => {
@@ -189,7 +193,11 @@ export default function LessonPlayer() {
 
       {/* ── Centered focused column ── */}
       {/* pb leaves room so the fixed FeedbackFooter never clips the SubmitButton. */}
-      <main className="flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 pt-10 md:pt-16 pb-40">
+      <main
+        className={`flex-1 w-full mx-auto max-w-2xl px-4 md:px-6 ${
+          isSandbox ? 'pt-4' : 'pt-10 md:pt-16'
+        } ${pending ? 'pb-40' : isSandbox ? 'pb-4' : 'pb-40'}`}
+      >
         {isPending ? (
           <div className="space-y-4">
             <div className="h-5 w-1/3 rounded ds-shimmer" />
@@ -288,7 +296,7 @@ export default function LessonPlayer() {
               )}
 
               {current && (
-                <div className="mt-7">
+                <div className={isSandbox ? 'mt-4' : 'mt-7'}>
                   <ActivityRenderer
                     key={current.id}
                     activity={{ ...current, status: doneIds.has(current.id) ? 'done' : current.status }}
