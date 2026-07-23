@@ -36,6 +36,7 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { recordClassAttendance, recordClassAnswer } from '@/services/classReport.service';
+import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
@@ -307,7 +308,14 @@ export default function LiveSessionPage() {
             onSandbox ? 'overflow-y-auto pt-6 pb-6' : 'lg:overflow-y-auto pt-14 md:pt-20'
           } ${footerResult ? 'pb-40' : onSandbox ? '' : 'pb-8'}`}
         >
-          <div className={`mx-auto ${current?.kind === 'sandbox_scenario' ? 'max-w-4xl' : 'max-w-2xl'}`}>
+          {/* Focused column — width follows the ACTIVITY KIND via the SHARED
+              rule, so a `code` snack gets the wide column in the LIVE class too
+              (it used to widen only in the solo player). `sandbox_scenario`
+              keeps its roomier live-only cap through the override map. */}
+          <div
+            data-testid="live-main"
+            className={`w-full mx-auto ${columnMaxWidthClass(current?.kind, LIVE_COLUMN_OVERRIDES)}`}
+          >
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
