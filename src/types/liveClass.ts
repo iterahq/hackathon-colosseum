@@ -188,17 +188,6 @@ export interface LearnerGateInput {
   expired: boolean;
   /** The learner already answered THIS activity. */
   answered: boolean;
-  /**
-   * This activity kind HAS a correct answer that gets put on screen when the
-   * countdown ends (`hasRevealableAnswer`). Only then does the expiry LOCK make
-   * sense — the lock exists to stop anyone answering after the answer is
-   * visible. On a kind with nothing to reveal (`code`) it would just freeze the
-   * student mid-exercise, so pass `false` there.
-   *
-   * Optional and defaults to `true`, keeping every pre-existing call site (the
-   * whole choice/quiz/match/order/sandbox family) byte-for-byte unchanged.
-   */
-  revealable?: boolean;
 }
 
 export interface LearnerGate {

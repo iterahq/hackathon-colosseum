@@ -4,25 +4,28 @@
  *
  *   1. `isAnswerableLiveKind(kind)` — "does the learner PRODUCE something here?"
  *      Drives the shared countdown (`liveTimerSeconds`): a content kind
- *      (concept/video/document/diagram) gets no timer at all.
+ *      (concept/video/document/diagram) gets no timer at all. Also the set that
+ *      the expiry LOCK applies to — when the clock runs out, EVERY answerable
+ *      kind goes read-only for whoever hasn't answered (`learnerActivityGate`,
+ *      "pens down", Tainan 2026-07-23), `code` included.
  *
  *   2. `hasRevealableAnswer(kind)` — "is there a CORRECT ANSWER we can put on
- *      screen?" Drives the instructor's "Revelar resposta" control and the
- *      learner gate's read-only LOCK (`learnerActivityGate`).
+ *      screen?" Drives ONLY the instructor's "Revelar resposta" control. It does
+ *      NOT gate the learner lock — the lock is universal over answerable kinds.
  *
  * They differ on exactly one kind today: `code`.
- *   - `code` IS answerable → it gets a countdown (5 min, see `liveTimerSeconds`).
+ *   - `code` IS answerable → it gets a countdown (5 min, see `liveTimerSeconds`)
+ *     AND it locks on expiry like everything else.
  *   - `code` has NO revealable answer → the `code` spec carries no solution
  *     field, and `ActivityRenderer` does not even pass `reveal` down to
- *     `CodeSnackActivity`. There is literally nothing to show.
+ *     `CodeSnackActivity`. There is literally nothing to show → no Reveal button.
  *
  * WHY THIS SPLIT EXISTS (the bug that created it): while ONE predicate answered
  * both questions, "Revelar resposta" appeared on a code exercise. Clicking it
- * revealed nothing and merely stopped the timer — which the learner gate turned
- * into a read-only LOCK. Net effect: the whole class frozen mid-exercise with no
- * answer on screen. The lock only earns its keep when a correct answer IS on
- * screen (otherwise copying it would be free); with nothing revealed, locking is
- * pure damage.
+ * revealed nothing and merely stopped the timer. The two questions are genuinely
+ * distinct, so keep them apart — BUT note the lock is NOT one of the things the
+ * reveal predicate governs (an earlier build wired `hasRevealableAnswer` into the
+ * lock so `code` never locked; that contradicted "pens down" and was reverted).
  *
  * If you add a new kind, ask BOTH questions separately before editing the sets.
  */
@@ -64,9 +67,9 @@ export function isAnswerableLiveKind(kind: string | null | undefined): boolean {
 }
 
 /**
- * Is there a correct answer we can put on screen for this kind? Use for the
- * instructor's Reveal control and for any read-only LOCK justified by "the
- * answer is now visible".
+ * Is there a correct answer we can put on screen for this kind? Use ONLY for the
+ * instructor's Reveal control (button visibility). Do NOT use it to gate the
+ * learner lock — the expiry lock is universal over `isAnswerableLiveKind`.
  */
 export function hasRevealableAnswer(kind: string | null | undefined): boolean {
   return !!kind && REVEALABLE_ANSWER_KINDS.has(kind);

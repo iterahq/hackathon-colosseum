@@ -114,10 +114,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.timer.start': 'Iniciar tempo ({time})',
     'live.timer.done': 'Tempo esgotado',
     'live.timer.stop': 'Parar',
+    // "Pens down" — mesmo aviso pra todo kind respondível quando o tempo acaba,
+    // `code` incluído. Não existe mais um "pode continuar": se o clock zera, trava.
     'live.timer.lockedHint': 'Tempo esgotado. Aguarde o professor avançar.',
-    // Kinds with nothing to reveal (o snack de código): o tempo acaba, mas o
-    // aluno NÃO é travado — ele continua editando até o professor avançar.
-    'live.timer.keepGoingHint': 'Tempo esgotado. Pode continuar — o professor avança a turma.',
     'live.elapsed.you': 'você levou {time}',
     'live.sound.on': 'Som ligado',
     'live.sound.off': 'Som desligado',
@@ -622,7 +621,6 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.timer.done': "Time's up",
     'live.timer.stop': 'Stop',
     'live.timer.lockedHint': "Time's up. Wait for the instructor to advance.",
-    'live.timer.keepGoingHint': "Time's up. You can keep going — the instructor moves the class along.",
     'live.elapsed.you': 'you took {time}',
     'live.sound.on': 'Sound on',
     'live.sound.off': 'Sound off',

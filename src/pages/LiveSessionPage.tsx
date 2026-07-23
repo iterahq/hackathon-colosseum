@@ -40,7 +40,6 @@ import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColu
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
-import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
@@ -181,9 +180,9 @@ export default function LiveSessionPage() {
     setTimeUpFor(currentActivityId);
   }, [onTimeUp, currentActivityId, answered]);
 
-  // Professor stopped the timer → end the round for everyone. On a kind WITH a
-  // revealable answer that means lock + reveal; on one without (`code`) it only
-  // ends the countdown — the gate below refuses to lock what it cannot reveal.
+  // Professor stopped the timer → end the round for everyone. "Pens down": the
+  // gate below locks every answerable kind on expiry/stop, `code` INCLUDED
+  // (Tainan 2026-07-23 "se acabar o clock deve disable tudo mesmo").
   useEffect(() => {
     if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
   }, [stoppedFor, current]);
@@ -191,18 +190,16 @@ export default function LiveSessionPage() {
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
   const expired = timeUpFor !== null && timeUpFor === current?.id;
   const hasAnswered = answered?.id === current?.id;
-  // Whether time running out (or the professor stopping the clock) may take the
-  // activity away from the learner. It may ONLY do so when a correct answer goes
-  // up on screen — that is the entire reason the lock exists. A `code` round has
-  // no answer to show (no solution in the spec, no `reveal` prop reaches
-  // `CodeSnackActivity`), so locking it would just freeze the class mid-exercise
-  // with nothing gained. See `hasRevealableAnswer`.
-  const revealable = hasRevealableAnswer(current?.kind);
+  // The clock running out (or the professor stopping it) takes the activity away
+  // from any learner who hasn't answered — UNIVERSALLY, every answerable kind
+  // including `code`. Whether a correct answer can be shown on screen is a
+  // SEPARATE concern (`hasRevealableAnswer` gates only the instructor's Reveal
+  // button, e.g. `code` has nothing to reveal) and deliberately does NOT gate the
+  // lock. See `learnerActivityGate`.
   const gate = learnerActivityGate({
     timerRunning,
     expired,
     answered: hasAnswered,
-    revealable,
   });
   const { started, locked } = gate;
 
@@ -429,21 +426,11 @@ export default function LiveSessionPage() {
                 }
                 footer={
                   <>
+                    {/* "Pens down" when the clock runs out — same locked hint for
+                        every answerable kind, `code` included. */}
                     {locked && (
                       <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
                         {t('live.timer.lockedHint')}
-                      </p>
-                    )}
-                    {/* Time is up but there was nothing to reveal (`code`), so the
-                        activity stays editable. Say so — a countdown at 00:00 over
-                        a still-usable editor is otherwise just confusing. */}
-                    {!locked && !revealable && expired && !answeredHere && (
-                      <p
-                        className="mt-5 text-center text-sm text-muted-foreground"
-                        data-testid="live-time-up-keep-going"
-                        role="status"
-                      >
-                        {t('live.timer.keepGoingHint')}
                       </p>
                     )}
                     {/* For GRADED (MCQ) kinds the answered hint moves into the
