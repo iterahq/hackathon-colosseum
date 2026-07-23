@@ -184,10 +184,21 @@ export interface ClassReport {
 export interface LearnerGateInput {
   /** A countdown is currently running for THIS activity. */
   timerRunning: boolean;
-  /** The countdown for THIS activity has run out (or the professor revealed it). */
+  /** The countdown for THIS activity has run out (or the professor stopped it). */
   expired: boolean;
   /** The learner already answered THIS activity. */
   answered: boolean;
+  /**
+   * This activity kind HAS a correct answer that gets put on screen when the
+   * countdown ends (`hasRevealableAnswer`). Only then does the expiry LOCK make
+   * sense — the lock exists to stop anyone answering after the answer is
+   * visible. On a kind with nothing to reveal (`code`) it would just freeze the
+   * student mid-exercise, so pass `false` there.
+   *
+   * Optional and defaults to `true`, keeping every pre-existing call site (the
+   * whole choice/quiz/match/order/sandbox family) byte-for-byte unchanged.
+   */
+  revealable?: boolean;
 }
 
 export interface LearnerGate {

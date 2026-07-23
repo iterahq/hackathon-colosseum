@@ -13,14 +13,25 @@ import type { LearnerGate, LearnerGateInput } from '@/types/liveClass';
  *   - EXPIRY LOCKS, NEVER COMPLETES: when a countdown the instructor DID start
  *     runs out before the learner answered, the activity locks (read-only) but
  *     is NEVER auto-completed or advanced — `canComplete` stays false.
+ *   - THE LOCK NEEDS A REVEALED ANSWER TO JUSTIFY IT (round 3): the lock exists
+ *     so nobody can answer AFTER the correct answer went up on screen. On a kind
+ *     with nothing to reveal (`code` — no solution in the spec, no `reveal` prop
+ *     wired to `CodeSnackActivity`) the lock protects nothing and just freezes a
+ *     student mid-exercise. So `revealable: false` means expiry still marks the
+ *     round as `started`, still stops the countdown — but never takes the
+ *     keyboard away. See `hasRevealableAnswer` in `@/utils/isAnswerableLiveKind`.
  */
 export function learnerActivityGate({
   timerRunning,
   expired,
   answered,
+  // Defaults to `true` so every existing caller/behaviour (the whole
+  // choice/quiz/match/order/sandbox family) is bit-for-bit unchanged; only a
+  // caller that explicitly says "nothing to reveal here" opts out of the lock.
+  revealable = true,
 }: LearnerGateInput): LearnerGate {
   const started = timerRunning || expired;
-  const locked = expired && !answered;
+  const locked = expired && !answered && revealable;
   const readOnly = locked || answered;
   const canComplete = !locked && !answered;
   return { started, locked, readOnly, canComplete };

@@ -44,7 +44,7 @@ import { formatScheduledAt } from '@/utils/formatScheduledAt';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
-import { isAnswerableLiveKind } from '@/utils/isAnswerableLiveKind';
+import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
 import { LivePodium } from '@/components/live/LivePodium';
@@ -754,7 +754,12 @@ function ClassControl({
                 canNext={canNext}
                 timerRunning={Boolean(timer && current && timer.activityId === current.id)}
                 revealed={revealCurrent}
-                canReveal={isAnswerableLiveKind(current?.kind)}
+                // NOT `isAnswerableLiveKind`: a `code` round is answerable (it
+                // gets a 5-min countdown) but has NO answer to put on screen, so
+                // "Revelar resposta" must not appear there. The professor keeps
+                // full control of the clock through the timer's own "Parar"
+                // button below. See `hasRevealableAnswer`.
+                canReveal={hasRevealableAnswer(current?.kind)}
                 timerSeconds={liveTimerSeconds(current?.kind, current?.spec)}
                 onBegin={() => activities[0] && goTo(activities[0].id)}
                 onPrev={() => canPrev && goTo(activities[idx - 1].id)}

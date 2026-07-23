@@ -78,6 +78,25 @@ describe('InstructorControls', () => {
     expect(screen.getByTestId('instructor-next')).toBeTruthy();
   });
 
+  // The `code` shape: answerable (5-min countdown) but nothing to reveal. Hiding
+  // Reveal must NOT cost the professor control of the clock — the timer's own
+  // stop button is a separate, honestly-labelled control.
+  it('code: no reveal button, yet the professor can still stop the clock', () => {
+    const onStopTimer = vi.fn();
+    controls({ canReveal: false, timerSeconds: 300, timerRunning: true, onStopTimer });
+    expect(screen.queryByTestId('instructor-reveal')).toBeNull();
+    fireEvent.click(screen.getByTestId('live-timer-stop'));
+    expect(onStopTimer).toHaveBeenCalledOnce();
+  });
+
+  it('code: can also start the clock with no reveal button present', () => {
+    const onStartTimer = vi.fn();
+    controls({ canReveal: false, timerSeconds: 300, timerRunning: false, onStartTimer });
+    expect(screen.queryByTestId('instructor-reveal')).toBeNull();
+    fireEvent.click(screen.getByTestId('live-timer-start'));
+    expect(onStartTimer).toHaveBeenCalledWith(300);
+  });
+
   it('reveal fires onReveal and disables once the answer is revealed', () => {
     const onReveal = vi.fn();
     const { rerender } = controls({ onReveal });
