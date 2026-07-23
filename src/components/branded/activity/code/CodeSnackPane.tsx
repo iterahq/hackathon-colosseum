@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Code2, ExternalLink } from 'lucide-react';
+import { Code2, ExternalLink, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
@@ -7,11 +7,18 @@ import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useCodeSnack } from '@/hooks/useCodeSnack';
 import { DoneButton } from '@/components/branded/activity/parts';
 import { CodeLivePreview } from './CodeLivePreview';
+import { CodeChecksFeedback } from './CodeChecksFeedback';
 
 /**
  * The split-pane snack surface: Monaco (seeded from `spec.starter`) + optional
- * help link on the LEFT, a live sandboxed-iframe preview on the RIGHT. Thin view over
- * `useCodeSnack` (source + debounced autosave + completion).
+ * help link on the LEFT, a live preview on the RIGHT. Thin view over
+ * `useCodeSnack` (source + debounced autosave + the graded lifecycle).
+ *
+ * Two shapes, decided by whether the spec ships `checks`:
+ *   • NO checks  → exactly what it was: edit, preview, "Marcar como concluída".
+ *   • WITH checks → the same editing screen (no permanent checklist anywhere)
+ *     plus an "Enviar" action; the verdicts appear ONLY after a submit, and
+ *     "Tentar de novo" walks back to editing with the learner's code intact.
  */
 export function CodeSnackPane({
   activity,
@@ -23,8 +30,25 @@ export function CodeSnackPane({
   onComplete: (correct: boolean) => void;
 }) {
   const { t } = useI18n();
-  const { code, setCode, complete } = useCodeSnack(activity.id, spec, { onComplete });
+  const {
+    code,
+    setCode,
+    phase,
+    results,
+    allPassed,
+    hasChecks,
+    checksRequest,
+    submit,
+    receiveResults,
+    retry,
+    complete,
+  } = useCodeSnack(activity.id, spec, { onComplete });
   const isDone = activity.status === 'done';
+  // The feedback survives into `settled` on purpose: in the LIVE class the
+  // learner does not self-advance, so after reporting the result they stay on
+  // this screen — hiding the verdicts there would leave them staring at a dead
+  // disabled button.
+  const showFeedback = hasChecks && results !== null && phase !== 'editing' && phase !== 'submitting';
 
   return (
     <motion.div
@@ -33,6 +57,7 @@ export function CodeSnackPane({
       className="rounded-3xl border border-border bg-card p-4 md:p-6"
       data-testid="activity-shell"
       data-activity-kind="code"
+      data-phase={phase}
     >
       <h2 className="font-display text-foreground">{spec.prompt}</h2>
 
@@ -55,7 +80,11 @@ export function CodeSnackPane({
         </div>
 
         <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
-          <CodeLivePreview code={code} />
+          <CodeLivePreview
+            code={code}
+            checksRequest={hasChecks ? checksRequest : null}
+            onChecksResult={receiveResults}
+          />
         </div>
       </div>
 
@@ -63,7 +92,31 @@ export function CodeSnackPane({
         <Code2 className="w-3.5 h-3.5" /> {t('activity.codeSnackHint')}
       </div>
 
-      <DoneButton done={isDone} onClick={complete} />
+      {!hasChecks && <DoneButton done={isDone} onClick={complete} />}
+
+      {hasChecks && !showFeedback && (
+        <button
+          type="button"
+          onClick={submit}
+          disabled={phase !== 'editing' || isDone}
+          data-testid="code-submit"
+          className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {phase === 'submitting' && <Loader2 className="h-4 w-4 animate-spin" />}
+          {phase === 'submitting' ? t('code.checks.running') : t('activity.submit')}
+        </button>
+      )}
+
+      {showFeedback && (
+        <CodeChecksFeedback
+          checks={spec.checks ?? []}
+          results={results}
+          allPassed={allPassed}
+          settled={phase === 'settled'}
+          onRetry={retry}
+          onContinue={complete}
+        />
+      )}
     </motion.div>
   );
 }
