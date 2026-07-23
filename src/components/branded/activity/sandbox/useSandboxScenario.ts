@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   chooseOption,
   collectNeeds,
@@ -87,10 +87,29 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
   const revealLines = scenario.reveal.masterLine ?? [];
 
   const runIndex = model.runs.length - 1;
+  const lastRun = model.runs[runIndex] ?? null;
   const lastEval = model.evaluations.find((e) => e.runIndex === runIndex) ?? null;
   const evalWrong = !!lastEval && !lastEval.correct;
   const lastKey = model.lastResultKey;
   const critique = lastKey ? scenario.initialState.cannedResults[lastKey]?.critique : undefined;
+
+  // "só vai mandando" fix — a compose step that demands context (`withContext:
+  // true`) silently loops when the learner picks a distractor: the sandbox just
+  // replies weakly and the step never advances, with NO "that was weak" signal.
+  // We flag a weak send made SINCE arriving at the current step so the compose
+  // panel can surface the canned critique + keep the choices open for a re-pick,
+  // instead of leaving the learner sending into the void. A step that ACCEPTS a
+  // weak send (e.g. the opening "send it as-is" step) advances on it, so `mode`
+  // is no longer 'compose' by the time we'd flag — naturally excluding it.
+  const stepId = currentStep?.id ?? null;
+  const stepEntryRunsRef = useRef(model.runs.length);
+  const prevStepIdRef = useRef(stepId);
+  if (prevStepIdRef.current !== stepId) {
+    prevStepIdRef.current = stepId;
+    stepEntryRunsRef.current = model.runs.length;
+  }
+  const sentThisStep = model.runs.length > stepEntryRunsRef.current;
+  const composeWeak = mode === 'compose' && sentThisStep && !!lastRun && !lastRun.withContext;
 
   const guard = (fn: () => ChatModel) => {
     if (!readOnly) setModel(fn());
@@ -130,6 +149,7 @@ export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: b
     revealLines,
     lastEval,
     evalWrong,
+    composeWeak,
     critique,
     // Never pre-filled: until the learner has clicked the seed chip / picked a
     // choice / filled a slot, the composer shows nothing, regardless of what

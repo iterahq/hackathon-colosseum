@@ -186,6 +186,34 @@ describe('SandboxScenarioActivity dispatcher', () => {
       expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
     }, 15000);
 
+    // "só vai mandando" fix: a compose step that demands context loops silently
+    // when the learner picks a distractor — the sandbox replies weakly and the
+    // step never advances, with no "that was weak" signal. The compose panel now
+    // surfaces the canned critique while keeping the choices open for a re-pick.
+    it('surfaces a weak-answer critique (not a silent loop) when a distractor is sent, then clears on a strong pick', async () => {
+      renderActivity(makeActivity(c1));
+
+      // A distractor ("oi, tudo bem?") resolves to the weak fallback.
+      fireEvent.click(screen.getByText(/oi, tudo bem/i));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+
+      await waitFor(() => expect(screen.getByTestId('sandbox-compose-weak')).toBeInTheDocument(), { timeout: 5000 });
+      // Still on the compose step — the choices stay open for a re-pick.
+      expect(screen.getByTestId('sandbox-choices')).toBeInTheDocument();
+      expect(screen.queryByTestId('sandbox-rate-ruim')).not.toBeInTheDocument();
+
+      // Re-pick the strong option → the nudge clears and the eval step opens.
+      fireEvent.click(screen.getByText(/redação de escola/i));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      expect(screen.queryByTestId('sandbox-compose-weak')).not.toBeInTheDocument();
+    }, 15000);
+
+    it('shows no weak critique before the first send', () => {
+      renderActivity(makeActivity(c1));
+      expect(screen.queryByTestId('sandbox-compose-weak')).not.toBeInTheDocument();
+    });
+
     it('rejects a wrong rating with a critique + retry', async () => {
       renderActivity(makeActivity(c1));
 

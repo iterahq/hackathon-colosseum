@@ -1,4 +1,4 @@
-import { RotateCcw } from 'lucide-react';
+import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { t, type I18n, type Locale, type Quality } from '@iterahq/activity-spec/runtime';
 
 // Standardized rating options (Tainan 2026-07): TEXT LABELS ONLY — no emoji.
@@ -53,7 +53,7 @@ export function SandboxEvalPanel({
               onClick={() => onRate(r.q)}
               data-testid={`sandbox-rate-${r.q}`}
               data-state={verdict}
-              className={`flex flex-1 basis-24 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-50 ${
+              className={`flex flex-1 basis-24 items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
                 verdict === 'correct'
                   ? 'border-verde-tech bg-verde-tech/10 text-menta'
                   : verdict === 'incorrect'
@@ -61,6 +61,8 @@ export function SandboxEvalPanel({
                     : 'border-border bg-card text-foreground hover:border-verde-tech/50'
               }`}
             >
+              {verdict === 'correct' && <CheckCircle2 className="h-4 w-4" />}
+              {verdict === 'incorrect' && <XCircle className="h-4 w-4" />}
               {t(r.label, locale)}
             </button>
           );

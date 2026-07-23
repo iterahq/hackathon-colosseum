@@ -1,4 +1,5 @@
-import type { Locale, Scenario } from '@iterahq/activity-spec/runtime';
+import type { I18n, Locale, Scenario } from '@iterahq/activity-spec/runtime';
+import { t } from '@iterahq/activity-spec/runtime';
 import { SandboxSlotPanel } from './SandboxSlotPanel';
 import { SandboxChoiceChips } from './SandboxChoiceChips';
 import { SandboxSeedChip } from './SandboxSeedChip';
@@ -29,8 +30,19 @@ export function SandboxControls({
   locale: Locale;
   variant: SandboxVariant;
 }) {
+  const weakCritique: I18n = s.critique ?? { pt: 'Essa ficou fraca. Tenta outra opção.', en: 'That one came out weak. Try another option.' };
+
   return (
     <div className="flex flex-col gap-3" data-testid="sandbox-controls">
+      {s.mode === 'compose' && s.composeWeak && (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4" data-testid="sandbox-compose-weak">
+          <div className="mb-1 font-mono text-[11px] uppercase tracking-wider text-destructive">
+            {t({ pt: 'Ficou fraca. Repara:', en: 'Weak answer. Look:' }, locale)}
+          </div>
+          <p className="text-sm leading-relaxed text-foreground">{t(weakCritique, locale)}</p>
+        </div>
+      )}
+
       {s.mode === 'evaluate' && (
         <SandboxEvalPanel
           locale={locale}
