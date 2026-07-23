@@ -1,13 +1,14 @@
 import { useSyncExternalStore } from 'react';
 
-const KEY = 'itera.live.volume';
+// v2: bumped so previously-stored louder values reset to the gentle 5% default.
+const KEY = 'itera.live.volume.v2';
 const listeners = new Set<() => void>();
 
 function clamp(v: number): number {
   return Math.min(1, Math.max(0, v));
 }
 
-const DEFAULT_VOLUME = 0.1;
+const DEFAULT_VOLUME = 0.05;
 
 function read(): number {
   try {
