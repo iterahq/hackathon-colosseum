@@ -48,7 +48,13 @@ describe('ProfilePage', () => {
   it('hydrates the form from the loaded profile', async () => {
     renderPage();
     const name = await screen.findByTestId('profile-name-input');
-    expect(name).toHaveValue('Ana');
+    // The name input renders as soon as the query resolves (isPending → false),
+    // but the draft is populated by a post-commit hydration effect in
+    // useProfileForm. Wait for that effect to land instead of asserting the
+    // value synchronously — otherwise the assertion races the effect and is
+    // flaky under load (empty value). The avatar preview src is driven by the
+    // same hydration state, so once the name is hydrated the rest is settled.
+    await waitFor(() => expect(name).toHaveValue('Ana'));
     expect(screen.getByTestId('profile-email')).toHaveTextContent('ana@example.com');
     expect(screen.getByTestId('profile-avatar-preview')).toHaveAttribute(
       'src',
