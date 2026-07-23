@@ -163,6 +163,50 @@ MUST follow this split:
   into `src/components/`) as part of a normal reviewed PR — it does not
   happen by widening design-playground's write access.
 
+## 🚨 Zero fetch de CDN externa em runtime
+
+**Regra dura: nada que o aluno PRECISA para trabalhar pode vir de CDN pública
+em runtime.** As aulas rodam em rede de escola/comunidade, onde CDN bloqueada
+ou estrangulada é cenário realista — e um asset crítico que não carrega
+significa aula perdida.
+
+O que já é servido do nosso domínio, a partir de `public/vendor/`:
+
+| Asset | Origem | Como chega em `public/vendor/` |
+| --- | --- | --- |
+| React UMD (`react` + `react-dom`) | preview do snack (`<iframe sandbox>`) | commitado |
+| Tailwind Play (`tailwind-play-cdn.js`) | preview do snack | commitado |
+| **Monaco Editor** (`vendor/monaco/vs`, ~16 MB) | editor de código | **gerado no build** (`.gitignore`) |
+
+### Monaco — por que existe `scripts/vendor-monaco.ts`
+
+`@monaco-editor/react` delega o carregamento ao `@monaco-editor/loader`, que
+por padrão injeta em RUNTIME um `<script src="https://cdn.jsdelivr.net/npm/monaco-editor@X/min/vs/loader.js">`.
+Medido em produção (2026-07-23) com a jsDelivr bloqueada: **o editor não montava
+— 0 linhas, aluno sem editor nenhum.**
+
+O fix tem três peças, e as três precisam continuar existindo:
+
+1. **`monaco-editor` é dependência DIRETA e com pin exato** (`package.json`) —
+   a versão acompanha o default do `@monaco-editor/loader`. Ao bumpar
+   `@monaco-editor/react`, confira `node_modules/@monaco-editor/loader/lib/es/config/index.js`
+   e realinhe o pin.
+2. **`scripts/vendor-monaco.ts`** copia `monaco-editor/min/vs` (build AMD) para
+   `public/vendor/monaco/vs`. Roda pelo plugin `monacoSelfHost` do Vite
+   (`buildStart` → cobre `vite dev`, `vite build` e o Storybook) e pelos hooks
+   `prebuild`/`prebuild-storybook`. É idempotente (carimbo `.monaco-version`).
+   Os arquivos **não são commitados** — são gerados no build.
+3. **`src/lib/monaco-loader.ts`** roda `loader.config({ paths: { vs: '/vendor/monaco/vs' } })`
+   **uma vez no bootstrap** — importado por `src/main.tsx` e `.storybook/preview.tsx`.
+   ⚠️ Não mova essa chamada para dentro do `CodeEditor`: ela precisa acontecer
+   antes do primeiro mount do editor.
+
+`src/test/monacoSelfHost.test.ts` tranca as três pernas. Se ele quebrar, o
+editor voltou a depender de CDN — não silencie o teste.
+
+**Pendente (menos grave):** as Google Fonts (`fonts.googleapis.com`/`fonts.gstatic.com`)
+ainda são fetch externo. Sem elas a tipografia degrada, mas o app segue usável.
+
 <!-- END MANUAL:repo/local-notes -->## Edge Functions
 
 Edge functions are owned by `dfl-schema`. Do NOT add or modify files under `supabase/functions/` in this repo.

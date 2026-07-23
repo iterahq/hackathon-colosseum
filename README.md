@@ -56,6 +56,27 @@ npm test       # vitest
 npm run lint
 ```
 
+## Assets sem CDN externa (`public/vendor/`)
+
+Nada de que o aluno precisa para trabalhar vem de CDN pública em runtime — a
+aula roda em rede de escola/comunidade, onde CDN bloqueada é cenário realista.
+Além do React UMD + Tailwind Play (commitados, usados pelo `<iframe>` de
+preview do snack), o **Monaco Editor** é servido do nosso domínio em
+`/vendor/monaco/vs`.
+
+Os ~16 MB do Monaco **não são commitados**: `scripts/vendor-monaco.ts` copia
+`monaco-editor/min/vs` para `public/vendor/monaco/vs` no build (plugin
+`monacoSelfHost` do Vite + hooks `prebuild`/`prebuild-storybook`), e
+`src/lib/monaco-loader.ts` aponta o `@monaco-editor/react` para lá. Para
+regerar à mão:
+
+```sh
+npm run vendor:monaco        # idempotente; `-- --force` recopia do zero
+```
+
+Detalhes e regras de manutenção em `CLAUDE.md` → "Zero fetch de CDN externa em
+runtime".
+
 ## DB
 
 See [`db/README.md`](db/README.md) for the schema, RLS, and the migration flow.

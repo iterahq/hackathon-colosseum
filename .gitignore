@@ -38,5 +38,9 @@ storybook-static
 # Graphify cache/output
 /graphify-out/
 
+# Monaco self-hosted (~16 MB) — GERADO no build por scripts/vendor-monaco.ts.
+# Não commitar: é uma cópia byte-a-byte de node_modules/monaco-editor/min/vs.
+/public/vendor/monaco/
+
 # E2E proof screenshots (generated)
 e2e-*-proof.png

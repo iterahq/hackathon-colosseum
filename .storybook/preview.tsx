@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import type { Preview, Decorator } from '@storybook/react-vite';
 import { MemoryRouter } from 'react-router-dom';
 import '../src/index.css';
+// Mesma configuração do bootstrap do app (src/main.tsx): o Monaco vem de
+// `/vendor/monaco/vs` (self-hosted), nunca da jsDelivr. Ver src/lib/monaco-loader.ts.
+import '../src/lib/monaco-loader';
 import { I18nProvider } from '../src/i18n';
 import { AuthProvider } from '../src/auth/AuthContext';
 
