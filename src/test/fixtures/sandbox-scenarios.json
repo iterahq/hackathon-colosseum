@@ -367,15 +367,15 @@
         }
       ],
       "basePrompt": {
-        "pt": "Me faz um resumo do filme Cidade de Deus.",
-        "en": "Summarize the movie City of God."
+        "pt": "Me faz um resumo do filme Homem-Aranha no Aranhaverso.",
+        "en": "Summarize the movie Spider-Man: Into the Spider-Verse."
       },
       "cannedResults": {
         "sem-exemplo": {
           "quality": "ruim",
           "text": {
-            "pt": "Cidade de Deus (2002) é um filme brasileiro dirigido por Fernando Meirelles e Kátia Lund que retrata a vida na favela homônima do Rio de Janeiro entre os anos 60 e 80, acompanhando dois amigos que seguem caminhos opostos. Aclamado pela crítica, foi indicado a quatro Oscars.",
-            "en": "City of God (2002) is a Brazilian film by Fernando Meirelles and Kátia Lund depicting life in the Rio favela from the 60s to 80s."
+            "pt": "Homem-Aranha no Aranhaverso (2018) é uma animação dirigida por Bob Persichetti, Peter Ramsey e Rodney Rothman que acompanha o adolescente Miles Morales descobrindo seus poderes e cruzando com Homens-Aranha de outras dimensões. Elogiada pela crítica, venceu o Oscar de Melhor Animação.",
+            "en": "Spider-Man: Into the Spider-Verse (2018) is an animated film following teenager Miles Morales discovering his powers and meeting Spider-People from other dimensions."
           },
           "critique": {
             "pt": "Não tá errada, mas é um textão. Você não disse o formato, então ela chutou.",
@@ -385,8 +385,8 @@
         "com-exemplo": {
           "quality": "top",
           "text": {
-            "pt": "🎬 Cidade de Deus\n📅 2002\n📍 Favela do RJ, anos 60-80\n👥 Buscapé (fotógrafo) x Zé Pequeno (traficante)\n⭐ 4 indicações ao Oscar\n💡 Vale ver: mostra a favela por dentro, sem romantizar.",
-            "en": "🎬 City of God\n📅 2002\n📍 Rio favela, 60s-80s\n👥 Rocket x Li'l Zé\n⭐ 4 Oscar noms"
+            "pt": "🎬 Homem-Aranha no Aranhaverso\n📅 2018\n📍 Nova York (e outras dimensões)\n👥 Miles Morales descobrindo seus poderes\n⭐ Oscar de Melhor Animação\n💡 Vale ver: visual único, história sobre acreditar em si mesmo.",
+            "en": "🎬 Spider-Man: Into the Spider-Verse\n📅 2018\n📍 New York (and other dimensions)\n👥 Miles Morales\n⭐ Best Animated Feature Oscar"
           },
           "critique": {
             "pt": "Ela copiou o formato do teu exemplo. Um exemplo vale mais que mil explicações.",
@@ -417,8 +417,8 @@
           "en": "paste an example format"
         },
         "appends": {
-          "pt": "Quero no mesmo formato deste exemplo:\n🎬 Tropa de Elite\n📅 2007\n📍 RJ\n👥 Capitão Nascimento (BOPE) x tráfico\n⭐ Urso de Ouro em Berlim\n💡 Vale ver: mostra o outro lado da guerra ao tráfico.",
-          "en": "I want the same format as this example:\n🎬 Elite Squad\n📅 2007\n📍 Rio\n👥 Captain Nascimento (BOPE)\n⭐ Golden Bear"
+          "pt": "Quero no mesmo formato deste exemplo:\n🎬 Divertida Mente\n📅 2015\n📍 A mente da Riley\n👥 Alegria, Tristeza e as outras emoções\n⭐ Oscar de Melhor Animação\n💡 Vale ver: explica as emoções de um jeito leve.",
+          "en": "I want the same format as this example:\n🎬 Inside Out\n📅 2015\n📍 Riley's mind\n👥 Joy, Sadness and the other emotions\n⭐ Best Animated Feature Oscar"
         }
       },
       {
