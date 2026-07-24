@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MonitorUp } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLessonContent } from '@/hooks';
@@ -46,7 +46,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
-import { LiveStagePicker } from '@/components/live/LiveStagePicker';
+import { LiveStageModal } from '@/components/live/LiveStageModal';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
@@ -288,6 +288,13 @@ function ClassControl({
 
   const [busy, setBusy] = useState(false);
 
+  // B5: the picker lives in a modal now. Auto-close it the moment a pull lands,
+  // so the professor drops straight into the learner's screen (B9 view mode).
+  const [stageModalOpen, setStageModalOpen] = useState(false);
+  useEffect(() => {
+    if (stagedAnswer) setStageModalOpen(false);
+  }, [stagedAnswer]);
+
   async function goTo(activityId: string) {
     if (busy) return;
     setBusy(true);
@@ -387,8 +394,6 @@ function ClassControl({
         }}
       />
 
-      {stagedAnswer && !onPodium && <LiveStage staged={stagedAnswer} onClear={clearStage} />}
-
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* The activity stays CENTERED in the space left of the sidebar —
             learner-identical stage, just centered rather than in a fixed grid. */}
@@ -425,6 +430,20 @@ function ClassControl({
                 >
                   {t('live.ended.cta')}
                 </button>
+              </div>
+            ) : stagedAnswer ? (
+              // B9: pulling a learner REPLACES the professor's own screen with
+              // theirs (no more two-screen split) — centered, with a "você está
+              // visualizando a tela de ___" indicator in the identity bar.
+              <div
+                className="mt-7 rounded-3xl border border-clay/40 overflow-hidden"
+                data-testid="instructor-viewing-stage"
+              >
+                <LiveStage
+                  staged={stagedAnswer}
+                  onClear={clearStage}
+                  viewingName={stagedAnswer.author.name}
+                />
               </div>
             ) : current ? (
               // sandbox_scenario is facilitator-driven: the instructor drives the
@@ -509,19 +528,34 @@ function ClassControl({
                 onReveal={() => current && clearTimer(current.id)}
               />
               {current && (
-                <LiveStagePicker
-                  learners={stageLearners}
-                  staged={Boolean(stagedAnswer)}
-                  pendingUserId={stagePendingUserId}
-                  unreachableUserId={stageUnreachableUserId}
-                  onPull={requestStage}
-                  onClear={clearStage}
-                />
+                <div className="p-4">
+                  <button
+                    type="button"
+                    onClick={() => setStageModalOpen(true)}
+                    data-testid="live-stage-open"
+                    className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors"
+                  >
+                    <MonitorUp className="w-4 h-4" /> {t('live.stage.open')}
+                  </button>
+                </div>
               )}
             </>
           }
         />
       </div>
+
+      {current && (
+        <LiveStageModal
+          open={stageModalOpen}
+          onClose={() => setStageModalOpen(false)}
+          learners={stageLearners}
+          staged={Boolean(stagedAnswer)}
+          pendingUserId={stagePendingUserId}
+          unreachableUserId={stageUnreachableUserId}
+          onPull={requestStage}
+          onClear={clearStage}
+        />
+      )}
 
       <LiveSoundDock />
     </div>

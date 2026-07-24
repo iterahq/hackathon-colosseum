@@ -9,6 +9,12 @@ interface LiveStageProps {
   staged: StagedAnswer;
   /** Instructor-only affordance to dismiss the stage for everyone. */
   onClear?: () => void;
+  /**
+   * Instructor view mode (B9): the professor's own screen is REPLACED by the
+   * pulled learner's, so the eyebrow reads "você está visualizando a tela de"
+   * instead of the class-facing "no palco".
+   */
+  viewingName?: string;
 }
 
 /**
@@ -22,7 +28,7 @@ interface LiveStageProps {
  * bar carries an explicit "em andamento" badge: a classmate's half-written draft
  * on the projector must never be read by the class as a finished answer.
  */
-export function LiveStage({ staged, onClear }: LiveStageProps) {
+export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
   const { t } = useI18n();
   const isCode = staged.kind === 'code';
   const isEmpty = staged.kind === 'empty' || staged.status === 'not_started';
@@ -37,7 +43,7 @@ export function LiveStage({ staged, onClear }: LiveStageProps) {
         <LiveAvatar name={staged.author.name} avatarUrl={staged.author.avatarUrl} size="w-8 h-8" />
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-wider font-mono text-clay leading-none">
-            {t('live.stage.onStage')}
+            {viewingName ? t('live.stage.viewing') : t('live.stage.onStage')}
           </p>
           <div className="flex items-center gap-2 mt-0.5 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{staged.author.name}</p>
