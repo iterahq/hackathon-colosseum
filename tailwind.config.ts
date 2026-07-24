@@ -3,7 +3,16 @@ import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+    // Designer brainstorm space (see .storybook/main.ts): without this glob the
+    // published Storybook build PURGES every utility class used only in these
+    // stories (spacings collapse, opacity-modifier colors vanish).
+    "./design-playground/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
