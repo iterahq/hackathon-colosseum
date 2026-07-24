@@ -463,6 +463,29 @@ describe('useClassSession — live stage streaming (B3)', () => {
   });
 });
 
+describe('useClassSession — restarting the timer lifts the stop lock', () => {
+  it('a fresh timer event clears stoppedFor for that activity', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('timer-stop', { activity_id: ACTIVITY });
+    expect(result.current.stoppedFor).toBe(ACTIVITY);
+
+    emit('timer', { activity_id: ACTIVITY, deadline: Date.now() + 30_000 });
+    expect(result.current.stoppedFor).toBeNull();
+    expect(result.current.timer).toMatchObject({ activityId: ACTIVITY });
+  });
+
+  it('broadcastTimer clears stoppedFor for the professor mirror too', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+
+    emit('timer-stop', { activity_id: ACTIVITY });
+    expect(result.current.stoppedFor).toBe(ACTIVITY);
+
+    act(() => result.current.broadcastTimer(ACTIVITY, 30));
+    expect(result.current.stoppedFor).toBeNull();
+  });
+});
+
 describe('useClassSession — an unreachable learner fails loudly', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());

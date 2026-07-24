@@ -188,6 +188,14 @@ export default function LiveSessionPage() {
     if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
   }, [stoppedFor, current]);
 
+  // Professor restarted the clock → a fresh timer for THIS activity, still
+  // running, must lift the expiry lock so the learner can work again.
+  useEffect(() => {
+    if (timer && current && timer.activityId === current.id && timer.deadline > Date.now()) {
+      setTimeUpFor((prev) => (prev === current.id ? null : prev));
+    }
+  }, [timer, current]);
+
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
   const expired = timeUpFor !== null && timeUpFor === current?.id;
   const hasAnswered = answered?.id === current?.id;

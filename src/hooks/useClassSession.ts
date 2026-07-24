@@ -293,7 +293,10 @@ export function useClassSession(
         })
         .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
           const next = parseTimerEvent(payload);
-          if (next) setTimer(next);
+          if (next) {
+            setTimer(next);
+            setStoppedFor((prev) => (prev === next.activityId ? null : prev));
+          }
         })
         .on('broadcast', { event: TIMER_STOP_EVENT }, ({ payload }) => {
           setTimer((prev) => timerAfterStop(prev, payload));
@@ -647,6 +650,7 @@ export function useClassSession(
     // Optimistic local update first (mirrors clearTimer/broadcast) so the
     // professor's own screen reflects the timer even if the channel just blipped.
     setTimer({ activityId, deadline });
+    setStoppedFor((prev) => (prev === activityId ? null : prev));
     if (!channel) return;
     void channel.send({
       type: 'broadcast',

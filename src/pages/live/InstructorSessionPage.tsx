@@ -256,6 +256,13 @@ function ClassControl({
   }, [sound, currentActivityId]);
   // Revisiting an activity (prev/next) must NOT auto-reveal from a stale expiry.
   useEffect(() => setExpiredFor(null), [currentActivityId]);
+  // Restarting the clock (fresh future-deadline timer for THIS activity) lifts
+  // the reveal so the professor's mirror re-opens alongside the learners'.
+  useEffect(() => {
+    if (timer && current && timer.activityId === current.id && timer.deadline > Date.now()) {
+      setExpiredFor((prev) => (prev === current.id ? null : prev));
+    }
+  }, [timer, current]);
   const revealCurrent = Boolean(current && (stoppedFor === current.id || expiredFor === current.id));
 
   // Seconds the professor added while the clock was STOPPED — folded into the
