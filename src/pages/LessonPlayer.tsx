@@ -314,6 +314,22 @@ export default function LessonPlayer() {
                   />
                 </div>
               )}
+
+              {/* Concept is pure reading — no in-card "mark done". Self-paced
+                  advance lives here as a plain "Continuar" (navigation, not a
+                  completion ceremony). The live class has no such button — the
+                  instructor force-advances the cohort. */}
+              {current?.kind === 'concept' && (
+                <button
+                  type="button"
+                  onClick={() => handleComplete(true)}
+                  disabled={saving}
+                  data-testid="concept-continue"
+                  className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana hover:bg-evergreen-hi transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {t('activity.continue')}
+                </button>
+              )}
             </>
           )
         ) : null}

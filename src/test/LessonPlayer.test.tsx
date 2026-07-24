@@ -152,6 +152,33 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
   });
 });
 
+describe('LessonPlayer — concept has no mark-done (reading, not completion)', () => {
+  it('renders a plain "Continuar" (no feedback footer) and advances on click', async () => {
+    useLessonContent.mockReturnValue({
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Intro' },
+        activities: [
+          { id: 'c1', lessonId: 'lesson-1', ordinal: 1, kind: 'concept', spec: { instruction: { text: 'Leia isto.' } }, rubric: null },
+          { id: 'a2', lessonId: 'lesson-1', ordinal: 2, kind: 'quiz', spec: {}, rubric: null },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderPlayer();
+    const cont = screen.getByTestId('concept-continue');
+    expect(cont.textContent ?? '').toMatch(/Continuar/i);
+    // A concept is read, not graded — no green/red feedback footer.
+    expect(screen.queryByTestId('feedback-footer')).toBeNull();
+    // Advancing pages forward to the 2nd activity (not stuck, not completed).
+    fireEvent.click(cont);
+    await waitFor(() => expect(screen.queryByTestId('concept-continue')).toBeNull(), { timeout: 5000 });
+    expect(screen.queryByTestId('lesson-complete')).toBeNull();
+  });
+});
+
 describe('LessonPlayer — global feedback footer (Duolingo pattern)', () => {
   it('holds on the activity showing the fixed footer after a graded submit — does NOT auto-advance', async () => {
     // Two-activity lesson so "advance" is observable (index moves, not complete).

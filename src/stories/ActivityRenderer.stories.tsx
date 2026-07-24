@@ -54,7 +54,7 @@ type Story = StoryObj<typeof ActivityRenderer>;
 
 /* 1 · Exposição ---------------------------------------------------- */
 
-/** kind = concept — exibição pura, sem interação além de concluir. */
+/** kind = concept — leitura pura, sem "concluir" (o shell avança). */
 export const Concept: Story = {
   args: { activity: makeActivity('concept', CONCEPT_SPEC) },
 };

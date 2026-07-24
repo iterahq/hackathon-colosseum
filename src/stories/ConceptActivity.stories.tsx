@@ -4,12 +4,14 @@ import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_VIDEO, makeActivity, noop } from './
 import { withActivityWidth } from './decorators';
 
 /**
- * Concept — a no-action display activity built on the InstructionPanel. Stories
- * cover each InstructionPanel form plus the completed (locked/disabled) state.
+ * Concept — a pure READING/exposition activity built on the InstructionPanel.
+ * Stories cover each InstructionPanel form. There is NO "mark done" button: a
+ * concept is read, not completed — advancing is driven by the shell (a
+ * "Continuar" in the self-paced player, or the instructor in the live class).
  *
  * NOTE: Concept is classified as an activity (activity_kind = 'concept') even
- * though it has no user interaction beyond "mark done". It belongs in
- * Organisms/Activities alongside the other kinds per the activity_kind enum.
+ * though it has no user interaction. It belongs in Organisms/Activities
+ * alongside the other kinds per the activity_kind enum.
  */
 const meta: Meta<typeof ConceptActivity> = {
   title: 'Organisms/Activities/1 · Exposição/Concept',
@@ -58,16 +60,6 @@ export const AllMedia: Story = {
           description: 'Texto + imagem + áudio + descrição.',
         },
       })}
-      onComplete={noop}
-    />
-  ),
-};
-
-/** Completed → the DoneButton locks into the menta "concluída" state. */
-export const CompletedDisabled: Story = {
-  render: () => (
-    <ConceptActivity
-      activity={makeActivity('concept', { instruction: { text: 'Você já concluiu este conceito.' } }, 'done')}
       onComplete={noop}
     />
   ),

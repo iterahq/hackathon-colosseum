@@ -25,10 +25,13 @@ function renderActivity(activity: Activity, onComplete = vi.fn()) {
 }
 
 describe('ActivityRenderer — v1 general activity kinds', () => {
-  it('dispatches concept to its shell', () => {
+  it('dispatches concept to its shell with NO mark-done affordance', () => {
     renderActivity(makeActivity('concept', { instruction: { text: 'Hello concept' } }));
     expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('concept');
     expect(screen.getByText('Hello concept')).toBeInTheDocument();
+    // Concept is pure reading — the learner does NOT "mark it done"; advancing is
+    // shell-driven (LessonPlayer's Continuar / the live instructor).
+    expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 
   it('dispatches video to its shell', () => {
