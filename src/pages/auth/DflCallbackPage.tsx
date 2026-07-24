@@ -17,6 +17,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { exchangeDflToken } from '@/auth/embedBridge';
+import { safeInternalPath } from '@/lib/safeInternalPath';
 import { useI18n } from '@/i18n';
 import { Logo } from '@/components/branded';
 
@@ -50,7 +51,7 @@ export default function DflCallbackPage() {
       /* ignore */
     }
     void exchangeDflToken(token).then((ok) => {
-      if (ok) navigate(next.startsWith('/') ? next : '/', { replace: true });
+      if (ok) navigate(safeInternalPath(next), { replace: true });
       else setFailed(true);
     });
   }, [navigate]);

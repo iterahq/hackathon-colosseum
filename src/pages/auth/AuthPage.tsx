@@ -13,6 +13,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useI18n } from '@/i18n';
+import { safeInternalPath } from '@/lib/safeInternalPath';
 
 export default function AuthPage() {
   const { session, loading, signInWithPassword, configured } = useAuth();
@@ -24,10 +25,9 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const rawFrom = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
   // location.state is client-controlled and `from` reaches the DFL federate URL
-  // as the post-login redirect — only an in-app path ever passes through.
-  const from = rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : '/';
+  // as the post-login redirect — only a same-origin in-app path may pass through.
+  const from = safeInternalPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname);
 
   // Already signed in (e.g. /login opened from the URL-bar autocomplete in a new
   // tab) → straight to the app. Without this the persisted session LOOKS lost:
@@ -116,6 +116,13 @@ export default function AuthPage() {
         >
           {t('auth.signInWith', { provider: 'DFL' })}
         </Button>
+        <Link
+          to="/auth/code"
+          className="text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+          data-testid="goto-otp"
+        >
+          {t('auth.otp.link')}
+        </Link>
       </div>
 
       {/* Subscription CTA — access requires an active subscription or DFL membership. */}

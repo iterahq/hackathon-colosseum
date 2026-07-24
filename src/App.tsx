@@ -22,6 +22,7 @@ import SignupPage from "./pages/auth/SignupPage";
 import DflCallbackPage from "./pages/auth/DflCallbackPage";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import OtpLoginPage from "./pages/auth/OtpLoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
@@ -82,6 +83,9 @@ const App = () => (
                     token signs the user in via detectSessionInUrl). */}
                 <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
                 <Route path="/auth/reset" element={<ResetPasswordPage />} />
+                {/* Passwordless sign-in (B6) — request a one-time code / magic
+                    link and verify it here. Public (pre-auth). */}
+                <Route path="/auth/code" element={<OtpLoginPage />} />
                 {/* "Sign in with DFL" callback — exchanges the DFL token (from
                     the URL fragment) for an Itera session. Public (pre-auth). */}
                 <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
