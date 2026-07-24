@@ -64,6 +64,13 @@ export function CodeSnackPane({
     >
       <h2 className="font-display text-foreground">{spec.prompt}</h2>
 
+      <div
+        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm font-medium text-foreground"
+        data-testid="code-snack-hint"
+      >
+        <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
+      </div>
+
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col">
           <div className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
@@ -96,10 +103,6 @@ export function CodeSnackPane({
             onChecksResult={receiveResults}
           />
         </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        <Code2 className="w-3.5 h-3.5" /> {t('activity.codeSnackHint')}
       </div>
 
       {!hasChecks && <DoneButton done={isDone} onClick={complete} />}

@@ -73,9 +73,9 @@ export function CodeResetControl({
       onClick={() => setConfirming(true)}
       disabled={disabled}
       data-testid="code-reset"
-      className={`inline-flex items-center gap-1.5 self-start text-sm text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`inline-flex items-center gap-2 self-start rounded-full border border-border bg-muted/40 px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-menta/50 hover:text-menta disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     >
-      <RefreshCcw className="h-3.5 w-3.5" />
+      <RefreshCcw className="h-4 w-4" />
       {t('code.reset.action')}
     </button>
   );
