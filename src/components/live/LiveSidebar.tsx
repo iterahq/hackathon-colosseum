@@ -17,6 +17,8 @@ interface LiveSidebarProps {
   activityCount?: number;
   kind?: string;
   ranking?: ClassRanking;
+  /** Learners who dropped presence — dimmed + blinking in the roster. */
+  disconnectedUserIds?: string[];
   copied?: boolean;
   busy?: boolean;
   onCopyLink?: () => void;
@@ -39,6 +41,7 @@ export function LiveSidebar({
   activityCount = 0,
   kind = '',
   ranking,
+  disconnectedUserIds,
   copied = false,
   busy = false,
   onCopyLink,
@@ -52,9 +55,7 @@ export function LiveSidebar({
   const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
   const bodyClass = collapsible
-    ? `min-h-0 divide-y divide-border lg:flex-1 lg:block lg:max-h-none lg:overflow-y-auto ${
-        open ? 'max-h-[45vh] overflow-y-auto' : 'hidden'
-      }`
+    ? `min-h-0 divide-y divide-border lg:flex-1 lg:block lg:max-h-none lg:overflow-y-auto ${open ? 'max-h-[45vh] overflow-y-auto' : 'hidden'}`
     : 'flex-1 min-h-0 lg:overflow-y-auto divide-y divide-border';
 
   return (
@@ -109,6 +110,7 @@ export function LiveSidebar({
             answerers={answerers}
             instructors={roster.filter((m) => m.isInstructor)}
             raisedUserIds={roster.filter((m) => m.handRaised).map((m) => m.userId)}
+            disconnectedUserIds={disconnectedUserIds}
             selfUserId={selfUserId}
             showDetail={isInstructor}
           />

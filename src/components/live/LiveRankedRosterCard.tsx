@@ -4,6 +4,7 @@ import { formatMmss } from '@/utils/formatMmss';
 import { answerStateVariant } from '@/utils/answerStateVariant';
 import { ANSWER_STATE_ICONS } from '@/consts/answerStateIcons';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
+import { LiveRosterBadges } from '@/components/live/LiveRosterBadges';
 import type { ClassAnswerer, ClassPresenceMember, ClassRanking } from '@/types/liveClass';
 
 interface LiveRankedRosterCardProps {
@@ -19,6 +20,12 @@ interface LiveRankedRosterCardProps {
   bare?: boolean;
   /** Learners with their hand currently raised (presence) — badged with ✋. */
   raisedUserIds?: string[];
+  /**
+   * Learners who were in the room but dropped presence (lost connection). Their
+   * row stays visible — dimmed, with a blinking dot — so the professor can see
+   * who fell off the call instead of them silently vanishing from the list.
+   */
+  disconnectedUserIds?: string[];
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -37,22 +44,14 @@ export function LiveRankedRosterCard({
   showDetail = false,
   bare = false,
   raisedUserIds,
+  disconnectedUserIds,
 }: LiveRankedRosterCardProps) {
   const { t } = useI18n();
   const stateById = new Map(answerers.map((a) => [a.userId, a.state]));
   const raised = new Set(raisedUserIds ?? []);
-  const handBadge = (userId: string) =>
-    raised.has(userId) ? (
-      <span data-testid="live-hand-badge" className="flex-shrink-0" aria-label={t('live.hand.raised')}>
-        ✋
-      </span>
-    ) : null;
-  const youTag = (userId: string) =>
-    userId === selfUserId ? (
-      <span className="text-[10px] uppercase tracking-wide text-clay font-mono flex-shrink-0">
-        · {t('live.instructor.roster.you')}
-      </span>
-    ) : null;
+  const down = new Set(disconnectedUserIds ?? []);
+  const rowClass = (userId: string, extra: string) =>
+    `flex items-center gap-2 text-sm ${extra} ${down.has(userId) ? 'opacity-60' : ''}`;
 
   return (
     <div className={bare ? 'p-5' : 'rounded-3xl border border-border bg-card p-5'} data-testid="live-ranked-roster-card">
@@ -72,13 +71,13 @@ export function LiveRankedRosterCard({
       {instructors.length > 0 && (
         <ul className="mb-2.5 space-y-1.5" data-testid="live-ranked-instructors">
           {instructors.map((m) => (
-            <li key={m.userId} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <li key={m.userId} className={rowClass(m.userId, 'text-muted-foreground')}>
               <span className="w-6 text-center flex-shrink-0 text-[10px] uppercase font-mono">
                 {t('live.rankedRoster.prof')}
               </span>
               <LiveAvatar name={m.name} avatarUrl={m.avatarUrl} size="w-6 h-6" />
               <span className="flex-1 min-w-0 break-words">{m.name}</span>
-              {youTag(m.userId)}
+              <LiveRosterBadges userId={m.userId} selfUserId={selfUserId} down={down.has(m.userId)} />
             </li>
           ))}
         </ul>
@@ -91,7 +90,7 @@ export function LiveRankedRosterCard({
           {ranking.ranked.map((r) => (
             <li
               key={r.userId}
-              className="flex items-center gap-2 text-sm"
+              className={rowClass(r.userId, '')}
               data-testid="live-ranked-row"
               data-rank={r.rank}
               data-state={answerStateVariant(stateById.get(r.userId), showDetail)}
@@ -101,8 +100,12 @@ export function LiveRankedRosterCard({
               </span>
               <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
               <span className="text-foreground flex-1 min-w-0 break-words">{r.name}</span>
-              {handBadge(r.userId)}
-              {youTag(r.userId)}
+              <LiveRosterBadges
+                userId={r.userId}
+                selfUserId={selfUserId}
+                raised={raised.has(r.userId)}
+                down={down.has(r.userId)}
+              />
               <span className="ml-auto flex items-center gap-2 flex-shrink-0">
                 {showDetail && (
                   <>
@@ -121,15 +124,19 @@ export function LiveRankedRosterCard({
           {ranking.waiting.map((w) => (
             <li
               key={w.userId}
-              className="flex items-center gap-2 text-sm text-muted-foreground"
+              className={rowClass(w.userId, 'text-muted-foreground')}
               data-testid="live-ranked-waiting-row"
               data-state={answerStateVariant(stateById.get(w.userId), showDetail)}
             >
               <span className="w-6 text-center flex-shrink-0">·</span>
               <LiveAvatar name={w.name} avatarUrl={w.avatarUrl} size="w-6 h-6" />
               <span className="flex-1 min-w-0 break-words">{w.name}</span>
-              {handBadge(w.userId)}
-              {youTag(w.userId)}
+              <LiveRosterBadges
+                userId={w.userId}
+                selfUserId={selfUserId}
+                raised={raised.has(w.userId)}
+                down={down.has(w.userId)}
+              />
               <span className="ml-auto flex-shrink-0">
                 {ANSWER_STATE_ICONS[answerStateVariant(stateById.get(w.userId), showDetail)]}
               </span>

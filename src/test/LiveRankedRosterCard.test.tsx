@@ -90,6 +90,28 @@ describe('LiveRankedRosterCard', () => {
     expect(screen.queryByTestId('live-hand-count')).toBeNull();
   });
 
+  it('blinks a disconnected badge on learners who dropped the call', () => {
+    render(
+      <I18nProvider>
+        <LiveRankedRosterCard
+          ranking={ranking}
+          answerers={answerers}
+          instructors={instructors}
+          disconnectedUserIds={['b', 'c']}
+        />
+      </I18nProvider>
+    );
+    const badges = screen.getAllByTestId('live-disconnected-badge');
+    expect(badges).toHaveLength(2);
+    expect(badges[0].className).toContain('animate-pulse');
+    expect(screen.getAllByTestId('live-ranked-row')[0]).not.toContainElement(badges[0]);
+  });
+
+  it('renders no disconnected badges when everyone is connected', () => {
+    renderCard(false);
+    expect(screen.queryAllByTestId('live-disconnected-badge')).toHaveLength(0);
+  });
+
   it('shows the empty state when nobody is in the room', () => {
     render(
       <I18nProvider>

@@ -239,6 +239,13 @@ function ClassControl({
     if (!podiumSnapshot) return liveRanking;
     return rankByScore(podiumSnapshot.roster, podiumSnapshot.elapsed, podiumSnapshot.answers);
   }, [podiumSnapshot, liveRanking]);
+  // Learners still in the ranking (seen at least once) but no longer in the live
+  // roster = they dropped the call. The sidebar blinks their row so the professor
+  // notices, instead of them silently vanishing from the list.
+  const disconnectedUserIds = useMemo(() => {
+    const live = new Set(roster.map((m) => m.userId));
+    return [...seenLearnersRef.current.keys()].filter((uid) => !live.has(uid));
+  }, [roster]);
 
   // Reveal the answer on the professor's own mirror when the timer stops (manual
   // stop → stoppedFor via self-broadcast; natural expiry → expiredFor).
@@ -462,6 +469,7 @@ function ClassControl({
           roster={roster}
           answerers={answerers}
           ranking={liveRanking}
+          disconnectedUserIds={disconnectedUserIds}
           selfUserId={instructorId ?? undefined}
           copied={copied}
           busy={busy}
