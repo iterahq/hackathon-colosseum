@@ -18,6 +18,14 @@
  * é genérico — trocar o assunto = trocar o array. Gamificação: XP por acerto
  * de primeira, contagem de "boas perguntas", recap final.
  *
+ * Dois reforços inquisitivos:
+ *   · Intro = CONSTRUTOR DE PROMPT guiado: três perguntas norteadoras
+ *     ("do que" = situação real; "como" = ponto de partida + objetivo de uso)
+ *     montam o prompt ao vivo, com checklist de anatomia do bom prompt.
+ *   · Passo 'build' (Monte sua pergunta): word-bank estilo Duolingo — o aluno
+ *     COMPÕE a pergunta peça por peça (com distratores). Perguntar vale mais
+ *     XP que responder; a conclusão devolve as perguntas como prompts prontos.
+ *
  * Playground-only (src/stories/) — nada disto entra no bundle do app.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -38,6 +46,7 @@ import {
   RotateCcw,
   X,
   ArrowLeftRight,
+  Puzzle,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -53,10 +62,16 @@ interface QuizOption {
   label: string;
   correct?: boolean;
 }
+/** Peça-distrator do word-bank de 'build', com microcopy de redirecionamento. */
+interface BuildExtra {
+  label: string;
+  feedback: string;
+}
 
 type Step =
   | { kind: 'mentor'; stage: number; text: string; bullets?: string[] }
   | { kind: 'ask'; stage: number; prompt: string; options: AskOption[]; mentorAnswer: string }
+  | { kind: 'build'; stage: number; prompt: string; correct: string[]; extras: BuildExtra[]; mentorAnswer: string }
   | { kind: 'quiz'; stage: number; question: string; hint?: string; options: QuizOption[]; explain: string }
   | {
       kind: 'compare';
@@ -118,10 +133,36 @@ const STAGES: StageMeta[] = [
   },
 ];
 
-/** Prompt simulado que abre a experiência (exemplo real de um colega do time —
- *  o fluxo ilustrado usa esse tema, mas a experiência serve a QUALQUER tema). */
-const SAMPLE_PROMPT = 'Preciso entender o fluxo de editais para fomento e recurso. Por onde eu começo?';
-const SAMPLE_OBS = 'Nunca participei de um edital. Tenho uma empresa pequena e quero captar recurso pela primeira vez.';
+/* ─────────────── Construtor de prompt (intro norteadora) ────────────────── */
+
+/** "COMO fazer o prompt" — ponto de partida: cada opção vira uma frase no
+ *  prompt montado (echo), calibrando o nível das perguntas do mentor. */
+const PARTIDAS = [
+  { label: 'Nunca vi na prática', echo: 'Estou começando do zero.' },
+  { label: 'Já ouvi falar', echo: 'Conheço por alto, ainda sem prática.' },
+  { label: 'Já pratico um pouco', echo: 'Já tenho alguma prática e quero estruturar.' },
+];
+
+/** "DO QUE fazer o prompt" — situações reais de exemplo (clicar preenche).
+ *  A primeira é o exemplo real de um colega do time, usado no fluxo ilustrado. */
+const TEMA_IDEAS = [
+  'o fluxo de editais para fomento e recurso',
+  'como precificar meus serviços',
+  'me preparar para uma entrevista de emprego',
+];
+
+/** Estado inicial pré-preenchido — o protótipo abre já com o exemplo vivo. */
+const SAMPLE_TEMA = TEMA_IDEAS[0];
+const SAMPLE_PARTIDA = 0;
+const SAMPLE_OBJETIVO = 'captar recurso pela primeira vez com minha empresa pequena';
+
+/** Monta o prompt final a partir das três respostas norteadoras. */
+function assemblePrompt(tema: string, partida: number | null, objetivo: string): string {
+  const parts = [`Quero aprender sobre ${tema.trim() || '…'}.`];
+  if (partida !== null) parts.push(PARTIDAS[partida].echo);
+  if (objetivo.trim()) parts.push(`Meu objetivo: ${objetivo.trim()}.`);
+  return parts.join(' ');
+}
 
 /** Resumo do fluxo mostrado na conclusão — 1 síntese por etapa. */
 const STAGE_SUMMARIES = [
@@ -253,6 +294,18 @@ const STEPS: Step[] = [
     explain: 'Você pegou o padrão central: processos mudam, documentação converge.',
   },
   {
+    kind: 'build',
+    stage: 0,
+    prompt: 'Agora é você quem pergunta. Monte, peça por peça, a pergunta que revela o padrão central dos editais:',
+    correct: ['O que se repete', 'em todo edital', '— e o que muda', 'de um pra outro?'],
+    extras: [
+      { label: 'paga mais rápido', feedback: 'Pergunta de atalho: sem entender o padrão, a resposta não te move.' },
+      { label: 'na minha opinião', feedback: 'Opinião não mapeia terreno — pergunte pelo padrão observável.' },
+    ],
+    mentorAnswer:
+      'Pergunta de mapeador! Processos e prazos mudam de edital pra edital; a documentação e a ordem das etapas (habilitação → mérito) se repetem. Quem enxerga esse padrão estuda uma vez e reaproveita sempre.',
+  },
+  {
     kind: 'ask',
     stage: 0,
     prompt: 'Última do nivelamento. O que vale perguntar antes de irmos ao núcleo?',
@@ -324,6 +377,18 @@ const STEPS: Step[] = [
     explain: 'Validação é conformidade + evidência. O edital é o checklist — e a IA pode conferir isso com você, item a item.',
   },
   {
+    kind: 'build',
+    stage: 1,
+    prompt: 'Então transforme isso em prática: monte o prompt que você mandaria pra IA antes de submeter a proposta.',
+    correct: ['Confere comigo,', 'item a item,', 'se cada exigência do edital', 'tem evidência na proposta?'],
+    extras: [
+      { label: 'se o texto ficou bonito?', feedback: 'Estética não pontua — quem pontua é o checklist do edital.' },
+      { label: 'se eu vou ganhar?', feedback: 'Ninguém garante resultado. Garanta o que está no seu controle: conformidade + evidência.' },
+    ],
+    mentorAnswer:
+      'Esse é um prompt de validação de verdade: pede checagem item a item, contra o checklist público do edital. Formulado assim, ele transforma a IA na sua revisora de conformidade — em qualquer edital.',
+  },
+  {
     kind: 'mentor',
     stage: 1,
     text: 'Recap do núcleo, pra levar no bolso:',
@@ -364,27 +429,26 @@ const STEPS: Step[] = [
     explain: 'Documentos e argumentação se transferem quase inteiros; o que muda é a RÉGUA de quem decide.',
   },
   {
-    kind: 'ask',
+    kind: 'build',
     stage: 2,
-    prompt: 'Você fecha a jornada escolhendo a pergunta que te LEVA daqui:',
-    options: [
-      { label: 'Que outras "réguas" de decisão existem para captar recurso — e como cada uma avalia?', good: true, feedback: 'Pergunta expansiva e transferível — é assim que conhecimento composto nasce.' },
-      { label: 'Acabou? Posso parar de estudar?', feedback: 'A jornada inquisitiva nunca acaba 😄 Tente uma pergunta que abra portas.' },
-      { label: 'Qual é a resposta certa de tudo isso?', feedback: 'Nesta jornada, a resposta certa é a próxima boa pergunta.' },
+    prompt: 'Você fecha a jornada FORMULANDO a pergunta que te leva daqui. Monte-a:',
+    correct: ['Que outras réguas de decisão', 'existem pra captar recurso', '— e como cada uma', 'avalia?'],
+    extras: [
+      { label: 'Qual é a resposta certa?', feedback: 'Nesta jornada, a resposta certa é a próxima boa pergunta.' },
+      { label: 'Posso parar de estudar?', feedback: 'A jornada inquisitiva nunca acaba 😄 Monte uma pergunta que abra portas.' },
     ],
     mentorAnswer:
-      'Ótima bagagem final: investidores avaliam tese e tração; bancos, risco; editais, mérito e aderência. Documentar bem + argumentar dentro da régua é habilidade universal de captação. Jornada concluída!',
+      'Pergunta expansiva e transferível — é assim que conhecimento composto nasce. Investidores avaliam tese e tração; bancos, risco; editais, mérito e aderência. Documentar bem + argumentar dentro da régua é habilidade universal de captação. Jornada concluída!',
   },
 ];
 
 /** Sequential "Pergunta N de M" numbering per stage (mentor/compare don't count). */
+const isQuestionStep = (st: Step) => st.kind === 'ask' || st.kind === 'quiz' || st.kind === 'build';
 const QUESTION_NUMBERS: (null | { n: number; of: number })[] = (() => {
-  const perStage = [0, 1, 2].map(
-    (s) => STEPS.filter((st) => st.stage === s && (st.kind === 'ask' || st.kind === 'quiz')).length,
-  );
+  const perStage = [0, 1, 2].map((s) => STEPS.filter((st) => st.stage === s && isQuestionStep(st)).length);
   const counters = [0, 0, 0];
   return STEPS.map((st) => {
-    if (st.kind !== 'ask' && st.kind !== 'quiz') return null;
+    if (!isQuestionStep(st)) return null;
     counters[st.stage] += 1;
     return { n: counters[st.stage], of: perStage[st.stage] };
   });
@@ -398,6 +462,8 @@ interface AnswerRecord {
 }
 
 function xpFor(step: Step, rec: AnswerRecord): number {
+  // Perguntar vale mais que responder: 'build' (formular) > 'ask' (escolher) > 'quiz'.
+  if (step.kind === 'build') return rec.firstTry ? 20 : 8;
   if (step.kind === 'ask') return rec.firstTry ? 15 : 5;
   if (step.kind === 'quiz') return rec.firstTry ? 10 : 5;
   if (step.kind === 'compare') return 10;
@@ -612,6 +678,141 @@ function AskCard({
   );
 }
 
+/** 'build' — o aluno MONTA a pergunta peça por peça (word-bank estilo Duolingo).
+ *  Aqui o gesto central não é responder: é FORMULAR. Distratores têm microcopy
+ *  que ensina POR QUE certa peça enfraquece a pergunta. */
+function BuildCard({
+  step,
+  counter,
+  onDone,
+}: {
+  step: Extract<Step, { kind: 'build' }>;
+  counter: { n: number; of: number } | null;
+  onDone: (rec: AnswerRecord) => void;
+}) {
+  const colors = STAGES[step.stage].colors;
+
+  // Word-bank: peças corretas + distratores, embaralhadas de forma determinística
+  // (ordem alfabética ≠ ordem da resposta), pra replay estável no protótipo.
+  const bank = useMemo(() => {
+    const pieces = [
+      ...step.correct.map((label) => ({ label, extra: undefined as string | undefined })),
+      ...step.extras.map((e) => ({ label: e.label, extra: e.feedback })),
+    ];
+    return pieces.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }, [step]);
+
+  const [picked, setPicked] = useState<number[]>([]);
+  const [tries, setTries] = useState(0);
+  const [miss, setMiss] = useState<string | null>(null);
+  const [answered, setAnswered] = useState(false);
+
+  const composed = picked.map((i) => bank[i].label).join(' ');
+  const target = step.correct.join(' ');
+
+  function submit() {
+    if (composed === target) {
+      setMiss(null);
+      setAnswered(true);
+      return;
+    }
+    const usedExtra = picked.map((i) => bank[i]).find((p) => p.extra);
+    setMiss(usedExtra?.extra ?? 'As peças certas estão aí — mas a ordem embaralha o foco. Reordene e tente de novo.');
+    setTries((t) => t + 1);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-3xl border ${colors.border} bg-card p-5 md:p-6`}
+      data-testid="active-build"
+    >
+      <ActiveEyebrow icon={Puzzle} label="Monte sua pergunta" counter={counter} colors={colors} />
+      <h2 className="font-display font-bold text-xl text-foreground mt-4 leading-snug">{step.prompt}</h2>
+
+      {/* Linha de resposta: as peças escolhidas, na ordem — clicar remove. */}
+      <div
+        className="mt-4 min-h-14 rounded-2xl border border-dashed border-border bg-background px-4 py-3 flex flex-wrap items-center gap-2"
+        data-testid="build-answer-line"
+      >
+        {picked.length === 0 && (
+          <span className="text-[15px] text-muted-foreground/70">Toque nas peças abaixo pra montar sua pergunta…</span>
+        )}
+        {picked.map((bankIndex, pos) => (
+          <button
+            key={`${bankIndex}-${pos}`}
+            onClick={() => !answered && setPicked((prev) => prev.filter((_, p) => p !== pos))}
+            disabled={answered}
+            data-testid="build-picked-piece"
+            className={`rounded-full border px-3.5 py-2 text-[15px] leading-none transition-colors ${
+              answered
+                ? 'border-evergreen bg-evergreen-soft text-foreground'
+                : 'border-evergreen/50 bg-evergreen-soft/60 text-foreground hover:border-destructive/60 hover:bg-destructive/10'
+            }`}
+          >
+            {bank[bankIndex].label}
+          </button>
+        ))}
+      </div>
+
+      {/* Banco de peças — clicar adiciona. */}
+      {!answered && (
+        <div className="mt-3 flex flex-wrap gap-2" data-testid="build-bank">
+          {bank.map((piece, i) => {
+            const used = picked.includes(i);
+            return (
+              <button
+                key={i}
+                onClick={() => {
+                  setMiss(null);
+                  setPicked((prev) => [...prev, i]);
+                }}
+                disabled={used}
+                data-testid="build-bank-piece"
+                className={`rounded-full border px-3.5 py-2 text-[15px] leading-none transition-colors ${
+                  used
+                    ? 'border-border/50 bg-muted text-muted-foreground/40'
+                    : 'border-border bg-background text-foreground hover:border-evergreen/50'
+                }`}
+              >
+                {piece.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {miss && !answered && (
+        <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground leading-snug" data-testid="build-miss">
+          <Lightbulb className="w-4 h-4 text-clay shrink-0 mt-0.5" /> {miss}
+        </p>
+      )}
+
+      {!answered ? (
+        <button
+          onClick={submit}
+          disabled={picked.length === 0}
+          data-testid="build-submit"
+          className="mt-4 w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-full bg-evergreen text-obsidiana text-[15px] font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-40"
+        >
+          Perguntar ao mentor <ChevronRight className="w-4 h-4" />
+        </button>
+      ) : (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-3">
+          <p className="flex items-start gap-2 text-[15px] text-evergreen-hi leading-snug">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> Pergunta bem formulada — essa abre resposta boa em qualquer IA.
+          </p>
+          <div className="rounded-2xl border border-border bg-background px-5 py-3.5 text-[15px] text-foreground/90 leading-relaxed">
+            {step.mentorAnswer}
+          </div>
+          <ContinueButton onClick={() => onDone({ chosenLabel: target, firstTry: tries === 0 })} />
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
 /** 'quiz' — pergunta objetiva com dica e validação da IA. */
 function QuizCard({
   step,
@@ -812,24 +1013,49 @@ function StageProgress({ index }: { index: number }) {
 /* ───────────────────────────── Intro screen ─────────────────────────────── */
 
 /**
- * A abertura simula o momento zero da experiência: o usuário escreve um
- * PROMPT sobre qualquer tema (aqui pré-preenchido com o exemplo real de um
- * colega — editais) + observações de contexto, e vê ANTES de começar as 3
- * etapas da jornada, cada uma com cor própria e o porquê de existir.
+ * A abertura é um CONSTRUTOR DE PROMPT guiado: três perguntas norteadoras
+ * respondem "DO QUE fazer o prompt" (uma situação real) e "COMO fazer o
+ * prompt" (ponto de partida + objetivo de uso). O prompt é montado ao vivo,
+ * com checklist de anatomia — o aprendizado de prompting começa ANTES da
+ * jornada. Pré-preenchido com o exemplo real de um colega (editais).
  */
 function IntroScreen({
-  prompt,
-  obs,
-  onPrompt,
-  onObs,
+  tema,
+  partida,
+  objetivo,
+  onTema,
+  onPartida,
+  onObjetivo,
   onStart,
 }: {
-  prompt: string;
-  obs: string;
-  onPrompt: (v: string) => void;
-  onObs: (v: string) => void;
+  tema: string;
+  partida: number | null;
+  objetivo: string;
+  onTema: (v: string) => void;
+  onPartida: (v: number) => void;
+  onObjetivo: (v: string) => void;
   onStart: () => void;
 }) {
+  const prompt = assemblePrompt(tema, partida, objetivo);
+  const checks = [
+    {
+      ok: tema.trim().length > 0,
+      label: 'Do quê: um tema concreto',
+      why: 'Situação real rende mais que palavra solta — "editais de fomento" > "editais".',
+    },
+    {
+      ok: partida !== null,
+      label: 'Como: seu ponto de partida',
+      why: 'Dizer de onde você parte calibra o nível das perguntas do mentor.',
+    },
+    {
+      ok: objetivo.trim().length > 0,
+      label: 'Como: um objetivo de uso',
+      why: 'Prompt com "pra quê" recebe resposta com direção.',
+    },
+  ];
+  const canStart = tema.trim().length > 0 && partida !== null;
+
   return (
     <div className="min-h-screen bg-background" data-testid="journey-intro">
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
@@ -838,51 +1064,124 @@ function IntroScreen({
             Experiência conversacional guiada por IA
           </p>
           <h1 className="font-display font-bold text-3xl md:text-4xl text-foreground mt-2">
-            Sobre o que você quer aprender hoje?
+            Vamos montar seu prompt juntos?
           </h1>
           <p className="text-base text-muted-foreground mt-3 max-w-xl mx-auto">
-            Qualquer tema vira uma jornada guiada — a IA nivela, valida e te ensina a perguntar.
+            Três perguntas norteadoras viram um prompt forte — e o prompt forte vira uma jornada guiada.
           </p>
         </div>
 
-        {/* ── Prompt simulado ── */}
-        <div className="rounded-3xl border border-border bg-card p-5 md:p-6 space-y-5">
+        {/* ── Construtor de prompt: 3 perguntas norteadoras ── */}
+        <div className="rounded-3xl border border-border bg-card p-5 md:p-6 space-y-6">
+          {/* 1 · DO QUE fazer o prompt */}
           <label className="block">
-            <span className="font-mono text-xs uppercase tracking-wider text-evergreen-hi">Seu prompt</span>
-            <textarea
-              value={prompt}
-              onChange={(e) => onPrompt(e.target.value)}
-              rows={2}
-              data-testid="intro-prompt"
-              className="mt-2 w-full rounded-2xl border border-border bg-background p-4 text-[15px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
-            />
-            <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground leading-snug">
-              <Lightbulb className="w-4 h-4 text-evergreen-hi shrink-0 mt-0.5" />
-              Nomeie o tema e seu ponto de partida — pergunta aberta &gt; pedido de tarefa.
-            </p>
-          </label>
-
-          <label className="block">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              Observações para o mentor <span className="normal-case">(opcional)</span>
+            <span className={`font-mono text-xs uppercase tracking-wider ${STAGES[0].colors.text}`}>
+              1 · Do que fazer o prompt?
             </span>
+            <p className="font-display font-semibold text-lg text-foreground mt-1">
+              Que situação real você quer destravar?
+            </p>
             <textarea
-              value={obs}
-              onChange={(e) => onObs(e.target.value)}
+              value={tema}
+              onChange={(e) => onTema(e.target.value)}
               rows={2}
-              placeholder="Seu nível, seu objetivo, seu contexto…"
-              data-testid="intro-obs"
+              placeholder="Uma decisão na sua frente, um processo que você precisa dominar…"
+              data-testid="intro-tema"
               className="mt-2 w-full rounded-2xl border border-border bg-background p-4 text-[15px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
             />
-            <p className="mt-2 text-sm text-muted-foreground leading-snug">
-              Seu contexto calibra o nível das perguntas.
-            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">Precisa de ideia?</span>
+              {TEMA_IDEAS.map((idea) => (
+                <button
+                  key={idea}
+                  onClick={() => onTema(idea)}
+                  data-testid="intro-tema-idea"
+                  className={`rounded-full border px-3 py-1.5 text-sm leading-none transition-colors ${
+                    tema === idea
+                      ? 'border-evergreen bg-evergreen-soft text-evergreen-hi'
+                      : 'border-border bg-background text-muted-foreground hover:border-evergreen/50 hover:text-foreground'
+                  }`}
+                >
+                  {idea}
+                </button>
+              ))}
+            </div>
           </label>
 
-          <p className="flex items-start gap-1.5 text-sm text-muted-foreground border-t border-border/60 pt-4 leading-snug">
-            <Sparkles className="w-4 h-4 text-evergreen-hi shrink-0 mt-0.5" />
-            Protótipo: prompt de exemplo do time. A experiência serve a qualquer tema.
-          </p>
+          {/* 2 · COMO fazer — ponto de partida */}
+          <div>
+            <span className={`font-mono text-xs uppercase tracking-wider ${STAGES[1].colors.text}`}>
+              2 · Como fazer o prompt — de onde você parte?
+            </span>
+            <p className="font-display font-semibold text-lg text-foreground mt-1">
+              Qual é a sua relação com esse tema hoje?
+            </p>
+            <div className="mt-2.5 flex flex-wrap gap-2" data-testid="intro-partida">
+              {PARTIDAS.map((p, i) => (
+                <button
+                  key={p.label}
+                  onClick={() => onPartida(i)}
+                  data-testid="intro-partida-option"
+                  className={`rounded-full border px-4 py-2.5 text-[15px] leading-none transition-colors ${
+                    partida === i
+                      ? 'border-clay bg-clay/10 text-clay font-medium'
+                      : 'border-border bg-background text-foreground hover:border-clay/50'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 3 · COMO fazer — objetivo de uso */}
+          <label className="block">
+            <span className={`font-mono text-xs uppercase tracking-wider ${STAGES[2].colors.text}`}>
+              3 · Como fazer o prompt — pra quê?
+            </span>
+            <p className="font-display font-semibold text-lg text-foreground mt-1">
+              Saber disso te permite fazer o quê?
+            </p>
+            <textarea
+              value={objetivo}
+              onChange={(e) => onObjetivo(e.target.value)}
+              rows={2}
+              placeholder="Ex.: submeter meu primeiro projeto, cobrar o preço certo…"
+              data-testid="intro-objetivo"
+              className="mt-2 w-full rounded-2xl border border-border bg-background p-4 text-[15px] leading-relaxed text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+            />
+          </label>
+
+          {/* ── Prompt montado ao vivo + anatomia ── */}
+          <div className="border-t border-border/60 pt-5">
+            <span className="font-mono text-xs uppercase tracking-wider text-evergreen-hi">
+              Seu prompt, montado ao vivo
+            </span>
+            <div className="mt-2.5 flex justify-end" data-testid="intro-prompt-preview">
+              <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-evergreen text-obsidiana px-5 py-3.5 text-[15px] font-medium leading-relaxed">
+                {prompt}
+              </div>
+            </div>
+            <ul className="mt-4 space-y-2" data-testid="intro-checklist">
+              {checks.map((c) => (
+                <li key={c.label} className="flex items-start gap-2 text-sm leading-snug">
+                  {c.ok ? (
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-evergreen-hi" />
+                  ) : (
+                    <span className="w-4 h-4 shrink-0 mt-0.5 rounded-full border border-muted-foreground/40" />
+                  )}
+                  <span>
+                    <span className={c.ok ? 'text-foreground font-medium' : 'text-muted-foreground'}>{c.label}</span>
+                    <span className="text-muted-foreground"> — {c.why}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 flex items-start gap-1.5 text-sm text-muted-foreground leading-snug">
+              <Sparkles className="w-4 h-4 text-evergreen-hi shrink-0 mt-0.5" />
+              Protótipo: exemplo real do time pré-preenchido. A experiência serve a qualquer tema.
+            </p>
+          </div>
         </div>
 
         {/* ── As 3 etapas, cada uma com sua cor ── */}
@@ -919,7 +1218,7 @@ function IntroScreen({
         <div className="flex justify-center">
           <button
             onClick={onStart}
-            disabled={prompt.trim().length === 0}
+            disabled={!canStart}
             data-testid="start-journey"
             className="inline-flex items-center gap-2 h-12 px-8 rounded-full bg-evergreen text-obsidiana font-display font-semibold text-[15px] uppercase tracking-wide hover:bg-evergreen-hi transition-colors disabled:opacity-40"
           >
@@ -935,8 +1234,10 @@ function IntroScreen({
 
 function MentorFlowPrototype() {
   const [phase, setPhase] = useState<'intro' | 'journey'>('intro');
-  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
-  const [obs, setObs] = useState(SAMPLE_OBS);
+  const [tema, setTema] = useState(SAMPLE_TEMA);
+  const [partida, setPartida] = useState<number | null>(SAMPLE_PARTIDA);
+  const [objetivo, setObjetivo] = useState(SAMPLE_OBJETIVO);
+  const prompt = assemblePrompt(tema, partida, objetivo);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<AnswerRecord[]>([]);
   const [run, setRun] = useState(0);
@@ -946,6 +1247,8 @@ function MentorFlowPrototype() {
   const xp = useMemo(() => answers.reduce((acc, rec, i) => acc + xpFor(STEPS[i], rec), 0), [answers]);
   const goodQuestions = answers.filter((rec, i) => STEPS[i].kind === 'ask' && rec.firstTry).length;
   const askTotal = STEPS.filter((s) => s.kind === 'ask').length;
+  const builtQuestions = answers.filter((rec, i) => STEPS[i].kind === 'build' && rec.firstTry).length;
+  const buildTotal = STEPS.filter((s) => s.kind === 'build').length;
   const quizFirstTry = answers.filter((rec, i) => STEPS[i].kind === 'quiz' && rec.firstTry).length;
   const quizTotal = STEPS.filter((s) => s.kind === 'quiz').length;
 
@@ -971,10 +1274,12 @@ function MentorFlowPrototype() {
   if (phase === 'intro') {
     return (
       <IntroScreen
-        prompt={prompt}
-        obs={obs}
-        onPrompt={setPrompt}
-        onObs={setObs}
+        tema={tema}
+        partida={partida}
+        objetivo={objetivo}
+        onTema={setTema}
+        onPartida={setPartida}
+        onObjetivo={setObjetivo}
         onStart={() => setPhase('journey')}
       />
     );
@@ -1010,12 +1315,9 @@ function MentorFlowPrototype() {
             </h1>
           </div>
 
-          {/* Eco do prompt do usuário — a jornada nasce dele. */}
-          <div className="space-y-1.5" data-testid="prompt-echo">
+          {/* Eco do prompt montado na intro — a jornada nasce dele. */}
+          <div data-testid="prompt-echo">
             <UserBubble text={prompt} />
-            {obs.trim().length > 0 && (
-              <p className="text-right text-sm text-muted-foreground pr-1">Observações: {obs}</p>
-            )}
           </div>
 
           {/* Transcript of completed steps (derived, replay-safe). */}
@@ -1027,6 +1329,13 @@ function MentorFlowPrototype() {
                 {firstOfStage && <StageDivider stage={step.stage} />}
                 {step.kind === 'mentor' && <MentorBubble text={step.text} bullets={step.bullets} />}
                 {step.kind === 'ask' && rec && (
+                  <>
+                    <MentorBubble text={step.prompt} />
+                    <UserBubble text={rec.chosenLabel ?? ''} />
+                    <MentorBubble tone="praise" text={step.mentorAnswer} />
+                  </>
+                )}
+                {step.kind === 'build' && rec && (
                   <>
                     <MentorBubble text={step.prompt} />
                     <UserBubble text={rec.chosenLabel ?? ''} />
@@ -1056,6 +1365,7 @@ function MentorFlowPrototype() {
               {(index === 0 || STEPS[index - 1].stage !== current.stage) && <StageDivider stage={current.stage} />}
               {current.kind === 'mentor' && <MentorCard step={current} onDone={complete} />}
               {current.kind === 'ask' && <AskCard step={current} counter={counter} onDone={complete} />}
+              {current.kind === 'build' && <BuildCard step={current} counter={counter} onDone={complete} />}
               {current.kind === 'quiz' && <QuizCard step={current} counter={counter} onDone={complete} />}
               {current.kind === 'compare' && <CompareCard step={current} onDone={complete} />}
             </div>
@@ -1074,10 +1384,14 @@ function MentorFlowPrototype() {
               <p className="text-base text-muted-foreground mt-1.5">
                 3 etapas vencidas escolhendo as perguntas certas.
               </p>
-              <div className="mt-6 grid grid-cols-3 gap-3">
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="rounded-2xl border border-border bg-background py-4">
                   <p className="font-mono text-3xl tabular-nums text-evergreen-hi">{xp}</p>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1.5">XP total</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background py-4">
+                  <p className="font-mono text-3xl tabular-nums text-foreground">{builtQuestions}/{buildTotal}</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mt-1.5">Perguntas montadas de 1ª</p>
                 </div>
                 <div className="rounded-2xl border border-border bg-background py-4">
                   <p className="font-mono text-3xl tabular-nums text-foreground">{goodQuestions}/{askTotal}</p>
@@ -1110,6 +1424,40 @@ function MentorFlowPrototype() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* ── As perguntas do aluno, devolvidas como prompts prontos ── */}
+              <div className="mt-8 text-left" data-testid="journey-questions">
+                <h3 className="font-display font-semibold text-base uppercase tracking-wide text-foreground text-center">
+                  Suas perguntas — leve como prompts
+                </h3>
+                <p className="text-sm text-muted-foreground text-center mt-1.5">
+                  Cada uma funciona como prompt pronto pra continuar aprendendo com qualquer IA.
+                </p>
+                <ul className="mt-4 space-y-2.5">
+                  {STEPS.map((step, i) => {
+                    const rec = answers[i];
+                    if (!rec?.chosenLabel || (step.kind !== 'ask' && step.kind !== 'build')) return null;
+                    return (
+                      <li
+                        key={i}
+                        className="rounded-2xl border border-border bg-background px-4 py-3 flex items-start gap-2.5"
+                      >
+                        {step.kind === 'build' ? (
+                          <Puzzle className="w-4 h-4 mt-0.5 shrink-0 text-clay" />
+                        ) : (
+                          <MessageCircleQuestion className="w-4 h-4 mt-0.5 shrink-0 text-evergreen-hi" />
+                        )}
+                        <span className="text-[15px] text-foreground/90 leading-snug">
+                          {rec.chosenLabel}
+                          <span className="ml-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                            {step.kind === 'build' ? 'você montou' : 'você escolheu'}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
 
               {/* ── Vocabulário essencial do tema ── */}
