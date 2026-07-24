@@ -30,6 +30,7 @@ import type {
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
+import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -45,6 +46,11 @@ const STAGE_REQUEST_EVENT = 'stage-request';
 const STAGE_ANSWER_EVENT = 'stage-answer';
 const STAGE_SHOW_EVENT = 'stage-show';
 const STAGE_CLEAR_EVENT = 'stage-clear';
+// After a pull resolves, the staged learner keeps streaming its work while it
+// edits (live stage). It re-emits stage-update on every autosave; the instructor
+// forwards those as fresh stage-show. Same trust model as the one-shot pull —
+// gated on the resolved (userId + activityId) target, not a fresh nonce.
+const STAGE_UPDATE_EVENT = 'stage-update';
 // The pull is peer-to-peer: only a client that is ONLINE can answer it. A learner
 // who closed the tab / lost the network never replies, so give up after a grace
 // window and tell the professor — an endless spinner reads as a broken feature.
@@ -80,6 +86,17 @@ export function useClassSession(
   // the userId matches the target AND the nonce echoes back (rejects stale replies).
   const pendingStageRef = useRef<{ nonce: string; targetUserId: string } | null>(null);
   const stageTimeoutRef = useRef<number | null>(null);
+  // Instructor side: the learner currently ON the live stage (after a pull
+  // resolved). Kept so their streamed stage-update pushes keep being forwarded
+  // as stage-show until the pull is cleared or the class advances.
+  const liveStageRef = useRef<{ targetUserId: string; activityId: string } | null>(null);
+  // Learner side: the activity this client is itself staged for (its own work is
+  // on the class stage). Drives the autosave→stage-update stream below.
+  const stagedSelfRef = useRef<string | null>(null);
+  // Learner side: the activity this client actually answered a pull for. A
+  // stage-show is peer-forgeable, so self-streaming only arms when we replied to
+  // a real stage-request first — a bare forged stage-show can't make us stream.
+  const answeredStageRef = useRef<string | null>(null);
   // Read inside broadcast handlers so a stage-show is only honored for the CURRENT
   // activity — without making the channel effect depend on currentActivityId.
   const currentActivityIdRef = useRef<string | null>(null);
@@ -247,6 +264,9 @@ export function useClassSession(
             setStoppedFor(null);
             setStagedAnswer(null);
             pendingStageRef.current = null;
+            liveStageRef.current = null;
+            stagedSelfRef.current = null;
+            answeredStageRef.current = null;
             clearStageTimeout();
             setStagePendingUserId(null);
             setStageUnreachableUserId(null);
@@ -294,6 +314,7 @@ export function useClassSession(
           if (!p?.activityId || !p.targetUserId || !p.nonce || !id || !sid) return;
           if (p.targetUserId !== id.userId || p.activityId !== currentActivityIdRef.current) return;
           const gathered = gatherStageContent(sid, p.activityId);
+          answeredStageRef.current = p.activityId;
           void channel.send({
             type: 'broadcast',
             event: STAGE_ANSWER_EVENT,
@@ -328,9 +349,40 @@ export function useClassSession(
           if (p.userId !== pending.targetUserId || p.nonce !== pending.nonce) return;
           if (p.activityId !== currentActivityIdRef.current) return;
           pendingStageRef.current = null;
+          liveStageRef.current = { targetUserId: p.userId, activityId: p.activityId };
           clearStageTimeout();
           setStagePendingUserId(null);
           setStageUnreachableUserId(null);
+          void channel.send({
+            type: 'broadcast',
+            event: STAGE_SHOW_EVENT,
+            payload: {
+              activityId: p.activityId,
+              kind: p.kind,
+              content: p.content,
+              status: parseStageStatus(p.status),
+              author: p.author,
+            },
+          });
+        })
+        // stage-update (staged learner → all): the learner on stage re-sends its
+        // work as it edits. Only the instructor honors it, and only for the target
+        // it already resolved a pull to — then forwards it as a fresh stage-show.
+        .on('broadcast', { event: STAGE_UPDATE_EVENT }, ({ payload }) => {
+          const live = liveStageRef.current;
+          const p = payload as
+            | {
+                activityId?: string;
+                userId?: string;
+                kind?: string;
+                content?: string;
+                status?: unknown;
+                author?: unknown;
+              }
+            | null;
+          if (!live || !p?.userId || !p.activityId) return;
+          if (p.userId !== live.targetUserId || p.activityId !== live.activityId) return;
+          if (p.activityId !== currentActivityIdRef.current) return;
           void channel.send({
             type: 'broadcast',
             event: STAGE_SHOW_EVENT,
@@ -366,10 +418,20 @@ export function useClassSession(
             status: parseStageStatus(p.status),
             author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
           });
+          // If MY work is the one on stage, start streaming edits; if someone
+          // else took the stage, stop (I'm no longer the live source). Only arm
+          // when I actually answered a pull for this activity — a forged
+          // stage-show naming me can't turn me into a silent live source.
+          const me = identityRef.current?.userId;
+          stagedSelfRef.current =
+            me && a.userId === me && answeredStageRef.current === p.activityId ? p.activityId : null;
         })
         .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
           setStagedAnswer(null);
           pendingStageRef.current = null;
+          liveStageRef.current = null;
+          stagedSelfRef.current = null;
+          answeredStageRef.current = null;
           clearStageTimeout();
           setStagePendingUserId(null);
           setStageUnreachableUserId(null);
@@ -517,6 +579,9 @@ export function useClassSession(
   const clearStage = useCallback(() => {
     const channel = channelRef.current;
     pendingStageRef.current = null;
+    liveStageRef.current = null;
+    stagedSelfRef.current = null;
+    answeredStageRef.current = null;
     clearStageTimeout();
     setStagePendingUserId(null);
     setStageUnreachableUserId(null);
@@ -527,6 +592,37 @@ export function useClassSession(
 
   // A pull left in flight when the page unmounts must not fire into a dead tree.
   useEffect(() => clearStageTimeout, [clearStageTimeout]);
+
+  // Live stage: while THIS learner's work is on stage, re-broadcast it on every
+  // autosave so the class mirror tracks the edits in real time (no polling — the
+  // snapshot service already fires this on its debounced save).
+  useEffect(() => {
+    const onSnapshot = (e: Event) => {
+      const staged = stagedSelfRef.current;
+      const sid = sessionIdRef.current;
+      const id = identityRef.current;
+      const channel = channelRef.current;
+      if (!staged || !sid || !id || !channel) return;
+      if (staged !== currentActivityIdRef.current) return;
+      const detailActivity = (e as CustomEvent<{ activityId?: string }>).detail?.activityId;
+      if (detailActivity && detailActivity !== staged) return;
+      const gathered = gatherStageContent(sid, staged);
+      void channel.send({
+        type: 'broadcast',
+        event: STAGE_UPDATE_EVENT,
+        payload: {
+          activityId: staged,
+          userId: id.userId,
+          kind: gathered.kind,
+          content: gathered.content,
+          status: gathered.status,
+          author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
+        },
+      });
+    };
+    window.addEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
+    return () => window.removeEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
+  }, []);
 
   const broadcast = useCallback(
     (activityId: string) => {

@@ -325,6 +325,144 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
   });
 });
 
+describe('useClassSession — live stage streaming (B3)', () => {
+  it('the staged learner re-broadcasts stage-update on autosave', async () => {
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
+    );
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    // A real pull: the instructor requests ME, I answer, then my work goes on
+    // stage → I become the live source.
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'code',
+      content: 'const cor = "azul";',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const cor = "verde";', savedAt: new Date().toISOString() })
+    );
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('itera:code-snapshot-saved', { detail: { activityId: ACTIVITY } })
+      );
+    });
+
+    const update = sent.find((s) => s.event === 'stage-update');
+    expect(update).toBeTruthy();
+    expect(update!.payload).toMatchObject({
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      kind: 'code',
+      content: 'const cor = "verde";',
+    });
+  });
+
+  it('a NON-staged learner does not stream on autosave', async () => {
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    // Someone ELSE is on stage.
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'code',
+      content: 'x',
+      author: { userId: 'other', name: 'Bob', avatarUrl: null },
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('itera:code-snapshot-saved', { detail: { activityId: ACTIVITY } })
+      );
+    });
+
+    expect(sent.find((s) => s.event === 'stage-update')).toBeUndefined();
+  });
+
+  it('a forged stage-show naming me does NOT make me a live source without a real pull', async () => {
+    localStorage.setItem(
+      `itera.code.snapshot:${ACTIVITY}`,
+      JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
+    );
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    // No stage-request ever arrived — a peer forged a stage-show authored as me.
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'code',
+      content: 'const cor = "azul";',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('itera:code-snapshot-saved', { detail: { activityId: ACTIVITY } })
+      );
+    });
+
+    expect(sent.find((s) => s.event === 'stage-update')).toBeUndefined();
+  });
+
+  it('the instructor forwards a matching stage-update as a fresh stage-show', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+
+    // First pull resolves → arms the live subscription.
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'code',
+      content: 'v1',
+      status: 'in_progress',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+    sent.length = 0;
+
+    emit('stage-update', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      kind: 'code',
+      content: 'v2',
+      status: 'in_progress',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    const show = sent.find((s) => s.event === 'stage-show');
+    expect(show!.payload).toMatchObject({ activityId: ACTIVITY, content: 'v2' });
+  });
+
+  it('the instructor ignores a stage-update from a non-staged user', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'code',
+      content: 'v1',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+    sent.length = 0;
+
+    emit('stage-update', {
+      activityId: ACTIVITY,
+      userId: 'someone-else',
+      kind: 'code',
+      content: 'evil',
+      author: { userId: 'someone-else', name: 'Mal', avatarUrl: null },
+    });
+
+    expect(sent.find((s) => s.event === 'stage-show')).toBeUndefined();
+  });
+});
+
 describe('useClassSession — an unreachable learner fails loudly', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
