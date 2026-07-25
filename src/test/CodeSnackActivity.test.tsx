@@ -69,10 +69,18 @@ function makeActivity(spec: Record<string, unknown>): Activity {
   return { id: 't-code', lessonId: 'l', ordinal: 0, kind: 'code', spec, rubric: null };
 }
 
-function renderSnack(spec: Record<string, unknown>, onComplete = vi.fn()) {
+function renderSnack(
+  spec: Record<string, unknown>,
+  onComplete = vi.fn(),
+  opts: { live?: boolean } = {},
+) {
   render(
     <I18nProvider>
-      <CodeSnackActivity activity={makeActivity(spec)} onComplete={onComplete} />
+      <CodeSnackActivity
+        activity={makeActivity(spec)}
+        onComplete={onComplete}
+        live={opts.live ?? false}
+      />
     </I18nProvider>,
   );
   return onComplete;
@@ -277,12 +285,13 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(onComplete).toHaveBeenCalledWith(true);
   });
 
-  it('records the REAL result when the learner moves on after failing', () => {
+  it('records the REAL result when the learner moves on after failing (live)', () => {
     preview.results = [
       { id: 'verde', passed: true },
       { id: 'texto', passed: false },
     ];
-    const onComplete = renderSnack(SPEC);
+    // "Seguir mesmo assim" only exists in the live class — render it live.
+    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
     submit();
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
 
@@ -293,14 +302,28 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(onComplete).toHaveBeenCalledWith(false);
   });
 
-  it('keeps the verdicts on screen after settling, with the actions spent', () => {
+  it('self-paced hides "seguir mesmo assim" on a failure — only retry moves forward', () => {
+    // Skipping a failed PRACTICAL exercise makes no sense — it just defers the
+    // same retry. Self-paced offers only "tentar de novo".
+    preview.results = [
+      { id: 'verde', passed: false },
+      { id: 'texto', passed: false },
+    ];
+    renderSnack(SPEC);
+    submit();
+    expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
+    expect(screen.queryByTestId('code-checks-continue')).not.toBeInTheDocument();
+    expect(screen.getByTestId('code-checks-retry')).toBeInTheDocument();
+  });
+
+  it('keeps the verdicts on screen after settling, with the actions spent (live)', () => {
     // In the live class the learner does NOT self-advance, so the activity
     // stays mounted after reporting — the feedback must not vanish.
     preview.results = [
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
     ];
-    const onComplete = renderSnack(SPEC);
+    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
     submit();
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
@@ -321,7 +344,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
 
   it('a check the preview never reported back counts as not passed', () => {
     preview.results = [{ id: 'texto', passed: true }];
-    const onComplete = renderSnack(SPEC);
+    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
     submit();
 
     const items = screen.getAllByTestId('code-check-item');

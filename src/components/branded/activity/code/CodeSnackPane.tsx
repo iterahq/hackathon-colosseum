@@ -26,10 +26,12 @@ export function CodeSnackPane({
   activity,
   spec,
   onComplete,
+  live = false,
 }: {
   activity: Activity;
   spec: CodeSpec;
   onComplete: (correct: boolean) => void;
+  live?: boolean;
 }) {
   const { t } = useI18n();
   const {
@@ -126,6 +128,7 @@ export function CodeSnackPane({
           results={results}
           allPassed={allPassed}
           settled={phase === 'settled'}
+          live={live}
           onRetry={retry}
           onContinue={complete}
         />

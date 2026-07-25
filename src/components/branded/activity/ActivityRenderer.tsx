@@ -51,11 +51,17 @@ export function ActivityRenderer({
   activity,
   onComplete,
   reveal = false,
+  live = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
   /** Reveal the correct answer (timer stopped/expired) even without a submission. */
   reveal?: boolean;
+  /**
+   * Live class vs. self-paced. Only the `code` snack reads it today, to gate the
+   * "seguir mesmo assim" skip on a failed practical (live only).
+   */
+  live?: boolean;
 }) {
   switch (activity.kind) {
     case 'document':
@@ -65,7 +71,7 @@ export function ActivityRenderer({
     case 'quiz':
       return <QuizActivity activity={activity} onComplete={onComplete} />;
     case 'code':
-      return <CodeSnackActivity activity={activity} onComplete={onComplete} />;
+      return <CodeSnackActivity activity={activity} onComplete={onComplete} live={live} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
       return <ConceptActivity activity={activity} onComplete={onComplete} />;

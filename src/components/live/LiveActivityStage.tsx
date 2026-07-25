@@ -62,7 +62,7 @@ export function LiveActivityStage({
         onClick={handleClick}
         {...(readOnly ? { inert: '' } : {})}
       >
-        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} />
+        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live />
       </div>
       {footer}
     </div>

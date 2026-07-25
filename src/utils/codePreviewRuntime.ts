@@ -147,6 +147,11 @@ export function runCodeChecks(options: {
   }
 
   function evaluate(check: CodeCheck): boolean {
+    // Judge text like a human reader (both operands): collapse whitespace, trim,
+    // NFC-normalize accents — composed vs decomposed "á" render alike but differ in bytes.
+    function normalizeText(value: string): string {
+      return (value || '').replace(/\s+/g, ' ').trim().normalize('NFC');
+    }
     const nodes = root.querySelectorAll(check.selector);
     const assert = check.assert;
     if (assert.type === 'count') return nodes.length === assert.equals;
@@ -154,9 +159,10 @@ export function runCodeChecks(options: {
     const el = nodes[0];
     if (assert.type === 'exists') return true;
     if (assert.type === 'text') {
-      const text = (el.textContent || '').trim();
-      if (assert.equals !== undefined && text !== assert.equals) return false;
-      if (assert.contains !== undefined && text.indexOf(assert.contains) === -1) return false;
+      const text = normalizeText(el.textContent || '');
+      if (assert.equals !== undefined && text !== normalizeText(assert.equals)) return false;
+      if (assert.contains !== undefined && text.indexOf(normalizeText(assert.contains)) === -1)
+        return false;
       // Neither operand given → degenerates to "an element matched".
       return true;
     }

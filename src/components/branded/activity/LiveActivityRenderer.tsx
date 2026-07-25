@@ -45,7 +45,7 @@ export function LiveActivityRenderer({
     return <SandboxScenarioLiveActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
   }
 
-  return <ActivityRenderer activity={activity} onComplete={onComplete} reveal={reveal} />;
+  return <ActivityRenderer activity={activity} onComplete={onComplete} reveal={reveal} live />;
 }
 
 export default LiveActivityRenderer;

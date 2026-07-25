@@ -13,9 +13,11 @@ import { CodeSnackPane } from './CodeSnackPane';
 export function CodeSnackActivity({
   activity,
   onComplete,
+  live = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
+  live?: boolean;
 }) {
   const { t } = useI18n();
   const parsed = safeParseActivitySpec('code', activity.spec);
@@ -30,5 +32,5 @@ export function CodeSnackActivity({
       </div>
     );
   }
-  return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} />;
+  return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} live={live} />;
 }

@@ -98,6 +98,43 @@ describe('runCodeChecks — assert evaluation', () => {
     ).toEqual([{ id: 'c1', passed: false }]);
   });
 
+  it('text — equals collapses internal whitespace runs, not just the ends', async () => {
+    // The learner wrote the right words with sloppy spacing/newlines — that is
+    // the RIGHT answer and must be accepted.
+    const html = '<p>Ana   vai\n  estudar   matemática</p>';
+    expect(
+      await runAgainstHtml(html, [
+        check({ selector: 'p', assert: { type: 'text', equals: 'Ana vai estudar matemática' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+  });
+
+  it('text — equals matches across NFC/NFD accent encodings', async () => {
+    // "matemática" typed with a COMBINING acute (NFD) is byte-different from the
+    // composed form but identical on screen — it must still pass.
+    const decomposed = 'matemática'.normalize('NFD');
+    expect(
+      await runAgainstHtml(`<p>${decomposed}</p>`, [
+        check({ selector: 'p', assert: { type: 'text', equals: 'matemática' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+  });
+
+  it('text — contains accepts a valid answer with extra trailing punctuation', async () => {
+    // The reported bug: a perfect useState solution renders "…matemática!" and
+    // was rejected by an exact `equals`. With the content authored as `contains`
+    // the sentence appearing is what counts, punctuation and all.
+    const html = '<p data-resultado>Ana vai estudar matemática!</p>';
+    expect(
+      await runAgainstHtml(html, [
+        check({
+          selector: '[data-resultado]',
+          assert: { type: 'text', contains: 'Ana vai estudar matemática' },
+        }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+  });
+
   it('class — matches a token substring on the class attribute', async () => {
     const html = '<button class="px-4 py-2 bg-emerald-500 text-white">Enviar</button>';
     expect(
