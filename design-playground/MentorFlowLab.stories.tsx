@@ -6,7 +6,7 @@
  * e a mecânica central é o aluno ESCOLHER (e aprender a fazer) as perguntas
  * certas. Conteúdo de exemplo: editais de fomento e recurso.
  *
- *   1. Learning Outside–Inward  — 10 perguntas niveladoras nos essenciais,
+ *   1. Learning Outside–Inward  — perguntas niveladoras nos essenciais,
  *      de fora pra dentro (o que é, como funciona, o que se repete).
  *   2. The Core Fundamentals    — chatbot-style: perguntas específicas com
  *      dicas e microcopy (documentação, validação, defesa do objetivo).
@@ -110,7 +110,7 @@ const STAGES: StageMeta[] = [
     hint: 'Nivelando os essenciais',
     icon: Compass,
     colors: { text: 'text-evergreen-hi', border: 'border-evergreen/40', bg: 'bg-evergreen-soft', bar: 'bg-evergreen' },
-    desc: '10 perguntas mapeiam o terreno: o que é, como funciona, o que se repete.',
+    desc: '5 perguntas mapeiam o terreno: o que é, como funciona, o que se repete.',
     why: 'Sem nivelar, conteúdo avançado vira ruído.',
   },
   {
@@ -187,8 +187,11 @@ const GLOSSARY: { term: string; def: string }[] = [
 
 /* ─────────────────── Conteúdo: editais de fomento (exemplo) ─────────────── */
 
+/** ⚠️ Teto de teste: NO MÁXIMO 5 perguntas (ask/quiz/build) por etapa — sessão
+ *  curta o bastante pra rodar inteira em validação de fluxo. Ao adicionar um
+ *  passo, troque outro da mesma etapa em vez de somar. */
 const STEPS: Step[] = [
-  // ═══ Etapa 1 — Learning Outside–Inward (10 perguntas niveladoras) ═══
+  // ═══ Etapa 1 — Learning Outside–Inward (5 perguntas niveladoras) ═══
   {
     kind: 'mentor',
     stage: 0,
@@ -204,7 +207,7 @@ const STEPS: Step[] = [
       { label: 'Qual edital paga mais?', feedback: 'Tentador, mas sem entender o jogo, o prêmio não ajuda. Comece mais aberto.' },
     ],
     mentorAnswer:
-      'Edital é uma chamada pública: um documento que define QUEM pode pedir recurso, PARA QUÊ, com QUAIS regras e COMO será avaliado. Ele existe para distribuir dinheiro (público ou de fundos) com transparência.',
+      'Edital é uma chamada pública: um documento que define QUEM pode pedir recurso, PARA QUÊ, com QUAIS regras e COMO será avaliado. Ele existe para distribuir dinheiro (público ou de fundos) com transparência — e, no caso do fomento, esse recurso normalmente NÃO se devolve. É essa a diferença de raiz para um banco.',
   },
   {
     kind: 'quiz',
@@ -216,25 +219,6 @@ const STEPS: Step[] = [
       { label: 'Garantir recurso a quem se inscrever primeiro' },
     ],
     explain: 'Exato: regras públicas + critérios de avaliação. Não é empréstimo, nem fila por ordem de chegada.',
-  },
-  {
-    kind: 'quiz',
-    stage: 0,
-    question: 'Verdadeiro ou falso: todo recurso de edital de fomento precisa ser devolvido depois.',
-    hint: 'Pense na diferença entre fomento e empréstimo.',
-    options: [{ label: 'Verdadeiro' }, { label: 'Falso', correct: true }],
-    explain: 'Fomento normalmente é recurso não-reembolsável — essa é a grande diferença para um banco.',
-  },
-  {
-    kind: 'quiz',
-    stage: 0,
-    question: 'Quem publica os maiores editais de fomento do país?',
-    options: [
-      { label: 'FINEP, BNDES, CNPq e as FAPs estaduais', correct: true },
-      { label: 'Apenas prefeituras' },
-      { label: 'Fintechs e bancos digitais' },
-    ],
-    explain: 'FINEP, BNDES, CNPq e FAPs (como a FAPESP) concentram os grandes volumes de fomento.',
   },
   {
     kind: 'ask',
@@ -251,47 +235,14 @@ const STEPS: Step[] = [
   {
     kind: 'quiz',
     stage: 0,
-    question: 'Qual "kit" aparece em quase todo edital?',
-    options: [
-      { label: 'Certidões negativas + documentos societários + proposta', correct: true },
-      { label: 'Só o pitch de vendas' },
-      { label: 'RG do sócio e nada mais' },
-    ],
-    explain: 'É o kit-base. Deixá-lo pronto e atualizado acelera QUALQUER inscrição futura.',
-  },
-  {
-    kind: 'quiz',
-    stage: 0,
     question: 'Qual é a ordem típica das etapas de um edital?',
     options: [
       { label: 'Inscrição → habilitação documental → avaliação de mérito → resultado', correct: true },
       { label: 'Avaliação de mérito → inscrição → resultado' },
       { label: 'Resultado → inscrição → recurso' },
     ],
-    explain: 'Primeiro conferem se você PODE participar (habilitação); depois, se o projeto MERECE (mérito).',
-  },
-  {
-    kind: 'quiz',
-    stage: 0,
-    question: '"Habilitação documental" significa…',
-    hint: 'Acontece ANTES da avaliação de mérito.',
-    options: [
-      { label: 'Checar se os documentos cumprem as regras do edital', correct: true },
-      { label: 'Avaliar a qualidade da ideia' },
-      { label: 'Um treinamento obrigatório' },
-    ],
-    explain: 'É o pente-fino de conformidade. Muita gente boa cai aqui — por papel, não por ideia.',
-  },
-  {
-    kind: 'quiz',
-    stage: 0,
-    question: 'Dois editais têm processos bem diferentes. A documentação deles…',
-    options: [
-      { label: 'Tende a ser parecida', correct: true },
-      { label: 'Muda completamente' },
-      { label: 'É opcional em um deles' },
-    ],
-    explain: 'Você pegou o padrão central: processos mudam, documentação converge.',
+    explain:
+      'Primeiro conferem se você PODE participar (habilitação documental: o pente-fino de conformidade); depois, se o projeto MERECE (mérito). Muita gente boa cai na primeira — por papel, não por ideia.',
   },
   {
     kind: 'build',
@@ -305,24 +256,12 @@ const STEPS: Step[] = [
     mentorAnswer:
       'Pergunta de mapeador! Processos e prazos mudam de edital pra edital; a documentação e a ordem das etapas (habilitação → mérito) se repetem. Quem enxerga esse padrão estuda uma vez e reaproveita sempre.',
   },
-  {
-    kind: 'ask',
-    stage: 0,
-    prompt: 'Última do nivelamento. O que vale perguntar antes de irmos ao núcleo?',
-    options: [
-      { label: 'Onde os projetos costumam ser reprovados?', good: true, feedback: 'Pergunta de quem quer aprender com o erro dos outros. Excelente instinto.' },
-      { label: 'Posso usar IA pra escrever tudo?', feedback: 'Dá pra usar como apoio — mas essa pergunta não nivela conhecimento agora.' },
-      { label: 'Quantas páginas tem um edital?', feedback: 'Varia demais; não te dá alavanca de aprendizado.' },
-    ],
-    mentorAnswer:
-      'Os dois grandes vilões: (1) habilitação — documentos vencidos ou faltando; (2) mérito — proposta desalinhada com a temática do edital. É exatamente isso que vamos atacar na próxima etapa.',
-  },
 
   // ═══ Etapa 2 — The Core Fundamentals (específico, com dicas) ═══
   {
     kind: 'mentor',
     stage: 1,
-    text: 'Agora o núcleo: documentação, validação e DEFESA do objetivo. Aqui as perguntas ficam específicas — e as dicas, cirúrgicas.',
+    text: 'Terreno nivelado. Agora repare onde os projetos caem: (1) habilitação — documento vencido ou faltando; (2) mérito — proposta desalinhada com a temática. É exatamente isso que vamos atacar agora, no núcleo: documentação, validação e DEFESA do objetivo. Aqui as perguntas ficam específicas — e as dicas, cirúrgicas.',
     bullets: [
       'Documentação: o que te mantém no jogo.',
       'Argumentação aderente à temática: o que te faz vencer.',
