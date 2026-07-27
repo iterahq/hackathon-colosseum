@@ -79,9 +79,9 @@ export function LiveSidebar({
         </button>
       )}
 
-      {/* Pinned top: flow controls + activity stats stay put while lists scroll. */}
+      {/* Teto de altura: o picker de palco abre aqui e empurraria Copiar link/Encerrar pra fora do dvh. */}
       {isInstructor && (controls || showActivity) && (
-        <div className="shrink-0 divide-y divide-border border-b border-border">
+        <div className="shrink-0 max-h-[62vh] overflow-y-auto divide-y divide-border border-b border-border">
           {showActivity && activityCount > 0 && (
             <div className="py-2.5 flex justify-center">
               <span

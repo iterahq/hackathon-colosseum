@@ -11,14 +11,21 @@ import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1] as const;
 
 /**
- * Sound dock for the live class, pinned top-right of the immersive chrome (was a
- * bottom-left floater that fought the content/footer on phones): a mute toggle,
- * a panel that opens DOWNWARD with tappable volume percentages, and a
- * background-music switch. Also HOSTS the gamified background-music loop, so
- * mounting the dock on a live surface starts (and gates) the soundtrack. Shared
- * by learner + instructor.
+ * Sound dock for the live class, pinned bottom-LEFT: a mute toggle, a panel that
+ * opens UPWARD with tappable volume percentages, and a background-music switch.
+ * Also HOSTS the gamified background-music loop, so mounting the dock on a live
+ * surface starts (and gates) the soundtrack. Shared by learner + instructor.
  */
-export function LiveSoundDock() {
+interface LiveSoundDockProps {
+  /**
+   * Sobe o dock acima do `FeedbackFooter` (fixed, bottom-0, z-50). O footer fica
+   * no ar do momento em que o aluno responde até o professor avançar — ou seja, a
+   * maior parte da rodada —, então sem isso o dock fica enterrado embaixo dele.
+   */
+  raised?: boolean;
+}
+
+export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
   const { t } = useI18n();
   const [muted, toggleMuted] = useLiveMuted();
   const [volume, setVolume] = useLiveVolume();
@@ -50,7 +57,11 @@ export function LiveSoundDock() {
   };
 
   return (
-    <div className="fixed top-2.5 right-3 md:right-4 z-40 group" data-testid="live-sound-dock">
+    <div
+      className={`fixed left-3 md:left-4 z-40 group transition-[bottom] duration-200 ${raised ? 'bottom-32 md:bottom-24' : 'bottom-3'}`}
+      data-testid="live-sound-dock"
+      data-raised={raised ? 'true' : 'false'}
+    >
       <button
         type="button"
         onClick={handleToggle}
@@ -70,7 +81,7 @@ export function LiveSoundDock() {
         )}
       </button>
 
-      <div className="absolute right-0 top-full w-48 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+      <div className="absolute left-0 bottom-full w-48 pb-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
         <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-3 shadow-lg">
           <div className="flex items-center justify-between">
             <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">

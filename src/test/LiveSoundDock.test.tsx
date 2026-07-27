@@ -61,6 +61,25 @@ beforeEach(() => {
 });
 
 describe('LiveSoundDock', () => {
+  it('fica no canto inferior esquerdo, fora da sidebar', () => {
+    renderDock();
+    const dock = screen.getByTestId('live-sound-dock');
+    expect(dock.dataset.raised).toBe('false');
+    expect(dock.className).toContain('bottom-3');
+    expect(dock.className).toContain('left-3');
+  });
+
+  it('sobe quando a barra de feedback está no ar', () => {
+    render(
+      <I18nProvider>
+        <LiveSoundDock raised />
+      </I18nProvider>
+    );
+    const dock = screen.getByTestId('live-sound-dock');
+    expect(dock.dataset.raised).toBe('true');
+    expect(dock.className).toContain('bottom-32');
+  });
+
   it('plays a confirm chime when turning sound back ON', () => {
     h.muted = true; // the click unmutes
     renderDock();

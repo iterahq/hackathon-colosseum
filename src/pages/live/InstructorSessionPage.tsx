@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, MonitorUp } from 'lucide-react';
+import { ChevronDown, Loader2, MonitorUp } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLessonContent } from '@/hooks';
@@ -47,7 +47,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
-import { LiveStageModal } from '@/components/live/LiveStageModal';
+import { LiveStagePicker } from '@/components/live/LiveStagePicker';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
@@ -296,12 +296,17 @@ function ClassControl({
 
   const [busy, setBusy] = useState(false);
 
-  // B5: the picker lives in a modal now. Auto-close it the moment a pull lands,
-  // so the professor drops straight into the learner's screen (B9 view mode).
-  const [stageModalOpen, setStageModalOpen] = useState(false);
+  // O picker abre DENTRO da sidebar, e o mesmo botão fecha. Modal cobria a aula
+  // inteira só pra escolher um aluno. Fecha sozinho quando o puxão chega, pra
+  // cair direto na tela do aluno (B9 view mode).
+  const [stageOpen, setStageOpen] = useState(false);
+  // Gate pelo ALUNO no palco, não pelo objeto: o aluno re-emite o trabalho a cada
+  // tecla, e cada `stage-show` cria um `stagedAnswer` novo — fechar por identidade
+  // de objeto arrancaria a lista da mão do professor a cada digitação.
+  const stagedUserId = stagedAnswer?.author.userId ?? null;
   useEffect(() => {
-    if (stagedAnswer) setStageModalOpen(false);
-  }, [stagedAnswer]);
+    if (stagedUserId) setStageOpen(false);
+  }, [stagedUserId]);
 
   async function goTo(activityId: string) {
     if (busy) return;
@@ -545,31 +550,42 @@ function ClassControl({
                 <div className="p-4">
                   <button
                     type="button"
-                    onClick={() => setStageModalOpen(true)}
+                    onClick={() => setStageOpen((o) => !o)}
                     data-testid="live-stage-open"
-                    className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors"
+                    aria-expanded={stageOpen}
+                    aria-controls="live-stage-inline"
+                    className={`w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border text-sm font-medium transition-colors ${
+                      stageOpen
+                        ? 'border-clay bg-clay/20 text-clay'
+                        : 'border-clay/40 bg-clay/10 text-clay hover:bg-clay/20'
+                    }`}
                   >
                     <MonitorUp className="w-4 h-4" /> {t('live.stage.open')}
+                    <ChevronDown className={`w-4 h-4 transition-transform ${stageOpen ? 'rotate-180' : ''}`} />
                   </button>
+                  {/* A turma cheia não pode espremer o resto da sidebar: a lista
+                      ganha altura máxima e rola sozinha. */}
+                  {stageOpen && (
+                    <div
+                      id="live-stage-inline"
+                      className="mt-2 max-h-[38vh] overflow-y-auto rounded-2xl border border-border bg-background"
+                    >
+                      <LiveStagePicker
+                        learners={stageLearners}
+                        staged={Boolean(stagedAnswer)}
+                        pendingUserId={stagePendingUserId}
+                        unreachableUserId={stageUnreachableUserId}
+                        onPull={requestStage}
+                        onClear={clearStage}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </>
           }
         />
       </div>
-
-      {current && (
-        <LiveStageModal
-          open={stageModalOpen}
-          onClose={() => setStageModalOpen(false)}
-          learners={stageLearners}
-          staged={Boolean(stagedAnswer)}
-          pendingUserId={stagePendingUserId}
-          unreachableUserId={stageUnreachableUserId}
-          onPull={requestStage}
-          onClear={clearStage}
-        />
-      )}
 
       <LiveSoundDock />
     </div>

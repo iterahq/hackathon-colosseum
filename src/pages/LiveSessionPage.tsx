@@ -484,7 +484,7 @@ export default function LiveSessionPage() {
         )}
       </div>
 
-      {!loading && session && <LiveSoundDock />}
+      {!loading && session && <LiveSoundDock raised={!ended && Boolean(footerResult)} />}
 
       {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
           Live/force-advance mode: green/red + the "wait for the next one" hint
