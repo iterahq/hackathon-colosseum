@@ -22,6 +22,11 @@ import type { Activity } from '@/types/content';
 
 const useLessonContent = vi.fn();
 const useNextLesson = vi.fn();
+const { configured } = vi.hoisted(() => ({ configured: vi.fn(() => false) }));
+vi.mock('@/api/iteraApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/iteraApi')>()),
+  iteraApiConfigured: configured,
+}));
 vi.mock('@/hooks', () => ({
   useLessonContent: (id?: string) => useLessonContent(id),
   useNextLesson: (id?: string) => useNextLesson(id),
@@ -88,6 +93,7 @@ function renderPlayer() {
 beforeEach(() => {
   useLessonContent.mockReset();
   useNextLesson.mockReset();
+  configured.mockReturnValue(false);
   useLessonContent.mockReturnValue({ data: lessonData(), isPending: false, isError: false, refetch: vi.fn() });
   useNextLesson.mockReturnValue({ data: null });
 });
@@ -176,6 +182,60 @@ describe('LessonPlayer — concept has no mark-done (reading, not completion)', 
     fireEvent.click(cont);
     await waitFor(() => expect(screen.queryByTestId('concept-continue')).toBeNull(), { timeout: 5000 });
     expect(screen.queryByTestId('lesson-complete')).toBeNull();
+  });
+});
+
+describe('LessonPlayer — a BYOC layer makes its host kind graded', () => {
+  /**
+   * BYOC rides on `spec.byoc` over ANY kind, so the shell — not just the
+   * renderer — has to know. A `concept` under a harness is answered and graded:
+   * it must lose concept's free "Continuar" (which completed it correct without
+   * an answer) and gain the graded footer.
+   */
+  const byocConcept = {
+    id: 'c1',
+    lessonId: 'lesson-1',
+    ordinal: 1,
+    kind: 'concept',
+    spec: {
+      instruction: { text: 'Leia isto.' },
+      byoc: {
+        seed: { prompt: 'Conte um hobby seu.' },
+        harness: { generation_prompt: 'Crie duas versões sobre {seed}.', interaction: 'pick_best' },
+      },
+    },
+    rubric: null,
+  };
+
+  beforeEach(() => {
+    configured.mockReturnValue(true);
+    useLessonContent.mockReturnValue({
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Intro' },
+        activities: [byocConcept, { id: 'a2', lessonId: 'lesson-1', ordinal: 2, kind: 'quiz', spec: {}, rubric: null }],
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+  });
+
+  it('drops the free "Continuar" that would complete it without an answer', () => {
+    renderPlayer();
+    expect(screen.queryByTestId('concept-continue')).toBeNull();
+  });
+
+  it('holds on the graded footer instead of auto-advancing', async () => {
+    renderPlayer();
+    fireEvent.click(screen.getByTestId('stub-complete'));
+    expect((await screen.findByTestId('feedback-footer')).getAttribute('data-correct')).toBe('true');
+  });
+
+  it('keeps the plain "Continuar" when the itera-api is not configured', () => {
+    configured.mockReturnValue(false);
+    renderPlayer();
+    expect(screen.getByTestId('concept-continue')).toBeTruthy();
   });
 });
 

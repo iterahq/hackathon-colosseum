@@ -12,6 +12,8 @@
  * it (HS256-first, then ES256/JWKS) and resolve the Itera user.
  */
 
+import { parseIteraApiError } from "./iteraApiError";
+
 const BASE = (import.meta.env.VITE_ITERA_API_BASE as string | undefined)?.replace(/\/$/, "");
 
 export function iteraApiConfigured(): boolean {
@@ -58,16 +60,22 @@ export interface JudgeVerdict {
   judge_available: boolean;
 }
 
-async function postJson<T>(path: string, body: unknown, token: string): Promise<T> {
+export async function postJson<T>(
+  path: string,
+  body: unknown,
+  token: string,
+  signal?: AbortSignal
+): Promise<T> {
   if (!BASE) throw new Error("itera-api not configured (VITE_ITERA_API_BASE unset)");
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...(body as object), dfl_token: token }),
+    signal,
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(`itera-api ${res.status}: ${txt.slice(0, 300)}`);
+    throw parseIteraApiError(res.status, txt);
   }
   return (await res.json()) as T;
 }
@@ -159,4 +167,9 @@ export function respond(input: string, token: string, system?: string): Promise<
     { input, ...(system ? { system } : {}) },
     token
   );
+}
+
+/** The configured itera-api origin, or undefined when the surface is dormant. */
+export function iteraApiBase(): string | undefined {
+  return BASE;
 }

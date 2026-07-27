@@ -26,6 +26,7 @@ import {
   isFooterGradedKind,
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
+import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
@@ -273,7 +274,7 @@ export default function LiveSessionPage() {
   // terminal verdict rides the same wait-mode footer as the MCQ family, its
   // in-window reveal recap/outcome panel stays, and the below-stage hint moves
   // into the footer.
-  const footerGraded = isFooterGradedKind(current?.kind);
+  const footerGraded = isFooterGradedKind(current?.kind) || (!!current && isByocActivity(current));
   const answeredHere = Boolean(current && answered?.id === current.id);
   const footerResult: FooterResult | null =
     footerGraded && answeredHere && answered ? { correct: answered.correct } : null;

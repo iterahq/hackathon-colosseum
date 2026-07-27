@@ -35,6 +35,7 @@ import {
   type ActivityCompleteDetail,
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
+import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
@@ -110,7 +111,7 @@ export default function LessonPlayer() {
   // done") advances immediately as before.
   function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving) return;
-    if (isFooterGradedKind(current.kind)) {
+    if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
     }
@@ -319,7 +320,7 @@ export default function LessonPlayer() {
                   advance lives here as a plain "Continuar" (navigation, not a
                   completion ceremony). The live class has no such button — the
                   instructor force-advances the cohort. */}
-              {current?.kind === 'concept' && (
+              {current?.kind === 'concept' && !isByocActivity(current) && (
                 <button
                   type="button"
                   onClick={() => handleComplete(true)}

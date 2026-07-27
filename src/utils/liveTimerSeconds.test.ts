@@ -1,11 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { formatMmss } from './formatMmss';
 import {
+  LIVE_TIMER_BYOC_SECONDS,
   LIVE_TIMER_FALLBACK_SECONDS,
   liveTimerDefaultSeconds,
   liveTimerSeconds,
   readTimerSecondsOverride,
 } from './liveTimerSeconds';
+
+const byoc = {
+  seed: { prompt: 'Conte um hobby seu.' },
+  harness: { generation_prompt: 'Crie duas versões sobre {seed}.', interaction: 'pick_best' },
+};
 
 describe('liveTimerDefaultSeconds', () => {
   it('gives a code activity 5 minutes — writing code from scratch is not a 1-min task', () => {
@@ -89,6 +95,16 @@ describe('liveTimerSeconds', () => {
     expect(liveTimerSeconds('concept', { timer_seconds: 300 })).toBe(0);
     expect(liveTimerSeconds('video', { timer_seconds: 300 })).toBe(0);
     expect(liveTimerSeconds(undefined, { timer_seconds: 300 })).toBe(0);
+  });
+
+  it('gives a BYOC round room to generate, whatever kind it rides on', () => {
+    expect(liveTimerSeconds('concept', { title: 'Contexto', byoc })).toBe(LIVE_TIMER_BYOC_SECONDS);
+    expect(liveTimerSeconds('single_choice', { byoc })).toBe(LIVE_TIMER_BYOC_SECONDS);
+    expect(LIVE_TIMER_BYOC_SECONDS).toBeGreaterThan(LIVE_TIMER_FALLBACK_SECONDS);
+  });
+
+  it('still lets the author override a BYOC round', () => {
+    expect(liveTimerSeconds('concept', { byoc, timer_seconds: 240 })).toBe(240);
   });
 
   it('formats as a mm:ss label that survives durations over a minute', () => {

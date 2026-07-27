@@ -45,6 +45,8 @@ import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
 import { SandboxScenarioActivity } from './SandboxScenarioActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
+import { ByocActivity } from './byoc/ByocActivity';
+import { resolveByocSpec } from './byoc/byocSpec';
 import { SubmitButton } from './parts';
 
 export function ActivityRenderer({
@@ -63,6 +65,13 @@ export function ActivityRenderer({
    */
   live?: boolean;
 }) {
+  // BYOC is a LAYER, not a kind: an activity of ANY kind whose spec carries an
+  // authored harness is generated from the learner's own context first.
+  const byoc = resolveByocSpec(activity);
+  if (byoc) {
+    return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
+  }
+
   switch (activity.kind) {
     case 'document':
       return <DocumentActivity activity={activity} onComplete={onComplete} />;

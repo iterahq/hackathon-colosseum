@@ -35,6 +35,7 @@ import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColu
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
+import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { remainingSeconds, extendedTimerSeconds } from '@/utils/addLiveTime';
@@ -520,8 +521,10 @@ function ClassControl({
                 // gets a 5-min countdown) but has NO answer to put on screen, so
                 // "Revelar resposta" must not appear there. The professor keeps
                 // full control of the clock through the timer's own "Parar"
-                // button below. See `hasRevealableAnswer`.
-                canReveal={hasRevealableAnswer(current?.kind)}
+                // button below. See `hasRevealableAnswer`. A BYOC round is the
+                // opposite case — its kind may be `concept`, but the generated
+                // tree carries a gabarito, so it DOES have an answer to reveal.
+                canReveal={hasRevealableAnswer(current?.kind) || (!!current && isByocActivity(current))}
                 // Base per-activity duration PLUS any seconds the professor
                 // pre-added while stopped — the start button label reflects the
                 // real launch duration (the "obvious in UI" part).
