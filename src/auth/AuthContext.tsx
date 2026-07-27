@@ -15,11 +15,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { resetIteraUserIdCache } from '@/services/iteraUser';
 
 interface AuthState {
   session: Session | null;
@@ -38,6 +40,7 @@ const AuthCtx = createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -50,6 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     const { data: sub } = sb.auth.onAuthStateChange((_event, newSession) => {
+      const uid = newSession?.user?.id ?? null;
+      // The itera.users id is memoized for the whole module life. On a shared
+      // machine the tab is never reloaded between students, so without this the
+      // next sign-in would keep writing progress and XP under the previous one.
+      // Keyed on the uid, not the event: a token refresh must not cost an RPC.
+      if (uid !== lastUidRef.current) {
+        lastUidRef.current = uid;
+        resetIteraUserIdCache();
+      }
       setSession(newSession);
     });
     return () => sub.subscription.unsubscribe();
