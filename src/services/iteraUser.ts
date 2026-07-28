@@ -12,6 +12,7 @@
  * users_select_self). Returns null when not resolvable (no membership yet).
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { rememberStorageScope } from '@/utils/storageScope';
 
 let _cached: string | null | undefined;
 
@@ -25,6 +26,7 @@ export async function getIteraUserId(): Promise<string | null> {
     const { data, error } = await sb.rpc('current_itera_user_id');
     if (!error && typeof data === 'string' && data) {
       _cached = data;
+      rememberStorageScope(data);
       return data;
     }
   } catch {
@@ -36,6 +38,7 @@ export async function getIteraUserId(): Promise<string | null> {
     const { data } = await sb.from('users').select('id').limit(1).maybeSingle();
     const id = (data as { id?: string } | null)?.id ?? null;
     _cached = id;
+    rememberStorageScope(id);
     return id;
   } catch {
     _cached = null;

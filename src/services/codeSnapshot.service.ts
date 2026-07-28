@@ -15,11 +15,12 @@
  *
  * Padrão do projeto: no React here — pure functions returning values.
  */
+import { scopedKey } from '@/utils/storageScope';
 import type { CodeSnapshot } from '@/types/codeSnack';
 
 export type { CodeSnapshot } from '@/types/codeSnack';
 
-const keyFor = (activityId: string) => `itera.code.snapshot:${activityId}`;
+const keyFor = (activityId: string) => scopedKey('itera.code.snapshot', activityId);
 
 /**
  * Fired on every autosave AND on every clear. The live session page listens so it
@@ -32,8 +33,10 @@ export const CODE_SNAPSHOT_EVENT = 'itera:code-snapshot-saved';
 
 export function readCodeSnapshot(activityId: string): CodeSnapshot | null {
   if (!activityId) return null;
+  const key = keyFor(activityId);
+  if (!key) return null;
   try {
-    const raw = localStorage.getItem(keyFor(activityId));
+    const raw = localStorage.getItem(key);
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;
     if (parsed && typeof parsed === 'object' && typeof (parsed as CodeSnapshot).code === 'string') {
       return parsed as CodeSnapshot;
@@ -46,9 +49,11 @@ export function readCodeSnapshot(activityId: string): CodeSnapshot | null {
 
 export function saveCodeSnapshot(activityId: string, code: string): void {
   if (!activityId) return;
+  const key = keyFor(activityId);
+  if (!key) return;
   try {
     const snapshot: CodeSnapshot = { code, savedAt: new Date().toISOString() };
-    localStorage.setItem(keyFor(activityId), JSON.stringify(snapshot));
+    localStorage.setItem(key, JSON.stringify(snapshot));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(CODE_SNAPSHOT_EVENT, { detail: { activityId } }));
     }
@@ -64,8 +69,10 @@ export function saveCodeSnapshot(activityId: string, code: string): void {
  */
 export function clearCodeSnapshot(activityId: string): void {
   if (!activityId) return;
+  const key = keyFor(activityId);
+  if (!key) return;
   try {
-    localStorage.removeItem(keyFor(activityId));
+    localStorage.removeItem(key);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(CODE_SNAPSHOT_EVENT, { detail: { activityId } }));
     }

@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readStoredAnswer, storeAnswer } from './liveAnswerStorage';
+import { rememberStorageScope } from './storageScope';
 
 describe('liveAnswerStorage', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    rememberStorageScope('aluno-a');
+  });
 
   it('returns null when nothing is stored', () => {
     expect(readStoredAnswer('s1', 'a1')).toBeNull();
@@ -23,7 +27,7 @@ describe('liveAnswerStorage', () => {
   });
 
   it('survives corrupted storage payloads', () => {
-    localStorage.setItem('itera.live.answers:s1', '{not json');
+    localStorage.setItem('itera.live.answers:aluno-a:s1', '{not json');
     expect(readStoredAnswer('s1', 'a1')).toBeNull();
     storeAnswer('s1', 'a1', { correct: true, elapsedMs: 1 });
     expect(readStoredAnswer('s1', 'a1')?.elapsedMs).toBe(1);

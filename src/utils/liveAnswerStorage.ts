@@ -4,15 +4,18 @@
  * broadcast and reset the professor's aggregates — 1st-class bug #5). Keyed per
  * session; localStorage so it survives refresh and accidental tab close.
  */
+import { scopedKey } from '@/utils/storageScope';
 import type { StoredLiveAnswer } from '@/types/liveClass';
 
 export type { StoredLiveAnswer } from '@/types/liveClass';
 
-const keyFor = (sessionId: string) => `itera.live.answers:${sessionId}`;
+const keyFor = (sessionId: string) => scopedKey('itera.live.answers', sessionId);
 
 function readAll(sessionId: string): Record<string, StoredLiveAnswer> {
+  const key = keyFor(sessionId);
+  if (!key) return {};
   try {
-    const raw = localStorage.getItem(keyFor(sessionId));
+    const raw = localStorage.getItem(key);
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, StoredLiveAnswer>) : {};
   } catch {
@@ -30,10 +33,12 @@ export function storeAnswer(
   activityId: string,
   answer: StoredLiveAnswer
 ): void {
+  const key = keyFor(sessionId);
+  if (!key) return;
   try {
     const all = readAll(sessionId);
     all[activityId] = answer;
-    localStorage.setItem(keyFor(sessionId), JSON.stringify(all));
+    localStorage.setItem(key, JSON.stringify(all));
   } catch {
     // Storage unavailable (private mode/quota) — refresh protection degrades only.
   }

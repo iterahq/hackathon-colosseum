@@ -406,7 +406,6 @@ function StartClass({
         tenantId,
         lessonId,
         instructorId,
-        scope: 'global',
       });
       onStarted(session);
     } catch (e) {
@@ -426,7 +425,6 @@ function StartClass({
         lessonId,
         instructorId,
         scheduledAt: new Date(scheduledAt).toISOString(),
-        scope: 'global',
       });
       setScheduledAt('');
       onScheduled();

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import type { Activity } from '@/types/content';
 import { readCodeSnapshot, saveCodeSnapshot } from '@/services/codeSnapshot.service';
+import { rememberStorageScope } from '@/utils/storageScope';
 
 /**
  * The bug this file exists for: the snack SAVED the learner's source (that is
@@ -75,6 +76,7 @@ describe('code snack — o trabalho do aluno sobrevive ao reload', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     localStorage.clear();
+    rememberStorageScope('aluno-a');
     rendered.values = [];
   });
   afterEach(() => {

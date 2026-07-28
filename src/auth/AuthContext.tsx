@@ -22,6 +22,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { resetIteraUserIdCache } from '@/services/iteraUser';
+import { clearIteraStorage } from '@/utils/storageScope';
 
 interface AuthState {
   session: Session | null;
@@ -59,8 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // next sign-in would keep writing progress and XP under the previous one.
       // Keyed on the uid, not the event: a token refresh must not cost an RPC.
       if (uid !== lastUidRef.current) {
+        // A real SWITCH also has to drop the previous learner's scoped storage,
+        // before the incoming id resolves. Merely observing a restored session
+        // on boot is not a switch: clearing there would throw away the work the
+        // learner expects back after a reload.
+        const switched = lastUidRef.current !== null;
         lastUidRef.current = uid;
         resetIteraUserIdCache();
+        if (switched) clearIteraStorage();
       }
       setSession(newSession);
     });
@@ -90,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         if (!isSupabaseConfigured) return;
         localStorage.removeItem('itera_dfl_session');
+        clearIteraStorage();
+        resetIteraUserIdCache();
         await getSupabase().auth.signOut();
         setSession(null);
       },
