@@ -41,6 +41,15 @@ export interface IndexedStory {
   file: string;
   exportName: string;
   Component: ComponentType;
+  /**
+   * O `play` da story, quando ela define um — a INTERAÇÃO (T1 / Fase 3).
+   *
+   * É o mesmo callback que o Storybook executa no canvas quando o Tainan abre a
+   * story, e é o que `storyPlay.test.tsx` executa no Vitest. Uma definição,
+   * dois consumidores (ADR-2). `undefined` para as stories que só montam — a
+   * maioria das não-activities.
+   */
+  play?: (context: { canvasElement: HTMLElement }) => Promise<void> | void;
 }
 
 let cache: IndexedStory[] | null = null;
@@ -51,8 +60,18 @@ export function indexStories(): IndexedStory[] {
   for (const [file, mod] of Object.entries(storyModules)) {
     const composed = composeStories(mod);
     for (const [exportName, Story] of Object.entries(composed)) {
-      const id = (Story as unknown as { id?: string }).id ?? `${file}--${exportName}`;
-      out.push({ id, file, exportName, Component: Story as unknown as ComponentType });
+      const meta = Story as unknown as {
+        id?: string;
+        play?: (ctx: { canvasElement: HTMLElement }) => Promise<void> | void;
+      };
+      const id = meta.id ?? `${file}--${exportName}`;
+      out.push({
+        id,
+        file,
+        exportName,
+        Component: Story as unknown as ComponentType,
+        play: meta.play,
+      });
     }
   }
   cache = out;

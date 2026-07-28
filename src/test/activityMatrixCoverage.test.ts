@@ -130,14 +130,8 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'A.locked': { story: 'activities-gate-locked--locked-document-leitura' },
     'B.done': { story: 'activities-exposicao-document-leitura--concluida' },
     'C.blank': { story: 'activities-producao-document-redacao--com-minimo-de-palavras' },
-    'C.answered': {
-      deferred: 'fase-3',
-      why: 'texto digitado abaixo do `min_words`: o document nunca teve prop `initial*` e ADR-4 congela esse padrão — só digitar de verdade produz o estado.',
-    },
-    'C.submitted': {
-      deferred: 'fase-3',
-      why: 'redação enviada — mesmo motivo de `C.answered`.',
-    },
+    'C.answered': { story: 'activities-producao-document-redacao--rascunho-curto' },
+    'C.submitted': { story: 'activities-producao-document-redacao--redacao-enviada' },
     'D.correct': {
       na: 'o `document` é contrato de CONCLUSÃO, não de correção — a Fase 1 confirmou que ele não deriva o tuple de grading. O único caminho graduado é `rubric.mode:"ai-judge"`, que exige `iteraApiConfigured()` → tier T3.',
     },
@@ -181,13 +175,10 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'A.locked': { story: 'activities-gate-locked--locked-quiz' },
     'B.done': { story: 'activities-escolha-quiz--concluida' },
     'C.blank': { story: 'activities-escolha-quiz--verdadeiro-ou-falso' },
-    'C.answered': {
-      deferred: 'fase-3',
-      why: 'ADR-4: o quiz — "the hero activity" — nunca teve seam `initial*`, e a decisão travada é NÃO criar um. Só a interação real (T1) produz o estado.',
-    },
-    'C.submitted': { deferred: 'fase-3', why: 'idem `C.answered` (ADR-4).' },
-    'D.correct': { deferred: 'fase-3', why: 'idem `C.answered` (ADR-4).' },
-    'D.incorrect': { deferred: 'fase-3', why: 'idem `C.answered` (ADR-4).' },
+    'C.answered': { story: 'activities-escolha-quiz--answered' },
+    'C.submitted': { story: 'activities-escolha-quiz--correct' },
+    'D.correct': { story: 'activities-escolha-quiz--correct' },
+    'D.incorrect': { story: 'activities-escolha-quiz--incorrect' },
     'E.reveal': {
       drift:
         '`hasRevealableAnswer("quiz")` é TRUE, então o controle "Revelar resposta" APARECE para o professor num quiz — mas o dispatcher não passa `reveal` para `QuizActivity`, que ainda fixa `reveal:false`. O botão existe e não faz nada: é o mesmo formato do bug que originou a separação `isAnswerableLiveKind` × `hasRevealableAnswer`. Mudança de produção — fora do escopo de um PR de stories/testes.',
@@ -253,19 +244,10 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'A.locked': { story: 'activities-gate-locked--locked-sandbox-scenario' },
     'B.done': { story: 'activities-ia-sandbox-aberta--concluida' },
     'C.blank': { story: 'activities-ia-sandbox-aberta--open-chat' },
-    'C.answered': {
-      deferred: 'fase-3',
-      why: 'prompt composto (slots preenchidos / chip escolhido) antes de enviar — sem seam, só interação real.',
-    },
-    'C.submitted': {
-      deferred: 'fase-3',
-      why: 'o passo-a-passo do `ChatModel` (compose → evaluate). O reducer é puro e testável sem React — é o caminho barato da Fase 3.',
-    },
-    'D.correct': { deferred: 'fase-3', why: '`won` (ADR-11: property-based sobre os reducers).' },
-    'D.incorrect': {
-      deferred: 'fase-3',
-      why: '`composeWeak` / `evalWrong` (ADR-11: property-based sobre os reducers).',
-    },
+    'C.answered': { story: 'activities-ia-sandbox-aberta--prompt-composto' },
+    'C.submitted': { story: 'activities-ia-sandbox-aberta--resposta-recebida' },
+    'D.correct': { story: 'activities-ia-sandbox-aberta--avaliada-corretamente' },
+    'D.incorrect': { story: 'activities-ia-sandbox-aberta--avaliada-incorretamente' },
     'E.reveal': { story: 'activities-ia-sandbox-aberta--revealed-in-live' },
     'F.spec_invalido': { story: 'activities-dispatcher--sandbox-espec-invalida' },
     'H.degenerado': { story: 'activities-ia-sandbox-aberta--open-chat' },
@@ -278,11 +260,26 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
  * `deferred`) é a Fase 3 fazendo efeito; subir `drift` sem discussão é sinal.
+ *
+ * Histórico:
+ *   Fase 2  → { covered: 75, na: 24, deferred: 14, drift: 8 }
+ *   Fase 3  → { covered: 85, na: 24, deferred:  4, drift: 8 }
+ *
+ * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
+ * (a activity herói, que não tinha NENHUM estado de resposta), `document`
+ * C.answered/C.submitted (rascunho abaixo do `min_words` × redação enviada) e
+ * `sandbox_scenario` C.answered/C.submitted/D.correct/D.incorrect (o
+ * passo-a-passo do `ChatModel`). TODAS produzidas por interação real, nenhuma
+ * por prop nova — que era exatamente a condição do ADR-4.
+ *
+ * As 4 que sobram são as do `code`, e a razão não é falta de tempo: é o ADR-8.
+ * Monaco e o iframe de preview não são dirigíveis em jsdom, então elas fecham
+ * no projeto de browser mode, não aqui.
  */
-const COVERAGE_SNAPSHOT = { covered: 75, na: 24, deferred: 14, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 85, na: 24, deferred: 4, drift: 8 };
 
 /**
- * BYOC AO VIVO — o que NÃO entrou nesta matriz, declarado para não sumir.
+ * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.
  *
  * O BYOC live não é um kind do enum: é um CONTRATO dentro de `sandbox_scenario`
  * (`isByocLive()`), com máquina própria — `Phase = compose | responding |
@@ -291,21 +288,29 @@ const COVERAGE_SNAPSHOT = { covered: 75, na: 24, deferred: 14, drift: 8 };
  *
  * Nada disso é alcançável por prop: `SandboxScenarioLiveActivity` aceita apenas
  * `activity`, `onComplete` e `reveal`; todo o resto vive dentro de
- * `useSandboxScenarioLive` e só muda via `send()` / `rate()`. Alcançar essas
- * fases numa story exigiria injetar o cliente da itera-api como prop — ou seja,
- * uma prop de produção que existe só para o Storybook, exatamente o padrão que o
- * **ADR-4 congelou**. Logo: Fase 3, com interação real (e mock de rede no
- * Vitest), não Fase 2.
+ * `useSandboxScenarioLive` e só muda via `send()` / `rate()`. A Fase 2 adiou
+ * essas células registrando que alcançá-las numa STORY exigiria injetar o
+ * cliente da itera-api como prop — ou seja, a mesma seam de produção que o
+ * **ADR-4 congelou e esta fase deletou**.
+ *
+ * ── COMO A FASE 3 FECHOU, SEM CRIAR A SEAM ─────────────────────────────────
+ * Mockando `@/api/iteraApi` no LIMITE DO TESTE (`vi.mock`), não na produção. O
+ * hook roda inteiro, de verdade; só a rede é substituída. O preço honesto é
+ * que estas fases têm cobertura de TESTE e não de VITRINE: elas não viram
+ * story, porque uma story não pode mockar módulo. Quem quiser ver a degradação
+ * na tela usa a story `Compose` com a itera-api desconfigurada (é o que o
+ * Storybook publicado já faz — `VITE_ITERA_API_BASE` não é setado lá).
  */
-const BYOC_LIVE_DEFERRED = [
-  'phase:responding',
-  'phase:evaluate',
-  'phase:judging',
-  'phase:settled',
-  'degrade:!responderAvailable',
-  'degrade:!judgeAvailable',
-  'degrade:error',
-] as const;
+const BYOC_LIVE_COVERAGE: Record<string, string> = {
+  'phase:compose': 'story: activities-ia-sandbox-byoc-live--compose',
+  'phase:responding': 'src/test/byocLivePhases.test.tsx — "phase `responding`"',
+  'phase:evaluate': 'src/test/SandboxScenarioLive.test.tsx — os 4 cenários binários',
+  'phase:judging': 'src/test/byocLivePhases.test.tsx — "phase `judging`"',
+  'phase:settled': 'src/test/SandboxScenarioLive.test.tsx — outcome/feedback assertados',
+  'degrade:!responderAvailable': 'src/test/SandboxScenarioLive.test.tsx — "responder degraded"',
+  'degrade:!judgeAvailable': 'src/test/SandboxScenarioLive.test.tsx — "judge unavailable → UNVERIFIED"',
+  'degrade:error': 'src/test/byocLivePhases.test.tsx — respond()/judge() LANÇAM',
+};
 
 const STORY_IDS = new Set(indexStories().map((s) => s.id));
 
@@ -363,7 +368,20 @@ describe('guard da matriz de estados das activities (V3)', () => {
     expect(STORY_IDS.has('activities-ia-sandbox-byoc-live--revealed-in-live')).toBe(true);
   });
 
-  it('as fases/degradações do BYOC ao vivo seguem declaradas como adiadas para a Fase 3', () => {
-    expect(BYOC_LIVE_DEFERRED.length).toBe(7);
+  it('toda fase/degradação do BYOC ao vivo aponta para onde ela é provada', () => {
+    const machine = [
+      'phase:compose',
+      'phase:responding',
+      'phase:evaluate',
+      'phase:judging',
+      'phase:settled',
+      'degrade:!responderAvailable',
+      'degrade:!judgeAvailable',
+      'degrade:error',
+    ];
+    expect(machine.filter((k) => !(k in BYOC_LIVE_COVERAGE))).toEqual([]);
+    for (const [k, where] of Object.entries(BYOC_LIVE_COVERAGE)) {
+      expect(where.length, `${k} sem referência de prova`).toBeGreaterThan(20);
+    }
   });
 });
