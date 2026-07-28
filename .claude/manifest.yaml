@@ -1,9 +1,14 @@
-# .claude/manifest.yaml — AI-inferred repo metadata for dfl-iterate
+# .claude/manifest.yaml — repo metadata for itera-player
+#
+# 2026-07-28: reescrito junto com CLAUDE.md e repo-contract.yaml. Este arquivo
+# ainda descrevia o engine gamificado LEGADO herdado do scaffold de
+# dfl-iterate, e apontava para paths que não existem mais
+# (src/pages/LessonPage.tsx, src/components/activity/).
 
-name: dfl-iterate
+name: itera-player
 description: >
-  Gamified coding exercise platform with Duolingo-style lessons,
-  Monaco code editor, AI feedback, and progress tracking.
+  Itera player — app de aluno/instrutor da Itera (app.iterahq.dev): lições e
+  activities do Supabase da Itera, aula ao vivo, autoria e back-office.
 
 type: frontend-spa
 runtime: browser
@@ -12,43 +17,53 @@ bundler: vite
 language: typescript
 
 domain: learning
-subdomain: gamified-exercises
+subdomain: itera-player
 
 personas:
-  - learner: Completes coding activities in guided lesson sequences
-  - content-author: Creates activity definitions and lesson structures
+  - learner: percorre as activities de uma lição, sozinho ou em aula ao vivo
+  - instructor: conduz a aula ao vivo (stage, timer, roster, podium)
+  - author: cria/edita activities e testa no harness isolado
+  - tenant-admin: back-office do tenant (roster, programas, engajamento)
 
 key_abstractions:
-  - Activity: Core unit of work — each type has component, hook, and enum entry
-  - Lesson: Ordered sequence of activities with progress tracking
-  - ProjectState: In-memory state of code files, decisions, and activity index
-  - AIStreaming: Real-time AI feedback for code review and hints
+  - Activity: linha de itera.activities com `kind` + `spec` (Zod por kind)
+  - ActivityKind: os 11 kinds de itera.activity_kind (ver repo-contract.yaml)
+  - ActivityRenderer: despacha a activity para a view do seu kind
+  - answerMachine: máquina PURA de estado de resposta (src/utils/answerMachine.ts)
+  - learnerActivityGate: gate puro do ao-vivo (src/utils/liveActivityGate.ts)
+  - ClassSession: estado da aula ao vivo (stage, timer, roster)
 
 entry_points:
   app: src/main.tsx
   pages:
     - src/pages/HomePage.tsx
-    - src/pages/LessonPage.tsx
-    - src/pages/Index.tsx
+    - src/pages/LessonPlayer.tsx
+    - src/pages/LiveSessionPage.tsx
+    - src/pages/live/InstructorSessionPage.tsx
+    - src/pages/author/
+    - src/pages/admin/
 
 dependencies:
   internal:
-    - dfl-learn: lesson data source (planned)
-    - dfl-tracks: learning path sequencing (planned)
-    - dfl-skill-evals: assessment integration (planned)
+    - itera-mcp: tools de activity para agents (ACTIVITY_KINDS precisa espelhar)
+    - dfl-learn: handoff de auth (VITE_DFL_HANDOFF_URL)
   external:
-    - monaco-editor: code editing
-    - framer-motion: animations
-    - opentelemetry: observability
+    - supabase: dados + auth + RLS (projeto da Itera)
+    - "@iterahq/activity-spec": schemas Zod por kind + runtime do sandbox
+    - itera-api: responder/judge do sandbox BYOC ao vivo
+    - monaco-editor: edição de código (self-hosted, sem CDN)
+    - framer-motion: animações
+    - "@devfellowship/observability": OpenTelemetry
 
 schemas: []
 
 conventions:
-  new_activity_checklist:
-    - Add enum entry in src/enums/index.ts
-    - Create component in src/components/activity/
-    - Create hook in src/hooks/
-    - Add dummy data in src/test-utils/
-    - Write tests in src/test/
+  new_activity_kind_checklist:
+    - Adicionar o kind no union ActivityKind (src/types/content.ts)
+    - Criar a view em src/components/branded/activity/ e ligar no ActivityRenderer
+    - Adicionar contrato em src/stories/contractFixtures.ts (o guard exige)
+    - Criar story em src/stories/
+    - Manter em sincronia com ACTIVITY_KINDS de @iterahq/activity-spec e itera-mcp
   protected_dirs:
-    - src/components/ui/  # shadcn/ui managed
+    - src/components/ui/ # shadcn/ui managed
+    - design-playground/ # espaço do designer (CODEOWNERS @johnoak)

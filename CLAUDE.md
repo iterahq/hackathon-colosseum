@@ -1,141 +1,157 @@
-# Managed merge scaffold for dfl-iterate/CLAUDE.md
+# CLAUDE.md — itera-player
 
-# Human edits belong only inside MANUAL blocks.
-
-<!-- BEGIN GENERATED:claude/base -->
-<!-- render-meta: repo=dfl-iterate; mode=merge; hash=640d418553259ac721dbaf5d2213a49e0ff32d652f7eb48c80c5e337470bdc84 -->
-
-# CLAUDE.md — dfl-iterate
+> **Este arquivo é REPO-OWNED.** Até 2026-07-28 ele carregava um bloco
+> `<!-- BEGIN GENERATED:claude/base -->` herdado do scaffold gerenciado de
+> `devfellowship/dfl-iterate` (o commit de fundação deste repo foi um re-skin
+> daquele projeto). Esse bloco descrevia o **engine gamificado legado**, que
+> foi aposentado neste PR — ou seja, um agente que lesse só o CLAUDE.md ia
+> testar/alterar código que nem existe mais.
+>
+> O scaffold foi removido, e não apenas corrigido, porque **este repo nunca foi
+> alvo da distribuição**: o `registry/distribution-manifest.yaml` do `dfl-hq`
+> só conhece `devfellowship/dfl-iterate` (batch-3, `readiness:
+> collect-required`), e o pipeline inteiro está em `execution_mode: stage-only`
+> com `apply_writes_enabled: false` — `scripts/context/apply.mjs` aborta antes
+> de escrever em qualquer repo filho. `iterahq/itera-player` não aparece em
+> lugar nenhum daquele registry. Nada sincroniza este arquivo; editá-lo aqui
+> não gera conflito em lugar nenhum, e o CLAUDE.md do próprio `dfl-iterate`
+> segue válido lá (o engine gamificado É o engine principal *daquele* repo).
+>
+> Se um dia alguém ligar a distribuição para cá, a ausência de marcadores é o
+> comportamento seguro: o merge é `marker-required` com
+> `missing_markers: hard-stop` — ele falha alto em vez de sobrescrever isto em
+> silêncio.
 
 ## Quick Context
 
-Gamified coding exercise platform — Duolingo-style lessons with code editing, AI feedback, and progress pills.
-React SPA (Vite + TypeScript), Monaco Editor, Framer Motion, shadcn/ui, Tailwind.
+**Itera player** — o app do aluno/instrutor da Itera (`app.iterahq.dev`).
+Roda lições e **activities** vindas do Supabase da Itera (`kjefmwlopzeaqgqtlbdn`),
+com aula ao vivo (live class), superfície de autoria e back-office admin.
+
+React SPA (Vite + TypeScript), Monaco Editor (self-hosted), Framer Motion,
+shadcn/ui + `@devfellowship/components`, Tailwind, TanStack Query, Supabase Auth.
 
 ## Architecture
 
 ```
 src/
-├── pages/           # HomePage, LessonPage, Index, NotFound
+├── pages/
+│   ├── LessonPlayer.tsx      # o player canônico da lição (/lesson/:lessonId)
+│   ├── LiveSessionPage.tsx   # aula ao vivo, lado do aluno
+│   ├── live/                 # lado do instrutor (class, session, report)
+│   ├── author/               # superfície de autoria (canvas, harness de teste)
+│   ├── admin/                # back-office (roster, programs, engagement…)
+│   ├── auth/                 # login, signup, OTP, reset, callback do DFL
+│   └── HomePage · CatalogPage · ProgramPage · ProfilePage · Artifacts · Subscribe…
 ├── components/
-│   ├── activity/    # FixTheCode, BreakAndFix, ConstrainedEdit, DecisionFork, FixWithChoices,
-│   │                # QualityReview, VideoChallenge, VisualImplementation, ReadAndChoose
-│   ├── ai/          # AIResponse (streaming AI feedback)
-│   ├── editor/      # CodeEditor (Monaco), FileTree
-│   ├── game/        # GameHeader, ProgressPills, ResultModal, CelebrationOverlay,
-│   │                # LessonCompleteScreen, AIHistoryDrawer
-│   ├── preview/     # DynamicPreview, ProjectPreview (live code preview)
-│   ├── project/     # GitLog
-│   ├── layout/      # AppShell, Header
-│   ├── observability/ # OTel tracing
-│   └── ui/          # shadcn/ui primitives
-├── hooks/           # useFixTheCode, useAIStreaming, useAIHistory, useSoundEffects, usePreviewState
-├── types/           # Activity types, Project types (index.ts, global.d.ts)
-├── consts/          # ai-responses.ts (mock AI responses)
-├── enums/           # Activity type enums
-└── test/            # Vitest tests + test-utils (dummy data)
+│   ├── branded/
+│   │   └── activity/         # 🎯 O ENGINE DE ACTIVITY CANÔNICO (ver abaixo)
+│   ├── live/                 # stage, timer, roster, podium, sound dock
+│   ├── author/ · admin/      # UI de autoria e back-office
+│   ├── artifacts/            # browser de artifacts do aluno
+│   ├── branded/              # ProgramCard, SkillTree, catálogo, badges…
+│   ├── editor/               # CodeEditor (Monaco) + monacoTypescript
+│   ├── auth/ · profile/ · layout/
+│   └── ui/                   # shadcn/ui — NÃO editar à mão
+├── utils/
+│   ├── answerMachine.ts      # máquina pura de estado de resposta (T0)
+│   └── liveActivityGate.ts   # gate puro do ao-vivo (enabled/locked/readOnly)
+├── hooks/                    # useContent, useClassSession, useCodeSnack, useLiveClass…
+├── services/                 # programs · progress · liveClass · membership · artifact…
+├── types/content.ts          # Activity, ActivityKind, ProgressStatus (canônicos)
+├── stories/                  # stories canônicas + contractFixtures.ts
+├── i18n/                     # dicionário PT/EN
+└── test/                     # Vitest
 ```
+
+## 🎯 O engine de activity canônico
+
+**`src/components/branded/activity/` + `ActivityRenderer.tsx`.** É o único
+engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
+campo `kind`.
+
+Os **11 kinds** de `itera.activity_kind` (a união vive em
+`src/types/content.ts`, espelhando `ACTIVITY_KINDS` de `@iterahq/activity-spec`
+e de `iterahq/itera-mcp:src/tools/activities.ts` — os três têm que continuar em
+sincronia):
+
+`concept` · `document` · `diagram` · `video` · `quiz` (o *hero*) ·
+`single_choice` · `multi_choice` · `match` · `order` · `code` ·
+`sandbox_scenario`
+
+Rotas que montam o engine: **`/lesson/:lessonId`** (LessonPlayer),
+**`/programs`/`/catalog`** (navegação), **`/live/*`** (aula ao vivo, aluno e
+instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
+(harness isolado — monta UMA activity, `onComplete` cai num sink em memória,
+**zero escrita no DB**).
+
+### Camadas puras (teste barato, sem React)
+
+- **`src/utils/answerMachine.ts`** — `answerMachine(input) → viewState`
+  (`shown`, `locked`, `canSubmit`, `gradeResult`) + `choiceOptionState()`.
+  Consumida por `SingleChoice`, `MultiChoice`, `Match`, `Order`, o `Quiz`
+  inline do `ActivityRenderer` e `byoc/ByocTree`. **Não reintroduza a lógica
+  derivada inline nos componentes** — foi deduplicada de propósito.
+- **`src/utils/liveActivityGate.ts`** — `learnerActivityGate({timerRunning,
+  expired, answered})` → `{started, locked, readOnly, canComplete}`. Única
+  fonte de verdade de quando o aluno pode responder ao vivo.
+- **`@iterahq/activity-spec/runtime`** — reducers puros do `ChatModel` do
+  `sandbox_scenario`. O hook `useSandboxScenario` só liga reducer a
+  `useState`; todo julgamento é do runtime.
+
+### Validação de spec
+
+`safeParseActivitySpec(kind, spec)` (do `@iterahq/activity-spec`, vendorizado
+como `.tgz`) hoje é chamado só em **`code`** e **`sandbox_scenario`** — os
+outros 9 kinds recebem o `spec` por cast. Fechar essa fronteira é trabalho do
+plano `20260728-itera-back-office`, não deste repo por conta própria.
+
+### Fixtures — uma fonte de verdade
+
+`src/stories/contractFixtures.ts` é o registry de contratos por kind, e
+`src/test/activityContractFixtures.test.ts` já é um guard: **todo kind do enum
+precisa de contrato, e todo contrato precisa passar no Zod do seu kind**. Kind
+novo sem fixture = CI vermelho. Use as MESMAS fixtures nas stories e nos
+testes — não crie um segundo conjunto.
 
 ## How to Work Here
 
-- `npm run dev` — local dev server
-- `npm run test` — Vitest tests
-- Activity types are the core abstraction: each type (FixTheCode, BreakAndFix, etc.) has its own component + hook
-- Monaco Editor for code editing, Framer Motion for animations
-- AI streaming via useAIStreaming hook (supports mock + real API)
-- Sound effects via useSoundEffects (gamification UX)
+- `npm run dev` — dev server
+- `npm run lint` · `npm run typecheck` · `npm run build` · `npm test`
+  (Vitest). **`typecheck` faz parte do gate do build** — deletar arquivo sem
+  limpar import quebra o CI.
+- `npm run storybook` — vitrine; publicada em `storybook.iterahq.dev` no push
+  para `main` (PR é build-only, sem preview).
+- E2E Playwright fica em `e2e/`, **fora do gate por PR** (`workflow_dispatch` +
+  cron diário), todos capability-gated.
 
 ## Contracts
 
-- **Activities**: Each has a type enum, component, and dedicated hook
-- **AI**: useAIStreaming → backend AI endpoint for code review/hints
-- **Progress**: ProgressPills track lesson completion, CelebrationOverlay on success
-- **Preview**: DynamicPreview renders user code in sandboxed iframe
-
-## Ecosystem Context
-
-- Part of **dfl-learn** LMS ecosystem (gamified layer)
-- Related: **dfl-tracks** (learning paths), **dfl-skill-evals** (assessments)
-- Standalone: no Supabase dependency yet — uses mock data/consts
+- **Activity**: linha de `itera.activities` com `kind` + `spec` (JSON validado
+  por kind pelo Zod do `@iterahq/activity-spec`). O `ActivityRenderer`
+  despacha; cada kind tem sua view em `branded/activity/`.
+- **Progresso**: `ProgressStatus` (`todo` · `in_progress` · `done`) em
+  `src/types/content.ts`; gravação via `services/progress.service.ts`.
+- **Dados**: `componente → hook de query (useQuery) → service (async) →
+  Supabase`. Referência: `src/pages/HomePage.tsx` + `src/hooks/useContent.ts` +
+  `src/services/programs.service.ts`. Query key SEMPRE pela factory em
+  `src/lib/queryKeys.ts` — nunca string solta. O componente trata `isPending` /
+  `isError` (com `refetch()`) / sucesso.
+- **Ao vivo**: `services/liveClass.service.ts` + `hooks/useClassSession.ts`;
+  o gate do aluno é o `learnerActivityGate`.
+- **Schema**: o schema da Itera é do `iterahq` (Supabase
+  `kjefmwlopzeaqgqtlbdn`). Este repo **consome**; não desenha schema aqui.
 
 ## Rules
 
-- Don't touch `src/components/ui/` — shadcn/ui managed
-- New activity types need: component + hook + enum entry + dummy data
-- Tests required for activity logic (see test/components/)
-- Keep animations performant — Framer Motion for transitions only
-<!-- END GENERATED:claude/base -->
-
-<!-- BEGIN MANUAL:repo/local-notes -->
-
-## Padrões ouro do projeto (leitura obrigatória antes de PR)
-
-O iterate tem **dois eixos de padrão** que toda nova feature deve seguir. Antes de criar arquivo novo, abra a referência e copie a estrutura.
-
-### 1. Padrão de atividade (vertical — `activity → page`)
-
-> Como uma activity comunica sucesso/erro para a `LessonPage`.
-
-**Referência:** `src/components/activity/FixTheCode.tsx` + `src/hooks/useFixTheCode.ts`
-
-Regras:
-
-1. **Hook** com assinatura `useFoo(activity, callbacks)`:
-   - `callbacks` é objeto (`{ onSubmit, onApprove, ... }`), nunca prop solta.
-   - `useEffect` em `[activity.id]` resetando estado interno ao trocar de atividade.
-   - Toda regra de negócio (cálculo de `isCorrect`, derivações) vive aqui.
-2. **Componente** fino, dentro de `<ActivityGameCard>`:
-   - Só consome o hook e renderiza UI.
-   - Sem `useState` de regra de negócio.
-3. **Callback `onSubmit`** dispara em sucesso **E** em erro (a página decide o modal).
-4. **Aluno pode tentar de novo** em qualquer activity — não há "game over" na 1ª tentativa.
-5. **`LessonPage` case** segue o template:
-   ```tsx
-   <Foo
-     activity={currentActivity}
-     onSubmit={(payload, isCorrect) => {
-       handleActivityComplete(
-         currentActivity.id,
-         isCorrect ? "act-foo-success" : "act-foo-failure",
-         isCorrect,
-       );
-     }}
-   />
-   ```
-6. **Acerto vem do dado** (`activity.choices[i].isCorrect`, `activity.steps[i].correctAnswer`, etc.), nunca de string mágica na page.
-
-### 2. Padrão de dados (horizontal — `componente → service`)
-
-> Como dado externo entra na aplicação.
-
-**Referência:** `src/pages/HomePage.tsx` + `src/hooks/useLessons.ts` + `src/services/lessons.service.ts`
-
-Fluxo obrigatório:
-
-```
-componente → hook de query (useQuery) → service (async) → dummy/fetch
-```
-
-Regras:
-
-1. **Service** em `src/services/<recurso>.service.ts`:
-   - Funções `async`, sempre retornam `Promise`.
-   - Sem React (nada de hooks, JSX, useState).
-   - "Recurso não existe" = `throw new Error(...)` (React Query vira `isError`).
-2. **Query key** em `src/lib/queryKeys.ts` — factory pattern. Nunca chave string solta.
-3. **Hook de query** em `src/hooks/use<Recurso>.ts`:
-   - Só `useQuery({ queryKey, queryFn })`. Sem UI.
-   - Devolve o objeto cru do React Query (`data`, `isPending`, `isError`, `refetch`).
-4. **Componente** trata estados:
-   - `isPending` → texto/skeleton de carregamento.
-   - `isError` → mensagem + botão "Tentar de novo" (`refetch()`).
-   - Sucesso → render normal com `data`.
-
-### Convenções gerais
-
-- Imports absolutos (`@/components`, `@/hooks`, etc.) — relativos só dentro da mesma feature.
-- Não criar tipo novo de `ActivityType` sem: enum + componente + hook + dummy + case em `LessonPage`.
-- Não mexer em `src/components/ui/` (shadcn/ui gerenciado).
+- Não editar `src/components/ui/` — shadcn/ui gerenciado.
+- Kind novo de activity precisa de: entrada em `ActivityKind`
+  (`src/types/content.ts`), view em `src/components/branded/activity/`,
+  contrato em `src/stories/contractFixtures.ts` (o guard exige) e story.
+- Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
+  mesma feature.
+- Lógica derivada de resposta/correção vai para `answerMachine`, não inline no
+  componente.
 
 ## Story/Component ownership
 
@@ -238,7 +254,7 @@ revisão da família). O Monaco é o oposto: 16 MB copiáveis offline do
 `src/test/fontsSelfHost.test.ts` tranca tudo isso (sem rede). Se ele quebrar, a
 tipografia voltou a depender de CDN — não silencie o teste.
 
-<!-- END MANUAL:repo/local-notes -->## Edge Functions
+## Edge Functions
 
 Edge functions are owned by `dfl-schema`. Do NOT add or modify files under `supabase/functions/` in this repo.
 Open your PR in [dfl-schema](https://github.com/devfellowship/dfl-schema) instead.

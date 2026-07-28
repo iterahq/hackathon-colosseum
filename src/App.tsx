@@ -10,7 +10,6 @@ import CatalogPage from "./pages/CatalogPage";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPlayer from "./pages/LessonPlayer";
 import ArtifactsPage from "./pages/ArtifactsPage";
-import LessonPage from "./pages/LessonPage";
 import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
 import InstructorSessionPage from "./pages/live/InstructorSessionPage";
@@ -398,16 +397,6 @@ const App = () => (
                   }
                 />
 
-                {/* Legacy gamified activity-engine demo (mock data) — kept for the
-                    reusable activity components; not part of the canonical nav. */}
-                <Route
-                  path="/demo/lesson/:lessonId"
-                  element={
-                    <RequireAuth>
-                      <LessonPage />
-                    </RequireAuth>
-                  }
-                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

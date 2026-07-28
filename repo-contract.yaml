@@ -1,78 +1,104 @@
-# repo-contract.yaml — Machine-readable contract for dfl-iterate
+# repo-contract.yaml — Machine-readable contract for itera-player
 # Defines provided interfaces, consumed dependencies, environment,
 # health checks, and agent integration metadata.
+#
+# 2026-07-28: reescrito. Este arquivo descrevia o engine gamificado LEGADO
+# (FixTheCode/BreakAndFix/… + src/pages/LessonPage.tsx), herdado do scaffold de
+# dfl-iterate no commit de fundação deste repo. Aquele engine foi aposentado
+# (ADR-12 do plano 20260728-itera-activity-testing) e os paths não existem
+# mais. Ver CLAUDE.md para o engine canônico.
 
-name: dfl-iterate
+name: itera-player
 description: >
-  Gamified coding exercise platform — Duolingo-style lessons with code editing,
-  AI-powered feedback, and progress tracking pills. Part of the DFL Learn ecosystem.
+  Itera player — app de aluno/instrutor da Itera (app.iterahq.dev). Roda
+  lições e activities vindas do Supabase da Itera, com aula ao vivo,
+  superfície de autoria e back-office admin.
 
 type: platform
 version: 1.0.0
 
 owner:
-  team: dfl-core
-  slack: "#dfl-iterate"
+  team: itera
+  github: "@taigfs @SamuelStefano"
 
 stack:
   runtime: browser
   framework: react-18
-  bundler: vite-5
+  bundler: vite-8
   language: typescript-5
   styling: tailwind-css
-  ui_library: shadcn-ui
+  ui_library: shadcn-ui + "@devfellowship/components"
   editor: monaco-editor
   animations: framer-motion
   state: tanstack-react-query
-  testing: vitest
+  data: supabase
+  testing: vitest + playwright
   observability: opentelemetry
 
 provides:
   - type: ui
     name: lesson-player
     description: >
-      Interactive lesson player rendering activity sequences with
-      code editing, AI feedback, and gamified progress indicators.
-    entry: src/pages/LessonPage.tsx
+      Player canônico da lição — percorre a sequência de activities de uma
+      lição, grava progresso e artifacts no Supabase da Itera.
+    entry: src/pages/LessonPlayer.tsx
 
   - type: ui
     name: activity-engine
     description: >
-      Pluggable activity component system supporting multiple activity types:
-      FixTheCode, BreakAndFix, ConstrainedEdit, DecisionFork, FixWithChoices,
-      QualityReview, VideoChallenge, VisualImplementation, ReadAndChoose.
-    entry: src/components/activity/
+      Engine canônico de activity. O ActivityRenderer despacha uma linha de
+      itera.activities para a view do seu `kind`. Os 11 kinds de
+      itera.activity_kind: concept, document, diagram, video, quiz,
+      single_choice, multi_choice, match, order, code, sandbox_scenario.
+      Lógica derivada de resposta/correção vive na máquina pura
+      src/utils/answerMachine.ts; o gate do ao-vivo em
+      src/utils/liveActivityGate.ts.
+    entry: src/components/branded/activity/
+
+  - type: ui
+    name: live-class
+    description: >
+      Aula ao vivo — stage do instrutor, timer/gate, roster ranqueado, podium
+      e a sessão do lado do aluno.
+    entry: src/pages/live/
+
+  - type: ui
+    name: authoring
+    description: >
+      Superfície de autoria + harness isolado de activity
+      (/author/activities/:activityId/test e /test-live) que monta UMA
+      activity sem escrever no banco.
+    entry: src/pages/author/
+
+  - type: ui
+    name: admin-back-office
+    description: >
+      Back-office do tenant — roster, programas, engajamento, artifacts.
+    entry: src/pages/admin/
 
   - type: ui
     name: code-editor
     description: >
-      Monaco-based code editor with file tree, editable regions,
-      syntax highlighting, and sandboxed live preview.
+      Editor Monaco self-hosted (sem CDN externa em runtime) com preview
+      client-only em iframe sandboxed para o kind `code`.
     entry: src/components/editor/
 
-  - type: ui
-    name: ai-feedback
-    description: >
-      Streaming AI feedback panel for code review hints and explanations.
-    entry: src/components/ai/
-
-  - type: ui
-    name: gamification-layer
-    description: >
-      Progress pills, celebration overlays, result modals, and sound effects
-      for gamified lesson flow.
-    entry: src/components/game/
-
 consumes:
-  - repo: dfl-learn
-    resource: lesson-data
-    description: Lesson and activity definitions from the LMS ecosystem
-    integration: planned
+  - external: true
+    name: supabase-itera
+    description: Projeto Supabase da Itera (kjefmwlopzeaqgqtlbdn) — auth, dados e RLS
+    env_var: VITE_SUPABASE_URL
 
-  - repo: dfl-tracks
-    resource: learning-paths
-    description: Track sequencing for lesson ordering
-    integration: planned
+  - external: true
+    name: itera-api
+    description: Responder + judge do sandbox BYOC ao vivo
+    env_var: VITE_ITERA_API_URL
+
+  - external: true
+    name: "@iterahq/activity-spec"
+    description: >
+      Schemas Zod por kind (safeParseActivitySpec) + os reducers puros do
+      runtime do sandbox_scenario. Vendorizado como .tgz em vendor/.
 
   - external: true
     name: opentelemetry-collector
@@ -82,15 +108,23 @@ consumes:
 environment:
   required:
     - name: VITE_SUPABASE_URL
-      description: Supabase project URL for future backend integration
+      description: URL do projeto Supabase da Itera
     - name: VITE_SUPABASE_ANON_KEY
-      description: Supabase anonymous key for client-side access
+      description: Anon key do Supabase (RLS aplica; sessão do usuário)
   optional:
+    - name: VITE_ITERA_API_URL
+      description: Base da itera-api (responder/judge do BYOC ao vivo)
+    - name: VITE_ITERA_API_BASE
+      description: Base alternativa da itera-api
+    - name: VITE_DFL_HANDOFF_URL
+      description: Handoff de auth vindo do DFL Learn
     - name: VITE_OTEL_API_KEY
-      description: API key for OpenTelemetry trace/metrics export
+      description: API key para export de traces/métricas OpenTelemetry
     - name: VITE_OTEL_ENABLED
-      description: Toggle observability instrumentation (true/false)
+      description: Liga/desliga a instrumentação de observabilidade (true/false)
       default: "true"
+    - name: VITE_SENTRY_DSN
+      description: DSN do Sentry
 
 health_check:
   command: npm run build
@@ -101,28 +135,43 @@ scripts:
   build: npm run build
   test: npm run test
   lint: npm run lint
+  typecheck: npm run typecheck
+  storybook: npm run storybook
 
 agent_entry_point: CLAUDE.md
 
-activity_types:
-  - fix_the_code
-  - break_and_fix
-  - constrained_edit
-  - decision_fork
-  - fix_with_choices
-  - quality_review
-  - video_challenge
-  - visual_implementation
-  - read_and_choose
+activity_kinds:
+  # Espelha o union ActivityKind em src/types/content.ts, ACTIVITY_KINDS de
+  # @iterahq/activity-spec e iterahq/itera-mcp:src/tools/activities.ts.
+  # Os três precisam continuar em sincronia.
+  - concept
+  - document
+  - diagram
+  - video
+  - quiz
+  - single_choice
+  - multi_choice
+  - match
+  - order
+  - code
+  - sandbox_scenario
 
 testing:
   framework: vitest
   config: vitest.config.ts
   pattern: "src/**/*.test.{ts,tsx}"
   coverage: false
+  e2e:
+    framework: playwright
+    config: playwright.config.ts
+    dir: e2e/
+    in_pr_gate: false # workflow_dispatch + cron diário, capability-gated
 
 observability:
   provider: opentelemetry
   traces: true
   metrics: true
-  config: src/components/observability/
+  # Vem do pacote compartilhado @devfellowship/observability
+  # (ObservabilityProvider montado em src/App.tsx) — não há mais
+  # src/components/observability/ neste repo.
+  package: "@devfellowship/observability"
