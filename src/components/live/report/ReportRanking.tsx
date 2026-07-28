@@ -1,6 +1,7 @@
 import { Clock3 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { formatMmss } from '@/utils/formatMmss';
+import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 import type { ClassReportParticipant } from '@/types/liveClass';
 
 export function ReportRanking({ participants }: { participants: ClassReportParticipant[] }) {
@@ -30,6 +31,10 @@ export function ReportRanking({ participants }: { participants: ClassReportParti
                 </span>
               )}
               <span className="text-sm text-foreground flex-1 min-w-0 truncate">{p.name}</span>
+              {/* ADR-12: the professor must be able to tell a demo visitor from
+                  a student. The badge is the only thing that says so — a guest
+                  may have typed a real student's exact name (ADR-11). */}
+              {p.isGuest && <LiveGuestBadge />}
               <span className="text-xs text-menta shrink-0">
                 {t('live.report.ranking.score', {
                   correct: String(p.correctCount),

@@ -21,7 +21,7 @@
  * goes straight back to `live` instead of minting a SECOND guest user for the
  * same person (which would split them across two roster/podium rows).
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
@@ -30,6 +30,7 @@ import { GuestModeProvider, type GuestMode } from '@/guest/GuestModeContext';
 import LiveSessionPage from '@/pages/LiveSessionPage';
 import {
   guestJoinConfigured,
+  isGuestCodeActive,
   readStoredGuestSession,
   type GuestSession,
 } from '@/services/guestSession.service';
@@ -42,6 +43,25 @@ export default function GuestLiveRoute() {
     code ? readStoredGuestSession(code) : null
   );
   const [left, setLeft] = useState(false);
+
+  /* Advisory liveness probe, so a link forwarded after the class ended is
+     refused on ARRIVAL rather than after the visitor fills in the form. NOT the
+     authority — `POST /v1/live/guest-session` still re-checks `status='live'`
+     and is what actually enforces this (a stale `true` here just means the join
+     fails a moment later, exactly as before). Skipped for a guest who already
+     joined in this browser: they hold a session and the live page handles the
+     class ending on its own. */
+  const [codeDead, setCodeDead] = useState(false);
+  useEffect(() => {
+    if (!code || joined) return;
+    let alive = true;
+    void isGuestCodeActive(code).then((active) => {
+      if (alive && !active) setCodeDead(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [code, joined]);
 
   const leave = useCallback(() => setLeft(true), []);
   const guestMode = useMemo<GuestMode | null>(
@@ -68,6 +88,18 @@ export default function GuestLiveRoute() {
   }
 
   if (left) return <GuestEndCard onBack={() => setLeft(false)} />;
+
+  // The class is over (or the code never resolved). Say so before asking for a
+  // name — the same message the failed join would have produced, just earlier.
+  if (codeDead && !guestMode) {
+    return (
+      <GuestNotice
+        testid="guest-code-expired"
+        title={t('live.guest.expired.title')}
+        body={t('live.guest.expired.subtitle')}
+      />
+    );
+  }
 
   if (!guestMode) {
     return (

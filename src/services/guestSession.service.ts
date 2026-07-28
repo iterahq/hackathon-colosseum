@@ -108,6 +108,52 @@ export function clearStoredGuestSession(code: string): void {
   }
 }
 
+/**
+ * The guest code this browser last joined with, if any.
+ *
+ * Used to send a guest who wandered onto an authenticated route back to THEIR
+ * class instead of into the app shell. Scans the `itera.guest.*` keys rather
+ * than taking a code from the URL, because the whole point is that we are on a
+ * route that carries no code.
+ */
+export function findStoredGuestCode(): string | null {
+  try {
+    let newest: { code: string; sessionId: string } | null = null;
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(STORE_PREFIX)) continue;
+      const code = key.slice(STORE_PREFIX.length);
+      const stored = readStoredGuestSession(code);
+      if (stored) newest = { code, sessionId: stored.sessionId };
+    }
+    return newest?.code ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when this access token belongs to a link-invited guest.
+ *
+ * Reads the `app_metadata.is_guest` claim that itera-api stamps when it mints
+ * the session. This is a ROUTING signal only — it decides which surface to show,
+ * never what data is returned. Authorization stays where it belongs: the guest
+ * has zero memberships, so RLS gives them nothing regardless of what this says.
+ * A forged claim would therefore change only which of two screens a user sees.
+ */
+export function isGuestAccessToken(token: string | undefined | null): boolean {
+  if (!token) return false;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return false;
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const claims = JSON.parse(json) as { app_metadata?: { is_guest?: unknown } };
+    return claims?.app_metadata?.is_guest === true;
+  } catch {
+    return false;
+  }
+}
+
 /* ── itera-api calls ──────────────────────────────────────────────────────── */
 
 interface GuestSessionResponse {
@@ -125,6 +171,33 @@ export class GuestJoinError extends Error {
     super(message);
     this.name = 'GuestJoinError';
     this.status = status;
+  }
+}
+
+/**
+ * Is this guest code still worth opening? Advisory ONLY.
+ *
+ * Lets `/g/:code` refuse a forwarded, dead link on ARRIVAL instead of after the
+ * visitor has typed a name and picked an avatar. It is deliberately NOT the
+ * authority: `POST /v1/live/guest-session` re-checks `status = 'live'` on every
+ * join and is what actually keeps a dead link out. A `true` here that goes stale
+ * a second later changes nothing — the join still fails with 404.
+ *
+ * Returns `true` when it cannot tell (network down, endpoint absent on an older
+ * itera-api). Failing OPEN is right for an advisory check: the cost of a wrong
+ * `true` is one wasted form submission, while a wrong `false` would lock a
+ * legitimate guest out of a class that is running.
+ */
+export async function isGuestCodeActive(code: string): Promise<boolean> {
+  const base = iteraApiBase();
+  if (!base) return true;
+  try {
+    const res = await fetch(`${base}/v1/live/guest/${encodeURIComponent(code)}/status`);
+    if (!res.ok) return true;
+    const data = (await res.json()) as { active?: unknown };
+    return data?.active !== false;
+  } catch {
+    return true;
   }
 }
 

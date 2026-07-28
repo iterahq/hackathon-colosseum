@@ -167,6 +167,13 @@ export interface ClassReportData {
   answers: ClassAnswerRecord[];
   attendance: ClassAttendanceRecord[];
   users: ClassReportUser[];
+  /**
+   * The `itera.class_guests` user ids for this session — who was a link-invited
+   * guest rather than a member of the cohort. Empty when the guest schema is not
+   * applied yet, which the report treats as "no guests known" (it will then
+   * count everyone, i.e. exactly the old behaviour).
+   */
+  guestUserIds?: string[];
 }
 
 export interface ClassReportParticipant {
@@ -177,6 +184,8 @@ export interface ClassReportParticipant {
   answeredCount: number;
   correctCount: number;
   totalMs: number;
+  /** Link-invited guest — listed and badged, but excluded from `totals` (ADR-4). */
+  isGuest?: boolean;
 }
 
 export interface ClassReportActivityStat {
@@ -189,7 +198,12 @@ export interface ClassReportActivityStat {
 export interface ClassReport {
   participants: ClassReportParticipant[];
   perActivity: ClassReportActivityStat[];
-  totals: { participants: number; answers: number; correctPct: number };
+  /**
+   * COHORT-ONLY figures. Guests are excluded from every number here; they are
+   * counted separately in `guests` so the professor can see that a demo visitor
+   * was present without that visitor moving the class's stats.
+   */
+  totals: { participants: number; answers: number; correctPct: number; guests: number };
 }
 
 /** Inputs to the learner-side interaction gate (see utils/liveActivityGate). */

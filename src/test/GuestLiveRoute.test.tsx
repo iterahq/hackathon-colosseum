@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   configured: true,
   createGuestSession: vi.fn(),
   stored: null as unknown,
+  codeActive: true,
 }));
 
 vi.mock('@/services/guestSession.service', () => ({
@@ -25,6 +26,9 @@ vi.mock('@/services/guestSession.service', () => ({
   createGuestSession: mocks.createGuestSession,
   storeGuestSession: vi.fn(),
   clearStoredGuestSession: vi.fn(),
+  // Advisory liveness probe. Defaults to "still live" so these cases exercise
+  // the normal path; the expired-link case overrides it.
+  isGuestCodeActive: () => Promise.resolve(mocks.codeActive),
 }));
 
 // The live page itself is exercised by its own tests; here we only care that the
@@ -78,6 +82,7 @@ describe('GuestLiveRoute', () => {
     vi.clearAllMocks();
     mocks.configured = true;
     mocks.stored = null;
+    mocks.codeActive = true;
     mocks.createGuestSession.mockResolvedValue(joined);
   });
 
@@ -138,5 +143,32 @@ describe('GuestLiveRoute', () => {
     renderRoute();
     expect(screen.getByTestId('guest-not-configured')).toBeInTheDocument();
     expect(screen.queryByTestId('live-name-gate')).toBeNull();
+  });
+
+  it('refuses a link forwarded after the class ended, BEFORE asking for a name', async () => {
+    mocks.codeActive = false;
+    renderRoute();
+    await waitFor(() => expect(screen.getByTestId('guest-code-expired')).toBeInTheDocument());
+    // The whole point: no form to fill in for a class that is over.
+    expect(screen.queryByTestId('live-name-gate')).toBeNull();
+    expect(mocks.createGuestSession).not.toHaveBeenCalled();
+  });
+
+  it('still shows the gate when the probe cannot tell (fails open)', async () => {
+    // isGuestCodeActive resolves true on network/endpoint failure, so a
+    // legitimate guest is never locked out of a class that is actually running.
+    mocks.codeActive = true;
+    renderRoute();
+    await waitFor(() => expect(screen.getByTestId('live-name-gate')).toBeInTheDocument());
+    expect(screen.queryByTestId('guest-code-expired')).toBeNull();
+  });
+
+  it('does not re-probe for a guest who already joined in this browser', async () => {
+    // They hold a session; the live page handles the class ending on its own.
+    mocks.stored = joined;
+    mocks.codeActive = false;
+    renderRoute();
+    await waitFor(() => expect(screen.getByTestId('live-session-page')).toBeInTheDocument());
+    expect(screen.queryByTestId('guest-code-expired')).toBeNull();
   });
 });

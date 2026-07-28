@@ -68,14 +68,27 @@ export async function recordClassAnswer(
  * session's tenant sees everyone; a learner would only see their own rows.
  */
 export async function getClassReportData(sessionId: string): Promise<ClassReportData> {
-  if (!isSupabaseConfigured || !sessionId) return { answers: [], attendance: [], users: [] };
+  if (!isSupabaseConfigured || !sessionId)
+    return { answers: [], attendance: [], users: [], guestUserIds: [] };
   const sb = getSupabase();
-  const [{ data: ans }, { data: att }] = await Promise.all([
+  const [{ data: ans }, { data: att }, guests] = await Promise.all([
     sb
       .from('class_answers')
       .select('activity_id, user_id, correct, elapsed_ms, created_at')
       .eq('session_id', sessionId),
     sb.from('class_attendance').select('user_id, joined_at').eq('session_id', sessionId),
+    // Who in this session was a link-invited guest. Its own query, degrading to
+    // [] — `class_guests` arrives in migration 0026 and the Itera project has no
+    // migration ledger, so a deploy can legitimately run ahead of the schema.
+    // Failing open here would silently fold guests back into the cohort totals,
+    // so the caller treats [] as "no guests known" and says so.
+    (async () => {
+      const { data, error } = await sb
+        .from('class_guests')
+        .select('user_id, display_name')
+        .eq('session_id', sessionId);
+      return { data, error };
+    })(),
   ]);
 
   const answers = asRows(ans).map((r) => ({
@@ -90,6 +103,17 @@ export async function getClassReportData(sessionId: string): Promise<ClassReport
     joinedAt: str(r.joined_at),
   }));
 
+  // A guest has NO membership, so `users_select_admin` (which reaches learners
+  // through the tenant's membership rows) does not resolve them: measured on a
+  // real session, the instructor could read 2 attendance rows and 0 of the
+  // matching `itera.users` rows. Without the name from `class_guests` a guest
+  // would show up in the report as an anonymous participant — counted, unnamed.
+  const guestRows = asRows(guests.data);
+  const guestUserIds = guestRows.map((g) => str(g.user_id)).filter(Boolean);
+  const guestNames = new Map(
+    guestRows.map((g) => [str(g.user_id), str(g.display_name)] as const).filter(([id]) => id)
+  );
+
   const ids = [...new Set([...answers.map((a) => a.userId), ...attendance.map((a) => a.userId)])].filter(
     Boolean
   );
@@ -102,5 +126,16 @@ export async function getClassReportData(sessionId: string): Promise<ClassReport
       avatarUrl: strOrNull(u.avatar_url),
     }));
   }
-  return { answers, attendance, users };
+
+  // Fill in the guests the `users` read could not reach, so the professor sees
+  // "Ana (convidado)" instead of a nameless row (ADR-12: he must be able to tell
+  // who was a guest).
+  const known = new Set(users.map((u) => u.userId));
+  for (const [userId, name] of guestNames) {
+    if (!known.has(userId) && ids.includes(userId)) {
+      users.push({ userId, name: name || userId.slice(0, 8), avatarUrl: null });
+    }
+  }
+
+  return { answers, attendance, users, guestUserIds };
 }

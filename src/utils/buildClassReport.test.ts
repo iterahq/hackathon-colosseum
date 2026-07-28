@@ -54,7 +54,9 @@ describe('buildClassReport', () => {
 
   it('computes totals and includes answerers missing from attendance', () => {
     const r = buildClassReport({ ...data, attendance: [] }, ['a1', 'a2']);
-    expect(r.totals).toEqual({ participants: 2, answers: 4, correctPct: 75 });
+    // `guests: 0` — this fixture has no class_guests rows, so every participant
+    // counts, exactly as before guests existed.
+    expect(r.totals).toEqual({ participants: 2, answers: 4, correctPct: 75, guests: 0 });
     expect(r.participants.every((p) => p.joinedAt === null)).toBe(true);
   });
 
