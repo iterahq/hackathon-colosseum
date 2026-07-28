@@ -10,7 +10,7 @@ export function rankByScore(
 
   const entries = roster
     .filter((m) => !m.isInstructor)
-    .map(({ userId, name, avatarUrl }) => {
+    .map(({ userId, name, avatarUrl, isGuest }) => {
       let totalMs = 0;
       let answeredCount = 0;
       let correctCount = 0;
@@ -23,7 +23,9 @@ export function rankByScore(
           if (answer) correctCount += 1;
         }
       }
-      return { userId, name, avatarUrl, totalMs, answeredCount, correctCount };
+      // `isGuest` rides all the way to the podium: a guest CAN out-rank a real
+      // student (ADR-9 accepts that), so the badge has to survive ranking.
+      return { userId, name, avatarUrl, totalMs, answeredCount, correctCount, isGuest };
     });
 
   const ranked = entries
@@ -42,11 +44,12 @@ export function rankByScore(
       answeredCount: e.answeredCount,
       correctCount: e.correctCount,
       rank: i + 1,
+      isGuest: e.isGuest,
     }));
 
   const waiting = entries
     .filter((e) => e.answeredCount === 0)
-    .map(({ userId, name, avatarUrl }) => ({ userId, name, avatarUrl }))
+    .map(({ userId, name, avatarUrl, isGuest }) => ({ userId, name, avatarUrl, isGuest }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return { ranked, waiting };

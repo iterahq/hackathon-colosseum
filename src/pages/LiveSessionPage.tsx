@@ -11,6 +11,24 @@
  *
  * Result writes are UNCHANGED (persistActivityProgress → itera.progress /
  * activity_results). Live mode only controls WHICH activity is on screen.
+ *
+ * GUEST MODE (plan 20260728-itera-guest-link-aula-sincrona, ADR-3). The very same
+ * page also serves `/g/:code`, mounted OUTSIDE RequireAuth, when a
+ * `GuestModeProvider` is above it. There is no forked page — the ~24 live
+ * components and the sync logic would drift on the first live fix. Only four
+ * things change, all read off `useGuestMode()`:
+ *
+ *   1. the session id comes from the guest join (resolved from the code) instead
+ *      of the route param;
+ *   2. lesson content comes from itera-api (`useLessonContent(_, code)`) because
+ *      a membership-less JWT cannot read `itera.lessons` — that is the ONE thing
+ *      it lacks (ADR-2/B5), and it is deliberately not fixed with a new policy;
+ *   3. every exit lands on the guest end-card. The authenticated exits go to `/`,
+ *      which is RequireAuth+RequireSubscription — for a guest that is a login
+ *      wall, i.e. the demo would end on a rejection screen;
+ *   4. no durable progress/XP write (ADR-6) — RLS would ALLOW it (the guest has a
+ *      real itera.users id, so `progress_rw_self` is satisfied), so this is a
+ *      client-side rule and has to be honoured here.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -55,29 +73,54 @@ import { isGenericName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
 import { useProfile } from '@/hooks/useProfile';
+import { useGuestMode } from '@/guest/GuestModeContext';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
 
 
 export default function LiveSessionPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const params = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { t, tText } = useI18n();
+
+  // Present ONLY under /g/:code (see GuestModeContext) — null is the normal,
+  // authenticated case, so every branch below defaults to today's behaviour.
+  const guest = useGuestMode();
+  // The guest never has a :sessionId in the URL (the link carries a short code);
+  // the id was resolved server-side when the guest session was minted.
+  const sessionId = guest?.sessionId ?? params.sessionId;
 
   const identity = useIteraIdentity();
   // Staff (instructor/admin/owner) who lands on the student surface must still
   // present as instructor — otherwise their presence enters the podium/ranking.
+  // A guest holds zero memberships, so this resolves false without a special case.
   const { data: memberships } = useMembership();
   const staff = isStaffInstructor(memberships ?? []);
+  // The guest's name/avatar come from the join (their itera.users row exists but
+  // the profile read is not what the room should wait on); everything else is
+  // the shared identity.
+  const presenceName = guest?.displayName || identity.name;
+  const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
   const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stagedAnswer, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
-        ? { userId: identity.userId, name: identity.name, avatarUrl: identity.avatarUrl, isInstructor: staff }
+        ? {
+            userId: identity.userId,
+            name: presenceName,
+            avatarUrl: presenceAvatar,
+            isInstructor: staff,
+            isGuest: Boolean(guest),
+          }
         : undefined
     );
 
-  const { data: lesson, isPending: lessonPending } = useLessonContent(session?.lessonId);
+  // Guest content is served by itera-api, scoped to the invited session — the
+  // ONE read a membership-less JWT cannot do for itself.
+  const { data: lesson, isPending: lessonPending } = useLessonContent(
+    session?.lessonId,
+    guest?.code
+  );
   const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
 
@@ -231,8 +274,17 @@ export default function LiveSessionPage() {
     // held wins exclusively. Only a PASS blocks on the write (`saving` gates the
     // UI); a miss is fired best-effort so the learner is never stuck waiting on
     // a write for an answer that is already settled and already broadcast.
+    //
+    // ADR-6 carves the guest out of ALL of it: a guest never writes
+    // itera.progress / activity_results / XP, pass or miss. RLS would NOT stop
+    // this (their itera.users id satisfies `progress_rw_self`), so the rule lives
+    // here — a demo must not leave progress rows behind on a real cohort's
+    // content. The durable class_answers/class_attendance copies below DO happen:
+    // that is what the professor's post-class report reads.
     const response = detail?.response ?? null;
-    if (correct) {
+    if (guest) {
+      // no durable per-learner progress for a link-invited guest
+    } else if (correct) {
       setSaving(true);
       await persistActivityProgress(current.id, { passed: true, response });
       setSaving(false);
@@ -266,11 +318,27 @@ export default function LiveSessionPage() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const [gatePassed, setGatePassed] = useState(false);
   const gateNeeded =
+    // A guest already picked their name+avatar at the door — that step is what
+    // minted their session (GuestLiveRoute), so re-gating here would ask twice.
+    !guest &&
     Boolean(session) &&
     !ended &&
     !gatePassed &&
     !profileLoading &&
     isGenericName(profile?.displayName, profile?.email);
+
+  // Where the surface EXITS. The X and the podium CTA both point at `/` for a
+  // member; for a guest that route is RequireAuth+RequireSubscription, so it
+  // would finish the demo on a login wall. `guest.leave()` swaps the whole tree
+  // for the guest end-card (owned by GuestLiveRoute, so the channel is torn down
+  // with the page) — a guest can never reach an authenticated route from here.
+  const leave = useCallback(() => {
+    if (guest) {
+      guest.leave();
+      return;
+    }
+    navigate('/');
+  }, [guest, navigate]);
 
   // The sandbox owns a fixed viewport-relative height, so its surface is pinned
   // to the viewport with the scroll living INSIDE the stage — never the page.
@@ -326,7 +394,7 @@ export default function LiveSessionPage() {
             <LiveHandButton raised={handRaised} onToggle={toggleHand} />
           ) : undefined
         }
-        onClose={() => navigate('/')}
+        onClose={leave}
       />
 
       {stagedAnswer && !ended && <LiveStage staged={stagedAnswer} />}
@@ -363,10 +431,11 @@ export default function LiveSessionPage() {
           >
             <LivePodium ranking={podiumRanking} selfUserId={identity.userId ?? undefined} />
             <button
-              onClick={() => navigate('/')}
+              onClick={leave}
+              data-testid="live-ended-cta"
               className="mt-8 w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
             >
-              {t('live.ended.cta')}
+              {guest ? t('live.guest.ended.cta') : t('live.ended.cta')}
             </button>
           </motion.div>
         ) : gateNeeded ? (

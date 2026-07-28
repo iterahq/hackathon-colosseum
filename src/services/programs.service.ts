@@ -170,7 +170,12 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
   };
 }
 
-function mapActivity(a: Row): Activity {
+/**
+ * DB row → Activity. Exported because the GUEST content path (itera-api serves
+ * the invited session's lesson — see guestSession.service) must produce exactly
+ * the same Activity shape as the PostgREST path; two mappers would drift.
+ */
+export function mapActivity(a: Row): Activity {
   const kind = str(a.kind) as Activity['kind'];
   const rawSpec = a.spec && typeof a.spec === 'object' ? (a.spec as Record<string, unknown>) : {};
   return {

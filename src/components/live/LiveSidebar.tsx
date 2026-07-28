@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Link2, Check, Square, Users, ChevronDown } from 'lucide-react';
+import { Link2, Check, Square, Users, ChevronDown, UserPlus } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
 import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
@@ -19,9 +19,20 @@ interface LiveSidebarProps {
   ranking?: ClassRanking;
   /** Learners who dropped presence — dimmed + blinking in the roster. */
   disconnectedUserIds?: string[];
+  /** Durable guest list (itera.class_guests) — badges rows + feeds the counter. */
+  guestUserIds?: string[];
   copied?: boolean;
   busy?: boolean;
   onCopyLink?: () => void;
+  /**
+   * Guest-link affordance (ADR-12). Sits next to the normal join link: same
+   * gesture, different audience — this one is for someone with NO account.
+   * Undefined hides the button entirely (e.g. the guest-link schema isn't
+   * applied on this deploy yet).
+   */
+  onCopyGuestLink?: () => void;
+  guestCopied?: boolean;
+  guestLinkBusy?: boolean;
   onEnd?: () => void;
   /** Instructor flow controls, rendered as the top section (no bottom bar). */
   controls?: ReactNode;
@@ -42,9 +53,13 @@ export function LiveSidebar({
   kind = '',
   ranking,
   disconnectedUserIds,
+  guestUserIds,
   copied = false,
   busy = false,
   onCopyLink,
+  onCopyGuestLink,
+  guestCopied = false,
+  guestLinkBusy = false,
   onEnd,
   controls,
 }: LiveSidebarProps) {
@@ -111,6 +126,7 @@ export function LiveSidebar({
             instructors={roster.filter((m) => m.isInstructor)}
             raisedUserIds={roster.filter((m) => m.handRaised).map((m) => m.userId)}
             disconnectedUserIds={disconnectedUserIds}
+            guestUserIds={guestUserIds}
             selfUserId={selfUserId}
             showDetail={isInstructor}
           />
@@ -134,6 +150,28 @@ export function LiveSidebar({
               </>
             )}
           </button>
+          {/* Guest link (ADR-12) — for someone with NO account. Generates the
+              session's short code on first use. No cap and no kick in v1
+              (ADR-10/ADR-12): the control is social, and the code dies with the
+              class. */}
+          {onCopyGuestLink && (
+            <button
+              onClick={onCopyGuestLink}
+              disabled={guestLinkBusy}
+              data-testid="instructor-copy-guest-link"
+              className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors disabled:opacity-50"
+            >
+              {guestCopied ? (
+                <>
+                  <Check className="w-4 h-4" /> {t('live.instructor.copyGuestLinkDone')}
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" /> {t('live.instructor.copyGuestLink')}
+                </>
+              )}
+            </button>
+          )}
           <button
             onClick={onEnd}
             disabled={busy}

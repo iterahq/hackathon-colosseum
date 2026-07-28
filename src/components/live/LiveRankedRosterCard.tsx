@@ -26,6 +26,13 @@ interface LiveRankedRosterCardProps {
    * who fell off the call instead of them silently vanishing from the list.
    */
   disconnectedUserIds?: string[];
+  /**
+   * Link-invited guests (ADR-9). The DURABLE source — `itera.class_guests`, which
+   * the session's instructors can read — merged on TOP of the per-row `isGuest`
+   * that arrives via presence. Presence is client-supplied, so on the instructor
+   * surface the DB list is what makes the badge trustworthy.
+   */
+  guestUserIds?: string[];
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -45,11 +52,17 @@ export function LiveRankedRosterCard({
   bare = false,
   raisedUserIds,
   disconnectedUserIds,
+  guestUserIds,
 }: LiveRankedRosterCardProps) {
   const { t } = useI18n();
   const stateById = new Map(answerers.map((a) => [a.userId, a.state]));
   const raised = new Set(raisedUserIds ?? []);
   const down = new Set(disconnectedUserIds ?? []);
+  const guests = new Set(guestUserIds ?? []);
+  const isGuestRow = (userId: string, flagged?: boolean) => flagged === true || guests.has(userId);
+  const guestCount =
+    ranking.ranked.filter((r) => isGuestRow(r.userId, r.isGuest)).length +
+    ranking.waiting.filter((w) => isGuestRow(w.userId, w.isGuest)).length;
   const rowClass = (userId: string, extra: string) =>
     `flex items-center gap-2 text-sm ${extra} ${down.has(userId) ? 'opacity-60' : ''}`;
 
@@ -61,6 +74,13 @@ export function LiveRankedRosterCard({
         {raised.size > 0 && (
           <span className="font-mono text-xs tabular-nums text-clay" data-testid="live-hand-count">
             ✋ {raised.size}
+          </span>
+        )}
+        {/* Guest counter (ADR-12) — the professor sees at a glance how many of
+            the people in the room came in through the guest link. */}
+        {guestCount > 0 && (
+          <span className="font-mono text-xs tabular-nums text-clay" data-testid="live-guest-count">
+            {t('live.guest.count', { n: String(guestCount) })}
           </span>
         )}
         <span className="ml-auto font-mono text-sm tabular-nums text-menta" data-testid="live-roster-count">
@@ -105,6 +125,7 @@ export function LiveRankedRosterCard({
                 selfUserId={selfUserId}
                 raised={raised.has(r.userId)}
                 down={down.has(r.userId)}
+                guest={isGuestRow(r.userId, r.isGuest)}
               />
               <span className="ml-auto flex items-center gap-2 flex-shrink-0">
                 {showDetail && (
@@ -136,6 +157,7 @@ export function LiveRankedRosterCard({
                 selfUserId={selfUserId}
                 raised={raised.has(w.userId)}
                 down={down.has(w.userId)}
+                guest={isGuestRow(w.userId, w.isGuest)}
               />
               <span className="ml-auto flex-shrink-0">
                 {ANSWER_STATE_ICONS[answerStateVariant(stateById.get(w.userId), showDetail)]}

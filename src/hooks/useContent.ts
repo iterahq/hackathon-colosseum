@@ -6,6 +6,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import type { LessonPlacement } from '@/services/programs.service';
 import {
   getBadges,
   getLessonWithActivities,
@@ -14,6 +15,7 @@ import {
   getPrograms,
   getUserStats,
 } from '@/services/programs.service';
+import { getGuestLessonContent } from '@/services/guestSession.service';
 
 export function usePrograms() {
   return useQuery({ queryKey: queryKeys.programs.all, queryFn: getPrograms });
@@ -27,11 +29,32 @@ export function useProgram(slug: string | undefined) {
   });
 }
 
-export function useLessonContent(lessonId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.lesson.byId(lessonId ?? ''),
-    queryFn: () => getLessonWithActivities(lessonId as string),
-    enabled: Boolean(lessonId),
+/**
+ * The lesson + its activities for the player.
+ *
+ * `guestCode` switches the SOURCE, not the shape: a link-invited guest holds a
+ * real JWT with ZERO memberships, so `itera.lessons` reads `[]` for them by
+ * construction (content policies are membership-scoped and were deliberately NOT
+ * touched — plan 20260728-…, ADR-2/B5). itera-api serves the invited session's
+ * lesson instead, scoped server-side to that session. Everything downstream —
+ * activities, the stage, the ranking — is identical.
+ */
+export type LessonContent = {
+  id: string;
+  title: import('@/types/content').I18nText;
+  activities: import('@/types/content').Activity[];
+  /** Absent for a guest — see `GuestLessonContent`. */
+  placement?: LessonPlacement;
+};
+
+export function useLessonContent(lessonId: string | undefined, guestCode?: string) {
+  return useQuery<LessonContent>({
+    queryKey: guestCode
+      ? queryKeys.lesson.byGuestCode(guestCode)
+      : queryKeys.lesson.byId(lessonId ?? ''),
+    queryFn: () =>
+      guestCode ? getGuestLessonContent(guestCode) : getLessonWithActivities(lessonId as string),
+    enabled: guestCode ? true : Boolean(lessonId),
     // A not-found / RLS-blocked lesson (e.g. a live class started on another
     // tenant's content) throws — don't burn ~7s of retries leaving the learner
     // on a blank skeleton; settle fast so the "unavailable" state can show.

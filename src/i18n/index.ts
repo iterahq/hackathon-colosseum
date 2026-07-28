@@ -205,6 +205,27 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.nameGate.avatarLabel': 'Escolha um avatar',
     'live.nameGate.error': 'Não deu pra salvar. Tente de novo.',
     'live.nameGate.submit': 'Entrar na aula',
+    // Convidado por link (plano 20260728-itera-guest-link-aula-sincrona).
+    // O badge é LOAD-BEARING (ADR-9/ADR-11): nomes são auto-declarados e podem
+    // colidir com o de um aluno real — o badge é o que carrega a distinção.
+    'live.guest.badge': 'convidado',
+    'live.guest.count': '👤 {n}',
+    'live.guest.nameGate.subtitle':
+      'Você entrou por um link de convidado. Escolha um nome e um avatar para a turma te reconhecer.',
+    'live.guest.join.error': 'Não deu pra entrar. O link pode ter expirado ou a aula já terminou.',
+    'live.guest.ended.cta': 'Encerrar',
+    'live.guest.end.title': 'Valeu por participar!',
+    'live.guest.end.subtitle':
+      'Você entrou como convidado. Crie sua conta para ter as aulas, o progresso e as conquistas no seu nome.',
+    'live.guest.end.cta': 'Criar minha conta',
+    'live.guest.end.back': 'Voltar para a aula',
+    'live.guest.invalid.title': 'Link inválido',
+    'live.guest.invalid.subtitle': 'Confira o link de convidado com quem te convidou.',
+    'live.guest.unavailable.title': 'Convidados indisponíveis',
+    'live.guest.unavailable.subtitle':
+      'A entrada por link de convidado não está habilitada neste ambiente.',
+    'live.instructor.copyGuestLink': 'Copiar link de convidado',
+    'live.instructor.copyGuestLinkDone': 'Link de convidado copiado ✓',
     'live.instructor.kicker': 'Modo ao vivo',
     'live.instructor.title': 'Aula ao vivo',
     'live.instructor.subtitle':
@@ -859,6 +880,26 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.nameGate.avatarLabel': 'Pick an avatar',
     'live.nameGate.error': "Couldn't save. Please try again.",
     'live.nameGate.submit': 'Enter the class',
+    // Link-invited guest (plan 20260728-itera-guest-link-aula-sincrona). The
+    // badge is LOAD-BEARING (ADR-9/ADR-11): guest names are self-declared and may
+    // collide with a real student's — the badge carries the distinction.
+    'live.guest.badge': 'guest',
+    'live.guest.count': '👤 {n}',
+    'live.guest.nameGate.subtitle':
+      'You joined through a guest link. Pick a name and an avatar so the class recognizes you.',
+    'live.guest.join.error': "Couldn't join. The link may have expired or the class already ended.",
+    'live.guest.ended.cta': 'Finish',
+    'live.guest.end.title': 'Thanks for joining!',
+    'live.guest.end.subtitle':
+      'You joined as a guest. Create your account to keep the classes, progress and achievements under your name.',
+    'live.guest.end.cta': 'Create my account',
+    'live.guest.end.back': 'Back to the class',
+    'live.guest.invalid.title': 'Invalid link',
+    'live.guest.invalid.subtitle': 'Double-check the guest link with whoever invited you.',
+    'live.guest.unavailable.title': 'Guests unavailable',
+    'live.guest.unavailable.subtitle': 'Guest-link entry is not enabled in this environment.',
+    'live.instructor.copyGuestLink': 'Copy guest link',
+    'live.instructor.copyGuestLinkDone': 'Guest link copied ✓',
     'live.instructor.kicker': 'Live mode',
     'live.instructor.title': 'Live class',
     'live.instructor.subtitle':

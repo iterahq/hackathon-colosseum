@@ -40,6 +40,12 @@ import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { remainingSeconds, extendedTimerSeconds } from '@/utils/addLiveTime';
 import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
+import {
+  ensureSessionGuestCode,
+  getSessionGuestCode,
+  listSessionGuestUserIds,
+} from '@/services/guestLink.service';
+import { guestLinkFor } from '@/guest/guestRoute';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -366,6 +372,49 @@ function ClassControl({
     }
   }
 
+  // ── Guest link (plan 20260728-…, ADR-12) ────────────────────────────────
+  // Sibling of copyJoinLink for an audience with NO account: copies
+  // `${origin}/g/${guest_code}`, minting the session's short code on first use
+  // (an UPDATE gated by the existing class_sessions_update_staff policy).
+  // Capability-probed: `guest_code` / `class_guests` arrive in migration 0026 and
+  // the Itera project has no migration ledger, so a deploy can legitimately ship
+  // this UI before the DDL is applied. When the probe says "not available" the
+  // button simply does not render — never a button that 400s.
+  const [guestLinkAvailable, setGuestLinkAvailable] = useState(false);
+  const [guestCopied, setGuestCopied] = useState(false);
+  const [guestLinkBusy, setGuestLinkBusy] = useState(false);
+  const [guestUserIds, setGuestUserIds] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    void getSessionGuestCode(session.id).then((state) => {
+      if (alive) setGuestLinkAvailable(state.available);
+    });
+    void listSessionGuestUserIds(session.id).then((ids) => {
+      if (alive) setGuestUserIds(ids);
+    });
+    return () => {
+      alive = false;
+    };
+    // Re-probe as people join: the roster changing is the cheapest signal that a
+    // new guest may have registered (no cap in v1 → no other trigger to hook).
+  }, [session.id, roster.length]);
+
+  async function copyGuestLink() {
+    setGuestLinkBusy(true);
+    try {
+      const { code } = await ensureSessionGuestCode(session.id);
+      if (!code) return;
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      await navigator.clipboard?.writeText(guestLinkFor(origin, code));
+      setGuestCopied(true);
+      setTimeout(() => setGuestCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable / RLS refused — no-op, the button stays idle */
+    } finally {
+      setGuestLinkBusy(false);
+    }
+  }
+
   // Pointer-based progress for the shared chrome bar (same visual language the
   // learners get). Reception (idx < 0) shows an empty bar.
   const progressPct =
@@ -436,7 +485,7 @@ function ClassControl({
 
             {onPodium ? (
               <div className="mt-8" data-testid="instructor-podium">
-                <LivePodium ranking={podiumRanking} />
+                <LivePodium ranking={podiumRanking} guestUserIds={guestUserIds} />
                 <button
                   onClick={handleLeavePodium}
                   className="mt-8 mx-auto block h-12 px-8 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
@@ -491,7 +540,7 @@ function ClassControl({
               </div>
             ) : (
               // Reception — the SAME lobby the learners wait in before start.
-              <LiveReception roster={roster} />
+              <LiveReception roster={roster} guestUserIds={guestUserIds} />
             )}
           </div>
         </main>
@@ -506,10 +555,14 @@ function ClassControl({
           answerers={answerers}
           ranking={liveRanking}
           disconnectedUserIds={disconnectedUserIds}
+          guestUserIds={guestUserIds}
           selfUserId={instructorId ?? undefined}
           copied={copied}
           busy={busy}
           onCopyLink={copyJoinLink}
+          onCopyGuestLink={guestLinkAvailable ? copyGuestLink : undefined}
+          guestCopied={guestCopied}
+          guestLinkBusy={guestLinkBusy}
           onEnd={handleEnd}
           controls={
             <>

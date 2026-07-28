@@ -1,23 +1,32 @@
 import { motion } from 'framer-motion';
 import { useI18n } from '@/i18n';
-import { useLiveNameGate } from '@/hooks/useLiveNameGate';
+import { useLiveNameGate, type LiveNameGateGuestArgs } from '@/hooks/useLiveNameGate';
 import { LIVE_AVATAR_PRESETS } from '@/consts/liveAvatars';
 
 interface LiveNameGateProps {
   initialName?: string;
   initialAvatarUrl?: string | null;
   onDone: () => void;
+  /**
+   * GUEST mode (plan 20260728-…): the very same form, but submitting joins a
+   * live class through `POST /v1/live/guest-session` instead of updating an
+   * itera.users row that does not exist yet. Absent = the member behaviour,
+   * unchanged.
+   */
+  guest?: LiveNameGateGuestArgs;
 }
 
 /**
- * Pre-class step (after joining the room, before the activity) shown only when
- * the learner has no real name yet: pick a name + an avatar from the presets,
- * persisted as the Itera profile override. No photo upload.
+ * Pre-class step (after joining the room, before the activity): pick a name + an
+ * avatar from the presets. For a MEMBER it is shown only when the learner has no
+ * real name yet and persists as the Itera profile override. For a GUEST it is
+ * the entry point of the whole surface — it is what mints their session. No
+ * photo upload in either mode.
  */
-export function LiveNameGate({ initialName, initialAvatarUrl, onDone }: LiveNameGateProps) {
+export function LiveNameGate({ initialName, initialAvatarUrl, onDone, guest }: LiveNameGateProps) {
   const { t } = useI18n();
   const { name, setName, avatarUrl, setAvatarUrl, saving, error, canSubmit, submit } =
-    useLiveNameGate({ initialName, initialAvatarUrl, onDone });
+    useLiveNameGate({ initialName, initialAvatarUrl, onDone, guest });
 
   return (
     <motion.div
@@ -25,9 +34,12 @@ export function LiveNameGate({ initialName, initialAvatarUrl, onDone }: LiveName
       animate={{ opacity: 1, y: 0 }}
       className="mt-8 max-w-md mx-auto rounded-3xl border border-border bg-card p-6 md:p-8"
       data-testid="live-name-gate"
+      data-mode={guest ? 'guest' : 'member'}
     >
       <h2 className="font-display text-2xl text-foreground text-center">{t('live.nameGate.title')}</h2>
-      <p className="text-sm text-muted-foreground mt-1.5 text-center">{t('live.nameGate.subtitle')}</p>
+      <p className="text-sm text-muted-foreground mt-1.5 text-center">
+        {guest ? t('live.guest.nameGate.subtitle') : t('live.nameGate.subtitle')}
+      </p>
 
       <form
         className="mt-6 space-y-5"
@@ -77,7 +89,7 @@ export function LiveNameGate({ initialName, initialAvatarUrl, onDone }: LiveName
 
         {error && (
           <p className="text-sm text-destructive text-center" data-testid="live-name-gate-error">
-            {t('live.nameGate.error')}
+            {guest ? t('live.guest.join.error') : t('live.nameGate.error')}
           </p>
         )}
 

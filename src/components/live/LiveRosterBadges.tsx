@@ -1,24 +1,30 @@
 import { useI18n } from '@/i18n';
+import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 
 /**
- * The trailing badges on a roster row: a blinking dot for a learner who dropped
- * the call, the ✋ for a raised hand, and the "você" self tag. Shared by every
- * row variant (ranked / waiting / instructor) of LiveRankedRosterCard.
+ * The trailing badges on a roster row: the guest tag, a blinking dot for a
+ * learner who dropped the call, the ✋ for a raised hand, and the "você" self
+ * tag. Shared by every row variant (ranked / waiting / instructor) of
+ * LiveRankedRosterCard.
  */
 export function LiveRosterBadges({
   userId,
   selfUserId,
   raised = false,
   down = false,
+  guest = false,
 }: {
   userId: string;
   selfUserId?: string;
   raised?: boolean;
   down?: boolean;
+  /** Link-invited guest — ADR-9/ADR-11 make this badge non-optional. */
+  guest?: boolean;
 }) {
   const { t } = useI18n();
   return (
     <>
+      {guest && <LiveGuestBadge />}
       {down && (
         <span
           data-testid="live-disconnected-badge"

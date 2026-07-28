@@ -30,6 +30,13 @@ export const queryKeys = {
   lesson: {
     byId: (id: string) => ['lesson', id] as const,
     next: (id: string) => ['lesson', id, 'next'] as const,
+    /**
+     * Guest content comes from itera-api, not PostgREST, and is scoped to the
+     * invited session — so it gets its OWN key. Sharing `byId` would let a cached
+     * member read satisfy a guest (and vice-versa) across a logout on the same
+     * browser.
+     */
+    byGuestCode: (code: string) => ['lesson', 'guest', code] as const,
   },
   user: {
     stats: ['user', 'stats'] as const,

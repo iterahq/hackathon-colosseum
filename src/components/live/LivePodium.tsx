@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Crown } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
+import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 import { formatMmss } from '@/utils/formatMmss';
 import type { ClassRanking } from '@/types/liveClass';
 
@@ -12,10 +13,23 @@ const BAR_HEIGHTS = ['h-32 md:h-40', 'h-24 md:h-28', 'h-16 md:h-20'];
 // Gold / silver / bronze tints so each step reads as its own tier.
 const BAR_TINTS = ['bg-amber-400/15 border-amber-400/50 text-amber-500', 'bg-slate-300/15 border-slate-400/50 text-slate-400', 'bg-orange-400/15 border-orange-500/50 text-orange-500'];
 
-export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; selfUserId?: string }) {
+export function LivePodium({
+  ranking,
+  selfUserId,
+  guestUserIds,
+}: {
+  ranking: ClassRanking;
+  selfUserId?: string;
+  /** Durable guest list (itera.class_guests), merged over the presence flag. */
+  guestUserIds?: string[];
+}) {
   const { t } = useI18n();
   const top = ranking.ranked.slice(0, 3);
   const rest = ranking.ranked.slice(3);
+  const guests = new Set(guestUserIds ?? []);
+  // A guest CAN win the podium (ADR-9 accepts it); the badge is what keeps that
+  // honest next to a real student with the same self-declared name (ADR-11).
+  const isGuest = (userId: string, flagged?: boolean) => flagged === true || guests.has(userId);
 
   return (
     <div className="w-full" data-testid="live-podium">
@@ -65,6 +79,7 @@ export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; sel
                   <LiveAvatar name={entry.name} avatarUrl={entry.avatarUrl} size="w-12 h-12" />
                 </div>
                 <span className="mt-1.5 text-sm text-foreground text-center break-words w-full">{entry.name}</span>
+                {isGuest(entry.userId, entry.isGuest) && <LiveGuestBadge className="mt-0.5" />}
                 {isSelf && (
                   <span className="text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>
                 )}
@@ -99,6 +114,7 @@ export function LivePodium({ ranking, selfUserId }: { ranking: ClassRanking; sel
                 <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
                 <span className="text-foreground flex-1 min-w-0 break-words">
                   {r.name}
+                  {isGuest(r.userId, r.isGuest) && <LiveGuestBadge className="ml-1.5" />}
                   {isSelf && <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>}
                 </span>
                 <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground flex-shrink-0">

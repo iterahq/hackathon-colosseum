@@ -53,21 +53,11 @@ const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestP
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
-import { LiveClassSignal } from "./components/branded";
-import { useLocaleSync } from "./hooks/useLocaleSync";
+import { AppWideMounts } from "./components/AppWideMounts";
+import GuestLiveRoute from "./pages/GuestLiveRoute";
+import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 
 const queryClient = new QueryClient();
-
-/**
- * Side-effect-only component: hydrates the active locale from the user's saved
- * profile (itera.users.locale) on load and persists user-initiated language
- * changes back to the DB. Must live inside I18nProvider + AuthProvider +
- * QueryClientProvider (it reads the profile via React Query). Renders nothing.
- */
-function LocaleSync() {
-  useLocaleSync();
-  return null;
-}
 
 /**
  * Suspense shell for a lazily-loaded FULL-PAGE route. Deliberately the same
@@ -110,13 +100,14 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <LocaleSync />
             <BrowserRouter>
               <EmbedBridge />
-              {/* App-wide "a class went live" signal — toasts on any route when a
-                  live class starts (loop-2 fix #6). Enabled-tenant gating is
-                  inherited from useActiveLiveClass. */}
-              <LiveClassSignal />
+              {/* App-wide mounts: locale sync (writes itera.users.locale) + the
+                  "a class went live" signal (reads memberships, deep-links into
+                  the authenticated /live/:id). BOTH are suppressed on the guest
+                  route — see AppWideMounts. They live inside the router now
+                  precisely so that decision can be route-keyed. */}
+              <AppWideMounts />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as
@@ -283,6 +274,18 @@ const App = () => (
                     </RequireAuth>
                   }
                 />
+                {/* GUEST live surface (plan 20260728-itera-guest-link-aula-sincrona,
+                    ADR-3) — `/g/:code`, deliberately mounted OUTSIDE RequireAuth
+                    and RequireSubscription. Someone with NO account opens the
+                    link the professor copied in the reception, picks a name +
+                    avatar, and joins the class. The gate is STRUCTURAL: nothing
+                    in this subtree renders an auth guard, and every exit inside
+                    it lands on the guest end-card (CTA to /signup, ADR-7) — a
+                    guest can never fall through into the authenticated app.
+                    It renders the SAME LiveSessionPage in guest mode; content
+                    comes from itera-api because the guest holds ZERO memberships
+                    (ADR-2/B5) and therefore reads no lesson rows at all. */}
+                <Route path={GUEST_ROUTE_PATH} element={<GuestLiveRoute />} />
 
                 {/* Tenant-admin observability (plan #6) — role-gated, READ-ONLY,
                     single-tenant. NO authoring routes exist here by design

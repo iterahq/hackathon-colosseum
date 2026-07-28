@@ -123,6 +123,9 @@ export function useClassSession(
       name: id.name,
       avatar_url: id.avatarUrl ?? null,
       is_instructor: id.isInstructor === true,
+      // Link-invited guest (ADR-9/ADR-11) — every surface that renders a roster
+      // row reads this to draw the guest badge.
+      is_guest: id.isGuest === true,
       hand_raised: handRaisedRef.current,
       working_on: workingOnRef.current,
       at: new Date().toISOString(),
@@ -243,6 +246,7 @@ export function useClassSession(
             name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
             avatarUrl: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
             isInstructor: meta.is_instructor === true,
+            isGuest: meta.is_guest === true,
             handRaised: meta.hand_raised === true,
             workingOn: typeof meta.working_on === 'string' ? meta.working_on : null,
           });

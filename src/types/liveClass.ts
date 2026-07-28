@@ -24,6 +24,14 @@ export interface ClassIdentity {
   name: string;
   avatarUrl?: string | null;
   isInstructor?: boolean;
+  /**
+   * Link-invited guest (plan 20260728-…, ADR-9/ADR-11). Rides in the presence
+   * payload so the whole room can badge the row — names are self-declared and
+   * may collide with a real student's, and the badge is what carries the
+   * distinction. The DURABLE truth is `itera.class_guests` (instructor-readable);
+   * presence is the live, best-effort mirror of it.
+   */
+  isGuest?: boolean;
 }
 
 export interface ClassPresenceMember {
@@ -31,6 +39,8 @@ export interface ClassPresenceMember {
   name: string;
   avatarUrl: string | null;
   isInstructor: boolean;
+  /** Link-invited guest — badged everywhere they appear (ADR-9). */
+  isGuest?: boolean;
   /** The learner currently has their hand raised (presence-tracked). */
   handRaised?: boolean;
   /**
@@ -121,12 +131,14 @@ export interface ClassRankingEntry {
   correctCount: number;
   /** 1-based position (fastest cumulative time first). */
   rank: number;
+  /** Link-invited guest — badged on the ranked list AND on the podium (ADR-9). */
+  isGuest?: boolean;
 }
 
 export interface ClassRanking {
   ranked: ClassRankingEntry[];
   /** Present learners who have not answered anything yet (no timing to rank). */
-  waiting: { userId: string; name: string; avatarUrl: string | null }[];
+  waiting: { userId: string; name: string; avatarUrl: string | null; isGuest?: boolean }[];
 }
 
 /* ── Post-class report (durable answers + attendance, migration 0020) ─────── */

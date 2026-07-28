@@ -2,18 +2,27 @@ import { motion } from 'framer-motion';
 import { DoorOpen, Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
+import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 const MAX_CHIPS = 24;
 
 interface LiveReceptionProps {
   roster: ClassPresenceMember[];
+  /**
+   * Durable guest list for this session (`itera.class_guests`), merged over the
+   * presence-supplied `isGuest`. Instructors pass it so the badge in the waiting
+   * room does not depend on the guest's own client telling the truth (ADR-9).
+   */
+  guestUserIds?: string[];
 }
 
-export function LiveReception({ roster }: LiveReceptionProps) {
+export function LiveReception({ roster, guestUserIds }: LiveReceptionProps) {
   const { t } = useI18n();
   const shown = roster.slice(0, MAX_CHIPS);
   const overflow = roster.length - shown.length;
+  const guests = new Set(guestUserIds ?? []);
+  const isGuest = (m: ClassPresenceMember) => m.isGuest === true || guests.has(m.userId);
 
   return (
     <motion.div
@@ -54,6 +63,7 @@ export function LiveReception({ roster }: LiveReceptionProps) {
                   {t('role.instructor')}
                 </span>
               )}
+              {isGuest(m) && <LiveGuestBadge />}
             </li>
           ))}
           {overflow > 0 && (
