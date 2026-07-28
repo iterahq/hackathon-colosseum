@@ -12,6 +12,7 @@ import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
+import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -52,19 +53,22 @@ export function SingleChoiceActivity({
   const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
   const [selected, setSelected] = useState<string | null>(initialSelectedId ?? null);
   const [submitted, setSubmitted] = useState(initialSubmitted);
-  const isDone = activity.status === 'done';
-  const shown = submitted || reveal;
-  // Only meaningful once ACTUALLY submitted this session — feeds the
-  // the graded result (feeds the SubmitButton's locked color + the shell's
-  // global FeedbackFooter via onComplete).
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
   const isCorrect = selected === spec?.correct_option_id;
-  const gradeResult = submitted ? isCorrect : undefined;
+  const m = answerMachine({
+    done: activity.status === 'done',
+    submitted,
+    reveal,
+    correct: isCorrect,
+    hasAnswer: selected !== null,
+  });
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
-  // "Marcar como concluída" step). Grade off the CURRENT selection — `isCorrect`
-  // above is gated on `submitted`, which isn't set yet at click time.
+  // "Marcar como concluída" step). Grade off the CURRENT selection — the
+  // machine's `gradeResult` is gated on `submitted`, which isn't set yet here.
   function handleSubmit() {
-    if (submitted || isDone) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
     onComplete(isCorrect);
   }
@@ -76,12 +80,17 @@ export function SingleChoiceActivity({
       <div className="mt-5 grid gap-2.5 auto-rows-fr" data-testid="single-choice-options">
         {options.map((o) => {
           const chosen = selected === o.id;
-          const showCorrect = shown && o.id === spec?.correct_option_id;
-          const showWrong = shown && chosen && o.id !== spec?.correct_option_id;
+          const state = choiceOptionState({
+            shown: m.shown,
+            chosen,
+            isCorrectOption: o.id === spec?.correct_option_id,
+          });
+          const showCorrect = state === 'correct';
+          const showWrong = state === 'wrong';
           return (
             <button
               key={o.id}
-              disabled={submitted || isDone || reveal}
+              disabled={m.locked}
               onClick={() => setSelected(o.id)}
               data-testid="single-choice-option"
               data-selected={chosen ? 'true' : undefined}
@@ -107,9 +116,9 @@ export function SingleChoiceActivity({
       </div>
 
       <SubmitButton
-        submitted={submitted || isDone}
-        correct={gradeResult}
-        disabled={selected === null || reveal}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="single-choice-submit"
       />

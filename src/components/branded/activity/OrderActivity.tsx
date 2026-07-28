@@ -11,6 +11,7 @@ import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircl
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
+import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -38,12 +39,21 @@ export function OrderActivity({
   );
   const [submitted, setSubmitted] = useState(initialSubmitted);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const isDone = activity.status === 'done';
-  const locked = submitted || isDone || reveal;
-  const shown = submitted || reveal;
+
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
+  const isOrderCorrect = order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
+  const m = answerMachine({
+    done: activity.status === 'done',
+    submitted,
+    reveal,
+    correct: isOrderCorrect,
+    hasAnswer: order.length > 0,
+  });
+  const { locked, shown } = m;
   // Reveal without a submission shows the ANSWER KEY (the correct sequence),
   // not the learner's untouched shuffle graded red.
-  const displayOrder = reveal && !submitted ? correctOrder : order;
+  const displayOrder = m.showKey ? correctOrder : order;
 
   function move(from: number, to: number) {
     if (locked || to < 0 || to >= order.length) return;
@@ -55,16 +65,10 @@ export function OrderActivity({
     });
   }
 
-  // Only meaningful once ACTUALLY submitted this session — feeds the
-  // the graded result (feeds the SubmitButton's locked color + the shell's
-  // global FeedbackFooter via onComplete).
-  const isOrderCorrect = order.length === correctOrder.length && order.every((id, i) => id === correctOrder[i]);
-  const gradeResult = submitted ? isOrderCorrect : undefined;
-
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
-  // CURRENT order (the old submitted-gated flag isn't set yet at click time).
+  // CURRENT order (the machine's `gradeResult` isn't set yet at click time).
   function handleSubmit() {
-    if (locked) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
     onComplete(isOrderCorrect);
   }
@@ -141,9 +145,9 @@ export function OrderActivity({
       </ol>
 
       <SubmitButton
-        submitted={submitted || isDone}
-        correct={gradeResult}
-        disabled={order.length === 0 || reveal}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="order-submit"
       />

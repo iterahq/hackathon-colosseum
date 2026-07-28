@@ -16,6 +16,7 @@ import {
   withVerdict,
   type ByocAnswer,
 } from '@/utils/byocAnswer';
+import { answerMachine } from '@/utils/answerMachine';
 import { SubmitButton } from '../parts';
 import { ByocOptionCard } from './ByocOptionCard';
 import { ByocVerdictButtons } from './ByocVerdictButtons';
@@ -35,8 +36,17 @@ export function ByocTree({
   const { t } = useI18n();
   const [answer, setAnswer] = useState<ByocAnswer>(() => emptyAnswer(tree));
   const [submitted, setSubmitted] = useState(false);
-  const shown = submitted || reveal;
-  const locked = submitted || reveal || done;
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
+  const isByocCorrect = gradeByoc(tree, answer);
+  const m = answerMachine({
+    done,
+    submitted,
+    reveal,
+    correct: isByocCorrect,
+    hasAnswer: isAnswerComplete(tree, answer),
+  });
+  const { shown, locked } = m;
   const isPick = tree.interaction === 'pick_best';
   const expectedById =
     tree.interaction === 'judge_each'
@@ -44,11 +54,12 @@ export function ByocTree({
       : null;
 
   // ONE-STEP, like every other graded kind: "Enviar" grades AND completes. Grade
-  // off the CURRENT answer — `submitted` has not flipped yet at click time.
+  // off the CURRENT answer — the machine's `gradeResult` is gated on `submitted`,
+  // which has not flipped yet at click time.
   function handleSubmit() {
-    if (locked) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(gradeByoc(tree, answer));
+    onComplete(isByocCorrect);
   }
 
   return (
@@ -105,9 +116,13 @@ export function ByocTree({
       </div>
 
       <SubmitButton
-        submitted={submitted || done}
-        correct={submitted ? gradeByoc(tree, answer) : undefined}
-        disabled={locked || !isAnswerComplete(tree, answer)}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        // `m.submitDisabled` drops the `locked` term the inline version had:
+        // <SubmitButton> already ORs in its `submitted` prop (= m.submitLocked),
+        // so the EFFECTIVE disabled state is unchanged. Proven exhaustively in
+        // answerMachine.test.ts → "ByocTree".
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="byoc-submit"
       />

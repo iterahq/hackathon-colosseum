@@ -24,6 +24,7 @@ import { FileText, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { useAuth } from '@/auth/AuthContext';
 import {
   iteraApiConfigured,
@@ -438,18 +439,24 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   const [submitted, setSubmitted] = useState(false);
 
   const correctIdx = options.findIndex((o) => o.isCorrect);
-  const isDone = activity.status === 'done';
-  // Only meaningful once submitted — feeds the SubmitButton's locked color and
-  // the shell's global FeedbackFooter (via onComplete). The inline result strip
-  // was removed; correctness now surfaces in the viewport-fixed footer.
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
+  // The quiz has NO `reveal` affordance, so that axis is pinned false and
+  // `m.shown` collapses to plain `submitted` — the historical behaviour.
   const isQuizCorrect = selected === correctIdx;
-  const gradeResult = submitted ? isQuizCorrect : undefined;
+  const m = answerMachine({
+    done: activity.status === 'done',
+    submitted,
+    reveal: false,
+    correct: isQuizCorrect,
+    hasAnswer: selected !== null,
+  });
 
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
-  // "Marcar como concluída"). Grade off the CURRENT selection — the
-  // submitted-gated result flags aren't set yet at click time.
+  // "Marcar como concluída"). Grade off the CURRENT selection — the machine's
+  // `gradeResult` isn't set yet at click time.
   function handleSubmit() {
-    if (submitted || isDone) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
     onComplete(isQuizCorrect);
   }
@@ -486,11 +493,20 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         {options.map((o, i) => {
           const label = o.text ?? o.label ?? String(o.id ?? i + 1);
           const chosen = selected === i;
-          const showCorrect = submitted && o.isCorrect;
-          const showWrong = submitted && chosen && !o.isCorrect;
+          const state = choiceOptionState({
+            shown: m.shown,
+            chosen,
+            isCorrectOption: Boolean(o.isCorrect),
+          });
+          const showCorrect = state === 'correct';
+          const showWrong = state === 'wrong';
           return (
             <button
               key={i}
+              // DELIBERATELY `submitted`, not `m.locked`: the quiz has always
+              // left options clickable on a merely-`done` render (only the
+              // submit affordance locks). Swapping in `m.locked` would add
+              // `done` and change behaviour — don't "tidy" this.
               disabled={submitted}
               onClick={() => setSelected(i)}
               data-testid="quiz-option"
@@ -526,9 +542,9 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
       {/* BOTTOM ZONE — just the action. The correct/incorrect message lives in
           the global viewport-fixed FeedbackFooter (shell level), NOT inline. */}
       <SubmitButton
-        submitted={submitted || isDone}
-        correct={gradeResult}
-        disabled={selected === null}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="quiz-submit"
       />

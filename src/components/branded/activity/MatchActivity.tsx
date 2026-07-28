@@ -24,6 +24,7 @@ import { Check, Link2, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
+import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -112,12 +113,23 @@ export function MatchActivity({
   );
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(initialSubmitted);
-  const isDone = activity.status === 'done';
-  const locked = submitted || isDone || reveal;
-  const shown = submitted || reveal;
+
+  const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
+  const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
+  const isMatchCorrect = pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
+  const m = answerMachine({
+    done: activity.status === 'done',
+    submitted,
+    reveal,
+    correct: isMatchCorrect,
+    hasAnswer: canSubmit,
+  });
+  const { locked, shown } = m;
   // Reveal without a submission shows the ANSWER KEY (spec pairs, all green),
   // not the learner's empty/partial pairing.
-  const displayedPairs: MadePair[] = reveal && !submitted ? pairs : made;
+  const displayedPairs: MadePair[] = m.showKey ? pairs : made;
 
   // Which pair index (0-based) a given card belongs to, or -1.
   const leftPairIndex = (id: string) => displayedPairs.findIndex((p) => p.left_id === id);
@@ -152,21 +164,11 @@ export function MatchActivity({
     setArmedLeft(null);
   }
 
-  const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
-
-  const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
-
-  // Only meaningful once ACTUALLY submitted this session — feeds the
-  // the graded result (feeds the SubmitButton's locked color + the shell's
-  // global FeedbackFooter via onComplete).
-  const isMatchCorrect = pairs.length > 0 && made.length === pairs.length && made.every(isPairCorrect);
-  const gradeResult = submitted ? isMatchCorrect : undefined;
-
   // ONE-STEP: "Enviar" grades AND completes in the same click (no second
-  // "Marcar como concluída"). Grade off the CURRENT pairs — the submitted-gated
-  // result flags aren't set yet at click time.
+  // "Marcar como concluída"). Grade off the CURRENT pairs — the machine's
+  // `gradeResult` isn't set yet at click time.
   function handleSubmit() {
-    if (locked) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
     onComplete(isMatchCorrect);
   }
@@ -238,9 +240,9 @@ export function MatchActivity({
       </div>
 
       <SubmitButton
-        submitted={submitted || isDone}
-        correct={gradeResult}
-        disabled={!canSubmit || reveal}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="match-submit"
       />

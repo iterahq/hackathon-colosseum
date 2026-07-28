@@ -11,6 +11,7 @@ import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
+import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
 
@@ -53,23 +54,25 @@ export function MultiChoiceActivity({
   const correctIds = spec?.correct_option_ids ?? [];
   const [selected, setSelected] = useState<string[]>(initialSelectedIds ?? []);
   const [submitted, setSubmitted] = useState(initialSubmitted);
-  const isDone = activity.status === 'done';
-  const shown = submitted || reveal;
-  // Only meaningful once ACTUALLY submitted this session (never for a merely
-  // -`isDone` render, where `selected` may be empty/unknown) — feeds the
-  // the graded result (feeds the SubmitButton's locked color + the shell's
-  // global FeedbackFooter via onComplete).
+  // Grading is the KIND's job; when the verdict may reach the screen is the
+  // machine's (src/utils/answerMachine.ts — one definition, six call sites).
   const isCorrect = sameSet(selected, correctIds);
-  const gradeResult = submitted ? isCorrect : undefined;
+  const m = answerMachine({
+    done: activity.status === 'done',
+    submitted,
+    reveal,
+    correct: isCorrect,
+    hasAnswer: selected.length > 0,
+  });
 
   function toggle(id: string) {
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
-  // CURRENT selection (submitted-gated `isCorrect` isn't set yet at click time).
+  // CURRENT selection (the machine's `gradeResult` isn't set yet at click time).
   function handleSubmit() {
-    if (submitted || isDone) return;
+    if (!m.acceptsSubmit) return;
     setSubmitted(true);
     onComplete(isCorrect);
   }
@@ -84,13 +87,17 @@ export function MultiChoiceActivity({
       <div className="mt-3 grid gap-2.5 auto-rows-fr" data-testid="multi-choice-options">
         {options.map((o) => {
           const chosen = selected.includes(o.id);
-          const isCorrectOpt = correctIds.includes(o.id);
-          const showCorrect = shown && isCorrectOpt;
-          const showWrong = shown && chosen && !isCorrectOpt;
+          const state = choiceOptionState({
+            shown: m.shown,
+            chosen,
+            isCorrectOption: correctIds.includes(o.id),
+          });
+          const showCorrect = state === 'correct';
+          const showWrong = state === 'wrong';
           return (
             <button
               key={o.id}
-              disabled={submitted || isDone || reveal}
+              disabled={m.locked}
               onClick={() => toggle(o.id)}
               data-testid="multi-choice-option"
               data-selected={chosen ? 'true' : undefined}
@@ -123,9 +130,9 @@ export function MultiChoiceActivity({
       </div>
 
       <SubmitButton
-        submitted={submitted || isDone}
-        correct={gradeResult}
-        disabled={selected.length === 0 || reveal}
+        submitted={m.submitLocked}
+        correct={m.gradeResult}
+        disabled={m.submitDisabled}
         onSubmit={handleSubmit}
         testId="multi-choice-submit"
       />
