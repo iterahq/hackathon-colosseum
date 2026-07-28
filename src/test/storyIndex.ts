@@ -50,6 +50,14 @@ export interface IndexedStory {
    * maioria das não-activities.
    */
   play?: (context: { canvasElement: HTMLElement }) => Promise<void> | void;
+  /**
+   * As tags da story (meta + story). A que importa aqui é **`browser-mode`**:
+   * ADR-8 manda `match` e `code` para um projeto Vitest com navegador de
+   * verdade, e é essa tag que o `vitest.browser.config.ts` seleciona. O lado
+   * jsdom lê a mesma tag para PULAR esses `play` — uma marca, dois leitores,
+   * em vez de duas listas de caminhos que saem de sincronia.
+   */
+  tags: string[];
 }
 
 let cache: IndexedStory[] | null = null;
@@ -62,6 +70,7 @@ export function indexStories(): IndexedStory[] {
     for (const [exportName, Story] of Object.entries(composed)) {
       const meta = Story as unknown as {
         id?: string;
+        tags?: string[];
         play?: (ctx: { canvasElement: HTMLElement }) => Promise<void> | void;
       };
       const id = meta.id ?? `${file}--${exportName}`;
@@ -71,6 +80,7 @@ export function indexStories(): IndexedStory[] {
         exportName,
         Component: Story as unknown as ComponentType,
         play: meta.play,
+        tags: meta.tags ?? [],
       });
     }
   }

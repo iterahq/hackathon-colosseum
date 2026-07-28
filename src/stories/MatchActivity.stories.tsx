@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { MatchActivity } from '@/components/branded/activity/MatchActivity';
 import { makeActivity } from './activityFixtures';
 import { MATCH_SPEC as SPEC } from './contractFixtures';
@@ -89,4 +89,44 @@ export const Incorrect: Story = {
 /** B.done — activity já concluída: os cards não recebem toque. */
 export const Disabled: Story = {
   args: { activity: makeActivity('match', SPEC, 'done') },
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * BROWSER MODE (ADR-8) — o que jsdom NÃO consegue afirmar sobre o match.
+ *
+ * ⚠️ Leia o aviso no topo deste arquivo antes: o `match` NÃO é drag-and-drop, e
+ * portanto a premissa do ADR-8 ("geometria de drag do @dnd-kit") não se aplica.
+ * Ele está aqui mesmo assim, para não contrariar um ADR travado sem decisão —
+ * e a story abaixo é deliberadamente sobre a ÚNICA coisa que o navegador
+ * acrescenta de verdade neste kind: `disabled` só de fato barra o clique quando
+ * existe engine de eventos com CSS e árvore de acessibilidade reais. Em jsdom
+ * o atributo está lá, mas quem garante o comportamento é o próprio jsdom, não
+ * o navegador que o aluno usa.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Depois de enviar, os cards ficam REALMENTE inertes: `userEvent` (que respeita
+ * `pointer-events` e o estado `disabled` do navegador) não consegue desfazer o
+ * par. É a asserção que só o browser mode sustenta.
+ */
+export const BrowserTravaAposEnviar: Story = {
+  tags: ['browser-mode'],
+  args: { activity: makeActivity('match', SPEC), onComplete: fn() },
+  play: async ({ canvasElement }) => {
+    await connectPairs(canvasElement, RIGHT_PAIRS);
+    await submitAnswer(canvasElement, 'match-submit');
+
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByTestId('match-badge')).toHaveLength(6);
+    for (const card of canvas.getAllByTestId('match-left-card')) {
+      await expect(card).toBeDisabled();
+    }
+
+    // A tentativa de desfazer o par tem que ser um NO-OP de VERDADE. Num
+    // navegador real o clique é entregue e o próprio browser o descarta por o
+    // botão estar `disabled` — em jsdom quem "descarta" é a emulação.
+    await userEvent.click(canvas.getAllByTestId('match-left-card')[0]);
+    await expect(canvas.getAllByTestId('match-badge')).toHaveLength(6);
+    await expect(canvas.getByTestId('match-submit')).toHaveAttribute('data-correct', 'true');
+  },
 };

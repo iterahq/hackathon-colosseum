@@ -23,9 +23,13 @@
  *                  (renomeou a story? o guard fica vermelho).
  *   `{ na }`       o eixo não se aplica a este kind (ex.: correção num kind de
  *                  exposição). Nunca implícito — sempre com o motivo escrito.
- *   `{ deferred }` a célula NÃO está coberta e sabe-se por quê: só interação
- *                  real a produz, e ADR-4 proíbe criar prop `initial*` nova de
- *                  produção para fabricá-la. Vai na Fase 3.
+ *   `{ deferred }` a célula NÃO está coberta e sabe-se por quê, com o motivo
+ *                  no `why`. Duas razões existem hoje:
+ *                    `fase-3`        — esperava a interação real (ADR-4);
+ *                    `browser-input` — a interação existe, mas o WIDGET não é
+ *                                      dirigível por evento sintético nem no
+ *                                      navegador (o Monaco lê do seu modelo
+ *                                      interno, não do `<textarea>` do DOM).
  *   `{ drift }`    a célula não está coberta porque a PRODUÇÃO não a implementa
  *                  (ou implementa de forma contraditória). É achado, não dívida
  *                  de teste — precisa de decisão, não de mais story.
@@ -38,7 +42,7 @@ import { indexStories } from './storyIndex';
 type Cell =
   | { story: string }
   | { na: string }
-  | { deferred: 'fase-3'; why: string }
+  | { deferred: 'fase-3' | 'browser-input'; why: string }
   | { drift: string };
 
 /**
@@ -222,15 +226,12 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'B.done': { story: 'activities-producao-code--concluida' },
     'C.blank': { story: 'activities-producao-code--default' },
     'C.answered': {
-      deferred: 'fase-3',
-      why: 'editar o Monaco (fase `editing` com código alterado). ADR-8 manda `code` para o browser mode justamente por isso — iframe + editor não são dirigíveis em jsdom.',
+      deferred: 'browser-input',
+      why: 'digitar DENTRO do Monaco. Foi tentado no projeto de browser e não foi obtido: o editor lê do seu modelo interno, não do `<textarea>` que ele deixa no DOM, então teclado sintético não altera nada — só a API do Monaco alteraria, e aí o teste estaria dirigindo o editor por dentro em vez de dirigir a UI. `CodeSnackActivity.test.tsx` cobre "digitou → autosave" com o CodeEditor mockado; o que falta é a digitação no editor real.',
     },
-    'C.submitted': {
-      deferred: 'fase-3',
-      why: 'as fases `submitting`/`submitted`/`settled` do `CodeSnackPhase` (ADR-8, browser mode).',
-    },
-    'D.correct': { deferred: 'fase-3', why: 'checks passando (ADR-8, browser mode).' },
-    'D.incorrect': { deferred: 'fase-3', why: 'checks falhando (ADR-8, browser mode).' },
+    'C.submitted': { story: 'activities-producao-code--browser-checks-passam' },
+    'D.correct': { story: 'activities-producao-code--browser-checks-passam' },
+    'D.incorrect': { story: 'activities-producao-code--browser-checks-falham' },
     'E.reveal': {
       na: '`hasRevealableAnswer("code")` é FALSE por decisão explícita e documentada em `isAnswerableLiveKind.ts`: o spec de code não carrega solução, então não há gabarito a expor (e é por isso que o botão "Revelar resposta" não aparece).',
     },
@@ -262,8 +263,9 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * `deferred`) é a Fase 3 fazendo efeito; subir `drift` sem discussão é sinal.
  *
  * Histórico:
- *   Fase 2  → { covered: 75, na: 24, deferred: 14, drift: 8 }
- *   Fase 3  → { covered: 85, na: 24, deferred:  4, drift: 8 }
+ *   Fase 2       → { covered: 75, na: 24, deferred: 14, drift: 8 }
+ *   Fase 3 (PR A)→ { covered: 85, na: 24, deferred:  4, drift: 8 }
+ *   Fase 3 (PR B)→ { covered: 88, na: 24, deferred:  1, drift: 8 }
  *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
@@ -272,11 +274,17 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * passo-a-passo do `ChatModel`). TODAS produzidas por interação real, nenhuma
  * por prop nova — que era exatamente a condição do ADR-4.
  *
- * As 4 que sobram são as do `code`, e a razão não é falta de tempo: é o ADR-8.
- * Monaco e o iframe de preview não são dirigíveis em jsdom, então elas fecham
- * no projeto de browser mode, não aqui.
+ * O PR B (browser mode, ADR-8) fechou 3 das 4 do `code` — `C.submitted`,
+ * `D.correct` e `D.incorrect` — com o iframe de preview EXECUTANDO o código do
+ * aluno e avaliando os `checks` contra o DOM que ele produziu. Isso é
+ * literalmente impossível em jsdom, que não roda iframe.
+ *
+ * Sobra UMA célula não-coberta no repo inteiro: `code · C.answered`. Ela não
+ * está adiada por falta de tempo — está declarada `browser-input`, com o motivo
+ * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
+ * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 85, na: 24, deferred: 4, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 88, na: 24, deferred: 1, drift: 8 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.
@@ -340,7 +348,7 @@ describe('guard da matriz de estados das activities (V3)', () => {
     // Não-coberta é permitido — mas nunca sem motivo escrito.
     const why = 'na' in cell ? cell.na : 'deferred' in cell ? cell.why : cell.drift;
     expect(why.length).toBeGreaterThan(20);
-    if ('deferred' in cell) expect(cell.deferred).toBe('fase-3');
+    if ('deferred' in cell) expect(['fase-3', 'browser-input']).toContain(cell.deferred);
   });
 
   it('a distribuição das células bate com o snapshot declarado', () => {
