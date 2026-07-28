@@ -24,9 +24,10 @@
  * That has a direct, measurable consequence: RLS scopes discovery to the
  * `itera` tenant, which today authors only `quiz`, `document` and `diagram`.
  * The other eight kinds live in `dfl-batch` / `plg-*` and are INVISIBLE to this
- * identity, so their cases `test.skip()` with an explicit reason. **A run that
- * is green-with-skips proves the gating works — it does NOT prove those kinds
- * work.** Read the skip reasons before claiming coverage.
+ * identity, so their cases skip with an explicit reason. **A run that is
+ * green-with-skips proves the gating works — it does NOT prove those kinds
+ * work.** The skip census prints every one of them at the end of the run, so
+ * this can no longer be mistaken for coverage.
  *
  * To cover a kind this persona cannot see, provision an identity that can (e.g.
  * `ITERA_E2E_AUTHOR_*`) — do not relabel the smoke user as something it is not.
@@ -52,8 +53,11 @@
  * canvas's own purposes. `ITERA_SMOKE_ACTIVITY_IDS` (a JSON `{kind: id}` map)
  * pins specific ids and short-circuits discovery for those kinds.
  *
- * Capability-gated via `test.skip()` like every sibling spec here: no
- * substrate, no credentials, or no activity of that kind → skip, never fail.
+ * Gated through `e2e/support/gate.ts`. `ITERA_SMOKE_*` is a **required**
+ * capability (`e2e.yml` declares it), so its absence fails the preflight — this
+ * spec is the biggest thing that has never run. "No activity of that kind
+ * visible to this persona" stays a skip, but a LOUD one: it is counted by the
+ * skip census and reported as UNVERIFIED, never as a pass.
  *
  * Run:
  *   ITERA_BASE_URL=https://app.iterahq.dev \
@@ -61,13 +65,15 @@
  *   npx playwright test e2e/author-activity-kinds.spec.ts
  */
 import { test, expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { ITERA_BASE_URL } from './support/capabilities';
+import { requireCapabilities, skipBlocked } from './support/gate';
 
-const BASE = process.env.ITERA_BASE_URL ?? '';
+const BASE = ITERA_BASE_URL;
 const USER = process.env.ITERA_SMOKE_USERNAME ?? '';
 const PASS = process.env.ITERA_SMOKE_PASSWORD ?? '';
 
-/** Substrate + credentials present? Everything below skips without them. */
-const READY = Boolean(BASE && USER && PASS);
+/** Credentials present? `beforeAll` cannot log in without them. */
+const READY = Boolean(USER && PASS);
 
 /** Bound the crawl — discovery is a means, not the test. */
 const MAX_UNITS = Number(process.env.ITERA_SMOKE_MAX_UNITS ?? 8);
@@ -293,14 +299,15 @@ test.describe('author test harness — one activity per kind', () => {
 
   for (const { kind, depth, drive } of CASES) {
     test(`${kind} — loads, accepts input, ${depth === 'verdict' ? 'reaches a verdict' : 'exposes its input'}`, async () => {
-      test.skip(!READY, 'ITERA_BASE_URL / ITERA_SMOKE_USERNAME / ITERA_SMOKE_PASSWORD not set.');
+      await requireCapabilities('itera-player', 'itera-smoke');
       const id = FOUND.get(kind);
-      test.skip(
-        !id,
-        `No '${kind}' activity is visible to this persona (tenant_admin of 'itera'). ${discoverySummary}. ` +
-          `This is a SKIP, not a pass — the kind is unverified. Pin one with ITERA_SMOKE_ACTIVITY_IDS ` +
-          `or use an identity whose tenant authors this kind.`
-      );
+      if (!id) {
+        skipBlocked(
+          `no '${kind}' activity is visible to this persona (tenant_admin of 'itera'). ${discoverySummary}. ` +
+            `This is a SKIP, not a pass — the kind is UNVERIFIED. Pin one with ITERA_SMOKE_ACTIVITY_IDS ` +
+            `or use an identity whose tenant authors this kind.`
+        );
+      }
 
       await page.goto(`${BASE}/author/activities/${id}/test`);
       await settle(page);

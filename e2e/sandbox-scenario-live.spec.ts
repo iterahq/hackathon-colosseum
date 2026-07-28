@@ -16,30 +16,31 @@
  * "redação de escola" context → rate the strong answer RIGHT (top) → win →
  * Continuar → verdict "Correct".
  *
- * CAPABILITY-GATED (like the sibling specs): probes its substrate up front and
- * test.skip()s (NOT fails) when a prerequisite is missing.
+ * Gated through `e2e/support/gate.ts` on the **required** `itera-player` +
+ * `itera-smoke` capabilities, so a missing credential fails the preflight
+ * instead of skipping quietly.
+ *
+ * ⚠️ `ITERA_PLAYER_URL` used to default to `http://127.0.0.1:8081` — a developer's
+ * local `vite preview`, never reachable on the cron runner, which by itself
+ * guaranteed this spec could never run in CI. It now falls back to
+ * `ITERA_BASE_URL`.
  *
  * Prereqs (env):
- *   - ITERA_PLAYER_URL (default http://127.0.0.1:8081) reachable
+ *   - ITERA_PLAYER_URL (defaults to ITERA_BASE_URL) reachable
  *   - ITERA_AUTHOR_EMAIL + ITERA_AUTHOR_PASSWORD — an Itera author/tenant_admin
  *     that can reach /author/* (CLAUDE_SMOKE_* also accepted)
  *   - ITERA_SANDBOX_ACTIVITY_ID (default d0cb46a8-2263-446c-b5b5-f0e053bcf4cd)
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ITERA_PLAYER_URL } from './support/capabilities';
+import { requireCapabilities } from './support/gate';
 
-const PLAYER_URL = process.env.ITERA_PLAYER_URL || 'http://127.0.0.1:8081';
-const EMAIL = process.env.ITERA_AUTHOR_EMAIL || process.env.CLAUDE_SMOKE_USERNAME || '';
-const PASSWORD = process.env.ITERA_AUTHOR_PASSWORD || process.env.CLAUDE_SMOKE_PASSWORD || '';
+const PLAYER_URL = ITERA_PLAYER_URL;
+const EMAIL =
+  process.env.ITERA_AUTHOR_EMAIL || process.env.ITERA_SMOKE_USERNAME || process.env.CLAUDE_SMOKE_USERNAME || '';
+const PASSWORD =
+  process.env.ITERA_AUTHOR_PASSWORD || process.env.ITERA_SMOKE_PASSWORD || process.env.CLAUDE_SMOKE_PASSWORD || '';
 const ACTIVITY_ID = process.env.ITERA_SANDBOX_ACTIVITY_ID || 'd0cb46a8-2263-446c-b5b5-f0e053bcf4cd';
-
-async function playerReachable(): Promise<boolean> {
-  try {
-    const res = await fetch(PLAYER_URL);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 async function login(page: Page): Promise<void> {
   await page.goto(`${PLAYER_URL}/login`, { waitUntil: 'domcontentloaded' });
@@ -61,8 +62,7 @@ async function evaluate(page: Page, correct: 'ruim' | 'top', wrong: 'ruim' | 'to
 
 test.describe('migrated sandbox_scenario renders from the DB and plays the evaluate loop', () => {
   test.beforeAll(async () => {
-    const ok = (await playerReachable()) && Boolean(EMAIL && PASSWORD);
-    test.skip(!ok, 'itera player not reachable or author creds absent — capability-gated skip');
+    await requireCapabilities('itera-player', 'itera-smoke');
   });
 
   test('c1 "O pedido vago": compose → mis-rate → retry → rate right → context → win', async ({ page }) => {

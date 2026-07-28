@@ -20,9 +20,11 @@
  *
  * ## Substrate
  *
- * Capability-probes and `test.skip()`s (never fails) when the env is absent, so
- * a run on an incomplete substrate is green-with-skips — matching the house
- * convention of the sibling specs in this directory.
+ * Gated through `e2e/support/gate.ts`. `ITERA_E2E_ALUNO1/2_*` and
+ * `ITERA_E2E_LESSON_ID` are declared **optional** in the capability registry —
+ * `e2e.yml` does not promise them — so their absence still skips. It is no
+ * longer silent: every skip is counted and printed by the skip census, and
+ * "UNVERIFIED" is never reported as "passing".
  *
  * Run:
  *   ITERA_BASE_URL=http://localhost:8080 \
@@ -31,8 +33,10 @@
  *   npx playwright test e2e/artifact-persistence.spec.ts
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ITERA_BASE_URL } from './support/capabilities';
+import { requireCapabilities } from './support/gate';
 
-const BASE = process.env.ITERA_BASE_URL ?? '';
+const BASE = ITERA_BASE_URL;
 const ALUNO1 = {
   user: process.env.ITERA_E2E_ALUNO1_USERNAME ?? '',
   pass: process.env.ITERA_E2E_ALUNO1_PASSWORD ?? '',
@@ -44,10 +48,8 @@ const ALUNO2 = {
 /** A lesson containing a `document` (reflection) activity. */
 const LESSON_ID = process.env.ITERA_E2E_LESSON_ID ?? '';
 
-const ready = Boolean(BASE && ALUNO1.user && ALUNO1.pass);
-
-test.beforeEach(() => {
-  test.skip(!ready, 'ITERA_BASE_URL / ITERA_E2E_ALUNO1_* not set — substrate absent.');
+test.beforeEach(async () => {
+  await requireCapabilities('itera-player', 'itera-aluno1');
 });
 
 async function login(page: Page, creds: { user: string; pass: string }) {
@@ -81,7 +83,7 @@ test('a reflection survives a reload AND a brand-new browser context (the localS
   page,
   browser,
 }) => {
-  test.skip(!LESSON_ID, 'ITERA_E2E_LESSON_ID not set — no reflection lesson to drive.');
+  await requireCapabilities('itera-lesson');
 
   const marker = `e2e-reflection-${Date.now()}`;
 
@@ -116,7 +118,7 @@ test('a reflection survives a reload AND a brand-new browser context (the localS
 test('a second learner in the SAME tenant cannot see the first learner\'s work', async ({
   browser,
 }) => {
-  test.skip(!ALUNO2.user || !ALUNO2.pass, 'ITERA_E2E_ALUNO2_* not set.');
+  await requireCapabilities('itera-aluno2');
 
   const context = await browser.newContext();
   const page = await context.newPage();

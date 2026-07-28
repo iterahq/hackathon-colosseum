@@ -25,8 +25,11 @@
  * so a learner without an active plan legitimately lands on /subscribe — that is
  * the PLG gate, not a role regression, and the assertion allows for it.
  *
- * Capability-probes and test.skip()s when the substrate is absent, matching the
- * convention of the sibling specs here.
+ * Gated through `e2e/support/gate.ts`. `ITERA_SMOKE_*` is **required**
+ * (`e2e.yml` declares it) so the tenant_admin row fails the preflight when it is
+ * missing; `ITERA_E2E_PROF_*` / `ITERA_E2E_ALUNO1_*` are optional dedicated
+ * identities and still skip — counted and named by the skip census, never
+ * silently.
  *
  * Run:
  *   ITERA_BASE_URL=http://localhost:4173 \
@@ -36,8 +39,10 @@
  *   npx playwright test e2e/route-access-matrix.spec.ts
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ITERA_BASE_URL } from './support/capabilities';
+import { requireCapabilities } from './support/gate';
 
-const BASE = process.env.ITERA_BASE_URL ?? '';
+const BASE = ITERA_BASE_URL;
 
 const IDENTITIES = {
   smoke: {
@@ -87,13 +92,9 @@ async function shoot(page: Page, name: string) {
   await page.screenshot({ path: `${SHOT_DIR}/${name}.png`, fullPage: false });
 }
 
-function ready(id: IdentityKey) {
-  return Boolean(BASE && IDENTITIES[id].user && IDENTITIES[id].pass);
-}
-
 test.describe('route access matrix — /admin, /admin/artifacts, /author, /artifacts', () => {
   test('tenant_admin reaches every staff surface', async ({ page }) => {
-    test.skip(!ready('smoke'), 'ITERA_BASE_URL / ITERA_SMOKE_* not set.');
+    await requireCapabilities('itera-player', 'itera-smoke');
     await login(page, 'smoke');
 
     expect(await landOn(page, '/admin')).toMatch(/^\/admin/);
@@ -114,7 +115,7 @@ test.describe('route access matrix — /admin, /admin/artifacts, /author, /artif
   test('instructor reaches /author but is denied /admin (author gate in isolation)', async ({
     page,
   }) => {
-    test.skip(!ready('prof'), 'ITERA_E2E_PROF_* not set.');
+    await requireCapabilities('itera-player', 'itera-prof');
     await login(page, 'prof');
 
     // canAuthor() accepts instructor -> /author must render.
@@ -130,7 +131,7 @@ test.describe('route access matrix — /admin, /admin/artifacts, /author, /artif
   });
 
   test('learner is denied every staff surface', async ({ page }) => {
-    test.skip(!ready('aluno1'), 'ITERA_E2E_ALUNO1_* not set.');
+    await requireCapabilities('itera-player', 'itera-aluno1');
     await login(page, 'aluno1');
 
     expect(await landOn(page, '/admin')).not.toMatch(/^\/admin/);

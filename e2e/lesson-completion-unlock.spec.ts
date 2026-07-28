@@ -11,30 +11,24 @@
  * DB stores `'completed'`. This spec drives the REAL deployed player to prove the
  * fix end-to-end: complete lesson 1 → program shows it done → lesson 2 unlocks.
  *
- * CAPABILITY-GATED (like itera-fellowship.spec.ts): probes its substrate up front
- * and test.skip()s (NOT fails) when a prerequisite is missing.
+ * Gated through `e2e/support/gate.ts` on the **required** `itera-player` +
+ * `claude-smoke` capabilities: `e2e.yml` declares `CLAUDE_SMOKE_*`, so its
+ * absence is a preflight failure, not a silent skip.
  *
  * Prereqs (env):
- *   - ITERA_PLAYER_URL (default https://iterahq.dev) reachable
+ *   - ITERA_PLAYER_URL (defaults to ITERA_BASE_URL) reachable
  *   - ITERA_LEARNER_EMAIL + ITERA_LEARNER_PASSWORD — an Itera password-auth learner
  *     ALREADY ENROLLED in the target program (CLAUDE_SMOKE_* also accepted)
  *   - ITERA_PROGRAM_SLUG (default modele-dados-com-ia)
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ITERA_PLAYER_URL } from './support/capabilities';
+import { requireCapabilities } from './support/gate';
 
-const PLAYER_URL = process.env.ITERA_PLAYER_URL || 'https://iterahq.dev';
+const PLAYER_URL = ITERA_PLAYER_URL;
 const EMAIL = process.env.ITERA_LEARNER_EMAIL || process.env.CLAUDE_SMOKE_USERNAME || '';
 const PASSWORD = process.env.ITERA_LEARNER_PASSWORD || process.env.CLAUDE_SMOKE_PASSWORD || '';
 const PROGRAM_SLUG = process.env.ITERA_PROGRAM_SLUG || 'modele-dados-com-ia';
-
-async function playerReachable(): Promise<boolean> {
-  try {
-    const res = await fetch(PLAYER_URL);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 async function loginWithPassword(page: Page): Promise<void> {
   await page.goto(`${PLAYER_URL}/login`, { waitUntil: 'domcontentloaded' });
@@ -64,8 +58,7 @@ async function completeCurrentLesson(page: Page): Promise<void> {
 
 test.describe('lesson completion persists + unlocks the next lesson', () => {
   test.beforeAll(async () => {
-    const ok = (await playerReachable()) && Boolean(EMAIL && PASSWORD);
-    test.skip(!ok, 'itera player not reachable or learner creds absent — capability-gated skip');
+    await requireCapabilities('itera-player', 'claude-smoke');
   });
 
   test('finishing lesson 1 marks it done and unlocks lesson 2', async ({ page }) => {

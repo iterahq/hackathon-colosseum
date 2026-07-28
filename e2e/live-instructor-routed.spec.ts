@@ -3,10 +3,11 @@
  * 20260723-itera-live-routed-session-and-index) against a LIVE deployment
  * (default https://app.iterahq.dev).
  *
- * MANUAL only. NOT wired into the per-PR ci.yml gate. Capability-gated: skips
- * (never fails) when ITERA_E2E_PROF_* / ITERA_E2E_ALUNO1_* creds or a reachable
- * PLAYER_URL are absent — so the scheduled e2e.yml harness (which has no
- * ITERA_E2E_PROF creds) is a green-with-skips no-op here.
+ * MANUAL only. NOT wired into the per-PR ci.yml gate. Gated through
+ * `e2e/support/gate.ts`: `ITERA_E2E_PROF_*` / `ITERA_E2E_ALUNO1_*` are
+ * **optional** capabilities (`e2e.yml` does not declare them), so their absence
+ * still skips — but the skip census names it every run, so "this class flow is
+ * UNVERIFIED" is visible instead of hiding behind a green check.
  *
  * Covers the plan's UI verifications:
  *   1. /live/instructor/:id opens the instructor view and survives a reload.
@@ -21,8 +22,11 @@
  */
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { ITERA_PLAYER_URL } from './support/capabilities';
+import { requireCapabilities, skipBlocked } from './support/gate';
+import { expectSidebarBreakpointContract } from './support/responsive';
 
-const PLAYER_URL = (process.env.ITERA_PLAYER_URL || 'https://app.iterahq.dev').replace(/\/$/, '');
+const PLAYER_URL = ITERA_PLAYER_URL;
 const PROF_EMAIL = process.env.ITERA_E2E_PROF_USERNAME || '';
 const PROF_PASSWORD = process.env.ITERA_E2E_PROF_PASSWORD || '';
 const ALUNO_EMAIL = process.env.ITERA_E2E_ALUNO1_USERNAME || '';
@@ -36,15 +40,6 @@ const LESSON_ID = process.env.ITERA_E2E_LESSON_ID || 'f2945e79-dc1c-49c7-b6b6-64
 const SESSION_ID_FILE = 'e2e-live-session-id.txt';
 const SESSION_RE = /\/live\/instructor\/([0-9a-fA-F-]{36})(?:$|[?#])/;
 
-async function reachable(): Promise<boolean> {
-  try {
-    const res = await fetch(`${PLAYER_URL}/login`);
-    return res.ok || res.status === 200;
-  } catch {
-    return false;
-  }
-}
-
 async function login(page: Page, email: string, password: string): Promise<void> {
   await page.goto(`${PLAYER_URL}/login`, { waitUntil: 'domcontentloaded' });
   await page.locator('[data-testid="email-input"]').waitFor({ state: 'visible', timeout: 20_000 });
@@ -56,8 +51,7 @@ async function login(page: Page, email: string, password: string): Promise<void>
 
 test.describe.serial('Live instructor routed session + index (live deployment)', () => {
   test.beforeAll(async () => {
-    const ok = (await reachable()) && Boolean(PROF_EMAIL && PROF_PASSWORD && ALUNO_EMAIL && ALUNO_PASSWORD);
-    test.skip(!ok, 'PLAYER_URL unreachable or ITERA_E2E_* creds absent — capability-gated skip');
+    await requireCapabilities('itera-player', 'itera-prof', 'itera-aluno1');
   });
 
   test('prof starts a class → routed /live/instructor/:id → reload persists → index lists it → student joins', async ({
@@ -85,6 +79,13 @@ test.describe.serial('Live instructor routed session + index (live deployment)',
     const sessionId = page.url().match(SESSION_RE)![1];
     writeFileSync(SESSION_ID_FILE, sessionId, 'utf8');
     await expect(page.locator('[data-testid="instructor-control"]')).toBeVisible({ timeout: 20_000 });
+
+    // Free ride: the sidebar is on screen, so pin its breakpoint contract here
+    // too. This spec stays desktop-only (it is serial and it writes a real
+    // class), so this covers the `lg+` rail branch; the phone/tablet branches
+    // are covered by `responsive-shell.spec.ts`, which fans out across the
+    // three viewport projects.
+    await expectSidebarBreakpointContract(page, { sidebar: 'instructor-sidebar', main: 'main' });
 
     // (Verification 1) A reload keeps the same routed session — not the form.
     await page.reload({ waitUntil: 'domcontentloaded' });
@@ -125,7 +126,9 @@ test.describe.serial('Live instructor routed session + index (live deployment)',
   });
 
   test('"Encerrar" from the index ends the class', async ({ page }) => {
-    test.skip(!existsSync(SESSION_ID_FILE), 'no session id captured by the previous test');
+    if (!existsSync(SESSION_ID_FILE)) {
+      skipBlocked('the previous test captured no session id — this assertion is UNVERIFIED, not passing');
+    }
     const sessionId = readFileSync(SESSION_ID_FILE, 'utf8').trim();
 
     await login(page, PROF_EMAIL, PROF_PASSWORD);
