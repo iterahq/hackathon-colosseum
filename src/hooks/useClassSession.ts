@@ -1,9 +1,13 @@
 /**
  * useClassSession — the real-time synchronicity layer for a live cohort class.
  *
- * ONE PRIVATE Supabase Realtime channel `class:<sessionId>` (gated by
- * realtime.messages RLS, migration 0022 — only session participants may join /
- * send) carries three concerns:
+ * TWO PRIVATE Supabase Realtime topics, both gated by realtime.messages RLS:
+ *   `class:<sessionId>`      — participants read + send (migration 0022).
+ *   `class:<sessionId>:ctrl` — participants read, only class STAFF send
+ *                              (migration 0023). Every instructor-driven event
+ *                              (advance, timer, stage) rides here, so a learner
+ *                              can no longer forge one.
+ * Between them they carry three concerns:
  *   1. broadcast  — the FAST path. The professor broadcasts `{ current_activity_id }`
  *      on advance; every student re-points instantly (no DB round-trip).
  *   2. postgres_changes — the DURABLE / reconnect truth. We also subscribe to the
@@ -38,10 +42,11 @@ const ADVANCE_EVENT = 'advance';
 const ANSWERED_EVENT = 'answered';
 const TIMER_EVENT = 'timer';
 const TIMER_STOP_EVENT = 'timer-stop';
-// Peer-to-peer "pull to stage" (ADR-3/4): request → student replies → instructor
-// gates → all render. Same accepted trust model as ADVANCE/ANSWERED on this
-// public per-session channel (a cohort member could spoof); the nonce + target
-// echo below only reject STALE/MISMATCHED replies, not a determined spoofer.
+// "Pull to stage" (ADR-3/4): request → student replies → instructor gates → all
+// render. The request rides the CONTROL topic, so only staff can ask for a
+// learner's work; the reply rides the shared topic, where it discloses nothing
+// the resulting stage-show would not publish to the class anyway. The nonce +
+// target echo below reject STALE/MISMATCHED replies.
 const STAGE_REQUEST_EVENT = 'stage-request';
 const STAGE_ANSWER_EVENT = 'stage-answer';
 const STAGE_SHOW_EVENT = 'stage-show';
@@ -65,6 +70,10 @@ export function useClassSession(
   const [status, setStatus] = useState<ClassSession['status'] | null>(null);
   const [roster, setRoster] = useState<ClassPresenceMember[]>([]);
   const [connected, setConnected] = useState(false);
+  // Presence lives on the SHARED topic only, so it must re-track as soon as THAT
+  // one is up — a control-topic outage can't be allowed to make a learner
+  // invisible in the professor's roster.
+  const [sharedConnected, setSharedConnected] = useState(false);
   // True while a previously-joined channel is down and being rebuilt (drives
   // the "reconnecting…" banner). Never true before the FIRST successful join.
   const [reconnecting, setReconnecting] = useState(false);
@@ -81,6 +90,8 @@ export function useClassSession(
   const [stagePendingUserId, setStagePendingUserId] = useState<string | null>(null);
   const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // The staff-write topic (migration 0023) — every instructor-driven send.
+  const ctrlRef = useRef<RealtimeChannel | null>(null);
   // The instructor's in-flight pull: the nonce armed by requestStage + which
   // learner it targeted. A stage-answer is only gated to stage-show when BOTH
   // the userId matches the target AND the nonce echoes back (rejects stale replies).
@@ -128,6 +139,26 @@ export function useClassSession(
       at: new Date().toISOString(),
     });
   }, []);
+
+  // `answered` is the one event a learner still sends, so it is self-attested:
+  // the scoreboard it feeds is DECORATION and itera.class_answers (RLS: a learner
+  // writes only its own row) stays the durable truth. Recording is MONOTONE — a
+  // hit never flips to a miss and a time is never rewritten — so a forged event
+  // can't sabotage a peer.
+  const recordAnswer = useCallback(
+    (activityId: string, userId: string, correct: boolean, elapsedMs?: number) => {
+      setAnswers((prev) => {
+        if (prev[activityId]?.[userId] === true && !correct) return prev;
+        return { ...prev, [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct } };
+      });
+      if (!correct || typeof elapsedMs !== 'number') return;
+      setElapsed((prev) => {
+        if (typeof prev[activityId]?.[userId] === 'number') return prev;
+        return { ...prev, [activityId]: { ...(prev[activityId] ?? {}), [userId]: elapsedMs } };
+      });
+    },
+    []
+  );
 
   // Clears the "waiting for the peer's reply" timer without touching the nonce
   // gate — used by every path that ends a pull (reply, clear, advance, unmount).
@@ -179,10 +210,12 @@ export function useClassSession(
     let attempt = 0;
     let retryTimer: number | null = null;
     let current: RealtimeChannel | null = null;
+    let currentCtrl: RealtimeChannel | null = null;
 
     const teardown = (ch: RealtimeChannel | null): Promise<unknown> => {
       if (!ch) return Promise.resolve();
       if (channelRef.current === ch) channelRef.current = null;
+      if (ctrlRef.current === ch) ctrlRef.current = null;
       return sb.removeChannel(ch).catch(() => undefined);
     };
 
@@ -199,17 +232,31 @@ export function useClassSession(
     const reconnectNow = () => {
       if (disposed) return;
       const old = current;
+      const oldCtrl = currentCtrl;
       current = null;
+      currentCtrl = null;
       // Await the removal: realtime-js dedupes channels by topic, so connecting
       // before the errored instance is fully gone can hand back the SAME (non-
       // closed) instance whose `subscribe()` would silently no-op.
-      void teardown(old).then(() => {
+      void Promise.all([teardown(old), teardown(oldCtrl)]).then(() => {
         if (!disposed) connect();
       });
     };
 
     const connect = () => {
       if (disposed) return;
+      let mainJoined = false;
+      let ctrlJoined = false;
+      // The backoff resets only when BOTH topics are up: a ctrl that keeps
+      // failing would otherwise rebuild the HEALTHY main channel every second
+      // (roster flicker + a session refetch per client) instead of backing off.
+      const syncJoinState = () => {
+        setSharedConnected(mainJoined);
+        setConnected(mainJoined && ctrlJoined);
+        if (!(mainJoined && ctrlJoined)) return;
+        attempt = 0;
+        setReconnecting(false);
+      };
       const presenceKey =
         identityRef.current?.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -222,7 +269,18 @@ export function useClassSession(
       const channel = sb.channel(`class:${sessionId}`, {
         config: { private: true, presence: { key: presenceKey }, broadcast: { self: true } },
       });
+      // Instructor-driven events ride the staff-write topic (migration 0023).
+      // Everyone joins it to LISTEN; only class staff may send on it, so advance
+      // / timer / stage-pull can no longer be forged by a cohort member.
+      const ctrl = sb.channel(`class:${sessionId}:ctrl`, {
+        config: { private: true, broadcast: { self: true } },
+      });
       current = channel;
+      currentCtrl = ctrl;
+      // Published BEFORE the subscribe chains: the SUBSCRIBED callback calls
+      // trackPresence(), which reads channelRef.
+      channelRef.current = channel;
+      ctrlRef.current = ctrl;
 
       // Rebuild the roster from the full presence state. Wired to sync/join/leave
       // (not just sync) so a LATE joiner — whose initial `sync` can land before the
@@ -250,7 +308,7 @@ export function useClassSession(
         setRoster(members);
       };
 
-      channel
+      ctrl
         .on('broadcast', { event: ADVANCE_EVENT }, ({ payload }) => {
           const next = (payload as { current_activity_id?: string | null })?.current_activity_id;
           // Only a real activity id is honored from the broadcast fast-path. A
@@ -270,25 +328,6 @@ export function useClassSession(
             clearStageTimeout();
             setStagePendingUserId(null);
             setStageUnreachableUserId(null);
-          }
-        })
-        .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
-          const p = payload as {
-            activity_id?: string;
-            user_id?: string;
-            correct?: boolean;
-            elapsed_ms?: number;
-          } | null;
-          if (!p?.activity_id || !p.user_id) return;
-          setAnswers((prev) => ({
-            ...prev,
-            [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.correct === true },
-          }));
-          if (typeof p.elapsed_ms === 'number') {
-            setElapsed((prev) => ({
-              ...prev,
-              [p.activity_id!]: { ...(prev[p.activity_id!] ?? {}), [p.user_id!]: p.elapsed_ms! },
-            }));
           }
         })
         .on('broadcast', { event: TIMER_EVENT }, ({ payload }) => {
@@ -329,72 +368,6 @@ export function useClassSession(
               content: gathered.content,
               status: gathered.status,
               author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
-            },
-          });
-        })
-        // stage-answer → THE GATE: only the instructor honors it, and only when the
-        // reply's userId + nonce match the in-flight pull. It then re-broadcasts
-        // stage-show so a learner can NEVER stage arbitrary content on the class.
-        .on('broadcast', { event: STAGE_ANSWER_EVENT }, ({ payload }) => {
-          const pending = pendingStageRef.current;
-          const p = payload as
-            | {
-                activityId?: string;
-                userId?: string;
-                nonce?: string;
-                kind?: string;
-                content?: string;
-                status?: unknown;
-                author?: unknown;
-              }
-            | null;
-          if (!pending || !p?.userId || !p.nonce || !p.activityId) return;
-          if (p.userId !== pending.targetUserId || p.nonce !== pending.nonce) return;
-          if (p.activityId !== currentActivityIdRef.current) return;
-          pendingStageRef.current = null;
-          liveStageRef.current = { targetUserId: p.userId, activityId: p.activityId };
-          clearStageTimeout();
-          setStagePendingUserId(null);
-          setStageUnreachableUserId(null);
-          void channel.send({
-            type: 'broadcast',
-            event: STAGE_SHOW_EVENT,
-            payload: {
-              activityId: p.activityId,
-              kind: p.kind,
-              content: p.content,
-              status: parseStageStatus(p.status),
-              author: p.author,
-            },
-          });
-        })
-        // stage-update (staged learner → all): the learner on stage re-sends its
-        // work as it edits. Only the instructor honors it, and only for the target
-        // it already resolved a pull to — then forwards it as a fresh stage-show.
-        .on('broadcast', { event: STAGE_UPDATE_EVENT }, ({ payload }) => {
-          const live = liveStageRef.current;
-          const p = payload as
-            | {
-                activityId?: string;
-                userId?: string;
-                kind?: string;
-                content?: string;
-                status?: unknown;
-                author?: unknown;
-              }
-            | null;
-          if (!live || !p?.userId || !p.activityId) return;
-          if (p.userId !== live.targetUserId || p.activityId !== live.activityId) return;
-          if (p.activityId !== currentActivityIdRef.current) return;
-          void channel.send({
-            type: 'broadcast',
-            event: STAGE_SHOW_EVENT,
-            payload: {
-              activityId: p.activityId,
-              kind: p.kind,
-              content: p.content,
-              status: parseStageStatus(p.status),
-              author: p.author,
             },
           });
         })
@@ -439,6 +412,95 @@ export function useClassSession(
           setStagePendingUserId(null);
           setStageUnreachableUserId(null);
         })
+        .subscribe((s) => {
+          if (disposed || currentCtrl !== ctrl) return;
+          ctrlJoined = s === 'SUBSCRIBED';
+          syncJoinState();
+          if (ctrlJoined || !(s === 'CLOSED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT')) return;
+          if (everJoined) setReconnecting(true);
+          scheduleRetry();
+        });
+
+      channel
+        // stage-answer → THE GATE: only the instructor honors it, and only when the
+        // reply's userId + nonce match the in-flight pull. It then re-broadcasts
+        // stage-show on the control topic, so a learner can NEVER stage arbitrary
+        // content on the class.
+        .on('broadcast', { event: STAGE_ANSWER_EVENT }, ({ payload }) => {
+          const pending = pendingStageRef.current;
+          const p = payload as
+            | {
+                activityId?: string;
+                userId?: string;
+                nonce?: string;
+                kind?: string;
+                content?: string;
+                status?: unknown;
+                author?: unknown;
+              }
+            | null;
+          if (!pending || !p?.userId || !p.nonce || !p.activityId) return;
+          if (p.userId !== pending.targetUserId || p.nonce !== pending.nonce) return;
+          if (p.activityId !== currentActivityIdRef.current) return;
+          pendingStageRef.current = null;
+          liveStageRef.current = { targetUserId: p.userId, activityId: p.activityId };
+          clearStageTimeout();
+          setStagePendingUserId(null);
+          setStageUnreachableUserId(null);
+          void ctrl.send({
+            type: 'broadcast',
+            event: STAGE_SHOW_EVENT,
+            payload: {
+              activityId: p.activityId,
+              kind: p.kind,
+              content: p.content,
+              status: parseStageStatus(p.status),
+              author: p.author,
+            },
+          });
+        })
+        // stage-update (staged learner → all): the learner on stage re-sends its
+        // work as it edits. Only the instructor honors it, and only for the target
+        // it already resolved a pull to — then forwards it as a fresh stage-show.
+        .on('broadcast', { event: STAGE_UPDATE_EVENT }, ({ payload }) => {
+          const live = liveStageRef.current;
+          const p = payload as
+            | {
+                activityId?: string;
+                userId?: string;
+                kind?: string;
+                content?: string;
+                status?: unknown;
+                author?: unknown;
+              }
+            | null;
+          if (!live || !p?.userId || !p.activityId) return;
+          if (p.userId !== live.targetUserId || p.activityId !== live.activityId) return;
+          if (p.activityId !== currentActivityIdRef.current) return;
+          void ctrl.send({
+            type: 'broadcast',
+            event: STAGE_SHOW_EVENT,
+            payload: {
+              activityId: p.activityId,
+              kind: p.kind,
+              content: p.content,
+              status: parseStageStatus(p.status),
+              author: p.author,
+            },
+          });
+        })
+        // answered (learner → all) — the only learner-sent event left; recorded
+        // monotonically, see recordAnswer.
+        .on('broadcast', { event: ANSWERED_EVENT }, ({ payload }) => {
+          const p = payload as {
+            activity_id?: string;
+            user_id?: string;
+            correct?: boolean;
+            elapsed_ms?: number;
+          } | null;
+          if (!p?.activity_id || !p.user_id) return;
+          recordAnswer(p.activity_id, p.user_id, p.correct === true, p.elapsed_ms);
+        })
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'itera', table: 'class_sessions', filter: `id=eq.${sessionId}` },
@@ -455,11 +517,10 @@ export function useClassSession(
           // drains — only the CURRENT channel may drive state / retries.
           if (disposed || current !== channel) return;
           const isJoined = s === 'SUBSCRIBED';
-          setConnected(isJoined);
+          mainJoined = isJoined;
+          syncJoinState();
           if (isJoined) {
             everJoined = true;
-            attempt = 0;
-            setReconnecting(false);
             // Belt-and-suspenders: re-read presence shortly after joining, in case
             // the initial `sync` landed before the existing members were relayed.
             // Guarded so a drop right after joining can't wipe the roster from a
@@ -482,8 +543,6 @@ export function useClassSession(
             scheduleRetry();
           }
         });
-
-      channelRef.current = channel;
     };
 
     // Back to the foreground (phone unlock / tab switch) with a retry pending →
@@ -502,8 +561,11 @@ export function useClassSession(
       if (retryTimer !== null) clearTimeout(retryTimer);
       document.removeEventListener('visibilitychange', onVisible);
       const old = current;
+      const oldCtrl = currentCtrl;
       current = null;
+      currentCtrl = null;
       teardown(old);
+      teardown(oldCtrl);
     };
     // Subscribe ONCE per session (per channel INSTANCE — reconnects build a NEW
     // instance). `class:<id>` is a SHARED broadcast/presence topic (can't be
@@ -519,11 +581,17 @@ export function useClassSession(
   // Track (or re-track) presence identity once the channel is connected and
   // identity is known — without tearing down / re-subscribing the channel.
   useEffect(() => {
-    if (!connected || !identity) return;
+    if (!sharedConnected || !identity) return;
     trackPresence();
     // Track on the primitive identity fields, not the object reference.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, identity?.userId, identity?.name, identity?.avatarUrl, identity?.isInstructor]);
+  }, [
+    sharedConnected,
+    identity?.userId,
+    identity?.name,
+    identity?.avatarUrl,
+    identity?.isInstructor,
+  ]);
 
   const setHandRaised = useCallback(
     (raised: boolean) => {
@@ -551,9 +619,9 @@ export function useClassSession(
   // handler) is what flips the class to stage-show.
   const requestStage = useCallback(
     (targetUserId: string) => {
-      const channel = channelRef.current;
+      const ctrl = ctrlRef.current;
       const activityId = currentActivityIdRef.current;
-      if (!channel || !activityId || !targetUserId) return;
+      if (!ctrl || !activityId || !targetUserId) return;
       const nonce =
         globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       pendingStageRef.current = { nonce, targetUserId };
@@ -570,7 +638,7 @@ export function useClassSession(
         setStagePendingUserId(null);
         setStageUnreachableUserId(targetUserId);
       }, STAGE_REPLY_TIMEOUT_MS);
-      void channel.send({
+      void ctrl.send({
         type: 'broadcast',
         event: STAGE_REQUEST_EVENT,
         payload: { activityId, targetUserId, nonce },
@@ -580,7 +648,7 @@ export function useClassSession(
   );
 
   const clearStage = useCallback(() => {
-    const channel = channelRef.current;
+    const ctrl = ctrlRef.current;
     pendingStageRef.current = null;
     liveStageRef.current = null;
     stagedSelfRef.current = null;
@@ -589,8 +657,8 @@ export function useClassSession(
     setStagePendingUserId(null);
     setStageUnreachableUserId(null);
     setStagedAnswer(null);
-    if (!channel) return;
-    void channel.send({ type: 'broadcast', event: STAGE_CLEAR_EVENT, payload: {} });
+    if (!ctrl) return;
+    void ctrl.send({ type: 'broadcast', event: STAGE_CLEAR_EVENT, payload: {} });
   }, [clearStageTimeout]);
 
   // A pull left in flight when the page unmounts must not fire into a dead tree.
@@ -629,13 +697,13 @@ export function useClassSession(
 
   const broadcast = useCallback(
     (activityId: string) => {
-      const channel = channelRef.current;
+      const ctrl = ctrlRef.current;
       // Optimistic local update for the professor's own screen.
       setCurrentActivityId(activityId);
       setTimer(null);
       setStoppedFor(null);
-      if (!channel) return;
-      void channel.send({
+      if (!ctrl) return;
+      void ctrl.send({
         type: 'broadcast',
         event: ADVANCE_EVENT,
         payload: { current_activity_id: activityId },
@@ -645,14 +713,14 @@ export function useClassSession(
   );
 
   const broadcastTimer = useCallback((activityId: string, durationSeconds: number) => {
-    const channel = channelRef.current;
+    const ctrl = ctrlRef.current;
     const deadline = Date.now() + durationSeconds * 1000;
     // Optimistic local update first (mirrors clearTimer/broadcast) so the
     // professor's own screen reflects the timer even if the channel just blipped.
     setTimer({ activityId, deadline });
     setStoppedFor((prev) => (prev === activityId ? null : prev));
-    if (!channel) return;
-    void channel.send({
+    if (!ctrl) return;
+    void ctrl.send({
       type: 'broadcast',
       event: TIMER_EVENT,
       payload: { activity_id: activityId, deadline },
@@ -660,11 +728,11 @@ export function useClassSession(
   }, []);
 
   const clearTimer = useCallback((activityId: string) => {
-    const channel = channelRef.current;
+    const ctrl = ctrlRef.current;
     setTimer((prev) => (prev && prev.activityId === activityId ? null : prev));
     setStoppedFor(activityId);
-    if (!channel) return;
-    void channel.send({
+    if (!ctrl) return;
+    void ctrl.send({
       type: 'broadcast',
       event: TIMER_STOP_EVENT,
       payload: { activity_id: activityId },
@@ -676,23 +744,14 @@ export function useClassSession(
       const channel = channelRef.current;
       const userId = identityRef.current?.userId;
       if (!channel || !userId) return;
-      setAnswers((prev) => ({
-        ...prev,
-        [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct },
-      }));
-      if (typeof elapsedMs === 'number') {
-        setElapsed((prev) => ({
-          ...prev,
-          [activityId]: { ...(prev[activityId] ?? {}), [userId]: elapsedMs },
-        }));
-      }
+      recordAnswer(activityId, userId, correct, elapsedMs);
       void channel.send({
         type: 'broadcast',
         event: ANSWERED_EVENT,
         payload: { activity_id: activityId, user_id: userId, correct, elapsed_ms: elapsedMs },
       });
     },
-    []
+    [recordAnswer]
   );
 
   return {

@@ -19,6 +19,10 @@
 -- non-null advance is reverted by the next durable read; `advance: null` is
 -- ignored). This migration closes the "any authenticated stranger" hole, which
 -- is the pilot-blocking concern. Idempotent.
+--
+-- ⚠️ SUPERSEDED by 0023: re-applying THIS file alone recreates
+-- itera_class_members_send without 0023's control-topic exclusion, which
+-- silently makes every instructor event forgeable again. Re-run 0023 after it.
 -- ============================================================================
 
 -- SECURITY DEFINER so the check bypasses class_sessions RLS (no recursion) and
