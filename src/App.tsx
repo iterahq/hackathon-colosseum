@@ -1,3 +1,4 @@
+import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@devfellowship/components";
@@ -28,17 +29,27 @@ import { AuthProvider } from "./auth/AuthContext";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
 import { RequireSubscription } from "./auth/RequireSubscription";
-import AdminLayout from "./pages/admin/AdminLayout";
-import RosterPage from "./pages/admin/RosterPage";
-import CompletionPage from "./pages/admin/CompletionPage";
-import EngagementPage from "./pages/admin/EngagementPage";
-import AdminArtifactsPage from "./pages/admin/AdminArtifactsPage";
-import AuthorHomePage from "./pages/author/AuthorHomePage";
-import UnitCanvasPage from "./pages/author/UnitCanvasPage";
-import ActivityTestPage from "./pages/author/ActivityTestPage";
+/* ── Code-split surfaces (lazy) ───────────────────────────────────────────
+   /admin/* and /author/* are staff surfaces: role-gated, and never rendered in
+   the overwhelmingly common learner session. Statically importing them pulled
+   their whole dependency cone into the single entry chunk every learner
+   downloads. `lazy()` moves them to their own chunks, fetched on first visit.
+
+   The route GUARDS are unchanged. Each <Suspense> sits INSIDE
+   RequireAuth/RequireRole (never around them), so authorization is still
+   decided first and an unauthorized user is redirected without the chunk ever
+   being requested. See the routes below. */
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const RosterPage = lazy(() => import("./pages/admin/RosterPage"));
+const CompletionPage = lazy(() => import("./pages/admin/CompletionPage"));
+const EngagementPage = lazy(() => import("./pages/admin/EngagementPage"));
+const AdminArtifactsPage = lazy(() => import("./pages/admin/AdminArtifactsPage"));
+const AuthorHomePage = lazy(() => import("./pages/author/AuthorHomePage"));
+const UnitCanvasPage = lazy(() => import("./pages/author/UnitCanvasPage"));
+const ActivityTestPage = lazy(() => import("./pages/author/ActivityTestPage"));
 // ADDITIVE (BYOC live wiring): opt-in sibling of the /test route that exercises
 // the REAL responder+judge live path. Does not replace or alter /test.
-import LiveActivityTestPage from "./pages/author/LiveActivityTestPage";
+const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestPage"));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridge } from "./auth/EmbedBridge";
@@ -56,6 +67,39 @@ const queryClient = new QueryClient();
 function LocaleSync() {
   useLocaleSync();
   return null;
+}
+
+/**
+ * Suspense shell for a lazily-loaded FULL-PAGE route. Deliberately the same
+ * markup RequireAuth/RequireRole already render while they resolve, so the
+ * hand-off guard → chunk fetch → page is visually seamless.
+ */
+function LazyRoute({ children }: { children: ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+          Loading…
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
+
+/**
+ * Suspense shell for a lazily-loaded route that renders INSIDE an existing
+ * layout shell (the /admin children mount in AdminLayout's <Outlet/>). Inline
+ * rather than full-screen, so the admin header + sub-nav stay put while the
+ * panel chunk arrives.
+ */
+function LazyPanel({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-muted-foreground">Loading…</div>}>
+      {children}
+    </Suspense>
+  );
 }
 
 const App = () => (
@@ -249,17 +293,47 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="tenant_admin">
-                        <AdminLayout />
+                        <LazyRoute>
+                          <AdminLayout />
+                        </LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
                 >
                   <Route index element={<Navigate to="roster" replace />} />
-                  <Route path="roster" element={<RosterPage />} />
-                  <Route path="programs" element={<CompletionPage />} />
-                  <Route path="engagement" element={<EngagementPage />} />
+                  <Route
+                    path="roster"
+                    element={
+                      <LazyPanel>
+                        <RosterPage />
+                      </LazyPanel>
+                    }
+                  />
+                  <Route
+                    path="programs"
+                    element={
+                      <LazyPanel>
+                        <CompletionPage />
+                      </LazyPanel>
+                    }
+                  />
+                  <Route
+                    path="engagement"
+                    element={
+                      <LazyPanel>
+                        <EngagementPage />
+                      </LazyPanel>
+                    }
+                  />
                   {/* The tenant owner's view of learner-produced work (ADR-9). */}
-                  <Route path="artifacts" element={<AdminArtifactsPage />} />
+                  <Route
+                    path="artifacts"
+                    element={
+                      <LazyPanel>
+                        <AdminArtifactsPage />
+                      </LazyPanel>
+                    }
+                  />
                 </Route>
 
                 {/* Author review+comment canvas + per-kind TEST (plan
@@ -274,7 +348,9 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="author">
-                        <AuthorHomePage />
+                        <LazyRoute>
+                          <AuthorHomePage />
+                        </LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -284,7 +360,9 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="author">
-                        <UnitCanvasPage />
+                        <LazyRoute>
+                          <UnitCanvasPage />
+                        </LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -294,7 +372,9 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="author">
-                        <ActivityTestPage />
+                        <LazyRoute>
+                          <ActivityTestPage />
+                        </LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -307,7 +387,9 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="author">
-                        <LiveActivityTestPage />
+                        <LazyRoute>
+                          <LiveActivityTestPage />
+                        </LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
