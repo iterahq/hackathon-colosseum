@@ -7,6 +7,16 @@ name: E2E (Itera↔Fellowship)
 # substrate and SKIPS (not fails) when a prerequisite is absent, so a run on an
 # incomplete substrate is green-with-skips.
 #
+# Also carries the per-kind author-harness smoke (plan
+# 20260728-itera-activity-testing, Fase 4 / tier T3): one activity per kind
+# driven through /author/activities/:id/test, which writes nothing to the DB.
+# ADR-3 of that plan is binding — Playwright stays OUT of the per-PR `ci.yml`
+# gate; this workflow is its only home.
+#
+# ⚠️ Failure alerting is whatever GitHub does by default for a failed scheduled
+# run (an email to the workflow file's last committer). The repo has no other
+# notification path today and this workflow deliberately does not invent one.
+#
 # Runner: ubuntu-latest. iterahq is NOT on the devfellowship-scoped dfl-runner
 # fleet (org-scoped self-hosted runners aren't available to other orgs), and
 # this is a public repo besides — same carve-out as ci.yml. devfellowship/*
@@ -34,6 +44,16 @@ jobs:
       DFL_BATCH_RESULTS_API_KEY: ${{ secrets.DFL_BATCH_RESULTS_API_KEY }}
       CLAUDE_SMOKE_USERNAME: ${{ secrets.CLAUDE_SMOKE_USERNAME }}
       CLAUDE_SMOKE_PASSWORD: ${{ secrets.CLAUDE_SMOKE_PASSWORD }}
+      # The Itera player itself (app.iterahq.dev) — the substrate for
+      # `author-activity-kinds.spec.ts` (plan 20260728-itera-activity-testing,
+      # Fase 4 / T3) and for the already-present `route-access-matrix.spec.ts`,
+      # which skipped unconditionally until this block existed.
+      ITERA_BASE_URL: ${{ vars.ITERA_BASE_URL || 'https://app.iterahq.dev' }}
+      # tenant_admin of the `itera` tenant. NOT a learner, and NOT `author` in
+      # `dfl-batch` — so the per-kind smoke only reaches the kinds the `itera`
+      # tenant authors, and skips (never fails) on the rest. See the spec header.
+      ITERA_SMOKE_USERNAME: ${{ secrets.ITERA_SMOKE_USERNAME }}
+      ITERA_SMOKE_PASSWORD: ${{ secrets.ITERA_SMOKE_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
