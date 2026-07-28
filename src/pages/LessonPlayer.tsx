@@ -24,7 +24,7 @@
  * to the signed-in user); failures are swallowed so the UX never blocks. The
  * persist / XP logic below is UNCHANGED — only the presentation was rebuilt.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X, Heart, Trophy } from 'lucide-react';
@@ -39,6 +39,7 @@ import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
+import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
 // The kind→column-width rule is SHARED with the live-class surfaces
 // (LiveSessionPage / live/InstructorClassPage) — see the module doc for the
 // Monaco split-pane measurement behind `max-w-7xl`, and for why it must not be
@@ -68,6 +69,10 @@ export default function LessonPlayer() {
   // screen showing its graded state, and only the footer's "Continuar" advances.
   // Non-graded kinds (concept/video/document) advance immediately (no footer).
   const [pending, setPending] = useState<FooterResult | null>(null);
+  // Content the current activity produced, held between `handleComplete` and the
+  // commit in `advance`. A ref (not state) on purpose — it must not trigger a
+  // re-render, and it must survive the footer's review beat unchanged.
+  const pendingArtifactRef = useRef<ProducedArtifact | null>(null);
 
   useEffect(() => {
     setIndex(0);
@@ -111,6 +116,9 @@ export default function LessonPlayer() {
   // done") advances immediately as before.
   function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving) return;
+    // Hold the produced content until the learner actually commits — graded and
+    // BYOC kinds settle later, on the footer's "Continuar".
+    pendingArtifactRef.current = detail?.artifact ?? null;
     if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
@@ -132,6 +140,19 @@ export default function LessonPlayer() {
       const ok = await persistActivityProgress(current.id);
       setSaving(false);
       if (ok) {
+        // Persist what the learner PRODUCED, not just the fact that they
+        // finished (plan 20260728-itera-artifact-storage, Phase 1). This is the
+        // ONLY call site: routing it through the learner-facing player — rather
+        // than the activity components — is what keeps the author TEST harness
+        // write-free (canvas ADR-12), exactly like itera.progress above.
+        //
+        // Deliberately best-effort and NOT awaited into the gate: a storage
+        // hiccup must never strand a learner who correctly finished an activity.
+        const produced = pendingArtifactRef.current;
+        if (produced) {
+          pendingArtifactRef.current = null;
+          void saveArtifact(current.id, produced);
+        }
         setDoneIds((prev) => new Set(prev).add(current.id));
         setSaveError(false);
       } else {

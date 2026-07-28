@@ -59,7 +59,14 @@ describe('DocumentActivity — reflection (min_words)', () => {
     });
     expect(doneBtn.disabled).toBe(false);
     fireEvent.click(doneBtn);
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // The reflection now rides UP in the detail payload so the player can persist
+    // it (plan 20260728-itera-artifact-storage). `correct` is still the 1st arg.
+    expect(onComplete).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        artifact: expect.objectContaining({ type: 'text', filename: 'reflection.md' }),
+      })
+    );
   });
 
   it('shows a live word count', () => {
@@ -79,7 +86,15 @@ describe('DocumentActivity — reflection (min_words)', () => {
     });
     expect(doneBtn.disabled).toBe(false);
     fireEvent.click(doneBtn);
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        // THE regression this guards: the learner's text used to live only in
+        // `useState` and was destroyed on unmount. It must now leave the
+        // component so the player can persist it.
+        artifact: expect.objectContaining({ content: 'aprendi bastante' }),
+      })
+    );
   });
 
   it('a pure read-only document (body, no prompt) keeps the simple Mark done button', () => {

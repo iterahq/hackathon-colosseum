@@ -36,6 +36,7 @@ import {
   type JudgeVerdict,
 } from '@/api/iteraApi';
 import { JudgeHeatmap } from './JudgeHeatmap';
+import { ArtifactVisibilityNotice } from './ArtifactVisibilityNotice';
 // v1 general learning-activity taxonomy (plan 20260703). These CONVERGE on the
 // shared InstructionPanel primitive + the `onComplete(correct)` contract.
 import { ConceptActivity } from './ConceptActivity';
@@ -248,7 +249,29 @@ function ReflectionDocumentActivity({
         )}
       </div>
 
-      <DoneButton done={isDone} disabled={!meetsMin} onClick={() => onComplete(true)} />
+      <ArtifactVisibilityNotice />
+
+      {/*
+        Hand the written text UP so the learner-facing player can persist it.
+        Until now this text lived only in the `text` useState above and was
+        DESTROYED on unmount — it did not survive a refresh, let alone a change
+        of device. The player (not this component) does the write, so the author
+        TEST harness still persists nothing (canvas ADR-12).
+      */}
+      <DoneButton
+        done={isDone}
+        disabled={!meetsMin}
+        onClick={() =>
+          onComplete(true, {
+            artifact: {
+              type: 'text',
+              content: text,
+              filename: 'reflection.md',
+              mimeType: 'text/markdown',
+            },
+          })
+        }
+      />
     </Shell>
   );
 }
@@ -314,7 +337,19 @@ function AiJudgeDocumentActivity({
           : undefined
       );
       setVerdict(v);
-      if (v.passed) onComplete(true);
+      // Hand the learner's data-spec UP so the player can persist it. Until now
+      // this content was posted to the judge, rendered as a verdict, and then
+      // THROWN AWAY — the learner's actual work was the one thing not kept.
+      if (v.passed) {
+        onComplete(true, {
+          artifact: {
+            type: 'document',
+            content,
+            filename: 'data-spec.md',
+            mimeType: 'text/markdown',
+          },
+        });
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -375,6 +410,8 @@ function AiJudgeDocumentActivity({
         className="mt-5 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-evergreen/40"
         data-testid="judge-submission-input"
       />
+
+      <ArtifactVisibilityNotice />
 
       {error && <p className="mt-2 text-sm text-clay">{error}</p>}
 

@@ -6,6 +6,7 @@
  * pure-component file (react-refresh / fast-refresh friendly) and both the async
  * player and the live player import these without pulling in the component.
  */
+import type { ProducedArtifact } from '@/services/artifact.service';
 
 /**
  * The graded activity kinds whose answer feedback surfaces in the fixed footer.
@@ -52,4 +53,16 @@ export interface ActivityCompleteDetail {
   message?: string;
   /** A secondary explanation line (reveal recap / judge WHY). */
   explanation?: string;
+  /**
+   * Content the learner PRODUCED, handed up so a learner-facing player can
+   * persist it (plan 20260728-itera-artifact-storage, Phase 1).
+   *
+   * Why up here instead of the activity saving it directly: the author TEST
+   * harness mounts the very same `ActivityRenderer`, and canvas ADR-12 requires
+   * that a test run write NOTHING. Routing the content up means only the
+   * learner-facing player ever calls `saveArtifact` — the same boundary that
+   * already keeps the harness from touching itera.progress. An activity that
+   * saved itself would silently break that guarantee.
+   */
+  artifact?: ProducedArtifact;
 }

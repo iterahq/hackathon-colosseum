@@ -5,9 +5,15 @@
  * `onComplete` — but the completion is written to an IN-MEMORY result sink
  * (React local state) ONLY. It NEVER calls `persistActivityProgress` (or any
  * itera.progress / activity_results / xp_events write). This module deliberately
- * imports NOTHING from `@/services/progress.service` — that is the guarantee of
- * ZERO DB writes. The author attempts the activity, sees the correct/incorrect
- * verdict, and can reset to try again; nothing persists.
+ * imports NOTHING from `@/services/progress.service` NOR from
+ * `@/services/artifact.service` — that is the guarantee of ZERO DB writes and
+ * ZERO storage writes. The author attempts the activity, sees the
+ * correct/incorrect verdict, and can reset to try again; nothing persists.
+ *
+ * ⚠️ Activities hand produced content UP via `onComplete(correct, detail)`. The
+ * harness receives that `detail` and DROPS it into local state. Only the
+ * learner-facing player persists it. If you ever move a save INTO an activity
+ * component, you silently break this guarantee — keep writes at the player.
  */
 import { useCallback, useState } from 'react';
 import { CheckCircle2, RotateCcw, XCircle, FlaskConical } from 'lucide-react';

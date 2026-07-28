@@ -346,6 +346,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.markDone': 'Marcar como concluída',
     'activity.done': 'Concluída',
     'activity.reflectionPlaceholder': 'Escreva aqui o que você aprendeu…',
+    'activity.artifactVisibilityNotice':
+      'O que você escrever aqui fica salvo na sua conta e pode ser lido pelo administrador da sua organização.',
     'activity.words': 'palavras',
     'activity.minWords': 'mínimo',
     // v1 general learning-activity taxonomy (plan 20260703)
@@ -899,6 +901,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.markDone': 'Mark as done',
     'activity.done': 'Done',
     'activity.reflectionPlaceholder': 'Write what you learned here…',
+    'activity.artifactVisibilityNotice':
+      'What you write here is saved to your account and can be read by your organization\'s administrator.',
     'activity.words': 'words',
     'activity.minWords': 'minimum',
     // v1 general learning-activity taxonomy (plan 20260703)
