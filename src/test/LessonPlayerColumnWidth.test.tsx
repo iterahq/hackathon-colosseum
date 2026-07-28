@@ -32,10 +32,18 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
 
 vi.mock('@/lib/supabase/client', () => ({
   getSupabase: () => ({
-    from: () => ({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }),
+    // Includes the resume-read shape (select→eq→in) the player now uses on
+    // mount; resolves empty so these lessons still start at activity 1.
+    from: () => {
+      const builder: Record<string, unknown> = {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        select: () => builder,
+        eq: () => builder,
+        in: () => Promise.resolve({ data: [], error: null }),
+      };
+      return builder;
+    },
   }),
   isSupabaseConfigured: true,
 }));
@@ -104,7 +112,7 @@ describe('LessonPlayer — focused column width by activity kind', () => {
     expect(screen.getByTestId('lesson-main').className).toContain('max-w-7xl');
 
     // `code` is not a footer-graded kind, so completing advances immediately.
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     await waitFor(() => expect(screen.getByTestId('lesson-main').className).toContain('max-w-2xl'), {
       timeout: 5000,
     });
@@ -114,7 +122,7 @@ describe('LessonPlayer — focused column width by activity kind', () => {
   it('returns to the prose column on the completion screen of a code lesson', async () => {
     mockLesson('code');
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     await waitFor(() => expect(screen.getByTestId('lesson-complete')).toBeTruthy(), { timeout: 5000 });
     expect(screen.getByTestId('lesson-main').className).toContain('max-w-2xl');
   });

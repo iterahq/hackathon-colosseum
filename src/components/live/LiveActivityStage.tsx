@@ -1,5 +1,6 @@
 import type { ReactNode, MouseEvent } from 'react';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
 
 interface LiveActivityStageProps {
@@ -13,7 +14,12 @@ interface LiveActivityStageProps {
   readOnly?: boolean;
   /** Reveal the correct answer (timer stopped/expired) even without a submission. */
   reveal?: boolean;
-  onComplete?: (correct: boolean) => void;
+  /**
+   * Widened to forward the activity's `detail` (PR #193's channel) so the live
+   * page can record WHAT the learner answered, not just whether it was right.
+   * Additive: a narrower `(correct) => void` handler stays assignable.
+   */
+  onComplete?: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   /**
    * Fired when the learner clicks an activity's "Enviar" (the `*-submit` button)
    * — the intermediate step before the correct/wrong confirm. Caught by

@@ -47,10 +47,19 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
 // resolves with no error + a resolved Itera user id.
 vi.mock('@/lib/supabase/client', () => ({
   getSupabase: () => ({
-    from: () => ({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }),
+    from: () => {
+      // The player now READS itera.progress on mount to resume where the learner
+      // stopped, so the stub needs the select→eq→in shape too. It resolves empty:
+      // these tests all start a fresh lesson from activity 1.
+      const builder: Record<string, unknown> = {
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        insert: vi.fn().mockResolvedValue({ error: null }),
+        select: () => builder,
+        eq: () => builder,
+        in: () => Promise.resolve({ data: [], error: null }),
+      };
+      return builder;
+    },
   }),
   isSupabaseConfigured: true,
 }));
@@ -80,6 +89,11 @@ function lessonData(): { id: string; title: { pt: string }; activities: Activity
   };
 }
 
+/** First paint waits on the resume read (itera.progress) — await the gate. */
+async function waitForPlayerReady() {
+  await waitFor(() => expect(screen.queryByTestId('lesson-loading')).toBeNull(), { timeout: 5000 });
+}
+
 function renderPlayer() {
   return render(
     <MemoryRouter>
@@ -99,16 +113,18 @@ beforeEach(() => {
 });
 
 describe('LessonPlayer — lesson chrome (finding #1)', () => {
-  it('renders a learner-friendly "Lição" eyebrow, NOT git jargon', () => {
+  it('renders a learner-friendly "Lição" eyebrow, NOT git jargon', async () => {
     renderPlayer();
+    await waitForPlayerReady();
     const eyebrow = screen.getByTestId('lesson-eyebrow');
     expect(eyebrow.textContent ?? '').toMatch(/Lição/i);
     expect(eyebrow.textContent ?? '').not.toMatch(/PULL/);
     expect(eyebrow.textContent ?? '').not.toMatch(/FEATURE\//);
   });
 
-  it('does not render the git branch name anywhere in the chrome', () => {
+  it('does not render the git branch name anywhere in the chrome', async () => {
     const { container } = renderPlayer();
+    await waitForPlayerReady();
     expect(container.textContent ?? '').not.toMatch(/FEATURE\/PULSES/i);
   });
 });
@@ -117,7 +133,7 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
   it('offers "Próxima lição" routing to the next lesson when one exists', async () => {
     useNextLesson.mockReturnValue({ data: { id: 'lesson-2', title: { pt: 'Commit' } } });
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
@@ -132,7 +148,7 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
   it('falls back to "Concluir" → dashboard when there is no next lesson', async () => {
     useNextLesson.mockReturnValue({ data: null });
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
@@ -147,7 +163,7 @@ describe('LessonPlayer — end-of-lesson CTA (finding #4)', () => {
 
   it('never shows the old "Descobrir" CTA on the completion screen', async () => {
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     // Graded submit → the fixed feedback footer slides up; "Continuar" advances.
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
     // Completion goes through an async persist round-trip; allow generous time
@@ -174,7 +190,7 @@ describe('LessonPlayer — concept has no mark-done (reading, not completion)', 
       refetch: vi.fn(),
     });
     renderPlayer();
-    const cont = screen.getByTestId('concept-continue');
+    const cont = await screen.findByTestId('concept-continue');
     expect(cont.textContent ?? '').toMatch(/Continuar/i);
     // A concept is read, not graded — no green/red feedback footer.
     expect(screen.queryByTestId('feedback-footer')).toBeNull();
@@ -221,21 +237,24 @@ describe('LessonPlayer — a BYOC layer makes its host kind graded', () => {
     });
   });
 
-  it('drops the free "Continuar" that would complete it without an answer', () => {
+  it('drops the free "Continuar" that would complete it without an answer', async () => {
     renderPlayer();
+    // Wait for the resume gate first, or the absence below is trivially true
+    // because the player is still showing the loading skeleton.
+    await waitForPlayerReady();
     expect(screen.queryByTestId('concept-continue')).toBeNull();
   });
 
   it('holds on the graded footer instead of auto-advancing', async () => {
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     expect((await screen.findByTestId('feedback-footer')).getAttribute('data-correct')).toBe('true');
   });
 
-  it('keeps the plain "Continuar" when the itera-api is not configured', () => {
+  it('keeps the plain "Continuar" when the itera-api is not configured', async () => {
     configured.mockReturnValue(false);
     renderPlayer();
-    expect(screen.getByTestId('concept-continue')).toBeTruthy();
+    expect(await screen.findByTestId('concept-continue')).toBeTruthy();
   });
 });
 
@@ -256,7 +275,7 @@ describe('LessonPlayer — global feedback footer (Duolingo pattern)', () => {
       refetch: vi.fn(),
     });
     renderPlayer();
-    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('stub-complete'));
     // The footer appears; the lesson has NOT completed and did not skip ahead.
     const footer = await screen.findByTestId('feedback-footer');
     expect(footer.getAttribute('data-correct')).toBe('true');

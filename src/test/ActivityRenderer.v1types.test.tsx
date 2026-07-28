@@ -165,7 +165,10 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     fireEvent.click(screen.getByText('B'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // The quiz now rides the CHOSEN OPTION up alongside the verdict, so a wrong
+    // attempt can record which distractor the learner picked — not just that
+    // they were wrong. Same `detail` channel the other graded kinds use.
+    expect(onComplete).toHaveBeenCalledWith(true, { response: 'B' });
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('activity-done')).toBeNull();
     const btn = screen.getByTestId('quiz-submit') as HTMLButtonElement;

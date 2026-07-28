@@ -286,6 +286,12 @@ function ReflectionDocumentActivity({
               filename: 'reflection.md',
               mimeType: 'text/markdown',
             },
+            // Also ride the text up as the ANSWER SUMMARY. The `artifact` above
+            // only survives when the author opted this activity into persisting
+            // (artifact_policy, 0027); `response` is the attempt-log copy, so a
+            // reflection is readable by the instructor either way. Truncated to
+            // MAX_RESPONSE_CHARS on the way into the row — see progress.service.
+            response: text,
           })
         }
       />
@@ -479,7 +485,23 @@ type QuizOption = { id?: string; label?: string; text?: string; isCorrect?: bool
  * A 2-option quiz renders as side-by-side buttons (the True/False target); a
  * quiz with more options falls back to a responsive grid/stacked list.
  */
-function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
+/** The visible text of a quiz option — the single definition, used by both the
+ *  rendered button and the recorded answer summary so they can never drift. */
+function quizOptionLabel(o: QuizOption, i: number): string {
+  return o.text ?? o.label ?? String(o.id ?? i + 1);
+}
+
+// Widened to emit `detail` (PR #193's channel): the quiz is a graded kind, so a
+// wrong attempt has to be able to say WHICH option was chosen, not merely that
+// one was wrong. Quiz options render in spec order (unlike the shuffled
+// multi-choice), so the label is a stable, seed-independent summary.
+function QuizActivity({
+  activity,
+  onComplete,
+}: {
+  activity: Activity;
+  onComplete: (c: boolean, detail?: ActivityCompleteDetail) => void;
+}) {
   const { t } = useI18n();
   const spec = activity.spec as {
     prompt?: string;
@@ -512,7 +534,10 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
   function handleSubmit() {
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(isQuizCorrect);
+    const chosen = selected !== null ? options[selected] : undefined;
+    onComplete(isQuizCorrect, {
+      response: chosen ? quizOptionLabel(chosen, selected as number) : '',
+    });
   }
 
   // Small green-mono label above the question. Prefer the spec's own label;
@@ -545,7 +570,7 @@ function QuizActivity({ activity, onComplete }: { activity: Activity; onComplete
         data-testid="quiz-options"
       >
         {options.map((o, i) => {
-          const label = o.text ?? o.label ?? String(o.id ?? i + 1);
+          const label = quizOptionLabel(o, i);
           const chosen = selected === i;
           const state = choiceOptionState({
             shown: m.shown,

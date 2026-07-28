@@ -70,8 +70,13 @@ vi.mock('@/services/artifact.service', () => ({
   saveArtifact: (...args: unknown[]) => saveArtifact(...(args as [])),
 }));
 
+// The player now also READS progress on mount (resume). Mocking the module
+// wholesale means the read half has to be stubbed too, or the resume effect
+// calls `undefined`. Empty map = "fresh lesson, start at activity 1".
 vi.mock('@/services/progress.service', () => ({
   persistActivityProgress: vi.fn(async () => true),
+  fetchActivityProgress: vi.fn(async () => ({})),
+  resumeIndexFor: () => 0,
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
@@ -122,7 +127,7 @@ beforeEach(() => {
 describe('LessonPlayer — the author decides what persists', () => {
   it('saves a document reflection by default, with a git-shaped repo_path', async () => {
     mountLesson(activity());
-    fireEvent.click(screen.getByTestId('complete-with-artifact'));
+    fireEvent.click(await screen.findByTestId('complete-with-artifact'));
 
     await waitFor(() => expect(saveArtifact).toHaveBeenCalledTimes(1));
     const [activityId, artifact, options] = saveArtifact.mock.calls[0] as unknown as [
@@ -141,7 +146,7 @@ describe('LessonPlayer — the author decides what persists', () => {
 
   it('does NOT save when the author set mode=never, even though the kind default would', async () => {
     mountLesson(activity({ artifactPolicy: { mode: 'never' } }));
-    fireEvent.click(screen.getByTestId('complete-with-artifact'));
+    fireEvent.click(await screen.findByTestId('complete-with-artifact'));
 
     // Give the best-effort async path a chance to run before asserting absence.
     await new Promise((r) => setTimeout(r, 20));
@@ -150,7 +155,7 @@ describe('LessonPlayer — the author decides what persists', () => {
 
   it('does NOT save a deterministic answer by default', async () => {
     mountLesson(activity({ kind: 'single_choice', spec: { prompt: 'Escolha' } }));
-    fireEvent.click(screen.getByTestId('complete-with-response'));
+    fireEvent.click(await screen.findByTestId('complete-with-response'));
     // A graded kind settles in the fixed footer; "Continuar" is what commits.
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
@@ -170,7 +175,7 @@ describe('LessonPlayer — the author decides what persists', () => {
         },
       }),
     );
-    fireEvent.click(screen.getByTestId('complete-with-response'));
+    fireEvent.click(await screen.findByTestId('complete-with-response'));
     fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
 
     await waitFor(() => expect(saveArtifact).toHaveBeenCalledTimes(1));

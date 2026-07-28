@@ -24,6 +24,7 @@ import { LiveStage } from '@/components/live/LiveStage';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
+  type ActivityCompleteDetail,
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
@@ -213,7 +214,7 @@ export default function LiveSessionPage() {
   });
   const { started, locked } = gate;
 
-  async function handleComplete(correct: boolean) {
+  async function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving || !gate.canComplete) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
@@ -223,10 +224,20 @@ export default function LiveSessionPage() {
     setAnswered({ id: current.id, correct, elapsedMs });
     if (sessionId) storeAnswer(sessionId, current.id, { correct, elapsedMs });
     sound.onAnswer(correct);
+    // Record the attempt whether or not it was right (E2E finding D2). Before
+    // this, a wrong answer in a live class survived only as an ephemeral
+    // broadcast and a `class_answers` row scoped to that one session — nothing
+    // reached the learner's own durable record, so the per-learner attempt log
+    // held wins exclusively. Only a PASS blocks on the write (`saving` gates the
+    // UI); a miss is fired best-effort so the learner is never stuck waiting on
+    // a write for an answer that is already settled and already broadcast.
+    const response = detail?.response ?? null;
     if (correct) {
       setSaving(true);
-      await persistActivityProgress(current.id);
+      await persistActivityProgress(current.id, { passed: true, response });
       setSaving(false);
+    } else {
+      void persistActivityProgress(current.id, { passed: false, response });
     }
     broadcastAnswer(current.id, correct, elapsedMs);
     // Durable copy (right AND wrong) for the post-class report — best-effort.
