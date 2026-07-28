@@ -203,7 +203,6 @@ export default function LessonPage() {
           timeMinutes: 32, // Mock
         }}
         decisions={project.decisions}
-        githubRepo="github.com/seu-usuario/boxshop-iterate"
         onGoHome={() => navigate('/')}
       />
     );

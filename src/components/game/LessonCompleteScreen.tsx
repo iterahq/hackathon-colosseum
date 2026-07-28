@@ -14,7 +14,16 @@ interface LessonCompleteScreenProps {
     timeMinutes: number;
   };
   decisions: Decision[];
-  githubRepo: string;
+  /**
+   * Repo slug (e.g. `github.com/iterahq/work--user--course`) for the
+   * "Code on GitHub" card. The card is only rendered when this is set.
+   *
+   * Left undefined until artifact publishing is real (`itera.artifacts.repo_url`
+   * populated by the publish flow). Do NOT pass a placeholder — a card that
+   * links to a repo that does not exist is a false promise in production.
+   * See plan `20260728-itera-artifact-storage`, ADR-7.
+   */
+  githubRepo?: string;
   onGoHome: () => void;
   onShare?: () => void;
 }
@@ -144,8 +153,9 @@ export function LessonCompleteScreen({
           )}
         </motion.div>
 
-        {/* GitHub Card */}
-        <motion.div 
+        {/* GitHub Card — only when a real repo exists (ADR-7) */}
+        {githubRepo && (
+        <motion.div
           className="rounded-2xl p-6 mb-8"
           style={{
             background: 'linear-gradient(135deg, #0d1117 0%, #161b22 100%)',
@@ -190,6 +200,7 @@ export function LessonCompleteScreen({
             </button>
           </div>
         </motion.div>
+        )}
 
         {/* Action Buttons */}
         <motion.div 
