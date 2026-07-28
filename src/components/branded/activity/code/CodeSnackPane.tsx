@@ -41,6 +41,7 @@ export function CodeSnackPane({
     results,
     allPassed,
     hasChecks,
+    readOnly,
     checksRequest,
     submit,
     receiveResults,
@@ -76,7 +77,7 @@ export function CodeSnackPane({
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col">
           <div className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
-            <CodeEditor value={code} onChange={setCode} language="typescript" />
+            <CodeEditor value={code} onChange={setCode} language="typescript" readOnly={readOnly} />
           </div>
           {spec.help && (
             <a
@@ -90,7 +91,9 @@ export function CodeSnackPane({
             </a>
           )}
           {/* Spent once the activity is settled/done, and held back mid-grading
-              so a reset cannot land between the submit and its verdicts. */}
+              so a reset cannot land between the submit and its verdicts. It
+              stays available ON the feedback screen on purpose: that is exactly
+              where the learner who broke everything asks to start over. */}
           <CodeResetControl
             onReset={resetToStarter}
             disabled={isDone || phase === 'submitting' || phase === 'settled'}

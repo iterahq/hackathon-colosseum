@@ -400,6 +400,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.someFailed': 'Quase lá — falta pouco.',
     'code.checks.score': '{passed} de {total}',
     'code.checks.retry': 'Tentar de novo',
+    'code.checks.editAgain': 'Editar de novo',
+    'code.checks.frozen': 'O editor fica travado enquanto o resultado está na tela.',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
     // Recomeçar ≠ tentar de novo: "Tentar de novo" volta a editar SEM perder
     // nada; este aqui joga fora o que a pessoa escreveu e traz o código inicial
@@ -1039,6 +1041,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.someFailed': 'Almost there — just a bit more.',
     'code.checks.score': '{passed} of {total}',
     'code.checks.retry': 'Try again',
+    'code.checks.editAgain': 'Edit again',
+    'code.checks.frozen': 'The editor stays locked while the result is on screen.',
     'code.checks.continueAnyway': 'Continue anyway',
     'code.reset.action': 'Start over from the first code',
     'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',

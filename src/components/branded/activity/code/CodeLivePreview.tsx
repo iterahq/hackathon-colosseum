@@ -28,7 +28,8 @@ export function CodeLivePreview({
   code: string;
   /** A submit asking for a graded run; `token` re-triggers even identical code. */
   checksRequest?: CodeChecksRequest | null;
-  onChecksResult?: (results: CodeCheckResult[]) => void;
+  /** `token` identifies WHICH submit this answers — a slow run can land late. */
+  onChecksResult?: (results: CodeCheckResult[], token: number) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -47,7 +48,7 @@ export function CodeLivePreview({
       if (e.source !== iframeRef.current?.contentWindow) return;
       if (e.data?.type === 'itera:ready') setReady(true);
       if (e.data?.type === 'itera:checks' && Array.isArray(e.data.results)) {
-        onChecksResultRef.current?.(e.data.results as CodeCheckResult[]);
+        onChecksResultRef.current?.(e.data.results as CodeCheckResult[], Number(e.data.token));
       }
     };
     window.addEventListener('message', onMessage);
@@ -77,13 +78,21 @@ export function CodeLivePreview({
     const compiledRun = transpileSnack(checksRequest.code);
     if (compiledRun.error) {
       lastRunToken.current = checksRequest.token;
-      onChecksResultRef.current?.(checksRequest.checks.map((c) => ({ id: c.id, passed: false })));
+      onChecksResultRef.current?.(
+        checksRequest.checks.map((c) => ({ id: c.id, passed: false })),
+        checksRequest.token,
+      );
       return;
     }
     if (!ready) return;
     lastRunToken.current = checksRequest.token;
     iframeRef.current?.contentWindow?.postMessage(
-      { type: 'itera:run-checks', code: compiledRun.code, checks: checksRequest.checks },
+      {
+        type: 'itera:run-checks',
+        code: compiledRun.code,
+        checks: checksRequest.checks,
+        token: checksRequest.token,
+      },
       '*',
     );
   }, [ready, checksRequest]);

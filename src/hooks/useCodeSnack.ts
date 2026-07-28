@@ -5,12 +5,8 @@ import {
   readCodeSnapshot,
   saveCodeSnapshot,
 } from '@/services/codeSnapshot.service';
-import type {
-  CodeCheckResult,
-  CodeChecksRequest,
-  CodeSnackPhase,
-  UseCodeSnackCallbacks,
-} from '@/types/codeSnack';
+import type { UseCodeSnackCallbacks } from '@/types/codeSnack';
+import { useCodeChecks } from './useCodeChecks';
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
@@ -27,21 +23,9 @@ function seedFor(activityId: string, starter: string | undefined): string {
 }
 
 /**
- * How long we wait for the preview iframe to answer a check run before giving
- * up. It can only go silent if it crashed or never booted; a submit that hangs
- * forever mid-class is worse than one that comes back "não passou" with a retry
- * available.
- */
-const CHECKS_TIMEOUT_MS = 8000;
-
-/**
- * Owns the code-snack's editable source, its persistence (autosave AND restore),
- * and — when the spec ships `checks` — the submit/feedback/retry lifecycle.
- *
- * The correction itself does NOT live here: it runs inside the preview iframe
- * against the rendered DOM (see `@/utils/codePreviewRuntime`). This hook only
- * asks for a run (`checksRequest`, consumed by the preview component), receives
- * the verdicts, and derives the phase.
+ * Owns the code-snack's editable source and its persistence (autosave AND
+ * restore), and — when the spec ships `checks` — hands the submit/feedback/retry
+ * lifecycle to `useCodeChecks`.
  *
  * Retrocompatibility is deliberate: with no checks the hook behaves exactly as
  * before — `complete()` reports `true` and the learner just clicks Concluir.
@@ -57,10 +41,6 @@ export function useCodeSnack(
   // swapping it in an effect would flash the starter — mid-class that reads as
   // "my code is gone" even when it comes back a frame later.
   const [code, setCodeState] = useState(() => seedFor(activityId, spec.starter));
-  const [phase, setPhase] = useState<CodeSnackPhase>('editing');
-  const [results, setResults] = useState<CodeCheckResult[] | null>(null);
-  const [checksRequest, setChecksRequest] = useState<CodeChecksRequest | null>(null);
-  const tokenRef = useRef(0);
   /**
    * Has the learner actually touched THIS activity's source? Only their own
    * edits deserve a snapshot. Without this flag the debounce would write the
@@ -72,6 +52,8 @@ export function useCodeSnack(
 
   const checks = useMemo(() => spec.checks ?? [], [spec.checks]);
   const hasChecks = checks.length > 0;
+  const { phase, results, allPassed, checksRequest, submit, receiveResults, reset, settle } =
+    useCodeChecks(code, checks);
 
   /** The editor's onChange — every learner-originated edit comes through here. */
   const setCode = useCallback((next: string) => {
@@ -93,10 +75,8 @@ export function useCodeSnack(
   useEffect(() => {
     touchedRef.current = false;
     setCodeState(seedFor(activityId, spec.starter));
-    setPhase('editing');
-    setResults(null);
-    setChecksRequest(null);
-  }, [activityId, spec.starter]);
+    reset();
+  }, [activityId, spec.starter, reset]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -107,53 +87,6 @@ export function useCodeSnack(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [code, persist]);
-
-  // Safety net for a preview that never answers: fall back to "nothing passed"
-  // so the learner still gets feedback + a retry instead of a dead button.
-  useEffect(() => {
-    if (phase !== 'submitting') return;
-    const id = setTimeout(() => {
-      setResults(checks.map((c) => ({ id: c.id, passed: false })));
-      setPhase('submitted');
-    }, CHECKS_TIMEOUT_MS);
-    return () => clearTimeout(id);
-  }, [phase, checks]);
-
-  /** Ask the preview to render the submitted source and grade it. */
-  const submit = useCallback(() => {
-    if (!hasChecks || phase !== 'editing') return;
-    tokenRef.current += 1;
-    setResults(null);
-    setPhase('submitting');
-    setChecksRequest({ token: tokenRef.current, code, checks });
-  }, [hasChecks, phase, code, checks]);
-
-  /** The preview answered — settle the feedback screen. */
-  const receiveResults = useCallback(
-    (incoming: CodeCheckResult[]) => {
-      setPhase((current) => (current === 'submitting' ? 'submitted' : current));
-      // The spec's check list drives ORDER and completeness; a check the preview
-      // did not report back counts as not passed.
-      setResults(
-        checks.map((c) => ({
-          id: c.id,
-          passed: incoming.some((r) => r.id === c.id && r.passed),
-        })),
-      );
-    },
-    [checks],
-  );
-
-  /**
-   * "Tentar de novo" — back to editing WITHOUT touching the learner's code.
-   * Explicitly NOT a reset: re-seeding from `spec.starter` would throw away the
-   * work they just did, which is the opposite of what a retry means.
-   */
-  const retry = useCallback(() => {
-    setPhase('editing');
-    setResults(null);
-    setChecksRequest(null);
-  }, []);
 
   /**
    * "Recomeçar do código inicial" — the OPPOSITE of `retry`, and the two must
@@ -169,15 +102,8 @@ export function useCodeSnack(
     touchedRef.current = false;
     clearCodeSnapshot(activityId);
     setCodeState(spec.starter ?? '');
-    setPhase('editing');
-    setResults(null);
-    setChecksRequest(null);
-  }, [activityId, spec.starter]);
-
-  const allPassed = useMemo(
-    () => results !== null && results.length > 0 && results.every((r) => r.passed),
-    [results],
-  );
+    reset();
+  }, [activityId, spec.starter, reset]);
 
   /**
    * Report the REAL outcome upward. With checks that is "did every check pass";
@@ -191,9 +117,10 @@ export function useCodeSnack(
       onComplete(true);
       return;
     }
-    setPhase('settled');
+    if (results === null) return;
+    settle();
     onComplete(allPassed);
-  }, [hasChecks, allPassed, onComplete]);
+  }, [hasChecks, results, allPassed, settle, onComplete]);
 
   return {
     code,
@@ -202,10 +129,18 @@ export function useCodeSnack(
     results,
     allPassed,
     hasChecks,
+    /** The source is frozen while a verdict is on screen. */
+    readOnly: hasChecks && phase !== 'editing',
     checksRequest,
     submit,
     receiveResults,
-    retry,
+    /**
+     * "Tentar de novo" / "Editar de novo" — back to editing WITHOUT touching the
+     * learner's code. Explicitly NOT a reset: re-seeding from `spec.starter`
+     * would throw away the work they just did, which is the opposite of what a
+     * retry means. Dropping the verdict is what makes reopening safe.
+     */
+    retry: reset,
     resetToStarter,
     complete,
   };
