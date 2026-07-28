@@ -48,6 +48,16 @@ function iconFor(index: number) {
 /* ── Raw Supabase row shapes (PostgREST nested selects return loose JSON) ── */
 type Row = Record<string, unknown>;
 const asRows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : []);
+/**
+ * A PostgREST to-ONE embed arrives as an object OR as a 1-element array,
+ * depending on how the relationship is inferred. `asRows` deliberately returns
+ * [] for the object form (it guards to-MANY embeds), so to-one needs its own
+ * normaliser — using the wrong one silently yields `null` ancestors.
+ */
+const asRow = (v: unknown): Row | undefined => {
+  if (Array.isArray(v)) return v[0] as Row | undefined;
+  return v && typeof v === 'object' ? (v as Row) : undefined;
+};
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const num = (v: unknown): number => (typeof v === 'number' ? v : 0);
 const bag = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, string>) : {});
@@ -99,7 +109,7 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
          id, program_id, ordinal, title_i18n,
          lessons:lessons (
            id, unit_id, ordinal, title_i18n,
-           activities:activities ( id, lesson_id, ordinal, kind, spec, rubric )
+           activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, artifact_policy )
          )
        )`
     )
@@ -171,7 +181,29 @@ function mapActivity(a: Row): Activity {
     // renders spec strings directly, so collapse bags before they reach the DOM.
     spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
     rubric: (a.rubric && typeof a.rubric === 'object' ? (a.rubric as Record<string, unknown>) : null),
+    // Carried raw; `resolveArtifactPolicy` merges it with the per-kind default.
+    // The player needs it to decide whether to persist (migration 0027).
+    artifactPolicy:
+      a.artifact_policy && typeof a.artifact_policy === 'object'
+        ? (a.artifact_policy as Record<string, unknown>)
+        : null,
   };
+}
+
+/**
+ * Where a lesson sits in the hierarchy. Carried alongside the activities so the
+ * player can build an artifact's git-shaped `repo_path`
+ * (`<program>/<NN-unit>/<NN-lesson>/<NN-activity>/<file>`) without a second
+ * round-trip at the exact moment the learner finishes an activity.
+ *
+ * Every field is optional: the embed is best-effort, and a missing ancestor must
+ * degrade to a shallower path, never block the save.
+ */
+export interface LessonPlacement {
+  programSlug?: string | null;
+  unitTitle?: import('@/types/content').I18nText | null;
+  unitOrdinal?: number | null;
+  lessonOrdinal?: number | null;
 }
 
 /** Single lesson with its activities (used by the lesson player). */
@@ -179,13 +211,15 @@ export async function getLessonWithActivities(lessonId: string): Promise<{
   id: string;
   title: import('@/types/content').I18nText;
   activities: Activity[];
+  placement: LessonPlacement;
 }> {
   const sb = client();
   const { data, error } = await sb
     .from('lessons')
     .select(
-      `id, title_i18n,
-       activities:activities ( id, lesson_id, ordinal, kind, spec, rubric )`
+      `id, title_i18n, ordinal,
+       unit:units ( ordinal, title_i18n, program:programs ( slug ) ),
+       activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, artifact_policy )`
     )
     .eq('id', lessonId)
     .maybeSingle();
@@ -198,7 +232,20 @@ export async function getLessonWithActivities(lessonId: string): Promise<{
     .map((a) => mapActivity(a))
     .sort((x, y) => x.ordinal - y.ordinal);
 
-  return { id: str(row.id), title: bag(row.title_i18n), activities };
+  const unit = asRow(row.unit);
+  const program = unit ? asRow(unit.program) : undefined;
+
+  return {
+    id: str(row.id),
+    title: bag(row.title_i18n),
+    activities,
+    placement: {
+      programSlug: program?.slug ? str(program.slug) : null,
+      unitTitle: unit?.title_i18n ? bag(unit.title_i18n) : null,
+      unitOrdinal: unit && unit.ordinal !== undefined ? num(unit.ordinal) : null,
+      lessonOrdinal: row.ordinal !== undefined ? num(row.ordinal) : null,
+    },
+  };
 }
 
 /**

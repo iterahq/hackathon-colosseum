@@ -30,6 +30,7 @@ import {
   MessageSquarePlus,
   RefreshCw,
   FlaskConical,
+  Archive,
   ZoomIn,
   ZoomOut,
   Maximize,
@@ -51,6 +52,7 @@ import {
   useToggleResolved,
   useDeleteComment,
   useBumpVersion,
+  useSetArtifactPolicy,
 } from '@/hooks/useAuthorCanvas';
 import {
   buildActivityRefs,
@@ -60,6 +62,8 @@ import {
 } from '@/services/comments.service';
 import { CommentModal, type CommentModalTarget } from '@/components/author/CommentModal';
 import { CommentSidebar } from '@/components/author/CommentSidebar';
+import { ArtifactPolicyEditor } from '@/components/author/ArtifactPolicyEditor';
+import { resolveArtifactPolicy } from '@/services/artifactPolicy';
 import type { Activity, I18nText } from '@/types/content';
 import type { ActivityComment } from '@/types/comments';
 
@@ -437,6 +441,12 @@ function ActivityCell({
   onCommentClick: (anchorX: number, anchorY: number) => void;
 }) {
   const published = activity.publishStatus === 'published';
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const setPolicy = useSetArtifactPolicy(unitId);
+  // Resolved through the SAME function the player uses, so the canvas cannot
+  // claim an activity persists when the runtime would not.
+  const resolvedPolicy = resolveArtifactPolicy(activity);
+  const persists = resolvedPolicy.persist;
 
   // Carry the originating unit so the Test view's Back returns to THIS canvas.
   const testHref = unitId
@@ -481,6 +491,21 @@ function ActivityCell({
               <FlaskConical className="mr-1.5 h-3.5 w-3.5" /> Test
             </Link>
           </Button>
+          {/* "What persists?" — the authored artifact policy (migration 0027).
+              The badge states the CURRENT decision so an author can read it off
+              the canvas without opening anything: the complaint this answers was
+              that the rule was invisible. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => setPolicyOpen(true)}
+            data-testid="cell-artifact-policy"
+            data-artifact-persists={persists ? 'true' : 'false'}
+          >
+            <Archive className="mr-1.5 h-3.5 w-3.5" />
+            {persists ? resolvedPolicy.filename : 'no artifact'}
+          </Button>
         </div>
       </div>
 
@@ -515,6 +540,19 @@ function ActivityCell({
           />
         )}
       </div>
+
+      <ArtifactPolicyEditor
+        activity={activity}
+        open={policyOpen}
+        onOpenChange={setPolicyOpen}
+        saving={setPolicy.isPending}
+        onSave={(policy) =>
+          setPolicy.mutate(
+            { activityId: activity.id, policy },
+            { onSuccess: () => setPolicyOpen(false) },
+          )
+        }
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
+import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 function sameSet(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return false;
@@ -43,7 +44,7 @@ export function MultiChoiceActivity({
   initialSubmitted = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
   initialSelectedIds?: string[];
   initialSubmitted?: boolean;
@@ -74,7 +75,16 @@ export function MultiChoiceActivity({
   function handleSubmit() {
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(isCorrect);
+    // Hand the chosen options up as text (see SingleChoiceActivity for why this
+    // does not, on its own, cause a write).
+    // Iterate `selected` (click order), NOT `options` — `options` is per-learner
+    // SHUFFLED, so mapping over it would make the artifact's contents depend on
+    // a random seed. Click order is deterministic and is also the more faithful
+    // record of what the learner actually did.
+    const chosen = selected
+      .map((id) => `- ${options.find((o) => o.id === id)?.label ?? id}`)
+      .join('\n');
+    onComplete(isCorrect, { response: chosen });
   }
 
   return (

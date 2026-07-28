@@ -60,6 +60,12 @@ function mapActivity(a: Row): Activity {
     rubric:
       a.rubric && typeof a.rubric === 'object' ? (a.rubric as Record<string, unknown>) : null,
     publishStatus: status === 'published' ? 'published' : status === 'draft' ? 'draft' : undefined,
+    // The authored persistence policy (migration 0027). The canvas is the only
+    // surface that EDITS it, so it has to round-trip through this mapper.
+    artifactPolicy:
+      a.artifact_policy && typeof a.artifact_policy === 'object'
+        ? (a.artifact_policy as Record<string, unknown>)
+        : null,
   };
 }
 
@@ -78,7 +84,7 @@ export async function getUnitCanvas(unitId: string): Promise<UnitCanvas> {
        program:programs ( id, tenant_id, slug, title_i18n ),
        lessons:lessons (
          id, unit_id, ordinal, title_i18n,
-         activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, status )
+         activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, status, artifact_policy )
        )`
     )
     .eq('id', unitId)
@@ -128,7 +134,7 @@ export async function getActivityById(activityId: string): Promise<Activity> {
   const sb = client();
   const { data, error } = await sb
     .from('activities')
-    .select('id, lesson_id, ordinal, kind, spec, rubric, status')
+    .select('id, lesson_id, ordinal, kind, spec, rubric, status, artifact_policy')
     .eq('id', activityId)
     .maybeSingle();
   if (error) throw new Error(error.message);

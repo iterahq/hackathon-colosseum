@@ -6,7 +6,7 @@
  * (ADR-5 — authoring is a different app, dfl-lms-admin; structurally absent here).
  */
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, BarChart3, Activity, ShieldCheck } from 'lucide-react';
+import { Users, BarChart3, Activity, ShieldCheck, FolderGit2 } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
@@ -29,6 +29,7 @@ export default function AdminLayout() {
     { to: '/admin/roster', label: t('admin.nav.roster'), icon: Users },
     { to: '/admin/programs', label: t('admin.nav.completion'), icon: BarChart3 },
     { to: '/admin/engagement', label: t('admin.nav.engagement'), icon: Activity },
+    { to: '/admin/artifacts', label: t('admin.nav.artifacts'), icon: FolderGit2 },
   ];
 
   return (

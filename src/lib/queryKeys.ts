@@ -72,4 +72,10 @@ export const queryKeys = {
     unitComments: (unitId: string) => ['author', 'unit-comments', unitId] as const,
     activityTest: (activityId: string) => ['author', 'activity-test', activityId] as const,
   },
+  // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
+  artifacts: {
+    mine: ['artifacts', 'mine'] as const,
+    tenant: (tenantId: string) => ['artifacts', 'tenant', tenantId] as const,
+    content: (storagePath: string) => ['artifacts', 'content', storagePath] as const,
+  },
 } as const;

@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import CatalogPage from "./pages/CatalogPage";
 import ProgramPage from "./pages/ProgramPage";
 import LessonPlayer from "./pages/LessonPlayer";
+import ArtifactsPage from "./pages/ArtifactsPage";
 import LessonPage from "./pages/LessonPage";
 import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
@@ -31,6 +32,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import RosterPage from "./pages/admin/RosterPage";
 import CompletionPage from "./pages/admin/CompletionPage";
 import EngagementPage from "./pages/admin/EngagementPage";
+import AdminArtifactsPage from "./pages/admin/AdminArtifactsPage";
 import AuthorHomePage from "./pages/author/AuthorHomePage";
 import UnitCanvasPage from "./pages/author/UnitCanvasPage";
 import ActivityTestPage from "./pages/author/ActivityTestPage";
@@ -133,6 +135,20 @@ const App = () => (
                     <RequireAuth>
                       <RequireSubscription>
                         <LessonPlayer />
+                      </RequireSubscription>
+                    </RequireAuth>
+                  }
+                />
+                {/* "Meu repositório" — everything the learner has produced, in
+                    the git-shaped folder structure (plan
+                    20260728-itera-artifact-storage, Phase 2). Target of the
+                    save toast AND a first-class navbar entry. */}
+                <Route
+                  path="/artifacts"
+                  element={
+                    <RequireAuth>
+                      <RequireSubscription>
+                        <ArtifactsPage />
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -242,6 +258,8 @@ const App = () => (
                   <Route path="roster" element={<RosterPage />} />
                   <Route path="programs" element={<CompletionPage />} />
                   <Route path="engagement" element={<EngagementPage />} />
+                  {/* The tenant owner's view of learner-produced work (ADR-9). */}
+                  <Route path="artifacts" element={<AdminArtifactsPage />} />
                 </Route>
 
                 {/* Author review+comment canvas + per-kind TEST (plan

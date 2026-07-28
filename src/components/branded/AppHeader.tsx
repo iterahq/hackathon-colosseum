@@ -25,8 +25,7 @@ import {
   Bell,
   Settings,
   Video,
-  UserRound,
-} from 'lucide-react';
+  UserRound, FolderGit2 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
@@ -39,7 +38,7 @@ import { useEnabledTenantIds } from '@/hooks/useLiveClass';
 export function AppHeader({
   active = 'discover',
 }: {
-  active?: 'discover' | 'catalog' | 'library' | 'admin';
+  active?: 'discover' | 'catalog' | 'library' | 'admin' | 'artifacts';
 }) {
   const { signOut, user } = useAuth();
   const { t, toggleLocale, setLocale, locale } = useI18n();
@@ -95,6 +94,9 @@ export function AppHeader({
   const items = [
     { id: 'discover', label: t('nav.discover'), icon: Home, to: '/' },
     { id: 'catalog', label: t('nav.catalog'), icon: GraduationCap, to: '/catalog' },
+    // "Meu repositório" — reachable without having just finished an activity.
+    // Tainan: "isso também tem que ser acessível pela navbar."
+    { id: 'artifacts', label: t('nav.artifacts'), icon: FolderGit2, to: '/artifacts' },
   ] as const;
 
   return (

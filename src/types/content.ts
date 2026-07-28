@@ -121,6 +121,17 @@ export interface Activity {
    * read paths leave it undefined. Students only ever read 'published' rows.
    */
   publishStatus?: 'draft' | 'published';
+  /**
+   * The AUTHORED answer to "does this activity keep what the learner produced?"
+   * (`itera.activities.artifact_policy`, migration 0027).
+   *
+   * Left `undefined`/`{}` this resolves to the per-kind default, which is why
+   * every pre-0027 activity keeps behaving exactly as before. Never read this
+   * raw — go through `resolveArtifactPolicy` in
+   * `@/services/artifactPolicy`, which merges it with the kind default and is
+   * the single place that decision is made.
+   */
+  artifactPolicy?: Record<string, unknown> | null;
 }
 
 export interface Lesson {

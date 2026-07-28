@@ -65,4 +65,19 @@ export interface ActivityCompleteDetail {
    * saved itself would silently break that guarantee.
    */
   artifact?: ProducedArtifact;
+  /**
+   * A plain-text summary of what the learner ANSWERED, for activities that do
+   * not author a file — the deterministic kinds (single/multi choice, ordering,
+   * matching).
+   *
+   * This is the raw material for Tainan's case: *"às vezes uma resposta
+   * determinística ainda pode gerar algo útil que deve ser persistido — seria
+   * como um template que… gera algo útil mesmo sem usar IA."* The player feeds
+   * it through the activity's authored `template` to produce a real deliverable.
+   *
+   * ⚠️ Handing this up does NOT cause a write. It is dropped unless the author
+   * set `artifact_policy.mode = 'always'` on that activity, which is why adding
+   * it to these components changes nothing for existing lessons.
+   */
+  response?: string;
 }

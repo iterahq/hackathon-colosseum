@@ -14,6 +14,7 @@ import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
+import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 export function OrderActivity({
   activity,
@@ -23,7 +24,7 @@ export function OrderActivity({
   initialSubmitted = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
   initialOrder?: string[];
   initialSubmitted?: boolean;
@@ -70,7 +71,9 @@ export function OrderActivity({
   function handleSubmit() {
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(isOrderCorrect);
+    // Hand the settled sequence up as text (dropped unless the author opted in).
+    const sequence = order.map((id, i) => `${i + 1}. ${byId(id)?.label ?? id}`).join('\n');
+    onComplete(isOrderCorrect, { response: sequence });
   }
 
   return (

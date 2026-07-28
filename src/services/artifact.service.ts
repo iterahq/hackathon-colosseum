@@ -120,10 +120,17 @@ async function nextVersion(iteraUserId: string, activityId: string): Promise<num
  * Upload the blob and INSERT the row. Returns true when the artifact was
  * persisted, false on ANY failure — the caller treats this as best-effort and
  * never blocks the learner on it.
+ *
+ * `repoPath` (migration 0027) is the git-shaped LOGICAL path — the folder tree
+ * the learner browses AND the path this file will occupy in a real repository
+ * in Phase 4. It is deliberately independent of `storage_path`, which stays
+ * content-addressed under the auth uid because the bucket's RLS predicate
+ * compares the first path segment to `auth.uid()`.
  */
 export async function saveArtifact(
   activityId: string,
-  artifact: ProducedArtifact
+  artifact: ProducedArtifact,
+  options: { repoPath?: string } = {}
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   if (!activityId) return false;
@@ -171,6 +178,7 @@ export async function saveArtifact(
       size_bytes: blob.size,
       content_sha256: sha,
       version,
+      repo_path: options.repoPath ?? null,
     });
     if (insertError) return false;
 
@@ -193,6 +201,168 @@ export async function hasTenantAudience(): Promise<boolean> {
     return (await resolveTenantId(iteraUserId)) !== null;
   } catch {
     return false;
+  }
+}
+
+/**
+ * One stored artifact, as the repository surfaces read it.
+ *
+ * `repoPath` is the git-shaped logical path; `storagePath` is the physical,
+ * content-addressed key. Both are present because the UI groups by the first
+ * and downloads by the second.
+ */
+export interface StoredArtifact {
+  id: string;
+  activityId: string;
+  userId: string;
+  type: ArtifactType;
+  filename: string;
+  repoPath: string | null;
+  storagePath: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  version: number;
+  createdAt: string | null;
+}
+
+interface ArtifactRow {
+  id?: string;
+  activity_id?: string;
+  user_id?: string;
+  type?: string;
+  filename?: string;
+  repo_path?: string | null;
+  storage_path?: string;
+  mime_type?: string | null;
+  size_bytes?: number | null;
+  version?: number;
+  created_at?: string | null;
+}
+
+const ARTIFACT_COLUMNS =
+  'id, activity_id, user_id, type, filename, repo_path, storage_path, mime_type, size_bytes, version, created_at';
+
+function mapArtifact(row: ArtifactRow): StoredArtifact {
+  return {
+    id: String(row.id ?? ''),
+    activityId: String(row.activity_id ?? ''),
+    userId: String(row.user_id ?? ''),
+    type: (row.type ?? 'text') as ArtifactType,
+    filename: row.filename ?? 'artifact.txt',
+    repoPath: row.repo_path ?? null,
+    storagePath: String(row.storage_path ?? ''),
+    mimeType: row.mime_type ?? null,
+    sizeBytes: typeof row.size_bytes === 'number' ? row.size_bytes : null,
+    version: typeof row.version === 'number' ? row.version : 1,
+    createdAt: row.created_at ?? null,
+  };
+}
+
+/**
+ * Collapse the append-only history to ONE row per (user, activity) — the latest
+ * version.
+ *
+ * Done client-side on purpose. The storage model is append-only by design
+ * (ADR-3), so every read of "my files" would otherwise show every revision. A
+ * `distinct on` would need an RPC; the row counts here are per-learner and tiny,
+ * and folding in JS keeps the whole read path a plain RLS-scoped SELECT with no
+ * server-side function to keep in sync. When Phase 5 turns history ON, this is
+ * the single function that stops being applied.
+ */
+function latestPerActivity(rows: StoredArtifact[]): StoredArtifact[] {
+  const best = new Map<string, StoredArtifact>();
+  for (const row of rows) {
+    const key = `${row.userId}:${row.activityId}`;
+    const seen = best.get(key);
+    if (!seen || row.version > seen.version) best.set(key, row);
+  }
+  return [...best.values()].sort((a, b) =>
+    (a.repoPath ?? a.filename).localeCompare(b.repoPath ?? b.filename)
+  );
+}
+
+/**
+ * Everything THIS learner has produced, latest version per activity.
+ *
+ * No tenant filter and no explicit user filter is needed for correctness —
+ * `artifacts_rw_self` already scopes the table to the caller — but the explicit
+ * `.eq('user_id', …)` is kept as belt-and-braces, matching the house pattern in
+ * `admin.service.ts`.
+ */
+export async function listMyArtifacts(): Promise<StoredArtifact[]> {
+  if (!isSupabaseConfigured) return [];
+  const sb = getSupabase();
+  const iteraUserId = await getIteraUserId();
+  if (!iteraUserId) return [];
+
+  const { data, error } = await sb
+    .from('artifacts')
+    .select(ARTIFACT_COLUMNS)
+    .eq('user_id', iteraUserId)
+    .order('version', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return latestPerActivity((data ?? []).map((r) => mapArtifact(r as ArtifactRow)));
+}
+
+/**
+ * Every artifact produced under a tenant, latest version per (learner,
+ * activity) — the tenant-owner view.
+ *
+ * ⚠️ This reads OTHER PEOPLE'S WORK, including personal reflections. That is
+ * ADR-9 (plan Q2 = B), chosen deliberately over the narrower "only activities
+ * marked as deliverable". It is enforced by `artifacts_read_tenant_admin`, so a
+ * non-admin calling this gets an empty list from the database rather than a
+ * client-side check we could forget — but the learner is ALSO told, at the
+ * moment they write, by `ArtifactVisibilityNotice`. Do not add a caller of this
+ * function on a surface where that notice is not the truth.
+ */
+export async function listTenantArtifacts(tenantId: string): Promise<StoredArtifact[]> {
+  if (!isSupabaseConfigured || !tenantId) return [];
+  const sb = getSupabase();
+
+  const { data, error } = await sb
+    .from('artifacts')
+    .select(ARTIFACT_COLUMNS)
+    .eq('tenant_id', tenantId)
+    .order('version', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return latestPerActivity((data ?? []).map((r) => mapArtifact(r as ArtifactRow)));
+}
+
+/**
+ * A short-lived signed URL for downloading one artifact.
+ *
+ * The bucket is PRIVATE, so there is no public URL to fall back on. A signed
+ * URL is a bearer capability that cannot be revoked before it expires, which is
+ * why the window is deliberately short — it exists to serve one click, not to
+ * be stored or shared.
+ */
+export async function getArtifactUrl(storagePath: string, expiresInSeconds = 60): Promise<string | null> {
+  if (!isSupabaseConfigured || !storagePath) return null;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.storage
+      .from(BUCKET)
+      .createSignedUrl(storagePath, expiresInSeconds);
+    if (error) return null;
+    return data?.signedUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The artifact's text content, for inline preview. Null on any failure. */
+export async function readArtifactContent(storagePath: string): Promise<string | null> {
+  if (!isSupabaseConfigured || !storagePath) return null;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.storage.from(BUCKET).download(storagePath);
+    if (error || !data) return null;
+    return await data.text();
+  } catch {
+    return null;
   }
 }
 

@@ -55,7 +55,10 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     fireEvent.click(screen.getByText('B'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // The chosen option now rides UP as `detail.response` (migration 0027) so an
+    // author can turn this deterministic activity into a deliverable. Handing it
+    // up does NOT persist anything on its own — see artifactPolicy.test.ts.
+    expect(onComplete).toHaveBeenCalledWith(true, { response: 'B' });
     expect(onComplete).toHaveBeenCalledTimes(1);
     // No second completion button, and the submit button is now the locked
     // "Enviado" state.
@@ -78,7 +81,7 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
-    expect(onComplete).toHaveBeenCalledWith(false);
+    expect(onComplete).toHaveBeenCalledWith(false, { response: 'A' });
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
@@ -110,7 +113,7 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     fireEvent.click(screen.getByText('A'));
     fireEvent.click(screen.getByText('C'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, { response: '- A\n- C' });
     expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 
@@ -131,7 +134,7 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
       fireEvent.click(screen.getAllByTestId('order-down')[0]);
     }
     fireEvent.click(screen.getByTestId('order-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, { response: '1. First\n2. Second' });
     expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 
@@ -146,7 +149,7 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     fireEvent.click(screen.getByText('Left1'));
     fireEvent.click(screen.getByText('Right1'));
     fireEvent.click(screen.getByTestId('match-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, { response: 'Left1 -> Right1' });
     expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 

@@ -21,6 +21,7 @@ import {
   setCommentResolved,
   deleteActivityComment,
   setActivityStatus,
+  setActivityArtifactPolicy,
   type CreateCommentInput,
 } from '@/services/comments.service';
 import type { ActivityComment, UnitVersion } from '@/types/comments';
@@ -162,6 +163,29 @@ export function useSetActivityStatus(unitId: string | undefined) {
       setActivityStatus(activityId, status),
     onSuccess: () => {
       // Re-read the canvas so status badges reflect the flip.
+      qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvas(unitId ?? '') });
+    },
+  });
+}
+
+/**
+ * Set an activity's artifact policy — the authoring answer to "what persists?"
+ * (plan 20260728-itera-artifact-storage, migration 0027).
+ *
+ * Invalidates the canvas so the cell's badge reflects the new decision without
+ * a manual reload, mirroring `useSetActivityStatus` exactly.
+ */
+export function useSetArtifactPolicy(unitId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      activityId,
+      policy,
+    }: {
+      activityId: string;
+      policy: Record<string, unknown>;
+    }) => setActivityArtifactPolicy(activityId, policy),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvas(unitId ?? '') });
     },
   });

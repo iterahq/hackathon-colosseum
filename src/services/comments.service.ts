@@ -236,3 +236,30 @@ export async function setActivityStatus(
 
 export const publishActivity = (id: string) => setActivityStatus(id, 'published');
 export const unpublishActivity = (id: string) => setActivityStatus(id, 'draft');
+
+/**
+ * Write an activity's ARTIFACT POLICY — "does this activity keep what the
+ * learner produced, and as what file?".
+ *
+ * Plan: 20260728-itera-artifact-storage. Migration `0027`.
+ *
+ * This is the write behind Tainan's core correction: whether work is persisted
+ * *"poderia ou deveria ser DEFINIDO lá na ferramenta de autoria"*, with a
+ * per-activity-type default — not inferred inside a React renderer. Author-RLS
+ * gated by the same `activities_author_update` policy that guards the status
+ * flip, so no new grant was needed.
+ *
+ * Passing `{}` RESETS the activity to its per-kind default, which is why the
+ * editor's "automático" option writes an empty object rather than nulling the
+ * column (the column is `not null default '{}'`).
+ */
+export async function setActivityArtifactPolicy(
+  activityId: string,
+  policy: Record<string, unknown>,
+): Promise<void> {
+  const { error } = await client()
+    .from('activities')
+    .update({ artifact_policy: policy })
+    .eq('id', activityId);
+  if (error) throw new Error(error.message);
+}

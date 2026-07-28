@@ -40,6 +40,8 @@ import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
+import { activityTitleOf, buildArtifact, buildRepoPath } from '@/services/artifactPolicy';
+import { toast } from 'sonner';
 // The kind→column-width rule is SHARED with the live-class surfaces
 // (LiveSessionPage / live/InstructorClassPage) — see the module doc for the
 // Monaco split-pane measurement behind `max-w-7xl`, and for why it must not be
@@ -57,6 +59,8 @@ export default function LessonPlayer() {
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
 
   const activities = useMemo<Activity[]>(() => data?.activities ?? [], [data]);
+  // Where this lesson sits in the hierarchy, for the artifact's git-shaped path.
+  const placement = useMemo(() => data?.placement ?? {}, [data]);
   const [index, setIndex] = useState(0);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
@@ -73,6 +77,11 @@ export default function LessonPlayer() {
   // commit in `advance`. A ref (not state) on purpose — it must not trigger a
   // re-render, and it must survive the footer's review beat unchanged.
   const pendingArtifactRef = useRef<ProducedArtifact | null>(null);
+  // The deterministic sibling of the above: a plain-text summary of the answer a
+  // graded activity settled on. Held identically (a ref, across the footer's
+  // review beat) and used ONLY when the author configured this activity to
+  // persist — otherwise it is dropped, exactly as it was before 0027.
+  const pendingResponseRef = useRef<string | null>(null);
 
   useEffect(() => {
     setIndex(0);
@@ -119,6 +128,10 @@ export default function LessonPlayer() {
     // Hold the produced content until the learner actually commits — graded and
     // BYOC kinds settle later, on the footer's "Continuar".
     pendingArtifactRef.current = detail?.artifact ?? null;
+    // A deterministic activity (multiple choice, ordering, matching…) hands up
+    // a plain-text summary of what the learner answered instead of a file. It
+    // only becomes an artifact if the AUTHOR asked for one — see `advance`.
+    pendingResponseRef.current = detail?.response ?? null;
     if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
@@ -146,12 +159,49 @@ export default function LessonPlayer() {
         // than the activity components — is what keeps the author TEST harness
         // write-free (canvas ADR-12), exactly like itera.progress above.
         //
+        // WHAT gets persisted is no longer inferred from the kind: `buildArtifact`
+        // merges the AUTHORED policy (itera.activities.artifact_policy, migration
+        // 0027) with the per-kind default and returns null when this activity
+        // does not persist. An activity configured `mode: 'always'` turns a
+        // deterministic answer into a real deliverable through its template —
+        // no AI in the loop.
+        //
         // Deliberately best-effort and NOT awaited into the gate: a storage
         // hiccup must never strand a learner who correctly finished an activity.
         const produced = pendingArtifactRef.current;
-        if (produced) {
-          pendingArtifactRef.current = null;
-          void saveArtifact(current.id, produced);
+        const response = pendingResponseRef.current;
+        pendingArtifactRef.current = null;
+        pendingResponseRef.current = null;
+
+        const artifact = buildArtifact(current, produced, {
+          response: response ?? undefined,
+          title: activityTitleOf(current),
+        });
+        if (artifact) {
+          const repoPath = buildRepoPath(artifact.filename, {
+            programSlug: placement.programSlug,
+            unitTitle: tText(placement.unitTitle ?? undefined),
+            unitOrdinal: placement.unitOrdinal,
+            lessonTitle: tText(data?.title),
+            lessonOrdinal: placement.lessonOrdinal,
+            activityOrdinal: current.ordinal,
+            activityTitle: activityTitleOf(current),
+          });
+          void saveArtifact(current.id, artifact, { repoPath }).then((saved) => {
+            // Only announce a save that actually happened. Staying silent on
+            // failure is deliberate: `saveArtifact` is best-effort by design, and
+            // an error toast here would tell a learner who correctly finished the
+            // activity that something went wrong with work they cannot re-submit.
+            if (!saved) return;
+            toast.success(t('artifact.savedTitle'), {
+              description: artifact.filename,
+              duration: 8_000,
+              action: {
+                label: t('artifact.savedCta'),
+                onClick: () => navigate('/artifacts'),
+              },
+            });
+          });
         }
         setDoneIds((prev) => new Set(prev).add(current.id));
         setSaveError(false);

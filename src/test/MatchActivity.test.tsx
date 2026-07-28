@@ -124,7 +124,11 @@ describe('MatchActivity — pairing UX', () => {
     fireEvent.click(card('DefC'));
     // ONE-STEP: submit grades AND completes — no second "Marcar como concluída".
     fireEvent.click(screen.getByTestId('match-submit'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    // The settled pairing rides up as text (migration 0027) so an author can
+    // turn this deterministic activity into a deliverable via a template.
+    expect(onComplete).toHaveBeenCalledWith(true, {
+      response: 'Alpha -> DefA\nBeta -> DefB\nGamma -> DefC',
+    });
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('activity-done')).toBeNull();
     const btn = screen.getByTestId('match-submit') as HTMLButtonElement;

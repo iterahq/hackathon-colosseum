@@ -15,6 +15,7 @@ import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
+import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
@@ -43,7 +44,7 @@ export function SingleChoiceActivity({
   initialSubmitted = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
   initialSelectedId?: string;
   initialSubmitted?: boolean;
@@ -70,7 +71,11 @@ export function SingleChoiceActivity({
   function handleSubmit() {
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(isCorrect);
+    // Hand the chosen option up as text. It is DROPPED unless the author set
+    // this activity to persist (artifact_policy.mode = 'always') — see
+    // src/services/artifactPolicy.ts.
+    const chosen = options.find((o) => o.id === selected);
+    onComplete(isCorrect, { response: chosen?.label ?? chosen?.id ?? '' });
   }
 
   return (

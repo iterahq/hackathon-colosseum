@@ -27,6 +27,7 @@ import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, SubmitButton } from './parts';
+import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 /** One learner-created pairing, kept in creation order so numbering is stable. */
 interface MadePair {
@@ -94,7 +95,7 @@ export function MatchActivity({
   initialSubmitted = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
   /** left_id -> right_id (story/test hook; converted to ordered pairs on init) */
   initialConnections?: Record<string, string>;
@@ -170,7 +171,13 @@ export function MatchActivity({
   function handleSubmit() {
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
-    onComplete(isMatchCorrect);
+    // Hand the settled pairing up as text (dropped unless the author opted in).
+    const label = (list: ChoiceOption[], id: string) =>
+      list.find((o) => o.id === id)?.label ?? id;
+    const pairing = made
+      .map((p) => `${label(left, p.left_id)} -> ${label(right, p.right_id)}`)
+      .join('\n');
+    onComplete(isMatchCorrect, { response: pairing });
   }
 
   // Badge state for a paired card (neutral pre-submit; green/red after submit).

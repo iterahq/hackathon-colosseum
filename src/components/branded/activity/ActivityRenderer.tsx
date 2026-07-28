@@ -37,6 +37,7 @@ import {
 } from '@/api/iteraApi';
 import { JudgeHeatmap } from './JudgeHeatmap';
 import { ArtifactVisibilityNotice } from './ArtifactVisibilityNotice';
+import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 // v1 general learning-activity taxonomy (plan 20260703). These CONVERGE on the
 // shared InstructionPanel primitive + the `onComplete(correct)` contract.
 import { ConceptActivity } from './ConceptActivity';
@@ -58,7 +59,13 @@ export function ActivityRenderer({
   live = false,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  /**
+   * `detail` carries the richer verdict AND the produced content / answer
+   * summary. It was already being passed by the document activities since PR
+   * #191, but the type said otherwise — a latent `TS2554` that only stayed
+   * invisible because `npm run build` is `vite build` (no typecheck).
+   */
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   /** Reveal the correct answer (timer stopped/expired) even without a submission. */
   reveal?: boolean;
   /**
@@ -145,7 +152,17 @@ function Shell({
   );
 }
 
-function DocumentActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
+// Widened because this one FORWARDS the callback to the two activities that
+// actually emit `detail` (reflection + AI judge). The narrow type would still
+// compile — fewer parameters is assignable — but it would misdescribe the
+// contract at the exact seam where the produced content travels.
+function DocumentActivity({
+  activity,
+  onComplete,
+}: {
+  activity: Activity;
+  onComplete: (c: boolean, detail?: ActivityCompleteDetail) => void;
+}) {
   const { t } = useI18n();
   const spec = activity.spec as { prompt?: string; body?: string; title?: string };
   const isDone = activity.status === 'done';
@@ -212,7 +229,7 @@ function ReflectionDocumentActivity({
   activity: Activity;
   spec: { prompt?: string; body?: string; title?: string };
   minWords: number;
-  onComplete: (c: boolean) => void;
+  onComplete: (c: boolean, detail?: ActivityCompleteDetail) => void;
 }) {
   const { t } = useI18n();
   const [text, setText] = useState('');
@@ -289,7 +306,7 @@ function AiJudgeDocumentActivity({
   onComplete,
 }: {
   activity: Activity;
-  onComplete: (c: boolean) => void;
+  onComplete: (c: boolean, detail?: ActivityCompleteDetail) => void;
 }) {
   const { t } = useI18n();
   const { session } = useAuth();
