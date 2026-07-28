@@ -4,6 +4,7 @@ import { makeActivity, noop } from './activityFixtures';
 import {
   CODE_SPEC,
   CONCEPT_SPEC,
+  DEGENERATE_SPECS,
   DIAGRAM_MERMAID_SPEC,
   DOCUMENT_READING_SPEC,
   DOCUMENT_WRITING_RUBRIC,
@@ -14,6 +15,7 @@ import {
   QUIZ_TRUE_FALSE_SPEC,
   SANDBOX_CHOICES_SPEC,
   SINGLE_CHOICE_SPEC,
+  UNGUARDED_INVALID_SPECS,
   VIDEO_SPEC,
 } from './contractFixtures';
 import { withActivityWidth } from './decorators';
@@ -128,7 +130,122 @@ export const SandboxScenario: Story = {
   args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC) },
 };
 
-/* Borda ------------------------------------------------------------ */
+/* EIXO E · reveal — gabarito exposto SEM submissão ------------------ */
+
+/**
+ * `reveal` é o eixo E da matriz de estados: o professor para o cronômetro e
+ * abre o gabarito, sem que o aluno tenha enviado nada.
+ *
+ * ⚠️ ELE NÃO CHEGA A TODOS OS KINDS. O dispatcher só encaminha `reveal` para
+ * `single_choice`, `multi_choice`, `match`, `order` e `sandbox_scenario` (mais a
+ * camada BYOC). Nos demais o parâmetro é descartado no `switch` acima — por isso
+ * só existem as cinco stories abaixo, e não onze: uma story `Reveal` de `quiz`
+ * ou de `code` renderizaria exatamente o mesmo pixel do estado em branco e
+ * *fingiria* cobertura. As células correspondentes estão marcadas como `n/a` ou
+ * `deferred` — com o motivo — em `src/test/activityMatrixCoverage.test.ts`.
+ *
+ * ⚠️ DRIFT (achado da Fase 2, não corrigido aqui — é mudança de produção):
+ * `hasRevealableAnswer('quiz')` é `true`, então o controle "Revelar resposta"
+ * APARECE para o professor num quiz — mas `QuizActivity` fixa `reveal: false`
+ * ("The quiz has NO `reveal` affordance"). Ou seja: o botão existe e não faz
+ * nada. É o mesmo formato do bug que originou a separação
+ * `isAnswerableLiveKind` × `hasRevealableAnswer`, agora do outro lado.
+ */
+
+/** kind = single_choice com `reveal` — a opção correta se acende sem envio. */
+export const RevealSingleChoice: Story = {
+  args: { activity: makeActivity('single_choice', SINGLE_CHOICE_SPEC), reveal: true },
+};
+
+/** kind = multi_choice com `reveal` — o conjunto correto se acende sem envio. */
+export const RevealMultiChoice: Story = {
+  args: { activity: makeActivity('multi_choice', MULTI_CHOICE_SPEC), reveal: true },
+};
+
+/** kind = match com `reveal` — as ligações corretas aparecem sem envio. */
+export const RevealMatch: Story = {
+  args: { activity: makeActivity('match', MATCH_SPEC), reveal: true },
+};
+
+/** kind = order com `reveal` — a sequência correta aparece sem envio. */
+export const RevealOrder: Story = {
+  args: { activity: makeActivity('order', ORDER_SPEC), reveal: true },
+};
+
+/** kind = sandbox_scenario com `reveal` — libera "Continuar" sem rodar o cenário. */
+export const RevealSandboxScenario: Story = {
+  args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC), reveal: true },
+};
+
+/* EIXO H — spec que o Zod ACEITA, no extremo degenerado ------------- */
+
+/**
+ * Todos os specs abaixo vêm de `DEGENERATE_SPECS` e são provados VÁLIDOS por
+ * `safeParseActivitySpec` em `src/test/activityContractFixtures.test.ts`. É a
+ * leitura literal do invariante do Tainan: metadata que o schema aceita tem que
+ * renderizar, mesmo quando o campo opcional não veio.
+ */
+
+/** `document` sem `prompt` E sem `body` → leitura pura de um documento vazio. */
+export const DocumentVazio: Story = {
+  args: { activity: makeActivity('document', DEGENERATE_SPECS.document_vazio.spec) },
+};
+
+/** `diagram` sem `mermaid` e sem `imageUrl` → só o enunciado. */
+export const DiagramSemFonte: Story = {
+  args: { activity: makeActivity('diagram', DEGENERATE_SPECS.diagram_sem_fonte.spec) },
+};
+
+/** `single_choice` sem `instruction` → opções sem enunciado nenhum. */
+export const SingleChoiceSemEnunciado: Story = {
+  args: {
+    activity: makeActivity('single_choice', DEGENERATE_SPECS.single_choice_sem_enunciado.spec),
+  },
+};
+
+/** `multi_choice` sem `instruction`. */
+export const MultiChoiceSemEnunciado: Story = {
+  args: {
+    activity: makeActivity('multi_choice', DEGENERATE_SPECS.multi_choice_sem_enunciado.spec),
+  },
+};
+
+/** `match` sem `instruction` — e com um par só. */
+export const MatchSemEnunciado: Story = {
+  args: { activity: makeActivity('match', DEGENERATE_SPECS.match_sem_enunciado.spec) },
+};
+
+/** `order` sem `instruction`. */
+export const OrderSemEnunciado: Story = {
+  args: { activity: makeActivity('order', DEGENERATE_SPECS.order_sem_enunciado.spec) },
+};
+
+/* EIXO F — spec INVÁLIDO, e o que acontece com ele ------------------ */
+
+/**
+ * ⚠️ As duas primeiras são specs que o Zod do kind REJEITA e que, ainda assim,
+ * chegam inteiros no renderer — porque `safeParseActivitySpec` só é chamado em
+ * `code` e `sandbox_scenario` (ADR-5 / ADR-13 / drift signal #3). O guard prova
+ * a rejeição; a story mostra o fallback que segura o tranco enquanto a fronteira
+ * de validação não existe.
+ */
+
+/** `video` sem `video_url` (Zod: obrigatório) → aviso "vídeo indisponível". */
+export const VideoSemUrl: Story = {
+  args: { activity: makeActivity('video', UNGUARDED_INVALID_SPECS.video_sem_url.spec) },
+};
+
+/** `concept` sem `instruction` (Zod: obrigatória) → sobra o shell do concept. */
+export const ConceptSemInstrucao: Story = {
+  args: { activity: makeActivity('concept', UNGUARDED_INVALID_SPECS.concept_sem_instrucao.spec) },
+};
+
+/** `sandbox_scenario` com lixo — ESTE é barrado: card `sandbox-invalid`, sem crash. */
+export const SandboxEspecInvalida: Story = {
+  args: { activity: makeActivity('sandbox_scenario', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
+};
+
+/* EIXO G — kind desconhecido --------------------------------------- */
 
 /** kind desconhecido — o fallback explícito do dispatcher. */
 export const KindDesconhecido: Story = {

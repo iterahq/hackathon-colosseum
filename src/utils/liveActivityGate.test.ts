@@ -1,3 +1,10 @@
+/**
+ * @vitest-environment node
+ *
+ * Gate puro — nenhum DOM envolvido. Roda em `node` desde que
+ * `src/test/setup.ts` virou DOM-condicional (Fase 2 do plano
+ * `20260728-itera-activity-testing`).
+ */
 import { describe, it, expect } from 'vitest';
 import { learnerActivityGate } from './liveActivityGate';
 import { hasRevealableAnswer } from './isAnswerableLiveKind';

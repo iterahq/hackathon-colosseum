@@ -1,14 +1,13 @@
 /**
+ * @vitest-environment node
+ *
  * The answer-state matrix, enumerated EXHAUSTIVELY.
  *
- * NOTE (CI cost, plan ADR-9): these assertions are pure and want no DOM, but
- * the file still runs under the project-wide jsdom environment — `@vitest-
- * environment node` fails here because the SHARED `src/test/setup.ts` touches
- * `window` unconditionally. Making that setup DOM-conditional would unlock a
- * cheaper `node` environment for every pure test file (~7s of suite wall-clock
- * measured for this one file alone). Deliberately out of scope for a
- * behaviour-preserving refactor — it changes shared test infra for all 90
- * files. Candidate for Phase 2.
+ * CI cost (plan ADR-9): these assertions are pure and want no DOM — and desde a
+ * Fase 2 elas de fato não montam um: `src/test/setup.ts` virou DOM-condicional
+ * (`typeof window !== 'undefined'`), então `@vitest-environment node` finalmente
+ * funciona aqui. Era o drift capturado na Fase 1; o comentário antigo dizia
+ * "candidato para a Fase 2" e é exatamente o que aconteceu.
  *
  * The machine's input space is five booleans = 32 combinations, so every state
  * is asserted rather than sampled — strictly stronger than property-based

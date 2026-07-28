@@ -95,6 +95,112 @@ export const DOCUMENT_READING_SPEC = {
 };
 
 /* ------------------------------------------------------------------ *
+ * BORDAS — dois registros DELIBERADAMENTE separados.
+ *
+ * Nenhum dos dois é contrato novo (não entram no `ACTIVITY_CONTRACTS`): são
+ * VARIAÇÕES do mesmo contrato, no extremo em que a autoria deixou um campo de
+ * fora. É aqui que o invariante do Tainan ("metadata confiável ⇒ nunca falha")
+ * de fato aperta. O que separa os dois registros é o VEREDITO DO ZOD — e a
+ * classificação não é afirmada em prosa: `activityContractFixtures.test.ts`
+ * roda `safeParseActivitySpec` em cada entrada e falha se ela mudar de lado.
+ * ------------------------------------------------------------------ */
+
+/**
+ * EIXO H — spec que o Zod do kind ACEITA, mas que está no extremo degenerado:
+ * o campo opcional simplesmente não veio. O renderer tem que degradar sem
+ * quebrar. Este é o caso "metadata confiável" da fala do Tainan.
+ */
+export const DEGENERATE_SPECS = {
+  document_vazio: {
+    kind: 'document' as ActivityKind,
+    spec: {},
+    note: 'sem `prompt` e sem `body` → leitura pura de um documento vazio.',
+  },
+  diagram_sem_fonte: {
+    kind: 'diagram' as ActivityKind,
+    spec: { prompt: 'Diagrama ainda não anexado pela autoria.' },
+    note: 'sem `mermaid` e sem `imageUrl` → só o enunciado.',
+  },
+  single_choice_sem_enunciado: {
+    kind: 'single_choice' as ActivityKind,
+    spec: {
+      options: [
+        { id: 'a', label: 'Chave primária' },
+        { id: 'b', label: 'Chave estrangeira' },
+      ],
+      correct_option_id: 'b',
+    },
+    note: '`instruction` é opcional → opções sem enunciado nenhum.',
+  },
+  multi_choice_sem_enunciado: {
+    kind: 'multi_choice' as ActivityKind,
+    spec: {
+      options: [
+        { id: 'a', label: 'Normalizar' },
+        { id: 'b', label: 'Duplicar tudo' },
+        { id: 'c', label: 'Usar FK' },
+      ],
+      correct_option_ids: ['a', 'c'],
+    },
+    note: '`instruction` é opcional → opções sem enunciado nenhum.',
+  },
+  match_sem_enunciado: {
+    kind: 'match' as ActivityKind,
+    spec: {
+      left: [{ id: 'pk', label: 'Chave primária' }],
+      right: [{ id: 'r-pk', label: 'Identifica unicamente uma linha' }],
+      pairs: [{ left_id: 'pk', right_id: 'r-pk' }],
+    },
+    note: '`instruction` é opcional → um par só, sem enunciado.',
+  },
+  order_sem_enunciado: {
+    kind: 'order' as ActivityKind,
+    spec: {
+      items: [
+        { id: 'a', label: '1. Identificar entidades' },
+        { id: 'b', label: '2. Listar atributos' },
+      ],
+      correct_order: ['a', 'b'],
+    },
+    note: '`instruction` é opcional → dois itens, sem enunciado.',
+  },
+} as const;
+
+/**
+ * EIXO F′ — spec que o Zod do kind REJEITA e que, mesmo assim, CHEGA no
+ * renderer.
+ *
+ * ⚠️ Não é hipótese: `safeParseActivitySpec` só é chamado em 2 dos 11 kinds
+ * (`code` e `sandbox_scenario`) — ADR-5 / ADR-13 / drift signal #3 do plano. Nos
+ * outros 9 o `spec` entra por cast, então um spec inválido nunca é barrado e vai
+ * direto para a árvore de render. As duas entradas abaixo são exatamente isso,
+ * verificadas: o schema diz NÃO e o componente monta um fallback amigável.
+ *
+ * Elas existem para que o dia em que a fronteira de validação for fechada (é do
+ * plano irmão `20260728-itera-back-office`) essas stories mudem de significado
+ * de propósito — e o guard avise, porque a asserção "o Zod rejeita" vai deixar
+ * de valer junto com o caminho que a produz.
+ */
+export const UNGUARDED_INVALID_SPECS = {
+  video_sem_url: {
+    kind: 'video' as ActivityKind,
+    spec: { instruction: { text: 'A autoria publicou esta activity sem anexar o vídeo.' } },
+    note: '`video_url` é OBRIGATÓRIO no Zod; o kind não valida → cai no aviso "vídeo indisponível".',
+  },
+  concept_sem_instrucao: {
+    kind: 'concept' as ActivityKind,
+    spec: {},
+    note: '`instruction` é OBRIGATÓRIA no Zod; o kind não valida → sobra o shell do concept.',
+  },
+  sandbox_lixo: {
+    kind: 'sandbox_scenario' as ActivityKind,
+    spec: { nope: 1 },
+    note: 'ESTE é barrado: sandbox_scenario valida → card `sandbox-invalid` em vez de crash.',
+    guarded: true,
+  },
+} as const;
+
+/* ------------------------------------------------------------------ *
  * 2 · Escolha — o aluno seleciona entre opções fechadas.
  * ------------------------------------------------------------------ */
 

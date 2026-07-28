@@ -34,3 +34,17 @@ export const OpenChat: Story = {
 export const RevealedInLive: Story = {
   render: () => <SandboxAIActivity activity={makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC)} onComplete={noop} reveal />,
 };
+
+/**
+ * EIXO B — `status: 'done'`: cenário já concluído numa sessão anterior. O
+ * `SandboxScenarioShell` propaga `isDone` para o hook (`readOnly`) e trata a
+ * activity como assentada. Era o último kind sem story de `done`.
+ */
+export const Concluida: Story = {
+  render: () => (
+    <SandboxAIActivity
+      activity={makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC, 'done')}
+      onComplete={noop}
+    />
+  ),
+};

@@ -18,7 +18,12 @@
 import { describe, expect, it } from 'vitest';
 import { ACTIVITY_KINDS, safeParseActivitySpec } from '@iterahq/activity-spec';
 import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive';
-import { ACTIVITY_CONTRACTS, type ContractFixture } from '@/stories/contractFixtures';
+import {
+  ACTIVITY_CONTRACTS,
+  DEGENERATE_SPECS,
+  UNGUARDED_INVALID_SPECS,
+  type ContractFixture,
+} from '@/stories/contractFixtures';
 
 const entries = Object.entries(ACTIVITY_CONTRACTS) as [string, ContractFixture][];
 
@@ -57,6 +62,45 @@ describe('fixtures de story por contrato de activity', () => {
     for (const [, contract] of loose) {
       expect(isByocLive({ kind: contract.kind, spec: contract.spec })).toBe(true);
     }
+  });
+
+  /**
+   * As fixtures de BORDA (Fase 2) declaram de que LADO do Zod elas estão. Essa
+   * classificação não pode ser prosa: se um schema mudar e um spec trocar de
+   * lado, a story de borda passa a mostrar outra coisa — e ninguém perceberia.
+   */
+  it.each(Object.entries(DEGENERATE_SPECS))(
+    'DEGENERATE_SPECS.%s é VÁLIDO no Zod (eixo H: degenerado, não inválido)',
+    (_key, fixture) => {
+      const parsed = safeParseActivitySpec(fixture.kind, fixture.spec);
+      expect(parsed.success, JSON.stringify(parsed.success ? {} : parsed.error.issues)).toBe(true);
+    },
+  );
+
+  it.each(Object.entries(UNGUARDED_INVALID_SPECS))(
+    'UNGUARDED_INVALID_SPECS.%s é REJEITADO pelo Zod do seu kind',
+    (_key, fixture) => {
+      expect(safeParseActivitySpec(fixture.kind, fixture.spec).success).toBe(false);
+    },
+  );
+
+  /**
+   * A fronteira de validação, escrita como asserção em vez de comentário —
+   * drift signal #3 / ADR-5 / ADR-13. Hoje só `code` e `sandbox_scenario`
+   * chamam `safeParseActivitySpec`; para os outros 9 kinds um spec inválido
+   * atravessa e vai renderizar. Quando o plano irmão
+   * `20260728-itera-back-office` fechar essa fronteira, ESTE teste fica
+   * vermelho — que é o sinal desejado, não um incômodo.
+   */
+  it('a fronteira de validação ainda não existe para os kinds fora de code/sandbox_scenario', () => {
+    const unguarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
+      ([, f]) => !('guarded' in f && f.guarded),
+    );
+    expect(unguarded.map(([, f]) => f.kind).sort()).toEqual(['concept', 'video']);
+    const guarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
+      ([, f]) => 'guarded' in f && f.guarded,
+    );
+    expect(guarded.map(([, f]) => f.kind)).toEqual(['sandbox_scenario']);
   });
 
   it('o starter do contrato `code` não usa import (o iframe de preview não tem require)', () => {
