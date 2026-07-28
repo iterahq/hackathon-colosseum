@@ -56,7 +56,7 @@ vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
 // localStorage in `CodeSnackRestore.test.tsx`.
 const saveCodeSnapshot = vi.fn();
 const clearCodeSnapshot = vi.fn();
-const readCodeSnapshot = vi.fn(() => null as { code: string } | null);
+const readCodeSnapshot = vi.fn((_id: string) => null as { code: string } | null);
 vi.mock('@/services/codeSnapshot.service', () => ({
   saveCodeSnapshot: (...args: unknown[]) => saveCodeSnapshot(...args),
   clearCodeSnapshot: (...args: unknown[]) => clearCodeSnapshot(...args),

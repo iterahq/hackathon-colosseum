@@ -5,9 +5,9 @@ import { LiveReception } from '@/components/live/LiveReception';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 const roster: ClassPresenceMember[] = [
-  { userId: 'i', name: 'Prof', isInstructor: true },
-  { userId: 'a', name: 'Ana', isInstructor: false },
-  { userId: 'b', name: 'Beto', isInstructor: false },
+  { userId: 'i', name: 'Prof', avatarUrl: null, isInstructor: true },
+  { userId: 'a', name: 'Ana', avatarUrl: null, isInstructor: false },
+  { userId: 'b', name: 'Beto', avatarUrl: null, isInstructor: false },
 ];
 
 function renderReception(r: ClassPresenceMember[]) {
@@ -32,6 +32,7 @@ describe('LiveReception', () => {
     const big: ClassPresenceMember[] = Array.from({ length: 30 }, (_, n) => ({
       userId: `u${n}`,
       name: `User ${n}`,
+      avatarUrl: null,
       isInstructor: false,
     }));
     renderReception(big);

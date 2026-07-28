@@ -7,7 +7,7 @@
  * Auth session persists in localStorage; RLS is enforced server-side by
  * tenant_id claims injected into the JWT (ADR-103).
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
@@ -22,27 +22,41 @@ if (!url || !anonKey) {
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
-/** Lazily-created singleton. Null when env is not configured. */
-let _client: SupabaseClient | null = null;
+function createIteraClient(supabaseUrl: string, supabaseKey: string) {
+  return createClient(supabaseUrl, supabaseKey, {
+    // Itera content + IAM live in the `itera` schema (exposed via PostgREST).
+    db: { schema: 'itera' },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
 
-export function getSupabase(): SupabaseClient {
+/**
+ * The player's client is bound to the `itera` schema, not to `public`. The bare
+ * `SupabaseClient` alias defaults its schema parameter to `'public'`, which
+ * contradicts what `createClient` returns here — so the type is derived from
+ * the factory above instead of being restated (and drifting) by hand.
+ */
+export type IteraSupabaseClient = ReturnType<typeof createIteraClient>;
+
+/** Lazily-created singleton. Null when env is not configured. */
+let _client: IteraSupabaseClient | null = null;
+
+export function getSupabase(): IteraSupabaseClient {
   if (!isSupabaseConfigured) {
     throw new Error(
       'Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing).'
     );
   }
   if (!_client) {
-    _client = createClient(url as string, anonKey as string, {
-      // Itera content + IAM live in the `itera` schema (exposed via PostgREST).
-      db: { schema: 'itera' },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    });
+    _client = createIteraClient(url as string, anonKey as string);
   }
   return _client;
 }
 
-export const supabase = isSupabaseConfigured ? getSupabase() : (null as unknown as SupabaseClient);
+export const supabase = isSupabaseConfigured
+  ? getSupabase()
+  : (null as unknown as IteraSupabaseClient);

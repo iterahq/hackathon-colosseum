@@ -4,8 +4,8 @@
  * it up front would answer the question for them.
  */
 import { CheckCircle2, XCircle } from 'lucide-react';
-import { t as localized } from '@iterahq/activity-spec/runtime';
 import type { Locale } from '@iterahq/activity-spec/runtime';
+import { localizedText as localized } from '@/utils/localizedText';
 import type { GeneratedOption } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import { BYOC_TONE_CLASS, type OptionTone } from '@/consts/byocTone';

@@ -44,3 +44,7 @@ storybook-static
 
 # E2E proof screenshots (generated)
 e2e-*-proof.png
+
+# TS incremental build cache (written by `tsc -b`; `npm run typecheck` uses
+# --noEmit per-project and does not create these, but local `tsc -b` does).
+*.tsbuildinfo

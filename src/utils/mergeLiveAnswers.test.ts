@@ -3,9 +3,9 @@ import { mergeLiveAnswers } from './mergeLiveAnswers';
 import type { ClassCompleter } from '@/types/liveClass';
 
 const base: ClassCompleter[] = [
-  { userId: 'u1', name: 'Ana', done: false },
-  { userId: 'u2', name: 'Beto', done: true },
-  { userId: 'u3', name: 'Cida', done: false },
+  { userId: 'u1', name: 'Ana', avatarUrl: null, done: false },
+  { userId: 'u2', name: 'Beto', avatarUrl: null, done: true },
+  { userId: 'u3', name: 'Cida', avatarUrl: null, done: false },
 ];
 
 describe('mergeLiveAnswers', () => {

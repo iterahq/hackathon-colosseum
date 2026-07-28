@@ -6,6 +6,7 @@ import type { ClassPresenceMember } from '@/types/liveClass';
 const m = (userId: string, name: string, isInstructor = false): ClassPresenceMember => ({
   userId,
   name,
+  avatarUrl: null,
   isInstructor,
 });
 

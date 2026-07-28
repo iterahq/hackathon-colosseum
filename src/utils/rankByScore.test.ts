@@ -3,10 +3,10 @@ import { rankByScore } from './rankByScore';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 const roster: ClassPresenceMember[] = [
-  { userId: 'prof', name: 'Prof', isInstructor: true },
-  { userId: 'a', name: 'Ana', isInstructor: false },
-  { userId: 'b', name: 'Bruno', isInstructor: false },
-  { userId: 'c', name: 'Caio', isInstructor: false },
+  { userId: 'prof', name: 'Prof', avatarUrl: null, isInstructor: true },
+  { userId: 'a', name: 'Ana', avatarUrl: null, isInstructor: false },
+  { userId: 'b', name: 'Bruno', avatarUrl: null, isInstructor: false },
+  { userId: 'c', name: 'Caio', avatarUrl: null, isInstructor: false },
 ];
 
 describe('rankByScore', () => {

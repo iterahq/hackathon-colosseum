@@ -41,6 +41,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # `npm run build` is `vite build`, which TRANSPILES without type-checking —
+      # so a type error could reach main invisibly (that is exactly how two
+      # latent TS2554s shipped in #191 before #193 caught them). This step is the
+      # gate: it fails the build on any type error.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Build
         run: npm run build
 

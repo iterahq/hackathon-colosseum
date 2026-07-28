@@ -18,6 +18,7 @@ import type {
   Program,
   ProgramDetail,
   ProgressStatus,
+  Unit,
   UserStats,
 } from '@/types/content';
 

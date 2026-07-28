@@ -1263,7 +1263,12 @@ interface I18nState {
   toggleLocale: () => void;
   /** Register a sink that persists a user-initiated locale change (e.g. to the DB). */
   registerPersistSink: (fn: ((l: Locale) => void) | null) => void;
-  t: (key: string, vars?: Record<string, string>) => string;
+  /**
+   * Interpolation values accept numbers as well as strings: callers routinely
+   * pass counts (`{ answered, total }`), and the implementation stringifies
+   * them before substitution.
+   */
+  t: (key: string, vars?: Record<string, string | number>) => string;
   /** Resolve a bilingual jsonb bag ({ pt, en }) for the current locale. */
   tText: (bag: Record<string, string | undefined> | null | undefined) => string;
 }
@@ -1291,7 +1296,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       },
       t: (key, vars) => {
         let str = resources[locale][key] ?? resources.en[key] ?? key;
-        if (vars) for (const [k, v] of Object.entries(vars)) str = str.replace(`{${k}}`, v);
+        if (vars) for (const [k, v] of Object.entries(vars)) str = str.replace(`{${k}}`, String(v));
         return str;
       },
       tText: (bag) => {

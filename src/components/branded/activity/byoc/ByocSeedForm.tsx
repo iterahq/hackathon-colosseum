@@ -6,8 +6,8 @@
  * says nothing about what tripped the filter.
  */
 import { useState } from 'react';
-import { t as localized } from '@iterahq/activity-spec/runtime';
 import type { Locale } from '@iterahq/activity-spec/runtime';
+import { localizedText as localized } from '@/utils/localizedText';
 import type { SeedCollection } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 

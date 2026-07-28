@@ -4,7 +4,7 @@ import { I18nProvider } from '@/i18n';
 import { SingleChoiceActivity } from '@/components/branded/activity/SingleChoiceActivity';
 import { MultiChoiceActivity } from '@/components/branded/activity/MultiChoiceActivity';
 import { MatchActivity } from '@/components/branded/activity/MatchActivity';
-import type { Activity } from '@/types/content';
+import type { Activity, ActivityKind } from '@/types/content';
 
 /**
  * Learner-facing option cards must show the FULL option text (wraps to multiple
@@ -16,7 +16,7 @@ import type { Activity } from '@/types/content';
 const LONG =
   'This is a deliberately very long option label that would previously be cut off with an ellipsis but must now wrap across multiple lines so the learner can read all of it';
 
-function activity(kind: string, spec: Record<string, unknown>): Activity {
+function activity(kind: ActivityKind, spec: Record<string, unknown>): Activity {
   return { id: `t-${kind}`, lessonId: 'l', ordinal: 0, kind, spec, rubric: null, status: undefined };
 }
 

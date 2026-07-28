@@ -6,17 +6,35 @@ import type { ClassAnswerer, ClassPresenceMember, ClassRanking } from '@/types/l
 
 const ranking: ClassRanking = {
   ranked: [
-    { userId: 'a', name: 'Ana', totalMs: 7000, answeredCount: 2, correctCount: 2, rank: 1 },
-    { userId: 'b', name: 'Bruno', totalMs: 9000, answeredCount: 2, correctCount: 1, rank: 2 },
+    {
+      userId: 'a',
+      name: 'Ana',
+      avatarUrl: null,
+      totalMs: 7000,
+      answeredCount: 2,
+      correctCount: 2,
+      rank: 1,
+    },
+    {
+      userId: 'b',
+      name: 'Bruno',
+      avatarUrl: null,
+      totalMs: 9000,
+      answeredCount: 2,
+      correctCount: 1,
+      rank: 2,
+    },
   ],
   waiting: [{ userId: 'c', name: 'Caio', avatarUrl: null }],
 };
 const answerers: ClassAnswerer[] = [
-  { userId: 'a', name: 'Ana', state: 'done' },
-  { userId: 'b', name: 'Bruno', state: 'wrong' },
-  { userId: 'c', name: 'Caio', state: 'pending' },
+  { userId: 'a', name: 'Ana', avatarUrl: null, state: 'done' },
+  { userId: 'b', name: 'Bruno', avatarUrl: null, state: 'wrong' },
+  { userId: 'c', name: 'Caio', avatarUrl: null, state: 'pending' },
 ];
-const instructors: ClassPresenceMember[] = [{ userId: 'p', name: 'Prof', isInstructor: true }];
+const instructors: ClassPresenceMember[] = [
+  { userId: 'p', name: 'Prof', avatarUrl: null, isInstructor: true },
+];
 
 function renderCard(showDetail: boolean) {
   return render(

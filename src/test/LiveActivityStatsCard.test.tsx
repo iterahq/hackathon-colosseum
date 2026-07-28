@@ -5,10 +5,10 @@ import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 const answerers: ClassAnswerer[] = [
-  { userId: 'a', name: 'Ana', state: 'done' },
-  { userId: 'b', name: 'Bruno', state: 'done' },
-  { userId: 'c', name: 'Caio', state: 'wrong' },
-  { userId: 'd', name: 'Duda', state: 'pending' },
+  { userId: 'a', name: 'Ana', avatarUrl: null, state: 'done' },
+  { userId: 'b', name: 'Bruno', avatarUrl: null, state: 'done' },
+  { userId: 'c', name: 'Caio', avatarUrl: null, state: 'wrong' },
+  { userId: 'd', name: 'Duda', avatarUrl: null, state: 'pending' },
 ];
 
 function renderCard(over: Partial<React.ComponentProps<typeof LiveActivityStatsCard>> = {}) {

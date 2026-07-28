@@ -27,7 +27,6 @@ describe('dflFederation.loginWithDfl', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // @ts-expect-error restore
     window.location.assign = origAssign;
   });
 
