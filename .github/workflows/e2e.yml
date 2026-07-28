@@ -33,9 +33,16 @@ name: E2E (Itera↔Fellowship)
 # notification path today and this workflow deliberately does not invent one.
 #
 # Runner: ubuntu-latest. iterahq is NOT on the devfellowship-scoped dfl-runner
-# fleet (org-scoped self-hosted runners aren't available to other orgs), and
-# this is a public repo besides — same carve-out as ci.yml. devfellowship/*
-# repos stay on dfl-runner; this carve-out is iterahq-only.
+# fleet (org-scoped self-hosted runners aren't available to other orgs) — same
+# carve-out as ci.yml. devfellowship/* repos stay on dfl-runner; this carve-out
+# is iterahq-only.
+#
+# ⚠️ Correction 2026-07-28: this header used to justify the carve-out partly with
+# "this is a public repo besides". It is NOT — `gh api repos/iterahq/itera-player
+# --jq .private` returns `true`. That matters operationally: a PRIVATE repo on
+# ubuntu-latest burns BILLABLE GitHub-hosted minutes, so this workflow's daily
+# cron is metered against the iterahq org's Actions spending limit. The
+# self-hosted-runner reason above still stands on its own.
 on:
   workflow_dispatch:
   schedule:
