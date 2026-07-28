@@ -5,35 +5,29 @@
  * We keep João Oak's visual gamified design, but drop the git-metaphor naming
  * (Feature/Pull/Commit). These shapes map 1:1 to the `itera.*` Supabase schema.
  */
+import type { ActivityKind } from '@iterahq/activity-spec';
 
 /**
  * Canonical `itera.activity_kind` enum values.
  *
- * The first four are the original dev/coding-flavored kinds. The next six are
- * the v1 GENERAL learning-activity taxonomy (plan `20260703-itera-activity-types-system`,
- * Q4 = Itera-native names). `sandbox_scenario` is the deterministic sandbox chat
- * activity (plan `plano-sandbox-studio-2026-07-15`), whose `spec` is a `Scenario`
- * run by the shared `@iterahq/activity-spec/runtime`. Adding a value here is 1 of
- * the COORDINATED 3-point change — it must stay in sync with (a) the
- * `itera.activity_kind` enum in the Itera Supabase project (`kjefmwlopzeaqgqtlbdn`,
+ * ⚠️ **RE-EXPORT, não cópia** (2026-07-28). Este arquivo mantinha uma união
+ * literal escrita à mão que *dizia* espelhar o `ACTIVITY_KINDS` do pacote — mas
+ * espelho à mão é justamente o drift de 3 pontos que o `@iterahq/activity-spec`
+ * foi criado pra colapsar: um kind novo no pacote NÃO aparecia aqui, e
+ * `Activity.kind` seguia estreito. Agora é a MESMA união, por construção.
+ *
+ * Efeito colateral desejado (ADR-15 / trap de exaustividade): adicionar um valor
+ * ao enum do pacote passa a repercutir em `Activity.kind` e, com ele, no
+ * `Record<ActivityKind, …>` de `src/utils/activitySpecBoundary.ts` — ou seja,
+ * kind novo sem cobertura de validação **quebra `npm run typecheck`**, que é
+ * gate de build desde a PR #195.
+ *
+ * A ponta do banco (`itera.activity_kind` no projeto `kjefmwlopzeaqgqtlbdn`,
  * migrations `0014_activity_kinds_v1.sql` + `0016_activity_kind_sandbox_scenario.sql`)
- * and (b) `ACTIVITY_KINDS` in `iterahq/itera-mcp:src/tools/activities.ts`. Both
- * (this union and the mcp array) now mirror `ACTIVITY_KINDS` from the package.
+ * e o `ACTIVITY_KINDS` do `iterahq/itera-mcp` continuam sendo os outros dois
+ * pontos da mudança coordenada.
  */
-export type ActivityKind =
-  | 'diagram'
-  | 'document'
-  | 'quiz'
-  | 'code'
-  // v1 general learning-activity taxonomy (no-judge set):
-  | 'concept'
-  | 'single_choice'
-  | 'multi_choice'
-  | 'match'
-  | 'order'
-  | 'video'
-  // deterministic sandbox chat activity (runs @iterahq/activity-spec/runtime):
-  | 'sandbox_scenario';
+export type { ActivityKind } from '@iterahq/activity-spec';
 
 /**
  * The shared `InstructionPanel` primitive spec — a flexible context block reused
