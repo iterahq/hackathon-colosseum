@@ -70,10 +70,11 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
-Os **11 kinds** de `itera.activity_kind` (a união vive em
-`src/types/content.ts`, espelhando `ACTIVITY_KINDS` de `@iterahq/activity-spec`
-e de `iterahq/itera-mcp:src/tools/activities.ts` — os três têm que continuar em
-sincronia):
+Os **11 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
+**RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
+literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
+Restam dois pontos a sincronizar na mão: o enum do banco e o `ACTIVITY_KINDS` de
+`iterahq/itera-mcp:src/tools/activities.ts`.
 
 `concept` · `document` · `diagram` · `video` · `quiz` (o *hero*) ·
 `single_choice` · `multi_choice` · `match` · `order` · `code` ·
@@ -101,10 +102,29 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 
 ### Validação de spec
 
-`safeParseActivitySpec(kind, spec)` (do `@iterahq/activity-spec`, vendorizado
-como `.tgz`) hoje é chamado só em **`code`** e **`sandbox_scenario`** — os
-outros 9 kinds recebem o `spec` por cast. Fechar essa fronteira é trabalho do
-plano `20260728-itera-back-office`, não deste repo por conta própria.
+**Fail-closed nos 11 kinds desde 2026-07-28** (ADR-15 do plano
+`20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
+ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
+`@iterahq/activity-spec`, vendorizado como `.tgz`) era chamado só em **`code`** e
+**`sandbox_scenario`** e os outros 9 kinds recebiam o `spec` por cast.
+
+- **Onde:** `src/utils/activitySpecBoundary.ts` (registro + veredito + auditor) e
+  o `ActivityRenderer`, que valida antes do switch de kind. `code` e
+  `sandbox_scenario` seguem validando dentro do próprio componente
+  (`site: 'component'`), com os testids históricos `code-invalid` /
+  `sandbox-invalid`. Card único: `InvalidSpecCard` (`data-invalid-spec="true"`).
+- **Kind novo sem cobertura = CI vermelho**, por dois caminhos: o
+  `Record<ActivityKind, …>` do registro (erro de `npm run typecheck`, que é gate
+  de build) e `src/test/activityKindValidationCoverage.test.tsx`. A cláusula
+  `satisfies` interna do pacote NÃO ajuda aqui — o `.tgz` vem pré-compilado.
+- **BYOC é camada, não kind** — duas isenções deliberadas: o harness
+  (`resolveByocSpec`, roda antes da fronteira) e o BYOC ao vivo (`isByocLive`,
+  contrato sem Zod porque a resposta vem de LLM real). Validar `sandbox_scenario`
+  em bloco quebraria o caminho ao vivo.
+- **Lacuna declarada:** `document`, `diagram` e `quiz` têm schema **stub loose**
+  (`z.record`) no pacote — `safeParseActivitySpec('quiz', {})` PASSA. Ali
+  "validado" só quer dizer "é um objeto JSON". Apertar isso é mudança no repo
+  `iterahq/activity-spec` (bump + re-vendor), não aqui.
 
 ### Fixtures — uma fonte de verdade
 
