@@ -9,6 +9,8 @@ interface LiveActivityStatsCardProps {
   answerers: ClassAnswerer[];
   /** Render as a flush section inside a sidebar panel (drops the card chrome). */
   bare?: boolean;
+  /** Short viewport — trade padding for room-list height (see useCompactHeight). */
+  compact?: boolean;
   /**
    * Learner view: collapse the correct/wrong split into a single "responded"
    * bucket (aula1 Opção A — a learner never sees who got it right or wrong).
@@ -27,6 +29,7 @@ export function LiveActivityStatsCard({
   kind,
   answerers,
   bare = false,
+  compact = false,
   hideCorrectness = false,
 }: LiveActivityStatsCardProps) {
   const { t } = useI18n();
@@ -50,13 +53,16 @@ export function LiveActivityStatsCard({
       ];
 
   return (
-    <div className={bare ? 'p-5' : 'rounded-3xl border border-clay/40 bg-card p-5'} data-testid="live-activity-stats">
-      <div className="flex items-center gap-2 mb-3">
+    <div
+      className={`${bare ? '' : 'rounded-3xl border border-clay/40 bg-card '}${compact ? 'p-3' : 'p-5'}`}
+      data-testid="live-activity-stats"
+    >
+      <div className={`flex items-center gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
         <LayoutGrid className="w-4 h-4 text-clay" />
         <h3 className="font-display text-foreground text-sm">{t('live.instructor.stats.title')}</h3>
       </div>
 
-      <div className="flex items-center justify-between gap-2 mb-4">
+      <div className={`flex items-center justify-between gap-2 ${compact ? 'mb-2.5' : 'mb-4'}`}>
         <span className="inline-flex items-center px-2 h-6 rounded-full border border-border bg-background text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           {t(activityKindLabelKey(kind))}
         </span>
@@ -78,7 +84,7 @@ export function LiveActivityStatsCard({
         )}
       </div>
 
-      <div className={`mt-3 grid gap-2 text-center ${hideCorrectness ? 'grid-cols-2' : 'grid-cols-3'}`}>
+      <div className={`grid gap-2 text-center ${compact ? 'mt-2' : 'mt-3'} ${hideCorrectness ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {stats.map((s) => (
           <div key={s.key} className="flex flex-col items-center gap-0.5">
             <div className="flex items-center gap-1">

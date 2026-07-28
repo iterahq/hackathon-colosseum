@@ -4,8 +4,7 @@ import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 /**
  * The trailing badges on a roster row: the guest tag, a blinking dot for a
  * learner who dropped the call, the ✋ for a raised hand, and the "você" self
- * tag. Shared by every row variant (ranked / waiting / instructor) of
- * LiveRankedRosterCard.
+ * tag. Shared by every row of the live room list.
  */
 export function LiveRosterBadges({
   userId,

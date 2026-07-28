@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { LiveReception } from '@/components/live/LiveReception';
-import { LiveRankedRosterCard } from '@/components/live/LiveRankedRosterCard';
+import { LiveRoomList } from '@/components/live/LiveRoomList';
 import { LivePodium } from '@/components/live/LivePodium';
 import { rankByScore } from '@/utils/rankByScore';
+import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import type { ClassAnswerer, ClassPresenceMember, ClassRanking } from '@/types/liveClass';
 
 /**
@@ -62,9 +63,17 @@ describe('guest badge — reception', () => {
   });
 });
 
-describe('guest badge — ranked roster', () => {
+describe('guest badge — live room list', () => {
+  const roomList = (r: ClassRanking, guestUserIds?: string[], showDetail = false) => (
+    <LiveRoomList
+      rows={buildLiveRoomRows({ ranking: r, answerers, roster, guestUserIds })}
+      instructors={[]}
+      showDetail={showDetail}
+    />
+  );
+
   it('badges the guest on the ranked row AND the waiting row, and counts them', () => {
-    wrap(<LiveRankedRosterCard ranking={ranking} answerers={answerers} instructors={[]} />);
+    wrap(roomList(ranking));
     expect(screen.getAllByTestId('live-guest-badge')).toHaveLength(2);
     expect(screen.getByTestId('live-guest-count')).toHaveTextContent('2');
   });
@@ -74,15 +83,7 @@ describe('guest badge — ranked roster', () => {
       ranked: ranking.ranked.map(({ isGuest: _drop, ...r }) => r),
       waiting: ranking.waiting.map(({ isGuest: _drop, ...w }) => w),
     };
-    wrap(
-      <LiveRankedRosterCard
-        ranking={plain}
-        answerers={answerers}
-        instructors={[]}
-        guestUserIds={['g1', 'g2']}
-        showDetail
-      />
-    );
+    wrap(roomList(plain, ['g1', 'g2'], true));
     expect(screen.getAllByTestId('live-guest-badge')).toHaveLength(2);
   });
 
@@ -91,7 +92,7 @@ describe('guest badge — ranked roster', () => {
       ranked: ranking.ranked.map(({ isGuest: _drop, ...r }) => r),
       waiting: [],
     };
-    wrap(<LiveRankedRosterCard ranking={plain} answerers={answerers} instructors={[]} />);
+    wrap(roomList(plain));
     expect(screen.queryByTestId('live-guest-count')).toBeNull();
     expect(screen.queryAllByTestId('live-guest-badge')).toHaveLength(0);
   });
