@@ -29,6 +29,7 @@
  * tenant that has no cohort.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getIteraUserId } from '@/services/iteraUser';
 
 export type MemberRole =
   | 'learner'
@@ -73,8 +74,22 @@ const asRows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : []);
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 /**
- * The current user's memberships (own rows only, per RLS). Empty when not
- * configured / not signed in / no membership.
+ * The current user's memberships — scoped to the caller EXPLICITLY, not by
+ * trusting RLS to do it. Empty when not configured / not signed in / no
+ * membership.
+ *
+ * 🔒 Why the explicit `.eq('user_id', …)`: RLS on `itera.memberships` is
+ * deliberately WIDER than "your own rows" — staff (instructor/tenant_admin/
+ * owner) can read every membership in their tenant, which is exactly what the
+ * roster surfaces need. So an unfiltered select returns PEERS' rows too. Before
+ * this filter existed, an instructor's "my memberships" contained a colleague's
+ * `tenant_admin` row, `isTenantAdmin()` found it, and `/admin` opened for them —
+ * privilege escalation. Verified end-to-end against the real DB (2026-07-28).
+ *
+ * The rule this encodes: RLS bounds what you MAY read; it does not tell you
+ * whose row you are holding. Any "is *my* role X?" question must filter by the
+ * caller. `profile.service.ts` already resolves the Itera user id first for the
+ * same reason.
  *
  * Embeds the tenant `slug` + `live_class_enabled` (via the
  * `memberships_tenant_id_fkey` FK; `itera.tenants` is public-read) so callers can
@@ -86,9 +101,14 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 export async function getMyMemberships(): Promise<Membership[]> {
   if (!isSupabaseConfigured) return [];
   const sb = getSupabase();
+  // itera.memberships.user_id is an FK to itera.users.id — NOT the Supabase
+  // auth uid — so the caller's Itera-local id has to be resolved first.
+  const userId = await getIteraUserId();
+  if (!userId) return [];
   const { data, error } = await sb
     .from('memberships')
     .select('tenant_id, role, tenants(slug, name, live_class_enabled)')
+    .eq('user_id', userId)
     .order('role', { ascending: true })
     .order('tenant_id', { ascending: true });
   if (error) throw new Error(error.message);

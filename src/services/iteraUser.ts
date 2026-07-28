@@ -32,9 +32,14 @@ export async function getIteraUserId(): Promise<string | null> {
   }
 
   try {
-    // Fallback: RLS users_select_self returns exactly our own row.
-    const { data } = await sb.from('users').select('id').limit(1).maybeSingle();
-    const id = (data as { id?: string } | null)?.id ?? null;
+    // Fallback. NOTE: RLS on itera.users is NOT "self only" — staff can read
+    // every user in their tenant (an instructor sees ~22 rows). So a bare
+    // `.limit(1)` here would happily return SOMEONE ELSE's id and silently
+    // mis-attribute every downstream write. Only accept an unambiguous
+    // single-row answer; anything else means "not resolvable this way".
+    const { data } = await sb.from('users').select('id').limit(2);
+    const rows = Array.isArray(data) ? (data as { id?: string }[]) : [];
+    const id = rows.length === 1 ? (rows[0]?.id ?? null) : null;
     _cached = id;
     return id;
   } catch {
