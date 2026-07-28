@@ -11,6 +11,7 @@ import {
   getUnitCanvas,
   getAuthorPrograms,
   getActivityById,
+  isActivityNotFoundError,
 } from '@/services/authorCanvas.service';
 import {
   fetchUnitVersions,
@@ -46,13 +47,21 @@ export function useUnitCanvas(unitId: string | undefined) {
   });
 }
 
-/** A single activity for the standalone TEST harness route. */
+/**
+ * A single activity for the standalone TEST harness route.
+ *
+ * A missing/invisible id is PERMANENT (deleted activity, stale deep-link, another
+ * tenant's row) — retrying it just holds the spinner on screen for the whole
+ * backoff window with nothing to show for it. Fail fast so the page can render a
+ * real "not found" state; keep the default retries for genuine transport errors.
+ */
 export function useActivity(activityId: string | undefined) {
   const { configured, session } = useAuth();
   return useQuery({
     queryKey: queryKeys.author.activityTest(activityId ?? ''),
     queryFn: () => getActivityById(activityId!),
     enabled: configured && Boolean(session) && Boolean(activityId),
+    retry: (failureCount, error) => !isActivityNotFoundError(error) && failureCount < 3,
   });
 }
 

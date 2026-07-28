@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   adminTenantId,
+  adminTenant,
+  adminMemberships,
   isTenantAdmin,
   instructorTenantId,
   instructorTenantIds,
@@ -274,5 +276,63 @@ describe('personal PLG tenant does not leak professor/admin affordances', () => 
     expect(isPersonalTenantSlug('acme')).toBe(false);
     expect(isPersonalTenantSlug(null)).toBe(false);
     expect(isPersonalTenantSlug(undefined)).toBe(false);
+  });
+});
+
+// E2E finding D4 (2026-07-28) — the /admin shell must be able to NAME the tenant
+// whose data it aggregates, deterministically and without borrowing the platform
+// brand. `adminTenant`/`adminMemberships` are what the shell reads.
+describe('adminTenant / adminMemberships (D4 — labelling the right tenant)', () => {
+  const DFL = 'dfl-batch-tenant';
+  const ACME = 'acme-tenant';
+
+  it('adminTenant returns the whole membership, carrying the tenant name', () => {
+    const m = adminTenant([
+      { tenantId: DFL, role: 'tenant_admin', tenantSlug: 'dfl-batch', tenantName: 'DFL Batch' },
+    ]);
+    expect(m?.tenantId).toBe(DFL);
+    expect(m?.tenantName).toBe('DFL Batch');
+  });
+
+  it('adminTenant is null when the user administers nothing real', () => {
+    expect(adminTenant([])).toBeNull();
+    expect(adminTenant([{ tenantId: DFL, role: 'learner' }])).toBeNull();
+    expect(adminTenant([{ tenantId: 'plg-1', role: 'owner', isPersonal: true }])).toBeNull();
+  });
+
+  it('adminTenant agrees with adminTenantId (one surface, one pick)', () => {
+    const ms: Membership[] = [
+      { tenantId: ACME, role: 'tenant_admin', tenantName: 'Acme' },
+      { tenantId: DFL, role: 'owner', tenantName: 'DFL Batch' },
+    ];
+    expect(adminTenant(ms)?.tenantId).toBe(adminTenantId(ms));
+  });
+
+  it('adminMemberships lists every administered tenant, deterministically', () => {
+    // Input order shuffled: owner must still win, then tenant_id lexical.
+    const ms: Membership[] = [
+      { tenantId: 'z-tenant', role: 'tenant_admin' },
+      { tenantId: DFL, role: 'owner' },
+      { tenantId: ACME, role: 'tenant_admin' },
+      { tenantId: 'plg-x', role: 'owner', isPersonal: true },
+      { tenantId: 'other', role: 'learner' },
+    ];
+    expect(adminMemberships(ms).map((m) => m.tenantId)).toEqual([DFL, ACME, 'z-tenant']);
+    // Same input, reversed → same answer.
+    expect(adminMemberships([...ms].reverse()).map((m) => m.tenantId)).toEqual([
+      DFL,
+      ACME,
+      'z-tenant',
+    ]);
+  });
+
+  it('adminMemberships excludes personal PLG tenants and non-admin roles', () => {
+    expect(
+      adminMemberships([
+        { tenantId: 'plg-1', role: 'owner', isPersonal: true },
+        { tenantId: DFL, role: 'instructor' },
+        { tenantId: ACME, role: 'learner' },
+      ])
+    ).toEqual([]);
   });
 });

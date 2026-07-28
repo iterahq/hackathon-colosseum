@@ -10,8 +10,7 @@ import { Users, BarChart3, Activity, ShieldCheck, FolderGit2 } from 'lucide-reac
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
-import { adminTenantId } from '@/services/membership.service';
-import { useTenantBranding } from '@/auth/useTenantBranding';
+import { adminMemberships, adminTenant } from '@/services/membership.service';
 import { createContext, useContext } from 'react';
 
 const AdminTenantCtx = createContext<string | null>(null);
@@ -22,8 +21,16 @@ export function useAdminTenant(): string | null {
 export default function AdminLayout() {
   const { t } = useI18n();
   const { data: memberships } = useMembership();
-  const { branding } = useTenantBranding();
-  const tenantId = adminTenantId(memberships ?? []);
+
+  // The tenant this panel AGGREGATES — not the white-label brand. `branding.name`
+  // (useTenantBranding) is the login-screen brand and defaults to "Itera" for
+  // every tenant, so interpolating it labelled every customer's back-office
+  // "Itera" (E2E 2026-07-28, finding D4). The admin's own membership row carries
+  // the real tenant name.
+  const admins = adminMemberships(memberships ?? []);
+  const admin = adminTenant(memberships ?? []);
+  const tenantId = admin?.tenantId ?? null;
+  const tenantName = admin?.tenantName?.trim() || '';
 
   const tabs = [
     { to: '/admin/roster', label: t('admin.nav.roster'), icon: Users },
@@ -51,9 +58,27 @@ export default function AdminLayout() {
               </h1>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mb-6">
-            {t('admin.subtitle', { tenant: branding.name })}
-          </p>
+          {/* Name the tenant being aggregated. When the name hasn't loaded (or
+              the row carries none) fall back to a tenant-NEUTRAL sentence rather
+              than naming the wrong organisation. */}
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground" data-testid="admin-subtitle">
+              {tenantName
+                ? t('admin.subtitle', { tenant: tenantName })
+                : t('admin.subtitleGeneric')}
+            </p>
+            {/* An admin of several tenants sees ONE tenant's data (the surface is
+                single-tenant by design — ADR-6). Say so explicitly instead of
+                silently showing a slice of their world. */}
+            {admins.length > 1 && (
+              <p
+                className="text-xs text-muted-foreground/80 mt-1"
+                data-testid="admin-multi-tenant-note"
+              >
+                {t('admin.multiTenantNote', { n: admins.length })}
+              </p>
+            )}
+          </div>
 
           {/* Sub-nav — scrolls horizontally on narrow screens so the tabs never
               force page-wide overflow (mobile: tabs slide; ≥sm: all fit). */}

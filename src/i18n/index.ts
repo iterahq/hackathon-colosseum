@@ -438,6 +438,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'admin.kicker': 'Painel do administrador',
     'admin.title': 'Observabilidade da sua organização',
     'admin.subtitle': 'Acompanhe o progresso dos alunos de {tenant}. Somente leitura.',
+    'admin.subtitleGeneric': 'Acompanhe o progresso dos alunos da sua organização. Somente leitura.',
+    'admin.multiTenantNote':
+      'Você administra {n} organizações — este painel mostra apenas a primeira.',
     'admin.nav.roster': 'Alunos',
     'admin.nav.completion': 'Conclusão',
     'admin.nav.engagement': 'Engajamento',
@@ -466,6 +469,15 @@ export const resources: Record<Locale, Record<string, string>> = {
     'admin.engagement.empty': 'Sem sinais de engajamento ainda.',
     'admin.engagement.hint': 'Atividades concluídas e recência da última atividade por aluno.',
     'admin.engagement.done': 'concl.',
+    // Author "test as student" harness route (/author/activities/:id/test)
+    'authorTest.title': 'Testar como aluno',
+    'authorTest.backToCanvas': 'Voltar ao canvas',
+    'authorTest.backToAuthor': 'Voltar para Autoria',
+    'authorTest.loading': 'Carregando atividade…',
+    'authorTest.error': 'Não foi possível carregar esta atividade.',
+    'authorTest.notFound.title': 'Atividade não encontrada',
+    'authorTest.notFound.body':
+      'Esta atividade não existe mais, foi removida ou pertence a outra organização. O link que te trouxe aqui provavelmente está desatualizado.',
     // Self-serve subscribe (PLG) — canonical label "Assinar".
     'subscribe.cta': 'Assinar',
     'subscribe.title': 'Assine o Itera',
@@ -1042,6 +1054,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'admin.kicker': 'Admin dashboard',
     'admin.title': "Your organization's observability",
     'admin.subtitle': "Track {tenant}'s learners. Read-only.",
+    'admin.subtitleGeneric': "Track your organization's learners. Read-only.",
+    'admin.multiTenantNote':
+      'You administer {n} organizations — this panel shows only the first one.',
     'admin.nav.roster': 'Learners',
     'admin.nav.completion': 'Completion',
     'admin.nav.engagement': 'Engagement',
@@ -1070,6 +1085,15 @@ export const resources: Record<Locale, Record<string, string>> = {
     'admin.engagement.empty': 'No engagement signals yet.',
     'admin.engagement.hint': 'Completed activities and last-active recency per learner.',
     'admin.engagement.done': 'done',
+    // Author "test as student" harness route (/author/activities/:id/test)
+    'authorTest.title': 'Test as student',
+    'authorTest.backToCanvas': 'Back to canvas',
+    'authorTest.backToAuthor': 'Back to Author',
+    'authorTest.loading': 'Loading activity…',
+    'authorTest.error': 'Could not load this activity.',
+    'authorTest.notFound.title': 'Activity not found',
+    'authorTest.notFound.body':
+      "This activity no longer exists, was removed, or belongs to another organization. The link that brought you here is probably out of date.",
     // Self-serve subscribe (PLG) — canonical label "Subscribe".
     'subscribe.cta': 'Subscribe',
     'subscribe.title': 'Subscribe to Itera',

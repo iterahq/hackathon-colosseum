@@ -49,6 +49,15 @@ export interface Membership {
   isPersonal?: boolean;
   /** Whether the tenant has the live-class feature enabled (`tenants.live_class_enabled`). */
   liveClassEnabled?: boolean;
+  /** The tenant's slug (`itera.tenants.slug`), e.g. `dfl-batch`. */
+  tenantSlug?: string;
+  /**
+   * The tenant's HUMAN name (`itera.tenants.name`), e.g. "DFL Batch". This is the
+   * only correct thing to show a tenant-admin when naming the organisation whose
+   * data they're looking at — the white-label BRAND name (useTenantBranding) is a
+   * different axis and defaults to "Itera" for every tenant.
+   */
+  tenantName?: string;
 }
 
 /** Prefix the provisioning trigger uses for a user's PERSONAL PLG tenant slug. */
@@ -79,7 +88,7 @@ export async function getMyMemberships(): Promise<Membership[]> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from('memberships')
-    .select('tenant_id, role, tenants(slug, live_class_enabled)')
+    .select('tenant_id, role, tenants(slug, name, live_class_enabled)')
     .order('role', { ascending: true })
     .order('tenant_id', { ascending: true });
   if (error) throw new Error(error.message);
@@ -95,6 +104,8 @@ export async function getMyMemberships(): Promise<Membership[]> {
       role: str(r.role) as MemberRole,
       isPersonal: isPersonalTenantSlug(slug),
       liveClassEnabled: t?.live_class_enabled === true,
+      tenantSlug: slug,
+      tenantName: str(t?.name),
     };
   });
 }
@@ -108,13 +119,45 @@ function isManagedAdminMembership(m: Membership): boolean {
 }
 
 /**
- * The tenant the user administers (first tenant_admin/owner membership in a
- * NON-personal tenant). Returns null when the user administers no real tenant.
- * A personal `plg-<uid>` owner tenant is NOT an admin surface (see file header).
+ * Every tenant the user administers, deterministically ordered (role priority —
+ * owner before tenant_admin — then tenant_id lexical). Lets the /admin shell tell
+ * a single-tenant admin from one who spans several, without the caller having to
+ * re-derive the ordering the surface picks from.
+ */
+export function adminMemberships(memberships: Membership[]): Membership[] {
+  // owner before tenant_admin — the same order `getMyMemberships` already returns
+  // (`ORDER BY role, tenant_id`, and 'owner' < 'tenant_admin' lexically), so the
+  // tenant the surface aggregates is unchanged; it's now explicit and holds for
+  // synthetic/unordered arrays too.
+  const priority: Record<string, number> = { owner: 0, tenant_admin: 1 };
+  return (memberships ?? [])
+    .filter(isManagedAdminMembership)
+    .sort((a, b) => {
+      const ra = priority[a.role] ?? 99;
+      const rb = priority[b.role] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return a.tenantId.localeCompare(b.tenantId);
+    });
+}
+
+/**
+ * The single membership the /admin surface aggregates: the user's highest-ranked
+ * administered tenant (deterministic — see `adminMemberships`). Returns the whole
+ * membership (not just the id) so callers can LABEL the panel with the tenant
+ * whose data they're actually showing.
+ */
+export function adminTenant(memberships: Membership[]): Membership | null {
+  return adminMemberships(memberships)[0] ?? null;
+}
+
+/**
+ * The tenant the user administers (highest-ranked tenant_admin/owner membership
+ * in a NON-personal tenant). Returns null when the user administers no real
+ * tenant. A personal `plg-<uid>` owner tenant is NOT an admin surface (see file
+ * header).
  */
 export function adminTenantId(memberships: Membership[]): string | null {
-  const m = memberships.find(isManagedAdminMembership);
-  return m ? m.tenantId : null;
+  return adminTenant(memberships)?.tenantId ?? null;
 }
 
 /**

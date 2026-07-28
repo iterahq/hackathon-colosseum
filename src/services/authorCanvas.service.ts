@@ -126,9 +126,35 @@ export async function getUnitCanvas(unitId: string): Promise<UnitCanvas> {
 }
 
 /**
+ * The activity id resolved to NOTHING — the row doesn't exist, was deleted, or is
+ * invisible to this user under RLS (another tenant's, or an unpublished draft a
+ * learner can't see). PostgREST answers an empty list with HTTP 200 and no error,
+ * so this is the only signal callers get; it must be DISTINGUISHABLE from a
+ * transport failure, because it is permanent (retrying can never fix it) and it
+ * deserves its own "not found" UI instead of a spinner (E2E 2026-07-28, D5).
+ */
+export class ActivityNotFoundError extends Error {
+  readonly activityId: string;
+  constructor(activityId: string) {
+    super(`Activity not found: ${activityId}`);
+    this.name = 'ActivityNotFoundError';
+    this.activityId = activityId;
+  }
+}
+
+/**
+ * Type guard for the above. Compares `name` rather than using `instanceof` so it
+ * survives duplicated module instances / transpiled subclassing.
+ */
+export function isActivityNotFoundError(e: unknown): e is ActivityNotFoundError {
+  return e instanceof Error && e.name === 'ActivityNotFoundError';
+}
+
+/**
  * A single activity (id, kind, spec, rubric, status) for the standalone TEST
  * harness route. RLS-scoped (an author sees their tenant's drafts + published).
- * Throws (→ isError) when the activity can't be resolved.
+ * Throws (→ isError) when the activity can't be resolved — `ActivityNotFoundError`
+ * specifically when the id resolved to no row.
  */
 export async function getActivityById(activityId: string): Promise<Activity> {
   const sb = client();
@@ -138,7 +164,7 @@ export async function getActivityById(activityId: string): Promise<Activity> {
     .eq('id', activityId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error(`Activity not found: ${activityId}`);
+  if (!data) throw new ActivityNotFoundError(activityId);
   return mapActivity(data as Row);
 }
 
