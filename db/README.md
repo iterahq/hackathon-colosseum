@@ -46,6 +46,11 @@ Supabase `auth.uid()` → `itera.identities` → `itera.users` →
 
 ## Applying migrations
 
+**Migrations are applied MANUALLY today. There is no CI that applies them.**
+No workflow in `.github/workflows/` touches `db/` — **merging a migration PR
+applies nothing**. A human or agent has to run the script below, by hand,
+after the merge. If nobody does, `main` and the database silently disagree.
+
 ```bash
 export ITERA_DB_URL='postgresql://postgres.kjefmwlopzeaqgqtlbdn@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require'
 export PGPASSWORD='<from Infisical /apps/itera SUPABASE_DB_PASSWORD>'
@@ -54,9 +59,33 @@ bash db/scripts/apply-migrations.sh
 
 Or via the `itera-supabase-helpers` skill: `run.sh migrate db/migrations/<file>.sql`.
 
-> Connectivity note: the direct DB host is IPv6-only (unreachable from the
-> claude-main VPS). Use the **session pooler** `aws-1-us-east-1.pooler.supabase.com:5432`
-> (NOT `aws-0`). CI applies migrations the same way.
+> **Connectivity:** the direct DB host is IPv6-only (unreachable from the
+> claude-main VPS). Use the **session pooler**
+> `aws-1-us-east-1.pooler.supabase.com:5432` — **`aws-1`, not `aws-0`**
+> (`aws-0` answers `Tenant or user not found` for this project).
+
+### Two consequences you have to keep in mind
+
+1. **Every migration must be written idempotently.** There is **no ledger
+   table** — `apply-migrations.sh` re-runs **every** `db/migrations/*.sql`
+   from `0001` in lexical order on **every** invocation. It never skips a file
+   it already applied, because it has no way of knowing that it did. A single
+   non-idempotent file poisons every future run *for everyone*, not just for
+   its author. Use `IF NOT EXISTS` / `CREATE OR REPLACE` /
+   `DROP POLICY IF EXISTS` before `CREATE POLICY` / `ADD VALUE IF NOT EXISTS`,
+   and make data seeds `ON CONFLICT DO NOTHING`.
+2. **A failed run leaves the database partially migrated.** The script runs
+   one `psql` invocation **per file** with `ON_ERROR_STOP=1` under `set -e`;
+   there is no wrapping transaction across files, and the migrations don't
+   open one themselves. So a failure in file *N* leaves files `0001…N-1`
+   committed and file *N* committed up to the failing statement. Recovery is
+   forward-fix and re-run (which is safe only because of point 1).
+
+> Automating this — apply-on-merge via CI, a `schema_migrations` ledger, and
+> locking out-of-band DDL — is designed in the plan
+> [`20260728-itera-migration-ci-lock`](https://plans.devfellowship.com/20260728-itera-migration-ci-lock).
+> **None of it is implemented yet.** When it lands, rewrite this section;
+> until then, what is written above is what actually happens.
 
 ## PostgREST schema exposure
 
