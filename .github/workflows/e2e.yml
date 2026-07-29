@@ -32,17 +32,30 @@ name: E2E (Itera↔Fellowship)
 # run (an email to the workflow file's last committer). The repo has no other
 # notification path today and this workflow deliberately does not invent one.
 #
-# Runner: ubuntu-latest. iterahq is NOT on the devfellowship-scoped dfl-runner
-# fleet (org-scoped self-hosted runners aren't available to other orgs) — same
-# carve-out as ci.yml. devfellowship/* repos stay on dfl-runner; this carve-out
-# is iterahq-only.
+# Runner: self-hosted `dfl-runner` fleet (changed 2026-07-29 — was ubuntu-latest).
 #
-# ⚠️ Correction 2026-07-28: this header used to justify the carve-out partly with
-# "this is a public repo besides". It is NOT — `gh api repos/iterahq/itera-player
-# --jq .private` returns `true`. That matters operationally: a PRIVATE repo on
-# ubuntu-latest burns BILLABLE GitHub-hosted minutes, so this workflow's daily
-# cron is metered against the iterahq org's Actions spending limit. The
-# self-hosted-runner reason above still stands on its own.
+# The 2026-07-28 note below turned out to be the whole story: this repo is
+# PRIVATE, so every ubuntu-latest minute this daily cron burned was BILLABLE
+# against the iterahq org's Actions allowance. On 2026-07-29 that allowance hit
+# 2000/2000 with no overage, and every run across the org — this one included —
+# started failing in ~3 seconds with no runner assigned and zero steps executed.
+# So iterahq got its OWN org-scoped runners on the two dfl-runner VPSes we
+# already own (registrations are per-org, so they are separate from the
+# devfellowship ones; the labels are identical). Self-hosted minutes are free,
+# which removes this workflow from the billing path entirely. Being private is
+# also exactly what makes self-hosted safe here — the fork-PR RCE hazard that
+# bans self-hosted on public repos does not apply.
+#
+# The earlier claim that "org-scoped self-hosted runners aren't available to
+# other orgs" was only ever true of the DEVFELLOWSHIP registrations. It was
+# never a reason iterahq could not register runners of its own.
+#
+# ⚠️ Capacity note for this workflow specifically: `npm run e2e:install` is
+# `playwright install --with-deps chromium`, which apt-installs browser
+# dependencies inside the runner container on every run. The runner containers
+# are recycled every 2h, so this cost recurs — acceptable for a once-daily cron,
+# but do not fan this workflow out to per-PR without re-measuring host disk.
+# Full rationale in ci.yml; infra in devfellowship/dfl-infra:vps/dfl-runner/.
 on:
   workflow_dispatch:
   schedule:
@@ -58,7 +71,8 @@ concurrency:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    # See the runner note at the top of this file.
+    runs-on: [self-hosted, dfl-runner]
     # 20 -> 30: the suite now runs three viewport projects (desktop full,
     # mobile+tablet @responsive only). Measured 2026-07-28 with no secrets, so
     # nearly everything skips: desktop-only 3.8s, all three projects 11.0s. The
