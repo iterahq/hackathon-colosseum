@@ -9,11 +9,15 @@ name: Storybook
 # Required repo secrets (already configured): CLOUDFLARE_ACCOUNT_ID,
 # CLOUDFLARE_API_TOKEN (token must have Account > Cloudflare Pages: Edit).
 #
-# Scoped exception: this repo is in the `iterahq` GitHub org, which is NOT on the
-# devfellowship-scoped dfl-runner fleet (org-scoped runners aren't available to
-# other orgs -> jobs would queue forever). So CI runs on ubuntu-latest. Same
-# rationale as the taigfs/* personal-repo carve-out (CLAUDE.md "🚦 CI green merge
-# policy"). devfellowship/* repos stay on dfl-runner — this carve-out is iterahq-only.
+# Runner: self-hosted `dfl-runner` fleet (changed 2026-07-29). The `iterahq` org
+# is on the GitHub free plan and burned through its 2000 included GitHub-hosted
+# Actions minutes, after which every run org-wide failed in ~3s with no runner
+# assigned. Instead of enabling paid billing, iterahq got its own org-scoped
+# runner processes on the two dfl-runner VPSes we already own (registrations are
+# per-org, so these are separate from the devfellowship ones; labels are
+# identical: `self-hosted,dfl-runner`). Safe because this repo is PRIVATE — the
+# fork-PR RCE hazard that bans self-hosted on public repos does not apply.
+# Full rationale in ci.yml; infra in devfellowship/dfl-infra:vps/dfl-runner/.
 on:
   pull_request:
     paths:
@@ -35,7 +39,8 @@ concurrency:
 
 jobs:
   build-deploy:
-    runs-on: ubuntu-latest
+    # See the runner note at the top of this file.
+    runs-on: [self-hosted, dfl-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -1,10 +1,37 @@
 name: CI
 
-# Scoped exception: this repo is in the `iterahq` GitHub org, which is NOT on the
-# devfellowship-scoped dfl-runner fleet (org-scoped runners aren't available to
-# other orgs -> jobs would queue forever). So CI runs on ubuntu-latest. Same
-# rationale as the taigfs/* personal-repo carve-out (CLAUDE.md "🚦 CI green merge
-# policy"). devfellowship/* repos stay on dfl-runner — this carve-out is iterahq-only.
+# ──────────────────────────────────────────────────────────────────────────────
+# RUNNER: self-hosted `dfl-runner` fleet — NOT ubuntu-latest (changed 2026-07-29)
+#
+# WHY: the `iterahq` org is on the GitHub FREE plan and exhausted its 2000
+# included GitHub-hosted Actions minutes (2000/2000, no overage allowance). From
+# that moment EVERY workflow run across the whole org failed in ~3 seconds with
+# no runner assigned and zero steps executed — CI was not red, it was absent.
+# Rather than enable paid Actions billing, iterahq now uses the two runner VPSes
+# we already own.
+#
+# HOW: a GitHub runner registration belongs to exactly ONE scope, and free orgs
+# cannot use enterprise-level shared runner groups — so the existing
+# `devfellowship` registrations CANNOT be shared. We registered SEPARATE
+# iterahq-scoped runner processes co-located on the same two hosts (2 per host,
+# 4 total: `itera-runner-1/2` + `itera-runner-02-1/2`), carrying the same
+# `self-hosted,dfl-runner` labels. Because labels are scoped per org, an iterahq
+# job can only ever land on an iterahq-registered runner — there is no
+# cross-org routing. Self-hosted minutes are free and unmetered.
+#
+# WHY IT IS SAFE HERE: `itera-player` is a PRIVATE repo
+# (`gh api repos/iterahq/itera-player --jq .private` -> true), so the fork-PR RCE
+# hazard that bans self-hosted runners on PUBLIC repos does not apply. The
+# iterahq runner group keeps `allows_public=false`.
+#
+# NOTE: an earlier version of this header claimed org-scoped runners "aren't
+# available to other orgs, so jobs would queue forever". That was true only of
+# the devfellowship registrations; it was never a reason iterahq could not have
+# runners of its own.
+#
+# Infra is versioned at devfellowship/dfl-infra:vps/dfl-runner/
+# (docker-compose.iterahq*.yml, install-iterahq.sh, README "iterahq org runners").
+# ──────────────────────────────────────────────────────────────────────────────
 on:
   pull_request:
   push:
@@ -21,7 +48,9 @@ concurrency:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    # See the runner rationale at the top of this file (iterahq free-plan
+    # Actions-minutes exhaustion -> our own iterahq-scoped dfl-runners).
+    runs-on: [self-hosted, dfl-runner]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,9 +107,11 @@ jobs:
   # precisa. Misturá-lo no `build-test` esconderia a única medida que importa.
   # ──────────────────────────────────────────────────────────────────────────
   browser-mode:
-    # Herda o mesmo carve-out do topo deste arquivo: iterahq não está na fleet
-    # dfl-runner, então ubuntu-latest.
-    runs-on: ubuntu-latest
+    # Mesmo runner do `build-test`: os dfl-runners próprios do iterahq (ver o
+    # cabeçalho deste arquivo). O job é `continue-on-error: true`, então mesmo
+    # que o `playwright install --with-deps` tropece no host self-hosted ele
+    # não trava merge — o que preserva a promessa do ADR-9 durante a migração.
+    runs-on: [self-hosted, dfl-runner]
     continue-on-error: true
     steps:
       - name: Checkout

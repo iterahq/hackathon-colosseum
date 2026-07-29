@@ -27,9 +27,14 @@ concurrency:
 
 jobs:
   deploy:
-    # Scoped exception: personal/external iterahq repo, not on the dfl-runner fleet.
-    # iterahq CI runs on ubuntu-latest (matches the repo's existing ci.yml).
-    runs-on: ubuntu-latest
+    # Runner: self-hosted `dfl-runner` fleet (changed 2026-07-29). iterahq is on
+    # the GitHub free plan and exhausted its 2000 included GitHub-hosted Actions
+    # minutes — every run org-wide failed in ~3s with no runner assigned. iterahq
+    # now has its OWN org-scoped runners on the two dfl-runner VPSes (separate
+    # registrations from devfellowship's; same `self-hosted,dfl-runner` labels).
+    # Safe: this repo is PRIVATE, so the fork-PR hazard that bans self-hosted on
+    # public repos does not apply. Full rationale in ci.yml.
+    runs-on: [self-hosted, dfl-runner]
     permissions:
       contents: read
     steps:

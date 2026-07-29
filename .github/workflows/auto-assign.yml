@@ -1,18 +1,32 @@
 name: Auto-assign PR author
 
-# Public repo: cannot call the PRIVATE devfellowship/dfl-ci reusable workflow
-# (public->private reusable-workflow calls are blocked by GitHub -> startup_failure)
-# and cannot use the org-scoped self-hosted dfl-runner (allows_public=false).
-# Inlined here on ubuntu-latest. Public-repo carve-out authorized by Tainan
-# TG 2026-06-06 (see CLAUDE.md "🚦 CI green merge policy — repos PÚBLICOS").
 # Housekeeping only — never a merge gate (continue-on-error on step + job).
+#
+# Runner: self-hosted `dfl-runner` fleet (changed 2026-07-29 — was ubuntu-latest).
+# iterahq exhausted its 2000 free GitHub-hosted Actions minutes, so the org now
+# runs on its own org-scoped runners on the two dfl-runner VPSes. Full rationale
+# in ci.yml; infra in devfellowship/dfl-infra:vps/dfl-runner/.
+#
+# ⚠️ The old header here claimed this is a PUBLIC repo. It is not —
+# `gh api repos/iterahq/itera-player --jq .private` returns `true`. The stated
+# blockers followed from that wrong premise: private->private reusable-workflow
+# calls are fine, and `allows_public=false` on the runner group is irrelevant for
+# a private repo. Keeping the job inlined anyway (it is six lines of
+# github-script and has no dependency on dfl-ci).
+#
+# ⚠️ `pull_request_target` runs the workflow file from the BASE branch, not the
+# PR branch — so unlike ci.yml this change only takes effect once merged, and a
+# PR cannot test it against itself. It is also why self-hosted is safe here
+# despite the elevated token: there is deliberately NO checkout step, so no
+# contributor-controlled code ever executes on the runner.
 on:
   pull_request_target:
     types: [opened, reopened, synchronize]
 
 jobs:
   assign:
-    runs-on: ubuntu-latest
+    # See the runner note at the top of this file.
+    runs-on: [self-hosted, dfl-runner]
     continue-on-error: true
     permissions:
       pull-requests: write
