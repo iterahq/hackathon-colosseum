@@ -37,7 +37,7 @@ export function mapSession(row: Row): ClassSession {
     instructorId: str(row.instructor_id),
     currentActivityId: strOrNull(row.current_activity_id),
     status: (str(row.status) || 'pending') as ClassSessionStatus,
-    scope: (str(row.scope) || 'global') as ClassScope,
+    scope: (str(row.scope) || 'tenant') as ClassScope,
     podiumEvery: posIntOrNull(row.podium_every),
     scheduledAt: strOrNull(row.scheduled_at),
     startedAt: strOrNull(row.started_at),
@@ -93,8 +93,8 @@ export async function getEnabledTenantIds(): Promise<string[]> {
 }
 
 /**
- * The active LIVE session visible to the current user (global + tenant-scoped via
- * RLS), or null. Returns null when the feature is disabled for the user's tenant
+ * The active LIVE session visible to the current user (tenant-scoped via RLS),
+ * or null. Returns null when the feature is disabled for the user's tenant
  * (the enable gate) — so the badge never shows for a non-enabled tenant.
  */
 export async function getActiveLiveClass(): Promise<ClassSession | null> {
@@ -189,7 +189,7 @@ export async function startClassSession(params: {
       instructor_id: params.instructorId,
       current_activity_id: null,
       status: 'live',
-      scope: params.scope ?? 'global',
+      scope: params.scope ?? 'tenant',
       podium_every: podiumEvery,
       started_at: new Date().toISOString(),
     })
@@ -226,7 +226,7 @@ export async function scheduleClassSession(params: {
       instructor_id: params.instructorId,
       current_activity_id: null,
       status: 'pending',
-      scope: params.scope ?? 'global',
+      scope: params.scope ?? 'tenant',
       podium_every: podiumEvery,
       scheduled_at: params.scheduledAt,
       started_at: null,

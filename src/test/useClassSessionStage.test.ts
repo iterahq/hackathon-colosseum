@@ -71,6 +71,7 @@ vi.mock('@/services/liveClass.service', () => ({
 }));
 
 import { useClassSession } from '@/hooks/useClassSession';
+import { rememberStorageScope } from '@/utils/storageScope';
 
 function emit(event: string, payload: unknown) {
   act(() => handlers[event]?.({ payload }));
@@ -80,6 +81,7 @@ beforeEach(() => {
   handlers = {};
   sent = [];
   localStorage.clear();
+  rememberStorageScope(STUDENT);
 });
 
 async function mountAs(identity: { userId: string; isInstructor: boolean }) {
@@ -212,7 +214,7 @@ describe('useClassSession — pull to stage', () => {
 
   it('the targeted student replies to stage-request with its own stored answer', async () => {
     localStorage.setItem(
-      `itera.live.answers:${SESSION}`,
+      `itera.live.answers:${STUDENT}:${SESSION}`,
       JSON.stringify({ [ACTIVITY]: { correct: true, elapsedMs: 1200 } })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
@@ -233,7 +235,7 @@ describe('useClassSession — pull to stage', () => {
 
   it('ignores a stage-request aimed at ANOTHER learner (never answers for a peer)', async () => {
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
@@ -247,7 +249,7 @@ describe('useClassSession — pull to stage', () => {
 describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
   it('replies with the DRAFT code snapshot when the learner has not submitted yet', async () => {
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const saudacao = "oi";', savedAt: new Date().toISOString() })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
@@ -264,11 +266,11 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
 
   it('marks the same snapshot as submitted once the learner has answered', async () => {
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const saudacao = "oi";', savedAt: new Date().toISOString() })
     );
     localStorage.setItem(
-      `itera.live.answers:${SESSION}`,
+      `itera.live.answers:${STUDENT}:${SESSION}`,
       JSON.stringify({ [ACTIVITY]: { correct: true, elapsedMs: 900 } })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
@@ -328,7 +330,7 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
 describe('useClassSession — live stage streaming (B3)', () => {
   it('the staged learner re-broadcasts stage-update on autosave', async () => {
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
@@ -344,7 +346,7 @@ describe('useClassSession — live stage streaming (B3)', () => {
     });
 
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const cor = "verde";', savedAt: new Date().toISOString() })
     );
     act(() => {
@@ -385,7 +387,7 @@ describe('useClassSession — live stage streaming (B3)', () => {
 
   it('a forged stage-show naming me does NOT make me a live source without a real pull', async () => {
     localStorage.setItem(
-      `itera.code.snapshot:${ACTIVITY}`,
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
       JSON.stringify({ code: 'const cor = "azul";', savedAt: new Date().toISOString() })
     );
     await mountAs({ userId: STUDENT, isInstructor: false });
