@@ -16,12 +16,14 @@ import { CODE_PREVIEW_RUNTIME_SOURCE } from '@/utils/codePreviewRuntime';
  * ── The message protocol (both directions) ────────────────────────────────
  *   parent → iframe  `{ type: 'itera:code',       code }`
  *       Render this source. Fired as the learner types.
- *   parent → iframe  `{ type: 'itera:run-checks', code, checks }`
+ *   parent → iframe  `{ type: 'itera:run-checks', code, checks, token }`
  *       Render this source AND grade it. The code rides along ON PURPOSE so a
  *       submit can never race the last keystroke's render — what gets graded is
  *       exactly what the learner submitted.
  *   iframe → parent  `{ type: 'itera:ready' }`
- *   iframe → parent  `{ type: 'itera:checks', results: [{ id, passed }] }`
+ *   iframe → parent  `{ type: 'itera:checks', results: [{ id, passed }], token }`
+ *       `token` is echoed back untouched: a slow run can land after the learner
+ *       already submitted again, and the parent has to be able to drop it.
  *
  * ── The DOM the checks see ────────────────────────────────────────────────
  * `#preview` is the check root and holds exactly two children: `#root` (the
@@ -80,7 +82,7 @@ export const CODE_PREVIEW_IFRAME_HTML = [
   '  var raf=window.requestAnimationFrame||function(cb){return setTimeout(cb,16);};',
   '  raf(function(){setTimeout(res,0);});});}',
   'function allFailed(checks){return checks.map(function(c){return {id:c.id,passed:false};});}',
-  'function reply(results){window.parent.postMessage({type:"itera:checks",results:results},"*");}',
+  'function reply(results,token){window.parent.postMessage({type:"itera:checks",results:results,token:token},"*");}',
   'window.addEventListener("message",function(e){',
   '  if(!e.data)return;',
   '  if(e.data.type==="itera:code"){',
@@ -88,11 +90,11 @@ export const CODE_PREVIEW_IFRAME_HTML = [
   '    return;',
   '  }',
   '  if(e.data.type==="itera:run-checks"){',
-  '    var checks=e.data.checks||[];',
-  '    try{render(e.data.code);}catch(err){showErr(msgOf(err));reply(allFailed(checks));return;}',
+  '    var checks=e.data.checks||[];var token=e.data.token;',
+  '    try{render(e.data.code);}catch(err){showErr(msgOf(err));reply(allFailed(checks),token);return;}',
   '    nextTick().then(function(){',
   '      return __iteraRunChecks({root:previewEl,checks:checks,remount:mount,nextTick:nextTick,win:window});',
-  '    }).then(reply,function(){reply(allFailed(checks));});',
+  '    }).then(function(r){reply(r,token);},function(){reply(allFailed(checks),token);});',
   '    return;',
   '  }',
   '});',

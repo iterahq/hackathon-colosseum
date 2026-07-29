@@ -3,6 +3,7 @@ import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import type { CodeCheck } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import type { CodeCheckResult } from '@/types/codeSnack';
+import { CodeChecksList } from './CodeChecksList';
 
 /**
  * The post-submit feedback screen for a graded code snack.
@@ -12,10 +13,6 @@ import type { CodeCheckResult } from '@/types/codeSnack';
  * checklist embaixo não, mais simples… quando ele submete, daí sim ele
  * visualiza"). Showing the verdicts continuously turns the exercise into a
  * hot/cold game and pulls attention away from the code.
- *
- * `hint` is revealed ONLY on the lines that failed — a hint next to something
- * the learner already got right is noise, and the gate for hints is now the
- * submit itself rather than a timer.
  */
 export function CodeChecksFeedback({
   checks,
@@ -37,7 +34,7 @@ export function CodeChecksFeedback({
    * moves on; self-paced must fix and retry, so the escape hatch is hidden there.
    */
   live?: boolean;
-  /** Back to editing with the learner's code intact. */
+  /** Unfreeze the editor and drop this verdict, keeping the learner's code. */
   onRetry: () => void;
   /** Settle the activity with the REAL result (passed or not). */
   onContinue: () => void;
@@ -75,51 +72,32 @@ export function CodeChecksFeedback({
         </span>
       </div>
 
-      <ul className="mt-3 space-y-2">
-        {results.map((result) => {
-          const check = checks.find((c) => c.id === result.id);
-          if (!check) return null;
-          return (
-            <li
-              key={result.id}
-              className="flex items-start gap-2 text-sm"
-              data-testid="code-check-item"
-              data-check-id={result.id}
-              data-passed={result.passed ? 'true' : 'false'}
-            >
-              {result.passed ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-menta" />
-              ) : (
-                <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              )}
-              <div className="min-w-0">
-                <p className={result.passed ? 'text-foreground' : 'text-muted-foreground'}>
-                  {check.label}
-                </p>
-                {!result.passed && check.hint && (
-                  <p className="mt-0.5 text-xs text-clay" data-testid="code-check-hint">
-                    {check.hint}
-                  </p>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <CodeChecksList checks={checks} results={results} />
+
+      {!settled && (
+        <p className="mt-3 text-xs text-muted-foreground" data-testid="code-checks-frozen">
+          {t('code.checks.frozen')}
+        </p>
+      )}
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        {!allPassed && (
-          <button
-            type="button"
-            onClick={onRetry}
-            disabled={settled}
-            data-testid="code-checks-retry"
-            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <RotateCcw className="h-4 w-4" />
-            {t('code.checks.retry')}
-          </button>
-        )}
+        {/* Always offered while the result is not yet reported — the editor is
+            frozen from the submit onwards, so this explicit click is the ONLY
+            way back in, including after a pass. */}
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={settled}
+          data-testid="code-checks-retry"
+          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            allPassed
+              ? 'border border-border text-muted-foreground hover:text-foreground'
+              : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
+          }`}
+        >
+          <RotateCcw className="h-4 w-4" />
+          {allPassed ? t('code.checks.editAgain') : t('code.checks.retry')}
+        </button>
         {/* Success always advances; the failure "seguir mesmo assim" is live-only. */}
         {(allPassed || live) && (
           <button

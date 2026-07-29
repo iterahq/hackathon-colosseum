@@ -7,10 +7,19 @@ import type { Activity } from '@/types/content';
 // controllable textarea / passthrough so the test targets the snack's logic
 // (debounced autosave + Done wiring + optional help link).
 vi.mock('@/components/editor/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange }: { value: string; onChange?: (v: string) => void }) => (
+  CodeEditor: ({
+    value,
+    onChange,
+    readOnly,
+  }: {
+    value: string;
+    onChange?: (v: string) => void;
+    readOnly?: boolean;
+  }) => (
     <textarea
       data-testid="mock-editor"
       value={value}
+      readOnly={readOnly}
       onChange={(e) => onChange?.(e.target.value)}
     />
   ),
@@ -25,6 +34,8 @@ const preview = vi.hoisted(() => ({
   requests: [] as { token: number; code: string }[],
   /** Simulates a preview that crashed / never booted: the request is dropped. */
   silent: false,
+  /** Replays the last request's answer — a slow iframe reporting in too late. */
+  answerLate: (() => {}) as () => void,
 }));
 
 vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
@@ -37,13 +48,14 @@ vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
     }: {
       code: string;
       checksRequest?: { token: number; code: string } | null;
-      onChecksResult?: (r: { id: string; passed: boolean }[]) => void;
+      onChecksResult?: (r: { id: string; passed: boolean }[], token: number) => void;
     }) => {
       React.useEffect(() => {
         if (!checksRequest) return;
         preview.requests.push({ token: checksRequest.token, code: checksRequest.code });
+        preview.answerLate = () => onChecksResult?.(preview.results, checksRequest.token);
         if (preview.silent) return;
-        onChecksResult?.(preview.results);
+        onChecksResult?.(preview.results, checksRequest.token);
       }, [checksRequest, onChecksResult]);
       return React.createElement('div', { 'data-testid': 'mock-preview' }, code);
     },
@@ -276,13 +288,80 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(preview.requests).toHaveLength(2);
     expect(preview.requests[1].token).toBeGreaterThan(preview.requests[0].token);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
-    // Success has no retry — there is nothing left to fix.
-    expect(screen.queryByTestId('code-checks-retry')).not.toBeInTheDocument();
+    // Success keeps the way back in: the editor is frozen from the submit
+    // onwards, so this explicit click is the only door.
+    expect(screen.getByTestId('code-checks-retry')).toBeEnabled();
 
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
     expect(onComplete).toHaveBeenCalledWith(true);
+  });
+
+  // Call de líderes 2026-07-28: the learner submitted correct code, was marked
+  // correct, then edited it into something broken — and the green badge stayed.
+  it('freezes the editor once a verdict is on screen, and reopens it on click', () => {
+    preview.results = [
+      { id: 'verde', passed: true },
+      { id: 'texto', passed: true },
+    ];
+    renderSnack(SPEC);
+    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
+
+    submit();
+    expect(screen.getByTestId('mock-editor')).toHaveAttribute('readonly');
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-checks-retry'));
+    });
+    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
+  });
+
+  it('never reports a verdict that no longer describes the code on screen', () => {
+    preview.results = [
+      { id: 'verde', passed: true },
+      { id: 'texto', passed: true },
+    ];
+    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
+    submit();
+    expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
+
+    // The source moves away from what was graded. The frozen editor is what
+    // stops this in the UI; the guard under test covers any other path that
+    // could move the code while a verdict is up.
+    act(() => {
+      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'quebrei tudo' } });
+    });
+
+    // The verdict leaves with the code it described, and the editor reopens —
+    // no green badge over unknown code, and no dead button either.
+    expect(screen.queryByTestId('code-checks-feedback')).toBeNull();
+    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('ignores a verdict for a run the learner already walked away from', () => {
+    preview.results = [
+      { id: 'verde', passed: true },
+      { id: 'texto', passed: true },
+    ];
+    preview.silent = true;
+    renderSnack(SPEC);
+    submit();
+
+    // The learner gives up waiting and goes back to editing…
+    act(() => {
+      vi.advanceTimersByTime(8000);
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-checks-retry'));
+    });
+
+    // …and only THEN the iframe answers the run it was still chewing on.
+    act(() => {
+      preview.answerLate();
+    });
+    expect(screen.queryByTestId('code-checks-feedback')).toBeNull();
   });
 
   it('records the REAL result when the learner moves on after failing (live)', () => {
