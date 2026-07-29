@@ -15,8 +15,10 @@ import { pickQuizOption, submitAnswer } from './interactions';
  * Por que é um contrato SEPARADO de `single_choice` (e não uma variação dele):
  *   - a correção vem de `options[].isCorrect`, e não de um `correct_option_id`;
  *   - o enunciado é `question`/`prompt` (string), e não um InstructionPanel;
- *   - ele aceita `label` (a tarja verde-mono acima da pergunta) e `explanation`
- *     (o texto que aparece depois de responder), que single_choice não tem.
+ *   - ele aceita `label` (a tarja verde-mono acima da pergunta), que single_choice
+ *     não tem, e é o único contrato do spec que declara `explanation` (o porquê
+ *     mostrado quando o aluno erra — o player lê esse campo em toda kind avaliada,
+ *     mas só o quiz o carrega hoje).
  * A ferramenta de autoria precisa entregar um JSON diferente → activity diferente.
  *
  * `quiz` ainda é stub LOOSE no `@iterahq/activity-spec` (`z.record(z.unknown())`),
@@ -80,7 +82,7 @@ export const TarjaCustomizada: Story = {
   },
 };
 
-/** Variação: `explanation` aparece só depois do envio — responda no canvas. */
+/** Variação: `explanation` aparece só quando o aluno ERRA — responda no canvas. */
 export const ComExplicacao: Story = {
   args: {
     activity: makeActivity('quiz', {
@@ -115,14 +117,14 @@ export const Answered: Story = {
   },
 };
 
-/** C.submitted + D.correct — responde certo; a `explanation` só aparece agora. */
+/** C.submitted + D.correct — responde certo; a `explanation` NÃO aparece (só no erro). */
 export const Correct: Story = {
   args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
   play: async ({ args, canvasElement }) => {
     await pickQuizOption(canvasElement, 'Falso');
     await submitAnswer(canvasElement, 'quiz-submit');
     await expect(within(canvasElement).getByTestId('quiz-submit')).toHaveAttribute('data-correct', 'true');
-    await expect(within(canvasElement).getByText(/nunca se repete/i)).toBeInTheDocument();
+    await expect(within(canvasElement).queryByTestId('answer-explanation')).toBeNull();
     await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
   },
 };
@@ -134,6 +136,7 @@ export const Incorrect: Story = {
     await pickQuizOption(canvasElement, 'Verdadeiro');
     await submitAnswer(canvasElement, 'quiz-submit');
     await expect(within(canvasElement).getByTestId('quiz-submit')).toHaveAttribute('data-correct', 'false');
+    await expect(within(canvasElement).getByTestId('answer-explanation')).toBeInTheDocument();
     await expect(args.onComplete).toHaveBeenCalledWith(false, expect.anything());
   },
 };

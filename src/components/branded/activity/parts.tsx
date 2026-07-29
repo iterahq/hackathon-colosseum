@@ -11,6 +11,8 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 
+export { AnswerExplanation } from './AnswerExplanation';
+
 /** Evergreen eyebrow badge naming the activity kind. */
 export function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (

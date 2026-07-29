@@ -52,7 +52,7 @@ import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { InvalidSpecCard } from './InvalidSpecCard';
 import { resolveByocSpec } from './byoc/byocSpec';
-import { SubmitButton } from './parts';
+import { AnswerExplanation, SubmitButton } from './parts';
 
 export function ActivityRenderer({
   activity,
@@ -107,7 +107,7 @@ export function ActivityRenderer({
     case 'diagram':
       return <DiagramActivity activity={activity} onComplete={onComplete} />;
     case 'quiz':
-      return <QuizActivity activity={activity} onComplete={onComplete} />;
+      return <QuizActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'code':
       return <CodeSnackActivity activity={activity} onComplete={onComplete} live={live} />;
     // v1 general learning-activity taxonomy:
@@ -518,9 +518,11 @@ function quizOptionLabel(o: QuizOption, i: number): string {
 function QuizActivity({
   activity,
   onComplete,
+  reveal = false,
 }: {
   activity: Activity;
   onComplete: (c: boolean, detail?: ActivityCompleteDetail) => void;
+  reveal?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as {
@@ -537,13 +539,11 @@ function QuizActivity({
   const correctIdx = options.findIndex((o) => o.isCorrect);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (src/utils/answerMachine.ts — one definition, six call sites).
-  // The quiz has NO `reveal` affordance, so that axis is pinned false and
-  // `m.shown` collapses to plain `submitted` — the historical behaviour.
   const isQuizCorrect = selected === correctIdx;
   const m = answerMachine({
     done: activity.status === 'done',
     submitted,
-    reveal: false,
+    reveal,
     correct: isQuizCorrect,
     hasAnswer: selected !== null,
   });
@@ -602,11 +602,13 @@ function QuizActivity({
           return (
             <button
               key={i}
-              // DELIBERATELY `submitted`, not `m.locked`: the quiz has always
-              // left options clickable on a merely-`done` render (only the
-              // submit affordance locks). Swapping in `m.locked` would add
-              // `done` and change behaviour — don't "tidy" this.
-              disabled={submitted}
+              // DELIBERATELY not `m.locked`: the quiz has always left options
+              // clickable on a merely-`done` render (only the submit affordance
+              // locks). Swapping in `m.locked` would add `done` and change
+              // behaviour — don't "tidy" this. `reveal` IS included: once the
+              // instructor puts the answer key on screen, re-picking would
+              // recolor it.
+              disabled={submitted || reveal}
               onClick={() => setSelected(i)}
               data-testid="quiz-option"
               className={`rounded-2xl border px-5 transition-colors ${
@@ -632,11 +634,7 @@ function QuizActivity({
         {options.length === 0 && <p className="text-sm text-muted-foreground">{spec.prompt}</p>}
       </div>
 
-      {submitted && spec.explanation && (
-        <p className="mt-4 text-sm text-muted-foreground rounded-xl bg-card border border-border p-4">
-          {spec.explanation}
-        </p>
-      )}
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 
       {/* BOTTOM ZONE — just the action. The correct/incorrect message lives in
           the global viewport-fixed FeedbackFooter (shell level), NOT inline. */}

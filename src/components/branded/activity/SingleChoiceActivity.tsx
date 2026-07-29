@@ -16,7 +16,7 @@ import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
@@ -117,6 +117,8 @@ export function SingleChoiceActivity({
           <p className="text-sm text-muted-foreground">{t('activity.noOptions')}</p>
         )}
       </div>
+
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 
       <SubmitButton
         submitted={m.submitLocked}
