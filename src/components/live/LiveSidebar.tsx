@@ -90,7 +90,7 @@ export function LiveSidebar({
 
   return (
     <aside
-      className="w-full lg:w-[320px] xl:w-[348px] 2xl:w-[380px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-4"
+      className="w-full lg:w-[320px] xl:w-[348px] wide:w-[380px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-4"
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
       data-compact={compact ? 'true' : 'false'}
     >

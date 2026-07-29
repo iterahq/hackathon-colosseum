@@ -1,7 +1,7 @@
 import { Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRoomRow } from '@/components/live/LiveRoomRow';
+import { LiveSectionTitle } from '@/components/live/LiveSectionTitle';
 import type { ClassPresenceMember, LiveRoomRow as Row, LiveRoomRowActions } from '@/types/liveClass';
 
 /**
@@ -37,9 +37,7 @@ export function LiveRoomList({
   return (
     <section className={`flex-1 min-h-0 flex flex-col ${compact ? 'p-4' : 'p-5'}`} data-testid="live-room-list">
       <div className={compact ? 'mb-3' : 'mb-4'}>
-        <div className="flex items-center gap-2 mb-2.5">
-          <Users className="w-4 h-4 text-clay" />
-          <h3 className="font-display text-foreground text-sm">{t('live.room.title')}</h3>
+        <LiveSectionTitle icon={Users} title={t('live.room.title')} compact={compact}>
           {raised > 0 && (
             <span className="font-mono text-xs tabular-nums text-clay" data-testid="live-hand-count">
               ✋ {raised}
@@ -52,10 +50,10 @@ export function LiveRoomList({
               {t('live.guest.count', { n: String(guests) })}
             </span>
           )}
-          <span className="ml-auto font-mono text-sm tabular-nums text-menta" data-testid="live-roster-count">
-            {total + instructors.length}
+          <span className="ml-auto font-mono text-sm tabular-nums text-foreground/80" data-testid="live-roster-count">
+            {total}
           </span>
-        </div>
+        </LiveSectionTitle>
 
         <div className="flex items-center gap-2.5">
           <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden" aria-hidden>
@@ -70,17 +68,13 @@ export function LiveRoomList({
         </div>
 
         {instructors.length > 0 && (
-          <ul className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="live-room-instructors">
-            {instructors.map((m) => (
-              <li key={m.userId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <LiveAvatar name={m.name} avatarUrl={m.avatarUrl} size="w-5 h-5" />
-                {m.name}
-                <span className="font-mono text-[10px] uppercase tracking-wider">
-                  · {t('live.rankedRoster.prof')}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p
+            className="mt-2.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+            data-testid="live-room-instructors"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-evergreen shrink-0" aria-hidden />
+            {instructors.map((m) => m.name).join(' · ')} · {t('live.rankedRoster.prof')}
+          </p>
         )}
       </div>
 

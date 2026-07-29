@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
+import { LiveActivityStepper } from '@/components/live/LiveActivityStepper';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 /**
@@ -29,14 +30,12 @@ export function LiveSidebarFlow({
 }) {
   return (
     <div className="shrink-0 max-h-[52vh] overflow-y-auto divide-y divide-border border-b border-border">
-      {showActivity && activityCount > 0 && (
-        <div className="py-2.5 flex justify-center">
-          <span className="font-mono text-sm tabular-nums text-clay" data-testid="live-position">
-            {activityIndex + 1}/{activityCount}
-          </span>
-        </div>
-      )}
-      {controls}
+      <div>
+        {showActivity && activityCount > 0 && (
+          <LiveActivityStepper index={activityIndex} count={activityCount} />
+        )}
+        {controls}
+      </div>
       {showActivity && (
         <LiveActivityStatsCard bare compact={compact} kind={kind} answerers={answerers} />
       )}

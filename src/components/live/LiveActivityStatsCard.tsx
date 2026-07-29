@@ -1,5 +1,6 @@
 import { LayoutGrid, CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { LiveSectionTitle } from '@/components/live/LiveSectionTitle';
 import { activityKindLabelKey } from '@/utils/activityKindLabel';
 import type { ClassAnswerer } from '@/types/liveClass';
 
@@ -43,27 +44,24 @@ export function LiveActivityStatsCard({
 
   const stats = hideCorrectness
     ? [
-        { key: 'answered', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: answered, label: t('live.stats.responded') },
-        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
+        { key: 'answered', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, tone: 'text-menta', value: answered, label: t('live.stats.responded') },
+        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, tone: 'text-muted-foreground', value: pending, label: t('live.instructor.stats.waiting') },
       ]
     : [
-        { key: 'correct', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, value: correct, label: t('live.instructor.stats.correct') },
-        { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-destructive" />, value: wrong, label: t('live.instructor.stats.wrong') },
-        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, value: pending, label: t('live.instructor.stats.waiting') },
+        { key: 'correct', icon: <CheckCircle2 className="w-3.5 h-3.5 text-menta" />, tone: 'text-menta', value: correct, label: t('live.instructor.stats.correct') },
+        { key: 'wrong', icon: <XCircle className="w-3.5 h-3.5 text-destructive" />, tone: 'text-destructive', value: wrong, label: t('live.instructor.stats.wrong') },
+        { key: 'waiting', icon: <Circle className="w-3.5 h-3.5 text-muted-foreground" />, tone: 'text-muted-foreground', value: pending, label: t('live.instructor.stats.waiting') },
       ];
 
   return (
     <div
-      className={`${bare ? '' : 'rounded-3xl border border-clay/40 bg-card '}${compact ? 'p-3' : 'p-5'}`}
+      className={`${bare ? '' : 'rounded-3xl border border-border bg-card '}${compact ? 'p-3' : 'p-5'}`}
       data-testid="live-activity-stats"
     >
-      <div className={`flex items-center gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
-        <LayoutGrid className="w-4 h-4 text-clay" />
-        <h3 className="font-display text-foreground text-sm">{t('live.instructor.stats.title')}</h3>
-      </div>
+      <LiveSectionTitle icon={LayoutGrid} title={t('live.instructor.stats.title')} compact={compact} />
 
       <div className={`flex items-center justify-between gap-2 ${compact ? 'mb-2.5' : 'mb-4'}`}>
-        <span className="inline-flex items-center px-2 h-6 rounded-full border border-border bg-background text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="inline-flex items-center px-2 h-6 rounded-full bg-evergreen-soft font-mono text-[10px] uppercase tracking-wider text-evergreen-hi">
           {t(activityKindLabelKey(kind))}
         </span>
         <span className="text-xs text-muted-foreground" data-testid="live-stats-answered">
@@ -71,27 +69,35 @@ export function LiveActivityStatsCard({
         </span>
       </div>
 
-      {/* Distribution bar — instructor: correct / wrong split; learner: a single
-          "responded" fill so it never leaks correctness. */}
-      <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden flex" aria-hidden="true">
-        {hideCorrectness ? (
+      {/* Learner view keeps a single "responded" fill: it is the only signal they
+          get, and it must never leak the correctness split. */}
+      {hideCorrectness && (
+        <div
+          className="h-2.5 w-full rounded-full bg-muted overflow-hidden flex"
+          data-testid="live-stats-bar"
+          aria-hidden="true"
+        >
           <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(answered)}%` }} />
-        ) : (
-          <>
-            <div className="h-full bg-menta transition-[width] duration-300" style={{ width: `${pct(correct)}%` }} />
-            <div className="h-full bg-destructive transition-[width] duration-300" style={{ width: `${pct(wrong)}%` }} />
-          </>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className={`grid gap-2 text-center ${compact ? 'mt-2' : 'mt-3'} ${hideCorrectness ? 'grid-cols-2' : 'grid-cols-3'}`}>
-        {stats.map((s) => (
-          <div key={s.key} className="flex flex-col items-center gap-0.5">
-            <div className="flex items-center gap-1">
+      <div className={`flex text-center ${compact ? 'mt-2' : 'mt-3'}`}>
+        {stats.map((s, i) => (
+          <div
+            key={s.key}
+            className={`flex-1 flex flex-col items-center gap-1 ${i > 0 ? 'border-l border-border/70' : ''}`}
+          >
+            <span
+              className={`font-mono text-2xl tabular-nums leading-none ${
+                s.value === 0 ? 'text-muted-foreground/50' : s.tone
+              }`}
+            >
+              {s.value}
+            </span>
+            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
               {s.icon}
-              <span className="font-mono text-base tabular-nums text-foreground leading-none">{s.value}</span>
-            </div>
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</span>
+              {s.label}
+            </span>
           </div>
         ))}
       </div>

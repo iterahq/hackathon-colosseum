@@ -68,7 +68,7 @@ export function InstructorControls({
           onClick={onBegin}
           disabled={busy}
           data-testid="instructor-begin-btn"
-          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full bg-clay text-white font-medium hover:bg-clay/90 transition-colors disabled:opacity-50"
+          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full bg-evergreen text-obsidiana font-display font-semibold text-[15px] uppercase tracking-wide hover:bg-evergreen-hi transition-colors disabled:opacity-50"
         >
           <Play className="w-4 h-4" /> {t('live.instructor.control.begin')}
         </button>
@@ -84,7 +84,7 @@ export function InstructorControls({
           disabled={!canPrev || busy}
           data-testid="instructor-prev"
           aria-label={t('live.instructor.control.prev')}
-          className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-full border border-border bg-background text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
+          className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-full border border-border bg-background text-foreground hover:border-evergreen/40 transition-colors disabled:opacity-35"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -105,8 +105,8 @@ export function InstructorControls({
           disabled={!canNext || busy}
           data-testid="instructor-next"
           data-ready={allAnswered ? 'true' : 'false'}
-          className={`inline-flex items-center gap-1.5 h-10 pl-4 pr-3 shrink-0 rounded-full bg-clay text-white text-sm font-medium hover:bg-clay/90 transition-colors disabled:opacity-40 ${
-            allAnswered && canNext ? 'ring-2 ring-menta ring-offset-2 ring-offset-card animate-pulse' : ''
+          className={`inline-flex items-center gap-1.5 h-11 pl-5 pr-4 shrink-0 rounded-full bg-evergreen text-obsidiana font-display font-semibold text-[15px] uppercase tracking-wide hover:bg-evergreen-hi transition-colors disabled:opacity-40 ${
+            allAnswered && canNext ? 'ring-2 ring-evergreen-hi/70 ring-offset-2 ring-offset-card' : ''
           }`}
         >
           {t('live.instructor.control.next')}
@@ -135,7 +135,7 @@ export function InstructorControls({
           onClick={onReveal}
           disabled={busy || revealed}
           data-testid="instructor-reveal"
-          className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-border bg-background text-sm text-foreground hover:border-clay/50 transition-colors disabled:opacity-40"
+          className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-border bg-background text-sm text-foreground hover:border-evergreen/40 transition-colors disabled:opacity-40"
         >
           <Eye className="w-3.5 h-3.5" /> {t('live.instructor.control.reveal')}
         </button>

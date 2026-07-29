@@ -39,7 +39,7 @@ export function LiveRoomRow({
     <motion.li
       layout
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-      className={`group relative flex items-center rounded-xl ${open ? 'gap-1.5' : 'gap-2.5'} ${
+      className={`group relative flex items-center rounded-xl ${open ? 'gap-1.5' : 'gap-3'} ${
         compact ? 'py-1.5 px-2' : 'py-2 px-2.5'
       } ${row.down ? 'opacity-60' : ''} ${
         done ? 'bg-evergreen-soft/40' : wrong && showDetail ? 'bg-destructive/5' : 'hover:bg-muted/40'
@@ -65,7 +65,7 @@ export function LiveRoomRow({
             <LiveAvatar name={row.name} avatarUrl={row.avatarUrl} size={compact ? 'w-6 h-6' : 'w-7 h-7'} />
             {onStage && (
               <span
-                className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-clay ring-2 ring-card"
+                className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-streak ring-2 ring-card"
                 data-testid="live-room-stage-dot"
                 aria-hidden
               />
@@ -99,7 +99,7 @@ export function LiveRoomRow({
                 </span>
               )}
               {typeof row.elapsedMs === 'number' && row.state !== 'pending' && (
-                <span className="font-mono text-xs tabular-nums text-clay" data-testid="live-room-time">
+                <span className="font-mono text-xs tabular-nums text-muted-foreground" data-testid="live-room-time">
                   {formatMmss(Math.round(row.elapsedMs / 1000))}
                 </span>
               )}

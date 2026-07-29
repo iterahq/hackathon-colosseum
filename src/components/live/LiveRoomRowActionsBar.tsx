@@ -36,8 +36,8 @@ export function LiveRoomRowActionsBar({
         data-testid="live-room-stage"
         className={`h-8 px-2.5 shrink-0 inline-flex items-center gap-1.5 rounded-full border text-[11px] font-medium transition-colors disabled:opacity-60 ${
           onStage
-            ? 'border-clay bg-clay text-obsidiana hover:bg-clay/90'
-            : 'border-clay/40 bg-clay/10 text-clay hover:bg-clay/20'
+            ? 'border-streak bg-streak text-obsidiana hover:bg-streak/90'
+            : 'border-streak/40 bg-streak/10 text-streak hover:bg-streak/20'
         }`}
       >
         {actions.pending ? (

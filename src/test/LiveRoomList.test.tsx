@@ -50,7 +50,7 @@ describe('LiveRoomList', () => {
     expect(rows[2]).toHaveTextContent('Caio');
     expect(rows[2].getAttribute('data-rank')).toBe('');
     expect(screen.getByTestId('live-room-instructors')).toHaveTextContent('Prof');
-    expect(screen.getByTestId('live-roster-count').textContent).toBe('4');
+    expect(screen.getByTestId('live-roster-count').textContent).toBe('3');
   });
 
   it('hides correctness and times from learners — a wrong answer reads as "answered"', () => {
