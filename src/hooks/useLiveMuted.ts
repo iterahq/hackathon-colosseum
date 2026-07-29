@@ -3,11 +3,13 @@ import { useSyncExternalStore } from 'react';
 const KEY = 'itera.live.muted';
 const listeners = new Set<() => void>();
 
+// Sound is OPT-IN: a class that starts making noise on its own is disruptive in
+// a shared room. Only an explicit '0' (the student turned it on) unmutes.
 function read(): boolean {
   try {
-    return localStorage.getItem(KEY) === '1';
+    return localStorage.getItem(KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -32,7 +34,7 @@ export function useLiveMuted(): [boolean, () => void] {
       return () => listeners.delete(cb);
     },
     read,
-    () => false
+    () => true
   );
   return [muted, () => write(!read())];
 }

@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
 
-// v2: bumped so previously-stored louder values reset to the gentle 5% default.
 const KEY = 'itera.live.volume.v2';
 const listeners = new Set<() => void>();
 
@@ -8,7 +7,9 @@ function clamp(v: number): number {
   return Math.min(1, Math.max(0, v));
 }
 
-const DEFAULT_VOLUME = 0.05;
+// Meio caminho, não 5%: agora que o som nasce DESLIGADO (`useLiveMuted`), ligar
+// é um gesto deliberado — e 5% é tão baixo que o aluno acharia que quebrou.
+const DEFAULT_VOLUME = 0.5;
 
 function read(): number {
   try {

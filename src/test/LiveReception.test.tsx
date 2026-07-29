@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -18,7 +18,20 @@ function renderReception(r: ClassPresenceMember[]) {
   );
 }
 
+beforeEach(() => localStorage.clear());
+
 describe('LiveReception', () => {
+  it('nudges toward the sound dock while muted', () => {
+    renderReception(roster);
+    expect(screen.getByTestId('live-sound-nudge')).toBeTruthy();
+  });
+
+  it('drops the nudge once the student turned sound on', () => {
+    localStorage.setItem('itera.live.muted', '0');
+    renderReception(roster);
+    expect(screen.queryByTestId('live-sound-nudge')).toBeNull();
+  });
+
   it('count matches the chips — everyone in the room, instructor included', () => {
     renderReception(roster);
     expect(screen.getByTestId('live-reception-count').textContent).toBe('3');

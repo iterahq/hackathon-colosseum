@@ -3,6 +3,7 @@ import { DoorOpen, Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
+import { LiveSoundNudge } from '@/components/live/LiveSoundNudge';
 import type { ClassPresenceMember } from '@/types/liveClass';
 
 const MAX_CHIPS = 24;
@@ -73,6 +74,8 @@ export function LiveReception({ roster, guestUserIds }: LiveReceptionProps) {
           )}
         </ul>
       )}
+
+      <LiveSoundNudge />
     </motion.div>
   );
 }
