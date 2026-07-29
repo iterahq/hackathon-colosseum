@@ -14,7 +14,7 @@ import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 export function OrderActivity({
@@ -143,6 +143,8 @@ export function OrderActivity({
         })}
         {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
       </ol>
+
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 
       <SubmitButton
         submitted={m.submitLocked}

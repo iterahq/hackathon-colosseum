@@ -27,7 +27,7 @@ import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 /** One learner-created pairing, kept in creation order so numbering is stable. */
@@ -239,6 +239,8 @@ export function MatchActivity({
           })}
         </div>
       </div>
+
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 
       <SubmitButton
         submitted={m.submitLocked}

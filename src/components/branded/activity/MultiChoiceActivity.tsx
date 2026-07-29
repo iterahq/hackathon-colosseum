@@ -14,7 +14,7 @@ import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { seededShuffle } from '@/utils/seededShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, SubmitButton } from './parts';
+import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -135,6 +135,8 @@ export function MultiChoiceActivity({
           <p className="text-sm text-muted-foreground">{t('activity.noOptions')}</p>
         )}
       </div>
+
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 
       <SubmitButton
         submitted={m.submitLocked}
