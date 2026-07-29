@@ -34,18 +34,25 @@ export async function recordClassAttendance(sessionId: string): Promise<void> {
   }
 }
 
-/** Record the learner's own answer for one activity (latest attempt wins). */
+/**
+ * Record the learner's own answer for one activity (latest attempt wins).
+ *
+ * Returns TRUE only when the row actually landed. It used to swallow every
+ * failure into `void`, which is precisely how an answer could vanish on flaky
+ * school wifi: nothing downstream could tell a write that succeeded from one the
+ * network ate. The caller retries through `answerOutbox` on a `false`.
+ */
 export async function recordClassAnswer(
   sessionId: string,
   activityId: string,
   correct: boolean,
   elapsedMs?: number
-): Promise<void> {
-  if (!isSupabaseConfigured || !sessionId || !activityId) return;
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !sessionId || !activityId) return false;
   try {
     const userId = await getIteraUserId();
-    if (!userId) return;
-    await getSupabase()
+    if (!userId) return false;
+    const { error } = await getSupabase()
       .from('class_answers')
       .upsert(
         {
@@ -58,8 +65,9 @@ export async function recordClassAnswer(
         },
         { onConflict: 'session_id,activity_id,user_id' }
       );
+    return !error;
   } catch {
-    // best-effort
+    return false;
   }
 }
 

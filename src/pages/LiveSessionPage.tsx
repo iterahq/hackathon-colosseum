@@ -55,8 +55,8 @@ import { useClassSession } from '@/hooks/useClassSession';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
-import { persistActivityProgress } from '@/services/progress.service';
-import { recordClassAttendance, recordClassAnswer } from '@/services/classReport.service';
+import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { recordClassAttendance } from '@/services/classReport.service';
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
@@ -158,6 +158,7 @@ export default function LiveSessionPage() {
   }, [session?.id, identity.userId, status]);
 
   const sound = useLiveSound();
+  useAnswerOutbox();
 
   // Play the advance cue when the professor moves the class to a NEW activity
   // (not on first mount / leaving reception).
@@ -283,19 +284,31 @@ export default function LiveSessionPage() {
     // here — a demo must not leave progress rows behind on a real cohort's
     // content. The durable class_answers/class_attendance copies below DO happen:
     // that is what the professor's post-class report reads.
+    //
+    // Toda escrita passa pelo `writeOrQueue`: numa queda de rede ela entra na
+    // fila durável e é retentada quando a conexão volta, em vez de morrer num
+    // catch silencioso. Wifi de escola caindo 30s deixou de custar a resposta.
     const response = detail?.response ?? null;
     if (guest) {
       // no durable per-learner progress for a link-invited guest
     } else if (correct) {
       setSaving(true);
-      await persistActivityProgress(current.id, { passed: true, response });
+      await writeOrQueue({ kind: 'progress', activityId: current.id, passed: true, response });
       setSaving(false);
     } else {
-      void persistActivityProgress(current.id, { passed: false, response });
+      void writeOrQueue({ kind: 'progress', activityId: current.id, passed: false, response });
     }
     broadcastAnswer(current.id, correct, elapsedMs);
-    // Durable copy (right AND wrong) for the post-class report — best-effort.
-    if (sessionId) void recordClassAnswer(sessionId, current.id, correct, elapsedMs);
+    // Durable copy (right AND wrong) for the post-class report.
+    if (sessionId) {
+      void writeOrQueue({
+        kind: 'classAnswer',
+        sessionId,
+        activityId: current.id,
+        correct,
+        elapsedMs,
+      });
+    }
   }
 
   const activityIdx = currentActivityId ? activities.findIndex((a) => a.id === currentActivityId) : -1;

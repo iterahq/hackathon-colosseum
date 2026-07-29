@@ -43,6 +43,7 @@ import {
   persistActivityProgress,
   resumeIndexFor,
 } from '@/services/progress.service';
+import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
 import { activityTitleOf, buildArtifact, buildRepoPath } from '@/services/artifactPolicy';
 import { toast } from 'sonner';
@@ -60,6 +61,7 @@ export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { t, tText } = useI18n();
+  useAnswerOutbox();
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
 
   const activities = useMemo<Activity[]>(() => data?.activities ?? [], [data]);
@@ -231,7 +233,14 @@ export default function LessonPlayer() {
       // reset them, so a miss leaked its content into the next activity's commit.
       pendingArtifactRef.current = null;
       pendingResponseRef.current = null;
-      void persistActivityProgress(current.id, { passed: false, response: missedResponse });
+      // Via outbox: o acerto tem `retrySave` na tela, o erro não tinha recurso
+      // nenhum — caiu a rede, o registro da tentativa sumia calado.
+      void writeOrQueue({
+        kind: 'progress',
+        activityId: current.id,
+        passed: false,
+        response: missedResponse,
+      });
     }
 
     if (correct) {
