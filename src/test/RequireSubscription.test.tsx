@@ -27,6 +27,7 @@ const entitlementState = {
     currentPeriodEnd: string | null;
   },
   isPending: false,
+  isError: false,
 };
 const membershipState = {
   data: [] as { tenantId: string; role: string; isPersonal?: boolean }[],
@@ -37,14 +38,14 @@ vi.mock('@/auth/AuthContext', () => ({ useAuth: () => authState }));
 vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => entitlementState }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => membershipState }));
 
-function renderGuard() {
+function renderGuard(graceOnError = false) {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route
           path="/"
           element={
-            <RequireSubscription>
+            <RequireSubscription graceOnError={graceOnError}>
               <div data-testid="player">PLAYER OK</div>
             </RequireSubscription>
           }
@@ -64,6 +65,7 @@ describe('RequireSubscription (PLG gate)', () => {
     authState.isDflFederated = false;
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     entitlementState.isPending = false;
+    entitlementState.isError = false;
     membershipState.data = [{ tenantId: 'T', role: 'learner' }];
     membershipState.isPending = false;
   });
@@ -120,6 +122,32 @@ describe('RequireSubscription (PLG gate)', () => {
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     renderGuard();
     expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('a member of an exempt tenant is entitled (the free cohort walks in)', () => {
+    // itera-api 0014: `itera.my_subscription` emits status='exempt'/is_active for
+    // a tenant that gives its classes away. Same authority, no second bypass.
+    entitlementState.data = { active: true, status: 'exempt', currentPeriodEnd: null };
+    renderGuard();
+    expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('graceOnError: a FAILED entitlement read renders the player instead of paywalling', () => {
+    // Live class runs on the same school wifi the query dies on. An unanswered
+    // read is not a "no" — bouncing the learner mid-class costs a real class.
+    entitlementState.isError = true;
+    entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+    renderGuard(true);
+    expect(screen.getByTestId('player')).toBeInTheDocument();
+    expect(screen.queryByTestId('subscribe')).not.toBeInTheDocument();
+  });
+
+  it('without graceOnError a FAILED read still paywalls (no free bypass by blocking the request)', () => {
+    entitlementState.isError = true;
+    entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+    renderGuard();
+    expect(screen.queryByTestId('player')).not.toBeInTheDocument();
+    expect(screen.getByTestId('subscribe')).toBeInTheDocument();
   });
 
   it('a grandfathered user (created_at before gate date) is entitled', () => {
