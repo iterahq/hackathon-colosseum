@@ -97,12 +97,45 @@ export interface StageContent {
   status: StageWorkStatus;
 }
 
-/** One row of the instructor's stage picker: a present learner + their state. */
-export interface StagePickerLearner {
+/**
+ * One row of the single "sala ao vivo" list (see utils/liveRoomRows): everything
+ * the sidebar knows about one person, flattened so the row component only
+ * renders. Order is the CUMULATIVE podium order; `state` is the CURRENT
+ * activity.
+ */
+export interface LiveRoomRow {
   userId: string;
   name: string;
   avatarUrl: string | null;
-  state: StageWorkStatus;
+  /** Cumulative podium position; absent for a learner who hasn't answered yet. */
+  rank?: number;
+  state: ClassAnswerState;
+  /**
+   * Has local work for the current activity but hasn't submitted it. Presence
+   * only — a learner on the previous build never tracks it and reads as false,
+   * which degrades to the old information rather than to something wrong.
+   */
+  working: boolean;
+  /** Time taken on the current activity, in ms (when known). */
+  elapsedMs?: number;
+  raised: boolean;
+  /** Was in the room and dropped presence — the row stays, dimmed. */
+  down: boolean;
+  guest: boolean;
+  isSelf: boolean;
+  correctCount: number;
+  answeredCount: number;
+}
+
+/** What the professor can do to one row (DTQ-2: only what already existed). */
+export interface LiveRoomRowActions {
+  /** Pull this learner's work onto the class stage — or take it off. */
+  onToggleStage: (userId: string) => void;
+  onStage: boolean;
+  /** The pull is in flight (awaiting the learner's peer-to-peer reply). */
+  pending: boolean;
+  /** The pull timed out — the learner is offline and can never answer it. */
+  unreachable: boolean;
 }
 
 /** The work pulled to the class stage: `code` carries raw source, else a summary. */

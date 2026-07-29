@@ -1,59 +1,57 @@
 import { useState, type ReactNode } from 'react';
-import { Link2, Check, Square, Users, ChevronDown, UserPlus } from 'lucide-react';
-import { useI18n } from '@/i18n';
-import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
+import { useCompactHeight } from '@/hooks/useCompactHeight';
 import { LiveActivityStatsCard } from '@/components/live/LiveActivityStatsCard';
-import { LiveRankedRosterCard } from '@/components/live/LiveRankedRosterCard';
+import { LivePalcoBanner } from '@/components/live/LivePalcoBanner';
+import { LiveRoomList } from '@/components/live/LiveRoomList';
+import { LiveSidebarActions } from '@/components/live/LiveSidebarActions';
+import { LiveSidebarFlow } from '@/components/live/LiveSidebarFlow';
+import { LiveSidebarToggle } from '@/components/live/LiveSidebarToggle';
+import type { ClassAnswerer, ClassPresenceMember, LiveRoomRow, StagedAuthor } from '@/types/liveClass';
 
 interface LiveSidebarProps {
   /** Learner and instructor share this ONE sidebar; the role toggles sections. */
   role: 'learner' | 'instructor';
   roster: ClassPresenceMember[];
   answerers: ClassAnswerer[];
-  selfUserId?: string;
+  /** The single ordered room list (see utils/liveRoomRows). */
+  rows: LiveRoomRow[];
   /** Instructor only — hidden during reception (no current activity). */
   hasActivity?: boolean;
   activityIndex?: number;
   activityCount?: number;
   kind?: string;
-  ranking?: ClassRanking;
-  /** Learners who dropped presence — dimmed + blinking in the roster. */
-  disconnectedUserIds?: string[];
-  /** Durable guest list (itera.class_guests) — badges rows + feeds the counter. */
-  guestUserIds?: string[];
   copied?: boolean;
   busy?: boolean;
   onCopyLink?: () => void;
-  /**
-   * Guest-link affordance (ADR-12). Sits next to the normal join link: same
-   * gesture, different audience — this one is for someone with NO account.
-   * Undefined hides the button entirely (e.g. the guest-link schema isn't
-   * applied on this deploy yet).
-   */
   onCopyGuestLink?: () => void;
   guestCopied?: boolean;
   guestLinkBusy?: boolean;
   onEnd?: () => void;
   /** Instructor flow controls, rendered as the top section (no bottom bar). */
   controls?: ReactNode;
+  /** Instructor: whose work is on the class stage right now. */
+  stagedAuthor?: StagedAuthor | null;
+  stagePendingUserId?: string | null;
+  stageUnreachableUserId?: string | null;
+  /** Instructor: pull this learner's work onto the stage (or take it off). */
+  onToggleStage?: (userId: string) => void;
 }
 
 /**
- * The single right-hand live-class sidebar. Both roles see ONE ranked class
- * list (podium order, kept live); the instructor adds stats + manage actions.
+ * The single right-hand live-class sidebar. Both roles see ONE room list (podium
+ * order, kept live); the instructor adds stats, the stage banner and the
+ * per-student actions — which is where "puxar pro palco" moved to, replacing the
+ * separate collapsible picker that duplicated the whole class list.
  */
 export function LiveSidebar({
   role,
   roster,
   answerers,
-  selfUserId,
+  rows,
   hasActivity = true,
   activityIndex = 0,
   activityCount = 0,
   kind = '',
-  ranking,
-  disconnectedUserIds,
-  guestUserIds,
   copied = false,
   busy = false,
   onCopyLink,
@@ -62,125 +60,88 @@ export function LiveSidebar({
   guestLinkBusy = false,
   onEnd,
   controls,
+  stagedAuthor,
+  stagePendingUserId,
+  stageUnreachableUserId,
+  onToggleStage,
 }: LiveSidebarProps) {
-  const { t } = useI18n();
+  const compact = useCompactHeight();
   const isInstructor = role === 'instructor';
   const showActivity = isInstructor && hasActivity;
+  const instructors = roster.filter((m) => m.isInstructor);
 
   const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
   const bodyClass = collapsible
-    ? `min-h-0 divide-y divide-border lg:flex-1 lg:block lg:max-h-none lg:overflow-y-auto ${open ? 'max-h-[45vh] overflow-y-auto' : 'hidden'}`
-    : 'flex-1 min-h-0 lg:overflow-y-auto divide-y divide-border';
+    ? `min-h-0 flex flex-col lg:flex-1 lg:max-h-none lg:flex ${open ? 'max-h-[45vh]' : 'hidden'}`
+    : 'flex-1 min-h-0 flex flex-col';
+
+  // The stage actions only exist for the instructor, and only while an activity
+  // is on screen: there is nothing to pull during reception.
+  const actionsFor =
+    showActivity && onToggleStage
+      ? (row: LiveRoomRow) => ({
+          onToggleStage,
+          onStage: stagedAuthor?.userId === row.userId,
+          pending: stagePendingUserId === row.userId,
+          unreachable: stageUnreachableUserId === row.userId,
+        })
+      : undefined;
 
   return (
     <aside
-      className="w-full lg:w-[340px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-4"
+      className="w-full lg:w-[320px] xl:w-[348px] 2xl:w-[380px] lg:shrink-0 border-t lg:border-t-0 lg:border-l border-border bg-card flex flex-col lg:sticky lg:top-0 lg:h-dvh lg:pt-4"
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
+      data-compact={compact ? 'true' : 'false'}
     >
       {collapsible && (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          data-testid="live-sidebar-toggle"
-          className="lg:hidden flex items-center justify-between gap-2 px-4 py-2.5 text-sm text-muted-foreground"
-        >
-          <span className="inline-flex items-center gap-1.5 font-medium">
-            <Users className="w-4 h-4" /> {t('live.sidebar.classroom')}
-            <span className="text-muted-foreground/70">· {t('live.sidebar.online', { count: String(roster.length) })}</span>
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
+        <LiveSidebarToggle open={open} count={roster.length} onToggle={() => setOpen((o) => !o)} />
       )}
 
-      {/* Teto de altura: o picker de palco abre aqui e empurraria Copiar link/Encerrar pra fora do dvh. */}
       {isInstructor && (controls || showActivity) && (
-        <div className="shrink-0 max-h-[62vh] overflow-y-auto divide-y divide-border border-b border-border">
-          {showActivity && activityCount > 0 && (
-            <div className="py-2.5 flex justify-center">
-              <span
-                className="font-mono text-sm tabular-nums text-clay"
-                data-testid="live-position"
-              >
-                {activityIndex + 1}/{activityCount}
-              </span>
-            </div>
-          )}
-          {controls}
-          {showActivity && (
-            <LiveActivityStatsCard bare kind={kind} answerers={answerers} />
-          )}
-        </div>
+        <LiveSidebarFlow
+          showActivity={showActivity}
+          activityIndex={activityIndex}
+          activityCount={activityCount}
+          kind={kind}
+          answerers={answerers}
+          compact={compact}
+          controls={controls}
+        />
+      )}
+
+      {isInstructor && (
+        <LivePalcoBanner
+          author={stagedAuthor ?? null}
+          compact={compact}
+          onClear={() => stagedAuthor && onToggleStage?.(stagedAuthor.userId)}
+        />
       )}
 
       <div className={bodyClass}>
         {!isInstructor && hasActivity && (
-          <LiveActivityStatsCard bare hideCorrectness kind={kind} answerers={answerers} />
+          <LiveActivityStatsCard bare compact={compact} hideCorrectness kind={kind} answerers={answerers} />
         )}
-        {ranking && (
-          <LiveRankedRosterCard
-            bare
-            ranking={ranking}
-            answerers={answerers}
-            instructors={roster.filter((m) => m.isInstructor)}
-            raisedUserIds={roster.filter((m) => m.handRaised).map((m) => m.userId)}
-            disconnectedUserIds={disconnectedUserIds}
-            guestUserIds={guestUserIds}
-            selfUserId={selfUserId}
-            showDetail={isInstructor}
-          />
-        )}
+        <LiveRoomList
+          rows={rows}
+          instructors={instructors}
+          compact={compact}
+          showDetail={isInstructor}
+          actionsFor={actionsFor}
+        />
       </div>
 
       {isInstructor && (
-        <div className="shrink-0 border-t border-border p-5 space-y-2.5">
-          <button
-            onClick={onCopyLink}
-            data-testid="instructor-copy-link"
-            className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-menta" /> {t('live.instructor.copyLinkDone')}
-              </>
-            ) : (
-              <>
-                <Link2 className="w-4 h-4" /> {t('live.instructor.copyLink')}
-              </>
-            )}
-          </button>
-          {/* Guest link (ADR-12) — for someone with NO account. Generates the
-              session's short code on first use. No cap and no kick in v1
-              (ADR-10/ADR-12): the control is social, and the code dies with the
-              class. */}
-          {onCopyGuestLink && (
-            <button
-              onClick={onCopyGuestLink}
-              disabled={guestLinkBusy}
-              data-testid="instructor-copy-guest-link"
-              className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors disabled:opacity-50"
-            >
-              {guestCopied ? (
-                <>
-                  <Check className="w-4 h-4" /> {t('live.instructor.copyGuestLinkDone')}
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" /> {t('live.instructor.copyGuestLink')}
-                </>
-              )}
-            </button>
-          )}
-          <button
-            onClick={onEnd}
-            disabled={busy}
-            data-testid="instructor-end"
-            className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-full border border-destructive/40 bg-destructive/10 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
-          >
-            <Square className="w-3.5 h-3.5" /> {t('live.instructor.control.end')}
-          </button>
-        </div>
+        <LiveSidebarActions
+          compact={compact}
+          copied={copied}
+          busy={busy}
+          onCopyLink={onCopyLink}
+          onCopyGuestLink={onCopyGuestLink}
+          guestCopied={guestCopied}
+          guestLinkBusy={guestLinkBusy}
+          onEnd={onEnd}
+        />
       )}
     </aside>
   );

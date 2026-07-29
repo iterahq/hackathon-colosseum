@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import type { ClassPresenceMember, StagedAnswer } from '@/types/liveClass';
-import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
+import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 
 /**
  * The professor pulls work in progress (ADR-4 revised), so BOTH surfaces have to
  * be honest about it: the stage must label a draft as a draft (the class can't
- * read a classmate's half-written attempt as a final answer), and the picker must
- * list everyone present with their state instead of hiding whoever hasn't
+ * read a classmate's half-written attempt as a final answer), and the room list
+ * must show everyone present with their state instead of hiding whoever hasn't
  * finished. Plus the peer-to-peer limitation surfacing as a message, not a
  * forever-spinner.
  */
@@ -22,7 +22,7 @@ vi.mock('@/components/branded/activity/code/CodeLivePreview', () => ({
 }));
 
 const { LiveStage } = await import('@/components/live/LiveStage');
-const { LiveStagePicker } = await import('@/components/live/LiveStagePicker');
+const { LiveRoomList } = await import('@/components/live/LiveRoomList');
 
 const author = { userId: 'a', name: 'Alba', avatarUrl: null };
 
@@ -81,71 +81,85 @@ const roster: ClassPresenceMember[] = [
   { userId: 'c', name: 'Cauê', avatarUrl: null, isInstructor: false },
 ];
 
-describe('buildStagePickerLearners', () => {
-  it('keeps every present learner and drops only the instructor', () => {
-    const rows = buildStagePickerLearners(roster, 'act-1', { a: true });
+const ranking = {
+  ranked: [{ userId: 'a', name: 'Alba', avatarUrl: null, totalMs: 4000, answeredCount: 1, correctCount: 1, rank: 1 }],
+  waiting: [
+    { userId: 'b', name: 'Bento', avatarUrl: null },
+    { userId: 'c', name: 'Cauê', avatarUrl: null },
+  ],
+};
+const answerers = [
+  { userId: 'a', name: 'Alba', avatarUrl: null, state: 'done' as const },
+  { userId: 'b', name: 'Bento', avatarUrl: null, state: 'pending' as const },
+  { userId: 'c', name: 'Cauê', avatarUrl: null, state: 'pending' as const },
+];
+
+describe('buildLiveRoomRows', () => {
+  it('keeps podium order first and the not-yet-ranked after it', () => {
+    const rows = buildLiveRoomRows({ ranking, answerers, roster, currentActivityId: 'act-1' });
     expect(rows.map((r) => r.userId)).toEqual(['a', 'b', 'c']);
   });
 
-  it('tags submitted / in progress / not started from the signals available', () => {
-    const rows = buildStagePickerLearners(roster, 'act-1', { a: true });
-    expect(rows.find((r) => r.userId === 'a')!.state).toBe('submitted');
-    expect(rows.find((r) => r.userId === 'b')!.state).toBe('in_progress');
-    expect(rows.find((r) => r.userId === 'c')!.state).toBe('not_started');
+  it('separates answered / working / untouched from the signals available', () => {
+    const rows = buildLiveRoomRows({ ranking, answerers, roster, currentActivityId: 'act-1' });
+    expect(rows.find((r) => r.userId === 'a')!.state).toBe('done');
+    expect(rows.find((r) => r.userId === 'b')!.working).toBe(true);
+    expect(rows.find((r) => r.userId === 'c')!.working).toBe(false);
   });
 
   it('does not carry work from a PREVIOUS activity into the current one', () => {
-    const rows = buildStagePickerLearners(roster, 'act-2', undefined);
-    expect(rows.every((r) => r.state === 'not_started')).toBe(true);
+    const rows = buildLiveRoomRows({ ranking, answerers, roster, currentActivityId: 'act-2' });
+    expect(rows.every((r) => !r.working)).toBe(true);
   });
 });
 
-describe('LiveStagePicker', () => {
-  const learners = buildStagePickerLearners(roster, 'act-1', { a: true });
-
-  function renderPicker(props: Partial<React.ComponentProps<typeof LiveStagePicker>> = {}) {
-    const onPull = vi.fn();
+describe('room row — pull to stage', () => {
+  function renderRoom(over: Partial<{ pending: string; unreachable: string }> = {}) {
+    const onToggleStage = vi.fn();
     render(
       <I18nProvider>
-        <LiveStagePicker
-          learners={learners}
-          staged={false}
-          onPull={onPull}
-          onClear={() => {}}
-          {...props}
+        <LiveRoomList
+          rows={buildLiveRoomRows({ ranking, answerers, roster, currentActivityId: 'act-1' })}
+          instructors={roster.filter((m) => m.isInstructor)}
+          showDetail
+          actionsFor={(row) => ({
+            onToggleStage,
+            onStage: false,
+            pending: over.pending === row.userId,
+            unreachable: over.unreachable === row.userId,
+          })}
         />
       </I18nProvider>
     );
-    return { onPull };
+    return { onToggleStage };
   }
 
-  it('lists EVERY present learner, not just the ones who finished', () => {
-    renderPicker();
-    const rows = screen.getAllByTestId('live-stage-pull');
-    expect(rows).toHaveLength(3);
-    expect(rows.map((r) => r.getAttribute('data-state'))).toEqual([
-      'submitted',
-      'in_progress',
-      'not_started',
-    ]);
+  const openRow = (i: number) => fireEvent.click(screen.getAllByTestId('live-room-actions-open')[i]);
+
+  it('offers the action on EVERY present learner, not just the ones who finished', () => {
+    renderRoom();
+    expect(screen.getAllByTestId('live-room-actions-open')).toHaveLength(3);
+    expect(screen.getByTestId('live-room-working')).toBeInTheDocument();
   });
 
   it('pulls a learner who is still in progress', () => {
-    const { onPull } = renderPicker();
-    fireEvent.click(screen.getAllByTestId('live-stage-pull')[1]);
-    expect(onPull).toHaveBeenCalledWith('b');
+    const { onToggleStage } = renderRoom();
+    openRow(1);
+    fireEvent.click(screen.getByTestId('live-room-stage'));
+    expect(onToggleStage).toHaveBeenCalledWith('b');
   });
 
   it('shows a spinner for the pull in flight and blocks a double pull', () => {
-    const { onPull } = renderPicker({ pendingUserId: 'b' });
-    expect(screen.getByTestId('live-stage-pull-pending')).toBeTruthy();
-    fireEvent.click(screen.getAllByTestId('live-stage-pull')[1]);
-    expect(onPull).not.toHaveBeenCalled();
+    const { onToggleStage } = renderRoom({ pending: 'b' });
+    openRow(1);
+    expect(screen.getByTestId('live-room-stage-pending')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('live-room-stage'));
+    expect(onToggleStage).not.toHaveBeenCalled();
   });
 
   it('explains an unreachable learner instead of spinning forever', () => {
-    renderPicker({ unreachableUserId: 'c' });
-    expect(screen.queryByTestId('live-stage-pull-pending')).toBeNull();
-    expect(screen.getByTestId('live-stage-pull-unreachable').textContent).toContain('Sem resposta');
+    renderRoom({ unreachable: 'c' });
+    expect(screen.queryByTestId('live-room-stage-pending')).toBeNull();
+    expect(screen.getByTestId('live-room-unreachable').textContent).toContain('Sem resposta');
   });
 });

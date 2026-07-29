@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Loader2, MonitorUp } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLessonContent } from '@/hooks';
@@ -39,7 +39,7 @@ import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { remainingSeconds, extendedTimerSeconds } from '@/utils/addLiveTime';
-import { buildStagePickerLearners } from '@/utils/stagePickerLearners';
+import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import {
   ensureSessionGuestCode,
   getSessionGuestCode,
@@ -53,13 +53,12 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
-import { LiveStagePicker } from '@/components/live/LiveStagePicker';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
-import type { ClassPresenceMember, StagePickerLearner } from '@/types/liveClass';
+import type { ClassPresenceMember } from '@/types/liveClass';
 
 // The countdown duration is resolved PER ACTIVITY by `liveTimerSeconds`:
 // per-kind default (code = 5 min, everything else 1 min) with an optional
@@ -201,19 +200,6 @@ function ClassControl({
     );
   }, [roster, polled, answers, elapsed, currentActivityId]);
 
-  // Learners pullable to the stage: EVERYONE present (ADR-4 revised — the
-  // professor follows work in progress too), each tagged concluiu / em andamento
-  // / não começou so the choice is informed instead of blind.
-  const stageLearners = useMemo<StagePickerLearner[]>(
-    () =>
-      buildStagePickerLearners(
-        roster,
-        currentActivityId,
-        currentActivityId ? answers[currentActivityId] : undefined
-      ),
-    [roster, answers, currentActivityId]
-  );
-
   // Every learner who was EVER present — presence drains on `leave` (students
   // disconnect the instant the class ends), which would empty the live roster
   // and make the final podium vanish. Accumulating here keeps their names.
@@ -302,18 +288,6 @@ function ClassControl({
 
   const [busy, setBusy] = useState(false);
 
-  // O picker abre DENTRO da sidebar, e o mesmo botão fecha. Modal cobria a aula
-  // inteira só pra escolher um aluno. Fecha sozinho quando o puxão chega, pra
-  // cair direto na tela do aluno (B9 view mode).
-  const [stageOpen, setStageOpen] = useState(false);
-  // Gate pelo ALUNO no palco, não pelo objeto: o aluno re-emite o trabalho a cada
-  // tecla, e cada `stage-show` cria um `stagedAnswer` novo — fechar por identidade
-  // de objeto arrancaria a lista da mão do professor a cada digitação.
-  const stagedUserId = stagedAnswer?.author.userId ?? null;
-  useEffect(() => {
-    if (stagedUserId) setStageOpen(false);
-  }, [stagedUserId]);
-
   async function goTo(activityId: string) {
     if (busy) return;
     setBusy(true);
@@ -398,6 +372,26 @@ function ClassControl({
     // Re-probe as people join: the roster changing is the cheapest signal that a
     // new guest may have registered (no cap in v1 → no other trigger to hook).
   }, [session.id, roster.length]);
+
+  const stagedUserId = stagedAnswer?.author.userId ?? null;
+  const toggleStage = useCallback(
+    (userId: string) => (stagedUserId === userId ? clearStage() : requestStage(userId)),
+    [stagedUserId, clearStage, requestStage]
+  );
+
+  // The single sidebar list: podium order + this activity's state per row.
+  const roomRows = useMemo(
+    () =>
+      buildLiveRoomRows({
+        ranking: liveRanking,
+        answerers,
+        roster,
+        currentActivityId,
+        disconnectedUserIds,
+        guestUserIds,
+      }),
+    [liveRanking, answerers, roster, currentActivityId, disconnectedUserIds, guestUserIds]
+  );
 
   async function copyGuestLink() {
     setGuestLinkBusy(true);
@@ -553,10 +547,11 @@ function ClassControl({
           kind={current?.kind ?? ''}
           roster={roster}
           answerers={answerers}
-          ranking={liveRanking}
-          disconnectedUserIds={disconnectedUserIds}
-          guestUserIds={guestUserIds}
-          selfUserId={instructorId ?? undefined}
+          rows={roomRows}
+          stagedAuthor={stagedAnswer?.author ?? null}
+          stagePendingUserId={stagePendingUserId}
+          stageUnreachableUserId={stageUnreachableUserId}
+          onToggleStage={toggleStage}
           copied={copied}
           busy={busy}
           onCopyLink={copyJoinLink}
@@ -599,42 +594,6 @@ function ClassControl({
                 onAddTime={handleAddTime}
                 onReveal={() => current && clearTimer(current.id)}
               />
-              {current && (
-                <div className="p-4">
-                  <button
-                    type="button"
-                    onClick={() => setStageOpen((o) => !o)}
-                    data-testid="live-stage-open"
-                    aria-expanded={stageOpen}
-                    aria-controls="live-stage-inline"
-                    className={`w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border text-sm font-medium transition-colors ${
-                      stageOpen
-                        ? 'border-clay bg-clay/20 text-clay'
-                        : 'border-clay/40 bg-clay/10 text-clay hover:bg-clay/20'
-                    }`}
-                  >
-                    <MonitorUp className="w-4 h-4" /> {t('live.stage.open')}
-                    <ChevronDown className={`w-4 h-4 transition-transform ${stageOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {/* A turma cheia não pode espremer o resto da sidebar: a lista
-                      ganha altura máxima e rola sozinha. */}
-                  {stageOpen && (
-                    <div
-                      id="live-stage-inline"
-                      className="mt-2 max-h-[38vh] overflow-y-auto rounded-2xl border border-border bg-background"
-                    >
-                      <LiveStagePicker
-                        learners={stageLearners}
-                        staged={Boolean(stagedAnswer)}
-                        pendingUserId={stagePendingUserId}
-                        unreachableUserId={stageUnreachableUserId}
-                        onPull={requestStage}
-                        onClear={clearStage}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           }
         />

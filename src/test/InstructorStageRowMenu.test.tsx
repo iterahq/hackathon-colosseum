@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -36,25 +36,30 @@ vi.mock('@/hooks', () => ({
     isPending: false,
   }),
 }));
+const stage = vi.hoisted(() => ({ request: vi.fn(), clear: vi.fn(), staged: null as unknown }));
+
 vi.mock('@/hooks/useClassSession', () => ({
   useClassSession: () => ({
     currentActivityId: 'act-1',
     status: 'live',
-    roster: [],
+    roster: [
+      { userId: 'inst-1', name: 'Prof', avatarUrl: null, isInstructor: true },
+      { userId: 'a', name: 'Alba', avatarUrl: null, isInstructor: false },
+    ],
     connected: true,
     reconnecting: false,
     answers: {},
     elapsed: {},
     timer: null,
     stoppedFor: null,
-    stagedAnswer: null,
+    stagedAnswer: stage.staged,
     stagePendingUserId: null,
     stageUnreachableUserId: null,
     broadcast: vi.fn(),
     broadcastTimer: vi.fn(),
     clearTimer: vi.fn(),
-    requestStage: vi.fn(),
-    clearStage: vi.fn(),
+    requestStage: stage.request,
+    clearStage: stage.clear,
     refetch: vi.fn(),
   }),
 }));
@@ -66,10 +71,24 @@ vi.mock('@/services/liveClass.service', () => ({
   endClassSession: vi.fn(),
 }));
 vi.mock('@/components/live/LiveSessionChrome', () => ({ LiveSessionChrome: () => <div /> }));
-// A sidebar real é pesada; o que importa aqui é que os `controls` do professor
-// (onde o picker agora mora) sejam renderizados dentro dela.
+// A sidebar real é pesada; o que importa aqui é a ligação que a página faz com
+// ela — as linhas da sala e a ação de palco que cada linha recebe.
 vi.mock('@/components/live/LiveSidebar', () => ({
-  LiveSidebar: ({ controls }: { controls?: React.ReactNode }) => <aside>{controls}</aside>,
+  LiveSidebar: ({
+    rows,
+    onToggleStage,
+  }: {
+    rows: { userId: string; name: string }[];
+    onToggleStage?: (userId: string) => void;
+  }) => (
+    <aside>
+      {rows.map((r) => (
+        <button key={r.userId} data-testid={`row-${r.userId}`} onClick={() => onToggleStage?.(r.userId)}>
+          {r.name}
+        </button>
+      ))}
+    </aside>
+  ),
 }));
 vi.mock('@/components/live/InstructorControls', () => ({ InstructorControls: () => <div /> }));
 vi.mock('@/components/live/LivePodium', () => ({ LivePodium: () => <div /> }));
@@ -78,9 +97,6 @@ vi.mock('@/components/live/LiveReception', () => ({ LiveReception: () => <div />
 vi.mock('@/components/live/LiveSoundDock', () => ({ LiveSoundDock: () => <div /> }));
 vi.mock('@/components/live/LiveActivityStage', () => ({ LiveActivityStage: () => <div /> }));
 vi.mock('@/components/live/LiveStage', () => ({ LiveStage: () => <div /> }));
-vi.mock('@/components/live/LiveStagePicker', () => ({
-  LiveStagePicker: () => <div data-testid="live-stage-picker" />,
-}));
 vi.mock('@/components/live/LiveReconnectBanner', () => ({ LiveReconnectBanner: () => <div /> }));
 
 function renderPage() {
@@ -98,20 +114,36 @@ function renderPage() {
   );
 }
 
-describe('InstructorSessionPage — picker de palco na própria sidebar', () => {
-  it('abre e fecha a lista no mesmo botão, sem modal', () => {
+describe('InstructorSessionPage — palco pela linha do aluno', () => {
+  beforeEach(() => {
+    stage.request.mockClear();
+    stage.clear.mockClear();
+    stage.staged = null;
+  });
+
+  it('não abre mais uma segunda lista da turma só pra escolher alguém', () => {
     renderPage();
-    const toggle = screen.getByTestId('live-stage-open');
+    expect(screen.queryByTestId('live-stage-open')).toBeNull();
+  });
 
-    expect(screen.queryByTestId('live-stage-picker')).toBeNull();
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  it('puxa pro palco a partir da linha do aluno na lista única', () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId('row-a'));
+    expect(stage.request).toHaveBeenCalledWith('a');
+    expect(stage.clear).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(toggle);
-    expect(screen.getByTestId('live-stage-picker')).toBeInTheDocument();
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-
-    fireEvent.click(toggle);
-    expect(screen.queryByTestId('live-stage-picker')).toBeNull();
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  it('a mesma linha tira do palco quem já está lá', () => {
+    stage.staged = {
+      activityId: 'act-1',
+      kind: 'answer',
+      content: 'x',
+      status: 'submitted',
+      author: { userId: 'a', name: 'Alba', avatarUrl: null },
+    };
+    renderPage();
+    fireEvent.click(screen.getByTestId('row-a'));
+    expect(stage.clear).toHaveBeenCalled();
+    expect(stage.request).not.toHaveBeenCalled();
   });
 });

@@ -59,6 +59,7 @@ import { recordClassAttendance, recordClassAnswer } from '@/services/classReport
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
+import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
@@ -303,6 +304,17 @@ export default function LiveSessionPage() {
 
   const ended = status === 'ended';
   const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
+  const roomRows = useMemo(
+    () =>
+      buildLiveRoomRows({
+        ranking: podiumRanking,
+        answerers: peerAnswerers,
+        roster,
+        currentActivityId,
+        selfUserId: identity.userId ?? undefined,
+      }),
+    [podiumRanking, peerAnswerers, roster, currentActivityId, identity.userId]
+  );
 
   // Restart the personal stopwatch whenever a timer round starts, so the
   // podium's elapsed time reflects the timed round rather than time spent
@@ -556,8 +568,7 @@ export default function LiveSessionPage() {
             role="learner"
             roster={roster}
             answerers={peerAnswerers}
-            ranking={podiumRanking}
-            selfUserId={identity.userId}
+            rows={roomRows}
             hasActivity={!!current}
             kind={current?.kind ?? ''}
           />
