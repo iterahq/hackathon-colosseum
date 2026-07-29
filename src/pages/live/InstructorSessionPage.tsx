@@ -53,6 +53,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
+import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
@@ -523,10 +524,8 @@ function ClassControl({
             ) : lessonLoading ? (
               // Pointer set, lesson content still resolving (refresh mid-class) —
               // the SAME skeleton the learners get, never the lobby.
-              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
-                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
-                <div className="h-40 rounded-2xl ds-shimmer" />
-                <div className="h-12 rounded-full ds-shimmer" />
+              <div className="mt-7">
+                <ActivitySkeleton />
               </div>
             ) : (
               // Reception — the SAME lobby the learners wait in before start.
