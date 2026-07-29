@@ -4,8 +4,10 @@
  * text label, an image, and/or an audio clip. Converges on the shared
  * InstructionPanel + `onComplete(correct)` contract.
  *
- * The `initial*` props are story-only hooks to render the answered / correct /
- * incorrect states directly (Storybook has no interactions addon here).
+ * NO story-only seams. The answered / correct / incorrect states are reached by
+ * CLICKING — in Storybook (`play`) and in Vitest (portable stories), from the
+ * same story definition. Plan `20260728-itera-activity-testing`, ADR-4: a state
+ * reachable by a prop but not by a real user is a false green.
  */
 import { useState } from 'react';
 import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
@@ -40,20 +42,16 @@ export function SingleChoiceActivity({
   activity,
   onComplete,
   reveal = false,
-  initialSelectedId,
-  initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
-  initialSelectedId?: string;
-  initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as SingleChoiceSpec;
   const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
-  const [selected, setSelected] = useState<string | null>(initialSelectedId ?? null);
-  const [submitted, setSubmitted] = useState(initialSubmitted);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (src/utils/answerMachine.ts — one definition, six call sites).
   const isCorrect = selected === spec?.correct_option_id;

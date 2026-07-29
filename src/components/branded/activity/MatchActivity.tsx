@@ -17,7 +17,8 @@
  *     meaning so it never relies on color alone (a11y). No stacked dot + icon +
  *     bg-fill overload.
  *
- * `initial*` props are story-only hooks for the answered/correct/incorrect states.
+ * NO story-only seams (ADR-4): the paired/correct/incorrect states are reached
+ * by tapping left card then right card, from the story's own `play`.
  */
 import { useState } from 'react';
 import { Check, Link2, X } from 'lucide-react';
@@ -91,15 +92,10 @@ export function MatchActivity({
   activity,
   onComplete,
   reveal = false,
-  initialConnections,
-  initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
-  /** left_id -> right_id (story/test hook; converted to ordered pairs on init) */
-  initialConnections?: Record<string, string>;
-  initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as MatchSpec;
@@ -109,11 +105,9 @@ export function MatchActivity({
   const [right] = useState(() => seededShuffle(spec?.right ?? [], Math.random().toString(36)));
   const pairs = spec?.pairs ?? [];
 
-  const [made, setMade] = useState<MadePair[]>(() =>
-    Object.entries(initialConnections ?? {}).map(([left_id, right_id]) => ({ left_id, right_id })),
-  );
+  const [made, setMade] = useState<MadePair[]>([]);
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(initialSubmitted);
+  const [submitted, setSubmitted] = useState(false);
 
   const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
   const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);

@@ -4,7 +4,8 @@
  * accessible). Submit compares the current order to `correct_order`. Reuses
  * InstructionPanel + `onComplete(correct)`.
  *
- * `initial*` props are story-only hooks for the answered/correct/incorrect states.
+ * NO story-only seams (ADR-4): answered/correct/incorrect are reached by moving
+ * items with the up/down controls, from the story's own `play`.
  */
 import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircle } from 'lucide-react';
@@ -20,14 +21,10 @@ export function OrderActivity({
   activity,
   onComplete,
   reveal = false,
-  initialOrder,
-  initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
-  initialOrder?: string[];
-  initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as OrderSpec;
@@ -36,9 +33,9 @@ export function OrderActivity({
   const byId = (id: string): ChoiceOption | undefined => items.find((i) => i.id === id);
 
   const [order, setOrder] = useState<string[]>(
-    () => initialOrder ?? seededShuffle(items, Math.random().toString(36)).map((i) => i.id),
+    () => seededShuffle(items, Math.random().toString(36)).map((i) => i.id),
   );
-  const [submitted, setSubmitted] = useState(initialSubmitted);
+  const [submitted, setSubmitted] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   // Grading is the KIND's job; when the verdict may reach the screen is the

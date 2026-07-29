@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, fn, within } from 'storybook/test';
 import { OrderActivity } from '@/components/branded/activity/OrderActivity';
-import { makeActivity, noop } from './activityFixtures';
+import { makeActivity } from './activityFixtures';
 import { ORDER_SPEC as SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import { arrangeOrder, submitAnswer } from './interactions';
 
 /**
  * CONTRATO `order` — ordenação de uma sequência embaralhada.
@@ -12,7 +14,12 @@ import { withActivityWidth } from './decorators';
  * Contrato tipado: `correct_order` precisa ser uma PERMUTAÇÃO exata dos
  * `items[].id`. Função pedagógica própria (sequenciar) → grupo próprio.
  *
- * As stories abaixo são variações de ESTADO do mesmo contrato.
+ * ── FASE 3 (ADR-4) ─────────────────────────────────────────────────────────
+ * A prop `initialOrder` sumiu. Cada estado abaixo é produzido movendo os itens
+ * com os controles ↑/↓ — os MESMOS que o aluno de teclado/touch usa. O
+ * embaralhamento inicial é aleatório (`Math.random()`), então o `play` faz um
+ * selection-sort por RÓTULO, nunca por posição: é o único jeito de não ser
+ * flaky.
  */
 const meta: Meta<typeof OrderActivity> = {
   title: 'Organisms/Activities/4 · Ordenação/Order',
@@ -20,34 +27,72 @@ const meta: Meta<typeof OrderActivity> = {
   component: OrderActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
+  args: { onComplete: fn() },
 };
 export default meta;
 type Story = StoryObj<typeof OrderActivity>;
 
+const RIGHT = [
+  'Identificar as entidades',
+  'Listar os atributos',
+  'Normalizar as tabelas',
+  'Definir chaves e relações',
+];
+/** Quase lá — os dois últimos trocados. */
+const NEARLY = [
+  'Identificar as entidades',
+  'Listar os atributos',
+  'Definir chaves e relações',
+  'Normalizar as tabelas',
+];
+/** Errado no começo, que é onde a correção fica óbvia na tela. */
+const WRONG = [
+  'Listar os atributos',
+  'Identificar as entidades',
+  'Normalizar as tabelas',
+  'Definir chaves e relações',
+];
+
 export const Default: Story = {
-  render: () => <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} />,
+  args: { activity: makeActivity('order', SPEC) },
 };
 
+/** C.answered — sequência mexida (quase certa), ainda sem enviar. */
 export const Answered: Story = {
-  render: () => (
-    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's4', 's3']} />
-  ),
+  args: { activity: makeActivity('order', SPEC) },
+  play: async ({ canvasElement }) => {
+    await arrangeOrder(canvasElement, NEARLY);
+    const labels = within(canvasElement)
+      .getAllByTestId('order-item')
+      .map((li) => li.textContent ?? '');
+    await expect(labels[0]).toContain(NEARLY[0]);
+    await expect(within(canvasElement).getByTestId('order-submit')).not.toHaveAttribute('data-submitted');
+  },
 };
 
+/** C.submitted + D.correct — sequência certa, enviada. */
 export const Correct: Story = {
-  render: () => (
-    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
-  ),
+  args: { activity: makeActivity('order', SPEC) },
+  play: async ({ args, canvasElement }) => {
+    await arrangeOrder(canvasElement, RIGHT);
+    await submitAnswer(canvasElement, 'order-submit');
+    await expect(within(canvasElement).getByTestId('order-submit')).toHaveAttribute('data-correct', 'true');
+    await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
+  },
 };
 
+/** D.incorrect — dois passos trocados: um erro de posição basta. */
 export const Incorrect: Story = {
-  render: () => (
-    <OrderActivity activity={makeActivity('order', SPEC)} onComplete={noop} initialOrder={['s2', 's1', 's3', 's4']} initialSubmitted />
-  ),
+  args: { activity: makeActivity('order', SPEC) },
+  play: async ({ args, canvasElement }) => {
+    await arrangeOrder(canvasElement, WRONG);
+    await submitAnswer(canvasElement, 'order-submit');
+    await expect(within(canvasElement).getByTestId('order-submit')).toHaveAttribute('data-correct', 'false');
+    await expect(args.onComplete).toHaveBeenCalledWith(false, expect.anything());
+  },
 };
 
+/** B.done — activity já concluída: os controles ↑/↓ nem são renderizados. */
 export const Disabled: Story = {
-  render: () => (
-    <OrderActivity activity={makeActivity('order', SPEC, 'done')} onComplete={noop} initialOrder={['s1', 's2', 's3', 's4']} initialSubmitted />
-  ),
+  args: { activity: makeActivity('order', SPEC, 'done') },
 };

@@ -4,7 +4,8 @@
  * SET exactly equals `correct_option_ids`. Reuses the InstructionPanel + the
  * `onComplete(correct)` contract.
  *
- * `initial*` props are story-only hooks for the answered/correct/incorrect states.
+ * NO story-only seams (ADR-4): answered/correct/incorrect are reached by
+ * clicking, from the story's own `play`.
  */
 import { useState } from 'react';
 import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
@@ -40,21 +41,17 @@ export function MultiChoiceActivity({
   activity,
   onComplete,
   reveal = false,
-  initialSelectedIds,
-  initialSubmitted = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
-  initialSelectedIds?: string[];
-  initialSubmitted?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as MultiChoiceSpec;
   const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
   const correctIds = spec?.correct_option_ids ?? [];
-  const [selected, setSelected] = useState<string[]>(initialSelectedIds ?? []);
-  const [submitted, setSubmitted] = useState(initialSubmitted);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (src/utils/answerMachine.ts — one definition, six call sites).
   const isCorrect = sameSet(selected, correctIds);

@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, fn, within } from 'storybook/test';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
-import { makeActivity, noop } from './activityFixtures';
+import { makeActivity } from './activityFixtures';
 import { QUIZ_TRUE_FALSE_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import { pickQuizOption, submitAnswer } from './interactions';
 
 /**
  * CONTRATO `quiz` — a activity "herói": pergunta única + opções com a correção
@@ -23,6 +25,14 @@ import { withActivityWidth } from './decorators';
  *
  * `QuizActivity` não é exportado — a story renderiza o dispatcher REAL
  * (`ActivityRenderer`) com `kind: 'quiz'`, que é exatamente o caminho de produção.
+ *
+ * ── FASE 3: o buraco que o ADR-4 mandou esperar ────────────────────────────
+ * Até a Fase 2 o quiz — a activity que o próprio código chama de "herói" — era
+ * o ÚNICO kind graduado sem story de respondido/correto/incorreto, e o motivo
+ * estava escrito na matriz: ele nunca teve seam `initial*`, e a decisão travada
+ * (ADR-4) foi NÃO criar um. O que destrava essas três células não é uma prop
+ * nova — é a INTERAÇÃO. As stories abaixo clicam a opção e enviam, exatamente
+ * como o aluno, e o mesmo `play` roda no CI (`src/test/storyPlay.test.tsx`).
  */
 const meta: Meta<typeof ActivityRenderer> = {
   title: 'Organisms/Activities/2 · Escolha/Quiz',
@@ -30,7 +40,7 @@ const meta: Meta<typeof ActivityRenderer> = {
   component: ActivityRenderer,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
-  args: { onComplete: noop },
+  args: { onComplete: fn() },
 };
 export default meta;
 type Story = StoryObj<typeof ActivityRenderer>;
@@ -89,6 +99,43 @@ export const ComExplicacao: Story = {
 /** Variação de ESTADO: activity já concluída → o envio fica travado. */
 export const Concluida: Story = {
   args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC, 'done') },
+};
+
+/**
+ * C.answered — opção marcada, ainda NÃO enviada. O quiz não colore nada antes
+ * do envio: só o "Enviar" sai do estado desabilitado.
+ */
+export const Answered: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
+  play: async ({ canvasElement }) => {
+    await pickQuizOption(canvasElement, 'Falso');
+    const submit = within(canvasElement).getByTestId('quiz-submit');
+    await expect(submit).not.toBeDisabled();
+    await expect(submit).not.toHaveAttribute('data-submitted');
+  },
+};
+
+/** C.submitted + D.correct — responde certo; a `explanation` só aparece agora. */
+export const Correct: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
+  play: async ({ args, canvasElement }) => {
+    await pickQuizOption(canvasElement, 'Falso');
+    await submitAnswer(canvasElement, 'quiz-submit');
+    await expect(within(canvasElement).getByTestId('quiz-submit')).toHaveAttribute('data-correct', 'true');
+    await expect(within(canvasElement).getByText(/nunca se repete/i)).toBeInTheDocument();
+    await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
+  },
+};
+
+/** D.incorrect — responde errado; a opção certa acende junto com o erro. */
+export const Incorrect: Story = {
+  args: { activity: makeActivity('quiz', QUIZ_TRUE_FALSE_SPEC) },
+  play: async ({ args, canvasElement }) => {
+    await pickQuizOption(canvasElement, 'Verdadeiro');
+    await submitAnswer(canvasElement, 'quiz-submit');
+    await expect(within(canvasElement).getByTestId('quiz-submit')).toHaveAttribute('data-correct', 'false');
+    await expect(args.onComplete).toHaveBeenCalledWith(false, expect.anything());
+  },
 };
 
 /** Borda: `options` vazio → o renderer cai no texto do `prompt`. */

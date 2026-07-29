@@ -102,11 +102,18 @@ describe('MatchActivity — pairing UX', () => {
   });
 
   it('after submit, correct pairs read GREEN(check) and incorrect read RED(cross), keeping the number', () => {
-    // Alpha->DefB (wrong), Beta->DefA (wrong), Gamma->DefC (correct)
-    renderMatch(SPEC, {
-      initialConnections: { a: 'rb', b: 'ra', c: 'rc' },
-      initialSubmitted: true,
-    });
+    // Alpha->DefB (wrong), Beta->DefA (wrong), Gamma->DefC (correct).
+    // Reached by CLICKING, not by an `initial*` prop: those story-only seams
+    // were deleted in Fase 3 of `20260728-itera-activity-testing` (ADR-4) —
+    // a state reachable by prop but not by a learner is a false green.
+    renderMatch();
+    fireEvent.click(card('Alpha'));
+    fireEvent.click(card('DefB'));
+    fireEvent.click(card('Beta'));
+    fireEvent.click(card('DefA'));
+    fireEvent.click(card('Gamma'));
+    fireEvent.click(card('DefC'));
+    fireEvent.click(screen.getByTestId('match-submit'));
     const badgeIn = (label: string) => within(card(label)).getByTestId('match-badge');
     expect(badgeIn('Gamma').getAttribute('data-state')).toBe('correct');
     expect(badgeIn('DefC').getAttribute('data-state')).toBe('correct');
