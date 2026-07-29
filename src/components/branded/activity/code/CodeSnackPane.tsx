@@ -64,10 +64,12 @@ export function CodeSnackPane({
       data-activity-kind="code"
       data-phase={phase}
     >
-      <h2 className="font-display text-foreground">{spec.prompt}</h2>
+      <h2 className="font-display text-lg md:text-xl text-foreground leading-relaxed">
+        {spec.prompt}
+      </h2>
 
       <div
-        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm font-medium text-foreground"
+        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"
         data-testid="code-snack-hint"
       >
         <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}

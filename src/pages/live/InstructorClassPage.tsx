@@ -118,14 +118,12 @@ export default function InstructorClassPage() {
           <div className="w-10 h-10 rounded-xl bg-clay/10 border border-clay/40 flex items-center justify-center text-clay">
             <Presentation className="w-5 h-5" />
           </div>
-          <div>
-            <span className="text-[13px] uppercase tracking-wider text-clay font-mono">
-              {t('live.instructor.kicker')}
-            </span>
-            <h1 className="font-display font-bold text-foreground leading-tight" data-testid="instructor-title">
-              {t('live.instructor.title')}
-            </h1>
-          </div>
+          <h1
+            className="font-display font-bold text-xl md:text-2xl text-foreground leading-tight"
+            data-testid="instructor-title"
+          >
+            {t('live.instructor.title')}
+          </h1>
         </div>
         <p className="text-sm text-muted-foreground mb-8 max-w-2xl">
           {t('live.instructor.subtitle')}

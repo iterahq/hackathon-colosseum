@@ -464,14 +464,10 @@ function ClassControl({
               current?.kind === 'sandbox_scenario' ? 'py-6' : 'my-auto py-10'
             }`}
           >
-            <div
-              className="font-mono text-[11px] uppercase tracking-wider text-clay"
-              data-testid="live-eyebrow"
-            >
-              {t('live.eyebrow')}
-            </div>
+            {/* Sem eyebrow "Aula ao vivo": a pílula AO VIVO do chrome já diz
+                isso ~50px acima e empurrava o título real da aula pra baixo. */}
             <h1
-              className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5"
+              className="font-display font-bold text-3xl md:text-4xl text-foreground"
               data-testid="live-title"
             >
               {tText(lesson?.title)}
