@@ -39,6 +39,7 @@ import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
+import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
@@ -478,10 +479,8 @@ export default function LiveSessionPage() {
               // Pointer set and the lesson content is still resolving (late-join /
               // reconnect) — activity SKELETON so a joiner with a live pointer goes
               // straight to the activity once it lands. (loop-1 fix #3.)
-              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
-                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
-                <div className="h-40 rounded-2xl ds-shimmer" />
-                <div className="h-12 rounded-full ds-shimmer" />
+              <div className="mt-7">
+                <ActivitySkeleton />
               </div>
             ) : !lessonLoaded || activities.length === 0 ? (
               // The lesson read SETTLED with no readable content — the class was
@@ -498,10 +497,8 @@ export default function LiveSessionPage() {
             ) : (
               // Lesson loaded with activities, pointer set, but this activity isn't
               // in the list yet (transient pointer/lesson mismatch) — brief skeleton.
-              <div className="mt-7 space-y-4" data-testid="live-activity-skeleton" aria-busy="true">
-                <div className="h-6 w-2/3 rounded-lg ds-shimmer" />
-                <div className="h-40 rounded-2xl ds-shimmer" />
-                <div className="h-12 rounded-full ds-shimmer" />
+              <div className="mt-7">
+                <ActivitySkeleton />
               </div>
             )}
             {current && (

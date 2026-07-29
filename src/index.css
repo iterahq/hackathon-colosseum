@@ -206,6 +206,19 @@
   .animate-float {
     animation: float 4s ease-in-out infinite;
   }
+  /* Preenchimento dos skeletons. Bloco chapado pulsando na opacidade — a marca
+     proíbe gradiente, então nada de varredura diagonal. */
+  .ds-shimmer {
+    /* Tinta do texto em opacidade baixa, não `--muted`: o painel (#141210) e o
+       muted (#1C1916) são vizinhos quase idênticos, e o bloco sumia no card. */
+    background-color: hsl(var(--foreground) / 0.09);
+    animation: brand-pulse 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ds-shimmer {
+      animation: none;
+    }
+  }
 }
 
 /* Dark scrollbars (evergreen-tinted) */
