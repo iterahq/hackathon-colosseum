@@ -1,4 +1,10 @@
-import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
+import type {
+  ClassPresenceMember,
+  ClassAnswerer,
+  ClassRanking,
+  LiveRoomModeration,
+  LiveRoomRow,
+} from '@/types/liveClass';
 
 /**
  * Shared sample data for the live-class component stories.
@@ -58,6 +64,47 @@ export const sampleRanking: ClassRanking = {
     },
   ],
   waiting: [{ userId: 'd', name: 'Duda Rocha', avatarUrl: null }],
+};
+
+/* ── Room-list fixtures (the single ordered list of the live sidebar) ───────
+ * Every row state the professor has to be able to tell apart at a glance lives
+ * here at once: answered, wrong, still working, hand up, dropped presence,
+ * guest, starred and self. Assembling them per-story would let a state quietly
+ * lose coverage.
+ */
+export const sampleRoomRows: LiveRoomRow[] = [
+  { userId: 'a', name: 'Ana Souza', avatarUrl: null, rank: 1, state: 'done', working: false, elapsedMs: 7_200, raised: false, down: false, guest: false, isSelf: false, correctCount: 3, answeredCount: 3, stars: 2 },
+  { userId: 'c', name: 'Caio Mendes', avatarUrl: null, rank: 2, state: 'done', working: false, elapsedMs: 9_800, raised: true, down: false, guest: false, isSelf: true, correctCount: 2, answeredCount: 3, stars: 0 },
+  { userId: 'b', name: 'Bruno Lima', avatarUrl: null, rank: 3, state: 'wrong', working: false, elapsedMs: 12_400, raised: false, down: false, guest: false, isSelf: false, correctCount: 1, answeredCount: 2, stars: 0 },
+  { userId: 'g1', name: 'Ana Souza', avatarUrl: null, rank: 4, state: 'done', working: false, elapsedMs: 5_100, raised: false, down: false, guest: true, isSelf: false, correctCount: 1, answeredCount: 1, stars: 0 },
+  { userId: 'd', name: 'Duda Rocha', avatarUrl: null, state: 'pending', working: true, raised: false, down: false, guest: false, isSelf: false, correctCount: 0, answeredCount: 0, stars: 0 },
+  { userId: 'e', name: 'Enzo Prado', avatarUrl: null, state: 'pending', working: false, raised: false, down: true, guest: false, isSelf: false, correctCount: 0, answeredCount: 0, stars: 0 },
+];
+
+/**
+ * A star IS a point (rankByScore adds `correctCount + stars`), so Bruno — with
+ * one right answer and two stars — outranks Caio's two right answers. The two
+ * counters stay separate on the row because the class has to be able to tell an
+ * earned point from a given one.
+ */
+export const sampleRankingWithStars: ClassRanking = {
+  ranked: [
+    { userId: 'a', name: 'Ana Souza', avatarUrl: null, totalMs: 17_000, answeredCount: 3, correctCount: 3, stars: 1, rank: 1 },
+    { userId: 'b', name: 'Bruno Lima', avatarUrl: null, totalMs: 28_900, answeredCount: 2, correctCount: 1, stars: 2, rank: 2 },
+    { userId: 'c', name: 'Caio Mendes', avatarUrl: null, totalMs: 21_500, answeredCount: 3, correctCount: 2, stars: 0, rank: 3 },
+    // Only a star, no answer yet: the professor rewarding a good question. Its
+    // totalMs is 0, which as a tiebreak would read "fastest of the class" — so
+    // rankByScore sends it to the END of the tie, not the front.
+    { userId: 'd', name: 'Duda Rocha', avatarUrl: null, totalMs: 0, answeredCount: 0, correctCount: 0, stars: 1, rank: 4 },
+  ],
+  waiting: [],
+};
+
+/** Moderation wired to no-ops: the stories exercise the UI, never the DB. */
+export const noopModeration: LiveRoomModeration = {
+  onStar: () => {},
+  onLowerHand: () => {},
+  onRemove: () => {},
 };
 
 /* ── Guest-link fixtures (plan 20260728-itera-guest-link-aula-sincrona) ─────
