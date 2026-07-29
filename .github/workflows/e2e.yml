@@ -3,24 +3,46 @@ name: E2E (Itera↔Fellowship)
 # Heavy end-to-end harness (plan #7). Needs BOTH apps live (dfl-learn +
 # itera-api), the dfl-batch Results-API key, and learn login creds. It is
 # deliberately NOT part of the per-PR `ci.yml` gate — it runs MANUALLY
-# (workflow_dispatch) or on a daily SCHEDULE. The spec capability-probes its
-# substrate and SKIPS (not fails) when a prerequisite is absent, so a run on an
-# incomplete substrate is green-with-skips.
+# (workflow_dispatch) or on a daily SCHEDULE.
+#
+# 🚨 GREEN MUST MEAN "IT RAN AND PASSED" (Tainan, 2026-07-28) 🚨
+#
+# This workflow used to advertise "green-with-skips" as a feature. It was not
+# one: the repo has never held `ITERA_SMOKE_*`, `CLAUDE_SMOKE_*` or
+# `DFL_BATCH_RESULTS_API_KEY` as Actions secrets, so this cron has been GREEN
+# for its entire life while executing essentially nothing. `E2E_REQUIRE_CAPABILITIES=1`
+# below fixes that: `e2e/preflight.spec.ts` fails ONCE, naming every missing
+# secret/substrate and the fix, and the skip census prints every skipped test
+# with its reason at the end of every run.
+#
+# ⚠️ EXPECTED CONSEQUENCE, AND IT IS CORRECT: until the secrets are provisioned
+# this scheduled run goes RED. Red here means "we are not testing", which is
+# true today. Do NOT weaken the check to restore the green — provision the
+# secrets (a blocking question is open with Tainan for `ITERA_SMOKE_*`).
 #
 # Also carries the per-kind author-harness smoke (plan
 # 20260728-itera-activity-testing, Fase 4 / tier T3): one activity per kind
 # driven through /author/activities/:id/test, which writes nothing to the DB.
-# ADR-3 of that plan is binding — Playwright stays OUT of the per-PR `ci.yml`
-# gate; this workflow is its only home.
+# And the responsive fan-out (`@responsive`, mobile/tablet/desktop projects —
+# see playwright.config.ts). ADR-3 of that plan is binding — Playwright stays
+# OUT of the per-PR `ci.yml` gate; this workflow is its only home. Adding
+# viewports changed nothing about that.
 #
 # ⚠️ Failure alerting is whatever GitHub does by default for a failed scheduled
 # run (an email to the workflow file's last committer). The repo has no other
 # notification path today and this workflow deliberately does not invent one.
 #
 # Runner: ubuntu-latest. iterahq is NOT on the devfellowship-scoped dfl-runner
-# fleet (org-scoped self-hosted runners aren't available to other orgs), and
-# this is a public repo besides — same carve-out as ci.yml. devfellowship/*
-# repos stay on dfl-runner; this carve-out is iterahq-only.
+# fleet (org-scoped self-hosted runners aren't available to other orgs) — same
+# carve-out as ci.yml. devfellowship/* repos stay on dfl-runner; this carve-out
+# is iterahq-only.
+#
+# ⚠️ Correction 2026-07-28: this header used to justify the carve-out partly with
+# "this is a public repo besides". It is NOT — `gh api repos/iterahq/itera-player
+# --jq .private` returns `true`. That matters operationally: a PRIVATE repo on
+# ubuntu-latest burns BILLABLE GitHub-hosted minutes, so this workflow's daily
+# cron is metered against the iterahq org's Actions spending limit. The
+# self-hosted-runner reason above still stands on its own.
 on:
   workflow_dispatch:
   schedule:
@@ -37,8 +59,19 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 20 -> 30: the suite now runs three viewport projects (desktop full,
+    # mobile+tablet @responsive only). Measured 2026-07-28 with no secrets, so
+    # nearly everything skips: desktop-only 3.8s, all three projects 11.0s. The
+    # headroom is for the day the credentials land and the specs actually drive
+    # the app — a cancelled job would read as a different failure than a red one.
+    timeout-minutes: 30
     env:
+      # The switch that turns "silently skipped" into "loudly failed". Every env
+      # DECLARED in this block is a capability CI promises to provide; absence is
+      # a preflight FAILURE (e2e/support/capabilities.ts holds the registry and
+      # the rule). Unset locally, so a developer without credentials still gets
+      # the old skip behaviour and is not blocked.
+      E2E_REQUIRE_CAPABILITIES: '1'
       ITERA_API_URL: ${{ vars.ITERA_API_URL || 'https://api.iterahq.dev' }}
       LEARN_BASE_URL: ${{ vars.LEARN_BASE_URL || 'https://learn.devfellowship.com' }}
       DFL_BATCH_RESULTS_API_KEY: ${{ secrets.DFL_BATCH_RESULTS_API_KEY }}
@@ -52,6 +85,11 @@ jobs:
       # tenant_admin of the `itera` tenant. NOT a learner, and NOT `author` in
       # `dfl-batch` — so the per-kind smoke only reaches the kinds the `itera`
       # tenant authors, and skips (never fails) on the rest. See the spec header.
+      #
+      # ⚠️ These two secrets DO NOT EXIST in this repo yet — a blocking question
+      # is open with Tainan (plan 20260728-itera-activity-testing). Until they
+      # are provisioned the preflight fails and this cron is RED, which is the
+      # honest report: nothing that needs a login is being tested.
       ITERA_SMOKE_USERNAME: ${{ secrets.ITERA_SMOKE_USERNAME }}
       ITERA_SMOKE_PASSWORD: ${{ secrets.ITERA_SMOKE_PASSWORD }}
     steps:
@@ -73,7 +111,10 @@ jobs:
       - name: Install Playwright browsers
         run: npm run e2e:install
 
-      - name: Run E2E harness (capability-gated)
+      # `npm run e2e` runs all three viewport projects: `desktop` (whole suite)
+      # plus `mobile` and `tablet` (only the `@responsive` tests). The skip
+      # census prints at the end and also lands in the job summary.
+      - name: Run E2E harness (capability-enforced)
         run: npm run e2e
 
       - name: Upload Playwright report

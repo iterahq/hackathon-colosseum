@@ -8,9 +8,12 @@
  *   itera.activity_results → the dfl-batch Results-API key pulls the result back
  *   (poll-readback, ADR-701).
  *
- * CAPABILITY-GATED. The suite probes its substrate up front and test.skip()s
- * (NOT fails) when a prerequisite is missing, so it is safe to run on a partial
- * substrate (e.g. before itera-api `/v1/embed/session` is deployed).
+ * Gated through `e2e/support/gate.ts`. Every prerequisite below is DECLARED by
+ * `.github/workflows/e2e.yml`, which makes each one a **required** capability:
+ * its absence fails the preflight instead of skipping quietly. That is not a
+ * hypothetical — `DFL_BATCH_RESULTS_API_KEY` and `CLAUDE_SMOKE_*` have never
+ * existed as Actions secrets, so this spec has never executed a single
+ * assertion while the cron reported green.
  *
  * Prereqs (env):
  *   - ITERA_API_URL (default https://api.iterahq.dev) reachable, /v1/health == 200
@@ -21,9 +24,9 @@
  * MANUAL / scheduled only (see .github/workflows/e2e.yml + playwright.config.ts).
  */
 import { test, expect, type Page } from '@playwright/test';
+import { ITERA_API_URL, LEARN_BASE_URL } from './support/capabilities';
+import { requireCapabilities } from './support/gate';
 
-const ITERA_API_URL = process.env.ITERA_API_URL || 'https://api.iterahq.dev';
-const LEARN_BASE_URL = process.env.LEARN_BASE_URL || 'https://learn.devfellowship.com';
 const RESULTS_KEY = process.env.DFL_BATCH_RESULTS_API_KEY || '';
 const LOGIN_USER = process.env.CLAUDE_SMOKE_USERNAME || process.env.ITERA_SMOKE_USERNAME || '';
 const LOGIN_PASS = process.env.CLAUDE_SMOKE_PASSWORD || process.env.ITERA_SMOKE_PASSWORD || '';
@@ -32,16 +35,6 @@ const LOGIN_PASS = process.env.CLAUDE_SMOKE_PASSWORD || process.env.ITERA_SMOKE_
 const PILOT_ACTIVITY_ID = '191a4bc0-0bde-4805-bd0f-32af5ab21d6b';
 // A foreign tenant's result id (itera/acme) — used for the isolation assertion.
 const FOREIGN_RESULT_ID = process.env.FOREIGN_RESULT_ID || '00000000-0000-4000-8000-0000000000ff';
-
-/** Probe itera-api health. Returns true when /v1/health == 200. */
-async function apiHealthy(): Promise<boolean> {
-  try {
-    const res = await fetch(`${ITERA_API_URL}/v1/health`);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
 
 /** Count dfl-batch results for the pilot activity via the Results-API pull. */
 async function countPilotResults(): Promise<number> {
@@ -78,11 +71,7 @@ async function loginToLearn(page: Page): Promise<void> {
 test.describe('Itera↔Fellowship federated loop', () => {
   test('fellow completes the pilot activity → result is pull-readable', async ({ page }) => {
     // ---- Capability gates ---------------------------------------------------
-    const reasons: string[] = [];
-    if (!(await apiHealthy())) reasons.push('itera-api /v1/health != 200');
-    if (!RESULTS_KEY) reasons.push('DFL_BATCH_RESULTS_API_KEY not set');
-    if (!LOGIN_USER || !LOGIN_PASS) reasons.push('learn login creds (CLAUDE_SMOKE_*) not set');
-    test.skip(reasons.length > 0, `substrate not ready: ${reasons.join('; ')}`);
+    await requireCapabilities('itera-api', 'learn-app', 'dfl-batch-results', 'claude-smoke');
 
     const before = await countPilotResults();
 
@@ -142,10 +131,7 @@ test.describe('Itera↔Fellowship federated loop', () => {
   });
 
   test('tenant isolation: dfl-batch key gets 404 (not 403) for a foreign result', async () => {
-    const reasons: string[] = [];
-    if (!(await apiHealthy())) reasons.push('itera-api /v1/health != 200');
-    if (!RESULTS_KEY) reasons.push('DFL_BATCH_RESULTS_API_KEY not set');
-    test.skip(reasons.length > 0, `substrate not ready: ${reasons.join('; ')}`);
+    await requireCapabilities('itera-api', 'dfl-batch-results');
 
     const res = await fetch(`${ITERA_API_URL}/v1/activity-results/${FOREIGN_RESULT_ID}`, {
       headers: { Authorization: `Bearer ${RESULTS_KEY}` },
@@ -165,6 +151,10 @@ test.describe('Itera↔Fellowship federated loop', () => {
   test('E3/Gantt join (lms.milestones.external_ref) — GATED on dfl-schema #527', async () => {
     // dfl-schema #527 (external_ref column) is human-gate and UNMERGED. This
     // seed/harness NEVER writes DFL prod, so the E3 join cannot be asserted yet.
-    test.skip(true, 'dfl-schema #527 (lms.milestones.external_ref) UNMERGED — E3 join not assertable');
+    // Routed through the registry rather than a bare `test.skip(true, …)`: an
+    // unconditional skip is exactly the shape that hides "we are not testing".
+    // It is now counted in the census under its own capability every run.
+    await requireCapabilities('dfl-schema-527');
+    throw new Error('unreachable: dfl-schema-527 can never be present');
   });
 });
