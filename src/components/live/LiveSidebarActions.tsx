@@ -29,19 +29,27 @@ export function LiveSidebarActions({
   const { t } = useI18n();
 
   return (
-    <div className={`shrink-0 border-t border-border space-y-2.5 ${compact ? 'p-3' : 'p-5'}`}>
+    <div
+      className={`shrink-0 border-t border-border ${compact ? 'p-3 flex items-center gap-2' : 'p-4 space-y-2'}`}
+    >
       <button
         onClick={onCopyLink}
         data-testid="instructor-copy-link"
-        className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors"
+        className={`inline-flex items-center justify-center gap-2 h-10 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors ${
+          compact ? 'flex-1 min-w-0' : 'w-full'
+        }`}
       >
         {copied ? (
           <>
-            <Check className="w-4 h-4 text-menta" /> {t('live.instructor.copyLinkDone')}
+            <Check className="w-4 h-4 text-menta shrink-0" />
+            <span className="truncate">{t('live.instructor.copyLinkDone')}</span>
           </>
         ) : (
           <>
-            <Link2 className="w-4 h-4" /> {t('live.instructor.copyLink')}
+            <Link2 className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              {compact ? t('live.instructor.copyLinkShort') : t('live.instructor.copyLink')}
+            </span>
           </>
         )}
       </button>
@@ -54,26 +62,32 @@ export function LiveSidebarActions({
           onClick={onCopyGuestLink}
           disabled={guestLinkBusy}
           data-testid="instructor-copy-guest-link"
-          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors disabled:opacity-50"
+          aria-label={
+            compact
+              ? guestCopied
+                ? t('live.instructor.copyGuestLinkDone')
+                : t('live.instructor.copyGuestLink')
+              : undefined
+          }
+          className={`inline-flex items-center justify-center gap-2 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors disabled:opacity-50 ${
+            compact ? 'w-10 h-10 shrink-0' : 'w-full h-10'
+          }`}
         >
-          {guestCopied ? (
-            <>
-              <Check className="w-4 h-4" /> {t('live.instructor.copyGuestLinkDone')}
-            </>
-          ) : (
-            <>
-              <UserPlus className="w-4 h-4" /> {t('live.instructor.copyGuestLink')}
-            </>
-          )}
+          {guestCopied ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+          {!compact && (guestCopied ? t('live.instructor.copyGuestLinkDone') : t('live.instructor.copyGuestLink'))}
         </button>
       )}
       <button
         onClick={onEnd}
         disabled={busy}
         data-testid="instructor-end"
-        className="w-full inline-flex items-center justify-center gap-1.5 h-11 rounded-full border border-destructive/40 bg-destructive/10 text-sm font-medium text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+        aria-label={compact ? t('live.instructor.control.end') : undefined}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 ${
+          compact ? 'w-10 h-10 shrink-0 border border-destructive/30' : 'w-full h-9'
+        }`}
       >
-        <Square className="w-3.5 h-3.5" /> {t('live.instructor.control.end')}
+        <Square className="w-3.5 h-3.5" />
+        {!compact && t('live.instructor.control.end')}
       </button>
     </div>
   );

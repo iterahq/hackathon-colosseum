@@ -37,22 +37,20 @@ export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
   return (
     <div data-testid="live-stage">
       <div
-        className="flex items-center gap-3 px-4 md:px-8 py-3 border-b border-clay/40 bg-clay/10"
+        className="flex items-center gap-3 px-4 md:px-8 py-3 border-b border-streak/40 bg-streak/10"
         data-testid="live-stage-identity"
       >
         <LiveAvatar name={staged.author.name} avatarUrl={staged.author.avatarUrl} size="w-8 h-8" />
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wider font-mono text-clay leading-none">
+          <p className="text-[11px] uppercase tracking-wider font-mono text-streak leading-none">
             {viewingName ? t('live.stage.viewing') : t('live.stage.onStage')}
           </p>
           <div className="flex items-center gap-2 mt-0.5 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{staged.author.name}</p>
-            {/* clay = the human-info token (never the green CTA color), so the
-                badge reads as context rather than as a success state. */}
             {(isDraft || isEmpty) && (
               <span
                 data-testid="live-stage-status"
-                className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full border border-clay/50 bg-clay/15 text-[10px] font-medium uppercase tracking-wide text-clay"
+                className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full border border-streak/50 bg-streak/15 text-[10px] font-medium uppercase tracking-wide text-streak"
               >
                 {isEmpty ? <Circle className="w-2.5 h-2.5" /> : <Pencil className="w-2.5 h-2.5" />}
                 {isEmpty ? t('live.stage.status.notStarted') : t('live.stage.status.inProgress')}
@@ -65,7 +63,7 @@ export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
             type="button"
             onClick={onClear}
             data-testid="live-stage-clear"
-            className="ml-auto inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-clay/50 transition-colors"
+            className="ml-auto inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-streak/50 transition-colors"
           >
             <X className="w-3.5 h-3.5" /> {t('live.stage.clear')}
           </button>

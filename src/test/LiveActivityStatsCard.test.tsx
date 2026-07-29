@@ -58,4 +58,12 @@ describe('LiveActivityStatsCard', () => {
     expect(card).not.toContain('acertaram');
     expect(screen.getByTestId('live-stats-answered').textContent).toContain('3/4');
   });
+
+  it('draws the progress bar for the learner but never for the instructor', () => {
+    const { unmount } = renderCard({ hideCorrectness: true });
+    expect(screen.getByTestId('live-stats-bar')).toBeTruthy();
+    unmount();
+    renderCard();
+    expect(screen.queryByTestId('live-stats-bar')).toBeNull();
+  });
 });

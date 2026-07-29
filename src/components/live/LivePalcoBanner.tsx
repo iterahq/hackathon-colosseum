@@ -26,18 +26,18 @@ export function LivePalcoBanner({
   if (!author) return null;
 
   return (
-    <div className="shrink-0 border-b border-clay/30 bg-clay/10 animate-fade-in" data-testid="live-palco-banner">
+    <div className="shrink-0 border-b border-streak/30 bg-streak/10 animate-fade-in" data-testid="live-palco-banner">
       <div className={compact ? 'px-4 py-2' : 'px-5 py-3'}>
         <div className="flex items-center gap-2">
           <span className="relative flex w-2 h-2" aria-hidden>
-            <span className="absolute inline-flex w-full h-full rounded-full bg-clay opacity-70 animate-ping" />
-            <span className="relative inline-flex w-2 h-2 rounded-full bg-clay" />
+            <span className="absolute inline-flex w-full h-full rounded-full bg-streak opacity-70 animate-ping" />
+            <span className="relative inline-flex w-2 h-2 rounded-full bg-streak" />
           </span>
-          <MonitorPlay className="w-4 h-4 text-clay shrink-0" />
-          <h3 className="font-display font-semibold text-sm uppercase tracking-wide text-clay leading-none">
+          <MonitorPlay className="w-4 h-4 text-streak shrink-0" />
+          <h3 className="font-display font-semibold text-sm uppercase tracking-wide text-streak leading-none">
             {t('live.palco.title')}
           </h3>
-          <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-clay/80">
+          <span className="ml-auto font-mono text-[10px] uppercase tracking-wider text-streak/80">
             {t('live.palco.live')}
           </span>
         </div>
@@ -50,7 +50,7 @@ export function LivePalcoBanner({
             onClick={onClear}
             aria-label={t('live.palco.clear', { name: author.name })}
             data-testid="live-palco-clear"
-            className="shrink-0 w-6 h-6 grid place-items-center rounded-full text-clay/70 hover:text-clay hover:bg-clay/20 transition-colors"
+            className="shrink-0 w-6 h-6 grid place-items-center rounded-full text-streak/70 hover:text-streak hover:bg-streak/20 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
           </button>

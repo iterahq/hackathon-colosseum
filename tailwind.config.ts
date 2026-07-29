@@ -23,6 +23,9 @@ export default {
       },
     },
     extend: {
+      screens: {
+        wide: "1440px",
+      },
       // Itera brand type system (brand.devfellowship.com/itera):
       //   Barlow Condensed → display/headline/wordmark (600/700)
       //   Inter            → body/UI/buttons (400–700)
