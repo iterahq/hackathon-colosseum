@@ -28,7 +28,16 @@ import { cleanup, render } from '@testing-library/react';
 import { clearAllMocks } from 'storybook/test';
 import { indexStories } from './storyIndex';
 
-const WITH_PLAY = indexStories().filter((s) => typeof s.play === 'function');
+const ALL_WITH_PLAY = indexStories().filter((s) => typeof s.play === 'function');
+
+/**
+ * ADR-8: `match` e `code` têm um projeto Vitest próprio, com navegador de
+ * verdade (`vitest.browser.config.ts`). Os `play` marcados `browser-mode`
+ * dependem de layout/iframe/Monaco e NÃO rodam aqui — rodariam mentindo.
+ * A separação é pela tag, não por uma lista de caminhos.
+ */
+const BROWSER_ONLY = ALL_WITH_PLAY.filter((s) => s.tags.includes('browser-mode'));
+const WITH_PLAY = ALL_WITH_PLAY.filter((s) => !s.tags.includes('browser-mode'));
 
 /**
  * Piso: se um refactor apagar os `play` sem ninguém perceber, o teste não pode
@@ -65,6 +74,13 @@ describe('interação real — todo `play` de story roda no CI (T1)', () => {
 
   it('existe um conjunto de stories interativas — o teste não passa por vacuidade', () => {
     expect(WITH_PLAY.length).toBeGreaterThanOrEqual(MIN_INTERACTIVE_STORIES);
+  });
+
+  it('as stories `browser-mode` existem e ficam de fora daqui, não silenciosamente perdidas', () => {
+    expect(BROWSER_ONLY.length).toBeGreaterThan(0);
+    // Só os dois kinds que o ADR-8 nomeia podem carregar a tag.
+    const files = new Set(BROWSER_ONLY.map((s) => s.file));
+    expect([...files].filter((f) => !/MatchActivity|CodeSnackActivity/.test(f))).toEqual([]);
   });
 
   it.each(WITH_PLAY.map((s) => [s.id, s] as const))(

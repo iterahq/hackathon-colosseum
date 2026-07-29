@@ -53,3 +53,56 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # BROWSER MODE (ADR-8) — NÃO-BLOQUEANTE POR UMA SEMANA (ADR-9).
+  #
+  # Plano `20260728-itera-activity-testing`. A Q2 foi respondida "A": o tier
+  # novo entra reportando e NÃO travando merge, e só vira gate depois de uma
+  # semana estável, se o delta couber no orçamento medido.
+  #
+  # `continue-on-error: true` é o que torna essa promessa verificável em vez de
+  # declarada. NÃO REMOVER sem a decisão de promoção — e, quando ela vier, ela
+  # tem que citar o número medido, não a intenção.
+  #
+  #   Observação começa em: 2026-07-28
+  #   Revisão de promoção  : 2026-08-04
+  #   Orçamento da Fase 0  : o `build-test` bloqueante não deve passar de ~4m30s.
+  #     ⚠️ Aquele teto foi ancorado numa mediana de 3m01s que hoje está OBSOLETA
+  #     (o `build-test` já roda ~3m40s desde que o typecheck virou gate e a
+  #     suíte cresceu). A folga real é de ~50s, e é contra ESSE número que a
+  #     promoção tem que ser decidida.
+  #
+  # Ele roda como JOB SEPARADO de propósito: assim o custo do navegador aparece
+  # isolado no wall-clock, que é exatamente o dado que a decisão de promoção
+  # precisa. Misturá-lo no `build-test` esconderia a única medida que importa.
+  # ──────────────────────────────────────────────────────────────────────────
+  browser-mode:
+    # Herda o mesmo carve-out do topo deste arquivo: iterahq não está na fleet
+    # dfl-runner, então ubuntu-latest.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Só o Chromium: as instâncias do projeto de browser declaram apenas ele.
+      - name: Install Chromium for the Vitest browser provider
+        run: npx playwright install --with-deps chromium
+
+      # `npm run test:browser` usa `vitest.browser.config.ts`, que seleciona
+      # SOMENTE as stories com a tag `browser-mode` (hoje: match e code).
+      - name: Storybook browser-mode tests
+        run: npm run test:browser
