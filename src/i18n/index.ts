@@ -397,6 +397,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.codeSoon': 'O editor de código chega em breve (judge0).',
     'activity.codeSnackHint': 'Edite à esquerda; o preview atualiza sozinho à direita.',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
+    // Fronteira de validação de spec (estado F) — os 11 kinds.
+    'activity.specInvalid': 'Esta atividade está com a configuração inválida e não pôde ser carregada.',
+    'activity.sandboxInvalid': 'Este cenário está com a configuração inválida e não pôde ser carregado.',
     // Correção determinística do snack de código — o feedback SÓ aparece depois
     // do envio (não existe checklist permanente enquanto a pessoa edita).
     'code.checks.running': 'Conferindo…',
@@ -921,6 +924,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.codeSoon': 'The code editor is coming soon (judge0).',
     'activity.codeSnackHint': 'Edit on the left; the preview updates live on the right.',
     'activity.codeInvalid': 'This code activity has an invalid configuration.',
+    'activity.specInvalid': 'This activity has an invalid configuration and could not be loaded.',
+    'activity.sandboxInvalid': 'This scenario has an invalid configuration and could not be loaded.',
     'code.checks.running': 'Checking…',
     'code.checks.allPassed': 'All good! You did it.',
     'code.checks.someFailed': 'Almost there — just a bit more.',

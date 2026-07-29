@@ -1,6 +1,7 @@
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
-import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { KIND_VALIDATION } from '@/utils/activitySpecBoundary';
+import { InvalidSpecCard } from '../InvalidSpecCard';
 import { CodeSnackPane } from './CodeSnackPane';
 
 /**
@@ -19,17 +20,17 @@ export function CodeSnackActivity({
   onComplete: (correct: boolean) => void;
   live?: boolean;
 }) {
-  const { t } = useI18n();
+  // `site: 'component'` no registro da fronteira: o `code` valida AQUI, do jeito
+  // histórico, porque este componente também é renderizado direto (fora do
+  // `ActivityRenderer`) por stories e testes. Mesmo card, mesmo testid.
   const parsed = safeParseActivitySpec('code', activity.spec);
   if (!parsed.success) {
     return (
-      <div
-        className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"
-        data-testid="code-invalid"
-        data-activity-kind="code"
-      >
-        {t('activity.codeInvalid')}
-      </div>
+      <InvalidSpecCard
+        kind="code"
+        testId={KIND_VALIDATION.code.invalidTestId}
+        messageKey={KIND_VALIDATION.code.messageKey}
+      />
     );
   }
   return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} live={live} />;

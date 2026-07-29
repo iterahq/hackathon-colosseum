@@ -25,6 +25,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
+import { KIND_VALIDATION, specBoundaryFailure } from '@/utils/activitySpecBoundary';
 import { useAuth } from '@/auth/AuthContext';
 import {
   iteraApiConfigured,
@@ -49,6 +50,7 @@ import { OrderActivity } from './OrderActivity';
 import { SandboxScenarioActivity } from './SandboxScenarioActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
+import { InvalidSpecCard } from './InvalidSpecCard';
 import { resolveByocSpec } from './byoc/byocSpec';
 import { SubmitButton } from './parts';
 
@@ -79,6 +81,24 @@ export function ActivityRenderer({
   const byoc = resolveByocSpec(activity);
   if (byoc) {
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
+  }
+
+  // FRONTEIRA DE VALIDAÇÃO DE SPEC — fail-closed nos 11 kinds (estado F).
+  // Fica DEPOIS do ramo BYOC de propósito: BYOC é uma CAMADA, não um kind, e o
+  // spec dele é validado pelo `ByocSpecSchema`, não pelo schema do kind
+  // hospedeiro. `code` e `sandbox_scenario` continuam validando dentro do
+  // próprio componente (`site: 'component'`), com os testids históricos
+  // intactos. Racional completo + medição (246/246 specs reais passam) em
+  // `src/utils/activitySpecBoundary.ts`.
+  const invalidSpec = specBoundaryFailure(activity);
+  if (invalidSpec) {
+    return (
+      <InvalidSpecCard
+        kind={invalidSpec.kind}
+        testId={invalidSpec.invalidTestId}
+        messageKey={invalidSpec.messageKey}
+      />
+    );
   }
 
   switch (activity.kind) {
@@ -647,14 +667,14 @@ function SandboxScenarioGuard({
 }) {
   const parsed = safeParseActivitySpec('sandbox_scenario', activity.spec);
   if (!parsed.success) {
+    // Mesmo card, mesmo testid — agora pela primitiva compartilhada (a mensagem
+    // saiu do literal PT hardcoded para o i18n, sem mudar o texto pt-BR).
     return (
-      <div
-        className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"
-        data-testid="sandbox-invalid"
-        data-activity-kind="sandbox_scenario"
-      >
-        Este cenário está com a configuração inválida e não pôde ser carregado.
-      </div>
+      <InvalidSpecCard
+        kind="sandbox_scenario"
+        testId={KIND_VALIDATION.sandbox_scenario.invalidTestId}
+        messageKey={KIND_VALIDATION.sandbox_scenario.messageKey}
+      />
     );
   }
   return <SandboxScenarioActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
