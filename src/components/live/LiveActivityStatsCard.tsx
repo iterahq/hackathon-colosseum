@@ -1,12 +1,9 @@
 import { LayoutGrid, CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveSectionTitle } from '@/components/live/LiveSectionTitle';
-import { activityKindLabelKey } from '@/utils/activityKindLabel';
 import type { ClassAnswerer } from '@/types/liveClass';
 
 interface LiveActivityStatsCardProps {
-  /** The current activity kind (e.g. `single_choice`) — the "which slide" cue. */
-  kind: string;
   answerers: ClassAnswerer[];
   /** Render as a flush section inside a sidebar panel (drops the card chrome). */
   bare?: boolean;
@@ -27,7 +24,6 @@ interface LiveActivityStatsCardProps {
  * never the correctness split.
  */
 export function LiveActivityStatsCard({
-  kind,
   answerers,
   bare = false,
   compact = false,
@@ -60,10 +56,7 @@ export function LiveActivityStatsCard({
     >
       <LiveSectionTitle icon={LayoutGrid} title={t('live.instructor.stats.title')} compact={compact} />
 
-      <div className={`flex items-center justify-between gap-2 ${compact ? 'mb-2.5' : 'mb-4'}`}>
-        <span className="inline-flex items-center px-2 h-6 rounded-full bg-evergreen-soft font-mono text-[10px] uppercase tracking-wider text-evergreen-hi">
-          {t(activityKindLabelKey(kind))}
-        </span>
+      <div className={`flex items-center justify-end gap-2 ${compact ? 'mb-2.5' : 'mb-4'}`}>
         <span className="text-xs text-muted-foreground" data-testid="live-stats-answered">
           {t('live.instructor.stats.answered', { answered, total })}
         </span>

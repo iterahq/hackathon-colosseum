@@ -33,6 +33,7 @@ export const sampleRanking: ClassRanking = {
       totalMs: 17_000,
       answeredCount: 3,
       correctCount: 3,
+      stars: 0,
       rank: 1,
     },
     {
@@ -42,6 +43,7 @@ export const sampleRanking: ClassRanking = {
       totalMs: 21_500,
       answeredCount: 3,
       correctCount: 2,
+      stars: 0,
       rank: 2,
     },
     {
@@ -51,6 +53,7 @@ export const sampleRanking: ClassRanking = {
       totalMs: 28_900,
       answeredCount: 2,
       correctCount: 1,
+      stars: 0,
       rank: 3,
     },
   ],
@@ -77,10 +80,10 @@ export const sampleAnswerersWithGuest: ClassAnswerer[] = [
 /** A guest OUT-RANKING the real cohort — allowed by ADR-9, badged everywhere. */
 export const sampleRankingWithGuest: ClassRanking = {
   ranked: [
-    { userId: 'g1', name: 'Ana Souza', avatarUrl: null, totalMs: 12_400, answeredCount: 3, correctCount: 3, rank: 1, isGuest: true },
-    { userId: 'a', name: 'Ana Souza', avatarUrl: null, totalMs: 17_000, answeredCount: 3, correctCount: 3, rank: 2 },
-    { userId: 'c', name: 'Caio Mendes', avatarUrl: null, totalMs: 21_500, answeredCount: 3, correctCount: 2, rank: 3 },
-    { userId: 'b', name: 'Bruno Lima', avatarUrl: null, totalMs: 28_900, answeredCount: 2, correctCount: 1, rank: 4 },
+    { userId: 'g1', name: 'Ana Souza', avatarUrl: null, totalMs: 12_400, answeredCount: 3, correctCount: 3, stars: 0, rank: 1, isGuest: true },
+    { userId: 'a', name: 'Ana Souza', avatarUrl: null, totalMs: 17_000, answeredCount: 3, correctCount: 3, stars: 0, rank: 2 },
+    { userId: 'c', name: 'Caio Mendes', avatarUrl: null, totalMs: 21_500, answeredCount: 3, correctCount: 2, stars: 0, rank: 3 },
+    { userId: 'b', name: 'Bruno Lima', avatarUrl: null, totalMs: 28_900, answeredCount: 2, correctCount: 1, stars: 0, rank: 4 },
   ],
   waiting: [
     { userId: 'd', name: 'Duda Rocha', avatarUrl: null },

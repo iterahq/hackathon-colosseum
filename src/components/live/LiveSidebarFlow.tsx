@@ -15,7 +15,6 @@ export function LiveSidebarFlow({
   showActivity,
   activityIndex,
   activityCount,
-  kind,
   answerers,
   compact,
   controls,
@@ -23,7 +22,6 @@ export function LiveSidebarFlow({
   showActivity: boolean;
   activityIndex: number;
   activityCount: number;
-  kind: string;
   answerers: ClassAnswerer[];
   compact: boolean;
   controls?: ReactNode;
@@ -37,7 +35,7 @@ export function LiveSidebarFlow({
         {controls}
       </div>
       {showActivity && (
-        <LiveActivityStatsCard bare compact={compact} kind={kind} answerers={answerers} />
+        <LiveActivityStatsCard bare compact={compact} answerers={answerers} />
       )}
     </div>
   );

@@ -125,10 +125,22 @@ export interface LiveRoomRow {
   isSelf: boolean;
   correctCount: number;
   answeredCount: number;
+  /** Stars the professor gave, net of the ones taken back. Never below zero. */
+  stars: number;
 }
 
-/** What the professor can do to one row (DTQ-2: only what already existed). */
-export interface LiveRoomRowActions {
+/** What the professor can do to a learner, regardless of the current activity. */
+export interface LiveRoomModeration {
+  /** `+1` rewards, `-1` takes one back. Writes itera.class_stars, then broadcasts. */
+  onStar: (userId: string, delta: 1 | -1) => void;
+  /** Ask the learner's own client to lower the hand (presence is owner-write). */
+  onLowerHand: (userId: string) => void;
+  /** Remove from the room — durable, so a refresh does not bring them back. */
+  onRemove: (userId: string) => void;
+}
+
+/** What the professor can do to one row. */
+export interface LiveRoomRowActions extends LiveRoomModeration {
   /** Pull this learner's work onto the class stage — or take it off. */
   onToggleStage: (userId: string) => void;
   onStage: boolean;
@@ -162,7 +174,10 @@ export interface ClassRankingEntry {
   totalMs: number;
   answeredCount: number;
   correctCount: number;
-  /** 1-based position (fastest cumulative time first). */
+  /** Stars from the professor. Shown apart from `correctCount` so the class can
+   *  see where the points came from, but summed into the ordering. */
+  stars: number;
+  /** 1-based position (most points first, cumulative time breaks the tie). */
   rank: number;
   /** Link-invited guest — badged on the ranked list AND on the podium (ADR-9). */
   isGuest?: boolean;
@@ -285,8 +300,20 @@ export interface UseClassSession {
   broadcastAnswer: (activityId: string, correct: boolean, elapsedMs?: number) => void;
   broadcastTimer: (activityId: string, durationSeconds: number) => void;
   clearTimer: (activityId: string) => void;
+  /** Stars per learner for this session (itera.class_stars, floored at zero). */
+  stars: Record<string, number>;
+  /** This client was removed from the room — the realtime JOIN is denied now. */
+  removed: boolean;
+  /** Learner side: is my own hand up. Single source of truth (presence rides it). */
+  handRaised: boolean;
   /** Re-track presence with the hand raised/lowered (learner side). */
   setHandRaised: (raised: boolean) => void;
+  /** Instructor: give (+1) or take back (-1) a star. Resolves false if the write failed. */
+  awardStar: (userId: string, delta: 1 | -1) => Promise<boolean>;
+  /** Instructor: ask a learner's own client to lower its hand (presence is owner-write). */
+  lowerHand: (userId: string) => void;
+  /** Instructor: remove a learner from the room. Resolves false if the write failed. */
+  removeLearner: (userId: string) => Promise<boolean>;
   /** Re-track presence with the activity the learner has local work for (learner side). */
   setWorkingOn: (activityId: string | null) => void;
   /** Instructor: pull a learner's work for the current activity onto the stage. */

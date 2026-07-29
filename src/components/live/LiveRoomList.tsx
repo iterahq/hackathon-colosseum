@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { Users } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveRoomRow } from '@/components/live/LiveRoomRow';
@@ -28,6 +29,24 @@ export function LiveRoomList({
   actionsFor?: (row: Row) => LiveRoomRowActions;
 }) {
   const { t } = useI18n();
+  // Com um menu aberto a lista PARA de reordenar. A ordem é o pódio, que se
+  // reembaralha a cada resposta que chega — e "tirar da sala" clicado numa linha
+  // que acabou de deslizar sob o dedo tira o aluno errado.
+  const [openUserId, setOpenUserId] = useState<string | null>(null);
+  const frozenOrder = useRef<string[] | null>(null);
+  // Sai da sala (ou cai) com o menu aberto e ninguém fecha o menu — sem isto a
+  // lista ficaria congelada até o fim da aula.
+  if (!openUserId || !rows.some((r) => r.userId === openUserId)) frozenOrder.current = null;
+  else frozenOrder.current ??= rows.map((r) => r.userId);
+
+  const frozen = frozenOrder.current;
+  const rank = new Map(frozen?.map((id, i) => [id, i]));
+  const orderedRows = frozen
+    ? [...rows].sort(
+        (a, b) => (rank.get(a.userId) ?? frozen.length) - (rank.get(b.userId) ?? frozen.length)
+      )
+    : rows;
+
   const total = rows.length;
   const answered = rows.filter((r) => r.state !== 'pending').length;
   const raised = rows.filter((r) => r.raised).length;
@@ -83,13 +102,15 @@ export function LiveRoomList({
         {rows.length === 0 ? (
           <li className="text-sm text-muted-foreground py-2">{t('live.instructor.roster.empty')}</li>
         ) : (
-          rows.map((row) => (
+          orderedRows.map((row) => (
             <LiveRoomRow
               key={row.userId}
               row={row}
               compact={compact}
               showDetail={showDetail}
               actions={actionsFor?.(row)}
+              open={openUserId === row.userId}
+              onOpenChange={(next) => setOpenUserId(next ? row.userId : null)}
             />
           ))
         )}
