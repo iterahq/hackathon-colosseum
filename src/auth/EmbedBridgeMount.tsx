@@ -1,5 +1,9 @@
 /**
- * <EmbedBridge> — wires the federated-session embed bootstrap into the router.
+ * <EmbedBridgeMount> — wires the federated-session embed bootstrap into the
+ * router. The `Mount` suffix is load-bearing: this file used to be
+ * `EmbedBridge.tsx`, and on a case-insensitive filesystem (macOS/Windows) the
+ * import resolved to the sibling `embedBridge.ts` instead — the app failed to
+ * boot for anyone not on Linux. Never let two files here differ only by case.
  *
  * Renders nothing. When the app is in embed mode (`?embed=1`):
  *   - installs the postMessage bridge (emits DFL_READY, listens for DFL_SET_TOKEN
@@ -19,7 +23,7 @@ import {
   postNavigate,
 } from './embedBridge';
 
-export function EmbedBridge() {
+export function EmbedBridgeMount() {
   const navigate = useNavigate();
   const location = useLocation();
 
