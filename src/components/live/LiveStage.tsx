@@ -70,7 +70,10 @@ export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
         )}
       </div>
 
-      <div className="px-4 md:px-8 py-6">
+      <div
+        className="px-4 md:px-8 py-6 bg-muted/40 bg-gradient-to-b from-streak/[0.08] to-transparent"
+        data-testid="live-stage-body"
+      >
         {isEmpty ? (
           // The learner is in the room but hasn't touched this activity. Say so
           // plainly — the pull resolving to "nothing" is information, not a bug.
