@@ -10,10 +10,16 @@ import type { LiveRoomRow, LiveRoomRowActions } from '@/types/liveClass';
  * não num popover: a lista da sala é `overflow-y-auto` e recortaria qualquer
  * coisa posicionada por cima.
  *
- * Duas faixas, e a divisão não é estética: em cima o que se usa várias vezes por
- * aula (estrela, abaixar a mão, palco); embaixo o que corrige um engano ou
- * encerra a participação. "Dar estrela" e "tirar da sala" lado a lado no mesmo
- * alvo de toque seriam vizinhos com consequências opostas.
+ * A divisão em faixas não é estética: o nome e o "fechar" ficam no cabeçalho, no
+ * meio o que se usa várias vezes por aula (estrela, abaixar a mão, palco), e
+ * embaixo o que corrige um engano ou encerra a participação. "Dar estrela" e
+ * "tirar da sala" lado a lado no mesmo alvo de toque seriam vizinhos com
+ * consequências opostas.
+ *
+ * As ações moram numa faixa própria com `flex-wrap` porque a barra vive numa
+ * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura e o
+ * "fechar" — último da fila — ficava recortado fora da tela, deixando o
+ * professor sem saída do menu.
  *
  * Tirar da sala confirma na própria linha — nunca em modal. A turma está vendo a
  * tela projetada, e um diálogo no centro transforma disciplina em julgamento
@@ -37,6 +43,19 @@ export function LiveRoomRowActionsBar({
       <div className="flex items-center gap-2">
         <LiveAvatar name={row.name} avatarUrl={row.avatarUrl} size="w-6 h-6" />
         <span className="flex-1 min-w-0 truncate text-sm text-foreground">{row.name}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('live.room.actions.close')}
+          data-testid="live-room-actions-close"
+          className="h-8 px-2.5 shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <X className="w-3.5 h-3.5" />
+          {t('live.room.actions.close')}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5 pl-8">
         <LiveRoomActionButton
           icon={Star}
           label={t('live.room.action.star')}
@@ -70,18 +89,9 @@ export function LiveRoomRowActionsBar({
           )}
           {t(onStage ? 'live.stage.picker.clear' : 'live.stage.picker.pull')}
         </button>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('live.room.actions.close')}
-          data-testid="live-room-actions-close"
-          className="w-7 h-8 shrink-0 grid place-items-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
       </div>
 
-      <div className="flex items-center gap-2 pl-8 border-t border-border/50 pt-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 pl-8 border-t border-border/50 pt-1.5">
         {confirmingRemove ? (
           <>
             <span className="flex-1 min-w-0 truncate text-[11px] text-muted-foreground">
