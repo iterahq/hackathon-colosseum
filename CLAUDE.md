@@ -214,6 +214,7 @@ O que já é servido do nosso domínio, a partir de `public/vendor/`:
 | Tailwind Play (`tailwind-play-cdn.js`) | preview do snack | commitado |
 | **Fontes da marca** (`vendor/fonts/*.woff2`, ~313 KB) | Barlow Condensed · Inter · JetBrains Mono | **commitado** |
 | **Monaco Editor** (`vendor/monaco/vs`, ~16 MB) | editor de código | **gerado no build** (`.gitignore`) |
+| **Efeitos sonoros** (`vendor/sfx/*.mp3`, ~250 KB) | acerto/erro/avanço na lição e na aula | **commitado** |
 
 ### Monaco — por que existe `scripts/vendor-monaco.ts`
 
@@ -273,6 +274,29 @@ revisão da família). O Monaco é o oposto: 16 MB copiáveis offline do
 
 `src/test/fontsSelfHost.test.ts` tranca tudo isso (sem rede). Se ele quebrar, a
 tipografia voltou a depender de CDN — não silencie o teste.
+
+### Efeitos sonoros — por que existe `scripts/vendor-sfx.ts`
+
+`useSoundEffects` apontava pros `.mp3` de um CDN público de SFX. Na rede do
+piloto (só o app + o Supabase liberados) o aluno passa o exercício e não ouve
+nada. E a origem nem é estável: em 2026-07-30 o clipe de comemoração respondia
+**403** — ou seja, aquele som já estava morto em produção para todo mundo.
+
+Seguem o caminho das FONTES, não o do Monaco: **commitados** (6 arquivos,
+~250 KB), porque não há pacote npm de origem e um fetch no `prebuild` só moveria
+a dependência externa pra CI.
+
+- **`scripts/vendor-sfx.ts`** (`npm run vendor:sfx`) baixa os clipes e grava em
+  `public/vendor/sfx/`. **NÃO** roda no `prebuild`. Rodar à mão e commitar.
+- O mapa `CLIPS` (id na origem → nome do arquivo) é a documentação de qual
+  clipe é qual. Trocou um? Registre o porquê ali.
+- O script rejeita resposta cujo `content-type` não comece com `audio/`:
+  portal cativo de rede responde 200 com HTML, que viraria um `.mp3` quebrado.
+
+`src/test/sfxSelfHost.test.ts` tranca isso (sem rede): nenhuma URL absoluta no
+hook, todo som apontando pra `/vendor/sfx`, e cada arquivo com cabeçalho de MP3
+de verdade. Se ele quebrar, o som voltou a depender de CDN — não silencie o
+teste.
 
 ## Edge Functions
 

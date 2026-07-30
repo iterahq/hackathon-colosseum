@@ -1,16 +1,19 @@
 import { useCallback, useRef } from 'react';
 
-// Sound URLs - using free sound effects
+// Servidos do nosso domínio (`scripts/vendor-sfx.ts`), nunca de CDN pública: na
+// rede de escola do piloto o CDN cai e o aluno passa o exercício sem ouvir nada.
+// O clipe de comemoração chegou a responder 403 na origem — o risco não é
+// hipotético.
 const SOUNDS = {
   // Warm, gentle reward chime on passing an exercise (agradável, not sharp).
-  success: 'https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3',
-  error: 'https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3',
-  click: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-  celebration: 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3',
+  success: '/vendor/sfx/success.mp3',
+  error: '/vendor/sfx/error.mp3',
+  click: '/vendor/sfx/click.mp3',
+  celebration: '/vendor/sfx/celebration.mp3',
   // Soft single bell — a gentle "sound is back on" cue.
-  chime: 'https://assets.mixkit.co/active_storage/sfx/1114/1114-preview.mp3',
+  chime: '/vendor/sfx/chime.mp3',
   // Light "answer sent" tone — distinct from the success/error confirm cue.
-  submit: 'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
+  submit: '/vendor/sfx/submit.mp3',
 };
 
 type SoundType = keyof typeof SOUNDS;

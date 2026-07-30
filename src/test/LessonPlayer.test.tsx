@@ -22,6 +22,8 @@ import type { Activity } from '@/types/content';
 
 const useLessonContent = vi.fn();
 const useNextLesson = vi.fn();
+const play = vi.fn();
+vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play }) }));
 const { configured } = vi.hoisted(() => ({ configured: vi.fn(() => false) }));
 vi.mock('@/api/iteraApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/iteraApi')>()),
@@ -105,6 +107,8 @@ function renderPlayer() {
 }
 
 beforeEach(() => {
+  play.mockReset();
+  localStorage.clear();
   useLessonContent.mockReset();
   useNextLesson.mockReset();
   configured.mockReturnValue(false);
@@ -126,6 +130,28 @@ describe('LessonPlayer — lesson chrome (finding #1)', () => {
     const { container } = renderPlayer();
     await waitForPlayerReady();
     expect(container.textContent ?? '').not.toMatch(/FEATURE\/PULSES/i);
+  });
+});
+
+describe('LessonPlayer — som ao passar o exercício', () => {
+  /**
+   * "Quando passa a fase ainda nao tem som": o self-paced era mudo. A guarda
+   * precisa ser no player de verdade — um teste do hook isolado continuaria
+   * verde se a chamada saísse de `handleComplete`, que é justamente o bug.
+   */
+  it('toca o som de acerto no instante do veredito, antes do "Continuar"', async () => {
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('stub-complete'));
+    await screen.findByTestId('feedback-footer-continue');
+    expect(play).toHaveBeenCalledWith('success', 0.4);
+  });
+
+  it('comemora ao fechar a última atividade da lição', async () => {
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(screen.getByTestId('lesson-complete')).toBeTruthy(), { timeout: 5000 });
+    expect(play).toHaveBeenCalledWith('celebration', 0.5);
   });
 });
 
