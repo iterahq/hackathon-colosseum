@@ -44,7 +44,7 @@ export function buildLiveRoomRows({
 
   const rowFor = (
     entry: { userId: string; name: string; avatarUrl: string | null; isGuest?: boolean },
-    extra: { rank?: number; correctCount: number; answeredCount: number },
+    extra: { rank?: number; correctCount: number; answeredCount: number; stars: number },
   ): LiveRoomRow => {
     const answer = answerById.get(entry.userId);
     const presence = presenceById.get(entry.userId);
@@ -66,13 +66,19 @@ export function buildLiveRoomRows({
       isSelf: Boolean(selfUserId) && entry.userId === selfUserId,
       correctCount: extra.correctCount,
       answeredCount: extra.answeredCount,
+      stars: extra.stars,
     };
   };
 
   return [
     ...ranking.ranked.map((r) =>
-      rowFor(r, { rank: r.rank, correctCount: r.correctCount, answeredCount: r.answeredCount }),
+      rowFor(r, {
+        rank: r.rank,
+        correctCount: r.correctCount,
+        answeredCount: r.answeredCount,
+        stars: r.stars,
+      }),
     ),
-    ...ranking.waiting.map((w) => rowFor(w, { correctCount: 0, answeredCount: 0 })),
+    ...ranking.waiting.map((w) => rowFor(w, { correctCount: 0, answeredCount: 0, stars: 0 })),
   ];
 }

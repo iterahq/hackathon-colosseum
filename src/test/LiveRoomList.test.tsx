@@ -7,8 +7,8 @@ import type { ClassAnswerer, ClassPresenceMember, ClassRanking } from '@/types/l
 
 const ranking: ClassRanking = {
   ranked: [
-    { userId: 'a', name: 'Ana', avatarUrl: null, totalMs: 7000, answeredCount: 2, correctCount: 2, rank: 1 },
-    { userId: 'b', name: 'Bruno', avatarUrl: null, totalMs: 9000, answeredCount: 2, correctCount: 1, rank: 2 },
+    { userId: 'a', name: 'Ana', avatarUrl: null, totalMs: 7000, answeredCount: 2, correctCount: 2, stars: 0, rank: 1 },
+    { userId: 'b', name: 'Bruno', avatarUrl: null, totalMs: 9000, answeredCount: 2, correctCount: 1, stars: 0, rank: 2 },
   ],
   waiting: [{ userId: 'c', name: 'Caio', avatarUrl: null }],
 };

@@ -6,7 +6,8 @@ import { LiveRoomList } from '@/components/live/LiveRoomList';
 import { LiveSidebarActions } from '@/components/live/LiveSidebarActions';
 import { LiveSidebarFlow } from '@/components/live/LiveSidebarFlow';
 import { LiveSidebarToggle } from '@/components/live/LiveSidebarToggle';
-import type { ClassAnswerer, ClassPresenceMember, LiveRoomRow, StagedAuthor } from '@/types/liveClass';
+import { roomActionsFactory } from '@/utils/liveRoomActions';
+import type { ClassAnswerer, ClassPresenceMember, LiveRoomModeration, LiveRoomRow, StagedAuthor } from '@/types/liveClass';
 
 interface LiveSidebarProps {
   /** Learner and instructor share this ONE sidebar; the role toggles sections. */
@@ -19,7 +20,6 @@ interface LiveSidebarProps {
   hasActivity?: boolean;
   activityIndex?: number;
   activityCount?: number;
-  kind?: string;
   copied?: boolean;
   busy?: boolean;
   onCopyLink?: () => void;
@@ -35,6 +35,10 @@ interface LiveSidebarProps {
   stageUnreachableUserId?: string | null;
   /** Instructor: pull this learner's work onto the stage (or take it off). */
   onToggleStage?: (userId: string) => void;
+  /** Instructor: star, lower hand and remove. Absent leaves the rows inert. */
+  moderation?: LiveRoomModeration;
+  /** Learner: raise-hand toggle, pinned above the list so it is never missed. */
+  handSlot?: ReactNode;
 }
 
 /**
@@ -51,7 +55,6 @@ export function LiveSidebar({
   hasActivity = true,
   activityIndex = 0,
   activityCount = 0,
-  kind = '',
   copied = false,
   busy = false,
   onCopyLink,
@@ -64,6 +67,8 @@ export function LiveSidebar({
   stagePendingUserId,
   stageUnreachableUserId,
   onToggleStage,
+  moderation,
+  handSlot,
 }: LiveSidebarProps) {
   const compact = useCompactHeight();
   const isInstructor = role === 'instructor';
@@ -76,17 +81,10 @@ export function LiveSidebar({
     ? `min-h-0 flex flex-col lg:flex-1 lg:max-h-none lg:flex ${open ? 'max-h-[45vh]' : 'hidden'}`
     : 'flex-1 min-h-0 flex flex-col';
 
-  // The stage actions only exist for the instructor, and only while an activity
-  // is on screen: there is nothing to pull during reception.
-  const actionsFor =
-    showActivity && onToggleStage
-      ? (row: LiveRoomRow) => ({
-          onToggleStage,
-          onStage: stagedAuthor?.userId === row.userId,
-          pending: stagePendingUserId === row.userId,
-          unreachable: stageUnreachableUserId === row.userId,
-        })
-      : undefined;
+  // Only while an activity is on screen: there is nothing to pull during reception.
+  const actionsFor = showActivity
+    ? roomActionsFactory({ moderation, onToggleStage, stagedAuthor, stagePendingUserId, stageUnreachableUserId })
+    : undefined;
 
   return (
     <aside
@@ -98,12 +96,13 @@ export function LiveSidebar({
         <LiveSidebarToggle open={open} count={roster.length} onToggle={() => setOpen((o) => !o)} />
       )}
 
+      {handSlot && <div className="px-4 pb-3 border-b border-border">{handSlot}</div>}
+
       {isInstructor && (controls || showActivity) && (
         <LiveSidebarFlow
           showActivity={showActivity}
           activityIndex={activityIndex}
           activityCount={activityCount}
-          kind={kind}
           answerers={answerers}
           compact={compact}
           controls={controls}
@@ -120,15 +119,9 @@ export function LiveSidebar({
 
       <div className={bodyClass}>
         {!isInstructor && hasActivity && (
-          <LiveActivityStatsCard bare compact={compact} hideCorrectness kind={kind} answerers={answerers} />
+          <LiveActivityStatsCard bare compact={compact} hideCorrectness answerers={answerers} />
         )}
-        <LiveRoomList
-          rows={rows}
-          instructors={instructors}
-          compact={compact}
-          showDetail={isInstructor}
-          actionsFor={actionsFor}
-        />
+        <LiveRoomList rows={rows} instructors={instructors} compact={compact} showDetail={isInstructor} actionsFor={actionsFor} />
       </div>
 
       {isInstructor && (

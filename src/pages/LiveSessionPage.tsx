@@ -67,6 +67,7 @@ import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
+import { LiveRemovedScreen } from '@/components/live/LiveRemovedScreen';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
@@ -83,7 +84,7 @@ import type { ClassCompleter } from '@/types/liveClass';
 export default function LiveSessionPage() {
   const params = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { t, tText } = useI18n();
+  const { t } = useI18n();
 
   // Present ONLY under /g/:code (see GuestModeContext) — null is the normal,
   // authenticated case, so every branch below defaults to today's behaviour.
@@ -103,7 +104,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stagedAnswer, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, stagedAnswer, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -183,13 +184,11 @@ export default function LiveSessionPage() {
   // never paints the NEXT activity as locked for a frame while an effect catches up.
   const [timeUpFor, setTimeUpFor] = useState<string | null>(null);
   // Raised hand (presence-tracked). Auto-lowers whenever the class advances.
-  const [handRaised, setHandRaisedLocal] = useState(false);
+  // O estado mora no hook, junto da presença que ele publica — uma cópia local
+  // aqui dessincronizaria assim que o professor abaixasse a mão pelo menu dele.
   const toggleHand = useCallback(() => {
-    setHandRaisedLocal((prev) => {
-      setHandRaised(!prev);
-      return !prev;
-    });
-  }, [setHandRaised]);
+    setHandRaised(!handRaised);
+  }, [handRaised, setHandRaised]);
   useEffect(() => {
     // Restore the learner's own persisted answer (refresh protection) — a page
     // reload must NOT re-open an answered activity nor re-fire its broadcast.
@@ -198,7 +197,6 @@ export default function LiveSessionPage() {
     setAnswered(stored && currentActivityId ? { id: currentActivityId, ...stored } : null);
     setSaving(false);
     setTimeUpFor(null);
-    setHandRaisedLocal(false);
     setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [sessionId, currentActivityId, setHandRaised]);
@@ -317,7 +315,10 @@ export default function LiveSessionPage() {
     : 0;
 
   const ended = status === 'ended';
-  const podiumRanking = useMemo(() => rankByScore(roster, elapsed, answers), [roster, elapsed, answers]);
+  const podiumRanking = useMemo(
+    () => rankByScore(roster, elapsed, answers, stars),
+    [roster, elapsed, answers, stars]
+  );
   const roomRows = useMemo(
     () =>
       buildLiveRoomRows({
@@ -399,6 +400,8 @@ export default function LiveSessionPage() {
     </span>
   ) : undefined;
 
+  if (removed) return <LiveRemovedScreen onLeave={leave} />;
+
   return (
     <div className={`bg-background flex flex-col ${onSandbox ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
       <LiveReconnectBanner show={reconnecting} />
@@ -413,28 +416,36 @@ export default function LiveSessionPage() {
         timerSlot={
           timerRunning && timer && current ? (
             <LiveTimer prominent deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
-          ) : undefined
-        }
-        handSlot={
-          !loading && session && !ended ? (
-            <LiveHandButton raised={handRaised} onToggle={toggleHand} />
+          ) : !answered && !locked && activityStartedAt ? (
+            // Sem contagem regressiva o mesmo lugar mostra o cronômetro pessoal:
+            // solto no meio da coluna ele lia como parte da atividade.
+            <LiveStopwatch startedAt={activityStartedAt} />
           ) : undefined
         }
         onClose={leave}
       />
 
-      {stagedAnswer && !ended && <LiveStage staged={stagedAnswer} />}
-
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main
           className={`flex-1 min-h-0 px-4 md:px-8 ${
-            onSandbox ? 'overflow-y-auto pt-6 pb-6' : 'lg:overflow-y-auto pt-14 md:pt-20'
+            onSandbox
+              ? `overflow-y-auto pb-6 ${stagedAnswer && !ended ? 'pt-14' : 'pt-6'}`
+              : 'lg:overflow-y-auto pt-14 md:pt-20'
           } ${footerResult ? 'pb-40' : onSandbox ? '' : 'pb-8'}`}
         >
           {/* Focused column — width follows the ACTIVITY KIND via the SHARED
               rule, so a `code` snack gets the wide column in the LIVE class too
               (it used to widen only in the solo player). `sandbox_scenario`
               keeps its roomier live-only cap through the override map. */}
+          {/* Dentro do <main>: fora dele o palco escorregava por baixo do chrome
+              (o X caía em cima do avatar) e, por ser irmão da linha flex, cortava
+              a sidebar sticky ao meio. */}
+          {stagedAnswer && !ended && (
+            <div className="-mx-4 md:-mx-8 mb-6">
+              <LiveStage staged={stagedAnswer} />
+            </div>
+          )}
+
           <div
             data-testid="live-main"
             className={`w-full mx-auto ${columnMaxWidthClass(current?.kind, LIVE_COLUMN_OVERRIDES)}`}
@@ -472,15 +483,6 @@ export default function LiveSessionPage() {
           />
         ) : (
           <>
-            {/* Sem eyebrow "Aula ao vivo": a pílula AO VIVO do chrome já diz
-                isso ~50px acima e empurrava o título real da aula pra baixo. */}
-            <h1
-              className="font-display font-bold text-3xl md:text-4xl text-foreground"
-              data-testid="live-title"
-            >
-              {tText(lesson?.title)}
-            </h1>
-
             {current ? null : !currentActivityId ? (
               // No pointer — the class is in RECEPTION until the instructor begins.
               // The durable read completed under `loading`, so a null pointer here
@@ -524,14 +526,6 @@ export default function LiveSessionPage() {
                 reveal={timeUpFor !== null && timeUpFor === current.id}
                 onComplete={handleComplete}
                 onSubmit={sound.onSubmit}
-                timerSlot={
-                  // The countdown now lives prominently in the top chrome; here we
-                  // only keep the personal stopwatch (elapsed) once the activity is
-                  // started and still unanswered.
-                  !answered && !locked && activityStartedAt ? (
-                    <LiveStopwatch startedAt={activityStartedAt} />
-                  ) : undefined
-                }
                 footer={
                   <>
                     {/* "Pens down" when the clock runs out — same locked hint for
@@ -569,14 +563,14 @@ export default function LiveSessionPage() {
           </div>
         </main>
 
-        {!loading && session && !ended && current && (
+        {!loading && session && !ended && (
           <LiveSidebar
             role="learner"
             roster={roster}
             answerers={peerAnswerers}
             rows={roomRows}
             hasActivity={!!current}
-            kind={current?.kind ?? ''}
+            handSlot={<LiveHandButton full raised={handRaised} onToggle={toggleHand} />}
           />
         )}
       </div>

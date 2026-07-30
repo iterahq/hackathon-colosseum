@@ -4,15 +4,16 @@ import { useI18n } from '@/i18n';
 interface LiveHandButtonProps {
   raised: boolean;
   onToggle: () => void;
+  /** Sidebar placement: full-width row with the label always visible. */
+  full?: boolean;
 }
 
 /**
- * Learner-only toggle to raise/lower their hand — pinned inline beside the
- * timer in the top chrome (never a bottom-right floater, which read as broken
- * on phones). Compact pill matching the LIVE pill height; the label collapses
- * to an icon-only tap target on narrow screens so it never crowds the timer.
+ * Learner-only toggle to raise/lower their hand. It lives at the top of the
+ * learner sidebar (`full`), opposite the activity column — squeezed into the top
+ * chrome it was too small to be found mid-class.
  */
-export function LiveHandButton({ raised, onToggle }: LiveHandButtonProps) {
+export function LiveHandButton({ raised, onToggle, full = false }: LiveHandButtonProps) {
   const { t } = useI18n();
   return (
     <button
@@ -22,14 +23,18 @@ export function LiveHandButton({ raised, onToggle }: LiveHandButtonProps) {
       data-raised={raised ? 'true' : 'false'}
       aria-pressed={raised}
       aria-label={raised ? t('live.hand.lower') : t('live.hand.raise')}
-      className={`inline-flex items-center gap-1.5 h-8 px-2.5 sm:px-3 rounded-full border text-xs font-medium transition-colors ${
+      className={`inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors ${
+        full ? 'w-full h-10 justify-center text-sm' : 'h-8 px-2.5 sm:px-3 text-xs'
+      } ${
         raised
           ? 'bg-clay text-white border-clay animate-pulse'
           : 'bg-card text-foreground border-border hover:border-clay/50'
       }`}
     >
       <Hand className="w-3.5 h-3.5" />
-      <span className="hidden sm:inline">{raised ? t('live.hand.lower') : t('live.hand.raise')}</span>
+      <span className={full ? '' : 'hidden sm:inline'}>
+        {raised ? t('live.hand.lower') : t('live.hand.raise')}
+      </span>
     </button>
   );
 }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MoreHorizontal } from 'lucide-react';
 import { useI18n } from '@/i18n';
@@ -22,15 +21,19 @@ export function LiveRoomRow({
   compact = false,
   showDetail = false,
   actions,
+  open = false,
+  onOpenChange,
 }: {
   row: Row;
   compact?: boolean;
   /** Instructor view: correctness + cumulative score. Learners see neither. */
   showDetail?: boolean;
   actions?: LiveRoomRowActions;
+  /** Controlled by the list, which freezes the podium reorder while open. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   const done = row.state === 'done';
   const wrong = row.state === 'wrong';
   const onStage = actions?.onStage === true;
@@ -39,7 +42,7 @@ export function LiveRoomRow({
     <motion.li
       layout
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-      className={`group relative flex items-center rounded-xl ${open ? 'gap-1.5' : 'gap-3'} ${
+      className={`group relative flex ${open ? 'items-start gap-1.5' : 'items-center gap-3'} rounded-xl ${
         compact ? 'py-1.5 px-2' : 'py-2 px-2.5'
       } ${row.down ? 'opacity-60' : ''} ${
         done ? 'bg-evergreen-soft/40' : wrong && showDetail ? 'bg-destructive/5' : 'hover:bg-muted/40'
@@ -50,7 +53,7 @@ export function LiveRoomRow({
       data-on-stage={onStage ? 'true' : 'false'}
     >
       {open && actions ? (
-        <LiveRoomRowActionsBar row={row} actions={actions} onClose={() => setOpen(false)} />
+        <LiveRoomRowActionsBar row={row} actions={actions} onClose={() => onOpenChange?.(false)} />
       ) : (
         <>
           <span
@@ -87,7 +90,11 @@ export function LiveRoomRow({
 
           {/* Info and the ⋯ share ONE fixed slot, so opening the actions never
               reflows the row and the name never jumps under the pointer. */}
-          <span className={`relative shrink-0 h-6 ${showDetail ? 'w-[86px]' : 'w-[58px]'}`}>
+          <span
+            className={`relative shrink-0 h-6 ${
+              showDetail ? (row.stars > 0 ? 'w-[118px]' : 'w-[86px]') : 'w-[58px]'
+            }`}
+          >
             <span
               className={`absolute inset-0 flex items-center justify-end gap-2 transition-opacity ${
                 actions ? 'group-hover:opacity-0 group-focus-within:opacity-0' : ''
@@ -96,6 +103,11 @@ export function LiveRoomRow({
               {showDetail && (
                 <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                   {row.correctCount}/{row.answeredCount}
+                </span>
+              )}
+              {showDetail && row.stars > 0 && (
+                <span className="font-mono text-[11px] tabular-nums text-amber-500" data-testid="live-room-stars">
+                  ⭐{row.stars}
                 </span>
               )}
               {typeof row.elapsedMs === 'number' && row.state !== 'pending' && (
@@ -111,7 +123,7 @@ export function LiveRoomRow({
             {actions && (
               <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => onOpenChange?.(true)}
                 aria-label={t('live.room.actions.open', { name: row.name })}
                 aria-haspopup="true"
                 data-testid="live-room-actions-open"

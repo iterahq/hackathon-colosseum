@@ -14,27 +14,12 @@ const answerers: ClassAnswerer[] = [
 function renderCard(over: Partial<React.ComponentProps<typeof LiveActivityStatsCard>> = {}) {
   return render(
     <I18nProvider>
-      <LiveActivityStatsCard kind="single_choice" answerers={answerers} {...over} />
+      <LiveActivityStatsCard answerers={answerers} {...over} />
     </I18nProvider>
   );
 }
 
 describe('LiveActivityStatsCard', () => {
-  it('shows a localized activity-kind label (no raw enum leak)', () => {
-    renderCard();
-    const text = screen.getByTestId('live-activity-stats').textContent ?? '';
-    expect(text).toContain('Múltipla escolha');
-    expect(text).not.toContain('single_choice');
-    expect(text).not.toContain('single choice');
-  });
-
-  it('falls back to a generic label for an unknown kind', () => {
-    renderCard({ kind: 'mystery_type' });
-    const text = screen.getByTestId('live-activity-stats').textContent ?? '';
-    expect(text).toContain('Atividade');
-    expect(text).not.toContain('mystery');
-  });
-
   it('summarises answered vs total and the correct/wrong/waiting split', () => {
     renderCard();
     // 2 correct + 1 wrong = 3 answered of 4 present.

@@ -19,6 +19,7 @@ const entry = (userId: string, name: string, correctCount: number, rank: number)
   totalMs: 1000 * rank,
   answeredCount: 3,
   correctCount,
+  stars: 0,
   rank,
 });
 

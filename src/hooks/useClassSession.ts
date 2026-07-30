@@ -16,9 +16,11 @@
  *   3. presence  — the live roster (who's in the room right now).
  *
  * The hook is shared by students (read + presence) and the professor (who ALSO
- * calls `broadcast()` on advance). It never writes the DB — the professor page
- * persists via liveClass.service.advanceClassSession (durable) THEN broadcast()
- * (fast). Result writes stay elsewhere (LessonPlayer / progress.service).
+ * calls `broadcast()` on advance). Its only DB writes are the moderation ones
+ * (star / remove, via classModeration.service), which are durable on purpose;
+ * the class pointer is persisted by the professor page via
+ * liveClass.service.advanceClassSession (durable) THEN broadcast() (fast).
+ * Result writes stay elsewhere (LessonPlayer / progress.service).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -35,6 +37,12 @@ import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
+import {
+  amIRemovedFrom,
+  awardStar as awardStarRow,
+  getSessionStars,
+  removeFromClass,
+} from '@/services/classModeration.service';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -56,6 +64,14 @@ const STAGE_CLEAR_EVENT = 'stage-clear';
 // forwards those as fresh stage-show. Same trust model as the one-shot pull —
 // gated on the resolved (userId + activityId) target, not a fresh nonce.
 const STAGE_UPDATE_EVENT = 'stage-update';
+// Ações do professor sobre um aluno. `star` e `kick` só AVISAM — a verdade está
+// em itera.class_stars / itera.class_removals, cuja RLS exige staff da aula, e é
+// dela que todo cliente re-hidrata ao (re)entrar. `hand-lower` não tem verdade
+// durável nenhuma: a mão vive em presença, que só o dono escreve, então é
+// sempre um PEDIDO ao cliente do aluno.
+const STAR_EVENT = 'star';
+const KICK_EVENT = 'kick';
+const HAND_LOWER_EVENT = 'hand-lower';
 // The pull is peer-to-peer: only a client that is ONLINE can answer it. A learner
 // who closed the tab / lost the network never replies, so give up after a grace
 // window and tell the professor — an endless spinner reads as a broken feature.
@@ -89,6 +105,15 @@ export function useClassSession(
   // gave up on (see STAGE_REPLY_TIMEOUT_MS).
   const [stagePendingUserId, setStagePendingUserId] = useState<string | null>(null);
   const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
+  const [stars, setStars] = useState<Record<string, number>>({});
+  const [removed, setRemoved] = useState(false);
+  // Lido dentro do efeito do canal (que só depende de sessionId) para impedir
+  // que o retry fique tentando reentrar num canal cuja RLS já nega o JOIN.
+  const removedRef = useRef(false);
+  // A mão é UM estado só. Antes o hook guardava o ref (para a presença) e a
+  // página guardava um useState paralelo — o que ficava mentindo assim que a
+  // mão descia por qualquer caminho que não fosse o botão do próprio aluno.
+  const [handRaised, setHandRaisedState] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
   // The staff-write topic (migration 0023) — every instructor-driven send.
   const ctrlRef = useRef<RealtimeChannel | null>(null);
@@ -223,13 +248,24 @@ export function useClassSession(
     };
 
     const scheduleRetry = () => {
-      if (disposed || retryTimer !== null) return;
+      if (disposed || removedRef.current || retryTimer !== null) return;
       const delay = reconnectDelayMs(attempt);
       attempt += 1;
       retryTimer = window.setTimeout(() => {
         retryTimer = null;
         reconnectNow();
       }, delay);
+    };
+
+    // O KICK é broadcast, ou seja auto-atestado — quem decide que o aluno saiu é
+    // a linha em class_removals. Sem esta confirmação qualquer colega expulsa
+    // qualquer um pelo devtools.
+    const confirmRemoval = () => {
+      void amIRemovedFrom(sessionId).then((yes) => {
+        if (!yes || disposed) return;
+        removedRef.current = true;
+        setRemoved(true);
+      });
     };
 
     const reconnectNow = () => {
@@ -247,7 +283,7 @@ export function useClassSession(
     };
 
     const connect = () => {
-      if (disposed) return;
+      if (disposed || removedRef.current) return;
       let mainJoined = false;
       let ctrlJoined = false;
       // The backoff resets only when BOTH topics are up: a ctrl that keeps
@@ -406,6 +442,33 @@ export function useClassSession(
           stagedSelfRef.current =
             me && a.userId === me && answeredStageRef.current === p.activityId ? p.activityId : null;
         })
+        // Fast path do placar: o número certo vem do banco no (re)join logo
+        // abaixo, então um evento perdido no meio de um blip só atrasa a
+        // animação — não desalinha o pódio.
+        .on('broadcast', { event: STAR_EVENT }, ({ payload }) => {
+          const p = payload as { user_id?: string; delta?: number } | null;
+          if (!p?.user_id || (p.delta !== 1 && p.delta !== -1)) return;
+          const uid = p.user_id;
+          const delta = p.delta;
+          // Soma crua: o piso em zero é do pódio (rankByScore). Aplicá-lo aqui
+          // faria o placar local divergir do saldo do banco depois de um -1 a mais.
+          setStars((prev) => ({ ...prev, [uid]: (prev[uid] ?? 0) + delta }));
+        })
+        // Só o alvo reage: a linha em class_removals já nega o JOIN dele, isto
+        // é o que troca a tela na hora em vez de deixá-lo vendo um spinner.
+        .on('broadcast', { event: KICK_EVENT }, ({ payload }) => {
+          const target = (payload as { user_id?: string } | null)?.user_id;
+          if (target && target === identityRef.current?.userId) confirmRemoval();
+        })
+        // Abaixar a mão de outro é impossível por escrita (presença é do dono),
+        // então é o cliente do aluno que abaixa a própria e re-publica.
+        .on('broadcast', { event: HAND_LOWER_EVENT }, ({ payload }) => {
+          const target = (payload as { user_id?: string } | null)?.user_id;
+          if (!target || target !== identityRef.current?.userId) return;
+          handRaisedRef.current = false;
+          setHandRaisedState(false);
+          trackPresence();
+        })
         .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
           setStagedAnswer(null);
           pendingStageRef.current = null;
@@ -539,11 +602,18 @@ export function useClassSession(
             // leaving the reception. Re-read the durable row on every (re)subscribe
             // so it always converges instead of getting stranded in the lobby.
             void getClassSession(sessionId).then(applySession);
+            // O placar de estrelas re-hidrata do banco a cada (re)join pelo mesmo
+            // motivo do advance: broadcast não é reenviado depois de um blip.
+            void getSessionStars(sessionId).then(setStars).catch(() => undefined);
             trackPresence();
             return;
           }
           if (s === 'CLOSED' || s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
             if (everJoined) setReconnecting(true);
+            // Remoção com a aba em segundo plano não gera broadcast lido: o que
+            // sobra é o JOIN sendo negado pela RLS, que sem isto vira spinner
+            // eterno de reconexão.
+            if (attempt >= 3) confirmRemoval();
             scheduleRetry();
           }
         });
@@ -600,10 +670,60 @@ export function useClassSession(
   const setHandRaised = useCallback(
     (raised: boolean) => {
       handRaisedRef.current = raised;
+      setHandRaisedState(raised);
       trackPresence();
     },
     [trackPresence]
   );
+
+  // A escrita vai no banco ANTES do aviso: se a RLS recusar (quem não é staff
+  // da aula), nada é anunciado — em vez de pintar uma estrela na tela da turma
+  // que some no próximo refetch.
+  const awardStar = useCallback(
+    (userId: string, delta: 1 | -1) => {
+      const sid = sessionIdRef.current;
+      if (!sid || !userId) return Promise.resolve(false);
+      return awardStarRow(sid, userId, delta).then(
+        () => {
+          // O canal é self:true, então o próprio handler do STAR_EVENT aplica o
+          // delta local — aplicar aqui também contaria a estrela duas vezes.
+          ctrlRef.current?.send({
+            type: 'broadcast',
+            event: STAR_EVENT,
+            payload: { user_id: userId, delta },
+          });
+          return true;
+        },
+        () => false
+      );
+    },
+    []
+  );
+
+  const lowerHand = useCallback((userId: string) => {
+    if (!userId) return;
+    void ctrlRef.current?.send({
+      type: 'broadcast',
+      event: HAND_LOWER_EVENT,
+      payload: { user_id: userId },
+    });
+  }, []);
+
+  const removeLearner = useCallback((userId: string) => {
+    const sid = sessionIdRef.current;
+    if (!sid || !userId) return Promise.resolve(false);
+    return removeFromClass(sid, userId).then(
+      () => {
+        ctrlRef.current?.send({
+          type: 'broadcast',
+          event: KICK_EVENT,
+          payload: { user_id: userId },
+        });
+        return true;
+      },
+      () => false
+    );
+  }, []);
 
   // Learner side: announce (via presence) that there IS local work for this
   // activity, so the professor's picker can show "em andamento" before pulling.
@@ -667,6 +787,33 @@ export function useClassSession(
 
   // A pull left in flight when the page unmounts must not fire into a dead tree.
   useEffect(() => clearStageTimeout, [clearStageTimeout]);
+
+  // O F5 do aluno removido não passa pelo broadcast (ele já não entra no canal),
+  // e o JOIN negado só produziria um "reconectando…" eterno. A linha durável é
+  // o que diz a verdade, então ela é lida uma vez na montagem.
+  useEffect(() => {
+    if (!sessionId) return;
+    let alive = true;
+    void amIRemovedFrom(sessionId).then((yes) => {
+      if (!alive || !yes) return;
+      removedRef.current = true;
+      setRemoved(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [sessionId]);
+
+  // Sair da sala é sair mesmo: sem derrubar os canais o cliente removido segue
+  // com presença no tópico e o professor continua vendo o aluno na lista.
+  useEffect(() => {
+    if (!removed || !isSupabaseConfigured) return;
+    const sb = getSupabase();
+    const open = [channelRef.current, ctrlRef.current].filter(Boolean) as RealtimeChannel[];
+    channelRef.current = null;
+    ctrlRef.current = null;
+    for (const ch of open) void sb.removeChannel(ch).catch(() => undefined);
+  }, [removed]);
 
   // Live stage: while THIS learner's work is on stage, re-broadcast it on every
   // autosave so the class mirror tracks the edits in real time (no polling — the
@@ -773,11 +920,17 @@ export function useClassSession(
     stagedAnswer,
     stagePendingUserId,
     stageUnreachableUserId,
+    stars,
+    removed,
+    handRaised,
     broadcast,
     broadcastAnswer,
     broadcastTimer,
     clearTimer,
     setHandRaised,
+    awardStar,
+    lowerHand,
+    removeLearner,
     setWorkingOn,
     requestStage,
     clearStage,

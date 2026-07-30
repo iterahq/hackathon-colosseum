@@ -82,7 +82,7 @@ const roster: ClassPresenceMember[] = [
 ];
 
 const ranking = {
-  ranked: [{ userId: 'a', name: 'Alba', avatarUrl: null, totalMs: 4000, answeredCount: 1, correctCount: 1, rank: 1 }],
+  ranked: [{ userId: 'a', name: 'Alba', avatarUrl: null, totalMs: 4000, answeredCount: 1, correctCount: 1, stars: 0, rank: 1 }],
   waiting: [
     { userId: 'b', name: 'Bento', avatarUrl: null },
     { userId: 'c', name: 'Cauê', avatarUrl: null },
@@ -127,6 +127,9 @@ describe('room row — pull to stage', () => {
             onStage: false,
             pending: over.pending === row.userId,
             unreachable: over.unreachable === row.userId,
+            onStar: vi.fn(),
+            onLowerHand: vi.fn(),
+            onRemove: vi.fn(),
           })}
         />
       </I18nProvider>
