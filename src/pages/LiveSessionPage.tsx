@@ -68,6 +68,7 @@ import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { LiveRemovedScreen } from '@/components/live/LiveRemovedScreen';
+import { LiveLeaveConfirm } from '@/components/live/LiveLeaveConfirm';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
@@ -367,6 +368,11 @@ export default function LiveSessionPage() {
     navigate('/');
   }, [guest, navigate]);
 
+  // Sair no meio da aula pergunta antes: o X fica a um toque do avatar e do
+  // indicador AO VIVO, e um clique errado tirava o aluno da turma sem volta
+  // óbvia. Com a aula encerrada o X é só "voltar" — aí não pergunta nada.
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+
   // The sandbox owns a fixed viewport-relative height, so its surface is pinned
   // to the viewport with the scroll living INSIDE the stage — never the page.
   const onSandbox = current?.kind === 'sandbox_scenario';
@@ -422,7 +428,12 @@ export default function LiveSessionPage() {
             <LiveStopwatch startedAt={activityStartedAt} />
           ) : undefined
         }
-        onClose={leave}
+        onClose={() => (ended ? leave() : setConfirmingLeave((open) => !open))}
+        closeConfirm={
+          confirmingLeave && !ended ? (
+            <LiveLeaveConfirm onConfirm={leave} onCancel={() => setConfirmingLeave(false)} />
+          ) : undefined
+        }
       />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">

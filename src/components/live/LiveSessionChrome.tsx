@@ -15,6 +15,8 @@ interface LiveSessionChromeProps {
   /** Learner hand-raise toggle, pinned beside the timer (top-center). */
   handSlot?: ReactNode;
   onClose: () => void;
+  /** Confirmação ancorada sob o X. O chrome só posiciona; quem decide é a página. */
+  closeConfirm?: ReactNode;
 }
 
 /**
@@ -34,6 +36,7 @@ export function LiveSessionChrome({
   timerSlot,
   handSlot,
   onClose,
+  closeConfirm,
 }: LiveSessionChromeProps) {
   const { t } = useI18n();
   const showPosition =
@@ -64,6 +67,10 @@ export function LiveSessionChrome({
       >
         <X className="w-4 h-4" />
       </button>
+
+      {closeConfirm && (
+        <div className="absolute top-12 left-3 md:left-4 z-40">{closeConfirm}</div>
+      )}
 
       <div
         className="absolute top-2.5 left-1/2 -translate-x-1/2 h-9 flex items-center gap-2"
