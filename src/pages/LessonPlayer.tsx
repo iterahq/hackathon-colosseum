@@ -25,10 +25,10 @@
  * persist / XP logic below is UNCHANGED — only the presentation was rebuilt.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { X, Heart, Trophy } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
+import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
@@ -44,6 +44,7 @@ import {
   resumeIndexFor,
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
 import { activityTitleOf, buildArtifact, buildRepoPath } from '@/services/artifactPolicy';
 import { toast } from 'sonner';
@@ -54,13 +55,11 @@ import { toast } from 'sonner';
 import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
 import type { Activity } from '@/types/content';
 
-/** Decorative lives count — inert chrome (no lives backend). */
-const DECORATIVE_HEARTS = 5;
-
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { t, tText } = useI18n();
+  const { muted, toggleMuted, onSettle, onAdvance, onFinish } = useLessonSound();
   useAnswerOutbox();
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
 
@@ -199,6 +198,9 @@ export default function LessonPlayer() {
     // only becomes an artifact if the AUTHOR asked for one — see `advance`.
     pendingResponseRef.current = detail?.response ?? null;
     if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
+      // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
+      // descobre se passou, e era exatamente o som que faltava no self-paced.
+      onSettle(correct);
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
     }
@@ -318,8 +320,10 @@ export default function LessonPlayer() {
 
     setPending(null);
     if (!isLast) {
+      onAdvance();
       setIndex((i) => i + 1);
     } else {
+      onFinish();
       setCompleted(true);
     }
   }
@@ -335,45 +339,12 @@ export default function LessonPlayer() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* ── Immersive chrome: full-width progress bar + X (left) + hearts (right) ── */}
-      <header className="relative">
-        {/* Full-width thin progress track, flush to the very top edge. */}
-        <div
-          className="h-1 w-full bg-muted"
-          role="progressbar"
-          aria-valuenow={progressPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={t('label.activities')}
-          data-testid="lesson-progress"
-        >
-          <div
-            className="h-full bg-evergreen transition-[width] duration-300"
-            style={{ width: `${progressPct}%` }}
-            data-testid="lesson-progress-fill"
-          />
-        </div>
-
-        {/* Close-X — circular bordered button, top-left. */}
-        <button
-          onClick={() => navigate(-1)}
-          aria-label={t('common.back')}
-          data-testid="lesson-close"
-          className="absolute top-2.5 left-3 md:left-4 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Hearts — decorative lives indicator, top-right (inert chrome). */}
-        <div
-          className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-1.5 text-foreground"
-          data-testid="lesson-hearts"
-          aria-hidden="true"
-        >
-          <Heart className="w-4 h-4 fill-clay text-clay" />
-          <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
-        </div>
-      </header>
+      <LessonChrome
+        progressPct={progressPct}
+        muted={muted}
+        onToggleMuted={toggleMuted}
+        onClose={() => navigate(-1)}
+      />
 
       {/* ── Centered focused column ── */}
       {/* pb leaves room so the fixed FeedbackFooter never clips the SubmitButton. */}
@@ -409,42 +380,11 @@ export default function LessonPlayer() {
               {t('lesson.noActivities')}
             </div>
           ) : completed ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="rounded-3xl border border-border bg-card p-10 text-center"
-              data-testid="lesson-complete"
-            >
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-evergreen-soft border border-evergreen/40 flex items-center justify-center">
-                <Trophy className="w-9 h-9 text-evergreen-hi" />
-              </div>
-              <h2 className="font-display text-foreground mt-5">{t('lesson.complete')}</h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                {doneIds.size}/{activities.length} {t('label.activities').toLowerCase()}
-              </p>
-              {/* End-of-lesson CTA (round-3 finding #4): when a next lesson exists,
-                  offer "Próxima lição" routing straight into it; otherwise the
-                  course is over → "Concluir" back to the dashboard. The old CTA
-                  always sent the learner to "Descobrir" (dashboard), which read
-                  as confusing on a "5/5 lições concluídas" screen. */}
-              {nextLesson ? (
-                <Link
-                  to={`/lesson/${nextLesson.id}`}
-                  className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
-                  data-testid="lesson-next-cta"
-                >
-                  {t('lesson.nextLesson')}
-                </Link>
-              ) : (
-                <Link
-                  to="/"
-                  className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
-                  data-testid="lesson-finish-cta"
-                >
-                  {t('lesson.finishCourse')}
-                </Link>
-              )}
-            </motion.div>
+            <LessonCompleteCard
+              doneCount={doneIds.size}
+              total={activities.length}
+              nextLessonId={nextLesson?.id}
+            />
           ) : (
             <>
               {/* Eyebrow: learner-friendly "LIÇÃO" label (green JB-Mono uppercase).

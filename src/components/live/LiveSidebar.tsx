@@ -96,7 +96,7 @@ export function LiveSidebar({
         <LiveSidebarToggle open={open} count={roster.length} onToggle={() => setOpen((o) => !o)} />
       )}
 
-      {handSlot && <div className="px-4 pb-3 border-b border-border">{handSlot}</div>}
+      {handSlot && <div className="hidden lg:block px-4 pb-3 border-b border-border">{handSlot}</div>}
 
       {isInstructor && (controls || showActivity) && (
         <LiveSidebarFlow

@@ -428,6 +428,13 @@ export default function LiveSessionPage() {
             <LiveStopwatch startedAt={activityStartedAt} />
           ) : undefined
         }
+        handSlot={
+          // Abaixo de `lg` a sidebar cai embaixo da coluna inteira, atrás do
+          // rodapé fixo — a mão precisa viver no topo, junto do timer.
+          <span className="lg:hidden">
+            <LiveHandButton raised={handRaised} onToggle={toggleHand} />
+          </span>
+        }
         onClose={() => (ended ? leave() : setConfirmingLeave((open) => !open))}
         closeConfirm={
           confirmingLeave && !ended ? (

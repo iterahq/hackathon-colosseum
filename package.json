@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "vendor:monaco": "tsx scripts/vendor-monaco.ts",
     "vendor:fonts": "tsx scripts/vendor-fonts.ts",
+    "vendor:sfx": "tsx scripts/vendor-sfx.ts",
     "prebuild": "tsx scripts/vendor-monaco.ts",
     "prebuild:dev": "tsx scripts/vendor-monaco.ts",
     "prebuild-storybook": "tsx scripts/vendor-monaco.ts",

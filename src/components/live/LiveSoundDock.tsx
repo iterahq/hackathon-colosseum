@@ -1,14 +1,12 @@
-import { Volume2, Volume1, VolumeX, Music, Music2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Volume2, Volume1, VolumeX, ChevronUp } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { LiveSoundPanel } from '@/components/live/LiveSoundPanel';
 import { useLiveMuted } from '@/hooks/useLiveMuted';
 import { useLiveVolume } from '@/hooks/useLiveVolume';
 import { useLiveMusicEnabled } from '@/hooks/useLiveMusicEnabled';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
-
-// Discrete volume presets — tappable percentage chips replace the drag slider,
-// which was fiddly on touch (no hover to reveal it, hard to land a value).
-const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1] as const;
 
 /**
  * Sound dock for the live class, pinned bottom-LEFT: a mute toggle, a panel that
@@ -31,8 +29,26 @@ export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
   const [volume, setVolume] = useLiveVolume();
   const [musicOn, toggleMusic] = useLiveMusicEnabled();
   const { play } = useSoundEffects();
+  // No touch não existe hover nem foco de botão (iOS Safari), então o painel
+  // abre só por clique: com hover no meio, `aria-expanded` mentia.
+  const [open, setOpen] = useState(false);
+  const dockRef = useRef<HTMLDivElement>(null);
 
   useBackgroundMusic({ enabled: musicOn, muted, volume });
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onDown = (e: PointerEvent) => {
+      if (!dockRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown);
+    };
+  }, [open]);
 
   const label = muted ? t('live.sound.off') : t('live.sound.on');
   const volumePct = Math.round(volume * 100);
@@ -58,77 +74,59 @@ export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
 
   return (
     <div
-      className={`fixed left-3 md:left-4 z-40 group transition-[bottom] duration-200 ${raised ? 'bottom-32 md:bottom-24' : 'bottom-3'}`}
+      ref={dockRef}
+      className={`fixed left-3 md:left-4 z-40 transition-[bottom] duration-200 ${raised ? 'bottom-32 md:bottom-24' : 'bottom-3'}`}
       data-testid="live-sound-dock"
       data-raised={raised ? 'true' : 'false'}
     >
-      <button
-        type="button"
-        onClick={handleToggle}
-        data-testid="live-sound-toggle"
-        data-muted={muted ? 'true' : 'false'}
-        aria-pressed={muted}
-        aria-label={label}
-        title={label}
-        className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
-      >
-        {muted ? (
-          <VolumeX className="w-4 h-4" />
-        ) : volume < 0.5 ? (
-          <Volume1 className="w-4 h-4 text-menta" />
-        ) : (
-          <Volume2 className="w-4 h-4 text-menta" />
-        )}
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={handleToggle}
+          data-testid="live-sound-toggle"
+          data-muted={muted ? 'true' : 'false'}
+          aria-pressed={muted}
+          aria-label={label}
+          title={label}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
+        >
+          {muted ? (
+            <VolumeX className="w-4 h-4" />
+          ) : volume < 0.5 ? (
+            <Volume1 className="w-4 h-4 text-menta" />
+          ) : (
+            <Volume2 className="w-4 h-4 text-menta" />
+          )}
+        </button>
 
-      <div className="absolute left-0 bottom-full w-48 pb-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-        <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card p-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              {t('live.sound.volume')}
-            </span>
-            <span className="font-mono text-[11px] tabular-nums text-menta" data-testid="live-volume-value">
-              {volumePct}%
-            </span>
-          </div>
-          <div className="grid grid-cols-5 gap-1" role="group" aria-label={t('live.sound.volume')}>
-            {VOLUME_STEPS.map((step) => {
-              const pct = Math.round(step * 100);
-              const active = volumePct === pct;
-              return (
-                <button
-                  key={pct}
-                  type="button"
-                  onClick={() => handleVolume(step)}
-                  data-testid={`live-volume-${pct}`}
-                  aria-pressed={active}
-                  className={`rounded-lg border py-1.5 text-[11px] font-medium tabular-nums transition-colors ${
-                    active
-                      ? 'border-menta/50 bg-menta/10 text-menta'
-                      : 'border-border text-muted-foreground hover:text-foreground hover:border-menta/40'
-                  }`}
-                >
-                  {pct}%
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={handleMusic}
-            data-testid="live-music-toggle"
-            data-on={musicOn ? 'true' : 'false'}
-            aria-pressed={musicOn}
-            className={`inline-flex items-center justify-center gap-2 h-9 rounded-full border text-xs font-medium transition-colors ${
-              musicOn
-                ? 'border-menta/50 text-foreground'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {musicOn ? <Music className="w-3.5 h-3.5 text-menta" /> : <Music2 className="w-3.5 h-3.5" />}
-            {musicOn ? t('live.music.on') : t('live.music.off')}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          data-testid="live-sound-panel-toggle"
+          data-open={open ? 'true' : 'false'}
+          aria-expanded={open}
+          aria-controls="live-sound-panel"
+          aria-label={t('live.sound.volume')}
+          title={t('live.sound.volume')}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
+        >
+          <ChevronUp className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      <div
+        id="live-sound-panel"
+        data-testid="live-sound-panel"
+        className={`absolute left-0 bottom-full w-56 pb-1 transition-opacity duration-150 ${
+          open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <LiveSoundPanel
+          volumePct={volumePct}
+          onVolume={handleVolume}
+          musicOn={musicOn}
+          onMusic={handleMusic}
+        />
       </div>
     </div>
   );
