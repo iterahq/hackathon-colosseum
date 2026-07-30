@@ -263,13 +263,22 @@ const App = () => (
                   }
                 />
                 {/* Student live-session surface — reuses the activity components in
-                    session mode (server-authoritative pointer). Auth-gated only;
-                    RLS + the in-app enable gate scope visibility. */}
+                    session mode (server-authoritative pointer). RLS + the in-app
+                    enable gate scope visibility; the subscription gate matches the
+                    other learner surfaces (it was the one paid surface left open,
+                    and it is the most expensive one — realtime + LLM). A tenant
+                    that gives the class away (`tenants.subscription_exempt`,
+                    itera-api migration 0014) reads as entitled, so a free cohort
+                    still walks in. `graceOnError` só aqui: uma leitura que falha
+                    no wifi da escola não pode derrubar o aluno no meio da aula.
+                    Guests come through /g/:code, never here. */}
                 <Route
                   path="/live/:sessionId"
                   element={
                     <RequireAuth>
-                      <LiveSessionPage />
+                      <RequireSubscription graceOnError>
+                        <LiveSessionPage />
+                      </RequireSubscription>
                     </RequireAuth>
                   }
                 />

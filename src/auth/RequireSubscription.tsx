@@ -11,6 +11,12 @@
  *     Detected via localStorage 'itera_dfl_session' flag set by exchangeDflToken.
  *   - Grandfathered users (created_at before VITE_SUBSCRIPTION_GATE_DATE, default
  *     '2026-07-06') are ENTITLED — existing free users keep access (D3).
+ *   - a tenant that gives its classes away (`itera.tenants.subscription_exempt`,
+ *     itera-api migration 0014) surfaces an ENTITLED row in
+ *     `itera.my_subscription`, so a free cohort passes through the SAME
+ *     authority — not a second bypass here.
+ *   - `graceOnError` (opt-in, hoje só a aula ao vivo) deixa passar quando a
+ *     leitura de entitlement FALHA; ver o comentário no check.
  *
  * Entitlement is read from itera.my_subscription via useEntitlement (RLS-scoped
  * to the caller) — NOT a service-role query. App-layer half of belt+suspenders;
@@ -25,10 +31,16 @@ import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
 import { isTenantAdmin } from '@/services/membership.service';
 
-export function RequireSubscription({ children }: { children: ReactNode }) {
+export function RequireSubscription({
+  children,
+  graceOnError = false,
+}: {
+  children: ReactNode;
+  graceOnError?: boolean;
+}) {
   const { session, loading: authLoading, configured, isDflFederated } = useAuth();
   const location = useLocation();
-  const { data: entitlement, isPending: entPending } = useEntitlement();
+  const { data: entitlement, isPending: entPending, isError: entError } = useEntitlement();
   const { data: memberships, isPending: memPending } = useMembership();
 
   // Cutover date: users created before this date are grandfathered (D3).
@@ -60,6 +72,18 @@ export function RequireSubscription({ children }: { children: ReactNode }) {
   // Grandfather existing users: accounts created before the gate date keep access (D3).
   const accountCreatedAt = session?.user?.created_at ? new Date(session.user.created_at) : null;
   if (accountCreatedAt && accountCreatedAt < GATE_DATE) return <>{children}</>;
+
+  // Uma leitura que FALHOU não é uma resposta — é a ausência dela. Só a aula ao
+  // vivo escolhe passar nesse caso (`graceOnError`): ela roda no mesmo wifi de
+  // escola em que a query morre, e derrubar o aluno no meio da aula custa uma
+  // aula real. Nas outras superfícies pagas o mesmo comportamento seria bypass
+  // permanente para quem bloqueia a request de propósito, então elas paywallam.
+  // Um "sem assinatura" definitivo paywalla em qualquer caso.
+  if (entError) {
+    if (!graceOnError) return <Navigate to="/subscribe" replace state={{ from: location }} />;
+    console.warn('[entitlement] leitura falhou; liberando aula ao vivo (graceOnError)');
+    return <>{children}</>;
+  }
 
   if (!entitlement?.active) {
     return <Navigate to="/subscribe" replace state={{ from: location }} />;
