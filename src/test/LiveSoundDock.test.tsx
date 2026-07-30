@@ -103,6 +103,28 @@ describe('LiveSoundDock', () => {
     expect(h.setVolume).toHaveBeenCalledWith(0.25);
   });
 
+  it('abre e fecha o painel por toque, sem depender de hover', () => {
+    renderDock();
+    const trigger = screen.getByTestId('live-sound-panel-toggle');
+    expect(screen.getByTestId('live-sound-panel').className).toContain('pointer-events-none');
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('live-sound-panel').className).toContain('pointer-events-auto');
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('live-sound-panel').className).toContain('pointer-events-none');
+  });
+
+  it('fecha o painel no Escape e no toque fora do dock', () => {
+    renderDock();
+    const trigger = screen.getByTestId('live-sound-panel-toggle');
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.getByTestId('live-sound-panel').className).toContain('pointer-events-none');
+    fireEvent.click(trigger);
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByTestId('live-sound-panel').className).toContain('pointer-events-none');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('toggles background music and previews a chime when enabling it', () => {
     h.muted = false;
     h.musicOn = false; // the click enables music

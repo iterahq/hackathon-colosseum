@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
-import { MoreHorizontal } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { formatMmss } from '@/utils/formatMmss';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRosterBadges } from '@/components/live/LiveRosterBadges';
 import { LiveRoomStateIcon } from '@/components/live/LiveRoomStateIcon';
 import { LiveRoomRowActionsBar } from '@/components/live/LiveRoomRowActionsBar';
+import { LiveRoomActionsToggle } from '@/components/live/LiveRoomActionsToggle';
 import type { LiveRoomRow as Row, LiveRoomRowActions } from '@/types/liveClass';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -52,6 +52,10 @@ export function LiveRoomRow({
       data-rank={row.rank ?? ''}
       data-on-stage={onStage ? 'true' : 'false'}
     >
+      {actions && (
+        <LiveRoomActionsToggle name={row.name} open={open} onToggle={() => onOpenChange?.(!open)} />
+      )}
+
       {open && actions ? (
         <LiveRoomRowActionsBar row={row} actions={actions} onClose={() => onOpenChange?.(false)} />
       ) : (
@@ -96,7 +100,8 @@ export function LiveRoomRow({
             }`}
           >
             <span
-              className={`absolute inset-0 flex items-center justify-end gap-2 transition-opacity ${
+              // Inerte ao toque: cobre o mesmo canto do ⋯ e engolia o tap.
+              className={`absolute inset-0 flex items-center justify-end gap-2 pointer-events-none transition-opacity ${
                 actions ? 'group-hover:opacity-0 group-focus-within:opacity-0' : ''
               }`}
             >
@@ -118,20 +123,6 @@ export function LiveRoomRow({
               <LiveRoomStateIcon state={row.state} working={row.working} showDetail={showDetail} />
             </span>
 
-            {/* `[@media(hover:none)]` keeps the ⋯ reachable by touch — the class
-                is run from a tablet as often as from a laptop. */}
-            {actions && (
-              <button
-                type="button"
-                onClick={() => onOpenChange?.(true)}
-                aria-label={t('live.room.actions.open', { name: row.name })}
-                aria-haspopup="true"
-                data-testid="live-room-actions-open"
-                className="absolute inset-y-0 right-0 w-7 grid place-items-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-foreground hover:bg-muted group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-evergreen/50"
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </button>
-            )}
           </span>
         </>
       )}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hand, Loader2, MonitorPlay, Star, StarOff, UserMinus, X } from 'lucide-react';
+import { Hand, Loader2, MonitorPlay, Star, StarOff, UserMinus } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRoomActionButton } from '@/components/live/LiveRoomActionButton';
@@ -10,16 +10,14 @@ import type { LiveRoomRow, LiveRoomRowActions } from '@/types/liveClass';
  * não num popover: a lista da sala é `overflow-y-auto` e recortaria qualquer
  * coisa posicionada por cima.
  *
- * A divisão em faixas não é estética: o nome e o "fechar" ficam no cabeçalho, no
- * meio o que se usa várias vezes por aula (estrela, abaixar a mão, palco), e
- * embaixo o que corrige um engano ou encerra a participação. "Dar estrela" e
- * "tirar da sala" lado a lado no mesmo alvo de toque seriam vizinhos com
- * consequências opostas.
+ * A divisão em faixas não é estética: o nome fica no cabeçalho, no meio o que se
+ * usa várias vezes por aula (estrela, abaixar a mão, palco), e embaixo o que
+ * corrige um engano ou encerra a participação. "Dar estrela" e "tirar da sala"
+ * lado a lado no mesmo alvo de toque seriam vizinhos com consequências opostas.
  *
  * As ações moram numa faixa própria com `flex-wrap` porque a barra vive numa
- * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura e o
- * "fechar" — último da fila — ficava recortado fora da tela, deixando o
- * professor sem saída do menu.
+ * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura.
+ * Fechar é o `LiveRoomActionsToggle` da linha, no mesmo canto do ⋯ que abriu.
  *
  * Tirar da sala confirma na própria linha — nunca em modal. A turma está vendo a
  * tela projetada, e um diálogo no centro transforma disciplina em julgamento
@@ -40,19 +38,9 @@ export function LiveRoomRowActionsBar({
 
   return (
     <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pr-11">
         <LiveAvatar name={row.name} avatarUrl={row.avatarUrl} size="w-6 h-6" />
         <span className="flex-1 min-w-0 truncate text-sm text-foreground">{row.name}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('live.room.actions.close')}
-          data-testid="live-room-actions-close"
-          className="h-8 px-2.5 shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-          {t('live.room.actions.close')}
-        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 pl-8">

@@ -59,6 +59,14 @@ describe('per-student actions', () => {
     expect(screen.getByTestId('live-room-remove')).toBeTruthy();
   });
 
+  it('fecha as ações no segundo clique do mesmo botão', () => {
+    renderRoom();
+    openRow(0);
+    fireEvent.click(screen.getByTestId('live-room-actions-close'));
+    expect(screen.queryByTestId('live-room-star')).toBeNull();
+    expect(screen.getAllByTestId('live-room-actions-open').length).toBeGreaterThan(0);
+  });
+
   it('gives and takes back a star on the learner of that row', () => {
     const { onStar } = renderRoom({ a: 1 });
     openRow(0);
