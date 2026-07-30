@@ -1,10 +1,16 @@
 import { Check, Link2, Square, UserPlus } from 'lucide-react';
+import { TooltipProvider } from '@devfellowship/components';
+import { LiveSidebarIconAction } from './LiveSidebarIconAction';
 import { useI18n } from '@/i18n';
 
 /**
  * The instructor's fixed footer: share the room, end the class. Pinned below the
  * scrolling room list so a full class can never push "encerrar aula" out of the
  * viewport.
+ *
+ * The two share actions are icon-only (label lives in the tooltip) so that
+ * "encerrar a aula" — the one action the instructor hunts for under pressure —
+ * takes the whole remaining width instead of competing with them.
  */
 export function LiveSidebarActions({
   compact = false,
@@ -29,66 +35,52 @@ export function LiveSidebarActions({
   const { t } = useI18n();
 
   return (
-    <div
-      className={`shrink-0 border-t border-border ${compact ? 'p-3 flex items-center gap-2' : 'p-4 space-y-2'}`}
-    >
-      <button
-        onClick={onCopyLink}
-        data-testid="instructor-copy-link"
-        className={`inline-flex items-center justify-center gap-2 h-10 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-menta/50 transition-colors ${
-          compact ? 'flex-1 min-w-0' : 'w-full'
-        }`}
+    // Nested provider: the app mounts one at the root, but this footer also
+    // renders standalone in stories and tests, where Radix requires an ancestor.
+    <TooltipProvider delayDuration={200}>
+      <div
+        className={`shrink-0 border-t border-border flex items-center gap-2 ${compact ? 'p-3' : 'p-4'}`}
       >
-        {copied ? (
-          <>
-            <Check className="w-4 h-4 text-menta shrink-0" />
-            <span className="truncate">{t('live.instructor.copyLinkDone')}</span>
-          </>
-        ) : (
-          <>
-            <Link2 className="w-4 h-4 shrink-0" />
-            <span className="truncate">
-              {compact ? t('live.instructor.copyLinkShort') : t('live.instructor.copyLink')}
-            </span>
-          </>
-        )}
-      </button>
-      {/* Guest link (ADR-12) — for someone with NO account. Generates the
-          session's short code on first use. No cap and no kick in v1
-          (ADR-10/ADR-12): the control is social, and the code dies with the
-          class. */}
-      {onCopyGuestLink && (
-        <button
-          onClick={onCopyGuestLink}
-          disabled={guestLinkBusy}
-          data-testid="instructor-copy-guest-link"
-          aria-label={
-            compact
-              ? guestCopied
+        <LiveSidebarIconAction
+          label={copied ? t('live.instructor.copyLinkDone') : t('live.instructor.copyLink')}
+          testId="instructor-copy-link"
+          tone="neutral"
+          onClick={onCopyLink}
+        >
+          {copied ? <Check className="w-4 h-4 text-menta" /> : <Link2 className="w-4 h-4" />}
+        </LiveSidebarIconAction>
+
+        {/* Guest link (ADR-12) — for someone with NO account. Generates the
+            session's short code on first use. No cap and no kick in v1
+            (ADR-10/ADR-12): the control is social, and the code dies with the
+            class. */}
+        {onCopyGuestLink && (
+          <LiveSidebarIconAction
+            label={
+              guestCopied
                 ? t('live.instructor.copyGuestLinkDone')
                 : t('live.instructor.copyGuestLink')
-              : undefined
-          }
-          className={`inline-flex items-center justify-center gap-2 rounded-full border border-clay/40 bg-clay/10 text-sm font-medium text-clay hover:bg-clay/20 transition-colors disabled:opacity-50 ${
-            compact ? 'w-10 h-10 shrink-0' : 'w-full h-10'
-          }`}
+            }
+            testId="instructor-copy-guest-link"
+            tone="clay"
+            disabled={guestLinkBusy}
+            onClick={onCopyGuestLink}
+          >
+            {guestCopied ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+          </LiveSidebarIconAction>
+        )}
+
+        <button
+          type="button"
+          onClick={onEnd}
+          disabled={busy}
+          data-testid="instructor-end"
+          className="flex-1 min-w-0 inline-flex h-11 items-center justify-center gap-2 rounded-full border border-destructive/40 bg-destructive/10 text-sm font-semibold text-destructive hover:bg-destructive/20 hover:border-destructive/60 transition-colors disabled:opacity-50"
         >
-          {guestCopied ? <Check className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-          {!compact && (guestCopied ? t('live.instructor.copyGuestLinkDone') : t('live.instructor.copyGuestLink'))}
+          <Square className="w-4 h-4 shrink-0" />
+          <span className="truncate">{t('live.instructor.control.endClass')}</span>
         </button>
-      )}
-      <button
-        onClick={onEnd}
-        disabled={busy}
-        data-testid="instructor-end"
-        aria-label={compact ? t('live.instructor.control.end') : undefined}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 ${
-          compact ? 'w-10 h-10 shrink-0 border border-destructive/30' : 'w-full h-9'
-        }`}
-      >
-        <Square className="w-3.5 h-3.5" />
-        {!compact && t('live.instructor.control.end')}
-      </button>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

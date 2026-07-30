@@ -51,7 +51,7 @@ const ActivityTestPage = lazy(() => import("./pages/author/ActivityTestPage"));
 const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestPage"));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
-import { EmbedBridge } from "./auth/EmbedBridge";
+import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import GuestLiveRoute from "./pages/GuestLiveRoute";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
@@ -100,7 +100,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <EmbedBridge />
+              <EmbedBridgeMount />
               {/* App-wide mounts: locale sync (writes itera.users.locale) + the
                   "a class went live" signal (reads memberships, deep-links into
                   the authenticated /live/:id). BOTH are suppressed on the guest
