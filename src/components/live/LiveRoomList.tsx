@@ -54,7 +54,10 @@ export function LiveRoomList({
   const pct = total > 0 ? (answered / total) * 100 : 0;
 
   return (
-    <section className={`flex-1 min-h-0 flex flex-col ${compact ? 'p-4' : 'p-5'}`} data-testid="live-room-list">
+    <section
+      className={`flex-1 min-w-0 min-h-0 flex flex-col ${compact ? 'p-4' : 'p-5'}`}
+      data-testid="live-room-list"
+    >
       <div className={compact ? 'mb-3' : 'mb-4'}>
         <LiveSectionTitle icon={Users} title={t('live.room.title')} compact={compact}>
           {raised > 0 && (
