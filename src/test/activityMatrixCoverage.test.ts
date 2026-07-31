@@ -103,6 +103,27 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
       na: 'o contrato tem UM campo (`instruction`) e ele é obrigatório no Zod — sem ele o spec é inválido (eixo F), não degenerado.',
     },
   },
+  concept_reveal: {
+    'A.enabled': { story: 'activities-exposicao-concept-reveal--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-concept-reveal' },
+    'B.done': {
+      na: 'como o `concept`, não há botão de concluir: revelar a resposta não fecha a activity — quem avança é o shell.',
+    },
+    'C.blank': { story: 'activities-exposicao-concept-reveal--default' },
+    'C.answered': {
+      na: 'revelar NÃO é responder: o aluno pensa na cabeça e o card abre. Nada é enviado, nada é persistido.',
+    },
+    'C.submitted': {
+      na: 'revelar NÃO é responder: o aluno pensa na cabeça e o card abre. Nada é enviado, nada é persistido.',
+    },
+    'D.correct': { na: EXPOSITION_NO_GRADE },
+    'D.incorrect': { na: EXPOSITION_NO_GRADE },
+    'E.reveal': { story: 'activities-exposicao-concept-reveal--ao-vivo' },
+    'F.spec_invalido': { story: 'activities-dispatcher--concept-reveal-sem-card' },
+    'H.degenerado': {
+      na: 'os dois campos (`instruction` e `reveal`) são obrigatórios no Zod — faltando um, o spec é inválido (eixo F), não degenerado.',
+    },
+  },
   video: {
     'A.enabled': { story: 'activities-exposicao-video--default' },
     'A.locked': { story: 'activities-gate-locked--locked-video' },
@@ -256,7 +277,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
 };
 
 /**
- * O NÚMERO. Snapshot da distribuição das 121 células (11 kinds × 11 células).
+ * O NÚMERO. Snapshot da distribuição das 132 células (12 kinds × 11 células).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
@@ -266,6 +287,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  *   Fase 2       → { covered: 75, na: 24, deferred: 14, drift: 8 }
  *   Fase 3 (PR A)→ { covered: 85, na: 24, deferred:  4, drift: 8 }
  *   Fase 3 (PR B)→ { covered: 88, na: 24, deferred:  1, drift: 8 }
+ *   concept_reveal→{ covered: 93, na: 30, deferred:  1, drift: 8 }  (12º kind)
  *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
@@ -284,7 +306,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 88, na: 24, deferred: 1, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 93, na: 30, deferred: 1, drift: 8 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

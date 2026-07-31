@@ -27,7 +27,7 @@ personas:
 
 key_abstractions:
   - Activity: linha de itera.activities com `kind` + `spec` (Zod por kind)
-  - ActivityKind: os 11 kinds de itera.activity_kind (ver repo-contract.yaml)
+  - ActivityKind: os 12 kinds de itera.activity_kind (ver repo-contract.yaml)
   - ActivityRenderer: despacha a activity para a view do seu kind
   - answerMachine: máquina PURA de estado de resposta (src/utils/answerMachine.ts)
   - learnerActivityGate: gate puro do ao-vivo (src/utils/liveActivityGate.ts)

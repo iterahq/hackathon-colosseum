@@ -59,6 +59,16 @@ export const CONCEPT_SPEC = {
   },
 };
 
+export const CONCEPT_REVEAL_SPEC = {
+  instruction: {
+    text: 'Uma **chave estrangeira** é a coluna que aponta para a linha de outra tabela.',
+  },
+  reveal: {
+    prompt: 'Se um aluno pode pegar vários livros, onde mora a chave estrangeira?',
+    answer: 'Na tabela de empréstimos — o lado que se repete é quem guarda o apontador.',
+  },
+};
+
 export const VIDEO_SPEC = {
   video_url: SAMPLE_VIDEO,
   instruction: { text: 'Assista à introdução ao modelo relacional.' },
@@ -196,6 +206,12 @@ export const UNGUARDED_INVALID_SPECS = {
     kind: 'sandbox_scenario' as ActivityKind,
     spec: { nope: 1 },
     note: 'ESTE é barrado: sandbox_scenario valida → card `sandbox-invalid` em vez de crash.',
+    guarded: true,
+  },
+  concept_reveal_sem_card: {
+    kind: 'concept_reveal' as ActivityKind,
+    spec: { instruction: { text: 'Texto publicado sem o card pense-antes.' } },
+    note: 'o card `reveal` É o kind: sem ele o spec é um `concept` disfarçado → card de spec inválido.',
     guarded: true,
   },
 } as const;
@@ -378,6 +394,14 @@ export const ACTIVITY_CONTRACTS = {
     spec: CONCEPT_SPEC,
     validated: true,
     note: '{ instruction } — só o InstructionPanel; sem interação além de concluir.',
+  },
+  concept_reveal: {
+    kind: 'concept_reveal',
+    fn: '1 · Exposição',
+    label: 'Concept reveal',
+    spec: CONCEPT_REVEAL_SPEC,
+    validated: true,
+    note: '{ instruction, reveal } — o card pense-antes é OBRIGATÓRIO; nunca pontua.',
   },
   video: {
     kind: 'video',

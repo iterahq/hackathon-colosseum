@@ -2,12 +2,12 @@
  * O card amigável de **spec inválido** — estado de borda **F** da matriz do
  * plano `20260728-itera-activity-testing`.
  *
- * UMA convenção só, para os 11 kinds: `code` e `sandbox_scenario` já tinham
+ * UMA convenção só, para os 12 kinds: `code` e `sandbox_scenario` já tinham
  * este card (testids `code-invalid` / `sandbox-invalid`, dos quais testes e o
  * e2e dependem), então a fronteira nova ESTENDE o padrão existente em vez de
  * inventar um segundo. Além do testid por kind, todo card carrega
  * `data-invalid-spec="true"` — o gancho GENÉRICO que um teste de cobertura usa
- * para varrer os 11 kinds sem precisar de uma lista de testids à mão.
+ * para varrer os 12 kinds sem precisar de uma lista de testids à mão.
  *
  * Arquivo próprio (e não dentro do `ActivityRenderer`) porque o
  * `CodeSnackActivity` também o usa, e o renderer importa o CodeSnack — juntos

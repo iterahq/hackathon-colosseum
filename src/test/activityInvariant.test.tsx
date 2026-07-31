@@ -120,6 +120,13 @@ const DRIVES: Record<ContractKey, Drive> = {
       'próprio componente: "a concept is not something the learner completes, it\'s something ' +
       'they read" — quem avança é o shell (player ou professor). Ele nunca chama `onComplete`.',
   },
+  concept_reveal: {
+    kind: 'concept_reveal',
+    why:
+      'o card "pense antes" NUNCA pontua: revelar a resposta é um ato de leitura, não de ' +
+      'submissão. Como o `concept`, ele não chama `onComplete` — quem avança é o shell. O ' +
+      'gate do botão (e o bypass ao vivo) vive em `ConceptRevealActivity.test.tsx`.',
+  },
   video: { kind: 'video', correct: markDone, why: EXPOSITION },
   diagram: { kind: 'diagram', correct: markDone, why: EXPOSITION },
   document_reading: { kind: 'document', correct: markDone, why: EXPOSITION },

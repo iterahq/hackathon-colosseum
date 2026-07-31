@@ -94,6 +94,33 @@ describe('parseRichText', () => {
     expect(blocks).toEqual([{ type: 'code', language: 'jsx', value: '<h1>a **b**</h1>\n- item' }]);
   });
 
+  it('linha só de hífens some em vez de virar texto cru na tela', () => {
+    // A paginação por `---` saiu em 2026-07-31, mas o conteúdo de produção ainda
+    // carrega o delimitador até a migração passar — e autor tem memória muscular.
+    expect(parseRichText('antes\n\n---\n\ndepois').map((b) => b.type)).toEqual([
+      'paragraph',
+      'paragraph',
+    ]);
+  });
+
+  it('as marcas do pense-antes perdem o prefixo, mas o texto fica', () => {
+    // `?>`/`?=` viraram o kind `concept_reveal`. Enquanto produção não migra, o
+    // aluno precisa continuar lendo a pergunta e a resposta — só o delimitador
+    // sai, senão ele apareceria cru na tela.
+    expect(parseRichText('?> Por que quebrou?\n?= Porque é prop.')).toEqual([
+      { type: 'paragraph', spans: [{ type: 'text', value: 'Por que quebrou?' }] },
+      { type: 'paragraph', spans: [{ type: 'text', value: 'Porque é prop.' }] },
+    ]);
+  });
+
+  it('hífen de lista continua lista', () => {
+    expect(parseRichText('- um\n- dois')).toMatchObject([{ type: 'list', ordered: false }]);
+  });
+
+  it('dentro de bloco cercado o separador é conteúdo, não sintaxe', () => {
+    expect(parseRichText('```\n---\n```')).toEqual([{ type: 'code', language: '', value: '---' }]);
+  });
+
   it('texto sem marcação nenhuma sai como um parágrafo por bloco', () => {
     const texto = 'Regra prática: mudou por causa de um clique aqui dentro? Então é estado.';
     expect(parseRichText(texto)).toEqual([

@@ -42,6 +42,7 @@ import type { ActivityCompleteDetail } from './activityFeedbackKinds';
 // v1 general learning-activity taxonomy (plan 20260703). These CONVERGE on the
 // shared InstructionPanel primitive + the `onComplete(correct)` contract.
 import { ConceptActivity } from './ConceptActivity';
+import { ConceptRevealActivity } from './ConceptRevealActivity';
 import { VideoActivity } from './VideoActivity';
 import { SingleChoiceActivity } from './SingleChoiceActivity';
 import { MultiChoiceActivity } from './MultiChoiceActivity';
@@ -83,7 +84,7 @@ export function ActivityRenderer({
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
   }
 
-  // FRONTEIRA DE VALIDAÇÃO DE SPEC — fail-closed nos 11 kinds (estado F).
+  // FRONTEIRA DE VALIDAÇÃO DE SPEC — fail-closed nos 12 kinds (estado F).
   // Fica DEPOIS do ramo BYOC de propósito: BYOC é uma CAMADA, não um kind, e o
   // spec dele é validado pelo `ByocSpecSchema`, não pelo schema do kind
   // hospedeiro. `code` e `sandbox_scenario` continuam validando dentro do
@@ -112,7 +113,9 @@ export function ActivityRenderer({
       return <CodeSnackActivity activity={activity} onComplete={onComplete} live={live} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
-      return <ConceptActivity activity={activity} onComplete={onComplete} live={live} />;
+      return <ConceptActivity activity={activity} onComplete={onComplete} />;
+    case 'concept_reveal':
+      return <ConceptRevealActivity activity={activity} onComplete={onComplete} live={live} />;
     case 'video':
       return <VideoActivity activity={activity} onComplete={onComplete} />;
     case 'single_choice':

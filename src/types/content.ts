@@ -48,6 +48,12 @@ export interface ConceptSpec {
   instruction: InstructionPanelSpec;
 }
 
+/** `concept_reveal` — a concept that ends in an ungraded think-first card. */
+export interface ConceptRevealSpec {
+  instruction: InstructionPanelSpec;
+  reveal: { prompt: string; answer: string };
+}
+
 /** `video` — a video with an optional InstructionPanel around it. */
 export interface VideoSpec {
   video_url: string;

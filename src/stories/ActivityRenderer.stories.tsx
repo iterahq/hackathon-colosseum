@@ -3,6 +3,7 @@ import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer
 import { makeActivity, noop } from './activityFixtures';
 import {
   CODE_SPEC,
+  CONCEPT_REVEAL_SPEC,
   CONCEPT_SPEC,
   DEGENERATE_SPECS,
   DIAGRAM_MERMAID_SPEC,
@@ -59,6 +60,11 @@ type Story = StoryObj<typeof ActivityRenderer>;
 /** kind = concept — leitura pura, sem "concluir" (o shell avança). */
 export const Concept: Story = {
   args: { activity: makeActivity('concept', CONCEPT_SPEC) },
+};
+
+/** kind = concept_reveal — leitura que fecha num card pense-antes, sem nota. */
+export const ConceptReveal: Story = {
+  args: { activity: makeActivity('concept_reveal', CONCEPT_REVEAL_SPEC) },
 };
 
 /** kind = video — assistir e concluir. */
@@ -238,6 +244,16 @@ export const VideoSemUrl: Story = {
 /** `concept` sem `instruction` (Zod: obrigatória) → sobra o shell do concept. */
 export const ConceptSemInstrucao: Story = {
   args: { activity: makeActivity('concept', UNGUARDED_INVALID_SPECS.concept_sem_instrucao.spec) },
+};
+
+/** `concept_reveal` sem o card — o `reveal` É o kind: barrado na fronteira. */
+export const ConceptRevealSemCard: Story = {
+  args: {
+    activity: makeActivity(
+      'concept_reveal',
+      UNGUARDED_INVALID_SPECS.concept_reveal_sem_card.spec,
+    ),
+  },
 };
 
 /** `sandbox_scenario` com lixo — ESTE é barrado: card `sandbox-invalid`, sem crash. */

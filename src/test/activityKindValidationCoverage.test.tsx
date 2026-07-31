@@ -1,8 +1,10 @@
 /**
- * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 11 kinds.
+ * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 12 kinds.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
- * passar CI se criarmos novo kind que não esteja coberto"* (ADR-15).
+ * passar CI se criarmos novo kind que não esteja coberto"* (ADR-15). Eram 11
+ * quando ele escreveu; `concept_reveal` virou o 12º em 2026-07-31 — e foi a
+ * trap que cobrou a linha nova.
  *
  * Este arquivo é o lado RUNTIME da trap (o lado de TIPO é o
  * `Record<ActivityKind, …>` em `src/utils/activitySpecBoundary.ts`, que já
@@ -76,6 +78,7 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   quiz: 'isto não é um objeto',
   code: { totalmente: 'inválido' },
   concept: { totalmente: 'inválido' },
+  concept_reveal: { totalmente: 'inválido' },
   single_choice: { totalmente: 'inválido' },
   multi_choice: { totalmente: 'inválido' },
   match: { totalmente: 'inválido' },
@@ -92,7 +95,7 @@ function validSpecFor(kind: ActivityKind): Record<string, unknown> {
   return hit.spec;
 }
 
-describe('fronteira de validação de spec — cobertura dos 11 kinds', () => {
+describe('fronteira de validação de spec — cobertura dos 12 kinds', () => {
   it('todo kind de ACTIVITY_KINDS está registrado (espelho runtime da trap de tipo)', () => {
     const report = auditKindValidationCoverage();
     expect(report.missing).toEqual([]);

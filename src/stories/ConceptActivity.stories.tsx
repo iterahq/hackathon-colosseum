@@ -2,13 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ConceptActivity } from '@/components/branded/activity/ConceptActivity';
 import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_VIDEO, makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
-import { RHYTHM_GIT } from './rhythmFixtures';
+import { FLAT_GIT } from './richTextFixtures';
 
 /**
  * Concept — a pure READING/exposition activity built on the InstructionPanel.
  * Stories cover each InstructionPanel form. There is NO "mark done" button: a
  * concept is read, not completed — advancing is driven by the shell (a
  * "Continuar" in the self-paced player, or the instructor in the live class).
+ *
+ * A tela sai INTEIRA: a paginação por `---` foi aposentada em 2026-07-31, e a
+ * pergunta com resposta escondida virou o kind `concept_reveal`.
  *
  * NOTE: Concept is classified as an activity (activity_kind = 'concept') even
  * though it has no user interaction. It belongs in Organisms/Activities
@@ -33,17 +36,10 @@ export const TextOnly: Story = {
   ),
 };
 
-/** Self-paced: o `---` do texto vira passo e o `?=` só abre depois do clique. */
-export const RhythmSelfPaced: Story = {
+/** Aula real (Git, Educar+): a tela inteira de uma vez — conceito é slide. */
+export const AulaReal: Story = {
   render: () => (
-    <ConceptActivity activity={makeActivity('concept', { instruction: { text: RHYTHM_GIT } })} onComplete={noop} />
-  ),
-};
-
-/** Ao vivo o mesmo texto vem inteiro: quem dita o ritmo é o professor falando. */
-export const RhythmLive: Story = {
-  render: () => (
-    <ConceptActivity activity={makeActivity('concept', { instruction: { text: RHYTHM_GIT } })} onComplete={noop} live />
+    <ConceptActivity activity={makeActivity('concept', { instruction: { text: FLAT_GIT } })} onComplete={noop} />
   ),
 };
 

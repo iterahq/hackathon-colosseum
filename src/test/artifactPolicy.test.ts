@@ -36,6 +36,7 @@ describe('KIND_ARTIFACT_DEFAULTS', () => {
       'quiz',
       'code',
       'concept',
+      'concept_reveal',
       'single_choice',
       'multi_choice',
       'match',

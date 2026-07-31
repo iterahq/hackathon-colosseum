@@ -100,7 +100,7 @@ describe('fixtures de story por contrato de activity', () => {
     const guarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
       ([, f]) => 'guarded' in f && f.guarded,
     );
-    expect(guarded.map(([, f]) => f.kind)).toEqual(['sandbox_scenario']);
+    expect(guarded.map(([, f]) => f.kind).sort()).toEqual(['concept_reveal', 'sandbox_scenario']);
   });
 
   it('o starter do contrato `code` não usa import (o iframe de preview não tem require)', () => {

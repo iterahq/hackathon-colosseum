@@ -21,21 +21,15 @@ export type Block =
   | { type: 'paragraph'; spans: Inline[] }
   | { type: 'quote'; spans: Inline[] }
   | { type: 'list'; ordered: boolean; start: number; items: Inline[][] }
-  | { type: 'code'; language: string; value: string }
-  | { type: 'divider' }
-  | { type: 'reveal'; prompt: Inline[]; answer: Inline[] };
-
-/** O que sobra depois do `splitSteps` — o `---` vira fronteira, não conteúdo. */
-export type StepBlock = Exclude<Block, { type: 'divider' }>;
+  | { type: 'code'; language: string; value: string };
 
 const HEADING = /^(#{2,3})\s+(.*)$/;
 const QUOTE = /^>\s?(.*)$/;
 const BULLET = /^[-*•]\s+(.*)$/;
 const ORDERED = /^(\d+)[.)]\s+(.*)$/;
 const FENCE = /^```(.*)$/;
-const DIVIDER = /^-{3,}$/;
-const ASK = /^\?>\s?(.*)$/;
-const ANSWER = /^\?=\s?(.*)$/;
+const RULE = /^-{3,}$/;
+const THINK_FIRST = /^\?[>=]\s?(.*)$/;
 
 /**
  * Texto cru → blocos. Linha em branco separa parágrafo; a quebra simples é
@@ -81,33 +75,22 @@ export function parseRichText(input: string): Block[] {
       continue;
     }
 
-    if (DIVIDER.test(trimmed)) {
+    // Rastro da paginação por passos, aposentada em 2026-07-31: uma linha só de
+    // hífens é engolida em vez de virar o texto cru `---` na tela do aluno.
+    if (RULE.test(trimmed)) {
       flush();
-      blocks.push({ type: 'divider' });
       continue;
     }
 
-    if (ASK.test(trimmed) || ANSWER.test(trimmed)) {
+    // Mesmo motivo: `?>`/`?=` marcavam o pense-antes, que virou o kind
+    // `concept_reveal`. Aqui só o prefixo cai — o texto vira parágrafo normal,
+    // então a pergunta e a resposta continuam legíveis até a migração de
+    // conteúdo converter essas telas.
+    const thinkFirst = trimmed.match(THINK_FIRST);
+    if (thinkFirst) {
       flush();
-      const ask: string[] = [];
-      const answer: string[] = [];
-      // A resposta é consumida junto do enunciado para que um `?=` órfão nunca
-      // sobre como texto cru na tela do aluno.
-      while (i < lines.length) {
-        const current = lines[i].trim();
-        const isAsk = current.match(ASK);
-        const isAnswer = current.match(ANSWER);
-        if (isAsk) ask.push(isAsk[1]);
-        else if (isAnswer) answer.push(isAnswer[1]);
-        else break;
-        i++;
-      }
-      i--;
-      blocks.push({
-        type: 'reveal',
-        prompt: ask.length > 0 ? parseInline(ask.join('\n')) : [],
-        answer: answer.length > 0 ? parseInline(answer.join('\n')) : [],
-      });
+      const text = thinkFirst[1].trim();
+      if (text) blocks.push({ type: 'paragraph', spans: parseInline(text) });
       continue;
     }
 
@@ -156,28 +139,4 @@ export function parseRichText(input: string): Block[] {
 
   flush();
   return blocks;
-}
-
-/**
- * Agrupa os blocos nos `---`, que é o que dá RITMO à tela de conceito: em vez de
- * despejar tudo de uma vez, o aluno recebe um pedaço, respira, e pede o próximo.
- *
- * Grupo vazio é descartado — `---` colado no começo, no fim ou dobrado é erro de
- * digitação do autor, e um passo em branco no meio quebraria a contagem que o
- * aluno usa pra saber quanto falta. Sem nenhum `---`, devolve um grupo só: a
- * tela se comporta exatamente como antes.
- */
-export function splitSteps(blocks: Block[]): StepBlock[][] {
-  const steps: StepBlock[][] = [];
-  let current: StepBlock[] = [];
-  for (const block of blocks) {
-    if (block.type === 'divider') {
-      if (current.length > 0) steps.push(current);
-      current = [];
-      continue;
-    }
-    current.push(block);
-  }
-  if (current.length > 0) steps.push(current);
-  return steps;
 }

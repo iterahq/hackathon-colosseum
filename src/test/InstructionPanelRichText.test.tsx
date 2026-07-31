@@ -45,19 +45,13 @@ describe('InstructionPanel + RichText', () => {
     expect(panel.textContent).toContain('**nem negrito**');
   });
 
-  // O passo é opt-in: um `---` no enunciado de um quiz ao vivo esconderia metade
-  // da pergunta atrás de um botão com o cronômetro correndo.
-  it('sem stepped nenhum kind ganha passo, mesmo com ---', () => {
+  // A paginação por `---` saiu em 2026-07-31 (o clique não entregava informação
+  // nenhuma em troca). O painel mostra tudo, e o separador não sobra na tela.
+  it('--- não pagina nem vira texto cru', () => {
     renderPanel(<InstructionPanel spec={{ text: 'um\n\n---\n\ndois' }} />);
+    expect(screen.getByText('um')).toBeTruthy();
     expect(screen.getByText('dois')).toBeTruthy();
-    expect(screen.queryByTestId('rich-steps-next')).toBeNull();
-  });
-
-  it('?= sem pergunta sai como parágrafo normal', () => {
-    renderPanel(<InstructionPanel spec={{ text: '?= resposta solta' }} stepped />);
-    const panel = screen.getByTestId('instruction-text');
-    expect(panel.querySelector('[data-rich-block="reveal"]')).toBeNull();
-    expect(panel.textContent).toBe('resposta solta');
+    expect(screen.getByTestId('instruction-text').textContent).toBe('umdois');
   });
 
   it('a descrição continua secundária', () => {

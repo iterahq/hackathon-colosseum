@@ -86,7 +86,7 @@ export const CAPABILITIES = {
     tier: 'required',
     env: ['ITERA_SMOKE_USERNAME', 'ITERA_SMOKE_PASSWORD'],
     unlocks:
-      'author-activity-kinds (11 kinds), route-access-matrix (tenant_admin row), the responsive learner shell and the live-sidebar breakpoint contract',
+      'author-activity-kinds (12 kinds), route-access-matrix (tenant_admin row), the responsive learner shell and the live-sidebar breakpoint contract',
     remedy:
       'Add repo Actions secrets ITERA_SMOKE_USERNAME + ITERA_SMOKE_PASSWORD (the itera-smoke identity; values live in Infisical /shared, NEVER in the repo). A blocking question is open with Tainan on plan 20260728-itera-activity-testing — this red clears the moment it is answered.',
   },

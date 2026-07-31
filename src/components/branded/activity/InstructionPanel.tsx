@@ -40,11 +40,9 @@ function MediaSkeleton({ height = 'h-64' }: { height?: string }) {
 export function InstructionPanel({
   spec,
   className = '',
-  stepped = false,
 }: {
   spec: InstructionPanelSpec | undefined | null;
   className?: string;
-  stepped?: boolean;
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -56,7 +54,7 @@ export function InstructionPanel({
 
   return (
     <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
-      {text && <RichText text={text} stepped={stepped} data-testid="instruction-text" />}
+      {text && <RichText text={text} data-testid="instruction-text" />}
 
       {image_url && (
         <div className="relative rounded-2xl border border-border overflow-hidden h-64 md:h-72" data-testid="instruction-image">
@@ -89,7 +87,7 @@ export function InstructionPanel({
       )}
 
       {description && (
-        <RichText text={description} muted stepped={stepped} data-testid="instruction-description" />
+        <RichText text={description} muted data-testid="instruction-description" />
       )}
     </div>
   );

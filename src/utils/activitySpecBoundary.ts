@@ -1,5 +1,5 @@
 /**
- * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 11 kinds, fail-closed.
+ * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 12 kinds, fail-closed.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
  * passar CI se criarmos novo kind que não esteja coberto"*. Isto SUPERSEDE a
@@ -36,7 +36,7 @@
  * Por isso `auditKindValidationCoverage()` CLASSIFICA em vez de só contar: um
  * kind stub NUNCA é reportado como plenamente coberto. Apertar esses 3 schemas
  * é mudança de forma no repo `iterahq/activity-spec` (vendorizado aqui como
- * `vendor/iterahq-activity-spec-0.5.0.tgz`), exige bump de versão + re-vendor,
+ * `vendor/iterahq-activity-spec-0.6.0.tgz`), exige bump de versão + re-vendor,
  * e está FORA de escopo aqui — só declarado.
  *
  * ────────────────────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ export interface KindValidation {
  * Por que esta trap precisa morar no itera-player e não no pacote: o
  * `@iterahq/activity-spec` documenta uma cláusula `satisfies` interna de
  * exaustividade, mas ele é **vendorizado como `.tgz` já compilado**
- * (`vendor/iterahq-activity-spec-0.5.0.tgz`) — aquela cláusula NUNCA recompila
+ * (`vendor/iterahq-activity-spec-0.6.0.tgz`) — aquela cláusula NUNCA recompila
  * na CI deste repo e nos dá **zero** proteção aqui. Não apague isto como
  * redundante; não é.
  */
@@ -107,6 +107,11 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
   diagram: { site: 'boundary', invalidTestId: 'diagram-invalid', messageKey: 'activity.specInvalid' },
   quiz: { site: 'boundary', invalidTestId: 'quiz-invalid', messageKey: 'activity.specInvalid' },
   concept: { site: 'boundary', invalidTestId: 'concept-invalid', messageKey: 'activity.specInvalid' },
+  concept_reveal: {
+    site: 'boundary',
+    invalidTestId: 'concept-reveal-invalid',
+    messageKey: 'activity.specInvalid',
+  },
   single_choice: {
     site: 'boundary',
     invalidTestId: 'single-choice-invalid',

@@ -1,0 +1,22 @@
+-- ============================================================================
+-- Itera activity taxonomy — add the `concept_reveal` activity_kind value.
+--
+-- O card "pense antes" era uma marca (`?>`/`?=`) dentro do texto do `concept`.
+-- Virou kind próprio porque os dois comportamentos divergem onde importa: na
+-- aula ao vivo quem dita o ritmo é o professor, então a resposta aparece aberta
+-- — esconder é propriedade da ATIVIDADE, não de um trecho de texto.
+-- Applies to the ITERA Supabase project (kjefmwlopzeaqgqtlbdn) ONLY.
+-- NOT dfl-schema. NOT DFL prod (yoojxnggaxcqtsyjdrdx).
+--
+-- Ponto 1 da mudança coordenada de 3 pontos. Os outros dois:
+--   2. `@iterahq/activity-spec` 0.6.0 (`ACTIVITY_KINDS` + `ConceptRevealSpecSchema`),
+--      re-exportado por iterahq/itera-player:src/types/content.ts
+--   3. `ACTIVITY_KINDS` em iterahq/itera-mcp:src/tools/activities.ts (importa do pacote)
+--
+-- 🚨 APPLY NOTE: desde o PG 12 o `ALTER TYPE … ADD VALUE` roda dentro de txn, mas
+-- o valor novo não pode ser USADO na mesma txn em que foi adicionado. Aplicar
+-- como statement único em autocommit (`query`) evita esse pé na jaca de uma vez.
+-- `IF NOT EXISTS` deixa aditivo + idempotente.
+-- ============================================================================
+
+ALTER TYPE itera.activity_kind ADD VALUE IF NOT EXISTS 'concept_reveal';

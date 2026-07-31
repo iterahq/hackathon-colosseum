@@ -7,8 +7,8 @@
  * instructor force-advances the cohort. `onComplete` stays in the prop type for
  * the uniform `ActivityRenderer` dispatch, but the concept never fires it.
  *
- * O passo a passo do texto (`stepped`) só existe self-paced: ao vivo quem dita o
- * ritmo é o professor falando, e revelação por aluno dessincronizaria a turma.
+ * Mostra a tela inteira de uma vez: conceito é slide. A paginação por `---` saiu
+ * em 2026-07-31 e o card "pense antes" virou o kind `concept_reveal`.
  */
 import { BookOpen } from 'lucide-react';
 import { useI18n } from '@/i18n';
@@ -18,17 +18,15 @@ import { ActivityShell } from './parts';
 
 export function ConceptActivity({
   activity,
-  live = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
-  live?: boolean;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as ConceptSpec;
   return (
     <ActivityShell kind="concept" icon={BookOpen} label={t('activity.concept')}>
-      <InstructionPanel spec={spec?.instruction} stepped={!live} />
+      <InstructionPanel spec={spec?.instruction} />
     </ActivityShell>
   );
 }

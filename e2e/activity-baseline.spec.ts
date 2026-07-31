@@ -32,7 +32,8 @@
  * harness never calls `persistActivityProgress` — that is what makes this suite
  * safe, and the refactor does not touch that path (V4 / the plan's own note).
  *
- * NOT covered, and it is a DECLARED HOLE: `concept_reveal`. See the last test.
+ * `concept_reveal` era um buraco declarado aqui; desde 2026-07-31 tem renderer
+ * e cobertura (seção 8).
  */
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import {
@@ -738,28 +739,33 @@ test.describe('fronteira de spec inválido', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 8 · THE DECLARED HOLE — `concept_reveal`.
+ * 8 · `concept_reveal` — o buraco declarado, agora FECHADO.
  * ══════════════════════════════════════════════════════════════════════════ */
 
-test.describe('concept_reveal — buraco DECLARADO, não coberto', () => {
-  test('🕳️ 29 atividades vivas caem em <UnknownActivity>', async ({ page }) => {
+test.describe('concept_reveal', () => {
+  // Q3 do sub-plano ("implementar o renderer ou aposentar o kind") foi
+  // respondida em 2026-07-31 pelo renderer: as 29 linhas vivas em
+  // `itera.activities` deixaram de cair em <UnknownActivity>. Este bloco era a
+  // declaração do buraco; virou a cobertura dele.
+  test('renderiza o card, com a resposta escondida até o aluno pedir', async ({ page }) => {
     await open(page, CONCEPT_REVEAL);
 
-    // `concept_reveal` has **29 live rows** in `itera.activities` (Itera DB,
-    // 2026-07-31) and appears NOWHERE in the code: not in `ACTIVITY_KINDS`
-    // (11 values), not in the TS union, not in the renderer switch, not in
-    // `@iterahq/activity-spec`. Every one of those 29 renders the fallback.
-    //
-    // Q3 of the sub-plan — implement the renderer or retire the kind — is STILL
-    // OPEN. This test is not coverage of the kind; it is the declaration that
-    // the baseline has a hole here, written so the hole cannot be forgotten.
-    // When Q3 is answered, this test is expected to change.
-    await expect(page.locator('[data-activity-kind="unknown"]')).toBeVisible();
-    await expect(page.locator('[data-activity-kind="unknown"]')).toContainText(
-      'Unsupported activity kind: concept_reveal'
-    );
-    // No shell, no testid, no completion affordance, no verdict — ever.
-    await expect(page.getByTestId('activity-shell')).toHaveCount(0);
+    await expect(page.locator('[data-activity-kind="unknown"]')).toHaveCount(0);
+    await expect(page.getByTestId('concept-reveal-card')).toHaveAttribute('data-revealed', 'false');
+    await expect(page.getByTestId('concept-reveal-prompt')).toBeVisible();
+    await expect(page.getByTestId('concept-reveal-answer')).toHaveCount(0);
+
+    await page.getByTestId('concept-reveal-show').click();
+    await expect(page.getByTestId('concept-reveal-card')).toHaveAttribute('data-revealed', 'true');
+    await expect(page.getByTestId('concept-reveal-answer')).toBeVisible();
+  });
+
+  test('não pontua: revelar não produz veredito nem conclusão', async ({ page }) => {
+    // Pensar alto no meio da explicação não pode virar nota — o kind nunca
+    // chama `onComplete`, então o harness não registra veredito nenhum.
+    await open(page, CONCEPT_REVEAL);
+    await page.getByTestId('concept-reveal-show').click();
+    await expect(page.getByTestId('concept-reveal-answer')).toBeVisible();
     await expect(page.getByTestId('activity-done')).toHaveCount(0);
     await expectNoVerdict(page);
   });

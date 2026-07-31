@@ -70,13 +70,14 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
-Os **11 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
+Os **12 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
 literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
 Restam dois pontos a sincronizar na mão: o enum do banco e o `ACTIVITY_KINDS` de
 `iterahq/itera-mcp:src/tools/activities.ts`.
 
-`concept` · `document` · `diagram` · `video` · `quiz` (o *hero*) ·
+`concept` · `concept_reveal` · `document` · `diagram` · `video` ·
+`quiz` (o *hero*) ·
 `single_choice` · `multi_choice` · `match` · `order` · `code` ·
 `sandbox_scenario`
 
@@ -102,7 +103,7 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 
 ### Validação de spec
 
-**Fail-closed nos 11 kinds desde 2026-07-28** (ADR-15 do plano
+**Fail-closed nos 12 kinds desde 2026-07-28** (ADR-15 do plano
 `20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
 ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
 `@iterahq/activity-spec`, vendorizado como `.tgz`) era chamado só em **`code`** e

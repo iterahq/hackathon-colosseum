@@ -320,12 +320,17 @@ export const INVALID_CODE: ActivityFixture = {
   spec: { language: 'tsx', starter: 'export default () => null;' },
 };
 
-/** Kind with live rows in prod that the renderer does NOT implement — see the spec. */
 export const CONCEPT_REVEAL: ActivityFixture = {
   id: id(14),
   kind: 'concept_reveal',
-  label: 'concept_reveal (NÃO implementado)',
-  spec: { instruction: { text: 'Um kind com 29 instâncias vivas e nenhum renderer.' } },
+  label: 'concept_reveal',
+  spec: {
+    instruction: { text: 'Uma **chave estrangeira** aponta para a linha de outra tabela.' },
+    reveal: {
+      prompt: 'Se um aluno pode pegar vários livros, onde mora a chave estrangeira?',
+      answer: 'Na tabela de empréstimos — o lado que se repete guarda o apontador.',
+    },
+  },
 };
 
 /** Everything the stub must be able to resolve. */

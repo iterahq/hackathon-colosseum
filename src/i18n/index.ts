@@ -415,7 +415,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.codeSoon': 'O editor de código chega em breve (judge0).',
     'activity.codeSnackHint': 'Edite o código; o preview atualiza sozinho.',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
-    // Fronteira de validação de spec (estado F) — os 11 kinds.
+    // Fronteira de validação de spec (estado F) — os 12 kinds.
     'activity.specInvalid': 'Esta atividade está com a configuração inválida e não pôde ser carregada.',
     'activity.sandboxInvalid': 'Este cenário está com a configuração inválida e não pôde ser carregado.',
     // Correção determinística do snack de código — o feedback SÓ aparece depois
@@ -450,6 +450,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.minWords': 'mínimo',
     // v1 general learning-activity taxonomy (plan 20260703)
     'activity.concept': 'Conceito',
+    'activity.conceptReveal': 'Pense antes',
     'activity.video': 'Vídeo',
     'activity.video.missing': 'Vídeo não configurado',
     'activity.singleChoice': 'Escolha única',
@@ -483,9 +484,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Passo',
     'activity.continue': 'Continuar',
-    'activity.steps.next': 'Continuar lendo',
-    'activity.steps.progress': '{shown} de {total}',
     'activity.reveal.show': 'Ver resposta',
+    'activity.reveal.hide': 'Esconder resposta',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Painel do administrador',
     'admin.title': 'Observabilidade da sua organização',
@@ -995,6 +995,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.minWords': 'minimum',
     // v1 general learning-activity taxonomy (plan 20260703)
     'activity.concept': 'Concept',
+    'activity.conceptReveal': 'Think first',
     'activity.video': 'Video',
     'activity.video.missing': 'No video configured',
     'activity.singleChoice': 'Single choice',
@@ -1028,9 +1029,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Step',
     'activity.continue': 'Continue',
-    'activity.steps.next': 'Keep reading',
-    'activity.steps.progress': '{shown} of {total}',
     'activity.reveal.show': 'Show answer',
+    'activity.reveal.hide': 'Hide answer',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Admin dashboard',
     'admin.title': "Your organization's observability",

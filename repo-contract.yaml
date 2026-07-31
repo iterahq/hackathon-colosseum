@@ -47,9 +47,9 @@ provides:
     name: activity-engine
     description: >
       Engine canônico de activity. O ActivityRenderer despacha uma linha de
-      itera.activities para a view do seu `kind`. Os 11 kinds de
-      itera.activity_kind: concept, document, diagram, video, quiz,
-      single_choice, multi_choice, match, order, code, sandbox_scenario.
+      itera.activities para a view do seu `kind`. Os 12 kinds de
+      itera.activity_kind: concept, concept_reveal, document, diagram, video,
+      quiz, single_choice, multi_choice, match, order, code, sandbox_scenario.
       Lógica derivada de resposta/correção vive na máquina pura
       src/utils/answerMachine.ts; o gate do ao-vivo em
       src/utils/liveActivityGate.ts.
@@ -145,6 +145,7 @@ activity_kinds:
   # @iterahq/activity-spec e iterahq/itera-mcp:src/tools/activities.ts.
   # Os três precisam continuar em sincronia.
   - concept
+  - concept_reveal
   - document
   - diagram
   - video

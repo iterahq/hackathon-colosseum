@@ -137,6 +137,20 @@ const CASES: KindCase[] = [
   },
   { kind: 'diagram', depth: 'verdict', drive: markDone },
   { kind: 'concept', depth: 'verdict', drive: markDone },
+  {
+    kind: 'concept_reveal',
+    // `render`, não `verdict`: revelar não é submeter — o card abre e nada é
+    // enviado, então não existe veredito para esperar.
+    depth: 'render',
+    drive: async (page) => {
+      await expect(page.getByTestId('concept-reveal-card')).toBeVisible();
+      // Ao vivo o card já nasce aberto e o botão não existe — os dois caminhos
+      // são corretos, e o que importa é a resposta estar acessível no fim.
+      const show = page.getByTestId('concept-reveal-show');
+      if (await show.count()) await show.first().click();
+      await expect(page.getByTestId('concept-reveal-answer')).toBeVisible();
+    },
+  },
   { kind: 'video', depth: 'verdict', drive: markDone },
   {
     kind: 'single_choice',

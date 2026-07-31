@@ -117,6 +117,7 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   diagram: { persist: false, type: 'diagram', filename: 'diagram.mmd' },
   quiz: { persist: false, type: 'text', filename: 'answer.md' },
   concept: { persist: false, type: 'text', filename: 'notes.md' },
+  concept_reveal: { persist: false, type: 'text', filename: 'notes.md' },
   single_choice: { persist: false, type: 'text', filename: 'answer.md' },
   multi_choice: { persist: false, type: 'text', filename: 'answer.md' },
   match: { persist: false, type: 'text', filename: 'answer.md' },

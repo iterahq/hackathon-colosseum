@@ -478,8 +478,11 @@ export default function LessonPlayer() {
               {/* Concept is pure reading — no in-card "mark done". Self-paced
                   advance lives here as a plain "Continuar" (navigation, not a
                   completion ceremony). The live class has no such button — the
-                  instructor force-advances the cohort. */}
-              {current?.kind === 'concept' && !isByocActivity(current) && (
+                  instructor force-advances the cohort. `concept_reveal` rides
+                  along: revealing the answer is reading too, so it never calls
+                  onComplete and would otherwise be a dead end here. */}
+              {(current?.kind === 'concept' || current?.kind === 'concept_reveal') &&
+                !isByocActivity(current) && (
                 <button
                   type="button"
                   onClick={() => handleComplete(true)}

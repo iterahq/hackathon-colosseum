@@ -11,7 +11,7 @@ export function RichBlock({
   block,
   muted,
 }: {
-  block: Exclude<Block, { type: 'divider' } | { type: 'reveal' }>;
+  block: Block;
   muted: boolean;
 }) {
   // O peso do texto principal é o MESMO de antes do parser existir: instrução
