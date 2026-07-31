@@ -64,6 +64,10 @@ conventions:
     - Adicionar contrato em src/stories/contractFixtures.ts (o guard exige)
     - Criar story em src/stories/
     - Manter em sincronia com ACTIVITY_KINDS de @iterahq/activity-spec e itera-mcp
+    # Espelha a regra de CLAUDE.md > Rules. Este item AINDA NÃO tem trava de CI
+    # (Fase 5 do plano 20260731-itera-eventos-aprendizagem, por construir) —
+    # os quatro acima têm.
+    - Emitir o evento de tracking DENTRO de persistActivityProgress (src/services/progress.service.ts), nunca no ActivityRenderer (o harness em src/components/author/ActivityTestHarness.tsx não pode escrever dado de aluno)
   protected_dirs:
     - src/components/ui/ # shadcn/ui managed
     - design-playground/ # espaço do designer (CODEOWNERS @johnoak)

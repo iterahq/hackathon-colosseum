@@ -174,7 +174,55 @@ testes — não crie um segundo conjunto.
 - Não editar `src/components/ui/` — shadcn/ui gerenciado.
 - Kind novo de activity precisa de: entrada em `ActivityKind`
   (`src/types/content.ts`), view em `src/components/branded/activity/`,
-  contrato em `src/stories/contractFixtures.ts` (o guard exige) e story.
+  contrato em `src/stories/contractFixtures.ts` (o guard exige), story **e
+  emissão de evento de tracking de aprendizagem** (plano
+  [`20260731-itera-eventos-aprendizagem`](https://plans.devfellowship.com/20260731-itera-eventos-aprendizagem)).
+  O motivo de a última entrar na lista é o mesmo motivo do plano existir: **não
+  dá pra voltar no tempo e coletar o dado.** Um kind que shipa sem emitir não
+  deixa buraco visível — deixa um período que ninguém consegue analisar depois.
+  - **ONDE emitir: DENTRO de `persistActivityProgress`**
+    (`src/services/progress.service.ts`). É o funil por onde toda tentativa
+    liquidada passa — instrumentar ali cobre os kinds todos de uma vez, em vez
+    de instrumentar atividade por atividade.
+  - **NUNCA dentro do `ActivityRenderer`**, e a razão é de correção, não de
+    gosto: `src/components/author/ActivityTestHarness.tsx` deliberadamente NÃO
+    importa o `progress.service` — é essa fronteira que garante que o autor
+    testando uma atividade não polui dado de aluno. Instrumentar no renderer
+    quebraria a garantia em silêncio, e o harness continuaria "passando".
+  - ⚠️ **Emita dentro da FUNÇÃO, não nos call-sites.** Eles já se moveram uma
+    vez: hoje são `src/hooks/useAnswerOutbox.ts` (todo o ao-vivo mais os erros
+    do self-paced, com fila durável para queda de rede) e
+    `src/pages/LessonPlayer.tsx` (o acerto no self-paced, que bloqueia a UI com
+    `saving`). Quem instrumentar por call-site perde a próxima reorganização.
+  - **Kind novo herda a duração de graça** por estar nesse nível:
+    `elapsed_ms` / `visible_ms` já são gravados em toda tentativa desde a
+    migration `db/migrations/0033_activity_results_duration.sql`. O que os dois
+    números significam (e por que média simples é a leitura errada) está em
+    `src/utils/activityDuration.ts` — leia antes de consultar qualquer um deles.
+  - **Precisa de coluna/tabela nova para o evento?** Migration em
+    `db/migrations/`, **idempotente** e **aplicada à mão** — ver *Contracts →
+    Schema* acima e [`db/README.md`](db/README.md). Nunca
+    `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
+  - **O que já TRAVA hoje, e o que ainda NÃO trava** — esta regra vale pelo que
+    a CI barra, não pela boa intenção:
+    - ✅ **Já trava (typecheck):** `src/types/content.ts` **re-exporta**
+      `ActivityKind` de `@iterahq/activity-spec`, então um kind novo no pacote
+      deixa o `Record<ActivityKind, …>` de `src/utils/activitySpecBoundary.ts`
+      incompleto e quebra `npm run typecheck` — que é passo próprio da CI
+      justamente porque `vite build` transpila sem checar tipos (PR #195).
+    - ✅ **Já trava (testes):** kind sem contrato/cobertura quebra
+      `src/test/activityContractFixtures.test.ts` e
+      `src/test/activityKindValidationCoverage.test.tsx`.
+    - ✅ **Já trava (campo obrigatório):** `passed` e `duration` NÃO têm default
+      em `persistActivityProgress`, de propósito — um call-site novo tem que
+      declarar o que aconteceu, ou não compila. *"Um flag omitido-por-default é
+      o bug"* já custou caro aqui (o log de tentativas só guardava acerto). **É
+      esse o mecanismo que o checker de tracking vai reusar.**
+    - 🔴 **AINDA NÃO trava:** **não existe** checker que exija que um kind novo
+      EMITA evento de tracking. É a **Fase 5** do plano acima e está por
+      construir — assim como o próprio cano do evento (Fases 2-4). Até lá, este
+      item é regra escrita, não trava: não conte com a CI para pegá-lo, e não
+      descreva em PR como se ela pegasse.
 - Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
   mesma feature.
 - Lógica derivada de resposta/correção vai para `answerMachine`, não inline no
