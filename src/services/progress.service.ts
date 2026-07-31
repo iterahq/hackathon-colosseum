@@ -21,6 +21,11 @@
  *     also carries HOW LONG the learner was on the activity (`elapsed_ms` /
  *     `visible_ms`) — without it "which activity is hard" and "where do learners
  *     give up" are not measurable at all in self-paced mode.
+ *   - `activity_traces` (migration 0034) gets ONE ROW PER SETTLED ATTEMPT
+ *     carrying the ordered SEQUENCE of what the learner did — the HOW, where
+ *     `activity_results` is the WHAT. Strictly best-effort and written AFTER
+ *     the attempt has landed; see `persistActivityProgress` for why that
+ *     ordering is a correctness property and not a style choice.
  *   - `progress` is the COMPLETION signal and stays monotonic: a pass promotes
  *     the row to 'completed'; a miss only ever records 'in_progress' and can
  *     never demote an activity the learner already passed.
@@ -36,6 +41,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
+import { buildAttemptTrace, type LearnerAction } from '@/utils/learningTrace';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -106,6 +112,40 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * than as a fabricated zero. The only caller that legitimately passes null today
  * is the outbox replaying an entry serialised before this field existed.
  * See `src/utils/activityDuration.ts` for what the two numbers actually mean.
+ *
+ * `actions` is the RICH SEQUENCE of what the learner did, and NOBODY PASSES IT
+ * TODAY — it is the seam the reducer refactor (sub-plan 1) plugs into, because
+ * the reducer's actions ARE the events. It is optional, unlike `passed` and
+ * `duration`, and the difference is not laziness: an omitted `passed` recorded
+ * something FALSE (that is how the attempt log came to hold nothing but wins),
+ * whereas an omitted `actions` records LESS — the two-action trace built below
+ * is a complete account of what this build can observe. Optional-where-honest,
+ * required-where-a-default-would-lie.
+ *
+ * `settledAt` is the wall-clock instant the learner ANSWERED, and it is
+ * REQUIRED for the reason the other required fields are: a default would lie.
+ * ⚠️ It is emphatically NOT "now". Every write here can be queued by the
+ * durable outbox and replayed on reconnect (`src/utils/answerOutbox.ts`), and
+ * the two call sites also differ from the settle: the self-paced player writes
+ * on the footer's "Continuar", after the review beat. Stamping at write time
+ * would date a learner's actions to whenever their wifi came back. `null` means
+ * "unknown" — an outbox entry serialised before this field existed — and yields
+ * an attempt row with no trace rather than a fabricated anchor.
+ *
+ * ⚠️ THIS IS THE ONLY PLACE THE TRACE MAY BE EMITTED — and the emission is
+ * INSIDE this function, not at its call sites, which is a coverage property and
+ * not a style one. The call sites are no longer the two the plan named: live
+ * class AND every self-paced MISS now go through `writeOrQueue` →
+ * `useAnswerOutbox` → here, while only the self-paced PASS still calls in
+ * directly. Instrumenting the call sites would therefore have captured passes
+ * in self-paced mode and nothing else — which is the exact shape of the 0028
+ * defect (a log that holds only wins, and looks complete while doing it).
+ *
+ * Not the `ActivityRenderer` either, and not any activity component:
+ * `ActivityTestHarness` mounts the very same renderer and deliberately imports
+ * NOTHING from this module — that is the boundary guaranteeing an author
+ * testing an activity does not pollute learner data. Emitting from the renderer
+ * would break it in silence, which is a correctness reason, not a convenience.
  */
 export async function persistActivityProgress(
   activityId: string,
@@ -113,7 +153,15 @@ export async function persistActivityProgress(
     passed,
     response,
     duration,
-  }: { passed: boolean; response?: string | null; duration: DurationSample | null }
+    settledAt,
+    actions,
+  }: {
+    passed: boolean;
+    response?: string | null;
+    duration: DurationSample | null;
+    settledAt: number | null;
+    actions?: readonly LearnerAction[];
+  }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
@@ -205,6 +253,77 @@ export async function persistActivityProgress(
     // then, deleting it makes a merge-before-migrate slip cost real learner data.
     if (resultsError) {
       await sb.from('activity_results').insert(attemptRow);
+    }
+
+    // ── The TRACE (migration 0034) ───────────────────────────────────────────
+    // The sequence of what the learner did, as ONE ROW. Today that sequence has
+    // two actions (opened, settled) because the rich one does not exist yet —
+    // it arrives with the reducer refactor, and this call is the seam it plugs
+    // into. The shape is versioned from row one precisely because it will grow:
+    // an unversioned row written before the format moved is data nobody can
+    // safely interpret afterwards, and that is not fixable later.
+    //
+    // 🔑 WHY THIS IS A SEPARATE INSERT INTO A SEPARATE TABLE, AFTER the attempt.
+    // This app auto-deploys on merge to `main` and NO CI applies Itera
+    // migrations — they are run by hand. So a build is routinely live before
+    // its migration is, and PostgREST rejects the WHOLE statement when it names
+    // a table or column the deployed schema lacks. In 0033 that shape of
+    // mistake could have stopped attempts from being recorded at all, which is
+    // why the re-insert seatbelt above exists.
+    //
+    // Here the same window costs NOTHING structurally: the trace is its own
+    // statement against its own table, issued after the attempt has already
+    // landed. If `activity_traces` does not exist yet, this one statement
+    // fails, we swallow it, and the attempt — the thing that actually matters —
+    // is untouched. No seatbelt needed, because the failure cannot reach the
+    // record it decorates. Same rule as 0033, obtained by construction rather
+    // than by retry: TELEMETRY MUST NEVER BE ABLE TO DESTROY THE RECORD IT
+    // DECORATES.
+    //
+    // ⚠️ COROLLARY FOR WHOEVER ADDS THE NEXT COLUMN HERE: adding a field to
+    // THIS insert re-creates 0033's window for the trace (build ahead of
+    // schema ⇒ every trace rejected until the migration is applied). Losing
+    // traces is survivable where losing attempts was not, but it is still a
+    // silent loss of data that cannot be re-collected — ship the migration
+    // first, or accept the gap knowingly.
+    //
+    // 🔁 IDEMPOTENT ON RETRY. `flushOutbox` re-sends any entry whose write did
+    // not land, and this function can return false AFTER a row has already been
+    // committed (a timeout on the way back). Because `started_at` is derived
+    // from the SETTLE instant carried through the queue — not from `now()` —
+    // a replay of the same attempt derives the same anchor, and the unique
+    // index on (user_id, activity_id, started_at) turns the second write into a
+    // no-op. `activity_results` accepts the duplicate instead (documented above:
+    // over-counting an attempt beats losing one); a trace has no such excuse,
+    // because a duplicated SEQUENCE would corrupt every "how many tries" and
+    // "what did they do first" question this table exists to answer.
+    //
+    // The whole block is wrapped so that no failure mode of the trace write —
+    // including one that throws rather than returning an error — can change
+    // what this function reports about the attempt.
+    try {
+      const trace = buildAttemptTrace({ passed, duration, settledAt, actions });
+      // No trace without an origin: every `at_ms` is an offset from
+      // `started_at`, so an attempt with no measured duration or no known
+      // settle instant (an outbox entry serialised before those fields existed)
+      // gets an attempt row and no trace, rather than a sequence dated to the
+      // moment the network came back.
+      if (trace) {
+        await sb.from('activity_traces').upsert(
+          {
+            user_id: userId,
+            activity_id: activityId,
+            schema_version: trace.schema_version,
+            started_at: trace.started_at,
+            actions: trace.actions,
+            actions_truncated: trace.actions_truncated,
+          },
+          { onConflict: 'user_id,activity_id,started_at', ignoreDuplicates: true }
+        );
+      }
+    } catch {
+      // Best-effort by design. A missing table, a rejected envelope or a
+      // network blip costs a trace and nothing else.
     }
 
     // XP: idempotent SECURITY DEFINER RPC (never double-awards). Best-effort.

@@ -192,6 +192,13 @@ export default function LessonPlayer() {
   // like the response ref below it, and cleared only once the write has landed so
   // `retrySave` replays the real measurement instead of re-timing the review.
   const pendingDurationRef = useRef<DurationSample | null>(null);
+  // The wall-clock instant of that same settle, held for the same span and for
+  // the same reason. It anchors the event trace (itera.activity_traces), and it
+  // has to be captured HERE rather than at the write: for a graded kind the
+  // write happens on the footer's "Continuar", and for a miss it can happen
+  // after a trip through the offline outbox. Timestamping at write time would
+  // date the learner's actions to the review beat or to the reconnection.
+  const pendingSettledAtRef = useRef<number | null>(null);
 
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
@@ -214,6 +221,7 @@ export default function LessonPlayer() {
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
+    pendingSettledAtRef.current = Date.now();
     // Hold the produced content until the learner actually commits — graded and
     // BYOC kinds settle later, on the footer's "Continuar".
     pendingArtifactRef.current = detail?.artifact ?? null;
@@ -256,11 +264,13 @@ export default function LessonPlayer() {
       // recording is new.
       const missedResponse = pendingResponseRef.current;
       const missedDuration = pendingDurationRef.current;
+      const missedSettledAt = pendingSettledAtRef.current;
       // Clear the held refs on THIS path too. Previously only the correct branch
       // reset them, so a miss leaked its content into the next activity's commit.
       pendingArtifactRef.current = null;
       pendingResponseRef.current = null;
       pendingDurationRef.current = null;
+      pendingSettledAtRef.current = null;
       // Via outbox: o acerto tem `retrySave` na tela, o erro não tinha recurso
       // nenhum — caiu a rede, o registro da tentativa sumia calado.
       void writeOrQueue({
@@ -269,6 +279,9 @@ export default function LessonPlayer() {
         passed: false,
         response: missedResponse,
         duration: missedDuration,
+        // Vai junto pela fila: se a rede só voltar daqui a meia hora, o trace
+        // ainda tem que ser datado de QUANDO o aluno respondeu.
+        settledAt: missedSettledAt ?? undefined,
       });
     }
 
@@ -287,6 +300,10 @@ export default function LessonPlayer() {
         // replay the time the learner actually took, not the time they spent
         // looking at an error.
         duration: pendingDurationRef.current,
+        // Same rule again, and here it is not hypothetical: for a graded kind
+        // this line runs on the footer's "Continuar", so `Date.now()` inside the
+        // service would be the end of the review beat, not the answer.
+        settledAt: pendingSettledAtRef.current,
       });
       setSaving(false);
       if (ok) {
@@ -310,6 +327,7 @@ export default function LessonPlayer() {
         pendingArtifactRef.current = null;
         pendingResponseRef.current = null;
         pendingDurationRef.current = null;
+        pendingSettledAtRef.current = null;
 
         const artifact = buildArtifact(current, produced, {
           response: response ?? undefined,

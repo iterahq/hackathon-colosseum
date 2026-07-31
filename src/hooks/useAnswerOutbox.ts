@@ -27,6 +27,11 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
       // `?? null` cobre a entrada antiga da fila (serializada antes de a duração
       // existir): vira NULL no banco, que é a verdade — não foi medida.
       duration: entry.duration ?? null,
+      // ⚠️ O instante em que o ALUNO respondeu, viajando junto com a entrada —
+      // NÃO `Date.now()` aqui. Este ponto é o dreno da fila, que numa queda de
+      // rede acontece muito depois da resposta; carimbar aqui dataria o trace
+      // da reconexão. Entrada antiga (sem o campo) ⇒ sem âncora ⇒ sem trace.
+      settledAt: entry.settledAt ?? null,
     });
   }
   return recordClassAnswer(entry.sessionId, entry.activityId, entry.correct, entry.elapsedMs);

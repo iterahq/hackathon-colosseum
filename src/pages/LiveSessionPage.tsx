@@ -275,6 +275,12 @@ export default function LiveSessionPage() {
     // hidden-time tally on top of it, so the broadcast number is unchanged and
     // the DB gets the same instant plus how much of it was actually on screen.
     const sample = duration.read();
+    // O instante da RESPOSTA, capturado aqui e carregado até a escrita. Este é o
+    // momento em que o aluno settlou; a escrita pode acontecer bem depois, se a
+    // rede cair e o `writeOrQueue` enfileirar. Ele ancora o trace de eventos
+    // (itera.activity_traces) — sem isso, uma resposta dada às 14h05 numa aula
+    // com wifi ruim ficaria datada de quando a conexão voltou.
+    const settledAt = Date.now();
     const elapsedMs = sample?.elapsedMs ?? 0;
     setAnswered({ id: current.id, correct, elapsedMs });
     if (sessionId) storeAnswer(sessionId, current.id, { correct, elapsedMs });
@@ -308,6 +314,7 @@ export default function LiveSessionPage() {
         passed: true,
         response,
         duration: sample,
+        settledAt,
       });
       setSaving(false);
     } else {
@@ -317,6 +324,7 @@ export default function LiveSessionPage() {
         passed: false,
         response,
         duration: sample,
+        settledAt,
       });
     }
     broadcastAnswer(current.id, correct, elapsedMs);

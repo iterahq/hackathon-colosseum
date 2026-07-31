@@ -199,10 +199,17 @@ testes — não crie um segundo conjunto.
     migration `db/migrations/0033_activity_results_duration.sql`. O que os dois
     números significam (e por que média simples é a leitura errada) está em
     `src/utils/activityDuration.ts` — leia antes de consultar qualquer um deles.
-  - **Precisa de coluna/tabela nova para o evento?** Migration em
-    `db/migrations/`, **idempotente** e **aplicada à mão** — ver *Contracts →
-    Schema* acima e [`db/README.md`](db/README.md). Nunca
-    `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
+  - **O cano já existe — use, não reinvente.** O contrato versionado está em
+    `src/utils/learningTrace.ts` e a linha vai pra `itera.activity_traces`
+    (migration `db/migrations/0034_activity_traces.sql`), **uma linha por
+    tentativa** com o array de ações em `jsonb`. Ação nova é acréscimo: novo
+    `type`, nova chave de `payload`, **sem** bump de `schema_version` e **sem**
+    migration. Leia a regra de quando a versão sobe no topo daquele módulo antes
+    de mexer no formato.
+  - **Precisa de coluna/tabela nova para o evento?** Só se o acréscimo acima não
+    resolver. Migration em `db/migrations/`, **idempotente** e **aplicada à
+    mão** — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).
+    Nunca `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
   - **O que já TRAVA hoje, e o que ainda NÃO trava** — esta regra vale pelo que
     a CI barra, não pela boa intenção:
     - ✅ **Já trava (typecheck):** `src/types/content.ts` **re-exporta**
@@ -213,16 +220,24 @@ testes — não crie um segundo conjunto.
     - ✅ **Já trava (testes):** kind sem contrato/cobertura quebra
       `src/test/activityContractFixtures.test.ts` e
       `src/test/activityKindValidationCoverage.test.tsx`.
-    - ✅ **Já trava (campo obrigatório):** `passed` e `duration` NÃO têm default
-      em `persistActivityProgress`, de propósito — um call-site novo tem que
-      declarar o que aconteceu, ou não compila. *"Um flag omitido-por-default é
-      o bug"* já custou caro aqui (o log de tentativas só guardava acerto). **É
-      esse o mecanismo que o checker de tracking vai reusar.**
+    - ✅ **Já trava (campo obrigatório):** `passed`, `duration` e `settledAt`
+      NÃO têm default em `persistActivityProgress`, de propósito — um call-site
+      novo tem que declarar o que aconteceu, ou não compila. *"Um flag
+      omitido-por-default é o bug"* já custou caro aqui (o log de tentativas só
+      guardava acerto). **É esse o mecanismo que o checker de tracking vai
+      reusar.**
+    - ✅ **Já trava (fronteira de emissão):** `src/test/traceEmissionBoundary.test.ts`
+      falha se qualquer arquivo da árvore de atividades importar
+      `@/services/progress.service` ou `@/utils/learningTrace`, ou se algum
+      módulo além do `progress.service` escrever em `activity_traces`. Ou seja:
+      o **ONDE** das duas regras acima é gate; o **SE** ainda não é.
     - 🔴 **AINDA NÃO trava:** **não existe** checker que exija que um kind novo
-      EMITA evento de tracking. É a **Fase 5** do plano acima e está por
-      construir — assim como o próprio cano do evento (Fases 2-4). Até lá, este
-      item é regra escrita, não trava: não conte com a CI para pegá-lo, e não
-      descreva em PR como se ela pegasse.
+      EMITA evento de tracking — é a **Fase 5** do plano acima, e ela depende de
+      uma lista canônica de kinds que hoje não existe (enum do banco 12 × union
+      TS 11 × switch 11 discordam). Até lá, **este** item é regra escrita, não
+      trava: não conte com a CI para pegá-lo, e não descreva em PR como se ela
+      pegasse. (O cano em si — Fases 2-4 — **já existe**; era só ele que faltava
+      quando esta linha foi escrita.)
 - Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
   mesma feature.
 - Lógica derivada de resposta/correção vai para `answerMachine`, não inline no

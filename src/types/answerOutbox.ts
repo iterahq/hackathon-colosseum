@@ -23,6 +23,24 @@ export type OutboxEntry =
        * entre responder e a rede voltar não é tempo de atividade.
        */
       duration?: DurationSample | null;
+      /**
+       * O INSTANTE (wall clock) em que o aluno respondeu — âncora do trace de
+       * eventos (`itera.activity_traces`, migration 0034).
+       *
+       * ⚠️ Carimbado NA ORIGEM e carregado pela fila, nunca gerado na hora da
+       * escrita. Uma entrada que ficou 40min esperando a rede voltar seria
+       * datada da RECONEXÃO se usássemos `Date.now()` no fim — e um trace de
+       * aprendizagem cujo relógio é o da rede não é um trace de aprendizagem.
+       *
+       * De quebra é o que torna o reenvio idempotente: a mesma tentativa deriva
+       * o mesmo `started_at`, e o índice único (user, activity, started_at)
+       * transforma a segunda escrita em no-op em vez de duplicar a sequência.
+       *
+       * OPCIONAL pela mesma razão que `duration`: entrada serializada antes do
+       * campo existir volta sem ele. Ausente ⇒ tentativa gravada, trace NÃO —
+       * âncora inventada é pior que âncora nenhuma.
+       */
+      settledAt?: number;
     }
   | {
       kind: 'classAnswer';
