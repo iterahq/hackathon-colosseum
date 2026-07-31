@@ -17,9 +17,11 @@ import { arrangeOrder, submitAnswer } from './interactions';
  * ── FASE 3 (ADR-4) ─────────────────────────────────────────────────────────
  * A prop `initialOrder` sumiu. Cada estado abaixo é produzido movendo os itens
  * com os controles ↑/↓ — os MESMOS que o aluno de teclado/touch usa. O
- * embaralhamento inicial é aleatório (`Math.random()`), então o `play` faz um
- * selection-sort por RÓTULO, nunca por posição: é o único jeito de não ser
- * flaky.
+ * embaralhamento inicial é POR ALUNO (`learnerShuffle`) e nunca é a solução,
+ * então o `play` faz um selection-sort por RÓTULO, nunca por posição.
+ *
+ * O "Enviar" só habilita depois de MEXER na lista — `arrangeOrder` garante pelo
+ * menos uma interação real.
  */
 const meta: Meta<typeof OrderActivity> = {
   title: 'Organisms/Activities/4 · Ordenação/Order',
@@ -92,7 +94,7 @@ export const Incorrect: Story = {
   },
 };
 
-/** B.done — activity já concluída: os controles ↑/↓ nem são renderizados. */
+/** B.done — activity já concluída: os controles ↑/↓ ficam DESABILITADOS (não somem). */
 export const Disabled: Story = {
   args: { activity: makeActivity('order', SPEC, 'done') },
 };

@@ -50,8 +50,9 @@ export interface AnswerMachineInput {
   /**
    * The kind-specific "there is an answer worth submitting" precondition:
    * `selected !== null` (single/quiz), `selected.length > 0` (multi),
-   * `order.length > 0` (order), `made.length === expected` (match),
-   * `isAnswerComplete(tree, answer)` (byoc).
+   * `touched` (order — the list arrives pre-populated by the shuffle, so
+   * "non-empty" would be true before the learner did anything),
+   * `made.length === expected` (match), `isAnswerComplete(tree, answer)` (byoc).
    */
   hasAnswer: boolean;
 }

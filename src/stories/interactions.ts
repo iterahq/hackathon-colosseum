@@ -19,9 +19,15 @@
  * — ADR-2/ADR-8; estamos no 10.4.6) é o pacote de interação canônico.
  *
  * ⚠️ POR QUE TUDO É POR RÓTULO, NUNCA POR POSIÇÃO: `single_choice`,
- * `multi_choice`, `match` e `order` embaralham suas opções com
- * `seededShuffle(…, Math.random())` a cada montagem. Um helper que clicasse
- * "a segunda opção" seria flaky por construção.
+ * `multi_choice`, `match` e `order` embaralham suas opções por aluno
+ * (`learnerShuffle`, seed = escopo do aluno + id da activity). A ordem é
+ * ESTÁVEL para um aluno, mas continua sendo diferente entre alunos — e as
+ * stories rodam sob um escopo anônimo por browser. Um helper que clicasse "a
+ * segunda opção" seria flaky por construção.
+ *
+ * 💡 Desde que os elementos expõem `data-option-id` (a identidade AUTORADA), um
+ * helper pode casar por id em vez de por texto — mais robusto, porque um typo
+ * corrigido no enunciado não quebra mais o seletor.
  */
 import { userEvent, within } from 'storybook/test';
 
@@ -89,8 +95,16 @@ export async function connectPairs(canvasElement: Canvas, pairs: [string, string
  *
  * Selection-sort: para cada posição alvo, acha o item e o sobe até lá. A lista
  * é re-consultada a cada clique porque o React remonta a `<ol>`.
+ *
+ * ⚠️ O `order-submit` só habilita depois de o aluno MEXER na lista (o
+ * embaralhamento inicial não conta como resposta composta). Se o alvo já for a
+ * ordem em que a lista nasceu, o selection-sort não clica nada e o "Enviar"
+ * continuaria desabilitado — então o helper faz um vai-e-volta real (descer o
+ * primeiro item e subi-lo de novo), que deixa a ordem idêntica e a atividade
+ * legitimamente tocada.
  */
 export async function arrangeOrder(canvasElement: Canvas, labels: string[]) {
+  let moves = 0;
   for (let target = 0; target < labels.length; target += 1) {
     for (let guard = 0; guard <= labels.length; guard += 1) {
       const items = all(canvasElement, 'order-item');
@@ -99,8 +113,13 @@ export async function arrangeOrder(canvasElement: Canvas, labels: string[]) {
       if (current === target) break;
       if (current < target) throw new Error(`order: item ${labels[target]} já passou da posição alvo`);
       await userEvent.click(within(items[current]).getByTestId('order-up'));
+      moves += 1;
       if (guard === labels.length) throw new Error('order: não convergiu — o botão "subir" não moveu o item');
     }
+  }
+  if (moves === 0 && labels.length >= 2) {
+    await userEvent.click(within(all(canvasElement, 'order-item')[0]).getByTestId('order-down'));
+    await userEvent.click(within(all(canvasElement, 'order-item')[1]).getByTestId('order-up'));
   }
 }
 

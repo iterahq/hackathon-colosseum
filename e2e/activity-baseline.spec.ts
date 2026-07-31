@@ -96,51 +96,79 @@ async function expectNoVerdict(page: Page): Promise<void> {
 }
 
 /**
- * Pick an option by its LABEL, never by index.
- *
- * ⚠️ `single_choice`, `multi_choice`, `match` and `order` shuffle with
- * `seededShuffle(items, Math.random().toString(36))` — a fresh RANDOM seed on
- * every mount. DOM order is therefore not reproducible across runs, and index
- * selection would make this suite flaky-by-construction.
- *
- * 🚩 DRIFT SIGNAL (reported, not fixed here): the option elements expose **no
- * `data-option-id`**, so the authored id — the thing grading actually keys on —
- * is unreachable from the DOM. Matching on user-visible text is the only handle
- * available. A `data-option-id` on `single-choice-option` / `multi-choice-option`
- * / `match-*-card` / `order-item` would make this whole class of test address
- * the real identity instead of a rendering of it.
+ * Pick an option by its LABEL, never by index. Still the only handle for `quiz`,
+ * whose options carry no `data-option-id` (see `optionById`).
  */
 function optionByLabel(page: Page, testId: string, label: string): Locator {
   return page.getByTestId(testId).filter({ hasText: label }).first();
 }
 
 /**
- * Selection-sort `order-item` into the target label sequence using `order-up`.
+ * Pick an option by its AUTHORED ID — the thing grading actually keys on.
+ *
+ * 🔄 BASELINE UPDATED (fix/choice-order-option-identity). The previous revision
+ * of this file could only match on user-visible TEXT and carried a drift signal
+ * saying so: `single-choice-option` / `multi-choice-option` / `match-*-card` /
+ * `order-item` exposed no `data-option-id`, so the authored identity was
+ * unreachable from the DOM. They now do, and these tests address the identity
+ * instead of a rendering of it.
+ *
+ * This is a STRENGTHENING, not a loosening: `optionByLabel('… Guardar uma
+ * informação')` passes for any element whose text happens to contain that
+ * substring and breaks when an author fixes a typo; `optionById('a')` names the
+ * exact option the answer key names, and would fail loudly if the renderer ever
+ * associated the wrong id with the wrong label.
+ *
+ * DOM order is still never used: the shuffle is per-learner (`learnerShuffle`,
+ * seeded on learner scope + activity id), so position is not a stable handle.
+ */
+function optionById(page: Page, testId: string, optionId: string): Locator {
+  return page.locator(`[data-testid="${testId}"][data-option-id="${optionId}"]`);
+}
+
+/** The current `order-item` sequence, as AUTHORED ids. */
+async function orderIds(page: Page): Promise<(string | null)[]> {
+  return page
+    .getByTestId('order-item')
+    .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+}
+
+/**
+ * Selection-sort `order-item` into the target ID sequence using `order-up`.
  * Mirrors `src/stories/interactions.ts::arrangeOrder`, which is the recipe the
  * repo's own story/unit tests use — same mechanic, same guarantees.
  * Re-queries after every click because React re-renders the whole `<ol>`.
+ *
+ * 🔄 BASELINE UPDATED: matches on `data-option-id` instead of inner text, and
+ * guarantees AT LEAST ONE real move — `order-submit` now requires the learner
+ * to have touched the list, so a target that happens to equal the starting
+ * arrangement would otherwise leave the submit disabled.
  */
-async function arrangeOrder(page: Page, labels: readonly string[]): Promise<void> {
-  for (let target = 0; target < labels.length; target++) {
+async function arrangeOrder(page: Page, ids: readonly string[]): Promise<void> {
+  let moves = 0;
+  for (let target = 0; target < ids.length; target++) {
     for (;;) {
-      const items = page.getByTestId('order-item');
-      const texts = await items.allInnerTexts();
-      const at = texts.findIndex((t) => t.includes(labels[target]!));
+      const current = await orderIds(page);
+      const at = current.findIndex((id) => id === ids[target]);
+      if (at === -1) {
+        throw new Error(`order: item ${ids[target]} não está na lista (${current.join(', ')})`);
+      }
       if (at <= target) break;
-      await items.nth(at).getByTestId('order-up').click();
+      await page.getByTestId('order-item').nth(at).getByTestId('order-up').click();
+      moves += 1;
     }
+  }
+  if (moves === 0 && ids.length >= 2) {
+    // A real round-trip: same arrangement, but the learner did move something.
+    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+    await page.getByTestId('order-item').nth(1).getByTestId('order-up').click();
   }
 }
 
-/** Read the current `order-item` label sequence, for asserting an arrangement. */
-async function orderLabels(page: Page): Promise<string[]> {
-  return page.getByTestId('order-item').allInnerTexts();
-}
-
-/** Tap-to-pair: arm a left card, then tap the right card. NOT drag. */
-async function connectPair(page: Page, left: string, right: string): Promise<void> {
-  await optionByLabel(page, 'match-left-card', left).click();
-  await optionByLabel(page, 'match-right-card', right).click();
+/** Tap-to-pair by AUTHORED id: arm a left card, then tap the right card. NOT drag. */
+async function connectPair(page: Page, leftId: string, rightId: string): Promise<void> {
+  await optionById(page, 'match-left-card', leftId).click();
+  await optionById(page, 'match-right-card', rightId).click();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -316,27 +344,61 @@ test.describe('single_choice', () => {
     await expect(page.getByTestId('single-choice-submit')).toBeDisabled();
   });
 
+  // 🔄 BASELINE UPDATED: matched by AUTHORED id (`spec.correct_option_id` is
+  // `'a'`) instead of by rendered label. Same verdicts, sturdier handle.
   test('correct_option_id → veredito CORRETO', async ({ page }) => {
     await open(page, SINGLE_CHOICE);
-    await optionByLabel(page, 'single-choice-option', 'Guardar uma informação').click();
+    await optionById(page, 'single-choice-option', 'a').click();
     await page.getByTestId('single-choice-submit').click();
     await expectVerdict(page, true);
   });
 
   test('distrator → veredito INCORRETO', async ({ page }) => {
     await open(page, SINGLE_CHOICE);
-    await optionByLabel(page, 'single-choice-option', 'Mudar a cor do computador').click();
+    await optionById(page, 'single-choice-option', 'b').click();
     await page.getByTestId('single-choice-submit').click();
     await expectVerdict(page, false);
   });
+
+  test('cada opção expõe sua identidade AUTORADA no DOM', async ({ page }) => {
+    await open(page, SINGLE_CHOICE);
+    // The property the telemetry plan depends on: the id an event would carry
+    // is readable from the element, and it is the AUTHORED id — not the
+    // post-shuffle position, which differs per learner.
+    const ids = await page
+      .getByTestId('single-choice-option')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+    expect([...ids].sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  test('a ordem das opções é ESTÁVEL para o mesmo aluno entre montagens', async ({ page }) => {
+    await open(page, SINGLE_CHOICE);
+    const first = await page
+      .getByTestId('single-choice-option')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+    await page.reload();
+    await expect(page.getByTestId('activity-test-harness')).toBeVisible();
+    const second = await page
+      .getByTestId('single-choice-option')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+    // 🔄 BASELINE UPDATED: with `Math.random()` per mount this was a coin flip
+    // (1/6 of agreeing) and could not have been asserted at all. The seed is now
+    // learner-scope + activity id. That learners still differ from EACH OTHER is
+    // proven in `src/utils/learnerShuffle.test.ts` — a browser context here only
+    // ever has one learner.
+    expect(second).toEqual(first);
+  });
 });
 
+// 🔄 BASELINE UPDATED: options are picked by AUTHORED id — `correct_option_ids`
+// is `['a','b','c']` and `'d'` is the distractor — instead of by label
+// substring. The verdicts asserted are unchanged.
 test.describe('multi_choice', () => {
   test('conjunto EXATO → veredito CORRETO', async ({ page }) => {
     await open(page, MULTI_CHOICE);
     await expectDispatchedTo(page, 'multi_choice');
-    for (const label of ['só registra quando', 'não some sozinho', 'para e pergunta']) {
-      await optionByLabel(page, 'multi-choice-option', label).click();
+    for (const optionId of ['a', 'b', 'c']) {
+      await optionById(page, 'multi-choice-option', optionId).click();
     }
     await page.getByTestId('multi-choice-submit').click();
     await expectVerdict(page, true);
@@ -346,101 +408,181 @@ test.describe('multi_choice', () => {
     await open(page, MULTI_CHOICE);
     // Grading is exact SET equality, not "contains only correct ones": a
     // strictly-correct-but-incomplete answer is wrong.
-    await optionByLabel(page, 'multi-choice-option', 'só registra quando').click();
+    await optionById(page, 'multi-choice-option', 'a').click();
     await page.getByTestId('multi-choice-submit').click();
     await expectVerdict(page, false);
   });
 
   test('corretas + distrator → veredito INCORRETO', async ({ page }) => {
     await open(page, MULTI_CHOICE);
-    for (const label of [
-      'só registra quando',
-      'não some sozinho',
-      'para e pergunta',
-      'salva sozinho de minuto',
-    ]) {
-      await optionByLabel(page, 'multi-choice-option', label).click();
+    for (const optionId of ['a', 'b', 'c', 'd']) {
+      await optionById(page, 'multi-choice-option', optionId).click();
     }
     await page.getByTestId('multi-choice-submit').click();
     await expectVerdict(page, false);
   });
+
+  test('cada opção expõe sua identidade AUTORADA no DOM', async ({ page }) => {
+    await open(page, MULTI_CHOICE);
+    const ids = await page
+      .getByTestId('multi-choice-option')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+    expect([...ids].sort()).toEqual(['a', 'b', 'c', 'd']);
+  });
 });
 
+// 🔄 BASELINE UPDATED: cards are tapped by AUTHORED id — `spec.pairs` is
+// `p1↔r1`, `p2↔r2`, which is EXACTLY what grading compares — instead of by
+// label. The verdicts asserted are unchanged.
 test.describe('match', () => {
   test('submit só libera com TODOS os pares formados', async ({ page }) => {
     await open(page, MATCH);
     await expectDispatchedTo(page, 'match');
     await expect(page.getByTestId('match-submit')).toBeDisabled();
-    await connectPair(page, 'git commit', 'registra uma mudança');
+    await connectPair(page, 'p1', 'r1');
     await expect(page.getByTestId('match-submit')).toBeDisabled();
-    await connectPair(page, 'git branch', 'cria uma linha paralela');
+    await connectPair(page, 'p2', 'r2');
     await expect(page.getByTestId('match-submit')).toBeEnabled();
   });
 
   test('pares corretos → veredito CORRETO', async ({ page }) => {
     await open(page, MATCH);
-    await connectPair(page, 'git commit', 'registra uma mudança');
-    await connectPair(page, 'git branch', 'cria uma linha paralela');
+    await connectPair(page, 'p1', 'r1');
+    await connectPair(page, 'p2', 'r2');
     await page.getByTestId('match-submit').click();
     await expectVerdict(page, true);
   });
 
   test('pares cruzados → veredito INCORRETO', async ({ page }) => {
     await open(page, MATCH);
-    await connectPair(page, 'git commit', 'cria uma linha paralela');
-    await connectPair(page, 'git branch', 'registra uma mudança');
+    await connectPair(page, 'p1', 'r2');
+    await connectPair(page, 'p2', 'r1');
     await page.getByTestId('match-submit').click();
     await expectVerdict(page, false);
   });
 
   test('desfazer um par antes de enviar volta a bloquear o submit', async ({ page }) => {
     await open(page, MATCH);
-    await connectPair(page, 'git commit', 'registra uma mudança');
-    await connectPair(page, 'git branch', 'cria uma linha paralela');
+    await connectPair(page, 'p1', 'r1');
+    await connectPair(page, 'p2', 'r2');
     await expect(page.getByTestId('match-submit')).toBeEnabled();
     // Tapping either card of an existing pair removes the pair.
-    await optionByLabel(page, 'match-left-card', 'git commit').click();
+    await optionById(page, 'match-left-card', 'p1').click();
     await expect(page.getByTestId('match-submit')).toBeDisabled();
+  });
+
+  test('cada card expõe sua identidade AUTORADA no DOM', async ({ page }) => {
+    await open(page, MATCH);
+    const read = (testId: string) =>
+      page
+        .getByTestId(testId)
+        .evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+    expect((await read('match-left-card')).sort()).toEqual(['p1', 'p2']);
+    expect((await read('match-right-card')).sort()).toEqual(['r1', 'r2']);
   });
 });
 
+/** The authored solution for the `order` fixture — `spec.correct_order`. */
+const ORDER_SOLUTION = ['i1', 'i2', 'i3'] as const;
+
 test.describe('order', () => {
-  test('🧊 FROZEN — o submit já nasce HABILITADO, sem nenhuma interação', async ({ page }) => {
+  /**
+   * 🔄 BASELINE UPDATED — this test previously read:
+   *
+   *   test('🧊 FROZEN — o submit já nasce HABILITADO, sem nenhuma interação')
+   *     await expect(page.getByTestId('order-submit')).toBeEnabled();
+   *
+   * It froze `hasAnswer = order.length > 0`, i.e. the pre-populated shuffle
+   * counting as a composed answer. The PRODUCT changed: `hasAnswer` is now
+   * `touched`, so a learner who has moved nothing has not answered. The
+   * assertion is INVERTED, not deleted — it still asserts the exact same
+   * observable (the submit's enabled state on first paint), with the opposite
+   * expected value, and it still fails loudly if that state moves again.
+   */
+  test('o submit nasce DESABILITADO até o aluno mexer na lista', async ({ page }) => {
     await open(page, ORDER);
     await expectDispatchedTo(page, 'order');
-    // `hasAnswer = order.length > 0`, and the list is pre-populated by the
-    // shuffle — so the learner can submit an answer they never composed. The
-    // initial shuffle can even be the correct one by chance.
+    await expect(page.getByTestId('order-submit')).toBeDisabled();
+    // One move — the smallest real learner act — is what opens it.
+    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
     await expect(page.getByTestId('order-submit')).toBeEnabled();
   });
 
+  /**
+   * 🔄 BASELINE ADDED — the other half of the same defect. The old shuffle was
+   * `Math.random()` per mount, so on a 3-item list it dealt the SOLUTION about
+   * 1 run in 6, handing out an acerto for zero work. The initial arrangement is
+   * now guaranteed to differ from `correct_order`.
+   */
+  test('o embaralhamento inicial NUNCA é a solução', async ({ page }) => {
+    await open(page, ORDER);
+    expect(await orderIds(page)).not.toEqual([...ORDER_SOLUTION]);
+  });
+
+  /** 🔄 BASELINE ADDED — the per-learner seed is stable across remounts. */
+  test('a ordem inicial é ESTÁVEL para o mesmo aluno entre montagens', async ({ page }) => {
+    await open(page, ORDER);
+    const first = await orderIds(page);
+    await page.reload();
+    await expect(page.getByTestId('activity-test-harness')).toBeVisible();
+    expect(await orderIds(page)).toEqual(first);
+  });
+
+  // 🔄 BASELINE UPDATED: the target sequence and the assertion are expressed in
+  // AUTHORED ids (`correct_order`), so this now asserts the exact arrangement
+  // rather than "each row's text contains this substring".
   test('ordem correta → veredito CORRETO', async ({ page }) => {
     await open(page, ORDER);
-    const target = ['editar o arquivo', 'git add', 'git commit'];
-    await arrangeOrder(page, target);
-    const got = await orderLabels(page);
-    expect(got.map((t, i) => t.includes(target[i]!))).toEqual([true, true, true]);
+    await arrangeOrder(page, ORDER_SOLUTION);
+    expect(await orderIds(page)).toEqual([...ORDER_SOLUTION]);
     await page.getByTestId('order-submit').click();
     await expectVerdict(page, true);
   });
 
   test('uma troca fora de lugar → veredito INCORRETO', async ({ page }) => {
     await open(page, ORDER);
-    await arrangeOrder(page, ['editar o arquivo', 'git add', 'git commit']);
+    await arrangeOrder(page, ORDER_SOLUTION);
     // Push the first item down once — any permutation ≠ correct_order is wrong.
     await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
     await page.getByTestId('order-submit').click();
     await expectVerdict(page, false);
   });
 
-  test('🧊 FROZEN — após enviar, os controles de reordenar SOMEM', async ({ page }) => {
+  /**
+   * 🔄 BASELINE UPDATED — this test previously read:
+   *
+   *   test('🧊 FROZEN — após enviar, os controles de reordenar SOMEM')
+   *     await expect(page.getByTestId('order-up')).toHaveCount(0);
+   *     await expect(page.getByTestId('order-down')).toHaveCount(0);
+   *
+   * `locked` unmounted the controls, which deletes screen content the learner
+   * needs as the reference for what they answered. The PRODUCT changed: the
+   * controls stay mounted and are DISABLED. `toHaveCount(0)` became
+   * `toHaveCount(3)` + `toBeDisabled()` — the same observable, asserted with
+   * strictly MORE precision than before (their count and their state, where the
+   * old test only asserted their absence).
+   */
+  test('após enviar, os controles de reordenar ficam DESABILITADOS (não somem)', async ({ page }) => {
     await open(page, ORDER);
+    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
     await page.getByTestId('order-submit').click();
     await expect(verdict(page)).toBeVisible();
-    // `locked` removes `order-up`/`order-down` entirely rather than disabling
-    // them — so the learner cannot even see what they would have changed.
-    await expect(page.getByTestId('order-up')).toHaveCount(0);
-    await expect(page.getByTestId('order-down')).toHaveCount(0);
+
+    const ups = page.getByTestId('order-up');
+    const downs = page.getByTestId('order-down');
+    await expect(ups).toHaveCount(ORDER_SOLUTION.length);
+    await expect(downs).toHaveCount(ORDER_SOLUTION.length);
+    for (let i = 0; i < ORDER_SOLUTION.length; i++) {
+      await expect(ups.nth(i)).toBeDisabled();
+      await expect(downs.nth(i)).toBeDisabled();
+    }
+    // And the answered sequence is still fully on screen, identities included.
+    expect((await orderIds(page)).filter(Boolean)).toHaveLength(ORDER_SOLUTION.length);
+  });
+
+  test('cada item expõe sua identidade AUTORADA no DOM', async ({ page }) => {
+    await open(page, ORDER);
+    expect([...(await orderIds(page))].sort()).toEqual([...ORDER_SOLUTION]);
   });
 });
 
@@ -639,7 +781,7 @@ test.describe('garantia do harness', () => {
 
     // A full graded round-trip on the kind that persists the most in the player.
     await open(page, SINGLE_CHOICE);
-    await optionByLabel(page, 'single-choice-option', 'Guardar uma informação').click();
+    await optionById(page, 'single-choice-option', 'a').click();
     await page.getByTestId('single-choice-submit').click();
     await expectVerdict(page, true);
 

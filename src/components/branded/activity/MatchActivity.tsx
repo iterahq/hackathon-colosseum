@@ -24,7 +24,7 @@ import { useState } from 'react';
 import { Check, Link2, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
-import { seededShuffle } from '@/utils/seededShuffle';
+import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
@@ -101,8 +101,10 @@ export function MatchActivity({
   const spec = activity.spec as unknown as MatchSpec;
   // Shuffle each column independently so the correct row-alignment
   // (left[i] ↔ right[i]) never leaks the answer. Correctness is id-keyed.
-  const [left] = useState(() => seededShuffle(spec?.left ?? [], Math.random().toString(36)));
-  const [right] = useState(() => seededShuffle(spec?.right ?? [], Math.random().toString(36)));
+  // Per-LEARNER, per-ACTIVITY order (src/utils/learnerShuffle.ts). The two
+  // columns carry different salts so the draws stay independent.
+  const [left] = useState(() => learnerShuffle(spec?.left ?? [], activity.id, 'left'));
+  const [right] = useState(() => learnerShuffle(spec?.right ?? [], activity.id, 'right'));
   const pairs = spec?.pairs ?? [];
 
   const [made, setMade] = useState<MadePair[]>([]);
@@ -209,6 +211,8 @@ export function MatchActivity({
                 onClick={() => tapLeft(o.id)}
                 disabled={locked}
                 data-testid="match-left-card"
+                // The AUTHORED id — `spec.pairs` is keyed on exactly this.
+                data-option-id={o.id}
                 data-connected={connected ? 'true' : undefined}
                 className={`w-full h-full flex items-start justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, armed)}`}
               >
@@ -229,6 +233,8 @@ export function MatchActivity({
                 onClick={() => tapRight(o.id)}
                 disabled={locked}
                 data-testid="match-right-card"
+                // The AUTHORED id — `spec.pairs` is keyed on exactly this.
+                data-option-id={o.id}
                 data-connected={connected ? 'true' : undefined}
                 className={`w-full h-full flex items-start justify-between gap-2 py-3 px-4 rounded-2xl border text-left transition-colors ${cardClasses(idx, false)}`}
               >

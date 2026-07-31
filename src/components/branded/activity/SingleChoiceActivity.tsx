@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
-import { seededShuffle } from '@/utils/seededShuffle';
+import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
@@ -49,7 +49,9 @@ export function SingleChoiceActivity({
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as SingleChoiceSpec;
-  const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
+  // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
+  // different between learners (src/utils/learnerShuffle.ts).
+  const [options] = useState(() => learnerShuffle(spec?.options ?? [], activity.id));
   const [selected, setSelected] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   // Grading is the KIND's job; when the verdict may reach the screen is the
@@ -96,6 +98,10 @@ export function SingleChoiceActivity({
               disabled={m.locked}
               onClick={() => setSelected(o.id)}
               data-testid="single-choice-option"
+              // The AUTHORED id — what grading keys on, and what a learning
+              // event must reference. NOT the post-shuffle position, which
+              // differs per learner and per mount.
+              data-option-id={o.id}
               data-selected={chosen ? 'true' : undefined}
               className={`w-full h-full flex items-start gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
                 showCorrect

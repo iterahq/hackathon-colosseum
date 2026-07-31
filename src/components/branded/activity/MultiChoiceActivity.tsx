@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
-import { seededShuffle } from '@/utils/seededShuffle';
+import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
@@ -48,7 +48,9 @@ export function MultiChoiceActivity({
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as MultiChoiceSpec;
-  const [options] = useState(() => seededShuffle(spec?.options ?? [], Math.random().toString(36)));
+  // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
+  // different between learners (src/utils/learnerShuffle.ts).
+  const [options] = useState(() => learnerShuffle(spec?.options ?? [], activity.id));
   const correctIds = spec?.correct_option_ids ?? [];
   const [selected, setSelected] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
@@ -107,6 +109,9 @@ export function MultiChoiceActivity({
               disabled={m.locked}
               onClick={() => toggle(o.id)}
               data-testid="multi-choice-option"
+              // The AUTHORED id — see SingleChoiceActivity for why the index is
+              // not an acceptable substitute.
+              data-option-id={o.id}
               data-selected={chosen ? 'true' : undefined}
               className={`w-full h-full flex items-start gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
                 showCorrect

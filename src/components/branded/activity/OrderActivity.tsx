@@ -6,12 +6,20 @@
  *
  * NO story-only seams (ADR-4): answered/correct/incorrect are reached by moving
  * items with the up/down controls, from the story's own `play`.
+ *
+ * Three properties this kind is easy to get wrong, all fixed together:
+ *   • the initial arrangement is per-learner but NEVER the solution — otherwise
+ *     the shuffle occasionally deals an acerto for zero work (`learnerShuffle`);
+ *   • submitting requires having MOVED something: the list arrives populated, so
+ *     "there is a sequence on screen" is not a composed answer;
+ *   • after submit the reorder controls are DISABLED, never unmounted — the
+ *     learner keeps looking at the arrangement they are being graded on.
  */
 import { useState } from 'react';
 import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
-import { seededShuffle } from '@/utils/seededShuffle';
+import { learnerShuffleAvoidingSolution } from '@/utils/learnerShuffle';
 import { answerMachine } from '@/utils/answerMachine';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
@@ -32,11 +40,19 @@ export function OrderActivity({
   const correctOrder = spec?.correct_order ?? [];
   const byId = (id: string): ChoiceOption | undefined => items.find((i) => i.id === id);
 
-  const [order, setOrder] = useState<string[]>(
-    () => seededShuffle(items, Math.random().toString(36)).map((i) => i.id),
+  // Per-LEARNER, per-ACTIVITY arrangement (stable across remounts, different
+  // between learners) that is GUARANTEED not to already be `correct_order` —
+  // otherwise the shuffle can hand out a free acerto. See
+  // src/utils/learnerShuffle.ts.
+  const [order, setOrder] = useState<string[]>(() =>
+    learnerShuffleAvoidingSolution(items.map((i) => i.id), activity.id, correctOrder),
   );
   const [submitted, setSubmitted] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  // The list is pre-populated by the shuffle, so "there is a sequence on screen"
+  // is NOT evidence the learner composed one. Submitting requires having moved
+  // at least one item — the same bar every other graded kind already sets.
+  const [touched, setTouched] = useState(false);
 
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (src/utils/answerMachine.ts — one definition, six call sites).
@@ -46,7 +62,7 @@ export function OrderActivity({
     submitted,
     reveal,
     correct: isOrderCorrect,
-    hasAnswer: order.length > 0,
+    hasAnswer: touched,
   });
   const { locked, shown } = m;
   // Reveal without a submission shows the ANSWER KEY (the correct sequence),
@@ -55,6 +71,7 @@ export function OrderActivity({
 
   function move(from: number, to: number) {
     if (locked || to < 0 || to >= order.length) return;
+    setTouched(true);
     setOrder((prev) => {
       const next = [...prev];
       const [x] = next.splice(from, 1);
@@ -96,6 +113,9 @@ export function OrderActivity({
                 setDragIndex(null);
               }}
               data-testid="order-item"
+              // The AUTHORED item id — what `correct_order` is keyed on. The
+              // rendered position is per-learner and changes as they reorder.
+              data-option-id={id}
               data-position={idx}
               className={`flex items-center gap-3 py-3 px-4 rounded-2xl border transition-colors ${
                 posCorrect
@@ -105,7 +125,12 @@ export function OrderActivity({
                     : 'border-border bg-card'
               } ${locked ? '' : 'cursor-grab active:cursor-grabbing'}`}
             >
-              {!locked && <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+              {/* Kept mounted when locked (dimmed) so the row keeps the exact
+                  geometry the learner was looking at when they submitted. */}
+              <GripVertical
+                className={`w-4 h-4 text-muted-foreground flex-shrink-0 ${locked ? 'opacity-30' : ''}`}
+                aria-hidden
+              />
               <span className="font-mono text-xs text-menta w-5 flex-shrink-0">{idx + 1}</span>
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 {o?.image_url && (
@@ -116,28 +141,30 @@ export function OrderActivity({
               </div>
               {posCorrect && <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />}
               {posWrong && <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
-              {!locked && (
-                <span className="flex flex-col flex-shrink-0">
-                  <button
-                    onClick={() => move(idx, idx - 1)}
-                    disabled={idx === 0}
-                    data-testid="order-up"
-                    aria-label={t('activity.moveUp')}
-                    className="text-muted-foreground hover:text-menta disabled:opacity-30"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => move(idx, idx + 1)}
-                    disabled={idx === order.length - 1}
-                    data-testid="order-down"
-                    aria-label={t('activity.moveDown')}
-                    className="text-muted-foreground hover:text-menta disabled:opacity-30"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </span>
-              )}
+              {/* DISABLED, never unmounted. Removing the controls after a
+                  submit deletes the learner's own reference for what they
+                  arranged; a disabled control still says "this is the thing you
+                  used, and it is closed now". */}
+              <span className="flex flex-col flex-shrink-0">
+                <button
+                  onClick={() => move(idx, idx - 1)}
+                  disabled={locked || idx === 0}
+                  data-testid="order-up"
+                  aria-label={t('activity.moveUp')}
+                  className="text-muted-foreground hover:text-menta disabled:opacity-30 disabled:hover:text-muted-foreground"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => move(idx, idx + 1)}
+                  disabled={locked || idx === displayOrder.length - 1}
+                  data-testid="order-down"
+                  aria-label={t('activity.moveDown')}
+                  className="text-muted-foreground hover:text-menta disabled:opacity-30 disabled:hover:text-muted-foreground"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </span>
             </li>
           );
         })}
