@@ -22,6 +22,7 @@
     "seed:fellowship-pilot": "tsx db/seeds/fellowship-pilot.ts",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
+    "e2e:baseline": "playwright test --config playwright.baseline.config.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static"
   },

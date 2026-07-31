@@ -121,6 +121,82 @@ jobs:
         run: bash scripts/verify-docs.sh
 
   # ──────────────────────────────────────────────────────────────────────────
+  # ACTIVITY CHARACTERIZATION BASELINE — BLOQUEANTE (sub-plano 0 de
+  # `20260731-itera-eventos-aprendizagem`, Q4 respondida "entra no gate de PR").
+  #
+  # POR QUE AQUI E NÃO NO `e2e.yml`
+  #
+  # O `e2e.yml` é `workflow_dispatch` + cron diário, roda contra prod ao vivo
+  # (learn + api + app), e é capability-gated: dependência ausente vira SKIP. Ele
+  # responde "prod está costurado?". Esta suíte responde uma pergunta diferente e
+  # incompatível com aquele contrato: "o comportamento das atividades mudou neste
+  # PR?". Ela precisa (a) travar merge, (b) rodar contra o CÓDIGO DO PR e não
+  # contra o deploy, (c) nunca pular. Enfiá-la no `e2e.yml` herdaria as três
+  # propriedades erradas — e arrastaria a suíte cara de prod pro gate junto.
+  #
+  # ZERO SEGREDOS — E ISSO É REQUISITO, NÃO CONVENIÊNCIA
+  #
+  # `iterahq/itera-player` tem exatamente DOIS Actions secrets (`CLOUDFLARE_*`) —
+  # verificado 2026-07-31. `ITERA_SMOKE_*` e `VITE_SUPABASE_*` NÃO existem, que é
+  # exatamente por que o `e2e.yml` vive vermelho/vazio. Um gate bloqueante que
+  # depende de credencial não provisionada é um gate bloqueante sempre vermelho.
+  # Por isso a suíte builda com uma origem Supabase STUB
+  # (`http://stub.supabase.invalid`, TLD reservado, jamais resolve) e intercepta
+  # tudo no Playwright. Ver `e2e/support/harnessStub.ts`.
+  #
+  # ORÇAMENTO (V3 do plano: < 10 min)
+  #
+  # Medido em 2026-07-31 na openclaw-tainan: 48 cenários, **45s** de ponta a
+  # ponta INCLUINDO o `vite build`. O `timeout-minutes: 15` é folga pro runner
+  # self-hosted, não expectativa. Se um dia passar de 10 min, CORTE cenário e
+  # diga o que cortou — truncar em silêncio é pior que cobrir menos.
+  #
+  # Job separado do `build-test` de propósito: o custo do navegador fica isolado
+  # no wall-clock, do mesmo jeito que o `browser-mode` (ver abaixo).
+  # ──────────────────────────────────────────────────────────────────────────
+  activity-baseline:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ⚠️ `node node_modules/playwright/cli.js`, NÃO `npx playwright`: o `npx`
+      # resolve pelo cache dele e pode instalar uma revisão de Chromium DIFERENTE
+      # da que o `@playwright/test` do lock exige — aí o teste roda com um browser
+      # que não existe e falha com "Executable doesn't exist". Queimado 2026-07-31.
+      - name: Install Chromium
+        run: node node_modules/playwright/cli.js install --with-deps chromium
+
+      # O `webServer` da config faz o `vite build` + `vite preview` com a origem
+      # Supabase stub. Nada de rede externa, nada de login, nada de DB.
+      - name: Activity characterization baseline
+        run: npm run e2e:baseline
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: activity-baseline-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────────
   # BROWSER MODE (ADR-8) — NÃO-BLOQUEANTE POR UMA SEMANA (ADR-9).
   #
   # Plano `20260728-itera-activity-testing`. A Q2 foi respondida "A": o tier
