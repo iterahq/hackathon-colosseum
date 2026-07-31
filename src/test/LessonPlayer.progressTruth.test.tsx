@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
@@ -36,6 +36,13 @@ const inserts: Record<string, unknown[]> = {};
 const upserts: Array<{ table: string; payload: Record<string, unknown>; opts?: unknown }> = [];
 /** What `progress` rows the fake DB hands back to the resume read. */
 let progressRows: Array<{ activity_id: string; status: string }> = [];
+/**
+ * Lets a test make a specific `.insert()` fail, the way PostgREST does when the
+ * payload names a column the deployed schema does not have. Null = insert works.
+ */
+let insertErrorFor:
+  | ((table: string, payload: Record<string, unknown>) => { message: string } | null)
+  | null = null;
 
 vi.mock('@/api/iteraApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/iteraApi')>()),
@@ -98,7 +105,8 @@ vi.mock('@/lib/supabase/client', () => ({
         },
         insert: (payload: Record<string, unknown>) => {
           (inserts[table] ??= []).push(payload);
-          return Promise.resolve({ error: null });
+          const err = insertErrorFor?.(table, payload) ?? null;
+          return Promise.resolve({ error: err });
         },
         select: () => builder,
         eq: () => builder,
@@ -154,6 +162,7 @@ beforeEach(async () => {
   for (const k of Object.keys(inserts)) delete inserts[k];
   upserts.length = 0;
   progressRows = [];
+  insertErrorFor = null;
   // Module-level mock: without clearing, call counts accumulate across cases in
   // this file and the "no XP for a miss" assertion sees an earlier test's award.
   const { awardActivityXp } = await import('@/services/gamification.service');
@@ -365,5 +374,152 @@ describe('resumeIndexFor — the pure seek rule', () => {
 
   it('returns the length when the whole lesson is done', () => {
     expect(resumeIndexFor(ids, { a1: 'completed', a2: 'completed', a3: 'completed' })).toBe(3);
+  });
+});
+
+/**
+ * Duration (plan 20260731-itera-eventos-aprendizagem, Phase 1).
+ *
+ * Until this shipped, self-paced mode recorded no time at all — `created_at`
+ * and nothing else — so "which activity is hard" and "where do learners give
+ * up" had no measurement behind them in the mode where most learning happens.
+ *
+ * The claim these tests defend is the one written into `COMMENT ON COLUMN
+ * itera.activity_results.elapsed_ms`: the window opens when the activity appears
+ * and CLOSES WHEN THE ANSWER SETTLES — not when the row is written. In this
+ * player those are different moments, separated by the learner reading the
+ * feedback footer. Nothing in a type or a constraint can catch that boundary
+ * moving, which is exactly why it is pinned here.
+ */
+describe('duration — the attempt row carries how long the learner took', () => {
+  const T0 = 5_000_000;
+  let clock = T0;
+  let nowSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  beforeEach(() => {
+    clock = T0;
+    nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+  });
+  afterEach(() => {
+    nowSpy?.mockRestore();
+    nowSpy = null;
+  });
+
+  async function settledRow(): Promise<Record<string, unknown>> {
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    return inserts['activity_results'][0] as Record<string, unknown>;
+  }
+
+  it('measures from the activity appearing to the answer settling', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+
+    clock = T0 + 7_000; // the learner thinks for seven seconds…
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    clock = T0 + 30_000; // …then spends 23s reading the feedback footer.
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    const row = await settledRow();
+    // 7s, NOT 30s. The review beat belongs to reading, not to solving; counting
+    // it would inflate every graded kind by however long the explanation is.
+    expect(row.elapsed_ms).toBe(7_000);
+    expect(row.visible_ms).toBe(7_000);
+  });
+
+  it('records the time for a MISS too, on the outbox path', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+
+    clock = T0 + 4_500;
+    fireEvent.click(screen.getByTestId('stub-wrong'));
+    clock = T0 + 12_000;
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    const row = await settledRow();
+    expect(row.passed).toBe(false);
+    // A miss is where duration matters MOST — a wrong answer after four seconds
+    // and one after four minutes are different learner behaviours entirely, and
+    // before this they were the same row.
+    expect(row.elapsed_ms).toBe(4_500);
+  });
+
+  it('excludes time the tab spent in the background from visible_ms', async () => {
+    const hidden = vi.spyOn(document, 'visibilityState', 'get');
+    try {
+      hidden.mockReturnValue('visible');
+      renderPlayer();
+      await waitForPlayerReady();
+
+      clock = T0 + 1_000;
+      hidden.mockReturnValue('hidden');
+      fireEvent(document, new Event('visibilitychange'));
+      clock = T0 + 61_000; // a minute away in another tab
+      hidden.mockReturnValue('visible');
+      fireEvent(document, new Event('visibilitychange'));
+
+      clock = T0 + 64_000;
+      fireEvent.click(screen.getByTestId('stub-correct'));
+      fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+      const row = await settledRow();
+      // Wall clock keeps the whole minute — it is real and it is a signal.
+      expect(row.elapsed_ms).toBe(64_000);
+      // Time-on-screen does not: 64s of "difficulty" that was 4s of attention is
+      // precisely the lie this second column exists to prevent.
+      expect(row.visible_ms).toBe(4_000);
+    } finally {
+      hidden.mockRestore();
+    }
+  });
+});
+
+/**
+ * The deploy-order seatbelt.
+ *
+ * This app auto-deploys on merge to `main`; no CI applies Itera migrations —
+ * they are run by hand. So a window exists where the build knows about
+ * `elapsed_ms`/`visible_ms` and the database does not, and PostgREST rejects the
+ * WHOLE insert for an unknown column. Untreated, that window silently stops
+ * recording attempts entirely — the D2 failure of 2026-07-28 re-created by the
+ * telemetry meant to enrich it, and just as unrecoverable afterwards.
+ *
+ * The rule: telemetry must never be able to destroy the record it decorates.
+ */
+describe('duration — a schema that lacks the columns must not cost the attempt', () => {
+  it('re-inserts the attempt without the timing when the timed insert is rejected', async () => {
+    // Exactly what PostgREST answers when the deployed schema predates 0033.
+    insertErrorFor = (table, payload) =>
+      table === 'activity_results' && 'elapsed_ms' in payload
+        ? { message: "column activity_results.elapsed_ms does not exist" }
+        : null;
+
+    renderPlayer();
+    await waitForPlayerReady();
+
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(2), { timeout: 5000 });
+
+    const [timed, fallback] = inserts['activity_results'] as Array<Record<string, unknown>>;
+    expect('elapsed_ms' in timed).toBe(true); // the attempt WITH timing was tried first…
+    expect('elapsed_ms' in fallback).toBe(false); // …and the retry drops only the timing.
+    // The part that actually matters survives intact: the attempt, its real
+    // outcome, and what the learner answered.
+    expect(fallback.passed).toBe(true);
+    expect((fallback.feedback as { response?: string }).response).toBe('A opção certa');
+  });
+
+  it('does not double-insert when the timed insert succeeds', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    // Give a stray second insert a chance to land before asserting its absence.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(inserts['activity_results'].length).toBe(1);
   });
 });

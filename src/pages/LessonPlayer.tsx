@@ -44,6 +44,8 @@ import {
   resumeIndexFor,
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { useActivityDuration } from '@/hooks/useActivityDuration';
+import type { DurationSample } from '@/utils/activityDuration';
 import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
 import { activityTitleOf, buildArtifact, buildRepoPath } from '@/services/artifactPolicy';
@@ -172,6 +174,25 @@ export default function LessonPlayer() {
     setPending(null);
   }, [current?.id]);
 
+  // ── Duration (plan 20260731-itera-eventos-aprendizagem, Phase 1) ───────────
+  // The window OPENS here: the moment this activity became the one on screen for
+  // this learner. It closes in `handleComplete`, when the answer settles — NOT
+  // in `advance`, which runs after the learner has read the feedback footer.
+  // Counting that review beat would inflate every graded kind by reading time.
+  //
+  // Held behind `resuming` on purpose: while the resume gate is up the learner is
+  // looking at a skeleton, and an origin set there would bill the read-back of
+  // itera.progress to the activity.
+  const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
+  useEffect(() => {
+    setActivityStartedAt(current?.id && !resuming ? Date.now() : null);
+  }, [current?.id, resuming]);
+  const duration = useActivityDuration(activityStartedAt);
+  // The sample taken at settle time, held across the footer's review beat exactly
+  // like the response ref below it, and cleared only once the write has landed so
+  // `retrySave` replays the real measurement instead of re-timing the review.
+  const pendingDurationRef = useRef<DurationSample | null>(null);
+
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
   const { data: nextLesson } = useNextLesson(lessonId);
@@ -190,6 +211,9 @@ export default function LessonPlayer() {
   // done") advances immediately as before.
   function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving) return;
+    // CLOSE the duration window here — this instant is when the learner settled
+    // the answer, which is the thing "how long did this take" is asking about.
+    pendingDurationRef.current = duration.read();
     // Hold the produced content until the learner actually commits — graded and
     // BYOC kinds settle later, on the footer's "Continuar".
     pendingArtifactRef.current = detail?.artifact ?? null;
@@ -231,10 +255,12 @@ export default function LessonPlayer() {
       // fire and move on. The learner-visible flow is unchanged; only the
       // recording is new.
       const missedResponse = pendingResponseRef.current;
+      const missedDuration = pendingDurationRef.current;
       // Clear the held refs on THIS path too. Previously only the correct branch
       // reset them, so a miss leaked its content into the next activity's commit.
       pendingArtifactRef.current = null;
       pendingResponseRef.current = null;
+      pendingDurationRef.current = null;
       // Via outbox: o acerto tem `retrySave` na tela, o erro não tinha recurso
       // nenhum — caiu a rede, o registro da tentativa sumia calado.
       void writeOrQueue({
@@ -242,6 +268,7 @@ export default function LessonPlayer() {
         activityId: current.id,
         passed: false,
         response: missedResponse,
+        duration: missedDuration,
       });
     }
 
@@ -255,6 +282,11 @@ export default function LessonPlayer() {
       const ok = await persistActivityProgress(current.id, {
         passed: true,
         response: pendingResponseRef.current,
+        // READ, do not clear — same rule as the response above, and for the same
+        // reason: a failed write is retried by `retrySave`, and the retry must
+        // replay the time the learner actually took, not the time they spent
+        // looking at an error.
+        duration: pendingDurationRef.current,
       });
       setSaving(false);
       if (ok) {
@@ -277,6 +309,7 @@ export default function LessonPlayer() {
         const response = pendingResponseRef.current;
         pendingArtifactRef.current = null;
         pendingResponseRef.current = null;
+        pendingDurationRef.current = null;
 
         const artifact = buildArtifact(current, produced, {
           response: response ?? undefined,

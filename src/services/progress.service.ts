@@ -17,7 +17,10 @@
  * The contract now:
  *   - `activity_results` gets a row on EVERY settled attempt, right or wrong,
  *     with `passed` reflecting the real outcome. This is the ATTEMPT LOG and the
- *     only honest basis for an accuracy number.
+ *     only honest basis for an accuracy number. Since migration 0033 the row
+ *     also carries HOW LONG the learner was on the activity (`elapsed_ms` /
+ *     `visible_ms`) — without it "which activity is hard" and "where do learners
+ *     give up" are not measurable at all in self-paced mode.
  *   - `progress` is the COMPLETION signal and stays monotonic: a pass promotes
  *     the row to 'completed'; a miss only ever records 'in_progress' and can
  *     never demote an activity the learner already passed.
@@ -32,6 +35,7 @@
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { awardActivityXp } from '@/services/gamification.service';
+import type { DurationSample } from '@/utils/activityDuration';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -94,10 +98,22 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * HOW?". Note this is a SEPARATE concern from `artifact_policy` (which governs
  * whether the learner's work becomes a deliverable in their repository); this is
  * the instructor-facing attempt log.
+ *
+ * `duration` is REQUIRED for the same reason `passed` is, and the reasoning is
+ * the one written above: an omitted-by-default field is how a column comes to
+ * hold nothing but the happy path. A new call-site has to STATE what it measured
+ * — including `null`, which means "not measured" and is stored as NULL rather
+ * than as a fabricated zero. The only caller that legitimately passes null today
+ * is the outbox replaying an entry serialised before this field existed.
+ * See `src/utils/activityDuration.ts` for what the two numbers actually mean.
  */
 export async function persistActivityProgress(
   activityId: string,
-  { passed, response }: { passed: boolean; response?: string | null }
+  {
+    passed,
+    response,
+    duration,
+  }: { passed: boolean; response?: string | null; duration: DurationSample | null }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   try {
@@ -145,13 +161,51 @@ export async function persistActivityProgress(
     // was actually answered. Wrong answers land here and nowhere else, so this
     // is what both accuracy and error analysis must read.
     // Best-effort (the per-tenant Results-API pull reads these).
-    await sb.from('activity_results').insert({
+    //
+    // Duration rides as COLUMNS, not inside `feedback` (migration 0033). The
+    // jsonb payload is where the answer's CONTENT lives — free-shaped, capped,
+    // read one row at a time to see what a learner wrote. Time-on-screen is the
+    // opposite: a fixed-width number that every difficulty/abandonment query
+    // will aggregate over the whole table, and `itera.class_answers.elapsed_ms`
+    // already set that precedent for the live-class half of the same question.
+    // Burying it in jsonb would make the aggregate a cast on every row and leave
+    // the meaning undocumented where `COMMENT ON COLUMN` can carry it.
+    const attemptRow = {
       user_id: userId,
       activity_id: activityId,
       passed,
       score_internal: null,
       feedback: buildAttemptFeedback(response),
+    };
+    const { error: resultsError } = await sb.from('activity_results').insert({
+      ...attemptRow,
+      elapsed_ms: duration?.elapsedMs ?? null,
+      visible_ms: duration?.visibleMs ?? null,
     });
+    // ⚠️ DEPLOY-ORDER SEATBELT. This app auto-deploys on merge to `main`, but no
+    // CI applies Itera migrations — they are run by hand. So there is a window
+    // in which this build is live and migration 0033 is not, and PostgREST
+    // rejects the WHOLE insert for an unknown column. Without this retry that
+    // window silently stops recording attempts altogether: exactly the D2
+    // failure the module doc above describes, re-created by the telemetry meant
+    // to enrich it, and just as unrecoverable afterwards.
+    //
+    // The rule this encodes is the same one behind the missing cross-column
+    // check in 0033: TELEMETRY MUST NEVER BE ABLE TO DESTROY THE RECORD IT
+    // DECORATES. The attempt is worth incomparably more than its timing, so on
+    // any failure we re-insert without the timing and keep the attempt.
+    //
+    // The retry can duplicate a row in the narrow case where the first insert
+    // committed and then failed on the way back (a timeout after commit). That
+    // trade is taken deliberately and in one direction only: this table already
+    // holds one row per attempt with no uniqueness, so a duplicate attempt
+    // slightly overcounts, while a lost attempt is unrecoverable.
+    //
+    // Safe to delete once 0033 is applied everywhere this build runs. Until
+    // then, deleting it makes a merge-before-migrate slip cost real learner data.
+    if (resultsError) {
+      await sb.from('activity_results').insert(attemptRow);
+    }
 
     // XP: idempotent SECURITY DEFINER RPC (never double-awards). Best-effort.
     // Awarded on a pass only — a miss is recorded, not rewarded.

@@ -56,6 +56,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { recordClassAttendance } from '@/services/classReport.service';
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
@@ -179,6 +180,9 @@ export default function LiveSessionPage() {
     null
   );
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
+  // Hidden-time tally on top of that origin — see src/utils/activityDuration.ts
+  // for what `elapsedMs` vs `visibleMs` mean. Read once, when the answer settles.
+  const duration = useActivityDuration(activityStartedAt);
   const [saving, setSaving] = useState(false);
   // The activity id whose countdown expired (locks that activity for the learner).
   // Keyed on the id — NOT a bare boolean — so an advance right after a timeout
@@ -265,7 +269,13 @@ export default function LiveSessionPage() {
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) + how long the learner took, so the professor
     // sees who responded and their time.
-    const elapsedMs = activityStartedAt ? Date.now() - activityStartedAt : 0;
+    // ONE clock for all three consumers (the podium broadcast, the durable
+    // class_answers row, and the learner's own attempt log). `activityStartedAt`
+    // was already the origin here; `useActivityDuration` only adds the
+    // hidden-time tally on top of it, so the broadcast number is unchanged and
+    // the DB gets the same instant plus how much of it was actually on screen.
+    const sample = duration.read();
+    const elapsedMs = sample?.elapsedMs ?? 0;
     setAnswered({ id: current.id, correct, elapsedMs });
     if (sessionId) storeAnswer(sessionId, current.id, { correct, elapsedMs });
     sound.onAnswer(correct);
@@ -292,10 +302,22 @@ export default function LiveSessionPage() {
       // no durable per-learner progress for a link-invited guest
     } else if (correct) {
       setSaving(true);
-      await writeOrQueue({ kind: 'progress', activityId: current.id, passed: true, response });
+      await writeOrQueue({
+        kind: 'progress',
+        activityId: current.id,
+        passed: true,
+        response,
+        duration: sample,
+      });
       setSaving(false);
     } else {
-      void writeOrQueue({ kind: 'progress', activityId: current.id, passed: false, response });
+      void writeOrQueue({
+        kind: 'progress',
+        activityId: current.id,
+        passed: false,
+        response,
+        duration: sample,
+      });
     }
     broadcastAnswer(current.id, correct, elapsedMs);
     // Durable copy (right AND wrong) for the post-class report.

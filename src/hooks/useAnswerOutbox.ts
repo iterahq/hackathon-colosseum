@@ -24,6 +24,9 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
     return persistActivityProgress(entry.activityId, {
       passed: entry.passed,
       response: entry.response,
+      // `?? null` cobre a entrada antiga da fila (serializada antes de a duração
+      // existir): vira NULL no banco, que é a verdade — não foi medida.
+      duration: entry.duration ?? null,
     });
   }
   return recordClassAnswer(entry.sessionId, entry.activityId, entry.correct, entry.elapsedMs);
