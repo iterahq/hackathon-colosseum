@@ -84,6 +84,43 @@ jobs:
         run: npm test
 
   # ──────────────────────────────────────────────────────────────────────────
+  # DOC DRIFT GATE (2026-07-31)
+  #
+  # `scripts/verify-docs.sh` shipped in this repo's foundation commit and NO
+  # workflow ever called it — `grep -rn verify-docs .github/` returned nothing.
+  # Meanwhile CLAUDE.md and repo-contract.yaml drifted far enough that agents
+  # were being pointed at a deleted directory (`src/components/activity/`) and a
+  # retired entrypoint (`src/pages/LessonPage.tsx`). The checker would have
+  # caught both on day one. It is wired now, and it BLOCKS.
+  #
+  # It is blocking rather than advisory because, once its two false-positive
+  # classes were fixed (qualified cross-repo paths, gitignored build output), a
+  # full run over all four docs is CLEAN — so it costs nothing until something
+  # actually drifts. An advisory gate is how it got ignored for a year.
+  #
+  # Separate job, and NO `npm install`: the checker is pure bash + git + node, so
+  # it returns in seconds and does not eat into the `build-test` wall-clock
+  # budget that the browser-mode promotion decision (see below) is measured
+  # against. `setup-node` is still needed — step 4 of the checker asserts that
+  # the tools named in the docs' setup commands actually exist, and the bare
+  # self-hosted runner has no `npm` on PATH without it. (That check earned its
+  # keep on the very first run by catching exactly this.)
+  # ──────────────────────────────────────────────────────────────────────────
+  docs-drift:
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify docs match the code
+        run: bash scripts/verify-docs.sh
+
+  # ──────────────────────────────────────────────────────────────────────────
   # BROWSER MODE (ADR-8) — NÃO-BLOQUEANTE POR UMA SEMANA (ADR-9).
   #
   # Plano `20260728-itera-activity-testing`. A Q2 foi respondida "A": o tier

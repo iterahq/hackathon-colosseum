@@ -12,9 +12,16 @@
  * Our DflCallbackPage then exchanges the token for an Itera session via
  * itera-api POST /v1/embed/session (the same verified path the iframe uses).
  *
- * The handoff URL is configurable; default targets the DFL learn app. Until the
- * DFL-side handoff page ships, this redirect lands on DFL but cannot complete —
- * see the federation plan's open DFL-side gate.
+ * The handoff URL is configurable; default targets the DFL learn app.
+ *
+ * STATUS: the DFL-side gate is CLOSED — the handoff page shipped on 2026-06-24
+ * (`devfellowship/dfl-learn` PR #254, `src/pages/AuthFederate.tsx`, routed at
+ * `/auth/federate` in `src/components/routing/AppRoutes.tsx`) and the flow works
+ * end-to-end. An earlier version of this docblock said the page had not shipped
+ * and that the redirect "lands on DFL but cannot complete"; that was already
+ * false by the time it was read, and it misled at least one plan into treating
+ * federation as blocked. Do not reintroduce that claim without re-checking the
+ * route on the DFL side.
  */
 const DFL_HANDOFF_URL =
   (import.meta.env.VITE_DFL_HANDOFF_URL as string | undefined) ||

@@ -3,7 +3,7 @@
 # 2026-07-28: reescrito junto com CLAUDE.md e repo-contract.yaml. Este arquivo
 # ainda descrevia o engine gamificado LEGADO herdado do scaffold de
 # dfl-iterate, e apontava para paths que não existem mais
-# (src/pages/LessonPage.tsx, src/components/activity/).
+# (src/pages/LessonPage.tsx, src/components/activity/).  # verify-docs:allow-missing
 
 name: itera-player
 description: >

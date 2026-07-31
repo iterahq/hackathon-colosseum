@@ -3,7 +3,7 @@
 # health checks, and agent integration metadata.
 #
 # 2026-07-28: reescrito. Este arquivo descrevia o engine gamificado LEGADO
-# (FixTheCode/BreakAndFix/… + src/pages/LessonPage.tsx), herdado do scaffold de
+# (FixTheCode/BreakAndFix/… + src/pages/LessonPage.tsx), herdado do scaffold de  # verify-docs:allow-missing
 # dfl-iterate no commit de fundação deste repo. Aquele engine foi aposentado
 # (ADR-12 do plano 20260728-itera-activity-testing) e os paths não existem
 # mais. Ver CLAUDE.md para o engine canônico.
@@ -173,5 +173,10 @@ observability:
   metrics: true
   # Vem do pacote compartilhado @devfellowship/observability
   # (ObservabilityProvider montado em src/App.tsx) — não há mais
-  # src/components/observability/ neste repo.
+  # src/components/observability/ neste repo.  # verify-docs:allow-missing
   package: "@devfellowship/observability"
+  # ⚠️ Os pacotes @opentelemetry/* e @sentry/react estão em `dependencies`
+  # (~2,5 MB instalados) mas têm ZERO import direto em src/ — só o wrapper
+  # @devfellowship/observability é importado (src/App.tsx). Remover as deps
+  # diretas versus finalmente ligar a instrumentação é decisão pendente do
+  # Tainan (question aberta no plans-app); NÃO mexa nelas por conta própria.

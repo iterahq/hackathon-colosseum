@@ -11,8 +11,8 @@
 > alvo da distribuição**: o `registry/distribution-manifest.yaml` do `dfl-hq`
 > só conhece `devfellowship/dfl-iterate` (batch-3, `readiness:
 > collect-required`), e o pipeline inteiro está em `execution_mode: stage-only`
-> com `apply_writes_enabled: false` — `scripts/context/apply.mjs` aborta antes
-> de escrever em qualquer repo filho. `iterahq/itera-player` não aparece em
+> com `apply_writes_enabled: false` — `dfl-hq:scripts/context/apply.mjs` aborta
+> antes de escrever em qualquer repo filho. `iterahq/itera-player` não aparece em
 > lugar nenhum daquele registry. Nada sincroniza este arquivo; editá-lo aqui
 > não gera conflito em lugar nenhum, e o CLAUDE.md do próprio `dfl-iterate`
 > segue válido lá (o engine gamificado É o engine principal *daquele* repo).
