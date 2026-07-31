@@ -56,17 +56,41 @@ export function SandboxScenarioShell({
   // settles (the learner judged correctly → `won`, or the class force-revealed),
   // it emits its verdict UP exactly once; the shell holds on the activity and
   // slides the footer up, whose "Continuar" is what actually advances. The
-  // deterministic terminal is always a success, so `correct` is true; the reveal
-  // recap rides along as the footer explanation (and still shows in-window).
+  // reveal recap rides along as the footer explanation (and still shows
+  // in-window).
+  //
+  // THE VERDICT IS THE SCENARIO'S OWN CRITERION, NOT A CONSTANT. Until
+  // 2026-07-31 this emitted a hard-coded `onComplete(true, …)` on every settle
+  // path, which made the force-reveal path assert a pass the learner never
+  // earned: `reveal` fires when the instructor's clock runs out, and "pens down
+  // with nothing done" is not a correct answer (see `learnerActivityGate`:
+  // "EXPIRY LOCKS, NEVER COMPLETES"). The sibling live sandbox never had this
+  // bug — `SandboxScenarioLiveActivity` already emits `false` on a judge FAIL.
+  //
+  // `s.won` IS the criterion: `isSuccess(scenario, model)` evaluates the spec's
+  // own `success` predicate, which in all 24 live `sandbox_scenario` rows is a
+  // `stepCompleted` on the last step — and every one of the 25 `evaluate` steps
+  // across those rows unlocks on `evaluated: { correct: true }`. So the runtime
+  // already grades the learner's judgment; the shell was just discarding the
+  // grade. `isDone` re-affirms an activity that was already completed.
+  //
+  // ⚠️ STILL OPEN, deliberately NOT decided here: whether a learner who judges
+  // WRONG and then uses the designed critique+retry loop to reach success
+  // should still settle as `true`. Today they do (the retry erases the failed
+  // `Evaluation` from the model). Changing that flips the pass semantics of 24
+  // live activities and contradicts the retry-to-mastery design intent recorded
+  // in `SandboxEvalPanel` — a product call, tracked as a blocking question on
+  // plan `20260731-itera-e2e-baseline-atividades`.
   const recap = t(scenario.reveal.recap, locale);
+  const verdict = s.won || isDone;
   const settled = s.won || reveal || isDone;
   const emittedRef = useRef(false);
   useEffect(() => {
     if (settled && !emittedRef.current) {
       emittedRef.current = true;
-      onComplete(true, { explanation: recap });
+      onComplete(verdict, { explanation: recap });
     }
-  }, [settled, recap, onComplete]);
+  }, [settled, verdict, recap, onComplete]);
   // Data-driven — reads `scenario.steps.length` directly; never hard-capped.
   const stepLabel = s.currentStep ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}` : undefined;
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;

@@ -501,7 +501,20 @@ test.describe('code', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 6 · `sandbox_scenario` — a multi-step run with no negative verdict.
+ * 6 · `sandbox_scenario` — a multi-step mastery loop.
+ *
+ * ⚠️ CHANGED 2026-07-31 (fix: sandbox_scenario verdict). The header used to read
+ * "a multi-step run with NO negative verdict", and the FROZEN test below blamed
+ * a hard-coded `onComplete(true, …)`. The hard-coded `true` is GONE — the shell
+ * now emits `isSuccess(scenario, model)`, so a force-reveal without success
+ * emits `false`. That path is prop-driven (`reveal`) and the author harness this
+ * suite drives does NOT pass it, so it is locked in Vitest instead
+ * (`src/test/SandboxScenarioActivity.test.tsx`, "force-reveal verdict").
+ *
+ * NOT ONE ASSERTION BELOW WAS WEAKENED OR REMOVED — every expect() is
+ * byte-identical to PR #238. What changed is the RATIONALE attached to the
+ * frozen one, which had become factually false, plus the note on what is still
+ * open and why.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 test.describe('sandbox_scenario', () => {
@@ -533,9 +546,21 @@ test.describe('sandbox_scenario', () => {
     await page.getByTestId('sandbox-send').click();
     await expect(page.getByTestId('sandbox-eval')).toBeVisible({ timeout: 20_000 });
 
-    // 🚩 The emit is hard-coded `onComplete(true, …)` and only fires on
-    // `settled`. Rating the reply wrongly renders the canned critique and a
-    // retry — the kind has NO path to a false verdict, by construction.
+    // 🚩 STILL FROZEN, but for a DIFFERENT reason than PR #238 recorded. The
+    // hard-coded `onComplete(true, …)` is gone; the emit now carries the
+    // scenario's own `success` predicate. What keeps this path verdict-free is
+    // the RETRY LOOP: rating wrongly renders the canned critique, `retry()`
+    // DELETES the failed `Evaluation` from the model, and the learner re-judges
+    // until `isSuccess` — so the wrong judgment never reaches a settle.
+    //
+    // Whether that fumble SHOULD count against the verdict is a product call —
+    // it flips the pass semantics of the 24 live `sandbox_scenario` rows and
+    // contradicts the retry-to-mastery intent recorded in `SandboxEvalPanel`
+    // ("a wrong one is rejected with the canned critique + a retry, so the
+    // student re-judges instead of coasting through"). Open as a blocking
+    // question on plan `20260731-itera-e2e-baseline-atividades`. When it is
+    // answered, this assertion is expected to change — deliberately, with the
+    // decision cited, never by quietly loosening it to make the suite pass.
     await page.getByTestId('sandbox-rate-ruim').click();
     await expect(page.getByTestId('sandbox-eval-wrong')).toBeVisible();
     await expect(page.getByTestId('sandbox-eval-retry')).toBeVisible();

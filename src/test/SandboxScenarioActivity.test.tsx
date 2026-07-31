@@ -41,6 +41,16 @@ function renderActivity(activity: Activity, onComplete = vi.fn()) {
   return onComplete;
 }
 
+/** Same, but with the live-class force-reveal on (`timeUpFor === activity.id`). */
+function renderRevealed(activity: Activity, onComplete = vi.fn()) {
+  render(
+    <I18nProvider>
+      <ActivityRenderer activity={activity} onComplete={onComplete} reveal />
+    </I18nProvider>,
+  );
+  return onComplete;
+}
+
 /** Wait for the typewriter stream to finish so the eval panel appears. */
 async function waitForEvalPanel() {
   await waitFor(() => expect(screen.getByTestId('sandbox-rate-ruim')).toBeInTheDocument(), { timeout: 5000 });
@@ -257,6 +267,51 @@ describe('SandboxScenarioActivity dispatcher', () => {
       );
       expect(screen.queryByTestId('sandbox-continue')).not.toBeInTheDocument();
     }, 15000);
+  });
+
+  /**
+   * The verdict is the scenario's OWN success criterion, not a constant.
+   *
+   * Until 2026-07-31 the shell emitted a hard-coded `onComplete(true, …)` on
+   * every settle path, so a force-reveal (the instructor's clock ran out on a
+   * learner who never finished) reported a pass the learner never earned. The
+   * emit now carries `isSuccess(scenario, model)`.
+   *
+   * `reveal` is the ONLY settle path that can be false, and it is prop-driven —
+   * the author harness (`/author/activities/:id/test`) does not pass it, which
+   * is why this lives here and not in the `activity-baseline` E2E suite.
+   */
+  describe('force-reveal verdict (live-class "pens down")', () => {
+    it.each([
+      ['ai (cIA)', cIA],
+      ['options (c1)', c1],
+      ['words (c2)', c2],
+    ])('reveal WITHOUT success emits onComplete(false) for the %s variant', async (_label, spec) => {
+      const onComplete = renderRevealed(makeActivity(spec));
+      // The recap still shows — the learner sees the answer, as in every other
+      // kind's reveal. What changed is that it is no longer scored as a pass.
+      expect(screen.getByTestId('sandbox-reveal')).toBeInTheDocument();
+      await waitFor(() =>
+        expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ explanation: expect.any(String) })),
+      );
+    });
+
+    it('reveal AFTER the learner already succeeded still emits onComplete(true)', async () => {
+      const onComplete = vi.fn();
+      renderActivity(makeActivity(cIA), onComplete);
+
+      fireEvent.click(screen.getByTestId('sandbox-seed-chip'));
+      fireEvent.click(screen.getByTestId('sandbox-send'));
+      await waitForEvalPanel();
+      fireEvent.click(screen.getByTestId('sandbox-rate-top'));
+
+      await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true, expect.anything()));
+    }, 15000);
+
+    it('an already-completed activity re-affirms onComplete(true) on remount', async () => {
+      const onComplete = renderActivity({ ...makeActivity(cIA), status: 'done' });
+      await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true, expect.anything()));
+    });
   });
 
   // Regression lock (P5 clarification, plan 20260717-iterahq-activities-visual-ux-redesign):
