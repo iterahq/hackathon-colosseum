@@ -86,6 +86,39 @@ export const AllMedia: Story = {
   ),
 };
 
+/**
+ * Markdown-leve — o texto abaixo é o de uma activity `concept` real que já foi
+ * dada em produção. Antes do RichText o aluno via os asteriscos e as crases.
+ */
+export const RichTextMarkup: Story = {
+  render: () => (
+    <div style={wrap}>
+      <InstructionPanel
+        spec={{
+          text: [
+            '## O que tem dentro de uma página do caderno',
+            '',
+            'Cada página do caderno se chama **commit**. É a peça mais importante do Git.',
+            '',
+            '**1. A foto do projeto.** Como **todos** os arquivos estavam naquele instante.',
+            '**2. O bilhete.** Uma frase sua explicando a página. Ex.: *"arrumei o preço"*.',
+            '**3. O código curto (o *hash*).** Tipo `9c1d044`: a identidade da página.',
+            '',
+            '> Errou? Volte para qualquer foto. Nada se perde.',
+            '',
+            'E cola assim:',
+            '',
+            '```bash',
+            'git commit -m "arrumei o preço do bolo de cenoura"',
+            '```',
+          ].join('\n'),
+          description: 'A descrição também aceita marcação, e continua **secundária**.',
+        }}
+      />
+    </div>
+  ),
+};
+
 /** Empty spec → renders nothing (defensive). */
 export const EmptyRendersNothing: Story = {
   render: () => (

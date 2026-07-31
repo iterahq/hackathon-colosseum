@@ -1,0 +1,90 @@
+/**
+ * RichBlock — um bloco já parseado, com o peso visual que ele pede.
+ *
+ * `muted` existe porque o mesmo desenho serve o texto principal da instrução e
+ * a descrição secundária embaixo dela, que precisa continuar sendo secundária.
+ */
+import { RichSpans } from '@/components/branded/activity/RichSpans';
+import type { Block } from '@/utils/richText';
+
+export function RichBlock({
+  block,
+  muted,
+}: {
+  block: Exclude<Block, { type: 'divider' } | { type: 'reveal' }>;
+  muted: boolean;
+}) {
+  // O peso do texto principal é o MESMO de antes do parser existir: instrução
+  // sem marcação nenhuma precisa sair pixel a pixel igual ao que já saía.
+  const body = muted
+    ? 'text-sm text-muted-foreground leading-relaxed'
+    : 'font-display text-lg md:text-xl text-foreground leading-relaxed';
+
+  if (block.type === 'heading')
+    return (
+      <h3
+        className={`font-display font-semibold text-foreground ${
+          block.level === 2 ? 'text-xl md:text-2xl' : 'text-lg md:text-xl'
+        }`}
+        data-rich-block="heading"
+      >
+        <RichSpans spans={block.spans} />
+      </h3>
+    );
+
+  if (block.type === 'quote')
+    return (
+      <blockquote
+        className={`border-l-2 border-evergreen pl-4 italic ${body}`}
+        data-rich-block="quote"
+      >
+        <RichSpans spans={block.spans} />
+      </blockquote>
+    );
+
+  if (block.type === 'code')
+    return (
+      <pre
+        className="overflow-x-auto rounded-2xl border border-border bg-obsidiana/80 p-4"
+        data-rich-block="code"
+        data-language={block.language || undefined}
+      >
+        <code className="font-mono text-sm text-menta">{block.value}</code>
+      </pre>
+    );
+
+  if (block.type === 'list' && block.ordered)
+    return (
+      <ol
+        className={`list-decimal space-y-1.5 pl-5 marker:text-evergreen ${body}`}
+        data-rich-block="list"
+        start={block.start}
+      >
+        {block.items.map((item, i) => (
+          <li key={i}>
+            <RichSpans spans={item} />
+          </li>
+        ))}
+      </ol>
+    );
+
+  if (block.type === 'list')
+    return (
+      <ul
+        className={`list-disc space-y-1.5 pl-5 marker:text-evergreen ${body}`}
+        data-rich-block="list"
+      >
+        {block.items.map((item, i) => (
+          <li key={i}>
+            <RichSpans spans={item} />
+          </li>
+        ))}
+      </ul>
+    );
+
+  return (
+    <p className={`whitespace-pre-line ${body}`} data-rich-block="paragraph">
+      <RichSpans spans={block.spans} />
+    </p>
+  );
+}

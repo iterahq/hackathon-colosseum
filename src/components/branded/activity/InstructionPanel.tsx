@@ -18,8 +18,12 @@
  * Instruction image container: fixed 4:3 aspect ratio (roughly 800x600 —
  * the provisional standard, "dps adaptamos"), object-cover crop-to-fill.
  * Taller than the previous fixed h-64 so cover crops less aggressively.
+ *
+ * Texto e descrição passam pelo RichText: 25 das 47 activities `concept` em
+ * produção já escrevem markdown-leve, e num <p> só o aluno lia os asteriscos.
  */
 import { useState } from 'react';
+import { RichText } from '@/components/branded/activity/RichText';
 import type { InstructionPanelSpec } from '@/types/content';
 
 /** Pulse skeleton — same border-radius as the media containers. */
@@ -36,9 +40,11 @@ function MediaSkeleton({ height = 'h-64' }: { height?: string }) {
 export function InstructionPanel({
   spec,
   className = '',
+  stepped = false,
 }: {
   spec: InstructionPanelSpec | undefined | null;
   className?: string;
+  stepped?: boolean;
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -50,14 +56,7 @@ export function InstructionPanel({
 
   return (
     <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
-      {text && (
-        <p
-          className="font-display text-lg md:text-xl text-foreground leading-relaxed"
-          data-testid="instruction-text"
-        >
-          {text}
-        </p>
-      )}
+      {text && <RichText text={text} stepped={stepped} data-testid="instruction-text" />}
 
       {image_url && (
         <div className="relative rounded-2xl border border-border overflow-hidden h-64 md:h-72" data-testid="instruction-image">
@@ -90,9 +89,7 @@ export function InstructionPanel({
       )}
 
       {description && (
-        <p className="text-sm text-muted-foreground leading-relaxed" data-testid="instruction-description">
-          {description}
-        </p>
+        <RichText text={description} muted stepped={stepped} data-testid="instruction-description" />
       )}
     </div>
   );

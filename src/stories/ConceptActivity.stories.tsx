@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ConceptActivity } from '@/components/branded/activity/ConceptActivity';
 import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_VIDEO, makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
+import { RHYTHM_GIT } from './rhythmFixtures';
 
 /**
  * Concept — a pure READING/exposition activity built on the InstructionPanel.
@@ -29,6 +30,20 @@ export const TextOnly: Story = {
       activity={makeActivity('concept', { instruction: { text: 'Um modelo de dados descreve como as entidades se relacionam.' } })}
       onComplete={noop}
     />
+  ),
+};
+
+/** Self-paced: o `---` do texto vira passo e o `?=` só abre depois do clique. */
+export const RhythmSelfPaced: Story = {
+  render: () => (
+    <ConceptActivity activity={makeActivity('concept', { instruction: { text: RHYTHM_GIT } })} onComplete={noop} />
+  ),
+};
+
+/** Ao vivo o mesmo texto vem inteiro: quem dita o ritmo é o professor falando. */
+export const RhythmLive: Story = {
+  render: () => (
+    <ConceptActivity activity={makeActivity('concept', { instruction: { text: RHYTHM_GIT } })} onComplete={noop} live />
   ),
 };
 

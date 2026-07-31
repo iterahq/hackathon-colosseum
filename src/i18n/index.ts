@@ -483,6 +483,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Passo',
     'activity.continue': 'Continuar',
+    'activity.steps.next': 'Continuar lendo',
+    'activity.steps.progress': '{shown} de {total}',
+    'activity.reveal.show': 'Ver resposta',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Painel do administrador',
     'admin.title': 'Observabilidade da sua organização',
@@ -1025,6 +1028,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Step',
     'activity.continue': 'Continue',
+    'activity.steps.next': 'Keep reading',
+    'activity.steps.progress': '{shown} of {total}',
+    'activity.reveal.show': 'Show answer',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Admin dashboard',
     'admin.title': "Your organization's observability",

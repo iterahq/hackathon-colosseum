@@ -6,6 +6,7 @@ import type { Activity } from '@/types/content';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useCodeSnack } from '@/hooks/useCodeSnack';
 import { DoneButton } from '@/components/branded/activity/parts';
+import { RichText } from '@/components/branded/activity/RichText';
 import { CodeLivePreview } from './CodeLivePreview';
 import { CodeChecksFeedback } from './CodeChecksFeedback';
 import { CodeResetControl } from './CodeResetControl';
@@ -65,9 +66,7 @@ export function CodeSnackPane({
       data-activity-kind="code"
       data-phase={phase}
     >
-      <h2 className="font-display text-lg md:text-xl text-foreground leading-relaxed">
-        {spec.prompt}
-      </h2>
+      <RichText text={spec.prompt ?? ''} />
 
       <div
         className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"

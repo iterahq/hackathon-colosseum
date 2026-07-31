@@ -112,7 +112,7 @@ export function ActivityRenderer({
       return <CodeSnackActivity activity={activity} onComplete={onComplete} live={live} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
-      return <ConceptActivity activity={activity} onComplete={onComplete} />;
+      return <ConceptActivity activity={activity} onComplete={onComplete} live={live} />;
     case 'video':
       return <VideoActivity activity={activity} onComplete={onComplete} />;
     case 'single_choice':
