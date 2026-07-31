@@ -159,8 +159,14 @@ testes — não crie um segundo conjunto.
   `isError` (com `refetch()`) / sucesso.
 - **Ao vivo**: `services/liveClass.service.ts` + `hooks/useClassSession.ts`;
   o gate do aluno é o `learnerActivityGate`.
-- **Schema**: o schema da Itera é do `iterahq` (Supabase
-  `kjefmwlopzeaqgqtlbdn`). Este repo **consome**; não desenha schema aqui.
+- **Schema**: a Itera tem projeto Supabase próprio (`kjefmwlopzeaqgqtlbdn`),
+  **independente do `dfl-schema`**, e o schema mora **NESTE repo** em
+  `db/migrations/` (schema-in-monorepo, ADR-F1 / ADR-3 / ADR-26). ⚠️ Migrations
+  são aplicadas **à mão** — nenhum workflow toca `db/`, então **mergear não
+  aplica nada**; alguém roda `db/scripts/apply-migrations.sh` depois. Como não há
+  ledger e o script re-roda tudo desde o `0001`, **toda migration precisa ser
+  idempotente**. Detalhes (RLS, pooler `aws-1`, recuperação de run parcial) em
+  [`db/README.md`](db/README.md) — leia antes da primeira migration.
 
 ## Rules
 
@@ -300,6 +306,9 @@ teste.
 
 ## Edge Functions
 
-Edge functions are owned by `dfl-schema`. Do NOT add or modify files under `supabase/functions/` in this repo.
-Open your PR in [dfl-schema](https://github.com/devfellowship/dfl-schema) instead.
-The `push-functions.yml` workflow auto-deploys on merge to main.
+Este repo **não tem** `supabase/functions/`, e não existe workflow
+`push-functions.yml` aqui. Uma versão anterior desta seção (herdada do scaffold
+do `dfl-iterate`) mandava abrir PR de edge function no `dfl-schema` — as edge
+functions da DFL vivem lá, mas **não têm nada a ver com a Itera**, que roda em
+projeto Supabase próprio. Se a Itera vier a precisar de uma, ela vai no projeto
+da Itera; decida e documente antes, não replique o fluxo da DFL por reflexo.

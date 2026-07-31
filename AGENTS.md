@@ -1,65 +1,110 @@
-# Managed merge scaffold for dfl-iterate/AGENTS.md
-# Human edits belong only inside MANUAL blocks.
+# AGENTS.md — itera-player
 
-<!-- BEGIN GENERATED:agents/base -->
-<!-- render-meta: repo=dfl-iterate; mode=merge; hash=34bd4d7d43063b351d47ddd253bf17243e28744a8dc15d00b1d9cecf6d3f4164 -->
-# AGENTS.md — Rules for AI Agents in dfl-iterate
+> **Este arquivo é REPO-OWNED.** Até 2026-07-31 ele carregava um bloco
+> `<!-- BEGIN GENERATED:agents/base -->` com `render-meta: repo=dfl-iterate`,
+> herdado do scaffold gerenciado de `devfellowship/dfl-iterate` (o commit de
+> fundação deste repo foi um re-skin daquele projeto). O bloco se anunciava como
+> conteúdo gerenciado, mas **nada nunca o regenerou aqui** — e ele mandava o
+> agente pro repo errado na hora mais perigosa: mexer em schema.
+>
+> Removido pelo mesmo motivo e com a mesma evidência que levaram o `CLAUDE.md` a
+> perder o dele em 2026-07-28: o `registry/distribution-manifest.yaml` do
+> `dfl-hq` só conhece `devfellowship/dfl-iterate`, e o pipeline inteiro está em
+> `execution_mode: stage-only` com `apply_writes_enabled: false` —
+> `dfl-hq:scripts/context/apply.mjs` aborta antes de escrever em qualquer repo
+> filho. `iterahq/itera-player` não aparece em lugar nenhum daquele registry.
+> Editar este arquivo aqui é seguro e persiste.
+>
+> Se um dia alguém ligar a distribuição para cá, a ausência de marcadores é o
+> comportamento seguro: o merge é `marker-required` com
+> `missing_markers: hard-stop` — falha alto em vez de sobrescrever isto em
+> silêncio.
 
-> Read this before touching anything. Non-negotiable.
+Leia isto antes de tocar em qualquer coisa. O detalhe de arquitetura, engine de
+activity e convenções está no [`CLAUDE.md`](CLAUDE.md); o contrato legível por
+máquina, no [`repo-contract.yaml`](repo-contract.yaml).
 
 ## Operating Principles
 
-1. **Explore before you act** — Read CLAUDE.md and repo-contract.yaml first
-2. **Small atomic commits** — One logical change per commit. `feat:`, `fix:`, `refactor:`, `docs:`
-3. **Test your changes** — `npm run build` + `npm run lint` + `npx tsc --noEmit` must pass
-4. **Update docs** — Changed API/contract? Update CLAUDE.md and repo-contract.yaml
-5. **Leave breadcrumbs** — Non-obvious decisions get code comments explaining WHY
-6. **Validate boundaries** — Check repo-contract.yaml before adding cross-repo deps
-7. **Progressive disclosure** — Simplest solution that works. Readable > clever.
+1. **Explore antes de agir** — leia `CLAUDE.md` e `repo-contract.yaml` primeiro.
+2. **Commits atômicos** — uma mudança lógica por commit: `feat:`, `fix:`,
+   `refactor:`, `docs:`.
+3. **Teste o que você mudou** — `npm run lint` + `npm run typecheck` +
+   `npm run build` + `npm test` têm que passar. O `typecheck` é gate de build.
+4. **Mudou contrato? Atualize a doc** — `CLAUDE.md` e `repo-contract.yaml` andam
+   junto com o código, e `scripts/verify-docs.sh` roda na CI (job `docs-drift`)
+   justamente pra impedir que eles se separem de novo.
+5. **Deixe rastro** — decisão não-óbvia ganha comentário explicando o PORQUÊ.
+6. **Valide fronteiras** — confira o `repo-contract.yaml` antes de adicionar
+   dependência cross-repo.
+7. **Solução mais simples que funciona.** Legível > esperto.
 
-## DFL-Specific Rules
+## 🚨 Schema / banco — a Itera é DONA do próprio banco
 
-- **ALL schema changes go through `dfl-schema`** — never write migrations here
-- Every env var documented in repo-contract.yaml + .env.example
-- Origin tracking: `// Origin: agent` for AI-generated code
-- Check `dfl-hq` for ecosystem ADRs before proposing changes
+**Esta é a regra que o scaffold antigo errava, e o erro era perigoso.** A versão
+anterior deste arquivo dizia *"ALL schema changes go through `dfl-schema` — never
+write migrations here"*. **Isso é falso para a Itera** e contradiz diretamente o
+[`db/README.md`](db/README.md), que é a fonte canônica.
+
+- A Itera tem **projeto Supabase próprio** — `kjefmwlopzeaqgqtlbdn` (ADR-3 /
+  ADR-26), **independente do `dfl-schema`**.
+- **O schema mora NESTE repo**, em `db/migrations/` (schema-in-monorepo, ADR-F1).
+  Migration nova é um arquivo novo ali, com prefixo numérico sequencial de quatro
+  dígitos seguindo o último — **não** um PR em `devfellowship/dfl-schema`.
+- **NUNCA** aponte para a DFL prod `yoojxnggaxcqtsyjdrdx`. Aquele banco é de
+  outro projeto, e é ele — não este — que exige o fluxo de PR do `dfl-schema`.
+- **Migrations são aplicadas À MÃO. Não existe CI que aplique.** Mergear a PR da
+  migration **não aplica nada**; alguém tem que rodar
+  `bash db/scripts/apply-migrations.sh` depois do merge. Se ninguém rodar, `main`
+  e o banco divergem em silêncio.
+- Por isso **toda migration tem que ser idempotente** (`IF NOT EXISTS`,
+  `CREATE OR REPLACE`, `DROP POLICY IF EXISTS` antes de `CREATE POLICY`,
+  `ADD VALUE IF NOT EXISTS`, seed com `ON CONFLICT DO NOTHING`): não há tabela de
+  ledger, e o script re-roda **todos** os arquivos desde o `0001` a cada
+  invocação. Um arquivo não-idempotente envenena todas as execuções futuras, pra
+  todo mundo — não só pra quem escreveu.
+
+Leia o [`db/README.md`](db/README.md) inteiro antes da primeira migration — ele
+cobre RLS, o pooler correto (`aws-1`, **não** `aws-0`) e o que sobra de um run
+que falha no meio.
+
+## Edge Functions
+
+Este repo **não tem** `supabase/functions/`, e as edge functions da DFL (que
+vivem no `dfl-schema`) não têm nada a ver com a Itera. Se a Itera vier a precisar
+de uma, ela vai no projeto Supabase da Itera — decida e documente antes, não
+replique o fluxo da DFL por reflexo.
 
 ## Forbidden Actions
 
-1. No production environment variable changes
-2. No self-merge without review *(exception: transformation weekend if authorized)*
-3. No seed data deletion without migration
-4. No undocumented cross-repo dependencies
-5. No direct database writes — use Supabase client
-6. No secrets in code
-
-## When Stuck
-
-1. Re-read CLAUDE.md
-2. Check dfl-hq for ADRs
-3. Look at similar DFL repos
-4. If still stuck, say so clearly — don't guess and ship
-<!-- END GENERATED:agents/base -->
-
-<!-- BEGIN MANUAL:repo/agent-notes -->
+1. Nada de mudar variável de ambiente de produção.
+2. Nada de segredo no código — credenciais vêm do Infisical (`/apps/itera`).
+3. Nada de escrever direto na DFL prod `yoojxnggaxcqtsyjdrdx`.
+4. Nada de editar `src/components/ui/` à mão — shadcn/ui gerenciado.
+5. Nada de dependência cross-repo não documentada no `repo-contract.yaml`.
+6. Nada de apagar seed sem migration.
+7. Toda env var nova entra no `repo-contract.yaml` **e** no `.env.example`.
 
 ## Story/Component ownership
 
-Two distinct spaces for Storybook stories — follow this split, it is
-enforced by `.github/CODEOWNERS`:
+Duas áreas distintas de stories do Storybook — siga a divisão, ela é imposta
+pelo `.github/CODEOWNERS`:
 
-- **`design-playground/`** (repo root) — the designer's brainstorm space.
-  **johnoak (designer) always deploys his changes HERE**, free to
-  experiment without review gates. Discovered via its own glob entry in
-  `.storybook/main.ts`, separate from the canonical `src/**` glob.
-- **`src/stories/` + `src/components/`** — the canonical stories and
-  components folders. **Updatable only by developers (`@taigfs` and
-  `@SamuelStefano`).** If you are acting on behalf of the designer, do not
-  write to these paths — route the change through a developer instead.
-- Agents: when asked to move/adapt a design-playground story into the
-  canonical set, do so as a normal reviewed PR path (a developer merges
-  it) — never widen `design-playground/`'s CODEOWNERS to cover canonical
-  paths, and never remove the canonical CODEOWNERS entries to "unblock" a
-  designer change.
+- **`design-playground/`** (raiz do repo) — espaço de brainstorm do designer.
+  **johnoak (designer) sempre publica as mudanças dele AQUI**, livre pra
+  experimentar sem gate de review. É descoberto por um glob próprio no
+  `.storybook/main.ts`, separado do glob canônico `src/**`.
+- **`src/stories/` + `src/components/`** — stories e componentes **canônicos**.
+  **Só desenvolvedores (`@taigfs` e `@SamuelStefano`) atualizam.** Se você está
+  agindo em nome do designer, não escreva nesses paths — roteie a mudança por um
+  desenvolvedor.
+- Agentes: ao mover/adaptar uma story do design-playground pro conjunto
+  canônico, faça como PR revisada normal (um desenvolvedor mergeia) — **nunca**
+  alargue o CODEOWNERS do `design-playground/` pra cobrir path canônico, e nunca
+  remova as entradas canônicas pra "destravar" uma mudança do designer.
 
-<!-- END MANUAL:repo/agent-notes -->
+## When Stuck
+
+1. Releia o `CLAUDE.md`.
+2. Confira o `repo-contract.yaml` e o `db/README.md`.
+3. Diga claramente que travou — não chute e suba.

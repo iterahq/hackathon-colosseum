@@ -21,7 +21,7 @@ set -euo pipefail
 
 DOCS=("$@")
 if [ ${#DOCS[@]} -eq 0 ]; then
-  DOCS=(CLAUDE.md AGENTS.md repo-contract.yaml .claude/manifest.yaml)
+  DOCS=(CLAUDE.md AGENTS.md repo-contract.yaml .claude/manifest.yaml db/README.md)
 fi
 
 FINDINGS="$(mktemp)"
@@ -60,7 +60,7 @@ for DOC in "${DOCS[@]}"; do
   # live reference.
   echo "--- File path references ---"
   { grep -vF 'verify-docs:allow-missing' "$DOC" \
-      | grep -oE '(^|[^A-Za-z0-9_/:.@-])(src|lib|app|packages|scripts|config|public)/[A-Za-z0-9_./-]+' || true; } \
+      | grep -oE '(^|[^A-Za-z0-9_/:.@-])(src|lib|app|packages|scripts|config|public|db)/[A-Za-z0-9_./-]+' || true; } \
     | sed -E 's/^[^A-Za-z]+//; s/[.,;:)]+$//' \
     | sort -u \
     | while read -r p; do
@@ -77,7 +77,7 @@ for DOC in "${DOCS[@]}"; do
   echo "--- Environment variables ---"
   { grep -oE '[A-Z][A-Z0-9_]{2,}=[^ ]*' "$DOC" || true; } | cut -d= -f1 | sort -u | while read -r var; do
     [ -n "$var" ] || continue
-    if ! grep -rq "$var" src/ lib/ app/ 2>/dev/null; then
+    if ! grep -rq "$var" src/ lib/ app/ db/ scripts/ e2e/ 2>/dev/null; then
       report "UNUSED ENV: $var (documented but not found in source)  [$DOC]"
     fi
   done
