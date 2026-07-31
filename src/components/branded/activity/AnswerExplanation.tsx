@@ -9,6 +9,8 @@
  */
 import { Lightbulb } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { parseInline } from '@/utils/richText';
+import { RichSpans } from './RichSpans';
 
 export function AnswerExplanation({
   spec,
@@ -40,7 +42,9 @@ export function AnswerExplanation({
         <p className="font-mono text-[11px] uppercase tracking-wider text-menta">
           {t('activity.explanationTitle')}
         </p>
-        <p className="mt-1 text-sm text-foreground/80">{text}</p>
+        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/80">
+          <RichSpans spans={parseInline(text)} />
+        </p>
       </div>
     </div>
   );

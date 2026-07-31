@@ -1,4 +1,6 @@
 import { Bot } from 'lucide-react';
+import { RichSpans } from '../RichSpans';
+import { parseInline } from '@/utils/richText';
 
 /**
  * A single sandbox chat bubble. User → right/evergreen; assistant → left/surface
@@ -7,6 +9,12 @@ import { Bot } from 'lucide-react';
  *
  * When `streaming` the assistant bubble shows either the typing dots (empty text)
  * or the partially-revealed text with a caret, so the reply reads as typed live.
+ *
+ * ⚠️ Marcação aqui é INLINE-only (`parseInline`, nunca `parseRichText`): a bolha
+ * carrega saída de terminal de verdade, e `* [new branch] favoritar` viraria
+ * item de lista — perdendo o `*` e a indentação que o `whitespace-pre-wrap`
+ * preserva. Nenhuma marcação inline atravessa `\n`, então as quebras seguem
+ * intactas.
  */
 export function SandboxBubble({
   role,
@@ -45,7 +53,7 @@ export function SandboxBubble({
           </span>
         ) : (
           <>
-            {text}
+            <RichSpans spans={parseInline(text)} />
             {streaming && <span className="ml-0.5 inline-block w-1.5 animate-pulse-glow text-menta">▍</span>}
           </>
         )}

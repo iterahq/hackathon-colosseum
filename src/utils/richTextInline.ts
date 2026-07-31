@@ -16,13 +16,16 @@ export type Inline =
 /**
  * Duas escolhas que não se leem sozinhas:
  *
- * — o itálico exige não-espaço nas duas bordas, senão `5 * 3 * 2` virava ênfase,
- *   e multiplicação em texto de aula é mais comum que itálico;
+ * — negrito e itálico exigem não-espaço nas duas bordas, senão `5 * 3 * 2` e
+ *   `a ** b ** c` viravam marcação, e aritmética em texto de aula é mais comum
+ *   que ênfase — a bolha do sandbox ainda por cima carrega saída de terminal.
+ *   Pela mesma razão o negrito não abre em barra: dois asteriscos seguidos de
+ *   barra são glob de shell, não marcação;
  * — nenhuma marcação atravessa `\n`, então delimitador aberto por engano morre
  *   no fim da linha em vez de sequestrar o resto do parágrafo.
  */
 const INLINE_PATTERN =
-  /(\*\*\*(?!\s)[^*\n]*[^*\s]\*\*\*|\*\*(?:[^*\n]|\*(?!\*))+?\*\*|`[^`\n]+`|(?<!\*)\*(?!\s)[^*\n]*[^*\s]\*(?!\*))/g;
+  /(\*\*\*(?!\s)[^*\n]*[^*\s]\*\*\*|\*\*(?![\s/])(?:[^*\n]|\*(?!\*))+?(?<!\s)\*\*|`[^`\n]+`|(?<!\*)\*(?!\s)[^*\n]*[^*\s]\*(?!\*))/g;
 
 /**
  * Quebra uma linha nos delimitadores inline. Nada casou? Um span de texto.

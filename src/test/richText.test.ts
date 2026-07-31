@@ -21,6 +21,14 @@ describe('parseInline', () => {
     expect(parseInline('5 * 3 * 2')).toEqual([{ type: 'text', value: '5 * 3 * 2' }]);
   });
 
+  it('não trata glob de shell como negrito', () => {
+    // Saída e comando de terminal chegam crus na bolha do sandbox: dois `**`
+    // soltos na mesma linha não podem virar marcação.
+    const line = 'find . -name "**/*.ts" -o -name "**/*.js"';
+    expect(parseInline(line)).toEqual([{ type: 'text', value: line }]);
+    expect(parseInline('a ** b ** c')).toEqual([{ type: 'text', value: 'a ** b ** c' }]);
+  });
+
   it('aninha código dentro de negrito', () => {
     const spans = parseInline('**1. Sentou? `git pull`.**');
     expect(spans).toEqual([
