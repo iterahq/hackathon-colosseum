@@ -20,6 +20,8 @@ import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { ActivityShell } from '../parts';
+import { RichSpans } from '../RichSpans';
+import { parseInline } from '@/utils/richText';
 import { SandboxChatLog } from './SandboxChatLog';
 import { SandboxClearButton } from './SandboxClearButton';
 import { SandboxControls, type SandboxVariant } from './SandboxControls';
@@ -104,7 +106,11 @@ export function SandboxScenarioShell({
         {showControls && (stepLabel || coachPrompt) && (
           <div className="flex flex-col gap-2" data-testid="sandbox-instruction">
             {stepLabel && <div className="font-mono text-[11px] uppercase tracking-wider text-menta">{stepLabel}</div>}
-            {coachPrompt && <p className="text-[15px] font-medium text-foreground">{coachPrompt}</p>}
+            {coachPrompt && (
+              <p className="text-[15px] font-medium text-foreground">
+                <RichSpans spans={parseInline(coachPrompt)} />
+              </p>
+            )}
             {coachHint && (
               <SandboxHint hint={coachHint} label={t({ pt: 'ver dica', en: 'see hint' }, locale)} />
             )}

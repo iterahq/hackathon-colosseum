@@ -52,6 +52,9 @@ import { SandboxScenarioActivity } from './SandboxScenarioActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { InvalidSpecCard } from './InvalidSpecCard';
+import { RichText } from './RichText';
+import { RichSpans } from './RichSpans';
+import { parseInline } from '@/utils/richText';
 import { resolveByocSpec } from './byoc/byocSpec';
 import { AnswerExplanation, SubmitButton } from './parts';
 
@@ -221,12 +224,8 @@ function DocumentActivity({
 
   return (
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? spec.title ?? t('activity.document')}</h2>
-      {spec.body && (
-        <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
-          {spec.body}
-        </div>
-      )}
+      <RichText text={spec.prompt ?? spec.title ?? t('activity.document')} data-testid="document-prompt" />
+      {spec.body && <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />}
       <DoneButton done={isDone} onClick={() => onComplete(true)} />
     </Shell>
   );
@@ -262,12 +261,8 @@ function ReflectionDocumentActivity({
 
   return (
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? spec.title ?? t('activity.document')}</h2>
-      {spec.body && (
-        <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
-          {spec.body}
-        </div>
-      )}
+      <RichText text={spec.prompt ?? spec.title ?? t('activity.document')} data-testid="document-prompt" />
+      {spec.body && <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />}
 
       <textarea
         value={text}
@@ -405,12 +400,8 @@ function AiJudgeDocumentActivity({
 
   return (
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.document')}</h2>
-      {spec.body && (
-        <div className="prose prose-invert max-w-none mt-4 text-muted-foreground whitespace-pre-wrap">
-          {spec.body}
-        </div>
-      )}
+      <RichText text={spec.prompt ?? t('activity.document')} data-testid="document-prompt" />
+      {spec.body && <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />}
 
       {/* 1) Domain picker -> AI-generated brief */}
       {seeds.length > 0 && !brief && (
@@ -482,7 +473,9 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
   const isDone = activity.status === 'done';
   return (
     <Shell kind="diagram" icon={GitBranch} label={t('activity.diagram')}>
-      <h2 className="font-display text-foreground">{spec.prompt ?? t('activity.diagram')}</h2>
+      <h2 className="font-display text-foreground">
+        <RichSpans spans={parseInline(spec.prompt ?? t('activity.diagram'))} />
+      </h2>
       <div className="mt-4 rounded-2xl border border-border bg-obsidiana/60 p-4 grid-pattern">
         {spec.imageUrl ? (
           <img src={spec.imageUrl} alt={spec.prompt ?? 'diagram'} className="mx-auto rounded-xl" />
@@ -583,7 +576,7 @@ function QuizActivity({
           {eyebrow}
         </div>
         <h2 className="font-display font-bold text-xl md:text-2xl text-foreground mt-2" data-testid="quiz-question">
-          {question}
+          <RichSpans spans={parseInline(question)} />
         </h2>
       </div>
 
