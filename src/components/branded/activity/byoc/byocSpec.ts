@@ -24,8 +24,10 @@ function harnessBearingSpec(activity: Activity): Record<string, unknown> | null 
   if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
   const raw = spec as Record<string, unknown>;
   // Deep-cloning EVERY activity's spec on every render is not free: the live
-  // class re-renders on each timer tick, and this runs for all 12 kinds.
-  if (raw.byoc === undefined && raw.harness === undefined) return null;
+  // class re-renders on each timer tick, and this runs for all 12 kinds. Key
+  // presence, not value: a jsonb `byoc: null` IS a claim to be BYOC, and the
+  // resolver has to see it to refuse it.
+  if (!('byoc' in raw) && !('harness' in raw) && !('seed' in raw)) return null;
   return raw;
 }
 

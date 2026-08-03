@@ -21,9 +21,10 @@ describe('byocSpecFromRaw', () => {
     expect(byocSpecFromRaw({ ...harness, byoc: { seed: { prompt: 'oi' } } })).toBeNull();
   });
 
-  // Locale-blind BY DESIGN: collapsing bilingual bags is `resolveByocSpec`'s job,
-  // and it has to stay one layer up because the locale lives in the app, not here.
-  it('refuses a bilingual generation_prompt, which only the app layer can collapse', () => {
+  // `generation_prompt` only ever reaches the LLM, never the learner, so the
+  // shared resolver collapses it to `pt` on its own — a bilingual prompt used to
+  // resolve to null here and render as the authored fallback, silently.
+  it('collapses a bilingual generation_prompt instead of refusing it', () => {
     expect(
       byocSpecFromRaw({
         ...harness,
@@ -31,8 +32,8 @@ describe('byocSpecFromRaw', () => {
           interaction: 'pick_best',
           generation_prompt: { pt: 'Gere sobre {seed}', en: 'Generate about {seed}' },
         },
-      })
-    ).toBeNull();
+      })?.harness.generation_prompt
+    ).toBe('Gere sobre {seed}');
   });
 
   it('ignores a spec that carries no harness', () => {

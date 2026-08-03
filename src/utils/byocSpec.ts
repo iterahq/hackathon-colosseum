@@ -1,32 +1,23 @@
 /**
- * Read the authored BYOC harness out of a raw activity `spec`, mirroring
- * itera-api's own resolver so the player and the server agree on which
- * activities are BYOC.
+ * Read the authored BYOC harness out of a raw activity `spec`.
  *
- * Two accepted shapes, nested first:
- *   - `spec.byoc = {seed, harness, fallback?}` — BYOC riding on top of a kind
- *     that already owns its spec root;
- *   - the spec root itself IS a ByocSpec — a dedicated BYOC activity.
+ * The resolution itself is `resolveByocSpec` from `@iterahq/activity-spec` — the
+ * same function itera-api runs before generating and itera-mcp runs before
+ * writing. It used to be reimplemented here, and the copies drifted. Any
+ * disagreement about what counts as a valid harness reaches the learner as a
+ * silent fallback: a spec the server refuses still renders here as the authored
+ * fallback tree, and looks like success.
  *
- * An explicit-but-invalid `spec.byoc` resolves to null rather than falling
- * through to the root: that is an authoring bug, and hijacking the render would
- * hide it behind a generic failure.
+ * Null, not a reason: at render time there is no author around to read one. The
+ * caller-facing message belongs to the authoring MCP and to the API's 422.
  *
  * This deliberately does NOT look at `spec.openness`, which `sandbox_scenario`
  * already uses for its own, unrelated `'byoc'` live-conversation flow
  * (`sandbox-live/byocLive.ts`). The two must not collide.
  */
-import { ByocSpecSchema, type ByocSpec } from '@iterahq/activity-spec';
+import { resolveByocSpec, type ByocSpec } from '@iterahq/activity-spec';
 
 export function byocSpecFromRaw(spec: unknown): ByocSpec | null {
-  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
-  const raw = spec as Record<string, unknown>;
-
-  if (raw.byoc !== undefined) {
-    const nested = ByocSpecSchema.safeParse(raw.byoc);
-    return nested.success ? nested.data : null;
-  }
-
-  const root = ByocSpecSchema.safeParse(raw);
-  return root.success ? root.data : null;
+  const resolved = resolveByocSpec(spec);
+  return resolved.ok ? resolved.spec : null;
 }
