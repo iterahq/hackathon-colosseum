@@ -19,6 +19,8 @@ import { Button, Textarea } from '@devfellowship/components';
 import { generateByoc, readByoc } from '@/api/iteraByoc';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
+import type { ByocGeneration } from '@/types/byoc';
+import { ByocAuthorProvenance } from './ByocAuthorProvenance';
 
 export function ByocAuthorReRoll({
   activityId,
@@ -34,6 +36,8 @@ export function ByocAuthorReRoll({
   const [seed, setSeed] = useState('');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<'error' | 'declined' | null>(null);
+  const [row, setRow] = useState<ByocGeneration | null>(null);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const runRef = useRef(0);
 
   // Prefill with the seed already on file so re-rolling the SAME context is one
@@ -42,8 +46,10 @@ export function ByocAuthorReRoll({
     if (!token) return;
     const run = ++runRef.current;
     readByoc(activityId, token)
-      .then((row) => {
-        if (runRef.current === run && row) setSeed((s) => s || row.seed);
+      .then((existing) => {
+        if (runRef.current !== run || !existing) return;
+        setSeed((s) => s || existing.seed);
+        setRow(existing);
       })
       .catch(() => {});
   }, [activityId, token]);
@@ -56,8 +62,21 @@ export function ByocAuthorReRoll({
   const reRoll = useCallback(() => {
     setBusy(true);
     setFailed(null);
+    const startedAt = Date.now();
+    // Invalidates the prefill read-back too: it would otherwise land later and
+    // put the OLD row under a timing this roll measured.
+    ++runRef.current;
     generateByoc(activityId, seed, token, true)
-      .then((row) => (row.reused ? setFailed('declined') : onRegenerated()))
+      .then((fresh) => {
+        setRow(fresh);
+        // A declined roll returns the PREVIOUS generation, so timing it would
+        // hang "3s = no model call" on a row this click never generated.
+        if (fresh.reused) setFailed('declined');
+        else {
+          setElapsedMs(Date.now() - startedAt);
+          onRegenerated();
+        }
+      })
       .catch(() => setFailed('error'))
       .finally(() => setBusy(false));
   }, [activityId, seed, token, onRegenerated]);
@@ -95,6 +114,7 @@ export function ByocAuthorReRoll({
           </span>
         )}
       </div>
+      {row && <ByocAuthorProvenance row={row} elapsedMs={elapsedMs} />}
     </div>
   );
 }

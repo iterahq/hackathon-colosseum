@@ -1,9 +1,9 @@
 /**
- * Resolve the authored BYOC harness out of an activity, on top of the pure
- * `byocSpecFromRaw` resolver, adding the two things the pure version cannot know:
- * whether the itera-api is configured at all (an unconfigured deploy falls back
- * to the host kind rather than showing a dead step 1), and which locale the
- * learner is reading in.
+ * Resolve the authored BYOC harness out of an activity, on top of the package's
+ * pure resolver, adding the two things the pure version cannot know: whether the
+ * itera-api is configured at all (an unconfigured deploy falls back to the host
+ * kind rather than showing a dead step 1), and which locale the learner is
+ * reading in.
  *
  * The locale collapse is not redundant with the one in the services layer:
  * `sandbox_scenario` specs deliberately reach the renderer with their bilingual
@@ -11,10 +11,9 @@
  * makes BYOC independent of the host kind's collapse decision — and mirrors what
  * itera-api does before it validates the same spec.
  */
-import type { ByocSpec } from '@iterahq/activity-spec';
+import { resolveByocSpec as resolveByocFromSpec, type ByocSpec } from '@iterahq/activity-spec';
 import { iteraApiConfigured } from '@/api/iteraApi';
 import type { Locale } from '@/i18n';
-import { byocSpecFromRaw } from '@/utils/byocSpec';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import type { Activity, InstructionPanelSpec } from '@/types/content';
 
@@ -32,10 +31,8 @@ function harnessBearingSpec(activity: Activity): Record<string, unknown> | null 
 }
 
 export function resolveByocSpec(activity: Activity, locale?: Locale): ByocSpec | null {
-  if (!iteraApiConfigured()) return null;
-  const raw = harnessBearingSpec(activity);
-  if (!raw) return null;
-  return byocSpecFromRaw(resolveLocalizedSpec(raw, locale));
+  const diagnosis = diagnoseByoc(activity, locale);
+  return diagnosis.state === 'ok' ? diagnosis.spec : null;
 }
 
 /**
@@ -64,4 +61,33 @@ export function resolveByocInstruction(
  */
 export function isByocActivity(activity: Activity): boolean {
   return resolveByocSpec(activity) !== null;
+}
+
+/**
+ * Why an activity is or is not rendering as BYOC.
+ *
+ * `resolveByocSpec` collapses every failure into `null` on purpose — at render
+ * time there is no author around to read a reason, and a spec the API refuses
+ * still shows the authored fallback, which looks like success. That silence is
+ * correct for the learner and wrong for the author: a harness that fails to
+ * parse simply never appears, so the edit-test loop reports nothing at all.
+ *
+ * `claimed` is key presence, not validity: a spec carrying `byoc`/`harness`/`seed`
+ * is claiming to be BYOC, and being told the claim was refused is the whole point.
+ */
+export type ByocDiagnosis =
+  | { state: 'absent' }
+  | { state: 'api-missing' }
+  | { state: 'invalid'; reason: string }
+  | { state: 'ok'; spec: ByocSpec };
+
+export function diagnoseByoc(activity: Activity, locale?: Locale): ByocDiagnosis {
+  const raw = harnessBearingSpec(activity);
+  if (!raw) return { state: 'absent' };
+  if (!iteraApiConfigured()) return { state: 'api-missing' };
+  const resolved = resolveByocFromSpec(resolveLocalizedSpec(raw, locale));
+  // `=== false`, not `!ok`: truthiness does not narrow `ResolvedByoc` to its
+  // failing arm against the package's bundled .d.ts, so `reason` goes missing.
+  if (resolved.ok === false) return { state: 'invalid', reason: resolved.reason };
+  return { state: 'ok', spec: resolved.spec };
 }

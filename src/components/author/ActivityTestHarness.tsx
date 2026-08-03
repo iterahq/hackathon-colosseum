@@ -25,10 +25,11 @@ import { CheckCircle2, RotateCcw, XCircle, FlaskConical } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
-import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
+import { diagnoseByoc } from '@/components/branded/activity/byoc/byocSpec';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { ByocAuthorDiagnosis } from './ByocAuthorDiagnosis';
 import { ByocAuthorReRoll } from './ByocAuthorReRoll';
 
 /** A single in-memory attempt result — never persisted. */
@@ -67,7 +68,11 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
   const showSandboxFooter =
     activity.kind === 'sandbox_scenario' && !!attempt && !footerDismissed;
 
-  const byoc = isByocActivity(activity);
+  // A spec the resolver refuses renders the AUTHORED FALLBACK, which looks like a
+  // working activity — so the author's only signal is that this panel silently
+  // never appears. Diagnose instead of asking a yes/no question.
+  const diagnosis = diagnoseByoc(activity);
+  const byoc = diagnosis.state === 'ok';
 
   return (
     <div className="flex flex-col gap-4" data-testid="activity-test-harness">
@@ -79,6 +84,8 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
         <FlaskConical className="h-3.5 w-3.5" />
         {byoc ? t('authorTest.byoc.persisted') : t('authorTest.sandboxed')}
       </div>
+
+      <ByocAuthorDiagnosis diagnosis={diagnosis} />
 
       {byoc && <ByocAuthorReRoll activityId={activity.id} onRegenerated={reset} />}
 
