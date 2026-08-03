@@ -128,6 +128,7 @@ import LiveSessionPage from '@/pages/LiveSessionPage';
 // 20260723-itera-live-routed-session-and-index) — the index no longer renders
 // the live session inline.
 import InstructorSessionPage from '@/pages/live/InstructorSessionPage';
+import { stageCursorPlan } from '@/utils/stageCursorRate';
 
 function mockLive(kind: ActivityKind) {
   useLessonContent.mockReturnValue({
@@ -147,6 +148,13 @@ function mockLive(kind: ActivityKind) {
     answers: {},
     elapsed: {},
     stagedAnswer: null,
+    // The cursor mirror is part of the hook's contract (plan
+    // 20260728-…): a mock that omits `stageCursorPlan` makes the page
+    // crash on `.intervalMs`, which is the mock lying, not the page.
+    stageCursor: null,
+    stageCursorPlan: stageCursorPlan(1),
+    isStageCursorSource: false,
+    sendStageCursor: vi.fn(),
     stagePendingUserId: null,
     stageUnreachableUserId: null,
     broadcastAnswer: vi.fn(),

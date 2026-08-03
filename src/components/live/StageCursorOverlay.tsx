@@ -1,0 +1,126 @@
+import { useEffect, useRef } from 'react';
+import type { StageCursor } from '@/types/liveClass';
+
+/**
+ * The mirrored pointer of the person on stage, drawn inside the read-only code
+ * pane. Absolutely positioned against the pane, so the parent must be
+ * `relative` and the `data-stage-cursor-mirror` marker (see utils/stageCursorDom).
+ *
+ * ## Bigger than a real pointer, on purpose
+ *
+ * This is a pointer being read from across a room, off a projector, by people
+ * who are not the one moving it. `SIZE_PX` is ~2× the OS default arrow (a
+ * system cursor is roughly 12×19 CSS px) and carries the author's name, because
+ * a bare arrow on a screen that already has the viewer's own arrow is
+ * ambiguous exactly when it matters.
+ *
+ * ## Interpolation is what buys the low rate
+ *
+ * The wire rate is 5 Hz at best and 2 Hz in a big room (see
+ * `utils/stageCursorRate`) — rendered raw that is a pointer that teleports.
+ * Smoothing between samples moves the fluency problem out of the network and
+ * into the renderer, which is where it is free. The tween runs on rAF against a
+ * ref'd transform, so a 5 Hz stream does not cause 5 React re-renders a second,
+ * and a 60 fps tween causes none at all.
+ */
+const SIZE_PX = 28;
+/** Time constant of the smoothing, as a fraction of the inter-sample gap. */
+const TAU_RATIO = 0.45;
+
+export function StageCursorOverlay({
+  cursor,
+  authorName,
+  intervalMs,
+}: {
+  cursor: StageCursor | null;
+  authorName: string;
+  /** Expected gap between samples — tunes the tween, not the transport. */
+  intervalMs: number;
+}) {
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const targetRef = useRef<{ x: number; y: number } | null>(null);
+  const posRef = useRef<{ x: number; y: number } | null>(null);
+  const tauRef = useRef(120);
+  tauRef.current = Math.max(40, (Number.isFinite(intervalMs) ? intervalMs : 200) * TAU_RATIO);
+
+  const visible = Boolean(cursor?.visible);
+  const x = cursor?.x ?? 0;
+  const y = cursor?.y ?? 0;
+
+  useEffect(() => {
+    if (!visible) {
+      targetRef.current = null;
+      posRef.current = null;
+      return;
+    }
+    targetRef.current = { x, y };
+    // A cursor that just appeared has no history to tween from — snapping avoids
+    // a ghost sliding in from the corner every time someone takes the stage.
+    if (posRef.current === null) posRef.current = { x, y };
+  }, [visible, x, y]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      frame = requestAnimationFrame(tick);
+      const dt = Math.min(100, now - last);
+      last = now;
+      const target = targetRef.current;
+      const pos = posRef.current;
+      const el = elRef.current;
+      if (!target || !pos || !el) return;
+      const alpha = 1 - Math.exp(-dt / tauRef.current);
+      pos.x += (target.x - pos.x) * alpha;
+      pos.y += (target.y - pos.y) * alpha;
+      el.style.left = `${pos.x * 100}%`;
+      el.style.top = `${pos.y * 100}%`;
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [visible]);
+
+  if (!cursor || !visible) return null;
+
+  return (
+    <div
+      ref={elRef}
+      data-testid="stage-cursor"
+      data-stage-cursor-author={cursor.userId}
+      // Above Monaco's own layers, inert to the mouse: this is a picture of
+      // someone else's pointer, it must never eat a click on the mirror.
+      className="pointer-events-none absolute z-30 will-change-transform"
+      style={{
+        left: `${cursor.x * 100}%`,
+        top: `${cursor.y * 100}%`,
+        width: SIZE_PX,
+        height: SIZE_PX,
+      }}
+    >
+      <svg
+        width={SIZE_PX}
+        height={SIZE_PX}
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+        style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.6))' }}
+      >
+        <path
+          d="M4 2.5 19 12l-6.6 1.3L9.6 20 4 2.5Z"
+          fill="currentColor"
+          className="text-streak"
+          stroke="#0a0a0a"
+          strokeWidth="1.2"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span
+        data-testid="stage-cursor-label"
+        className="absolute left-5 top-5 whitespace-nowrap rounded-full bg-streak px-2 py-0.5 text-[10px] font-medium leading-tight text-obsidiana shadow"
+      >
+        {authorName}
+      </span>
+    </div>
+  );
+}

@@ -22,7 +22,7 @@
  * liveClass.service.advanceClassSession (durable) THEN broadcast() (fast).
  * Result writes stay elsewhere (LessonPlayer / progress.service).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getClassSession, mapSession, type ClassSession } from '@/services/liveClass.service';
@@ -30,9 +30,12 @@ import type {
   ClassIdentity as Identity,
   ClassPresenceMember,
   ClassTimer,
+  StageCursor,
+  StageCursorCaret,
   StagedAnswer,
   UseClassSession,
 } from '@/types/liveClass';
+import { stageCursorPlan } from '@/utils/stageCursorRate';
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
@@ -76,6 +79,20 @@ const HAND_LOWER_EVENT = 'hand-lower';
 // who closed the tab / lost the network never replies, so give up after a grace
 // window and tell the professor — an endless spinner reads as a broken feature.
 const STAGE_REPLY_TIMEOUT_MS = 6000;
+// Cursor mirror (plan 20260728-…, Fases 2/3) rides a THIRD topic of its own:
+// `class:<id>:cursor`. Not a new event on an existing topic, because the two
+// have incompatible cadences — `stage-update` is debounced at 600ms on purpose
+// and the cursor moves on every pointer sample. Merged, either the autosave
+// thickens or the cursor stutters. A separate topic also means a cursor flood
+// can never crowd out `advance` / `timer` / `stage-show`, which are the events
+// the class actually cannot lose.
+//
+// ⚠️ Needs migration 0036: 0023 made the participant-send policy an ALLOWLIST
+// (`split_part(topic, ':', 3) = ''`), so a sibling topic is readable but
+// unwritable until it opts in. Until 0036 is applied the sends are refused and
+// the mirror simply never appears — the stage itself is untouched.
+const STAGE_CURSOR_EVENT = 'stage-cursor';
+const cursorTopic = (sessionId: string) => `class:${sessionId}:cursor`;
 
 export function useClassSession(
   sessionId: string | undefined,
@@ -105,6 +122,8 @@ export function useClassSession(
   // gave up on (see STAGE_REPLY_TIMEOUT_MS).
   const [stagePendingUserId, setStagePendingUserId] = useState<string | null>(null);
   const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
+  // Latest cursor frame from whoever is on stage (see the cursor topic below).
+  const [stageCursor, setStageCursor] = useState<StageCursor | null>(null);
   const [stars, setStars] = useState<Record<string, number>>({});
   const [removed, setRemoved] = useState(false);
   // Lido dentro do efeito do canal (que só depende de sessionId) para impedir
@@ -149,6 +168,16 @@ export function useClassSession(
   // for the activity the learner has started working on.
   const handRaisedRef = useRef(false);
   const workingOnRef = useRef<string | null>(null);
+  // Cursor topic: its own channel, joined only while there IS a stage (ADR-3 —
+  // fan-out is what costs, so nobody subscribes to a stream nobody is watching).
+  const cursorRef = useRef<RealtimeChannel | null>(null);
+  // Who is allowed to move the mirrored cursor right now. Read inside the
+  // broadcast handler so a frame naming anyone else is dropped without making
+  // the channel effect depend on `stagedAnswer` (which changes on every autosave
+  // forward and would re-subscribe the topic ~1.7×/s).
+  const stageAuthorRef = useRef<string | null>(null);
+  stageAuthorRef.current = stagedAnswer?.author.userId ?? null;
+  const stageCursorTsRef = useRef(0);
 
   const trackPresence = useCallback(() => {
     const channel = channelRef.current;
@@ -667,6 +696,119 @@ export function useClassSession(
     identity?.isInstructor,
   ]);
 
+  // ── Cursor topic ──────────────────────────────────────────────────────────
+  // Joined ONLY while something is on stage, and torn down the moment it is
+  // cleared. That is the cost lever from ADR-3 stated as a lifecycle: a room
+  // with no stage pays nothing, and the subscriber count that multiplies every
+  // frame is bounded by the people who actually have a mirror on screen.
+  //
+  // Isolated from the main channel effect on purpose: a refused JOIN or send
+  // here (e.g. migration 0036 not applied yet) must never touch the stage, the
+  // roster or the class pointer. It fails to "no cursor", nothing else.
+  const stageOn = stagedAnswer !== null;
+  useEffect(() => {
+    if (!sessionId || !isSupabaseConfigured || !stageOn) {
+      setStageCursor(null);
+      stageCursorTsRef.current = 0;
+      return;
+    }
+    const sb = getSupabase();
+    void sb.realtime.setAuth();
+    const channel = sb.channel(cursorTopic(sessionId), {
+      // self:false — the emitter is the person ON stage; on their own screen the
+      // mirror is their own live work, so echoing their cursor back would draw a
+      // ghost chasing their real pointer. It also shaves one billed message per
+      // frame.
+      config: { private: true, broadcast: { self: false } },
+    });
+    cursorRef.current = channel;
+    channel
+      .on('broadcast', { event: STAGE_CURSOR_EVENT }, ({ payload }) => {
+        const p = payload as Partial<StageCursor> | null;
+        if (!p || typeof p.userId !== 'string' || typeof p.activityId !== 'string') return;
+        // The trust model is inherited from stage-show (R5): RLS authorizes the
+        // TOPIC by session participation, not the sender's role. So the receiver
+        // is what narrows a forgeable event down to "the one person already on
+        // stage" — a classmate cannot move the cursor the class is watching.
+        if (p.userId !== stageAuthorRef.current) return;
+        if (p.activityId !== currentActivityIdRef.current) return;
+        if (typeof p.x !== 'number' || typeof p.y !== 'number') return;
+        // Broadcast gives no ordering guarantee, and a late packet would yank
+        // the cursor visibly backwards — worse than a dropped frame.
+        const t = typeof p.t === 'number' ? p.t : 0;
+        if (t < stageCursorTsRef.current) return;
+        stageCursorTsRef.current = t;
+        const caret =
+          p.caret && typeof p.caret.line === 'number' && typeof p.caret.column === 'number'
+            ? { line: p.caret.line, column: p.caret.column }
+            : null;
+        setStageCursor({
+          activityId: p.activityId,
+          userId: p.userId,
+          x: Math.min(1, Math.max(0, p.x)),
+          y: Math.min(1, Math.max(0, p.y)),
+          visible: p.visible !== false,
+          caret,
+          t,
+        });
+      })
+      .subscribe();
+    return () => {
+      if (cursorRef.current === channel) cursorRef.current = null;
+      void sb.removeChannel(channel).catch(() => undefined);
+      setStageCursor(null);
+      stageCursorTsRef.current = 0;
+    };
+  }, [sessionId, stageOn]);
+
+  // Handing the stage from one learner straight to another never passes through
+  // "no stage", so the topic (correctly) stays joined — but the previous
+  // person's last frame must not linger under the new person's name.
+  const stageAuthorId = stagedAnswer?.author.userId ?? null;
+  useEffect(() => {
+    setStageCursor(null);
+    stageCursorTsRef.current = 0;
+  }, [stageAuthorId]);
+
+  // The single emitter in the room (ADR-2): the client whose own work is staged.
+  const isStageCursorSource = Boolean(
+    identity?.userId && stagedAnswer && stagedAnswer.author.userId === identity.userId
+  );
+  const isStageCursorSourceRef = useRef(false);
+  isStageCursorSourceRef.current = isStageCursorSource;
+
+  const sendStageCursor = useCallback(
+    (frame: { x: number; y: number; visible: boolean; caret: StageCursorCaret | null }) => {
+      const channel = cursorRef.current;
+      const activityId = currentActivityIdRef.current;
+      const userId = identityRef.current?.userId;
+      if (!channel || !activityId || !userId || !isStageCursorSourceRef.current) return;
+      void channel
+        .send({
+          type: 'broadcast',
+          event: STAGE_CURSOR_EVENT,
+          payload: {
+            activityId,
+            userId,
+            x: frame.x,
+            y: frame.y,
+            visible: frame.visible,
+            caret: frame.caret,
+            t: Date.now(),
+          },
+        })
+        // A refused send (RLS, blip) is not worth an unhandled rejection in the
+        // middle of a class — the mirror just misses a frame.
+        .catch(() => undefined);
+    },
+    []
+  );
+
+  // How fast that emitter may go, given how many people would be billed for each
+  // frame. Recomputed as the roster changes, so a room that grows mid-class slows
+  // the cursor down instead of walking into the project's disconnect ceiling.
+  const cursorPlan = useMemo(() => stageCursorPlan(roster.length), [roster.length]);
+
   const setHandRaised = useCallback(
     (raised: boolean) => {
       handRaisedRef.current = raised;
@@ -934,6 +1076,10 @@ export function useClassSession(
     setWorkingOn,
     requestStage,
     clearStage,
+    stageCursor,
+    stageCursorPlan: cursorPlan,
+    isStageCursorSource,
+    sendStageCursor,
     refetch,
   };
 }

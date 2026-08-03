@@ -1,3 +1,5 @@
+import type { StageCursorPlan } from '@/utils/stageCursorRate';
+
 export type ClassSessionStatus = 'pending' | 'live' | 'ended';
 export type ClassScope = 'global' | 'tenant';
 
@@ -160,6 +162,36 @@ export interface StagedAnswer {
   author: StagedAuthor;
 }
 
+/** Monaco caret of the person on stage, 1-based — mirrored into the read-only twin. */
+export interface StageCursorCaret {
+  line: number;
+  column: number;
+}
+
+/**
+ * One frame of the on-stage cursor (plan 20260728-…, Fases 2/3).
+ *
+ * Coordinates are NORMALIZED 0..1 against the code editor pane, so they survive
+ * different screen sizes, browser zoom and the responsive layout — and so that
+ * anything outside that pane is, by construction, never transmitted (ADR-4:
+ * one decision covering both fidelity and privacy).
+ */
+export interface StageCursor {
+  activityId: string;
+  /** Must equal `stagedAnswer.author.userId` or the frame is dropped (ADR-2/R5). */
+  userId: string;
+  /** 0..1 across the editor pane. */
+  x: number;
+  /** 0..1 down the editor pane. */
+  y: number;
+  /** False = the pointer left the pane. Sent once, as an edge, not streamed. */
+  visible: boolean;
+  /** Where the person is actually typing; null when unknown. */
+  caret: StageCursorCaret | null;
+  /** Emitter clock (ms). Out-of-order frames are dropped. */
+  t: number;
+}
+
 /** The learner's own persisted answer for one activity (refresh protection). */
 export interface StoredLiveAnswer {
   correct: boolean;
@@ -320,5 +352,25 @@ export interface UseClassSession {
   requestStage: (targetUserId: string) => void;
   /** Instructor: dismiss the staged work for everyone. */
   clearStage: () => void;
+  /** Latest cursor frame from the person on stage — or null (nobody / off-pane). */
+  stageCursor: StageCursor | null;
+  /**
+   * Emission budget for THIS room, derived from the roster (see
+   * `utils/stageCursorRate`). `enabled: false` means the room is too large to
+   * mirror a cursor on this tier — the UI says so instead of stuttering.
+   */
+  stageCursorPlan: StageCursorPlan;
+  /**
+   * True on the client whose own work is on stage: it is the ONE emitter in the
+   * room (ADR-2). Everyone else never calls `sendStageCursor`.
+   */
+  isStageCursorSource: boolean;
+  /** Emit one cursor frame. No-op unless this client is the stage source. */
+  sendStageCursor: (frame: {
+    x: number;
+    y: number;
+    visible: boolean;
+    caret: StageCursorCaret | null;
+  }) => void;
   refetch: () => void;
 }

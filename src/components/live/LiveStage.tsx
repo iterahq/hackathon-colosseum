@@ -1,9 +1,10 @@
-import { Circle, Pencil, X } from 'lucide-react';
+import { Circle, MousePointer2, Pencil, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePreview';
-import type { StagedAnswer } from '@/types/liveClass';
+import { StageCursorOverlay } from '@/components/live/StageCursorOverlay';
+import type { StageCursor, StagedAnswer } from '@/types/liveClass';
 
 interface LiveStageProps {
   staged: StagedAnswer;
@@ -15,6 +16,19 @@ interface LiveStageProps {
    * instead of the class-facing "no palco".
    */
   viewingName?: string;
+  /**
+   * Latest mirrored pointer/caret of the person on stage — the whole point of
+   * the stage for a code exercise: without it, "move o cursor pra direita" has
+   * no shared referent.
+   */
+  cursor?: StageCursor | null;
+  /** Sample gap the cursor is arriving at; tunes the interpolation only. */
+  cursorIntervalMs?: number;
+  /**
+   * The room is too large to mirror a cursor within the project's Realtime
+   * budget. Shown, not hidden: silence would read as "the feature is broken".
+   */
+  cursorOff?: boolean;
 }
 
 /**
@@ -28,7 +42,14 @@ interface LiveStageProps {
  * bar carries an explicit "em andamento" badge: a classmate's half-written draft
  * on the projector must never be read by the class as a finished answer.
  */
-export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
+export function LiveStage({
+  staged,
+  onClear,
+  viewingName,
+  cursor = null,
+  cursorIntervalMs = 200,
+  cursorOff = false,
+}: LiveStageProps) {
   const { t } = useI18n();
   const isCode = staged.kind === 'code';
   const isEmpty = staged.kind === 'empty' || staged.status === 'not_started';
@@ -84,13 +105,42 @@ export function LiveStage({ staged, onClear, viewingName }: LiveStageProps) {
             <p className="text-sm text-muted-foreground">{t('live.stage.empty')}</p>
           </div>
         ) : isCode ? (
-          <div className="mx-auto max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
-              <CodeEditor value={staged.content} language="typescript" readOnly />
+          <div className="mx-auto max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* `relative` + the marker are the mirror half of the cursor
+                  contract: the same 360px pane the emitter normalizes against,
+                  so 0..1 maps back to the same place on any screen size. The
+                  preview pane beside it is a sandboxed cross-origin iframe and
+                  is deliberately NOT mirrored — pointer events never leave it
+                  (plan ADR-8), so a cursor there would be invented. */}
+              <div
+                data-stage-cursor-mirror
+                className="relative h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]"
+              >
+                <CodeEditor
+                  value={staged.content}
+                  language="typescript"
+                  readOnly
+                  remoteCaret={cursor?.caret ?? null}
+                />
+                <StageCursorOverlay
+                  cursor={cursor}
+                  authorName={staged.author.name}
+                  intervalMs={cursorIntervalMs}
+                />
+              </div>
+              <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
+                <CodeLivePreview code={staged.content} />
+              </div>
             </div>
-            <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
-              <CodeLivePreview code={staged.content} />
-            </div>
+            {cursorOff && (
+              <p
+                data-testid="live-stage-cursor-off"
+                className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
+              >
+                <MousePointer2 className="w-3.5 h-3.5" /> {t('live.stage.cursorOff')}
+              </p>
+            )}
           </div>
         ) : (
           <div

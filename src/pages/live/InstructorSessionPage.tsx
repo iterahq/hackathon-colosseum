@@ -26,6 +26,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLessonContent } from '@/hooks';
 import { useClassCompleters, useClassSessionById } from '@/hooks/useLiveClass';
 import { useClassSession } from '@/hooks/useClassSession';
+import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
 import { queryKeys } from '@/lib/queryKeys';
 import {
   advanceClassSession,
@@ -142,13 +143,22 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stagePendingUserId, stageUnreachableUserId, stars, awardStar, lowerHand, removeLearner, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, stars, awardStar, lowerHand, removeLearner, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
         ? { userId: instructorId, name: instructorName, avatarUrl: instructorAvatarUrl, isInstructor: true }
         : undefined
     );
+  // The professor can project their OWN screen (`toggleSelfStage` below), which
+  // makes them the stage's cursor source exactly like a pulled learner — the
+  // most obvious teaching case: demonstrate, and let the class see where the
+  // pointer went. Same single-emitter rule (ADR-2), same room-derived rate.
+  useStageCursorCapture({
+    active: isStageCursorSource && stageCursorPlan.enabled,
+    intervalMs: stageCursorPlan.intervalMs,
+    send: sendStageCursor,
+  });
   const sound = useLiveSound();
   const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
@@ -526,6 +536,9 @@ function ClassControl({
                   staged={stagedAnswer}
                   onClear={clearStage}
                   viewingName={stagedAnswer.author.name}
+                  cursor={stageCursor}
+                  cursorIntervalMs={stageCursorPlan.intervalMs}
+                  cursorOff={!stageCursorPlan.enabled}
                 />
               </div>
             ) : current ? (

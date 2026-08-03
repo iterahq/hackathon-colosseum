@@ -52,6 +52,7 @@ import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
+import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
@@ -106,7 +107,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, stagedAnswer, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -119,6 +120,16 @@ export default function LiveSessionPage() {
           }
         : undefined
     );
+
+  // While MY work is the one on stage, my pointer over the code pane is the
+  // class's shared reference (plan 20260728-…). Exactly one client in the room
+  // ever emits, and the rate is derived from the room, not fixed — see
+  // `utils/stageCursorRate`. A guest on stage emits like any learner (Q2 = A).
+  useStageCursorCapture({
+    active: isStageCursorSource && stageCursorPlan.enabled,
+    intervalMs: stageCursorPlan.intervalMs,
+    send: sendStageCursor,
+  });
 
   // Guest content is served by itera-api, scoped to the invited session — the
   // ONE read a membership-less JWT cannot do for itself.
@@ -498,7 +509,12 @@ export default function LiveSessionPage() {
               a sidebar sticky ao meio. */}
           {stagedAnswer && !ended && (
             <div className="-mx-4 md:-mx-8 mb-6">
-              <LiveStage staged={stagedAnswer} />
+              <LiveStage
+                staged={stagedAnswer}
+                cursor={stageCursor}
+                cursorIntervalMs={stageCursorPlan.intervalMs}
+                cursorOff={!stageCursorPlan.enabled}
+              />
             </div>
           )}
 

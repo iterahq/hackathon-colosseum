@@ -1,6 +1,9 @@
-import { useRef } from 'react';
-import Editor from '@monaco-editor/react';
+import { useEffect, useRef } from 'react';
+import Editor, { type OnMount } from '@monaco-editor/react';
+import { CODE_CARET_EVENT, type CodeCaretEventDetail } from '@/utils/stageCursorDom';
 import { configureTypeScriptDefaults, modelPathFor } from './monacoTypescript';
+
+type MonacoEditorInstance = Parameters<OnMount>[0];
 
 interface CodeEditorProps {
   value: string;
@@ -9,6 +12,16 @@ interface CodeEditorProps {
   readOnly?: boolean;
   highlightLines?: number[];
   fontSize?: number;
+  /**
+   * Caret of the person on stage, mirrored into this (read-only) editor.
+   *
+   * A pointer alone cannot answer "which line are you on" — over code, the
+   * caret IS the cursor, and it is what makes "move one to the right" a
+   * shared reference. Applying it also keeps the mirror scrolled to where the
+   * work is happening; without it the class watches line 1 while the learner
+   * types at line 80.
+   */
+  remoteCaret?: { line: number; column: number } | null;
   /**
    * Re-enable TypeScript SEMANTIC diagnostics (type-checking) for this editor.
    *
@@ -39,6 +52,7 @@ export function CodeEditor({
   highlightLines = [],
   fontSize = 14,
   semanticValidation = false,
+  remoteCaret = null,
 }: CodeEditorProps) {
   // Claimed lazily once per mounted editor; stable across re-renders.
   const instanceIdRef = useRef<number>();
@@ -46,6 +60,25 @@ export function CodeEditor({
     instanceIdRef.current = ++modelSeq;
   }
   const path = modelPathFor(language, instanceIdRef.current);
+  const editorRef = useRef<MonacoEditorInstance | null>(null);
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
+
+  // Apply the remote caret. `revealLineInCenter` only fires when the caret has
+  // left the visible range: following every keystroke would fight the viewer,
+  // while never following would leave the mirror parked at the top of the file.
+  const caretLine = remoteCaret?.line ?? null;
+  const caretColumn = remoteCaret?.column ?? null;
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || caretLine === null || caretColumn === null) return;
+    editor.setPosition({ lineNumber: caretLine, column: caretColumn });
+    const ranges = editor.getVisibleRanges?.() ?? [];
+    const onScreen = ranges.some(
+      (r) => caretLine >= r.startLineNumber && caretLine <= r.endLineNumber
+    );
+    if (!onScreen) editor.revealLineInCenter(caretLine);
+  }, [caretLine, caretColumn]);
 
   const handleEditorChange = (newValue: string | undefined) => {
     if (onChange && newValue !== undefined) {
@@ -114,6 +147,22 @@ export function CodeEditor({
         }}
         onMount={(editor, monaco) => {
           monaco.editor.setTheme('iterate-dark');
+          editorRef.current = editor;
+
+          // Publish the local caret on a window event rather than a callback
+          // prop: the only consumer is the live-class layer, and the editor sits
+          // inside the activity tree, whose public contract deliberately does
+          // not carry live-session concerns (see utils/stageCursorDom). Guarded
+          // on `readOnly` so the read-only MIRROR never re-emits what it was
+          // just told — that would be a feedback loop between two classrooms.
+          editor.onDidChangeCursorPosition((e) => {
+            if (readOnlyRef.current) return;
+            const detail: CodeCaretEventDetail = {
+              line: e.position.lineNumber,
+              column: e.position.column,
+            };
+            window.dispatchEvent(new CustomEvent(CODE_CARET_EVENT, { detail }));
+          });
 
           if (highlightLines.length > 0) {
             editor.createDecorationsCollection(

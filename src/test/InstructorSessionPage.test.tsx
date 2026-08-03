@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import InstructorSessionPage from '@/pages/live/InstructorSessionPage';
+import { stageCursorPlan } from '@/utils/stageCursorRate';
 
 /**
  * The routed instructor session view (route /live/instructor/:sessionId) — plan
@@ -39,6 +40,13 @@ vi.mock('@/hooks/useClassSession', () => ({
     timer: null,
     stoppedFor: null,
     stagedAnswer: null,
+    // The cursor mirror is part of the hook's contract (plan
+    // 20260728-…): a mock that omits `stageCursorPlan` makes the page
+    // crash on `.intervalMs`, which is the mock lying, not the page.
+    stageCursor: null,
+    stageCursorPlan: stageCursorPlan(1),
+    isStageCursorSource: false,
+    sendStageCursor: vi.fn(),
     stagePendingUserId: null,
     stageUnreachableUserId: null,
     broadcast: vi.fn(),

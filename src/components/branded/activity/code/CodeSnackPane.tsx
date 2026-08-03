@@ -81,7 +81,16 @@ export function CodeSnackPane({
 
       <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="flex flex-col">
-          <div className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]">
+          {/* The marker (utils/stageCursorDom) is what the live-class layer finds
+              to mirror this learner's pointer to the class while they are on
+              stage. An attribute, not a prop: the activity tree's public
+              contract does not carry live-session concerns, and the pane is
+              geometrically identical to its twin in <LiveStage>, which is what
+              makes normalized coordinates honest. */}
+          <div
+            data-stage-cursor-source
+            className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]"
+          >
             <CodeEditor value={code} onChange={setCode} language="typescript" readOnly={readOnly} />
           </div>
           {spec.help && (
