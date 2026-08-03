@@ -104,6 +104,31 @@ describe('Monaco self-hosted', () => {
     expect(vendorMonaco({ silent: true }).skipped).toBe(true);
   });
 
+  /**
+   * A perna que FALTAVA, e que custou toda run do `test:browser` vermelha
+   * desde 79b8fb1 (2026-07-28): a cópia é gerada por um plugin de Vite, então
+   * ela só existe nas configs que carregam esse plugin. O
+   * `vitest.browser.config.ts` não o tinha, o servidor do Vitest dava 404 em
+   * `/vendor/monaco/vs/loader.js`, e o loader rejeitava com o `Event` de
+   * `onerror` — duas unhandled rejections, `exit 1`, com os testes passando.
+   *
+   * Assertar "os arquivos existem" não pegaria isso: no `npm test` eles
+   * existem, porque o teste acima acabou de vendorizá-los. O que precisa ser
+   * travado é o WIRING de cada config que serve a aplicação.
+   */
+  it('toda config de Vite que serve o app carrega o plugin de vendorização', () => {
+    const configs = ['vite.config.ts', 'vitest.browser.config.ts'];
+    for (const file of configs) {
+      const src = readFileSync(path.join(PROJECT_ROOT, file), 'utf-8');
+      expect(src, `${file} precisa importar monacoSelfHost de scripts/vendor-monaco`).toMatch(
+        /import\s*\{[^}]*\bmonacoSelfHost\b[^}]*\}\s*from\s*['"][./]*scripts\/vendor-monaco['"]/,
+      );
+      expect(src, `${file} precisa CHAMAR monacoSelfHost() na lista de plugins`).toMatch(
+        /plugins\s*:\s*\[[\s\S]*?monacoSelfHost\(\)/,
+      );
+    }
+  });
+
   it('mantém a cópia fora do git (é gerada no build)', () => {
     const gitignore = readFileSync(path.join(PROJECT_ROOT, '.gitignore'), 'utf-8');
     expect(gitignore).toMatch(/^\/public\/vendor\/monaco\/$/m);

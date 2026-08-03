@@ -28,9 +28,24 @@ import react from '@vitejs/plugin-react-swc';
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
+import { monacoSelfHost } from './scripts/vendor-monaco';
 
 export default defineConfig({
-  plugins: [react(), storybookTest({ configDir: '.storybook', tags: { include: ['browser-mode'] } })],
+  /**
+   * ⚠️ `monacoSelfHost()` NÃO É OPCIONAL AQUI. `public/vendor/monaco/` é
+   * GERADO (está no `.gitignore`, ~16 MB) e o job `browser-mode` da CI roda
+   * `npm install` → `npm run test:browser`, sem passar por nenhum hook
+   * `prebuild*`. Sem este plugin o Vitest sobe um servidor de Vite em que
+   * `/vendor/monaco/vs/loader.js` dá 404, o `@monaco-editor/loader` rejeita
+   * com o `Event` de `onerror` do `<script>` que ele injeta, e a run termina
+   * em `exit 1` com duas unhandled rejections — mesmo com os testes passando.
+   * Era esse o estado da `main` desde 79b8fb1 (2026-07-28).
+   */
+  plugins: [
+    monacoSelfHost(),
+    react(),
+    storybookTest({ configDir: '.storybook', tags: { include: ['browser-mode'] } }),
+  ],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },

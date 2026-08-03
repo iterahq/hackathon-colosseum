@@ -215,6 +215,23 @@ jobs:
   #     suíte cresceu). A folga real é de ~50s, e é contra ESSE número que a
   #     promoção tem que ser decidida.
   #
+  # ⚠️ LEIA ANTES DA REVISÃO DE 2026-08-04. Até 2026-08-03 este job NUNCA foi
+  # verde — nem uma vez, nem na `main`. Ele saía `exit 1` com duas unhandled
+  # rejections, com os 3 testes PASSANDO: o `vitest.browser.config.ts` não
+  # carregava o plugin que vendoriza o Monaco, então `/vendor/monaco/vs/loader.js`
+  # dava 404 e o `@monaco-editor/loader` rejeitava. Era falha de HARNESS, não de
+  # produto, e o `continue-on-error` a manteve invisível por uma semana inteira.
+  # Duas leituras para a decisão de promoção:
+  #   1. A semana de observação NÃO produziu o dado que o ADR-9 pede — o que foi
+  #      observado foi um job quebrado. O relógio de estabilidade recomeça agora.
+  #   2. Um job não-bloqueante permanentemente vermelho é caro de outro jeito:
+  #      ele deixa um context VERMELHO no `statusCheckRollup` de todo PR, o que
+  #      trava o `safe-admin-merge` (que exige TODOS os contexts verdes).
+  # A recomendação registrada na Fase 3 do plano segue de pé por um motivo
+  # independente e não resolvido aqui: o custo dominante é o
+  # `playwright install --with-deps chromium` (1–2 min) contra ~50s de folga.
+  # Cachear `~/.cache/ms-playwright` e MEDIR antes de promover.
+  #
   # Ele roda como JOB SEPARADO de propósito: assim o custo do navegador aparece
   # isolado no wall-clock, que é exatamente o dado que a decisão de promoção
   # precisa. Misturá-lo no `build-test` esconderia a única medida que importa.

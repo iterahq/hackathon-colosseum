@@ -37,6 +37,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Plugin } from "vite";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -142,6 +143,32 @@ export function vendorMonaco({ force = false, silent = false } = {}): VendorMona
   }
 
   return { version, targetDir: MONACO_TARGET_DIR, skipped: false };
+}
+
+/**
+ * Plugin do Vite que roda a vendorização no `buildStart`.
+ *
+ * ⚠️ MORA AQUI, E NÃO DENTRO DE UM CONFIG, DE PROPÓSITO. Ele precisa estar em
+ * TODA config de Vite que serve a aplicação — `vite.config.ts` (dev/build/
+ * Storybook) **e** `vitest.browser.config.ts` (browser mode). Quando a
+ * definição vivia inline no `vite.config.ts`, o config do browser mode não a
+ * tinha, `public/vendor/monaco/vs/loader.js` dava 404 no servidor do Vitest, e
+ * o `@monaco-editor/loader` rejeitava com o `Event` de `onerror` do
+ * `<script>` — duas unhandled rejections em toda run do `test:browser`, desde
+ * o primeiro dia do job (79b8fb1, 2026-07-28). Config nova de Vite que monte o
+ * `CodeEditor` tem que importar isto.
+ *
+ * A cópia é idempotente (carimbo de versão), então o custo em runs
+ * subsequentes é ~zero.
+ */
+export function monacoSelfHost(): Plugin {
+  return {
+    name: "itera:monaco-self-host",
+    // Precisa acontecer antes do publicDir ser copiado para o dist.
+    buildStart() {
+      vendorMonaco({ silent: true });
+    },
+  };
 }
 
 // Execução direta: `tsx scripts/vendor-monaco.ts [--force]`
