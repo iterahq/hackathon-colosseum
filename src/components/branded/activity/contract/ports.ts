@@ -31,7 +31,7 @@
  *       generateContext: (id, seed) => generateContext(id, seed, token),
  *       judge: (id, content, ctx) => judge(id, content, token, ctx),
  *       respond: (input, system) => respond(input, token, system),
- *       generateByoc: (id, seed) => generateByoc(id, seed, token),
+ *       generateByoc: (id, seed, regen) => generateByoc(id, seed, token, regen),
  *       readByoc: (id) => readByoc(id, token),
  *     };
  *   }, [session?.access_token]);
@@ -175,8 +175,12 @@ export interface ActivityApiPort {
   ) => Promise<ActivityJudgeVerdict>;
   /** The real AI responder — the learner's own input, answered by the model. */
   respond?: (input: string, system?: string) => Promise<ActivityResponderResult>;
-  /** Build the BYOC tree from the learner's seed. Idempotent server-side. */
-  generateByoc?: (activityId: string, seed: string) => Promise<ActivityByocGeneration>;
+  /** Build the BYOC tree from the seed. Idempotent, except under `regenerate`. */
+  generateByoc?: (
+    activityId: string,
+    seed: string,
+    regenerate?: boolean,
+  ) => Promise<ActivityByocGeneration>;
   /** Read back THIS learner's existing generation, or `null` when there is none. */
   readByoc?: (activityId: string) => Promise<ActivityByocGeneration | null>;
 }

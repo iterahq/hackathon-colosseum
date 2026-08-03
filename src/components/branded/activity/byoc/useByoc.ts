@@ -7,6 +7,12 @@
  * same reason makes `reset()` re-read instead of jumping straight back to the
  * form: after a dropped response the seed may well have generated anyway, and the
  * idempotent POST would silently ignore the learner's second, different seed.
+ *
+ * The one generation that must NOT be sticky is the one that isn't a generation:
+ * when the server degrades to the authored fallback it persists that row anyway,
+ * so idempotency then means the learner is served the ready-made example on every
+ * reload, forever, with their own context echoed above it as if it had been used.
+ * `fallback_used` is therefore its own phase here, not a `ready` with a flag.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GeneratedChoiceTree } from '@iterahq/activity-spec';
@@ -24,6 +30,13 @@ export interface ByocState {
   submitSeed: (seed: string) => void;
   /** Leave the dead end and let the learner try another seed. */
   reset: () => void;
+  /** Back to the form, this time asking the server for a genuinely new tree. */
+  tryAnotherSeed: () => void;
+}
+
+/** A degraded row carries the authored tree, so it lands on `fallback`, not `ready`. */
+function landingPhase(row: ByocGeneration): ByocPhase {
+  return row.fallback_used ? 'fallback' : 'ready';
 }
 
 export function useByoc({
@@ -52,11 +65,13 @@ export function useByoc({
   const tokenRef = useRef(token);
   tokenRef.current = token;
   const hasToken = Boolean(token);
+  const regenerateRef = useRef(false);
 
   useEffect(() => {
     const run = ++runRef.current;
     setGeneration(null);
     setSeedError(null);
+    regenerateRef.current = false;
     if (!ready) {
       setPhase('loading');
       return;
@@ -70,7 +85,7 @@ export function useByoc({
       .then((row) => {
         if (runRef.current !== run) return;
         setGeneration(row);
-        setPhase(row ? 'ready' : 'seed');
+        setPhase(row ? landingPhase(row) : 'seed');
       })
       // A failed READ is not a dead end — the learner can still generate.
       .catch(() => {
@@ -83,11 +98,12 @@ export function useByoc({
       const run = runRef.current;
       setSeedError(null);
       setPhase('generating');
-      generateByoc(activityId, seed, tokenRef.current)
+      generateByoc(activityId, seed, tokenRef.current, regenerateRef.current)
         .then((row) => {
           if (runRef.current !== run) return;
+          regenerateRef.current = false;
           setGeneration(row);
-          setPhase('ready');
+          setPhase(landingPhase(row));
         })
         .catch((e: unknown) => {
           if (runRef.current !== run) return;
@@ -108,5 +124,19 @@ export function useByoc({
 
   const reset = useCallback(() => setAttempt((n) => n + 1), []);
 
-  return { phase, generation, seedError, submitSeed, reset };
+  // Unlike `reset`, this does NOT re-read: the row it would find is the very
+  // fallback the learner is trying to leave, and reading it back would land them
+  // right where they started.
+  // Regenerating is armed ONLY off a degraded row. Reached from a dropped
+  // response instead, the server may well hold a perfectly good generation the
+  // learner never saw — re-rolling that is exactly the re-roll idempotency exists
+  // to prevent, so there the plain idempotent POST is the right one.
+  const tryAnotherSeed = useCallback(() => {
+    regenerateRef.current = Boolean(generation?.fallback_used);
+    setSeedError(null);
+    setGeneration(null);
+    setPhase('seed');
+  }, [generation]);
+
+  return { phase, generation, seedError, submitSeed, reset, tryAnotherSeed };
 }

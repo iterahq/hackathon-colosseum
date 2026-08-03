@@ -70,7 +70,7 @@ const api = useMemo<ActivityApiPort>(() => {
     generateContext: (id, seed) => generateContext(id, seed, token),
     judge: (id, content, ctx) => judge(id, content, token, ctx),
     respond: (input, system) => respond(input, token, system),
-    generateByoc: (id, seed) => generateByoc(id, seed, token),
+    generateByoc: (id, seed, regenerate) => generateByoc(id, seed, token, regenerate),
     readByoc: (id) => readByoc(id, token),
   };
 }, [session?.access_token]);

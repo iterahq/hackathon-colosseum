@@ -6,6 +6,7 @@
  * gabarito that generation embedded (ADR-13) — no judge, no model call, so the
  * activity behaves like any other graded kind once the tree is on screen.
  */
+import { useCallback, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import type { ByocSpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
@@ -33,16 +34,32 @@ export function ByocActivity({
   const { t, locale } = useI18n();
   const { session, loading } = useAuth();
   const token = session?.access_token ?? '';
-  const { phase, generation, seedError, submitSeed, reset } = useByoc({
+  const { phase, generation, seedError, submitSeed, reset, tryAnotherSeed } = useByoc({
     activityId: activity.id,
     token,
     ready: !loading,
     fallback: spec.fallback,
   });
+  // `activity.status` is the status this render was handed, and it does not flip
+  // the moment the learner answers — so it alone would leave the escape hatch on
+  // screen after a graded submit, and a second generation would be a second,
+  // easier question for the same activity.
+  const [answered, setAnswered] = useState(false);
+  const handleComplete = useCallback(
+    (correct: boolean) => {
+      setAnswered(true);
+      onComplete(correct);
+    },
+    [onComplete]
+  );
   const isDone = activity.status === 'done';
   // BYOC replaces the host kind's whole render, so the host's own teaching
   // context would silently vanish under the layer if we didn't carry it over.
   const instruction = resolveByocInstruction(activity, locale);
+  // A degraded row already carries the authored tree, and it is the one the
+  // server persisted — prefer it over re-reading the spec so what the learner
+  // answers is what the audit row says they were served.
+  const fallbackTree = generation?.generated ?? spec.fallback;
 
   return (
     <ActivityShell kind="byoc" icon={Sparkles} label={t('byoc.badge')}>
@@ -77,13 +94,31 @@ export function ByocActivity({
         </div>
       )}
 
-      {phase === 'fallback' && spec.fallback && (
+      {phase === 'fallback' && fallbackTree && (
         <>
-          <p className="text-sm text-muted-foreground" data-testid="byoc-fallback-note">
-            {t('byoc.fallbackNote')}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground" data-testid="byoc-fallback-note">
+              {t('byoc.fallbackNote')}
+            </p>
+            {!isDone && !answered && (
+              <button
+                type="button"
+                onClick={tryAnotherSeed}
+                data-testid="byoc-try-another-seed"
+                className="h-9 px-4 rounded-full text-sm font-medium border border-border text-foreground transition-colors hover:bg-muted"
+              >
+                {t('byoc.tryAnotherSeed')}
+              </button>
+            )}
+          </div>
           <div className="mt-4">
-            <ByocTree tree={spec.fallback} reveal={reveal} done={isDone} onComplete={onComplete} />
+            <ByocTree
+              key={generation?.generation_id ?? 'authored'}
+              tree={fallbackTree}
+              reveal={reveal}
+              done={isDone}
+              onComplete={handleComplete}
+            />
           </div>
         </>
       )}
@@ -99,7 +134,7 @@ export function ByocActivity({
               tree={generation.generated}
               reveal={reveal}
               done={isDone}
-              onComplete={onComplete}
+              onComplete={handleComplete}
             />
           </div>
         </>

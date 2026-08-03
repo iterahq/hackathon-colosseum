@@ -39,17 +39,24 @@ function timeout(ms: number) {
  * back (`reused: true`, no model call), so a reload never re-rolls the question
  * they are graded on. Generation measured 26–58s in production against the free
  * model; the server's own timeout is 90s.
+ *
+ * `regenerate` is the ONE escape from that idempotency, and it exists for a
+ * single case: the persisted row is the authored fallback (`fallback_used`).
+ * That row is sticky like any other, so without this the learner who happened to
+ * generate during an outage is served the ready-made example forever. Never pass
+ * it for a real generation — a stable question is what makes correction local.
  */
 export async function generateByoc(
   activityId: string,
   seed: string,
-  token: string
+  token: string,
+  regenerate = false
 ): Promise<ByocGeneration> {
   const t = timeout(BYOC_TIMEOUT_MS);
   try {
     const raw = await postJson<ByocGeneration>(
       `/v1/embed/activity/${encodeURIComponent(activityId)}/byoc`,
-      { seed },
+      regenerate ? { seed, regenerate: true } : { seed },
       token,
       t.signal
     );
