@@ -19,7 +19,6 @@ export function CodeChecksFeedback({
   results,
   allPassed,
   settled = false,
-  live = false,
   onRetry,
   onContinue,
 }: {
@@ -28,12 +27,6 @@ export function CodeChecksFeedback({
   allPassed: boolean;
   /** The result was already reported upward — the actions are spent. */
   settled?: boolean;
-  /**
-   * Live class vs. self-paced. "Seguir mesmo assim" (skip a failed practical) is
-   * offered ONLY in live, where it reports the learner's attempt so the class
-   * moves on; self-paced must fix and retry, so the escape hatch is hidden there.
-   */
-  live?: boolean;
   /** Unfreeze the editor and drop this verdict, keeping the learner's code. */
   onRetry: () => void;
   /** Settle the activity with the REAL result (passed or not). */
@@ -98,22 +91,24 @@ export function CodeChecksFeedback({
           <RotateCcw className="h-4 w-4" />
           {allPassed ? t('code.checks.editAgain') : t('code.checks.retry')}
         </button>
-        {/* Success always advances; the failure "seguir mesmo assim" is live-only. */}
-        {(allPassed || live) && (
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={settled}
-            data-testid="code-checks-continue"
-            className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-              allPassed
-                ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
-                : 'border border-border text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {allPassed ? t('activity.continue') : t('code.checks.continueAnyway')}
-          </button>
-        )}
+        {/* "Seguir mesmo assim" já foi live-only. Virou universal em 31/07/2026:
+            no self-paced, um exercício que a pessoa não consegue resolver era um
+            beco sem saída — só "tentar de novo", sem caminho para a próxima
+            atividade. O que se registra continua sendo o resultado REAL
+            (`onComplete(false)`), então seguir não vira acerto. */}
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={settled}
+          data-testid="code-checks-continue"
+          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            allPassed
+              ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
+              : 'border border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {allPassed ? t('activity.continue') : t('code.checks.continueAnyway')}
+        </button>
       </div>
     </motion.div>
   );

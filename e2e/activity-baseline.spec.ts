@@ -588,7 +588,8 @@ test.describe('order', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 5 · `code` — two screens, and an unreachable negative verdict.
+ * 5 · `code` — two screens, and (desde a PR #234) um veredito negativo
+ *     alcançável: "seguir mesmo assim" deixou de ser live-only.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 test.describe('code', () => {
@@ -616,21 +617,23 @@ test.describe('code', () => {
     await expectVerdict(page, true);
   });
 
-  test('🧊 FROZEN — com `checks` que FALHAM, o veredito INCORRETO é INALCANÇÁVEL', async ({ page }) => {
+  test('com `checks` que FALHAM → seguir mesmo assim → veredito INCORRETO', async ({ page }) => {
     await open(page, CODE_WITH_FAILING_CHECKS);
     await page.getByTestId('code-submit').click();
     const feedback = page.getByTestId('code-checks-feedback');
     await expect(feedback).toBeVisible({ timeout: 20_000 });
     await expect(feedback).toHaveAttribute('data-all-passed', 'false');
 
-    // 🚩 THE ODD PART, frozen deliberately: in self-paced mode (`live=false`,
-    // which is what the harness AND the LessonPlayer use) `code-checks-continue`
-    // is NOT rendered when checks fail. So `onComplete(false)` cannot happen for
-    // `code` outside a live class — the learner can only retry, forever. Every
-    // other graded kind can produce a false verdict; this one cannot.
-    await expect(page.getByTestId('code-checks-continue')).toHaveCount(0);
+    // ♨️ DESCONGELADO em 03/08/2026 (PR #234). Era o `🧊 FROZEN` desta seção: em
+    // self-paced (`live=false`, o que o harness E o LessonPlayer usam)
+    // `code-checks-continue` NÃO era renderizado quando os checks falhavam, e
+    // `onComplete(false)` ficava inalcançável para `code` — o aluno só podia
+    // tentar de novo, para sempre. Era o único kind graduado incapaz de produzir
+    // veredito falso, e foi exatamente o beco sem saída que a PR #234 corrigiu.
+    // O que se registra continua sendo o resultado REAL: seguir não vira acerto.
     await expect(page.getByTestId('code-checks-retry')).toBeVisible();
-    await expectNoVerdict(page);
+    await page.getByTestId('code-checks-continue').click();
+    await expectVerdict(page, false);
   });
 
   test('retry devolve o editor ao estado editável', async ({ page }) => {

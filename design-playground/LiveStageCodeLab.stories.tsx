@@ -212,7 +212,7 @@ function StageCodeScene({
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main className="flex-1 min-h-0 px-4 md:px-8 lg:overflow-y-auto pt-10 md:pt-14 pb-8">
           <div className="mx-auto w-full max-w-4xl">
-            <CodeSnackActivity activity={activity} onComplete={() => {}} live />
+            <CodeSnackActivity activity={activity} onComplete={() => {}} />
           </div>
         </main>
 

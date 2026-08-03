@@ -14,11 +14,9 @@ import { CodeSnackPane } from './CodeSnackPane';
 export function CodeSnackActivity({
   activity,
   onComplete,
-  live = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
-  live?: boolean;
 }) {
   // `site: 'component'` no registro da fronteira: o `code` valida AQUI, do jeito
   // histórico, porque este componente também é renderizado direto (fora do
@@ -33,5 +31,5 @@ export function CodeSnackActivity({
       />
     );
   }
-  return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} live={live} />;
+  return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} />;
 }

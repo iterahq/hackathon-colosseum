@@ -81,18 +81,10 @@ function makeActivity(spec: Record<string, unknown>): Activity {
   return { id: 't-code', lessonId: 'l', ordinal: 0, kind: 'code', spec, rubric: null };
 }
 
-function renderSnack(
-  spec: Record<string, unknown>,
-  onComplete = vi.fn(),
-  opts: { live?: boolean } = {},
-) {
+function renderSnack(spec: Record<string, unknown>, onComplete = vi.fn()) {
   render(
     <I18nProvider>
-      <CodeSnackActivity
-        activity={makeActivity(spec)}
-        onComplete={onComplete}
-        live={opts.live ?? false}
-      />
+      <CodeSnackActivity activity={makeActivity(spec)} onComplete={onComplete} />
     </I18nProvider>,
   );
   return onComplete;
@@ -322,7 +314,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
       { id: 'verde', passed: true },
       { id: 'texto', passed: true },
     ];
-    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
+    const onComplete = renderSnack(SPEC);
     submit();
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
 
@@ -364,45 +356,46 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(screen.queryByTestId('code-checks-feedback')).toBeNull();
   });
 
-  it('records the REAL result when the learner moves on after failing (live)', () => {
+  it('records the REAL result when the learner moves on after failing', () => {
     preview.results = [
       { id: 'verde', passed: true },
       { id: 'texto', passed: false },
     ];
-    // "Seguir mesmo assim" only exists in the live class — render it live.
-    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
+    const onComplete = renderSnack(SPEC);
     submit();
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
 
-    // The advance is never blocked mid-class — but what gets recorded is false.
+    // The advance is never blocked — but what gets recorded is false.
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
     expect(onComplete).toHaveBeenCalledWith(false);
   });
 
-  it('self-paced hides "seguir mesmo assim" on a failure — only retry moves forward', () => {
-    // Skipping a failed PRACTICAL exercise makes no sense — it just defers the
-    // same retry. Self-paced offers only "tentar de novo".
+  it('offers "seguir mesmo assim" when every check fails — a stuck learner is not trapped', () => {
     preview.results = [
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
     ];
-    renderSnack(SPEC);
+    const onComplete = renderSnack(SPEC);
     submit();
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
-    expect(screen.queryByTestId('code-checks-continue')).not.toBeInTheDocument();
     expect(screen.getByTestId('code-checks-retry')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-checks-continue'));
+    });
+    expect(onComplete).toHaveBeenCalledWith(false);
   });
 
-  it('keeps the verdicts on screen after settling, with the actions spent (live)', () => {
+  it('keeps the verdicts on screen after settling, with the actions spent', () => {
     // In the live class the learner does NOT self-advance, so the activity
     // stays mounted after reporting — the feedback must not vanish.
     preview.results = [
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
     ];
-    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
+    const onComplete = renderSnack(SPEC);
     submit();
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
@@ -423,7 +416,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
 
   it('a check the preview never reported back counts as not passed', () => {
     preview.results = [{ id: 'texto', passed: true }];
-    const onComplete = renderSnack(SPEC, vi.fn(), { live: true });
+    const onComplete = renderSnack(SPEC);
     submit();
 
     const items = screen.getAllByTestId('code-check-item');

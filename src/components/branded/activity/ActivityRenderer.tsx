@@ -113,7 +113,7 @@ export function ActivityRenderer({
     case 'quiz':
       return <QuizActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'code':
-      return <CodeSnackActivity activity={activity} onComplete={onComplete} live={live} />;
+      return <CodeSnackActivity activity={activity} onComplete={onComplete} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
       return <ConceptActivity activity={activity} onComplete={onComplete} />;
