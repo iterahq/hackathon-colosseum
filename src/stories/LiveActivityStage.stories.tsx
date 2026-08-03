@@ -73,7 +73,7 @@ export const EnabledSingleChoice: Story = stage('single_choice', OPEN);
 /** 1 · Exposição — concept travado: nem "concluir" fica clicável. */
 export const LockedConcept: Story = stage('concept', EXPIRED);
 
-/** 1 · Exposição — concept_reveal travado: a resposta segue lá, sem gate de clique. */
+/** 1 · Exposição — concept_reveal travado: nada a travar, quem abre é o professor. */
 export const LockedConceptReveal: Story = stage('concept_reveal', EXPIRED);
 
 /** 1 · Exposição — video travado. */

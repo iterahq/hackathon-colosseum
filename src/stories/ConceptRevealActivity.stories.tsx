@@ -10,10 +10,11 @@ import { PROPS_CONCEPT } from './richTextFixtures';
  * cabeça antes de ver a resposta.
  *
  * Nasceu como marca (`?>`/`?=`) dentro do texto do `concept` e virou kind em
- * 2026-07-31: ao vivo quem dita o ritmo é o professor falando, então a resposta
- * aparece aberta. Esconder é comportamento da ATIVIDADE, não de um trecho de
- * texto — e como kind o autor opta explicitamente em vez de esbarrar num
- * delimitador.
+ * 2026-07-31: esconder é comportamento da ATIVIDADE, não de um trecho de texto —
+ * e como kind o autor opta explicitamente em vez de esbarrar num delimitador.
+ *
+ * Quem abre a resposta muda com o contexto: sozinho é o aluno; ao vivo é o
+ * professor, pelo "Revelar resposta" (`reveal`).
  *
  * NÃO pontua: revelar é leitura, não submissão. Resposta que vale nota é
  * `single_choice`, `multi_choice` ou `quiz`.
@@ -38,13 +39,25 @@ export const Default: Story = {
   ),
 };
 
-/** Ao vivo a resposta já vem aberta — o gate atrasaria a explicação do professor. */
+/** Ao vivo, antes do reveal: a pergunta sozinha, e o aluno sem botão nenhum. */
 export const AoVivo: Story = {
   render: () => (
     <ConceptRevealActivity
       activity={makeActivity('concept_reveal', CONCEPT_REVEAL_SPEC)}
       onComplete={noop}
       live
+    />
+  ),
+};
+
+/** Ao vivo, depois de o professor clicar em "Revelar resposta". */
+export const AoVivoRevelado: Story = {
+  render: () => (
+    <ConceptRevealActivity
+      activity={makeActivity('concept_reveal', CONCEPT_REVEAL_SPEC)}
+      onComplete={noop}
+      live
+      reveal
     />
   ),
 };

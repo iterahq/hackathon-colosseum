@@ -13,12 +13,17 @@
  *      screen?" Drives ONLY the instructor's "Revelar resposta" control. It does
  *      NOT gate the learner lock — the lock is universal over answerable kinds.
  *
- * They differ on exactly one kind today: `code`.
- *   - `code` IS answerable → it gets a countdown (5 min, see `liveTimerSeconds`)
- *     AND it locks on expiry like everything else.
- *   - `code` has NO revealable answer → the `code` spec carries no solution
- *     field, and `ActivityRenderer` does not even pass `reveal` down to
- *     `CodeSnackActivity`. There is literally nothing to show → no Reveal button.
+ * They diverge on two kinds, in OPPOSITE directions — which is the whole reason
+ * neither one can be derived from the other:
+ *   - `code` IS answerable but has NOTHING to reveal → it gets a countdown
+ *     (5 min, see `liveTimerSeconds`) and locks on expiry like everything else,
+ *     but the spec carries no solution field and `ActivityRenderer` does not even
+ *     pass `reveal` down to `CodeSnackActivity`. No Reveal button.
+ *   - `concept_reveal` is the MIRROR IMAGE: nothing to answer, but an answer to
+ *     show. It produces nothing, so no countdown and nothing to lock — and yet
+ *     the whole point of the kind is that the professor decides WHEN the answer
+ *     appears (instructor feedback 2026-08-01: "algo mais para perguntar ali no
+ *     slide e depois mostrar a resposta pra galera"). It needs the Reveal button.
  *
  * WHY THIS SPLIT EXISTS (the bug that created it): while ONE predicate answered
  * both questions, "Revelar resposta" appeared on a code exercise. Clicking it
@@ -47,7 +52,12 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
  * Deliberately spelled out instead of derived from `ANSWERABLE_KINDS` — a new
  * answerable kind must be a conscious opt-in here, never an inherited default
  * (that inheritance is exactly what shipped the "Revelar resposta" trap).
- * INVARIANT: this is a strict subset of `ANSWERABLE_KINDS` (asserted in tests).
+ *
+ * INVARIANT (asserted in tests): every kind here RENDERS something when it gets
+ * `reveal`. That is the property the button actually depends on. It used to be
+ * stated as "strict subset of `ANSWERABLE_KINDS`", which was a proxy that held
+ * only while producing an answer and having one to show were the same thing —
+ * `concept_reveal` is the counterexample that separated them.
  */
 const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'single_choice',
@@ -56,6 +66,7 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'order',
   'quiz',
   'sandbox_scenario',
+  'concept_reveal',
 ]);
 
 /**

@@ -3,10 +3,17 @@
  * cabeça antes de ver a resposta.
  *
  * Nasceu como marca (`?>`/`?=`) dentro do texto do `concept` e virou kind em
- * 2026-07-31: ao vivo quem dita o ritmo é o professor falando, então a resposta
- * aparece aberta — esconder é comportamento da ATIVIDADE, não de um trecho de
- * texto. Como kind, o autor também opta explicitamente em vez de esbarrar num
+ * 2026-07-31: esconder é comportamento da ATIVIDADE, não de um trecho de texto.
+ * Como kind, o autor também opta explicitamente em vez de esbarrar num
  * delimitador.
+ *
+ * ── Quem abre a resposta ────────────────────────────────────────────────────
+ * Sozinho, o próprio aluno (o botão é dele). AO VIVO, o PROFESSOR, pelo
+ * "Revelar resposta" — o aluno não tem botão, senão bastava clicar e a pergunta
+ * perderia a graça. A primeira versão do kind abria a resposta JUNTO com a
+ * pergunta ao vivo, no raciocínio de que quem dita o ritmo é o professor
+ * falando; na prática isso apaga o "depois" que é o ponto da atividade
+ * (feedback do instrutor 2026-08-01).
  *
  * NÃO pontua nem chama `onComplete`: ao vivo o `learnerActivityGate` trava em
  * `answered → readOnly` e o pódio ranqueia por acerto, então pensar alto no meio
@@ -24,16 +31,19 @@ import { ActivityShell } from './parts';
 export function ConceptRevealActivity({
   activity,
   live = false,
+  reveal = false,
 }: {
   activity: Activity;
   onComplete: (correct: boolean) => void;
   live?: boolean;
+  /** O professor mandou abrir. Ao vivo é a ÚNICA coisa que abre a resposta. */
+  reveal?: boolean;
 }) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const [opened, setOpened] = useState(false);
   const spec = activity.spec as unknown as ConceptRevealSpec;
-  const shown = opened || live;
+  const shown = reveal || (!live && opened);
   const answerId = `concept-reveal-answer-${activity.id}`;
 
   return (

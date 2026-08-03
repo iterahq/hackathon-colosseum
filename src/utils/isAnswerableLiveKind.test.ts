@@ -30,12 +30,17 @@ describe('isAnswerableLiveKind', () => {
 });
 
 describe('hasRevealableAnswer', () => {
-  it.each(['single_choice', 'multi_choice', 'match', 'order', 'quiz', 'sandbox_scenario'])(
-    'true for %s — these kinds have a correct answer we can put on screen',
-    (kind) => {
-      expect(hasRevealableAnswer(kind)).toBe(true);
-    }
-  );
+  it.each([
+    'single_choice',
+    'multi_choice',
+    'match',
+    'order',
+    'quiz',
+    'sandbox_scenario',
+    'concept_reveal',
+  ])('true for %s — these kinds have an answer we can put on screen', (kind) => {
+    expect(hasRevealableAnswer(kind)).toBe(true);
+  });
 
   it('false for code — the spec carries no solution, so there is nothing to reveal', () => {
     expect(hasRevealableAnswer('code')).toBe(false);
@@ -54,14 +59,19 @@ describe('hasRevealableAnswer', () => {
 });
 
 describe('the two predicates answer DIFFERENT questions', () => {
-  it('revealable is a strict subset of answerable (never the other way round)', () => {
-    for (const kind of ANSWERABLE.concat(CONTENT, ['mystery'])) {
-      if (hasRevealableAnswer(kind)) expect(isAnswerableLiveKind(kind)).toBe(true);
-    }
-  });
-
-  it('code is the kind where they diverge: timed, but nothing to reveal', () => {
+  it('code diverges one way: timed, but nothing to reveal', () => {
     expect(isAnswerableLiveKind('code')).toBe(true);
     expect(hasRevealableAnswer('code')).toBe(false);
+  });
+
+  it('concept_reveal diverges the OTHER way: nothing to answer, but an answer to show', () => {
+    expect(isAnswerableLiveKind('concept_reveal')).toBe(false);
+    expect(hasRevealableAnswer('concept_reveal')).toBe(true);
+  });
+
+  it('neither predicate can be derived from the other', () => {
+    const kinds = ANSWERABLE.concat(CONTENT, ['concept_reveal', 'mystery']);
+    expect(kinds.some((k) => isAnswerableLiveKind(k) && !hasRevealableAnswer(k))).toBe(true);
+    expect(kinds.some((k) => hasRevealableAnswer(k) && !isAnswerableLiveKind(k))).toBe(true);
   });
 });

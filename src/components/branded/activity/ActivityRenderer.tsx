@@ -118,7 +118,14 @@ export function ActivityRenderer({
     case 'concept':
       return <ConceptActivity activity={activity} onComplete={onComplete} />;
     case 'concept_reveal':
-      return <ConceptRevealActivity activity={activity} onComplete={onComplete} live={live} />;
+      return (
+        <ConceptRevealActivity
+          activity={activity}
+          onComplete={onComplete}
+          live={live}
+          reveal={reveal}
+        />
+      );
     case 'video':
       return <VideoActivity activity={activity} onComplete={onComplete} />;
     case 'single_choice':

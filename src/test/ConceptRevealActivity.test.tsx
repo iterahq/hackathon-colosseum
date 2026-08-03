@@ -28,11 +28,18 @@ describe('concept_reveal', () => {
     expect(button.getAttribute('aria-expanded')).toBe('true');
   });
 
-  it('ao vivo a resposta já vem aberta e o botão nem existe', () => {
-    // Quem dita o ritmo da aula ao vivo é o professor falando: um gate de clique
-    // ali só atrasaria a explicação.
+  it('ao vivo a pergunta fica sozinha até o professor revelar', () => {
     show(<ConceptRevealActivity activity={reveal} onComplete={() => {}} live />);
-    expect(screen.getByTestId('concept-reveal-answer')).toBeTruthy();
+    expect(screen.getByTestId('concept-reveal-prompt')).toBeTruthy();
+    expect(screen.queryByTestId('concept-reveal-answer')).toBeNull();
+    // O aluno não tem botão: quem abre é o "Revelar resposta" do professor.
+    expect(screen.queryByTestId('concept-reveal-show')).toBeNull();
+    expect(screen.getByTestId('concept-reveal-card').dataset.revealed).toBe('false');
+  });
+
+  it('ao vivo o reveal do professor abre a resposta', () => {
+    show(<ConceptRevealActivity activity={reveal} onComplete={() => {}} live reveal />);
+    expect(screen.getByTestId('concept-reveal-answer').textContent).toContain('é prop');
     expect(screen.queryByTestId('concept-reveal-show')).toBeNull();
     expect(screen.getByTestId('concept-reveal-card').dataset.revealed).toBe('true');
   });
@@ -45,7 +52,7 @@ describe('concept_reveal', () => {
   });
 
   it('o enunciado e a resposta passam pelo markdown-leve', () => {
-    show(<ConceptRevealActivity activity={reveal} onComplete={() => {}} live />);
+    show(<ConceptRevealActivity activity={reveal} onComplete={() => {}} live reveal />);
     expect(screen.getByTestId('concept-reveal-answer').querySelector('code')?.textContent).toBe(
       'title',
     );
