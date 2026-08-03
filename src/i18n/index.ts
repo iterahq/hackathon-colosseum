@@ -161,6 +161,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.eyebrow': 'Aula ao vivo',
     'live.instructor.mirrorHint':
       'Isto é só um espelho do que a turma vê. Para avançar, use os controles na barra lateral.',
+    'live.instructor.selfStagedHint':
+      'A turma está vendo a sua tela. Continue resolvendo aqui — eles acompanham em tempo real.',
     'live.connecting': 'Conectando à aula…',
     'live.notFound': 'Esta aula não está disponível.',
     'live.waiting.title': 'A aula vai começar',
@@ -259,6 +261,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.control.prev': 'Anterior',
     'live.instructor.control.next': 'Próxima',
     'live.instructor.control.reveal': 'Revelar resposta',
+    'live.instructor.control.selfStage': 'Projetar minha tela',
+    'live.instructor.control.selfStageOff': 'Tirar minha tela',
     'live.instructor.control.endClass': 'Encerrar a aula',
     'live.instructor.leaveConfirm': 'Sair da apresentação? A aula continua ao vivo para os alunos.',
     'live.stage.onStage': 'No palco',
@@ -716,6 +720,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.eyebrow': 'Live class',
     'live.instructor.mirrorHint':
       'This is only a mirror of what the class sees. To advance, use the controls in the sidebar.',
+    'live.instructor.selfStagedHint':
+      'The class is watching your screen. Keep working here — they follow along live.',
     'live.connecting': 'Connecting to the class…',
     'live.notFound': 'This class is not available.',
     'live.waiting.title': 'The class is about to begin',
@@ -845,6 +851,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.control.prev': 'Previous',
     'live.instructor.control.next': 'Next',
     'live.instructor.control.reveal': 'Reveal answer',
+    'live.instructor.control.selfStage': 'Project my screen',
+    'live.instructor.control.selfStageOff': 'Stop projecting',
     'live.instructor.control.endClass': 'End the class',
     'live.instructor.leaveConfirm': 'Leave the presentation? The class stays live for the learners.',
     'live.stage.onStage': 'On stage',

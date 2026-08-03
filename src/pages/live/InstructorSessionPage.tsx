@@ -389,6 +389,23 @@ function ClassControl({
     [stagedUserId, clearStage, requestStage]
   );
 
+  // The professor puts THEMSELVES on the projector (instructor feedback
+  // 2026-08-01: "seria tipo colocar eu mesmo no palco"). It rides the same pull
+  // the learners get — the stage-request handler answers for whoever is
+  // targeted, so there is no second protocol. What differs is only the
+  // professor's OWN screen: it stays the interactive stage below, or they would
+  // be mirroring a screen they can no longer type into.
+  const selfStaged = Boolean(instructorId) && stagedUserId === instructorId;
+  const toggleSelfStage = useCallback(
+    () => void (instructorId && toggleStage(instructorId)),
+    [instructorId, toggleStage]
+  );
+  const stageHint = selfStaged
+    ? t('live.instructor.selfStagedHint')
+    : current?.kind === 'sandbox_scenario'
+      ? t('live.instructor.mirrorHint')
+      : null;
+
   // A escrita pode ser recusada pela RLS (quem não é staff da aula) ou cair na
   // rede: sem o aviso, o professor acha que tirou o aluno e ele continua lá.
   const moderation = useMemo(
@@ -497,7 +514,7 @@ function ClassControl({
                   {t('live.ended.cta')}
                 </button>
               </div>
-            ) : stagedAnswer ? (
+            ) : stagedAnswer && !selfStaged ? (
               // B9: pulling a learner REPLACES the professor's own screen with
               // theirs (no more two-screen split) — centered, with a "você está
               // visualizando a tela de ___" indicator in the identity bar.
@@ -524,12 +541,12 @@ function ClassControl({
                 reveal={revealCurrent}
                 testid="instructor-activity-stage"
                 footer={
-                  current.kind === 'sandbox_scenario' ? (
+                  stageHint ? (
                     <p
-                      className="mt-4 text-center text-sm text-muted-foreground"
-                      data-testid="instructor-mirror-hint"
+                      className={`mt-4 text-center text-sm ${selfStaged ? 'text-evergreen-hi' : 'text-muted-foreground'}`}
+                      data-testid={selfStaged ? 'instructor-self-staged-hint' : 'instructor-mirror-hint'}
                     >
-                      {t('live.instructor.mirrorHint')}
+                      {stageHint}
                     </p>
                   ) : undefined
                 }
@@ -601,6 +618,8 @@ function ClassControl({
                 onStopTimer={() => current && clearTimer(current.id)}
                 onAddTime={handleAddTime}
                 onReveal={() => current && clearTimer(current.id)}
+                selfStaged={selfStaged}
+                onToggleSelfStage={toggleSelfStage}
               />
             </>
           }

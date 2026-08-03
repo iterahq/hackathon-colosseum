@@ -1,4 +1,4 @@
-import { Play, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight, Eye, MonitorUp } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { AddTimeControl } from '@/components/live/AddTimeControl';
@@ -30,6 +30,10 @@ interface InstructorControlsProps {
    */
   onAddTime: (seconds: number) => void;
   onReveal: () => void;
+  /** The professor's own screen is the one on the projector right now. */
+  selfStaged: boolean;
+  /** Puts the professor's own work on the class projector (and takes it off). */
+  onToggleSelfStage: () => void;
 }
 
 /**
@@ -55,6 +59,8 @@ export function InstructorControls({
   onStopTimer,
   onAddTime,
   onReveal,
+  selfStaged,
+  onToggleSelfStage,
 }: InstructorControlsProps) {
   const { t } = useI18n();
   // The professor has full authority to advance whenever they want — the "Next"
@@ -129,6 +135,23 @@ export function InstructorControls({
           <AddTimeControl running={timerRunning} onAddTime={onAddTime} />
         </div>
       )}
+
+      <button
+        onClick={onToggleSelfStage}
+        disabled={busy}
+        aria-pressed={selfStaged}
+        data-testid="instructor-self-stage"
+        className={`w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border text-sm transition-colors disabled:opacity-40 ${
+          selfStaged
+            ? 'border-evergreen bg-evergreen-soft text-evergreen-hi'
+            : 'border-border bg-background text-foreground hover:border-evergreen/40'
+        }`}
+      >
+        <MonitorUp className="w-3.5 h-3.5" />{' '}
+        {selfStaged
+          ? t('live.instructor.control.selfStageOff')
+          : t('live.instructor.control.selfStage')}
+      </button>
 
       {canReveal && (
         <button
