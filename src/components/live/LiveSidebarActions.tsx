@@ -39,7 +39,7 @@ export function LiveSidebarActions({
     // renders standalone in stories and tests, where Radix requires an ancestor.
     <TooltipProvider delayDuration={200}>
       <div
-        className={`shrink-0 border-t border-border flex items-center gap-2 ${compact ? 'p-3' : 'p-4'}`}
+        className={`shrink-0 border-t border-border flex items-center gap-2 p-3 pl-16 lg:pl-3 ${compact ? 'p-3' : 'p-4'}`}
       >
         <LiveSidebarIconAction
           label={copied ? t('live.instructor.copyLinkDone') : t('live.instructor.copyLink')}

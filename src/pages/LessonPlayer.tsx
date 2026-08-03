@@ -440,7 +440,7 @@ export default function LessonPlayer() {
       <main
         data-testid="lesson-main"
         className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
-          isSandbox ? 'pt-4' : 'pt-10 md:pt-16'
+          isSandbox && !completed ? 'pt-4' : 'pt-14 md:pt-16'
         } ${pending ? 'pb-40' : isSandbox ? 'pb-4' : 'pb-40'}`}
       >
         {/* `resuming` shares the content skeleton on purpose: reading back where

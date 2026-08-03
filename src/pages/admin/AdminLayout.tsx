@@ -83,7 +83,7 @@ export default function AdminLayout() {
           {/* Sub-nav — scrolls horizontally on narrow screens so the tabs never
               force page-wide overflow (mobile: tabs slide; ≥sm: all fit). */}
           <div
-            className="flex items-center gap-1.5 mb-6 border-b border-border overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0"
+            className="flex flex-wrap items-center gap-1.5 mb-6 border-b border-border -mx-4 px-4 md:mx-0 md:px-0"
             data-testid="admin-subnav"
           >
             {tabs.map((tab) => (
