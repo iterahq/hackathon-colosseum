@@ -106,19 +106,22 @@ answering plan Open Question 2. The publishing token lives in Infisical at
 `/infra/npm/NPM_TOKEN_TAINAN` and covers both the `iterahq` and `devfellowship`
 scopes. **Nothing is published in Fase A** — this records the target only.
 
-⚠️ **Known collision to resolve in Fase B.** This repo's `.npmrc` currently
-pins the whole scope elsewhere:
+✅ **Registry collision resolved (2026-08-03).** This repo previously pinned the
+whole scope at GitHub Packages (`@iterahq:registry=https://npm.pkg.github.com`),
+with CI's `setup-node` configuring the same registry for `@iterahq` — so an
+`@iterahq/activities` published to npmjs would *not* have been resolvable here.
+Both `.npmrc` and all five `setup-node` blocks (`ci.yml` ×3, `e2e.yml`,
+`storybook.yml`) now point at `https://registry.npmjs.org`, and `NODE_AUTH_TOKEN`
+reads from `secrets.NPM_TOKEN` instead of `secrets.GITHUB_TOKEN` (a GitHub token
+must never be sent as a bearer credential to a third-party registry).
 
-```
-@iterahq:registry=https://npm.pkg.github.com
-```
-
-and CI's `setup-node` configures the same registry for `@iterahq`. So
-`@iterahq/activities` published to npmjs would *not* be resolvable here until
-that line is narrowed or dropped. This is not a blocker for Fase B (workspaces
-resolve locally and bypass the registry entirely, which is the point of ADR-2) —
-but it must be settled before the first real publish, or the install path is
-broken for the very repo that produces the package.
+Nothing resolved from GitHub Packages at the time of the switch — the only
+`@iterahq` dependency is `activity-spec`, vendored as a `file:` tarball — so the
+change was configuration-only with no install-path risk. Installs are verified to
+work with `NODE_AUTH_TOKEN` unset or empty, which is the current CI state: no
+`NPM_TOKEN` secret exists at the org or repo level yet. One must be created from
+Infisical `/infra/npm/NPM_TOKEN_TAINAN` before the first **private** publish;
+a public `@iterahq/activities` would install fine without it.
 
 ## Extraction order (Fase C), ascending coupling
 

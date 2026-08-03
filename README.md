@@ -50,7 +50,7 @@ npm run dev
 
 **Use `npm` — não `pnpm` nem `yarn`.** O lockfile é `package-lock.json`, e com
 `pnpm` o install para pedindo token de auth: o `.npmrc` declara
-`//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
+`//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
 variável mesmo quando não precisa do registry. A única dependência `@iterahq`
 daqui é `activity-spec`, que vem do tarball versionado em `vendor/` — **nenhum
 token é necessário para desenvolver**.
