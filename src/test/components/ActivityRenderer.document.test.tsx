@@ -97,8 +97,10 @@ describe('DocumentActivity — reflection (min_words)', () => {
     );
   });
 
-  it('a pure read-only document (body, no prompt) keeps the simple Mark done button', () => {
-    const onComplete = renderActivity({
+  // Ao vivo esse botão dava ponto no pódio por ter LIDO um texto, enquanto o
+  // professor avançava a turma de qualquer jeito — o ranking media obediência.
+  it('a pure read-only document (body, no prompt) has NO Mark done button', () => {
+    renderActivity({
       id: 'doc-2',
       lessonId: 'l1',
       ordinal: 1,
@@ -106,11 +108,7 @@ describe('DocumentActivity — reflection (min_words)', () => {
       spec: { body: 'Leia este conteúdo.' },
       rubric: null,
     });
-    // No reflection input for a pure read-only doc.
     expect(screen.queryByTestId('document-reflection-input')).toBeNull();
-    const doneBtn = screen.getByTestId('activity-done') as HTMLButtonElement;
-    expect(doneBtn.disabled).toBe(false);
-    fireEvent.click(doneBtn);
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 });

@@ -111,7 +111,7 @@ export function ActivityRenderer({
     case 'document':
       return <DocumentActivity activity={activity} onComplete={onComplete} />;
     case 'diagram':
-      return <DiagramActivity activity={activity} onComplete={onComplete} />;
+      return <DiagramActivity activity={activity} />;
     case 'quiz':
       return <QuizActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'code':
@@ -200,7 +200,6 @@ function DocumentActivity({
 }) {
   const { t } = useI18n();
   const spec = activity.spec as { prompt?: string; body?: string; title?: string };
-  const isDone = activity.status === 'done';
 
   // AI-judge open-scope path: only when the rubric opts in AND the itera-api is
   // configured. Otherwise fall through to the reflection path below (ADR
@@ -235,7 +234,6 @@ function DocumentActivity({
     <Shell kind="document" icon={FileText} label={t('activity.document')}>
       <RichText text={spec.prompt ?? spec.title ?? t('activity.document')} data-testid="document-prompt" />
       {spec.body && <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />}
-      <DoneButton done={isDone} onClick={() => onComplete(true)} />
     </Shell>
   );
 }
@@ -476,7 +474,7 @@ function AiJudgeDocumentActivity({
   );
 }
 
-function DiagramActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
+function DiagramActivity({ activity }: { activity: Activity }) {
   const { t } = useI18n();
   const spec = activity.spec as {
     prompt?: string;
@@ -484,7 +482,6 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
     imageUrl?: string;
     highlights?: { term: string; caption?: string }[];
   };
-  const isDone = activity.status === 'done';
   return (
     <Shell kind="diagram" icon={GitBranch} label={t('activity.diagram')}>
       <h2 className="font-display text-foreground">
@@ -516,7 +513,6 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
           ))}
         </div>
       ) : null}
-      <DoneButton done={isDone} onClick={() => onComplete(true)} />
     </Shell>
   );
 }

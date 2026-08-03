@@ -1,52 +1,47 @@
 import { useState } from 'react';
-import { AlarmClockPlus } from 'lucide-react';
+import { AlarmClock } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useI18n } from '@/i18n';
+import { ADD_TIME_MAX_TOTAL_SECONDS, ADD_TIME_MIN_TOTAL_SECONDS } from '@/utils/addLiveTime';
+import { QUICK_DELTA_SECONDS, quickDeltaLabel, quickDeltaTestId } from '@/utils/liveTimeChips';
 
-/** Quick-add increments (seconds): +30s, +1min, +2min. */
-const QUICK_ADD_SECONDS = [30, 60, 120] as const;
-/** A single addition is capped to 1h — the same ceiling as the timer override. */
-const MAX_ADD_SECONDS = 3600;
-
-/** Short label for a quick-add chip: `+30s`, `+1min`, `+2min`. */
-function quickAddLabel(seconds: number): string {
-  return seconds < 60 ? `+${seconds}s` : `+${Math.round(seconds / 60)}min`;
-}
-
-interface AddTimeControlProps {
+interface TimeControlProps {
   /**
    * The current activity's countdown is running. Drives the hint copy only —
-   * ADDING is allowed in both states (running → extends the live remaining;
-   * stopped → grows the duration the next start will use).
+   * both actions work in either state (running → the live remaining changes;
+   * stopped → the duration the next start will use changes).
    */
   running: boolean;
-  /** Add `seconds` to the timer. Positive integers only. */
-  onAddTime: (seconds: number) => void;
+  /** Nudge the timer by a SIGNED delta in seconds. */
+  onAdjustTime: (deltaSeconds: number) => void;
+  /** Set the timer to an ABSOLUTE duration in seconds. */
+  onSetTime: (seconds: number) => void;
 }
 
 /**
- * Icon-only professor control that opens a popover to ADD seconds to the shared
- * live countdown (Tainan: "botão que abre um popover em q o professor pode
- * aumentar o tempo em segundos"). Offers quick increments AND a free value in
- * seconds. It never SETS the clock — it always adds:
- *   - running  → adds to the time REMAINING (40s left + 60s ⇒ 100s), re-broadcast
- *     through the very same timer channel so the class sees the countdown jump.
- *   - stopped  → bumps the duration the NEXT start fires with (shown live on the
- *     start button label, so the effect is obvious before launch).
+ * Icon-only professor control that opens a popover to change the shared live
+ * countdown. Two gestures, on purpose:
+ *   - the chips NUDGE by a signed delta, for the mid-question "eles precisam de
+ *     mais 30s";
+ *   - the field SETS an absolute duration, because the authored duration used to
+ *     be a floor — the professor wanted 30s on a question that starts at 1min
+ *     and the only direction available was up (feedback da aula, 2026-08-02).
  */
-export function AddTimeControl({ running, onAddTime }: AddTimeControlProps) {
+export function AddTimeControl({ running, onAdjustTime, onSetTime }: TimeControlProps) {
   const { t } = useI18n();
   const [raw, setRaw] = useState('');
 
   const parsed = Math.floor(Number(raw));
-  const freeValid =
-    raw.trim() !== '' && Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_ADD_SECONDS;
+  const setValid =
+    raw.trim() !== '' &&
+    Number.isFinite(parsed) &&
+    parsed >= ADD_TIME_MIN_TOTAL_SECONDS &&
+    parsed <= ADD_TIME_MAX_TOTAL_SECONDS;
 
-  function submitFree() {
-    if (!freeValid) return;
-    onAddTime(parsed);
+  const submitSet = () => {
+    if (setValid) onSetTime(parsed);
     setRaw('');
-  }
+  };
 
   return (
     <Popover>
@@ -58,29 +53,25 @@ export function AddTimeControl({ running, onAddTime }: AddTimeControlProps) {
           title={t('live.timer.addTime.aria')}
           className="inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-full border border-border bg-background text-foreground hover:border-clay/50 transition-colors"
         >
-          <AlarmClockPlus className="w-4 h-4" />
+          <AlarmClock className="w-4 h-4" />
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="w-64"
-        data-testid="instructor-add-time-popover"
-      >
+      <PopoverContent align="end" className="w-64" data-testid="instructor-add-time-popover">
         <p className="text-xs font-semibold text-foreground">{t('live.timer.addTime.title')}</p>
         <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
           {running ? t('live.timer.addTime.hintRunning') : t('live.timer.addTime.hintStopped')}
         </p>
 
         <div className="mt-3 flex gap-1.5">
-          {QUICK_ADD_SECONDS.map((s) => (
+          {QUICK_DELTA_SECONDS.map((s) => (
             <button
               key={s}
               type="button"
-              data-testid={`instructor-add-time-quick-${s}`}
-              onClick={() => onAddTime(s)}
+              data-testid={quickDeltaTestId(s)}
+              onClick={() => onAdjustTime(s)}
               className="flex-1 h-9 rounded-lg border border-border bg-background text-xs font-medium tabular-nums text-foreground hover:border-clay/50 transition-colors"
             >
-              {quickAddLabel(s)}
+              {quickDeltaLabel(s)}
             </button>
           ))}
         </div>
@@ -89,14 +80,14 @@ export function AddTimeControl({ running, onAddTime }: AddTimeControlProps) {
           className="mt-2 flex gap-1.5"
           onSubmit={(e) => {
             e.preventDefault();
-            submitFree();
+            submitSet();
           }}
         >
           <input
             type="number"
             inputMode="numeric"
-            min={1}
-            max={MAX_ADD_SECONDS}
+            min={ADD_TIME_MIN_TOTAL_SECONDS}
+            max={ADD_TIME_MAX_TOTAL_SECONDS}
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
             data-testid="instructor-add-time-input"
@@ -106,11 +97,11 @@ export function AddTimeControl({ running, onAddTime }: AddTimeControlProps) {
           />
           <button
             type="submit"
-            disabled={!freeValid}
+            disabled={!setValid}
             data-testid="instructor-add-time-submit"
             className="h-9 px-3 shrink-0 rounded-lg bg-clay text-white text-xs font-medium hover:bg-clay/90 transition-colors disabled:opacity-40"
           >
-            {t('live.timer.addTime.add')}
+            {t('live.timer.addTime.set')}
           </button>
         </form>
       </PopoverContent>

@@ -105,7 +105,10 @@ const LONG_REFLECTION =
   'tabela. No caso da escola o numero de matricula funciona bem porque nunca se repete ' +
   'entre dois alunos diferentes e nunca fica vazio para ninguem.';
 
-const EXPOSITION = 'kind de exposição: concluir é o único ato, e ele nunca é "errado".';
+const EXPOSITION =
+  'kind de exposição: não há o que submeter. O "marcar como concluída" foi removido porque ' +
+  'ao vivo ele virava ponto no pódio por ter LIDO um slide — e o professor avançava a turma ' +
+  'de qualquer jeito, então o ranking media obediência. Quem avança é o shell.';
 
 /**
  * O mapa contrato → interação. TODO contrato do registro precisa de uma linha —
@@ -127,9 +130,9 @@ const DRIVES: Record<ContractKey, Drive> = {
       'submissão. Como o `concept`, ele não chama `onComplete` — quem avança é o shell. O ' +
       'gate do botão (e o bypass ao vivo) vive em `ConceptRevealActivity.test.tsx`.',
   },
-  video: { kind: 'video', correct: markDone, why: EXPOSITION },
-  diagram: { kind: 'diagram', correct: markDone, why: EXPOSITION },
-  document_reading: { kind: 'document', correct: markDone, why: EXPOSITION },
+  video: { kind: 'video', why: EXPOSITION },
+  diagram: { kind: 'diagram', why: EXPOSITION },
+  document_reading: { kind: 'document', why: EXPOSITION },
 
   single_choice: {
     kind: 'single_choice',

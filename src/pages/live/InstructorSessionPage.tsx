@@ -40,7 +40,7 @@ import { mergeSeenLearners } from '@/utils/liveRoster';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
-import { remainingSeconds, extendedTimerSeconds } from '@/utils/addLiveTime';
+import { remainingSeconds, adjustedTimerSeconds, clampTimerSeconds } from '@/utils/addLiveTime';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import {
   ensureSessionGuestCode,
@@ -285,24 +285,37 @@ function ClassControl({
   const timerActive = Boolean(timer && current && timer.activityId === current.id);
   const baseTimerSeconds = liveTimerSeconds(current?.kind, current?.spec);
 
-  // The professor's "+tempo" popover ADDS seconds — never sets. Running →
-  // extend the live remaining and re-broadcast through the SAME timer channel
-  // (broadcastTimer) so the whole class sees the countdown grow. Stopped →
-  // grow the next start's duration.
-  const handleAddTime = useCallback(
-    (addSeconds: number) => {
-      if (!current || addSeconds <= 0) return;
+  // The professor's time popover nudges by a SIGNED delta. Running → re-broadcast
+  // a fresh deadline through the SAME timer channel (broadcastTimer) so the whole
+  // class sees the countdown change. Stopped → fold into the next start's
+  // duration (the start button label reflects it).
+  const handleAdjustTime = useCallback(
+    (deltaSeconds: number) => {
+      if (!current || deltaSeconds === 0) return;
       if (timer && timer.activityId === current.id) {
-        // Running: extend the LIVE remaining and re-broadcast a fresh deadline
-        // through the SAME channel the start uses — the class sees it grow.
-        const left = remainingSeconds(timer.deadline, Date.now());
-        broadcastTimer(current.id, extendedTimerSeconds(left, addSeconds));
+        // Um relógio JÁ correndo não tem piso: tirar mais tempo do que resta
+        // encerra a questão. O piso de 5s existe só para o caso parado, onde
+        // zerar esconderia o próprio controle de tempo.
+        const next = remainingSeconds(timer.deadline, Date.now()) + Math.floor(deltaSeconds);
+        if (next <= 0) clearTimer(current.id);
+        else broadcastTimer(current.id, clampTimerSeconds(next));
       } else {
-        // Stopped: fold into the next start's duration (start button reflects it).
-        setTimerBonus((b) => b + addSeconds);
+        setTimerBonus((b) => adjustedTimerSeconds(baseTimerSeconds, b + deltaSeconds) - baseTimerSeconds);
       }
     },
-    [current, timer, broadcastTimer]
+    [current, timer, broadcastTimer, clearTimer, baseTimerSeconds]
+  );
+
+  // Setting an absolute duration is the same two states, expressed as the bonus
+  // that lands on the requested total — the authored duration stays the base.
+  const handleSetTime = useCallback(
+    (seconds: number) => {
+      if (!current) return;
+      const target = clampTimerSeconds(seconds);
+      if (timer && timer.activityId === current.id) broadcastTimer(current.id, target);
+      else setTimerBonus(target - baseTimerSeconds);
+    },
+    [current, timer, broadcastTimer, baseTimerSeconds]
   );
 
   const [busy, setBusy] = useState(false);
@@ -620,7 +633,7 @@ function ClassControl({
                 // Base per-activity duration PLUS any seconds the professor
                 // pre-added while stopped — the start button label reflects the
                 // real launch duration (the "obvious in UI" part).
-                timerSeconds={baseTimerSeconds > 0 ? extendedTimerSeconds(baseTimerSeconds, timerBonus) : 0}
+                timerSeconds={baseTimerSeconds > 0 ? adjustedTimerSeconds(baseTimerSeconds, timerBonus) : 0}
                 onBegin={() => activities[0] && goTo(activities[0].id)}
                 onPrev={() => canPrev && goTo(activities[idx - 1].id)}
                 onNext={() => canNext && goTo(activities[idx + 1].id)}
@@ -630,7 +643,8 @@ function ClassControl({
                   setTimerBonus(0); // consumed by this launch
                 }}
                 onStopTimer={() => current && clearTimer(current.id)}
-                onAddTime={handleAddTime}
+                onAdjustTime={handleAdjustTime}
+                onSetTime={handleSetTime}
                 onReveal={() => current && clearTimer(current.id)}
                 selfStaged={selfStaged}
                 onToggleSelfStage={toggleSelfStage}

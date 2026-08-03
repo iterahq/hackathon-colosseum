@@ -19,7 +19,8 @@ const base = {
   onNext: vi.fn(),
   onStartTimer: vi.fn(),
   onStopTimer: vi.fn(),
-  onAddTime: vi.fn(),
+  onAdjustTime: vi.fn(),
+  onSetTime: vi.fn(),
   onReveal: vi.fn(),
   // Added by #250 ("professor coloca a própria tela no palco"), which made both
   // props REQUIRED on `InstructorControlsProps` but did not update this fixture —
@@ -142,8 +143,8 @@ describe('InstructorControls', () => {
     expect(onStartTimer).toHaveBeenCalledWith(300);
   });
 
-  // ── Add-time popover (professor "+tempo") ──────────────────────────────
-  it('shows the add-time trigger only when the activity has a timer', () => {
+  // ── Time popover (professor ajusta o tempo) ─────────────────────────────
+  it('shows the time trigger only when the activity has a timer', () => {
     const { rerender } = controls({ timerSeconds: 0 });
     expect(screen.queryByTestId('instructor-add-time')).toBeNull();
     rerender(
@@ -154,7 +155,7 @@ describe('InstructorControls', () => {
     expect(screen.getByTestId('instructor-add-time')).toBeTruthy();
   });
 
-  it('the add-time trigger is icon-only but has an accessible label', () => {
+  it('the time trigger is icon-only but has an accessible label', () => {
     controls({ timerSeconds: 60 });
     const btn = screen.getByTestId('instructor-add-time');
     // No visible text — labelled for a11y via aria-label + title.
@@ -163,30 +164,35 @@ describe('InstructorControls', () => {
     expect(btn.getAttribute('title')).toBeTruthy();
   });
 
-  it('a quick increment adds those exact seconds (does not SET)', () => {
-    const onAddTime = vi.fn();
-    controls({ timerSeconds: 60, onAddTime });
+  it('a quick chip nudges by that exact SIGNED delta', () => {
+    const onAdjustTime = vi.fn();
+    controls({ timerSeconds: 60, onAdjustTime });
     fireEvent.click(screen.getByTestId('instructor-add-time')); // open popover
-    fireEvent.click(screen.getByTestId('instructor-add-time-quick-30'));
-    expect(onAddTime).toHaveBeenCalledWith(30);
-    fireEvent.click(screen.getByTestId('instructor-add-time-quick-120'));
-    expect(onAddTime).toHaveBeenCalledWith(120);
+    fireEvent.click(screen.getByTestId('instructor-time-quick-plus-30'));
+    expect(onAdjustTime).toHaveBeenCalledWith(30);
+    fireEvent.click(screen.getByTestId('instructor-time-quick-minus-60'));
+    expect(onAdjustTime).toHaveBeenCalledWith(-60);
   });
 
-  it('a free value in seconds adds that amount and clears the field', () => {
-    const onAddTime = vi.fn();
-    controls({ timerSeconds: 60, onAddTime });
+  it('the popover can take time AWAY — the whole point of the professor asking', () => {
+    controls({ timerSeconds: 60 });
+    fireEvent.click(screen.getByTestId('instructor-add-time'));
+    expect(screen.getByTestId('instructor-time-quick-minus-30')).toBeTruthy();
+  });
+
+  it('a free value SETS that absolute duration and clears the field', () => {
+    const onSetTime = vi.fn();
+    controls({ timerSeconds: 60, onSetTime });
     fireEvent.click(screen.getByTestId('instructor-add-time'));
     const input = screen.getByTestId('instructor-add-time-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '45' } });
+    fireEvent.change(input, { target: { value: '30' } }); // "quero 30 segundos"
     fireEvent.click(screen.getByTestId('instructor-add-time-submit'));
-    expect(onAddTime).toHaveBeenCalledWith(45);
+    expect(onSetTime).toHaveBeenCalledWith(30);
     expect(input.value).toBe('');
   });
 
-  it('the free-value add is disabled for empty / non-positive input', () => {
-    const onAddTime = vi.fn();
-    controls({ timerSeconds: 60, onAddTime });
+  it('the free-value set is disabled for empty / out-of-range input', () => {
+    controls({ timerSeconds: 60 });
     fireEvent.click(screen.getByTestId('instructor-add-time'));
     expect(screen.getByTestId('instructor-add-time-submit')).toBeDisabled();
     const input = screen.getByTestId('instructor-add-time-input');

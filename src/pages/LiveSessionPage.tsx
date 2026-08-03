@@ -47,6 +47,7 @@ import {
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
+import { isExerciseActivity } from '@/utils/isExerciseActivity';
 import { LiveTimer } from '@/components/live/LiveTimer';
 import { LiveStopwatch } from '@/components/live/LiveStopwatch';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
@@ -258,8 +259,13 @@ export default function LiveSessionPage() {
     }
   }, [timer, current]);
 
+  // Reading a slide is not an exercise: no clock, no "pens down". The guard is
+  // load-bearing on `concept_reveal`, where the professor's "Revelar resposta"
+  // stops the (non-existent) timer through the SAME channel a real expiry uses —
+  // so the class was told "tempo limite esgotado" on a slide nobody was timing.
+  const isExercise = isExerciseActivity(current);
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
-  const expired = timeUpFor !== null && timeUpFor === current?.id;
+  const expired = isExercise && timeUpFor !== null && timeUpFor === current?.id;
   const hasAnswered = answered?.id === current?.id;
   // The clock running out (or the professor stopping it) takes the activity away
   // from any learner who hasn't answered — UNIVERSALLY, every answerable kind
@@ -471,9 +477,10 @@ export default function LiveSessionPage() {
         timerSlot={
           timerRunning && timer && current ? (
             <LiveTimer prominent deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
-          ) : !answered && !locked && activityStartedAt ? (
+          ) : isExercise && !answered && !locked && activityStartedAt ? (
             // Sem contagem regressiva o mesmo lugar mostra o cronômetro pessoal:
-            // solto no meio da coluna ele lia como parte da atividade.
+            // solto no meio da coluna ele lia como parte da atividade. Só em
+            // exercício — num slide o relógio cobra pressa de quem só lê.
             <LiveStopwatch startedAt={activityStartedAt} />
           ) : undefined
         }

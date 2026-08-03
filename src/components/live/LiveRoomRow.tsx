@@ -4,6 +4,7 @@ import { formatMmss } from '@/utils/formatMmss';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRosterBadges } from '@/components/live/LiveRosterBadges';
 import { LiveRoomStateIcon } from '@/components/live/LiveRoomStateIcon';
+import { LiveRoomScore } from '@/components/live/LiveRoomScore';
 import { LiveRoomRowActionsBar } from '@/components/live/LiveRoomRowActionsBar';
 import { LiveRoomActionsToggle } from '@/components/live/LiveRoomActionsToggle';
 import type { LiveRoomRow as Row, LiveRoomRowActions } from '@/types/liveClass';
@@ -96,7 +97,7 @@ export function LiveRoomRow({
               reflows the row and the name never jumps under the pointer. */}
           <span
             className={`relative shrink-0 h-6 ${
-              showDetail ? (row.stars > 0 ? 'w-[118px]' : 'w-[86px]') : 'w-[58px]'
+              showDetail ? (row.stars > 0 ? 'w-[132px]' : 'w-[100px]') : 'w-[58px]'
             }`}
           >
             <span
@@ -106,14 +107,7 @@ export function LiveRoomRow({
               }`}
             >
               {showDetail && (
-                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {row.correctCount}/{row.answeredCount}
-                </span>
-              )}
-              {showDetail && row.stars > 0 && (
-                <span className="font-mono text-[11px] tabular-nums text-amber-500" data-testid="live-room-stars">
-                  ⭐{row.stars}
-                </span>
+                <LiveRoomScore correct={row.correctCount} answered={row.answeredCount} stars={row.stars} />
               )}
               {typeof row.elapsedMs === 'number' && row.state !== 'pending' && (
                 <span className="font-mono text-xs tabular-nums text-muted-foreground" data-testid="live-room-time">

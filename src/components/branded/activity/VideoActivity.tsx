@@ -11,18 +11,17 @@ import { Video as VideoIcon } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { Activity, VideoSpec } from '@/types/content';
 import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell, DoneButton } from './parts';
+import { ActivityShell } from './parts';
 
 export function VideoActivity({
   activity,
-  onComplete,
 }: {
   activity: Activity;
+  /** Part of the shared renderer contract; a video has nothing to grade. */
   onComplete: (correct: boolean) => void;
 }) {
   const { t } = useI18n();
   const spec = activity.spec as unknown as VideoSpec;
-  const isDone = activity.status === 'done';
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   return (
@@ -57,7 +56,6 @@ export function VideoActivity({
           <span className="text-sm">{t('activity.video.missing')}</span>
         </div>
       )}
-      <DoneButton done={isDone} onClick={() => onComplete(true)} />
     </ActivityShell>
   );
 }

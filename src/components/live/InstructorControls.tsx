@@ -1,7 +1,8 @@
-import { Play, ChevronLeft, ChevronRight, Eye, MonitorUp } from 'lucide-react';
+import { Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { AddTimeControl } from '@/components/live/AddTimeControl';
+import { InstructorStageActions } from '@/components/live/InstructorStageActions';
 
 interface InstructorControlsProps {
   /** Reception (pointer not set yet) — only "Begin" is shown. */
@@ -24,11 +25,13 @@ interface InstructorControlsProps {
   onStartTimer: (seconds: number) => void;
   onStopTimer: () => void;
   /**
-   * Add `seconds` to the shared countdown. When running it extends the time
-   * left; when stopped it grows the next start's duration. Same channel as the
-   * timer itself — the parent wires it to a re-broadcast.
+   * Nudge the shared countdown by a SIGNED delta. When running it changes the
+   * time left; when stopped it changes the next start's duration. Same channel
+   * as the timer itself — the parent wires it to a re-broadcast.
    */
-  onAddTime: (seconds: number) => void;
+  onAdjustTime: (deltaSeconds: number) => void;
+  /** Set the countdown to an absolute duration, same two states as above. */
+  onSetTime: (seconds: number) => void;
   onReveal: () => void;
   /** The professor's own screen is the one on the projector right now. */
   selfStaged: boolean;
@@ -57,7 +60,8 @@ export function InstructorControls({
   onNext,
   onStartTimer,
   onStopTimer,
-  onAddTime,
+  onAdjustTime,
+  onSetTime,
   onReveal,
   selfStaged,
   onToggleSelfStage,
@@ -132,37 +136,18 @@ export function InstructorControls({
               onStop={onStopTimer}
             />
           </div>
-          <AddTimeControl running={timerRunning} onAddTime={onAddTime} />
+          <AddTimeControl running={timerRunning} onAdjustTime={onAdjustTime} onSetTime={onSetTime} />
         </div>
       )}
 
-      <button
-        onClick={onToggleSelfStage}
-        disabled={busy}
-        aria-pressed={selfStaged}
-        data-testid="instructor-self-stage"
-        className={`w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border text-sm transition-colors disabled:opacity-40 ${
-          selfStaged
-            ? 'border-evergreen bg-evergreen-soft text-evergreen-hi'
-            : 'border-border bg-background text-foreground hover:border-evergreen/40'
-        }`}
-      >
-        <MonitorUp className="w-3.5 h-3.5" />{' '}
-        {selfStaged
-          ? t('live.instructor.control.selfStageOff')
-          : t('live.instructor.control.selfStage')}
-      </button>
-
-      {canReveal && (
-        <button
-          onClick={onReveal}
-          disabled={busy || revealed}
-          data-testid="instructor-reveal"
-          className="w-full inline-flex items-center justify-center gap-1.5 h-9 rounded-full border border-border bg-background text-sm text-foreground hover:border-evergreen/40 transition-colors disabled:opacity-40"
-        >
-          <Eye className="w-3.5 h-3.5" /> {t('live.instructor.control.reveal')}
-        </button>
-      )}
+      <InstructorStageActions
+        busy={busy}
+        selfStaged={selfStaged}
+        onToggleSelfStage={onToggleSelfStage}
+        canReveal={canReveal}
+        revealed={revealed}
+        onReveal={onReveal}
+      />
     </div>
   );
 }

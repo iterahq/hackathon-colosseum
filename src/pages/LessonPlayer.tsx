@@ -36,6 +36,7 @@ import {
   type FooterResult,
 } from '@/components/branded/activity/activityFeedbackKinds';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
+import { isExerciseActivity } from '@/utils/isExerciseActivity';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
 import {
@@ -551,19 +552,18 @@ export default function LessonPlayer() {
                 </div>
               )}
 
-              {/* Concept is pure reading — no in-card "mark done". Self-paced
+              {/* Content is pure reading — no in-card "mark done". Self-paced
                   advance lives here as a plain "Continuar" (navigation, not a
                   completion ceremony). The live class has no such button — the
-                  instructor force-advances the cohort. `concept_reveal` rides
-                  along: revealing the answer is reading too, so it never calls
-                  onComplete and would otherwise be a dead end here. */}
+                  instructor force-advances the cohort. The predicate covers
+                  every reading kind, not just `concept`: while `diagram`/`video`
+                  kept their own "concluir", clicking it scored a point in the
+                  live podium for having read a slide. */}
               {/* On REVIEW the same button appears for every kind and steps
                   forward without grading: a `done` activity is locked by
                   `answerMachine`, so it has no submit of its own — and routing
                   it through `handleComplete` would re-award the XP. */}
-              {(reviewing ||
-                ((current?.kind === 'concept' || current?.kind === 'concept_reveal') &&
-                  !isByocActivity(current))) && (
+              {(reviewing || (current && !isExerciseActivity(current))) && (
                 <button
                   type="button"
                   onClick={reviewing ? goForward : conceptContinue}
