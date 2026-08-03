@@ -56,6 +56,7 @@ import { toast } from 'sonner';
 // re-inlined per page.
 import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
 import { canStepBack, stepBack, stepForward } from '@/utils/lessonNavigation';
+import { lessonExitPath } from '@/utils/lessonExitPath';
 import type { Activity, LessonPosition } from '@/types/content';
 
 export default function LessonPlayer() {
@@ -431,7 +432,7 @@ export default function LessonPlayer() {
         progressPct={progressPct}
         muted={muted}
         onToggleMuted={toggleMuted}
-        onClose={() => navigate(-1)}
+        onClose={() => navigate(lessonExitPath(placement.programSlug))}
         onBack={canGoBack ? goBack : undefined}
       />
 
