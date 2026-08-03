@@ -173,38 +173,46 @@ async function connectPair(page: Page, leftId: string, rightId: string): Promise
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 1 · EXPOSITION KINDS — a verdict exists, but only ever `true`.
+ * 1 · EXPOSITION KINDS — conteúdo não conclui; só `code` sem checks conclui.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 test.describe('exposição — kinds sem caminho de erro', () => {
-  for (const fx of [DIAGRAM, VIDEO, DOCUMENT_READONLY, CODE_NO_CHECKS] as const) {
-    test(`${fx.label}: "Marcar como concluída" → veredito CORRETO`, async ({ page }) => {
+  for (const fx of [DIAGRAM, VIDEO, DOCUMENT_READONLY] as const) {
+    // ♨️ DESCONGELADO em 03/08/2026: estes três tinham `activity-done` cravado em
+    // `onComplete(true)`. Conteúdo não é exercício — enquanto o botão existiu,
+    // metade da turma não clicava e o pódio da aula ao vivo virava ranking de
+    // quem lembrou de clicar, não de quem acertou.
+    test(`${fx.label}: conteúdo NÃO tem afordância de conclusão`, async ({ page }) => {
       await open(page, fx);
       await expectDispatchedTo(page, fx.kind);
-      await page.getByTestId('activity-done').click();
-      await expectVerdict(page, true);
-    });
-
-    test(`${fx.label}: 🧊 FROZEN — não existe caminho para veredito INCORRETO`, async ({ page }) => {
-      await open(page, fx);
-      // The ONLY affordance is `activity-done`, which is hard-wired to
-      // `onComplete(true)`. There is no submit, no grading, no wrong answer.
-      // Frozen as an inventory fact: if the refactor ever gives one of these a
-      // false verdict, this assertion is what notices.
-      await expect(page.getByTestId('activity-done')).toBeVisible();
+      await expect(page.getByTestId('activity-done')).toHaveCount(0);
       await expect(page.locator('[data-testid$="-submit"]')).toHaveCount(0);
       await expectNoVerdict(page);
     });
   }
 
-  test('video: 🧊 FROZEN — o "concluir" NÃO exige assistir ao vídeo', async ({ page }) => {
-    await open(page, VIDEO);
-    await expect(page.getByTestId('video-player')).toBeVisible();
-    // No watch gate of any kind: Done is enabled from the first paint. Also
-    // note `video-skeleton` never clears here — the media never loads in a
-    // hermetic run — and Done works anyway. Both are today's behaviour.
+  test('code sem checks: "Marcar como concluída" → veredito CORRETO', async ({ page }) => {
+    await open(page, CODE_NO_CHECKS);
+    await expectDispatchedTo(page, 'code');
     await page.getByTestId('activity-done').click();
     await expectVerdict(page, true);
+  });
+
+  test('code sem checks: 🧊 FROZEN — não existe caminho para veredito INCORRETO', async ({ page }) => {
+    await open(page, CODE_NO_CHECKS);
+    // The ONLY affordance is `activity-done`, which is hard-wired to
+    // `onComplete(true)`. There is no submit, no grading, no wrong answer.
+    await expect(page.getByTestId('activity-done')).toBeVisible();
+    await expect(page.getByTestId('code-submit')).toHaveCount(0);
+    await expectNoVerdict(page);
+  });
+
+  test('video: o player é exibido, e ele é a atividade inteira', async ({ page }) => {
+    await open(page, VIDEO);
+    await expect(page.getByTestId('video-player')).toBeVisible();
+    // Sem gate de assistir e sem conclusão: o vídeo é exposição pura. Note que
+    // `video-skeleton` nunca limpa aqui — a mídia não carrega num run hermético.
+    await expect(page.getByTestId('activity-done')).toHaveCount(0);
   });
 
   test('diagram: 🧊 FROZEN — `mermaid` é exibido como TEXTO, não como diagrama', async ({ page }) => {
@@ -288,7 +296,8 @@ test.describe('document (reflexão com rubric.min_words)', () => {
     // rubric" is not the read-only variant most people assume it is.
     await expect(page.getByTestId('document-reflection-input')).toHaveCount(0);
     await expect(page.getByTestId('document-min-words')).toHaveCount(0);
-    await expect(page.getByTestId('activity-done')).toBeEnabled();
+    // Sem rubric não há o que entregar — e sem entrega não há conclusão.
+    await expect(page.getByTestId('activity-done')).toHaveCount(0);
   });
 });
 
@@ -801,7 +810,7 @@ test.describe('garantia do harness', () => {
   });
 
   test('todo veredito é rotulado "not saved" e é resetável', async ({ page }) => {
-    await open(page, DIAGRAM);
+    await open(page, CODE_NO_CHECKS);
     await page.getByTestId('activity-done').click();
     await expect(verdict(page)).toContainText('not saved');
     await page.getByTestId('test-reset').click();

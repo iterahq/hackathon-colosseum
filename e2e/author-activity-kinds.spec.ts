@@ -82,11 +82,13 @@ const MAX_UNITS = Number(process.env.ITERA_SMOKE_MAX_UNITS ?? 8);
  * How deep this tier drives a given kind.
  *  - `verdict` — drive real input all the way to the harness verdict row.
  *  - `render`  — assert it mounts and exposes its input affordance, and stop.
- *    Reserved for the two kinds whose terminal verdict is content-dependent
- *    (`code` needs the authored checks to pass in a Monaco/iframe sandbox;
- *    `sandbox_scenario` needs an authored multi-step ChatModel walk). Driving
- *    those to a verdict from a generic smoke would encode content assumptions
- *    and flake. Their state machines are covered by T0/T1 instead.
+ *    Duas razões levam um kind pra cá. Verdict dependente do conteúdo
+ *    (`code` precisa dos checks autorais passarem num sandbox Monaco/iframe;
+ *    `sandbox_scenario` precisa de uma caminhada multi-passo no ChatModel) —
+ *    dirigir esses até o veredito num smoke genérico embutiria suposição de
+ *    conteúdo e flakearia; suas máquinas de estado estão cobertas em T0/T1. E
+ *    kinds de CONTEÚDO (`concept`, `diagram`, `video`, e o `document` de corpo
+ *    só-leitura), que desde 03/08/2026 não têm conclusão nenhuma a clicar.
  */
 type Depth = 'verdict' | 'render';
 
@@ -104,9 +106,15 @@ async function clickFirst(page: Page, testId: string) {
   await el.click();
 }
 
-/** The shared "Marcar como concluída" affordance (exposition kinds). */
+/** The shared "Marcar como concluída" affordance (exercise kinds). */
 async function markDone(page: Page) {
   await clickFirst(page, 'activity-done');
+}
+
+/** Conteúdo: montou e nada há para responder — não existe conclusão a clicar. */
+async function expectContent(page: Page) {
+  await expect(page.getByTestId('activity-shell').first()).toBeVisible();
+  await expect(page.getByTestId('activity-done')).toHaveCount(0);
 }
 
 const CASES: KindCase[] = [
@@ -120,23 +128,28 @@ const CASES: KindCase[] = [
   },
   {
     kind: 'document',
-    depth: 'verdict',
+    // `render`: das duas formas que dividem o kind, só a reflexão (textarea +
+    // min_words) conclui. A de corpo só-leitura é conteúdo, e conteúdo não
+    // conclui — então esperar veredito aqui depende de qual das duas o crawler
+    // achou primeiro.
+    depth: 'render',
     drive: async (page) => {
-      // Two shapes share the kind: a reflection (textarea + min_words gate) and
-      // a read-only body (plain Done). Detect rather than assume.
       const input = page.getByTestId('document-reflection-input');
-      if (await input.count()) {
-        await input.first().fill(
-          'Esta é uma resposta de smoke automatizado escrita para satisfazer o ' +
-            'requisito de contagem mínima de palavras da atividade de reflexão ' +
-            'sem depender do conteúdo específico do curso avaliado aqui hoje.'
-        );
+      if (!(await input.count())) {
+        await expect(page.getByTestId('document-prompt')).toBeVisible();
+        return;
       }
+      await input.first().fill(
+        'Esta é uma resposta de smoke automatizado escrita para satisfazer o ' +
+          'requisito de contagem mínima de palavras da atividade de reflexão ' +
+          'sem depender do conteúdo específico do curso avaliado aqui hoje.'
+      );
       await markDone(page);
+      await expect(page.getByTestId('test-verdict')).toBeVisible();
     },
   },
-  { kind: 'diagram', depth: 'verdict', drive: markDone },
-  { kind: 'concept', depth: 'verdict', drive: markDone },
+  { kind: 'diagram', depth: 'render', drive: expectContent },
+  { kind: 'concept', depth: 'render', drive: expectContent },
   {
     kind: 'concept_reveal',
     // `render`, não `verdict`: revelar não é submeter — o card abre e nada é
@@ -151,7 +164,7 @@ const CASES: KindCase[] = [
       await expect(page.getByTestId('concept-reveal-answer')).toBeVisible();
     },
   },
-  { kind: 'video', depth: 'verdict', drive: markDone },
+  { kind: 'video', depth: 'render', drive: expectContent },
   {
     kind: 'single_choice',
     depth: 'verdict',
