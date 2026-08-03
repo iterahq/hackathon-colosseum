@@ -534,6 +534,7 @@ function ClassControl({
               >
                 <LiveStage
                   staged={stagedAnswer}
+                  activity={current}
                   onClear={clearStage}
                   viewingName={stagedAnswer.author.name}
                   cursor={stageCursor}

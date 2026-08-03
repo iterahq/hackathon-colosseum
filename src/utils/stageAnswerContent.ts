@@ -8,9 +8,11 @@
  * ADR-4 (revised 2026-07-23): the professor pulls WORK IN PROGRESS too, not only
  * finished answers — following how the class is advancing is the whole point. So
  * this NEVER returns null anymore. It always returns a `status` describing where
- * the learner is, including an explicit `not_started` empty state, so the stage
- * can honestly say "ainda não começou" instead of the pull failing in silence
- * (which looked to the professor like a broken button).
+ * the learner is, so the pull never fails in silence (which looked to the
+ * professor like a broken button). `not_started` is a statement about THIS
+ * signal, not about the learner: only a code snapshot or a submitted answer is
+ * visible here, so a learner mid-way through any other kind reports it too —
+ * which is why the stage projects the current activity instead of announcing it.
  */
 import { readCodeSnapshot } from '@/services/codeSnapshot.service';
 import { readStoredAnswer } from '@/utils/liveAnswerStorage';

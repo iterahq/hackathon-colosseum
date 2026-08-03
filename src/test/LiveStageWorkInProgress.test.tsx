@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
+import type { Activity } from '@/types/content';
 import type { ClassPresenceMember, StagedAnswer } from '@/types/liveClass';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 
@@ -26,10 +27,10 @@ const { LiveRoomList } = await import('@/components/live/LiveRoomList');
 
 const author = { userId: 'a', name: 'Alba', avatarUrl: null };
 
-function renderStage(staged: StagedAnswer) {
+function renderStage(staged: StagedAnswer, activity?: Activity) {
   return render(
     <I18nProvider>
-      <LiveStage staged={staged} />
+      <LiveStage staged={staged} activity={activity} />
     </I18nProvider>
   );
 }
@@ -60,17 +61,48 @@ describe('LiveStage — work-in-progress labelling', () => {
     expect(screen.getByTestId('live-stage-summary')).toBeTruthy();
   });
 
-  it('renders an explicit empty state instead of a bogus "answered incorrectly"', () => {
-    renderStage({
-      activityId: 'act-1',
-      kind: 'empty',
-      content: '',
-      status: 'not_started',
-      author,
-    });
-    expect(screen.getByTestId('live-stage-empty').textContent).toContain('ainda não começou');
-    expect(screen.queryByTestId('live-stage-summary')).toBeNull();
-    expect(screen.getByTestId('live-stage-status').textContent).toContain('Ainda não começou');
+  // `gatherStageContent` only ever sees a code snapshot or a submitted answer,
+  // so every other kind replies `not_started` even mid-work. Pulling someone
+  // means projecting the CURRENT activity, never accusing them of not starting.
+  it('projects the current activity when the learner has nothing local to send', () => {
+    const activity: Activity = {
+      id: 'act-1',
+      lessonId: 'lesson-1',
+      ordinal: 0,
+      kind: 'concept',
+      spec: { instruction: { pt: 'O que é uma variável', en: 'What is a variable' } },
+      rubric: null,
+    };
+    renderStage(
+      { activityId: 'act-1', kind: 'empty', content: '', status: 'not_started', author },
+      activity
+    );
+    expect(screen.getByTestId('live-stage-activity')).toBeTruthy();
+    expect(screen.queryByTestId('live-stage-empty')).toBeNull();
+    // Labelled as the activity, never as the learner's own work.
+    expect(screen.getByTestId('live-stage-status').textContent).toContain('Atividade atual');
+  });
+
+  // The `code` renderer seeds its editor from the VIEWER's localStorage, so
+  // mirroring it would project the professor's own draft under the learner's
+  // name — and `code` is the one kind whose absence `gatherStageContent` reads
+  // faithfully anyway.
+  it('never mirrors a code activity, to avoid projecting the viewer own draft', () => {
+    const activity: Activity = {
+      id: 'act-1',
+      lessonId: 'lesson-1',
+      ordinal: 0,
+      kind: 'code',
+      spec: { instruction: { pt: 'Pinte o botão', en: 'Paint the button' }, starter: '' },
+      rubric: null,
+    };
+    renderStage(
+      { activityId: 'act-1', kind: 'empty', content: '', status: 'not_started', author },
+      activity
+    );
+    expect(screen.queryByTestId('live-stage-activity')).toBeNull();
+    expect(screen.getByTestId('live-stage-empty').textContent).toContain('Nada para projetar');
+    expect(screen.queryByTestId('live-stage-status')).toBeNull();
   });
 });
 

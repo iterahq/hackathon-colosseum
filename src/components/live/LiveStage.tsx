@@ -1,13 +1,25 @@
-import { Circle, MousePointer2, Pencil, X } from 'lucide-react';
+import { MousePointer2, Pencil, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePreview';
+import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { StageCursorOverlay } from '@/components/live/StageCursorOverlay';
+import type { Activity } from '@/types/content';
 import type { StageCursor, StagedAnswer } from '@/types/liveClass';
 
 interface LiveStageProps {
   staged: StagedAnswer;
+  /**
+   * The activity currently on the class. Shown read-only when the learner has
+   * nothing local to project: `gatherStageContent` only sees a code snapshot or
+   * a submitted answer, so every other kind reports `not_started` even while the
+   * learner is working it. Pulling someone means showing the CURRENT state.
+   *
+   * Only the instructor surface passes it: the learner already has their own
+   * copy of the same activity right below the stage.
+   */
+  activity?: Activity | null;
   /** Instructor-only affordance to dismiss the stage for everyone. */
   onClear?: () => void;
   /**
@@ -44,6 +56,7 @@ interface LiveStageProps {
  */
 export function LiveStage({
   staged,
+  activity,
   onClear,
   viewingName,
   cursor = null,
@@ -54,6 +67,10 @@ export function LiveStage({
   const isCode = staged.kind === 'code';
   const isEmpty = staged.kind === 'empty' || staged.status === 'not_started';
   const isDraft = staged.status === 'in_progress';
+  // `code` is the ONE kind whose absence is trustworthy, and the renderer would
+  // seed the editor from the VIEWER's own localStorage — projecting the
+  // professor's draft under the learner's name.
+  const mirrorActivity = activity && activity.kind !== 'code' ? activity : null;
 
   return (
     <div data-testid="live-stage">
@@ -68,13 +85,13 @@ export function LiveStage({
           </p>
           <div className="flex items-center gap-2 mt-0.5 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{staged.author.name}</p>
-            {(isDraft || isEmpty) && (
+            {(isDraft || (isEmpty && mirrorActivity)) && (
               <span
                 data-testid="live-stage-status"
                 className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full border border-streak/50 bg-streak/15 text-[10px] font-medium uppercase tracking-wide text-streak"
               >
-                {isEmpty ? <Circle className="w-2.5 h-2.5" /> : <Pencil className="w-2.5 h-2.5" />}
-                {isEmpty ? t('live.stage.status.notStarted') : t('live.stage.status.inProgress')}
+                <Pencil className="w-2.5 h-2.5" />
+                {t(isDraft ? 'live.stage.status.inProgress' : 'live.stage.status.current')}
               </span>
             )}
           </div>
@@ -95,9 +112,9 @@ export function LiveStage({
         className="px-4 md:px-8 py-6 bg-muted/40 bg-gradient-to-b from-streak/[0.08] to-transparent"
         data-testid="live-stage-body"
       >
-        {isEmpty ? (
-          // The learner is in the room but hasn't touched this activity. Say so
-          // plainly — the pull resolving to "nothing" is information, not a bug.
+        {isEmpty && mirrorActivity ? (
+          <LiveActivityStage activity={mirrorActivity} readOnly testid="live-stage-activity" />
+        ) : isEmpty ? (
           <div
             className="mx-auto max-w-2xl rounded-3xl border border-dashed border-border bg-card p-6 text-center"
             data-testid="live-stage-empty"
