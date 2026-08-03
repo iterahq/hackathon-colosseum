@@ -1,4 +1,5 @@
 import type { CodeCheck } from '@iterahq/activity-spec';
+import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 
 export interface CodeSnapshot {
   code: string;
@@ -6,7 +7,12 @@ export interface CodeSnapshot {
 }
 
 export interface UseCodeSnackCallbacks {
-  onComplete: (correct: boolean) => void;
+  /**
+   * Report the settled attempt upward. The `detail` carries the learner's SOURCE
+   * as `response` — see `useCodeSnack.complete` for why that is the whole point
+   * of this signature and not an afterthought.
+   */
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   /**
    * Persist a debounced snapshot of the source. Defaults to the local snapshot
    * store (`codeSnapshot.service`).

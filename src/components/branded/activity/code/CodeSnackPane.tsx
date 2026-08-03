@@ -3,6 +3,7 @@ import { Code2, ExternalLink, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { useCodeSnack } from '@/hooks/useCodeSnack';
 import { DoneButton } from '@/components/branded/activity/parts';
@@ -30,7 +31,12 @@ export function CodeSnackPane({
 }: {
   activity: Activity;
   spec: CodeSpec;
-  onComplete: (correct: boolean) => void;
+  /**
+   * Widened to the shared `detail` channel so the learner's SOURCE can ride up
+   * with the verdict — see `useCodeSnack.complete`. Pass-through only: this
+   * component neither builds nor inspects the detail.
+   */
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
 }) {
   const { t } = useI18n();
   const {

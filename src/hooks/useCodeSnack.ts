@@ -106,21 +106,57 @@ export function useCodeSnack(
   }, [activityId, spec.starter, reset]);
 
   /**
-   * Report the REAL outcome upward. With checks that is "did every check pass";
-   * without checks it stays the old unconditional `true` (an ungraded snack has
-   * nothing to be wrong about). This is what turns `itera.class_answers.correct`
-   * — today always `true` for code — into real data for the post-class report
-   * and the podium.
+   * Report the REAL outcome upward, WITH the source the learner settled on.
+   * With checks the verdict is "did every check pass"; without checks it stays
+   * the old unconditional `true` (an ungraded snack has nothing to be wrong
+   * about). This is what turns `itera.class_answers.correct` — today always
+   * `true` for code — into real data for the post-class report and the podium.
+   *
+   * ═════════════════════════════════════════════════════════════════════════
+   * WHY THE SOURCE RIDES UP HERE — the gap this closes
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * Until now `code` reported a bare boolean and the learner's work existed in
+   * exactly ONE place: `localStorage`, via `codeSnapshot.service`. It never left
+   * the machine. Measured on 2026-08-03: of 556 attempt rows only 29 (5%) carry
+   * any `response` at all, and NOT ONE of them is a code attempt — the kind
+   * where *"how did they get there"* is the entire question.
+   *
+   * A cleared cache, a different browser, a borrowed Chromebook, and the work is
+   * gone with no record that it ever existed. That loss is not recoverable
+   * later, which is the same argument the whole telemetry plan rests on.
+   *
+   * 🔑 THE DRAFT STAYS LOCAL. This does NOT move autosave to the server: the
+   * debounced snapshot keeps writing to `localStorage` exactly as before, so a
+   * refresh mid-exercise still restores from the machine and nothing about the
+   * editing loop changes. What leaves is the SETTLED submission only — the same
+   * moment, and the same channel (`ActivityCompleteDetail.response`), that
+   * `single_choice`, `order`, `match` and `document` have used since PR #193.
+   *
+   * ⚠️ AND IT IS NOT A WRITE. Handing the source up persists nothing on its own:
+   * only the learner-facing players call the persistence path, which is the
+   * boundary that keeps `ActivityTestHarness` from turning a curator's typing
+   * into learner data. What the players then do with it:
+   *   · `activity_results.feedback.response`, capped at `MAX_RESPONSE_CHARS`
+   *     (2000) and marked when truncated — the instructor-facing attempt log;
+   *   · an `itera.artifacts` row, because `KIND_ARTIFACT_DEFAULTS.code` is
+   *     already `persist: true` and says in its own comment *"not yet WIRED …
+   *     the default is correct in advance so that wiring it later is one call
+   *     site, not another policy decision"*. This is that call site.
+   *
+   * Both destinations are RLS'd to the learner (`results_rw_self`,
+   * `artifacts_rw_self`) with the pre-existing admin/instructor read policies —
+   * no new table, no new policy, no new grant.
    */
   const complete = useCallback(() => {
     if (!hasChecks) {
-      onComplete(true);
+      onComplete(true, { response: code });
       return;
     }
     if (results === null) return;
     settle();
-    onComplete(allPassed);
-  }, [hasChecks, results, allPassed, settle, onComplete]);
+    onComplete(allPassed, { response: code });
+  }, [hasChecks, results, allPassed, settle, onComplete, code]);
 
   return {
     code,

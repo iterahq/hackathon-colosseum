@@ -1,5 +1,6 @@
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { KIND_VALIDATION } from '@/utils/activitySpecBoundary';
 import { InvalidSpecCard } from '../InvalidSpecCard';
 import { CodeSnackPane } from './CodeSnackPane';
@@ -8,15 +9,20 @@ import { CodeSnackPane } from './CodeSnackPane';
  * `code` — a single-file, client-only React code snack. Validates the spec
  * against the shared Zod schema (a friendly card on an authoring mistake instead
  * of a crash), then hands off to the split-pane surface: Monaco on the left, a
- * live preview (sucrase-transpiled, inside a sandboxed iframe) on the right. No grading in
- * the MVP — Done completes; source is autosaved (debounced) for a later pull.
+ * live preview (sucrase-transpiled, inside a sandboxed iframe) on the right.
+ *
+ * The source is autosaved (debounced) to `localStorage` while the learner works,
+ * and the SETTLED source rides up with the verdict as `detail.response` — until
+ * that second half existed, a code attempt recorded a boolean and the work
+ * itself never left the machine.
  */
 export function CodeSnackActivity({
   activity,
   onComplete,
 }: {
   activity: Activity;
-  onComplete: (correct: boolean) => void;
+  /** Carries the learner's source up as `detail.response` — see `useCodeSnack`. */
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
 }) {
   // `site: 'component'` no registro da fronteira: o `code` valida AQUI, do jeito
   // histórico, porque este componente também é renderizado direto (fora do

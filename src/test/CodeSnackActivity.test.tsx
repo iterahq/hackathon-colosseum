@@ -140,7 +140,7 @@ describe('CodeSnackActivity', () => {
   it('completes with true when Done is clicked (no grading)', () => {
     const onComplete = renderSnack({ prompt: 'p' });
     fireEvent.click(screen.getByTestId('activity-done'));
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: expect.any(String) }));
   });
 
   it('shows Done — never a submit — when the spec ships no checks', () => {
@@ -287,7 +287,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: expect.any(String) }));
   });
 
   // Call de líderes 2026-07-28: the learner submitted correct code, was marked
@@ -369,7 +369,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
-    expect(onComplete).toHaveBeenCalledWith(false);
+    expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: expect.any(String) }));
   });
 
   it('offers "seguir mesmo assim" when every check fails — a stuck learner is not trapped', () => {
@@ -385,7 +385,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
-    expect(onComplete).toHaveBeenCalledWith(false);
+    expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: expect.any(String) }));
   });
 
   it('keeps the verdicts on screen after settling, with the actions spent', () => {
@@ -427,7 +427,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
-    expect(onComplete).toHaveBeenCalledWith(false);
+    expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: expect.any(String) }));
   });
 
   it('falls back to "nothing passed" if the preview never answers', () => {

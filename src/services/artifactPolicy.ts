@@ -101,10 +101,12 @@ interface KindDefault {
  *  - `document` — the reflection and the AI-judge submission. This is the loss
  *    PR #191 was written to stop; it must stay on by default.
  *  - `code` — the learner's source is the archetypal deliverable (the
- *    `button.tsx` case that motivated the whole plan). ⚠️ Not yet WIRED: the
- *    producer lives in `codeSnapshot.service.ts`, owned by open PR #185. The
- *    default is correct in advance so that wiring it later is one call site,
- *    not another policy decision.
+ *    `button.tsx` case that motivated the whole plan). ✅ **WIRED since
+ *    2026-08-03**: `useCodeSnack.complete` hands the settled source up as
+ *    `detail.response`, which is the one call site this default was written in
+ *    advance for. Before that, a code attempt recorded a boolean and the work
+ *    itself never left `localStorage` — 0 of 556 attempt rows carried it.
+ *    ⚠️ The DRAFT is still local-only; only the settled submission travels.
  *
  * `diagram` is `false` because the mermaid comes from the AUTHOR's spec — the
  * learner only reads it and clicks Done, so there is nothing of theirs to keep.
