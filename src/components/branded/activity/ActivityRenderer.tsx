@@ -478,7 +478,12 @@ function AiJudgeDocumentActivity({
 
 function DiagramActivity({ activity, onComplete }: { activity: Activity; onComplete: (c: boolean) => void }) {
   const { t } = useI18n();
-  const spec = activity.spec as { prompt?: string; mermaid?: string; imageUrl?: string };
+  const spec = activity.spec as {
+    prompt?: string;
+    mermaid?: string;
+    imageUrl?: string;
+    highlights?: { term: string; caption?: string }[];
+  };
   const isDone = activity.status === 'done';
   return (
     <Shell kind="diagram" icon={GitBranch} label={t('activity.diagram')}>
@@ -497,6 +502,20 @@ function DiagramActivity({ activity, onComplete }: { activity: Activity; onCompl
           </div>
         )}
       </div>
+      {spec.highlights?.length ? (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2" data-testid="diagram-highlights">
+          {spec.highlights.map((h, i) => (
+            <div
+              key={h.term}
+              className="animate-pulse-glow rounded-xl border border-menta/50 bg-menta/10 px-4 py-3"
+              style={{ animationDelay: `${i * 600}ms` }}
+            >
+              <code className="font-mono text-base font-semibold text-menta">{h.term}</code>
+              {h.caption && <p className="mt-1 text-sm text-muted-foreground">{h.caption}</p>}
+            </div>
+          ))}
+        </div>
+      ) : null}
       <DoneButton done={isDone} onClick={() => onComplete(true)} />
     </Shell>
   );
