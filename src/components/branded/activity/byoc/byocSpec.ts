@@ -1,17 +1,58 @@
 /**
  * Resolve the authored BYOC harness out of an activity, on top of the pure
- * `byocSpecFromRaw` resolver, adding the one thing the pure version cannot know:
- * whether the itera-api is configured at all. An unconfigured deploy falls back
- * to the host kind rather than showing a dead step 1.
+ * `byocSpecFromRaw` resolver, adding the two things the pure version cannot know:
+ * whether the itera-api is configured at all (an unconfigured deploy falls back
+ * to the host kind rather than showing a dead step 1), and which locale the
+ * learner is reading in.
+ *
+ * The locale collapse is not redundant with the one in the services layer:
+ * `sandbox_scenario` specs deliberately reach the renderer with their bilingual
+ * bags intact, so a harness riding on a sandbox would never parse. Resolving here
+ * makes BYOC independent of the host kind's collapse decision — and mirrors what
+ * itera-api does before it validates the same spec.
  */
 import type { ByocSpec } from '@iterahq/activity-spec';
 import { iteraApiConfigured } from '@/api/iteraApi';
+import type { Locale } from '@/i18n';
 import { byocSpecFromRaw } from '@/utils/byocSpec';
-import type { Activity } from '@/types/content';
+import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
+import type { Activity, InstructionPanelSpec } from '@/types/content';
 
-export function resolveByocSpec(activity: Activity): ByocSpec | null {
+/** The spec root, only when it could plausibly carry a harness. */
+function harnessBearingSpec(activity: Activity): Record<string, unknown> | null {
+  const spec = activity.spec;
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
+  const raw = spec as Record<string, unknown>;
+  // Deep-cloning EVERY activity's spec on every render is not free: the live
+  // class re-renders on each timer tick, and this runs for all 12 kinds.
+  if (raw.byoc === undefined && raw.harness === undefined) return null;
+  return raw;
+}
+
+export function resolveByocSpec(activity: Activity, locale?: Locale): ByocSpec | null {
   if (!iteraApiConfigured()) return null;
-  return byocSpecFromRaw(activity.spec);
+  const raw = harnessBearingSpec(activity);
+  if (!raw) return null;
+  return byocSpecFromRaw(resolveLocalizedSpec(raw, locale));
+}
+
+/**
+ * The host kind's own teaching context, which BYOC carries over because its
+ * layer replaces the host's whole render. It lives OUTSIDE the ByocSpec, so it
+ * has to be collapsed on its own — on a `sandbox_scenario` host it reaches the
+ * renderer bilingual, and `RichText` would call `.replace` on an object.
+ */
+export function resolveByocInstruction(
+  activity: Activity,
+  locale?: Locale
+): InstructionPanelSpec | undefined {
+  const raw = harnessBearingSpec(activity);
+  const instruction = raw?.instruction;
+  if (!instruction || typeof instruction !== 'object' || Array.isArray(instruction)) return undefined;
+  return resolveLocalizedSpec(
+    instruction as Record<string, unknown>,
+    locale
+  ) as InstructionPanelSpec;
 }
 
 /**

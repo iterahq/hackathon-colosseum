@@ -83,7 +83,8 @@ export function ActivityRenderer({
 }) {
   // BYOC is a LAYER, not a kind: an activity of ANY kind whose spec carries an
   // authored harness is generated from the learner's own context first.
-  const byoc = resolveByocSpec(activity);
+  const { locale } = useI18n();
+  const byoc = resolveByocSpec(activity, locale);
   if (byoc) {
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
   }

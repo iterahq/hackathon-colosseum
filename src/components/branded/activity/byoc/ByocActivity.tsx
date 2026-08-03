@@ -10,9 +10,10 @@ import { Sparkles } from 'lucide-react';
 import type { ByocSpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
-import type { Activity, InstructionPanelSpec } from '@/types/content';
+import type { Activity } from '@/types/content';
 import { InstructionPanel } from '../InstructionPanel';
 import { ActivityShell } from '../parts';
+import { resolveByocInstruction } from './byocSpec';
 import { ByocSeedForm } from './ByocSeedForm';
 import { ByocTree } from './ByocTree';
 import { ByocWaiting } from './ByocWaiting';
@@ -29,7 +30,7 @@ export function ByocActivity({
   onComplete: (correct: boolean) => void;
   reveal?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { session, loading } = useAuth();
   const token = session?.access_token ?? '';
   const { phase, generation, seedError, submitSeed, reset } = useByoc({
@@ -41,7 +42,7 @@ export function ByocActivity({
   const isDone = activity.status === 'done';
   // BYOC replaces the host kind's whole render, so the host's own teaching
   // context would silently vanish under the layer if we didn't carry it over.
-  const instruction = (activity.spec as { instruction?: InstructionPanelSpec } | null)?.instruction;
+  const instruction = resolveByocInstruction(activity, locale);
 
   return (
     <ActivityShell kind="byoc" icon={Sparkles} label={t('byoc.badge')}>
@@ -59,7 +60,7 @@ export function ByocActivity({
       )}
 
       {phase === 'generating' && (
-        <ByocWaiting title={t('byoc.generating')} hint={t('byoc.generatingHint')} />
+        <ByocWaiting title={t('byoc.generating')} hint={t('byoc.generatingHint')} narrate />
       )}
 
       {phase === 'unavailable' && (
