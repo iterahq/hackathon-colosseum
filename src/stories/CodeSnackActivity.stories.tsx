@@ -4,6 +4,7 @@ import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackA
 import { makeActivity, noop } from './activityFixtures';
 import { CODE_SPEC, CODE_STARTER } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import { settleMonacoLanguageWorker } from './monacoSettle';
 
 /**
  * CONTRATO `code` — snack React de arquivo único (Monaco à esquerda, preview ao
@@ -95,6 +96,13 @@ export const EspecInvalida: Story = {
  * Elas rodam no projeto `storybook-browser` (`vitest.browser.config.ts`), num
  * Chromium real, selecionadas pela tag `browser-mode`. Por ADR-9 esse projeto
  * entra em CI **não-bloqueante por uma semana**.
+ *
+ * ⚠️ TODA story daqui TERMINA com `settleMonacoLanguageWorker()`, e isso não é
+ * cerimônia: o veredito do iframe chega MUITO antes de o Monaco terminar de
+ * subir, e desmontar a story no meio da subida do worker de TypeScript
+ * (`importScripts` de 6,7 MB) produzia um unhandled error cujo efeito no exit
+ * code dependia só de timing — o flake do job. O racional completo, com a taxa
+ * medida, está em `./monacoSettle.ts`.
  * ══════════════════════════════════════════════════════════════════════════ */
 
 /** Checks que o `starter` JÁ satisfaz — o caminho de acerto. */
@@ -143,6 +151,9 @@ export const BrowserChecksPassam: Story = {
     await waitFor(() => expect(shell).toHaveAttribute('data-phase', 'submitted'), { timeout: 15000 });
     const verdicts = canvas.getAllByTestId('code-check-item');
     await expect(verdicts.every((v) => v.getAttribute('data-passed') === 'true')).toBe(true);
+
+    // O editor que esta story montou ainda está subindo — ver `./monacoSettle`.
+    await settleMonacoLanguageWorker();
   },
 };
 
@@ -167,6 +178,9 @@ export const BrowserChecksFalham: Story = {
     await expect(verdicts.some((v) => v.getAttribute('data-passed') === 'false')).toBe(true);
     // Falhar NÃO conclui a activity — o aluno volta a editar.
     await expect(args.onComplete).not.toHaveBeenCalled();
+
+    // O editor que esta story montou ainda está subindo — ver `./monacoSettle`.
+    await settleMonacoLanguageWorker();
   },
 };
 

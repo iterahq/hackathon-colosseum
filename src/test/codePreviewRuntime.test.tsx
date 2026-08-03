@@ -18,8 +18,17 @@ import {
  */
 
 function nextTick(): Promise<void> {
-  // Mirrors the iframe's own tick: give React a chance to commit.
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  // Mirrors the iframe's own tick — rAF + a macrotask, exactly as
+  // `CODE_PREVIEW_IFRAME_HTML` defines it. It used to be a bare `setTimeout(…,
+  // 0)`, i.e. STRICTLY LESS yielding than the runtime this file claims to
+  // reproduce; see the docblock on `nextTick` in `codeSnackExercises.test.tsx`.
+  return new Promise((resolve) => {
+    const raf: (cb: () => void) => unknown =
+      typeof window.requestAnimationFrame === 'function'
+        ? (cb) => window.requestAnimationFrame(cb)
+        : (cb) => setTimeout(cb, 16);
+    raf(() => setTimeout(resolve, 0));
+  });
 }
 
 /** Build a preview root: `#root` (React mount) + the alert strip, as the iframe does. */
