@@ -21,6 +21,13 @@ const base = {
   onStopTimer: vi.fn(),
   onAddTime: vi.fn(),
   onReveal: vi.fn(),
+  // Added by #250 ("professor coloca a própria tela no palco"), which made both
+  // props REQUIRED on `InstructorControlsProps` but did not update this fixture —
+  // so `npm run typecheck` (a build gate here) has been red on `main` since that
+  // merge, and every branch cut from it inherits the failure. Fixed here so this
+  // PR can be verified at all; see the PR body.
+  selfStaged: false,
+  onToggleSelfStage: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {

@@ -135,6 +135,20 @@ precisa de contrato, e todo contrato precisa passar no Zod do seu kind**. Kind
 novo sem fixture = CI vermelho. Use as MESMAS fixtures nas stories e nos
 testes — não crie um segundo conjunto.
 
+### Contrato público do futuro `@iterahq/activities`
+
+As activities vão virar pacote instalável (plano
+`20260803-itera-player-activities-lib`). A **Fase A já está feita**: a API
+pública está declarada em `src/components/branded/activity/contract/` — só
+tipos, zero runtime, **nada de código foi movido ainda**.
+
+Ao mexer em qualquer renderer, respeite a fronteira: o que a activity precisa do
+host entra por PORTA injetada (`i18n` · `api` · `identity` · `theme` ·
+`storage`), não por import direto de `@/api/*`, `@/auth/*` ou `@/services/*`.
+O guard `src/test/activityPublicContract.test.ts` fica vermelho se um renderer
+crescer uma prop fora do contrato. Racional, ordem de extração e cobertura por
+kind: [`src/components/branded/activity/contract/README.md`](src/components/branded/activity/contract/README.md).
+
 ## How to Work Here
 
 - `npm run dev` — dev server
