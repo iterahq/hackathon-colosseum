@@ -540,6 +540,18 @@ export const resources: Record<Locale, Record<string, string>> = {
     'authorTest.notFound.title': 'Atividade não encontrada',
     'authorTest.notFound.body':
       'Esta atividade não existe mais, foi removida ou pertence a outra organização. O link que te trouxe aqui provavelmente está desatualizado.',
+    'authorTest.sandboxed': 'Modo de teste — nada é salvo',
+    'authorTest.byoc.persisted': 'Modo de teste — nada é salvo, exceto a geração BYOC',
+    'authorTest.byoc.title': 'Gerar de novo (autor)',
+    'authorTest.byoc.hint':
+      'A geração é fixa por aluno e atividade, então editar o prompt não muda o que você já gerou. Gere de novo para ver o prompt novo valendo.',
+    'authorTest.byoc.seedLabel': 'Contexto',
+    'authorTest.byoc.seedPlaceholder': 'Contexto usado na geração',
+    'authorTest.byoc.action': 'Gerar de novo',
+    'authorTest.byoc.busy': 'Gerando… pode levar mais de um minuto',
+    'authorTest.byoc.error': 'Não foi possível gerar de novo. Tente outra vez.',
+    'authorTest.byoc.declined':
+      'O servidor devolveu a geração anterior. Você precisa ter papel de autor nesta atividade.',
     // Self-serve subscribe (PLG) — canonical label "Assinar".
     'subscribe.cta': 'Assinar',
     'subscribe.title': 'Assine o Itera',
@@ -1095,6 +1107,18 @@ export const resources: Record<Locale, Record<string, string>> = {
     'authorTest.notFound.title': 'Activity not found',
     'authorTest.notFound.body':
       "This activity no longer exists, was removed, or belongs to another organization. The link that brought you here is probably out of date.",
+    'authorTest.sandboxed': 'Test mode — nothing is saved',
+    'authorTest.byoc.persisted': 'Test mode — nothing is saved, except the BYOC generation',
+    'authorTest.byoc.title': 'Generate again (author)',
+    'authorTest.byoc.hint':
+      'Generation is fixed per learner and activity, so editing the prompt does not change what you already generated. Generate again to see the new prompt in effect.',
+    'authorTest.byoc.seedLabel': 'Context',
+    'authorTest.byoc.seedPlaceholder': 'Context used for the generation',
+    'authorTest.byoc.action': 'Generate again',
+    'authorTest.byoc.busy': 'Generating… this can take over a minute',
+    'authorTest.byoc.error': 'Could not generate again. Try once more.',
+    'authorTest.byoc.declined':
+      'The server returned the previous generation. You need an author role on this activity.',
     // Self-serve subscribe (PLG) — canonical label "Subscribe".
     'subscribe.cta': 'Subscribe',
     'subscribe.title': 'Subscribe to Itera',

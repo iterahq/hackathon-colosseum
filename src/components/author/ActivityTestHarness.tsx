@@ -14,14 +14,22 @@
  * harness receives that `detail` and DROPS it into local state. Only the
  * learner-facing player persists it. If you ever move a save INTO an activity
  * component, you silently break this guarantee — keep writes at the player.
+ *
+ * ⚠️ BYOC is the ONE exception, and it is the server's, not ours: generating
+ * writes an `itera.byoc_generations` row (ADR-8 audit) before the tree can be
+ * rendered at all. The banner says so on those activities rather than claiming a
+ * sandbox that isn't one.
  */
 import { useCallback, useState } from 'react';
 import { CheckCircle2, RotateCcw, XCircle, FlaskConical } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
+import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { ByocAuthorReRoll } from './ByocAuthorReRoll';
 
 /** A single in-memory attempt result — never persisted. */
 export interface TestAttempt {
@@ -31,6 +39,7 @@ export interface TestAttempt {
 }
 
 export function ActivityTestHarness({ activity }: { activity: Activity }) {
+  const { t } = useI18n();
   // In-memory result sink. `attempt` holds the latest verdict; `runKey` forces a
   // fresh ActivityRenderer mount on reset so internal activity state clears.
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
@@ -58,13 +67,20 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
   const showSandboxFooter =
     activity.kind === 'sandbox_scenario' && !!attempt && !footerDismissed;
 
+  const byoc = isByocActivity(activity);
+
   return (
     <div className="flex flex-col gap-4" data-testid="activity-test-harness">
-      {/* Sandbox banner — makes it unmistakable nothing is being recorded. */}
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+      {/* Sandbox banner — makes it unmistakable what is and isn't recorded. */}
+      <div
+        className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground"
+        data-testid="test-sandbox-banner"
+      >
         <FlaskConical className="h-3.5 w-3.5" />
-        Test mode — sandboxed, nothing is saved
+        {byoc ? t('authorTest.byoc.persisted') : t('authorTest.sandboxed')}
       </div>
+
+      {byoc && <ByocAuthorReRoll activityId={activity.id} onRegenerated={reset} />}
 
       {/* The real renderer, remounted on reset via `key`. */}
       <div key={runKey}>

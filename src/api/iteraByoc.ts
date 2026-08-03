@@ -40,11 +40,12 @@ function timeout(ms: number) {
  * they are graded on. Generation measured 26–58s in production against the free
  * model; the server's own timeout is 90s.
  *
- * `regenerate` is the ONE escape from that idempotency, and it exists for a
- * single case: the persisted row is the authored fallback (`fallback_used`).
- * That row is sticky like any other, so without this the learner who happened to
- * generate during an outage is served the ready-made example forever. Never pass
- * it for a real generation — a stable question is what makes correction local.
+ * `regenerate` is the escape from that idempotency, and the SERVER decides
+ * whether to honor it — the client asking is not enough. Over a degraded row
+ * (`fallback_used`) anyone gets it, or the learner who generated during an
+ * outage would be served the ready-made example forever. Over a real generation
+ * only someone who can author the activity does, because a stable question is
+ * what makes correction local for everybody else.
  */
 export async function generateByoc(
   activityId: string,
