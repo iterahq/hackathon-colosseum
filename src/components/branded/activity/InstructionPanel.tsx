@@ -11,13 +11,15 @@
  * evergreen/menta accents, JB-mono eyebrow voice inherited from the shell.
  *
  * Media loading: image and video elements are preceded by a pulse skeleton
- * that reserves space at the expected size (image: aspect-[4/3], video:
- * h-72) so the layout does not shift when the media arrives. The skeleton
- * disappears once the element fires its load event.
+ * that reserves space at the expected size (image: h-64, video: h-72) so the
+ * layout does not shift when the media arrives. The skeleton disappears once
+ * the element fires its load event.
  *
- * Instruction image container: fixed 4:3 aspect ratio (roughly 800x600 —
- * the provisional standard, "dps adaptamos"), object-cover crop-to-fill.
- * Taller than the previous fixed h-64 so cover crops less aggressively.
+ * Instruction image: `object-contain` sob `max-h-80`, altura livre. Já foi
+ * `object-cover` em caixa de altura fixa, e isso valia enquanto a imagem era
+ * ilustração — cortar a borda de uma foto não custa nada. Custa quando a
+ * imagem É o conteúdo: os diagramas didáticos da aula de Git perdiam título e
+ * legenda no corte, ou seja, justamente o que explicava a figura.
  *
  * Texto e descrição passam pelo RichText: 25 das 47 activities `concept` em
  * produção já escrevem markdown-leve, e num <p> só o aluno lia os asteriscos.
@@ -57,14 +59,12 @@ export function InstructionPanel({
       {text && <RichText text={text} data-testid="instruction-text" />}
 
       {image_url && (
-        <div className="relative rounded-2xl border border-border overflow-hidden h-64 md:h-72" data-testid="instruction-image">
-          {!imageLoaded && (
-            <div className="absolute inset-0 animate-pulse bg-muted-foreground/10" aria-hidden="true" data-testid="media-skeleton" />
-          )}
+        <div className="rounded-2xl border border-border overflow-hidden bg-obsidiana/40" data-testid="instruction-image">
+          {!imageLoaded && <MediaSkeleton />}
           <img
             src={image_url}
             alt={text ?? 'instruction'}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`w-full max-h-80 object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
             onLoad={() => setImageLoaded(true)}
           />
         </div>
