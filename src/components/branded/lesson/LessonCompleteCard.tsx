@@ -13,10 +13,13 @@ export function LessonCompleteCard({
   doneCount,
   total,
   nextLessonId,
+  onReview,
 }: {
   doneCount: number;
   total: number;
   nextLessonId?: string;
+  /** Reopens the lesson from activity 1. Absent when there is nothing to revisit. */
+  onReview?: () => void;
 }) {
   const { t } = useI18n();
 
@@ -50,6 +53,16 @@ export function LessonCompleteCard({
         >
           {t('lesson.finishCourse')}
         </Link>
+      )}
+      {onReview && (
+        <button
+          type="button"
+          onClick={onReview}
+          className="mt-3 flex w-full h-12 px-6 rounded-full border border-border text-foreground font-medium hover:border-foreground/30 transition-colors items-center justify-center"
+          data-testid="lesson-review-cta"
+        >
+          {t('lesson.review')}
+        </button>
       )}
     </motion.div>
   );

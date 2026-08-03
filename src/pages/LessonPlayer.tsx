@@ -55,7 +55,8 @@ import { toast } from 'sonner';
 // Monaco split-pane measurement behind `max-w-7xl`, and for why it must not be
 // re-inlined per page.
 import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
-import type { Activity } from '@/types/content';
+import { canStepBack, stepBack, stepForward } from '@/utils/lessonNavigation';
+import type { Activity, LessonPosition } from '@/types/content';
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -94,8 +95,13 @@ export default function LessonPlayer() {
   // failed to read). We hold the first render behind it so the learner never
   // sees activity 1 flash before being moved to where they actually stopped.
   const [resuming, setResuming] = useState(true);
+  // Which lesson has already been sought. A refetch (window focus) re-runs the
+  // resume effect, and without this it would yank a learner who stepped BACK to
+  // review right back to where they had stopped.
+  const resumedForRef = useRef<string | null>(null);
 
   useEffect(() => {
+    resumedForRef.current = null;
     setIndex(0);
     setDoneIds(new Set());
     setCompleted(false);
@@ -135,6 +141,7 @@ export default function LessonPlayer() {
       if (!isPending) setResuming(false);
       return;
     }
+    if (resumedForRef.current === lessonId) return;
     let cancelled = false;
     const ids = activities.map((a) => a.id);
     void fetchActivityProgress(ids).then((statuses) => {
@@ -150,6 +157,7 @@ export default function LessonPlayer() {
       } else {
         setIndex(resumeAt);
       }
+      resumedForRef.current = lessonId;
       setResuming(false);
     });
     return () => {
@@ -218,6 +226,12 @@ export default function LessonPlayer() {
   // done") advances immediately as before.
   function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving) return;
+    // An activity already finished cannot settle again. Review re-mounts the
+    // shells, and some of them (the sandbox family) re-fire `onComplete` from a
+    // mount effect when they read themselves as done — without this guard that
+    // would raise the feedback footer over the review Continuar and write a
+    // second attempt for work the learner is only re-reading.
+    if (doneIds.has(current.id)) return;
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
@@ -388,6 +402,29 @@ export default function LessonPlayer() {
     void advance(pending?.correct ?? true);
   }
 
+  /**
+   * Free navigation over ground the learner has ALREADY covered (instructor
+   * feedback 2026-08-01: "estou no exercício e quero voltar para o slide").
+   * Neither of these writes progress — and `goForward` is deliberately NOT
+   * `advance`: an activity that is already `done` is locked by `answerMachine`
+   * (`done → locked → !acceptsSubmit`), so stepping back onto it would strand
+   * the learner with no way out.
+   */
+  function applyPosition({ index: nextIndex, completed: nextCompleted }: LessonPosition) {
+    setIndex(nextIndex);
+    setCompleted(nextCompleted);
+  }
+
+  const position: LessonPosition = { index, completed };
+  const goBack = () => applyPosition(stepBack(position, activities.length));
+  const goForward = () => applyPosition(stepForward(position, activities.length));
+  const goToStart = () => applyPosition({ index: 0, completed: false });
+  const conceptContinue = () => handleComplete(true);
+
+  /** Revisiting something already finished — the lesson reopens as a book. */
+  const reviewing = current ? doneIds.has(current.id) : false;
+  const canGoBack = !resuming && canStepBack(position, activities.length);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <LessonChrome
@@ -395,6 +432,7 @@ export default function LessonPlayer() {
         muted={muted}
         onToggleMuted={toggleMuted}
         onClose={() => navigate(-1)}
+        onBack={canGoBack ? goBack : undefined}
       />
 
       {/* ── Centered focused column ── */}
@@ -435,6 +473,7 @@ export default function LessonPlayer() {
               doneCount={doneIds.size}
               total={activities.length}
               nextLessonId={nextLesson?.id}
+              onReview={goToStart}
             />
           ) : (
             <>
@@ -499,11 +538,16 @@ export default function LessonPlayer() {
                   instructor force-advances the cohort. `concept_reveal` rides
                   along: revealing the answer is reading too, so it never calls
                   onComplete and would otherwise be a dead end here. */}
-              {(current?.kind === 'concept' || current?.kind === 'concept_reveal') &&
-                !isByocActivity(current) && (
+              {/* On REVIEW the same button appears for every kind and steps
+                  forward without grading: a `done` activity is locked by
+                  `answerMachine`, so it has no submit of its own — and routing
+                  it through `handleComplete` would re-award the XP. */}
+              {(reviewing ||
+                ((current?.kind === 'concept' || current?.kind === 'concept_reveal') &&
+                  !isByocActivity(current))) && (
                 <button
                   type="button"
-                  onClick={() => handleComplete(true)}
+                  onClick={reviewing ? goForward : conceptContinue}
                   disabled={saving}
                   data-testid="concept-continue"
                   className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana hover:bg-evergreen-hi transition-colors disabled:opacity-60 disabled:cursor-not-allowed"

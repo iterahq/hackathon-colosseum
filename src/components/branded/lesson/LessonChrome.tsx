@@ -1,4 +1,4 @@
-import { Heart, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, Heart, Volume2, VolumeX, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 
 /** Decorative lives count — inert chrome (no lives backend). */
@@ -15,11 +15,14 @@ export function LessonChrome({
   muted,
   onToggleMuted,
   onClose,
+  onBack,
 }: {
   progressPct: number;
   muted: boolean;
   onToggleMuted: () => void;
   onClose: () => void;
+  /** Absent on the first activity — the arrow is not rendered at all then. */
+  onBack?: () => void;
 }) {
   const { t } = useI18n();
 
@@ -41,14 +44,27 @@ export function LessonChrome({
         />
       </div>
 
-      <button
-        onClick={onClose}
-        aria-label={t('common.back')}
-        data-testid="lesson-close"
-        className="absolute top-2.5 left-3 md:left-4 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      <div className="absolute top-2.5 left-3 md:left-4 h-9 flex items-center gap-2">
+        <button
+          onClick={onClose}
+          aria-label={t('common.back')}
+          data-testid="lesson-close"
+          className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={t('lesson.prev')}
+            data-testid="lesson-prev"
+            className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-2">
         <button

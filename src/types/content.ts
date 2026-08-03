@@ -184,3 +184,16 @@ export interface UserStats {
   badgeCount: number;
   completedActivities: number;
 }
+
+/**
+ * Where the self-paced player is inside a lesson. The completion screen is the
+ * position AFTER the last activity — not a separate mode — which is what lets
+ * "step back from the trophy" fall out of the same arithmetic as every other
+ * step. See `src/utils/lessonNavigation.ts`.
+ */
+export interface LessonPosition {
+  /** Index of the activity on screen. Meaningless while `completed`. */
+  index: number;
+  /** The completion screen is showing. */
+  completed: boolean;
+}
