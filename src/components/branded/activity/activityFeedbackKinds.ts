@@ -7,6 +7,7 @@
  * player and the live player import these without pulling in the component.
  */
 import type { ProducedArtifact } from '@/services/artifact.service';
+import type { RecordedAction } from '@/utils/activityFamilies';
 
 /**
  * The graded activity kinds whose answer feedback surfaces in the fixed footer.
@@ -80,4 +81,21 @@ export interface ActivityCompleteDetail {
    * it to these components changes nothing for existing lessons.
    */
   response?: string;
+  /**
+   * The ORDERED SEQUENCE of what the learner did to reach this answer — the HOW,
+   * where `response` is the WHAT (plan
+   * `20260731-itera-padroes-reducer-atividades`).
+   *
+   * Emitted by activities of a WIRED family (`FAMILY_EMITTED` in
+   * `src/utils/activityFamilies.ts`); every other kind omits it and gets the
+   * honest two-action trace. Timestamps are WALL CLOCK and are rebased against
+   * the trace origin by `buildAttemptTrace` — the activity does not know the
+   * origin and must not be given the player's clock to find out.
+   *
+   * ⚠️ Handing this up does NOT cause a write, exactly like `artifact` and
+   * `response` above: only the learner-facing players call the persistence
+   * path, which is the boundary that keeps `ActivityTestHarness` from turning
+   * curator traffic into learner data.
+   */
+  actions?: readonly RecordedAction[];
 }

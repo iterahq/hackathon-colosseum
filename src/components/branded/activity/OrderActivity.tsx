@@ -21,6 +21,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, OrderSpec } from '@/types/content';
 import { learnerShuffleAvoidingSolution } from '@/utils/learnerShuffle';
 import { answerMachine } from '@/utils/answerMachine';
+import { useActionRecorder } from '@/hooks/useActionRecorder';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
@@ -69,8 +70,17 @@ export function OrderActivity({
   // not the learner's untouched shuffle graded red.
   const displayOrder = m.showKey ? correctOrder : order;
 
-  function move(from: number, to: number) {
+  // The `arrangement` family's action sequence (sub-plan 1, Fase A).
+  const trace = useActionRecorder('arrangement', activity.id);
+
+  function move(from: number, to: number, via: 'drag' | 'button' = 'button') {
     if (locked || to < 0 || to >= order.length) return;
+    // AFTER the guard, so a no-op nudge at the top of the list is not recorded
+    // as a move the learner never made; BEFORE the setState, so the updater
+    // stays free of side effects (StrictMode double-invokes it in dev).
+    // `via` separates the learner who dragged from the learner on a phone using
+    // the arrows — same permutation, different interaction cost.
+    trace.record('item_moved', { item_id: order[from], from, to, via });
     setTouched(true);
     setOrder((prev) => {
       const next = [...prev];
@@ -87,7 +97,8 @@ export function OrderActivity({
     setSubmitted(true);
     // Hand the settled sequence up as text (dropped unless the author opted in).
     const sequence = order.map((id, i) => `${i + 1}. ${byId(id)?.label ?? id}`).join('\n');
-    onComplete(isOrderCorrect, { response: sequence });
+    trace.record('answer_submitted', { order: [...order] });
+    onComplete(isOrderCorrect, { response: sequence, actions: trace.drain() });
   }
 
   return (
@@ -109,7 +120,7 @@ export function OrderActivity({
               onDragStart={() => setDragIndex(idx)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
-                if (dragIndex !== null && dragIndex !== idx) move(dragIndex, idx);
+                if (dragIndex !== null && dragIndex !== idx) move(dragIndex, idx, 'drag');
                 setDragIndex(null);
               }}
               data-testid="order-item"

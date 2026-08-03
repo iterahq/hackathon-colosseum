@@ -26,6 +26,7 @@ import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
 import { KIND_VALIDATION, specBoundaryFailure } from '@/utils/activitySpecBoundary';
+import { useActionRecorder } from '@/hooks/useActionRecorder';
 import { useAuth } from '@/auth/AuthContext';
 import {
   iteraApiConfigured,
@@ -538,6 +539,11 @@ function QuizActivity({
   const options = useMemo(() => spec.options ?? [], [spec.options]);
   const [selected, setSelected] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  // `selection` family (sub-plan 1, Fase A). ⚠️ `quiz` options carry NO authored
+  // id — the spec is a bare array — so this is the one kind in the family that
+  // keys its actions on the INDEX. It is safe here only because `quiz` is also
+  // the one kind that does not shuffle: the index IS the authored position.
+  const trace = useActionRecorder('selection', activity.id);
 
   const correctIdx = options.findIndex((o) => o.isCorrect);
   // Grading is the KIND's job; when the verdict may reach the screen is the
@@ -558,8 +564,12 @@ function QuizActivity({
     if (!m.acceptsSubmit) return;
     setSubmitted(true);
     const chosen = selected !== null ? options[selected] : undefined;
+    trace.record('answer_submitted', {
+      option_ids: selected !== null ? [String(selected)] : [],
+    });
     onComplete(isQuizCorrect, {
       response: chosen ? quizOptionLabel(chosen, selected as number) : '',
+      actions: trace.drain(),
     });
   }
 
@@ -612,7 +622,10 @@ function QuizActivity({
               // instructor puts the answer key on screen, re-picking would
               // recolor it.
               disabled={submitted || reveal}
-              onClick={() => setSelected(i)}
+              onClick={() => {
+                trace.record('option_selected', { option_id: String(i) });
+                setSelected(i);
+              }}
               data-testid="quiz-option"
               className={`rounded-2xl border px-5 transition-colors ${
                 sideBySide

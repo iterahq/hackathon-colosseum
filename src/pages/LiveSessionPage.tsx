@@ -304,6 +304,12 @@ export default function LiveSessionPage() {
     // fila durável e é retentada quando a conexão volta, em vez de morrer num
     // catch silencioso. Wifi de escola caindo 30s deixou de custar a resposta.
     const response = detail?.response ?? null;
+    // A sequência do que o aluno fez, quando a família dele já emite
+    // (`src/utils/activityFamilies.ts`). Ao vivo ela viaja pelo mesmo
+    // `writeOrQueue` das outras: numa queda de rede vai pra fila junto com a
+    // resposta, e é rebaseada no instante em que ele respondeu, não no
+    // reconectar.
+    const actions = detail?.actions ? [...detail.actions] : undefined;
     if (guest) {
       // no durable per-learner progress for a link-invited guest
     } else if (correct) {
@@ -315,6 +321,7 @@ export default function LiveSessionPage() {
         response,
         duration: sample,
         settledAt,
+        actions,
       });
       setSaving(false);
     } else {
@@ -325,6 +332,7 @@ export default function LiveSessionPage() {
         response,
         duration: sample,
         settledAt,
+        actions,
       });
     }
     broadcastAnswer(current.id, correct, elapsedMs);

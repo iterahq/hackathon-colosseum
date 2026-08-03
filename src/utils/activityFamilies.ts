@@ -1,0 +1,349 @@
+/**
+ * ACTIVITY FAMILIES — the reducer taxonomy, and the action vocabulary it owns.
+ *
+ * Plan `20260731-itera-padroes-reducer-atividades`, **Fase A** ("nomear as
+ * famílias a partir do código real, não de uma tabela"). This module IS that
+ * deliverable, expressed as types and maps rather than prose, because a
+ * document drifts from the code and a `Record<ActivityKind, …>` cannot.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY FAMILIES AND NOT ONE REDUCER
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Tainan, 2026-07-31: *"não um reducer só, mas tipo, padrões de reducer
+ * reutilizáveis"*. One universal reducer over 12 kinds is a giant `switch` and
+ * a state that is the union of everything — the opposite of a pattern. The
+ * property worth having is not "a reducer"; it is **determinism**: state as
+ * `(state, action) => state` means THE LIST OF ACTIONS RECONSTRUCTS THE STATE.
+ * Three things fall out of that at once:
+ *
+ *   1. replay is literally re-running the list;
+ *   2. telemetry stops meaning "instrument ~53 handlers across 23 files" and
+ *      starts meaning "dispatch what the reducer already receives";
+ *   3. most cases become pure-function tests, no DOM.
+ *
+ * A family is therefore defined by **the shape of the interaction**, not by the
+ * kind's name — because the interaction shape is what determines the ACTION
+ * shape, and the action is what becomes the event and the replay.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * THE FALSIFIABLE CRITERION — read before adding a kind
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * > **Adding a new kind INSIDE an existing family must cost data plus
+ * > predicates. If it costs a new state machine, the family boundary is
+ * > wrong.**
+ *
+ * ⚠️ And the honest caveat, stated up front so nobody reads this file as a
+ * finished proof: *a seam never crossed is an intention, not a fact.* A family
+ * is only demonstrated to be generic the day a NEW kind enters it without
+ * editing it. Until then every row of `FAMILY_STATE` below is a hypothesis
+ * derived from reading the five existing implementations.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * DECLARED ≠ EMITTED — the one distinction that keeps this file honest
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `FAMILY_ACTIONS` is the vocabulary a family's reducer ACCEPTS: it is derived
+ * from the real handlers in the existing components (each entry is annotated
+ * with the exact call site it was read from), so it is a description of the
+ * code, not a wish list.
+ *
+ * `FAMILY_EMITTED` is the strictly smaller set THIS BUILD actually writes to
+ * `itera.activity_traces`. The parent plan's own review of the ChatGPT
+ * taxonomy found that roughly half of the ~90 proposed event types describe a
+ * product Itera is not — so a vocabulary with no emitted/declared distinction
+ * is exactly the failure mode being avoided. Wiring a family is a diff that
+ * moves entries from declared-only into `FAMILY_EMITTED`, and
+ * `activityFamilies.test.ts` asserts the subset relation both ways.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS MODULE OWNS `LearnerActionType`
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `src/utils/learningTrace.ts` derives its write-time action union FROM the
+ * registry below rather than declaring a parallel list. Two lists would drift,
+ * and the drift would be invisible: a type present in the trace union but in no
+ * family is an action nobody can attribute to a reducer, which is precisely the
+ * ad-hoc instrumentation this plan exists to replace.
+ *
+ * Layering: this module depends on `@iterahq/activity-spec` only. It is PURE —
+ * no React, no DOM, no Supabase — so every rule here is unit-testable.
+ */
+import type { ActivityKind } from '@iterahq/activity-spec';
+
+/**
+ * The five families, named from the code as it exists at `main`.
+ *
+ * Grouped by the FORM of the interaction. The instance counts are the real
+ * `itera.activities` distribution measured on 2026-07-31 and are here to keep
+ * effort honest — `reading` is the majority of the catalogue and the poorest in
+ * state, `editor` + `scenario` are 16% and hold nearly all the difficulty.
+ */
+export type ActivityFamily =
+  /** 57 instances — a set of choices, a submit, a verdict. */
+  | 'selection'
+  /** 20 instances — a permutation / a pairing, then a submit. */
+  | 'arrangement'
+  /** 123 instances — progressive disclosure. No answer, no verdict. */
+  | 'reading'
+  /** 14 instances — text + autosave + submit against checks. */
+  | 'editor'
+  /** 24 instances — turns against a world model. Already reducer-shaped. */
+  | 'scenario';
+
+export const ACTIVITY_FAMILIES = [
+  'selection',
+  'arrangement',
+  'reading',
+  'editor',
+  'scenario',
+] as const satisfies readonly ActivityFamily[];
+
+/**
+ * ⛔ EXHAUSTIVENESS TRAP ⛔ — same device, and the same reasoning, as
+ * `KIND_VALIDATION` in `src/utils/activitySpecBoundary.ts`: a value added to
+ * the canonical `ActivityKind` enum without a family here is a COMPILE error,
+ * and `npm run typecheck` is a build gate.
+ *
+ * It has to live in this repo rather than in `@iterahq/activity-spec` for the
+ * reason written there: the package is vendored as a pre-built `.tgz`, so its
+ * internal `satisfies` clauses never recompile in this repo's CI and buy us
+ * nothing here.
+ *
+ * ⚠️ `video` has ZERO rows in the database and `concept_reveal` reached 29 live
+ * rows before the union knew about it. Neither fact changes the mapping, but
+ * both are reasons the mapping is checked mechanically rather than trusted.
+ */
+export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
+  // — selection: `answerMachine` + a set of options + one submit —
+  single_choice: 'selection',
+  multi_choice: 'selection',
+  quiz: 'selection',
+  // — arrangement: `answerMachine` + a permutation/pairing + one submit —
+  order: 'arrangement',
+  match: 'arrangement',
+  // — reading: no verdict; the only state is how much has been revealed —
+  concept: 'reading',
+  concept_reveal: 'reading',
+  diagram: 'reading',
+  document: 'reading',
+  video: 'reading',
+  // — editor: Monaco + autosave + checks —
+  code: 'editor',
+  // — scenario: turns against a world model —
+  sandbox_scenario: 'scenario',
+};
+
+/**
+ * One line per family describing the STATE its reducer holds — the "signature"
+ * the plan's Fase A asks for. Read from the real components, cited.
+ *
+ * ⚠️ `document` sits in `reading` and is the least comfortable placement in the
+ * table: its AI-judge path holds a free-text draft and a verdict, which is
+ * closer to `editor` than to disclosure. It stays in `reading` because its
+ * dominant surface is prose, and it is FLAGGED here rather than silently filed
+ * — this is the boundary most likely to be wrong, and the falsifiable criterion
+ * above is how it will be settled.
+ */
+export const FAMILY_STATE: Record<ActivityFamily, string> = {
+  selection:
+    'chosen: Set<optionId> + submitted — SingleChoiceActivity.tsx / MultiChoiceActivity.tsx / QuizActivity (ActivityRenderer.tsx)',
+  arrangement:
+    'permutation: optionId[] | pairs: {left,right}[] + armed + touched + submitted — OrderActivity.tsx / MatchActivity.tsx',
+  reading: 'revealed: Set<sectionId> — ConceptRevealActivity.tsx (the only one with any state today)',
+  editor:
+    'source: string + phase: editing|checking|settled + checkResults — useCodeSnack.ts / useCodeChecks.ts',
+  scenario:
+    'ChatModel { runs, slots, choicesMade } — sandbox/useSandboxScenario.ts, already `(state, action) => state`',
+};
+
+/**
+ * Actions every family shares, and which no family may redeclare.
+ *
+ * They are not interactions — they are the two ends of the trace envelope, and
+ * `buildAttemptTrace` writes them itself (`src/utils/learningTrace.ts`). They
+ * are listed here so the union below is complete in one place.
+ */
+export const LIFECYCLE_ACTIONS = ['activity_opened', 'attempt_settled'] as const;
+
+/**
+ * The action union PER FAMILY, read off the existing handlers.
+ *
+ * `answer_submitted` appears in three families on purpose: it is the same
+ * event ("the learner committed") emitted by three different state shapes, and
+ * collapsing it into the lifecycle set would be wrong because `reading` has no
+ * submit at all. The test asserts it is the ONLY action shared across families
+ * — a second shared name would mean two families are describing the same
+ * machine and should be one.
+ */
+export const FAMILY_ACTIONS = {
+  selection: [
+    /** An option became chosen. `{ option_id }` — the AUTHORED id (`data-option-id`), never the post-shuffle index. */
+    'option_selected',
+    /** A chosen option was un-chosen. `multi_choice` toggle only. `{ option_id }`. */
+    'option_deselected',
+    /** "Enviar" accepted. `{ option_ids: string[] }` in click order. */
+    'answer_submitted',
+  ],
+  arrangement: [
+    /** One item changed position. `{ item_id, from, to, via: 'drag' | 'button' }` — `OrderActivity.move()`. */
+    'item_moved',
+    /** A left card was armed, awaiting its right card. `{ left_id }` — `MatchActivity.tapLeft()`. */
+    'pair_armed',
+    /** A pair was formed. `{ left_id, right_id }` — `MatchActivity.tapRight()`. */
+    'pair_made',
+    /** An existing pair was undone by tapping either of its cards. `{ left_id, right_id }`. */
+    'pair_broken',
+    /** "Enviar" accepted. `{ order: string[] }` or `{ pairs: [left,right][] }`. */
+    'answer_submitted',
+  ],
+  reading: [
+    /** The hidden answer was opened. `ConceptRevealActivity` — the learner's own button, self-paced only. */
+    'reveal_opened',
+    /** …and closed again. The button stays mounted and toggles, so this is reachable. */
+    'reveal_closed',
+  ],
+  editor: [
+    /** A debounced batch of edits landed. `{ length }` — NEVER the source text; see the privacy note below. */
+    'code_edited',
+    /** The learner ran the checks. `useCodeChecks.submit()`. */
+    'checks_submitted',
+    /** The checks came back. `{ passed: number, failed: number }` — `useCodeChecks.receiveResults()`. */
+    'checks_returned',
+    /** "Tentar de novo" — back to editing, code KEPT. `useCodeSnack.retry`. */
+    'attempt_retried',
+    /** "Recomeçar do código inicial" — code DISCARDED. `useCodeSnack.resetToStarter`. */
+    'reset_to_starter',
+    /** "Concluir" accepted. `useCodeSnack.complete()`. */
+    'answer_submitted',
+  ],
+  scenario: [
+    /** A slot was filled. `{ slot, value }` — `useSandboxScenario.onSet`. */
+    'slot_set',
+    /** An exposed choice chip was picked (single-select; re-tapping clears). `{ choice_id }` — `onChoose`. */
+    'choice_picked',
+    /** The seed chip was toggled into/out of the composer. `{ step_id, inserted }` — `onToggleSeed`. */
+    'seed_toggled',
+    /** The composed turn was sent to the world model. `{ step_id, with_context }` — a new `model.runs` entry. */
+    'message_sent',
+    /** "Limpar" — the composer inputs were reset. `resetInputs`. */
+    'inputs_cleared',
+  ],
+} as const satisfies Record<ActivityFamily, readonly string[]>;
+
+/** Every action name this codebase knows, lifecycle included. */
+export type LearnerActionType =
+  | (typeof LIFECYCLE_ACTIONS)[number]
+  | (typeof FAMILY_ACTIONS)[ActivityFamily][number];
+
+/** The actions a given family may emit — the type-level half of the guard. */
+export type FamilyAction<F extends ActivityFamily> = (typeof FAMILY_ACTIONS)[F][number];
+
+/**
+ * What THIS BUILD actually writes. Strict subset of `FAMILY_ACTIONS`.
+ *
+ * `selection` and `arrangement` are wired first for the reason the parent plan
+ * gives: their state is small and their actions are discrete, so the replay is
+ * trivially correct. `editor` and `scenario` are the two that carry real
+ * difficulty (a keystroke-level `code_edited` would be thousands of events per
+ * attempt — the editor wants snapshot+diff, not a per-key action), and
+ * `reading` produces no trace at all today because `ConceptRevealActivity`
+ * never calls `onComplete`, so there is no attempt to hang a trace on.
+ *
+ * ⚠️ KEEP THIS IN STEP WITH THE COMPONENTS. `activityTraceEmission.test.tsx`
+ * drives each wired kind through the DOM and asserts the recorded sequence, so
+ * a family listed here that stopped emitting turns the suite red rather than
+ * quietly writing two-action traces again.
+ */
+export const FAMILY_EMITTED = {
+  selection: ['option_selected', 'option_deselected', 'answer_submitted'],
+  arrangement: ['item_moved', 'pair_armed', 'pair_made', 'pair_broken', 'answer_submitted'],
+  reading: [],
+  editor: [],
+  scenario: [],
+} as const satisfies Record<ActivityFamily, readonly LearnerActionType[]>;
+
+/** Families whose activities hand a rich sequence up through `onComplete`. */
+export const WIRED_FAMILIES: readonly ActivityFamily[] = ACTIVITY_FAMILIES.filter(
+  (f) => FAMILY_EMITTED[f].length > 0
+);
+
+/**
+ * ⚠️ PRIVACY RULE FOR PAYLOADS — applies to every family, forever.
+ *
+ * A trace payload carries WHICH thing the learner touched and WHEN, never WHAT
+ * they wrote. The learner's answer text has exactly one home
+ * (`activity_results.feedback.response`, capped at `MAX_RESPONSE_CHARS`, one
+ * table over, written in the same call), and duplicating it into the trace
+ * would mean two places to keep in step and two places to purge.
+ *
+ * Concretely: `code_edited` carries `{ length }`, not the source;
+ * `slot_set` carries the slot's authored value (a fixed vocabulary item), not
+ * free text. An action type that cannot be described without free text does not
+ * belong in this vocabulary.
+ */
+export const PAYLOADS_CARRY_NO_FREE_TEXT = true;
+
+/** Which family a kind belongs to. Total by construction (the trap above). */
+export function familyOf(kind: ActivityKind): ActivityFamily {
+  return ACTIVITY_FAMILY[kind];
+}
+
+/** The kinds in one family, in enum order. */
+export function kindsOfFamily(family: ActivityFamily): ActivityKind[] {
+  return (Object.keys(ACTIVITY_FAMILY) as ActivityKind[]).filter(
+    (k) => ACTIVITY_FAMILY[k] === family
+  );
+}
+
+/**
+ * Runtime half of the family/action guard.
+ *
+ * The type-level half (`FamilyAction<F>` on the recorder) already makes a
+ * selection activity unable to record `pair_made`. This exists for the read
+ * side — a stored row's `type` is widened to `string` on purpose
+ * (`StoredLearnerAction`), so anything attributing an old row to a family has
+ * to ask rather than assume.
+ */
+export function isActionOfFamily(family: ActivityFamily, type: string): boolean {
+  return (FAMILY_ACTIONS[family] as readonly string[]).includes(type);
+}
+
+/**
+ * One action AS CAPTURED BY AN ACTIVITY, before it knows the trace origin.
+ *
+ * 🔑 IT LIVES HERE, NOT IN `learningTrace.ts`, AND THAT IS AN ARCHITECTURAL
+ * BOUNDARY, NOT FILING. `src/test/traceEmissionBoundary.test.ts` forbids the
+ * whole activity tree from importing `@/utils/learningTrace` or
+ * `@/services/progress.service`, because `ActivityTestHarness` mounts those
+ * very components and the absence of those imports is what guarantees a curator
+ * testing an activity writes nothing. An activity has to name the type it
+ * produces; this module is the half of the contract it is allowed to see —
+ * vocabulary, no envelope, no writer.
+ *
+ * 🔑 THE `at` IS WALL CLOCK, NOT AN OFFSET, and the split is not cosmetic. The
+ * trace origin is `settledAt - elapsedMs`, and neither number exists inside an
+ * activity: the origin lives in the player (`activityStartedAt`, held behind
+ * the resume gate) and `elapsedMs` is only sampled at settle. An activity
+ * emitting offsets would need the player's clock threaded down through
+ * `ActivityRenderer` into every kind, for a value that is one subtraction away.
+ * So the activity stamps `Date.now()` and `buildAttemptTrace` rebases the list.
+ *
+ * Absolute milliseconds also survive the durable outbox intact
+ * (`src/utils/answerOutbox.ts`): an entry that waits out a network outage in
+ * localStorage still rebases onto the instant the learner actually answered,
+ * not onto the reconnection.
+ */
+export interface RecordedAction {
+  type: LearnerActionType;
+  /** Wall clock (`Date.now()`) at the moment the learner did this. */
+  at: number;
+  /** Type-specific detail. NEVER free text — see the privacy rule above. */
+  payload?: Record<string, unknown>;
+}
+
+/** True for the two envelope actions `buildAttemptTrace` writes itself. */
+export function isLifecycleAction(type: string): boolean {
+  return (LIFECYCLE_ACTIONS as readonly string[]).includes(type);
+}

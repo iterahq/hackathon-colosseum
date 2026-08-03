@@ -98,6 +98,45 @@ describe('a árvore de atividades não conhece o caminho de persistência', () =
   });
 });
 
+/**
+ * A costura de GRAVAÇÃO (sub-plano 1, Fase A) fica de fora da regra acima por
+ * construção, não por sorte — e isso precisa ser testado, senão "o recorder não
+ * é um escritor" é só uma frase.
+ *
+ * A árvore de atividades importa `@/hooks/useActionRecorder`, e o recorder não
+ * pode virar um segundo plano de dados. Ele PRODUZ um valor que sobe pelo
+ * `onComplete`; quem escreve continua sendo o `progress.service`, chamado só
+ * pelos players. Um recorder que aprendesse a falar com o Supabase mataria a
+ * garantia do harness sem quebrar teste nenhum — daí este bloco.
+ */
+describe('o recorder de ações produz valor, nunca escreve', () => {
+  const recorder = readFileSync(path.join(ROOT, 'src/hooks/useActionRecorder.ts'), 'utf-8');
+  const families = readFileSync(path.join(ROOT, 'src/utils/activityFamilies.ts'), 'utf-8');
+
+  it.each([
+    '@/services/progress.service',
+    '@/lib/supabase/client',
+    '@/hooks/useAnswerOutbox',
+    '@/utils/answerOutbox',
+  ])('useActionRecorder não importa %s', (mod) => {
+    expect(importsModule(recorder, mod), `o recorder passou a importar ${mod}`).toBe(false);
+  });
+
+  it('o registro de famílias é PURO — nem React, nem Supabase, nem persistência', () => {
+    // É ele que a árvore de atividades importa para nomear `RecordedAction`; se
+    // ganhar dependência, a fronteira acima passa a ser contornável por um
+    // import que o teste considera inocente.
+    for (const mod of [
+      'react',
+      '@/services/progress.service',
+      '@/utils/learningTrace',
+      '@/lib/supabase/client',
+    ]) {
+      expect(importsModule(families, mod), `activityFamilies passou a importar ${mod}`).toBe(false);
+    }
+  });
+});
+
 describe('a emissão do trace mora no serviço, não nos call-sites', () => {
   const service = readFileSync(path.join(ROOT, 'src/services/progress.service.ts'), 'utf-8');
 

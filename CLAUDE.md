@@ -213,6 +213,31 @@ kind: [`src/components/branded/activity/contract/README.md`](src/components/bran
     migration `db/migrations/0033_activity_results_duration.sql`. O que os dois
     números significam (e por que média simples é a leitura errada) está em
     `src/utils/activityDuration.ts` — leia antes de consultar qualquer um deles.
+  - **A FAMÍLIA vem primeiro — o kind novo escolhe uma, ou cria uma.**
+    `src/utils/activityFamilies.ts` nomeia as cinco famílias de reducer
+    (`selection` · `arrangement` · `reading` · `editor` · `scenario`, plano
+    [`20260731-itera-padroes-reducer-atividades`](https://plans.devfellowship.com/20260731-itera-padroes-reducer-atividades),
+    Fase A) e é **ela** que define o vocabulário de ação, não o
+    `learningTrace.ts`. O `Record<ActivityKind, ActivityFamily>` é trap de
+    exaustividade: kind sem família **não compila**.
+    - **O critério pra saber se a família está certa:** *kind novo dentro de
+      família existente tem que custar DADO + PREDICADO. Se custar máquina de
+      estado nova, a fronteira da família está errada* — aí vale abrir família,
+      não enfiar na que mais parece.
+    - **Gravar ação:** `useActionRecorder(<família>, activity.id)`, e sobe pelo
+      `onComplete(correct, { actions: trace.drain() })`. `record` é tipado por
+      família — uma atividade de `selection` **não compila** emitindo
+      `pair_made`. O buffer é `useRef` (zero re-render) e nada ali pode lançar:
+      ele roda dentro do `onClick` do aluno.
+    - **Nunca ponha texto livre no `payload`.** A resposta do aluno tem UM lugar
+      (`activity_results.feedback.response`, com teto). O trace guarda O QUE ele
+      tocou e QUANDO, nunca o que ele escreveu — duplicar significa dois lugares
+      pra manter em dia e dois pra apagar.
+    - **`FAMILY_EMITTED` é ledger, não meta.** Ele lista o que este build
+      realmente emite (hoje: `selection` e `arrangement`). Declarar sem emitir
+      faz toda query downstream ler trace de duas ações como se fosse sequência
+      completa — `src/test/activityFamilies.test.ts` e
+      `src/test/activityTraceEmission.test.tsx` travam os dois lados.
   - **O cano já existe — use, não reinvente.** O contrato versionado está em
     `src/utils/learningTrace.ts` e a linha vai pra `itera.activity_traces`
     (migration `db/migrations/0034_activity_traces.sql`), **uma linha por
@@ -243,8 +268,15 @@ kind: [`src/components/branded/activity/contract/README.md`](src/components/bran
     - ✅ **Já trava (fronteira de emissão):** `src/test/traceEmissionBoundary.test.ts`
       falha se qualquer arquivo da árvore de atividades importar
       `@/services/progress.service` ou `@/utils/learningTrace`, ou se algum
-      módulo além do `progress.service` escrever em `activity_traces`. Ou seja:
-      o **ONDE** das duas regras acima é gate; o **SE** ainda não é.
+      módulo além do `progress.service` escrever em `activity_traces`. **É por
+      isso que `RecordedAction` mora no `activityFamilies.ts` e não no
+      `learningTrace.ts`** — a atividade precisa nomear o tipo que produz sem
+      enxergar o envelope nem o escritor. O mesmo teste também trava o recorder
+      e o registro de famílias como PUROS (sem Supabase, sem outbox, sem React).
+      Ou seja: o **ONDE** das regras acima é gate; o **SE** ainda não é.
+    - ✅ **Já trava (família):** kind sem entrada em `ACTIVITY_FAMILY` não
+      compila, e `src/test/activityFamilies.test.ts` cruza o mapa com o
+      `ACTIVITY_KINDS` do pacote nas DUAS direções (chave órfã também falha).
     - 🔴 **AINDA NÃO trava:** **não existe** checker que exija que um kind novo
       EMITA evento de tracking — é a **Fase 5** do plano acima, e ela depende de
       uma lista canônica de kinds que hoje não existe (enum do banco 12 × union

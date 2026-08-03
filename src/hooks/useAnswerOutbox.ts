@@ -32,6 +32,12 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
       // rede acontece muito depois da resposta; carimbar aqui dataria o trace
       // da reconexão. Entrada antiga (sem o campo) ⇒ sem âncora ⇒ sem trace.
       settledAt: entry.settledAt ?? null,
+      // A sequência viaja com a entrada em wall clock, então rebaseia na origem
+      // da TENTATIVA mesmo drenando horas depois. Entrada antiga (serializada
+      // antes do campo) volta sem ela ⇒ trace de duas ações, que é a verdade
+      // sobre o que aquele build observou.
+      actions: entry.actions,
+      actionsTruncated: entry.actionsTruncated,
     });
   }
   return recordClassAnswer(entry.sessionId, entry.activityId, entry.correct, entry.elapsedMs);

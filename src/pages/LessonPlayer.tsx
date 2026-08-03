@@ -45,6 +45,7 @@ import {
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
+import type { RecordedAction } from '@/utils/learningTrace';
 import type { DurationSample } from '@/utils/activityDuration';
 import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
@@ -208,6 +209,12 @@ export default function LessonPlayer() {
   // after a trip through the offline outbox. Timestamping at write time would
   // date the learner's actions to the review beat or to the reconnection.
   const pendingSettledAtRef = useRef<number | null>(null);
+  // The rich SEQUENCE the activity handed up (`selection` / `arrangement`
+  // families — src/utils/activityFamilies.ts), held across the review beat for
+  // exactly the same reason as the two refs above: for a graded kind the write
+  // happens on the footer's "Continuar", and a retry has to replay what the
+  // learner actually did rather than an empty list.
+  const pendingActionsRef = useRef<readonly RecordedAction[] | null>(null);
 
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
@@ -244,6 +251,9 @@ export default function LessonPlayer() {
     // a plain-text summary of what the learner answered instead of a file. It
     // only becomes an artifact if the AUTHOR asked for one — see `advance`.
     pendingResponseRef.current = detail?.response ?? null;
+    // The HOW, beside the WHAT. Absent for the families not yet wired, which
+    // yields the honest two-action trace rather than a fabricated sequence.
+    pendingActionsRef.current = detail?.actions ?? null;
     if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
       // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
       // descobre se passou, e era exatamente o som que faltava no self-paced.
@@ -280,12 +290,14 @@ export default function LessonPlayer() {
       const missedResponse = pendingResponseRef.current;
       const missedDuration = pendingDurationRef.current;
       const missedSettledAt = pendingSettledAtRef.current;
+      const missedActions = pendingActionsRef.current;
       // Clear the held refs on THIS path too. Previously only the correct branch
       // reset them, so a miss leaked its content into the next activity's commit.
       pendingArtifactRef.current = null;
       pendingResponseRef.current = null;
       pendingDurationRef.current = null;
       pendingSettledAtRef.current = null;
+      pendingActionsRef.current = null;
       // Via outbox: o acerto tem `retrySave` na tela, o erro não tinha recurso
       // nenhum — caiu a rede, o registro da tentativa sumia calado.
       void writeOrQueue({
@@ -297,6 +309,9 @@ export default function LessonPlayer() {
         // Vai junto pela fila: se a rede só voltar daqui a meia hora, o trace
         // ainda tem que ser datado de QUANDO o aluno respondeu.
         settledAt: missedSettledAt ?? undefined,
+        // Um ERRO é onde a sequência vale mais: o QUE ele respondeu já está no
+        // `response`; o COMO ele chegou lá é o que diz se foi chute ou tentativa.
+        actions: missedActions ? [...missedActions] : undefined,
       });
     }
 
@@ -319,6 +334,8 @@ export default function LessonPlayer() {
         // this line runs on the footer's "Continuar", so `Date.now()` inside the
         // service would be the end of the review beat, not the answer.
         settledAt: pendingSettledAtRef.current,
+        // READ, do not clear — same rule as everything above it.
+        actions: pendingActionsRef.current ?? undefined,
       });
       setSaving(false);
       if (ok) {
@@ -343,6 +360,7 @@ export default function LessonPlayer() {
         pendingResponseRef.current = null;
         pendingDurationRef.current = null;
         pendingSettledAtRef.current = null;
+        pendingActionsRef.current = null;
 
         const artifact = buildArtifact(current, produced, {
           response: response ?? undefined,

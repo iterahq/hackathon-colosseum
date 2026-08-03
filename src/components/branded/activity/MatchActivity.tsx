@@ -26,6 +26,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MatchSpec } from '@/types/content';
 import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine } from '@/utils/answerMachine';
+import { useActionRecorder } from '@/hooks/useActionRecorder';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
@@ -110,6 +111,8 @@ export function MatchActivity({
   const [made, setMade] = useState<MadePair[]>([]);
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  // The `arrangement` family's action sequence (sub-plan 1, Fase A).
+  const trace = useActionRecorder('arrangement', activity.id);
 
   const isPairCorrect = (p: MadePair) => pairs.some((sp) => sp.left_id === p.left_id && sp.right_id === p.right_id);
   const canSubmit = made.length === Math.min(left.length, pairs.length || left.length);
@@ -132,6 +135,17 @@ export function MatchActivity({
   const leftPairIndex = (id: string) => displayedPairs.findIndex((p) => p.left_id === id);
   const rightPairIndex = (id: string) => displayedPairs.findIndex((p) => p.right_id === id);
 
+  /**
+   * Both cards of a pair undo the same pair, so the action is recorded in one
+   * place. Spelled out field by field rather than handed the `MadePair`: the
+   * payload is a wire shape, and letting a domain object flow straight into it
+   * would silently widen the trace the day that object grows a field.
+   */
+  function recordBroken(index: number) {
+    const p = displayedPairs[index];
+    if (p) trace.record('pair_broken', { left_id: p.left_id, right_id: p.right_id });
+  }
+
   function removeAt(index: number) {
     setMade((prev) => prev.filter((_, i) => i !== index));
   }
@@ -141,10 +155,15 @@ export function MatchActivity({
     const idx = leftPairIndex(id);
     if (idx !== -1) {
       // Tapping a paired card deselects the WHOLE pair (clears both cards).
+      recordBroken(idx);
       removeAt(idx);
       setArmedLeft(null);
       return;
     }
+    // Arming and DIS-arming are the same tap on the same card; only the current
+    // `armedLeft` tells them apart, so it is read before the setState (and
+    // outside the updater — StrictMode double-invokes those in dev).
+    if (armedLeft !== id) trace.record('pair_armed', { left_id: id });
     setArmedLeft((cur) => (cur === id ? null : id));
   }
 
@@ -153,10 +172,12 @@ export function MatchActivity({
     const idx = rightPairIndex(id);
     if (idx !== -1) {
       // Tapping a paired card deselects the WHOLE pair (clears both cards).
+      recordBroken(idx);
       removeAt(idx);
       return;
     }
     if (!armedLeft) return;
+    trace.record('pair_made', { left_id: armedLeft, right_id: id });
     setMade((prev) => [...prev, { left_id: armedLeft, right_id: id }]);
     setArmedLeft(null);
   }
@@ -173,7 +194,10 @@ export function MatchActivity({
     const pairing = made
       .map((p) => `${label(left, p.left_id)} -> ${label(right, p.right_id)}`)
       .join('\n');
-    onComplete(isMatchCorrect, { response: pairing });
+    trace.record('answer_submitted', {
+      pairs: made.map((p) => [p.left_id, p.right_id]),
+    });
+    onComplete(isMatchCorrect, { response: pairing, actions: trace.drain() });
   }
 
   // Badge state for a paired card (neutral pre-submit; green/red after submit).

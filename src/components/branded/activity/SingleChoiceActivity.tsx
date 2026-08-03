@@ -15,6 +15,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, SingleChoiceSpec } from '@/types/content';
 import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
+import { useActionRecorder } from '@/hooks/useActionRecorder';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
@@ -54,6 +55,9 @@ export function SingleChoiceActivity({
   const [options] = useState(() => learnerShuffle(spec?.options ?? [], activity.id));
   const [selected, setSelected] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  // The `selection` family's action sequence (sub-plan 1, Fase A). Ref-backed:
+  // recording an option change must not re-render the option grid.
+  const trace = useActionRecorder('selection', activity.id);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (src/utils/answerMachine.ts — one definition, six call sites).
   const isCorrect = selected === spec?.correct_option_id;
@@ -75,7 +79,14 @@ export function SingleChoiceActivity({
     // this activity to persist (artifact_policy.mode = 'always') — see
     // src/services/artifactPolicy.ts.
     const chosen = options.find((o) => o.id === selected);
-    onComplete(isCorrect, { response: chosen?.label ?? chosen?.id ?? '' });
+    trace.record('answer_submitted', { option_ids: selected ? [selected] : [] });
+    onComplete(isCorrect, {
+      response: chosen?.label ?? chosen?.id ?? '',
+      // The HOW rides beside the WHAT. Every re-pick before this click is in
+      // here, which is the difference between "got it right" and "got it right
+      // after changing their mind twice".
+      actions: trace.drain(),
+    });
   }
 
   return (
@@ -96,7 +107,13 @@ export function SingleChoiceActivity({
             <button
               key={o.id}
               disabled={m.locked}
-              onClick={() => setSelected(o.id)}
+              onClick={() => {
+                // The AUTHORED id, never the post-shuffle index: the order is
+                // per-learner, so a position would not be comparable across
+                // learners — and cross-learner comparison is the whole point.
+                trace.record('option_selected', { option_id: o.id });
+                setSelected(o.id);
+              }}
               data-testid="single-choice-option"
               // The AUTHORED id — what grading keys on, and what a learning
               // event must reference. NOT the post-shuffle position, which

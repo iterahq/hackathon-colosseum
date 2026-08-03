@@ -13,6 +13,7 @@ import { useI18n } from '@/i18n';
 import type { Activity, ChoiceOption, MultiChoiceSpec } from '@/types/content';
 import { learnerShuffle } from '@/utils/learnerShuffle';
 import { answerMachine, choiceOptionState } from '@/utils/answerMachine';
+import { useActionRecorder } from '@/hooks/useActionRecorder';
 import { InstructionPanel } from './InstructionPanel';
 import { ActivityShell, AnswerExplanation, SubmitButton } from './parts';
 import type { ActivityCompleteDetail } from './activityFeedbackKinds';
@@ -65,7 +66,20 @@ export function MultiChoiceActivity({
     hasAnswer: selected.length > 0,
   });
 
+  // The `selection` family's action sequence (sub-plan 1, Fase A).
+  const trace = useActionRecorder('selection', activity.id);
+
   function toggle(id: string) {
+    // Which DIRECTION the tap went is the signal a bare `option_selected` would
+    // flatten away — "picked it, then took it back" is a different learner from
+    // one who picked it once.
+    //
+    // ⚠️ Read off `selected` and recorded BEFORE the setState, deliberately NOT
+    // inside the updater: React StrictMode double-invokes updaters in dev, so a
+    // side effect in there would write every action twice.
+    trace.record(selected.includes(id) ? 'option_deselected' : 'option_selected', {
+      option_id: id,
+    });
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
@@ -83,7 +97,8 @@ export function MultiChoiceActivity({
     const chosen = selected
       .map((id) => `- ${options.find((o) => o.id === id)?.label ?? id}`)
       .join('\n');
-    onComplete(isCorrect, { response: chosen });
+    trace.record('answer_submitted', { option_ids: [...selected] });
+    onComplete(isCorrect, { response: chosen, actions: trace.drain() });
   }
 
   return (

@@ -17,21 +17,23 @@
  * keeps the earlier history unambiguous once the shape moves.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * WE ARE BUILDING THE PIPE, NOT THE CONTENT
+ * THE PIPE SHIPPED FIRST; THE CONTENT ARRIVES BY FAMILY
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * The rich sequence — every click, every option swapped before submitting,
- * every backtrack — DOES NOT EXIST YET. It arrives when the activities become
- * reducers (`(state, action) => state`, sub-plan 1 of the same plan); the
- * reducer's actions ARE the events, which is exactly why instrumenting the ~53
- * handlers spread over 23 files by hand is the cost this design avoids.
+ * This envelope shipped (PR #247) carrying exactly two actions — opened and
+ * settled — because the rich sequence did not exist. It now exists for the
+ * `selection` and `arrangement` families: every option chosen and un-chosen,
+ * every item moved, every pair made and broken, in order, with offsets.
  *
- * So the shape below is designed for the sequence that does not exist yet, and
- * is FILLED today with what the persistence path actually observes: which
- * activity, which outcome, what was answered, and how long it took (columns
- * `elapsed_ms` / `visible_ms`, migration 0033). A trace written today is a
- * two-action trace, and it says so honestly rather than padding itself with
- * invented detail.
+ * The vocabulary is NOT declared here. It is derived from
+ * `src/utils/activityFamilies.ts`, which names the five reducer families
+ * (plan `20260731-itera-padroes-reducer-atividades`, Fase A) and owns the
+ * action union of each. Two parallel lists would drift, and an action type in
+ * this file that belonged to no family would be exactly the ad-hoc
+ * instrumentation the plan exists to replace.
+ *
+ * A trace written for an unwired family is still a two-action trace, and it
+ * says so honestly rather than padding itself with invented detail.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * THE ACTION SHAPE — `{ type, at_ms, payload? }`
@@ -101,6 +103,9 @@
  * no Supabase — so every rule above is unit-testable with fixed inputs.
  */
 import type { DurationSample } from '@/utils/activityDuration';
+import type { LearnerActionType, RecordedAction } from '@/utils/activityFamilies';
+
+export type { LearnerActionType, RecordedAction } from '@/utils/activityFamilies';
 
 /**
  * Version of the ENVELOPE this build writes. Stored on every row
@@ -127,12 +132,15 @@ export const TRACE_SCHEMA_VERSION = 1;
 export const MAX_TRACE_ACTIONS = 500;
 
 /**
- * The action vocabulary THIS BUILD may emit. Closed on purpose: a new emitter
- * has to add its type here, which is a reviewable one-line diff rather than an
- * ad-hoc string appearing in the data.
+ * The action vocabulary THIS BUILD may emit — re-exported from
+ * `src/utils/activityFamilies.ts`, which is where it is DEFINED, per family.
  *
- * Today there are exactly two, and both are things the persistence path
- * genuinely observed — not placeholders:
+ * Closed at write time on purpose: a new emitter has to add its type to a
+ * family, which is a reviewable one-line diff rather than an ad-hoc string
+ * appearing in the data. Open at read time — see `StoredLearnerAction`.
+ *
+ * Two of the names are not interactions at all; they are the ends of the
+ * envelope, and this module writes them itself:
  *
  *   `activity_opened`  — the trace origin, at offset 0 by construction. This is
  *                        the same instant `elapsed_ms` measures from (the
@@ -141,11 +149,10 @@ export const MAX_TRACE_ACTIONS = 500;
  *                        `at_ms` EQUALS `elapsed_ms` on the attempt row, by
  *                        construction rather than by coincidence.
  *
- * Everything between them is the sequence sub-plan 1 will supply.
+ * Everything between them comes from the activity, as `RecordedAction`s.
  */
-export type LearnerActionType = 'activity_opened' | 'attempt_settled';
 
-/** One action, as WRITTEN by this build. */
+/** One action, as WRITTEN by this build. `at_ms` is already an offset. */
 export interface LearnerAction {
   type: LearnerActionType;
   /** Milliseconds since the trace origin. Never a wall clock. Always >= 0. */
@@ -153,6 +160,15 @@ export interface LearnerAction {
   /** Type-specific detail. Absent when the action carries none. */
   payload?: Record<string, unknown>;
 }
+
+/**
+ * `RecordedAction` — what an activity hands up — is DEFINED in
+ * `src/utils/activityFamilies.ts` and re-exported above. It lives there because
+ * the activity tree is forbidden from importing this module at all (see
+ * `src/test/traceEmissionBoundary.test.ts`): the author harness mounts those
+ * same components, and the missing import is the guarantee that a curator
+ * testing an activity writes nothing.
+ */
 
 /**
  * One action, as READ BACK from storage.
@@ -225,18 +241,25 @@ function offset(value: number): number {
  * which is the honest outcome — inventing an anchor would be worse than having
  * none.
  *
- * @param actions the RICH sequence, when the caller has one. Nobody passes it
- *   today — it is the seam sub-plan 1 plugs into, and it is typed and tested so
- *   that plugging in is a call-site change and nothing else. Its absence is NOT
- *   the `passed`-style footgun (an omitted flag that silently records a lie):
- *   the two-action trace below is a COMPLETE account of what this build
- *   observed, so omitting the parameter records less, never something false.
+ * @param actions the RICH sequence, in WALL CLOCK (`RecordedAction`), rebased
+ *   here against the origin this function derives. Activities of a WIRED family
+ *   pass it (see `FAMILY_EMITTED` in `activityFamilies.ts`); the rest do not,
+ *   and their absence is NOT the `passed`-style footgun (an omitted flag that
+ *   silently records a lie): a two-action trace is a COMPLETE account of what an
+ *   unwired kind observed, so omitting the parameter records less, never
+ *   something false.
+ * @param actionsTruncated the caller already dropped actions before getting
+ *   here — today only the durable outbox does, to keep a queued attempt from
+ *   blowing the localStorage quota. It is OR'd into the row's flag because a
+ *   trace that was cut somewhere upstream and does not say so is a sequence
+ *   that reads as complete while missing its middle.
  */
 export function buildAttemptTrace({
   passed,
   duration,
   settledAt,
   actions = [],
+  actionsTruncated = false,
 }: {
   passed: boolean;
   duration: DurationSample | null;
@@ -246,12 +269,29 @@ export function buildAttemptTrace({
    * caller is forced to state which instant it means.
    */
   settledAt: number | null;
-  actions?: readonly LearnerAction[];
+  actions?: readonly RecordedAction[];
+  actionsTruncated?: boolean;
 }): LearningTrace | null {
   if (!duration || settledAt === null || !Number.isFinite(settledAt)) return null;
 
   const elapsed = offset(duration.elapsedMs);
-  const middle = actions.map((a) => ({ ...a, at_ms: offset(a.at_ms) }));
+  // REBASE. The origin is derived exactly the way `started_at` is below, so the
+  // two can never disagree. Clamped into [0, elapsed] rather than dropped:
+  //  · below 0 — an action recorded before the player armed its origin (the
+  //    component mounts a tick before the resume gate lifts). Clamping keeps
+  //    the action AND keeps the DB envelope check (`at_ms >= 0`) satisfied,
+  //    which matters because that check rejects the WHOLE row, not the action.
+  //  · above `elapsed` — a stray recorded during the settle itself. Letting it
+  //    exceed the terminal action would put the sequence out of order with
+  //    itself, which is a corrupted trace that still looks valid.
+  // Order is preserved regardless: the list is chronological by construction,
+  // and clamping is monotonic.
+  const originMs = settledAt - elapsed;
+  const middle: LearnerAction[] = actions.map((a) => ({
+    type: a.type,
+    at_ms: Math.min(elapsed, offset(a.at - originMs)),
+    ...(a.payload ? { payload: a.payload } : {}),
+  }));
 
   const full: LearnerAction[] = [
     { type: 'activity_opened', at_ms: 0 },
@@ -265,9 +305,9 @@ export function buildAttemptTrace({
   if (full.length <= MAX_TRACE_ACTIONS) {
     return {
       schema_version: TRACE_SCHEMA_VERSION,
-      started_at: new Date(settledAt - elapsed).toISOString(),
+      started_at: new Date(originMs).toISOString(),
       actions: full,
-      actions_truncated: false,
+      actions_truncated: actionsTruncated,
     };
   }
 
@@ -276,7 +316,7 @@ export function buildAttemptTrace({
   // that falls off the end.
   return {
     schema_version: TRACE_SCHEMA_VERSION,
-    started_at: new Date(settledAt - elapsed).toISOString(),
+    started_at: new Date(originMs).toISOString(),
     actions: [...full.slice(0, MAX_TRACE_ACTIONS - 1), full[full.length - 1]],
     actions_truncated: true,
   };

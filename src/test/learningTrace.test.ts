@@ -4,7 +4,7 @@ import {
   readTrace,
   MAX_TRACE_ACTIONS,
   TRACE_SCHEMA_VERSION,
-  type LearnerAction,
+  type RecordedAction,
 } from '@/utils/learningTrace';
 
 /**
@@ -112,13 +112,20 @@ describe('buildAttemptTrace', () => {
   });
 });
 
-describe('buildAttemptTrace — the seam for the reducer sequence (sub-plan 1)', () => {
-  const rich: LearnerAction[] = [
-    { type: 'attempt_settled', at_ms: 100, payload: { passed: false } },
-    { type: 'attempt_settled', at_ms: 200, payload: { passed: false } },
-  ];
+describe('buildAttemptTrace — the reducer sequence (sub-plan 1, Fase A)', () => {
+  /** The origin the builder derives: settle minus elapsed. */
+  const originOf = (elapsedMs: number) => AT - elapsedMs;
 
-  it('keeps caller-supplied actions in order, between open and settle', () => {
+  it('rebases WALL CLOCK onto offsets, keeping order, between open and settle', () => {
+    // This is the property the whole `RecordedAction` type exists for: the
+    // activity stamps `Date.now()` because it cannot see the player's origin,
+    // and the builder — which derives the origin anyway for `started_at` — is
+    // the one place that can convert without a second clock.
+    const origin = originOf(300);
+    const rich: RecordedAction[] = [
+      { type: 'option_selected', at: origin + 100, payload: { option_id: 'a' } },
+      { type: 'option_deselected', at: origin + 200, payload: { option_id: 'a' } },
+    ];
     const trace = buildAttemptTrace({
       passed: true,
       duration: { elapsedMs: 300, visibleMs: 300 },
@@ -126,28 +133,61 @@ describe('buildAttemptTrace — the seam for the reducer sequence (sub-plan 1)',
       actions: rich,
     });
     expect(trace?.actions.map((a) => a.at_ms)).toEqual([0, 100, 200, 300]);
+    expect(trace?.actions.map((a) => a.type)).toEqual([
+      'activity_opened',
+      'option_selected',
+      'option_deselected',
+      'attempt_settled',
+    ]);
+    // `started_at` and the rebase must use the SAME origin, or every offset is
+    // silently shifted against the anchor it is supposed to be relative to.
+    expect(trace?.started_at).toBe(new Date(origin).toISOString());
   });
 
-  it('clamps a negative or non-finite offset to 0 instead of losing the trace', () => {
-    // A negative at_ms would violate the DB envelope check and cost the WHOLE
-    // trace. Clamping here keeps the sequence; the DB constraint stays as the
-    // backstop for genuinely malformed writers.
+  it('preserves the payload verbatim and omits the key when there is none', () => {
+    const origin = originOf(50);
+    const trace = buildAttemptTrace({
+      passed: false,
+      duration: { elapsedMs: 50, visibleMs: 50 },
+      settledAt: AT,
+      actions: [
+        { type: 'pair_made', at: origin + 10, payload: { left_id: 'l1', right_id: 'r2' } },
+        { type: 'pair_armed', at: origin + 20 },
+      ],
+    });
+    expect(trace?.actions[1]).toEqual({
+      type: 'pair_made',
+      at_ms: 10,
+      payload: { left_id: 'l1', right_id: 'r2' },
+    });
+    expect(trace?.actions[2]).toEqual({ type: 'pair_armed', at_ms: 20 });
+  });
+
+  it('clamps into [0, elapsed] rather than dropping the action or the trace', () => {
+    // Below 0: recorded a tick before the player armed its origin (the resume
+    // gate). Above `elapsed`: a stray during the settle itself. A negative
+    // at_ms violates the DB envelope CHECK and would cost the WHOLE row; an
+    // offset past the terminal action would put the sequence out of order with
+    // itself, which is a corrupted trace that still looks valid.
+    const origin = originOf(50);
     const trace = buildAttemptTrace({
       passed: true,
       duration: { elapsedMs: 50, visibleMs: 50 },
       settledAt: AT,
       actions: [
-        { type: 'attempt_settled', at_ms: -5 },
-        { type: 'attempt_settled', at_ms: Number.NaN },
+        { type: 'option_selected', at: origin - 5_000 },
+        { type: 'option_selected', at: Number.NaN },
+        { type: 'option_selected', at: origin + 999_999 },
       ],
     });
-    expect(trace?.actions.map((a) => a.at_ms)).toEqual([0, 0, 0, 50]);
+    expect(trace?.actions.map((a) => a.at_ms)).toEqual([0, 0, 0, 50, 50]);
   });
 
   it('truncates at the cap, flags it, and NEVER drops the terminal action', () => {
-    const many: LearnerAction[] = Array.from({ length: MAX_TRACE_ACTIONS + 50 }, (_, i) => ({
-      type: 'attempt_settled',
-      at_ms: i,
+    const origin = originOf(9_999);
+    const many: RecordedAction[] = Array.from({ length: MAX_TRACE_ACTIONS + 50 }, (_, i) => ({
+      type: 'option_selected',
+      at: origin + i,
     }));
     const trace = buildAttemptTrace({
       passed: true,
@@ -165,6 +205,22 @@ describe('buildAttemptTrace — the seam for the reducer sequence (sub-plan 1)',
       payload: { passed: true },
     });
     expect(trace?.actions[0]).toEqual({ type: 'activity_opened', at_ms: 0 });
+  });
+
+  it('reports an UPSTREAM trim, so a queue-trimmed sequence never reads as whole', () => {
+    // The durable outbox caps a queued entry's actions to protect the
+    // localStorage quota (MAX_QUEUED_TRACE_ACTIONS). The cut happens before the
+    // builder sees the list, so the flag has to ride separately — otherwise the
+    // row would claim a complete sequence it does not have.
+    const trace = buildAttemptTrace({
+      passed: true,
+      duration: { elapsedMs: 100, visibleMs: 100 },
+      settledAt: AT,
+      actions: [{ type: 'option_selected', at: AT }],
+      actionsTruncated: true,
+    });
+    expect(trace?.actions).toHaveLength(3);
+    expect(trace?.actions_truncated).toBe(true);
   });
 });
 

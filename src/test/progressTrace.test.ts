@@ -162,14 +162,35 @@ describe('persistActivityProgress → itera.activity_traces', () => {
     expect(traces()).toHaveLength(0);
   });
 
-  it('carries a caller-supplied rich sequence through (the sub-plan 1 seam)', async () => {
+  it('carries a caller-supplied rich sequence through, rebased onto the origin', async () => {
+    // The activity stamps WALL CLOCK (it does not know the origin); the trace
+    // stores offsets. 2s after the activity opened == `elapsedMs - 6000`.
     await persistActivityProgress('act-1', {
       passed: true,
       duration: DURATION,
       settledAt: SETTLED_AT,
-      actions: [{ type: 'activity_opened', at_ms: 2_000 }],
+      actions: [
+        { type: 'option_selected', at: SETTLED_AT - DURATION.elapsedMs + 2_000, payload: { option_id: 'b' } },
+      ],
     });
-    expect((traces()[0].payload.actions as unknown[]).length).toBe(3);
+    const actions = traces()[0].payload.actions as Array<{ type: string; at_ms: number }>;
+    expect(actions.map((a) => a.type)).toEqual([
+      'activity_opened',
+      'option_selected',
+      'attempt_settled',
+    ]);
+    expect(actions[1].at_ms).toBe(2_000);
+  });
+
+  it('carries the upstream truncation flag so a trimmed sequence never reads as whole', async () => {
+    await persistActivityProgress('act-1', {
+      passed: true,
+      duration: DURATION,
+      settledAt: SETTLED_AT,
+      actions: [{ type: 'option_selected', at: SETTLED_AT }],
+      actionsTruncated: true,
+    });
+    expect(traces()[0].payload.actions_truncated).toBe(true);
   });
 });
 

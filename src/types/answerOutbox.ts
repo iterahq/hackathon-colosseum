@@ -1,6 +1,7 @@
 /** Contratos da fila durável de escritas de resposta (`src/utils/answerOutbox.ts`). */
 
 import type { DurationSample } from '@/utils/activityDuration';
+import type { RecordedAction } from '@/utils/learningTrace';
 
 /** Uma escrita pendente. A união é fechada — kind novo obriga a tratar o envio. */
 export type OutboxEntry =
@@ -41,6 +42,24 @@ export type OutboxEntry =
        * âncora inventada é pior que âncora nenhuma.
        */
       settledAt?: number;
+      /**
+       * A SEQUÊNCIA do que o aluno fez (`RecordedAction[]`, wall clock) — o
+       * COMO, onde `response` é o QUÊ. Famílias `selection`/`arrangement`
+       * mandam; as outras não (`src/utils/activityFamilies.ts`).
+       *
+       * ⚠️ Wall clock e não offset, de propósito: a entrada pode dormir horas
+       * na fila e ainda assim é rebaseada na origem da tentativa, não na
+       * reconexão. Mesmo argumento do `settledAt` acima.
+       *
+       * ⚠️ APARADA NA ENFILEIRADA (`MAX_QUEUED_TRACE_ACTIONS`). A fila cabe 200
+       * entradas e o localStorage estoura por volta de 5 MB; 200 × 500 ações
+       * passaria disso e derrubaria a persistência local INTEIRA — inclusive as
+       * respostas que a fila existe pra salvar. Trace aparado é perda de
+       * telemetria; quota estourada é perda de resposta de aluno.
+       */
+      actions?: RecordedAction[];
+      /** A sequência foi aparada antes de chegar no banco (ver acima). */
+      actionsTruncated?: boolean;
     }
   | {
       kind: 'classAnswer';

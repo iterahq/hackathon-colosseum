@@ -41,7 +41,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
-import { buildAttemptTrace, type LearnerAction } from '@/utils/learningTrace';
+import { buildAttemptTrace, type RecordedAction } from '@/utils/learningTrace';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -113,14 +113,19 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * is the outbox replaying an entry serialised before this field existed.
  * See `src/utils/activityDuration.ts` for what the two numbers actually mean.
  *
- * `actions` is the RICH SEQUENCE of what the learner did, and NOBODY PASSES IT
- * TODAY — it is the seam the reducer refactor (sub-plan 1) plugs into, because
- * the reducer's actions ARE the events. It is optional, unlike `passed` and
- * `duration`, and the difference is not laziness: an omitted `passed` recorded
- * something FALSE (that is how the attempt log came to hold nothing but wins),
- * whereas an omitted `actions` records LESS — the two-action trace built below
- * is a complete account of what this build can observe. Optional-where-honest,
- * required-where-a-default-would-lie.
+ * `actions` is the RICH SEQUENCE of what the learner did, in WALL CLOCK. The
+ * `selection` and `arrangement` families now pass it (sub-plan 1, Fase A — the
+ * reducer's actions ARE the events); the unwired families do not. It stays
+ * optional, unlike `passed` and `duration`, and the difference is not laziness:
+ * an omitted `passed` recorded something FALSE (that is how the attempt log came
+ * to hold nothing but wins), whereas an omitted `actions` records LESS — the
+ * two-action trace built below is a complete account of what an unwired kind can
+ * observe. Optional-where-honest, required-where-a-default-would-lie.
+ *
+ * `actionsTruncated` says the sequence was already cut before it got here (the
+ * durable outbox trims a queued attempt so a long trace cannot blow the
+ * localStorage quota and take the ANSWERS down with it). It rides separately
+ * because the row must not claim a complete sequence it does not have.
  *
  * `settledAt` is the wall-clock instant the learner ANSWERED, and it is
  * REQUIRED for the reason the other required fields are: a default would lie.
@@ -155,12 +160,14 @@ export async function persistActivityProgress(
     duration,
     settledAt,
     actions,
+    actionsTruncated,
   }: {
     passed: boolean;
     response?: string | null;
     duration: DurationSample | null;
     settledAt: number | null;
-    actions?: readonly LearnerAction[];
+    actions?: readonly RecordedAction[];
+    actionsTruncated?: boolean;
   }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
@@ -256,10 +263,11 @@ export async function persistActivityProgress(
     }
 
     // ── The TRACE (migration 0034) ───────────────────────────────────────────
-    // The sequence of what the learner did, as ONE ROW. Today that sequence has
-    // two actions (opened, settled) because the rich one does not exist yet —
-    // it arrives with the reducer refactor, and this call is the seam it plugs
-    // into. The shape is versioned from row one precisely because it will grow:
+    // The sequence of what the learner did, as ONE ROW. For a WIRED family
+    // (`selection`, `arrangement`) that is every option chosen and un-chosen,
+    // every item moved, every pair made and broken, in order; for the rest it
+    // is still the honest two actions (opened, settled).
+    // The shape is versioned from row one precisely because it will grow:
     // an unversioned row written before the format moved is data nobody can
     // safely interpret afterwards, and that is not fixable later.
     //
@@ -302,7 +310,13 @@ export async function persistActivityProgress(
     // including one that throws rather than returning an error — can change
     // what this function reports about the attempt.
     try {
-      const trace = buildAttemptTrace({ passed, duration, settledAt, actions });
+      const trace = buildAttemptTrace({
+        passed,
+        duration,
+        settledAt,
+        actions,
+        actionsTruncated,
+      });
       // No trace without an origin: every `at_ms` is an offset from
       // `started_at`, so an attempt with no measured duration or no known
       // settle instant (an outbox entry serialised before those fields existed)

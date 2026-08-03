@@ -28,6 +28,39 @@ const STORAGE_KEY = 'itera.answer.outbox';
  */
 export const MAX_QUEUED_WRITES = 200;
 
+/**
+ * Teto de AÇÕES por entrada enfileirada — bem abaixo do `MAX_TRACE_ACTIONS`
+ * (500) que vale pra escrita direta.
+ *
+ * O motivo é o mesmo do teto acima, e é aritmético: 200 entradas × 500 ações ×
+ * ~60 bytes passa de 5 MB, que é a ordem de grandeza da quota de localStorage.
+ * Estourar a quota não custa "um pouco de telemetria" — o `write()` abaixo
+ * falha inteiro e a fila PARA DE ACEITAR RESPOSTA. Ou seja: sem esse teto, o
+ * dado que enfeita pode derrubar o dado que importa, que é exatamente a regra
+ * que o `progress.service` já enuncia (*telemetria nunca pode destruir o
+ * registro que ela decora*) — aqui obtida por aparo em vez de por retry.
+ *
+ * 60 cobre com folga uma tentativa de escolha/ordenação real (as sequências
+ * medidas ficam abaixo de 30). O que passa disso é cortado pelo FIM: a CABEÇA é
+ * onde está a estratégia (o que o aluno tentou primeiro), e a entrada carimba
+ * `actionsTruncated` pra linha não se declarar completa.
+ */
+export const MAX_QUEUED_TRACE_ACTIONS = 60;
+
+/**
+ * Aparo aplicado só na entrada da FILA — a escrita direta (caminho feliz,
+ * esmagadora maioria) segue com a sequência inteira.
+ */
+function trimForQueue(entry: OutboxEntry): OutboxEntry {
+  if (entry.kind !== 'progress' || !entry.actions) return entry;
+  if (entry.actions.length <= MAX_QUEUED_TRACE_ACTIONS) return entry;
+  return {
+    ...entry,
+    actions: entry.actions.slice(0, MAX_QUEUED_TRACE_ACTIONS),
+    actionsTruncated: true,
+  };
+}
+
 export function readOutbox(): QueuedWrite[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -64,7 +97,7 @@ function write(queue: QueuedWrite[]): void {
  */
 export function enqueueWrite(entry: OutboxEntry): void {
   const queue = readOutbox().filter((q) => targetOf(q.entry) !== targetOf(entry));
-  queue.push({ id: crypto.randomUUID(), entry, attempts: 0, queuedAt: Date.now() });
+  queue.push({ id: crypto.randomUUID(), entry: trimForQueue(entry), attempts: 0, queuedAt: Date.now() });
   write(queue);
 }
 
