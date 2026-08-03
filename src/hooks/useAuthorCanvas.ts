@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuth } from '@/auth/AuthContext';
+import { useI18n } from '@/i18n';
 import {
   getUnitCanvas,
   getAuthorPrograms,
@@ -40,8 +41,10 @@ export function useAuthorPrograms() {
 /** One unit's deep graph (rows=lessons, columns=activities). */
 export function useUnitCanvas(unitId: string | undefined) {
   const { configured, session } = useAuth();
+  // Authored content is locale-collapsed while mapping — see queryKeys.ts.
+  const { locale } = useI18n();
   return useQuery({
-    queryKey: queryKeys.author.unitCanvas(unitId ?? ''),
+    queryKey: queryKeys.author.unitCanvas(unitId ?? '', locale),
     queryFn: () => getUnitCanvas(unitId!),
     enabled: configured && Boolean(session) && Boolean(unitId),
   });
@@ -57,8 +60,10 @@ export function useUnitCanvas(unitId: string | undefined) {
  */
 export function useActivity(activityId: string | undefined) {
   const { configured, session } = useAuth();
+  // Authored content is locale-collapsed while mapping — see queryKeys.ts.
+  const { locale } = useI18n();
   return useQuery({
-    queryKey: queryKeys.author.activityTest(activityId ?? ''),
+    queryKey: queryKeys.author.activityTest(activityId ?? '', locale),
     queryFn: () => getActivityById(activityId!),
     enabled: configured && Boolean(session) && Boolean(activityId),
     retry: (failureCount, error) => !isActivityNotFoundError(error) && failureCount < 3,
@@ -172,7 +177,7 @@ export function useSetActivityStatus(unitId: string | undefined) {
       setActivityStatus(activityId, status),
     onSuccess: () => {
       // Re-read the canvas so status badges reflect the flip.
-      qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvas(unitId ?? '') });
+      qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvasAll(unitId ?? '') });
     },
   });
 }
@@ -195,7 +200,7 @@ export function useSetArtifactPolicy(unitId: string | undefined) {
       policy: Record<string, unknown>;
     }) => setActivityArtifactPolicy(activityId, policy),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvas(unitId ?? '') });
+      qc.invalidateQueries({ queryKey: queryKeys.author.unitCanvasAll(unitId ?? '') });
     },
   });
 }

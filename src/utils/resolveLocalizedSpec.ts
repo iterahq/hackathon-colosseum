@@ -2,7 +2,19 @@ import type { Locale } from '@/i18n';
 
 const LOCALE_KEYS = new Set<string>(['pt', 'en']);
 
-/** localStorage is the locale source of truth (same key the i18n provider reads). */
+/**
+ * The active locale, mirrored in localStorage by `I18nProvider.setLocale` on BOTH
+ * paths — the user's toggle and the `useLocaleSync` hydration from
+ * `itera.users.locale` — so it is a faithful copy of the provider's state.
+ *
+ * It is read here rather than passed in because this runs inside react-query's
+ * `queryFn` (service layer), which has no React context. That makes the read
+ * AMBIENT, and ambient reads do not re-run on their own: what makes the result
+ * correct is that `locale` is part of the content query keys (see
+ * `src/lib/queryKeys.ts`), so any locale change is a different cache entry and
+ * forces this mapping to run again. Remove the locale from those keys and an
+ * English learner silently keeps the Portuguese copy that was cached first.
+ */
 function activeLocale(): Locale {
   try {
     return (typeof localStorage !== 'undefined' && localStorage.getItem('itera.locale')) === 'en' ? 'en' : 'pt';
@@ -35,7 +47,14 @@ function resolveDeep(value: unknown, locale: Locale): unknown {
  * fields directly (prompts, choice labels, explanations), so a bag reaching the
  * DOM throws React error #31. Only for kinds whose runtime expects strings — the
  * `sandbox_scenario` runtime resolves its own bags and must keep them intact.
+ *
+ * Pass `locale` explicitly wherever one is available (a React tree has
+ * `useI18n().locale`); the ambient localStorage read is the fallback for the
+ * service layer. See `activeLocale` for why that is safe.
  */
-export function resolveLocalizedSpec(spec: Record<string, unknown>): Record<string, unknown> {
-  return resolveDeep(spec, activeLocale()) as Record<string, unknown>;
+export function resolveLocalizedSpec(
+  spec: Record<string, unknown>,
+  locale: Locale = activeLocale()
+): Record<string, unknown> {
+  return resolveDeep(spec, locale) as Record<string, unknown>;
 }

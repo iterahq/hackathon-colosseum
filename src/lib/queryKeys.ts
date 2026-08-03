@@ -10,6 +10,27 @@
  * - `all` é a chave-raiz daquele recurso (sem parâmetro).
  * - Funções recebem parâmetros e retornam tuplas `as const` para o TS narrar bem.
  */
+/**
+ * 🌐 LOCALE IS PART OF EVERY CONTENT KEY.
+ *
+ * Authored activity content is bilingual jsonb (`{ pt, en }` bags) that the
+ * service layer collapses to plain strings while mapping the row
+ * (`resolveLocalizedSpec` in programs.service / authorCanvas.service). That
+ * collapse is LOSSY and happens inside the `queryFn`, so the cached value is
+ * language-specific: a `['lesson', id]` entry populated while the locale was `pt`
+ * holds Portuguese strings, and nothing about a later locale change can turn it
+ * back into English.
+ *
+ * That bit an English learner in two ways before locale joined these keys:
+ *   1. Toggling the language left every already-loaded activity in Portuguese.
+ *   2. On a cold load the lesson query often resolved BEFORE `useLocaleSync`
+ *      hydrated `itera.users.locale`, so the cache was filled at the default `pt`
+ *      and the subsequent switch to `en` changed nothing.
+ *
+ * Keying by locale makes each language its own cache entry, so both cases
+ * re-run the mapping. Any NEW key whose payload carries authored content must
+ * take a `locale` too.
+ */
 export const queryKeys = {
   lessons: {
     all: ['lessons'] as const,
@@ -21,14 +42,14 @@ export const queryKeys = {
   // Canonical Itera content (real Supabase `itera.*`).
   programs: {
     all: ['programs'] as const,
-    bySlug: (slug: string) => ['programs', slug] as const,
+    bySlug: (slug: string, locale: string) => ['programs', slug, { locale }] as const,
   },
   // Self-serve catalog (membership-independent, via SECURITY DEFINER RPC).
   catalog: {
     all: ['catalog'] as const,
   },
   lesson: {
-    byId: (id: string) => ['lesson', id] as const,
+    byId: (id: string, locale: string) => ['lesson', id, { locale }] as const,
     next: (id: string) => ['lesson', id, 'next'] as const,
     /**
      * Guest content comes from itera-api, not PostgREST, and is scoped to the
@@ -36,7 +57,7 @@ export const queryKeys = {
      * member read satisfy a guest (and vice-versa) across a logout on the same
      * browser.
      */
-    byGuestCode: (code: string) => ['lesson', 'guest', code] as const,
+    byGuestCode: (code: string, locale: string) => ['lesson', 'guest', code, { locale }] as const,
   },
   user: {
     stats: ['user', 'stats'] as const,
@@ -74,10 +95,20 @@ export const queryKeys = {
   // Author review canvas (plan 20260706 — per-unit review+comment surface).
   author: {
     programs: ['author', 'programs'] as const,
-    unitCanvas: (unitId: string) => ['author', 'unit-canvas', unitId] as const,
+    // Locale-keyed: the canvas maps activities through the same lossy
+    // `resolveLocalizedSpec` the player does (see the note at the top).
+    unitCanvas: (unitId: string, locale: string) =>
+      ['author', 'unit-canvas', unitId, { locale }] as const,
+    /**
+     * Locale-agnostic PREFIX of `unitCanvas`, for invalidation. An edit to the
+     * canvas invalidates the unit in EVERY language, not just the one on screen —
+     * react-query matches keys by prefix, so this drops all locale variants.
+     */
+    unitCanvasAll: (unitId: string) => ['author', 'unit-canvas', unitId] as const,
     unitVersions: (unitId: string) => ['author', 'unit-versions', unitId] as const,
     unitComments: (unitId: string) => ['author', 'unit-comments', unitId] as const,
-    activityTest: (activityId: string) => ['author', 'activity-test', activityId] as const,
+    activityTest: (activityId: string, locale: string) =>
+      ['author', 'activity-test', activityId, { locale }] as const,
   },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {

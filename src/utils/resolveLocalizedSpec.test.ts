@@ -43,4 +43,49 @@ describe('resolveLocalizedSpec', () => {
     localStorage.setItem('itera.locale', 'en');
     expect(resolveLocalizedSpec({ prompt: { pt: 'Só PT' } })).toEqual({ prompt: 'Só PT' });
   });
+
+  describe('explicit locale argument', () => {
+    it('wins over the ambient localStorage value', () => {
+      localStorage.setItem('itera.locale', 'pt');
+      expect(resolveLocalizedSpec({ prompt: { pt: 'Olá', en: 'Hello' } }, 'en')).toEqual({
+        prompt: 'Hello',
+      });
+    });
+
+    it('still resolves to pt when asked for pt with EN present', () => {
+      localStorage.setItem('itera.locale', 'en');
+      expect(resolveLocalizedSpec({ prompt: { pt: 'Olá', en: 'Hello' } }, 'pt')).toEqual({
+        prompt: 'Olá',
+      });
+    });
+
+    it('resolves a rubric the same way a spec is resolved', () => {
+      // The rubric carries the AI-judge criteria and the artifact label. Before
+      // the services resolved it, a bag here reached the judge — and the artifact
+      // filename — as "[object Object]".
+      const rubric = {
+        mode: 'ai-judge',
+        min_words: 80,
+        artifact: { pt: 'Reflexão', en: 'Reflection' },
+        criteria: [
+          { pt: 'Normalização correta', en: 'Correct normalisation' },
+          { pt: 'Justifica as escolhas', en: 'Justifies the choices' },
+        ],
+      };
+      expect(resolveLocalizedSpec(rubric, 'en')).toEqual({
+        mode: 'ai-judge',
+        min_words: 80,
+        artifact: 'Reflection',
+        criteria: ['Correct normalisation', 'Justifies the choices'],
+      });
+    });
+
+    it('leaves an EN string that mirrors PT alone (the backfill fixes data, not this)', () => {
+      // A mirrored bag is indistinguishable from a legitimately identical one
+      // (a command, an identifier). Resolution must not try to be clever here.
+      expect(resolveLocalizedSpec({ cmd: { pt: 'git status', en: 'git status' } }, 'en')).toEqual({
+        cmd: 'git status',
+      });
+    });
+  });
 });

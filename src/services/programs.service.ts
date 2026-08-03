@@ -186,7 +186,15 @@ export function mapActivity(a: Row): Activity {
     // The sandbox runtime resolves its own bilingual bags; every other kind
     // renders spec strings directly, so collapse bags before they reach the DOM.
     spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
-    rubric: (a.rubric && typeof a.rubric === 'object' ? (a.rubric as Record<string, unknown>) : null),
+    // The rubric is bilingual too (`criteria[]`, `artifact` — the AI-judge
+    // prompt and the artifact label). Nothing downstream resolves it, so an
+    // unresolved bag here would reach the judge as "[object Object]" and would
+    // render as one in the artifact name. Resolved for EVERY kind: unlike the
+    // spec, no runtime takes a second pass at the rubric.
+    rubric:
+      a.rubric && typeof a.rubric === 'object'
+        ? resolveLocalizedSpec(a.rubric as Record<string, unknown>)
+        : null,
     // Carried raw; `resolveArtifactPolicy` merges it with the per-kind default.
     // The player needs it to decide whether to persist (migration 0027).
     artifactPolicy:

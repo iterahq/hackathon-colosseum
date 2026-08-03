@@ -6,6 +6,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { useI18n } from '@/i18n';
 import type { LessonPlacement } from '@/services/programs.service';
 import {
   getBadges,
@@ -22,8 +23,11 @@ export function usePrograms() {
 }
 
 export function useProgram(slug: string | undefined) {
+  // Locale participates in the key so a language change re-maps the authored
+  // content instead of serving the other language from cache — see queryKeys.ts.
+  const { locale } = useI18n();
   return useQuery({
-    queryKey: queryKeys.programs.bySlug(slug ?? ''),
+    queryKey: queryKeys.programs.bySlug(slug ?? '', locale),
     queryFn: () => getProgramBySlug(slug as string),
     enabled: Boolean(slug),
   });
@@ -48,10 +52,13 @@ export type LessonContent = {
 };
 
 export function useLessonContent(lessonId: string | undefined, guestCode?: string) {
+  // Locale participates in the key so a language change re-maps the authored
+  // content instead of serving the other language from cache — see queryKeys.ts.
+  const { locale } = useI18n();
   return useQuery<LessonContent>({
     queryKey: guestCode
-      ? queryKeys.lesson.byGuestCode(guestCode)
-      : queryKeys.lesson.byId(lessonId ?? ''),
+      ? queryKeys.lesson.byGuestCode(guestCode, locale)
+      : queryKeys.lesson.byId(lessonId ?? '', locale),
     queryFn: () =>
       guestCode ? getGuestLessonContent(guestCode) : getLessonWithActivities(lessonId as string),
     enabled: guestCode ? true : Boolean(lessonId),

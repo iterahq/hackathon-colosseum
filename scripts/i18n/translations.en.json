@@ -1,0 +1,2786 @@
+{
+ "00876ebf2ca6": {
+  "en": "Pick ONE process from your day (approve a request, qualify a lead, close an invoice). Write it in 5 steps using the format:\n\nTRIGGER: what starts it? \nSTEP 1 → STEP 2 → STEP 3 → STEP 4\nRESULT: what does it deliver?\n\nMark with [D] the steps that are a DECISION and with [T] the steps that are a TASK. You'll use this in the Commit.",
+  "pt": "Pegue UM processo do seu dia (aprovar pedido, qualificar lead, fechar nota). Escreva em 5 passos no formato:\n\nGATILHO: o que inicia? \nPASSO 1 → PASSO 2 → PASSO 3 → PASSO 4\nRESULTADO: o que entrega?\n\nMarque com [D] os passos que são DECISÃO e com [T] os que são TAREFA. Você vai usar isto no Commit."
+ },
+ "008fbab3e24f": {
+  "en": "**Golden tip:** `pull` when you sit down, `push` when you get up.",
+  "pt": "**Dica de ouro:** `pull` quando sentar, `push` quando levantar."
+ },
+ "00b43a2f7b70": {
+  "en": "Pulse 5 — Example of a fleet telematics dashboard",
+  "pt": "Pulse 5 — Exemplo de dashboard de telemática de frota"
+ },
+ "00c2597d68b1": {
+  "en": "What is Claude Code?",
+  "pt": "O que é o Claude Code?"
+ },
+ "0170c332caea": {
+  "en": "## Showing one thing OR another\n\nThree situations, three tools:\n\n- **Show or hide an element** → `condition && <X />`\n- **Choose between two elements** → `condition ? <A /> : <B />`\n- **Three or more variants** → decide before the `return`, with `if/else`\n\nThe **logical AND** (`&&`) is the most common. If the condition is false, nothing is rendered:\n\n```tsx\n{isSoldOut && <span>Sold out</span>}\n```\n\nThe **ternary** is for when both sides genuinely exist:\n\n```tsx\n{inStock ? <button>Add</button> : <button disabled>Sold out</button>}\n```\n\n> Complicated condition? Give it a name before the JSX: `const isSoldOut = !inStock;`. Then the JSX reads like a sentence: `{isSoldOut && <Badge />}`.",
+  "pt": "## Mostrar uma coisa OU outra\n\nTrês situações, três ferramentas:\n\n- **Mostrar ou esconder um elemento** → `condição && <X />`\n- **Escolher entre dois elementos** → `condição ? <A /> : <B />`\n- **Três ou mais variantes** → decida antes do `return`, com `if/else`\n\nO **E lógico** (`&&`) é o mais comum. Se a condição for falsa, nada é renderizado:\n\n```tsx\n{isSoldOut && <span>Esgotado</span>}\n```\n\nO **ternário** entra quando existem os dois lados de verdade:\n\n```tsx\n{inStock ? <button>Adicionar</button> : <button disabled>Esgotado</button>}\n```\n\n> Condição complicada? Dê nome a ela antes do JSX: `const isSoldOut = !inStock;`. Aí o JSX vira uma frase: `{isSoldOut && <Badge />}`."
+ },
+ "023f1acfcb29": {
+  "en": "Open that file and find the section marked with <<<<<<< and >>>>>>>",
+  "pt": "Abrir esse arquivo e achar o trecho marcado com <<<<<<< e >>>>>>>"
+ },
+ "02d0f301ef10": {
+  "en": "Write ONE Musica component that receives nome, artista and duracao, and use .map on the array of 20 songs",
+  "pt": "Escrever UM componente Musica que recebe nome, artista e duracao, e usar .map no array das 20 músicas"
+ },
+ "048a6675c254": {
+  "en": "I finished my part and want Nina to see it on GitHub",
+  "pt": "Terminei minha parte e quero que a Nina veja no GitHub"
+ },
+ "05793966c958": {
+  "en": "Write all 30 names one by one by hand 😮‍💨",
+  "pt": "Escrever os 30 nomes um por um na mão 😮‍💨"
+ },
+ "05c082f44ff3": {
+  "en": "isFavorite = true;",
+  "pt": "isFavorite = true;"
+ },
+ "05cb502e7187": {
+  "en": "Includes verification of the result",
+  "pt": "Inclui verificação do resultado"
+ },
+ "05db89031771": {
+  "en": "Just one: the ticket. I stamp the other four myself.",
+  "pt": "Uma só: o bilhete. As outras quatro eu carimbo sozinho."
+ },
+ "070384fecb1c": {
+  "en": "The first card shows \"Math\"",
+  "pt": "O primeiro card mostra \"Matemática\""
+ },
+ "0885e9444fb0": {
+  "en": "git checkout main",
+  "pt": "git checkout main"
+ },
+ "08ad6fb8e5d9": {
+  "en": "COMMIT — Build the ER diagram of YOUR process",
+  "pt": "COMMIT — Monte o diagrama ER do SEU processo"
+ },
+ "08ed47975ac1": {
+  "en": "Build the structure of the page (text, images, buttons)",
+  "pt": "Montar a estrutura da página (textos, imagens, botões)"
+ },
+ "09944eb3254d": {
+  "en": "## CHEF'S APRON · the final challenge\n\nYou've been through eight badges.\n\nYou know what commit, branch, merge, conflict, PR, and `.gitignore` are.\n\nOnly one thing is left: doing this **with your eyes closed**, in order, without thinking.\n\nBecause this is what you'll do every day, in every lesson, in every project, for the rest of your life as a person who codes.",
+  "pt": "## AVENTAL DE CHEF · o último desafio\n\nVocê passou por oito selos.\n\nSabe o que é commit, branch, merge, conflito, PR e `.gitignore`.\n\nFalta uma coisa só: fazer isso **de olhos fechados**, na ordem, sem pensar.\n\nPorque é isso que você vai fazer todo dia, em toda aula, em todo projeto, pelo resto da sua vida como pessoa que programa."
+ },
+ "0a33866f57cf": {
+  "en": "## You cannot destroy the project\n\nThe biggest fear for beginners is *\"I'm going to delete everything by accident\"*.\n\nLet's put that fear to rest with facts.\n\n**1. A pasted page does not come unstuck** *(Rule 2)*. After `git commit`, you can delete the file from the workbench: the page stays the same in the notebook.\n\n**2. Nothing happens unless you tell it to** *(Rule 1)*. Every change to the notebook goes through a line that **you** typed.\n\n**3. There is always a way back.** Committed something wrong? Paste a new page on top. Want the file from three days ago? You can get it.",
+  "pt": "## Você não consegue destruir o projeto\n\nO maior medo de quem começa é *\"vou apagar tudo sem querer\"*.\n\nBora matar ele com fatos.\n\n**1. Página colada não descola** *(Regra 2)*. Depois do `git commit`, pode apagar o arquivo da bancada: a página continua igual no caderno.\n\n**2. Nada acontece sem você mandar** *(Regra 1)*. Toda mudança no caderno passa por uma linha que **você** digitou.\n\n**3. Sempre tem caminho de volta.** Commitou errado? Cola uma página nova por cima. Quer o arquivo de três dias atrás? Dá."
+ },
+ "0a734d6a9982": {
+  "en": "What is the `key` prop for in lists?",
+  "pt": "Para que serve a prop `key` em listas?"
+ },
+ "0a91e46b5a87": {
+  "en": "Write your first HTML page. Use the skeleton below as a reference and replace the title and text with something of your own.",
+  "pt": "Escreva a sua primeira página HTML. Use o esqueleto abaixo como referência e troque o título e o texto por algo seu."
+ },
+ "0c080da1250e": {
+  "en": "Your work lives in a repo (a folder with history, in your company's space). When you start, Itera does a pull. \"Pull\" means:",
+  "pt": "Seu trabalho vive num repo (uma pasta com histórico, no espaço da sua empresa). Ao começar, o Itera faz um pull. \"Pull\" significa:"
+ },
+ "0c37c30cdb24": {
+  "en": "Merge: the branch path comes back and joins main",
+  "pt": "Merge: o caminho da branch volta e se junta à main"
+ },
+ "0c44e052e723": {
+  "en": "My partner and I are going to work on different things at the same time",
+  "pt": "Eu e minha dupla vamos mexer em coisas diferentes ao mesmo tempo"
+ },
+ "0cacf548f56e": {
+  "en": "The .env file, where the project's password is stored",
+  "pt": "O arquivo .env, onde fica a senha do projeto"
+ },
+ "0d29c475a4d7": {
+  "en": "\"The `main` that's on the shelf\" — in other words, the version the rest of the class sees.",
+  "pt": "\"A `main` que está na estante\" — ou seja, a versão que o resto da turma enxerga."
+ },
+ "0df949df208d": {
+  "en": "Match each command with what it does",
+  "pt": "Ligue cada comando com o que ele faz"
+ },
+ "0e6d6b6d4842": {
+  "en": "Uses the context the student gave (who it's for, what it's for, tone and format) instead of answering generically",
+  "pt": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico"
+ },
+ "0e82e2256642": {
+  "en": "**Conflict = Gito asking a question.** The recipe:\n\n```\ngit merge favoritar        ← CONFLICT\n(open the file, leave it the way it should be, delete <<<<<<< ======= >>>>>>>)\ngit add src/Cardapio.jsx   ← \"resolved\"\ngit commit -m \"resolve title conflict\"\n```\n\n🏅 MERGE Badge.",
+  "pt": "**Conflito = o Gito perguntando.** A receita:\n\n```\ngit merge favoritar        ← CONFLICT\n(abre o arquivo, deixa como deve ficar, apaga <<<<<<< ======= >>>>>>>)\ngit add src/Cardapio.jsx   ← \"resolvido\"\ngit commit -m \"resolve conflito do título\"\n```\n\n🏅 Selo JUNTADA."
+ },
+ "0f360fa64014": {
+  "en": "The decision paths are labeled (yes/no / queue A/B)",
+  "pt": "Os caminhos da decisão estão rotulados (sim/não / fila A/B)"
+ },
+ "0f7350303e25": {
+  "en": "Producer is a single entity with a key (tax ID number)",
+  "pt": "Produtor é uma entidade única com chave (CPF/CNPJ)"
+ },
+ "0f81e5df99c4": {
+  "en": "## The pair's agreement\n\nYou already have the back-and-forth commands. What's missing is what nobody teaches, and what avoids the most trouble: **the agreement**.\n\n> Git is a tool. The agreement is people.\n\n**1. Sat down? `git pull`.** Before opening any file. It avoids almost every mix-up.\n\n**2. Finished a piece? `git add` + `git commit`.** Don't wait to \"finish everything\": a small commit is easy to understand later.\n\n**3. About to get up? `git push`.** Work nobody can reach is only half the work.\n\n**4. Say what you're about to touch.** This one has no command: *\"Téo, I'm going to work on `Cardapio.jsx` today.\"*",
+  "pt": "## O combinado da dupla\n\nVocê já tem os comandos do vaivém. Falta o que ninguém ensina e mais evita treta: **o combinado**.\n\n> Git é ferramenta. Combinado é gente.\n\n**1. Sentou? `git pull`.** Antes de abrir qualquer arquivo. Evita quase todo desencontro.\n\n**2. Terminou um pedaço? `git add` + `git commit`.** Não espera \"terminar tudo\": commit pequeno é fácil de entender depois.\n\n**3. Vai levantar? `git push`.** Trabalho que ninguém alcança é meio trabalho.\n\n**4. Avisa no que vai mexer.** Esse não tem comando: *\"Téo, vou mexer no `Cardapio.jsx` hoje.\"*"
+ },
+ "0f9f94875691": {
+  "en": "The list below is built from the tarefas array, which has 2 items",
+  "pt": "A lista abaixo é montada a partir do array tarefas, que tem 2 itens"
+ },
+ "1021be10cfab": {
+  "en": "It was Nina who put the title \"Menu\" on the screen",
+  "pt": "Quem colocou o título \"Cardápio\" na tela foi a Nina"
+ },
+ "1090657afba5": {
+  "en": "Pulse 1 — Predictive maintenance, in one sentence, is",
+  "pt": "Pulse 1 — Manutenção preditiva, em uma frase, é"
+ },
+ "10997cc788ed": {
+  "en": "This button already works, it's just plain. Make it green: change the background color class to bg-emerald-500. Watch the result on the right as you type.",
+  "pt": "Este botão já funciona, só está sem graça. Deixe ele verde: troque a classe de cor de fundo para bg-emerald-500. Olhe o resultado à direita enquanto digita."
+ },
+ "10d735e581f1": {
+  "en": "branch",
+  "pt": "branch"
+ },
+ "1100932c4e5f": {
+  "en": "The materias array has 3 subjects, but only ONE card appears on screen — it's hard-coded. Replace that hard-coded card with a .map over the materias array, passing titulo and nota as props to each card. Don't forget the key.",
+  "pt": "O array materias tem 3 matérias, mas só UM card aparece na tela — ele está escrito à mão. Troque esse card escrito à mão por um .map no array materias, passando titulo e nota como props de cada card. Não esqueça o key."
+ },
+ "1123f549f000": {
+  "en": "**Two gotchas that trip everyone up:**\n\n- `isFavorite = true` doesn't work — use `setIsFavorite(true)`.\n- `onClick={setIsFavorite(true)}` runs immediately and freezes the screen. Pass a function instead: `onClick={() => setIsFavorite(true)}`.",
+  "pt": "**Dois cuidados que derrubam todo mundo:**\n\n- `isFavorite = true` não funciona — use `setIsFavorite(true)`.\n- `onClick={setIsFavorite(true)}` executa na hora e trava a tela. Passe uma função: `onClick={() => setIsFavorite(true)}`."
+ },
+ "113bb243d153": {
+  "en": "COMMIT — Generate the executable schema.sql from your ER diagram",
+  "pt": "COMMIT — Gere o schema.sql executável a partir do seu ER"
+ },
+ "11c589dc4504": {
+  "en": "Gito: take it easy. **This isn't a scolding and you didn't do anything wrong.**\n\n`! [rejected]` = rejected. `the remote contains work that you do not have locally` = **the shelf has work that your notebook doesn't have** (Téo's page, from the morning).\n\nIf I let you push over it, his page would disappear. **Rejecting the push is me protecting Téo's work.**\n\nAnd look: the message **already told you what to do** — `use 'git pull'`.",
+  "pt": "Gito: calma. **Isso não é bronca e você não fez nada de errado.**\n\n`! [rejected]` = recusado. `the remote contains work that you do not have locally` = **a estante tem trabalho que o seu caderno não tem** (a página do Téo, de manhã).\n\nSe eu deixasse você empurrar por cima, a página dele sumiria. **Recusar o push é eu protegendo o trabalho do Téo.**\n\nE olha: a mensagem **já te disse o que fazer** — `use 'git pull'`."
+ },
+ "11de524977e5": {
+  "en": "Fails when the answer is generic, evasive, or off-topic: a sign that the student's context was weak or missing",
+  "pt": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando"
+ },
+ "11fc611165d7": {
+  "en": "```\ngit branch                    ← where am I?\ngit checkout -b favoritar     ← create and switch\ngit checkout main             ← go back to main\n```\n\n🏅 BRANCH Badge.",
+  "pt": "```\ngit branch                    ← onde eu estou?\ngit checkout -b favoritar     ← cria e entra\ngit checkout main             ← volta pra principal\n```\n\n🏅 Selo DIVISÓRIA."
+ },
+ "124780f56aab": {
+  "en": "You review and make the commit",
+  "pt": "Você revisa e faz o commit"
+ },
+ "12d6907182e6": {
+  "en": "git add on the fixed file, to signal that it's resolved",
+  "pt": "git add no arquivo arrumado, pra avisar que resolveu"
+ },
+ "13232f086b11": {
+  "en": "git clone",
+  "pt": "git clone"
+ },
+ "13e84970b9a2": {
+  "en": "\"fixed the cake price\"",
+  "pt": "\"consertei o preço do bolo\""
+ },
+ "14481796f0b0": {
+  "en": "## Branch commands\n\n### See which branch you're on\n\n```\ngit branch\n```\n\nIt lists the branches and puts a `*` on the one you're on now.\n\n`git status` also tells you, on the first line: `On branch main`.\n\n### Create a branch and switch to it right away\n\n```\ngit checkout -b favoritar\n```\n\n`checkout` = \"go to\"; `-b` = \"and create this branch first\".\n\nOne line, two jobs.\n\n### Go back to the main branch\n\n```\ngit checkout main\n```",
+  "pt": "## Os comandos da divisória\n\n### Ver em qual divisória você está\n\n```\ngit branch\n```\n\nEle lista as divisórias e põe um `*` na que você tá agora.\n\nO `git status` também diz, na primeira linha: `On branch main`.\n\n### Criar uma divisória e já entrar nela\n\n```\ngit checkout -b favoritar\n```\n\n`checkout` = \"vai pra\"; `-b` = \"e cria essa divisória antes\".\n\nUma linha só, dois trabalhos.\n\n### Voltar pra principal\n\n```\ngit checkout main\n```"
+ },
+ "1470744fef51": {
+  "en": "Fake Terminal #3 · opening your branch",
+  "pt": "Terminal de Mentira #3 · abrindo sua divisória"
+ },
+ "152689ecfa92": {
+  "en": "Agro credit agent brief (final artifact)",
+  "pt": "Brief de agente de crédito agro (artefato final)"
+ },
+ "15498da9de4e": {
+  "en": "Nice work! Recap 🚀",
+  "pt": "Mandou bem! Recapitulando 🚀"
+ },
+ "155d878fd20f": {
+  "en": "When two versions clash, Gito picks the best one by itself",
+  "pt": "Quando duas versões brigam, o Gito escolhe a melhor sozinho"
+ },
+ "15797e667e43": {
+  "en": "git commit -m \"fixed the carrot cake price\"",
+  "pt": "git commit -m \"arrumei o preço do bolo de cenoura\""
+ },
+ "158878099071": {
+  "en": "## How to resolve a conflict, in practice\n\nIn place of the confusion, I write this inside the file:\n\n```\n<<<<<<< HEAD\n<h1>Menu</h1>\n=======\n<h1>Class Menu</h1>\n>>>>>>> favoritar\n```\n\n- `<<<<<<< HEAD` → from here down is **what was already here**.\n- `=======` → the border between the two.\n- `>>>>>>> favoritar` → **what came from the branch**.\n\nResolving means editing the file and leaving **however it should be**: the top one, the bottom one, or something else.",
+  "pt": "## Como resolver um conflito, na prática\n\nNo lugar da confusão, eu escrevo isso dentro do arquivo:\n\n```\n<<<<<<< HEAD\n<h1>Cardápio</h1>\n=======\n<h1>Cardápio da Turma</h1>\n>>>>>>> favoritar\n```\n\n- `<<<<<<< HEAD` → daqui pra baixo é **o que já estava aqui**.\n- `=======` → a fronteira entre as duas.\n- `>>>>>>> favoritar` → **o que veio da divisória**.\n\nResolver é editar o arquivo e deixar **como deve ficar**: a de cima, a de baixo ou outra."
+ },
+ "15bae8b5c265": {
+  "en": "The <<<<<<<, ======= and >>>>>>> lines must disappear from the file before the commit",
+  "pt": "As linhas <<<<<<<, ======= e >>>>>>> têm que sumir do arquivo antes do commit"
+ },
+ "1681b17a603e": {
+  "en": "The first book shows Available",
+  "pt": "O primeiro livro mostra Disponível"
+ },
+ "16cacea43ed3": {
+  "en": "Only answer with TOP quality if the user gives: (1) who they are, (2) who/what it is for, (3) an example of the format they want.",
+  "pt": "Só responda com qualidade TOP se o usuário der: (1) quem ele é, (2) pra quem/pra quê é, (3) um exemplo do formato que quer."
+ },
+ "174022700e4e": {
+  "en": "Pulse 5 — The full loop: observe → decide → act → verify",
+  "pt": "Pulse 5 — O loop completo: observar → decidir → agir → verificar"
+ },
+ "177f989fa324": {
+  "en": "Has this ever happened to you?\n\nThink of **a group project that went wrong when it came time to put the parts together** — a slide deck, a video, a poster, a dance routine, anything made by multiple people.\n\nWrite below:\n• what the project was;\n• what went wrong when you put it all together;\n• how you solved it (even if the solution was so-so).\n\nThere's no right answer and nobody will correct your grammar here.",
+  "pt": "Já aconteceu com você?\n\nPensa num **trabalho em grupo que deu errado na hora de juntar as partes** — um slide, um vídeo, um cartaz, uma coreografia, qualquer coisa feita a várias mãos.\n\nEscreve aqui embaixo:\n• o que era o trabalho;\n• o que deu errado quando vocês juntaram tudo;\n• como vocês resolveram (mesmo que a solução tenha sido meia-boca).\n\nNão tem resposta certa e ninguém vai corrigir português aqui."
+ },
+ "17a06771398f": {
+  "en": "Why it changed",
+  "pt": "Por que mudou"
+ },
+ "17e1c1bc24ad": {
+  "en": "You read `origin/main` in a terminal message. Translate it.",
+  "pt": "Você leu `origin/main` numa mensagem do terminal. Traduz."
+ },
+ "188fd67b915e": {
+  "en": "Gito: `pull` is for **bringing in** what others did. You want the opposite: sending yours.",
+  "pt": "Gito: `pull` é pra **trazer** o que os outros fizeram. Você quer o contrário: mandar o seu."
+ },
+ "18fe9c8f3339": {
+  "en": "Match each tool with what it's for:",
+  "pt": "Ligue a ferramenta com pra que ela serve:"
+ },
+ "1976654b175d": {
+  "en": "An app that's half done and half broken — because that's what it always looks like partway through.",
+  "pt": "Um app meio pronto e meio quebrado — porque no meio do caminho ele sempre fica assim."
+ },
+ "19d51e2baf1c": {
+  "en": "Gito: now there are two. The `*` moved — you're on `favoritar`. `main` is still there, intact.",
+  "pt": "Gito: agora são duas. O `*` mudou de lugar — você está na `favoritar`. A `main` continua ali, intacta."
+ },
+ "1a9b9c67a53d": {
+  "en": "You are the Git terminal. Answer exactly as git would respond.",
+  "pt": "Você é o terminal do Git. Responda exatamente como o git responderia."
+ },
+ "1b4a08adbc1c": {
+  "en": "I committed the password, noticed, and deleted the file in the next commit. Resolved?",
+  "pt": "Commitei a senha, percebi e apaguei o arquivo no commit seguinte. Resolvido?"
+ },
+ "1b540124ab98": {
+  "en": "Look at this code:  frutas.map(f => <li>{f}</li>)  — what is MISSING?",
+  "pt": "Olha esse código:  frutas.map(f => <li>{f}</li>)  — o que está FALTANDO?"
+ },
+ "1ba042ce6a2e": {
+  "en": "At least 1 decision (diamond) and 2 tasks (rectangles)",
+  "pt": "Pelo menos 1 decisão (losango) e 2 tarefas (retângulos)"
+ },
+ "1c351eddb252": {
+  "en": "🏅 SHELF Badge.",
+  "pt": "🏅 Selo ESTANTE."
+ },
+ "1c60cd517199": {
+  "en": "DOM tree diagram",
+  "pt": "Diagrama da árvore DOM"
+ },
+ "1c8bd01a1550": {
+  "en": "function bookCard() { ... }",
+  "pt": "function bookCard() { ... }"
+ },
+ "1cdc1dcb1ed3": {
+  "en": "How .map() works 🔁",
+  "pt": "Como o .map() funciona 🔁"
+ },
+ "1cdf46a0d9e9": {
+  "en": "You write `{cart.length && <span>Items: {cart.length}</span>}` and the cart is empty. What appears on screen?",
+  "pt": "Você escreve `{cart.length && <span>Itens: {cart.length}</span>}` e o carrinho está vazio. O que aparece na tela?"
+ },
+ "1d6db945bced": {
+  "en": "git add on the finished files",
+  "pt": "git add nos arquivos prontos"
+ },
+ "1e9d56e2d755": {
+  "en": "All three pages were made on the same day",
+  "pt": "As três páginas foram feitas no mesmo dia"
+ },
+ "1f3141a69e68": {
+  "en": "Pulse 1 — In a multi-unit cooperative, what is data pain point #1?",
+  "pt": "Pulse 1 — Numa cooperativa multi-unidade, qual é a dor #1 de dados?"
+ },
+ "1f746f2b23a0": {
+  "en": "The `BookCard` is complete: props, stock badge, and a favorite button with its own state. All that's missing is for the shelf to have more than one book:\n\n1. In `App`, add a second `<BookCard />` with `title=\"The Pragmatic Programmer\"`, `author=\"Andy Hunt\"`, and `inStock={false}`.\n\nThen click **Save to favorites** on the first card and look at the second card's button. It doesn't change — the `useState` lives inside `BookCard`, so each card has its own memory.\n\n**Extra challenge, if you have time left:** disable the button when the book is out of stock, using `disabled={!inStock}` and `className=\"... disabled:opacity-50\"`.",
+  "pt": "O `BookCard` está completo: props, selo de estoque e botão de favorito com estado próprio. Falta a estante ter mais de um livro:\n\n1. No `App`, adicione um segundo `<BookCard />` com `title=\"O Programador Pragmático\"`, `author=\"Andy Hunt\"` e `inStock={false}`.\n\nDepois clique em **Salvar nos favoritos** no primeiro card e olhe o botão do segundo. Ele não muda — o `useState` mora dentro do `BookCard`, então cada card tem a própria memória.\n\n**Desafio extra, se sobrar tempo:** desabilite o botão quando o livro estiver esgotado, com `disabled={!inStock}` e `className=\"... disabled:opacity-50\"`."
+ },
+ "1f92437b32a3": {
+  "en": "git commit with a clear note",
+  "pt": "git commit com um bilhete claro"
+ },
+ "1f9842ee66f2": {
+  "en": "Pulse 4 — 'Producer receivable' relates to Producer as:",
+  "pt": "Pulse 4 — 'Recebível do produtor' relaciona-se com Produtor como:"
+ },
+ "206b904d431d": {
+  "en": "What never goes into the repository and how .gitignore works",
+  "pt": "O que nunca entra no repositório e como o .gitignore funciona"
+ },
+ "2088eb920389": {
+  "en": "The `inStock` prop is already typed, already reaches the card, and `App` already sends `true` for the first book and `false` for the second. All that's missing is showing the badge:\n\n1. In place of the comment, use a ternary to show a `<span>` that says **Available** when `inStock` is true and **Out of Stock** when it's false.",
+  "pt": "A prop `inStock` já está tipada, já chega no card, e o `App` já manda `true` no primeiro livro e `false` no segundo. Falta só mostrar o selo:\n\n1. No lugar do comentário, use um ternário pra mostrar um `<span>` escrito **Disponível** quando `inStock` for verdadeiro e **Esgotado** quando for falso."
+ },
+ "208fd6b1e08a": {
+  "en": "Nothing, it's perfect and complete",
+  "pt": "Nada, tá perfeito e completo"
+ },
+ "21094c46eb7f": {
+  "en": "Gito: `9c1d044..3b7e5a2` = from commit `9c1d044` to `3b7e5a2` — Téo's page. `Fast-forward` = **it went smoothly**, it could slot in without any trouble because you two worked on different things. `create mode ... PratoDoDia.jsx` = a new file showed up on your workbench.\n\nYour notebook now has his page **and** yours.",
+  "pt": "Gito: `9c1d044..3b7e5a2` = do commit `9c1d044` até o `3b7e5a2` — a página do Téo. `Fast-forward` = **foi liso**, dava pra encaixar sem complicação porque vocês mexeram em coisas diferentes. `create mode ... PratoDoDia.jsx` = apareceu um arquivo novo na sua bancada.\n\nSeu caderno agora tem a página dele **e** a sua."
+ },
+ "21c528bfe6bf": {
+  "en": "Make the site faster",
+  "pt": "Deixar o site mais rápido"
+ },
+ "21e5acd3e212": {
+  "en": "A conflict happens when two people change the same line of the same file",
+  "pt": "Conflito acontece quando duas pessoas mudam a mesma linha do mesmo arquivo"
+ },
+ "2232f8a9f35f": {
+  "en": "Only the item you checked gets crossed out",
+  "pt": "Só o item que você marcou fica riscado"
+ },
+ "22c0c6435a0c": {
+  "en": "Use .map() to turn each name into an item on the screen ✨",
+  "pt": "Usar .map() pra transformar cada nome em um item da tela ✨"
+ },
+ "22e4aca67d2f": {
+  "en": "Write the code",
+  "pt": "Escrever o código"
+ },
+ "2327fd76d473": {
+  "en": "## The diff: green came in, red went out\n\nInside the PR there's a part that's scary the first time. It's the **diff**.\n\nIt's just Gito showing, line by line, what changed:\n\n```\n+  <button>Favorite</button>\n-  <span>coming soon</span>\n```\n\n**Green with `+`** → this line came in.\n**Red with `−`** → this line went out.\n\nThat's it. No mystery.",
+  "pt": "## O diff: verde entrou, vermelho saiu\n\nDentro do PR tem uma parte que assusta na primeira vez. É o **diff**.\n\nÉ só o Gito mostrando, linha por linha, o que mudou:\n\n```\n+  <button>Favoritar</button>\n-  <span>em breve</span>\n```\n\n**Verde com `+`** → essa linha entrou.\n**Vermelho com `−`** → essa linha saiu.\n\nSó isso. Não tem mistério."
+ },
+ "23d1dd8b28ba": {
+  "en": "## The school shelf and the Class's Official Book\n\nEverything you've done is **inside your own computer**.\n\nThe notebook is yours, and Téo can't see any of it. That gives you history, but it doesn't solve **working together**.\n\nThat's why there's a fourth place on the map: **the school shelf**.\n\nIt holds the **Class's Official Book**, a copy of the notebook that **everyone can reach**. It doesn't live on anyone's computer: it lives on a website. The most used one is **GitHub**.\n\nWith a shelf, there's an official version, your work doesn't disappear if your computer dies, and you can show others what you did.\n\nGit calls the shelf **`origin`**.",
+  "pt": "## A estante da escola e o Livro Oficial da Turma\n\nTudo o que você fez está **dentro do seu computador**.\n\nO caderno é seu, e o Téo não enxerga nada dele. Isso te dá história, mas não resolve o **trabalhar junto**.\n\nPor isso existe o quarto lugar do mapa: **a estante da escola**.\n\nNela mora o **Livro Oficial da Turma**, uma cópia do caderno que **todo mundo alcança**. Ela não fica no computador de ninguém: fica num site. O mais usado é o **GitHub**.\n\nCom estante existe uma versão oficial, seu trabalho não some se o computador morrer e dá pra mostrar pros outros o que você fez.\n\nO Git chama a estante de **`origin`**."
+ },
+ "23ea7fca3d70": {
+  "en": "A decision table (DMN) lets the business rule be edited by whoever understands the business, without touching the code. The agent consults the table; the table is the knowledge.",
+  "pt": "Uma tabela de decisão (DMN) deixa a regra de negócio editável por quem entende do negócio, sem mexer no código. O agente consulta a tabela; a tabela é o conhecimento."
+ },
+ "23fa6201e5a2": {
+  "en": "Also pass nota={m.nota}. And give each Card a key={m.titulo}.",
+  "pt": "Passe também nota={m.nota}. E dê um key={m.titulo} em cada Card."
+ },
+ "2429279a0983": {
+  "en": "Pass titulo={m.titulo} — the title has to come from the array item, not be hand-written.",
+  "pt": "Passe titulo={m.titulo} — o título tem que vir do item do array, não estar escrito à mão."
+ },
+ "2477a23616d1": {
+  "en": "Gito: there's still a file in conflict that hasn't been resolved. First, `git add` the fixed file — that's how you tell me you're done.",
+  "pt": "Gito: ainda tem arquivo em conflito sem resolver. Primeiro o `git add` no arquivo arrumado — é assim que você me avisa que terminou."
+ },
+ "251dd5ed83dc": {
+  "en": "Favoriting one book doesn't affect the other",
+  "pt": "Favoritar um livro não mexe no outro"
+ },
+ "25322aa4b020": {
+  "en": "I created the Card receiving name, rating, and time as props, and a list that iterates the array with .map, passing the data for each restaurant. To add a new restaurant you just add an item to the array — the component doesn't change.",
+  "pt": "Criei o Card recebendo nome, nota e tempo como props e uma lista que percorre o array com .map, passando os dados de cada restaurante. Para adicionar um restaurante novo você só acrescenta um item no array — o componente não muda."
+ },
+ "258b3c4eed90": {
+  "en": "Pulse 5 — See the architecture of an agentic system: the model of…",
+  "pt": "Pulse 5 — Veja a arquitetura de um sistema agêntico: o modelo de…"
+ },
+ "25b94289535c": {
+  "en": "**A rejected push isn't your mistake — it's Gito protecting your partner's work.**\n\nThe recipe is always the same: `git pull` → resolve → `git push`.\n\nWhoever runs `pull` when sitting down almost never sees this rejection.",
+  "pt": "**Push recusado não é erro seu — é o Gito protegendo o trabalho da sua dupla.**\n\nA receita é sempre a mesma: `git pull` → resolve → `git push`.\n\nQuem dá `pull` ao sentar quase nunca vê essa recusa."
+ },
+ "2639e62e9b84": {
+  "en": "Shows the cross-unit link (Producer present in multiple units)",
+  "pt": "Mostra a ligação cross-unidade (Produtor presente em várias unidades)"
+ },
+ "2702471286ee": {
+  "en": "Agentic architecture diagram (decision + execution)",
+  "pt": "Diagrama de arquitetura agêntica (decisão + execução)"
+ },
+ "275d1568809c": {
+  "en": "≥1 relationship with explicit cardinality",
+  "pt": "≥1 relacionamento com cardinalidade explícita"
+ },
+ "27b621e62f46": {
+  "en": "No. It's still there, working the same. It just doesn't enter the notebook — so it doesn't go on the shelf.",
+  "pt": "Não. Continua lá, funcionando igual. Ele só não entra no caderno — e por isso não vai pra estante."
+ },
+ "27e4d103d212": {
+  "en": "Every agent needs: \n1. GOAL (the outcome, not the steps) \n2. TOOLS (what it can trigger: read ERP, create an invoice, send an email) \n3. POLICY (the decision table from Unit 2 + what it CANNOT do) \n4. VERIFICATION (how it knows it finished correctly)\n\nDraft all 4 for your process.",
+  "pt": "Todo agente precisa de: \n1. OBJETIVO (o resultado, não os passos) \n2. FERRAMENTAS (o que pode acionar: ler ERP, criar nota, mandar e-mail) \n3. POLÍTICA (a tabela de decisão da Unidade 2 + o que NÃO pode fazer) \n4. VERIFICAÇÃO (como sabe que terminou certo)\n\nRascunhe as 4 para o seu processo."
+ },
+ "27f9c50dbaf6": {
+  "en": "## The map for the whole lesson\n\nIf you understand this map, the rest is detail.\n\nThere are **three places inside your computer**, plus one outside — that one is for module 4.\n\n### 1. Your workbench\n\nThe project folder on your computer.\nIt's where you edit, test, and make mistakes.\n\n### 2. The tray\n\nWhere you **set aside** what's already ready to become history.\nWhat goes up is `git add`.\n\n### 3. The recipe notebook\n\nThe project's history on your computer. I take what's in the tray and **paste it in as a new page**, with a note from you.\n\nEach page is a **commit**, and what pastes it in is `git commit`.",
+  "pt": "## O mapa da aula inteira\n\nSe você entender esse mapa, o resto é detalhe.\n\nSão **três lugares dentro do seu computador**, mais um lá fora — esse fica pro módulo 4.\n\n### 1. Sua bancada\n\nA pasta do projeto no seu computador.\nÉ onde você edita, testa e erra.\n\n### 2. A bandeja\n\nOnde você **separa** o que já está pronto pra virar história.\nQuem sobe é `git add`.\n\n### 3. O caderno de receitas\n\nO histórico do projeto no seu computador. Eu pego o que está na bandeja e **colo como página nova**, com um bilhete seu.\n\nCada página é um **commit**, e quem cola é `git commit`."
+ },
+ "2803dc794948": {
+  "en": "Build a multiple-choice exercise about COMPONENTS AND PROPS in React, using as the theme the piece of screen the student described: {seed}.\n\nEach option is a REQUEST the student would make to an AI to build that piece of screen as a React component. The CORRECT option is the one that explicitly states WHICH pieces of information change from one item to another (that is, which will be the props) and that the layout is always the same, and that asks to show the list with .map. The wrong options ask for the component without saying what changes, or ask to write/copy the block by hand multiple times, or treat as state something that is just information received from outside.\n\nThe ai_response for each option shows the CONSEQUENCE of that request: for the vague request, a component with fixed content that needs to be edited or copied for each item; for the good request, a component with props and a list with .map where adding a new item is just adding to the array. Speak simply, without showing long code.",
+  "pt": "Monte um exercício de escolha sobre COMPONENTES E PROPS em React, usando como tema o pedaço de tela que o aluno descreveu: {seed}.\n\nCada opção é um PEDIDO que o aluno faria para uma IA construir esse pedaço de tela como um componente React. A opção CORRETA é a que diz explicitamente QUAIS informações mudam de um item para o outro (ou seja, quais serão as props) e que o layout é sempre o mesmo, e que pede para mostrar a lista com .map. As opções erradas pedem o componente sem dizer o que muda, ou pedem para escrever/copiar o bloco várias vezes à mão, ou tratam como estado o que é só informação recebida de fora.\n\nA ai_response de cada opção mostra a CONSEQUÊNCIA daquele pedido: no pedido vago, um componente com conteúdo fixo que precisa ser editado ou copiado a cada item; no pedido bom, um componente com props e uma lista com .map em que adicionar um item novo é só acrescentar no array. Fale de forma simples, sem mostrar código longo."
+ },
+ "281d688899e1": {
+  "en": "**You go to where the thing should end up, and pull in the other one.** First `checkout`, then `merge`.",
+  "pt": "**Você vai pra onde a coisa deve chegar, e puxa a outra.** Primeiro `checkout`, depois `merge`."
+ },
+ "283e0f9abc6e": {
+  "en": "Replace everything every month",
+  "pt": "Trocar tudo todo mês"
+ },
+ "2856b6f82f35": {
+  "en": "Fake terminal · sending the branch to the board",
+  "pt": "Terminal de mentira · mandando a divisória pro mural"
+ },
+ "28ce0c46b801": {
+  "en": "Pulse 3 — Good guardrail for a fleet agent",
+  "pt": "Pulse 3 — Bom guardrail para um agente de frota"
+ },
+ "2911ffef9e75": {
+  "en": "A chatbot responds. An agent PURSUES a goal: it observes, decides, uses tools, checks the result, repeats — until it completes or escalates. That's the 'loop'.",
+  "pt": "Chatbot responde. Agente PERSEGUE um objetivo: observa, decide, usa ferramentas, verifica o resultado, repete — até completar ou escalar. Isso é o 'loop'."
+ },
+ "29c9e7f531eb": {
+  "en": "In the merge, which of the two do I choose?",
+  "pt": "No merge, qual das duas eu escolho?"
+ },
+ "29e198edeaa0": {
+  "en": "Training terminal. **Nothing can break here.**\n\nYou are Nina. You just fixed the price of the carrot cake in the file `src/Cardapio.jsx` and want to paste this page into the notebook.\n\nStart by looking at how things are. Then try to commit — on purpose — before going through the tray. It's the mistake everyone makes the first time.",
+  "pt": "Terminal de treino. **Não tem como quebrar nada.**\n\nVocê é a Nina. Acabou de arrumar o preço do bolo de cenoura no arquivo `src/Cardapio.jsx` e quer colar essa página no caderno.\n\nComeça olhando como estão as coisas. Depois tenta commitar — de propósito — antes de passar pela bandeja. É o erro que todo mundo faz na primeira vez."
+ },
+ "2a1ae56db31a": {
+  "en": "## Prop comes from outside. State is born inside.\n\n- **Prop** comes from the parent and the component **cannot change it**. Whoever passed it is in charge of it.\n- **State** is the component's own memory: a value that it changes by itself when someone interacts with it.",
+  "pt": "## Prop vem de fora. Estado nasce dentro.\n\n- **Prop** vem do pai e o componente **não pode mudá-la**. Quem manda nela é quem passou.\n- **Estado** é a memória do próprio componente: um valor que ele muda sozinho quando alguém interage."
+ },
+ "2a9aae359038": {
+  "en": "The AI's response to the real, contextualized request the student wrote",
+  "pt": "A resposta da IA ao pedido real e contextualizado que o aluno escreveu"
+ },
+ "2b68acb870b2": {
+  "en": "Gito: `On branch favoritar` — the first line of `status` always tells you where you are. Use this when you get lost.",
+  "pt": "Gito: `On branch favoritar` — a primeira linha do `status` sempre te diz onde você está. Use isso quando se perder."
+ },
+ "2ba3b41cfc1f": {
+  "en": "Describes signals → entities (aggregation)",
+  "pt": "Descreve sinais → entidades (agregação)"
+ },
+ "2baf73c4f9e3": {
+  "en": "No. It's the log waiting for you to scroll the list. **Press `q`** and go back to the terminal.",
+  "pt": "Não. É o log esperando você rolar a lista. **Aperta `q`** e volta pro terminal."
+ },
+ "2d06f064d95b": {
+  "en": "Nice work! 🎉",
+  "pt": "Mandou bem! 🎉"
+ },
+ "2d8590daffe4": {
+  "en": "Missing the curly braces: <h2>{title}</h2>",
+  "pt": "Falta as chaves: <h2>{title}</h2>"
+ },
+ "2dc8c95aecad": {
+  "en": "Use {inStock ? ... : ...} and put the text Available in the first case.",
+  "pt": "Use {inStock ? ... : ...} e coloque o texto Disponível no primeiro caso."
+ },
+ "2dd375df5984": {
+  "en": "A page pasted in the notebook",
+  "pt": "Uma página colada no caderno"
+ },
+ "2e4fe93a19fe": {
+  "en": "The pair is going to build the `.gitignore` list — the list of things Gito pretends don't exist. What should go in it?",
+  "pt": "A dupla vai montar a lista do `.gitignore` — a lista do que o Gito finge que não existe. O que deve entrar nela?"
+ },
+ "2e9490cbcad6": {
+  "en": "Match each common error to the fix that solves it. These are the five that trip up beginners the most.",
+  "pt": "Ligue cada erro comum à correção que resolve ele. São os cinco que mais derrubam quem está começando."
+ },
+ "2ef0a83d4210": {
+  "en": "The PRIMARY KEY (id) names each row. The FOREIGN KEY (customer_id) is how one table points to another — here it links each order to the customer who owns it (customers.id, the id in the customers table). This is literally where the relationship lives in the database. Copying the name is denormalization.",
+  "pt": "A PRIMARY KEY (id) nomeia cada linha. A FOREIGN KEY (customer_id) é como uma tabela aponta pra outra — aqui ela liga cada pedido ao cliente dono dele (customers.id, o id na tabela de clientes). É literalmente onde o relacionamento vive no banco. Copiar o nome é desnormalização."
+ },
+ "2ef33d76cd85": {
+  "en": "Rectangle = task/action. Diamond = decision (gateway). Circle = start/end. You don't need formal BPMN — you need anyone to be able to read the path of the work.",
+  "pt": "Retângulo = tarefa/ação. Losango = decisão (gateway). Círculo = início/fim. Você não precisa de BPMN formal — precisa que qualquer um leia o caminho do trabalho."
+ },
+ "2f19dbb4f379": {
+  "en": "Pulse 4 — Business question for AI",
+  "pt": "Pulse 4 — Pergunta de negócio para a IA"
+ },
+ "2f29a013aca7": {
+  "en": "List and give the key for: Vehicle, Driver, Trip, Event (refueling/maintenance/alert). Mark the relationships (one Vehicle → many Trips; one Trip → one Driver).",
+  "pt": "Liste e dê a chave de: Veículo, Motorista, Viagem, Evento (abastecimento/manutenção/alerta). Marque os relacionamentos (um Veículo → muitas Viagens; uma Viagem → um Motorista)."
+ },
+ "2f3eaf3d66d7": {
+  "en": "The condition needs to use the card's own nota prop, not a fixed value.",
+  "pt": "A condição precisa usar a prop nota do próprio card, não um valor fixo."
+ },
+ "2f697888b61a": {
+  "en": "Why doesn't `isFavorite = true` change anything on screen?",
+  "pt": "Por que `isFavorite = true` não muda nada na tela?"
+ },
+ "3005940e0934": {
+  "en": "The most common mistake is merging from the wrong side. How do you avoid it?",
+  "pt": "O erro mais comum é fazer o merge do lado errado. Como não errar?"
+ },
+ "30319a7101cb": {
+  "en": "A giant semicolon was missing",
+  "pt": "Faltou um ponto e vírgula gigante"
+ },
+ "30e08ec4947d": {
+  "en": "CRUD: match each action to what it does:",
+  "pt": "CRUD: ligue cada ação ao que ela faz:"
+ },
+ "318c5c638cf4": {
+  "en": "I put `.env` in `.gitignore`. Did it disappear from my computer?",
+  "pt": "Coloquei o `.env` no `.gitignore`. Ele sumiu do meu computador?"
+ },
+ "31962259fc2f": {
+  "en": "Write a Musica component with no props and change the text inside it whenever needed",
+  "pt": "Escrever um componente Musica sem props e mudar o texto dentro dele quando precisar"
+ },
+ "31bc13036494": {
+  "en": "The badge appears when the book is available. When it's sold out, nothing appears in its place. Ternary or `&&`?",
+  "pt": "O selo aparece quando o livro está disponível. Quando está esgotado, nada aparece no lugar. Ternário ou `&&`?"
+ },
+ "31dd66682bb8": {
+  "en": "Here's a generic card with a fixed title and description written inside it. To change the content you'll need to edit the component every time, or copy and paste a new one for each item.",
+  "pt": "Segue um card genérico com título e descrição fixos escritos dentro dele. Para mudar o conteúdo você vai precisar editar o componente toda vez, ou copiar e colar um novo para cada item."
+ },
+ "320c3983f924": {
+  "en": "The button's background color class needs to be bg-emerald-500. It goes inside className, along with the others.",
+  "pt": "A classe de cor de fundo do botão precisa ser bg-emerald-500. Ela fica dentro do className, junto com as outras."
+ },
+ "320d9b2edf1b": {
+  "en": "## The note that saves you three months from now\n\nThe note is the only part of the commit that **you** write. Date, author, and short code I stamp automatically.\n\nIt exists for one reason: **three months from now you won't remember any of it.**\n\n### The test\n\nA good note completes this sentence:\n\n> \"If you apply this page, it will ______\"",
+  "pt": "## O bilhete que salva você daqui a três meses\n\nO bilhete é a única parte do commit que **você** escreve. Data, autor e código curto eu carimbo sozinho.\n\nEle existe por um motivo: **daqui a três meses você não vai lembrar de nada.**\n\n### O teste\n\nUm bilhete bom completa esta frase:\n\n> \"Se você aplicar essa página, ela vai ______\""
+ },
+ "325811d3ac71": {
+  "en": "Each item needs its own state — store WHICH items are checked, not a single true/false.",
+  "pt": "Cada item precisa do próprio estado — guarde QUAIS itens estão marcados, não um único true/false."
+ },
+ "329127a9d7f8": {
+  "en": "The start of the process",
+  "pt": "O início do processo"
+ },
+ "32bcf15a12b0": {
+  "en": "When React draws a list, it needs a unique 'tag' for each item — that's the key prop. It helps React know who's who when the list changes (one disappears, another comes in). Without a key, React gets confused and can mix things up. Rule: every item in the list needs a unique key.",
+  "pt": "Quando o React desenha uma lista, ele precisa de um 'crachá' único pra cada item — isso é a prop key. Serve pra ele saber quem é quem quando a lista muda (some um, entra outro). Sem key, o React fica confuso e pode misturar as coisas. Regra: cada item da lista precisa de uma key única."
+ },
+ "336e7e25c74d": {
+  "en": "onClick={setIsFavorite(true)}",
+  "pt": "onClick={setIsFavorite(true)}"
+ },
+ "33f0bdb306f9": {
+  "en": "Keep only the final version and delete the lines <<<<<<<, ======= and >>>>>>>",
+  "pt": "Deixar só a versão final e apagar as linhas <<<<<<<, ======= e >>>>>>>"
+ },
+ "34082cbe77ab": {
+  "en": "Describe the structure of an HTML document",
+  "pt": "Descreva a estrutura de um documento HTML"
+ },
+ "342eae512c2b": {
+  "en": "git log --oneline",
+  "pt": "git log --oneline"
+ },
+ "3589fa47f677": {
+  "en": "We have an array with 30 names. What's the smart way to show all of them on screen?",
+  "pt": "Temos um array com 30 nomes. Qual é a forma esperta de mostrar todos na tela?"
+ },
+ "363b7efeb21d": {
+  "en": "'Approve' (this is an action)",
+  "pt": "'Aprovar' (isso é uma ação)"
+ },
+ "368b5c0b539e": {
+  "en": "Write 3 questions a cooperative manager would ask the unified data (e.g., 'which producers have receivables > X and a harvest at risk?'). Good questions = a good agent specification.",
+  "pt": "Escreva 3 perguntas que um gerente de cooperativa faria aos dados unificados (ex: 'quais produtores têm recebível > X e safra em risco?'). Boas perguntas = boa especificação do agente."
+ },
+ "370570598bcf": {
+  "en": "And it is not a lack of attention: this happens to **everyone** who codes together, even at big companies.\n\nSomeone invented a tool just to solve this: **Git**.\nThat is what you are going to learn today.",
+  "pt": "E não é falta de atenção: isso acontece com **todo mundo** que programa junto, até em empresa grande.\n\nAlguém inventou uma ferramenta só pra resolver isso: o **Git**.\nÉ ela que você vai aprender hoje."
+ },
+ "378e3f53b89b": {
+  "en": "3 binary conditions = 2×2×2 = 8 combinations. Decision tables force you to think about the edge cases — that's where process bugs hide.",
+  "pt": "3 condições binárias = 2×2×2 = 8 combinações. Tabelas de decisão te forçam a pensar nos casos extremos — é onde os bugs de processo se escondem."
+ },
+ "379d126fcb4d": {
+  "en": "Gito only records something when I tell it to record",
+  "pt": "O Gito só registra alguma coisa quando eu mando registrar"
+ },
+ "37ce2b3dbd1c": {
+  "en": "CRUD: match each action to what it does",
+  "pt": "CRUD: ligue cada ação ao que ela faz"
+ },
+ "38427d7edde6": {
+  "en": "Name is ambiguous ('J. Silva' vs 'João Silva'). A unique identifier (like a tax ID number) is the key that reconciles the records across units — that's where unification begins.",
+  "pt": "Nome é ambíguo ('J. Silva' vs 'João Silva'). Um identificador único (CPF/CNPJ) é a chave que reconcilia o cadastro entre unidades — é onde a unificação começa."
+ },
+ "38532aea32fe": {
+  "en": "## Showing one thing OR another\n\nA book can be available or sold out, and the card shows something different in each case.\n\nIn React you choose what to render with an **expression inside curly braces**.\n\n**Ternary** — when both sides exist:\n\n```tsx\n{inStock ? <span>Available</span> : <span>Sold out</span>}\n```\n\nRead it like this: *if* `inStock` is true, show the first one; *else*, show the second.\n\n**Logical AND** — when only the \"yes\" case exists:\n\n```tsx\n{inStock && <span>Available</span>}\n```\n\nHere there's no \"else\": if `inStock` is false, nothing is rendered.",
+  "pt": "## Mostrar uma coisa OU outra\n\nUm livro pode estar disponível ou esgotado, e o card mostra algo diferente em cada caso.\n\nEm React você escolhe o que renderizar com uma **expressão dentro das chaves**.\n\n**Ternário** — quando existem os dois lados:\n\n```tsx\n{inStock ? <span>Disponível</span> : <span>Esgotado</span>}\n```\n\nLeia assim: *se* `inStock` for verdadeiro, mostra o primeiro; *senão*, mostra o segundo.\n\n**E lógico** — quando só existe o caso \"sim\":\n\n```tsx\n{inStock && <span>Disponível</span>}\n```\n\nAqui não há \"senão\": se `inStock` for falso, nada é renderizado."
+ },
+ "38ad6f6cf641": {
+  "en": "You fixed the cake price and already added the file to the tray. Now you want to paste the page with the note *\"fixed the cake price\"*. Put the pieces of the command in the correct order.",
+  "pt": "Você arrumou o preço do bolo e já subiu o arquivo pra bandeja. Agora quer colar a página com o bilhete *\"consertei o preço do bolo\"*. Coloque os pedaços do comando na ordem certa."
+ },
+ "38c2edce7206": {
+  "en": "DOM tree diagram.",
+  "pt": "Diagrama da árvore DOM."
+ },
+ "39a2aa02a025": {
+  "en": "Gito: silence is success. You just told me that this file is resolved. You still need to close the merge with a commit.",
+  "pt": "Gito: silêncio é sucesso. Você acabou de me dizer que esse arquivo está resolvido. Falta fechar o merge com um commit."
+ },
+ "39ae345a98ae": {
+  "en": "No. Instead of copying, you make the text **come in from outside** — then a single `BookCard` handles all 20 books.",
+  "pt": "Não. Em vez de copiar, você faz o texto **entrar de fora** — aí um único `BookCard` dá conta dos 20 livros."
+ },
+ "3a12ebab01ea": {
+  "en": "Credit is a risk decision. The agent speeds up the clear cases and ESCALATES the cases with high exposure/ambiguity — autonomy with a brake.",
+  "pt": "Crédito é decisão de risco. O agente acelera os casos claros e ESCALA os casos de alta exposição/ambiguidade — autonomia com freio."
+ },
+ "3aa6da412421": {
+  "en": "Rule 2. Once it's recorded, it stays recorded — you can go back to it whenever you want.",
+  "pt": "A Regra 2. Uma vez anotado, fica anotado — dá pra voltar nele quando quiser."
+ },
+ "3baa4505eb17": {
+  "en": "Write your first doc",
+  "pt": "Escreva seu primeiro doc"
+ },
+ "3bb0cea84cca": {
+  "en": "Pulse 4 — 'Verification' in the agent brief is used to:",
+  "pt": "Pulse 4 — 'Verificação' no brief do agente serve para:"
+ },
+ "3bdec68588f7": {
+  "en": "Add one more piece of text inside the tarefas array, separated by a comma.",
+  "pt": "Acrescente mais um texto dentro do array tarefas, separado por vírgula."
+ },
+ "3c39cb46e1cb": {
+  "en": "COMMIT — Draw the flowchart of YOUR process…",
+  "pt": "COMMIT — Desenhe o fluxograma do SEU processo…"
+ },
+ "3c84dcdc6bbe": {
+  "en": ".env",
+  "pt": ".env"
+ },
+ "3cc550012227": {
+  "en": "1 page: which signals come in, how they become entities (Trip/Event), and 2 business questions the AI will answer about this data (e.g., 'which vehicle is 500km from its next maintenance?').",
+  "pt": "1 página: quais sinais entram, como viram entidades (Viagem/Evento), e 2 perguntas de negócio que a IA responderá sobre esses dados (ex: 'qual veículo está a 500km da manutenção?')."
+ },
+ "3cdf2936da2f": {
+  "en": "$",
+  "pt": "$"
+ },
+ "3d11439bb793": {
+  "en": "Not related",
+  "pt": "Sem relação"
+ },
+ "3daeafd05eaf": {
+  "en": "Saving copies with different names (`App_v2`, `App_FINAL`, `App_agora_vai`) is a safe way to keep track of a project's versions when working in pairs.",
+  "pt": "Salvar cópias com nomes diferentes (`App_v2`, `App_FINAL`, `App_agora_vai`) é um jeito seguro de guardar as versões de um projeto em dupla."
+ },
+ "3e233644c158": {
+  "en": "Each sentence is an everyday situation for the pair. Match it with the command that solves it.",
+  "pt": "Cada frase é uma situação do dia a dia da dupla. Ligue com o comando que resolve."
+ },
+ "3e49eb3d7bbe": {
+  "en": "The producer João exists 4 times (one per unit), with fragmented balances and receivables. Unifying the producer ENTITY is the prerequisite for any AI or portal.",
+  "pt": "O produtor João existe 4 vezes (uma por unidade), com saldos e recebíveis fragmentados. Unificar a ENTIDADE produtor é o pré-requisito de qualquer IA ou portal."
+ },
+ "3f3d948cb038": {
+  "en": "## `push`, `pull`, and `clone`: the back-and-forth with the shelf\n\nThree commands.\n\nTo never mix them up, look at **which way the information goes**.\n\n**`git push`** — from your notebook **to** the shelf.\n\"Gito, take my new pages to the Official Book.\" It only takes what's already pasted: no commit, no push.\n\n**`git pull`** — from the shelf **to** your notebook.\n\"Gito, bring what showed up in the Official Book.\" No news, and it answers `Already up to date.`\n\n**`git clone`** — the shelf **becomes** a new notebook.\nRuns **only once per project**, on a computer that doesn't have anything yet.",
+  "pt": "## `push`, `pull` e `clone`: o vaivém com a estante\n\nTrês comandos.\n\nPra nunca confundir, olha **pra que lado a informação vai**.\n\n**`git push`** — do seu caderno **para** a estante.\n\"Gito, leva minhas páginas novas pro Livro Oficial.\" Ele leva só o que já tá colado: sem commit, não tem push.\n\n**`git pull`** — da estante **para** o seu caderno.\n\"Gito, traz o que apareceu no Livro Oficial.\" Sem novidade, ele responde `Already up to date.`\n\n**`git clone`** — a estante **vira** um caderno novo.\nRoda **uma vez só por projeto**, num computador que ainda não tem nada."
+ },
+ "3f926e257c31": {
+  "en": "Gito: **I didn't paste in any page.** This isn't a scolding — it's **Rule 1** at work: I only write things down when you tell me to. You changed the file, but you never told me \"this one goes up.\" And look: the message itself gives you the fix — `use \"git add\"`. Read the error all the way through before you panic.",
+  "pt": "Gito: **não colei página nenhuma.** Isso não é bronca — é a **Regra 1** funcionando: eu só anoto quando você manda. Você mexeu no arquivo, mas nunca me disse \"esse aqui sobe\". E olha: a própria mensagem te dá a saída — `use \"git add\"`. Lê o erro até o fim antes de entrar em pânico."
+ },
+ "4015b57a143a": {
+  "en": "commit",
+  "pt": "commit"
+ },
+ "406055ed9cfc": {
+  "en": "The first book appears as Available",
+  "pt": "O primeiro livro aparece como Disponível"
+ },
+ "409fd10e67e6": {
+  "en": "Drag into the order React builds a list on the screen:",
+  "pt": "Arraste na ordem que o React monta uma lista na tela:"
+ },
+ "40d9ca7bc19a": {
+  "en": "Pulse 1 — What is an entity? Tap the one that IS an entity in your business.",
+  "pt": "Pulse 1 — O que é uma entidade? Toque na que É uma entidade no seu negócio."
+ },
+ "40dce499a082": {
+  "en": "Pulse 4 — Notation. In a flowchart, the diamond shape represents:",
+  "pt": "Pulse 4 — Notação. Num fluxograma, o losango (diamante) representa:"
+ },
+ "40e65bd508ec": {
+  "en": "When there's a conflict, the way to fix it is to delete the file and start over",
+  "pt": "Quando dá conflito, o jeito de resolver é apagar o arquivo e começar de novo"
+ },
+ "41291518a35f": {
+  "en": "Take ALL of the user's context seriously, even when irrelevant or contradictory.",
+  "pt": "Leve TODO o contexto do usuário a sério, mesmo quando irrelevante ou contraditório."
+ },
+ "413d6c45caf2": {
+  "en": "git push -u origin favoritar",
+  "pt": "git push -u origin favoritar"
+ },
+ "417fc4bb8ecb": {
+  "en": "While Nina works on the `favoritar` branch, everything she commits automatically appears in `main`.",
+  "pt": "Enquanto a Nina trabalha na divisória `favoritar`, tudo o que ela commita aparece automaticamente na `main`."
+ },
+ "41a34f4c7f31": {
+  "en": "repo = repository (folder with full history). pull = fetch the current version before working, so you never edit an old copy. In the next step you'll make a commit (save a snapshot of your artifact).",
+  "pt": "repo = repositório (pasta com histórico completo). pull = buscar a versão atual antes de trabalhar, pra você nunca editar uma cópia velha. No próximo passo você vai dar um commit (salvar um snapshot do seu artefato)."
+ },
+ "41d9dbb46258": {
+  "en": "changed some stuff",
+  "pt": "mexi em umas coisas"
+ },
+ "41fb0bf1a95a": {
+  "en": "The first card's button reacts to the click",
+  "pt": "O botão do primeiro card reage ao clique"
+ },
+ "4265d4b8c0aa": {
+  "en": "Gito: **Rule 3.** I reached a line where you two wrote different things, and I have no way of knowing which one is right.\n\nNothing was lost. Both versions are inside the file, marked with `<<<<<<<` and `>>>>>>>`. Open the file, leave it the way it should be, remove the markers — and call me back with `add` and `commit`.",
+  "pt": "Gito: **Regra 3.** Eu cheguei numa linha em que vocês dois escreveram coisas diferentes e eu não tenho como saber qual é a certa.\n\nNada foi perdido. As duas versões estão dentro do arquivo, marcadas com `<<<<<<<` e `>>>>>>>`. Abre o arquivo, deixa como deve ficar, apaga as marcações — e me chama de volta com `add` e `commit`."
+ },
+ "429fc428b064": {
+  "en": "Today you learned: 1) .map() shows the whole list without repeating code; 2) it goes item by item and returns a piece of screen for each one; 3) each item needs a unique key so React can keep organized. Next time we'll combine this with a form to ADD items to the list live. See you then! 👏",
+  "pt": "Hoje você aprendeu: 1) .map() mostra a lista inteira sem repetir código; 2) ele passa item por item e devolve um pedaço de tela pra cada um; 3) cada item precisa de uma key única pra o React se organizar. Na próxima juntamos isso com formulário pra ADICIONAR itens na lista ao vivo. Até lá! 👏"
+ },
+ "42a19780f98b": {
+  "en": "No. It's that the copy **doesn't keep the history** — a file name doesn't tell you what changed, when, or who did it.",
+  "pt": "Não. É que a cópia **não guarda a história** — um nome de arquivo não conta o que mudou, nem quando, nem quem fez."
+ },
+ "43fa0899f123": {
+  "en": "State. It's the user's click that decides, right there inside the component — nobody passes this in from outside.",
+  "pt": "Estado. Quem decide é o clique do usuário, ali dentro do componente — ninguém passa isso de fora."
+ },
+ "440b26fe3d34": {
+  "en": "Act BEFORE the failure based on patterns in the data",
+  "pt": "Agir ANTES da falha com base em padrões dos dados"
+ },
+ "440cb09d97bf": {
+  "en": "It was Téo who created PratoDoDia",
+  "pt": "Quem criou o PratoDoDia foi o Téo"
+ },
+ "4419a0c0a8e0": {
+  "en": "Drag into the order React builds a list on the screen",
+  "pt": "Arraste na ordem que o React monta uma lista na tela"
+ },
+ "4421e0875834": {
+  "en": "Pulse 3 — Write your process in 5 steps",
+  "pt": "Pulse 3 — Escreva seu processo em 5 passos"
+ },
+ "448b4c10dc74": {
+  "en": "Pass a function: onClick={() => setIsFavorite(true)}",
+  "pt": "Passe uma função: onClick={() => setIsFavorite(true)}"
+ },
+ "44b679e8d799": {
+  "en": "Of these three pages, the oldest one is about the carrot cake price",
+  "pt": "Dessas três páginas, a mais antiga é a do preço do bolo de cenoura"
+ },
+ "45f477e922f1": {
+  "en": "The click needs to flip the value, not fix it to true.",
+  "pt": "O clique precisa inverter o valor, não fixar em true."
+ },
+ "462b5adb2cff": {
+  "en": "You clicked the button and the text changed on the screen. Why did this happen?",
+  "pt": "Você clicou no botão e o texto mudou na tela. Por que isso aconteceu?"
+ },
+ "465c4f2bc5ae": {
+  "en": "Models the Producer → Receivables relationship (one-to-many)",
+  "pt": "Modela o relacionamento Produtor → Recebíveis (1-para-muitos)"
+ },
+ "46f1a0bd5592": {
+  "en": "git",
+  "pt": "git"
+ },
+ "47019b3e495d": {
+  "en": "Your work lives in a repo…",
+  "pt": "Seu trabalho vive num repo…"
+ },
+ "47d6104a2683": {
+  "en": "A block of code that does a task",
+  "pt": "Um bloco de código que faz uma tarefa"
+ },
+ "48647a4648cb": {
+  "en": "Entity = 'something your business keeps a list of' (Customers, Orders, Products). If you would put it in its own tab in a spreadsheet, it's probably an entity.",
+  "pt": "Entidade = 'coisa que seu negócio mantém em lista' (Clientes, Pedidos, Produtos). Se você colocaria numa aba própria da planilha, provavelmente é uma entidade."
+ },
+ "489f29f645c1": {
+  "en": "Names the source of the signals (device/telematics)",
+  "pt": "Nomeia a fonte dos sinais (dispositivo/telemática)"
+ },
+ "48a3661d8464": {
+  "en": "status",
+  "pt": "status"
+ },
+ "48af50771684": {
+  "en": "The third card is \"Science\"",
+  "pt": "O terceiro card é \"Ciências\""
+ },
+ "48cf8323d40a": {
+  "en": "The text needs to be exactly Read a chapter.",
+  "pt": "O texto precisa ser exatamente Ler um capítulo."
+ },
+ "49ac5f549c73": {
+  "en": "To change the rule without rewriting the system",
+  "pt": "Para mudar a regra sem reescrever o sistema"
+ },
+ "49c138a6aaf0": {
+  "en": "A function that always returns a number",
+  "pt": "Uma função que sempre devolve um número"
+ },
+ "4a53db813ff9": {
+  "en": "Now all 3 cards appear, but ALL of them got the \"approved\" badge — including History, which got a 5. Make the badge appear only when the grade is 7 or higher.",
+  "pt": "Agora os 3 cards aparecem, mas TODOS ganharam o selo \"aprovado\" — inclusive História, que tirou 5. Faça o selo aparecer só quando a nota for 7 ou mais."
+ },
+ "4a5caa111d55": {
+  "en": "Edit the files on the workbench",
+  "pt": "Editar os arquivos na bancada"
+ },
+ "4afdda3b2e46": {
+  "en": "The button is green",
+  "pt": "O botão está verde"
+ },
+ "4b77b0bd746a": {
+  "en": "Pulse 2 — How many Orders does one Customer make?",
+  "pt": "Pulse 2 — Um Cliente faz quantos Pedidos?"
+ },
+ "4bb708030284": {
+  "en": "Decision = chooses between paths (yes/no, which queue). Task = executes an action. Separating the two is the heart of agentic design: the AI decides, and tools execute.",
+  "pt": "Decisão = escolhe entre caminhos (sim/não, qual fila). Tarefa = executa uma ação. Separar as duas é o coração do desenho agêntico: a IA decide, e ferramentas executam."
+ },
+ "4c51c3667e4e": {
+  "en": "COMMIT — Model your fleet data…",
+  "pt": "COMMIT — Modele os dados da frota…"
+ },
+ "4c675307ab56": {
+  "en": "No. They're different places — only what passed through the tray and became a commit enters the notebook.",
+  "pt": "Não. São lugares diferentes — só entra no caderno o que passou pela bandeja e virou commit."
+ },
+ "4cbc428c4558": {
+  "en": "The unique id of each item (e.g. user.id)",
+  "pt": "O id único de cada item (ex.: user.id)"
+ },
+ "4d0093db2131": {
+  "en": "Always useless",
+  "pt": "Inútil sempre"
+ },
+ "4d47c1fd96f9": {
+  "en": "The History card (nota 5) has no badge",
+  "pt": "O card de História (nota 5) não tem selo"
+ },
+ "4dbe2490e9af": {
+  "en": "Red with `−` is not an error — it's a line that **left** the file. Green with `+` is a line that came in. The diff is a before-and-after, not a bug report.",
+  "pt": "Vermelho com `−` não é erro — é uma linha que **saiu** do arquivo. Verde com `+` é uma linha que entrou. O diff é um antes-e-depois, não um relatório de bugs."
+ },
+ "4dc32bfa968d": {
+  "en": "Only 2 badges appear on the screen",
+  "pt": "Só 2 selos aparecem na tela"
+ },
+ "4dc6b20b72c7": {
+  "en": "Measurable goal (e.g., % downtime)",
+  "pt": "Objetivo mensurável (ex: % de parada)"
+ },
+ "4ea062b9c32a": {
+  "en": "The agent optimizes the low-risk one automatically and escalates the critical one. Defining that line is what makes autonomy safe in real operation.",
+  "pt": "O agente otimiza o de baixo risco automaticamente e escala o crítico. Definir essa linha é o que torna a autonomia segura em operação real."
+ },
+ "4ee71e729347": {
+  "en": "No need to change the second card: it's the same component. If the first one worked, this one works too.",
+  "pt": "Não precisa mexer no segundo card: é o mesmo componente. Se o primeiro funcionou, este funciona junto."
+ },
+ "4f01a8688914": {
+  "en": "Reliable historical trips (actual vs. planned time)",
+  "pt": "Viagens históricas confiáveis (tempo real x previsto)"
+ },
+ "4f0ddc78a215": {
+  "en": "Bring everything together in main with the merge",
+  "pt": "Juntar tudo na main com o merge"
+ },
+ "4f58c190e652": {
+  "en": "Which 'things' does the cooperative keep a list of that appear in MULTIPLE units? (Producer, Note/Receivable, Input, Contract, Harvest...). List 5 and mark the key for each one.",
+  "pt": "Quais 'coisas' a cooperativa mantém em lista e que aparecem em VÁRIAS unidades? (Produtor, Talão/Recebível, Insumo, Contrato, Safra...). Liste 5 e marque qual é a chave de cada uma."
+ },
+ "5066918c2e01": {
+  "en": "Demonstrates understanding of normalization (FK vs. copy)",
+  "pt": "Demonstra entendimento de normalização (FK vs cópia)"
+ },
+ "511a2903494a": {
+  "en": "The editor where we write the code",
+  "pt": "O editor onde a gente escreve o código"
+ },
+ "515b3bd1bb61": {
+  "en": "Aggregating signals into a 'Trip' entity (with driver, vehicle, consumption, stops) turns the stream into something the AI can decide on: inefficient route? upcoming maintenance?",
+  "pt": "Agregar sinais numa entidade 'Viagem' (com motorista, veículo, consumo, paradas) transforma stream em algo sobre o qual a IA decide: rota ineficiente? manutenção próxima?"
+ },
+ "516d79e628ab": {
+  "en": "Only fix it after it breaks",
+  "pt": "Consertar só depois que quebra"
+ },
+ "529cb4b23392": {
+  "en": "Commit message thermometer: from \"upd\" to \"fixes the price that was showing wrong\"",
+  "pt": "Termômetro do bilhete: de \"att\" até \"corrige o preço que aparecia errado\""
+ },
+ "53439f585ef3": {
+  "en": "The part the user SEES: screens, buttons, colors 👀",
+  "pt": "A parte que o usuário VÊ: telas, botões, cores 👀"
+ },
+ "535543e7e11d": {
+  "en": "Téo accidentally committed the password. He deleted the password from the file and committed again. Problem solved.",
+  "pt": "O Téo commitou a senha sem querer. Ele apagou a senha do arquivo e commitou de novo. Problema resolvido."
+ },
+ "5378ad6cf6e7": {
+  "en": "Only the set function tells React: setIsFavorite(true)",
+  "pt": "Só a função set avisa o React: setIsFavorite(true)"
+ },
+ "538a25a43bff": {
+  "en": "You switched branches and the files in the folder changed on their own on screen. Did you lose anything?",
+  "pt": "Você trocou de divisória e os arquivos da pasta mudaram sozinhos na tela. Perdeu alguma coisa?"
+ },
+ "542c57f2771f": {
+  "en": "Total exposure and risk per producer",
+  "pt": "Exposição e risco total por produtor"
+ },
+ "544134281aba": {
+  "en": "COMMIT — List the decisions an AGENT could make",
+  "pt": "COMMIT — Liste as decisões que um AGENTE poderia tomar"
+ },
+ "548242683aa9": {
+  "en": "This button already works, it's just plain-looking",
+  "pt": "Este botão já funciona, só está sem graça"
+ },
+ "54ca877bcc8d": {
+  "en": "<h2>title</h2>",
+  "pt": "<h2>title</h2>"
+ },
+ "559c690dd5b6": {
+  "en": "COMMIT — Draw the flowchart of YOUR process (tasks, decisions, trigger, result). Use the example below as a notation reference.",
+  "pt": "COMMIT — Desenhe o fluxograma do SEU processo (tarefas, decisões, gatilho, resultado). Use o exemplo abaixo como referência de notação."
+ },
+ "5660d59629bf": {
+  "en": "-- Ask the AI: \"convert this DBML into Postgres CREATE TABLE\".\n-- Minimum: >=3 tables, primary keys, >=1 foreign key (REFERENCES).\n\nCREATE TABLE customers (\n  id   SERIAL PRIMARY KEY\n);\n\nCREATE TABLE orders (\n  id          SERIAL PRIMARY KEY,\n  customer_id INTEGER NOT NULL REFERENCES customers(id)\n);\n\n-- add your 3rd entity here",
+  "pt": "-- Peça pra IA: \"converta este DBML em CREATE TABLE Postgres\".\n-- Mínimo: >=3 tabelas, primary keys, >=1 foreign key (REFERENCES).\n\nCREATE TABLE customers (\n  id   SERIAL PRIMARY KEY\n);\n\nCREATE TABLE orders (\n  id          SERIAL PRIMARY KEY,\n  customer_id INTEGER NOT NULL REFERENCES customers(id)\n);\n\n-- adicione a sua 3a entidade aqui"
+ },
+ "569ae078da71": {
+  "en": "Business process flowchart with decisions and tasks separated",
+  "pt": "Fluxograma do processo de negócio com decisões e tarefas separadas"
+ },
+ "56d3f116a850": {
+  "en": "Now the card gets its own memory. There are 3 steps:\n\n1. Inside `BookCard`, create the state: `const [isFavorite, setIsFavorite] = useState(false);`\n2. In place of the comment, add a `<button>` that shows **Save to favorites** when `isFavorite` is false and **Remove from favorites** when it's true.\n3. In that button's `onClick`, call `setIsFavorite` inverting the current value.",
+  "pt": "Agora o card ganha memória própria. São 3 passos:\n\n1. Dentro do `BookCard`, crie o estado: `const [isFavorite, setIsFavorite] = useState(false);`\n2. No lugar do comentário, adicione um `<button>` que mostre **Salvar nos favoritos** quando `isFavorite` for falso e **Remover dos favoritos** quando for verdadeiro.\n3. No `onClick` desse botão, chame `setIsFavorite` invertendo o valor atual."
+ },
+ "5753c9075ea4": {
+  "en": "Gito: `ahead of 'origin/main' by 1 commit` = **you have 1 page that the shelf doesn't have**. Everything's committed, you just need to push it up.",
+  "pt": "Gito: `ahead of 'origin/main' by 1 commit` = **você tem 1 página que a estante não tem**. Tá tudo commitado, só falta subir."
+ },
+ "57b0d9cef33b": {
+  "en": "Store the 20 songs in 20 different useState hooks",
+  "pt": "Guardar as 20 músicas em 20 useState diferentes"
+ },
+ "57e346f06bff": {
+  "en": "Give a unique identifier so React knows which item is which",
+  "pt": "Dar um identificador único pra o React saber quem é cada item"
+ },
+ "5800ed1acc51": {
+  "en": "Pulse 5 — Read this process diagram. Where are the DECISIONS?",
+  "pt": "Pulse 5 — Leia este diagrama de processo. Onde estão as DECISÕES?"
+ },
+ "5815476772bd": {
+  "en": "Paste the ER model the AI generated and write your data-spec.md: 1 paragraph on WHY you modeled it this way, listing >=3 concrete corrections YOU made (the skill is judging, not drawing). E.g.: \"I moved customer_name to the customers table and kept only customer_id in orders (normalization)\".",
+  "pt": "Cole o ER que a IA gerou e escreva o seu data-spec.md: 1 parágrafo de POR QUE você modelou assim, listando >=3 correções concretas que VOCÊ fez (a habilidade é julgar, não desenhar). Ex: \"movi customer_name pra tabela customers e deixei só customer_id em orders (normalização)\"."
+ },
+ "582bbc892b76": {
+  "en": "## Conflict isn't an error. It's a question.\n\nNina changed the title to `\"Menu\"`.\n\nTéo, on his branch, changed **the same line** to `\"Class Menu\"`.",
+  "pt": "## Conflito não é erro. É uma pergunta.\n\nA Nina mudou o título pra `\"Cardápio\"`.\n\nO Téo, na divisória dele, mudou **a mesma linha** pra `\"Cardápio da Turma\"`."
+ },
+ "58911c98ffdd": {
+  "en": "The recipe notebook",
+  "pt": "O caderno de receitas"
+ },
+ "58c531ad1776": {
+  "en": "Gito: it changed! Before it was **`Changes not staged`** (out of the tray). Now it's **`Changes to be committed`** = **it's going to become the next page**. That's the most important difference in this module.",
+  "pt": "Gito: mudou! Antes era **`Changes not staged`** (fora da bandeja). Agora é **`Changes to be committed`** = **vai virar a próxima página**. Essa é a diferença mais importante do módulo."
+ },
+ "58d1bbce297d": {
+  "en": "add",
+  "pt": "add"
+ },
+ "59ccef081689": {
+  "en": "False — and this is exactly **Gito's Rule 3**: if two people change the same line, he doesn't choose, he asks. He stops the merge, shows both versions inside the file, and waits for you to decide. He never decides over anyone's head.",
+  "pt": "Falso — e é exatamente a **Regra 3 do Gito**: se duas pessoas mudam a mesma linha, ele não escolhe, ele pergunta. Ele para o merge, mostra as duas versões dentro do arquivo e espera vocês decidirem. Ele nunca decide por cima de ninguém."
+ },
+ "5a5c9ce8369d": {
+  "en": "Pulse 1 — What is an entity?",
+  "pt": "Pulse 1 — O que é uma entidade?"
+ },
+ "5a822108da65": {
+  "en": "When clicked, the button changes to show Remove from favorites",
+  "pt": "Ao clicar, o botão passa a mostrar Remover dos favoritos"
+ },
+ "5bb72ea026f0": {
+  "en": "Match each command with what it does:",
+  "pt": "Ligue cada comando com o que ele faz:"
+ },
+ "5d20320f5dde": {
+  "en": "Many-to-one (several receivables per producer)",
+  "pt": "Muitos-para-um (vários recebíveis por produtor)"
+ },
+ "5d5830f659cc": {
+  "en": "Here you just tap the answer or match things up. No pressure, the hint comes with it. Let's review what it means to build a website, variables, CRUD, and the React commands we've already seen. Breathe and come along! 💪",
+  "pt": "Aqui é só tocar na resposta ou ligar as coisas. Sem pressão, a dica vem junto. Vamos relembrar o que é programar um site, variável, CRUD e os comandos do React que a gente já viu. Respira e vem! 💪"
+ },
+ "5de03bcdd353": {
+  "en": "Where does Claude Code run?",
+  "pt": "Onde o Claude Code roda?"
+ },
+ "5de694f9f100": {
+  "en": "The push is rejected, and the message reminds you to `pull` first. Nothing is lost.",
+  "pt": "O push é recusado, e a mensagem te lembra de dar `pull` primeiro. Nada se perde."
+ },
+ "5df76dfa22c7": {
+  "en": "Has an explicit trigger and outcome",
+  "pt": "Tem gatilho e resultado explícitos"
+ },
+ "5e0072329d50": {
+  "en": "clone",
+  "pt": "clone"
+ },
+ "5e222efea844": {
+  "en": "Gito: that's the open notebook. We'll study it properly in the next module.",
+  "pt": "Gito: esse é o caderno aberto. A gente estuda ele direito no próximo módulo."
+ },
+ "5ec25f1a053e": {
+  "en": "COMMIT — Model the fleet data (Vehicle ↔ Trip ↔ Driver ↔ Event). Use the example ER diagram as reference.",
+  "pt": "COMMIT — Modele os dados da frota (Veículo ↔ Viagem ↔ Motorista ↔ Evento). Use o ER de exemplo como referência."
+ },
+ "60696a914be0": {
+  "en": "The `BookCard` is ready and doesn't know anything about any specific book — the `App` is the one that sends the book data. So the same component serves the entire shelf:\n\n1. In `App`, right below the first card, add a second `<BookCard />` with `title=\"The Pragmatic Programmer\"` and `author=\"Andy Hunt\"`.",
+  "pt": "O `BookCard` ficou pronto e não sabe nada sobre livro nenhum — quem manda o livro é o `App`. Então o mesmo componente serve pra estante inteira:\n\n1. No `App`, logo abaixo do primeiro card, adicione um segundo `<BookCard />` com `title=\"O Programador Pragmático\"` e `author=\"Andy Hunt\"`."
+ },
+ "60971456f0a5": {
+  "en": "Pulse 3 — List your cross-unit entities",
+  "pt": "Pulse 3 — Liste suas entidades cross-unidade"
+ },
+ "613c0c3c2272": {
+  "en": "There's a conflict in `Cardapio.jsx`. Put the steps to resolve it in order:",
+  "pt": "Deu conflito no `Cardapio.jsx`. Coloque os passos da resolução na ordem:"
+ },
+ "613fbfbf9ce0": {
+  "en": "'Do whatever you think is best'",
+  "pt": "'Faça o que achar melhor'"
+ },
+ "61678c5ac4e4": {
+  "en": "## Why ask, if I can just tell it what to do?",
+  "pt": "## Por que pedir, se eu posso simplesmente mandar?"
+ },
+ "617ab7f072a8": {
+  "en": "Be careful not to remove the badge: it has to keep showing when nota is 7 or more.",
+  "pt": "Cuidado para não apagar o selo: ele tem que continuar aparecendo quando a nota é 7 ou mais."
+ },
+ "61a9bcadfd59": {
+  "en": "Defines users and the consolidated view",
+  "pt": "Define usuários e a visão consolidada"
+ },
+ "620293666c95": {
+  "en": "Here you use a **Pretend Terminal**: real Git responses, but nothing breaks.\n\n🏅 **APRON Badge.** You already know what Git solves and where the places are.",
+  "pt": "Aqui você usa um **Terminal de Mentira**: respostas do Git real, mas nada quebra.\n\n🏅 **Selo AVENTAL.** Você já sabe o que o Git resolve e onde ficam os lugares."
+ },
+ "621555913aed": {
+  "en": "You are an AI that takes the user's CONTEXT seriously. When the request comes with well-defined context — who it is for, what it is for, the tone, and a format/example — respond in a specific way, on topic and ready to use, adapting language, examples, and format exactly to what was asked. When the request is vague or has no context, do NOT invent what is missing: give a generic answer, matching the level of vagueness, and point out in 1 line what context was missing for you to get it right. Never fake a context the user did not give. Respond in the language of the request, directly, with no filler.",
+  "pt": "Você é uma IA que leva o CONTEXTO do usuário a sério. Quando o pedido traz contexto bem definido — pra quem é, pra quê, o tom e um formato/exemplo — responda de forma específica, no tema e pronta pra usar, adaptando linguagem, exemplos e formato exatamente ao que foi pedido. Quando o pedido vem vago ou sem contexto, NÃO invente o que falta: entregue uma resposta genérica, na mesma medida da vagueza, e aponte em 1 linha qual contexto faltou pra você acertar. Nunca finja um contexto que o usuário não deu. Responda no idioma do pedido, direto, sem enrolação."
+ },
+ "6276283bb5d5": {
+  "en": "# Brief — Fleet Agent\n\n## Goal\n<e.g., reduce unplanned downtime by X%>\n\n## Trigger\n<e.g., new telemetry batch / start of shift>\n\n## Tools\n- read telemetry/trips\n- schedule maintenance\n- notify driver/operations\n\n## Decision policy\n<maintenance table + route table>\n\n## Guardrails\n- critical trips → confirm with operations\n- <limit 2>\n\n## Verification\n- was maintenance scheduled before the risk window?\n- did the estimated route time improve?\n",
+  "pt": "# Brief — Agente de Frota\n\n## Objetivo\n<ex: reduzir paradas não planejadas em X%>\n\n## Gatilho\n<ex: novo lote de telemetria / início de turno>\n\n## Ferramentas\n- ler telemetria/viagens\n- agendar manutenção\n- notificar motorista/operação\n\n## Política de decisão\n<tabela de manutenção + tabela de rota>\n\n## Guardrails\n- viagens críticas → confirmar com operação\n- <limite 2>\n\n## Verificação\n- manutenção agendada antes da janela de risco?\n- tempo previsto de rota melhorou?\n"
+ },
+ "63e878c9996d": {
+  "en": "Then it's the usual combo:\n\n```\ngit add src/Cardapio.jsx\ngit commit -m \"resolve title conflict\"\n```\n\n**Golden tip:** talk to your partner before deciding on your own.",
+  "pt": "Aí é o combo de sempre:\n\n```\ngit add src/Cardapio.jsx\ngit commit -m \"resolve conflito do título\"\n```\n\n**Dica de ouro:** fale com a dupla antes de decidir sozinho."
+ },
+ "63f25746d652": {
+  "en": "git checkout -b meu-botao — open your branch",
+  "pt": "git checkout -b meu-botao — abrir a sua divisória"
+ },
+ "646d94db4137": {
+  "en": "Pulse 1 — Raw telemetry (GPS, RPM, fuel per second) by itself…",
+  "pt": "Pulse 1 — Telemetria crua (GPS, RPM, combustível por segundo) por si só…"
+ },
+ "656eefb9ccb2": {
+  "en": "Pulse 3 — Your decision table has 3 binary conditions. What is the maximum number of rows?",
+  "pt": "Pulse 3 — Sua tabela de decisão tem 3 condições binárias. Quantas linhas no máximo?"
+ },
+ "6576458514e4": {
+  "en": "Today's lesson: lists on screen with .map() 🗺️",
+  "pt": "Aula de hoje: listas na tela com .map() 🗺️"
+ },
+ "659ada9383aa": {
+  "en": "Lists ≥2 decisions with a clear question",
+  "pt": "Lista ≥2 decisões com pergunta clara"
+ },
+ "65ec89a2ed47": {
+  "en": "Your partner reads it and gives the ok",
+  "pt": "A outra pessoa da dupla lê e dá o ok"
+ },
+ "6628d48c1bc0": {
+  "en": "Each decision describes the current human rule",
+  "pt": "Cada decisão descreve a regra humana atual"
+ },
+ "66bd7a07c7cc": {
+  "en": "You ask Claude to do a task",
+  "pt": "Você pede uma tarefa ao Claude"
+ },
+ "66d511580b78": {
+  "en": "Pulse 5 — Example of a fleet telematics dashboard. What decisions does it support?",
+  "pt": "Pulse 5 — Exemplo de dashboard de telemática de frota. Que decisões ele suporta?"
+ },
+ "66f9d743f0c6": {
+  "en": "Each decision names its inputs (data/systems)",
+  "pt": "Cada decisão nomeia seus inputs (dados/sistemas)"
+ },
+ "67260149ba66": {
+  "en": "Store the text of both fields with useState and build the sentence when the button is clicked.",
+  "pt": "Guarde o texto dos dois campos com useState e monte a frase quando o botão for clicado."
+ },
+ "67274a7363d5": {
+  "en": "Open the Pull Request and call your partner",
+  "pt": "Abrir o Pull Request e chamar a dupla"
+ },
+ "6744706d6609": {
+  "en": "No. The old page is still in the notebook — in yours, in Téo's, on GitHub, and everyone else's who downloaded the project. Once it's leaked, **change the password**.",
+  "pt": "Não. A página antiga continua no caderno — no seu, no do Téo, no do GitHub, no de todo mundo que baixou o projeto. Vazou uma vez, **troca a senha**."
+ },
+ "674fba0de4bc": {
+  "en": "App.jsx",
+  "pt": "App.jsx"
+ },
+ "6788bb7a8b65": {
+  "en": "Conflict means that someone's work was deleted",
+  "pt": "Conflito quer dizer que o trabalho de alguém foi apagado"
+ },
+ "67c2f47c650c": {
+  "en": "Lists ≥2 business questions the AI can answer",
+  "pt": "Lista ≥2 perguntas de negócio respondíveis pela IA"
+ },
+ "68398a3aabc8": {
+  "en": "The two fields still don't store what you type, and the button doesn't…",
+  "pt": "Os dois campos ainda não guardam o que você digita, e o botão não faz…"
+ },
+ "683c50144566": {
+  "en": "Fetch from the API",
+  "pt": "Fazer fetch na API"
+ },
+ "68a9e13cfcb7": {
+  "en": "It will take me several days and the app needs to keep working",
+  "pt": "Vou levar vários dias e o app precisa continuar funcionando"
+ },
+ "69103fa7ca2c": {
+  "en": "explains the project to newcomers — goes into the notebook",
+  "pt": "explica o projeto pra quem chegar — vai pro caderno"
+ },
+ "6983f8493121": {
+  "en": "COMMIT — Diagram: how the decision table connects to the agent and to the…",
+  "pt": "COMMIT — Diagrama: como a tabela de decisão se conecta ao agente e às…"
+ },
+ "69ddd2240d95": {
+  "en": "The pair's day, from start to finish. Put it in order:",
+  "pt": "O dia da dupla, do começo ao fim. Coloque na ordem:"
+ },
+ "69e0d8f3e1c8": {
+  "en": "Gito: **merge closed.** Look what happened: the conflict became a normal page in the notebook, note and all.\n\nThree months from now, whoever reads the history will understand exactly that two people disagreed there and how it was resolved. That's project history, not something to be ashamed of.",
+  "pt": "Gito: **merge fechado.** Olha o que aconteceu: o conflito virou uma página normal do caderno, com bilhete e tudo.\n\nDaqui a três meses, quem ler o histórico vai entender exatamente que ali duas pessoas discordaram e como ficou. Isso é história do projeto, não vergonha."
+ },
+ "69e5fa918d62": {
+  "en": "Help React identify each item when the list updates",
+  "pt": "Ajudar o React a identificar cada item ao atualizar a lista"
+ },
+ "6a38dc0a48bf": {
+  "en": "## Props: the data that comes from outside\n\nAs it is now, `BookCard` only knows how to talk about **one** book — the text is stuck inside it.",
+  "pt": "## Props: os dados que vêm de fora\n\nDo jeito que está, o `BookCard` só sabe falar de **um** livro — o texto está preso dentro dele."
+ },
+ "6a5b0259ca02": {
+  "en": "With the tray **you choose**: five files touched, only two go up. The others stay on the workbench, waiting their turn.\n\nIn other words: clean pages, one idea per page.\n\nAnd nothing goes up without you saying so — that's Rule 1.",
+  "pt": "Com a bandeja **você escolhe**: cinco arquivos mexidos, só dois sobem. Os outros ficam na bancada, esperando a vez.\n\nOu seja: páginas limpas, uma ideia por página.\n\nE nada sobe sem você mandar — é a Regra 1."
+ },
+ "6aa2d6b51c46": {
+  "en": "Write the spec for the portal where the producer sees EVERYTHING in one place:\n- Who uses it (producer, unit manager)\n- What they see (consolidated balance, receivables, contracts, next delivery)\n- Where the data comes from (which systems/units)\n- 1 action the AI can suggest (e.g., 'advance a receivable', 'harvest risk alert')",
+  "pt": "Escreva a spec do portal onde o produtor vê TUDO num lugar:\n- Quem usa (produtor, gerente de unidade)\n- O que ele vê (saldo consolidado, recebíveis, contratos, próxima entrega)\n- De onde vêm os dados (quais sistemas/unidades)\n- 1 ação que a IA pode sugerir (ex: 'antecipar recebível', 'alerta de risco de safra')"
+ },
+ "6ac4bdf58051": {
+  "en": "Automate repeatable sequences with a clear trigger (a request comes in) and a clear result (request approved). If it doesn't repeat or has no trigger, it's not a candidate for an agent.",
+  "pt": "Automatize sequências repetíveis com gatilho claro (chega um pedido) e resultado claro (pedido aprovado). Se não se repete ou não tem gatilho, não é candidato a agente."
+ },
+ "6ba8c5038744": {
+  "en": "Volume without a decision — needs to become an event/entity to have value",
+  "pt": "Volume sem decisão — precisa virar evento/entidade para ter valor"
+ },
+ "6bc3f810cc30": {
+  "en": "git commit -m \"favoritar\"",
+  "pt": "git commit -m \"favoritar\""
+ },
+ "6bedf1264787": {
+  "en": "Style the CSS",
+  "pt": "Estilizar o CSS"
+ },
+ "6c1e2ccb58e3": {
+  "en": "We have an array with 30 names",
+  "pt": "Temos um array com 30 nomes"
+ },
+ "6c6471f5b509": {
+  "en": "What changed",
+  "pt": "O que mudou"
+ },
+ "6ccbce41788b": {
+  "en": "Clicking again, it goes back to Save to favorites",
+  "pt": "Clicando de novo, volta para Salvar nos favoritos"
+ },
+ "6ccec797e979": {
+  "en": "git checkout main — go to the one that will receive",
+  "pt": "git checkout main — ir para quem vai receber"
+ },
+ "6d77f9523dcd": {
+  "en": "BADGE — Final Reflection",
+  "pt": "BADGE — Reflexão final"
+ },
+ "6d7e231f278d": {
+  "en": "It worked. In the terminal, silence means \"done, nothing to report\".",
+  "pt": "Deu certo. No terminal, silêncio quer dizer \"feito, não tenho o que comentar\"."
+ },
+ "6d7f12f6bde0": {
+  "en": "Escalation guardrail based on exposure",
+  "pt": "Guardrail de escalonamento por exposição"
+ },
+ "6d915d3628a3": {
+  "en": "Nina committed the file `Cardapio.jsx` yesterday. Today, by accident, she deleted that file from the project folder. Her work was lost forever.",
+  "pt": "A Nina commitou o arquivo `Cardapio.jsx` ontem. Hoje, sem querer, ela apagou esse arquivo da pasta do projeto. O trabalho dela se perdeu pra sempre."
+ },
+ "6de83fbdfb35": {
+  "en": "≥2 guardrails + ≥2 verifications",
+  "pt": "≥2 guardrails + ≥2 verificações"
+ },
+ "6f18269da5ce": {
+  "en": "Match each file with the right reason:",
+  "pt": "Ligue cada arquivo com o motivo certo:"
+ },
+ "6f29344c0e2d": {
+  "en": "Pulse 2 — Maintenance decision as a table",
+  "pt": "Pulse 2 — Decisão de manutenção como tabela"
+ },
+ "6f35b74bcd44": {
+  "en": "Guardrails define where the agent STOPS and calls a human. Without that, autonomy becomes risk. The best agent knows what it should NOT decide alone.",
+  "pt": "Guardrails definem onde o agente PARA e chama um humano. Sem isso, autonomia vira risco. O melhor agente sabe o que NÃO deve decidir sozinho."
+ },
+ "6f6de6549c49": {
+  "en": "Justifies with criteria (frequency × pain × clarity of the decision)",
+  "pt": "Justifica com critério (frequência × dor × clareza da decisão)"
+ },
+ "6f75a6cf22f7": {
+  "en": "Bad: the PR is too big. The smaller the diff, the easier it is for someone to really review it.",
+  "pt": "Ruim: é PR grande demais. Quanto menor o diff, mais fácil alguém revisar de verdade."
+ },
+ "6f81f7be6f31": {
+  "en": "You forgot the `pull` and went straight to `push`. Then what?",
+  "pt": "Esqueceu o `pull` e foi direto pro `push`. E aí?"
+ },
+ "6f88fa75635c": {
+  "en": "## What you built\n\n```txt\nApp (same file)\n ↓ props (title, author, inStock)\nBookCard\n ├─ inStock  → Available or Out of stock badge\n └─ isFavorite (useState) → button text\n```\n\nFour ideas to take with you:\n\n1. a component is a **function** that returns JSX;\n2. **props** bring data from outside and the child does not change them;\n3. **conditionals** adapt the interface to the data;\n4. **`useState`** stores what changes with use, and React redraws the screen.",
+  "pt": "## O que você montou\n\n```txt\nApp (mesmo arquivo)\n ↓ props (title, author, inStock)\nBookCard\n ├─ inStock  → selo Disponível ou Esgotado\n └─ isFavorite (useState) → texto do botão\n```\n\nQuatro ideias para levar:\n\n1. componente é uma **função** que devolve JSX;\n2. **props** trazem dados de fora e o filho não as altera;\n3. **condicionais** adaptam a interface aos dados;\n4. **`useState`** guarda o que muda com o uso, e o React redesenha a tela."
+ },
+ "6f9bd043605d": {
+  "en": "Nina is about to start the favorite button. She wants to **create the branch and switch to it right away**, in a single line. Which word completes the blank?\n\n```\ngit ______ -b favoritar\n```",
+  "pt": "A Nina vai começar o botão de favoritar. Ela quer **criar a divisória e já entrar nela**, numa linha só. Qual palavra completa a lacuna?\n\n```\ngit ______ -b favoritar\n```"
+ },
+ "6fb954f107f8": {
+  "en": "Has ≥2 verification checks",
+  "pt": "Tem ≥2 checagens de verificação"
+ },
+ "704c3417c52a": {
+  "en": "The state starts at false, so the button's ternary shows this text first.",
+  "pt": "O estado começa em false, então o ternário do botão mostra este texto primeiro."
+ },
+ "70c57e344a86": {
+  "en": "The button starts showing Save to favorites",
+  "pt": "O botão começa escrito Salvar nos favoritos"
+ },
+ "70cc7e768524": {
+  "en": "Store and version the code in the cloud",
+  "pt": "Guardar e versionar o código na nuvem"
+ },
+ "70d069e28a7b": {
+  "en": "Describe what you learned.",
+  "pt": "Descreva o que você aprendeu."
+ },
+ "70eafe22d439": {
+  "en": "Pulse 4 — Model WITH AI (not instead of you)",
+  "pt": "Pulse 4 — Modele COM a IA (não no seu lugar)"
+ },
+ "7109801b69d6": {
+  "en": "Policy includes maintenance and/or route",
+  "pt": "Política inclui manutenção e/ou rota"
+ },
+ "71496d20e549": {
+  "en": "**Look → set aside → paste.**\n\n```\ngit status\ngit add src/Cardapio.jsx\ngit commit -m \"fixed the carrot cake price\"\n```\n\n🏅 TRAY Badge. You know how to commit.",
+  "pt": "**Ver → separar → colar.**\n\n```\ngit status\ngit add src/Cardapio.jsx\ngit commit -m \"arrumei o preço do bolo de cenoura\"\n```\n\n🏅 Selo BANDEJA. Você sabe commitar."
+ },
+ "7179cb53df12": {
+  "en": "'Short trips can be rescheduled; critical trips → confirm with operations'",
+  "pt": "'Pode reagendar viagens curtas; viagens críticas → confirmar com operação'"
+ },
+ "719d1566a8de": {
+  "en": "Claude Code is Anthropic's agentic coding CLI. It runs directly in your terminal: it understands your project, edits files, runs shell commands, and uses tools (including MCP servers) to complete tasks end to end. You describe the goal in natural language and the agent acts — exploring the code, proposing changes, and running whatever is needed.",
+  "pt": "O Claude Code é a CLI de programação agêntica da Anthropic. Ele roda direto no seu terminal: entende o seu projeto, edita arquivos, executa comandos no shell e usa ferramentas (incluindo servidores MCP) para realizar tarefas de ponta a ponta. Você descreve o objetivo em linguagem natural e o agente age — explorando o código, propondo mudanças e rodando o que for preciso."
+ },
+ "725ed121f338": {
+  "en": "Use the example above only as a reference for NOTATION. Model YOUR process: >=3 entities (each with a primary key), >=1 relationship with cardinality, and foreign keys (do not copy attributes between tables). Export as er-diagram.dbml.\n\nVocab: a commit saves a snapshot of your work with a message — like a labeled checkpoint. Itera writes the file to your repo with the message: commit -m \"data model for {{company}}: {{n}} entities\".",
+  "pt": "Use o exemplo acima só como referência de NOTAÇÃO. Modele o SEU processo: >=3 entidades (cada uma com primary key), >=1 relacionamento com cardinalidade, e foreign keys (não copie atributos entre tabelas). Exporte como er-diagram.dbml.\n\nVocab: um commit salva um snapshot do seu trabalho com uma mensagem — tipo um checkpoint rotulado. O Itera escreve o arquivo no seu repo com a mensagem: commit -m \"data model for {{company}}: {{n}} entities\"."
+ },
+ "725f310c816e": {
+  "en": "Goal in 1 sentence, focused on outcome (not steps)",
+  "pt": "Objetivo em 1 frase, focado em resultado (não em passos)"
+ },
+ "72de99f9a038": {
+  "en": "In React, what is useState for?",
+  "pt": "No React, pra que serve o useState?"
+ },
+ "7396ded22141": {
+  "en": "I arrived today and want to get what Téo did last night",
+  "pt": "Cheguei hoje e quero pegar o que o Téo fez ontem à noite"
+ },
+ "73b644cc4618": {
+  "en": "Gito automatically saves everything I type, minute by minute",
+  "pt": "O Gito salva sozinho tudo o que eu digito, de minuto em minuto"
+ },
+ "74b4cf3f04b9": {
+  "en": "\"price + broken test + draft\". A mess — six months later, nobody understands this page.",
+  "pt": "\"preço + teste quebrado + rascunho\". Uma bagunça — seis meses depois ninguém entende essa página."
+ },
+ "75a7f3088348": {
+  "en": "These are the pair's **last three pages** in the notebook, from newest to oldest. Select **all** the true statements.\n\n```\nNina Alves     30 Jul, 14:02\n    added the \"Menu\" title on the home screen\n\nTéo Ramos      30 Jul, 11:47\n    created the PratoDoDia component\n\nNina Alves     29 Jul, 16:20\n    fixed the carrot cake price\n```",
+  "pt": "Estas são as **três últimas páginas** do caderno da dupla, da mais nova pra mais velha. Marque **todas** as frases verdadeiras.\n\n```\nNina Alves     30 jul, 14:02\n    coloquei o título \"Cardápio\" na tela inicial\n\nTéo Ramos      30 jul, 11:47\n    criei o componente PratoDoDia\n\nNina Alves     29 jul, 16:20\n    arrumei o preço do bolo de cenoura\n```"
+ },
+ "75bdf01798ce": {
+  "en": "You need to show 20 books on screen. Do you copy the component 20 times?",
+  "pt": "Você precisa mostrar 20 livros na tela. Copia o componente 20 vezes?"
+ },
+ "75f1d3e09caa": {
+  "en": "changes",
+  "pt": "alterações"
+ },
+ "75f26e7a796a": {
+  "en": "useState is not defined",
+  "pt": "useState is not defined"
+ },
+ "761c9aa35ca9": {
+  "en": "Does `git add` already save to the notebook?",
+  "pt": "O `git add` já salva no caderno?"
+ },
+ "76a0dd8a508f": {
+  "en": "generates itself and is very heavy — never goes into the notebook",
+  "pt": "se gera sozinha e pesa muito — nunca vai pro caderno"
+ },
+ "76d5a643bdb0": {
+  "en": "git merge favoritar — pull the branch here",
+  "pt": "git merge favoritar — puxar a divisória pra cá"
+ },
+ "76f21a16a202": {
+  "en": "Write the song block 20 times and change the text of each one by hand",
+  "pt": "Escrever o bloco da música 20 vezes e trocar o texto de cada um à mão"
+ },
+ "77a567dc5c32": {
+  "en": "The unique tag for each item 🏷️",
+  "pt": "O crachá único de cada item 🏷️"
+ },
+ "77cd17c7260a": {
+  "en": "Trip: start, end, route, consumption",
+  "pt": "Viagem (trip): início, fim, rota, consumo"
+ },
+ "77ec83a34ef5": {
+  "en": "Too many good-looking reports",
+  "pt": "Excesso de relatórios bonitos"
+ },
+ "79d914d4a850": {
+  "en": "COMMIT — Write the BRIEF for your agent (the final artifact of the course)",
+  "pt": "COMMIT — Escreva o BRIEF do seu agente (o artefato final do curso)"
+ },
+ "7a1bd86bad5e": {
+  "en": "Make a Card component in React that receives the restaurant name, rating, and delivery time as props, because that changes from one restaurant to another. The layout is always the same. Then show it in a list with .map.",
+  "pt": "Faz um componente Card em React que recebe como props o nome do restaurante, a nota e o tempo de entrega, porque isso muda de um restaurante para outro. O layout é sempre o mesmo. Depois mostra ele numa lista com .map."
+ },
+ "7a6a1b4a73a7": {
+  "en": "Pulse 5 — Where AI fits into the cooperative's data flow",
+  "pt": "Pulse 5 — Onde a IA entra no fluxo de dados da cooperativa"
+ },
+ "7a7e726f870a": {
+  "en": "The useState lives inside the BookCard, so each card has its own memory.",
+  "pt": "O useState mora dentro do BookCard, então cada card tem a própria memória."
+ },
+ "7a81a7093ae9": {
+  "en": "I'm going to try an idea and I don't know if it will work",
+  "pt": "Vou testar uma ideia e não sei se vai dar certo"
+ },
+ "7b2eae813fc0": {
+  "en": "A unique identifier (ID/tax number) as the key",
+  "pt": "Um identificador único (CPF/CNPJ) como chave"
+ },
+ "7b3e9f16009b": {
+  "en": "The collection with all the data (the list itself) 📦",
+  "pt": "A coleção com todos os dados (a lista em si) 📦"
+ },
+ "7b4a7013aa61": {
+  "en": "A fixed value that never changes during the program",
+  "pt": "Um valor fixo que nunca muda durante o programa"
+ },
+ "7bdded47b1cc": {
+  "en": "Pulse 5 — Read this process diagram",
+  "pt": "Pulse 5 — Leia este diagrama de processo"
+ },
+ "7c4f1a2a2acd": {
+  "en": "## The terminal: the window where you talk to me\n\nThe **terminal** is a window: you type a command, press Enter, and it answers in writing.\n\nA conversation by notes.\n\nFour things that seem scary and shouldn't:\n\n- The **`$`** is not for you to type. It's the sign that means \"you can talk now\". After it comes what **you** typed.\n- **The response comes in English.** Always. I'll translate it for you.\n- **Silence means success.** No response is not an error: it worked, and there was nothing to say.\n- **Red is not a scolding.** Almost every Git error tells you what was missing.",
+  "pt": "## O terminal: a janela onde você fala comigo\n\nO **terminal** é uma janela: você escreve um comando, aperta Enter, e ele responde por escrito.\n\nConversa por bilhete.\n\nQuatro coisas que assustam e não deviam:\n\n- O **`$`** não é pra digitar. É o sinal de \"pode falar\". Depois dele vem o que **você** escreveu.\n- **A resposta vem em inglês.** Sempre. Eu traduzo hoje.\n- **Silêncio é sucesso.** Sem resposta não é erro: deu certo e não havia o que dizer.\n- **Vermelho não é bronca.** Quase todo erro do Git te diz o que faltou."
+ },
+ "7c51a2f310b2": {
+  "en": "Lists ≥2 concrete tools (real business systems)",
+  "pt": "Lista ≥2 ferramentas concretas (sistemas reais do negócio)"
+ },
+ "7c9ed3c5b1de": {
+  "en": "≥3 entities with a primary key",
+  "pt": "≥3 entidades com chave primária"
+ },
+ "7cc205b3cfea": {
+  "en": "The second card shows The Pragmatic Programmer",
+  "pt": "O segundo card mostra O Programador Pragmático"
+ },
+ "7d6945e61476": {
+  "en": "I want to choose which files will go into the next page",
+  "pt": "Quero escolher quais arquivos vão entrar na próxima página"
+ },
+ "7dc0e302f3f3": {
+  "en": "About conflicts, select **all** the true statements:",
+  "pt": "Sobre conflito, marque **todas** as afirmações verdadeiras:"
+ },
+ "7dc9c2b70ea0": {
+  "en": "The Math card (nota 8) still has the badge",
+  "pt": "O card de Matemática (nota 8) continua com o selo"
+ },
+ "7ddf4f0b69b5": {
+  "en": "No. The old commit is still there with the password inside — Gito's Rule 2. Anyone can go back to that commit and read it. The only real way out is to **change the password**. Fixing the file doesn't undo the leak.",
+  "pt": "Não. O commit antigo continua lá com a senha dentro — Regra 2 do Gito. Qualquer pessoa consegue voltar naquele commit e ler. A única saída de verdade é **trocar a senha**. Corrigir o arquivo não desfaz o vazamento."
+ },
+ "7de2f799cead": {
+  "en": "Gito: there's only one branch, `main`, and the `*` shows that you're on it. Everything you commit now goes straight into what Téo presents.",
+  "pt": "Gito: só existe uma divisória, a `main`, e o `*` diz que você tá nela. Tudo o que você commitar agora vai direto pro que o Téo apresenta."
+ },
+ "7e4903d520af": {
+  "en": "Import from react: import { useState } from 'react'",
+  "pt": "Importe do react: import { useState } from 'react'"
+ },
+ "7e806441f3a1": {
+  "en": "Match each part with what it does",
+  "pt": "Ligue cada parte com o que ela faz"
+ },
+ "7ea2213c9176": {
+  "en": "## `useState` and the React cycle\n\n```tsx\nconst [isFavorite, setIsFavorite] = useState(false);\n```\n\n`useState` returns **two things**: the current value and the function that changes that value.\n\nThe cycle is always the same:\n\n1. you click;\n2. `onClick` calls `setIsFavorite(...)`;\n3. React **renders the component again** with the new value;\n4. the screen shows the new value.",
+  "pt": "## `useState` e o ciclo do React\n\n```tsx\nconst [isFavorite, setIsFavorite] = useState(false);\n```\n\nO `useState` devolve **duas coisas**: o valor atual e a função que troca esse valor.\n\nO ciclo é sempre o mesmo:\n\n1. você clica;\n2. o `onClick` chama `setIsFavorite(...)`;\n3. o React **renderiza o componente de novo** com o valor novo;\n4. a tela mostra o valor novo."
+ },
+ "7ed5239ee699": {
+  "en": "`clone`. `pull` only works where a notebook already exists.",
+  "pt": "`clone`. O `pull` só funciona onde já existe caderno."
+ },
+ "7f655a5d822f": {
+  "en": "git commit -m \"add favorite button\" — write it in the notebook",
+  "pt": "git commit -m \"adiciona botão de favoritar\" — anotar no caderno"
+ },
+ "7fd6f9df8478": {
+  "en": "How to see it working (what the person clicks to test it)",
+  "pt": "Como ver funcionando (o que a pessoa aperta pra testar)"
+ },
+ "812edd4fc8e2": {
+  "en": "Nina's PR",
+  "pt": "PR da Nina"
+ },
+ "826d6507e1ce": {
+  "en": "Look at the App: both cards ALREADY receive a title. But the h3 always shows \"Subject\". Make the h3 show the titulo that arrived. Notice what happens: you change ONE line and both cards change together.",
+  "pt": "Olhe o App: os dois cards JÁ recebem um título. Mas o h3 mostra sempre \"Matéria\". Faça o h3 mostrar o titulo que chegou. Repare no que acontece: você muda UMA linha e os dois cards mudam juntos."
+ },
+ "827228a6b7f6": {
+  "en": "The commit timeline: each point is a snapshot of the project",
+  "pt": "A linha do tempo dos commits: cada ponto é uma foto do projeto"
+ },
+ "82f38d7fc4b3": {
+  "en": "Each book is a <BookCard /> inside the <main>.",
+  "pt": "Cada livro é um <BookCard /> dentro do <main>."
+ },
+ "834fdf8170eb": {
+  "en": "A bare **`0`**. `0` is falsy, so `&&` returns the `0` itself — and React renders that number. The correct way is to compare explicitly: `{cart.length > 0 && <span>...</span>}`.",
+  "pt": "Um **`0`** solto. `0` é falsy, então o `&&` devolve o próprio `0` — e o React renderiza esse número. O certo é comparar de forma explícita: `{cart.length > 0 && <span>...</span>}`."
+ },
+ "844a30721d21": {
+  "en": "git branch",
+  "pt": "git branch"
+ },
+ "845c87ad19f2": {
+  "en": "Put the path of a Pull Request in the correct order:",
+  "pt": "Coloque o caminho de um Pull Request na ordem certa:"
+ },
+ "847ec936f42e": {
+  "en": "Pulse 4 — Model WITH AI (not for you)",
+  "pt": "Pulse 4 — Modele COM a IA (não para você)"
+ },
+ "84d20a21b4d0": {
+  "en": "git add",
+  "pt": "git add"
+ },
+ "867f28033f42": {
+  "en": "Has Vehicle, Trip, Driver, and Event as entities",
+  "pt": "Tem Veículo, Viagem, Motorista e Evento como entidades"
+ },
+ "86af56f2731c": {
+  "en": "Send the branch to GitHub with git push",
+  "pt": "Mandar a divisória pro GitHub com git push"
+ },
+ "86beef8162f2": {
+  "en": "Branch: a path that's only yours, leaving main and coming back later",
+  "pt": "Branch: um caminho só seu, saindo da main e voltando depois"
+ },
+ "86d1348dd028": {
+  "en": "You saved the file on the workbench. Is it already in the notebook?",
+  "pt": "Você salvou o arquivo na bancada. Ele já está no caderno?"
+ },
+ "86e08c6df915": {
+  "en": "Look at this code: frutas.map(f => <li>{f}</li>) — what is MISSING?",
+  "pt": "Olha esse código: frutas.map(f => <li>{f}</li>) — o que está FALTANDO?"
+ },
+ "8727783d04c8": {
+  "en": "Paste into your agent:\n\n'Here is my decision table for {decision}. (1) List input combinations I did NOT cover. (2) Point out conflicting rules. (3) Suggest a safe default path.'\n\nThe skill is not filling in the table — it's JUDGING the AI's critique and deciding what goes in.",
+  "pt": "Cole no seu agente:\n\n'Aqui está minha tabela de decisão para {decisão}. (1) Liste combinações de input que eu NÃO cobri. (2) Aponte regras conflitantes. (3) Sugira um caminho-default seguro.'\n\nA habilidade não é preencher a tabela — é JULGAR a crítica da IA e decidir o que entra."
+ },
+ "8797e33ec22c": {
+  "en": "Predictive = the AI sees the pattern (vibration, mileage, rising consumption) and schedules maintenance before the breakdown — less downtime, less cost. It depends on the data modeled in Unit 1.",
+  "pt": "Preditiva = a IA vê o padrão (vibração, km, consumo subindo) e agenda a manutenção antes da quebra — menos parada, menos custo. Depende dos dados modelados na Unidade 1."
+ },
+ "88b8f1e72f96": {
+  "en": "'Send the email' — performs an action",
+  "pt": "'Enviar o e-mail' — executa uma ação"
+ },
+ "8981963fbab6": {
+  "en": "None. There's no technical answer here — only you know. So I do what **Rule 3** says: stop and ask.",
+  "pt": "Nenhuma. Não existe resposta técnica aqui — só vocês sabem. Então eu faço o que a **Regra 3** manda: paro e pergunto."
+ },
+ "89bad3323368": {
+  "en": "Claude explores the project's code",
+  "pt": "O Claude explora o código do projeto"
+ },
+ "8a33fd99cbe5": {
+  "en": "Click the small checkbox in the preview: nothing happens. Memory is missing — the screen doesn't store what you checked. Use useState to store the checked items and make the checkbox work. When an item is checked, its text should appear struck through (line-through class).",
+  "pt": "Clique no quadradinho do preview: não acontece nada. Falta memória — a tela não guarda o que você marcou. Use useState para guardar os itens marcados e faça o quadradinho funcionar. Quando um item estiver marcado, o texto dele deve ficar riscado (classe line-through)."
+ },
+ "8a3f731e3a8e": {
+  "en": "To link orders back to customers, the orders table…",
+  "pt": "Para ligar pedidos de volta aos clientes, a tabela orders…"
+ },
+ "8a66e2cce415": {
+  "en": "Produce the brief: GOAL (e.g., pre-classify advance requests), TOOLS (read receivables, check harvest history), POLICY (credit decision table), GUARDRAILS (exposure limit → human), VERIFICATION.",
+  "pt": "Produza o brief: OBJETIVO (ex: pré-classificar pedidos de antecipação), FERRAMENTAS (ler recebíveis, consultar histórico de safra), POLÍTICA (tabela de decisão de crédito), GUARDRAILS (limite de exposição → humano), VERIFICAÇÃO."
+ },
+ "8aab1baff5ed": {
+  "en": "The same producer has different records at each unit/location",
+  "pt": "O mesmo produtor tem cadastros diferentes em cada unidade/filial"
+ },
+ "8af364efe3ac": {
+  "en": "Agentic prioritization reflection",
+  "pt": "Reflexão de priorização agêntica"
+ },
+ "8b4dabfa2e07": {
+  "en": "Store information that changes on the screen",
+  "pt": "Guardar uma informação que muda na tela"
+ },
+ "8b63b90d4649": {
+  "en": "And the branch? It's still there, in full.\n\nThe pages are **not** lost: now they're part of `main`.",
+  "pt": "E a divisória? Continua lá, inteirinha.\n\nAs páginas **não** se perdem: agora fazem parte da `main`."
+ },
+ "8b9774965c6c": {
+  "en": "Pulse 5 — Example of a unified cooperative dashboard. What is only possible with unified data?",
+  "pt": "Pulse 5 — Exemplo de dashboard unificado de cooperativa. O que só é possível com dados unificados?"
+ },
+ "8bf2fd16f441": {
+  "en": "Trip aggregates the raw signals (does not model an isolated GPS point)",
+  "pt": "Viagem agrega os sinais crus (não modela ponto GPS isolado)"
+ },
+ "8c70b3bb1b7b": {
+  "en": "Explicitly defines what escalates to a human",
+  "pt": "Define explicitamente o que escala para humano"
+ },
+ "8cb14bb1e626": {
+  "en": "And paste it like this:\n\n```\ngit commit -m \"fixed the carrot cake price\"\n```",
+  "pt": "E cola assim:\n\n```\ngit commit -m \"arrumei o preço do bolo de cenoura\"\n```"
+ },
+ "8cc195760cf8": {
+  "en": "-m",
+  "pt": "-m"
+ },
+ "8d6119b30387": {
+  "en": "## Hi, I'm Gito\n\nI'm the kitchen helper. I don't cook, and I don't choose the recipe.\n\nI have only one job: **write down everything you did, so it's never lost.**\n\nI have three rules, and they never change.\n\n### 1. I only write something down when you tell me to\n\nChange whatever you want, make mistakes, delete, try again: I stay quiet.\nWhen it's worth saving, you call me.\n\n### 2. I never erase what's already been written down\n\nOnce it's written, it becomes a page in the notebook. And I don't tear pages out of the notebook.\n\n### 3. If two people change the same line, I ask\n\nI have no opinion on which is better. I show you both and wait for you to decide.",
+  "pt": "## Oi, eu sou o Gito\n\nEu sou o ajudante da cozinha. Não cozinho nem escolho a receita.\n\nMeu trabalho é um só: **anotar tudo o que vocês fizeram, pra nunca se perder.**\n\nTenho três regras, e elas nunca mudam.\n\n### 1. Eu só anoto quando você manda\n\nMexa no que quiser, erre, apague, tente de novo: eu fico quieto.\nQuando valer a pena guardar, você me chama.\n\n### 2. Eu nunca apago o que já foi anotado\n\nAnotou, virou página do caderno. E página do caderno eu não arranco.\n\n### 3. Se duas pessoas mudam a mesma linha, eu pergunto\n\nNão tenho opinião sobre qual é melhor. Mostro as duas e espero vocês decidirem."
+ },
+ "8d733613c944": {
+  "en": "## The `.gitignore`: the list of what Gito pretends does not exist\n\nIt is a simple text file, in the root of the project, with one name per line:\n\n```\nnode_modules\n.env\nsenhas.txt\n*.mp4\n```\n\nThe `*` means \"anything\". `*.mp4` = every video.\n\nGito reads this list and simply **ignores** these files.",
+  "pt": "## O `.gitignore`: a lista do que o Gito finge que não existe\n\nÉ um arquivo de texto simples, na raiz do projeto, com um nome por linha:\n\n```\nnode_modules\n.env\nsenhas.txt\n*.mp4\n```\n\nO `*` quer dizer \"qualquer coisa\". `*.mp4` = todo vídeo.\n\nO Gito lê essa lista e simplesmente **ignora** esses arquivos."
+ },
+ "8d7dab790c29": {
+  "en": "fixed the list that wasn't showing on mobile",
+  "pt": "arrumei a lista que não aparecia no celular"
+ },
+ "8e1f8b25e60a": {
+  "en": "Take the most important decision from Unit 1. Write it as a table:\n\n| IF (condition) | THEN (outcome) |\n|---|---|\n| amount > $50k AND new customer | manual review |\n| amount ≤ $50k AND returning customer | approve |\n\nPaste this into an agent and ask: 'critique my table — what cases are missing?'",
+  "pt": "Pegue a decisão mais importante da Unidade 1. Escreva como tabela:\n\n| SE (condição) | ENTÃO (resultado) |\n|---|---|\n| valor > R$50k E cliente novo | revisão manual |\n| valor ≤ R$50k E cliente recorrente | aprovar |\n\nCole isto num agente e peça: 'critique minha tabela — que casos faltam?'"
+ },
+ "8ebea1e3c446": {
+  "en": "## Component: a function that returns screen\n\nIn React, **a component is a function**. What it returns is the screen.\n\n```tsx\nfunction BookCard() {\n  return <article>A book</article>;\n}\n```\n\nThree things to take from this:\n\n1. `return` gives back **JSX** — the markup that becomes the screen;\n2. a name starting with a **capital letter** becomes a tag: `BookCard` can be used as `<BookCard />`;\n3. `export default` tells which component shows up in the preview.\n\n> This is how you build screen with screen: one component uses another as if it were a tag.",
+  "pt": "## Componente: uma função que devolve tela\n\nEm React, **componente é uma função**. O que ela devolve é a tela.\n\n```tsx\nfunction BookCard() {\n  return <article>Um livro</article>;\n}\n```\n\nTrês coisas para levar daqui:\n\n1. o `return` devolve **JSX** — a marcação que vira tela;\n2. nome com **letra maiúscula** vira tag: `BookCard` pode ser usado como `<BookCard />`;\n3. `export default` diz qual componente aparece no preview.\n\n> É assim que a gente monta tela com tela: um componente usa o outro como se fosse uma tag."
+ },
+ "8ec9a00bfd09": {
+  "en": "README.md",
+  "pt": "README.md"
+ },
+ "8f6e64c9d6b6": {
+  "en": "git push",
+  "pt": "git push"
+ },
+ "8f73593946e4": {
+  "en": "Match each piece with what it does in a list",
+  "pt": "Ligue cada peça com o que ela faz numa lista"
+ },
+ "8fded19c1d02": {
+  "en": "What is a variable?",
+  "pt": "O que é uma variável?"
+ },
+ "8fe3880f6ac4": {
+  "en": "Git shows both versions inside the file and lets you choose",
+  "pt": "O Git mostra as duas versões dentro do arquivo e deixa você escolher"
+ },
+ "9027797f4994": {
+  "en": "Match each piece with what it does in a list:",
+  "pt": "Ligue cada peça com o que ela faz numa lista:"
+ },
+ "90a4021dd833": {
+  "en": "Gito: back to main. Notice that the files in your folder changed on their own — the favorite button disappeared from the screen. It wasn't lost: it's saved in the `favoritar` branch, waiting for you to come back.",
+  "pt": "Gito: voltou pra principal. Repara que os arquivos da sua pasta mudaram sozinhos — o botão de favoritar sumiu da tela. Ele não foi perdido: ele está guardado na divisória `favoritar`, esperando você voltar."
+ },
+ "912e8221d835": {
+  "en": "The folder full of copies: App_v2, App_FINAL, App_FINAL_agora_vai_2",
+  "pt": "A pasta cheia de cópias: App_v2, App_FINAL, App_FINAL_agora_vai_2"
+ },
+ "9193e35d8b7f": {
+  "en": "node_modules",
+  "pt": "node_modules"
+ },
+ "932bcf6b78ee": {
+  "en": "Does \"I touched the file\" pass this test?",
+  "pt": "\"mexi no arquivo\" passa nesse teste?"
+ },
+ "9344170aa991": {
+  "en": "Of these five, how many do you need to write?",
+  "pt": "Dessas cinco, quantas você precisa escrever?"
+ },
+ "936aaf66f2de": {
+  "en": "git add . — put everything in the tray",
+  "pt": "git add . — pôr tudo na bandeja"
+ },
+ "942bb96a0998": {
+  "en": "Millions of data points per day are not a decision. The value appears when you model ENTITIES (Vehicle, Trip, Maintenance event) on top of the raw stream.",
+  "pt": "Milhões de pontos/dia não são uma decisão. O valor aparece quando você modela ENTIDADES (Veículo, Viagem, Evento de manutenção) sobre o stream cru."
+ },
+ "946e3ab64ff0": {
+  "en": "Which things are part of creating a website?",
+  "pt": "Quais coisas fazem parte de criar um site?"
+ },
+ "9483fe4dd80d": {
+  "en": "Clarity of the specification",
+  "pt": "Clareza da especificação"
+ },
+ "94ab581bc7a3": {
+  "en": "It was Téo who fixed the carrot cake price",
+  "pt": "Quem arrumou o preço do bolo de cenoura foi o Téo"
+ },
+ "94bb5ef9ebd1": {
+  "en": "created the PratoDoDia component",
+  "pt": "criei o componente PratoDoDia"
+ },
+ "94e18c34bf17": {
+  "en": "## Two people, the same file\n\nNina and Téo are working on the same project: **cardapio-da-turma**, an app with the week's menu.\n\nOn Monday, they both opened the same file `Cardapio.jsx`.\nNina fixed the list of dishes. Téo fixed the prices.\n\nOn Tuesday the problem shows up:\n\n> **There are two versions of the same file, and neither has the complete work.**",
+  "pt": "## Duas pessoas, o mesmo arquivo\n\nA Nina e o Téo estão fazendo o mesmo projeto: o **cardapio-da-turma**, um app com o cardápio da semana.\n\nSegunda, os dois abriram o mesmo arquivo `Cardapio.jsx`.\nA Nina arrumou a lista de pratos. O Téo arrumou os preços.\n\nTerça o problema aparece:\n\n> **Existem duas versões do mesmo arquivo, e nenhuma tem o trabalho completo.**"
+ },
+ "95148802e6c9": {
+  "en": "Pulse 2 — Write ONE rule as a decision table",
+  "pt": "Pulse 2 — Escreva UMA regra como tabela de decisão"
+ },
+ "9582c80c67b8": {
+  "en": "fixed the carrot cake price",
+  "pt": "corrigi o preço do bolo de cenoura"
+ },
+ "95d7b7fd78d0": {
+  "en": "I want to see what I changed before deciding anything",
+  "pt": "Quero ver o que eu mexi antes de decidir qualquer coisa"
+ },
+ "9725801e6008": {
+  "en": "The list below is built from the tarefas array, which has 2 items. Add a third item called Read a chapter — without touching the rest of the code.",
+  "pt": "A lista abaixo é montada a partir do array tarefas, que tem 2 itens. Acrescente um terceiro item chamado Ler um capítulo — sem mexer no resto do código."
+ },
+ "977d5572e9c0": {
+  "en": "Write your first HTML page",
+  "pt": "Escreva a sua primeira página HTML"
+ },
+ "98af3a8f6764": {
+  "en": "git push before getting up",
+  "pt": "git push antes de levantar"
+ },
+ "98e29205a6b0": {
+  "en": "Each item's tag: the key prop 🏷️",
+  "pt": "O crachá de cada item: a prop key 🏷️"
+ },
+ "9a34ed78db11": {
+  "en": "No. It describes what **you** did, not what **the project** gained. Change it to \"fix the carrot cake price\".",
+  "pt": "Não. Ele conta o que **você** fez, não o que **o projeto** ganhou. Troca por \"arruma o preço do bolo de cenoura\"."
+ },
+ "9ac0788d566b": {
+  "en": "The `App` already passes `title` and `author` to the card. `BookCard` still needs to use what it received:\n\n1. Destructure the props in the signature: replace `props: BookCardProps` with `{ title, author }: BookCardProps`.\n2. Replace the text **Fixed title** with `{title}` and **Fixed author** with `{author}`.",
+  "pt": "O `App` já passa `title` e `author` para o card. Falta o `BookCard` usar o que chegou:\n\n1. Abra as props na assinatura: troque `props: BookCardProps` por `{ title, author }: BookCardProps`.\n2. Troque o texto **Título fixo** por `{title}` e **Autor fixo** por `{author}`."
+ },
+ "9adb1be948bf": {
+  "en": "COMMIT — Diagram: the producer's unified data model…",
+  "pt": "COMMIT — Diagrama: o modelo de dados unificado do produtor…"
+ },
+ "9b5cfd2503ed": {
+  "en": "COMMIT — Complete decision table for your process",
+  "pt": "COMMIT — Tabela de decisão completa do seu processo"
+ },
+ "9bca59e3510e": {
+  "en": "Gito: already committed. A commit saves on your computer — it doesn't send anywhere.",
+  "pt": "Gito: já commitou. Commit guarda no seu computador — não manda pra lugar nenhum."
+ },
+ "9be71e378648": {
+  "en": "Put the pair's agreement in the order of a normal work day:",
+  "pt": "Coloque o combinado da dupla na ordem de um dia normal de trabalho:"
+ },
+ "9c4b9cf6f012": {
+  "en": "Pulse 1 — Why separate the DECISION from the CODE?",
+  "pt": "Pulse 1 — Por que separar a DECISÃO do CÓDIGO?"
+ },
+ "9c9f89467b26": {
+  "en": "Pass title=\"The Pragmatic Programmer\" to the second <BookCard />.",
+  "pt": "Passe title=\"O Programador Pragmático\" no segundo <BookCard />."
+ },
+ "9ce020202374": {
+  "en": "The README.md, which explains the project",
+  "pt": "O README.md, que explica o projeto"
+ },
+ "9e0b6bb3b15f": {
+  "en": "I chose the one on top. Can I commit it just like that?",
+  "pt": "Escolhi a de cima. Posso commitar assim mesmo?"
+ },
+ "9e3fa4a1d496": {
+  "en": "By unifying receivables + contracts + history, the AI estimates exposure per producer and flags risk — the basis for receivables financing and cheaper credit.",
+  "pt": "Unificando recebíveis + contratos + histórico, a IA estima exposição por produtor e sinaliza risco — base para antecipação de recebível e crédito mais barato."
+ },
+ "9e6dd26bf617": {
+  "en": "`git push -u origin favoritar` sends your branch to GitHub and connects it with the one there.\n\nYou only use `-u` **the first time** for that branch. After that, `git push` alone is enough.",
+  "pt": "`git push -u origin favoritar` manda a sua divisória pro GitHub e já a conecta com a de lá.\n\nO `-u` você só usa **na primeira vez** daquela divisória. Depois, `git push` sozinho basta."
+ },
+ "9f70b5486e45": {
+  "en": "### The rules\n\n1. Say **WHAT changed**, not that you worked on it.\n2. One short sentence, 5 to 10 words.\n3. Talk about the project, not about yourself.\n4. Needed three \"and\"s? That's three commits.\n5. Write in plain, everyday language.\n\nA bad note doesn't block anything today. It charges the price later.",
+  "pt": "### As regras\n\n1. Diz **o QUE mudou**, não que você mexeu.\n2. Uma frase curta, 5 a 10 palavras.\n3. Fala do projeto, não de você.\n4. Precisou de três \"e\"? São três commits.\n5. Escreve em português mesmo.\n\nBilhete ruim não trava nada hoje. Ele cobra o preço depois."
+ },
+ "a0dae58c796d": {
+  "en": "COMMIT — Diagram: the producer's unified data model (Producer ↔ Units ↔ Receivables ↔ Contracts). Use the example ER diagram as a notation reference.",
+  "pt": "COMMIT — Diagrama: o modelo de dados unificado do produtor (Produtor ↔ Unidades ↔ Recebíveis ↔ Contratos). Use o ER de exemplo como referência de notação."
+ },
+ "a1580d4c9f7a": {
+  "en": "Match each part with what it does:",
+  "pt": "Ligue cada parte com o que ela faz:"
+ },
+ "a185d8570229": {
+  "en": "Nina spent the morning out and knows that Téo worked on the project last night. **Before starting anything**, she wants to bring his work into her notebook. Which word completes the blank?\n\n```\ngit ______\n```",
+  "pt": "A Nina passou a manhã fora e sabe que o Téo mexeu no projeto ontem à noite. **Antes de começar qualquer coisa**, ela quer trazer o trabalho dele pro caderno dela. Qual palavra completa a lacuna?\n\n```\ngit ______\n```"
+ },
+ "a185ec298cc3": {
+  "en": "Match each kitchen word with what it really means.",
+  "pt": "Ligue cada palavra da cozinha com o que ela é de verdade."
+ },
+ "a2456ed6dee2": {
+  "en": "Drag into the order that makes sense to see a website working",
+  "pt": "Arraste na ordem que faz sentido pra ver um site funcionando"
+ },
+ "a257c75aa69c": {
+  "en": "In one sentence: what's the difference between prop and state?",
+  "pt": "Em uma frase: qual a diferença entre prop e estado?"
+ },
+ "a2a216e68d24": {
+  "en": "COMMIT — Producer Portal spec (1 page)",
+  "pt": "COMMIT — Spec do Portal-Produtor (1 página)"
+ },
+ "a38059c95ea9": {
+  "en": "False — and that's exactly the point of the branch. What she commits stays **only in her branch**. The `main` stays intact, working, ready to present. Only when someone does a **merge** does the branch's work enter `main`.",
+  "pt": "Falso — e é justamente esse o ponto da divisória. O que ela commita fica **só na divisória dela**. A `main` continua intacta, funcionando, pronta pra apresentar. Só quando alguém faz o **merge** é que o trabalho da divisória entra na `main`."
+ },
+ "a60d0565bdac": {
+  "en": "The files you marked to go into the next entry",
+  "pt": "Os arquivos que você marcou pra entrar na próxima anotação"
+ },
+ "a6e8d9c62a13": {
+  "en": "A code that doesn't repeat for each item",
+  "pt": "Um código que não repete pra cada item"
+ },
+ "a70a74cbcdcd": {
+  "en": "Create the branch and work on it",
+  "pt": "Criar a divisória (branch) e trabalhar nela"
+ },
+ "a766b5e6b7a5": {
+  "en": "The color of the badge",
+  "pt": "A cor do crachá"
+ },
+ "a7f327129067": {
+  "en": "Component uses uppercase: function BookCard()",
+  "pt": "Componente usa maiúscula: function BookCard()"
+ },
+ "a7fcd94ef98d": {
+  "en": "# Agent Brief — {process name}\n\n## Goal\n<the outcome the agent delivers, in 1 sentence>\n\n## Trigger\n<what starts the agent>\n\n## Tools (what it can trigger)\n- <read/write to which system>\n- <send which communication>\n\n## Decision policy\n<paste the decision table from Unit 2>\n\n## Guardrails (where it STOPS and calls a human)\n- <limit 1>\n- <limit 2>\n\n## Verification (how it knows it finished correctly)\n- <check 1>\n- <check 2>\n",
+  "pt": "# Brief do Agente — {nome do processo}\n\n## Objetivo\n<o resultado que o agente entrega, em 1 frase>\n\n## Gatilho\n<o que inicia o agente>\n\n## Ferramentas (o que pode acionar)\n- <ler/escrever em qual sistema>\n- <enviar qual comunicação>\n\n## Política de decisão\n<cole a tabela de decisão da Unidade 2>\n\n## Guardrails (onde PARA e chama humano)\n- <limite 1>\n- <limite 2>\n\n## Verificação (como sabe que terminou certo)\n- <checagem 1>\n- <checagem 2>\n"
+ },
+ "a82b5bafe853": {
+  "en": "Pulse 3 — Model 4 entities of your fleet",
+  "pt": "Pulse 3 — Modele 4 entidades da sua frota"
+ },
+ "a84c07e0562e": {
+  "en": "Pulse 2 — Which entity connects signals to a useful analysis?",
+  "pt": "Pulse 2 — Qual é a entidade que conecta os sinais a uma análise útil?"
+ },
+ "a8722d1dce89": {
+  "en": "## App_FINAL_agora_vai_2.jsx\n\nThe first solution everyone invents on their own is this: **save a copy with a different name.**\n\nIt makes sense at first. You're afraid of breaking what works, so you save `App2.jsx` and work on the copy.\nThen again. And again.\n\nTwo weeks later, three unanswered questions:\n\n- Which version is working now?\n- What changed from `App_FINAL` to `App_FINAL_v2`?\n- Who changed this, and when?",
+  "pt": "## App_FINAL_agora_vai_2.jsx\n\nA primeira solução que todo mundo inventa sozinho é essa: **salvar uma cópia com outro nome.**\n\nFaz sentido no começo. Você tem medo de estragar o que funciona, então salva `App2.jsx` e mexe na cópia.\nAí de novo. E de novo.\n\nDuas semanas depois, três perguntas sem resposta:\n\n- Qual versão está funcionando agora?\n- O que mudou do `App_FINAL` pro `App_FINAL_v2`?\n- Quem mudou isso, e quando?"
+ },
+ "a893343e396b": {
+  "en": "Which values are GOOD to use as a key? (you can select more than one)",
+  "pt": "Quais valores são BONS pra usar como key? (pode marcar mais de uma)"
+ },
+ "a9018e5a34e6": {
+  "en": "Pulse 1 — Raw telemetry (GPS, RPM, fuel per second) by itself is:",
+  "pt": "Pulse 1 — Telemetria crua (GPS, RPM, combustível por segundo) por si só é:"
+ },
+ "a9146c9394fe": {
+  "en": "You are Nina. You just committed the title \"Menu\" on the home screen and want to push it to the shelf.\n\nWhat you **don't** know: Téo pasted in a page this morning and already pushed it to the shelf.\n\nPush yours and see what happens.",
+  "pt": "Você é a Nina. Acabou de commitar o título \"Cardápio\" na tela inicial e quer mandar pra estante.\n\nO que você **não** sabe: o Téo colou uma página lá de manhã e já mandou pra estante.\n\nManda o seu e vê o que acontece."
+ },
+ "a988e3dc4d42": {
+  "en": "I want to erase main's history",
+  "pt": "Quero apagar o histórico da main"
+ },
+ "a99152732745": {
+  "en": "Is specific and ready to use for the student's REAL task — not an answer that would work for anyone",
+  "pt": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa"
+ },
+ "a9db8e00837d": {
+  "en": "**Look → separate → paste.**\n\nMemorize these three, and you can already commit.",
+  "pt": "**Ver → separar → colar.**\n\nDecorou os três, você já commita."
+ },
+ "ab40b730a75a": {
+  "en": "Pulse 4 — 'Verification' in the agent brief is for",
+  "pt": "Pulse 4 — 'Verificação' no brief do agente serve para"
+ },
+ "ab4b44916f63": {
+  "en": "`&&` — there's only one side to show. The other case is simply showing nothing, and the ternary would require inventing a second side.",
+  "pt": "`&&` — só existe um lado para mostrar. O outro caso é simplesmente não mostrar nada, e o ternário exigiria inventar um segundo lado."
+ },
+ "accf23ba53ad": {
+  "en": "If two people change the same line, Gito stops and asks us",
+  "pt": "Se duas pessoas mudarem a mesma linha, o Gito para e pergunta pra gente"
+ },
+ "aceadbce481c": {
+  "en": "Which of these things can Claude Code do? (select all that are correct)",
+  "pt": "Quais destas coisas o Claude Code consegue fazer? (marque todas as corretas)"
+ },
+ "ad771bfc64b0": {
+  "en": "Téo has already put the file in the tray. Now he wants to **paste the page into the notebook**. What is missing in the blank?\n\n```\ngit ______ -m \"added the list of dishes\"\n```",
+  "pt": "O Téo já pôs o arquivo na bandeja. Agora ele quer **colar a página no caderno**. O que falta na lacuna?\n\n```\ngit ______ -m \"adicionei a lista de pratos\"\n```"
+ },
+ "adfe15246086": {
+  "en": "Pulse 5 — GitHub vocabulary: repo & pull",
+  "pt": "Pulse 5 — Vocabulário GitHub: repo & pull"
+ },
+ "ae015ff4fce3": {
+  "en": "now it works",
+  "pt": "agora vai"
+ },
+ "ae0a67930d07": {
+  "en": "The three places: your folder, the staging area, and the repository",
+  "pt": "Os três lugares: sua pasta, a área de preparo e o repositório"
+ },
+ "ae5877ac767e": {
+  "en": "To make it slower",
+  "pt": "Para deixar mais lento"
+ },
+ "ae7156bf2191": {
+  "en": "Includes the decision table (policy)",
+  "pt": "Inclui a tabela de decisão (política)"
+ },
+ "ae792bf4a87d": {
+  "en": "git pull — get what the other person did yesterday",
+  "pt": "git pull — pegar o que o outro fez ontem"
+ },
+ "ae9a0507e099": {
+  "en": "Produce the final decision table: all conditions, all outcomes, the default path, and what escalates to a human. This is the knowledge the agent will operate on.",
+  "pt": "Produza a tabela de decisão final: todas as condições, todos os resultados, o caminho-default, e o que escala para humano. Este é o conhecimento que o agente vai operar."
+ },
+ "aeb9d843b167": {
+  "en": "Fair: it's what trades a bug found by the user for a red underline in your editor.",
+  "pt": "Vale: é o que troca um bug descoberto pelo usuário por um sublinhado vermelho no seu editor."
+ },
+ "af47fb308d66": {
+  "en": "git commit to close the merge",
+  "pt": "git commit para fechar o merge"
+ },
+ "b1128693e18c": {
+  "en": "What is the key prop for in a list?",
+  "pt": "Pra que serve a prop key numa lista?"
+ },
+ "b16961c8a735": {
+  "en": "Only after **deleting the three markers**. They have to disappear from the file, or they'll go into the project too.",
+  "pt": "Só depois de **apagar as três marcações**. Elas têm que sumir do arquivo, senão vão pro projeto junto."
+ },
+ "b17fa4a5cab5": {
+  "en": "Yes, it can: whatever you **never pasted**. Six hours of work without a `commit` don't exist to me.",
+  "pt": "Dá sim: o que você **nunca colou**. Seis horas de trabalho sem `commit` não existem pra mim."
+ },
+ "b18272cbd303": {
+  "en": "Without verification, the agent 'thinks' it's done. With verification (e.g., was the invoice created? does the amount match?), it self-corrects — that's what separates a demo from production.",
+  "pt": "Sem verificação, o agente 'acha' que terminou. Com verificação (ex: a nota foi criada? o valor confere?), ele se autocorrige — é o que separa demo de produção."
+ },
+ "b1fc369b209c": {
+  "en": "Company logo in high resolution",
+  "pt": "Logo da empresa em alta resolução"
+ },
+ "b22dd44513fb": {
+  "en": "Pulse 3 — Your decision table has 3 binary conditions",
+  "pt": "Pulse 3 — Sua tabela de decisão tem 3 condições binárias"
+ },
+ "b245d1d51393": {
+  "en": "Pulse 4 — 'Producer receivable' relates to Producer as",
+  "pt": "Pulse 4 — 'Recebível do produtor' relaciona-se com Produtor como"
+ },
+ "b2c4d9bd848a": {
+  "en": "You are Nina, on `main`, about to merge the `favoritar` branch.\n\nTéo changed the same line of the title as you. Send the merge and let's face the conflict together.",
+  "pt": "Você é a Nina, na `main`, prestes a juntar a divisória `favoritar`.\n\nO Téo mexeu na mesma linha do título que você. Manda o merge e vamos encarar o conflito juntos."
+ },
+ "b2f636e6a78e": {
+  "en": "COMMIT — Fleet data layer spec",
+  "pt": "COMMIT — Spec da camada de dados de frota"
+ },
+ "b2fb7e759222": {
+  "en": "Write it as a decision table: IF (receivable balance, harvest history, collateral) THEN (advance limit / rate / manual review). Paste it into an agent and ask for the missing cases.",
+  "pt": "Escreva como tabela de decisão: SE (saldo de recebível, histórico de safra, garantia) ENTÃO (limite de antecipação / taxa / revisão manual). Cole num agente e peça os casos faltantes."
+ },
+ "b4e4e6a36c78": {
+  "en": "Because the inStock prop changed value.",
+  "pt": "Porque a prop inStock mudou de valor."
+ },
+ "b4fade522718": {
+  "en": "Imagine the notebook has a **branch**: you paste your pages inside it and the rest of the notebook stays the same.\n\nIn Git this is called a **branch** — like a branch on a tree.\n\n- The main part is called **`main`** — it's what's currently working.\n- Your branch can have whatever name you want: `favoritar`.\n- You commit freely on it. `main` **doesn't change at all**.",
+  "pt": "Imagina que o caderno tem uma **divisória**: você cola suas páginas lá dentro e o resto do caderno continua igual.\n\nNo Git isso se chama **branch** — fala-se \"brântchi\", quer dizer galho.\n\n- A parte principal se chama **`main`** — é o que tá funcionando.\n- A sua divisória tem o nome que você quiser: `favoritar`.\n- Você commita à vontade nela. A `main` **não muda nada**."
+ },
+ "b5477d3f0a85": {
+  "en": "Gito: done — your branch is on GitHub. Did you see that link at the end? It's the shortcut to open the Pull Request. Git literally gives you the link.",
+  "pt": "Gito: pronto — sua divisória tá no GitHub. Viu aquele link no fim? É o atalho pra abrir o Pull Request. O git literalmente te dá o link."
+ },
+ "b56f9edfc8d1": {
+  "en": "Pulse 2 — The 4 parts of an agent brief",
+  "pt": "Pulse 2 — As 4 partes de um brief de agente"
+ },
+ "b58fe8220233": {
+  "en": "Pulse 4 — The 4 parts of the fleet agent",
+  "pt": "Pulse 4 — As 4 partes do agente de frota"
+ },
+ "b5b2e965b247": {
+  "en": "False. Copies keep **files**, but they don't keep **history**: none of them tell you what changed, when, or who changed it. And when two people make copies at the same time, no one can merge the two back together without losing work. That's why Git exists.",
+  "pt": "Falso. As cópias guardam **arquivos**, mas não guardam **história**: nenhuma delas te diz o que mudou, quando, nem quem mudou. E quando duas pessoas fazem cópias ao mesmo tempo, ninguém consegue juntar as duas de volta sem perder trabalho. É por isso que o Git existe."
+ },
+ "b69ee40ff1fc": {
+  "en": "Answer the same question, adapting the tone and example to the person who asked.",
+  "pt": "Responda a mesma pergunta adaptando o tom e o exemplo para a pessoa que perguntou."
+ },
+ "b6b28c4d5b8d": {
+  "en": "You are Nina. The `favoritar` branch is ready on your computer — but Téo still can't see anything.\n\nType the command that takes your branch to GitHub.",
+  "pt": "Você é a Nina. A divisória `favoritar` tá pronta no seu computador — mas o Téo ainda não consegue ver nada.\n\nDigita o comando que leva a sua divisória pro GitHub."
+ },
+ "b6b818e2e0c0": {
+  "en": "## BADGE 8 · VAULT\n\nRemember Gito's Rule 2?\n\n> **Never erase what's already been recorded.**\n\nThat's wonderful when you want to go back. And it's a problem when you recorded something you **shouldn't have**.\n\nPassword. Token. API key. The `.env` file.",
+  "pt": "## SELO 8 · COFRE\n\nLembra da Regra 2 do Gito?\n\n> **Nunca apaga o que já foi anotado.**\n\nIsso é maravilhoso quando você quer voltar atrás. E é um problema quando você anotou algo que **não devia**.\n\nSenha. Token. Chave de API. O arquivo `.env`."
+ },
+ "b6fba3a603e3": {
+  "en": "Draft: GOAL (reduce unplanned downtime), TOOLS (read telemetry, schedule workshop, notify driver), POLICY (maintenance/route tables), VERIFICATION (was maintenance scheduled? did the route improve the estimated time?).",
+  "pt": "Rascunhe: OBJETIVO (reduzir parada não planejada), FERRAMENTAS (ler telemetria, agendar oficina, notificar motorista), POLÍTICA (tabelas de manutenção/rota), VERIFICAÇÃO (a manutenção foi agendada? a rota melhorou o tempo previsto?)."
+ },
+ "b72972391e43": {
+  "en": "Gito: **pasted in.** `[main 9c1d044]` = the short code for your page is `9c1d044`. `1 file changed` = one file came in. `1 insertion(+), 1 deletion(-)` = one line came in and one went out — makes sense, you *changed* the price.\n\nAnd keep the lesson: the earlier error didn't break anything. You tried, read the message, and the message taught you what was missing.",
+  "pt": "Gito: **colei.** `[main 9c1d044]` = o código curto da sua página é `9c1d044`. `1 file changed` = um arquivo entrou. `1 insertion(+), 1 deletion(-)` = uma linha entrou e uma saiu — faz sentido, você *trocou* o preço.\n\nE fica com a lição: o erro lá atrás não quebrou nada. Você tentou, leu a mensagem, e a mensagem te ensinou o que faltava."
+ },
+ "b79e3a872ff5": {
+  "en": "Make commits with clear notes",
+  "pt": "Fazer commits com bilhetes claros"
+ },
+ "b7b9e386759c": {
+  "en": "How long it took you to do it",
+  "pt": "Quanto tempo você levou pra fazer"
+ },
+ "b7c2b8efb358": {
+  "en": "You are an assistant that answers exactly what is asked, without inventing context.",
+  "pt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto."
+ },
+ "b877479233a7": {
+  "en": "Your PR's diff has 200 lines. Is that good or bad?",
+  "pt": "O diff do seu PR tem 200 linhas. Isso é bom ou ruim?"
+ },
+ "b8945aabd948": {
+  "en": "Pulse 2 — Which column allows linking the same producer across units?",
+  "pt": "Pulse 2 — Qual coluna permite ligar o mesmo produtor entre unidades?"
+ },
+ "b8a2a0e873c4": {
+  "en": "Is the problem having multiple versions?",
+  "pt": "O problema é ter várias versões?"
+ },
+ "b8e45938ee7a": {
+  "en": "If the user shows an example of the format they want, answer in the SAME format. If not, answer in plain running text.",
+  "pt": "Se o usuário mostrar um exemplo do formato que quer, responda no MESMO formato. Se não, responda em texto corrido."
+ },
+ "b9d081961772": {
+  "en": "You are Nina. You are about to start the favorite button and don't want to ruin what Téo is presenting on Thursday.\n\nFirst check which branch you are on. Then open yours.",
+  "pt": "Você é a Nina. Vai começar o botão de favoritar e não quer estragar o que o Téo apresenta na quinta.\n\nPrimeiro confira em qual divisória você está. Depois abra a sua."
+ },
+ "ba839d4c8613": {
+  "en": "Pulse 1 — An 'agent' (vs. a chatbot) is defined by:",
+  "pt": "Pulse 1 — Um 'agente' (vs. um chatbot) é definido por:"
+ },
+ "ba9f29dcff29": {
+  "en": "Your workbench",
+  "pt": "Sua bancada"
+ },
+ "bb88f50f522c": {
+  "en": "Pulse 1 — With unified receivable data, AI can estimate",
+  "pt": "Pulse 1 — Com dados de recebível unificados, a IA pode estimar"
+ },
+ "bb91114f39dd": {
+  "en": "Being more expensive",
+  "pt": "Ser mais caro"
+ },
+ "bc537d0eb04c": {
+  "en": "Which of these things can Claude Code do?",
+  "pt": "Quais destas coisas o Claude Code consegue fazer?"
+ },
+ "bc7eb6fa4e9c": {
+  "en": "Git solves this differently: **just one file**, with the whole history stored alongside it.",
+  "pt": "O Git resolve de outro jeito: **um arquivo só**, com a história inteira guardada do lado."
+ },
+ "bc8a6fa752b5": {
+  "en": "You switched computers and want to continue the project. Which of the three?",
+  "pt": "Você trocou de computador e quer continuar o projeto. Qual dos três?"
+ },
+ "bcca795971a0": {
+  "en": "False. The Pull Request exists exactly so someone else can look at it first. In the pair, the one who approves Nina's PR is Téo — and the one who approves Téo's is Nina.",
+  "pt": "Falso. O Pull Request existe justamente pra outra pessoa olhar antes. Na dupla, quem dá o ok no PR da Nina é o Téo — e quem dá o ok no do Téo é a Nina."
+ },
+ "bd3acd2f0fba": {
+  "en": "Write: IF (km since last service, sensor alert, days until long trip) THEN (schedule now / monitor / ignore). Paste it into an agent and ask for the missing cases and a safe default.",
+  "pt": "Escreva: SE (km desde última revisão, alerta de sensor, dias até viagem longa) ENTÃO (agendar agora / monitorar / ignorar). Cole num agente e peça os casos faltantes e um default seguro."
+ },
+ "bdce5d7f9583": {
+  "en": "To link orders back to customers, the orders table needs a column called ____",
+  "pt": "Para ligar pedidos de volta aos clientes, a tabela orders (a de pedidos) precisa de uma coluna chamada ____"
+ },
+ "bf2d64d0e000": {
+  "en": "From your flowchart, copy each diamond [D] here. For each decision write:\n- The exact question\n- The inputs that answer it (which data/systems)\n- The current rule (how a human decides today)\n\nThis list becomes the agent's 'brain' in Unit 3.",
+  "pt": "Do seu fluxograma, copie cada losango [D] aqui. Para cada decisão escreva:\n- A pergunta exata\n- Os inputs que a respondem (quais dados/sistemas)\n- A regra atual (como um humano decide hoje)\n\nEsta lista vira o 'cérebro' do agente na Unidade 3."
+ },
+ "bfc2f04ead6e": {
+  "en": "'Above X exposure, always require human review'",
+  "pt": "'Acima de X de exposição, sempre revisão humana'"
+ },
+ "bff91ad7eb07": {
+  "en": "Inside the h3, replace the fixed text Subject with {titulo}. The braces tell React that a value goes there.",
+  "pt": "Dentro do h3, troque o texto fixo Matéria por {titulo}. As chaves avisam o React que ali entra um valor."
+ },
+ "c06315806771": {
+  "en": "Gito: yes, everything is saved in your notebook. But it's still only **your** notebook. You still need to push it up.",
+  "pt": "Gito: tá tudo salvo no seu caderno, sim. Mas ainda é só o **seu** caderno. Falta subir."
+ },
+ "c072d073cdb2": {
+  "en": "The history of the project on your computer",
+  "pt": "O histórico do projeto no seu computador"
+ },
+ "c1056fda3767": {
+  "en": "To run something when the screen opens or something changes",
+  "pt": "Pra rodar algo quando a tela abre ou algo muda"
+ },
+ "c1460db33e03": {
+  "en": "Uses a foreign key (does not copy attributes)",
+  "pt": "Usa chave estrangeira (não copia atributos)"
+ },
+ "c180577cd50f": {
+  "en": "Pulse 3 — Which of these is a good safety limit (guardrail) for an agent?",
+  "pt": "Pulse 3 — Qual destes é um bom limite de segurança (guardrail) para um agente?"
+ },
+ "c1a83cbb3ec6": {
+  "en": "The text Out of stock goes after the colon of the ternary.",
+  "pt": "O texto Esgotado vai depois dos dois pontos do ternário."
+ },
+ "c28831b0a693": {
+  "en": "A repeatable sequence of steps with a trigger and an outcome",
+  "pt": "Uma sequência repetível de passos com um gatilho e um resultado"
+ },
+ "c2e0460f60d6": {
+  "en": "git push — send it to GitHub",
+  "pt": "git push — levar pro GitHub"
+ },
+ "c2e55b35a289": {
+  "en": "It's my first day and the project does not exist yet on my computer",
+  "pt": "É meu primeiro dia e o projeto ainda não existe no meu computador"
+ },
+ "c364d480ef5e": {
+  "en": "Pulse 1 — What is a 'process' worth automating?",
+  "pt": "Pulse 1 — O que é um 'processo' que vale a pena automatizar?"
+ },
+ "c3d201003e1e": {
+  "en": "A producer has MANY receivables throughout the harvest season; each receivable belongs to ONE producer. Modeling this is what lets the AI add up exposure/risk per producer.",
+  "pt": "Um produtor tem MUITOS recebíveis ao longo da safra; cada recebível pertence a UM produtor. Modelar isso é o que permite a IA somar exposição/risco por produtor."
+ },
+ "c3ff55655459": {
+  "en": "**Props** are the data that the parent component passes to the child, just like the parameters of a function.\n\n- whoever **passes** it writes `<BookCard title=\"Clean Code\" />`\n- whoever **receives** it uses `{title}` inside\n\n> With props, the same `BookCard` works for any book on the shelf.",
+  "pt": "**Props** são os dados que o componente pai passa para o filho, igual aos parâmetros de uma função.\n\n- quem **passa** escreve `<BookCard title=\"Clean Code\" />`\n- quem **recebe** usa `{title}` lá dentro\n\n> Com props, o mesmo `BookCard` serve para qualquer livro da estante."
+ },
+ "c4038f0b0e1e": {
+  "en": "Nina opened the PR for the favorite button. Which of these is a **good title**?",
+  "pt": "A Nina abriu o PR do botão de favoritar. Qual desses é um **bom título**?"
+ },
+ "c44598488117": {
+  "en": "git commit -m \"resolve title conflict\"",
+  "pt": "git commit -m \"resolve conflito do título\""
+ },
+ "c479e0b7baca": {
+  "en": "Click the small preview box: nothing happens",
+  "pt": "Clique no quadradinho do preview: não acontece nada"
+ },
+ "c4e2a47611b5": {
+  "en": "In our card, is `isFavorite` a prop or state?",
+  "pt": "No nosso card, `isFavorite` é prop ou estado?"
+ },
+ "c564a180dc5c": {
+  "en": "Choose the command",
+  "pt": "Escolha o comando"
+ },
+ "c5a14f683e49": {
+  "en": "Put a typical Claude Code workflow in order",
+  "pt": "Coloque na ordem um fluxo de trabalho típico com o Claude Code"
+ },
+ "c616ede88ee0": {
+  "en": "Let's warm up with some concepts!",
+  "pt": "Bora aquecer com uns conceitos!"
+ },
+ "c62224044d9f": {
+  "en": "Pulse 5 — Example of a unified cooperative dashboard",
+  "pt": "Pulse 5 — Exemplo de dashboard unificado de cooperativa"
+ },
+ "c68b021e7c55": {
+  "en": "The tray",
+  "pt": "A bandeja"
+ },
+ "c76cec833fa8": {
+  "en": "Pulse 3 — Which of these is a good guardrail for an agricultural credit agent?",
+  "pt": "Pulse 3 — Qual destes é um bom guardrail para um agente de crédito agro?"
+ },
+ "c7b33aa182a5": {
+  "en": "The second card shows \"History\"",
+  "pt": "O segundo card mostra \"História\""
+ },
+ "c7b75fc45e91": {
+  "en": "'Approve the customer's credit?' — chooses a path",
+  "pt": "'Aprovar crédito do cliente?' — escolhe um caminho"
+ },
+ "c82ba6f5e6ba": {
+  "en": "The node_modules folder, which is generated on its own and is very large",
+  "pt": "A pasta node_modules, que se gera sozinha e pesa muito"
+ },
+ "c8382f989ad6": {
+  "en": "List of automatable decisions with inputs and rules",
+  "pt": "Lista de decisões automatizáveis com inputs e regras"
+ },
+ "c872d5564551": {
+  "en": "pull",
+  "pt": "pull"
+ },
+ "c8d2dc5858c0": {
+  "en": "upd",
+  "pt": "att"
+ },
+ "c8d62095fe14": {
+  "en": "## Merge: joining the branch back\n\nThe favorite button is ready. Now Nina wants it in the real project — in `main`.\n\nThis is called a **merge** — it means to join together.\n\nThere are two steps, and the order matters.\n\n**1. Go to the branch that will RECEIVE.**\n\n```\ngit checkout main\n```\n\n**2. Tell it to join the other one in.**\n\n```\ngit merge favoritar\n```\n\nRead it like this: \"while on `main`, bring `favoritar` here\".",
+  "pt": "## Merge: juntar a divisória de volta\n\nO botão de favoritar ficou pronto. Agora a Nina quer ele no projeto de verdade — na `main`.\n\nIsso se chama **merge** — fala-se \"mérdge\", quer dizer juntar.\n\nSão dois passos, e a ordem importa.\n\n**1. Vá para a divisória que vai RECEBER.**\n\n```\ngit checkout main\n```\n\n**2. Mande juntar a outra nela.**\n\n```\ngit merge favoritar\n```\n\nLê assim: \"estando na `main`, traga a `favoritar` pra cá\"."
+ },
+ "c9309b4824b5": {
+  "en": "COMMIT — Diagram: how the decision table connects to the agent and the tools.",
+  "pt": "COMMIT — Diagrama: como a tabela de decisão se conecta ao agente e às ferramentas."
+ },
+ "c9cd2b4708fd": {
+  "en": "This is the `BookCard` you just saw: a function, a `return` with JSX, and the `export default` at the bottom.\n\nThere's nothing to get right here — it's just to get the feel of it.\n\n1. Change the paragraph text to whatever you want.\n2. Watch the preview respond instantly.",
+  "pt": "Este é o `BookCard` que você acabou de ver: uma função, um `return` com JSX, e o `export default` lá embaixo.\n\nAqui não tem nada para acertar — é só para pegar o jeito.\n\n1. Mude o texto do parágrafo para o que você quiser.\n2. Olhe o preview responder na hora."
+ },
+ "ca2256b89fa8": {
+  "en": "And useEffect, when do we use it?",
+  "pt": "E o useEffect, quando a gente usa?"
+ },
+ "cb901e4cebd8": {
+  "en": "## What you will build\n\nIn 60 minutes, from zero to a book card in React with TypeScript.\n\n- the **title** and the **author** come from outside, so the same card works for any book;\n- a badge shows whether the book is **Available** or **Out of stock**;\n- a favorite button that **changes text** on each click.\n\nHere is where we are headed:\n\n```tsx\n<BookCard title=\"Clean Code\" author=\"Robert C. Martin\" inStock={true} />\n```\n\n> You don't need to understand this line yet. We will build it piece by piece.",
+  "pt": "## O que você vai construir\n\nEm 60 minutos, do zero até um card de livro em React com TypeScript.\n\n- o **título** e o **autor** vêm de fora, então o mesmo card serve qualquer livro;\n- um selo diz se o livro está **Disponível** ou **Esgotado**;\n- um botão de favorito que **muda de texto** a cada clique.\n\nO ponto de chegada é este:\n\n```tsx\n<BookCard title=\"Clean Code\" author=\"Robert C. Martin\" inStock={true} />\n```\n\n> Não precisa entender essa linha ainda. A gente monta ela pedaço por pedaço."
+ },
+ "cb9f94bcb179": {
+  "en": "Pulse 2 — Which credit decision would you automate?",
+  "pt": "Pulse 2 — Que decisão de crédito você automatizaria?"
+ },
+ "cba780fab042": {
+  "en": "Think of .map() as a machine: an array goes in, and for EACH item it returns something new. Example: ['Ana','Bia'] goes in and <li>Ana</li>, <li>Bia</li> comes out. It goes item by item, automatically. You only say what to do with ONE item, and it repeats for all of them.",
+  "pt": "Pensa no .map() como uma máquina: entra um array, e pra CADA item ele devolve algo novo. Ex.: entra ['Ana','Bia'] e sai <li>Ana</li>, <li>Bia</li>. Ele passa item por item, automático. Você só diz o que fazer com UM item, e ele repete pra todos."
+ },
+ "cce5620f32e4": {
+  "en": "'Above $50k, always request human approval before executing'",
+  "pt": "'Acima de R$50k, sempre pedir aprovação humana antes de executar'"
+ },
+ "cd1fbd8b01d6": {
+  "en": "Route AI learns from history: how long each segment REALLY takes. Without well-modeled trips, 'optimization' is guesswork. Data first, AI after.",
+  "pt": "IA de rota aprende com o histórico: quanto tempo cada trecho REALMENTE leva. Sem viagens bem modeladas, a 'otimização' é chute. Dado primeiro, IA depois."
+ },
+ "ce0c310af6f7": {
+  "en": "Use {materias.map((m) => (<Card ... />))} instead of the hand-written card.",
+  "pt": "Use {materias.map((m) => (<Card ... />))} no lugar do card escrito à mão."
+ },
+ "ce3fee20b777": {
+  "en": "Pulse 3 — Which of these is a good safety limit (guardrail) for a…",
+  "pt": "Pulse 3 — Qual destes é um bom limite de segurança (guardrail) para um…"
+ },
+ "ce47d469b109": {
+  "en": "The <span> needs to get the line-through class when the item is checked.",
+  "pt": "O <span> precisa receber a classe line-through quando o item estiver marcado."
+ },
+ "cee4639f9612": {
+  "en": "Which things are part of building a website? (you can select more than one)",
+  "pt": "Quais coisas fazem parte de criar um site? (pode marcar mais de uma)"
+ },
+ "cfcdf5e5f609": {
+  "en": "Sit down and run git pull",
+  "pt": "Sentar e dar git pull"
+ },
+ "cfcf174d4969": {
+  "en": "Publish your changes for everyone",
+  "pt": "Publicar suas mudanças pra todo mundo"
+ },
+ "d065adf88513": {
+  "en": "git pull",
+  "pt": "git pull"
+ },
+ "d0966abe607f": {
+  "en": "When is it worth opening a branch instead of working directly on `main`? Select **all** that apply.",
+  "pt": "Quando vale a pena abrir uma divisória em vez de mexer direto na `main`? Marque **todas** que valem."
+ },
+ "d14a2e1cdfb1": {
+  "en": "A list with multiple items",
+  "pt": "Uma lista com vários itens"
+ },
+ "d17b9e5ee18f": {
+  "en": "Pulse 1 — An 'agent' (vs. a chatbot) is defined by",
+  "pt": "Pulse 1 — Um 'agente' (vs. um chatbot) é definido por"
+ },
+ "d1b6eea97f65": {
+  "en": "Truck color",
+  "pt": "Cor do caminhão"
+ },
+ "d28288a3f539": {
+  "en": "Show only the first one and hide the rest",
+  "pt": "Mostrar só o primeiro e esconder o resto"
+ },
+ "d28612eb35c9": {
+  "en": "When there's a conflict, Git picks the most recent version on its own and moves on.",
+  "pt": "Quando dá conflito, o Git escolhe sozinho a versão mais recente e segue em frente."
+ },
+ "d30750ae3e63": {
+  "en": "A weekly meeting",
+  "pt": "Uma reunião semanal"
+ },
+ "d311d5a04fc1": {
+  "en": "## BADGE 7 · BULLETIN BOARD\n\nNina's branch is ready. The favorite button works.\n\nNow comes the part almost nobody tells you: it does **not** push itself straight to the Official Book.\n\nShe pins a note on the kitchen bulletin board:\n\n> \"Look what I changed. Can this go into the official menu?\"\n\nThat note has a name: **Pull Request**.\n\nOr just **PR**, which is what everyone calls it.",
+  "pt": "## SELO 7 · MURAL\n\nA divisória da Nina ficou pronta. O botão de favoritar funciona.\n\nAgora vem a parte que quase ninguém te conta: ela **não** empurra sozinha pro Livro Oficial.\n\nEla pendura um bilhete no mural da cozinha:\n\n> \"Olha o que eu mudei. Pode entrar no cardápio oficial?\"\n\nEsse bilhete tem nome: **Pull Request**.\n\nOu só **PR**, que é como todo mundo fala."
+ },
+ "d386a42500a7": {
+  "en": "Both fields still don't store what you type, and the button doesn't do anything. Use useState to store the name and the subject, and make the button show on screen the sentence: <name> will study <subject>.",
+  "pt": "Os dois campos ainda não guardam o que você digita, e o botão não faz nada. Use useState para guardar o nome e a matéria, e faça o botão mostrar na tela a frase: <nome> vai estudar <matéria>."
+ },
+ "d3f22143c952": {
+  "en": "You ran a command and the terminal didn't respond at all. Did it go wrong?",
+  "pt": "Você rodou um comando e o terminal não respondeu nada. Deu errado?"
+ },
+ "d4a7325c3293": {
+  "en": "Fake Terminal #2 · when the push is rejected",
+  "pt": "Terminal de Mentira #2 · quando o push é recusado"
+ },
+ "d4c8427cb4db": {
+  "en": "Already a ready-made optimization",
+  "pt": "Já uma otimização pronta"
+ },
+ "d4f93d2a0414": {
+  "en": "Pulse 2 — In your process, what is a DECISION (vs. a TASK)?",
+  "pt": "Pulse 2 — No seu processo, o que é uma DECISÃO (vs. uma TAREFA)?"
+ },
+ "d50b2604fb52": {
+  "en": "Pulse 1 — With unified receivable data, AI can estimate:",
+  "pt": "Pulse 1 — Com dados de recebível unificados, a IA pode estimar:"
+ },
+ "d5279077dd47": {
+  "en": "In a Pull Request diff, the red line with `−` is a line that has an error.",
+  "pt": "No diff de um Pull Request, a linha vermelha com `−` é uma linha que deu erro."
+ },
+ "d5491e7e7124": {
+  "en": "checkout",
+  "pt": "checkout"
+ },
+ "d5a111eb0c22": {
+  "en": "Select **all** the sentences that match Gito's 3 Rules.",
+  "pt": "Marque **todas** as frases que combinam com as 3 Regras do Gito."
+ },
+ "d5c0fc4b8bf9": {
+  "en": "Gito: **silence. And silence here is success.** The `git add` worked and there was nothing to comment on. If you want to check, run `git status` again — the message will have changed.",
+  "pt": "Gito: **silêncio. E silêncio aqui é sucesso.** O `git add` deu certo e não tinha nada a comentar. Se quiser conferir, roda `git status` de novo — a mensagem vai ter mudado."
+ },
+ "d60e256d8187": {
+  "en": "If all this became a single page, what would be written on it?",
+  "pt": "Se tudo isso virasse uma página só, o que estaria escrito nela?"
+ },
+ "d6730ced0c75": {
+  "en": "COMMIT — Agricultural receivable/credit agent brief",
+  "pt": "COMMIT — Brief do agente de recebível/crédito agro"
+ },
+ "d687ca313667": {
+  "en": "Nothing. It's Git showing you the snapshot of that branch. Switch back to the other one and everything reappears.",
+  "pt": "Nada. É o Git mostrando a foto daquela divisória. Volta pra outra e tudo reaparece."
+ },
+ "d688cda8adda": {
+  "en": "An end-of-month report",
+  "pt": "Um relatório de fim de mês"
+ },
+ "d738da1cc8a5": {
+  "en": "The note Nina pinned on the bulletin board (the Pull Request) answers three questions. Select which:",
+  "pt": "O bilhete que a Nina pendurou no mural (o Pull Request) responde três perguntas. Marque quais:"
+ },
+ "d73f2d41e4b8": {
+  "en": "## List: one card per book\n\nWriting `<BookCard />` by hand works with two books. With thirty, it does not.\n\nIn JSX you turn each item of an array into a React element with `.map()` — the same `.map()` from JavaScript:\n\n```tsx\n{books.map((book) => (\n  <BookCard key={book.id} book={book} />\n))}\n```\n\nThe braces `{ }` are there because JSX only accepts **expressions** — and `.map()` is an expression that returns an array of elements.\n\nWhen the array changes (a filter, a search), React re-renders the list on its own. You do not add or remove anything by hand: you declare the result you want.\n\n## `key`: the identity of each item\n\nEach item needs the `key` prop — a **stable** identifier that React uses to decide which item changed, was added, or was removed.\n\n- `book.id` — the ideal, when the data comes from a database or API\n- a text value that is unique in the set — fine, if it is guaranteed unique\n- the array index — only in a static list that never reorders or filters\n\n> Why the index is dangerous: if you filter or reorder, index 0 becomes a different book. React reuses the wrong element, and the state that lived there (a typed input, an animation) sticks to the wrong item.\n\n`key` does not appear in the HTML — it is metadata for React only. Do not confuse it with the HTML `id`.",
+  "pt": "## Lista: um card por livro\n\nEscrever `<BookCard />` na mão funciona com dois livros. Com trinta, não.\n\nNo JSX você transforma cada item do array em um elemento React com `.map()` — o mesmo `.map()` de JavaScript:\n\n```tsx\n{books.map((book) => (\n  <BookCard key={book.id} book={book} />\n))}\n```\n\nAs chaves `{ }` estão ali porque JSX só aceita **expressões** — e `.map()` é uma expressão que devolve um array de elementos.\n\nQuando o array muda (um filtro, uma busca), o React re-renderiza a lista sozinho. Você não adiciona nem remove nada na mão: declara o resultado que quer.\n\n## `key`: a identidade de cada item\n\nCada item precisa da prop `key` — um identificador **estável**, que o React usa para decidir qual item mudou, entrou ou saiu.\n\n- `book.id` — o ideal, quando o dado vem de banco ou API\n- um texto único no conjunto — serve, se for garantidamente único\n- o índice do array — só em lista estática, que nunca reordena nem filtra\n\n> Por que o índice é perigoso: se você filtra ou reordena, o índice 0 passa a ser outro livro. O React reutiliza o elemento errado, e o estado que morava ali (um input digitado, uma animação) gruda no item errado.\n\n`key` não aparece no HTML — é metadado só para o React. Não confunda com o `id` do HTML."
+ },
+ "d7d4ca2d0f8e": {
+  "en": "Because the cost of a mistake that already made it into the project is much higher than the cost of a five-minute read.",
+  "pt": "Porque o custo de um erro que já entrou no projeto é muito maior que o de uma leitura de cinco minutos."
+ },
+ "d86bde7071cd": {
+  "en": "Add favorite-recipe button",
+  "pt": "Adiciona botão de favoritar receita"
+ },
+ "d8e3f87282e2": {
+  "en": "The project folder on your computer, where you edit",
+  "pt": "A pasta do projeto no seu computador, onde você edita"
+ },
+ "d965c9a55880": {
+  "en": "Is it worth writing that extra `type`?",
+  "pt": "Vale a pena escrever esse `type` a mais?"
+ },
+ "daa577a7c0cd": {
+  "en": "Once a page is pasted into the notebook, Gito doesn't tear it out",
+  "pt": "Depois que uma página é colada no caderno, o Gito não arranca ela"
+ },
+ "dc3c44aaac83": {
+  "en": "A commit — the change already recorded in the history",
+  "pt": "Um commit — a mudança já registrada no histórico"
+ },
+ "dc3ce2cc21a8": {
+  "en": "Three very practical reasons:\n\n1. **Someone reviews it first.** Two heads catch the mistake that one alone misses.\n2. **The why gets recorded.** Three months from now someone asks \"why does this button exist?\" — the answer is in the PR.\n3. **This is how software companies work.** Seriously. From intern to senior, everyone opens PRs.\n\nGito has no opinion on this. The pair decides.",
+  "pt": "Três motivos bem práticos:\n\n1. **Alguém lê antes.** Duas cabeças acham o erro que uma sozinha não acha.\n2. **Fica registrado o porquê.** Daqui a três meses alguém pergunta \"por que esse botão existe?\" — a resposta tá no PR.\n3. **É assim que empresa de software funciona.** Sério. Do estágio ao sênior, todo mundo abre PR.\n\nO Gito não tem opinião sobre isso. Quem decide é a dupla."
+ },
+ "dc5d2a234b3d": {
+  "en": "git checkout -b favoritar",
+  "pt": "git checkout -b favoritar"
+ },
+ "dc867c03d6f1": {
+  "en": "push",
+  "pt": "push"
+ },
+ "dce1aed6f692": {
+  "en": "A space in memory that stores a value and can change",
+  "pt": "Um espaço na memória que guarda um valor e pode mudar"
+ },
+ "dd97dc79d64a": {
+  "en": "Did something break?",
+  "pt": "Quebrou alguma coisa?"
+ },
+ "ddcc1112ce6f": {
+  "en": "Stores a value that does NOT change",
+  "pt": "Guarda um valor que NÃO muda"
+ },
+ "ddd0e224a640": {
+  "en": "Pulse 5 — See the architecture of an agentic system: the decision model feeds the agent.",
+  "pt": "Pulse 5 — Veja a arquitetura de um sistema agêntico: o modelo de decisão alimenta o agente."
+ },
+ "de0702069915": {
+  "en": "What is HTML for?",
+  "pt": "Pra que serve o HTML?"
+ },
+ "de19638342c8": {
+  "en": "Decision table (DMN-style) that an agent can operate",
+  "pt": "Tabela de decisão (DMN-style) operável por um agente"
+ },
+ "de23e03cb8fe": {
+  "en": "git merge favoritar",
+  "pt": "git merge favoritar"
+ },
+ "de73c3c8f5cb": {
+  "en": "Which values are GOOD to use as key?",
+  "pt": "Quais valores são BONS pra usar como key?"
+ },
+ "df269a09ca47": {
+  "en": "A new random number on every render 🎲",
+  "pt": "Um número aleatório novo a cada render 🎲"
+ },
+ "df62e532e043": {
+  "en": "Put a typical workflow with Claude Code in order.",
+  "pt": "Coloque na ordem um fluxo de trabalho típico com o Claude Code."
+ },
+ "df7de14760c0": {
+  "en": "Open the Pull Request explaining what changed",
+  "pt": "Abrir o Pull Request explicando o que mudou"
+ },
+ "dfe66ac0a3a6": {
+  "en": "Closing the tally:\n\n- `title` and `author` → **prop** (the shelf decides)\n- `inStock` → **prop** (the shelf decides)\n- `isFavorite` → **state** (the click decides)\n\n> Practical rule: did it change because of a click **in here**? Then it's state.",
+  "pt": "Fechando a conta:\n\n- `title` e `author` → **prop** (quem decide é a estante)\n- `inStock` → **prop** (quem decide é a estante)\n- `isFavorite` → **estado** (quem decide é o clique)\n\n> Regra prática: mudou por causa de um clique **aqui dentro**? Então é estado."
+ },
+ "e17312f05f5a": {
+  "en": "stores the password — never goes into the notebook",
+  "pt": "guarda a senha — nunca vai pro caderno"
+ },
+ "e18c4d3200f9": {
+  "en": "Mark **all** the good notes — the ones that say WHAT changed.",
+  "pt": "Marque **todos** os bilhetes bons — os que dizem o QUE mudou."
+ },
+ "e1e9d4effb95": {
+  "en": "git push — send the updated main to the shelf",
+  "pt": "git push — levar a main atualizada pra estante"
+ },
+ "e23ce86ee135": {
+  "en": "Claude proposes and edits the code",
+  "pt": "O Claude propõe e edita o código"
+ },
+ "e2400e333df8": {
+  "en": "Correct normalization",
+  "pt": "Normalização correta"
+ },
+ "e286a8f0f356": {
+  "en": "Wrap the <span> with {nota >= 7 && (...)}. When the condition is false, React renders nothing.",
+  "pt": "Envolva o <span> com {nota >= 7 && (...)}. Quando a condição é falsa, o React não desenha nada."
+ },
+ "e33cbd5b10f1": {
+  "en": "## `git log`: opening the notebook\n\nYou already know how to paste pages. Now learn to **read** the notebook:\n\n```\ngit log\n```\n\nIt shows the pages **from newest to oldest**:\n\n```\na5f28d0  (you are here)  Nina Alves  30 Jul, 14:02\n    added the title \"Menu\" to the home screen\n\n3b7e5a2                    Téo Ramos   30 Jul, 11:47\n    created the PratoDoDia component\n```\n\nEach page gives you **who** did it, **when**, **what** (the note) and the **short code** — its address.\n\nAnd `(you are here)` is the page you are currently on.\n\nSometimes the screen freezes with a `:` at the end and the keyboard seems to not type anything.",
+  "pt": "## `git log`: abrindo o caderno\n\nVocê já sabe colar páginas. Agora aprende a **ler** o caderno:\n\n```\ngit log\n```\n\nEle mostra as páginas **da mais nova pra mais velha**:\n\n```\na5f28d0  (você está aqui)  Nina Alves  30 jul, 14:02\n    coloquei o título \"Cardápio\" na tela inicial\n\n3b7e5a2                    Téo Ramos   30 jul, 11:47\n    criei o componente PratoDoDia\n```\n\nCada página te dá **quem** fez, **quando**, **o quê** (o bilhete) e o **código curto** — o endereço dela.\n\nE `(você está aqui)` é a página onde você tá encostado agora.\n\nÀs vezes a tela trava com um `:` no fim e o teclado parece não escrever nada."
+ },
+ "e410e3ba8866": {
+  "en": "Because the browser automatically reloaded the page.",
+  "pt": "Porque o navegador recarregou a página automaticamente."
+ },
+ "e435575a8726": {
+  "en": "Because React isn't watching the variable. Only the `set` function tells it it's time to redraw.",
+  "pt": "Porque o React não fica olhando a variável. Só a função `set` avisa ele que é hora de redesenhar."
+ },
+ "e569fe89f61c": {
+  "en": "Lists ≥3 concrete corrections to the AI's model",
+  "pt": "Lista ≥3 correções concretas ao modelo da IA"
+ },
+ "e63e9598ff20": {
+  "en": "This appears on the screen:\n\n```\nCONFLICT (content): Merge conflict in src/Cardapio.jsx\nAutomatic merge failed; fix conflicts and then commit the result.\n```\n\n`fix conflicts and then commit` = **resolve it and then commit**.\n\nThree things that **did not** happen:\n\n- you didn't break the project;\n- nothing was deleted;\n- you didn't do anything wrong.",
+  "pt": "Na tela aparece isso:\n\n```\nCONFLICT (content): Merge conflict in src/Cardapio.jsx\nAutomatic merge failed; fix conflicts and then commit the result.\n```\n\n`fix conflicts and then commit` = **resolve e depois commita**.\n\nTrês coisas que **não** aconteceram:\n\n- você não quebrou o projeto;\n- nada foi apagado;\n- você não fez nada de errado."
+ },
+ "e71488d0f4c2": {
+  "en": "## What's inside a notebook page\n\nEach page of the notebook is called a **commit**. It's the most important piece of Git.\n\nEvery commit has five things.\n\n**1. The project's snapshot.** Not just what changed: how **all** the files looked at that instant. That's why you can go back.\n**2. The note.** A sentence you write explaining the page. Example: *\"fixed the cake price\"*.\n**3. Date and time.** Stamped automatically.\n**4. The author.** Who pasted it in. Also automatic.\n**5. The short code (the *hash*).** Something like `9c1d044`: the page's identity, which never repeats. You copy and paste it, you don't memorize it.",
+  "pt": "## O que tem dentro de uma página do caderno\n\nCada página do caderno se chama **commit**. É a peça mais importante do Git.\n\nTodo commit tem cinco coisas.\n\n**1. A foto do projeto.** Não só o que mudou: como **todos** os arquivos estavam naquele instante. Por isso dá pra voltar.\n**2. O bilhete.** Uma frase sua explicando a página. Ex.: *\"arrumei o preço do bolo\"*.\n**3. Data e hora.** Carimbo sozinho.\n**4. O autor.** Quem colou. Também automático.\n**5. O código curto (o *hash*).** Tipo `9c1d044`: a identidade da página, que nunca se repete. Você copia e cola, não decora."
+ },
+ "e729170fa43f": {
+  "en": "Pulse 4 — 'Route optimization' depends on which data quality?",
+  "pt": "Pulse 4 — 'Otimização de rota' depende de qual qualidade de dado?"
+ },
+ "e7f01550d837": {
+  "en": "Last step — and there's no right answer here.\n\nWrite your **pair agreement**: the rules you two will follow from now on. Answer these four, short:\n\n• When will each of you run `git pull`?\n• How will you write your commit messages?\n• Who approves whose Pull Request?\n• What can **never** go into the project?\n\nWrite it your own way. This is for the two of you to read later, not for me.",
+  "pt": "Último passo — e aqui não tem resposta certa.\n\nEscreva o **combinado da sua dupla**: as regras que vocês dois vão seguir daqui pra frente. Responde essas quatro, curtinho:\n\n• Quando cada um vai dar `git pull`?\n• Como vocês vão escrever os bilhetes de commit?\n• Quem dá o ok no Pull Request de quem?\n• O que **nunca** pode entrar no projeto?\n\nEscreve do seu jeito. Isso aqui é pra vocês dois lerem depois, não pra mim."
+ },
+ "e8d099e5bb55": {
+  "en": "git add . and git commit — leave everything saved in the branch",
+  "pt": "git add . e git commit — deixar tudo salvo na divisória"
+ },
+ "e942ddb18adf": {
+  "en": "If the user chooses where and what the situation is, answer using that context. If not, answer generically.",
+  "pt": "Se o usuário escolher onde e qual é a situação, responda usando esse contexto. Se não, responda genérico."
+ },
+ "e9a430a24487": {
+  "en": "## The notebook's branch\n\nNina wants to try out a **favorite button**. It might go wrong and will take three days.\n\nBut Téo needs the app to **keep working** to present on Thursday.",
+  "pt": "## A divisória do caderno\n\nA Nina quer testar um **botão de favoritar**. Pode dar errado e vai levar três dias.\n\nSó que o Téo precisa que o app **continue funcionando** pra apresentar na quinta."
+ },
+ "ea24cab402e4": {
+  "en": "No. It only **sets things aside** in the tray. It's `git commit` that pastes the page.",
+  "pt": "Não. Ele só **separa** na bandeja. Quem cola a página é o `git commit`."
+ },
+ "ea7d4203e5c4": {
+  "en": "Fetch the most recent version of the folder before you start working",
+  "pt": "Buscar a versão mais recente da pasta antes de você trabalhar"
+ },
+ "ea9616dc038f": {
+  "en": "Shows trigger → agent → decision table lookup → tool/action",
+  "pt": "Mostra gatilho → agente → consulta à tabela de decisão → ferramenta/ação"
+ },
+ "eb2097b21d3a": {
+  "en": "Tomorrow's weather forecast",
+  "pt": "A previsão do tempo de amanhã"
+ },
+ "eb69826b1d6f": {
+  "en": "COMMIT — Critique the model AI proposed (data-spec.md)",
+  "pt": "COMMIT — Critique o modelo que a IA propôs (data-spec.md)"
+ },
+ "eb6a75ccb216": {
+  "en": "## JSX: the HTML that lives inside the code\n\nInside `return` you write markup similar to HTML:\n\n```tsx\nreturn (\n  <article>\n    <h2>Clean Code</h2>\n    <p>Robert C. Martin</p>\n  </article>\n);\n```\n\n- `<h2>` is a heading and `<p>` is a paragraph — the same names as regular HTML;\n- everything needs to fit inside **a single outer tag** (here, the `<article>`);\n- a tag with no content closes itself: `<BookCard />`.\n\n> Now it's your turn: you're going to fill in this card.",
+  "pt": "## JSX: o HTML que mora dentro do código\n\nDentro do `return` você escreve marcação parecida com HTML:\n\n```tsx\nreturn (\n  <article>\n    <h2>Clean Code</h2>\n    <p>Robert C. Martin</p>\n  </article>\n);\n```\n\n- `<h2>` é título e `<p>` é parágrafo — mesmos nomes do HTML de sempre;\n- tudo precisa caber dentro de **uma única tag de fora** (aqui, o `<article>`);\n- tag sem conteúdo se fecha sozinha: `<BookCard />`.\n\n> Agora é a sua vez: você vai preencher esse card."
+ },
+ "ebd9b6fb0938": {
+  "en": "The title shows Clean Code",
+  "pt": "O título mostra Clean Code"
+ },
+ "ec20edbffd64": {
+  "en": "Pulse 3 — Keys: how a row knows who it is",
+  "pt": "Pulse 3 — Chaves: como uma linha sabe quem é"
+ },
+ "ed28bba1ac98": {
+  "en": "You already know how to store several things in a list (array), like a list of names. Today we learn to SHOW that whole list on screen without writing each item by hand. The magic command is called .map(). Breathe and come with me! 💪",
+  "pt": "Você já sabe guardar várias coisas numa lista (array), tipo uma lista de nomes. Hoje a gente aprende a MOSTRAR essa lista inteira na tela sem escrever cada item na mão. O comando mágico chama .map(). Respira e vem comigo! 💪"
+ },
+ "ee9da6349508": {
+  "en": "Branch name: lowercase, no spaces or accents — `arruma-preco-bolo`.",
+  "pt": "Nome de divisória: minúsculo, sem espaço nem acento — `arruma-preco-bolo`."
+ },
+ "ef7022cf5958": {
+  "en": "> **Committed early and often = you're safe.**",
+  "pt": "> **Commitou cedo e várias vezes = você tá seguro.**"
+ },
+ "f00097d27cdb": {
+  "en": "COMMIT — Fleet agent brief (final artifact)",
+  "pt": "COMMIT — Brief do agente de frota (artefato final)"
+ },
+ "f03a120a94dd": {
+  "en": "A decision (the path splits)",
+  "pt": "Uma decisão (caminho se divide)"
+ },
+ "f09a9e9a33d0": {
+  "en": "Relationships with cardinality (Vehicle 1→N Trip)",
+  "pt": "Relacionamentos com cardinalidade (Veículo 1→N Viagem)"
+ },
+ "f0bed5887765": {
+  "en": "The App.jsx file, the code you all wrote",
+  "pt": "O arquivo App.jsx, o código que vocês escreveram"
+ },
+ "f0d4f7769e0f": {
+  "en": "Props change when the **parent** sends different data. State changes when the **component itself** decides to change.",
+  "pt": "Props mudam quando o **pai** envia outros dados. Estado muda quando o **próprio componente** decide mudar."
+ },
+ "f1001084185c": {
+  "en": "Policy = credit decision table",
+  "pt": "Política = tabela de decisão de crédito"
+ },
+ "f10feecfc837": {
+  "en": "Gito: `both modified` = **you both changed this file**. `use \"git add\" to mark resolution` = once you've fixed it, `git add` is how you tell me \"resolved\".",
+  "pt": "Gito: `both modified` = **os dois mexeram nesse arquivo**. `use \"git add\" to mark resolution` = quando você tiver arrumado, o `git add` é o jeito de me dizer \"resolvido\"."
+ },
+ "f125dfdfb4d5": {
+  "en": "## TypeScript wants to know the shape\n\nWe describe the props in a `type`:\n\n```tsx\ntype BookCardProps = {\n  title: string;\n  author: string;\n  inStock: boolean;\n};\n```\n\nThree details worth the whole lesson:\n\n1. `string` is text and `boolean` is true or false;\n2. the component receives the props already destructured: `function BookCard({ title, author }: BookCardProps)`;\n3. forgot a prop or passed the wrong type? The error shows up **while you're writing**, not in front of the user.",
+  "pt": "## O TypeScript quer saber o formato\n\nA gente descreve as props num `type`:\n\n```tsx\ntype BookCardProps = {\n  title: string;\n  author: string;\n  inStock: boolean;\n};\n```\n\nTrês detalhes que valem a aula inteira:\n\n1. `string` é texto e `boolean` é verdadeiro ou falso;\n2. o componente recebe as props já abertas: `function BookCard({ title, author }: BookCardProps)`;\n3. esqueceu uma prop ou passou o tipo errado? O erro aparece **na hora de escrever**, não na frente do usuário."
+ },
+ "f16be0433684": {
+  "en": "An 800 MB video of the class presentation",
+  "pt": "Um vídeo de 800 MB da apresentação da turma"
+ },
+ "f1b534f5da68": {
+  "en": "Anatomy of a Pull Request: title, description, diff, and merge button",
+  "pt": "Anatomia de um Pull Request: título, descrição, diff e botão de merge"
+ },
+ "f202a94df249": {
+  "en": "Gito: **it went up.** `3b7e5a2..a5f28d0` = the shelf reached your page. Now the Official Book has both of your work.\n\nLesson: **push rejected = you need to pull first.** It's almost always that, and the fix is written right there in the message.",
+  "pt": "Gito: **subiu.** `3b7e5a2..a5f28d0` = a estante foi até a sua página. Agora o Livro Oficial tem o trabalho dos dois.\n\nLição: **push recusado = falta dar pull primeiro.** É quase sempre isso, e a solução vem escrita na própria mensagem."
+ },
+ "f247f2edde88": {
+  "en": "You reviewed frontend, backend, variables, CRUD, and the React commands. That's the foundation of everything. Every lesson we move forward a little. We're proud of you! 💚",
+  "pt": "Você relembrou frontend, backend, variável, CRUD e os comandos do React. Isso é a base de tudo. Cada aula a gente avança um pouquinho. Orgulho de vocês! 💚"
+ },
+ "f2a29f2b358f": {
+  "en": "git status",
+  "pt": "git status"
+ },
+ "f2af69434bdb": {
+  "en": "The `BookCard` already exists, but it's empty inside. Fill it in 3 steps:\n\n1. Inside the `<article>`, add an `<h2>` that says **Clean Code**.\n2. Right below the `<h2>`, add a `<p>` that says **Robert C. Martin**.\n3. In `App`, replace the comment with `<BookCard />`.",
+  "pt": "O `BookCard` já existe, mas está vazio por dentro. Preencha em 3 passos:\n\n1. Dentro do `<article>`, adicione um `<h2>` escrito **Clean Code**.\n2. Logo abaixo do `<h2>`, adicione um `<p>` escrito **Robert C. Martin**.\n3. No `App`, troque o comentário por `<BookCard />`."
+ },
+ "f30f14d67137": {
+  "en": "The pair's agreement is: each person approves their own Pull Request and pushes to main alone, without showing anyone.",
+  "pt": "O combinado da dupla é: cada um dá o ok no próprio Pull Request e manda pra main sozinho, sem mostrar pra ninguém."
+ },
+ "f33a851c48f0": {
+  "en": "You've moved from 'analyst who describes processes' to 'architect who designs agents'. In 3 sentences: which process in your business would you automate first, and why that one?",
+  "pt": "Você saiu de 'analista que descreve processos' para 'arquiteto que projeta agentes'. Em 3 frases: qual processo do seu negócio você automatizaria primeiro, e por quê esse?"
+ },
+ "f362c12b1bf1": {
+  "en": "Your branch is ready and tested. Why go through someone else first?",
+  "pt": "Sua divisória está pronta e testada. Por que passar por alguém antes?"
+ },
+ "f39d34a25146": {
+  "en": "Because setIsFavorite updated the state and React rendered the component again.",
+  "pt": "Porque o setIsFavorite atualizou o estado e o React renderizou o componente de novo."
+ },
+ "f424700c7020": {
+  "en": "False, because of **Gito's Rule 2**: what has already been written on a page in the notebook doesn't get erased.\n\nNina deleted the file **from the workbench** (the project folder). But the page she pasted in yesterday is still in the notebook, with a full snapshot of the file — and one command brings the file back.\n\n`git status` even warns you: `deleted: src/Cardapio.jsx`.\n\nThe only work that's lost is work that never became a page.",
+  "pt": "Falso, por causa da **Regra 2 do Gito**: o que já foi anotado no caderno não se apaga.\n\nA Nina apagou o arquivo **da bancada** (a pasta do projeto). Mas a página que ela colou ontem continua no caderno, com a foto completa do arquivo — e um comando traz o arquivo de volta.\n\nO `git status` até avisa: `deleted: src/Cardapio.jsx`.\n\nO único trabalho que se perde é o que nunca virou página."
+ },
+ "f46b6d4ebbfe": {
+  "en": "'Total revenue for the month' (this is a calculation, not something you list)",
+  "pt": "'Receita total do mês' (isso é um cálculo, não uma coisa que você lista)"
+ },
+ "f4b30eeff353": {
+  "en": "The `favoritar` branch is ready. Put the merge steps in the correct order:",
+  "pt": "A divisória `favoritar` ficou pronta. Coloque os passos do merge na ordem certa:"
+ },
+ "f4d2a59d975c": {
+  "en": "Clear goal linked to receivables/credit",
+  "pt": "Objetivo claro ligado a recebível/crédito"
+ },
+ "f5174b754b62": {
+  "en": "Gito: translating — `Changes not staged for commit` = **things you've changed that are NOT in the tray**. `modified: src/Cardapio.jsx` = you changed that file. `no changes added to commit` = **the tray is empty**.",
+  "pt": "Gito: traduzindo — `Changes not staged for commit` = **coisas mexidas que NÃO estão na bandeja**. `modified: src/Cardapio.jsx` = você mexeu nesse arquivo. `no changes added to commit` = **a bandeja está vazia**."
+ },
+ "f51ec95b79ca": {
+  "en": "Gito: **`Switched to a new branch 'favoritar'`** = I created the branch and already put you inside it.\n\nFrom here on, everything you commit stays only here. `main` doesn't change one bit.",
+  "pt": "Gito: **`Switched to a new branch 'favoritar'`** = criei a divisória e já te coloquei dentro dela.\n\nDaqui pra frente, tudo o que você commitar fica só aqui. A `main` não muda nem um fio de cabelo."
+ },
+ "f555d0296966": {
+  "en": "Pulse 5 — The fleet agent loop: observe telemetry → decide →…",
+  "pt": "Pulse 5 — O loop do agente de frota: observar telemetria → decidir →…"
+ },
+ "f58d4d0c15c4": {
+  "en": "Replace TypeScript",
+  "pt": "Substituir o TypeScript"
+ },
+ "f58ffa455d0a": {
+  "en": "Pulse 1 — Predictive maintenance, in one sentence, is:",
+  "pt": "Pulse 1 — Manutenção preditiva, em uma frase, é:"
+ },
+ "f5f265f38ff7": {
+  "en": "## The tray: you choose what goes up\n\nBetween the workbench and the notebook there's a **tray**.\n\nAlmost nobody understands what it's for — and it's the key to everything.\n\nIn one afternoon you touch **a bunch** of things. You fixed the cake price, but you also left a `teste-doido.jsx` half done and a `rascunho.txt` of loose ideas.",
+  "pt": "## A bandeja: você escolhe o que sobe\n\nEntre a bancada e o caderno existe uma **bandeja**.\n\nQuase ninguém entende pra que ela serve — e ela é a chave de tudo.\n\nNuma tarde você mexe em **um monte** de coisa. Arrumou o preço do bolo, mas também deixou um `teste-doido.jsx` pela metade e um `rascunho.txt` de ideias soltas."
+ },
+ "f721dba2a156": {
+  "en": "Match the tool with what it's for",
+  "pt": "Ligue a ferramenta com pra que ela serve"
+ },
+ "f7eb57728326": {
+  "en": "The third item is \"Read a chapter\"",
+  "pt": "O terceiro item é \"Ler um capítulo\""
+ },
+ "f807e2307cb3": {
+  "en": "If she works directly on the main project, what does Téo see on Thursday?",
+  "pt": "Se ela mexer direto no projeto principal, o que o Téo vê na quinta?"
+ },
+ "f85885f09048": {
+  "en": "To create a variable that stores the state",
+  "pt": "Pra criar uma variável que guarda o estado"
+ },
+ "f93507e42f11": {
+  "en": "Pulse 4 — Notation",
+  "pt": "Pulse 4 — Notação"
+ },
+ "f9ad0113d787": {
+  "en": "Read the CONFLICT message and see which file has the conflict",
+  "pt": "Ler a mensagem CONFLICT e ver qual arquivo deu conflito"
+ },
+ "f9b876154485": {
+  "en": "git add src/Cardapio.jsx",
+  "pt": "git add src/Cardapio.jsx"
+ },
+ "f9e1f7858f85": {
+  "en": "Fake Terminal #1 · the mistake everyone makes",
+  "pt": "Terminal de Mentira #1 · o erro que todo mundo comete"
+ },
+ "fa3b1e91edb5": {
+  "en": "So you can't lose anything?",
+  "pt": "Então não dá pra perder nada?"
+ },
+ "fa6b396cecd1": {
+  "en": "A Customer places MANY Orders, but each Order belongs to ONE Customer — one-to-many. Ask 'for one X, how many Y?' in both directions.",
+  "pt": "Um Cliente faz MUITOS Pedidos, mas cada Pedido pertence a UM Cliente — um-para-muitos. Pergunte 'para um X, quantos Y?' nas duas direções."
+ },
+ "fa931472e4b2": {
+  "en": "How many lines of code you wrote",
+  "pt": "Quantas linhas de código você escreveu"
+ },
+ "fb6bd9626555": {
+  "en": "## `git status` and `git add`: the daily routine\n\n### `git status` — \"Gito, how are things?\"\n\nIt changes **nothing**. It just tells you which files you have touched and which ones are already in the tray.\n\n> **Golden rule: if you are lost, run `git status`.** There is no way to get it wrong.\n\n### `git add` — \"this one goes up to the tray\"\n\n```\ngit add src/Cardapio.jsx\n```\n\nGive the file name and it goes up to the tray. Are there two? List both.\nWant to add everything you touched? `git add .` — the dot means \"everything from here down\".",
+  "pt": "## `git status` e `git add`: o dia a dia\n\n### `git status` — \"Gito, como estão as coisas?\"\n\nEle não muda **nada**. Só conta quais arquivos você mexeu e quais já estão na bandeja.\n\n> **Regra de ouro: se estiver perdido, roda `git status`.** Não tem como dar errado.\n\n### `git add` — \"esse aqui sobe pra bandeja\"\n\n```\ngit add src/Cardapio.jsx\n```\n\nDiz o nome do arquivo e ele sobe pra bandeja. São dois? Lista os dois.\nQuer subir tudo o que mexeu? `git add .` — o ponto quer dizer \"tudo daqui pra baixo\"."
+ },
+ "fc384eda3be3": {
+  "en": "The skill is not drawing boxes — it's JUDGING the model the AI proposes.\n\nPaste this into your AI agent (replace {{processo}} with your process — e.g.: \"online sales\", \"inventory control\", \"student enrollment\"):\n\n\"I run {{processo}}. Propose an ER model: list the entities, their key attributes, the relationships with cardinality, and the foreign keys. Ask me 2 questions about any ambiguity.\"\n\nChallenge: the AI put customer_name in the orders table. What's wrong — and what should be there instead?",
+  "pt": "A habilidade não é desenhar caixas — é JULGAR o modelo que a IA propõe.\n\nCole isto no seu agente de IA (substitua {{processo}} pelo seu processo — ex.: \"vendas online\", \"controle de estoque\", \"matrículas de alunos\"):\n\n\"Eu rodo {{processo}}. Proponha um modelo ER: liste as entidades, seus atributos-chave, os relacionamentos com cardinalidade e as chaves estrangeiras. Me faça 2 perguntas sobre qualquer ambiguidade.\"\n\nDesafio: a IA colocou customer_name (nome do cliente) na tabela orders (de pedidos). O que está errado — e o que deveria ser no lugar?"
+ },
+ "fcd81432ca0a": {
+  "en": "If Nina saves her version over Téo's, what happens to his afternoon of work?",
+  "pt": "Se a Nina salvar a versão dela por cima da do Téo, o que acontece com a tarde de trabalho dele?"
+ },
+ "fd421d241824": {
+  "en": "It disappears completely. The computer doesn't ask anything, doesn't warn you, and doesn't keep a copy — it just obeys.",
+  "pt": "Some inteira. O computador não pergunta nada, não avisa e não guarda cópia — ele obedece."
+ },
+ "fd47f2b8f538": {
+  "en": "Keep all three. Which one explains why you **can't** lose work that's already been recorded?",
+  "pt": "Guarda as três. Qual delas explica por que você **não** consegue perder um trabalho já anotado?"
+ },
+ "fd7f166eadc8": {
+  "en": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>My first page</title>\n  </head>\n  <body>\n    <h1>Hello!</h1>\n    <p>This page was made by me.</p>\n  </body>\n</html>",
+  "pt": "<!doctype html>\n<html lang=\"pt-br\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <title>Minha primeira página</title>\n  </head>\n  <body>\n    <h1>Olá!</h1>\n    <p>Esta página foi feita por mim.</p>\n  </body>\n</html>"
+ },
+ "fda3af6bebdc": {
+  "en": "I want the project to take up less space on the computer",
+  "pt": "Quero que o projeto ocupe menos espaço no computador"
+ },
+ "fe2bc24082e5": {
+  "en": "Because onClick changed the button text directly in the HTML.",
+  "pt": "Porque o onClick trocou o texto do botão diretamente no HTML."
+ },
+ "fe39039f1c76": {
+  "en": "Includes ≥1 actionable AI suggestion on the unified data",
+  "pt": "Inclui ≥1 sugestão acionável de IA sobre os dados unificados"
+ },
+ "fe6bc18ce9bc": {
+  "en": "Fake Terminal #4 · your first conflict",
+  "pt": "Terminal de Mentira #4 · seu primeiro conflito"
+ },
+ "fee1c427a74f": {
+  "en": "Check that the result matches the goal before finishing",
+  "pt": "Conferir que o resultado bate com o objetivo antes de encerrar"
+ },
+ "ff038db4e9f7": {
+  "en": "Covers all condition combinations (or states a default)",
+  "pt": "Cobre todas as combinações de condição (ou declara default)"
+ },
+ "ff86a68698d2": {
+  "en": "is the code you wrote — it goes into the notebook",
+  "pt": "é o código que vocês escreveram — vai pro caderno"
+ }
+}

@@ -57,8 +57,12 @@ function mapActivity(a: Row): Activity {
     // The sandbox runtime resolves its own bilingual bags; every other kind
     // renders spec strings directly, so collapse bags before they reach the DOM.
     spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
+    // Bilingual too, and resolved by nothing downstream — see the twin comment
+    // in programs.service.mapActivity.
     rubric:
-      a.rubric && typeof a.rubric === 'object' ? (a.rubric as Record<string, unknown>) : null,
+      a.rubric && typeof a.rubric === 'object'
+        ? resolveLocalizedSpec(a.rubric as Record<string, unknown>)
+        : null,
     publishStatus: status === 'published' ? 'published' : status === 'draft' ? 'draft' : undefined,
     // The authored persistence policy (migration 0027). The canvas is the only
     // surface that EDITS it, so it has to round-trip through this mapper.
