@@ -1,0 +1,111 @@
+name: Migration Human Gate
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A PR THAT TOUCHES db/migrations/** MUST BE MERGED BY A CODE OWNER.
+#
+# Since 2026-08-04 `db-apply.yml` applies migrations to the ITERA production
+# database (Supabase kjefmwlopzeaqgqtlbdn) on every push to `main` that touches
+# `db/migrations/**`. Merging IS deploying. CLAUDE.md has said since 2026-05-12
+# that this calls for a human gate — "mesmo princípio pra qualquer repo futuro
+# cujo merge tenha efeito direto em prod sem human gate" — and as of today that
+# describes this repo.
+#
+# BLOCKING THE WHOLE REPO WOULD BE WRONG. Most PRs here are UI and must keep
+# auto-merging on green CI. The gate is therefore PATH-SCOPED: it only has an
+# opinion about `db/migrations/**`.
+#
+# ⚠️ WHAT THIS WORKFLOW CAN AND CANNOT DO — read before trusting it.
+#
+# It CANNOT block a merge. `iterahq` is on the GitHub FREE plan and this repo is
+# PRIVATE, so branch protection and rulesets are both unavailable:
+#
+#   gh api repos/iterahq/itera-player/branches/main/protection
+#     -> 403 "Upgrade to GitHub Pro or make this repository public"
+#   gh api repos/iterahq/itera-player/rulesets
+#     -> 403 (same)
+#   gh api orgs/iterahq/rulesets
+#     -> 403 "Upgrade to GitHub Team"
+#
+# So "Require review from Code Owners" is not something we can switch on here,
+# and no check on this repo can be marked *required*. `.github/CODEOWNERS` has
+# an entry for `/db/migrations/` — on this plan it is documentation that becomes
+# enforcement the day the org upgrades, not enforcement today. Saying otherwise
+# would be claiming a guarantee nobody is holding.
+#
+# What it DOES do, which is not nothing:
+#   1. It makes an unapproved migration PR visibly RED, on the PR, where the
+#      person about to click Merge is looking.
+#   2. Red CI is machine-readable refusal. The `safe-admin-merge` skill — the
+#      thing that actually merges PRs in this fleet — refuses any PR with a
+#      FAILURE check, and independently refuses this path outright
+#      (`protected_paths.conf`, reason=protected_path). Two mechanisms, one of
+#      which does not depend on this workflow existing.
+#   3. It goes green as soon as a code owner approves, so the gate does not
+#      leave a permanent red X on a PR that has been properly signed off.
+#
+# The real, non-bypassable enforcement is the `safe-admin-merge` path gate.
+# This workflow is the visible half.
+#
+# THE LOGIC LIVES IN db/scripts/require-code-owner-merge.sh, not inline here, so
+# it can be unit-tested. `db/scripts/test-require-code-owner-merge.sh` stubs
+# `gh` and asserts every verdict — including the ALLOWED ones, because a guard
+# that refuses everything gets disabled within a day. The `selftest` job below
+# runs it, and runs on changes to the gate itself so the proof is re-run every
+# time the gate is touched.
+#
+# SELF-APPROVAL: GitHub does not let you approve your own PR. If a code owner
+# AUTHORED the PR, the gate is satisfied by authorship — otherwise a code owner
+# writing a migration could never turn their own PR green.
+#
+# RUNNER: `[self-hosted, dfl-runner]` — the iterahq-scoped registrations, same
+# labels as every other workflow here. See the header of ci.yml.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/**'
+      - 'db/scripts/require-code-owner-merge.sh'
+      - 'db/scripts/test-require-code-owner-merge.sh'
+      - '.github/workflows/migration-human-gate.yml'
+      - '.github/CODEOWNERS'
+  # `pull_request_review` accepts no `paths:` filter, so this fires for reviews
+  # on every PR; the gate checks the paths itself and no-ops in ~2s when the PR
+  # touches no migration. That is the price of the check flipping to green the
+  # moment an owner approves, instead of needing a manual re-run.
+  pull_request_review:
+    types: [submitted, dismissed, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: migration-human-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    name: gate self-test (blocks AND allows)
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove both verdicts against stubbed fixtures
+        run: bash db/scripts/test-require-code-owner-merge.sh
+
+  gate:
+    name: db/migrations requires a code-owner merge
+    runs-on: [self-hosted, dfl-runner]
+    needs: selftest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a code-owner sign-off on db/migrations/**
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          # Keep in sync with the /db/migrations/ entry in .github/CODEOWNERS.
+          # The self-test asserts they have not drifted apart.
+          CODE_OWNERS: taigfs
+        run: bash db/scripts/require-code-owner-merge.sh

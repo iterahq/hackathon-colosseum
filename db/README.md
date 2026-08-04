@@ -54,6 +54,38 @@ Supabase `auth.uid()` → `itera.identities` → `itera.users` →
 push to `main` that touches `db/migrations/**`. The human merge is the gate; CI
 does the applying. Same shape as `devfellowship/dfl-schema`'s `Push Migrations`.
 
+**Which means Tainan merges migration PRs — not an agent, and not anyone else.**
+Merging is deploying, so the merge is the human gate. This is path-scoped: a PR
+touching `db/migrations/**` needs his merge, and every other PR in this repo
+still auto-merges on green CI. Three things carry the rule:
+
+| Layer | What it does | Does it actually stop a merge? |
+|---|---|---|
+| `safe-admin-merge` path gate (`protected_paths.conf`) | the tool agents merge with refuses this path: `BLOCKED:… reason=protected_path` | **yes** — no override flag exists |
+| `.github/workflows/migration-human-gate.yml` → `db/scripts/require-code-owner-merge.sh` | turns the PR red until a code owner approves; green after | no, but red CI is refusal that other tooling reads |
+| `.github/CODEOWNERS` → `/db/migrations/ @taigfs` | records the ownership | **not today** — see below |
+
+⚠️ **GitHub itself enforces none of this on this repo.** `iterahq` is on the
+FREE plan and `itera-player` is private, so branch protection *and* rulesets
+return 403 (`gh api repos/iterahq/itera-player/branches/main/protection` →
+"Upgrade to GitHub Pro"; `gh api orgs/iterahq/rulesets` → "Upgrade to GitHub
+Team"). "Require review from Code Owners" cannot be switched on, and no check
+here can be marked *required*. The CODEOWNERS entry is written so it starts
+enforcing the moment the org upgrades; until then the binding constraint is the
+`safe-admin-merge` gate, and a human with the Merge button can still click it.
+
+The gate logic is a script, not YAML, so it is testable and runnable by hand:
+
+```bash
+bash db/scripts/test-require-code-owner-merge.sh   # 17 assertions, stubs gh, no network
+```
+
+The test asserts the **allowed** verdicts as carefully as the refusals — a
+UI-only PR, `db/README.md`, `db/scripts/`, an owner-approved PR, an
+owner-authored PR — because a guard that refuses everything gets disabled within
+a day. It also fails if `.github/CODEOWNERS` and the workflow's `CODE_OWNERS`
+drift apart.
+
 This changed on **2026-08-04**, and the reason is worth keeping: before that
 date this section said migrations were applied by hand and that if nobody ran the
 script, `main` and the database would silently disagree. Nobody ran it. `0036`,

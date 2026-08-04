@@ -14,3 +14,20 @@
 # Canonical stories + components — developers only
 /src/stories/ @taigfs @SamuelStefano
 /src/components/ @taigfs @SamuelStefano
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Migrations — merging one APPLIES it to the ITERA production database.
+#
+# `db-apply.yml` runs on every push to `main` touching db/migrations/**, so the
+# merge button is the deploy button. Tainan merges these; nobody else, and no
+# agent. Enforced for real by the `safe-admin-merge` path gate
+# (skills/safe-admin-merge/protected_paths.conf, reason=protected_path, no
+# override flag) and made visible by .github/workflows/migration-human-gate.yml.
+#
+# ⚠️ THIS ENTRY IS NOT ENFORCED BY GITHUB TODAY. CODEOWNERS review requirements
+# need branch protection or a ruleset, and both are 403 on this repo — `iterahq`
+# is on the FREE plan and this repo is PRIVATE. It is recorded here so that the
+# day the org upgrades, "Require review from Code Owners" on `main` starts
+# enforcing the rule that already exists, with no further change.
+# ─────────────────────────────────────────────────────────────────────────────
+/db/migrations/ @taigfs
