@@ -143,7 +143,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, stars, awardStar, lowerHand, removeLearner, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, stars, awardStar, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -648,6 +648,8 @@ function ClassControl({
                 onReveal={() => current && clearTimer(current.id)}
                 selfStaged={selfStaged}
                 onToggleSelfStage={toggleSelfStage}
+                onBreak={onBreak}
+                onToggleBreak={() => setBreak(!onBreak)}
               />
             </>
           }

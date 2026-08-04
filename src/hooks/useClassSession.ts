@@ -76,6 +76,11 @@ const STAGE_UPDATE_EVENT = 'stage-update';
 const STAR_EVENT = 'star';
 const KICK_EVENT = 'kick';
 const HAND_LOWER_EVENT = 'hand-lower';
+// Pausa para dúvidas: a turma para de olhar a atividade e olha o professor. Vai
+// no tópico de staff (0023) porque só o professor decide quando a aula para —
+// um aluno não pode congelar a sala dos outros. Não trava resposta nenhuma: é
+// sinalização, e quem já estava digitando termina.
+const BREAK_EVENT = 'break';
 // The pull is peer-to-peer: only a client that is ONLINE can answer it. A learner
 // who closed the tab / lost the network never replies, so give up after a grace
 // window and tell the professor — an endless spinner reads as a broken feature.
@@ -125,6 +130,11 @@ export function useClassSession(
   const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
   // Latest cursor frame from whoever is on stage (see the cursor topic below).
   const [stageCursor, setStageCursor] = useState<StageCursor | null>(null);
+  const [onBreak, setOnBreak] = useState(false);
+  // Lido na sincronização de presença: quem entra no meio da pausa não ouviu o
+  // broadcast que a abriu, então o professor a reanuncia quando alguém chega.
+  const onBreakRef = useRef(false);
+  onBreakRef.current = onBreak;
   const [stars, setStars] = useState<Record<string, number>>({});
   const [removed, setRemoved] = useState(false);
   // Lido dentro do efeito do canal (que só depende de sessionId) para impedir
@@ -232,6 +242,22 @@ export function useClassSession(
     setCurrentActivityId(s.currentActivityId);
     setStatus(s.status);
   }, []);
+
+  // Avançar É retomar: ninguém segue em pausa numa atividade nova. Fica num
+  // efeito sobre o PONTEIRO, e não dentro do handler do `advance`, porque quem
+  // reconecta depois de uma queda recebe o avanço pela linha durável
+  // (postgres_changes / refetch) — o broadcast não é reprisado, e pelo handler
+  // esse aluno voltaria com o card de pausa preso numa atividade que já virou.
+  //
+  // A PRIMEIRA transição (`null` → id) NÃO é avanço, é o read inicial chegando:
+  // limpar ali apaga a pausa do aluno que entrou atrasado e recebeu o reanúncio
+  // antes do `getClassSession` resolver — justamente o caso que o card atende.
+  const prevActivityIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevActivityIdRef.current;
+    prevActivityIdRef.current = currentActivityId;
+    if (prev !== null && prev !== currentActivityId) setOnBreak(false);
+  }, [currentActivityId]);
 
   const refetch = useCallback(() => {
     if (!sessionId) return;
@@ -498,6 +524,9 @@ export function useClassSession(
           const target = (payload as { user_id?: string } | null)?.user_id;
           if (target && target === identityRef.current?.userId) confirmRemoval();
         })
+        .on('broadcast', { event: BREAK_EVENT }, ({ payload }) => {
+          setOnBreak((payload as { on?: unknown } | null)?.on === true);
+        })
         // Abaixar a mão de outro é impossível por escrita (presença é do dono),
         // então é o cliente do aluno que abaixa a própria e re-publica.
         .on('broadcast', { event: HAND_LOWER_EVENT }, ({ payload }) => {
@@ -619,7 +648,21 @@ export function useClassSession(
           }
         )
         .on('presence', { event: 'sync' }, syncRoster)
-        .on('presence', { event: 'join' }, syncRoster)
+        .on('presence', { event: 'join' }, ({ currentPresences }) => {
+          syncRoster();
+          // Quem chega (ou recarrega) durante a pausa não ouviu o broadcast que
+          // a abriu — o professor reanuncia, senão a tela dele fica sozinha
+          // mostrando exercício enquanto a turma está tirando dúvida.
+          //
+          // `currentPresences` vazio é o filtro de CHAVE NOVA: o Phoenix dispara
+          // `join` de novo a cada re-`track` (mão levantada, working_on), e numa
+          // pausa é justo quando as mãos sobem — sem o filtro, cada mão vira um
+          // broadcast para a sala inteira.
+          if (currentPresences.length > 0) return;
+          if (onBreakRef.current && identityRef.current?.isInstructor === true) {
+            void ctrl.send({ type: 'broadcast', event: BREAK_EVENT, payload: { on: true } });
+          }
+        })
         .on('presence', { event: 'leave' }, syncRoster)
         .subscribe((s) => {
           // A replaced channel keeps firing status callbacks while its teardown
@@ -1046,6 +1089,13 @@ export function useClassSession(
     });
   }, []);
 
+  const setBreak = useCallback((on: boolean) => {
+    const ctrl = ctrlRef.current;
+    setOnBreak(on);
+    if (!ctrl) return;
+    void ctrl.send({ type: 'broadcast', event: BREAK_EVENT, payload: { on } });
+  }, []);
+
   const broadcastAnswer = useCallback(
     (activityId: string, correct: boolean, elapsedMs?: number) => {
       const channel = channelRef.current;
@@ -1079,6 +1129,8 @@ export function useClassSession(
     stars,
     removed,
     handRaised,
+    onBreak,
+    setBreak,
     broadcast,
     broadcastAnswer,
     broadcastTimer,

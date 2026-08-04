@@ -3,6 +3,7 @@ import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { AddTimeControl } from '@/components/live/AddTimeControl';
 import { InstructorStageActions } from '@/components/live/InstructorStageActions';
+import { InstructorBreakToggle } from '@/components/live/InstructorBreakToggle';
 
 interface InstructorControlsProps {
   /** Reception (pointer not set yet) — only "Begin" is shown. */
@@ -37,6 +38,9 @@ interface InstructorControlsProps {
   selfStaged: boolean;
   /** Puts the professor's own work on the class projector (and takes it off). */
   onToggleSelfStage: () => void;
+  /** The class is paused for questions. */
+  onBreak: boolean;
+  onToggleBreak: () => void;
 }
 
 /**
@@ -65,6 +69,8 @@ export function InstructorControls({
   onReveal,
   selfStaged,
   onToggleSelfStage,
+  onBreak,
+  onToggleBreak,
 }: InstructorControlsProps) {
   const { t } = useI18n();
   // The professor has full authority to advance whenever they want — the "Next"
@@ -148,6 +154,8 @@ export function InstructorControls({
         revealed={revealed}
         onReveal={onReveal}
       />
+
+      <InstructorBreakToggle onBreak={onBreak} busy={busy} onToggle={onToggleBreak} />
     </div>
   );
 }

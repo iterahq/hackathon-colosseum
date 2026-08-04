@@ -70,6 +70,7 @@ import { learnerActivityGate } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
+import { LiveBreakCard } from '@/components/live/LiveBreakCard';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { LiveRemovedScreen } from '@/components/live/LiveRemovedScreen';
@@ -121,7 +122,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -567,6 +568,11 @@ export default function LiveSessionPage() {
             data-testid="live-main"
             className={`w-full mx-auto ${columnMaxWidthClass(current?.kind, LIVE_COLUMN_OVERRIDES)}`}
           >
+        {onBreak && !loading && session && !ended && !gateNeeded && (
+          <div className="mb-6">
+            <LiveBreakCard />
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />

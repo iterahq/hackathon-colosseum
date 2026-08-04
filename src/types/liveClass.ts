@@ -350,6 +350,13 @@ export interface UseClassSession {
   handRaised: boolean;
   /** Re-track presence with the hand raised/lowered (learner side). */
   setHandRaised: (raised: boolean) => void;
+  /**
+   * A turma está em pausa para dúvidas. É sinalização, não trava: quem já estava
+   * respondendo termina. Avançar de atividade retoma sozinho.
+   */
+  onBreak: boolean;
+  /** Instructor: abre/fecha a pausa para dúvidas para a sala inteira. */
+  setBreak: (on: boolean) => void;
   /** Instructor: give (+1) or take back (-1) a star. Resolves false if the write failed. */
   awardStar: (userId: string, delta: 1 | -1) => Promise<boolean>;
   /** Instructor: ask a learner's own client to lower its hand (presence is owner-write). */

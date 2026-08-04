@@ -29,6 +29,8 @@ const base = {
   // PR can be verified at all; see the PR body.
   selfStaged: false,
   onToggleSelfStage: vi.fn(),
+  onBreak: false,
+  onToggleBreak: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {
@@ -117,6 +119,20 @@ describe('InstructorControls', () => {
       </I18nProvider>
     );
     expect(screen.getByTestId('instructor-reveal')).toBeDisabled();
+  });
+
+  it('the break toggle fires and reads as pressed while the class is paused', () => {
+    const onToggleBreak = vi.fn();
+    const { rerender } = controls({ onToggleBreak });
+    fireEvent.click(screen.getByTestId('instructor-break'));
+    expect(onToggleBreak).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('instructor-break').getAttribute('aria-pressed')).toBe('false');
+    rerender(
+      <I18nProvider>
+        <InstructorControls {...base} onToggleBreak={onToggleBreak} onBreak />
+      </I18nProvider>
+    );
+    expect(screen.getByTestId('instructor-break').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('hides the timer controls when the activity has no timer (0s)', () => {
