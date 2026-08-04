@@ -25,6 +25,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useI18n } from '@/i18n';
+import { parseInline } from '@/utils/richText';
+import { RichSpans } from './RichSpans';
 import type { FooterResult } from './activityFeedbackKinds';
 
 export function FeedbackFooter({
@@ -77,7 +79,7 @@ export function FeedbackFooter({
                 </p>
                 {result.explanation && (
                   <p className="mt-0.5 text-sm text-foreground/80" data-testid="feedback-footer-explanation">
-                    {result.explanation}
+                    <RichSpans spans={parseInline(result.explanation)} />
                   </p>
                 )}
               </div>
