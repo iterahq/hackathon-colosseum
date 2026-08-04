@@ -106,7 +106,8 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 **Fail-closed nos 12 kinds desde 2026-07-28** (ADR-15 do plano
 `20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
 ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
-`@iterahq/activity-spec`, vendorizado como `.tgz`) era chamado só em **`code`** e
+`@iterahq/activity-spec`, hoje resolvido do GitHub Packages privado) era
+chamado só em **`code`** e
 **`sandbox_scenario`** e os outros 9 kinds recebiam o `spec` por cast.
 
 - **Onde:** `src/utils/activitySpecBoundary.ts` (registro + veredito + auditor) e
@@ -117,7 +118,8 @@ ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
 - **Kind novo sem cobertura = CI vermelho**, por dois caminhos: o
   `Record<ActivityKind, …>` do registro (erro de `npm run typecheck`, que é gate
   de build) e `src/test/activityKindValidationCoverage.test.tsx`. A cláusula
-  `satisfies` interna do pacote NÃO ajuda aqui — o `.tgz` vem pré-compilado.
+  `satisfies` interna do pacote NÃO ajuda aqui — o pacote é instalado
+  pré-compilado (`dist/`), então aquela cláusula nunca recompila nesta CI.
 - **BYOC é camada, não kind** — duas isenções deliberadas: o harness
   (`resolveByocSpec`, roda antes da fronteira) e o BYOC ao vivo (`isByocLive`,
   contrato sem Zod porque a resposta vem de LLM real). Validar `sandbox_scenario`
@@ -125,7 +127,7 @@ ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
 - **Lacuna declarada:** `document`, `diagram` e `quiz` têm schema **stub loose**
   (`z.record`) no pacote — `safeParseActivitySpec('quiz', {})` PASSA. Ali
   "validado" só quer dizer "é um objeto JSON". Apertar isso é mudança no repo
-  `iterahq/activity-spec` (bump + re-vendor), não aqui.
+  `iterahq/activity-spec` (bump + republish + bump do range aqui), não aqui.
 
 ### Fixtures — uma fonte de verdade
 

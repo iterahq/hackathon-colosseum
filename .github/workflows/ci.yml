@@ -267,3 +267,112 @@ jobs:
       # SOMENTE as stories com a tag `browser-mode` (hoje: match e code).
       - name: Storybook browser-mode tests
         run: npm run test:browser
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # REGISTRY RESOLUTION GATE (2026-08-04) — o tarball vendorizado não volta
+  #
+  # `@iterahq/activity-spec` deixou de ser `file:vendor/*.tgz` e passou a
+  # resolver do GitHub Packages. Dois modos de falha precisam ficar fechados, e
+  # nenhum dos dois é pego pelos outros jobs:
+  #
+  # 1. **Regressão pro `file:`.** Um `npm install` local com o tarball na mão
+  #    reescreve o lock de volta pra `file:` sem barulho. O `build-test` roda
+  #    `npm install`, que ACEITA lock fora de sintonia — então ele nunca
+  #    reclamaria. Aqui o grep é explícito e bloqueia.
+  #
+  # 2. **Resolução falsa-positiva por CACHE.** `npm ci` num runner self-hosted
+  #    pode servir o pacote do `~/.npm` de uma execução anterior e passar mesmo
+  #    se o registry estivesse inacessível — exatamente o tipo de verde que
+  #    esconde o `403 read_package`. Por isso este job usa um diretório de cache
+  #    VAZIO (`--cache "$RUNNER_TEMP/npm-cache-$GITHUB_RUN_ID"`) e `npm ci`
+  #    (que apaga `node_modules` antes de instalar). Sem tarball no repo e sem
+  #    cache quente, a ÚNICA origem possível é a rede.
+  #
+  # Este é o job que prova o exit criterion da Fase B do plano
+  # `20260803-itera-player-activities-lib` ("zero `file:vendor/*.tgz`"), e o
+  # item 10 da Verification ("acesso de leitura cross-repo é verificável e DEVE
+  # ser verificado") — a leitura cross-repo só funciona porque um owner da org
+  # deu Actions access de `@iterahq/activity-spec` a este repo. Se o grant for
+  # revogado, este job fica vermelho com o `403` na cara em vez de o problema
+  # aparecer semanas depois no deploy.
+  # ──────────────────────────────────────────────────────────────────────────
+  registry-resolution:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      - name: No vendored tarball may come back
+        run: |
+          set -euo pipefail
+          if grep -n 'file:vendor/' package.json package-lock.json; then
+            echo "::error::a file:vendor/*.tgz dependency is back - see packages/activities/CONTRACT.md"
+            exit 1
+          fi
+          if compgen -G 'vendor/*.tgz' > /dev/null; then
+            echo "::error::vendor/*.tgz exists again"
+            exit 1
+          fi
+          echo "clean: no file: dependency, no vendored tarball"
+
+      - name: Clean install with an EMPTY npm cache
+        run: |
+          set -euo pipefail
+          CACHE="$RUNNER_TEMP/npm-cache-$GITHUB_RUN_ID"
+          rm -rf node_modules "$CACHE"
+          mkdir -p "$CACHE"
+          # Assert the premise of the next step before relying on it.
+          test -z "$(ls -A "$CACHE")" || { echo "::error::cache dir not empty"; exit 1; }
+          npm ci --cache "$CACHE"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # NOTE for whoever edits this: do NOT try to prove the fetch by grepping
+      # cacache's `index-v5` for the registry URL. `npm ci` takes `resolved` and
+      # `integrity` straight from the lockfile and never requests a packument,
+      # so no URL-keyed index entry is ever written and the grep finds nothing
+      # even on a perfectly good install. Burned 2026-08-04. The tarball itself
+      # IS written, content-addressed — that is what this step checks.
+      - name: Prove the package came over the network from GitHub Packages
+        run: |
+          set -euo pipefail
+          CACHE="$RUNNER_TEMP/npm-cache-$GITHUB_RUN_ID" node -e '
+            const fs = require("fs"), path = require("path");
+            const lock = require("./package-lock.json");
+            const key = "node_modules/@iterahq/activity-spec";
+            const e = lock.packages[key];
+            if (!e) throw new Error(key + " missing from package-lock.json");
+            if (!/^https:\/\/npm\.pkg\.github\.com\//.test(e.resolved || ""))
+              throw new Error("resolved is not GitHub Packages: " + e.resolved);
+            if (!e.integrity) throw new Error("no integrity hash - not a registry resolution");
+            const installed = require("./node_modules/@iterahq/activity-spec/package.json");
+            if (installed.version !== e.version)
+              throw new Error("installed " + installed.version + " != locked " + e.version);
+
+            // cacache lays fetched content out at
+            //   <cache>/_cacache/content-v2/<algo>/<hex0:2>/<hex2:4>/<hex4:>
+            // keyed by the hex form of the integrity digest. That cache
+            // directory was EMPTY at the start of the previous step and there
+            // is no tarball in the repo, so the blob being there now means it
+            // was downloaded from the registry during this run - not served
+            // from a warm cache, and not read off disk.
+            const [algo, b64] = e.integrity.split("-");
+            const hex = Buffer.from(b64, "base64").toString("hex");
+            const blob = path.join(process.env.CACHE, "_cacache", "content-v2",
+                                   algo, hex.slice(0, 2), hex.slice(2, 4), hex.slice(4));
+            if (!fs.existsSync(blob))
+              throw new Error("no blob for " + e.integrity + " in the pristine cache: " + blob);
+
+            console.log("resolved :", e.resolved);
+            console.log("version  :", installed.version);
+            console.log("integrity:", e.integrity);
+            console.log("fetched into the empty cache:", blob, "(" + fs.statSync(blob).size + " bytes)");
+          '

@@ -76,8 +76,18 @@ no REST endpoint for the grant. An org owner must do it in the UI:
 Alternatively, store a classic PAT with `read:packages` as a secret in the
 consuming repo and use it as `NODE_AUTH_TOKEN`.
 
+**Worked example.** `iterahq/itera-player` consumes `@iterahq/activity-spec`,
+which is published by a *different* repo. It got the grant on 2026-08-04, and
+the effect is measurable: run `30910892639` attempt 1 (before) → `403
+permission_denied: read_package`; attempt 2 (after) → `200` with
+`dist-tags.latest = 0.7.0`, while an anonymous read still returns `401`. That
+grant is what let PR #275 delete the vendored tarball. No new credential was
+created — the grant changes what the *existing* ephemeral `GITHUB_TOKEN` may
+read.
+
 This is the setup friction ADR-6 accepted in exchange for keeping the IP closed.
-Budget for it in every new consumer.
+Budget for it in every new consumer: it is **per repo**, **manual**, and
+**UI-only** — GitHub exposes no REST endpoint for it, so it cannot be scripted.
 
 ## Usage
 

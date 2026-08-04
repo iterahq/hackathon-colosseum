@@ -37,6 +37,12 @@ jobs:
     runs-on: [self-hosted, dfl-runner]
     permissions:
       contents: read
+      # `@iterahq/activity-spec` now resolves from GitHub Packages instead of a
+      # vendored `.tgz`, so this job needs registry read like every other
+      # install site. It was the ONE `setup-node` block #274 left unwired,
+      # because back then nothing under the `@iterahq` scope actually had to be
+      # fetched (the spec was a `file:` tarball, `activities` is a workspace).
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,9 +52,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
 
       - name: Install dependencies
         run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Storybook
         run: npm run build-storybook

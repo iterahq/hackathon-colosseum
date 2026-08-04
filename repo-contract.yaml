@@ -98,7 +98,9 @@ consumes:
     name: "@iterahq/activity-spec"
     description: >
       Schemas Zod por kind (safeParseActivitySpec) + os reducers puros do
-      runtime do sandbox_scenario. Vendorizado como .tgz em vendor/.
+      runtime do sandbox_scenario. Resolve do GitHub Packages privado
+      (^0.7.0, registry npm.pkg.github.com) desde 2026-08-04 — antes vinha
+      como .tgz vendorizado no repo.
 
   - external: true
     name: opentelemetry-collector

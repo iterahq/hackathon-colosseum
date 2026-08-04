@@ -35,8 +35,8 @@
  *
  * Por isso `auditKindValidationCoverage()` CLASSIFICA em vez de só contar: um
  * kind stub NUNCA é reportado como plenamente coberto. Apertar esses 3 schemas
- * é mudança de forma no repo `iterahq/activity-spec` (vendorizado aqui como
- * `vendor/iterahq-activity-spec-0.6.0.tgz`), exige bump de versão + re-vendor,
+ * é mudança de forma no repo `iterahq/activity-spec` (consumido aqui do
+ * GitHub Packages privado, `^0.7.0`), exige bump + republish + bump do range,
  * e está FORA de escopo aqui — só declarado.
  *
  * ────────────────────────────────────────────────────────────────────────────
@@ -96,8 +96,9 @@ export interface KindValidation {
  *
  * Por que esta trap precisa morar no itera-player e não no pacote: o
  * `@iterahq/activity-spec` documenta uma cláusula `satisfies` interna de
- * exaustividade, mas ele é **vendorizado como `.tgz` já compilado**
- * (`vendor/iterahq-activity-spec-0.6.0.tgz`) — aquela cláusula NUNCA recompila
+ * exaustividade, mas ele é **instalado já compilado** (o pacote publica
+ * `dist/`; desde 2026-08-04 vem do GitHub Packages em vez de um `.tgz`
+ * vendorizado, o que não muda nada aqui) — aquela cláusula NUNCA recompila
  * na CI deste repo e nos dá **zero** proteção aqui. Não apague isto como
  * redundante; não é.
  */

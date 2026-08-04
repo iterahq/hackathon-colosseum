@@ -137,35 +137,42 @@ REST endpoint for the grant; an org owner must add each consumer under
 **classic** PAT with `read:packages` (fine-grained PATs are rejected by the
 GitHub Packages npm registry).
 
-This is why `@iterahq/activity-spec` is still a `file:` tarball here — see the
-open item in the Fase C section. Consumer setup is documented in
+**This repo has the grant** (2026-08-04). An org owner added
+`iterahq/itera-player` under *Manage Actions access* of the `activity-spec`
+package, which is what made PR #275 possible. Consumer setup is documented in
 `packages/activities/README.md`.
 
-## 🔴 Open item carried out of Fase B — the vendored tarball
+## ✅ Closed — the vendored tarball is gone (PR #275, 2026-08-04)
 
-`package.json` still reads
-`"@iterahq/activity-spec": "file:vendor/iterahq-activity-spec-0.7.0.tgz"`.
-Killing that was a Fase B goal and it did **not** land. Being precise about why,
-because the reason is not the one the plan predicted:
+`package.json` reads `"@iterahq/activity-spec": "^0.7.0"` and
+`vendor/iterahq-activity-spec-0.7.0.tgz` was deleted. The Fase B exit criterion
+"zero `file:vendor/*.tgz`" is met.
+
+The history is worth keeping, because the reason it stalled was not the one the
+plan predicted:
 
 - The plan assumed no publish had ever succeeded in the `iterahq` org. That is
   true of **npmjs** and false of **GitHub Packages**:
   `@iterahq/activity-spec@0.7.0` was published there on 2026-08-03 16:59Z
   (`iterahq/activity-spec` run `30834659269`, changesets), and it is private —
   an anonymous read of `https://npm.pkg.github.com/@iterahq/activity-spec`
-  returns `401`. The pipeline exists and works.
-- What blocks the swap is **read access, not publication**. `itera-player`'s
-  `GITHUB_TOKEN` cannot read a package owned by `iterahq/activity-spec`
-  (`403 read_package`, run `30910892639`), and no token in the vault carries
-  `read:packages` — GitHub Packages' npm registry only accepts **classic** PATs,
-  and the org's classic PAT does not have that scope.
-- Flipping the dependency before that is resolved makes `npm install` fail in
-  CI **and** on every developer machine. So the tarball stays, alone, until an
-  org owner grants `iterahq/itera-player` read access to the package (or a
-  classic `read:packages` PAT is provisioned as a secret). Then the swap is a
-  two-line PR: the dependency range and deleting `vendor/`.
+  returns `401`. The pipeline existed and worked all along.
+- What blocked the swap was **read access, not publication** — `403
+  read_package` (run `30910892639`), and no vault token carries `read:packages`.
+- What unblocked it was a **manual grant by an org owner**, not a credential.
+  Same run `30910892639`, attempt 2, re-run after the grant: `GITHUB_TOKEN`
+  → `200`, anonymous → `401`, `NPM_TOKEN` → `401`. Read access gained, privacy
+  intact, no new secret anywhere.
 
-`itera-api` and `itera-mcp` vendor the same tarball and need the same grant.
+**The `registry-resolution` job in `ci.yml` is the regression guard.** It fails
+if a `file:` dependency or a `vendor/*.tgz` comes back, and it runs `npm ci`
+against an **empty** npm cache so a green cannot be produced by a warm cache
+hiding a revoked grant.
+
+⚠️ **`itera-api` and `itera-mcp` still vendor the same tarball, and `dfl-labs`
+(Fase D) will hit the same wall.** The grant is **per consumer repo**, manual,
+UI-only — there is no REST endpoint for it, so it cannot be scripted or rolled
+out fleet-wide. Budget an org-owner action for each new consumer.
 
 ## Extraction order (Fase C), ascending coupling
 

@@ -64,6 +64,7 @@ build, so `dist/` exists before typecheck/test.
 ## Develop
 
 ```sh
+export NODE_AUTH_TOKEN=ghp_...   # classic PAT com read:packages — ver abaixo
 npm i
 cp .env.example .env   # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 npm run dev
@@ -74,13 +75,21 @@ npm run dev
 `//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
 variável mesmo quando não precisa do registry.
 
-**Nenhum token é necessário para desenvolver.** O `.npmrc` roteia o escopo
-`@iterahq` para o **GitHub Packages** (registry privado — ADR-6), mas hoje nada
-resolve de lá: `@iterahq/activities` é workspace local e `@iterahq/activity-spec`
-ainda vem do tarball versionado em `vendor/`. Quando o `activity-spec` passar a
-vir do registry, aí sim vai ser preciso um PAT **classic** com `read:packages`
-exportado como `NODE_AUTH_TOKEN` — detalhes em
-[`packages/activities/README.md`](packages/activities/README.md).
+**Um token É necessário para instalar** (mudou em 2026-08-04, PR #275). O
+`.npmrc` roteia o escopo `@iterahq` para o **GitHub Packages** (registry privado
+— ADR-6), e agora algo resolve mesmo de lá: `@iterahq/activity-spec` virou uma
+dependência de versão (`^0.7.0`) e o tarball em `vendor/` foi apagado.
+`@iterahq/activities` continua sendo workspace local.
+
+Exporte um PAT **classic** com o escopo `read:packages` como `NODE_AUTH_TOKEN`
+antes do `npm i`. **Classic, não fine-grained** — o registry npm do GitHub
+rejeita fine-grained com `403 … does not match expected scopes`, que se lê como
+escopo faltando e não como tipo de token não suportado. Detalhes e a matriz de
+qual token serve onde: [`packages/activities/README.md`](packages/activities/README.md).
+
+Por que não continuar com o tarball: `file:vendor/*.tgz` já quebrou a CI uma vez
+com hash de integrity divergente (PR #243, 2026-07-31), e matá-lo era exit
+criterion da Fase B do plano `20260803-itera-player-activities-lib`.
 
 Já rodou `pnpm` neste clone? Apague `node_modules` e `pnpm-lock.yaml`, e tire do
 `.npmrc` a linha `only-built-dependencies` que o `pnpm approve-builds` escreveu
