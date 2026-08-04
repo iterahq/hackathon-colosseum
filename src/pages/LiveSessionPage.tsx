@@ -78,6 +78,7 @@ import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { stageResponseText } from '@/utils/stageResponseText';
 import { wantsLearnerView } from '@/utils/liveLearnerView';
+import { readLiveEntryRole } from '@/utils/liveEntryRole';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { isGenericName } from '@/utils/isGenericName';
@@ -101,6 +102,7 @@ export default function LiveSessionPage() {
   // the id was resolved server-side when the guest session was minted.
   const sessionId = guest?.sessionId ?? params.sessionId;
 
+  const entryRole = readLiveEntryRole(sessionId);
   const identity = useIteraIdentity();
   // Staff (instructor/admin/owner) who lands on the student surface must still
   // present as instructor — otherwise their presence enters the podium/ranking.
@@ -110,7 +112,9 @@ export default function LiveSessionPage() {
   // entrar no pódio é o ponto. Só rebaixa quem já era staff — pra um aluno o
   // parâmetro não muda nada, e o console segue atrás do `RequireRole`.
   const [searchParams] = useSearchParams();
-  const asLearner = wantsLearnerView(searchParams);
+  // Duas portas para a mesma escolha: o link `?como=aluno` e o gate de entrada
+  // (LiveEntryRoleGate). Uma flag só, senão um efeito respeita uma e desfaz a outra.
+  const asLearner = wantsLearnerView(searchParams) || entryRole === 'learner';
   const staff = isStaffInstructor(memberships ?? []) && !asLearner;
   // The guest's name/avatar come from the join (their itera.users row exists but
   // the profile read is not what the room should wait on); everything else is

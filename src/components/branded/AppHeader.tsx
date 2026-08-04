@@ -25,7 +25,7 @@ import {
   Bell,
   Settings,
   Video,
-  UserRound, FolderGit2 } from 'lucide-react';
+  UserRound, FolderGit2, PencilRuler } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
@@ -315,6 +315,19 @@ export function AppHeader({
                         data-testid="nav-admin"
                       >
                         <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
+                      </button>
+                    )}
+                    {/* A superfície de autoria existia só por URL digitada. */}
+                    {showAdmin && (
+                      <button
+                        onClick={() => {
+                          setOpen(false);
+                          navigate('/author');
+                        }}
+                        data-testid="nav-author"
+                        className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
+                      >
+                        <PencilRuler className="w-4 h-4" /> {t('nav.author')}
                       </button>
                     )}
                     {/* Instructor/admin shortcut to start a live class — only visible

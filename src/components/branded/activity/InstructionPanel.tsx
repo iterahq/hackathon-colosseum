@@ -15,17 +15,18 @@
  * layout does not shift when the media arrives. The skeleton disappears once
  * the element fires its load event.
  *
- * Instruction image: `object-contain` sob `max-h-80`, altura livre. Já foi
- * `object-cover` em caixa de altura fixa, e isso valia enquanto a imagem era
- * ilustração — cortar a borda de uma foto não custa nada. Custa quando a
- * imagem É o conteúdo: os diagramas didáticos da aula de Git perdiam título e
- * legenda no corte, ou seja, justamente o que explicava a figura.
+ * A imagem da instrução vive em `InstructionImage`: o campo recebe diagrama e
+ * ilustração larga, que numa coluna de celular ficam ilegíveis se a caixa tiver
+ * altura fixa — por isso ela acompanha a imagem e abre ampliada no toque. Cortar
+ * a borda não custa nada numa foto, mas custa quando a imagem É o conteúdo: os
+ * diagramas da aula de Git perdiam título e legenda no corte.
  *
  * Texto e descrição passam pelo RichText: 25 das 47 activities `concept` em
  * produção já escrevem markdown-leve, e num <p> só o aluno lia os asteriscos.
  */
 import { useState } from 'react';
 import { RichText } from '@/components/branded/activity/RichText';
+import { InstructionImage } from '@/components/branded/activity/InstructionImage';
 import type { InstructionPanelSpec } from '@/types/content';
 
 /** Pulse skeleton — same border-radius as the media containers. */
@@ -46,7 +47,6 @@ export function InstructionPanel({
   spec: InstructionPanelSpec | undefined | null;
   className?: string;
 }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
   if (!spec) return null;
@@ -58,17 +58,7 @@ export function InstructionPanel({
     <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
       {text && <RichText text={text} data-testid="instruction-text" />}
 
-      {image_url && (
-        <div className="rounded-2xl border border-border overflow-hidden bg-obsidiana/40" data-testid="instruction-image">
-          {!imageLoaded && <MediaSkeleton />}
-          <img
-            src={image_url}
-            alt={text ?? 'instruction'}
-            className={`w-full max-h-80 object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
-            onLoad={() => setImageLoaded(true)}
-          />
-        </div>
-      )}
+      {image_url && <InstructionImage src={image_url} alt={text ?? 'instruction'} />}
 
       {video_url && (
         <div className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden" data-testid="instruction-video">

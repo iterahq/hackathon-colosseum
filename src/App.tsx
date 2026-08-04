@@ -54,6 +54,7 @@ import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import GuestLiveRoute from "./pages/GuestLiveRoute";
+import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 
 const queryClient = new QueryClient();
@@ -272,12 +273,19 @@ const App = () => (
                     still walks in. `graceOnError` só aqui: uma leitura que falha
                     no wifi da escola não pode derrubar o aluno no meio da aula.
                     Guests come through /g/:code, never here. */}
+                {/* `LiveEntryRoleGate`: um tenant_admin/owner é staff E aluno,
+                    e o link da aula não diz qual dos dois ele quer ser — ele
+                    escolhe o lado antes de a sessão montar (escolher professor
+                    manda para `/live/instructor/:sessionId`). Aluno e
+                    instrutor sem cargo de admin passam direto. */}
                 <Route
                   path="/live/:sessionId"
                   element={
                     <RequireAuth>
                       <RequireSubscription graceOnError>
-                        <LiveSessionPage />
+                        <LiveEntryRoleGate>
+                          <LiveSessionPage />
+                        </LiveEntryRoleGate>
                       </RequireSubscription>
                     </RequireAuth>
                   }
