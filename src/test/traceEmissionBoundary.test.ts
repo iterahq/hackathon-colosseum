@@ -144,13 +144,33 @@ describe('a emissão do trace mora no serviço, não nos call-sites', () => {
     expect(service).toContain("from('activity_traces')");
   });
 
-  it('e é o ÚNICO — nenhum outro módulo escreve nessa tabela', () => {
+  it('e é o ÚNICO ESCRITOR — nenhum outro módulo escreve nessa tabela', () => {
     // Um segundo escritor não seria só duplicação: ele nasceria fora do funil,
     // logo fora da fila durável, logo perdendo justamente o tráfego offline.
-    const writers = sourcesUnder(path.join(ROOT, 'src'))
+    //
+    // ⚠️ A checagem passou a distinguir ESCRITA de LEITURA em 2026-08-04, quando
+    // o `replay.service` (Fase 1 do plano de replay) virou o primeiro LEITOR da
+    // tabela — até então ninguém lia, e "toca a tabela" e "escreve na tabela"
+    // eram a mesma coisa. Colapsar os dois de novo ou proibiria o replay ou
+    // deixaria um escritor novo passar como leitor; por isso são duas asserções.
+    const WRITE_VERBS = ['.insert(', '.update(', '.upsert(', '.delete('];
+    const touching = sourcesUnder(path.join(ROOT, 'src'))
       .filter((f) => !f.includes(`${path.sep}test${path.sep}`))
-      .filter((f) => readFileSync(f, 'utf-8').includes("from('activity_traces')"))
+      .filter((f) => readFileSync(f, 'utf-8').includes("from('activity_traces')"));
+
+    const writers = touching
+      .filter((f) => {
+        const src = readFileSync(f, 'utf-8');
+        return WRITE_VERBS.some((verb) => src.includes(verb));
+      })
       .map((f) => path.relative(ROOT, f));
     expect(writers).toEqual(['src/services/progress.service.ts']);
+
+    // E o conjunto de quem toca a tabela continua fechado e nomeado, para que um
+    // módulo novo tenha de se declarar aqui em vez de aparecer sozinho.
+    expect(touching.map((f) => path.relative(ROOT, f)).sort()).toEqual([
+      'src/services/progress.service.ts',
+      'src/services/replay.service.ts',
+    ]);
   });
 });

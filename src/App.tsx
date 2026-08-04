@@ -42,6 +42,8 @@ const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const RosterPage = lazy(() => import("./pages/admin/RosterPage"));
 const CompletionPage = lazy(() => import("./pages/admin/CompletionPage"));
 const EngagementPage = lazy(() => import("./pages/admin/EngagementPage"));
+const ReplayPage = lazy(() => import("./pages/admin/ReplayPage"));
+const ReplaySessionPage = lazy(() => import("./pages/admin/ReplaySessionPage"));
 const AdminArtifactsPage = lazy(() => import("./pages/admin/AdminArtifactsPage"));
 const AuthorHomePage = lazy(() => import("./pages/author/AuthorHomePage"));
 const UnitCanvasPage = lazy(() => import("./pages/author/UnitCanvasPage"));
@@ -341,6 +343,33 @@ const App = () => (
                     element={
                       <LazyPanel>
                         <EngagementPage />
+                      </LazyPanel>
+                    }
+                  />
+                  {/* Replay of a recorded attempt (plan
+                      20260803-itera-replay-de-sessao-de-atividade, Fase 1).
+                      ⚠️ ADMIN OF THE LEARNER'S TENANT ONLY — Tainan TG
+                      2026-08-04: *"so admin assiste replay de aluno. so do
+                      tenant dele tbm."* That is STRICTER than the RLS, which
+                      also admits the instructor (0034:274-281) and keeps doing
+                      so for the ordinary result read. This `RequireRole
+                      tenant_admin` is the route half of the gate; the
+                      load-bearing half is in `replay.service.ts`, which issues
+                      no query at all without an administered tenant and scopes
+                      every read to that tenant's learners. */}
+                  <Route
+                    path="replay"
+                    element={
+                      <LazyPanel>
+                        <ReplayPage />
+                      </LazyPanel>
+                    }
+                  />
+                  <Route
+                    path="replay/:traceId"
+                    element={
+                      <LazyPanel>
+                        <ReplaySessionPage />
                       </LazyPanel>
                     }
                   />
