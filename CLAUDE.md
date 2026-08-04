@@ -262,6 +262,26 @@ crescer uma prop fora do contrato.
     `type`, nova chave de `payload`, **sem** bump de `schema_version` e **sem**
     migration. Leia a regra de quando a versão sobe no topo daquele módulo antes
     de mexer no formato.
+  - **A linha também carrega CONTEXTO PEDAGÓGICO** —
+    `src/utils/pedagogicalContext.ts` → `itera.activity_traces.pedagogical_context`
+    (migration `db/migrations/0038_activity_traces_pedagogical_context.sql`,
+    Fase 1 do plano
+    [`20260803-itera-learning-control-plane-prototipo`](https://plans.devfellowship.com/20260803-itera-learning-control-plane-prototipo)).
+    Guarda o que a atividade EXERCITAVA (`template`, `family`,
+    `mental_structures[]`, `metaphor`, `difficulty`, `objective`) **no instante
+    da tentativa**, não por join na análise — a gramática é viva por decisão
+    (ADR-5), então um join re-etiquetaria a história toda vez que ela mudasse.
+    - **O autor escreve em `itera.activities.spec.pedagogy`.** Toda chave que
+      este build não reconhece sobrevive verbatim em `extra`, de propósito: é o
+      que faz mudança de gramática virar job de reprocessamento em vez de
+      migração de cliente (ADR-2).
+    - **Não filtre vocabulário no cliente nem no banco.** `GRAMMAR_V0_*` e
+      `unknownGrammarTerms()` servem pra SINALIZAR deriva (lint de manifesto),
+      nunca pra descartar termo — descartar tornaria invisível a primeira
+      tentativa de uma estrutura nova.
+    - **Leitura:** `flattenTraceEvents()` (em `learningTrace.ts`) devolve UM
+      registro por evento já com o contexto anexado. O contexto é gravado uma
+      vez por linha; quem denormaliza é o leitor.
   - **Precisa de coluna/tabela nova para o evento?** Só se o acréscimo acima não
     resolver. Migration em `db/migrations/`, **idempotente** e **aplicada à
     mão** — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).

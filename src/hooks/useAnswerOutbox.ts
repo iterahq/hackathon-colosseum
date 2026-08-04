@@ -45,6 +45,12 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
       // antiga (ou aparada por tamanho) volta sem ele ⇒ coluna NULL, que
       // significa "não capturado" e é a verdade.
       specSnapshot: entry.specSnapshot,
+      // O que a atividade EXERCITAVA, carimbado na tentativa e carregado pela
+      // fila (migration 0038). Buscar aqui — ou pior, no join da análise —
+      // daria a gramática de hoje a uma tentativa de meses atrás, e a gramática
+      // é justamente o que o ADR-5 faz mudar. Entrada antiga (ou aparada por
+      // tamanho) volta sem ele ⇒ coluna NULL ⇒ "não capturado".
+      pedagogicalContext: entry.pedagogicalContext,
     });
   }
   return recordClassAnswer(entry.sessionId, entry.activityId, entry.correct, entry.elapsedMs);

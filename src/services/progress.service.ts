@@ -46,6 +46,7 @@ import {
   type RecordedAction,
   type TraceSpecSnapshot,
 } from '@/utils/learningTrace';
+import type { PedagogicalContext } from '@/utils/pedagogicalContext';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -148,6 +149,18 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * column is NULL and NULL means "not captured", which is exactly true of every
  * attempt written by an older build.
  *
+ * `pedagogicalContext` is WHAT THE ACTIVITY WAS FOR — template, family, mental
+ * structures, metaphor, difficulty, objective (migration 0038, Fase 1 of plan
+ * `20260803-itera-learning-control-plane-prototipo`). Optional for the reason
+ * `specSnapshot` is: omitting it records LESS, never something false.
+ *
+ * ⚠️ IT COMES FROM THE CALLER FOR THE SAME REASON THE SNAPSHOT DOES, and here
+ * the reason is stronger rather than weaker. A join at analysis time would tag
+ * a five-year-old attempt with TODAY's grammar, and ADR-5 guarantees the
+ * grammar moves — structures enter and leave on measured explanatory power. A
+ * trace tagged by join therefore re-tags itself every time the grammar changes,
+ * and the Fase 4 ablation ends up measuring its own bookkeeping.
+ *
  * ⚠️ IT MUST COME FROM THE CALLER, and re-reading it here would be a bug, not a
  * simplification. The point of the snapshot is that `itera.activities.spec` is
  * mutable (trigger `activity_defs_sync_instances`, migration 0024) and
@@ -181,6 +194,7 @@ export async function persistActivityProgress(
     actions,
     actionsTruncated,
     specSnapshot,
+    pedagogicalContext,
   }: {
     passed: boolean;
     response?: string | null;
@@ -189,6 +203,7 @@ export async function persistActivityProgress(
     actions?: readonly RecordedAction[];
     actionsTruncated?: boolean;
     specSnapshot?: TraceSpecSnapshot | null;
+    pedagogicalContext?: PedagogicalContext | null;
   }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
@@ -330,6 +345,13 @@ export async function persistActivityProgress(
     // against `uq_activity_traces_attempt`, so if the first statement actually
     // committed and only failed on the way back, the second is a no-op.
     //
+    // 🪜 AND THEN A SECOND COLUMN ARRIVED: `pedagogical_context` (migration
+    // 0038, Fase 1 of the LCPWCI plan). Two decorations from two hand-applied
+    // migrations means the retry is no longer a pair but a LADDER — see the
+    // block below. The rule it enforces is unchanged; what changes is that
+    // dropping the NEWEST annotation must not also drop an older one the
+    // deployed schema can perfectly well store.
+    //
     // 🔁 IDEMPOTENT ON RETRY. `flushOutbox` re-sends any entry whose write did
     // not land, and this function can return false AFTER a row has already been
     // committed (a timeout on the way back). Because `started_at` is derived
@@ -373,22 +395,48 @@ export async function persistActivityProgress(
           ignoreDuplicates: true,
         } as const;
 
-        if (specSnapshot) {
-          const { error: traceError } = await sb.from('activity_traces').upsert(
-            {
-              ...traceRow,
+        // 🪜 THE DEGRADATION LADDER — most decorated first, bare envelope last.
+        //
+        // There are now TWO decorations from TWO hand-applied migrations
+        // (0037's enunciado, 0038's pedagogical context), and they can be
+        // applied at different times. A single "try decorated, else try bare"
+        // retry would throw away an ALREADY-APPLIED decoration whenever the
+        // newest one was missing — paying for 0038's rollout with 0037's data,
+        // which is the same category of mistake as paying for telemetry with
+        // the record it decorates.
+        //
+        // So the rungs are ordered NEWEST-DECORATION-FIRST and each one drops
+        // exactly one migration's worth of columns. The window costs the
+        // annotations the deployed schema genuinely cannot store, and nothing
+        // else. Identical rungs are skipped, so an undecorated attempt is still
+        // exactly one statement.
+        //
+        // Every rung is the same idempotent upsert against
+        // `uq_activity_traces_attempt`, so a rung that actually committed and
+        // only failed on the way back makes the next one a no-op — the ladder
+        // can never duplicate a sequence.
+        //
+        // ⚠️ WHOEVER ADDS THE NEXT COLUMN: add a rung at the TOP, not a branch.
+        const rungs: Array<Record<string, unknown>> = [];
+        const withSnapshot = specSnapshot
+          ? {
               // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now.
               // See the corollary above and migration 0037.
               spec_snapshot: specSnapshot.spec,
               spec_locale: specSnapshot.locale,
-            },
-            conflict
-          );
-          // 0037 not applied yet ⇒ PostgREST rejects the whole statement for
-          // the unknown columns. Keep the sequence; drop only its annotation.
-          if (traceError) await sb.from('activity_traces').upsert(traceRow, conflict);
-        } else {
-          await sb.from('activity_traces').upsert(traceRow, conflict);
+            }
+          : {};
+        if (pedagogicalContext) {
+          // ⚠️ What the activity was FOR, as tagged when the learner attempted
+          // it — never as tagged today. Migration 0038.
+          rungs.push({ ...traceRow, ...withSnapshot, pedagogical_context: pedagogicalContext });
+        }
+        if (specSnapshot) rungs.push({ ...traceRow, ...withSnapshot });
+        rungs.push(traceRow);
+
+        for (const rung of rungs) {
+          const { error: traceError } = await sb.from('activity_traces').upsert(rung, conflict);
+          if (!traceError) break;
         }
       }
     } catch {

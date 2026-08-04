@@ -47,6 +47,7 @@ import {
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
+import { buildPedagogicalContext } from '@/utils/pedagogicalContext';
 import type { DurationSample } from '@/utils/activityDuration';
 import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
@@ -318,6 +319,11 @@ export default function LessonPlayer() {
         // tela acabou de renderizar — por isso o snapshot sai daqui e não do
         // serviço, que releria um `spec` mutável depois do fato.
         specSnapshot: buildSpecSnapshot(current.spec, locale) ?? undefined,
+        // O QUE essa atividade exercitava (migration 0038, Fase 1 do LCPWCI).
+        // Sai daqui, da tela que acabou de renderizar, e não de um join na
+        // análise: a tag muda por design (ADR-5 — gramática competitiva), então
+        // um join daria a gramática de hoje a uma tentativa de anos atrás.
+        pedagogicalContext: buildPedagogicalContext(current),
       });
     }
 
@@ -347,6 +353,9 @@ export default function LessonPlayer() {
         // `activities.spec` is mutable and locale-collapsed at render time, so
         // the only moment it can be captured truthfully is this one.
         specSnapshot: buildSpecSnapshot(current.spec, locale),
+        // Mesma regra do miss acima: a tag da atividade viaja COM a tentativa,
+        // porque a gramática que a nomeia é viva por decisão (ADR-5).
+        pedagogicalContext: buildPedagogicalContext(current),
       });
       setSaving(false);
       if (ok) {

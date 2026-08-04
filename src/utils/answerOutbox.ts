@@ -68,6 +68,26 @@ export const MAX_QUEUED_TRACE_ACTIONS = 60;
 export const MAX_QUEUED_SPEC_SNAPSHOT_CHARS = 16_000;
 
 /**
+ * Teto do CONTEXTO PEDAGÓGICO por entrada enfileirada (migration 0038).
+ *
+ * Os seis campos normalizados (`template`, `family`, `mental_structures`,
+ * `metaphor`, `difficulty`, `objective`) somam dezenas de bytes e nunca
+ * ameaçariam a quota. Quem pode crescer sem teto é o `extra` — a passagem
+ * VERBATIM de toda chave autorada que este build não reconhece, que existe
+ * justamente pra não perder um campo de gramática inventado depois (ADR-2). Um
+ * autor que colar um objeto grande ali não pode derrubar a fila inteira.
+ *
+ * ⚠️ APARA EM DOIS DEGRAUS, e a ordem importa: primeiro cai só o `extra`,
+ * mantendo os campos que a Fase 4 realmente consulta; o contexto inteiro só sai
+ * se nem assim couber. Descartar o contexto por causa do `extra` seria perder
+ * a estrutura mental por causa de um campo que ninguém ainda consulta.
+ *
+ * 4.000 caracteres: ordem de grandeza do maior `extra` plausível, e 200 × 4 kB
+ * ainda fica bem abaixo dos ~5 MB de quota.
+ */
+export const MAX_QUEUED_PEDAGOGICAL_CONTEXT_CHARS = 4_000;
+
+/**
  * Aparo aplicado só na entrada da FILA — a escrita direta (caminho feliz,
  * esmagadora maioria) segue com a sequência inteira e com o snapshot inteiro.
  */
@@ -83,18 +103,38 @@ function trimForQueue(entry: OutboxEntry): OutboxEntry {
     };
   }
 
-  if (trimmed.specSnapshot && !fitsInQueue(trimmed.specSnapshot.spec)) {
+  if (trimmed.specSnapshot && !fitsIn(trimmed.specSnapshot.spec, MAX_QUEUED_SPEC_SNAPSHOT_CHARS)) {
     const { specSnapshot: _dropped, ...rest } = trimmed;
     trimmed = rest;
+  }
+
+  if (
+    trimmed.pedagogicalContext &&
+    !fitsIn(trimmed.pedagogicalContext, MAX_QUEUED_PEDAGOGICAL_CONTEXT_CHARS)
+  ) {
+    // Degrau 1 — cai só o `extra`. Os seis campos normalizados são o que a
+    // Fase 4 consulta; o `extra` é a parte ilimitada e a menos usada hoje.
+    const { extra: _extra, ...withoutExtra } = trimmed.pedagogicalContext;
+    if (fitsIn(withoutExtra, MAX_QUEUED_PEDAGOGICAL_CONTEXT_CHARS)) {
+      trimmed = { ...trimmed, pedagogicalContext: withoutExtra };
+    } else {
+      // Degrau 2 — nem sem o `extra` cabe. Sai inteiro: coluna NULL, que
+      // significa "não capturado" e é a verdade. Descartado, nunca truncado,
+      // pela mesma razão do snapshot — meio contexto é uma afirmação ERRADA
+      // sobre o que a atividade exercitava, e uma afirmação errada é pior que
+      // silêncio.
+      const { pedagogicalContext: _context, ...rest } = trimmed;
+      trimmed = rest;
+    }
   }
 
   return trimmed;
 }
 
-/** Cabe na fila sem ameaçar a quota? Um spec que nem serializa também não cabe. */
-function fitsInQueue(spec: Record<string, unknown>): boolean {
+/** Cabe na fila sem ameaçar a quota? Um valor que nem serializa também não cabe. */
+function fitsIn(value: unknown, cap: number): boolean {
   try {
-    return JSON.stringify(spec).length <= MAX_QUEUED_SPEC_SNAPSHOT_CHARS;
+    return JSON.stringify(value).length <= cap;
   } catch {
     return false;
   }

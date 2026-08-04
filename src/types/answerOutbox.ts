@@ -2,6 +2,7 @@
 
 import type { DurationSample } from '@/utils/activityDuration';
 import type { RecordedAction, TraceSpecSnapshot } from '@/utils/learningTrace';
+import type { PedagogicalContext } from '@/utils/pedagogicalContext';
 
 /** Uma escrita pendente. A união é fechada — kind novo obriga a tratar o envio. */
 export type OutboxEntry =
@@ -85,6 +86,29 @@ export type OutboxEntry =
        * serializada antes do campo existir volta sem ele.
        */
       specSnapshot?: TraceSpecSnapshot;
+      /**
+       * O CONTEXTO PEDAGÓGICO da tentativa — template, família, estruturas
+       * mentais, metáfora, dificuldade, objetivo (migration 0038, Fase 1 do
+       * plano `20260803-itera-learning-control-plane-prototipo`).
+       *
+       * ⚠️ VIAJA PELA FILA pelo mesmo motivo do `specSnapshot`, e por um motivo
+       * a mais: a tag da atividade não é só mutável, ela é *feita pra mudar* —
+       * o ADR-5 diz que estrutura entra e sai da gramática por poder
+       * preditivo medido. Buscar a tag no dreno (ou pior, no join da análise)
+       * daria a gramática de ENTÃO a uma tentativa de AGORA, e a ablação da
+       * Fase 4 acabaria medindo a própria contabilidade em vez do aluno.
+       *
+       * ⚠️ APARADO NA ENFILEIRADA quando é grande demais
+       * (`MAX_QUEUED_PEDAGOGICAL_CONTEXT_CHARS`): primeiro cai o `extra` (a
+       * passagem verbatim de chaves não reconhecidas, que é a parte
+       * ilimitada), e só se ainda não couber some o contexto inteiro. Os seis
+       * campos normalizados custam dezenas de bytes; é o `extra` que pode
+       * crescer sem teto, então é ele que sai primeiro.
+       *
+       * OPCIONAL pelo mesmo motivo que os outros: entrada serializada antes do
+       * campo existir volta sem ele ⇒ coluna NULL ⇒ "não capturado".
+       */
+      pedagogicalContext?: PedagogicalContext;
     }
   | {
       kind: 'classAnswer';

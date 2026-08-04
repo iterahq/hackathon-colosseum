@@ -59,6 +59,7 @@ import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { buildSpecSnapshot } from '@/utils/learningTrace';
+import { buildPedagogicalContext } from '@/utils/pedagogicalContext';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { recordClassAttendance } from '@/services/classReport.service';
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
@@ -350,6 +351,12 @@ export default function LiveSessionPage() {
     // traria a redação de então — que é exatamente a divergência que o snapshot
     // existe pra impedir.
     const specSnapshot = buildSpecSnapshot(current.spec, locale) ?? undefined;
+    // E O QUE ela exercitava (migration 0038 — Fase 1 do plano
+    // 20260803-itera-learning-control-plane-prototipo). Mesma regra do snapshot,
+    // com um motivo a mais: a tag pedagógica não só pode mudar, ela é FEITA pra
+    // mudar (ADR-5 — a gramática compete contra os dados), então nem a fila nem
+    // a análise podem ir buscá-la depois.
+    const pedagogicalContext = buildPedagogicalContext(current);
     if (guest) {
       // no durable per-learner progress for a link-invited guest
     } else if (correct) {
@@ -363,6 +370,7 @@ export default function LiveSessionPage() {
         settledAt,
         actions,
         specSnapshot,
+        pedagogicalContext,
       });
       setSaving(false);
     } else {
@@ -375,6 +383,7 @@ export default function LiveSessionPage() {
         settledAt,
         actions,
         specSnapshot,
+        pedagogicalContext,
       });
     }
     broadcastAnswer(current.id, correct, elapsedMs);

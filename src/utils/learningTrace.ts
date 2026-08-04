@@ -85,6 +85,11 @@
  *     read the same way as one written after it. That is the whole point of the
  *     field — bumping it for additive change would destroy the only signal
  *     saying whether an OLD row is interpretable.
+ *     ⚠️ `pedagogical_context` (migration 0038, Fase 1 of the LCPWCI plan) is
+ *     the same case AGAIN, and it did not move the version either. It carries
+ *     its OWN `schema` field (`PEDAGOGICAL_CONTEXT_SCHEMA`) so that the shape of
+ *     the tag can evolve without either version ever making a claim about the
+ *     other.
  *
  * The distinction is the whole value of the field. A version that ticks on
  * every additive change tells you nothing about whether an old row is readable;
@@ -110,6 +115,10 @@
  */
 import type { DurationSample } from '@/utils/activityDuration';
 import type { LearnerActionType, RecordedAction } from '@/utils/activityFamilies';
+import {
+  readPedagogicalContext,
+  type StoredPedagogicalContext,
+} from '@/utils/pedagogicalContext';
 
 export type { LearnerActionType, RecordedAction } from '@/utils/activityFamilies';
 
@@ -443,4 +452,78 @@ export function readTrace(row: unknown): StoredLearningTrace | null {
     actions: rawActions.filter(isStoredAction),
     actions_truncated: r.actions_truncated === true,
   };
+}
+
+/**
+ * ONE EVENT, with the context that makes it answerable years later.
+ *
+ * Plan `20260803-itera-learning-control-plane-prototipo` (LCPWCI), Fase 1:
+ * *"Contexto pedagógico em TODO evento"*. This type is where that requirement
+ * becomes literally true.
+ *
+ * The context is stored ONCE, on the row (migration 0038), because every event
+ * of a trace belongs to the same attempt of the same activity — copying it onto
+ * each action would re-store per action what the row already carries, which is
+ * the same argument that makes `at_ms` an offset instead of a wall clock, on a
+ * payload built to hold hundreds of actions. Denormalising is the READER's job,
+ * and this is the reader.
+ */
+export interface ContextualisedTraceEvent {
+  /** The attempt's activity. Never null on a real row: it is a NOT NULL FK. */
+  activity_id: string | null;
+  /** The envelope version of the row this event came from. */
+  schema_version: number;
+  /** The trace origin — the instant `at_ms: 0` refers to. */
+  started_at: string | null;
+  /** Milliseconds since the origin, exactly as stored. */
+  at_ms: number;
+  /**
+   * The absolute instant, ISO-8601 — `started_at + at_ms`, computed here so
+   * every consumer does not re-derive it (and get the rounding subtly wrong).
+   * Null when the row carried no usable origin.
+   */
+  at: string | null;
+  type: string;
+  payload?: Record<string, unknown>;
+  /**
+   * ⚠️ NULL means NOT CAPTURED — a row settled before migration 0038, or by an
+   * older client, or one whose write had to degrade during a deploy window. It
+   * NEVER means "look it up on `itera.activities`": the tag there is today's,
+   * and re-tagging history is precisely what capturing it here prevents.
+   */
+  pedagogical_context: StoredPedagogicalContext | null;
+}
+
+/**
+ * Explode one stored trace row into its events, each carrying the row's
+ * pedagogical context and its absolute timestamp.
+ *
+ * TOTAL and TOLERANT, like `readTrace` (which it is built on): a row that is not
+ * an object yields `[]`, structurally broken actions are skipped individually,
+ * unknown action types and payload keys pass through verbatim, and a context
+ * written by a newer build is reported rather than rejected.
+ *
+ * This is the seam ADR-2 asks for. Deriving the Learning and Mastery layers is
+ * a pass over these records — offline, over rows already collected — instead of
+ * a client change followed by a wait for new data.
+ */
+export function flattenTraceEvents(row: unknown): ContextualisedTraceEvent[] {
+  const trace = readTrace(row);
+  if (!trace) return [];
+  const r = row as Record<string, unknown>;
+
+  const activityId = typeof r.activity_id === 'string' ? r.activity_id : null;
+  const context = readPedagogicalContext(r.pedagogical_context);
+  const originMs = trace.started_at ? Date.parse(trace.started_at) : NaN;
+
+  return trace.actions.map((action) => ({
+    activity_id: activityId,
+    schema_version: trace.schema_version,
+    started_at: trace.started_at,
+    at_ms: action.at_ms,
+    at: Number.isFinite(originMs) ? new Date(originMs + action.at_ms).toISOString() : null,
+    type: action.type,
+    ...(action.payload ? { payload: action.payload } : {}),
+    pedagogical_context: context,
+  }));
 }
