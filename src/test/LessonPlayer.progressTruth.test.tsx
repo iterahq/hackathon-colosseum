@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
@@ -58,12 +59,29 @@ vi.mock('@/hooks', () => ({
  * way. The real components are irrelevant here — what is under test is what the
  * shell PERSISTS for each outcome.
  */
+/**
+ * When set, the stubbed activity settles from a MOUNT EFFECT instead of waiting
+ * for a click. That is not a contrivance — `handleComplete` already documents
+ * that *"some of them (the sandbox family) re-fire `onComplete` from a mount
+ * effect when they read themselves as done"*. It is also the only way to settle
+ * an attempt in the SAME commit that first renders the activity, which is the
+ * window the origin race lived in. See the `activityStartedAt` describe block.
+ */
+let settleOnMount: { correct: boolean; response: string } | null = null;
+
 vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
   ActivityRenderer: ({
     onComplete,
   }: {
     onComplete: (c: boolean, detail?: { response?: string }) => void;
-  }) => (
+  }) => {
+    // Child effects flush BEFORE the parent's, so this fires while the player's
+    // own post-render effects are still pending.
+    useEffect(() => {
+      if (settleOnMount) onComplete(settleOnMount.correct, { response: settleOnMount.response });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    return (
     <>
       <button
         data-testid="stub-correct"
@@ -85,7 +103,8 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
         errar longo
       </button>
     </>
-  ),
+    );
+  },
 }));
 
 /**
@@ -169,6 +188,7 @@ beforeEach(async () => {
   vi.mocked(awardActivityXp).mockClear();
   useLessonContent.mockReset();
   useNextLesson.mockReset();
+  settleOnMount = null;
   useLessonContent.mockReturnValue({
     data: lessonData(),
     isPending: false,
@@ -521,5 +541,73 @@ describe('duration — a schema that lacks the columns must not cost the attempt
     // Give a stray second insert a chance to land before asserting its absence.
     await new Promise((r) => setTimeout(r, 50));
     expect(inserts['activity_results'].length).toBe(1);
+  });
+});
+
+/**
+ * THE ORIGIN RACE — why the duration was intermittently null on `main`.
+ *
+ * `records the time for a MISS too, on the outbox path` failed sporadically with
+ * *"expected null to be 4500"*: not a wrong number, a MISSING one. `duration.
+ * read()` returns null only when its origin is null, so the attempt settled in a
+ * commit where `activityStartedAt` had not been armed yet.
+ *
+ * It was armed in a `useEffect` gated on `!resuming`. Effects run AFTER the
+ * commit, so there is always one commit in which the activity is on screen,
+ * interactive, and the origin is still null — and every handler bound in that
+ * commit closes over the null. Whether anything settles inside that window is a
+ * scheduling question, which is exactly why it failed by load rather than by
+ * logic, and why it never reproduced in isolation (100 local runs, all green).
+ *
+ * ⚠️ A GATE THAT FAILS BY RACE IS A GATE PEOPLE LEARN TO IGNORE. `progressTruth`
+ * is the regression lock for a defect that cost real learner data (D2 — an
+ * attempt log that only ever held wins). It has to be believed when it is red.
+ *
+ * The fix derives the origin DURING RENDER, so the first commit that shows the
+ * activity already carries it and the window does not exist. These two cases
+ * pin that by settling from the activity's MOUNT EFFECT: child effects flush
+ * before the parent's, so this settles inside precisely the commit the race
+ * lived in — deterministically, on every run, on every machine. Both FAIL
+ * against the pre-fix player with `elapsed_ms: null`.
+ */
+describe('the duration origin is armed BEFORE the activity can settle', () => {
+  const T0 = 9_000_000;
+  let clock = T0;
+  let nowSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  beforeEach(() => {
+    clock = T0;
+    nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+  });
+  afterEach(() => {
+    nowSpy?.mockRestore();
+    nowSpy = null;
+  });
+
+  it('measures an attempt settled in the very commit the activity appears', async () => {
+    settleOnMount = { correct: true, response: 'A opção certa' };
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    const row = inserts['activity_results'][0] as Record<string, unknown>;
+    // Zero is the honest reading of "settled the instant it opened". NULL is
+    // "we never armed the clock", and that is the bug.
+    expect(row.elapsed_ms).toBe(0);
+  });
+
+  it('anchors the TRACE of such an attempt too, instead of dropping it', async () => {
+    // `buildAttemptTrace` returns null without an origin, so the race did not
+    // merely lose a number — it lost the whole sequence for that attempt.
+    settleOnMount = { correct: false, response: 'O distrator errado' };
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    const trace = upserts.find((u) => u.table === 'activity_traces');
+    expect(trace, 'an attempt with no origin writes no trace at all').toBeDefined();
+    expect(trace?.payload.started_at).toBe(new Date(T0).toISOString());
   });
 });

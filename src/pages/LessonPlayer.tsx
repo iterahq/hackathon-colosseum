@@ -195,10 +195,37 @@ export default function LessonPlayer() {
   // Held behind `resuming` on purpose: while the resume gate is up the learner is
   // looking at a skeleton, and an origin set there would bill the read-back of
   // itera.progress to the activity.
-  const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
-  useEffect(() => {
-    setActivityStartedAt(current?.id && !resuming ? Date.now() : null);
-  }, [current?.id, resuming]);
+  //
+  // ⚠️ DERIVED DURING RENDER, NOT IN AN EFFECT — and that is a correctness fix,
+  // not a style preference. This used to be `useState` armed by a
+  // `useEffect([current?.id, resuming])`. Effects run AFTER the commit, so there
+  // was always one commit in which the activity was on screen, interactive, and
+  // the origin was still null. Every handler bound in that commit closed over
+  // the null, and `duration.read()` returns null without an origin — which
+  // `buildAttemptTrace` then turns into NO TRACE AT ALL, because every `at_ms`
+  // is an offset from an anchor that does not exist.
+  //
+  // That window was not theoretical: it made
+  // `LessonPlayer.progressTruth.test.tsx` fail intermittently with *"expected
+  // null to be 4500"* — a MISSING measurement, not a wrong one. Whether anything
+  // settles inside the window is a scheduling question, which is why it failed
+  // by machine load rather than by logic and never reproduced in isolation. The
+  // regression lock for D2 (an attempt log that only ever held wins) has to be
+  // believed when it is red; a gate that fails by race is a gate people learn to
+  // ignore. `src/test/LessonPlayer.progressTruth.test.tsx` now settles from the
+  // activity's MOUNT EFFECT — child effects flush before the parent's — which
+  // lands inside that exact commit deterministically.
+  //
+  // A ref rather than `useMemo`: `useMemo` is a CACHE React may drop and
+  // recompute, and a recomputation here would silently restart a learner's timer
+  // mid-activity. The key comparison makes this idempotent — re-rendering does
+  // not move an origin that is already set for the same activity.
+  const originRef = useRef<{ key: string | null; at: number | null }>({ key: null, at: null });
+  const originKey = current?.id && !resuming ? current.id : null;
+  if (originRef.current.key !== originKey) {
+    originRef.current = { key: originKey, at: originKey === null ? null : Date.now() };
+  }
+  const activityStartedAt = originRef.current.at;
   const duration = useActivityDuration(activityStartedAt);
   // The sample taken at settle time, held across the footer's review beat exactly
   // like the response ref below it, and cleared only once the write has landed so
