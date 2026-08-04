@@ -16,11 +16,14 @@
  * (a build gate here since PR #195), not at runtime. The one runtime check is
  * (6) — the guarantee that Fase A changed nothing that ships.
  *
- * When Fase B/C move a renderer into `packages/activities/`, this file moves
- * with it. Until then it is the guard that stops the contract from drifting
- * away from the components it claims to describe.
+ * Fase B moved the contract itself into `packages/activities/`, so the imports
+ * below now go through `@iterahq/activities` — the npm-workspace link, i.e. the
+ * same module edge an external host resolves. That makes this file do double
+ * duty: it still guards the contract against renderer drift, and it now also
+ * fails if the workspace wiring breaks. When Fase C moves the renderers, this
+ * file moves with them.
  */
-import * as contract from '@/components/branded/activity/contract';
+import * as contract from '@iterahq/activities';
 import type {
   ActivityByocGeneration,
   ActivityBrief,
@@ -30,7 +33,7 @@ import type {
   ActivityResponderResult,
   ActivitySeed,
   PortableActivity,
-} from '@/components/branded/activity/contract';
+} from '@iterahq/activities';
 
 import type { Activity } from '@/types/content';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';

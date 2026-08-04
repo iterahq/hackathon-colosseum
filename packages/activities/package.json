@@ -1,0 +1,43 @@
+{
+  "name": "@iterahq/activities",
+  "version": "0.1.0",
+  "description": "Portable Itera activity renderers. v0.1.0 ships the PUBLIC CONTRACT only (types) — the renderers themselves land in Fase C.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "CONTRACT.md",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iterahq/itera-player.git",
+    "directory": "packages/activities"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "prepare": "tsc -p tsconfig.build.json"
+  },
+  "peerDependencies": {
+    "@iterahq/activity-spec": ">=0.7.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

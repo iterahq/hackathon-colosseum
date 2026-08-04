@@ -1,15 +1,16 @@
-# `@iterahq/activities` — the public contract (Fase A)
+# `@iterahq/activities` — the public contract
 
 **Plan:** [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/20260803-itera-player-activities-lib)
 · **Parent:** `20260803-itera-learning-control-plane-prototipo`
-**Status:** Fase A done — contract defined. **No code has moved.**
-**Types:** this folder — `src/components/branded/activity/contract/`
+**Status:** Fase A done (contract defined) · Fase B done (workspaces + the
+contract now lives in the package). **No renderer has moved yet — that is Fase C.**
+**Types:** `packages/activities/src/`
 **Guard:** `src/test/activityPublicContract.test.ts`
 
-> Lives here rather than in `docs/` for two reasons: `docs/` is gitignored in
-> this repo, and the contract should travel with the code it describes — when
-> Fase B moves `src/components/branded/activity/**` into
-> `packages/activities/`, this file becomes the package README.
+> Fase A wrote this doc inside `src/components/branded/activity/contract/` so it
+> would travel with the code it describes. Fase B moved it here, next to the
+> types, and the app now imports them as `@iterahq/activities` through the npm
+> workspace.
 
 ## What this is
 
@@ -101,27 +102,70 @@ away the ADR-4 promise — say so explicitly in that PR.
 
 ## Registry
 
-The package publishes to the **npm `iterahq` org** (`@iterahq/activities`),
-answering plan Open Question 2. The publishing token lives in Infisical at
-`/infra/npm/NPM_TOKEN_TAINAN` and covers both the `iterahq` and `devfellowship`
-scopes. **Nothing is published in Fase A** — this records the target only.
+**GitHub Packages, private** — `https://npm.pkg.github.com`, scope `@iterahq`
+(ADR-6 + the 2026-08-04 registry decision).
 
-✅ **Registry collision resolved (2026-08-03).** This repo previously pinned the
-whole scope at GitHub Packages (`@iterahq:registry=https://npm.pkg.github.com`),
-with CI's `setup-node` configuring the same registry for `@iterahq` — so an
-`@iterahq/activities` published to npmjs would *not* have been resolvable here.
-Both `.npmrc` and all five `setup-node` blocks (`ci.yml` ×3, `e2e.yml`,
-`storybook.yml`) now point at `https://registry.npmjs.org`, and `NODE_AUTH_TOKEN`
-reads from `secrets.NPM_TOKEN` instead of `secrets.GITHUB_TOKEN` (a GitHub token
-must never be sent as a bearer credential to a third-party registry).
+### Why not npmjs
 
-Nothing resolved from GitHub Packages at the time of the switch — the only
-`@iterahq` dependency is `activity-spec`, vendored as a `file:` tarball — so the
-change was configuration-only with no install-path risk. Installs are verified to
-work with `NODE_AUTH_TOKEN` unset or empty, which is the current CI state: no
-`NPM_TOKEN` secret exists at the org or repo level yet. One must be created from
-Infisical `/infra/npm/NPM_TOKEN_TAINAN` before the first **private** publish;
-a public `@iterahq/activities` would install fine without it.
+ADR-6 requires the package to be PRIVATE: it is DFL/Itera intellectual property.
+The npm org `iterahq` is on the **FREE** plan, and a free npm org can only
+publish **PUBLIC** packages — so publishing there would do the exact thing ADR-6
+forbids. GitHub Packages gives a private package at no extra registry cost and
+keeps the name `@iterahq/activities`, because its npm scope is the GitHub org
+name. **ADR-6 is preserved; only the registry moved** — which ADR-6 itself
+already named as its mitigation 2.
+
+This reverses the direction of PR #256, which had repointed the scope from
+GitHub Packages to npmjs on 2026-08-03 in anticipation of a paid npm org. The
+`.npmrc` and all five `setup-node` blocks (`ci.yml` ×3, `e2e.yml`,
+`storybook.yml`) now point at `https://npm.pkg.github.com` again, and
+`NODE_AUTH_TOKEN` reads `secrets.GITHUB_TOKEN` — not `secrets.NPM_TOKEN`, which
+is an npmjs credential and must never be sent to a different registry.
+
+The npm token at Infisical `/infra/npm/NPM_TOKEN_TAINAN` is **no longer needed
+by this repo**. The `NPM_TOKEN` repo secret is now unreferenced by any workflow.
+
+### The cross-repo access cost, measured
+
+A GitHub Packages package grants Actions access to its **publishing repository
+only**. Another repo's `GITHUB_TOKEN` — same org, `permissions: packages: read`
+set — gets `403 permission_denied: read_package`. Proven in this repo by run
+`30910892639`, reading `@iterahq/activity-spec` (published from
+`iterahq/activity-spec`). There is no org-wide read mode on a Free org and no
+REST endpoint for the grant; an org owner must add each consumer under
+*package settings → Manage Actions access*, or the consumer must carry a
+**classic** PAT with `read:packages` (fine-grained PATs are rejected by the
+GitHub Packages npm registry).
+
+This is why `@iterahq/activity-spec` is still a `file:` tarball here — see the
+open item in the Fase C section. Consumer setup is documented in
+`packages/activities/README.md`.
+
+## 🔴 Open item carried out of Fase B — the vendored tarball
+
+`package.json` still reads
+`"@iterahq/activity-spec": "file:vendor/iterahq-activity-spec-0.7.0.tgz"`.
+Killing that was a Fase B goal and it did **not** land. Being precise about why,
+because the reason is not the one the plan predicted:
+
+- The plan assumed no publish had ever succeeded in the `iterahq` org. That is
+  true of **npmjs** and false of **GitHub Packages**:
+  `@iterahq/activity-spec@0.7.0` was published there on 2026-08-03 16:59Z
+  (`iterahq/activity-spec` run `30834659269`, changesets), and it is private —
+  an anonymous read of `https://npm.pkg.github.com/@iterahq/activity-spec`
+  returns `401`. The pipeline exists and works.
+- What blocks the swap is **read access, not publication**. `itera-player`'s
+  `GITHUB_TOKEN` cannot read a package owned by `iterahq/activity-spec`
+  (`403 read_package`, run `30910892639`), and no token in the vault carries
+  `read:packages` — GitHub Packages' npm registry only accepts **classic** PATs,
+  and the org's classic PAT does not have that scope.
+- Flipping the dependency before that is resolved makes `npm install` fail in
+  CI **and** on every developer machine. So the tarball stays, alone, until an
+  org owner grants `iterahq/itera-player` read access to the package (or a
+  classic `read:packages` PAT is provisioned as a secret). Then the swap is a
+  two-line PR: the dependency range and deleting `vendor/`.
+
+`itera-api` and `itera-mcp` vendor the same tarball and need the same grant.
 
 ## Extraction order (Fase C), ascending coupling
 
@@ -226,4 +270,4 @@ package, which is what ADR-1 refuses.
 | ADR-4 | `onEvent` ships in v1 with an open payload. |
 | ADR-5 | Monaco/`code` behind `@iterahq/activities/code`, not the base bundle. |
 | — | `@devfellowship/components` is a **peerDependency** (plan Open Question 3). |
-| — | Registry: the npm **`iterahq`** org (plan Open Question 2). |
+| ADR-6 | Package is **PRIVATE** — DFL/Itera IP. Registry: **GitHub Packages** under the `iterahq` GitHub org (2026-08-04; npm free orgs can only publish public). |

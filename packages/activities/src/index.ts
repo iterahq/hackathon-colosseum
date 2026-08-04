@@ -1,16 +1,16 @@
 /**
- * `@iterahq/activities` — the public contract (Fase A).
+ * `@iterahq/activities` — the public contract.
  *
- * This barrel is what the package's `index.ts` will re-export once Fase B moves
- * `src/components/branded/activity/**` into `packages/activities/`. It lives
- * INSIDE the folder that is going to move, on purpose: the contract travels
- * with the code it describes, instead of being a doc that rots one directory
- * away from it.
+ * Fase A defined this boundary inside the app, at
+ * `src/components/branded/activity/contract/`. Fase B moved it here and made it
+ * the package's real entrypoint: the app now consumes it as
+ * `@iterahq/activities` through the npm workspace, which is the same edge an
+ * external host will consume — so the boundary is exercised, not just declared.
  *
- * TYPES ONLY — no runtime export, so importing this from anywhere adds nothing
- * to any bundle. Fase A is a boundary definition; the code does not move yet.
+ * TYPES ONLY — no runtime export, so importing this adds nothing to any bundle.
+ * The renderers themselves arrive in Fase C.
  *
- * Design doc, extraction order and per-kind coverage: ./README.md
+ * Design doc, extraction order and per-kind coverage: ../CONTRACT.md
  */
 export type {
   ActivityEvent,

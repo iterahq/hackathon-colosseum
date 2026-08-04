@@ -24,7 +24,28 @@ src/                    # the player SPA
   pages/auth/LoginPage  # password auth + federated IdP buttons + white-label
 db/                     # Itera-owned schema + migrations + apply flow (ADR-F1)
 modules/judge0/         # placeholder for code-execution (ADR-30)
+packages/               # npm workspaces — publishable libraries (Fase B, 2026-08-04)
+  activities/           # @iterahq/activities — portable activity renderers
 ```
+
+### npm workspaces
+
+`"workspaces": ["packages/*"]` — **npm workspaces, not Turborepo** (ADR-2 of
+plan `20260803-itera-player-activities-lib`: two packages do not pay for a
+second build tool, and the `dfl-runner` hosts are already under disk pressure).
+
+The **app stays at the repo root**; only publishable libraries live in
+`packages/*`. The plan sketched an `apps/player/` move as well — deliberately
+not done: relocating ~1000 app files buys nothing the workspace link does not
+already give, while conflicting with every open PR and rewriting every path in
+Vite/Vitest/Playwright/Storybook/Cloudflare config. Root-as-app plus
+`packages/*` is a standard npm-workspaces layout and it is reversible with a
+`git mv` when the PR queue is quiet.
+
+The app imports the package **by name** (`@iterahq/activities`), never by
+relative path — same edge an external host uses, so it is exercised rather than
+declared. `npm install` at the root links the workspace and runs its `prepare`
+build, so `dist/` exists before typecheck/test.
 
 > `iterahq/iterahq-ops` (the Octokit GitHub engine) is **referenced**, not folded
 > in yet — kept deployed as-is (ADR-101). Fold-in is a later batch.
@@ -50,10 +71,16 @@ npm run dev
 
 **Use `npm` — não `pnpm` nem `yarn`.** O lockfile é `package-lock.json`, e com
 `pnpm` o install para pedindo token de auth: o `.npmrc` declara
-`//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
-variável mesmo quando não precisa do registry. A única dependência `@iterahq`
-daqui é `activity-spec`, que vem do tarball versionado em `vendor/` — **nenhum
-token é necessário para desenvolver**.
+`//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
+variável mesmo quando não precisa do registry.
+
+**Nenhum token é necessário para desenvolver.** O `.npmrc` roteia o escopo
+`@iterahq` para o **GitHub Packages** (registry privado — ADR-6), mas hoje nada
+resolve de lá: `@iterahq/activities` é workspace local e `@iterahq/activity-spec`
+ainda vem do tarball versionado em `vendor/`. Quando o `activity-spec` passar a
+vir do registry, aí sim vai ser preciso um PAT **classic** com `read:packages`
+exportado como `NODE_AUTH_TOKEN` — detalhes em
+[`packages/activities/README.md`](packages/activities/README.md).
 
 Já rodou `pnpm` neste clone? Apague `node_modules` e `pnpm-lock.yaml`, e tire do
 `.npmrc` a linha `only-built-dependencies` que o `pnpm approve-builds` escreveu

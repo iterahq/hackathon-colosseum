@@ -1,0 +1,104 @@
+name: release-activities
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Publishes `packages/activities` (@iterahq/activities) to GITHUB PACKAGES.
+#
+# WHY GITHUB PACKAGES AND NOT npmjs (decided 2026-08-04)
+#
+# ADR-6 of `20260803-itera-player-activities-lib` says the package is PRIVATE —
+# it is DFL/Itera intellectual property. The npm org `iterahq` is on the FREE
+# plan, and a free npm org can only publish PUBLIC packages, so publishing there
+# today would do the exact thing ADR-6 forbids. GitHub Packages gives a private
+# package at no extra cost and keeps the name `@iterahq/activities` (its npm
+# scope is the org name). ADR-6 is preserved; only the registry moved — which
+# ADR-6 itself already named as its mitigation 2.
+#
+# MANUAL ON PURPOSE. `workflow_dispatch`, not `push: main`. Fase C moves real
+# renderers in here one PR at a time; auto-publishing every merge would mint a
+# version for each intermediate state. Bump `version` in
+# packages/activities/package.json in the PR, then dispatch this once.
+#
+# RUNNER: self-hosted iterahq `dfl-runner` — see the long rationale in ci.yml.
+# ──────────────────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency: release-activities
+
+jobs:
+  publish:
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (GitHub Packages registry)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the package
+        run: npm run build -w @iterahq/activities
+
+      # Republishing an existing version is a hard error on the registry side,
+      # but it fails deep inside `npm publish` with a generic 409. Checking here
+      # turns "forgot to bump" into a one-line message.
+      - name: Refuse to republish an existing version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./packages/activities/package.json').version")
+          echo "version=$VERSION"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            "https://npm.pkg.github.com/@iterahq/activities/$VERSION")
+          if [ "$CODE" = "200" ]; then
+            echo "::error::@iterahq/activities@$VERSION is already published. Bump the version in packages/activities/package.json."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Publish
+        run: npm publish -w @iterahq/activities
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # BOTH SIDES. Verification item 8 of the plan is explicit that checking
+      # only the authenticated read does not prove privacy — an anonymous read
+      # has to be shown to FAIL. Run them together or the claim is half-made.
+      - name: Verify the package is published AND private
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          echo "--- authenticated read (must be 200) ---"
+          AUTH=$(curl -s -o /tmp/auth.json -w '%{http_code}' \
+            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            "https://npm.pkg.github.com/@iterahq/activities")
+          echo "authenticated http=$AUTH"
+          node -e "const m=require('/tmp/auth.json');console.log('versions:',Object.keys(m.versions||{}).join(','))" || true
+
+          echo "--- anonymous read (must NOT be 200) ---"
+          ANON=$(curl -s -o /tmp/anon.json -w '%{http_code}' \
+            "https://npm.pkg.github.com/@iterahq/activities")
+          echo "anonymous http=$ANON"
+          head -c 200 /tmp/anon.json; echo
+
+          FAIL=0
+          [ "$AUTH" = "200" ] || { echo "::error::authenticated read returned $AUTH, expected 200"; FAIL=1; }
+          case "$ANON" in
+            401|403|404) : ;;
+            *) echo "::error::anonymous read returned $ANON — THE PACKAGE IS PUBLIC. ADR-6 violated."; FAIL=1 ;;
+          esac
+          exit $FAIL

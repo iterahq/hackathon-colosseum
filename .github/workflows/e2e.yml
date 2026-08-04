@@ -114,13 +114,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
           scope: '@iterahq'
 
       - name: Install dependencies
         run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Playwright browsers
         run: npm run e2e:install

@@ -59,13 +59,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
           scope: '@iterahq'
 
       - name: Install dependencies
         run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Lint
         run: npm run lint
@@ -165,13 +165,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
           scope: '@iterahq'
 
       - name: Install dependencies
         run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ⚠️ `node node_modules/playwright/cli.js`, NÃO `npx playwright`: o `npx`
       # resolve pelo cache dele e pode instalar uma revisão de Chromium DIFERENTE
@@ -251,13 +251,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org
+          registry-url: https://npm.pkg.github.com
           scope: '@iterahq'
 
       - name: Install dependencies
         run: npm install
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Só o Chromium: as instâncias do projeto de browser declaram apenas ele.
       - name: Install Chromium for the Vitest browser provider

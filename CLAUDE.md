@@ -135,19 +135,34 @@ precisa de contrato, e todo contrato precisa passar no Zod do seu kind**. Kind
 novo sem fixture = CI vermelho. Use as MESMAS fixtures nas stories e nos
 testes — não crie um segundo conjunto.
 
-### Contrato público do futuro `@iterahq/activities`
+### Contrato público do `@iterahq/activities`
 
 As activities vão virar pacote instalável (plano
-`20260803-itera-player-activities-lib`). A **Fase A já está feita**: a API
-pública está declarada em `src/components/branded/activity/contract/` — só
-tipos, zero runtime, **nada de código foi movido ainda**.
+`20260803-itera-player-activities-lib`). **Fases A e B estão feitas.**
+
+Este repo é um **monorepo de npm workspaces** (ADR-2 — workspaces puro, NÃO
+Turborepo). O app fica na raiz; os pacotes publicáveis ficam em `packages/*`:
+
+- `packages/activities/` → **`@iterahq/activities`**. Hoje contém só a API
+  pública (tipos, zero runtime); os renderers chegam na Fase C. Racional, ordem
+  de extração e cobertura por kind:
+  [`packages/activities/CONTRACT.md`](packages/activities/CONTRACT.md). Setup de
+  consumidor (`.npmrc` + token):
+  [`packages/activities/README.md`](packages/activities/README.md).
+
+O app consome o pacote pelo nome — `import type { … } from '@iterahq/activities'`
+— e não por caminho relativo. É a MESMA borda que um host externo vai usar, então
+ela fica exercitada em vez de só declarada.
+
+**Registry: GitHub Packages, privado** (ADR-6 preservado, registry trocado em
+2026-08-04 — a org npm `iterahq` está no plano free e free só publica pacote
+PÚBLICO, o que o ADR-6 veta). Publicação: `.github/workflows/release-activities.yml`.
 
 Ao mexer em qualquer renderer, respeite a fronteira: o que a activity precisa do
 host entra por PORTA injetada (`i18n` · `api` · `identity` · `theme` ·
 `storage`), não por import direto de `@/api/*`, `@/auth/*` ou `@/services/*`.
 O guard `src/test/activityPublicContract.test.ts` fica vermelho se um renderer
-crescer uma prop fora do contrato. Racional, ordem de extração e cobertura por
-kind: [`src/components/branded/activity/contract/README.md`](src/components/branded/activity/contract/README.md).
+crescer uma prop fora do contrato.
 
 ## How to Work Here
 

@@ -5,7 +5,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "storybook-static"] },
+  // `dist` alone is cwd-relative in flat config, so it stopped covering build
+  // output once `packages/*` became workspaces (Fase B). `**/dist` covers both
+  // the app's own `dist/` and every `packages/*/dist/`.
+  { ignores: ["**/dist", "storybook-static"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

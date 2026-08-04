@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -31,6 +34,7 @@
     "@devfellowship/observability": "^2.0.1",
     "@dnd-kit/react": "^0.3.2",
     "@hookform/resolvers": "^3.10.0",
+    "@iterahq/activities": "*",
     "@iterahq/activity-spec": "file:vendor/iterahq-activity-spec-0.7.0.tgz",
     "@monaco-editor/react": "^4.7.0",
     "@opentelemetry/api": "^1.9.0",
