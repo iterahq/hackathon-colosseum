@@ -12,28 +12,51 @@
  * like `learningTrace.ts` on the write side.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 THE RULE THIS MODULE EXISTS TO ENFORCE: NULL IS "NOT CAPTURED"
+ * 🔴 THE RULE THIS MODULE EXISTS TO ENFORCE: A CAPTURE AND A GUESS ARE
+ *    DIFFERENT SENTENCES, AND THE TYPE SYSTEM SAYS SO
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * `spec_snapshot` is NULLABLE and always will be: every attempt settled before
  * migration 0037 was applied has no enunciado anywhere, and no backfill can
  * invent one (0037's header says so, and the days 0036/0037/0038 sat
- * merged-and-unapplied are exactly that population).
+ * merged-and-unapplied are exactly that population). Measured 2026-08-04 on the
+ * Itera DB: **2 attempts captured, 43 not**.
  *
- * The tempting fallback — "no snapshot, so render `itera.activities.spec`" — is
- * the single worst thing this surface could do. That column is mutable jsonb
- * with no version and no hash, the trigger `activity_defs_sync_instances`
- * (migration 0024) rewrites it across every instance without looking at whether
- * attempts exist, and `resolveLocalizedSpec` picks the locale at RENDER time
- * from localStorage. So the fallback would show TODAY's wording in the
- * WATCHER's language and present it as what the learner read.
+ * The naive fallback — "no snapshot, so render `itera.activities.spec` and say
+ * nothing" — is the single worst thing this surface could do. That column is
+ * mutable jsonb with no version and no hash, the trigger
+ * `activity_defs_sync_instances` (migration 0024) rewrites it across every
+ * instance without looking at whether attempts exist, and `resolveLocalizedSpec`
+ * picks the locale at RENDER time. So an unlabelled fallback would show TODAY's
+ * wording in the WATCHER's language while looking exactly like a capture.
  *
- * A replay that diverges from what the learner saw is worse than no replay,
- * because it looks like the truth. Hence `ReplayEnunciado` is a TAGGED UNION
- * and not an optional field: a caller cannot render the enunciado without first
- * handling the case where there is none. There is no code path from here to
- * `itera.activities.spec`, and `src/test/replayAdminOnly.test.ts` asserts the
- * absence mechanically rather than trusting this comment.
+ * ⚠️ AND `itera.activities` HAS NO TIMESTAMP COLUMN AT ALL — no `updated_at`,
+ * no `created_at` (verified 2026-08-04). So there is NO WAY to detect whether a
+ * given activity's spec changed since a given attempt. Every "only fall back
+ * when nothing was edited" heuristic is unbuildable here, and one known in-place
+ * rewrite already happened: the i18n backfill of 2026-08-03, which ran AFTER all
+ * 43 of those attempts.
+ *
+ * So the union has THREE arms, not two, and they are never collapsed:
+ *
+ *   · `captured`     — from `spec_snapshot`. What the learner actually read.
+ *   · `inferred`     — today's `activities.spec`. NOT a capture; the surface
+ *                      must label it and must never give it a capture's weight.
+ *   · `not_captured` — neither is available. Still a first-class state.
+ *
+ * `inferred` exists because "Enunciado não capturado" over an empty panel made
+ * 43 of 45 attempts unwatchable — there was nothing to click through. Showing
+ * today's text, SAID to be today's text, is strictly more useful than showing
+ * nothing, and strictly more honest than showing it unlabelled. The honest
+ * wording of the old empty state is kept as the BASIS of the `inferred` warning
+ * rather than softened.
+ *
+ * 🚫 WHAT THIS MODULE STILL REFUSES: writing the inference anywhere. The
+ * resolution happens HERE, at read time, and `spec_snapshot` is never written
+ * with reconstructed content — that column means "what the learner read", and a
+ * reconstruction stored in it would be permanently indistinguishable from a
+ * capture, which is the exact confusion the column was created to prevent, and
+ * irreversible. See `src/test/replaySession.test.ts`.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * WHY THE STATE FOLD LIVES HERE AND NOT IN THE ACTIVITY COMPONENTS
@@ -70,11 +93,12 @@ import { readTrace, type StoredLearnerAction } from '@/utils/learningTrace';
 
 /**
  * The enunciado, as a TAGGED UNION — see the module header for why this is not
- * `spec?: …`.
+ * `spec?: …`, and why there are three arms rather than two.
  *
  * `not_captured` is a first-class, expected, permanent state. It is not an
  * error and it is not a loading state: it is the honest record of an attempt
- * settled by a build that could not store what the learner read.
+ * settled by a build that could not store what the learner read, for an activity
+ * whose current spec is not readable either.
  */
 export type ReplayEnunciado =
   | {
@@ -83,6 +107,21 @@ export type ReplayEnunciado =
       spec: Record<string, unknown>;
       /** The language the learner actually read it in. */
       locale: string;
+    }
+  | {
+      status: 'inferred';
+      /**
+       * TODAY's `itera.activities.spec` — NOT what the learner read, and the
+       * surface must say so. Kept RAW (bags unresolved): there is no recorded
+       * learner locale to collapse it with, so the caller resolves it for the
+       * WATCHER and labels it as the watcher's language.
+       */
+      spec: Record<string, unknown>;
+      /**
+       * Always null, and that is the point: a locale here would be a claim
+       * about what the learner read, which is precisely what is unknown.
+       */
+      locale: null;
     }
   | {
       status: 'not_captured';
@@ -146,12 +185,13 @@ export function readReplaySession(row: unknown): ReplaySession | null {
     actionsTruncated: trace?.actions_truncated ?? false,
     outcome: trace?.outcome ?? null,
     actions: trace?.actions ?? [],
-    enunciado: readEnunciado(r.spec_snapshot, r.spec_locale),
+    enunciado: readEnunciado(r.spec_snapshot, r.spec_locale, liveSpecOf(r)),
   };
 }
 
 /**
- * The enunciado union.
+ * The enunciado union, resolved in ONE place and in a fixed order of precedence:
+ * capture wins, today's text is the fallback, absence is the floor.
  *
  * A snapshot is only `captured` when BOTH halves are present and usable, and
  * that pairing is the same one `buildSpecSnapshot` enforces on the write side:
@@ -159,20 +199,50 @@ export function readReplaySession(row: unknown): ReplaySession | null {
  * `sandbox_scenario` snapshots hold UNRESOLVED `{pt,en}` bags on purpose — a
  * reader without the locale cannot collapse them the way the learner saw them.
  *
- * An EMPTY object is `not_captured` rather than `captured`, for the reason
- * `buildSpecSnapshot` refuses to write one: `{}` would read as "this activity
- * had no enunciado", which is a claim, where NULL is an absence.
+ * An EMPTY object is not a capture, for the reason `buildSpecSnapshot` refuses
+ * to write one: `{}` would read as "this activity had no enunciado", which is a
+ * claim, where NULL is an absence. The same test applies to the live spec — an
+ * empty live spec produces `not_captured`, never an empty `inferred` panel.
+ *
+ * 🔴 THE ORDER IS LOAD-BEARING AND ONE-WAY. The live spec is consulted ONLY
+ * after the snapshot has been rejected, and it can only ever produce `inferred`.
+ * There is no branch in which today's text is returned as `captured`, and none
+ * in which the two are merged — a half-capture patched with today's wording
+ * would be the worst of the three, because it would carry a capture's label.
  */
-function readEnunciado(snapshot: unknown, locale: unknown): ReplayEnunciado {
-  const missing = { status: 'not_captured', spec: null, locale: null } as const;
-  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return missing;
-  if (Object.keys(snapshot as Record<string, unknown>).length === 0) return missing;
-  if (typeof locale !== 'string' || locale === '') return missing;
+function readEnunciado(
+  snapshot: unknown,
+  locale: unknown,
+  liveSpec: Record<string, unknown> | null
+): ReplayEnunciado {
+  const inferredOrMissing: ReplayEnunciado =
+    liveSpec && Object.keys(liveSpec).length > 0
+      ? { status: 'inferred', spec: liveSpec, locale: null }
+      : { status: 'not_captured', spec: null, locale: null };
+
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return inferredOrMissing;
+  if (Object.keys(snapshot as Record<string, unknown>).length === 0) return inferredOrMissing;
+  if (typeof locale !== 'string' || locale === '') return inferredOrMissing;
   return {
     status: 'captured',
     spec: snapshot as Record<string, unknown>,
     locale,
   };
+}
+
+/**
+ * Today's spec off the joined `activities` row, when the read supplied one.
+ *
+ * Read from the EMBED and never fetched here: this module is pure, and keeping
+ * the live spec on the same row as `kind` means the surface cannot acquire it
+ * without the widened `select` in `replay.service.ts` being a visible diff.
+ */
+function liveSpecOf(r: Record<string, unknown>): Record<string, unknown> | null {
+  const joined = r.activities;
+  if (!joined || typeof joined !== 'object' || Array.isArray(joined)) return null;
+  const spec = (joined as Record<string, unknown>).spec;
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
+  return spec as Record<string, unknown>;
 }
 
 /** The joined activity kind, when the read supplied one. Never guessed. */
@@ -213,10 +283,12 @@ export function familyEmitsSequence(kind: ActivityKind | null): boolean {
  * absent from the index, and the caller falls back to the raw id — which is
  * still true, just less readable.
  *
- * ⚠️ Only ever fed the snapshot. When there is none the index is EMPTY and the
- * timeline shows raw ids and SAYS the labels are unavailable, because the one
- * other place those labels exist is today's spec, and today's spec is precisely
- * what this whole feature refuses to substitute.
+ * ⚠️ Fed whichever spec the panel above it is ALREADY showing — the snapshot in
+ * the `captured` case, today's spec in the `inferred` one. It is never fed a
+ * spec the viewer is not being shown, so the labels can never disagree with the
+ * panel: an id resolved from text the surface is simultaneously calling
+ * "today's" carries that caveat with it. With neither, the index is EMPTY and
+ * the timeline shows raw ids rather than inventing names for them.
  */
 export function labelIndexFor(spec: Record<string, unknown> | null): Record<string, string> {
   const index: Record<string, string> = {};

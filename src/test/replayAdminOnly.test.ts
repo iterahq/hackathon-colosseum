@@ -148,7 +148,11 @@ describe('✅ o admin do tenant do aluno assiste — e SÓ o tenant dele', () =>
     const rows = await listReplaySessions();
 
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ traceId: 't1', learnerName: 'Aluna A', enunciadoCaptured: true });
+    expect(rows[0]).toMatchObject({
+      traceId: 't1',
+      learnerName: 'Aluna A',
+      enunciadoStatus: 'captured',
+    });
 
     const traceQuery = touchedTraces();
     expect(traceQuery).toHaveLength(1);
@@ -229,16 +233,35 @@ describe('o replay é READ-ONLY, estruturalmente', () => {
   });
 });
 
-describe('🔴 o replay NUNCA lê o spec ATUAL da atividade', () => {
-  it('o embed de `activities` traz apenas `kind`', () => {
-    // Alargar para `activities(kind, spec)` daria à tela a capacidade de
-    // renderizar o enunciado de HOJE no lugar do que o aluno leu — a única
-    // coisa que esta feature existe para não fazer. O embed é nomeado coluna a
-    // coluna justamente para que isso seja um diff visível.
+describe('🔴 o spec ATUAL da atividade nunca é apresentado como captura', () => {
+  // ⚠️ ESTE BLOCO MUDOU DE REGRA EM 2026-08-04, e a diferença importa.
+  //
+  // Antes ele exigia `activities(kind)` — o embed NÃO podia trazer o `spec`, de
+  // modo que a tela era incapaz de renderizar o texto de hoje. Custou caro: 43
+  // das 45 tentativas gravadas são anteriores ao `spec_snapshot`, e todas elas
+  // mostravam um painel vazio, sem nada para assistir.
+  //
+  // A invariante agora é OUTRA, e é mais forte do que "não leia": o spec de hoje
+  // pode ser lido, mas só pode sair pelo braço `inferred` da união — nunca como
+  // `captured`, nunca fundido com um snapshot, e nunca escrito de volta. Isso é
+  // provado por comportamento em `replaySession.test.ts`; o que sobra aqui são
+  // as fronteiras que ainda são estruturais.
+  it('o embed nomeia as colunas, e `spec` está entre elas deliberadamente', () => {
     const service = readFileSync(path.join(ROOT, 'src/services/replay.service.ts'), 'utf-8');
-    expect(service).toContain('activities(kind)');
-    expect(service).not.toMatch(/activities\(kind,\s*spec\)/);
+    expect(service).toMatch(/activities\(kind,\s*spec\)/);
+    // Continua sendo um embed nomeado coluna a coluna: um `activities(*)` faria
+    // a superfície crescer campos sem diff visível.
+    expect(service).not.toMatch(/activities\(\*\)/);
     expect(service).not.toMatch(/from\('activities'\)/);
+  });
+
+  it('🔴 o replay NUNCA escreve `spec_snapshot` — a inferência não vira registro', () => {
+    // O ponto inteiro da coluna é significar "o que o aluno leu". Gravar ali uma
+    // reconstrução tornaria inferência e captura indistinguíveis para sempre.
+    for (const file of REPLAY_SOURCES) {
+      const src = readFileSync(file, 'utf-8');
+      expect(src, path.relative(ROOT, file)).not.toMatch(/spec_snapshot\s*:/);
+    }
   });
 
   it('a tela do replay não consulta a tabela `activities`', () => {

@@ -53,8 +53,14 @@
  * WHAT THIS MODULE MUST NEVER DO
  * ═══════════════════════════════════════════════════════════════════════════
  *
- *  · NEVER read `itera.activities.spec`. The enunciado comes from
- *    `spec_snapshot` or it does not come at all — see `replaySession.ts`.
+ *  · NEVER present `itera.activities.spec` AS a capture. The live spec is read
+ *    (see the embed below) and may ONLY ever surface as the `inferred` arm of
+ *    `ReplayEnunciado`, labelled as today's text — `readEnunciado` in
+ *    `replaySession.ts` is the single place that decision is made, and it has no
+ *    branch that returns today's spec as `captured`.
+ *  · NEVER write the inference back. Nothing here writes `spec_snapshot`; that
+ *    column means "what the learner read", and a reconstruction stored in it
+ *    would be permanently indistinguishable from a capture.
  *  · NEVER write anything. The trace is append-only (`grant select, insert`
  *    only) and a curator watching must not become learner data. This module
  *    imports nothing from `progress.service` and issues no `insert`/`update`/
@@ -64,21 +70,35 @@
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { adminTenantId, getMyMemberships } from '@/services/membership.service';
-import { readReplaySession, type ReplaySession } from '@/utils/replaySession';
+import {
+  readReplaySession,
+  type ReplayEnunciado,
+  type ReplaySession,
+} from '@/utils/replaySession';
 
 /** How many attempts the index lists. Newest first; no paging in Fase 1. */
 export const REPLAY_PAGE_SIZE = 50;
 
 /**
- * The columns a replay reads. Spelled out rather than `*` for one reason that
- * matters: `activities(kind)` embeds the CURRENT activity row, and the day
- * someone widens that embed to also pull the live `spec`, the surface silently
- * gains the ability to render today's wording. Naming the columns makes that a
- * visible diff — and `src/test/replayAdminOnly.test.ts` fails if the embed ever
- * grows past `kind`.
+ * The columns a replay reads. Spelled out rather than `*` because the embed is
+ * the load-bearing part: `activities(kind, spec)` pulls the CURRENT activity
+ * row, and `spec` there is TODAY's wording, not the learner's.
+ *
+ * ⚠️ It was `activities(kind)` until 2026-08-04, deliberately, so the surface
+ * could not render today's text at all. That absolutism cost more than it
+ * bought: 43 of the 45 recorded attempts predate `spec_snapshot`, so every one
+ * of them showed an empty "Enunciado não capturado" panel and there was nothing
+ * to watch. The column is now read — and the honesty moved from "cannot show it"
+ * to "shows it under a different label, in a different visual weight, and never
+ * as a capture", which `readEnunciado` enforces in one place and
+ * `src/test/replaySession.test.ts` proves.
+ *
+ * `pedagogical_context` and `spec` are the two widest columns on the row; if
+ * this index ever needs paging, drop `spec` from the LIST query first (the list
+ * only needs the status, not the text) rather than narrowing the detail read.
  */
 const TRACE_COLUMNS =
-  'id, user_id, activity_id, schema_version, started_at, actions, actions_truncated, outcome, spec_snapshot, spec_locale, pedagogical_context, created_at, activities(kind), users(display_name)';
+  'id, user_id, activity_id, schema_version, started_at, actions, actions_truncated, outcome, spec_snapshot, spec_locale, pedagogical_context, created_at, activities(kind, spec), users(display_name)';
 
 export interface ReplayIndexEntry {
   traceId: string;
@@ -89,8 +109,17 @@ export interface ReplayIndexEntry {
   startedAt: string | null;
   actionCount: number;
   outcome: string | null;
-  /** False when this attempt has no enunciado — surfaced in the list, not only in the detail. */
-  enunciadoCaptured: boolean;
+  /**
+   * Which of the THREE enunciado states this attempt lands in — surfaced in the
+   * list, not only in the detail, so an admin can see at a glance which
+   * attempts are reproducible and which are only approximated.
+   *
+   * Deliberately the full status and not a boolean: the previous
+   * `enunciadoCaptured: boolean` could not tell "today's text, labelled" apart
+   * from "nothing at all", and collapsing those two is the whole failure mode
+   * this change exists to fix.
+   */
+  enunciadoStatus: ReplayEnunciado['status'];
 }
 
 /**
@@ -146,7 +175,7 @@ export async function listReplaySessions(limit = REPLAY_PAGE_SIZE): Promise<Repl
       startedAt: s.startedAt,
       actionCount: s.actions.length,
       outcome: s.outcome,
-      enunciadoCaptured: s.enunciado.status === 'captured',
+      enunciadoStatus: s.enunciado.status,
     }));
 }
 

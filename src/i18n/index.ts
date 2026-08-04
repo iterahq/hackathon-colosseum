@@ -568,6 +568,14 @@ export const resources: Record<Locale, Record<string, string>> = {
     'replay.enunciado.missingBody':
       'Esta tentativa foi gravada antes de o snapshot do enunciado existir, então não há registro do que o aluno leu. NÃO é o mesmo que "igual ao enunciado atual": o conteúdo pode ter sido editado desde então, e mostrar o texto de hoje seria inventar o passado. A sequência de ações abaixo continua exata.',
     'replay.enunciado.missingShort': 'sem enunciado',
+    // ── O estado INFERIDO (2026-08-04) ────────────────────────────────────
+    // Mantém a redação honesta do `missingBody` como BASE em vez de amaciá-la:
+    // a única coisa que muda é que agora há texto na tela, e ele é o de HOJE.
+    'replay.enunciado.inferredTitle': 'Enunciado de HOJE — não é o que o aluno leu',
+    'replay.enunciado.inferredBody':
+      'Esta tentativa foi gravada antes de o snapshot do enunciado existir, então não há registro do que o aluno leu. O texto abaixo é o enunciado ATUAL da atividade, mostrado para dar contexto — e pode ter sido editado desde a tentativa. A tabela de atividades não guarda data de alteração, então não dá para saber se mudou. Um caso conhecido: a tradução de i18n reescreveu atividades em 03/08/2026, depois destas tentativas. A sequência de ações abaixo continua exata.',
+    'replay.enunciado.inferredLabel': 'Texto atual, no SEU idioma',
+    'replay.enunciado.inferredShort': 'texto de hoje',
     'replay.enunciado.assetUnavailable': 'Mídia indisponível — o snapshot guarda a URL, não o arquivo.',
     'replay.authoredOrderNote':
       'A ordem mostrada é a ordem AUTORAL. Cada aluno vê as opções embaralhadas por um seed próprio, e reproduzir esse embaralhamento é a Fase 2 — o significado de cada ação é exato, só a posição na tela pode diferir.',
@@ -1201,6 +1209,15 @@ export const resources: Record<Locale, Record<string, string>> = {
     'replay.enunciado.missingBody':
       'This attempt was recorded before the prompt snapshot existed, so there is no record of what the learner read. That is NOT the same as "identical to the current prompt": the content may have been edited since, and showing today\'s wording would be inventing the past. The action sequence below is still exact.',
     'replay.enunciado.missingShort': 'no prompt',
+    // ── The INFERRED state (2026-08-04) ───────────────────────────────────
+    // Keeps the honest wording of `missingBody` as its BASIS rather than
+    // softening it: the only change is that there is now text on screen, and
+    // that text is TODAY's.
+    'replay.enunciado.inferredTitle': "TODAY's prompt — not what the learner read",
+    'replay.enunciado.inferredBody':
+      "This attempt was recorded before the prompt snapshot existed, so there is no record of what the learner read. The text below is the activity's CURRENT prompt, shown for context — and it may have been edited since the attempt. The activities table stores no modification timestamp, so there is no way to tell whether it changed. One known case: the i18n translation rewrote activities on 2026-08-03, after these attempts. The action sequence below is still exact.",
+    'replay.enunciado.inferredLabel': "Current text, in YOUR language",
+    'replay.enunciado.inferredShort': "today's text",
     'replay.enunciado.assetUnavailable': 'Media unavailable — the snapshot stores the URL, not the file.',
     'replay.authoredOrderNote':
       'The order shown is the AUTHORED order. Each learner sees the options shuffled by their own seed, and reproducing that shuffle is Phase 2 — every action means exactly what it says, only the on-screen position may differ.',

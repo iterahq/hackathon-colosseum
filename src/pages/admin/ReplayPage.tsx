@@ -51,10 +51,25 @@ export default function ReplayPage() {
                   {row.outcome === 'abandoned' ? ` · ${t('replay.abandoned')}` : ''}
                 </div>
               </div>
-              {/* The missing enunciado is surfaced HERE and not only in the
-                  detail, so an admin can see at a glance which attempts predate
-                  migration 0037 and are therefore only partially reproducible. */}
-              {!row.enunciadoCaptured && (
+              {/* The enunciado state is surfaced HERE and not only in the detail,
+                  so an admin can see at a glance which attempts predate migration
+                  0037 and are therefore only partially reproducible.
+
+                  🔴 THREE STATES, THREE CHIPS — a captured attempt gets none, an
+                  inferred one says "today's text", a missing one says "no
+                  prompt". The old boolean showed the SAME chip for the last two,
+                  which is exactly the conflation this surface must not make. */}
+              {row.enunciadoStatus === 'inferred' && (
+                <span
+                  data-testid="replay-index-inferred"
+                  title={t('replay.enunciado.inferredShort')}
+                  className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-500/50 px-2 py-0.5 text-[11px] text-amber-600 dark:text-amber-500"
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  {t('replay.enunciado.inferredShort')}
+                </span>
+              )}
+              {row.enunciadoStatus === 'not_captured' && (
                 <span
                   data-testid="replay-index-no-snapshot"
                   title={t('replay.enunciado.missingShort')}

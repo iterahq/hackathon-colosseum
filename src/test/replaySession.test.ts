@@ -1,6 +1,12 @@
 /**
  * The READ side of the trace — and above all, the rule that a missing enunciado
- * must NEVER be quietly replaced by today's one.
+ * must NEVER be QUIETLY replaced by today's one.
+ *
+ * ⚠️ "Quietly" is the whole load. Since 2026-08-04 today's spec IS rendered when
+ * there is no snapshot, because 43 of the 45 recorded attempts had none and
+ * every one of them was unwatchable. What must never happen is that inference
+ * arriving under a capture's label — so the tests below assert the THREE arms
+ * are distinct, mutually exclusive, and that the precedence is one-way.
  *
  * Plan `20260803-itera-replay-de-sessao-de-atividade`, Fase 1.
  */
@@ -50,7 +56,7 @@ describe('o enunciado é uma união marcada, não um campo opcional', () => {
     expect(s?.enunciado.spec).toEqual(ROW.spec_snapshot);
   });
 
-  it('🔴 snapshot NULL é "não capturado" — nunca "igual ao spec atual"', () => {
+  it('🔴 snapshot NULL, e SEM spec atual, é "não capturado"', () => {
     const s = readReplaySession({ ...ROW, spec_snapshot: null, spec_locale: null });
     expect(s).not.toBeNull();
     expect(s?.enunciado.status).toBe('not_captured');
@@ -61,12 +67,12 @@ describe('o enunciado é uma união marcada, não um campo opcional', () => {
     expect(s?.actions).toHaveLength(ROW.actions.length);
   });
 
-  it('objeto VAZIO também é "não capturado" — `{}` seria uma afirmação', () => {
+  it('objeto VAZIO não é captura — `{}` seria uma afirmação', () => {
     // Espelha `buildSpecSnapshot`, que se recusa a escrever `{}` pela mesma razão.
     expect(readReplaySession({ ...ROW, spec_snapshot: {} })?.enunciado.status).toBe('not_captured');
   });
 
-  it('snapshot SEM locale é "não capturado" — o par é um fato só', () => {
+  it('snapshot SEM locale não é captura — o par é um fato só', () => {
     // Um snapshot cuja língua é desconhecida é ambíguo exatamente onde importa:
     // o spec de `sandbox_scenario` é guardado com as bags `{pt,en}` intactas.
     expect(readReplaySession({ ...ROW, spec_locale: null })?.enunciado.status).toBe('not_captured');
@@ -87,6 +93,79 @@ describe('o enunciado é uma união marcada, não um campo opcional', () => {
   it('uma linha do FUTURO é reportada, nunca descartada', () => {
     const s = readReplaySession({ ...ROW, schema_version: 99 });
     expect(s?.fromFuture).toBe(true);
+    expect(s?.actions).toHaveLength(ROW.actions.length);
+  });
+});
+
+/* ── O terceiro braço: INFERRED (2026-08-04) ──────────────────────────────── */
+
+const TODAY_SPEC = {
+  instruction: { text: { pt: 'Capital da França, hoje?', en: 'Capital of France, today?' } },
+  options: [
+    { id: 'a', label: { pt: 'Paris', en: 'Paris' } },
+    { id: 'b', label: { pt: 'Lião', en: 'Lyon' } },
+  ],
+};
+
+const NO_SNAPSHOT = { ...ROW, spec_snapshot: null, spec_locale: null };
+
+describe('sem snapshot mas COM spec atual, o enunciado é INFERIDO — nunca capturado', () => {
+  it('🔴 o spec de hoje sai como `inferred`, e a distinção é o mecanismo', () => {
+    const s = readReplaySession({
+      ...NO_SNAPSHOT,
+      activities: { kind: 'single_choice', spec: TODAY_SPEC },
+    });
+    expect(s?.enunciado.status).toBe('inferred');
+    expect(s?.enunciado.spec).toEqual(TODAY_SPEC);
+    // O texto existe (há o que assistir), mas NÃO existe locale: a linha não
+    // registra em que língua o aluno leu, e inventar um seria a única mentira
+    // que este braço pode contar.
+    expect(s?.enunciado.locale).toBeNull();
+  });
+
+  it('🔴 uma CAPTURA nunca é rebaixada nem contaminada pelo spec de hoje', () => {
+    // A ordem de precedência é one-way: com snapshot válido, o spec atual está
+    // presente na linha e é simplesmente ignorado — nem substitui, nem funde.
+    const s = readReplaySession({ ...ROW, activities: { kind: 'single_choice', spec: TODAY_SPEC } });
+    expect(s?.enunciado.status).toBe('captured');
+    expect(s?.enunciado.spec).toEqual(ROW.spec_snapshot);
+    expect(s?.enunciado.locale).toBe('pt');
+  });
+
+  it('spec atual VAZIO ou ausente cai em `not_captured`, nunca num painel vazio', () => {
+    // Um `inferred` sem conteúdo seria pior que o estado honesto de ausência:
+    // prometeria texto e não entregaria nenhum.
+    for (const activities of [
+      { kind: 'single_choice', spec: {} },
+      { kind: 'single_choice', spec: null },
+      { kind: 'single_choice' },
+      null,
+    ]) {
+      expect(readReplaySession({ ...NO_SNAPSHOT, activities })?.enunciado.status).toBe(
+        'not_captured'
+      );
+    }
+  });
+
+  it('os três estados são MUTUAMENTE EXCLUSIVOS e cobrem a linha inteira', () => {
+    // A garantia que a tela depende: exatamente um braço, sempre.
+    const statuses = [
+      readReplaySession({ ...ROW, activities: { kind: 'single_choice', spec: TODAY_SPEC } }),
+      readReplaySession({ ...NO_SNAPSHOT, activities: { kind: 'single_choice', spec: TODAY_SPEC } }),
+      readReplaySession(NO_SNAPSHOT),
+    ].map((s) => s?.enunciado.status);
+    expect(statuses).toEqual(['captured', 'inferred', 'not_captured']);
+    expect(new Set(statuses).size).toBe(3);
+  });
+
+  it('a inferência não custa a sequência — as ações continuam exatas', () => {
+    // O que o replay tem de verdadeiro (o QUE o aluno tocou e QUANDO) não é
+    // afetado por não se saber o texto: é o argumento inteiro para mostrar a
+    // tentativa em vez de escondê-la atrás de um painel vazio.
+    const s = readReplaySession({
+      ...NO_SNAPSHOT,
+      activities: { kind: 'single_choice', spec: TODAY_SPEC },
+    });
     expect(s?.actions).toHaveLength(ROW.actions.length);
   });
 });

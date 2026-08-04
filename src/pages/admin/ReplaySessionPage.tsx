@@ -8,16 +8,34 @@
  * WHAT IT RENDERS, AND WHAT IT REFUSES TO RENDER
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * The enunciado comes from `activity_traces.spec_snapshot`, resolved for
- * `spec_locale` — the wording and the language THIS learner had in front of
- * them. When the snapshot is NULL the panel says so, in as many words, and
- * renders nothing else. It never falls back to `itera.activities.spec`: that
- * column is mutable (trigger `activity_defs_sync_instances`, migration 0024)
- * and locale-resolved at render time, so the fallback would show today's
- * wording in the WATCHER's language while looking exactly like the truth. That
- * is the failure this whole feature exists to avoid, and it is enforced by
- * construction — `ReplayEnunciado` is a tagged union and this file has no route
- * to the live spec at all.
+ * THE ENUNCIADO HAS THREE STATES, AND THEY DO NOT LOOK ALIKE — that is the
+ * whole design, not a detail of styling:
+ *
+ *   1. `captured` — from `activity_traces.spec_snapshot`, resolved for
+ *      `spec_locale`: the wording and the language THIS learner had in front of
+ *      them. Solid card, strongest weight, headed "as the learner read it".
+ *   2. `inferred` — TODAY's `itera.activities.spec`, resolved for the WATCHER's
+ *      locale. Dashed amber card, visibly weaker, headed "today's wording" and
+ *      carrying the full warning before any of the content.
+ *   3. `not_captured` — neither exists. The original empty panel, unchanged.
+ *
+ * ⚠️ STATE 2 MUST NEVER ACQUIRE STATE 1's WEIGHT. Today's spec is mutable
+ * (trigger `activity_defs_sync_instances`, migration 0024), carries no version
+ * and no hash, and `itera.activities` has no timestamp column at all — so there
+ * is no way to know whether it changed since the attempt. Rendering it in the
+ * captured card, or with the captured card's heading, would present a guess as
+ * a record. The three branches below are therefore separate JSX with separate
+ * `data-testid`s rather than one card with a variable border, so the difference
+ * cannot erode into a prop default.
+ *
+ * State 2 exists because absolutism cost more than it bought: 43 of 45 recorded
+ * attempts predate `spec_snapshot`, so every one of them rendered an empty panel
+ * with nothing to click through. Today's text, SAID to be today's text, beats
+ * nothing — and the warning keeps the old panel's wording rather than softening
+ * it.
+ *
+ * 🚫 The inference is resolved HERE, at render time, and written NOWHERE. See
+ * `replaySession.ts`.
  *
  * ⚠️ THE ORDER ON SCREEN IS THE AUTHORED ORDER, NOT THE SHUFFLED ONE. Options
  * are shuffled per-learner (`learnerShuffle.ts`, seeded on the learner's id), and
@@ -72,7 +90,7 @@ const MAX_STEP_MS = 2000;
 
 export default function ReplaySessionPage() {
   const { traceId } = useParams<{ traceId: string }>();
-  const { t } = useI18n();
+  const { t, locale: watcherLocale } = useI18n();
   const { data, isPending, isError, refetch } = useReplaySession(traceId);
 
   // `cursor` = how many actions have been applied. 0 is the state before the
@@ -85,13 +103,24 @@ export default function ReplaySessionPage() {
   const state = useMemo(() => replayStateAt(actions, cursor), [actions, cursor]);
 
   const spec = useMemo(() => {
-    if (!data || data.enunciado.status !== 'captured') return null;
-    // Collapse any `{pt,en}` bags for the locale THE LEARNER READ — never the
-    // watcher's. Already-resolved specs pass through untouched, which is the
-    // normal case; `sandbox_scenario` is the one kind snapshotted unresolved.
-    const locale: Locale = data.enunciado.locale === 'en' ? 'en' : 'pt';
-    return resolveLocalizedSpec(data.enunciado.spec, locale);
-  }, [data]);
+    const enunciado = data?.enunciado;
+    if (!enunciado) return null;
+    if (enunciado.status === 'captured') {
+      // Collapse any `{pt,en}` bags for the locale THE LEARNER READ — never the
+      // watcher's. Already-resolved specs pass through untouched, which is the
+      // normal case; `sandbox_scenario` is the one kind snapshotted unresolved.
+      const locale: Locale = enunciado.locale === 'en' ? 'en' : 'pt';
+      return resolveLocalizedSpec(enunciado.spec, locale);
+    }
+    if (enunciado.status === 'inferred') {
+      // There is no recorded learner locale to honour — that is exactly what
+      // `locale: null` means — so this resolves for the WATCHER, and the panel
+      // says so next to the badge. Picking a locale here and presenting it as
+      // the learner's would manufacture the one fact the row does not have.
+      return resolveLocalizedSpec(enunciado.spec, watcherLocale);
+    }
+    return null;
+  }, [data, watcherLocale]);
 
   const labels = useMemo(() => labelIndexFor(spec), [spec]);
 
@@ -151,21 +180,14 @@ export default function ReplaySessionPage() {
         </span>
       </header>
 
-      {/* ── The enunciado, or the honest absence of it ─────────────────────── */}
-      {data.enunciado.status === 'not_captured' ? (
-        <section
-          data-testid="replay-enunciado-missing"
-          className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-5"
-        >
-          <div className="mb-2 flex items-center gap-2 text-amber-500">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-sm font-semibold">{t('replay.enunciado.missingTitle')}</span>
-          </div>
-          <p className="text-sm text-muted-foreground">{t('replay.enunciado.missingBody')}</p>
-        </section>
-      ) : (
+      {/* ── The enunciado: captured, inferred, or the honest absence ───────── */}
+      {/* 🔴 Three separate branches on purpose — see the module header. A single
+          card with a variable border would let the distinction be lost to a prop
+          default, and the distinction IS the feature. */}
+      {data.enunciado.status === 'captured' && (
         <section
           data-testid="replay-enunciado"
+          data-enunciado-status="captured"
           data-locale={data.enunciado.locale}
           className="rounded-2xl border border-border bg-card p-5"
         >
@@ -184,6 +206,57 @@ export default function ReplaySessionPage() {
           <p className="mt-4 text-xs text-muted-foreground" data-testid="replay-authored-order-note">
             {t('replay.authoredOrderNote')}
           </p>
+        </section>
+      )}
+
+      {data.enunciado.status === 'inferred' && (
+        <section
+          data-testid="replay-enunciado-inferred"
+          data-enunciado-status="inferred"
+          // No `data-locale`: the row records no learner locale, and emitting the
+          // watcher's here would let a downstream reader mistake it for one.
+          className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-5"
+        >
+          <div className="mb-2 flex items-center gap-2 text-amber-500">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm font-semibold">{t('replay.enunciado.inferredTitle')}</span>
+          </div>
+          {/* The warning comes BEFORE the content, deliberately: a caveat under
+              the text is read after the text has already been believed. */}
+          <p className="mb-4 text-sm text-muted-foreground">{t('replay.enunciado.inferredBody')}</p>
+
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+              {t('replay.enunciado.inferredLabel')}
+            </span>
+            {/* `secondary` and not `outline`: the variant set of the shared Badge
+                is not verifiable from this repo (the package ships prebuilt), and
+                the weight distinction is already carried by the dashed card, the
+                heading and the warning above — not by this chip. */}
+            <Badge variant="secondary">{watcherLocale}</Badge>
+          </div>
+
+          <EnunciadoBody spec={spec} unavailable={t('replay.enunciado.assetUnavailable')} />
+
+          <ReplayOptions spec={spec} selected={state.selected} order={state.order} pairs={state.pairs} label={label} />
+
+          <p className="mt-4 text-xs text-muted-foreground" data-testid="replay-authored-order-note">
+            {t('replay.authoredOrderNote')}
+          </p>
+        </section>
+      )}
+
+      {data.enunciado.status === 'not_captured' && (
+        <section
+          data-testid="replay-enunciado-missing"
+          data-enunciado-status="not_captured"
+          className="rounded-2xl border border-dashed border-amber-500/50 bg-amber-500/5 p-5"
+        >
+          <div className="mb-2 flex items-center gap-2 text-amber-500">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm font-semibold">{t('replay.enunciado.missingTitle')}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{t('replay.enunciado.missingBody')}</p>
         </section>
       )}
 
