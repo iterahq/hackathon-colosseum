@@ -9,7 +9,10 @@
 import { useCallback, useEffect } from 'react';
 import { flushOutbox, enqueueWrite } from '@/utils/answerOutbox';
 import type { OutboxEntry } from '@/types/answerOutbox';
-import { persistActivityProgress } from '@/services/progress.service';
+import {
+  persistActivityAbandonment,
+  persistActivityProgress,
+} from '@/services/progress.service';
 import { recordClassAnswer } from '@/services/classReport.service';
 
 /**
@@ -50,6 +53,31 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
       // daria a gramática de hoje a uma tentativa de meses atrás, e a gramática
       // é justamente o que o ADR-5 faz mudar. Entrada antiga (ou aparada por
       // tamanho) volta sem ele ⇒ coluna NULL ⇒ "não capturado".
+      pedagogicalContext: entry.pedagogicalContext,
+    });
+  }
+  if (entry.kind === 'abandonment') {
+    // A tentativa que o aluno abriu e largou (migration 0040). Escreve UMA
+    // tabela — `activity_traces` — e nenhuma outra: `activity_results` é log de
+    // TENTATIVA, e um abandono ali contaria não-tentativa como erro.
+    //
+    // ⚠️ Devolver `false` aqui MANTÉM a entrada na fila, e é o comportamento
+    // desejado na janela em que o build está no ar e a coluna `outcome` ainda
+    // não: o abandono ESPERA em vez de virar uma linha que se lê como tentativa
+    // respondida. Desde 2026-08-04 o merge aplica a migration (`db-apply`), mas
+    // o deploy e o apply correm em paralelo — a janela virou minutos, não dias,
+    // e o dreno seguinte pega. `flushOutbox` nunca descarta por tentativas.
+    return persistActivityAbandonment(entry.activityId, {
+      startedAt: entry.startedAt,
+      leftAt: entry.leftAt,
+      duration: entry.duration ?? null,
+      reason: entry.reason,
+      actions: entry.actions,
+      actionsTruncated: entry.actionsTruncated,
+      // As mesmas duas anotações da linha de tentativa, viajando pela fila pelo
+      // mesmo motivo: o `spec` é mutável e a tag pedagógica é FEITA pra mudar
+      // (ADR-5), então nenhuma das duas pode ser buscada no dreno.
+      specSnapshot: entry.specSnapshot,
       pedagogicalContext: entry.pedagogicalContext,
     });
   }

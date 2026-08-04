@@ -285,6 +285,54 @@ crescer uma prop fora do contrato.
     - **Leitura:** `flattenTraceEvents()` (em `learningTrace.ts`) devolve UM
       registro por evento já com o contexto anexado. O contexto é gravado uma
       vez por linha; quem denormaliza é o leitor.
+  - **⚠️ A TABELA TEM DUAS ESPÉCIES DE LINHA DESDE A 0040 — leia antes de
+    escrever qualquer query.** Além da tentativa liquidada, ela agora guarda a
+    **TENTATIVA ABANDONADA**: a atividade que o aluno abriu, olhou e largou sem
+    responder (`itera.activity_traces.outcome`, migration
+    `db/migrations/0040_activity_traces_outcome.sql`, Fase 1 do mesmo plano).
+    Antes disso um abandono não produzia linha em lugar NENHUM — nem em
+    `activity_results`, nem em `progress`, nem aqui — e era exatamente o sinal
+    de desistência que a Fase 4 quer.
+    - **Os dois predicados portáteis**, que funcionam em toda linha já escrita:
+      liquidadas → `where outcome is distinct from 'abandoned'`; abandonos →
+      `where outcome = 'abandoned'`. **Nunca** `where outcome = 'settled'` numa
+      população histórica: isso exclui em silêncio tudo o que foi escrito antes
+      da migration, onde a coluna é NULL. NULL aqui é *"não capturado"*, não
+      *"liquidada"*.
+    - **A regra do que conta** está em `src/utils/abandonment.ts` (pura) e o
+      disparo em `src/hooks/useAbandonmentBeacon.ts`: renderizou, ficou pelo
+      menos `MIN_ABANDONMENT_VISIBLE_MS` de tempo VISÍVEL, não liquidou, e a
+      superfície sumiu (desmontou ou `pagehide`). O filtro **subconta de
+      propósito** — abandono não registrado é lacuna; abandono inventado é
+      afirmação falsa sobre um aluno.
+    - **⚠️ Uma linha abandonada NÃO é prova de que o aluno achou difícil.** É
+      prova de que ele saiu. Compare TAXAS entre atividades irmãs; não leia a
+      linha isolada.
+    - **Um abandono NÃO escreve `activity_results` nem `progress`.** Gravar
+      `passed: false` contaria não-tentativa como erro e faria toda métrica de
+      acerto mentir — o defeito D2 pelo avesso. Por isso ele tem função própria
+      (`persistActivityAbandonment`) em vez de uma flag no
+      `persistActivityProgress`: assim a escrita errada é *inalcançável*, não
+      só improvável.
+    - **A escada de degradação (`traceWriteRungs`) tem UM degrau que não
+      existe:** `outcome` pode ser largado numa linha LIQUIDADA (NULL ainda se
+      lê como liquidada) e **nunca** numa ABANDONADA — sem ele a linha se leria
+      como tentativa respondida. Enquanto a coluna não existir no schema no ar,
+      o abandono **não é escrito** e espera na fila durável. Menos dado, nunca
+      dado falso. (Desde 2026-08-04 o merge aplica a migration — `db-apply` —
+      mas deploy e apply correm em paralelo, então a janela é de minutos, não
+      zero.)
+    - **Entrega no teardown = fila durável, não `sendBeacon`.** `sendBeacon` não
+      seta headers e todo write vai pro PostgREST autenticado; um beacon só
+      alcançaria um endpoint anônimo, que este repo não tem. `localStorage` é
+      síncrono e sobrevive ao `pagehide`; o dreno seguinte escreve. O que ainda
+      se perde está listado no cabeçalho de `src/hooks/useAbandonmentBeacon.ts`.
+    - **Superfície: só o `LessonPlayer` (self-paced) hoje.** No ao vivo a
+      ausência de resposta já é recuperável por query (`class_attendance` sem
+      `class_answers`), então não é dado perdido para sempre — que é o critério
+      de ordenação desta fase. E o force-advance do professor tirando a
+      atividade da tela **não é** o aluno saindo; conflatar os dois tornaria a
+      taxa ininterpretável.
   - **Precisa de coluna/tabela nova para o evento?** Só se o acréscimo acima não
     resolver. Migration em `db/migrations/`, **idempotente**; o merge para `main`
     aplica — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).

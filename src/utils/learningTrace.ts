@@ -90,6 +90,14 @@
  *     its OWN `schema` field (`PEDAGOGICAL_CONTEXT_SCHEMA`) so that the shape of
  *     the tag can evolve without either version ever making a claim about the
  *     other.
+ *     ⚠️ `outcome` (migration 0040) is the same case a THIRD time, and it is
+ *     the interesting one: it arrives together with a new action type
+ *     (`attempt_abandoned`), and BOTH are additive. `started_at` is still the
+ *     moment the activity opened, `at_ms` is still an offset, `actions` is
+ *     still chronological — a v1 row written before 0040 is read exactly the
+ *     way a v1 row written after it is. What changed is that the table now
+ *     holds two KINDS of row, which is what `outcome` exists to make askable
+ *     without unnesting the jsonb.
  *
  * The distinction is the whole value of the field. A version that ticks on
  * every additive change tells you nothing about whether an old row is readable;
@@ -259,6 +267,18 @@ export interface LearnerAction {
 export type StoredLearnerAction = Omit<LearnerAction, 'type'> & { type: string };
 
 /**
+ * HOW A TRACE ENDED — `itera.activity_traces.outcome` (migration 0040).
+ *
+ * Open at read time, closed at write time, exactly like the action vocabulary:
+ * this build may only write what it declares here, and a reader must hand back
+ * verbatim whatever a newer build wrote (`'expired'`, `'interrupted'`,
+ * `'force_advanced'` are all plausible next values, and the column deliberately
+ * carries no CHECK).
+ */
+export const TRACE_OUTCOMES = ['settled', 'abandoned'] as const;
+export type TraceOutcome = (typeof TRACE_OUTCOMES)[number];
+
+/**
  * The envelope, exactly as it maps onto a row of `itera.activity_traces`.
  *
  * Field names are snake_case because these ARE the storage names — `actions`
@@ -273,6 +293,18 @@ export interface LearningTrace {
   actions: LearnerAction[];
   /** True when the action list was cut at `MAX_TRACE_ACTIONS`. */
   actions_truncated: boolean;
+  /**
+   * Whether the learner ANSWERED or LEFT (migration 0040).
+   *
+   * ⚠️ REQUIRED on this type even though the COLUMN is nullable, and the
+   * asymmetry is the point: NULL on the column means *"written before the
+   * question existed"*, which is a fact about history that no build writing
+   * today is entitled to reproduce. A trace this build constructs always knows
+   * which of the two it is, so making the field optional would only create a
+   * way to forget — and an omitted-by-default flag is exactly how
+   * `activity_results.passed` came to hold nothing but wins.
+   */
+  outcome: TraceOutcome;
 }
 
 /** A trace read back from storage, with its version reported rather than assumed. */
@@ -284,6 +316,16 @@ export interface StoredLearningTrace {
   started_at: string | null;
   actions: StoredLearnerAction[];
   actions_truncated: boolean;
+  /**
+   * As stored, WIDENED to `string` and NULL for "not captured" — the same
+   * open-at-read asymmetry `StoredLearnerAction.type` uses.
+   *
+   * ⚠️ NULL is not `'settled'`. It means the row predates migration 0040 (or
+   * the client that wrote it did). Callers that want the settled population
+   * must ask `outcome !== 'abandoned'`, never `outcome === 'settled'` — the
+   * latter silently drops the entire history written before this column.
+   */
+  outcome: string | null;
 }
 
 /** Non-negative, finite, integral milliseconds — or 0. Never NaN, never negative. */
@@ -380,24 +422,129 @@ export function buildAttemptTrace({
     { type: 'attempt_settled', at_ms: elapsed, payload: { passed } },
   ];
 
-  if (full.length <= MAX_TRACE_ACTIONS) {
-    return {
-      schema_version: TRACE_SCHEMA_VERSION,
-      started_at: new Date(originMs).toISOString(),
-      actions: full,
-      actions_truncated: actionsTruncated,
-    };
-  }
+  return envelope(originMs, full, actionsTruncated, 'settled');
+}
 
-  // Keep the HEAD and the terminal action. The head is where the strategy is
-  // (what the learner tried first), and the outcome must never be the thing
-  // that falls off the end.
+/**
+ * Close an envelope over an ordered action list, truncating from the MIDDLE if
+ * it exceeds `MAX_TRACE_ACTIONS`.
+ *
+ * Keeps the HEAD and the terminal action. The head is where the strategy is
+ * (what the learner tried first), and the ending must never be the thing that
+ * falls off the end — a truncated trace that silently lost its terminal action
+ * would read as an abandoned attempt, and now that abandonment is a real thing
+ * this table records, that misreading would no longer be merely confusing.
+ */
+function envelope(
+  originMs: number,
+  full: LearnerAction[],
+  actionsTruncated: boolean,
+  outcome: TraceOutcome
+): LearningTrace {
+  const fits = full.length <= MAX_TRACE_ACTIONS;
   return {
     schema_version: TRACE_SCHEMA_VERSION,
     started_at: new Date(originMs).toISOString(),
-    actions: [...full.slice(0, MAX_TRACE_ACTIONS - 1), full[full.length - 1]],
-    actions_truncated: true,
+    actions: fits ? full : [...full.slice(0, MAX_TRACE_ACTIONS - 1), full[full.length - 1]],
+    actions_truncated: fits ? actionsTruncated : true,
+    outcome,
   };
+}
+
+/**
+ * Build the trace for one ABANDONED attempt — an activity that was opened,
+ * rendered, dwelt on, and left without a settled answer.
+ *
+ * Plan `20260803-itera-learning-control-plane-prototipo` (LCPWCI), Fase 1,
+ * approved by Tainan TG 2026-08-04. Storage: `activity_traces.outcome =
+ * 'abandoned'` (migration 0040).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS IS NOT `buildAttemptTrace` WITH A FLAG
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The two differ in the one thing that makes a trace interpretable: WHERE THE
+ * ORIGIN COMES FROM.
+ *
+ * A settled trace derives its origin by subtraction — `settledAt - elapsedMs` —
+ * because the settle is the instant the caller actually holds, and the two
+ * numbers must agree by construction so that the terminal action's `at_ms`
+ * equals `activity_results.elapsed_ms`.
+ *
+ * An abandonment has no settle. Its origin is the instant the activity OPENED,
+ * which the surface already holds directly (the same value it hands to
+ * `useActivityDuration`). Deriving it by subtraction from a "left at" instant
+ * would reintroduce the very drift the direct value avoids, and there is no
+ * `activity_results` row for the two numbers to agree with anyway.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THE DWELL RIDES IN THE TERMINAL PAYLOAD HERE, UNLIKE A SETTLED TRACE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The module header says durations are deliberately NOT restated in the trace,
+ * because they already live on `activity_results` one table over. For an
+ * abandonment that reason evaporates: THERE IS NO `activity_results` ROW, on
+ * purpose (writing one as `passed: false` would count non-attempts as failures
+ * and wreck every accuracy number — see migration 0040). So this row is the
+ * only place the dwell can live, and "how long did they stay before leaving" is
+ * the single most useful number an abandonment carries.
+ *
+ * @param startedAt wall clock of the OPEN — the trace origin, held by the
+ *   surface that rendered the activity.
+ * @param leftAt wall clock of the moment the surface went away. Used only to
+ *   bound the sequence; the dwell itself comes from `duration`, which is the
+ *   measurement that knows about hidden time.
+ * @param reason WHY the surface went away, verbatim into the terminal payload.
+ * @returns null when there is no usable origin — the same rule
+ *   `buildAttemptTrace` applies, for the same reason: offsets with no anchor
+ *   are a list of numbers that mean nothing.
+ */
+export function buildAbandonmentTrace({
+  startedAt,
+  leftAt,
+  duration,
+  reason,
+  actions = [],
+  actionsTruncated = false,
+}: {
+  startedAt: number | null;
+  leftAt: number;
+  duration: DurationSample | null;
+  reason: string;
+  actions?: readonly RecordedAction[];
+  actionsTruncated?: boolean;
+}): LearningTrace | null {
+  if (startedAt === null || !Number.isFinite(startedAt)) return null;
+  if (!Number.isFinite(leftAt)) return null;
+
+  // The dwell the terminal action reports. `duration` is authoritative when
+  // present (it is the only thing that knows how much of the window was
+  // actually on screen); the wall-clock difference is the fallback for a
+  // surface that never armed a tally.
+  const elapsed = offset(duration ? duration.elapsedMs : leftAt - startedAt);
+  const visible = duration ? Math.min(elapsed, offset(duration.visibleMs)) : null;
+
+  const middle: LearnerAction[] = actions.map((a) => ({
+    type: a.type,
+    at_ms: Math.min(elapsed, offset(a.at - startedAt)),
+    ...(a.payload ? { payload: a.payload } : {}),
+  }));
+
+  const full: LearnerAction[] = [
+    { type: 'activity_opened', at_ms: 0 },
+    ...middle,
+    {
+      type: 'attempt_abandoned',
+      at_ms: elapsed,
+      payload: {
+        reason,
+        elapsed_ms: elapsed,
+        ...(visible === null ? {} : { visible_ms: visible }),
+      },
+    },
+  ];
+
+  return envelope(startedAt, full, actionsTruncated, 'abandoned');
 }
 
 /**
@@ -451,7 +598,125 @@ export function readTrace(row: unknown): StoredLearningTrace | null {
     started_at: typeof r.started_at === 'string' ? r.started_at : null,
     actions: rawActions.filter(isStoredAction),
     actions_truncated: r.actions_truncated === true,
+    // Verbatim, never coerced and never defaulted. An unknown value from a
+    // newer build passes through; a NULL column stays NULL, because "written
+    // before the question existed" is a different fact from "settled" and
+    // collapsing them here would hide it from every caller at once.
+    outcome: typeof r.outcome === 'string' && r.outcome !== '' ? r.outcome : null,
   };
+}
+
+/**
+ * THE DEGRADATION LADDER, as pure data — the write rungs for ONE trace row,
+ * most-decorated first.
+ *
+ * Lives here rather than in `progress.service.ts` because it is the part that
+ * has to be REASONED about and therefore the part that has to be testable
+ * without a database: which columns may be dropped, in which order, and — the
+ * rule this function exists to enforce — which one may never be dropped at all.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY A LADDER AT ALL
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * PostgREST rejects the WHOLE statement for ONE unknown column. So any moment
+ * in which this build is live and a decorating column is not yet in the
+ * database costs every trace, not just the annotation — unless the client
+ * degrades.
+ *
+ * ⚠️ THAT WINDOW GOT MUCH SMALLER ON 2026-08-04 AND DID NOT CLOSE. Until then
+ * merging applied nothing here and a human had to run
+ * `db/scripts/apply-migrations.sh`; 0036, 0037 and 0038 sat merged-and-unapplied
+ * for DAYS, which is why the enunciado and the tagging of every attempt settled
+ * in that window are gone for good. `.github/workflows/db-apply.yml` now applies
+ * on merge (see db/README.md). But merging starts the app deploy and the apply
+ * run CONCURRENTLY with nothing ordering them, a failed apply STOPS at the
+ * failing file leaving later ones pending, and a restore or a fresh environment
+ * reproduces the same state from scratch. Days became minutes. Minutes are still
+ * a window, and a ladder is cheap.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY EACH RUNG DROPS EXACTLY ONE MIGRATION'S WORTH
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The three decorations (0037's enunciado, 0038's pedagogical context, 0040's
+ * outcome) can land at different times — the apply is per-file and stops at the
+ * first failure. A single "try decorated, else try bare" retry would throw away
+ * an ALREADY APPLIED decoration whenever the newest one was missing — paying for
+ * 0040's rollout with 0037's data, the same category of mistake as paying for
+ * telemetry with the record it decorates.
+ *
+ * Rungs are ordered NEWEST-DECORATION-FIRST, so the window costs exactly the
+ * annotations the deployed schema genuinely cannot store and nothing else.
+ * ⚠️ WHOEVER ADDS THE NEXT COLUMN: add a rung at the TOP, not a branch.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔒 THE ONE RUNG THAT DOES NOT EXIST — AND WHY
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `outcome` is droppable for a SETTLED trace and NOT droppable for an ABANDONED
+ * one, and the asymmetry is a correctness rule rather than caution.
+ *
+ * Dropping an annotation costs DETAIL: the row says less than it could. NULL
+ * `spec_snapshot` means "enunciado not captured"; NULL `pedagogical_context`
+ * means "tag not captured". Both are true statements.
+ *
+ * Dropping `outcome` from an ABANDONED row does not cost detail — it produces a
+ * row that reads, to every query and every future reader, as a SETTLED ATTEMPT.
+ * That is a FALSE record, and it would silently inflate the settled-attempt
+ * population with rows where nobody ever answered: the D2 defect (an attempt
+ * log that only ever held wins) re-created from the other side.
+ *
+ * So when the schema cannot store `outcome`, an abandonment is NOT WRITTEN. It
+ * returns to the durable outbox and waits, which is a bounded and recoverable
+ * loss; a false settled attempt is neither.
+ *
+ * Every rung is the same idempotent upsert against `uq_activity_traces_attempt`
+ * (`user_id, activity_id, started_at`), so a rung that actually committed and
+ * only failed on the way back makes the next one a no-op — the ladder can never
+ * duplicate a sequence.
+ *
+ * @returns the rungs to attempt in order. EMPTY is a meaningful answer and the
+ *   caller must honour it: it means this row cannot be written truthfully by
+ *   any degradation, so it must not be written at all.
+ */
+export function traceWriteRungs({
+  row,
+  trace,
+  specSnapshot,
+  pedagogicalContext,
+}: {
+  /** The 0034 envelope columns. Every one of them is older than this build. */
+  row: Record<string, unknown>;
+  trace: Pick<LearningTrace, 'outcome'>;
+  specSnapshot?: TraceSpecSnapshot | null;
+  /**
+   * Structurally `object` rather than the concrete `PedagogicalContext`: this
+   * module must not import from `pedagogicalContext.ts`, which already imports
+   * FROM here (`StoredPedagogicalContext` rides on `ContextualisedTraceEvent`).
+   * The rungs never read a field of it — the whole object goes into one jsonb
+   * column verbatim, which is the ADR-2 property.
+   */
+  pedagogicalContext?: object | null;
+}): Array<Record<string, unknown>> {
+  const withOutcome = { outcome: trace.outcome };
+  const withSnapshot = specSnapshot
+    ? { spec_snapshot: specSnapshot.spec, spec_locale: specSnapshot.locale }
+    : {};
+  const withContext = pedagogicalContext ? { pedagogical_context: pedagogicalContext } : {};
+
+  const rungs: Array<Record<string, unknown>> = [
+    { ...row, ...withSnapshot, ...withContext, ...withOutcome },
+  ];
+
+  // 🔒 Below this line every rung has NO `outcome`, i.e. lands as NULL, i.e.
+  // reads as a pre-0040 row. Only a settled trace may say that about itself.
+  if (trace.outcome !== 'settled') return rungs;
+
+  if (pedagogicalContext) rungs.push({ ...row, ...withSnapshot, ...withContext });
+  if (specSnapshot) rungs.push({ ...row, ...withSnapshot });
+  rungs.push(row);
+  return rungs;
 }
 
 /**
@@ -485,6 +750,16 @@ export interface ContextualisedTraceEvent {
   at: string | null;
   type: string;
   payload?: Record<string, unknown>;
+  /**
+   * How the ATTEMPT this event belongs to ended (`activity_traces.outcome`,
+   * migration 0040) — denormalised onto every event for the same reason the
+   * pedagogical context is: an analysis pass over events must be able to
+   * separate "what learners do before answering" from "what learners do before
+   * leaving" without re-joining to the row.
+   *
+   * ⚠️ NULL means NOT CAPTURED (pre-0040 row), not `'settled'`.
+   */
+  outcome: string | null;
   /**
    * ⚠️ NULL means NOT CAPTURED — a row settled before migration 0038, or by an
    * older client, or one whose write had to degrade during a deploy window. It
@@ -524,6 +799,7 @@ export function flattenTraceEvents(row: unknown): ContextualisedTraceEvent[] {
     at: Number.isFinite(originMs) ? new Date(originMs + action.at_ms).toISOString() : null,
     type: action.type,
     ...(action.payload ? { payload: action.payload } : {}),
+    outcome: trace.outcome,
     pedagogical_context: context,
   }));
 }

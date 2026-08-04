@@ -161,11 +161,27 @@ export const FAMILY_STATE: Record<ActivityFamily, string> = {
 /**
  * Actions every family shares, and which no family may redeclare.
  *
- * They are not interactions — they are the two ends of the trace envelope, and
- * `buildAttemptTrace` writes them itself (`src/utils/learningTrace.ts`). They
- * are listed here so the union below is complete in one place.
+ * They are not interactions — they are the ENDS of the trace envelope, and
+ * `src/utils/learningTrace.ts` writes them itself (`buildAttemptTrace` /
+ * `buildAbandonmentTrace`). They are listed here so the union below is complete
+ * in one place.
+ *
+ * There is ONE opening and TWO possible endings:
+ *   `activity_opened`   — the origin, always at offset 0.
+ *   `attempt_settled`   — the learner submitted an answer.
+ *   `attempt_abandoned` — the learner left without submitting one. Added for
+ *                         Fase 1 of the LCPWCI plan; per the rule at the top of
+ *                         `learningTrace.ts` a NEW ACTION TYPE IS ADDITIVE, so
+ *                         `schema_version` did NOT move for it. Which of the two
+ *                         endings a row has is also readable without unnesting
+ *                         the jsonb, from `activity_traces.outcome`
+ *                         (migration 0040).
  */
-export const LIFECYCLE_ACTIONS = ['activity_opened', 'attempt_settled'] as const;
+export const LIFECYCLE_ACTIONS = [
+  'activity_opened',
+  'attempt_settled',
+  'attempt_abandoned',
+] as const;
 
 /**
  * The action union PER FAMILY, read off the existing handlers.

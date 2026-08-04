@@ -92,7 +92,7 @@ export const MAX_QUEUED_PEDAGOGICAL_CONTEXT_CHARS = 4_000;
  * esmagadora maioria) segue com a sequência inteira e com o snapshot inteiro.
  */
 function trimForQueue(entry: OutboxEntry): OutboxEntry {
-  if (entry.kind !== 'progress') return entry;
+  if (entry.kind !== 'progress' && entry.kind !== 'abandonment') return entry;
   let trimmed = entry;
 
   if (trimmed.actions && trimmed.actions.length > MAX_QUEUED_TRACE_ACTIONS) {
@@ -181,9 +181,67 @@ export function enqueueWrite(entry: OutboxEntry): void {
 }
 
 function targetOf(entry: OutboxEntry): string {
-  return entry.kind === 'progress'
-    ? `progress:${entry.activityId}`
-    : `classAnswer:${entry.sessionId}:${entry.activityId}`;
+  switch (entry.kind) {
+    case 'progress':
+      return `progress:${entry.activityId}`;
+    case 'classAnswer':
+      return `classAnswer:${entry.sessionId}:${entry.activityId}`;
+    case 'abandonment':
+      // ⚠️ NÃO inclui `startedAt` de propósito, e o alvo é DIFERENTE do
+      // `progress:` da mesma atividade. As duas escolhas importam:
+      //
+      //  · Alvo próprio ⇒ um abandono nunca despeja da fila a RESPOSTA da mesma
+      //    atividade (e vice-versa). Resposta de aluno e telemetria não disputam
+      //    a mesma vaga; a regra da casa é que a telemetria jamais custa o
+      //    registro que ela decora.
+      //  · Sem o `startedAt` ⇒ no máximo UMA entrada de abandono por atividade,
+      //    a mais recente vencendo, exatamente como o `progress`. Um aluno que
+      //    abre e larga a mesma atividade cinco vezes offline enfileiraria cinco
+      //    entradas, e as 200 vagas da fila são compartilhadas com respostas.
+      //    Perder um abandono antigo do mesmo alvo é barato; perder uma resposta
+      //    por causa dele não seria.
+      return `abandonment:${entry.activityId}`;
+  }
+}
+
+/**
+ * Tira da fila uma escrita pendente pelo alvo. Devolve quantas saíram.
+ *
+ * Existe por UM motivo, e ele é de correção — ver `revokeQueuedAbandonment`.
+ */
+function revokeQueued(target: string): number {
+  const queue = readOutbox();
+  const kept = queue.filter((q) => targetOf(q.entry) !== target);
+  if (kept.length === queue.length) return 0;
+  write(kept);
+  return queue.length - kept.length;
+}
+
+/**
+ * CANCELA um abandono enfileirado para esta atividade.
+ *
+ * ⚠️ Chamado quando o aluno SETTLA a atividade, e é o que fecha a única corrida
+ * capaz de custar dado real. O cenário:
+ *
+ *   1. o `pagehide` dispara e o beacon enfileira um abandono (origem T0);
+ *   2. a página volta do bfcache — o `pagehide` não garantia teardown;
+ *   3. o aluno responde, ainda na MESMA origem T0.
+ *
+ * Se o abandono já tivesse virado linha, o trace da resposta colidiria com ele
+ * em `(user_id, activity_id, started_at)` e, como toda escrita de trace é
+ * `ignoreDuplicates`, a SEQUÊNCIA DA RESPOSTA seria descartada em silêncio —
+ * ficando no banco um abandono no lugar de uma tentativa de verdade. (Não dá
+ * para resolver isso deixando a resposta sobrescrever: o GRANT da 0034 é só
+ * `select, insert`, sem `update`, de propósito — ninguém pode reescrever o
+ * registro de como resolveu algo.)
+ *
+ * A cura é não deixar o abandono chegar lá. Como o caminho de teardown NUNCA
+ * escreve direto — só enfileira — a entrada ainda está na fila neste ponto, e
+ * revogá-la é suficiente. O `activity_results` da resposta é uma escrita
+ * separada e não é afetado em nenhuma hipótese.
+ */
+export function revokeQueuedAbandonment(activityId: string): number {
+  return revokeQueued(`abandonment:${activityId}`);
 }
 
 /**

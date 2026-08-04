@@ -42,10 +42,13 @@ import { getIteraUserId } from '@/services/iteraUser';
 import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
 import {
+  buildAbandonmentTrace,
   buildAttemptTrace,
+  traceWriteRungs,
   type RecordedAction,
   type TraceSpecSnapshot,
 } from '@/utils/learningTrace';
+import type { AbandonmentReason } from '@/utils/abandonment';
 import type { PedagogicalContext } from '@/utils/pedagogicalContext';
 
 /** Mirrors the `itera.progress_status` enum. */
@@ -352,6 +355,16 @@ export async function persistActivityProgress(
     // dropping the NEWEST annotation must not also drop an older one the
     // deployed schema can perfectly well store.
     //
+    // ⚠️ HISTORICAL NOTE ON THE TWO PARAGRAPHS ABOVE (added 2026-08-04, with the
+    // `outcome` column): "hand-applied" and "forgetting to run
+    // apply-migrations.sh" WERE TRUE WHEN THEY WERE WRITTEN, and the forgetting
+    // actually happened — 0036, 0037 and 0038 sat merged-and-unapplied for days,
+    // and the enunciado and tagging of every attempt settled in that window are
+    // gone. `.github/workflows/db-apply.yml` now applies on merge (db/README.md).
+    // The ladder stays, because the window shrank rather than closed: the deploy
+    // and the apply race, a failed apply stops at its file, and a restore starts
+    // from nothing. Days became minutes.
+    //
     // 🔁 IDEMPOTENT ON RETRY. `flushOutbox` re-sends any entry whose write did
     // not land, and this function can return false AFTER a row has already been
     // committed (a timeout on the way back). Because `started_at` is derived
@@ -417,22 +430,25 @@ export async function persistActivityProgress(
         // can never duplicate a sequence.
         //
         // ⚠️ WHOEVER ADDS THE NEXT COLUMN: add a rung at the TOP, not a branch.
-        const rungs: Array<Record<string, unknown>> = [];
-        const withSnapshot = specSnapshot
-          ? {
-              // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now.
-              // See the corollary above and migration 0037.
-              spec_snapshot: specSnapshot.spec,
-              spec_locale: specSnapshot.locale,
-            }
-          : {};
-        if (pedagogicalContext) {
+        //
+        // 🪜 AND A THIRD COLUMN ARRIVED: `outcome` (migration 0040). The ladder
+        // itself now lives in `traceWriteRungs` (src/utils/learningTrace.ts) —
+        // moved there rather than grown in place, because with three
+        // hand-applied migrations the ORDER and the one rung that must NOT
+        // exist are the part that has to be reasoned about, and reasoning that
+        // cannot be unit-tested without a database is reasoning nobody checks.
+        // See that function for why `outcome` is droppable from a settled write
+        // and never from an abandoned one.
+        const rungs = traceWriteRungs({
+          row: traceRow,
+          trace,
+          // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now. See
+          // the corollary above and migration 0037.
+          specSnapshot,
           // ⚠️ What the activity was FOR, as tagged when the learner attempted
           // it — never as tagged today. Migration 0038.
-          rungs.push({ ...traceRow, ...withSnapshot, pedagogical_context: pedagogicalContext });
-        }
-        if (specSnapshot) rungs.push({ ...traceRow, ...withSnapshot });
-        rungs.push(traceRow);
+          pedagogicalContext,
+        });
 
         for (const rung of rungs) {
           const { error: traceError } = await sb.from('activity_traces').upsert(rung, conflict);
@@ -448,6 +464,150 @@ export async function persistActivityProgress(
     // Awarded on a pass only — a miss is recorded, not rewarded.
     if (passed) await awardActivityXp(activityId);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Record ONE ABANDONED attempt — an activity that was opened and left without a
+ * settled answer.
+ *
+ * Plan `20260803-itera-learning-control-plane-prototipo` (LCPWCI), Fase 1,
+ * approved by Tainan TG 2026-08-04. The RULE for what counts is in
+ * `src/utils/abandonment.ts`; this function does not re-decide it, it only
+ * writes what the caller already judged.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS IS A SEPARATE FUNCTION AND NOT A FLAG ON `persistActivityProgress`
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Because `persistActivityProgress` writes THREE things — `progress`,
+ * `activity_results` and the trace — and an abandonment must write exactly ONE
+ * of them:
+ *
+ *   · NOT `activity_results`. That table is the ATTEMPT LOG, and a row there is
+ *     a claim that the learner attempted. Recording an abandonment as
+ *     `passed: false` would count non-attempts as failures and make every
+ *     accuracy number in the product wrong — the D2 defect (a log that only
+ *     ever held wins) in mirror image, and just as unrecoverable once mixed in.
+ *   · NOT `progress`. Opening something is not progress on it, and
+ *     `resumeIndexFor` already lands a returning learner on the first activity
+ *     that is not `completed`.
+ *   · NOT XP. Obviously.
+ *
+ * A boolean parameter would have made all three conditional and left the
+ * default — the dangerous direction — one forgotten `if` away. A separate
+ * function makes the wrong write unreachable rather than merely unlikely.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔁 IDEMPOTENT, AT THREE LAYERS, ON THE SAME KEY
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * A beacon can double-fire (unmount and `pagehide` in the same breath), and a
+ * queued entry is re-sent until it lands. The identity of the attempt is
+ * `(activity, origin)` and it is enforced three times over:
+ *
+ *   1. in-process — `useAbandonmentBeacon` fires once per origin;
+ *   2. in the outbox — one entry per `abandonment:<activityId>` target;
+ *   3. in the database — this upsert is `on conflict do nothing` against
+ *      `uq_activity_traces_attempt` (`user_id, activity_id, started_at`), and
+ *      `started_at` IS the origin, carried through the queue rather than
+ *      re-derived. A second beacon for the same attempt is a no-op, not an
+ *      error and not a second row.
+ *
+ * And it can never overwrite a real attempt: `ignoreDuplicates` means this
+ * write yields to whatever is already there. The converse race — an abandonment
+ * landing first and then shadowing the learner's real answer — is closed one
+ * layer up, by `revokeQueuedAbandonment` at settle time; see that function.
+ *
+ * ⚠️ AND IT NEVER DEGRADES INTO A LIE. If migration 0040 is not applied yet,
+ * there is no rung that can say this row is an abandonment, so
+ * `traceWriteRungs` returns a single rung and this function returns FALSE —
+ * sending the entry back to the durable outbox, which retries it on the next
+ * drain. Writing it without `outcome` would leave a row that reads as a settled
+ * attempt, which is worse than not writing it. Since 2026-08-04 that window is
+ * minutes rather than days (`db-apply` applies on merge; see db/README.md), but
+ * the deploy and the apply still race, so the branch is live code and not a
+ * theoretical one.
+ *
+ * @returns TRUE only when the row actually landed, so the outbox knows whether
+ *   to keep the entry. Unlike the trace inside `persistActivityProgress` — which
+ *   is best-effort because it decorates something more valuable — THIS write IS
+ *   the record. There is nothing else for it to protect.
+ */
+export async function persistActivityAbandonment(
+  activityId: string,
+  {
+    startedAt,
+    leftAt,
+    duration,
+    reason,
+    actions,
+    actionsTruncated,
+    specSnapshot,
+    pedagogicalContext,
+  }: {
+    /** The trace origin — when the activity opened. NOT derived by subtraction. */
+    startedAt: number;
+    /** When the surface went away. */
+    leftAt: number;
+    duration: DurationSample | null;
+    reason: AbandonmentReason;
+    actions?: readonly RecordedAction[];
+    actionsTruncated?: boolean;
+    /**
+     * ⚠️ THE SAME TWO ANNOTATIONS A SETTLED ROW CARRIES, and they are not
+     * optional in spirit: an abandonment without the enunciado and without the
+     * pedagogical tag cannot be read next to the attempts it should be compared
+     * against, and "which cell of the grammar matrix gets abandoned most" — the
+     * question this data exists for — is a question about the tag.
+     */
+    specSnapshot?: TraceSpecSnapshot | null;
+    pedagogicalContext?: PedagogicalContext | null;
+  }
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const sb = getSupabase();
+    const userId = await getIteraUserId();
+    if (!userId) return false;
+
+    const trace = buildAbandonmentTrace({
+      startedAt,
+      leftAt,
+      duration,
+      reason,
+      actions,
+      actionsTruncated,
+    });
+    if (!trace) return false;
+
+    const rungs = traceWriteRungs({
+      row: {
+        user_id: userId,
+        activity_id: activityId,
+        schema_version: trace.schema_version,
+        started_at: trace.started_at,
+        actions: trace.actions,
+        actions_truncated: trace.actions_truncated,
+      },
+      trace,
+      specSnapshot,
+      pedagogicalContext,
+    });
+
+    for (const rung of rungs) {
+      const { error } = await sb.from('activity_traces').upsert(rung, {
+        onConflict: 'user_id,activity_id,started_at',
+        ignoreDuplicates: true,
+      });
+      if (!error) return true;
+    }
+    // Every rung was rejected. The commonest cause by far is migration 0040 not
+    // being applied yet, and the honest answer is to keep the entry queued
+    // rather than to write something the schema cannot label.
+    return false;
   } catch {
     return false;
   }

@@ -411,8 +411,12 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
   it('never lets the context cost the SEQUENCE (0038 not applied yet)', async () => {
     // Janela de rollout: o build está no ar e a coluna não existe. O PostgREST
     // rejeita o statement inteiro.
+    //
+    // ⚠️ Rejeita `outcome` (0040) junto, porque `apply-migrations.sh` aplica em
+    // ORDEM e PARA no primeiro arquivo que falha: um schema sem a 0038 também
+    // não tem a 0040.
     errorFor = (table, payload) =>
-      table === 'activity_traces' && 'pedagogical_context' in payload
+      table === 'activity_traces' && ('pedagogical_context' in payload || 'outcome' in payload)
         ? { message: `column "pedagogical_context" of relation "activity_traces" does not exist` }
         : null;
 
@@ -423,8 +427,10 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
       pedagogicalContext: buildPedagogicalContext(taggedActivity()),
     });
 
-    expect(traces()).toHaveLength(2);
-    const landed = traces()[1].payload;
+    // (contexto+outcome) → (contexto) → pelado. O degrau do meio existe porque
+    // cada degrau larga o valor de UMA migration, e a 0040 é a mais nova.
+    expect(traces()).toHaveLength(3);
+    const landed = traces()[2].payload;
     expect(landed).not.toHaveProperty('pedagogical_context');
     // A sequência sobreviveu inteira, que é o ponto.
     expect(landed.actions).toHaveLength(2);
@@ -435,7 +441,7 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
     // 0037 aplicada, 0038 não — o estado normal no dia do merge. A escada tem
     // que devolver o enunciado, não voltar direto pro envelope pelado.
     errorFor = (table, payload) =>
-      table === 'activity_traces' && 'pedagogical_context' in payload
+      table === 'activity_traces' && ('pedagogical_context' in payload || 'outcome' in payload)
         ? { message: 'column "pedagogical_context" does not exist' }
         : null;
 
@@ -447,9 +453,12 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
       pedagogicalContext: buildPedagogicalContext(taggedActivity()),
     });
 
-    expect(traces()).toHaveLength(2);
-    const landed = traces()[1].payload;
+    // (tudo) → (snapshot+contexto) → (snapshot). O enunciado, que a 0037 já
+    // sabe guardar, volta — nenhuma migration paga o rollout da outra.
+    expect(traces()).toHaveLength(3);
+    const landed = traces()[2].payload;
     expect(landed).not.toHaveProperty('pedagogical_context');
+    expect(landed).not.toHaveProperty('outcome');
     expect(landed.spec_snapshot).toEqual({ prompt: 'Qual a capital?' });
     expect(landed.spec_locale).toBe('pt');
   });
@@ -457,7 +466,7 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
   it('🪜 walks all the way down to the bare envelope when NEITHER applied', async () => {
     errorFor = (table, payload) =>
       table === 'activity_traces' &&
-      ('pedagogical_context' in payload || 'spec_snapshot' in payload)
+      ('pedagogical_context' in payload || 'spec_snapshot' in payload || 'outcome' in payload)
         ? { message: 'unknown column' }
         : null;
 
@@ -469,10 +478,12 @@ describe('persistActivityProgress → o contexto na linha do trace', () => {
       pedagogicalContext: buildPedagogicalContext(taggedActivity()),
     });
 
-    expect(traces()).toHaveLength(3);
-    const landed = traces()[2].payload;
+    // Quatro degraus desde a 0040, um por migration decorativa mais o pelado.
+    expect(traces()).toHaveLength(4);
+    const landed = traces()[3].payload;
     expect(landed).not.toHaveProperty('pedagogical_context');
     expect(landed).not.toHaveProperty('spec_snapshot');
+    expect(landed).not.toHaveProperty('outcome');
     expect(landed.actions).toHaveLength(2);
   });
 

@@ -1,5 +1,6 @@
 /** Contratos da fila durável de escritas de resposta (`src/utils/answerOutbox.ts`). */
 
+import type { AbandonmentReason } from '@/utils/abandonment';
 import type { DurationSample } from '@/utils/activityDuration';
 import type { RecordedAction, TraceSpecSnapshot } from '@/utils/learningTrace';
 import type { PedagogicalContext } from '@/utils/pedagogicalContext';
@@ -116,6 +117,64 @@ export type OutboxEntry =
       activityId: string;
       correct: boolean;
       elapsedMs: number;
+    }
+  /**
+   * Uma TENTATIVA ABANDONADA — a atividade foi renderizada, o aluno ficou nela e
+   * saiu sem responder (migration 0040, Fase 1 do plano
+   * `20260803-itera-learning-control-plane-prototipo`).
+   *
+   * ⚠️ POR QUE ELA É UM `kind` PRÓPRIO E NÃO UM `progress` COM UMA FLAG. Um
+   * abandono NÃO escreve `activity_results` nem `progress` — escrever
+   * `passed: false` contaria não-tentativa como erro e destruiria toda métrica
+   * de acerto (o defeito D2 pelo avesso). O `sendOutboxEntry` de um `progress`
+   * escreve as três tabelas por contrato; separar o kind é o que garante, no
+   * sistema de tipos, que essa escrita não pode acontecer por engano.
+   *
+   * ⚠️ ESTE É O CAMINHO DE ENTREGA PRINCIPAL, não o de exceção. No teardown da
+   * página um `fetch` assíncrono não tem garantia nenhuma de completar, então o
+   * beacon NÃO tenta escrever direto: ele enfileira aqui (localStorage é
+   * SÍNCRONO e sobrevive ao teardown) e o dreno seguinte — na próxima montagem
+   * do app ou no próximo evento `online` — é quem escreve. Ver
+   * `src/hooks/useAbandonmentBeacon.ts`.
+   */
+  | {
+      kind: 'abandonment';
+      activityId: string;
+      /**
+       * O INSTANTE EM QUE A ATIVIDADE ABRIU — a origem do trace, e a chave de
+       * idempotência.
+       *
+       * ⚠️ É a origem DIRETA, não derivada por subtração como no `progress`
+       * (que faz `settledAt - elapsedMs`). Um abandono não tem settle; quem
+       * renderizou a atividade já tem esse instante na mão (é o mesmo que
+       * alimenta o `useActivityDuration`).
+       *
+       * ⚠️ Carimbado NA ORIGEM e carregado pela fila, nunca gerado no dreno:
+       * o índice único `(user_id, activity_id, started_at)` só transforma um
+       * reenvio em no-op porque este valor é estável.
+       */
+      startedAt: number;
+      /** O instante em que a superfície sumiu. Só limita a sequência. */
+      leftAt: number;
+      /** Quanto tempo ele ficou — ver `src/utils/activityDuration.ts`. */
+      duration?: DurationSample | null;
+      /** Por que a superfície sumiu (`left_activity` | `page_teardown`). */
+      reason: AbandonmentReason;
+      /** A sequência do que ele tocou ANTES de sair, quando a família emite. */
+      actions?: RecordedAction[];
+      actionsTruncated?: boolean;
+      /**
+       * ⚠️ AS DUAS ANOTAÇÕES SÃO OBRIGATÓRIAS NA PRÁTICA, não decorativas: uma
+       * linha de abandono sem `spec_snapshot` e sem `pedagogical_context` é
+       * inanalisável ao lado das linhas de tentativa, que têm as duas. "Qual
+       * célula da matriz é abandonada com mais frequência" é uma pergunta sobre
+       * a tag; sem ela o abandono vira um número solto.
+       *
+       * Opcionais no TIPO pelo mesmo motivo de sempre (entrada serializada
+       * antes do campo existir), e aparadas na enfileirada pelos mesmos tetos.
+       */
+      specSnapshot?: TraceSpecSnapshot;
+      pedagogicalContext?: PedagogicalContext;
     };
 
 /** A entrada como ela vive na fila. */

@@ -46,6 +46,7 @@ import {
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
+import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
 import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
 import { buildPedagogicalContext } from '@/utils/pedagogicalContext';
 import type { DurationSample } from '@/utils/activityDuration';
@@ -245,6 +246,46 @@ export default function LessonPlayer() {
   // learner actually did rather than an empty list.
   const pendingActionsRef = useRef<readonly RecordedAction[] | null>(null);
 
+  // ── ABANDONED ATTEMPTS (LCPWCI Fase 1, migration 0040) ─────────────────────
+  // Until this, a learner who opened an activity and left without answering
+  // produced NO ROW ANYWHERE — not in `activity_results` (written only on a
+  // settle), not in `progress` (only on reach/pass), not in `activity_traces`
+  // (one row per settled attempt since 0034). That is precisely the give-up
+  // signal Fase 4 wants, and it was being discarded at the instant it happened.
+  //
+  // The RULE for what counts is in `src/utils/abandonment.ts` — deliberately
+  // not here, so it is testable without a DOM. This call only supplies the
+  // facts, and every one of them comes from THIS screen, at RENDER time:
+  // the origin it armed, the dwell it is measuring, the enunciado it rendered,
+  // and the pedagogical tag of the activity it rendered. None of it can be
+  // looked up at write time, because on the teardown path the write can happen
+  // in the learner's NEXT session.
+  //
+  // ⚠️ `reviewing` matters: re-reading a completed activity and closing the
+  // lesson is not abandoning an attempt, and without this guard every learner
+  // reviewing a finished lesson would emit one.
+  //
+  // Memoized on the ACTIVITY and its ORIGIN — not because building the two
+  // annotations is expensive, but because the beacon holds this object across
+  // the render that changes it (see `fireFor`), and a stable identity per
+  // attempt is the honest shape for something whose whole job is to describe
+  // one attempt.
+  const beaconTarget = useMemo(
+    () =>
+      current && activityStartedAt !== null
+        ? {
+            activityId: current.id,
+            startedAt: activityStartedAt,
+            read: duration.read,
+            reviewing: doneIds.has(current.id),
+            specSnapshot: buildSpecSnapshot(current.spec, locale),
+            pedagogicalContext: buildPedagogicalContext(current),
+          }
+        : null,
+    [current, activityStartedAt, duration.read, doneIds, locale]
+  );
+  const beacon = useAbandonmentBeacon(beaconTarget);
+
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
   const { data: nextLesson } = useNextLesson(lessonId);
@@ -273,6 +314,12 @@ export default function LessonPlayer() {
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
     pendingSettledAtRef.current = Date.now();
+    // THIS instant is what disarms the abandonment beacon — not the write. For
+    // a graded kind the write happens on the footer's "Continuar", and leaving
+    // during that review beat is not abandoning an attempt: the learner
+    // answered. It also revokes any abandonment already queued for this
+    // activity by a `pagehide` the page came back from.
+    beacon.markSettled(current.id);
     // Hold the produced content until the learner actually commits — graded and
     // BYOC kinds settle later, on the footer's "Continuar".
     pendingArtifactRef.current = detail?.artifact ?? null;

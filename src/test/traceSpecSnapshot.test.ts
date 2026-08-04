@@ -228,13 +228,18 @@ describe('compatibilidade pra trás — linha sem snapshot continua válida', ()
   });
 });
 
-describe('a janela de deploy (merge NÃO aplica migration neste repo)', () => {
+describe('a janela de deploy (o build pode estar na frente do schema)', () => {
   it('keeps the SEQUENCE when the 0037 columns do not exist yet', async () => {
     // PostgREST rejeita o statement inteiro por causa de uma coluna que o
     // schema no ar não tem. Sem o retry, cada trace se perderia até alguém
     // rodar `db/scripts/apply-migrations.sh` — e há precedente de isso demorar.
+    //
+    // ⚠️ O stub rejeita `spec_snapshot` E `outcome` (0040) porque
+    // `apply-migrations.sh` aplica os arquivos EM ORDEM e PARA no primeiro que
+    // falha: um schema sem a 0037 também não tem a 0038 nem a 0040. Simular
+    // "0040 aplicada mas 0037 não" seria testar um estado que não existe.
     errorFor = (table, payload) =>
-      table === 'activity_traces' && 'spec_snapshot' in payload
+      table === 'activity_traces' && ('spec_snapshot' in payload || 'outcome' in payload)
         ? { message: `column "spec_snapshot" of relation "activity_traces" does not exist` }
         : null;
 
@@ -246,9 +251,12 @@ describe('a janela de deploy (merge NÃO aplica migration neste repo)', () => {
     });
 
     expect(ok).toBe(true);
-    const [withSnapshot, fallback] = traces();
+    // Três degraus desde a 0040: (snapshot+outcome) → (snapshot) → pelado.
+    const [withSnapshot, , fallback] = traces();
+    expect(traces()).toHaveLength(3);
     expect(withSnapshot.payload).toHaveProperty('spec_snapshot');
     expect(fallback.payload).not.toHaveProperty('spec_snapshot');
+    expect(fallback.payload).not.toHaveProperty('outcome');
     // A sequência sobrevive intacta — perdeu-se a anotação, nunca o dado.
     expect(fallback.payload.actions).toHaveLength(2);
     expect(fallback.opts).toEqual({
@@ -257,7 +265,7 @@ describe('a janela de deploy (merge NÃO aplica migration neste repo)', () => {
     });
   });
 
-  it('does not retry when there was no snapshot to blame', async () => {
+  it('não inventa degrau de snapshot quando não havia snapshot nenhum', async () => {
     errorFor = (table) =>
       table === 'activity_traces' ? { message: 'relation does not exist' } : null;
 
@@ -267,7 +275,18 @@ describe('a janela de deploy (merge NÃO aplica migration neste repo)', () => {
       settledAt: SETTLED_AT,
     });
 
-    expect(traces()).toHaveLength(1);
+    // Sem snapshot e sem contexto, a escada tem exatamente DOIS degraus: o
+    // `outcome` da 0040 e o envelope pelado. Degraus idênticos são pulados —
+    // não existe um degrau "sem snapshot" quando não havia snapshot.
+    //
+    // ⚠️ O segundo degrau é o CUSTO DE ROLLOUT DA 0040, e ele é temporário e
+    // conhecido: na janela entre o deploy do build e o `db-apply` pousar a
+    // coluna, toda tentativa liquidada paga um upsert rejeitado a mais. As 0037
+    // e 0038 fizeram exatamente a mesma troca — só que a janela delas durou
+    // dias, e desde 2026-08-04 dura minutos. Aplicada a migration, volta a UM.
+    expect(traces()).toHaveLength(2);
+    expect(traces()[0].payload).toHaveProperty('outcome', 'settled');
+    expect(traces()[1].payload).not.toHaveProperty('outcome');
   });
 
   it('never lets the snapshot cost the ATTEMPT row', async () => {
