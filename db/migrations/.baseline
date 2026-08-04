@@ -1,0 +1,77 @@
+# db/migrations/.baseline — the pre-ledger past, declared once.
+#
+# WHAT THIS IS
+# ------------
+# The list of migration files that were ALREADY APPLIED to the Itera database by
+# hand, before itera.schema_migrations existed. On the FIRST run against a
+# database with an empty ledger, apply-migrations.sh records exactly these
+# filenames as applied WITHOUT EXECUTING THEM, and then applies everything else
+# normally.
+#
+# WHY IT IS AN EXPLICIT FILE AND NOT A HEURISTIC
+# ----------------------------------------------
+# The obvious auto-reconciliation — "empty ledger means fresh install, so mark
+# every file present as applied" — is exactly wrong, and would have been wrong on
+# the day this was written: 0036, 0037 and 0038 were merged and NOT applied.
+# Marking them applied would have made permanent and invisible the very gap this
+# automation exists to close. The opposite heuristic — "empty ledger means apply
+# everything" — is the pre-ledger behaviour we are leaving behind, and it would
+# replay 36 files against production.
+#
+# There is no way to infer the answer from the database: the old script left no
+# record of what it ran. So the answer is DECLARED here, in the repo, reviewed in
+# the PR that introduced the ledger, against a live read of the schema.
+#
+# ONE-SHOT. This file is read ONLY when the ledger is empty. Once reconciliation
+# has run it is inert, and NOTHING should ever be added to it — a new migration
+# gets APPLIED, not baselined. It stays in the repo as the audit trail of what
+# the reconciliation claimed.
+#
+# Verified against the live project (kjefmwlopzeaqgqtlbdn) on 2026-08-04, read
+# only: every object created by the files below exists, and NONE of the objects
+# created by 0036/0037/0038 do — no `itera_class_cursor_send` policy on
+# realtime.messages, and no `spec_snapshot` / `spec_locale` /
+# `pedagogical_context` column on itera.activity_traces.
+#
+# Both 0006 files are listed. That is not a typo: two different migrations
+# claimed the same number, which is one of the reasons this ledger is keyed by
+# filename rather than by number.
+#
+# Blank lines and lines starting with # are ignored.
+
+0001_itera_schema_v1.sql
+0002_itera_rls.sql
+0003_itera_seed.sql
+0004_tenant_admin_metrics.sql
+0005_tenant_admin_fixture.sql
+0006_dfl_federation_dfl_batch.sql
+0006_flatten_dfl_batch_spec_i18n.sql
+0007_dfl_batch_pilot_content.sql
+0008_xp_award_on_completion.sql
+0009_dfl_federation_autoprovision.sql
+0010_users_avatar_url.sql
+0011_users_update_self_locale.sql
+0012_catalog_and_enroll.sql
+0013_class_sessions.sql
+0014_activity_kinds_v1.sql
+0015_federation_plg_owner_leak_fix.sql
+0016_activity_kind_sandbox_scenario.sql
+0017_sandbox_evaluate_quality_gate.sql
+0018_class_sessions_podium_every.sql
+0019_users_dfl_avatar_url.sql
+0020_class_answers_attendance.sql
+0021_class_sessions_scheduled_at.sql
+0022_realtime_class_channel_private.sql
+0023_realtime_class_control_topic.sql
+0024_activity_defs_reusable_library.sql
+0025_artifacts_learner_work.sql
+0026_guest_link_live_session.sql
+0027_artifact_policy_and_repo_path.sql
+0028_activity_results_truth_boundary.sql
+0029_class_stars_and_removals.sql
+0030_backfill_activity_defs_titles.sql
+0031_activity_kind_concept_reveal.sql
+0032_programs_archived_at.sql
+0033_activity_results_duration.sql
+0034_activity_traces.sql
+0035_activity_i18n_backup.sql

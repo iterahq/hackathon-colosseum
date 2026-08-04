@@ -1,0 +1,124 @@
+name: DB Drift
+
+# ──────────────────────────────────────────────────────────────────────────────
+# THE ALARM, WHICH IS A SEPARATE THING FROM THE AUTOMATION.
+#
+# `db-apply.yml` closes the gap going forward: from now on, merging a migration
+# applies it. That still leaves the whole CLASS of failure undetected — the 2026
+# incident lasted days precisely because NOTHING was watching. An automation that
+# only works when it runs tells you nothing on the days it does not run.
+#
+# So this job asks, daily, the four questions the apply pipeline cannot answer
+# about itself:
+#
+#   1. Is a migration merged to `main` but NOT applied to the database?
+#      (the exact 0036/0037/0038 failure — an apply that silently never fired,
+#      a workflow disabled, a secret expired, a run cancelled)
+#   2. Was an already-applied migration EDITED afterwards? (checksum drift — the
+#      repo and the database disagree about what is in the database)
+#   3. Is there a ledger row with no file? (a migration deleted or renamed)
+#   4. Does the database contain OBJECTS NO MIGRATION ACCOUNTS FOR? — compared
+#      against itera.schema_object_census, the fingerprint the apply script
+#      refreshes on every successful run.
+#
+# WHY IT OPENS AN ISSUE INSTEAD OF JUST FAILING. A red scheduled run in a repo
+# nobody is watching is not a notification; it is the same silence in a different
+# colour. The job opens (or updates) a single GitHub issue and closes it when the
+# drift clears, so the state is visible where humans already look. It ALSO fails,
+# so the Actions view is honest.
+#
+# ⚠️ EXPECTED FALSE-ISH POSITIVE, stated rather than hidden: three repos write
+# DDL into this one database — itera-player (this series), itera-api and
+# itera-mcp — and only this one is automated. A hand-applied itera-api /
+# itera-mcp migration WILL trip check 4. That is not noise, it is the truth from
+# this pipeline's point of view, and it stays that way until those series join
+# the same ledger (plan 20260728-itera-migration-ci-lock, Fase 6). Acknowledge a
+# legitimate one explicitly:
+#     db/scripts/apply-migrations.sh census-accept --reason '<why>'
+#
+# RUNNER: `[self-hosted, dfl-runner]` — same iterahq-scoped registrations as
+# every other workflow here.
+#
+# Plan: 20260728-itera-migration-ci-lock (Fase 5, camada 1).
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # 09:10 UTC ~= 06:10 BRT — before the working day, after any overnight merge.
+    - cron: '10 9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: db-drift
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    name: check for migration and schema drift
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Ensure psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+
+      - name: Check drift
+        id: drift
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          APPLIED_BY: drift:${{ github.run_id }}
+          REPORT_FILE: ${{ runner.temp }}/db-drift-report.txt
+        run: |
+          if [ -z "${PGPASSWORD}" ]; then
+            echo "::error::secrets.SUPABASE_DB_PASSWORD is empty — the drift check cannot see the database."
+            echo "A drift check that cannot connect must FAIL, not pass quietly."
+            exit 1
+          fi
+          : > "$REPORT_FILE"
+          bash db/scripts/apply-migrations.sh drift
+
+      - name: Open, update or close the drift issue
+        if: always()
+        env:
+          OUTCOME: ${{ steps.drift.outcome }}
+          REPORT_FILE: ${{ runner.temp }}/db-drift-report.txt
+          GH_TOKEN: ${{ github.token }}
+          TITLE: '[db-drift] the Itera database and `main` disagree'
+        run: |
+          set -u
+          REPORT="$(cat "$REPORT_FILE" 2>/dev/null || echo '(no report — the check failed before it could run)')"
+          EXISTING="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number' || true)"
+
+          if [ "$OUTCOME" = "success" ]; then
+            printf ':white_check_mark: no drift.\n\n```\n%s\n```\n' "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "Drift cleared — the database and \`main\` agree again as of run ${GITHUB_RUN_ID}."
+              gh issue close "$EXISTING"
+            fi
+            exit 0
+          fi
+
+          BODY="$(printf 'The daily drift check found a disagreement between `main` and the Itera database (`kjefmwlopzeaqgqtlbdn`).\n\n```\n%s\n```\n\nWhat to do:\n\n- **NOT APPLIED** — a migration is merged but not in the database. Re-run the `DB Apply` workflow (`workflow_dispatch`); if it fails, the failure is the real story.\n- **CHECKSUM** — an applied migration file was edited. Either `rebaseline` it with a reason, or revert the file and write a new migration.\n- **ORPHAN** — a ledger row has no file. Someone deleted or renamed a migration.\n- **census diff** — DDL reached the database outside this pipeline. Often a hand-applied `itera-api` / `itera-mcp` migration; those series are not automated yet. Acknowledge with `apply-migrations.sh census-accept --reason ...`.\n\n_run: %s/%s/actions/runs/%s_\n' \
+            "$REPORT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+
+          printf '%s\n' "$BODY" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label bug
+          fi
+
+          # Loud in both places: an open issue AND a red run.
+          exit 1

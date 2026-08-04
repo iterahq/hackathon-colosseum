@@ -193,11 +193,14 @@ crescer uma prop fora do contrato.
   o gate do aluno é o `learnerActivityGate`.
 - **Schema**: a Itera tem projeto Supabase próprio (`kjefmwlopzeaqgqtlbdn`),
   **independente do `dfl-schema`**, e o schema mora **NESTE repo** em
-  `db/migrations/` (schema-in-monorepo, ADR-F1 / ADR-3 / ADR-26). ⚠️ Migrations
-  são aplicadas **à mão** — nenhum workflow toca `db/`, então **mergear não
-  aplica nada**; alguém roda `db/scripts/apply-migrations.sh` depois. Como não há
-  ledger e o script re-roda tudo desde o `0001`, **toda migration precisa ser
-  idempotente**. Detalhes (RLS, pooler `aws-1`, recuperação de run parcial) em
+  `db/migrations/` (schema-in-monorepo, ADR-F1 / ADR-3 / ADR-26). ✅ **Mergear
+  para `main` APLICA a migration** — workflow `db-apply` (desde 2026-08-04),
+  com ledger `itera.schema_migrations` (cada arquivo aplica uma vez só) e
+  detecção de checksum. Antes disso era à mão, e 0036/0037/0038 ficaram dias
+  mergeadas-e-não-aplicadas. **Toda migration continua tendo que ser
+  idempotente** — o ledger protege contra re-aplicação *conhecida*, não contra
+  restore de backup / bootstrap / ambiente novo. Detalhes (RLS, pooler `aws-1`,
+  drift diário, recuperação de run parcial) em
   [`db/README.md`](db/README.md) — leia antes da primeira migration.
 
 ## Rules
@@ -283,8 +286,8 @@ crescer uma prop fora do contrato.
       registro por evento já com o contexto anexado. O contexto é gravado uma
       vez por linha; quem denormaliza é o leitor.
   - **Precisa de coluna/tabela nova para o evento?** Só se o acréscimo acima não
-    resolver. Migration em `db/migrations/`, **idempotente** e **aplicada à
-    mão** — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).
+    resolver. Migration em `db/migrations/`, **idempotente**; o merge para `main`
+    aplica — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).
     Nunca `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
   - **O que já TRAVA hoje, e o que ainda NÃO trava** — esta regra vale pelo que
     a CI barra, não pela boa intenção:

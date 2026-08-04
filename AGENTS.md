@@ -53,16 +53,25 @@ write migrations here"*. **Isso é falso para a Itera** e contradiz diretamente 
   dígitos seguindo o último — **não** um PR em `devfellowship/dfl-schema`.
 - **NUNCA** aponte para a DFL prod `yoojxnggaxcqtsyjdrdx`. Aquele banco é de
   outro projeto, e é ele — não este — que exige o fluxo de PR do `dfl-schema`.
-- **Migrations são aplicadas À MÃO. Não existe CI que aplique.** Mergear a PR da
-  migration **não aplica nada**; alguém tem que rodar
-  `bash db/scripts/apply-migrations.sh` depois do merge. Se ninguém rodar, `main`
-  e o banco divergem em silêncio.
-- Por isso **toda migration tem que ser idempotente** (`IF NOT EXISTS`,
+- **Mergear para `main` APLICA a migration** (workflow `db-apply`, desde
+  2026-08-04). O merge humano é o gate; a CI é quem roda
+  `db/scripts/apply-migrations.sh`. Até essa data era à mão, e o resultado foi
+  0036/0037/0038 mergeadas e **não** aplicadas por dias — tentativas gravadas
+  naquele intervalo perderam `spec_snapshot`, `spec_locale` e
+  `pedagogical_context` para sempre.
+- Existe **ledger** (`itera.schema_migrations`, chave = nome do arquivo): cada
+  arquivo aplica **uma vez só**, com checksum. Editar uma migration já aplicada
+  faz o apply **falhar** em vez de pular em silêncio.
+- **Toda migration continua tendo que ser idempotente** (`IF NOT EXISTS`,
   `CREATE OR REPLACE`, `DROP POLICY IF EXISTS` antes de `CREATE POLICY`,
-  `ADD VALUE IF NOT EXISTS`, seed com `ON CONFLICT DO NOTHING`): não há tabela de
-  ledger, e o script re-roda **todos** os arquivos desde o `0001` a cada
-  invocação. Um arquivo não-idempotente envenena todas as execuções futuras, pra
-  todo mundo — não só pra quem escreveu.
+  `ADD VALUE IF NOT EXISTS`, seed com `ON CONFLICT DO NOTHING`). O ledger protege
+  contra re-aplicação **conhecida**; idempotência protege contra a
+  **desconhecida** — restore de backup, ambiente novo, arquivo
+  `-- itera:no-transaction` que morreu entre o DDL e o registro. São duas camadas
+  e manter as duas custa perto de zero.
+- Um job diário (`db-drift`) abre uma **issue** se algo mergeou e não aplicou, se
+  um arquivo aplicado foi editado, ou se o banco ganhou objetos que nenhuma
+  migration explica.
 
 Leia o [`db/README.md`](db/README.md) inteiro antes da primeira migration — ele
 cobre RLS, o pooler correto (`aws-1`, **não** `aws-0`) e o que sobra de um run
