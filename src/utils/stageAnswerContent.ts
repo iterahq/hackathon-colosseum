@@ -44,10 +44,13 @@ export function gatherStageContent(sessionId: string, activityId: string): Stage
     };
   }
   if (submitted) {
+    // `content` segue sendo o veredito porque um cliente do build ANTERIOR lê
+    // exatamente isso; `response` é o acréscimo — o que o aluno de fato marcou.
     return {
       kind: 'answer',
       content: submitted.correct ? 'correct' : 'wrong',
       status: 'submitted',
+      response: submitted.response,
     };
   }
   // Nothing local at all — the learner is in the room but hasn't touched this

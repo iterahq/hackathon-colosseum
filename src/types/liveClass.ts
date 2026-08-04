@@ -97,6 +97,8 @@ export interface StageContent {
   kind: string;
   content: string;
   status: StageWorkStatus;
+  /** O texto da resposta do aluno — ver `StoredLiveAnswer.response`. */
+  response?: string;
 }
 
 /**
@@ -159,6 +161,8 @@ export interface StagedAnswer {
   content: string;
   /** Draft vs finished vs untouched — drives the "em andamento" badge. */
   status: StageWorkStatus;
+  /** O texto da resposta do aluno — ver `StoredLiveAnswer.response`. */
+  response?: string;
   author: StagedAuthor;
 }
 
@@ -196,6 +200,12 @@ export interface StageCursor {
 export interface StoredLiveAnswer {
   correct: boolean;
   elapsedMs: number;
+  /**
+   * O QUE o aluno respondeu, em texto (a alternativa, a ordem, os pares) — vem
+   * do `detail.response` que a atividade já entrega. Sem ele o palco só sabia
+   * dizer "respondeu", que é justamente a informação que o professor já tinha.
+   */
+  response?: string;
 }
 
 export interface ClassRankingEntry {

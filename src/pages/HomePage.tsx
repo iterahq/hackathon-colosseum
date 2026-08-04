@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { NextScheduledClassBlock } from '@/components/live/NextScheduledClassBlock';
+import { liveLearnerHref } from '@/utils/liveLearnerView';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -184,15 +185,30 @@ function LiveClassBlock() {
         </div>
 
         {/* right: CTA */}
-        <button
-          type="button"
-          onClick={() => navigate(target)}
-          data-testid={ctaTestId}
-          className="flex-shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
-        >
-          <Radio className="w-4 h-4" />
-          {ctaLabel}
-        </button>
+        <div className="flex-shrink-0 flex items-center gap-2">
+          {/* O professor às vezes quer VER a aula como o aluno vê (conferir um
+              exercício, acompanhar de outro dispositivo). Sem isso o redirect
+              do /live/:id o devolve pro console toda vez. */}
+          {isInstructor && (
+            <button
+              type="button"
+              onClick={() => navigate(liveLearnerHref(active.id))}
+              data-testid="live-class-join-as-learner"
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-border text-sm font-medium text-foreground hover:border-red-500/50 transition-colors"
+            >
+              {t('live.block.joinAsLearner')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate(target)}
+            data-testid={ctaTestId}
+            className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+          >
+            <Radio className="w-4 h-4" />
+            {ctaLabel}
+          </button>
+        </div>
       </div>
     </section>
   );

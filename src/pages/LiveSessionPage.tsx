@@ -31,7 +31,7 @@
  *      client-side rule and has to be honoured here.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { LiveReception } from '@/components/live/LiveReception';
@@ -74,6 +74,8 @@ import { LiveRemovedScreen } from '@/components/live/LiveRemovedScreen';
 import { LiveLeaveConfirm } from '@/components/live/LiveLeaveConfirm';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
+import { stageResponseText } from '@/utils/stageResponseText';
+import { wantsLearnerView } from '@/utils/liveLearnerView';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { isGenericName } from '@/utils/isGenericName';
@@ -102,7 +104,12 @@ export default function LiveSessionPage() {
   // present as instructor — otherwise their presence enters the podium/ranking.
   // A guest holds zero memberships, so this resolves false without a special case.
   const { data: memberships } = useMembership();
-  const staff = isStaffInstructor(memberships ?? []);
+  // ...a menos que ele TENHA ESCOLHIDO entrar como aluno (`?como=aluno`): aí
+  // entrar no pódio é o ponto. Só rebaixa quem já era staff — pra um aluno o
+  // parâmetro não muda nada, e o console segue atrás do `RequireRole`.
+  const [searchParams] = useSearchParams();
+  const asLearner = wantsLearnerView(searchParams);
+  const staff = isStaffInstructor(memberships ?? []) && !asLearner;
   // The guest's name/avatar come from the join (their itera.users row exists but
   // the profile read is not what the room should wait on); everything else is
   // the shared identity.
@@ -156,14 +163,16 @@ export default function LiveSessionPage() {
     [activities, currentActivityId]
   );
 
-  // Redirect instructor to the instructor control surface for THIS session —
-  // never show them the student view. Handles "re-entry" after accidentally
-  // navigating here directly (deep-links straight to the routed session view).
+  // Redirect instructor to the instructor control surface for THIS session.
+  // Handles "re-entry" after accidentally navigating here directly (deep-links
+  // straight to the routed session view) — mas não quando ele PEDIU o lado do
+  // aluno, senão o redirect desfaz a escolha na hora.
   useEffect(() => {
+    if (asLearner) return;
     if (session && identity.userId && session.instructorId === identity.userId) {
       navigate(`/live/instructor/${session.id}`, { replace: true });
     }
-  }, [session, identity.userId, navigate]);
+  }, [session, identity.userId, navigate, asLearner]);
 
   // Durable attendance row (first join wins) — best-effort, never blocks the UI.
   useEffect(() => {
@@ -300,7 +309,12 @@ export default function LiveSessionPage() {
     const settledAt = Date.now();
     const elapsedMs = sample?.elapsedMs ?? 0;
     setAnswered({ id: current.id, correct, elapsedMs });
-    if (sessionId) storeAnswer(sessionId, current.id, { correct, elapsedMs });
+    if (sessionId)
+      storeAnswer(sessionId, current.id, {
+        correct,
+        elapsedMs,
+        response: stageResponseText(current.kind, detail?.response),
+      });
     sound.onAnswer(correct);
     // Record the attempt whether or not it was right (E2E finding D2). Before
     // this, a wrong answer in a live class survived only as an ephemeral

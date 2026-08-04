@@ -39,6 +39,7 @@ import { stageCursorPlan } from '@/utils/stageCursorRate';
 import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
+import { clampStageResponse } from '@/utils/stageResponseText';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import {
   amIRemovedFrom,
@@ -360,7 +361,12 @@ export function useClassSession(
         const seen = new Set<string>();
         for (const key of Object.keys(state)) {
           // Re-tracking (hand raise/lower) APPENDS a new meta — the newest is last.
-          const meta = state[key]?.at(-1) ?? {};
+          // Exceto o papel: o mesmo professor pode estar com o console e a aba de
+          // aluno (`?como=aluno`) abertos, e aí as duas metas dividem a chave. A
+          // escolha explícita dele vence, senão a linha dele pisca no pódio.
+          const metas = state[key] ?? [];
+          const meta = metas.at(-1) ?? {};
+          const asLearner = metas.some((m) => m.is_instructor === false);
           const uid = typeof meta.user_id === 'string' ? meta.user_id : key;
           if (seen.has(uid)) continue;
           seen.add(uid);
@@ -368,7 +374,7 @@ export function useClassSession(
             userId: uid,
             name: typeof meta.name === 'string' ? meta.name : uid.slice(0, 8),
             avatarUrl: typeof meta.avatar_url === 'string' ? meta.avatar_url : null,
-            isInstructor: meta.is_instructor === true,
+            isInstructor: !asLearner && meta.is_instructor === true,
             isGuest: meta.is_guest === true,
             handRaised: meta.hand_raised === true,
             workingOn: typeof meta.working_on === 'string' ? meta.working_on : null,
@@ -436,6 +442,7 @@ export function useClassSession(
               kind: gathered.kind,
               content: gathered.content,
               status: gathered.status,
+              response: gathered.response,
               author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
             },
           });
@@ -449,6 +456,7 @@ export function useClassSession(
                 kind?: string;
                 content?: string;
                 status?: unknown;
+                response?: unknown;
                 author?: { userId?: string; name?: string; avatarUrl?: string | null };
               }
             | null;
@@ -461,6 +469,7 @@ export function useClassSession(
             kind: p.kind,
             content: p.content,
             status: parseStageStatus(p.status),
+            response: clampStageResponse(p.response),
             author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
           });
           // If MY work is the one on stage, start streaming edits; if someone
@@ -532,6 +541,7 @@ export function useClassSession(
                 kind?: string;
                 content?: string;
                 status?: unknown;
+                response?: unknown;
                 author?: unknown;
               }
             | null;
@@ -551,6 +561,7 @@ export function useClassSession(
               kind: p.kind,
               content: p.content,
               status: parseStageStatus(p.status),
+              response: clampStageResponse(p.response),
               author: p.author,
             },
           });
@@ -567,6 +578,7 @@ export function useClassSession(
                 kind?: string;
                 content?: string;
                 status?: unknown;
+                response?: unknown;
                 author?: unknown;
               }
             | null;
@@ -581,6 +593,7 @@ export function useClassSession(
               kind: p.kind,
               content: p.content,
               status: parseStageStatus(p.status),
+              response: clampStageResponse(p.response),
               author: p.author,
             },
           });
@@ -980,6 +993,7 @@ export function useClassSession(
           kind: gathered.kind,
           content: gathered.content,
           status: gathered.status,
+          response: gathered.response,
           author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
         },
       });
