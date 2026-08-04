@@ -48,17 +48,56 @@ export const MAX_QUEUED_WRITES = 200;
 export const MAX_QUEUED_TRACE_ACTIONS = 60;
 
 /**
+ * Teto do SNAPSHOT DO ENUNCIADO por entrada enfileirada (migration 0037).
+ *
+ * Mesma aritmética do teto acima, e o mesmo desfecho se ela for ignorada: 200
+ * entradas × um spec grande encosta na quota do localStorage, e quota estourada
+ * não custa "um pouco de telemetria" — o `write()` falha inteiro e a fila PARA
+ * DE ACEITAR RESPOSTA.
+ *
+ * 16.000 caracteres com folga real: medido no projeto em 2026-08-04, o spec
+ * MÁXIMO de todas as 275 atividades do catálogo tem 8.331 bytes e a média tem
+ * 1.263. Ou seja, hoje nada é descartado por este teto; ele existe pra que uma
+ * atividade futura anormalmente grande não derrube a fila.
+ *
+ * ⚠️ DESCARTA, NUNCA TRUNCA. Meia sequência de ações ainda é uma sequência (e a
+ * entrada carimba `actionsTruncated`); meio enunciado é jsonb corrompido que
+ * um replay renderizaria como se fosse o que o aluno leu. A coluna fica NULL,
+ * que já significa "não capturado" — menos informação, nunca informação falsa.
+ */
+export const MAX_QUEUED_SPEC_SNAPSHOT_CHARS = 16_000;
+
+/**
  * Aparo aplicado só na entrada da FILA — a escrita direta (caminho feliz,
- * esmagadora maioria) segue com a sequência inteira.
+ * esmagadora maioria) segue com a sequência inteira e com o snapshot inteiro.
  */
 function trimForQueue(entry: OutboxEntry): OutboxEntry {
-  if (entry.kind !== 'progress' || !entry.actions) return entry;
-  if (entry.actions.length <= MAX_QUEUED_TRACE_ACTIONS) return entry;
-  return {
-    ...entry,
-    actions: entry.actions.slice(0, MAX_QUEUED_TRACE_ACTIONS),
-    actionsTruncated: true,
-  };
+  if (entry.kind !== 'progress') return entry;
+  let trimmed = entry;
+
+  if (trimmed.actions && trimmed.actions.length > MAX_QUEUED_TRACE_ACTIONS) {
+    trimmed = {
+      ...trimmed,
+      actions: trimmed.actions.slice(0, MAX_QUEUED_TRACE_ACTIONS),
+      actionsTruncated: true,
+    };
+  }
+
+  if (trimmed.specSnapshot && !fitsInQueue(trimmed.specSnapshot.spec)) {
+    const { specSnapshot: _dropped, ...rest } = trimmed;
+    trimmed = rest;
+  }
+
+  return trimmed;
+}
+
+/** Cabe na fila sem ameaçar a quota? Um spec que nem serializa também não cabe. */
+function fitsInQueue(spec: Record<string, unknown>): boolean {
+  try {
+    return JSON.stringify(spec).length <= MAX_QUEUED_SPEC_SNAPSHOT_CHARS;
+  } catch {
+    return false;
+  }
 }
 
 export function readOutbox(): QueuedWrite[] {

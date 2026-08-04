@@ -38,6 +38,13 @@ export async function sendOutboxEntry(entry: OutboxEntry): Promise<boolean> {
       // sobre o que aquele build observou.
       actions: entry.actions,
       actionsTruncated: entry.actionsTruncated,
+      // O enunciado como o ALUNO leu, capturado na tentativa e carregado pela
+      // fila (migration 0037). Não pode ser buscado aqui: o `spec` é mutável e
+      // este ponto pode ser horas depois — releria a redação de agora, que é
+      // exatamente a divergência que o snapshot existe pra impedir. Entrada
+      // antiga (ou aparada por tamanho) volta sem ele ⇒ coluna NULL, que
+      // significa "não capturado" e é a verdade.
+      specSnapshot: entry.specSnapshot,
     });
   }
   return recordClassAnswer(entry.sessionId, entry.activityId, entry.correct, entry.elapsedMs);

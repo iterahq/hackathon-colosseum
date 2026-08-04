@@ -1,7 +1,7 @@
 /** Contratos da fila durável de escritas de resposta (`src/utils/answerOutbox.ts`). */
 
 import type { DurationSample } from '@/utils/activityDuration';
-import type { RecordedAction } from '@/utils/learningTrace';
+import type { RecordedAction, TraceSpecSnapshot } from '@/utils/learningTrace';
 
 /** Uma escrita pendente. A união é fechada — kind novo obriga a tratar o envio. */
 export type OutboxEntry =
@@ -60,6 +60,31 @@ export type OutboxEntry =
       actions?: RecordedAction[];
       /** A sequência foi aparada antes de chegar no banco (ver acima). */
       actionsTruncated?: boolean;
+      /**
+       * O ENUNCIADO que o aluno leu, já resolvido pro locale dele, capturado no
+       * instante da tentativa (migration 0037 — Fase 0 do plano
+       * `20260803-itera-replay-de-sessao-de-atividade`).
+       *
+       * ⚠️ VIAJA PELA FILA, e por um motivo mais forte que o dos outros campos:
+       * `itera.activities.spec` é MUTÁVEL (trigger `activity_defs_sync_instances`,
+       * migration 0024) e a entrada enfileirada pode drenar horas depois. Buscar
+       * o spec no dreno traria a redação de ENTÃO, não a de quando o aluno
+       * respondeu — que é exatamente a divergência que a Fase 0 existe pra
+       * fechar. A entrada offline é, aliás, o caso onde a janela pra uma edição
+       * de curador acontecer no meio é maior.
+       *
+       * ⚠️ DESCARTADO NA ENFILEIRADA quando é grande demais
+       * (`MAX_QUEUED_SPEC_SNAPSHOT_CHARS`). Mesma aritmética do
+       * `MAX_QUEUED_TRACE_ACTIONS`: 200 entradas × um spec de 8 kB encostaria na
+       * quota do localStorage, e estourar a quota derruba a fila INTEIRA —
+       * inclusive as respostas que ela existe pra salvar. Descartado, nunca
+       * truncado: meio enunciado não é um enunciado, e a coluna NULL já quer
+       * dizer "não capturado", que é a verdade.
+       *
+       * OPCIONAL pelo mesmo motivo que `duration`/`settledAt`: entrada
+       * serializada antes do campo existir volta sem ele.
+       */
+      specSnapshot?: TraceSpecSnapshot;
     }
   | {
       kind: 'classAnswer';

@@ -41,7 +41,11 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { awardActivityXp } from '@/services/gamification.service';
 import type { DurationSample } from '@/utils/activityDuration';
-import { buildAttemptTrace, type RecordedAction } from '@/utils/learningTrace';
+import {
+  buildAttemptTrace,
+  type RecordedAction,
+  type TraceSpecSnapshot,
+} from '@/utils/learningTrace';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -137,6 +141,21 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * "unknown" — an outbox entry serialised before this field existed — and yields
  * an attempt row with no trace rather than a fabricated anchor.
  *
+ * `specSnapshot` is the ENUNCIADO the learner actually read, as rendered, with
+ * the locale it was rendered in (migration 0037, Fase 0 of plan
+ * `20260803-itera-replay-de-sessao-de-atividade`). It is OPTIONAL for the same
+ * reason `actions` is: omitting it records LESS, never something false — the
+ * column is NULL and NULL means "not captured", which is exactly true of every
+ * attempt written by an older build.
+ *
+ * ⚠️ IT MUST COME FROM THE CALLER, and re-reading it here would be a bug, not a
+ * simplification. The point of the snapshot is that `itera.activities.spec` is
+ * mutable (trigger `activity_defs_sync_instances`, migration 0024) and
+ * locale-resolved at render time; a lookup at WRITE time would fetch today's
+ * wording in whatever locale is ambient — and on the outbox path "write time"
+ * can be hours after the learner answered. Only the surface that rendered the
+ * activity holds the truth, so only it can supply it.
+ *
  * ⚠️ THIS IS THE ONLY PLACE THE TRACE MAY BE EMITTED — and the emission is
  * INSIDE this function, not at its call sites, which is a coverage property and
  * not a style one. The call sites are no longer the two the plan named: live
@@ -161,6 +180,7 @@ export async function persistActivityProgress(
     settledAt,
     actions,
     actionsTruncated,
+    specSnapshot,
   }: {
     passed: boolean;
     response?: string | null;
@@ -168,6 +188,7 @@ export async function persistActivityProgress(
     settledAt: number | null;
     actions?: readonly RecordedAction[];
     actionsTruncated?: boolean;
+    specSnapshot?: TraceSpecSnapshot | null;
   }
 ): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
@@ -295,6 +316,20 @@ export async function persistActivityProgress(
     // silent loss of data that cannot be re-collected — ship the migration
     // first, or accept the gap knowingly.
     //
+    // 🪢 AND THE NEXT COLUMN DID ARRIVE: `spec_snapshot` / `spec_locale`
+    // (migration 0037). Rather than accept that gap, the write below takes the
+    // 0033 SEATBELT SHAPE — attempt WITH the snapshot, and on any failure
+    // re-attempt WITHOUT it. The rule is the same one, one level down: the
+    // snapshot decorates the sequence exactly as the sequence decorates the
+    // attempt, so the deploy window costs SNAPSHOTS and never SEQUENCES.
+    // Without the retry, merging this PR and forgetting to run
+    // `db/scripts/apply-migrations.sh` would stop recording traces altogether
+    // — and there is a precedent for that being forgotten: 0036 sat merged and
+    // unapplied while this was written.
+    // The retry cannot duplicate anything: it is the same idempotent upsert
+    // against `uq_activity_traces_attempt`, so if the first statement actually
+    // committed and only failed on the way back, the second is a no-op.
+    //
     // 🔁 IDEMPOTENT ON RETRY. `flushOutbox` re-sends any entry whose write did
     // not land, and this function can return false AFTER a row has already been
     // committed (a timeout on the way back). Because `started_at` is derived
@@ -323,17 +358,38 @@ export async function persistActivityProgress(
       // gets an attempt row and no trace, rather than a sequence dated to the
       // moment the network came back.
       if (trace) {
-        await sb.from('activity_traces').upsert(
-          {
-            user_id: userId,
-            activity_id: activityId,
-            schema_version: trace.schema_version,
-            started_at: trace.started_at,
-            actions: trace.actions,
-            actions_truncated: trace.actions_truncated,
-          },
-          { onConflict: 'user_id,activity_id,started_at', ignoreDuplicates: true }
-        );
+        // The envelope (migration 0034). Every column here is older than this
+        // build and is never the reason a write is rejected.
+        const traceRow = {
+          user_id: userId,
+          activity_id: activityId,
+          schema_version: trace.schema_version,
+          started_at: trace.started_at,
+          actions: trace.actions,
+          actions_truncated: trace.actions_truncated,
+        };
+        const conflict = {
+          onConflict: 'user_id,activity_id,started_at',
+          ignoreDuplicates: true,
+        } as const;
+
+        if (specSnapshot) {
+          const { error: traceError } = await sb.from('activity_traces').upsert(
+            {
+              ...traceRow,
+              // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now.
+              // See the corollary above and migration 0037.
+              spec_snapshot: specSnapshot.spec,
+              spec_locale: specSnapshot.locale,
+            },
+            conflict
+          );
+          // 0037 not applied yet ⇒ PostgREST rejects the whole statement for
+          // the unknown columns. Keep the sequence; drop only its annotation.
+          if (traceError) await sb.from('activity_traces').upsert(traceRow, conflict);
+        } else {
+          await sb.from('activity_traces').upsert(traceRow, conflict);
+        }
       }
     } catch {
       // Best-effort by design. A missing table, a rejected envelope or a

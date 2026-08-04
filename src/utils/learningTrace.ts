@@ -79,6 +79,12 @@
  *   - a new action `type`,
  *   - a new payload key on an existing type,
  *   - a new COLUMN on the table (that is not part of this envelope).
+ *     ⚠️ `spec_snapshot` / `spec_locale` (migration 0037) are exactly that case
+ *     and the version did NOT move: `started_at`, `at_ms` and `actions` all
+ *     still mean what they meant, so a v1 row written before that migration is
+ *     read the same way as one written after it. That is the whole point of the
+ *     field — bumping it for additive change would destroy the only signal
+ *     saying whether an OLD row is interpretable.
  *
  * The distinction is the whole value of the field. A version that ticks on
  * every additive change tells you nothing about whether an old row is readable;
@@ -151,6 +157,69 @@ export const MAX_TRACE_ACTIONS = 500;
  *
  * Everything between them comes from the activity, as `RecordedAction`s.
  */
+
+/**
+ * The ENUNCIADO the learner actually read, captured with the attempt
+ * (migration 0037 — Fase 0 of plan
+ * `20260803-itera-replay-de-sessao-de-atividade`, Tainan TG 2026-08-04).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY A TRACE WITHOUT THIS IS NOT REPRODUCIBLE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * An action says `option_selected {option_id: 'b'}`. What `b` SAID lives in
+ * `itera.activities.spec` — mutable jsonb, no version, no hash. The trigger
+ * `activity_defs_sync_instances` (migration 0024) rewrites it across every
+ * instance without looking at whether attempts exist, and the i18n backfill of
+ * #253 already did exactly that in place (migration 0035 calls those *"lossy
+ * edits to authored content"*). So re-rendering the live spec to replay an old
+ * attempt shows TODAY's wording — and in the WATCHER's language, because
+ * `resolveLocalizedSpec` picks the locale at render time from localStorage.
+ *
+ * A replay that diverges from what the learner saw is worse than no replay: it
+ * looks like the truth. Hence the snapshot, and hence it ships BEFORE any UI —
+ * the interface can be built whenever, the data cannot be collected twice.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * THE PAIR IS ONE FACT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `spec` and `locale` travel together in one object rather than as two loose
+ * parameters, because a snapshot whose language is unknown is ambiguous
+ * exactly where it matters. There is no way to pass one without the other.
+ *
+ * ⚠️ `spec` is the spec AS RENDERED — `programs.service` has already collapsed
+ * the `{pt,en}` bags for the learner's locale. The one exception is inherited,
+ * not introduced here: `sandbox_scenario` specs are deliberately left
+ * UNRESOLVED (that runtime resolves its own bags), so for that kind the
+ * snapshot holds bags. Either way `locale` is what a reader needs to render it
+ * the way the learner saw it.
+ */
+export interface TraceSpecSnapshot {
+  /** The activity spec exactly as this learner was rendered it. */
+  spec: Record<string, unknown>;
+  /** The locale that resolution used — the language the learner actually read. */
+  locale: string;
+}
+
+/**
+ * Build the snapshot for one attempt, or NULL when there is nothing honest to
+ * store.
+ *
+ * Pure and total, like everything else in this module. Returns null for a
+ * missing, non-object or EMPTY spec rather than writing `{}`: an empty object
+ * would read as "this activity had no enunciado", which is a claim, whereas
+ * NULL already means "not captured" on the column (see the 0037 comment).
+ */
+export function buildSpecSnapshot(
+  spec: Record<string, unknown> | null | undefined,
+  locale: string
+): TraceSpecSnapshot | null {
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return null;
+  if (Object.keys(spec).length === 0) return null;
+  if (typeof locale !== 'string' || locale === '') return null;
+  return { spec, locale };
+}
 
 /** One action, as WRITTEN by this build. `at_ms` is already an offset. */
 export interface LearnerAction {

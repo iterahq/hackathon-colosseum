@@ -46,7 +46,7 @@ import {
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
-import type { RecordedAction } from '@/utils/learningTrace';
+import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
 import type { DurationSample } from '@/utils/activityDuration';
 import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
@@ -64,7 +64,7 @@ import type { Activity, LessonPosition } from '@/types/content';
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
-  const { t, tText } = useI18n();
+  const { t, tText, locale } = useI18n();
   const { muted, toggleMuted, onSettle, onAdvance, onFinish } = useLessonSound();
   useAnswerOutbox();
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
@@ -313,6 +313,11 @@ export default function LessonPlayer() {
         // Um ERRO é onde a sequência vale mais: o QUE ele respondeu já está no
         // `response`; o COMO ele chegou lá é o que diz se foi chute ou tentativa.
         actions: missedActions ? [...missedActions] : undefined,
+        // O ENUNCIADO que ELE leu (migration 0037). `current.spec` já vem
+        // resolvido pro locale pelo `programs.service`, e é o objeto que esta
+        // tela acabou de renderizar — por isso o snapshot sai daqui e não do
+        // serviço, que releria um `spec` mutável depois do fato.
+        specSnapshot: buildSpecSnapshot(current.spec, locale) ?? undefined,
       });
     }
 
@@ -337,6 +342,11 @@ export default function LessonPlayer() {
         settledAt: pendingSettledAtRef.current,
         // READ, do not clear — same rule as everything above it.
         actions: pendingActionsRef.current ?? undefined,
+        // The enunciado THIS learner read, in the language they read it in
+        // (migration 0037). Taken from the activity this screen just rendered:
+        // `activities.spec` is mutable and locale-collapsed at render time, so
+        // the only moment it can be captured truthfully is this one.
+        specSnapshot: buildSpecSnapshot(current.spec, locale),
       });
       setSaving(false);
       if (ok) {

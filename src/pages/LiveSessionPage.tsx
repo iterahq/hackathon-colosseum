@@ -58,6 +58,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { buildSpecSnapshot } from '@/utils/learningTrace';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { recordClassAttendance } from '@/services/classReport.service';
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
@@ -90,7 +91,7 @@ import type { ClassCompleter } from '@/types/liveClass';
 export default function LiveSessionPage() {
   const params = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // Present ONLY under /g/:code (see GuestModeContext) — null is the normal,
   // authenticated case, so every branch below defaults to today's behaviour.
@@ -341,6 +342,14 @@ export default function LiveSessionPage() {
     // resposta, e é rebaseada no instante em que ele respondeu, não no
     // reconectar.
     const actions = detail?.actions ? [...detail.actions] : undefined;
+    // O ENUNCIADO que este aluno leu, do jeito que ele leu (migration 0037 —
+    // Fase 0 do plano 20260803-itera-replay-de-sessao-de-atividade). Sai daqui,
+    // da tela que acabou de renderizar a atividade, e viaja junto pela fila:
+    // `itera.activities.spec` é mutável (trigger `activity_defs_sync_instances`)
+    // e o dreno da fila pode acontecer horas depois, então buscá-lo na escrita
+    // traria a redação de então — que é exatamente a divergência que o snapshot
+    // existe pra impedir.
+    const specSnapshot = buildSpecSnapshot(current.spec, locale) ?? undefined;
     if (guest) {
       // no durable per-learner progress for a link-invited guest
     } else if (correct) {
@@ -353,6 +362,7 @@ export default function LiveSessionPage() {
         duration: sample,
         settledAt,
         actions,
+        specSnapshot,
       });
       setSaving(false);
     } else {
@@ -364,6 +374,7 @@ export default function LiveSessionPage() {
         duration: sample,
         settledAt,
         actions,
+        specSnapshot,
       });
     }
     broadcastAnswer(current.id, correct, elapsedMs);
