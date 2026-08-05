@@ -10,6 +10,7 @@ import type { Locale } from '@iterahq/activity-spec/runtime';
 import { localizedText as localized } from '@/utils/localizedText';
 import type { SeedCollection } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
+import { ActivityTextarea } from '@/components/branded/activity/ActivityTextarea';
 
 /** Matches itera-api's own `MAX_SEED_CHARS`, so the server never truncates. */
 const MAX_SEED_CHARS = 500;
@@ -41,14 +42,15 @@ export function ByocSeedForm({
         </p>
       )}
 
-      <textarea
+      <ActivityTextarea
         value={value}
-        onChange={(e) => setValue(e.target.value.slice(0, MAX_SEED_CHARS))}
+        onChange={setValue}
+        maxLength={MAX_SEED_CHARS}
         disabled={disabled}
         rows={3}
         data-testid="byoc-seed-input"
         placeholder={seed.placeholder ? localized(seed.placeholder, locale as Locale) : ''}
-        className="mt-4 w-full rounded-2xl border border-border bg-card px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-evergreen focus:outline-none disabled:opacity-60"
+        className="mt-4 bg-card px-4 py-3"
       />
 
       {error && (

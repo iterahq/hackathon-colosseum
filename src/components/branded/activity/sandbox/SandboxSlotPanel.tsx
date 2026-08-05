@@ -1,4 +1,5 @@
 import { t, type ChatModel, type Locale, type Scenario } from '@iterahq/activity-spec/runtime';
+import { ActivityTextarea } from '@/components/branded/activity/ActivityTextarea';
 
 /** Renders a scenario's slots (select → chips, text → textarea) above the input. */
 export function SandboxSlotPanel({
@@ -59,13 +60,13 @@ export function SandboxSlotPanel({
               </div>
             ) : (
               <>
-                <textarea
+                <ActivityTextarea
                   value={value}
                   disabled={disabled}
-                  onChange={(e) => onSet(slot.id, e.target.value)}
+                  onChange={(next) => onSet(slot.id, next)}
                   placeholder={slot.placeholder ? t(slot.placeholder, locale) : ''}
                   rows={4}
-                  className="w-full resize-y rounded-2xl border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40 disabled:opacity-60"
+                  className="resize-y"
                 />
                 {need > 0 && (
                   <div className={`mt-1.5 text-xs font-medium ${len >= need ? 'text-evergreen-hi' : 'text-muted-foreground'}`}>

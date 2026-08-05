@@ -53,6 +53,7 @@ import { SandboxScenarioActivity } from './SandboxScenarioActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { InvalidSpecCard } from './InvalidSpecCard';
+import { ActivityTextarea } from './ActivityTextarea';
 import { RichText } from './RichText';
 import { RichSpans } from './RichSpans';
 import { parseInline } from '@/utils/richText';
@@ -271,13 +272,13 @@ function ReflectionDocumentActivity({
       <RichText text={spec.prompt ?? spec.title ?? t('activity.document')} data-testid="document-prompt" />
       {spec.body && <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />}
 
-      <textarea
+      <ActivityTextarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={setText}
         placeholder={t('activity.reflectionPlaceholder')}
         rows={6}
         data-testid="document-reflection-input"
-        className="mt-5 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+        className="mt-5"
       />
 
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
@@ -446,12 +447,12 @@ function AiJudgeDocumentActivity({
       )}
 
       {/* 2) Learner submission */}
-      <textarea
+      <ActivityTextarea
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={setContent}
         placeholder="Escreva seu data-spec.md: por que você modelou assim + as correções concretas que fez…"
         rows={8}
-        className="mt-5 w-full rounded-2xl border border-border bg-background p-4 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-evergreen/40"
+        className="mt-5 font-mono"
         data-testid="judge-submission-input"
       />
 

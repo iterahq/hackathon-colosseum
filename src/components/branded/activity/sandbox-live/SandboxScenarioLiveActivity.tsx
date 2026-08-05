@@ -32,6 +32,7 @@ import { useAuth } from '@/auth/AuthContext';
 import type { Activity } from '@/types/content';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { ActivityShell } from '@/components/branded/activity/parts';
+import { ActivityTextarea } from '@/components/branded/activity/ActivityTextarea';
 import { SandboxChatLog } from '@/components/branded/activity/sandbox/SandboxChatLog';
 import { SandboxBubble } from '@/components/branded/activity/sandbox/SandboxBubble';
 import { SandboxClearButton } from '@/components/branded/activity/sandbox/SandboxClearButton';
@@ -151,23 +152,15 @@ export function SandboxScenarioLiveActivity({
                 />
               </div>
               <div className="flex w-full items-end gap-2 rounded-3xl border border-white/10 bg-obsidiana p-2 pl-4 shadow-inner">
-                <textarea
+                <ActivityTextarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Enter (without Shift) submits AND clears the field (doSend
-                    // clears via setInput('')); Shift+Enter keeps the multiline
-                    // newline. `isComposing` guards IME composition so confirming
-                    // a candidate with Enter never submits mid-composition.
-                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                      e.preventDefault();
-                      doSend();
-                    }
-                  }}
+                  onChange={setInput}
+                  onEnterSubmit={doSend}
+                  variant="bare"
                   rows={2}
                   placeholder={placeholder}
                   data-testid="byoc-input"
-                  className="flex-1 resize-none bg-transparent py-2 text-[15px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  className="flex-1"
                 />
                 <button
                   type="button"
