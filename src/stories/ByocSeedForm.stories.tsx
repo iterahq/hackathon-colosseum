@@ -11,7 +11,7 @@ import { withActivityWidth } from './decorators';
  * pra escolher outro, sem dizer o que barrou — o aluno é adolescente iniciante.
  */
 const meta: Meta<typeof ByocSeedForm> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/BYOC · seu contexto',
+  title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/1 · seu contexto',
   id: 'activities-ia-byoc-seed',
   component: ByocSeedForm,
   decorators: [withActivityWidth],

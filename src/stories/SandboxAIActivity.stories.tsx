@@ -25,7 +25,7 @@ import { composeSandboxPrompt, rateSandbox, sendSandboxPrompt } from './interact
  * fingir que ela não existe.
  */
 const meta: Meta<typeof SandboxAIActivity> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · IA aberta',
+  title: 'Organisms/Activities/7 · Sandbox de chat/IA aberta',
   id: 'activities-ia-sandbox-aberta',
   component: SandboxAIActivity,
   decorators: [withActivityWidth],

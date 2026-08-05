@@ -12,9 +12,10 @@ import { withActivityWidth } from './decorators';
  * árvore com o gabarito embutido; daí pra frente a correção é lookup local —
  * nenhuma chamada de modelo no caminho da resposta (ADR-13).
  *
- * Por isso a story é do `ByocTree`, e não do `ByocActivity`: a árvore é
- * puramente apresentacional (recebe `tree`, sem API e sem auth), então roda no
- * canvas sem mock de rede.
+ * Esta story é do `ByocTree` sozinho: a árvore é puramente apresentacional
+ * (recebe `tree`, sem API e sem auth), então roda no canvas sem mock nenhum. Os
+ * dois passos ligados, com a transição entre eles, estão em
+ * **0 · fluxo completo**.
  *
  * As duas interações vêm da autoria: `pick_best` (uma opção certa) e
  * `judge_each` (classificar cada opção — acerto só com TODAS certas). A
@@ -22,7 +23,7 @@ import { withActivityWidth } from './decorators';
  * resposta entrega o gabarito.
  */
 const meta: Meta<typeof ByocTree> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/BYOC · árvore gerada',
+  title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/2 · árvore gerada',
   id: 'activities-ia-byoc-tree',
   component: ByocTree,
   decorators: [withActivityWidth],

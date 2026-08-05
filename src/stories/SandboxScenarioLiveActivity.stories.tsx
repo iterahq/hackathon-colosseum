@@ -27,7 +27,7 @@ import { withActivityWidth } from './decorators';
  * settle flow live in the canvas without any network mocking.
  */
 const meta: Meta<typeof SandboxScenarioLiveActivity> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · BYOC ao vivo',
+  title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/3 · ao vivo (composer)',
   id: 'activities-ia-sandbox-byoc-live',
   component: SandboxScenarioLiveActivity,
   decorators: [

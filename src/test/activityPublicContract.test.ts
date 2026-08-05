@@ -50,6 +50,7 @@ import { OrderActivity } from '@/components/branded/activity/OrderActivity';
 import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 import { ByocActivity } from '@/components/branded/activity/byoc/ByocActivity';
+import { ByocActivityView } from '@/components/branded/activity/byoc/ByocActivityView';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 
 /* ─────────────────────────── type-level helpers ──────────────────────────── */
@@ -111,6 +112,14 @@ type _dispatcher = Expect<IsNever<Uncovered<typeof ActivityRenderer>>>;
  * goes red and the exception has to be re-justified.
  */
 type _byoc = Expect<Assignable<Uncovered<typeof ByocActivity>, 'spec'>>;
+
+/**
+ * A superfície de render do BYOC mora no `ByocActivityView`, e o `ByocActivity`
+ * virou fiação de 12 linhas. Sem esta linha o guard vigiaria a casca enquanto o
+ * componente que de fato renderiza podia crescer qualquer prop em silêncio.
+ * `state` é o handoff container→presenter (mesma coisa em produção e na story).
+ */
+type _byocView = Expect<Assignable<Uncovered<typeof ByocActivityView>, 'spec' | 'state'>>;
 
 /* ──────────────── 2. `onComplete(correct: boolean, …)` holds ─────────────── */
 

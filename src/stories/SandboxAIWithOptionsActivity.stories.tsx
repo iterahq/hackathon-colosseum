@@ -17,7 +17,7 @@ import { withActivityWidth } from './decorators';
 const bySlug = scenarios as Record<string, Record<string, unknown>>;
 
 const meta: Meta<typeof SandboxAIWithOptionsActivity> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · Contexto por opções',
+  title: 'Organisms/Activities/7 · Sandbox de chat/Contexto por opções',
   id: 'activities-ia-sandbox-opcoes',
   component: SandboxAIWithOptionsActivity,
   decorators: [withActivityWidth],

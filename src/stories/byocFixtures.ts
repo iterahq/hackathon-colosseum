@@ -6,7 +6,8 @@
  * precisa é a árvore que a itera-api DEVOLVE (com gabarito embutido), não o
  * spec autorado.
  */
-import type { GeneratedChoiceTree, SeedCollection } from '@iterahq/activity-spec';
+import type { ByocSpec, GeneratedChoiceTree, SeedCollection } from '@iterahq/activity-spec';
+import type { ByocGeneration } from '@/types/byoc';
 
 /** O pedido do passo 1 — o que a autoria escreve pra puxar o contexto do aluno. */
 export const BYOC_SEED_COLLECTION: SeedCollection = {
@@ -54,3 +55,68 @@ export const BYOC_JUDGE_EACH: GeneratedChoiceTree = {
     },
   ],
 };
+
+/**
+ * O spec BYOC completo, como a autoria escreve em `activities.spec.byoc`: pedido
+ * da seed + harness + a árvore autorada de reserva (ADR-7).
+ *
+ * O `{seed}` do `generation_prompt` é obrigatório no Zod do pacote — é onde o
+ * texto do aluno entra no prompt do modelo.
+ */
+export const BYOC_PICK_BEST_SPEC: ByocSpec = {
+  seed: BYOC_SEED_COLLECTION,
+  harness: {
+    generation_prompt:
+      'O aluno gosta de: {seed}. Gere duas versões do MESMO pedido para uma IA — ' +
+      'uma vaga e uma com contexto — e a resposta que a IA daria para cada uma.',
+    interaction: 'pick_best',
+  },
+  fallback: BYOC_PICK_BEST,
+};
+
+/** O mesmo harness, na interação `judge_each` (classificar cada opção). */
+export const BYOC_JUDGE_EACH_SPEC: ByocSpec = {
+  seed: BYOC_SEED_COLLECTION,
+  harness: {
+    generation_prompt:
+      'O aluno gosta de: {seed}. Gere pedidos para uma IA sobre esse assunto, ' +
+      'alguns bons e outros ruins, com a resposta que a IA daria para cada um.',
+    interaction: 'judge_each',
+  },
+  fallback: BYOC_JUDGE_EACH,
+};
+
+/** Uma geração como a itera-api devolve quando o modelo respondeu de verdade. */
+export function byocGeneration(seed: string, tree: GeneratedChoiceTree): ByocGeneration {
+  return {
+    generation_id: `story-${tree.interaction}`,
+    activity_id: 'story-byoc',
+    attempt: 1,
+    seed,
+    mode: tree.interaction,
+    generated: tree,
+    fallback_used: false,
+    attempts_used: 1,
+    model: 'storybook-mock',
+    degraded_reason: null,
+    created_at: null,
+    reused: false,
+    generation_available: true,
+    persisted: false,
+  };
+}
+
+/**
+ * A linha DEGRADADA — o servidor persiste a reserva autorada como se fosse a
+ * geração, e é `fallback_used` (não a ausência de linha) que leva a tela pra fase
+ * `fallback`. Sem esta variante a story do fallback mostraria `generation` nula,
+ * um estado que a itera-api não produz.
+ */
+export function byocFallbackGeneration(seed: string, tree: GeneratedChoiceTree): ByocGeneration {
+  return {
+    ...byocGeneration(seed, tree),
+    fallback_used: true,
+    degraded_reason: 'generation_failed',
+    generation_available: false,
+  };
+}

@@ -16,7 +16,7 @@ import { withActivityWidth } from './decorators';
 const bySlug = scenarios as Record<string, Record<string, unknown>>;
 
 const meta: Meta<typeof SandboxAICompleteWordsActivity> = {
-  title: 'Organisms/Activities/6 · Cenário com IA/Sandbox · Completar palavras',
+  title: 'Organisms/Activities/7 · Sandbox de chat/Completar palavras',
   id: 'activities-ia-sandbox-slots',
   component: SandboxAICompleteWordsActivity,
   decorators: [withActivityWidth],
