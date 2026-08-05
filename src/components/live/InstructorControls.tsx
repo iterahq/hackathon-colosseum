@@ -3,7 +3,7 @@ import { useI18n } from '@/i18n';
 import { LiveTimerControls } from '@/components/live/LiveTimerControls';
 import { AddTimeControl } from '@/components/live/AddTimeControl';
 import { InstructorStageActions } from '@/components/live/InstructorStageActions';
-import { InstructorBreakToggle } from '@/components/live/InstructorBreakToggle';
+import { InstructorOverflowMenu } from '@/components/live/InstructorOverflowMenu';
 
 interface InstructorControlsProps {
   /** Reception (pointer not set yet) — only "Begin" is shown. */
@@ -116,6 +116,8 @@ export function InstructorControls({
           )}
         </div>
 
+        <InstructorOverflowMenu busy={busy} onBreak={onBreak} onToggleBreak={onToggleBreak} />
+
         <button
           onClick={onNext}
           disabled={!canNext || busy}
@@ -154,8 +156,6 @@ export function InstructorControls({
         revealed={revealed}
         onReveal={onReveal}
       />
-
-      <InstructorBreakToggle onBreak={onBreak} busy={busy} onToggle={onToggleBreak} />
     </div>
   );
 }

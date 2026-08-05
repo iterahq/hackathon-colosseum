@@ -121,9 +121,22 @@ describe('InstructorControls', () => {
     expect(screen.getByTestId('instructor-reveal')).toBeDisabled();
   });
 
+  it('keeps the break behind the overflow menu instead of the sidebar', () => {
+    controls({});
+    expect(screen.queryByTestId('instructor-break')).toBeNull();
+    fireEvent.click(screen.getByTestId('instructor-more'));
+    expect(screen.getByTestId('instructor-break')).toBeTruthy();
+  });
+
+  it('tints the overflow trigger while the class is paused', () => {
+    controls({ onBreak: true });
+    expect(screen.getByTestId('instructor-more').getAttribute('data-active')).toBe('true');
+  });
+
   it('the break toggle fires and reads as pressed while the class is paused', () => {
     const onToggleBreak = vi.fn();
     const { rerender } = controls({ onToggleBreak });
+    fireEvent.click(screen.getByTestId('instructor-more'));
     fireEvent.click(screen.getByTestId('instructor-break'));
     expect(onToggleBreak).toHaveBeenCalledOnce();
     expect(screen.getByTestId('instructor-break').getAttribute('aria-pressed')).toBe('false');
