@@ -57,6 +57,76 @@ export const BYOC_JUDGE_EACH: GeneratedChoiceTree = {
 };
 
 /**
+ * `build_context` — rodadas encadeadas, SEM gabarito. O que muda entre as opções
+ * é a resposta da IA, não a nota; o prêmio é o pedido que o aluno montou.
+ */
+export const BYOC_BUILD_CONTEXT: GeneratedChoiceTree = {
+  interaction: 'build_context',
+  rounds: [
+    {
+      id: 'r1',
+      question: 'Quem está pedindo?',
+      options: [
+        {
+          id: 'a',
+          content: 'Sou zagueiro e jogo de quinta com os amigos.',
+          ai_response: 'Como zagueiro, o seu ganho mais rápido está na saída de bola sob pressão.',
+        },
+        {
+          id: 'b',
+          content: 'Sou goleiro e treino duas vezes por semana.',
+          ai_response: 'Como goleiro, dá pra ganhar muito em posicionamento antes do chute.',
+        },
+      ],
+    },
+    {
+      id: 'r2',
+      question: 'O que você quer receber?',
+      options: [
+        {
+          id: 'a',
+          content: 'Quero 3 exercícios pra treinar sozinho.',
+          ai_response: '1) Passe na parede, 20 toques de cada pé. 2) Condução em zigue-zague. 3) Lançamento no alvo.',
+        },
+        {
+          id: 'b',
+          content: 'Quero entender o meu erro mais comum.',
+          ai_response: 'O erro mais comum na sua posição é decidir o passe depois de receber, e não antes.',
+        },
+      ],
+    },
+    {
+      id: 'r3',
+      question: 'Como você quer a resposta?',
+      options: [
+        {
+          id: 'a',
+          content: 'Em lista curta, direto ao ponto.',
+          ai_response: '• Passe na parede — 10 min\n• Zigue-zague — 10 min\n• Lançamento — 10 min',
+        },
+        {
+          id: 'b',
+          content: 'Explicando o porquê de cada coisa.',
+          ai_response: 'Comece pelo passe na parede: ele treina o toque de primeira, que é o que te tira da pressão.',
+        },
+      ],
+    },
+  ],
+};
+
+/** O mesmo harness, na interação `build_context` (montar o próprio pedido). */
+export const BYOC_BUILD_CONTEXT_SPEC: ByocSpec = {
+  seed: BYOC_SEED_COLLECTION,
+  harness: {
+    generation_prompt:
+      'O aluno gosta de: {seed}. Monte com ele um pedido para uma IA sobre esse assunto, ' +
+      'uma parte por vez, e a resposta que a IA daria para cada escolha.',
+    interaction: 'build_context',
+  },
+  fallback: BYOC_BUILD_CONTEXT,
+};
+
+/**
  * O spec BYOC completo, como a autoria escreve em `activities.spec.byoc`: pedido
  * da seed + harness + a árvore autorada de reserva (ADR-7).
  *

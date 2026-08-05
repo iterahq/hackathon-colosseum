@@ -3,6 +3,8 @@ import { ByocActivityView } from '@/components/branded/activity/byoc/ByocActivit
 import { ByocFlow } from './ByocFlow';
 import { byocHostActivity } from './byocFlowMock';
 import {
+  BYOC_BUILD_CONTEXT,
+  BYOC_BUILD_CONTEXT_SPEC,
   BYOC_JUDGE_EACH,
   BYOC_JUDGE_EACH_SPEC,
   BYOC_PICK_BEST,
@@ -22,13 +24,8 @@ import { withActivityWidth } from './decorators';
  * `ByocActivityView` que o app monta; só o `useByoc` (que fala com a itera-api)
  * é trocado por um relógio local (`byocFlowMock.ts`). Plugar IA de verdade no
  * Storybook seria complexidade à toa: o valor da vitrine é o contrato visual e
- * as fases, não a geração.
- *
- * ⚠️ **A espera aqui é fake** (2,2s). Em produção são ~6s ponta a ponta desde a
- * troca de modelo (itera-api#37) — não leia esta story como medição.
- *
- * O modelo roda UMA vez, na geração: a árvore já vem com o gabarito embutido, e
- * daí pra frente a correção é lookup local (ADR-13).
+ * as fases, não a geração. ⚠️ A espera aqui é fake (2,2s); em produção são ~6s
+ * desde a troca de modelo (itera-api#37) — não leia esta story como medição.
  */
 const meta: Meta<typeof ByocActivityView> = {
   title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/0 · fluxo completo',
@@ -42,25 +39,44 @@ type Story = StoryObj<typeof ByocActivityView>;
 
 const pickBestActivity = byocHostActivity(BYOC_PICK_BEST_SPEC);
 const judgeEachActivity = byocHostActivity(BYOC_JUDGE_EACH_SPEC);
+const buildContextActivity = byocHostActivity(BYOC_BUILD_CONTEXT_SPEC);
 
 /**
- * **BYOC TREE MULTIPLE CHOICE (`pick_best`)** — escreva seu contexto, espere a
- * geração, responda a árvore. Enviar qualquer texto percorre
- * `seed → generating → ready` no canvas.
+ * Escreva seu contexto, espere a geração, responda a árvore. Enviar qualquer
+ * texto percorre `seed → generating → ready` no canvas.
  *
  * A seed do aluno volta ecoada acima da árvore (`byoc-seed-echo`): é o que
  * prova, na tela, que a atividade foi montada em cima do contexto DELE.
  */
 export const PickBest: Story = {
+  name: 'BYOC Tree · Pick Best',
   render: () => (
     <ByocFlow activity={pickBestActivity} spec={BYOC_PICK_BEST_SPEC} tree={BYOC_PICK_BEST} />
   ),
 };
 
-/** **BYOC TREE JUDGE EACH** — o mesmo fluxo, classificando cada opção. */
+/** O mesmo fluxo, classificando cada opção como boa ou ruim. */
 export const JudgeEach: Story = {
+  name: 'BYOC Tree · Judge Each',
   render: () => (
     <ByocFlow activity={judgeEachActivity} spec={BYOC_JUDGE_EACH_SPEC} tree={BYOC_JUDGE_EACH} />
+  ),
+};
+
+/**
+ * O mesmo fluxo sem certo nem errado: cada rodada é uma faceta do pedido, e a
+ * última tela devolve o prompt que o aluno acabou de escrever — a seed dele na
+ * primeira linha. Chegar ao fim É o acerto, então não há envio nem nota.
+ */
+export const BuildContext: Story = {
+  name: 'BYOC Tree Multiple Choice · Build Context',
+  render: () => (
+    <ByocFlow
+      activity={buildContextActivity}
+      spec={BYOC_BUILD_CONTEXT_SPEC}
+      tree={BYOC_BUILD_CONTEXT}
+      note="Vitrine: a geração é mockada e espera 2,2s. Depois disso, uma rodada por tela — a escolha revela na hora o que a IA responderia."
+    />
   ),
 };
 

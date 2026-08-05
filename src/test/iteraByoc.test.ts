@@ -42,7 +42,8 @@ describe('readByoc', () => {
   it('accepts a well-formed generation', async () => {
     respond({ generation_id: 'g1', seed: 'futebol', generated: tree });
     const row = await readByoc('act-1', 'tok');
-    expect(row?.generated.options).toHaveLength(2);
+    const generated = row?.generated;
+    expect(generated?.interaction === 'pick_best' ? generated.options : []).toHaveLength(2);
   });
 
   it('rejects a tree the schema does not accept', async () => {

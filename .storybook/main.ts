@@ -1,4 +1,11 @@
+import { fileURLToPath } from 'node:url';
 import type { StorybookConfig } from '@storybook/react-vite';
+import type { Alias, AliasOptions } from 'vite';
+
+const asArray = (alias: AliasOptions | undefined): Alias[] =>
+  Array.isArray(alias)
+    ? alias
+    : Object.entries(alias ?? {}).map(([find, replacement]) => ({ find, replacement }));
 
 const config: StorybookConfig = {
   stories: [
@@ -18,8 +25,25 @@ const config: StorybookConfig = {
     name: '@storybook/react-vite',
     options: {},
   },
-  // Reuse the app's vite.config (the `@` alias, swapy shim, define vars).
-  viteFinal: async (cfg) => cfg,
+  /**
+   * Reuse the app's vite.config (the `@` alias, swapy shim, define vars), mais o
+   * ÚNICO desvio da vitrine: a itera-api falsa (`.storybook/mocks/iteraApi.ts`).
+   * O `find` é ancorado de propósito — `@/api/iteraApiError` é outro módulo, e
+   * casamento por prefixo o arrastaria junto.
+   */
+  viteFinal: async (cfg) => ({
+    ...cfg,
+    resolve: {
+      ...cfg.resolve,
+      alias: [
+        {
+          find: /^@\/api\/iteraApi$/,
+          replacement: fileURLToPath(new URL('./mocks/iteraApi.ts', import.meta.url)),
+        },
+        ...asArray(cfg.resolve?.alias),
+      ],
+    },
+  }),
 };
 
 export default config;

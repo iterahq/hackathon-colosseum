@@ -6,12 +6,22 @@
 import type { GeneratedChoiceTree, Verdict } from '@iterahq/activity-spec';
 import type { OptionTone } from '@/consts/byocTone';
 
+/**
+ * The graded half of the union. `build_context` is deliberately out: it has no
+ * gabarito to look up, so every function here would need a branch that returns
+ * "always right" — a dead path that reads like grading and isn't.
+ */
+export type GradedChoiceTree = Extract<
+  GeneratedChoiceTree,
+  { interaction: 'pick_best' | 'judge_each' }
+>;
+
 /** One option id (pick_best), or a verdict per option (judge_each). */
 export type ByocAnswer =
   | { interaction: 'pick_best'; selected: string | null }
   | { interaction: 'judge_each'; verdicts: Record<string, Verdict> };
 
-export function emptyAnswer(tree: GeneratedChoiceTree): ByocAnswer {
+export function emptyAnswer(tree: GradedChoiceTree): ByocAnswer {
   return tree.interaction === 'pick_best'
     ? { interaction: 'pick_best', selected: null }
     : { interaction: 'judge_each', verdicts: {} };
@@ -23,7 +33,7 @@ export function withVerdict(prev: ByocAnswer, optionId: string, verdict: Verdict
 }
 
 /** Whether the learner has answered enough for "Enviar" to be meaningful. */
-export function isAnswerComplete(tree: GeneratedChoiceTree, answer: ByocAnswer): boolean {
+export function isAnswerComplete(tree: GradedChoiceTree, answer: ByocAnswer): boolean {
   if (tree.interaction === 'pick_best') {
     return answer.interaction === 'pick_best' && answer.selected !== null;
   }
@@ -36,7 +46,7 @@ export function isAnswerComplete(tree: GeneratedChoiceTree, answer: ByocAnswer):
  * (ADR-13) — no model call in the answer path. pick_best: the one right path.
  * judge_each: EVERY option classified right.
  */
-export function gradeByoc(tree: GeneratedChoiceTree, answer: ByocAnswer): boolean {
+export function gradeByoc(tree: GradedChoiceTree, answer: ByocAnswer): boolean {
   if (tree.interaction === 'pick_best') {
     return answer.interaction === 'pick_best' && answer.selected === tree.correct_option_id;
   }
@@ -46,7 +56,7 @@ export function gradeByoc(tree: GeneratedChoiceTree, answer: ByocAnswer): boolea
 
 /** Visual state of one option, before (`shown` false) and after grading. */
 export function toneFor(
-  tree: GeneratedChoiceTree,
+  tree: GradedChoiceTree,
   answer: ByocAnswer,
   optionId: string,
   shown: boolean

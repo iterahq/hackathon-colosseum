@@ -35,7 +35,7 @@
  *                  de teste — precisa de decisão, não de mais story.
  */
 import { describe, expect, it } from 'vitest';
-import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
+import { ACTIVITY_KINDS, type GeneratedChoiceTree } from '@iterahq/activity-spec';
 import { indexStories } from './storyIndex';
 
 /** Um estado da matriz, por kind. */
@@ -327,9 +327,9 @@ const COVERAGE_SNAPSHOT = { covered: 93, na: 30, deferred: 1, drift: 8 };
  * Mockando `@/api/iteraApi` no LIMITE DO TESTE (`vi.mock`), não na produção. O
  * hook roda inteiro, de verdade; só a rede é substituída. O preço honesto é
  * que estas fases têm cobertura de TESTE e não de VITRINE: elas não viram
- * story, porque uma story não pode mockar módulo. Quem quiser ver a degradação
- * na tela usa a story `Compose` com a itera-api desconfigurada (é o que o
- * Storybook publicado já faz — `VITE_ITERA_API_BASE` não é setado lá).
+ * story, porque uma story não pode mockar módulo por conta própria. A vitrine
+ * mostra o CAMINHO FELIZ — `.storybook/mocks/iteraApi.ts` responde no lugar do
+ * modelo. A degradação continua sendo assunto dos testes abaixo, e não da tela.
  */
 const BYOC_LIVE_COVERAGE: Record<string, string> = {
   'phase:compose': 'story: activities-ia-sandbox-byoc-live--compose',
@@ -340,6 +340,38 @@ const BYOC_LIVE_COVERAGE: Record<string, string> = {
   'degrade:!responderAvailable': 'src/test/SandboxScenarioLive.test.tsx — "responder degraded"',
   'degrade:!judgeAvailable': 'src/test/SandboxScenarioLive.test.tsx — "judge unavailable → UNVERIFIED"',
   'degrade:error': 'src/test/byocLivePhases.test.tsx — respond()/judge() LANÇAM',
+};
+
+/**
+ * BYOC (contexto do aluno) — as três interações da árvore GERADA.
+ *
+ * Também não entra na matriz por kind, e pelo mesmo motivo do bloco acima: BYOC
+ * é camada (`spec.byoc`) sobre um kind hospedeiro, então uma linha aqui seria um
+ * 13º kind que o enum não tem. O que precisa ser garantido é outra coisa: que
+ * cada `interaction` do union de `GeneratedChoiceTree` apareça na vitrine nos
+ * DOIS níveis — a árvore isolada e o fluxo de dois passos —, porque a queixa que
+ * originou isto foi exatamente ver o passo 1 no Storybook e o passo 2 em lugar
+ * nenhum.
+ *
+ * `build_context` não tem célula de correção em nível nenhum: não há certo nem
+ * errado, chegar ao fim É o acerto.
+ */
+const BYOC_TREE_COVERAGE: Record<
+  GeneratedChoiceTree['interaction'],
+  { tree: string; flow: string }
+> = {
+  pick_best: {
+    tree: 'activities-ia-byoc-tree--pick-best',
+    flow: 'activities-ia-byoc-fluxo--pick-best',
+  },
+  judge_each: {
+    tree: 'activities-ia-byoc-tree--judge-each',
+    flow: 'activities-ia-byoc-fluxo--judge-each',
+  },
+  build_context: {
+    tree: 'activities-ia-byoc-tree--build-context',
+    flow: 'activities-ia-byoc-fluxo--build-context',
+  },
 };
 
 const STORY_IDS = new Set(indexStories().map((s) => s.id));
@@ -396,6 +428,13 @@ describe('guard da matriz de estados das activities (V3)', () => {
   it('o BYOC ao vivo tem as duas stories que dão para ter sem seam novo', () => {
     expect(STORY_IDS.has('activities-ia-sandbox-byoc-live--compose')).toBe(true);
     expect(STORY_IDS.has('activities-ia-sandbox-byoc-live--revealed-in-live')).toBe(true);
+  });
+
+  it('toda interação da árvore BYOC tem story isolada E de fluxo completo', () => {
+    for (const [interaction, { tree, flow }] of Object.entries(BYOC_TREE_COVERAGE)) {
+      expect(STORY_IDS.has(tree), `${interaction}: falta a árvore isolada`).toBe(true);
+      expect(STORY_IDS.has(flow), `${interaction}: falta o fluxo completo`).toBe(true);
+    }
   });
 
   it('toda fase/degradação do BYOC ao vivo aponta para onde ela é provada', () => {

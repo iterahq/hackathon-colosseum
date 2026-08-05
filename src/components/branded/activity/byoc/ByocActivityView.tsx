@@ -115,6 +115,7 @@ export function ByocActivityView({
             <ByocTree
               key={generation?.generation_id ?? 'authored'}
               tree={fallbackTree}
+              seed={generation?.seed ?? ''}
               reveal={reveal}
               done={isDone}
               onComplete={handleComplete}
@@ -132,6 +133,7 @@ export function ByocActivityView({
             <ByocTree
               key={generation.generation_id ?? generation.seed}
               tree={generation.generated}
+              seed={generation.seed}
               reveal={reveal}
               done={isDone}
               onComplete={handleComplete}

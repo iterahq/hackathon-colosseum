@@ -20,11 +20,11 @@ import { withActivityWidth } from './decorators';
  * transcript + composer inside the window at 100% width, standard send
  * button, rating buttons below near the action.
  *
- * `VITE_ITERA_API_BASE` is unset in the Storybook build, so `respond()`/
- * `judge()` synchronously throw "itera-api not configured" — the component's
- * OWN graceful-degrade path (never hard-blocks the learner) catches that and
- * shows a fallback answer, which is enough to drive the full compose → rate →
- * settle flow live in the canvas without any network mocking.
+ * **A IA aqui é mockada** (`.storybook/mocks/iteraApi.ts`, 1,2s de espera): o
+ * `@/api/iteraApi` é aliasado só na vitrine, então `respond()`/`judge()`
+ * respondem sem rede. Antes disso a story mostrava a DEGRADAÇÃO — o build da
+ * vitrine não seta `VITE_ITERA_API_BASE`, as duas chamadas lançavam na hora e o
+ * dev via "a IA está indisponível" achando que estava vendo a atividade.
  */
 const meta: Meta<typeof SandboxScenarioLiveActivity> = {
   title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/3 · ao vivo (composer)',
@@ -43,7 +43,10 @@ const meta: Meta<typeof SandboxScenarioLiveActivity> = {
 export default meta;
 type Story = StoryObj<typeof SandboxScenarioLiveActivity>;
 
-/** Compose (step 1) — write your own context, the composer INSIDE the window. */
+/**
+ * Compose (step 1) — write your own context, the composer INSIDE the window.
+ * Enviar percorre o fluxo inteiro no canvas: espera → resposta → nota → veredito.
+ */
 export const Compose: Story = {
   render: () => (
     <SandboxScenarioLiveActivity activity={makeActivity('sandbox_scenario', BYOC_SPEC)} onComplete={noop} />
