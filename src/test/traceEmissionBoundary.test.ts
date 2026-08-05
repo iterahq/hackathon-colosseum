@@ -144,6 +144,74 @@ describe('a emissão do trace mora no serviço, não nos call-sites', () => {
     expect(service).toContain("from('activity_traces')");
   });
 
+  /**
+   * 🔱 O CONJUNTO DE PORTAS DE ENTRADA É FECHADO — acrescentado em 2026-08-05,
+   * junto com a terceira delas.
+   *
+   * A regra do arquivo sempre foi "o trace nasce no `progress.service` e em
+   * lugar nenhum". Ela continua de pé e nenhuma asserção acima foi afrouxada.
+   * O que mudou é DENTRO do módulo: a escrita do trace saiu de dentro do
+   * `persistActivityProgress` e virou `writeSettledTrace`, para que um
+   * convidado possa ser OBSERVADO sem ser CREDITADO (Tainan, voz 2026-08-05:
+   * *"convidado gera trace de aprendizagem, mas fica fora da análise"*).
+   *
+   * Essa extração é útil e é exatamente por isso que ela é perigosa: ela
+   * transforma "gravar sequência sem gravar progresso" de impossível em
+   * conveniente. Um caminho novo que chame `writeSettledTrace` sem escrever
+   * `activity_results` produziria uma sequência sem tentativa por trás — um
+   * trace dizendo que alguém respondeu enquanto o log de tentativas diz que
+   * ninguém respondeu, que é pior que qualquer um dos dois registros sozinho.
+   *
+   * Então o conjunto de funções exportadas do módulo é FIXO aqui. Uma quarta
+   * porta não quebra por acidente: ela quebra este teste, e quem a adicionar
+   * tem de escrever nesta lista o que ela grava e o que ela deliberadamente
+   * não grava.
+   */
+  it('🔱 o módulo expõe EXATAMENTE as portas conhecidas — uma quarta tem de se declarar', () => {
+    const exported = [...service.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)]
+      .map((m) => m[1])
+      .sort();
+    expect(exported).toEqual(
+      [
+        // escreve progress + activity_results + trace + XP
+        'persistActivityProgress',
+        // escreve SÓ o trace, de uma tentativa settlada por convidado (ADR-6:
+        // nada de progress, nada de activity_results, nada de XP)
+        'persistGuestActivityTrace',
+        // escreve SÓ o trace, de uma tentativa aberta e largada (migration 0040)
+        'persistActivityAbandonment',
+        // leitura + função pura de retomada — não escrevem nada
+        'fetchActivityProgress',
+        'resumeIndexFor',
+        // helper puro do payload de `feedback`
+        'buildAttemptFeedback',
+      ].sort()
+    );
+  });
+
+  /**
+   * A porta do convidado não pode virar um atalho para pular o progresso de um
+   * aluno de verdade. Varredura de fonte porque a garantia é ESTRUTURAL: o
+   * corpo da função não pode conter escrita nenhuma além do trace.
+   */
+  it('🔴 persistGuestActivityTrace não escreve progress, activity_results nem XP', () => {
+    const start = service.indexOf('export async function persistGuestActivityTrace');
+    expect(start, 'a função sumiu — o teste passaria vacuamente').toBeGreaterThan(0);
+    const end = service.indexOf('\nexport async function ', start + 1);
+    const body = service.slice(start, end === -1 ? undefined : end);
+
+    for (const forbidden of [
+      "from('progress')",
+      "from('activity_results')",
+      'awardActivityXp',
+      "from('class_answers')",
+    ]) {
+      expect(body, `o caminho do convidado passou a tocar ${forbidden}`).not.toContain(forbidden);
+    }
+    // E ela realmente escreve o trace — senão a asserção acima passa por vazio.
+    expect(body).toContain('writeSettledTrace');
+  });
+
   it('e é o ÚNICO ESCRITOR — nenhum outro módulo escreve nessa tabela', () => {
     // Um segundo escritor não seria só duplicação: ele nasceria fora do funil,
     // logo fora da fila durável, logo perdendo justamente o tráfego offline.
@@ -172,5 +240,114 @@ describe('a emissão do trace mora no serviço, não nos call-sites', () => {
       'src/services/progress.service.ts',
       'src/services/replay.service.ts',
     ]);
+  });
+});
+
+/**
+ * 👤 A POLÍTICA DE CONVIDADO DE CADA CONSUMIDOR — acrescentado em 2026-08-05.
+ *
+ * ## Por que este bloco existe
+ *
+ * A partir de hoje `itera.activity_traces` contém linhas de CONVIDADO (Tainan,
+ * voz 2026-08-05T16:44Z: *"Sim, convidado gera trace de aprendizagem, mas fica
+ * fora da análise — só analytics interna. Então dá pra dar replay, mas não vai
+ * pra analytics."*). A metade fácil dessa frase é a escrita. A difícil é esta:
+ * qualquer agregado que passe a contá-las em silêncio recria exatamente o
+ * defeito que o ADR-4 foi escrito para impedir — um número que parece medido e
+ * é parcialmente encenado. **14 dos 20 convidados registrados são nomes de
+ * staff/demo.**
+ *
+ * O `buildClassReport` já vive sob essa regra (ADR-4, provado em
+ * `guestMetricsExclusion.test.ts`), mas ele lê `class_answers` e não esta
+ * tabela. Um leitor NOVO de `activity_traces` não herda nada daquele teste.
+ *
+ * ## O que ele tranca
+ *
+ * Que a pergunta seja respondida EXPLICITAMENTE por consumidor, e não deixada
+ * para o formato do `.in()` de alguém. O default é EXCLUIR — foi o que o Tainan
+ * disse ("só analytics interna") — e a única exceção nomeada é o replay ("dá pra
+ * dar replay"), que pode sê-lo porque já é admin-only e escopado por tenant.
+ *
+ * ⚠️ A EXCLUSÃO DE HOJE É ACIDENTAL EM TODA PARTE, E ISSO É O RISCO. Nem o
+ * `replay.service`, nem o `admin.service` (Engagement/Completion) filtram
+ * `is_guest`: eles escopam por `itera.memberships`, e um convidado não tem
+ * nenhuma (migration 0026, ADR-4 — "esse conjunto vazio É a fronteira de
+ * segurança do convidado"). Ou seja, todo mundo hoje exclui convidado como
+ * EFEITO COLATERAL de como o escopo é computado, não porque alguém decidiu.
+ * No dia em que o modelo de convidado ganhar uma membership sintética — e o
+ * ADR-7 mantém aberto o caminho de promoção — a exclusão some sem quebrar nada.
+ * Esta lista é o lugar onde isso vira uma decisão registrada.
+ */
+describe('👤 todo leitor de activity_traces declara sua política de convidado', () => {
+  /**
+   * módulo → política. `include` precisa de justificativa; `exclude` é o default
+   * e é o que uma entrada nova deve ser salvo decisão em contrário do Tainan.
+   */
+  const GUEST_POLICY: Record<string, 'include' | 'exclude'> = {
+    // ✅ INCLUI. A superfície de replay é a metade "dá pra dar replay" da
+    // resposta. Segura de incluir porque já é admin-only e escopada no tenant
+    // (`replayAdminOnly.test.ts`), e porque todo convidado incluído é MARCADO
+    // (`isGuest`) até a tela. Não alimenta nenhum agregado: o replay conta uma
+    // tentativa por vez.
+    'src/services/replay.service.ts': 'include',
+  };
+
+  const readers = sourcesUnder(path.join(ROOT, 'src'))
+    .filter((f) => !f.includes(`${path.sep}test${path.sep}`))
+    .map((f) => path.relative(ROOT, f))
+    .filter((rel) => rel !== 'src/services/progress.service.ts')
+    .filter((rel) => readFileSync(path.join(ROOT, rel), 'utf-8').includes("from('activity_traces')"))
+    .sort();
+
+  it('a lista de políticas cobre TODOS os leitores, e só eles', () => {
+    // Um leitor novo sem entrada aqui quebra este teste — que é o ponto. Ele
+    // não pode nascer sem que alguém escreva se conta convidado ou não.
+    expect(readers).toEqual(Object.keys(GUEST_POLICY).sort());
+  });
+
+  it('✅ o replay UNE os convidados do tenant ao escopo, deliberadamente', () => {
+    // Sem isto a inclusão seria só uma frase no cabeçalho: o escopo é montado a
+    // partir de `itera.memberships`, onde o convidado não aparece por
+    // construção, então incluí-lo exige um segundo lookup EXPLÍCITO.
+    const svc = readFileSync(path.join(ROOT, 'src/services/replay.service.ts'), 'utf-8');
+    expect(svc).toContain("from('class_guests')");
+    // …e marca quem é convidado até a superfície. Incluir sem marcar seria a
+    // pior das três opções: uma demo de vendas parecendo aluno.
+    expect(svc).toMatch(/isGuest/);
+  });
+
+  it('🔴 nenhuma superfície de ANALYTICS lê a tabela', () => {
+    // O relatório de turma (`buildClassReport`, ADR-4) e as páginas de
+    // Engagement/Completion (`admin.service`) são os agregados do produto. Eles
+    // leem `class_answers` / `activity_results` / `progress` — e a hora em que
+    // um deles aprender a ler `activity_traces` é a hora em que o convidado
+    // entra num total sem ninguém pedir.
+    for (const rel of [
+      'src/utils/buildClassReport.ts',
+      'src/services/classReport.service.ts',
+      'src/services/admin.service.ts',
+    ]) {
+      const src = readFileSync(path.join(ROOT, rel), 'utf-8');
+      expect(src, `${rel} passou a ler activity_traces`).not.toContain("from('activity_traces')");
+    }
+  });
+
+  it('🔴 `flattenTraceEvents` continua sem call-site — o gancho de analytics ainda não existe', () => {
+    // Exportada e hoje NÃO CHAMADA em lugar nenhum: é o ponto onde uma análise
+    // sobre traces vai plugar (plano LCPWCI). No dia em que ganhar um chamador,
+    // esse chamador é um consumidor novo e precisa de uma linha em
+    // GUEST_POLICY — com `exclude`, salvo decisão em contrário. Este teste é o
+    // alarme.
+    //
+    // Casa o IMPORT e nunca a prosa: `pedagogicalContext.ts` CITA a função num
+    // comentário, e um match de substring cru acusaria um arquivo que não a
+    // chama — a mesma armadilha que `importsModule` já documenta acima.
+    const IMPORTS_FLATTEN =
+      /import[\s\S]{0,200}?\bflattenTraceEvents\b[\s\S]{0,200}?from\s*['"]@\/utils\/learningTrace['"]/;
+    const callers = sourcesUnder(path.join(ROOT, 'src'))
+      .filter((f) => !f.includes(`${path.sep}test${path.sep}`))
+      .filter((f) => IMPORTS_FLATTEN.test(readFileSync(f, 'utf-8')))
+      .map((f) => path.relative(ROOT, f));
+    expect(callers).toEqual([]);
   });
 });

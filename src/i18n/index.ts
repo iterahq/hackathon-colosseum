@@ -561,6 +561,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'replay.unknownKind': 'tipo desconhecido',
     'replay.actionCount': '{n} ações',
     'replay.abandoned': 'abandonada',
+    'replay.guest': 'convidado',
+    'replay.guestNote':
+      'Esta tentativa é de um CONVIDADO por link, não de um aluno da turma. Ela é visível aqui e em nenhuma outra superfície: não entra em nenhum total, taxa ou média da organização (ADR-4). O que você está assistindo pode ser uma demo de vendas.',
     'replay.passed': 'acertou',
     'replay.failed': 'errou',
     'replay.enunciado.title': 'Enunciado como o aluno leu',
@@ -1202,6 +1205,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'replay.unknownKind': 'unknown kind',
     'replay.actionCount': '{n} actions',
     'replay.abandoned': 'abandoned',
+    'replay.guest': 'guest',
+    'replay.guestNote':
+      'This attempt is by a LINK-INVITED GUEST, not a learner of the cohort. It is visible here and on no other surface: it enters no organization total, rate or average (ADR-4). What you are watching may be a sales demo.',
     'replay.passed': 'correct',
     'replay.failed': 'incorrect',
     'replay.enunciado.title': 'The prompt as the learner read it',

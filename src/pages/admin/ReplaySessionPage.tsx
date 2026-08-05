@@ -60,6 +60,7 @@ import {
   Play,
   RotateCcw,
   AlertTriangle,
+  UserRound,
 } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { useI18n, type Locale } from '@/i18n';
@@ -179,6 +180,26 @@ export default function ReplaySessionPage() {
           {data.startedAt ? new Date(data.startedAt).toLocaleString() : '—'}
         </span>
       </header>
+
+      {/* 👤 THE ATTEMPT IS A GUEST'S — a full note, not just the index chip.
+          This is the screen where the attempt is actually WATCHED, and it is
+          directly addressable by URL, so an admin can land here having never
+          seen the list. Tainan 2026-08-05: guests get replay and nothing else;
+          the note states exactly that, so "why is this person not in my
+          numbers?" is answered on the page instead of becoming a support
+          question. */}
+      {data.isGuest && (
+        <div
+          data-testid="replay-guest-note"
+          className="flex items-start gap-2 rounded-2xl border border-dashed border-clay/50 bg-clay/5 px-4 py-3"
+        >
+          <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-clay" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">{t('replay.guest')}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('replay.guestNote')}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── The enunciado: captured, inferred, or the honest absence ───────── */}
       {/* 🔴 Three separate branches on purpose — see the module header. A single

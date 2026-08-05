@@ -14,7 +14,7 @@
  * `progress.service`, and the only data call it makes is a `select`.
  */
 import { Link } from 'react-router-dom';
-import { PlayCircle, AlertTriangle } from 'lucide-react';
+import { PlayCircle, AlertTriangle, UserRound } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useReplayIndex } from '@/hooks/useReplay';
 import { AdminEmpty, AdminError, AdminLoading } from './AdminStates';
@@ -51,6 +51,22 @@ export default function ReplayPage() {
                   {row.outcome === 'abandoned' ? ` · ${t('replay.abandoned')}` : ''}
                 </div>
               </div>
+              {/* 👤 A LINK-INVITED GUEST, MARKED. Replay is the only surface that
+                  shows guest traces at all (Tainan 2026-08-05: *"dá pra dar
+                  replay, mas não vai pra analytics"*), and 14 of the 20 guests
+                  on record are staff/demo names — so an unmarked row would read
+                  as a student. Same principle as ADR-4's badge in the class
+                  report: listed, and marked. */}
+              {row.isGuest && (
+                <span
+                  data-testid="replay-index-guest"
+                  title={t('replay.guestNote')}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-dashed border-clay/50 px-2 py-0.5 text-[11px] text-clay"
+                >
+                  <UserRound className="h-3 w-3" />
+                  {t('replay.guest')}
+                </span>
+              )}
               {/* The enunciado state is surfaced HERE and not only in the detail,
                   so an admin can see at a glance which attempts predate migration
                   0037 and are therefore only partially reproducible.

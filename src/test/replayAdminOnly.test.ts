@@ -42,6 +42,8 @@ interface Recorded {
 }
 const recorded: Recorded[] = [];
 let tableRows: Record<string, unknown[]> = {};
+/** Faz UMA tabela responder como o PostgREST responde quando recusa. */
+let failTable: string | null = null;
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -49,7 +51,12 @@ vi.mock('@/lib/supabase/client', () => ({
     from(table: string) {
       const rec: Recorded = { table, filters: {} };
       recorded.push(rec);
-      const result = () => Promise.resolve({ data: tableRows[table] ?? [], error: null });
+      const result = () =>
+        Promise.resolve(
+          failTable === table
+            ? { data: null, error: { message: `permission denied for table ${table}` } }
+            : { data: tableRows[table] ?? [], error: null }
+        );
       const q = {
         select: () => q,
         eq: (c: string, v: unknown) => {
@@ -97,6 +104,7 @@ const TRACE_ROW = {
 
 beforeEach(() => {
   recorded.length = 0;
+  failTable = null;
   tableRows = {
     memberships: [{ user_id: 'learner-A' }, { user_id: 'admin-A' }],
     activity_traces: [TRACE_ROW],
@@ -174,6 +182,66 @@ describe('✅ o admin do tenant do aluno assiste — e SÓ o tenant dele', () =>
     const membershipQuery = recorded.find((r) => r.table === 'memberships');
     expect(membershipQuery?.filters['eq:tenant_id']).toBe('tenant-A');
     expect(touchedTraces()[0].filters['in:user_id']).toEqual(['learner-A']);
+  });
+
+  it('👤 os CONVIDADOS do tenant entram no escopo — e vêm marcados', async () => {
+    // Tainan, voz 2026-08-05: *"dá pra dar replay, mas não vai pra analytics"*.
+    // Um convidado NÃO tem membership (migration 0026, ADR-4: o conjunto vazio
+    // É a fronteira de segurança dele), então sem o lookup em `class_guests` a
+    // exclusão continuaria valendo por acidente — e um acidente não é a
+    // resposta a uma pergunta que foi feita e respondida.
+    callerMemberships = [{ tenantId: 'tenant-A', role: 'tenant_admin' }];
+    tableRows.memberships = [{ user_id: 'learner-A' }];
+    tableRows.class_sessions = [{ id: 'sess-1' }];
+    tableRows.class_guests = [{ user_id: 'guest-1' }];
+    tableRows.activity_traces = [{ ...TRACE_ROW, id: 't-g', user_id: 'guest-1' }];
+
+    const rows = await listReplaySessions();
+
+    // O escopo cresceu de propósito, e continua escopado no tenant: os
+    // convidados vêm das SESSÕES deste tenant, não de todos os convidados.
+    expect(touchedTraces()[0].filters['in:user_id']).toEqual(['learner-A', 'guest-1']);
+    const guestQuery = recorded.find((r) => r.table === 'class_guests');
+    expect(guestQuery?.filters['in:session_id']).toEqual(['sess-1']);
+    expect(recorded.find((r) => r.table === 'class_sessions')?.filters['eq:tenant_id']).toBe(
+      'tenant-A'
+    );
+
+    // 🔴 INCLUÍDO **E MARCADO**. Incluir sem marcar seria a pior das três
+    // opções: 14 dos 20 convidados registrados são nomes de staff/demo, então
+    // uma linha sem selo se lê como aluno.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].isGuest).toBe(true);
+  });
+
+  it('👤 um ALUNO nunca é marcado como convidado', async () => {
+    callerMemberships = [{ tenantId: 'tenant-A', role: 'tenant_admin' }];
+    const rows = await listReplaySessions();
+    expect(rows[0].isGuest).toBe(false);
+  });
+
+  it('👤 o selo de convidado chega também na tela de DETALHE', async () => {
+    // `/admin/replay/<uuid>` é endereçável direto: quem cai aqui por link nunca
+    // viu a lista, e é ESTA a tela onde a tentativa é de fato assistida.
+    callerMemberships = [{ tenantId: 'tenant-A', role: 'tenant_admin' }];
+    tableRows.memberships = [{ user_id: 'learner-A' }];
+    tableRows.class_sessions = [{ id: 'sess-1' }];
+    tableRows.class_guests = [{ user_id: 'guest-1' }];
+    tableRows.activity_traces = [{ ...TRACE_ROW, id: 't-g', user_id: 'guest-1' }];
+
+    const one = await fetchReplaySession('t-g');
+    expect(one?.isGuest).toBe(true);
+  });
+
+  it('👤 se `class_guests` falhar, o replay dos ALUNOS não cai junto', async () => {
+    // Direção escolhida: melhor perder o replay de convidado do que derrubar o
+    // de aluno de verdade por um soluço numa tabela acessória.
+    callerMemberships = [{ tenantId: 'tenant-A', role: 'tenant_admin' }];
+    failTable = 'class_guests';
+    const rows = await listReplaySessions();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].isGuest).toBe(false);
+    expect(touchedTraces()[0].filters['in:user_id']).toEqual(['learner-A', 'admin-A']);
   });
 
   it('uma tentativa fora do escopo devolve null sem revelar que existe', async () => {

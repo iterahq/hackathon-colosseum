@@ -50,6 +50,39 @@
  * file actually delivers.
  *
  * ═══════════════════════════════════════════════════════════════════════════
+ * 👤 GUEST POLICY: **INCLUDE** — and this is the ONLY consumer that does
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Tainan, by voice 2026-08-05T16:44Z: *"Sim, convidado gera trace de
+ * aprendizagem, mas fica fora da análise — só analytics interna. Então dá pra
+ * dar replay, mas não vai pra analytics."*
+ *
+ * Replay is the "dá pra dar replay" half. Every other reader of
+ * `itera.activity_traces` excludes guests, and the set of readers is closed by
+ * `src/test/traceEmissionBoundary.test.ts` so a new one has to declare which
+ * half it is in. The default there is EXCLUDE; this module is the named
+ * exception, and it is safe to be one precisely because it is already
+ * admin-only and tenant-scoped — a guest trace can only ever be watched by an
+ * admin of the tenant whose class the guest was invited to.
+ *
+ * Inclusion is DELIBERATE rather than incidental: `watchableLearnerIds` unions
+ * the tenant's guests (via `itera.class_guests`) into the scope, because a
+ * guest holds no membership and would otherwise be filtered out by accident.
+ * And every included guest is FLAGGED (`isGuest`) all the way to the screen —
+ * 14 of the 20 guests on record are staff/demo names, so an unmarked guest
+ * attempt is a staged observation wearing a measured one's clothes.
+ *
+ * ⚠️ 🔴 KNOWN GAP, DECLARED RATHER THAN HIDDEN — the DATABASE does not yet
+ * allow this read. `traces_select_admin` (migration 0034) scopes through
+ * `itera.memberships`, and a guest has none, so an admin's JWT gets ZERO ROWS
+ * for a guest trace no matter what this module asks for. The client change here
+ * is necessary and not sufficient: guest replay stays empty until migration
+ * `0041_activity_traces_guest_admin_read.sql` is applied. That file changes RLS,
+ * which means merging it APPLIES IT TO ITERA PRODUCTION, which means it goes in
+ * its own PR behind the `db/migrations/**` human gate — it is NOT in this one.
+ * The write path and every exclusion below are unaffected and ship now.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  * WHAT THIS MODULE MUST NEVER DO
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -120,6 +153,24 @@ export interface ReplayIndexEntry {
    * this change exists to fix.
    */
   enunciadoStatus: ReplayEnunciado['status'];
+  /**
+   * The learner is a LINK-INVITED GUEST (`itera.class_guests`), not a member of
+   * the cohort.
+   *
+   * ⚠️ SURFACED, NEVER SILENT. Tainan, 2026-08-05: guests generate a trace and
+   * *"dá pra dar replay, mas não vai pra analytics"*. Replay is the one surface
+   * that includes them, and 14 of the 20 guests on record are staff/demo names
+   * — so an admin watching has to be able to tell a sales visitor from a
+   * student without recognising the name. Same principle as ADR-4's badge in
+   * the class report: listed, and marked.
+   */
+  isGuest: boolean;
+}
+
+/** One attempt for the detail surface, plus who the learner is to this tenant. */
+export interface ReplayAttempt extends ReplaySession {
+  /** See `ReplayIndexEntry.isGuest`. */
+  isGuest: boolean;
 }
 
 /**
@@ -131,7 +182,11 @@ export interface ReplayIndexEntry {
  * "allowed, but the tenant has no members", which is a different sentence and
  * would be a lie if collapsed into the first.
  */
-async function watchableLearnerIds(): Promise<{ tenantId: string; userIds: string[] } | null> {
+async function watchableLearnerIds(): Promise<{
+  tenantId: string;
+  userIds: string[];
+  guestIds: Set<string>;
+} | null> {
   const memberships = await getMyMemberships();
   const tenantId = adminTenantId(memberships);
   // 🔒 THE GATE. An instructor, an author and a learner all land here, and none
@@ -141,10 +196,70 @@ async function watchableLearnerIds(): Promise<{ tenantId: string; userIds: strin
   const sb = getSupabase();
   const { data, error } = await sb.from('memberships').select('user_id').eq('tenant_id', tenantId);
   if (error) throw new Error(error.message);
-  const userIds = (Array.isArray(data) ? data : [])
+  const memberIds = (Array.isArray(data) ? data : [])
     .map((row) => (row as Record<string, unknown>).user_id)
     .filter((v): v is string => typeof v === 'string' && v !== '');
-  return { tenantId, userIds };
+
+  // 👤 THE GUESTS OF THIS TENANT'S CLASSES — and why they need their own lookup.
+  //
+  // A link-invited guest holds ZERO `itera.memberships` rows: that empty set IS
+  // their security boundary (migration 0026, ADR-4). So the membership query
+  // above cannot see them, and until 2026-08-05 that did not matter because a
+  // guest had no trace to watch. Now they do, and Tainan's answer was *"dá pra
+  // dar replay"* — so the scope has to be widened DELIBERATELY rather than the
+  // exclusion left standing as an accident of how the scope is computed.
+  //
+  // 🔒 STILL TENANT-SCOPED, by the same rule and via the same join the class
+  // report uses: a guest is watchable exactly when they joined a session
+  // belonging to the tenant this caller administers. `class_guests` is readable
+  // here because `class_guests_select_instructor` (migration 0026) admits
+  // `current_instructor_tenant_ids()`, which includes `tenant_admin`.
+  const guestIds = await tenantGuestIds(tenantId);
+
+  return { tenantId, userIds: [...memberIds, ...guestIds], guestIds };
+}
+
+/**
+ * `itera.users.id` of every guest who joined a session of this tenant.
+ *
+ * BEST-EFFORT, and that direction is chosen: if this lookup fails the replay
+ * falls back to members only, which is the pre-2026-08-05 behaviour. The
+ * opposite choice — throwing — would let an unrelated `class_guests` hiccup take
+ * down the replay of real learners, and a guest replay is the less valuable of
+ * the two by a wide margin.
+ *
+ * ⚠️ It is resolved LIVE and never denormalised onto the trace row. `is_guest`
+ * moves (ADR-7 keeps the guest→account promotion path open), and a flag frozen
+ * on a two-week-old trace would answer a question about the promotion rather
+ * than about the tenant. Same reason `buildClassReport` resolves `guestUserIds`
+ * at report time.
+ */
+async function tenantGuestIds(tenantId: string): Promise<Set<string>> {
+  try {
+    const sb = getSupabase();
+    const { data: sessions, error: sErr } = await sb
+      .from('class_sessions')
+      .select('id')
+      .eq('tenant_id', tenantId);
+    if (sErr) return new Set();
+    const sessionIds = (Array.isArray(sessions) ? sessions : [])
+      .map((row) => (row as Record<string, unknown>).id)
+      .filter((v): v is string => typeof v === 'string' && v !== '');
+    if (sessionIds.length === 0) return new Set();
+
+    const { data, error } = await sb
+      .from('class_guests')
+      .select('user_id')
+      .in('session_id', sessionIds);
+    if (error) return new Set();
+    return new Set(
+      (Array.isArray(data) ? data : [])
+        .map((row) => (row as Record<string, unknown>).user_id)
+        .filter((v): v is string => typeof v === 'string' && v !== '')
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 /** The attempts this admin may watch, newest first. Empty when refused. */
@@ -176,6 +291,7 @@ export async function listReplaySessions(limit = REPLAY_PAGE_SIZE): Promise<Repl
       actionCount: s.actions.length,
       outcome: s.outcome,
       enunciadoStatus: s.enunciado.status,
+      isGuest: scope.guestIds.has(s.userId),
     }));
 }
 
@@ -188,7 +304,7 @@ export async function listReplaySessions(limit = REPLAY_PAGE_SIZE): Promise<Repl
  * "not yours" and for "does not exist" alike — a surface that distinguished the
  * two would confirm the existence of another tenant's row.
  */
-export async function fetchReplaySession(traceId: string): Promise<ReplaySession | null> {
+export async function fetchReplaySession(traceId: string): Promise<ReplayAttempt | null> {
   if (!isSupabaseConfigured || !traceId) return null;
   const scope = await watchableLearnerIds();
   if (!scope || scope.userIds.length === 0) return null;
@@ -202,7 +318,14 @@ export async function fetchReplaySession(traceId: string): Promise<ReplaySession
     .limit(1);
   if (error) throw new Error(error.message);
   const rows = Array.isArray(data) ? data : [];
-  return rows.length > 0 ? readReplaySession(rows[0]) : null;
+  if (rows.length === 0) return null;
+  const session = readReplaySession(rows[0]);
+  if (!session) return null;
+  // The badge rides on the DETAIL too, not only the index. An admin who lands
+  // on `/admin/replay/<uuid>` from a link never saw the list, and a guest
+  // attempt that looks like a cohort attempt on the one screen where it is
+  // actually watched is the whole failure ADR-4 names.
+  return { ...session, isGuest: scope.guestIds.has(session.userId) };
 }
 
 /** The learner's display name from the embedded `users` row, when readable. */

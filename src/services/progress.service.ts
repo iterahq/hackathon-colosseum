@@ -172,14 +172,22 @@ export function buildAttemptFeedback(response?: string | null): AttemptFeedback 
  * can be hours after the learner answered. Only the surface that rendered the
  * activity holds the truth, so only it can supply it.
  *
- * ⚠️ THIS IS THE ONLY PLACE THE TRACE MAY BE EMITTED — and the emission is
- * INSIDE this function, not at its call sites, which is a coverage property and
- * not a style one. The call sites are no longer the two the plan named: live
+ * ⚠️ THE TRACE IS EMITTED FROM THIS MODULE AND NOWHERE ELSE — and, for a
+ * CREDITED attempt, from inside this function rather than at its call sites,
+ * which is a coverage property and not a style one. The call sites are no
+ * longer the two the plan named: live
  * class AND every self-paced MISS now go through `writeOrQueue` →
  * `useAnswerOutbox` → here, while only the self-paced PASS still calls in
  * directly. Instrumenting the call sites would therefore have captured passes
  * in self-paced mode and nothing else — which is the exact shape of the 0028
  * defect (a log that holds only wins, and looks complete while doing it).
+ *
+ * The module has THREE trace entry points and the set is closed by test
+ * (`src/test/traceEmissionBoundary.test.ts`): this function (settled + credited),
+ * `persistGuestActivityTrace` (settled, NEVER credited — ADR-6), and
+ * `persistActivityAbandonment` (opened and left). All three funnel into the same
+ * `writeSettledTrace`/`traceWriteRungs` pair, so there is one place where a
+ * trace row is actually shaped.
  *
  * Not the `ActivityRenderer` either, and not any activity component:
  * `ActivityTestHarness` mounts the very same renderer and deliberately imports
@@ -376,94 +384,279 @@ export async function persistActivityProgress(
     // because a duplicated SEQUENCE would corrupt every "how many tries" and
     // "what did they do first" question this table exists to answer.
     //
-    // The whole block is wrapped so that no failure mode of the trace write —
-    // including one that throws rather than returning an error — can change
-    // what this function reports about the attempt.
-    try {
-      const trace = buildAttemptTrace({
-        passed,
-        duration,
-        settledAt,
-        actions,
-        actionsTruncated,
-      });
-      // No trace without an origin: every `at_ms` is an offset from
-      // `started_at`, so an attempt with no measured duration or no known
-      // settle instant (an outbox entry serialised before those fields existed)
-      // gets an attempt row and no trace, rather than a sequence dated to the
-      // moment the network came back.
-      if (trace) {
-        // The envelope (migration 0034). Every column here is older than this
-        // build and is never the reason a write is rejected.
-        const traceRow = {
-          user_id: userId,
-          activity_id: activityId,
-          schema_version: trace.schema_version,
-          started_at: trace.started_at,
-          actions: trace.actions,
-          actions_truncated: trace.actions_truncated,
-        };
-        const conflict = {
-          onConflict: 'user_id,activity_id,started_at',
-          ignoreDuplicates: true,
-        } as const;
-
-        // 🪜 THE DEGRADATION LADDER — most decorated first, bare envelope last.
-        //
-        // There are now TWO decorations from TWO hand-applied migrations
-        // (0037's enunciado, 0038's pedagogical context), and they can be
-        // applied at different times. A single "try decorated, else try bare"
-        // retry would throw away an ALREADY-APPLIED decoration whenever the
-        // newest one was missing — paying for 0038's rollout with 0037's data,
-        // which is the same category of mistake as paying for telemetry with
-        // the record it decorates.
-        //
-        // So the rungs are ordered NEWEST-DECORATION-FIRST and each one drops
-        // exactly one migration's worth of columns. The window costs the
-        // annotations the deployed schema genuinely cannot store, and nothing
-        // else. Identical rungs are skipped, so an undecorated attempt is still
-        // exactly one statement.
-        //
-        // Every rung is the same idempotent upsert against
-        // `uq_activity_traces_attempt`, so a rung that actually committed and
-        // only failed on the way back makes the next one a no-op — the ladder
-        // can never duplicate a sequence.
-        //
-        // ⚠️ WHOEVER ADDS THE NEXT COLUMN: add a rung at the TOP, not a branch.
-        //
-        // 🪜 AND A THIRD COLUMN ARRIVED: `outcome` (migration 0040). The ladder
-        // itself now lives in `traceWriteRungs` (src/utils/learningTrace.ts) —
-        // moved there rather than grown in place, because with three
-        // hand-applied migrations the ORDER and the one rung that must NOT
-        // exist are the part that has to be reasoned about, and reasoning that
-        // cannot be unit-tested without a database is reasoning nobody checks.
-        // See that function for why `outcome` is droppable from a settled write
-        // and never from an abandoned one.
-        const rungs = traceWriteRungs({
-          row: traceRow,
-          trace,
-          // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now. See
-          // the corollary above and migration 0037.
-          specSnapshot,
-          // ⚠️ What the activity was FOR, as tagged when the learner attempted
-          // it — never as tagged today. Migration 0038.
-          pedagogicalContext,
-        });
-
-        for (const rung of rungs) {
-          const { error: traceError } = await sb.from('activity_traces').upsert(rung, conflict);
-          if (!traceError) break;
-        }
-      }
-    } catch {
-      // Best-effort by design. A missing table, a rejected envelope or a
-      // network blip costs a trace and nothing else.
-    }
+    // The call is wrapped inside `writeSettledTrace` so that no failure mode of
+    // the trace write — including one that throws rather than returning an
+    // error — can change what this function reports about the attempt.
+    //
+    // 🔱 IT IS A CALL AND NO LONGER A BLOCK (2026-08-05). See
+    // `writeSettledTrace` below for why the sequence had to stop being welded
+    // to the credit.
+    await writeSettledTrace(sb, userId, activityId, {
+      passed,
+      duration,
+      settledAt,
+      actions,
+      actionsTruncated,
+      // ⚠️ The enunciado AS THE LEARNER READ IT, not as it reads now. See the
+      // corollary above and migration 0037.
+      specSnapshot,
+      // ⚠️ What the activity was FOR, as tagged when the learner attempted it —
+      // never as tagged today. Migration 0038.
+      pedagogicalContext,
+    });
 
     // XP: idempotent SECURITY DEFINER RPC (never double-awards). Best-effort.
     // Awarded on a pass only — a miss is recorded, not rewarded.
     if (passed) await awardActivityXp(activityId);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The Supabase client, as this module already obtains it. */
+type SupabaseClient = ReturnType<typeof getSupabase>;
+
+/** Everything a SETTLED trace needs, and deliberately nothing else. */
+interface SettledTraceInput {
+  passed: boolean;
+  duration: DurationSample | null;
+  settledAt: number | null;
+  actions?: readonly RecordedAction[];
+  actionsTruncated?: boolean;
+  specSnapshot?: TraceSpecSnapshot | null;
+  pedagogicalContext?: PedagogicalContext | null;
+}
+
+/**
+ * Write the trace for ONE settled attempt. Best-effort, never throws.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔱 WHY THIS IS A FUNCTION AND NOT THE BLOCK IT USED TO BE (2026-08-05)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Because SEQUENCE and CREDIT are different questions, and welding them
+ * together silently answered the second one for anybody who only meant to ask
+ * the first.
+ *
+ * The guest carve-out (ADR-6, plan `20260728-itera-guest-link-aula-sincrona`,
+ * shipped 2026-07-28 19:47Z) exists for a sound reason: a sales demo must not
+ * leave `progress` / `activity_results` / XP rows on a paying cohort's content.
+ * It was implemented as an empty `if (guest)` branch at the ONE call site that
+ * had a guest — `LiveSessionPage.handleComplete`.
+ *
+ * Three days later (2026-07-31 20:01Z) the trace write was added INSIDE
+ * `persistActivityProgress`. That was the right place for it — see the coverage
+ * argument in that function's docblock, and `src/test/traceEmissionBoundary.test.ts`
+ * which locks it. But it meant the trace inherited an exclusion that had been
+ * written about progress rows, and nobody decided that. A DEFECT OF
+ * COMPOSITION: two correct changes whose combination was never anybody's
+ * intent. Measured cost: 36 guest answers settled post-deploy and produced ZERO
+ * traces, and the sequences are not recoverable — the same "você nunca vai
+ * conseguir voltar no tempo e coletar esses dados" that migration 0034 exists
+ * to answer.
+ *
+ * Tainan settled it by voice, 2026-08-05T16:44Z: *"Sim, convidado gera trace de
+ * aprendizagem, mas fica fora da análise — só analytics interna. Então dá pra
+ * dar replay, mas não vai pra analytics."*
+ *
+ * So the sequence is extracted here, and `persistGuestActivityTrace` below can
+ * ask for it WITHOUT asking for the credit. ADR-6 is untouched: a guest still
+ * writes no `progress`, no `activity_results` and no XP, and the way that is
+ * guaranteed is that this function CANNOT write them — not that a caller
+ * remembers not to.
+ *
+ * ⚠️ NEW CALLERS: this is not a shortcut for skipping progress. The only reason
+ * to reach for it is a learner whose attempt must be OBSERVED but never
+ * CREDITED, and today that is exactly one population (link-invited guests). A
+ * signed-in learner reaching this function without `persistActivityProgress`
+ * would produce a sequence with no attempt row behind it — a trace that says
+ * somebody answered while the attempt log says nobody did, which is worse than
+ * either record alone. `src/test/traceEmissionBoundary.test.ts` keeps the set of
+ * entry points closed so a third one has to declare itself.
+ */
+async function writeSettledTrace(
+  sb: SupabaseClient,
+  userId: string,
+  activityId: string,
+  {
+    passed,
+    duration,
+    settledAt,
+    actions,
+    actionsTruncated,
+    specSnapshot,
+    pedagogicalContext,
+  }: SettledTraceInput
+): Promise<boolean> {
+  try {
+    const trace = buildAttemptTrace({ passed, duration, settledAt, actions, actionsTruncated });
+    // No trace without an origin: every `at_ms` is an offset from `started_at`,
+    // so an attempt with no measured duration or no known settle instant (an
+    // outbox entry serialised before those fields existed) gets an attempt row
+    // and no trace, rather than a sequence dated to the moment the network came
+    // back.
+    if (!trace) return false;
+
+    // The envelope (migration 0034). Every column here is older than this build
+    // and is never the reason a write is rejected.
+    const traceRow = {
+      user_id: userId,
+      activity_id: activityId,
+      schema_version: trace.schema_version,
+      started_at: trace.started_at,
+      actions: trace.actions,
+      actions_truncated: trace.actions_truncated,
+    };
+    const conflict = {
+      onConflict: 'user_id,activity_id,started_at',
+      ignoreDuplicates: true,
+    } as const;
+
+    // 🪜 THE DEGRADATION LADDER — most decorated first, bare envelope last.
+    //
+    // There are THREE decorations from THREE separately-applied migrations
+    // (0037's enunciado, 0038's pedagogical context, 0040's outcome), and they
+    // can land at different times. A single "try decorated, else try bare"
+    // retry would throw away an ALREADY-APPLIED decoration whenever the newest
+    // one was missing — paying for 0038's rollout with 0037's data, which is
+    // the same category of mistake as paying for telemetry with the record it
+    // decorates.
+    //
+    // So the rungs are ordered NEWEST-DECORATION-FIRST and each one drops
+    // exactly one migration's worth of columns. The window costs the
+    // annotations the deployed schema genuinely cannot store, and nothing else.
+    // Identical rungs are skipped, so an undecorated attempt is still exactly
+    // one statement.
+    //
+    // Every rung is the same idempotent upsert against
+    // `uq_activity_traces_attempt`, so a rung that actually committed and only
+    // failed on the way back makes the next one a no-op — the ladder can never
+    // duplicate a sequence.
+    //
+    // ⚠️ WHOEVER ADDS THE NEXT COLUMN: add a rung at the TOP of
+    // `traceWriteRungs` (src/utils/learningTrace.ts), not a branch here. The
+    // ladder lives there rather than in this function because the ORDER, and
+    // the one rung that must NOT exist, are the part that has to be reasoned
+    // about — and reasoning that cannot be unit-tested without a database is
+    // reasoning nobody checks.
+    const rungs = traceWriteRungs({ row: traceRow, trace, specSnapshot, pedagogicalContext });
+    for (const rung of rungs) {
+      const { error } = await sb.from('activity_traces').upsert(rung, conflict);
+      if (!error) return true;
+    }
+    return false;
+  } catch {
+    // Best-effort by design. A missing table, a rejected envelope or a network
+    // blip costs a trace and nothing else.
+    return false;
+  }
+}
+
+/**
+ * Record the SEQUENCE of one settled attempt by a LINK-INVITED GUEST — and
+ * nothing else.
+ *
+ * Tainan, by voice 2026-08-05T16:44Z: *"Sim, convidado gera trace de
+ * aprendizagem, mas fica fora da análise — só analytics interna. Então dá pra
+ * dar replay, mas não vai pra analytics."*
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHAT IT WRITES, AND WHAT IT STRUCTURALLY CANNOT WRITE
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Writes ONE row, in `itera.activity_traces`. It does not write — and has no
+ * code path that could write:
+ *
+ *   · `progress`          — ADR-6. A demo must not mark a paying cohort's
+ *                           content as completed by somebody who is not in it.
+ *   · `activity_results`  — ADR-6, and ADR-4's reason on top of it: that table
+ *                           IS the attempt log every accuracy number reads, and
+ *                           a sales visitor in it is a staged number wearing a
+ *                           measured one's clothes.
+ *   · XP                  — ADR-6. Obviously.
+ *
+ * ⚠️ ADR-6 IS NOT BEING REVERSED, IT IS BEING READ PRECISELY. It was written
+ * about durable per-learner PROGRESS. The trace is not progress: it credits
+ * nothing, unlocks nothing, and appears in no cohort total (see the consumer
+ * audit in `src/test/traceEmissionBoundary.test.ts`). It is the observation of
+ * a sequence, and observing a demo visitor is exactly what makes the demo
+ * reviewable afterwards.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔑 `guestUserId` IS REQUIRED, AND IT IS A GUARD RATHER THAN A PARAMETER
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The write is still keyed on `getIteraUserId()` — RLS (`traces_rw_self`) would
+ * reject anything else, and a client-supplied `user_id` that RLS accepted would
+ * be a far worse bug than the one this function fixes. What `guestUserId` does
+ * is ASSERT that the session doing the writing is still the guest the caller
+ * observed. A guest's Supabase session lives in the same `localStorage` slot as
+ * an ordinary login (`GuestLiveRoute` applies it with `setSession`), so "the
+ * signed-in user changed between the answer and the write" is a real sequence
+ * of events on a demo laptop — and attributing a visitor's sequence to whoever
+ * logged in next is precisely the contamination ADR-4 exists to prevent.
+ *
+ * Mismatch ⇒ FALSE and no write. Losing a demo trace is cheap; a mis-attributed
+ * one is not, and it is not detectable afterwards.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠️ BEST-EFFORT AND DELIBERATELY *NOT* QUEUED IN THE DURABLE OUTBOX
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Every other write on the live path goes through `writeOrQueue`
+ * (`src/hooks/useAnswerOutbox.ts`) so school wifi dropping for 30s does not cost
+ * an answer. This one does not, and the asymmetry is the point:
+ *
+ *   · The outbox resolves the WRITER at DRAIN time — `sendOutboxEntry` calls
+ *     into this module, which calls `getIteraUserId()` then. A guest entry
+ *     draining after the guest session is gone would hit the guard above and
+ *     return false…
+ *   · …and `flushOutbox` never discards on failure (by design — that is what
+ *     makes it durable for answers). So the entry would be immortal: one of the
+ *     200 localStorage slots, permanently occupied by a write that can never
+ *     succeed, crowding out real answers.
+ *   · And the thing being protected does not justify that. A guest trace is
+ *     telemetry with no downstream credit — the same tier as the trace inside
+ *     `persistActivityProgress`, whose failure is already swallowed. The guest's
+ *     `class_answers` row (which IS what the professor's report reads) keeps its
+ *     outbox durability, unchanged.
+ *
+ * @returns TRUE only when the row actually landed. Callers should `void` it: a
+ *   guest must never be made to wait on telemetry.
+ */
+export async function persistGuestActivityTrace(
+  activityId: string,
+  {
+    guestUserId,
+    passed,
+    duration,
+    settledAt,
+    actions,
+    actionsTruncated,
+    specSnapshot,
+    pedagogicalContext,
+  }: SettledTraceInput & {
+    /** `itera.users.id` of the guest, from `useGuestMode()`. See the guard above. */
+    guestUserId: string;
+  }
+): Promise<boolean> {
+  if (!isSupabaseConfigured || !guestUserId) return false;
+  try {
+    const sb = getSupabase();
+    const userId = await getIteraUserId();
+    // 🔒 The guard. Not belt-and-braces — see the docblock.
+    if (!userId || userId !== guestUserId) return false;
+
+    return await writeSettledTrace(sb, userId, activityId, {
+      passed,
+      duration,
+      settledAt,
+      actions,
+      actionsTruncated,
+      specSnapshot,
+      pedagogicalContext,
+    });
   } catch {
     return false;
   }

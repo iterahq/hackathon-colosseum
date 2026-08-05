@@ -28,7 +28,13 @@
  *      wall, i.e. the demo would end on a rejection screen;
  *   4. no durable progress/XP write (ADR-6) — RLS would ALLOW it (the guest has a
  *      real itera.users id, so `progress_rw_self` is satisfied), so this is a
- *      client-side rule and has to be honoured here.
+ *      client-side rule and has to be honoured here. ⚠️ SINCE 2026-08-05 THE
+ *      LEARNING TRACE IS EXPLICITLY *NOT* PART OF THAT CARVE-OUT: a guest DOES
+ *      write `itera.activity_traces`, via `persistGuestActivityTrace`, which can
+ *      write nothing else. Sequence and credit are different questions, and
+ *      until that call existed the first was being answered by the second's
+ *      exclusion. See `handleComplete` and the consumer policy in
+ *      `src/test/traceEmissionBoundary.test.ts`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -58,6 +64,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import { persistGuestActivityTrace } from '@/services/progress.service';
 import { buildSpecSnapshot } from '@/utils/learningTrace';
 import { buildPedagogicalContext } from '@/utils/pedagogicalContext';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
@@ -331,12 +338,16 @@ export default function LiveSessionPage() {
     // UI); a miss is fired best-effort so the learner is never stuck waiting on
     // a write for an answer that is already settled and already broadcast.
     //
-    // ADR-6 carves the guest out of ALL of it: a guest never writes
+    // ADR-6 carves the guest out of the CREDIT: a guest never writes
     // itera.progress / activity_results / XP, pass or miss. RLS would NOT stop
     // this (their itera.users id satisfies `progress_rw_self`), so the rule lives
     // here — a demo must not leave progress rows behind on a real cohort's
     // content. The durable class_answers/class_attendance copies below DO happen:
     // that is what the professor's post-class report reads.
+    //
+    // ⚠️ AND SO DOES THE LEARNING TRACE, since 2026-08-05 — see the guest branch
+    // below. ADR-6 is about progress rows; it was never about the sequence, and
+    // the sequence only went missing because the two shared a function.
     //
     // Toda escrita passa pelo `writeOrQueue`: numa queda de rede ela entra na
     // fila durável e é retentada quando a conexão volta, em vez de morrer num
@@ -363,7 +374,35 @@ export default function LiveSessionPage() {
     // a análise podem ir buscá-la depois.
     const pedagogicalContext = buildPedagogicalContext(current);
     if (guest) {
-      // no durable per-learner progress for a link-invited guest
+      // ADR-6 STANDS: no `progress`, no `activity_results`, no XP for a
+      // link-invited guest. `persistGuestActivityTrace` has no code path that
+      // could write any of them — the guarantee is structural, not a comment.
+      //
+      // 🔱 WHAT CHANGED (2026-08-05, Tainan by voice): the SEQUENCE is no longer
+      // carved out with the credit. *"Sim, convidado gera trace de aprendizagem,
+      // mas fica fora da análise — só analytics interna. Então dá pra dar
+      // replay, mas não vai pra analytics."*
+      //
+      // Until now this branch was empty, and the trace was lost as a side
+      // effect: the trace write lived inside `persistActivityProgress`, so
+      // skipping the call skipped the sequence too. Nobody decided that — ADR-6
+      // predates the trace by three days. 36 guest answers settled with zero
+      // traces before it was noticed, and they are not recoverable.
+      //
+      // ⚠️ NOT `writeOrQueue`. The outbox resolves the writer at DRAIN time and
+      // never discards on failure, so a guest entry outliving its session would
+      // sit in localStorage forever failing the identity guard. See
+      // `persistGuestActivityTrace`. The guest's `class_answers` row below KEEPS
+      // its outbox durability — that is the one the professor's report reads.
+      void persistGuestActivityTrace(current.id, {
+        guestUserId: guest.iteraUserId,
+        passed: correct,
+        duration: sample,
+        settledAt,
+        actions,
+        specSnapshot,
+        pedagogicalContext,
+      });
     } else if (correct) {
       setSaving(true);
       await writeOrQueue({
