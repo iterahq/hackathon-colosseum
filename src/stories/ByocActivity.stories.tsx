@@ -24,8 +24,8 @@ import { withActivityWidth } from './decorators';
  * Storybook seria complexidade à toa: o valor da vitrine é o contrato visual e
  * as fases, não a geração.
  *
- * ⚠️ **A espera aqui é fake e curta** (2,2s). Em produção a geração leva 47–58s
- * contra o modelo free — não leia esta story como medição de latência.
+ * ⚠️ **A espera aqui é fake** (2,2s). Em produção são ~6s ponta a ponta desde a
+ * troca de modelo (itera-api#37) — não leia esta story como medição.
  *
  * O modelo roda UMA vez, na geração: a árvore já vem com o gabarito embutido, e
  * daí pra frente a correção é lookup local (ADR-13).
@@ -61,6 +61,47 @@ export const PickBest: Story = {
 export const JudgeEach: Story = {
   render: () => (
     <ByocFlow activity={judgeEachActivity} spec={BYOC_JUDGE_EACH_SPEC} tree={BYOC_JUDGE_EACH} />
+  ),
+};
+
+/**
+ * **O aluno que VOLTA** — e é a primeira pintura que TODO aluno vê, porque o
+ * `useByoc` real nasce em `loading` e LÊ antes de escrever.
+ *
+ * A geração é idempotente por aluno+atividade: recarregar tem que cair na mesma
+ * árvore, não sortear outra. Então quem já gerou nunca mais vê o formulário de
+ * seed — vai de `loading` direto pro passo 2, com a própria seed ecoada em cima.
+ */
+export const Retornando: Story = {
+  render: () => (
+    <ByocFlow
+      activity={pickBestActivity}
+      spec={BYOC_PICK_BEST_SPEC}
+      tree={BYOC_PICK_BEST}
+      returning
+      note="Vitrine: o aluno JÁ gerou antes. A leitura é mockada em 0,6s — sem formulário de seed, direto na árvore dele."
+    />
+  ),
+};
+
+/**
+ * **Seed recusada** — a triagem de conteúdo da itera-api é determinística e roda
+ * ANTES de qualquer chamada de modelo, então nada é gasto pra construir algo que
+ * a gente recusaria.
+ *
+ * A tela é o ponto: recusa devolve o aluno ao passo 1 com a mensagem do servidor
+ * e o texto dele preservado — não é erro de validação nem acusação. Aqui a
+ * primeira seed é recusada seja qual for; a segunda passa.
+ */
+export const SeedRecusada: Story = {
+  render: () => (
+    <ByocFlow
+      activity={pickBestActivity}
+      spec={BYOC_PICK_BEST_SPEC}
+      tree={BYOC_PICK_BEST}
+      refuseFirstSeed
+      note="Vitrine: envie qualquer texto — a 1ª seed é recusada de propósito pra mostrar a volta ao passo 1. Envie de novo e a geração segue."
+    />
   ),
 };
 

@@ -12,8 +12,8 @@
  * aluno quer trocar), e a falha PERSISTE uma linha degradada em vez de deixar
  * `generation` nula — estado que a itera-api não produz.
  *
- * ⚠️ A espera é fake e curta. Em produção a geração leva 47–58s contra o modelo
- * free; 2,2s aqui é só pra a story ser navegável — não é medição de latência.
+ * ⚠️ A espera é fake. 2,2s aqui só imita a ordem de grandeza da produção pós
+ * itera-api#37 (~6s ponta a ponta) — não é medição.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ByocSpec, GeneratedChoiceTree } from '@iterahq/activity-spec';
@@ -25,19 +25,53 @@ import { byocFallbackGeneration, byocGeneration } from './byocFixtures';
 const MOCK_LATENCY_MS = 2200;
 const MOCK_READ_MS = 600;
 
+/**
+ * Cópia VERBATIM do `SEED_REJECTED_MESSAGE` da itera-api (`src/byoc/safety.ts`) —
+ * a vitrine mostra a frase que o aluno realmente lê, não uma paráfrase.
+ *
+ * Recusa NÃO é acusação: o leitor é adolescente iniciante que pode ter escrito
+ * algo pesado sem querer, e a mensagem nunca diz qual termo disparou o filtro.
+ */
+const REFUSAL =
+  'Vamos escolher outro tema para essa atividade? Conte algo que você gosta de fazer — ' +
+  'um esporte, uma música, um jogo, uma comida, um lugar que você curte.';
+
 export function useMockByoc({
   tree,
   fallback,
   failing = false,
+  returning = false,
+  refuseFirstSeed = false,
 }: {
   tree: GeneratedChoiceTree;
   fallback?: GeneratedChoiceTree;
   failing?: boolean;
+  /**
+   * O aluno que JÁ gerou e voltou. É a entrada mais comum depois da primeira
+   * tentativa, e a primeira pintura que todo aluno vê: o real `useByoc` nasce em
+   * `loading`, lê, e cai direto na árvore — nunca no formulário de seed.
+   */
+  returning?: boolean;
+  /**
+   * Recusa a PRIMEIRA seed, seja ela qual for, pra exercitar o `seedError` e a
+   * volta ao passo 1. Em produção quem decide é a triagem determinística da
+   * itera-api (`byoc/safety.ts`), mas reproduzir a lista de termos aqui poria
+   * exatamente o vocabulário proibido dentro da vitrine — o gatilho é imitado,
+   * a tela é a real.
+   */
+  refuseFirstSeed?: boolean;
 }): ByocState {
-  const [phase, setPhase] = useState<ByocPhase>('seed');
+  const [phase, setPhase] = useState<ByocPhase>(returning ? 'loading' : 'seed');
   const [generation, setGeneration] = useState<ByocGeneration | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const persisted = useRef<ByocGeneration | null>(null);
+  const persisted = useRef<ByocGeneration | null>(
+    returning ? byocGeneration('faço bolo de cenoura pra vender no bairro', tree) : null
+  );
+  // Ref, e não estado: a recusa tem que valer UMA vez por montagem. Um contador em
+  // `useState` re-renderiza (e a story voltaria a recusar a segunda tentativa);
+  // um flag em closure da story reiniciaria a cada render.
+  const refused = useRef(false);
   const schedule = useCallback((ms: number, run: () => void) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(run, ms);
@@ -49,8 +83,27 @@ export function useMockByoc({
     []
   );
 
+  // A leitura de montagem do aluno que volta, igual à do `useByoc`: `loading` e
+  // então já a árvore, sem passar pelo formulário.
+  useEffect(() => {
+    if (!returning) return;
+    const id = setTimeout(() => {
+      const row = persisted.current;
+      setGeneration(row);
+      setPhase(row ? (row.fallback_used ? 'fallback' : 'ready') : 'seed');
+    }, MOCK_READ_MS);
+    return () => clearTimeout(id);
+  }, [returning]);
+
   const submitSeed = useCallback(
     (seed: string) => {
+      if (refuseFirstSeed && !refused.current) {
+        refused.current = true;
+        setSeedError(REFUSAL);
+        setPhase('seed');
+        return;
+      }
+      setSeedError(null);
       setPhase('generating');
       schedule(MOCK_LATENCY_MS, () => {
         if (failing && !fallback) {
@@ -67,11 +120,15 @@ export function useMockByoc({
         setPhase(row.fallback_used ? 'fallback' : 'ready');
       });
     },
-    [failing, fallback, schedule, tree]
+    [failing, fallback, refuseFirstSeed, schedule, tree]
   );
 
   const reset = useCallback(() => {
     setGeneration(null);
+    // O `useByoc` real limpa o erro de seed ao reler; sem isto a recusa
+    // sobreviveria a uma releitura bem-sucedida — a vitrine mostrando um estado
+    // que a produção não produz.
+    setSeedError(null);
     setPhase('loading');
     schedule(MOCK_READ_MS, () => {
       const row = persisted.current;
@@ -87,10 +144,11 @@ export function useMockByoc({
   const tryAnotherSeed = useCallback(() => {
     persisted.current = null;
     setGeneration(null);
+    setSeedError(null);
     setPhase('seed');
   }, []);
 
-  return { phase, generation, seedError: null, submitSeed, reset, tryAnotherSeed };
+  return { phase, generation, seedError, submitSeed, reset, tryAnotherSeed };
 }
 
 /**

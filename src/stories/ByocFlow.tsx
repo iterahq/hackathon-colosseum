@@ -18,18 +18,30 @@ export function ByocFlow({
   tree,
   failing,
   withFallback = true,
+  returning,
+  refuseFirstSeed,
+  note = 'Vitrine: a geração é mockada e espera 2,2s. Em produção leva ~6s ponta a ponta.',
 }: {
   activity: Activity;
   spec: ByocSpec;
   tree: GeneratedChoiceTree;
   failing?: boolean;
   withFallback?: boolean;
+  returning?: boolean;
+  refuseFirstSeed?: boolean;
+  note?: string;
 }) {
-  const state = useMockByoc({ tree, fallback: withFallback ? spec.fallback : undefined, failing });
+  const state = useMockByoc({
+    tree,
+    fallback: withFallback ? spec.fallback : undefined,
+    failing,
+    returning,
+    refuseFirstSeed,
+  });
   return (
     <div>
       <p className="mb-4 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-        Vitrine: a geração é mockada e espera 2,2s. Em produção leva 47–58s contra o modelo free.
+        {note}
       </p>
       <ByocActivityView
         activity={activity}

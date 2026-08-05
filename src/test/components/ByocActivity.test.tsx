@@ -73,6 +73,7 @@ const generation: ByocGeneration = {
   attempts_used: 1,
   model: 'free',
   degraded_reason: null,
+  attempt_notes: [],
   created_at: null,
   reused: false,
   generation_available: true,

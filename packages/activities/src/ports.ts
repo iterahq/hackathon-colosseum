@@ -145,6 +145,12 @@ export interface ActivityByocGeneration {
   attempts_used: number;
   model: string;
   degraded_reason: string | null;
+  /**
+   * Why each REJECTED attempt was rejected. `degraded_reason` only survives the
+   * terminal failure, so a retry that eventually succeeded would otherwise erase
+   * the evidence that the first try was broken. Empty on a clean first attempt.
+   */
+  attempt_notes: string[];
   created_at: string | null;
   reused: boolean;
   generation_available: boolean;

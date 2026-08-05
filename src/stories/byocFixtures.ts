@@ -86,23 +86,34 @@ export const BYOC_JUDGE_EACH_SPEC: ByocSpec = {
   fallback: BYOC_JUDGE_EACH,
 };
 
-/** Uma geração como a itera-api devolve quando o modelo respondeu de verdade. */
+/**
+ * Uma geração como a itera-api devolve quando o modelo respondeu de verdade.
+ *
+ * Os valores aqui são o CAMINHO NORMAL do servidor, não o raro: `persisted` e
+ * `reused` são os dois que a story errava. Toda resposta de sucesso da itera-api
+ * grava a linha (`persisted: true`); `false` é o galho em que a escrita falhou e
+ * a árvore volta sem lastro. Um dev que lesse a fixture ia tratar o excepcional
+ * como padrão.
+ */
 export function byocGeneration(seed: string, tree: GeneratedChoiceTree): ByocGeneration {
   return {
     generation_id: `story-${tree.interaction}`,
     activity_id: 'story-byoc',
     attempt: 1,
     seed,
-    mode: tree.interaction,
+    // `'choice_tree'` é literal no servidor e NÃO é a interação — quem quer saber
+    // se é escolher-uma ou julgar-cada lê `generated.interaction`.
+    mode: 'choice_tree',
     generated: tree,
     fallback_used: false,
     attempts_used: 1,
     model: 'storybook-mock',
     degraded_reason: null,
+    attempt_notes: [],
     created_at: null,
     reused: false,
     generation_available: true,
-    persisted: false,
+    persisted: true,
   };
 }
 
@@ -116,7 +127,11 @@ export function byocFallbackGeneration(seed: string, tree: GeneratedChoiceTree):
   return {
     ...byocGeneration(seed, tree),
     fallback_used: true,
+    // Duas tentativas, e a primeira deixou rastro: `degraded_reason` só guarda o
+    // motivo TERMINAL, então sem `attempt_notes` o "por que a 1ª falhou" some.
+    attempts_used: 2,
     degraded_reason: 'generation_failed',
+    attempt_notes: ['tentativa 1: correct_option_id aponta pra uma opção que não existe'],
     generation_available: false,
   };
 }

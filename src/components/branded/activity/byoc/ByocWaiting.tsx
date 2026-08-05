@@ -7,7 +7,7 @@ import { BYOC_STAGE_KEYS, byocProgress } from './byocProgress';
 export function ByocWaiting({
   title,
   hint,
-  /** Generation takes 26–73s; narrate it. A read takes milliseconds — don't. */
+  /** Generation takes ~6s; narrate it. A read takes milliseconds — don't. */
   narrate = false,
 }: {
   title: string;
@@ -33,7 +33,7 @@ export function ByocWaiting({
       {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
 
       {/* The bar is aria-hidden: the ticking seconds sit inside `aria-live`, and
-          would re-announce the whole block every second for up to 73s. */}
+          would re-announce the whole block every single second otherwise. */}
       {narrate && (
         <div className="mx-auto mt-5 max-w-xs" data-testid="byoc-waiting-progress" aria-hidden="true">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">

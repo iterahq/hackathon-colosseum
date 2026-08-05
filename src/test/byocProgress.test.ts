@@ -32,11 +32,19 @@ describe('byocProgress', () => {
 
   it('walks the stages at the measured boundaries', () => {
     expect(byocProgress(0).stage).toBe(0);
-    expect(byocProgress(9_999).stage).toBe(0);
-    expect(byocProgress(10_000).stage).toBe(1);
-    expect(byocProgress(28_000).stage).toBe(2);
-    expect(byocProgress(55_000).stage).toBe(3);
+    expect(byocProgress(1_499).stage).toBe(0);
+    expect(byocProgress(1_500).stage).toBe(1);
+    expect(byocProgress(3_000).stage).toBe(2);
+    expect(byocProgress(4_500).stage).toBe(3);
     expect(byocProgress(600_000).stage).toBe(BYOC_STAGE_KEYS.length - 1);
+  });
+
+  // O aluno tem que ATRAVESSAR as quatro etapas na latência que a produção tem
+  // hoje (~6s ponta a ponta, itera-api#37). Contra os limites antigos, calibrados
+  // pro modelo de raciocínio que já saiu, ele parava na primeira e as outras três
+  // eram string traduzida e inalcançável — este teste é o que impede a recaída.
+  it('reaches the last stage within the measured end-to-end wait', () => {
+    expect(byocProgress(6_000).stage).toBe(BYOC_STAGE_KEYS.length - 1);
   });
 
   it('clamps a clock that ran backwards', () => {

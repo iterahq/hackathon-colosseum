@@ -24,12 +24,25 @@ export interface ByocGeneration {
   activity_id: string;
   attempt: number | null;
   seed: string;
+  /**
+   * Always the literal `'choice_tree'`, and NOT the interaction — the server
+   * reserves this as the discriminator for a future generation shape (a cosmetic
+   * BYOC over the code snack was the case that motivated it). Whether the learner
+   * picks one option or judges each is `generated.interaction`; reading `mode` for
+   * that answers `'choice_tree'` on every branch.
+   */
   mode: string;
   generated: GeneratedChoiceTree;
   fallback_used: boolean;
   attempts_used: number;
   model: string;
   degraded_reason: string | null;
+  /**
+   * Why each REJECTED attempt was rejected. `degraded_reason` only survives the
+   * terminal failure, so a retry that eventually succeeded used to erase the
+   * evidence that the first try was broken. Empty on a clean first-attempt run.
+   */
+  attempt_notes: string[];
   created_at: string | null;
   /** True when this tree came back from a previous attempt instead of a new call. */
   reused: boolean;
