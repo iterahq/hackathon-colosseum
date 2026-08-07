@@ -70,6 +70,17 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
+⚠️ **Desde a Fase C (2026-08-07), sete kinds NÃO moram mais aqui.** `concept`,
+`concept_reveal`, `video`, `single_choice`, `multi_choice`, `match` e `order`
+foram extraídos para `@iterahq/activities` (`packages/activities/src/kinds/`),
+junto com os primitivos (`InstructionPanel`, `RichText*`, `parts`,
+`AnswerExplanation`) e a lógica pura (`answerMachine`, shuffle, parser de
+markdown-leve). Os arquivos antigos continuam existindo como **re-export de uma
+linha**, então todo import por `@/components/branded/activity/<Kind>` segue
+valendo — mas **editar o arquivo aqui não muda nada**: a implementação está no
+pacote. Os que ficaram: `sandbox*`, `terminal/`, `byoc/`, `code/`, e
+`document`/`diagram`/`quiz` (ainda inline no dispatcher).
+
 Os **12 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
 literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
@@ -157,22 +168,42 @@ testes — não crie um segundo conjunto.
 
 ### Contrato público do `@iterahq/activities`
 
-As activities vão virar pacote instalável (plano
-`20260803-itera-player-activities-lib`). **Fases A e B estão feitas.**
+As activities são um pacote instalável (plano
+`20260803-itera-player-activities-lib`). **Fases A, B e C (passos 1–3) estão
+feitas** — os renderers sem backend já renderizam fora do Player.
 
 Este repo é um **monorepo de npm workspaces** (ADR-2 — workspaces puro, NÃO
 Turborepo). O app fica na raiz; os pacotes publicáveis ficam em `packages/*`:
 
-- `packages/activities/` → **`@iterahq/activities`**. Hoje contém só a API
-  pública (tipos, zero runtime); os renderers chegam na Fase C. Racional, ordem
+- `packages/activities/` → **`@iterahq/activities`**. Contém a API pública
+  **e os renderers sem backend** (Fase C). O que ficou de fora e por quê está na
+  tabela do [`README`](packages/activities/README.md). Racional, ordem
   de extração e cobertura por kind:
   [`packages/activities/CONTRACT.md`](packages/activities/CONTRACT.md). Setup de
   consumidor (`.npmrc` + token):
   [`packages/activities/README.md`](packages/activities/README.md).
 
-O app consome o pacote pelo nome — `import type { … } from '@iterahq/activities'`
-— e não por caminho relativo. É a MESMA borda que um host externo vai usar, então
-ela fica exercitada em vez de só declarada.
+O app consome o pacote pelo nome — `import { … } from '@iterahq/activities'` —
+e não por caminho relativo, resolvendo pelo **`dist/`** do workspace. É a MESMA
+borda que um host externo usa, então ela fica exercitada em vez de só declarada.
+Editar `packages/activities/src/` só surte efeito depois de rebuild; por isso
+`predev`, `pretest`, `pretypecheck` e `prebuild` rodam `npm run build:packages`.
+
+Duas coisas que a borda do workspace NÃO prova, e que têm gate próprio na CI:
+
+- **portabilidade real** → `external-consumer/` empacota o pacote com
+  `npm pack`, instala o **tarball** num projeto separado (sem bundler, sem TS,
+  sem nada da Itera) e renderiza as sete kinds a partir de specs de fixture,
+  com `fetch` armado pra estourar. `npm run external-consumer`;
+- **estilo** → as classes Tailwind dos renderers extraídos vivem fora de
+  `./src`, então `tailwind.config.ts` precisa do glob `./packages/*/dist/**/*.js`.
+  Sem ele o build fica **verde e sem estilo**; o job `build-test` assere no CSS
+  gerado.
+
+O adapter do app é `src/components/branded/activity/IteraActivityHost.tsx`,
+montado no `App.tsx`: ele injeta `i18n` e `identity` (⚠️ `identity.userId` é o
+seed do shuffle por aluno — se sumir, nada quebra e a propriedade pedagógica
+some em silêncio).
 
 **Registry: GitHub Packages, privado** (ADR-6 preservado, registry trocado em
 2026-08-04 — a org npm `iterahq` está no plano free e free só publica pacote
@@ -225,7 +256,10 @@ crescer uma prop fora do contrato.
 
 - Não editar `src/components/ui/` — shadcn/ui gerenciado.
 - Kind novo de activity precisa de: entrada em `ActivityKind`
-  (`src/types/content.ts`), view em `src/components/branded/activity/`,
+  (`src/types/content.ts`), view em `src/components/branded/activity/` (ou em
+  `packages/activities/src/kinds/` se não depender de backend — nesse caso
+  também uma fixture em `external-consumer/fixtures.json`, que o harness exige
+  de toda kind anunciada),
   contrato em `src/stories/contractFixtures.ts` (o guard exige), story **e
   emissão de evento de tracking de aprendizagem** (plano
   [`20260731-itera-eventos-aprendizagem`](https://plans.devfellowship.com/20260731-itera-eventos-aprendizagem)).

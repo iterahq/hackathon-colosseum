@@ -15,6 +15,45 @@
 const SCOPE_KEY = 'itera.scope.user';
 const ITERA_PREFIX = 'itera.';
 
+/**
+ * Listeners for "the scope changed", so a COMPONENT can hold it in render state
+ * instead of re-reading storage on every access.
+ *
+ * Added in Fase C (2026-08-07) and it is not decoration. The scope arrives
+ * ASYNCHRONOUSLY — `getIteraUserId()` resolves an RPC and calls
+ * `rememberStorageScope` — while `localStorage` is not observable in the tab
+ * that writes it (the `storage` event only fires in OTHER tabs). Every reader
+ * so far got away with that by calling `currentStorageScope()` lazily, at the
+ * moment it needed a key.
+ *
+ * `IteraActivityHost` cannot: it injects the scope into `@iterahq/activities`
+ * as a VALUE, high in the tree, so without a notification it would snapshot
+ * `null` at first paint and never learn otherwise — every activity in that page
+ * load would shuffle against the anonymous fallback. Caught by
+ * `e2e/activity-baseline.spec.ts` ("a ordem inicial é ESTÁVEL para o mesmo
+ * aluno entre montagens"), which is exactly the kind of thing that fails
+ * without erroring.
+ */
+type ScopeListener = () => void;
+const scopeListeners = new Set<ScopeListener>();
+
+/** Subscribe to scope changes. Pair with `currentStorageScope` as the snapshot. */
+export function subscribeStorageScope(listener: ScopeListener): () => void {
+  scopeListeners.add(listener);
+  return () => scopeListeners.delete(listener);
+}
+
+function notifyScopeChanged(): void {
+  // Never let a listener's failure break a storage write.
+  for (const listener of scopeListeners) {
+    try {
+      listener();
+    } catch {
+      /* a stale subscriber is not worth losing the scope over */
+    }
+  }
+}
+
 export function rememberStorageScope(userId: string | null): void {
   if (!userId) return;
   try {
@@ -22,6 +61,7 @@ export function rememberStorageScope(userId: string | null): void {
   } catch {
     // Storage unavailable — scoped writes then no-op, which is the safe side.
   }
+  notifyScopeChanged();
 }
 
 export function currentStorageScope(): string | null {
@@ -58,4 +98,8 @@ export function clearIteraStorage(): void {
   } catch {
     // Storage unavailable — there is nothing persisted to clear either.
   }
+  // Sign-out drops the scope too, and a subscriber holding the old learner's id
+  // must find out — otherwise the next learner on this shared machine inherits
+  // the previous one's arrangement, which is the leak this module exists for.
+  notifyScopeChanged();
 }

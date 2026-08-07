@@ -1,0 +1,96 @@
+{
+  "concept": {
+    "id": "fixture-concept",
+    "kind": "concept",
+    "spec": {
+      "instruction": {
+        "text": "Um **commit** guarda um instante do projeto.",
+        "description": "Leia antes de seguir."
+      }
+    }
+  },
+  "concept_reveal": {
+    "id": "fixture-concept-reveal",
+    "kind": "concept_reveal",
+    "spec": {
+      "instruction": { "text": "Pense no que `git status` mostra." },
+      "reveal": {
+        "prompt": "O que aparece em vermelho?",
+        "answer": "Arquivos modificados que ainda não entraram no stage."
+      }
+    }
+  },
+  "video": {
+    "id": "fixture-video",
+    "kind": "video",
+    "spec": {
+      "video_url": "https://example.invalid/aula.mp4",
+      "instruction": { "text": "Assista antes de responder." }
+    }
+  },
+  "single_choice": {
+    "id": "fixture-single-choice",
+    "kind": "single_choice",
+    "spec": {
+      "instruction": { "text": "Qual comando cria um commit?" },
+      "options": [
+        { "id": "opt-commit", "label": "git commit" },
+        { "id": "opt-push", "label": "git push" },
+        { "id": "opt-clone", "label": "git clone" },
+        { "id": "opt-status", "label": "git status" }
+      ],
+      "correct_option_id": "opt-commit"
+    }
+  },
+  "multi_choice": {
+    "id": "fixture-multi-choice",
+    "kind": "multi_choice",
+    "spec": {
+      "instruction": { "text": "Quais comandos falam com o remoto?" },
+      "options": [
+        { "id": "opt-push", "label": "git push" },
+        { "id": "opt-pull", "label": "git pull" },
+        { "id": "opt-add", "label": "git add" }
+      ],
+      "correct_option_ids": ["opt-push", "opt-pull"]
+    }
+  },
+  "match": {
+    "id": "fixture-match",
+    "kind": "match",
+    "spec": {
+      "instruction": { "text": "Associe o comando ao efeito." },
+      "left": [
+        { "id": "l-add", "label": "git add" },
+        { "id": "l-commit", "label": "git commit" }
+      ],
+      "right": [
+        { "id": "r-stage", "label": "põe no stage" },
+        { "id": "r-snapshot", "label": "grava um instante" }
+      ],
+      "pairs": [
+        { "left_id": "l-add", "right_id": "r-stage" },
+        { "left_id": "l-commit", "right_id": "r-snapshot" }
+      ]
+    }
+  },
+  "order": {
+    "id": "fixture-order",
+    "kind": "order",
+    "spec": {
+      "instruction": { "text": "Ordene o fluxo de um commit." },
+      "items": [
+        { "id": "i-edit", "label": "editar o arquivo" },
+        { "id": "i-add", "label": "git add" },
+        { "id": "i-commit", "label": "git commit" },
+        { "id": "i-push", "label": "git push" }
+      ],
+      "correct_order": ["i-edit", "i-add", "i-commit", "i-push"]
+    }
+  },
+  "sandbox_scenario": {
+    "id": "fixture-unsupported",
+    "kind": "sandbox_scenario",
+    "spec": { "steps": [] }
+  }
+}

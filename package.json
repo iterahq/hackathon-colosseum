@@ -13,9 +13,9 @@
     "vendor:monaco": "tsx scripts/vendor-monaco.ts",
     "vendor:fonts": "tsx scripts/vendor-fonts.ts",
     "vendor:sfx": "tsx scripts/vendor-sfx.ts",
-    "prebuild": "tsx scripts/vendor-monaco.ts",
-    "prebuild:dev": "tsx scripts/vendor-monaco.ts",
-    "prebuild-storybook": "tsx scripts/vendor-monaco.ts",
+    "prebuild": "npm run build:packages && tsx scripts/vendor-monaco.ts",
+    "prebuild:dev": "npm run build:packages && tsx scripts/vendor-monaco.ts",
+    "prebuild-storybook": "npm run build:packages && tsx scripts/vendor-monaco.ts",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
     "preview": "vite preview",
@@ -27,7 +27,12 @@
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:baseline": "playwright test --config playwright.baseline.config.ts",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build -o storybook-static"
+    "build-storybook": "storybook build -o storybook-static",
+    "build:packages": "npm run build --workspaces --if-present",
+    "predev": "npm run build:packages",
+    "pretest": "npm run build:packages",
+    "pretypecheck": "npm run build:packages",
+    "external-consumer": "bash external-consumer/check.sh"
   },
   "dependencies": {
     "@devfellowship/components": "^0.2.0",

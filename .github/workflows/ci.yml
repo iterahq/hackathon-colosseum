@@ -80,6 +80,46 @@ jobs:
       - name: Build
         run: npm run build
 
+      # ────────────────────────────────────────────────────────────────────
+      # THE TAILWIND GLOB IS LOAD-BEARING, AND ITS FAILURE IS SILENT
+      #
+      # Fase C moved the activity renderers into `packages/activities`, which
+      # is OUTSIDE `./src`. Tailwind only emits utilities it finds in its
+      # `content` globs, and the app resolves the package through the workspace
+      # symlink to `dist/` — so `./packages/*/dist/**/*.js` in
+      # `tailwind.config.ts` is the only reason the extracted kinds have any
+      # styling at all.
+      #
+      # Drop that glob and NOTHING FAILS: `npm run build` is green, every test
+      # is green, the app boots, and the activities render correct, interactive
+      # and unstyled. Measured on 2026-08-07 — removing the glob took
+      # `cursor-zoom-in` (used only by the extracted `InstructionImage`) from
+      # present to absent in the emitted CSS, with a clean build either way.
+      #
+      # So the assertion is on the ARTIFACT. Two classes, chosen because each
+      # appears in exactly one extracted file and nowhere in `src/`:
+      #   • `cursor-zoom-in`  -> packages/activities components/InstructionImage
+      #   • `marker:text-evergreen` -> packages/activities components/RichBlock
+      # If a future refactor makes one of them appear in `src/` too, this check
+      # goes quiet without going red — pick a different class then, do not
+      # delete the step.
+      # ────────────────────────────────────────────────────────────────────
+      - name: The extracted renderers' Tailwind classes survived the purge
+        run: |
+          set -euo pipefail
+          CSS="$(ls dist/assets/*.css | head -1)"
+          test -n "$CSS" || { echo "::error::no built CSS to check"; exit 1; }
+          # `grep -qF`: Tailwind escapes the variant colon, so the emitted
+          # selector is `.marker\:text-evergreen` with a LITERAL backslash — a
+          # basic-regex pattern eats it and reports a false purge.
+          for CLASS in 'cursor-zoom-in' 'marker\:text-evergreen'; do
+            if ! grep -qF -- "$CLASS" "$CSS"; then
+              echo "::error::'$CLASS' was purged from $CSS - packages/*/dist is missing from tailwind.config.ts content globs, and every extracted activity is now unstyled"
+              exit 1
+            fi
+          done
+          echo "ok: the packages/*/dist content glob is doing its job"
+
       - name: Test
         run: npm test
 
@@ -267,6 +307,60 @@ jobs:
       # SOMENTE as stories com a tag `browser-mode` (hoje: match e code).
       - name: Storybook browser-mode tests
         run: npm run test:browser
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # EXTERNAL CONSUMER GATE (2026-08-07, Fase C)
+  #
+  # Fase C moved the activity renderers into `@iterahq/activities`. The claim
+  # that makes the plan worth executing is "an activity can be rendered by an
+  # app that is NOT the Itera Player", and NOTHING in the other jobs tests it:
+  # `build-test` compiles the package next to the app that came from it, with
+  # the app's resolver, the app's React, the app's tsconfig and 625 hoisted
+  # packages on disk. Every one of those is a condition an outside app does not
+  # have, so a green there is compatible with a package nobody else can install.
+  # The Fase B contract test had exactly that shape and proved nothing about
+  # external use.
+  #
+  # WHAT THIS RUNS: `npm pack` on the workspace, then installs THAT tarball
+  # (`--install-links`, so nothing symlinks back) into `external-consumer/`,
+  # which has its own `node_modules`, no bundler, no TypeScript and no Itera
+  # anything. It then renders the seven extracted kinds from fixture specs in
+  # jsdom, answers one, and asserts the verdict, the telemetry, the absence of
+  # player chrome and — with `fetch` rigged to throw — the absence of any
+  # backend call. See `external-consumer/README.md`.
+  #
+  # WHY IT IS BLOCKING: an extraction whose portability is not checked stops
+  # being portable on the first PR that adds an `@/` import to a package file.
+  # Nothing else in this repo would go red for that.
+  #
+  # Separate job on purpose, same reason as `activity-baseline`: the cost of a
+  # from-scratch install shows up isolated in the wall-clock instead of hiding
+  # inside `build-test`. No secrets — the harness installs from a tarball and
+  # its `.npmrc` disables peer auto-install, so it needs no registry read.
+  # ──────────────────────────────────────────────────────────────────────────
+  external-consumer:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      # Only the workspace package is needed to pack it, but the build script
+      # lives behind the root install (typescript is a devDependency there).
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Render activities outside the Itera Player
+        run: npm run external-consumer
 
   # ──────────────────────────────────────────────────────────────────────────
   # REGISTRY RESOLUTION GATE (2026-08-04) — o tarball vendorizado não volta

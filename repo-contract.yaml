@@ -53,6 +53,12 @@ provides:
       Lógica derivada de resposta/correção vive na máquina pura
       src/utils/answerMachine.ts; o gate do ao-vivo em
       src/utils/liveActivityGate.ts.
+      Fase C (2026-08-07): as sete kinds sem backend (concept, concept_reveal,
+      video, single_choice, multi_choice, match, order), os primitivos e a
+      lógica pura foram extraídos para @iterahq/activities em
+      packages/activities/; os caminhos antigos em src/ viraram re-export de
+      uma linha e src/utils/answerMachine.ts é um desses. Editar o pacote, não
+      o shim.
     entry: src/components/branded/activity/
 
   - type: ui

@@ -2,10 +2,17 @@
 
 **Plan:** [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/20260803-itera-player-activities-lib)
 · **Parent:** `20260803-itera-learning-control-plane-prototipo`
-**Status:** Fase A done (contract defined) · Fase B done (workspaces + the
-contract now lives in the package). **No renderer has moved yet — that is Fase C.**
-**Types:** `packages/activities/src/`
-**Guard:** `src/test/activityPublicContract.test.ts`
+**Status:** Fase A done · Fase B done · **Fase C steps 1–3 done** — pure logic,
+the shared primitives and the seven backend-free kinds now live here, together
+with `<ActivityProvider>` and the package's own `<ActivityRenderer>`. Steps 4–5
+(`sandbox_scenario` · BYOC · `code`) and the three kinds still inline in the
+Player's dispatcher have **not** moved; see *What Fase C left behind*.
+**Source:** `packages/activities/src/`
+**Guards:** `src/test/activityPublicContract.test.ts` (surface + prop fit) ·
+`src/test/activityDefaultI18n.test.tsx` (dictionary parity) ·
+`src/test/activityTraceVocabulary.test.ts` (action names) ·
+`src/test/activityHostAdapter.test.tsx` (the shuffle seed really arrives) ·
+`external-consumer/` (portability, from a packed tarball, in CI)
 
 > Fase A wrote this doc inside `src/components/branded/activity/contract/` so it
 > would travel with the code it describes. Fase B moved it here, next to the
@@ -278,3 +285,74 @@ package, which is what ADR-1 refuses.
 | ADR-5 | Monaco/`code` behind `@iterahq/activities/code`, not the base bundle. |
 | — | `@devfellowship/components` is a **peerDependency** (plan Open Question 3). |
 | ADR-6 | Package is **PRIVATE** — DFL/Itera IP. Registry: **GitHub Packages** under the `iterahq` GitHub org (2026-08-04; npm free orgs can only publish public). |
+
+
+---
+
+# Fase C — what moved, how the couplings were broken, what is left
+
+**Date:** 2026-08-07
+
+## What moved
+
+| Step | Files | Now at |
+| --- | --- | --- |
+| 1 — pure logic | `answerMachine`, `seededShuffle`, `richText` + `richTextInline`, `localizedText`, the action recorder, the activity spec types | `packages/activities/src/internal/`, `src/specs.ts` |
+| 2 — primitives | `RichSpans`, `RichBlock`, `RichText`, `InstructionImage`, `InstructionPanel`, `AnswerExplanation`, `parts` (`ActivityShell` · `KindBadge` · `DoneButton` · `SubmitButton`) | `packages/activities/src/components/` |
+| 3 — backend-free kinds | `concept`, `concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order` | `packages/activities/src/kinds/` |
+| new | `<ActivityProvider>` + the package's own `<ActivityRenderer>` + the activity dictionary | `src/context.tsx`, `src/ActivityRenderer.tsx`, `src/i18n/` |
+
+The app keeps a **one-line re-export at every old path**, which is what the plan
+asked for (*"o app vira consumidor: `src/components/branded/activity/*` é
+deletado e re-exportado do pacote"*). Consequence worth stating: `ActivityRenderer.tsx`,
+the stories, the harnesses and ~15 test files did not change at all, so
+"did the move change behaviour?" is not entangled with "did the rename change
+behaviour?".
+
+## How each host coupling was broken
+
+| Coupling | Before | After |
+| --- | --- | --- |
+| `@/i18n` (28 imports) | `useI18n()`, throws outside its provider | `useActivityI18n()` off `ActivityHostContext`. The Player passes `useI18n()` verbatim through `IteraActivityHost`. |
+| `@/hooks/useActionRecorder` | generic over `FamilyAction<F>` from Itera's taxonomy | generic over a plain string union in the package; the app's hook is a typed wrapper, and `activityTraceVocabulary.test.ts` asserts the names still line up |
+| `@/utils/learnerShuffle` → `currentStorageScope()` | read the Itera user id from `localStorage` | `identity.userId` on the port |
+| `@/types/content` | spec shapes lived beside the Itera content model | spec shapes are in the package; `Activity`/`Lesson`/`Unit`/`Program` stay in the app and `content.ts` re-exports the half that moved |
+
+### The coupling the plan's audit missed
+
+The plan's table counted `@/i18n`, `@/api/iteraApi`, `@/auth/AuthContext` and
+"pure logic". **`learnerShuffle` was in the pure column and was not pure**: it
+called `currentStorageScope()`. That one matters more than its size, because of
+how it fails. A missing i18n port renders translation keys — loud, obvious,
+caught by any smoke test. A missing learner scope renders *perfectly*: every
+learner in the consuming app falls back to one per-browser anonymous id, each
+still sees a stable order, nothing throws, and the only thing that stops being
+true is the reason the shuffle exists at all.
+
+That is the shape of coupling worth hunting for in steps 4–5: not the import
+that breaks the build, but the host read whose absence still renders.
+
+## What Fase C left behind, and why
+
+| Not moved | Reason |
+| --- | --- |
+| `sandbox_scenario`, `sandbox-live`, BYOC, `JudgeHeatmap` | Step 4. They consume the `api` ports, which are declared but not yet wired by any host. Also the exact trees two other PRs were editing while this landed — racing them would have produced a merge conflict, not an extraction. |
+| `code` / Monaco / the preview iframe | Step 5 + ADR-5: a separate `@iterahq/activities/code` entrypoint, never in the base bundle. |
+| `document`, `diagram`, `quiz` | Finding 4: they are inline functions inside the Player's 700-line dispatcher, which every open PR touches. Lifting them out is its own PR, sequenced when the queue drains. |
+| `FeedbackFooter` | It is the **global viewport-fixed** footer, mounted by `LessonPlayer` and `LiveSessionPage`. ADR-1 puts it on the player side of the line. `activityFeedbackKinds.ts` (`FOOTER_GRADED_KINDS`) is footer-routing policy and stays with it. |
+| `LiveActivityRenderer` | Finding 3: host routing, not an activity. |
+| `ArtifactVisibilityNotice` | Queries Supabase directly. Moves with `document` in step 4, behind `identity.artifactAudience`. |
+| `ActivitySkeleton`, `InvalidSpecCard` | Player-side loading and validation-failure chrome; the package draws its own unsupported-kind placeholder. |
+| `activityFamilies.ts`, `learningTrace.ts` | Itera's telemetry taxonomy and trace builder. Shipping them would hand every consumer Itera's event model. |
+
+## Two dispatchers, on purpose (and temporarily)
+
+The package has its own `<ActivityRenderer>`; the Player kept its own. They are
+not the same component and neither is a copy of the other — the Player's one
+also validates specs, resolves the BYOC layer and routes live-vs-self-paced, all
+of which are host concerns the package refuses.
+
+The honest cost: until the Player consumes the package's dispatcher, *"the app
+is a consumer"* is true of the **renderers** and not yet of the **dispatch**.
+Closing that is the same PR that lifts `document`/`diagram`/`quiz` out — which
+is finding 4's PR, waiting on the same queue.

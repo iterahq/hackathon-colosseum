@@ -54,3 +54,10 @@ e2e-*-proof.png
 
 # rollback dumps de spec (dados de prod, nao versionar)
 db/.rollback-*.json
+
+# The external-consumer proof reinstalls from scratch on every run
+# (`check.sh` deletes node_modules AND the lock before `npm install <tarball>`),
+# so a committed lock here would be regenerated churn on every CI run and would
+# never be the thing under test. The versions that matter are pinned in
+# `external-consumer/package.json`.
+/external-consumer/package-lock.json

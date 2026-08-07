@@ -25,6 +25,9 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import OtpLoginPage from "./pages/auth/OtpLoginPage";
 import { AuthProvider } from "./auth/AuthContext";
+// The app side of ADR-3: injects i18n + the learner identity into
+// `@iterahq/activities`, which cannot import either. See the file.
+import { IteraActivityHost } from "./components/branded/activity/IteraActivityHost";
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
 import { RequireSubscription } from "./auth/RequireSubscription";
@@ -100,6 +103,13 @@ const App = () => (
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
+            {/* ADR-3 host adapter for @iterahq/activities. Mounted here, not
+                around <ActivityRenderer>, because activities are mounted from
+                four places and forgetting one fails SILENTLY — see the file.
+                Left un-reindented on purpose: this PR moves ~20 files already,
+                and a 320-line whitespace diff here would bury the one line that
+                matters and collide with every open PR. */}
+            <IteraActivityHost>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -446,6 +456,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            </IteraActivityHost>
           </TooltipProvider>
         </QueryClientProvider>
       </AuthProvider>

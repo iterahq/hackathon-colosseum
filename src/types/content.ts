@@ -30,81 +30,38 @@ import type { ActivityKind } from '@iterahq/activity-spec';
 export type { ActivityKind } from '@iterahq/activity-spec';
 
 /**
- * The shared `InstructionPanel` primitive spec — a flexible context block reused
- * by most general activity types. ANY combination of text · audio · image · video
- * plus an optional description below. All fields optional (the flexibility is the
- * point: text-only, image-only, all-media, etc.).
+ * The AUTHORED SPEC SHAPES MOVED to `@iterahq/activities` (Fase C, step 1 of
+ * plan `20260803-itera-player-activities-lib`).
+ *
+ * The split follows ADR-1. What a RENDERER reads out of `activity.spec`
+ * (`InstructionPanelSpec`, `ConceptSpec`, `ChoiceOption`, `SingleChoiceSpec`, …)
+ * travels with the renderers, because a portable activity that cannot name its
+ * own spec is not portable. What describes ITERA'S CONTENT HIERARCHY
+ * (`Activity`, `Lesson`, `Unit`, `Program`, `Badge`, `UserStats`,
+ * `LessonPosition`) stays here — dragging it into the package is exactly what
+ * ADR-1 refuses.
+ *
+ * Re-exported rather than relocated-and-rewritten so the app's 24
+ * `@/types/content` imports keep resolving unchanged.
  */
-export interface InstructionPanelSpec {
-  text?: string;
-  audio_url?: string;
-  image_url?: string;
-  video_url?: string;
-  description?: string;
-}
+import type { I18nText } from '@iterahq/activities';
 
-/** `concept` — a no-action display; just an InstructionPanel (read/watch). */
-export interface ConceptSpec {
-  instruction: InstructionPanelSpec;
-}
-
-/** `concept_reveal` — a concept that ends in an ungraded think-first card. */
-export interface ConceptRevealSpec {
-  instruction: InstructionPanelSpec;
-  reveal: { prompt: string; answer: string };
-}
-
-/** `video` — a video with an optional InstructionPanel around it. */
-export interface VideoSpec {
-  video_url: string;
-  instruction?: InstructionPanelSpec;
-}
-
-/** A selectable option/card — carries text, image, and/or audio. */
-export interface ChoiceOption {
-  id: string;
-  label?: string;
-  image_url?: string;
-  audio_url?: string;
-}
-
-/** `single_choice` — multiple choice, exactly one correct. */
-export interface SingleChoiceSpec {
-  instruction?: InstructionPanelSpec;
-  options: ChoiceOption[];
-  correct_option_id: string;
-}
-
-/** `multi_choice` — multiple choice, one-or-more correct. */
-export interface MultiChoiceSpec {
-  instruction?: InstructionPanelSpec;
-  options: ChoiceOption[];
-  correct_option_ids: string[];
-}
-
-/** `match` — connect cards on the left to cards on the right. */
-export interface MatchPair {
-  left_id: string;
-  right_id: string;
-}
-export interface MatchSpec {
-  instruction?: InstructionPanelSpec;
-  left: ChoiceOption[];
-  right: ChoiceOption[];
-  pairs: MatchPair[];
-}
-
-/** `order` — a scrambled sequence the learner reorders into `correct_order`. */
-export interface OrderSpec {
-  instruction?: InstructionPanelSpec;
-  items: ChoiceOption[];
-  correct_order: string[];
-}
+export type {
+  ChoiceOption,
+  ConceptRevealSpec,
+  ConceptSpec,
+  I18nText,
+  InstructionPanelSpec,
+  MatchPair,
+  MatchSpec,
+  MultiChoiceSpec,
+  OrderSpec,
+  SingleChoiceSpec,
+  VideoSpec,
+} from '@iterahq/activities';
 
 export type ProgressStatus = 'todo' | 'in_progress' | 'done';
 
-/** Bilingual title bag stored as jsonb `title_i18n` ({ pt, en }). */
-export type I18nText = { pt?: string; en?: string; [k: string]: string | undefined };
 
 export interface Activity {
   id: string;

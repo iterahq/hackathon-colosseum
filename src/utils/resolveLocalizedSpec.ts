@@ -1,6 +1,5 @@
 import type { Locale } from '@/i18n';
 
-const LOCALE_KEYS = new Set<string>(['pt', 'en']);
 
 /**
  * The active locale, mirrored in localStorage by `I18nProvider.setLocale` on BOTH
@@ -23,38 +22,26 @@ function activeLocale(): Locale {
   }
 }
 
-/** A bilingual jsonb bag: keys are all locale codes and every value is a string. */
-function isLocaleBag(o: Record<string, unknown>): boolean {
-  const keys = Object.keys(o);
-  return keys.length > 0 && keys.every((k) => LOCALE_KEYS.has(k) && typeof o[k] === 'string');
-}
-
 /**
- * Resolve ONE authored text field that may arrive in either legitimate shape:
- * a plain string, or a `{ pt, en }` bag. Returns `null` — not `''` — when the
- * value is neither, so a caller can tell "the author wrote nothing" apart from
- * "the author wrote an empty string" and refuse to render a card either way.
+ * ⚠️ `isLocaleBag` and `resolveLocalizedText` MOVED to `@iterahq/activities`
+ * (Fase C, 2026-08-07) and are re-exported here so every existing importer —
+ * including the callers `#309` added — keeps resolving `@/utils/resolveLocalizedSpec`.
  *
- * Fallback order is `active locale → pt → en`. `pt` comes first because it is
- * the product default (`DEFAULT_LOCALE` in `@/i18n`) and the language every row
- * was authored in before the EN backfill of #253 — an EN reader looking at a
- * bag that only carries `pt` is better served by the Portuguese sentence the
- * author actually wrote than by a blank panel.
+ * They had to move because `AnswerExplanation` moved, and `AnswerExplanation`
+ * is exactly the component `#309` taught to resolve a bilingual bag. A package
+ * cannot import `@/utils/*`, so the alternatives were: leave the component
+ * behind (which would have split the primitives across the boundary), or copy
+ * the resolver into the package. `#309`'s own docblock rules the copy out —
+ * *"two orders that disagree is how an EN reader ends up seeing a different
+ * sentence depending on which component rendered it"* — so it moved instead,
+ * and there is still exactly one implementation.
  *
- * ⚠️ This is the SAME resolution `resolveLocalizedSpec` applies field-by-field
- * (it is literally the function the deep walk calls). Resolve a single field
- * through this rather than re-deriving the fallback order at a call site: two
- * orders that disagree is how an EN reader ends up seeing a different sentence
- * depending on which component rendered it.
+ * `resolveLocalizedSpec` below (the deep walk, the ambient-locale read, the
+ * service-layer entrypoint) stays here: it is about the Itera content pipeline,
+ * not about rendering one activity.
  */
-export function resolveLocalizedText(value: unknown, locale: Locale): string | null {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const o = value as Record<string, unknown>;
-    if (isLocaleBag(o)) return (o[locale] as string) ?? (o.pt as string) ?? (o.en as string) ?? null;
-  }
-  return null;
-}
+export { isLocaleBag, resolveLocalizedText } from '@iterahq/activities';
+import { isLocaleBag, resolveLocalizedText } from '@iterahq/activities';
 
 function resolveDeep(value: unknown, locale: Locale): unknown {
   if (Array.isArray(value)) return value.map((v) => resolveDeep(v, locale));

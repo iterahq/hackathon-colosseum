@@ -2,11 +2,10 @@
  * The PUBLIC SURFACE of `@iterahq/activities` — `<ActivityRenderer>` and
  * `<ActivityProvider>` (Fase A of plan `20260803-itera-player-activities-lib`).
  *
- * This module is TYPES ONLY. Nothing here renders, nothing here imports a
- * component, and nothing in the app imports it yet — Fase A defines the
- * boundary, Fase B moves the code across it. Zero behaviour change is the
- * exit criterion of this phase, and "no runtime code" is how that is
- * guaranteed rather than argued.
+ * This module is TYPES ONLY, and stays that way: it is the vocabulary the
+ * package and its hosts share, so it must be importable without pulling a
+ * single component into a bundle. Fase A wrote it, Fase C made it real —
+ * `../ActivityRenderer.tsx` and `../context.tsx` are the implementations.
  *
  * The shape, verbatim from the plan:
  *
@@ -19,16 +18,17 @@
  *     />
  *   </ActivityProvider>
  */
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { ActivityKind } from '@iterahq/activity-spec';
-import type { ActivityEventHandler } from './events';
+import type { ActivityEventHandler } from './events.js';
+import type { ActivityRecordedAction } from './internal/actionRecorder.js';
 import type {
   ActivityApiPort,
   ActivityI18n,
   ActivityIdentity,
   ActivityStoragePort,
   ActivityTheme,
-} from './ports';
+} from './ports.js';
 
 /* ────────────────────────────── the activity ─────────────────────────────── */
 
@@ -97,6 +97,28 @@ export interface ActivityCompletion {
   artifact?: PortableProducedArtifact;
   /** Plain-text summary of the answer, for kinds that author no file. */
   response?: string;
+  /**
+   * The ORDERED SEQUENCE of what the learner did to reach this answer — the
+   * HOW, where `response` is the WHAT.
+   *
+   * Added in Fase C, when the kinds that emit it moved into the package. It was
+   * already on the app's `ActivityCompleteDetail`; leaving it out of the
+   * contract would have meant the extracted kinds either stopped emitting
+   * (a behaviour change, which this phase forbids) or emitted through an
+   * off-contract channel.
+   *
+   * ⚠️ Handing this up does NOT cause a write, exactly like `artifact` and
+   * `response`. Only a learner-facing host persists — which is the boundary
+   * that keeps an author test harness from turning curator traffic into
+   * learner data.
+   *
+   * `type` is a plain `string` here on purpose: the vocabulary belongs to the
+   * host's taxonomy (the Player narrows it to `LearnerActionType`), and a
+   * library that shipped the taxonomy would be shipping Itera's telemetry
+   * model. `src/test/activityTraceVocabulary.test.ts` asserts the names the
+   * package emits are a subset of the ones the Player declares.
+   */
+  actions?: readonly ActivityRecordedAction[];
 }
 
 /**
@@ -114,7 +136,14 @@ export type ActivityCompleteHandler = (
 
 /* ──────────────────────────── the components ─────────────────────────────── */
 
-/** Props of `<ActivityRenderer>` — the entire per-activity surface. */
+/**
+ * Props of `<ActivityRenderer>` — the entire per-activity surface.
+ *
+ * Every extracted kind's props must be a SUBSET of this
+ * (`src/test/activityPublicContract.test.ts` asserts it mechanically), which is
+ * also why the host context is React context and not props: a kind that grew an
+ * `i18n` prop would turn that assertion red.
+ */
 export interface ActivityRendererProps {
   /** The row to render. Already validated by `@iterahq/activity-spec`. */
   activity: PortableActivity;
@@ -167,6 +196,20 @@ export interface ActivityHostContext {
    * screen should not have to thread `onEvent` through every renderer.
    */
   onEvent?: ActivityEventHandler;
+  /**
+   * Host-supplied renderers for kinds the package does not ship.
+   *
+   * This exists because Fase C extracted the six backend-free kinds and
+   * DELIBERATELY left the rest behind (`code`/Monaco, `sandbox_scenario`, BYOC,
+   * the AI-judged `document`) — see README.md for why each one stayed. Without
+   * this seam the package's dispatcher would be a dead end for those kinds:
+   * a host would have to stop using `<ActivityRenderer>` entirely the moment a
+   * lesson contained one.
+   *
+   * A registered renderer WINS over a built-in of the same kind, which is what
+   * lets a host try a replacement without forking the package.
+   */
+  renderers?: Partial<Record<ActivityKind, ComponentType<ActivityRendererProps>>>;
 }
 
 /** Props of `<ActivityProvider>` — the host context plus children. */

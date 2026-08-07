@@ -1,0 +1,16 @@
+{
+  "name": "itera-activities-external-consumer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Proves @iterahq/activities renders an activity outside the Itera Player. Deliberately NOT a workspace of this repo.",
+  "scripts": {
+    "check": "node run.mjs"
+  },
+  "dependencies": {
+    "@iterahq/activities": "file:../../../../../../tmp/tmp.FHuyHV5jJz/iterahq-activities-0.1.0.tgz",
+    "jsdom": "^29.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

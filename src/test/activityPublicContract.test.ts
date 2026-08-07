@@ -144,8 +144,32 @@ type _verdictDispatcher = Expect<Assignable<Verdict<typeof ActivityRenderer>, bo
 type _rowNarrows = Expect<Assignable<Activity, PortableActivity>>;
 
 /* ─────── 4. the completion detail is PRESERVED, not redesigned ──────────── */
+// Until Fase C this was `Mutual<>`: the two types were interchangeable. They no
+// longer are, in exactly ONE place, and it is worth being precise about which.
+//
+// `ActivityCompleteDetail.actions` is `readonly RecordedAction[]`, whose `type`
+// is `LearnerActionType` — the union derived from `FAMILY_ACTIONS` in
+// `src/utils/activityFamilies.ts`. `ActivityCompletion.actions` is
+// `readonly ActivityRecordedAction[]`, whose `type` is `string`. The package
+// CANNOT narrow it: the vocabulary is Itera's telemetry taxonomy, and shipping
+// it would hand every consumer of the library Itera's event model.
+//
+// So the app's type is a strict NARROWING of the package's, and that is checked
+// two ways, because a one-way assignability check alone would also pass if the
+// app quietly grew a field the contract knows nothing about:
+//
+//   (a) the app's detail is assignable to the contract's completion;
+//   (b) the app's detail has NO field outside the contract.
+//
+// Together those still say "preserved, not redesigned" — a new field on either
+// side turns one of them red — while admitting the one deliberate difference.
+// The RUNTIME half of that promise (the action NAMES the package emits really
+// are in the app's vocabulary) is asserted in `activityTraceVocabulary.test.ts`.
 
-type _detailPreserved = Expect<Mutual<ActivityCompleteDetail, ActivityCompletion>>;
+type _detailNarrows = Expect<Assignable<ActivityCompleteDetail, ActivityCompletion>>;
+type _detailNoExtraFields = Expect<
+  IsNever<Exclude<keyof ActivityCompleteDetail, keyof ActivityCompletion>>
+>;
 
 /* ───────── 5. the ports mirror the real client, not an invented one ───────── */
 // If someone changes a wire shape in `src/api/iteraApi.ts` without updating the
@@ -165,12 +189,89 @@ type _i18nSatisfied = Expect<Assignable<ReturnType<typeof useI18n>, ActivityI18n
 
 /* ──────────────────────────── runtime assertion ──────────────────────────── */
 
-describe('activities public contract (Fase A)', () => {
-  it('emits no runtime code — Fase A cannot change what renders', () => {
-    // A types-only module compiles to an empty namespace object. If a component,
-    // a constant or a helper ever lands in `contract/`, this fails and the
-    // "zero behaviour change" promise of Fase A stops being free.
-    expect(Object.keys(contract)).toEqual([]);
+/**
+ * THE PUBLIC SURFACE, WRITTEN DOWN.
+ *
+ * Until Fase C this test asserted `Object.keys(contract)` was EMPTY — the
+ * mechanical proof that Fase A shipped types and nothing else. Fase C moves the
+ * renderers across, so emptiness is exactly the wrong assertion now. What
+ * replaces it has to keep the same property: **a change to what the package
+ * exposes cannot happen by accident.**
+ *
+ * So the list is exact, not a subset. Adding an export to `index.ts` without
+ * adding it here turns this red, which is the review moment where someone has
+ * to say out loud whether the new name is a PROMISE to consumers or an
+ * implementation detail that leaked. That question is the whole of "keep the
+ * public API honest", and a `toContain`-style check would never ask it.
+ *
+ * Type-only exports do not appear here — they are erased at runtime, which is
+ * why the type-level assertions above exist separately.
+ */
+const PUBLIC_RUNTIME_SURFACE = [
+  // entry points
+  'ActivityProvider',
+  'ActivityRenderer',
+  'BUILT_IN_ACTIVITY_KINDS',
+  'isBuiltInActivityKind',
+  'useActivityHost',
+  'useActivityI18n',
+  'useActivityStorage',
+  // built-in kinds
+  'ConceptActivity',
+  'ConceptRevealActivity',
+  'MatchActivity',
+  'MultiChoiceActivity',
+  'OrderActivity',
+  'SingleChoiceActivity',
+  'VideoActivity',
+  // i18n
+  'ACTIVITY_DICTIONARY',
+  'ACTIVITY_I18N_KEYS',
+  'createActivityI18n',
+  // telemetry
+  'ACTIVITY_TRACE_ACTIONS',
+  'MAX_ACTIVITY_ACTIONS',
+  'useActivityActionRecorder',
+  // provisional: shared primitives the un-extracted kinds still compose with
+  'AnswerExplanation',
+  'ActivityShell',
+  'DoneButton',
+  'InstructionImage',
+  'InstructionPanel',
+  'KindBadge',
+  'RichBlock',
+  'RichSpans',
+  'RichText',
+  'SubmitButton',
+  'answerMachine',
+  'anonLearnerScope',
+  'isLocaleBag',
+  'resolveLocalizedText',
+  'choiceOptionState',
+  'learnerShuffle',
+  'learnerShuffleAvoidingSolution',
+  'learnerShuffleSeed',
+  'localizedText',
+  'parseInline',
+  'parseRichText',
+  'resolveLearnerScope',
+  'seededShuffle',
+].sort();
+
+describe('activities public contract', () => {
+  it('exports exactly the documented public surface — no more, no less', () => {
+    expect(Object.keys(contract).sort()).toEqual(PUBLIC_RUNTIME_SURFACE);
+  });
+
+  it('renders every kind it claims to render', () => {
+    // `BUILT_IN_ACTIVITY_KINDS` is what a host reads to decide whether it can
+    // display a row without supplying its own renderer. If the list and the
+    // dispatcher disagree, the host is told "yes" and gets the unsupported
+    // placeholder — a lie that only shows up in front of a learner.
+    for (const kind of contract.BUILT_IN_ACTIVITY_KINDS) {
+      expect(contract.isBuiltInActivityKind(kind)).toBe(true);
+    }
+    expect(contract.isBuiltInActivityKind('sandbox_scenario')).toBe(false);
   });
 
   it('keeps the type-level assertions above referenced', () => {

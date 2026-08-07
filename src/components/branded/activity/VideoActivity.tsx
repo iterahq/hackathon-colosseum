@@ -1,61 +1,10 @@
 /**
- * Video — a video-only activity (watch). A subset of Concept promoted to its
- * own kind: renders the video prominently, with an optional InstructionPanel
- * for surrounding context. Non-interactive → completes correct after watch.
+ * MOVED — `VideoActivity` now lives in `@iterahq/activities` (Fase C, step 3:
+ * the backend-free kinds).
  *
- * Skeleton: a pulse placeholder reserves space at the video's natural height
- * (h-[28rem]) while the media loads, preventing layout shift.
+ * Kept as the app's import path so `ActivityRenderer.tsx`, the stories and the
+ * tests keep resolving it — the extraction is meant to be invisible to the
+ * Player, and a PR that also rewrote 15 import sites would have mixed "did the
+ * move change behaviour?" with "did the rename change behaviour?".
  */
-import { useState } from 'react';
-import { Video as VideoIcon } from 'lucide-react';
-import { useI18n } from '@/i18n';
-import type { Activity, VideoSpec } from '@/types/content';
-import { InstructionPanel } from './InstructionPanel';
-import { ActivityShell } from './parts';
-
-export function VideoActivity({
-  activity,
-}: {
-  activity: Activity;
-  /** Part of the shared renderer contract; a video has nothing to grade. */
-  onComplete: (correct: boolean) => void;
-}) {
-  const { t } = useI18n();
-  const spec = activity.spec as unknown as VideoSpec;
-  const [videoLoaded, setVideoLoaded] = useState(false);
-
-  return (
-    <ActivityShell kind="video" icon={VideoIcon} label={t('activity.video')}>
-      {spec?.instruction && (
-        <div className="mb-5">
-          <InstructionPanel spec={spec.instruction} />
-        </div>
-      )}
-      {spec?.video_url ? (
-        <div
-          className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden"
-          data-testid="video-player"
-        >
-          {!videoLoaded && (
-            <div
-              className="w-full h-[28rem] animate-pulse bg-muted-foreground/10"
-              aria-hidden="true"
-              data-testid="video-skeleton"
-            />
-          )}
-          <video
-            src={spec.video_url}
-            controls
-            className={`w-full max-h-[28rem] bg-black transition-opacity duration-300 ${videoLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
-            onLoadedMetadata={() => setVideoLoaded(true)}
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center gap-3 py-12 text-muted-foreground rounded-2xl border border-border bg-obsidiana/60">
-          <VideoIcon className="w-6 h-6 text-menta" />
-          <span className="text-sm">{t('activity.video.missing')}</span>
-        </div>
-      )}
-    </ActivityShell>
-  );
-}
+export { VideoActivity } from '@iterahq/activities';

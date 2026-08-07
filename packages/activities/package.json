@@ -1,7 +1,7 @@
 {
   "name": "@iterahq/activities",
   "version": "0.1.0",
-  "description": "Portable Itera activity renderers. v0.1.0 ships the PUBLIC CONTRACT only (types) — the renderers themselves land in Fase C.",
+  "description": "Portable Itera activity renderers — render an activity outside the Itera Player.",
   "license": "UNLICENSED",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -38,6 +38,11 @@
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@types/react": "^18.3.23",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "framer-motion": "^11.18.2",
+    "lucide-react": "^0.462.0"
   }
 }

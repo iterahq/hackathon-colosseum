@@ -1,6 +1,9 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
+// The activity tree needs an i18n PORT, not just the app's provider — the
+// bilingual-explanation cases below read `locale`. See the component.
+import { ActivityI18nBridge } from '@/components/branded/activity/IteraActivityHost';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { mapActivity } from '@/services/programs.service';
 import type { Activity, ActivityKind } from '@/types/content';
@@ -70,13 +73,17 @@ function renderActivity(activity: Activity, reveal = false) {
   const onComplete = vi.fn();
   const view = render(
     <I18nProvider>
-      <ActivityRenderer activity={activity} onComplete={onComplete} reveal={reveal} />
+      <ActivityI18nBridge>
+        <ActivityRenderer activity={activity} onComplete={onComplete} reveal={reveal} />
+      </ActivityI18nBridge>
     </I18nProvider>
   );
   const rerenderWith = (next: boolean) =>
     view.rerender(
       <I18nProvider>
-        <ActivityRenderer activity={activity} onComplete={onComplete} reveal={next} />
+        <ActivityI18nBridge>
+          <ActivityRenderer activity={activity} onComplete={onComplete} reveal={next} />
+        </ActivityI18nBridge>
       </I18nProvider>
     );
   return { onComplete, rerenderWith };

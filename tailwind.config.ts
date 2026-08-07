@@ -12,6 +12,18 @@ export default {
     // published Storybook build PURGES every utility class used only in these
     // stories (spacings collapse, opacity-modifier colors vanish).
     "./design-playground/**/*.{ts,tsx}",
+    /**
+     * `@iterahq/activities` (Fase C). The extracted renderers carry their
+     * Tailwind classes as string literals, and the app resolves the package
+     * through the npm-workspace symlink to `packages/activities/dist` — which
+     * is OUTSIDE `./src`, so without this glob every utility used ONLY by an
+     * extracted kind is purged and the activities render unstyled.
+     *
+     * ⚠️ `dist`, not `src`. Tailwind scans real files, and the symlinked path
+     * the bundler actually reads is the built one. Scanning `src` as well would
+     * paper over a stale build instead of surfacing it.
+     */
+    "./packages/*/dist/**/*.js",
   ],
   prefix: "",
   theme: {

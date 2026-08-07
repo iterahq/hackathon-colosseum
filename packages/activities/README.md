@@ -5,13 +5,33 @@ of [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/2026
 No bottom bar, no progress bar, no hearts, no routing: those stay in the
 `LessonPlayer`.
 
-> **v0.1.0 ships the public CONTRACT only — types, zero runtime.** The renderers
-> move here in Fase C. Publishing the contract first is deliberate: a host app
-> (the LCPWCI prototype in `dfl-labs`) can already type its ports, stub them and
-> compile against the real boundary before a single component moves.
+> **Fase C landed: the renderers are here.** v0.1.0 shipped types only; the
+> package now has runtime and renders seven kinds on its own. What did NOT move
+> — and why each one stayed — is the table below; read it before assuming a
+> kind is available.
 
-The design doc — port-by-port rationale, per-kind coverage, Fase C extraction
-order — is [`CONTRACT.md`](./CONTRACT.md).
+The design doc — port-by-port rationale, per-kind coverage, extraction order —
+is [`CONTRACT.md`](./CONTRACT.md). The proof that this is genuinely consumable
+from outside the Player is [`external-consumer/`](../../external-consumer/) at
+the repo root, which installs a **packed tarball** into its own project and
+renders from fixture specs with no bundler and no Itera anything.
+
+## What renders, and what does not
+
+`BUILT_IN_ACTIVITY_KINDS` is the machine-readable version of the left column;
+`isBuiltInActivityKind(kind)` is how a host asks before it mounts.
+
+| Kind | Here? | Why |
+| --- | --- | --- |
+| `concept` · `concept_reveal` · `video` · `single_choice` · `multi_choice` · `match` · `order` | ✅ | Backend-free. Fase C steps 1–3. |
+| `sandbox_scenario` · BYOC | ❌ | Fase C **step 4** — they go through the `api` ports, and the ports are declared but not yet consumed. Also the area two other PRs were editing while this one landed. |
+| `code` | ❌ | Fase C **step 5** — Monaco behind a separate `@iterahq/activities/code` entrypoint (ADR-5), never in the base bundle. |
+| `document` · `diagram` · `quiz` | ❌ | Not files: they are inline functions inside the Player's 700-line dispatcher. `CONTRACT.md` finding 4 says to lift them when the PR queue drains. |
+
+A kind that is not here is **not a dead end**: pass your own component through
+`ActivityHostContext.renderers`, and it wins over any built-in of the same kind.
+An unknown kind with no host renderer draws a visible placeholder and emits
+`port.unavailable` — it never throws.
 
 ## This package is PRIVATE
 
@@ -99,7 +119,7 @@ import type {
 } from '@iterahq/activities';
 ```
 
-The shape the renderers will implement in Fase C:
+The whole of it:
 
 ```tsx
 <ActivityProvider
@@ -122,12 +142,50 @@ The package **never** fetches and **never** reads a session — the host injects
 already-authenticated ports (ADR-3). A missing port is a capability probe, not a
 crash: `Boolean(api?.judge)` replaces the old `iteraApiConfigured()`.
 
-## Peer dependencies
+### The smallest working host
 
-`@iterahq/activity-spec` (>=0.7.0, itself private on GitHub Packages) and
-`react`. `@devfellowship/components` + Tailwind become peers in Fase C, when
-components that need them actually arrive — declaring them now would force a
-Tailwind setup on a host that only imports types.
+`i18n` is the only required port, and the package ships its own activity
+dictionary, so this is a complete consumer:
+
+```tsx
+import { ActivityProvider, ActivityRenderer, createActivityI18n } from '@iterahq/activities';
+
+<ActivityProvider i18n={createActivityI18n('pt')} identity={{ authenticated: false, userId }}>
+  <ActivityRenderer activity={activity} onComplete={(correct) => …} />
+</ActivityProvider>
+```
+
+⚠️ **`identity.userId` is load-bearing and fails silently.** The choice and
+ordering kinds shuffle per (learner, activity) so two learners side by side
+cannot copy *"it's the third one"*. Omit `userId` and every learner in your app
+falls back to one per-browser anonymous scope: each still sees a stable order,
+nothing errors, and the pedagogical property is simply gone. Pass an opaque,
+stable per-learner id.
+
+## Dependencies
+
+**Runtime:** `lucide-react`, `framer-motion` — real dependencies, installed with
+the package.
+
+**Peers:** `react` (^18.3.1) and `@iterahq/activity-spec` (>=0.8.0). The spec
+package is a **types-only** peer: `dist/**/*.js` contains no import of it, so a
+JavaScript consumer that never typechecks does not need it installed.
+
+**Styling is NOT a dependency, and that is the honest gap.** The renderers carry
+Tailwind utility classes against the brand tokens `@devfellowship/components`
+defines (`evergreen`, `menta`, `obsidiana`, `border`, `card`, …). The package
+ships no CSS and no Tailwind plugin, so a host with no Tailwind pipeline renders
+correct, interactive, **unstyled** activities. Two things a consumer must do:
+
+1. add `node_modules/@iterahq/activities/dist/**/*.js` to its Tailwind `content`
+   globs (the classes live in the built files, not in your `src`);
+2. define the brand tokens — installing `@devfellowship/components` is the
+   short path.
+
+This is the risk the plan named as *"design tokens não viajam"*, and it is
+explicitly **not** closed by the external-consumer check, which asserts DOM and
+behaviour rather than pixels. Fase D is where it gets tested rather than
+asserted.
 
 ## Development
 
@@ -140,6 +198,20 @@ npm run build -w @iterahq/activities
 
 `npm install` at the root runs the package's `prepare` script, so `dist/` exists
 before the app typechecks or tests against it.
+
+⚠️ **The app consumes `dist/`, not `src/`** — the workspace symlink resolves
+through `main`/`exports`. That is deliberate (the app exercises the same module
+edge an external host does), and it has one consequence worth knowing: editing
+a file here does nothing until the package is rebuilt. The app's `predev`,
+`pretest`, `pretypecheck` and `prebuild` scripts all run `build:packages` for
+exactly that reason, so the only way to test a stale `dist/` is to invoke
+`vitest`/`tsc` directly.
+
+To exercise the package the way an outside app would:
+
+```sh
+npm run external-consumer     # packs a tarball, installs it elsewhere, renders
+```
 
 ## Publishing
 
