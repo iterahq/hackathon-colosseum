@@ -530,7 +530,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'ver dica',
     'terminal.placeholder.freeText': 'digite um comando…',
-    'terminal.placeholder.options': 'escolha abaixo…',
+    // Um por modo de submissão (§4): o que envia é diferente em cada um, e o
+    // placeholder é onde o aluno lê isso antes de tentar.
+    'terminal.placeholder.tap': 'toque numa opção abaixo — ela já roda',
+    'terminal.placeholder.assemble': 'monte o comando e aperte Rodar',
     'terminal.empty.freeText': '# digite um comando e aperte Enter',
     'terminal.empty.options': '# monte um comando nas opções abaixo',
     'terminal.run': 'Rodar',
@@ -1194,7 +1197,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'see hint',
     'terminal.placeholder.freeText': 'type a command…',
-    'terminal.placeholder.options': 'pick below…',
+    'terminal.placeholder.tap': 'tap an option below — it runs right away',
+    'terminal.placeholder.assemble': 'build the command, then press Run',
     'terminal.empty.freeText': '# type a command and press Enter',
     'terminal.empty.options': '# build a command from the options below',
     'terminal.run': 'Run',

@@ -76,10 +76,16 @@ describe('terminal i18n — no copy lives in the components', () => {
     expect(offenders).toEqual([]);
   });
 
+  /**
+   * Scans for the KEY LITERAL, not for `tr('…')`. Since §4 the placeholder key
+   * is chosen through a `Record<TerminalSubmitMode, string>` lookup table, so a
+   * scan anchored on the call site would silently stop covering three keys —
+   * which is how a guard rots into decoration.
+   */
   it('references only keys that exist in BOTH locales', () => {
     const missing: string[] = [];
     for (const { file, text } of terminalSources()) {
-      for (const m of withoutComments(text).matchAll(/\btr\(\s*'([\w.]+)'/g)) {
+      for (const m of withoutComments(text).matchAll(/'((?:terminal|activity)\.[\w.]+)'/g)) {
         const key = m[1]!;
         if (!resources.pt[key]) missing.push(`${file}: pt is missing ${key}`);
         if (!resources.en[key]) missing.push(`${file}: en is missing ${key}`);
@@ -90,9 +96,22 @@ describe('terminal i18n — no copy lives in the components', () => {
 
   it('actually references the dictionary — the scan must not pass by finding nothing', () => {
     const keys = terminalSources().flatMap(({ text }) => [
-      ...withoutComments(text).matchAll(/\btr\(\s*'([\w.]+)'/g),
+      ...withoutComments(text).matchAll(/'((?:terminal|activity)\.[\w.]+)'/g),
     ]);
-    expect(keys.length).toBeGreaterThanOrEqual(8);
+    expect(keys.length).toBeGreaterThanOrEqual(12);
+  });
+
+  /** Every `terminal.*` key in the dictionary is actually used by a component. */
+  it('leaves no orphan terminal.* key behind', () => {
+    const used = new Set(
+      terminalSources().flatMap(({ text }) =>
+        [...withoutComments(text).matchAll(/'(terminal\.[\w.]+)'/g)].map((m) => m[1]!),
+      ),
+    );
+    const orphans = Object.keys(resources.pt)
+      .filter((k) => k.startsWith('terminal.'))
+      .filter((k) => !used.has(k));
+    expect(orphans, 'dead copy is copy nobody maintains').toEqual([]);
   });
 });
 

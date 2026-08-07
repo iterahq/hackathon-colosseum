@@ -36,6 +36,33 @@ import { useTerminalSandbox } from './useTerminalSandbox';
 
 export type TerminalVariant = 'freeText' | 'options';
 
+/**
+ * HOW A TURN IS SUBMITTED — plan `20260807-itera-terminal-sandbox-refinamentos`
+ * §4. Three input surfaces, three different answers to "what sends this?", and
+ * the affordance has to match or it teaches the wrong thing:
+ *
+ *   `enter`    free text — type it, then Enter or the Run button.
+ *   `tap`      whole-command options — ONE TAP SENDS. No Run button at all.
+ *   `assemble` token chips — build the line, then Run. The button is required.
+ *
+ * `tap` used to render the Run button too, permanently disabled next to a line
+ * that could never hold anything: a control that does nothing is not neutral —
+ * it tells the learner that a second action is expected, and they wait for it.
+ *
+ * It is derived, not authored: `variant` (the activity's `inputMode`) plus the
+ * CURRENT step's `optionGranularity`, which is per-step by design (tsq2 → C), so
+ * one scenario legitimately ramps `tap` → `assemble` → and the affordance
+ * changes under the learner mid-activity. That is the intended difficulty ramp,
+ * not a glitch.
+ */
+export type TerminalSubmitMode = 'enter' | 'tap' | 'assemble';
+
+const PLACEHOLDER_KEY: Record<TerminalSubmitMode, string> = {
+  enter: 'terminal.placeholder.freeText',
+  tap: 'terminal.placeholder.tap',
+  assemble: 'terminal.placeholder.assemble',
+};
+
 export function TerminalSandboxShell({
   activity,
   onComplete,
@@ -108,6 +135,9 @@ export function TerminalSandboxShell({
    */
   const ps1 = t(scenario.initialState.ps1 ?? tr('terminal.ps1'), locale);
 
+  const submitMode: TerminalSubmitMode =
+    variant === 'freeText' ? 'enter' : s.granularity === 'command' ? 'tap' : 'assemble';
+
   const stepLabel = s.currentStep
     ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}`
     : undefined;
@@ -120,7 +150,12 @@ export function TerminalSandboxShell({
       icon={TerminalSquare}
       label={tr('activity.sandboxScenario')}
     >
-      <div className="flex flex-col gap-4" data-sandbox-kind="terminal" data-input-mode={variant}>
+      <div
+        className="flex flex-col gap-4"
+        data-sandbox-kind="terminal"
+        data-input-mode={variant}
+        data-submit-mode={submitMode}
+      >
         {/* TOP ZONE — the instruction lives outside/above the window. */}
         {showControls && (stepLabel || coachPrompt) && (
           <div className="flex flex-col gap-2" data-testid="sandbox-instruction">
@@ -153,15 +188,14 @@ export function TerminalSandboxShell({
             <TerminalPromptBar
               ps1={ps1}
               value={s.draft}
-              editable={variant === 'freeText'}
-              placeholder={tr(
-                variant === 'options'
-                  ? 'terminal.placeholder.options'
-                  : 'terminal.placeholder.freeText',
-              )}
+              editable={submitMode === 'enter'}
+              /* THE RUN BUTTON EXISTS ONLY WHERE IT DOES SOMETHING (plan §4). */
+              showRun={submitMode !== 'tap'}
+              submitMode={submitMode}
+              placeholder={tr(PLACEHOLDER_KEY[submitMode])}
               canRun={s.canRun}
               onChange={s.setDraft}
-              onRun={() => s.runDraft(variant === 'options' ? 'tokens' : 'typed')}
+              onRun={() => s.runDraft(submitMode === 'assemble' ? 'tokens' : 'typed')}
               runLabel={tr('terminal.run')}
             />
           )}

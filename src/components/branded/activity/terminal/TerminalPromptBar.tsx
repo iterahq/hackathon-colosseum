@@ -8,11 +8,19 @@ import { CornerDownLeft } from 'lucide-react';
  * `editable: false` is the options mode. The learner is still looking at a real
  * command line being built up token by token — they just cannot type into it,
  * because narrowing the input space is the entire point of that mode.
+ *
+ * `showRun: false` is the whole-command options mode, where ONE TAP SENDS (plan
+ * `20260807-itera-terminal-sandbox-refinamentos` §4). Rendering a disabled Run
+ * button there is not harmless: a control that never does anything still says
+ * "a second action is expected", and the learner waits for a step that does not
+ * exist. See `TerminalSubmitMode` for the three surfaces.
  */
 export function TerminalPromptBar({
   ps1,
   value,
   editable,
+  showRun,
+  submitMode,
   placeholder,
   canRun,
   onChange,
@@ -22,6 +30,10 @@ export function TerminalPromptBar({
   ps1: string;
   value: string;
   editable: boolean;
+  /** Whether this surface needs an explicit send affordance at all. */
+  showRun: boolean;
+  /** Exposed for tests and for styling hooks — the derivation lives in the shell. */
+  submitMode: string;
   placeholder: string;
   canRun: boolean;
   onChange: (v: string) => void;
@@ -29,7 +41,11 @@ export function TerminalPromptBar({
   runLabel: string;
 }) {
   return (
-    <div className="mt-3 flex w-full items-center gap-2 border-t border-border/60 pt-3">
+    <div
+      className="mt-3 flex w-full items-center gap-2 border-t border-border/60 pt-3"
+      data-testid="terminal-prompt-bar"
+      data-submit-mode={submitMode}
+    >
       <span className="shrink-0 font-mono text-[13px] font-semibold text-evergreen">{ps1}</span>
       {editable ? (
         <input
@@ -57,16 +73,18 @@ export function TerminalPromptBar({
           {value.trim() || placeholder}
         </p>
       )}
-      <button
-        type="button"
-        disabled={!canRun}
-        onClick={onRun}
-        data-testid="terminal-run"
-        aria-label={runLabel}
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-      >
-        <CornerDownLeft className="h-4 w-4" />
-      </button>
+      {showRun && (
+        <button
+          type="button"
+          disabled={!canRun}
+          onClick={onRun}
+          data-testid="terminal-run"
+          aria-label={runLabel}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+        >
+          <CornerDownLeft className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

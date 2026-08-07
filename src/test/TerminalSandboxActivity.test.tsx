@@ -295,6 +295,71 @@ describe('the options surface judges identically', () => {
   });
 });
 
+/**
+ * §4 of `20260807-itera-terminal-sandbox-refinamentos`: what SENDS a turn is
+ * different on each surface, and the affordance has to match.
+ *
+ *   free text          → type it, then Enter / Run
+ *   whole-command chip → ONE TAP SENDS, and there is no Run button at all
+ *   token chips        → build the line, then Run
+ */
+describe('submission differs by input mode', () => {
+  const mode = () => screen.getByTestId('terminal-prompt-bar').getAttribute('data-submit-mode');
+  const cmdLines = () => screen.getByTestId('terminal-transcript').querySelectorAll('[data-line-kind="cmd"]').length;
+
+  it('free text: Enter sends, and the Run button is there', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    expect(mode()).toBe('enter');
+    expect(screen.getByTestId('terminal-run')).toBeTruthy();
+    expect(cmdLines()).toBe(0);
+    type('touch perfil.md');
+    expect(cmdLines()).toBe(1);
+  });
+
+  it('whole-command options: ONE TAP sends, and there is NO Run button', () => {
+    mount(OPTIONS_SPEC, captor().fn, 'a-submit-tap');
+    expect(mode()).toBe('tap');
+    // The affordance is absent, not merely disabled: a control that never does
+    // anything still promises a second step the learner then waits for.
+    expect(screen.queryByTestId('terminal-run')).toBeNull();
+
+    fireEvent.click(screen.getByText('touch perfil.md'));
+    // ONE click, ONE command. No second action was needed or possible.
+    expect(cmdLines()).toBe(1);
+    expect(transcript()).toContain('touch perfil.md');
+  });
+
+  it('token options: tapping chips does NOT send; Run sends exactly once', () => {
+    mount(OPTIONS_SPEC, captor().fn, 'a-submit-assemble');
+
+    // Clear step 1 (tap surface) to reach the token step.
+    fireEvent.click(screen.getByText('touch perfil.md'));
+    expect(mode()).toBe('assemble');
+    expect(screen.getByTestId('terminal-run')).toBeTruthy();
+
+    const before = cmdLines();
+    const tap = (token: string) =>
+      fireEvent.click(within(screen.getByTestId('terminal-options')).getByText(token));
+    tap('git');
+    tap('add');
+    tap('.');
+    // Three taps, zero commands run. The line is only being COMPOSED.
+    expect(cmdLines()).toBe(before);
+
+    fireEvent.click(screen.getByTestId('terminal-run'));
+    // Exactly one more — not one per chip, and not zero.
+    expect(cmdLines()).toBe(before + 1);
+    expect(transcript()).toContain('git add .');
+  });
+
+  it('the surface changes WITH the step — the ramp is per-step, not per-activity', () => {
+    mount(OPTIONS_SPEC, captor().fn, 'a-submit-ramp');
+    expect(mode()).toBe('tap');
+    fireEvent.click(screen.getByText('touch perfil.md'));
+    expect(mode()).toBe('assemble');
+  });
+});
+
 describe('restart — question Q4 → A', () => {
   it('clears the world and the transcript but keeps what was already earned', () => {
     const cap = captor();

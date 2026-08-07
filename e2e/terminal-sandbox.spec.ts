@@ -241,6 +241,66 @@ test('§3 no Portuguese survives in the en render', async ({ page }) => {
   }
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * §4 — SUBMISSION DIFFERS BY INPUT MODE
+ *
+ *   free text          → type it, then Enter / Run
+ *   whole-command chip → ONE TAP SENDS, and no Run button exists
+ *   token chips        → build the line, then Run
+ *
+ * The Run button used to render in all three, permanently disabled in the tap
+ * surface. A control that never does anything is not neutral: it promises a
+ * second step, and the learner waits for it.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** Commands actually executed — the only honest counter for "did it submit". */
+function ranCommands(page: Page) {
+  return page.locator('[data-testid="terminal-transcript"] [data-line-kind="cmd"]');
+}
+
+test('§4 free text: Enter submits, and the Run button is present', async ({ page }) => {
+  await open(page, TERMINAL_FREE_TEXT);
+  await expect(page.getByTestId('terminal-prompt-bar')).toHaveAttribute('data-submit-mode', 'enter');
+  await expect(page.getByTestId('terminal-run')).toBeVisible();
+
+  await expect(ranCommands(page)).toHaveCount(0);
+  const input = page.getByTestId('terminal-input');
+  await input.fill('git checkout -b feat/perfil');
+  await input.press('Enter');
+  await expect(ranCommands(page)).toHaveCount(1);
+});
+
+test('§4 whole-command options: one tap submits, with no Run button at all', async ({ page }) => {
+  await open(page, TERMINAL_OPTIONS);
+  await expect(page.getByTestId('terminal-prompt-bar')).toHaveAttribute('data-submit-mode', 'tap');
+  await expect(page.getByTestId('terminal-run')).toHaveCount(0);
+
+  await page.getByTestId('terminal-option-command').filter({ hasText: 'git branch' }).click();
+  // One click, one command — no second action was needed or available.
+  await expect(ranCommands(page)).toHaveCount(1);
+});
+
+test('§4 token options: chips do NOT submit, Run submits once', async ({ page }) => {
+  await open(page, TERMINAL_OPTIONS);
+
+  // Clear the tap step to reach the token step — the ramp is per-step (tsq2 → C).
+  await page.getByTestId('terminal-option-command').filter({ hasText: 'checkout -b' }).click();
+  await expect(page.getByTestId('terminal-prompt-bar')).toHaveAttribute(
+    'data-submit-mode',
+    'assemble',
+  );
+  await expect(page.getByTestId('terminal-run')).toBeVisible();
+
+  const before = await ranCommands(page).count();
+  await page.getByTestId('terminal-option-token').filter({ hasText: /^git$/ }).click();
+  await page.getByTestId('terminal-option-token').filter({ hasText: /^status$/ }).click();
+  // Two taps, zero commands. The line is only being composed.
+  await expect(ranCommands(page)).toHaveCount(before);
+
+  await page.getByTestId('terminal-run').click();
+  await expect(ranCommands(page)).toHaveCount(before + 1);
+});
+
 test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
   await open(page, TERMINAL_FREE_TEXT);
 
