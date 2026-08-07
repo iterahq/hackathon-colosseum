@@ -245,6 +245,21 @@ export const FAMILY_ACTIONS = {
     'message_sent',
     /** "Limpar" — the composer inputs were reset. `resetInputs`. */
     'inputs_cleared',
+    /**
+     * A command was run in the TERMINAL sandbox (`spec.sandboxKind ===
+     * 'terminal'`).
+     * `{ step_id, command, matched, unlocked, source }` where
+     *   • `command` is the NORMALIZED form — see the free-text carve-out below;
+     *   • `matched` is whether it lit the current step;
+     *   • `unlocked` is the step ids it completed (usually 0 or 1);
+     *   • `source` is `'typed' | 'option' | 'tokens'`, i.e. WHICH input surface
+     *     produced it. Without it, the two input modes are indistinguishable in
+     *     the data and the question "does the options mode actually help?"
+     *     cannot be asked.
+     */
+    'command_run',
+    /** "Recomeçar" — the world was reset to `initialState`; the trace was NOT. `{ step_id, resets }`. */
+    'sandbox_reset',
   ],
 } as const satisfies Record<ActivityFamily, readonly string[]>;
 
@@ -277,7 +292,14 @@ export const FAMILY_EMITTED = {
   arrangement: ['item_moved', 'pair_armed', 'pair_made', 'pair_broken', 'answer_submitted'],
   reading: [],
   editor: [],
-  scenario: [],
+  // `scenario` is PARTIALLY wired: the TERMINAL sandbox emits, the CHAT sandbox
+  // still does not. That asymmetry is deliberate and it is why this is a ledger
+  // and not a target — the terminal is new, so there is no history to lose by
+  // instrumenting it late, whereas retrofitting the 29 live chat rows is its
+  // own change with its own regression surface. Anyone querying
+  // `activity_traces` for the scenario family must therefore filter on
+  // `spec.sandboxKind`, not assume the family is uniform.
+  scenario: ['command_run', 'sandbox_reset'],
 } as const satisfies Record<ActivityFamily, readonly LearnerActionType[]>;
 
 /** Families whose activities hand a rich sequence up through `onComplete`. */
@@ -298,8 +320,46 @@ export const WIRED_FAMILIES: readonly ActivityFamily[] = ACTIVITY_FAMILIES.filte
  * `slot_set` carries the slot's authored value (a fixed vocabulary item), not
  * free text. An action type that cannot be described without free text does not
  * belong in this vocabulary.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE ONE CARVE-OUT: `command_run.command` (Tainan, 2026-08-06)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A shell command typed into the terminal sandbox IS free text by the letter of
+ * the rule above, and it is recorded anyway. This is a decision, not an
+ * oversight, and it is written here so the next reader does not "fix" it:
+ *
+ *   • **What is recorded** is the NORMALIZED form only —
+ *     `normalizeCommand(raw).join(' ')`, quote-aware. Never the raw line. The
+ *     raw line exists in the browser for the transcript echo and dies there.
+ *   • **Why** — it is the only datum that can tell a genuine mistake apart from
+ *     a matcher that is too strict. Without it, a learner who typed a perfectly
+ *     good variant the author forgot to list appears in the data as an ordinary
+ *     error, indistinguishable from someone who does not know the command; the
+ *     activity reads as broken to them and as fine to us. The proxy that finds
+ *     those — commands that ran and matched no step, grouped — is impossible to
+ *     build if the command is not there.
+ *   • **The reading that makes it consistent** — a terminal command is TOOL
+ *     VOCABULARY, the same category as `slot_set`'s authored value, not the
+ *     learner's prose. The thing the rule protects against is a learner's
+ *     answer text living in two places; a terminal has no answer text. Its
+ *     answer is which commands were run, and that is the shape of the payload.
+ *   • **Question Q3 → B** on plan
+ *     `20260806-itera-terminal-sandbox-activity`. Options A ("do not record")
+ *     and C ("record only in options mode") were both rejected: C is the worst
+ *     of both, since the options mode is exactly where a false negative CANNOT
+ *     happen and free text is where it does.
+ *
+ * The flag below stays `true`: it is the default and it governs every other
+ * action type. This carve-out is scoped to one key of one action.
  */
 export const PAYLOADS_CARRY_NO_FREE_TEXT = true;
+
+/**
+ * The single documented exception to `PAYLOADS_CARRY_NO_FREE_TEXT`, as data
+ * rather than prose, so a checker or an audit can enumerate it instead of
+ * grepping a comment. `<action>.<payload key>`.
+ */
+export const FREE_TEXT_PAYLOAD_CARVE_OUTS: readonly string[] = ['command_run.command'];
 
 /** Which family a kind belongs to. Total by construction (the trap above). */
 export function familyOf(kind: ActivityKind): ActivityFamily {

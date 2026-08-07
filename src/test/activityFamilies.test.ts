@@ -115,16 +115,22 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     expect([...WIRED_FAMILIES]).toEqual(families.filter((f) => FAMILY_EMITTED[f].length > 0));
   });
 
-  it('exactly `selection` and `arrangement` are wired today', () => {
-    // ⚠️ This is a LEDGER, not a target. Wiring `editor` or `scenario` should
-    // change this line in the same commit that changes the components — that is
-    // the point. What it prevents is the opposite: a family quietly listed as
-    // emitting while nothing emits, which would make every downstream query
-    // read two-action traces as if they were complete sequences.
-    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement']);
+  it('`selection`, `arrangement` and `scenario` are wired today', () => {
+    // ⚠️ This is a LEDGER, not a target. Wiring a family changes this line in
+    // the SAME commit that changes the components — that is the point. What it
+    // prevents is the opposite: a family quietly listed as emitting while
+    // nothing emits, which would make every downstream query read two-action
+    // traces as if they were complete sequences.
+    //
+    // `scenario` joined on 2026-08 with the TERMINAL sandbox
+    // (plan 20260806-itera-terminal-sandbox-activity, F5). It is the one
+    // PARTIALLY wired family: the terminal emits, the chat sandbox does not,
+    // so a reader must discriminate on `spec.sandboxKind` — which is exactly
+    // what `familyEmitsSequence` was changed to do.
+    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'scenario']);
     expect(FAMILY_EMITTED.reading).toEqual([]);
     expect(FAMILY_EMITTED.editor).toEqual([]);
-    expect(FAMILY_EMITTED.scenario).toEqual([]);
+    expect(FAMILY_EMITTED.scenario).toEqual(['command_run', 'sandbox_reset']);
   });
 
   it('an unwired family declares MORE than it emits — the gap is the remaining work', () => {

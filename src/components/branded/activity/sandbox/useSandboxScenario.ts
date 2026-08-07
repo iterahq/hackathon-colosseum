@@ -17,7 +17,13 @@ import {
   type StepNeeds,
 } from '@iterahq/activity-spec/runtime';
 
-const NO_NEEDS: StepNeeds = { send: false, evaluate: false, slots: new Set(), choices: new Set() };
+const NO_NEEDS: StepNeeds = {
+  send: false,
+  evaluate: false,
+  run: false,
+  slots: new Set(),
+  choices: new Set(),
+};
 
 /**
  * Owns the scenario's local `ChatModel` and derives everything the view needs

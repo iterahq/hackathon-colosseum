@@ -259,13 +259,24 @@ describe('a tela sabe dizer que a família ainda não emite sequência', () => {
     expect(familyEmitsSequence('match')).toBe(true);
   });
 
-  it('reading, editor e scenario ainda não', () => {
-    // 68% do catálogo. Apresentar isso como falha da tentativa é o risco que o
-    // plano nomeia; a tela declara o motivo.
+  it('reading e editor ainda não', () => {
+    // Apresentar isso como falha da tentativa é o risco que o plano nomeia; a
+    // tela declara o motivo.
     expect(familyEmitsSequence('concept')).toBe(false);
     expect(familyEmitsSequence('code')).toBe(false);
-    expect(familyEmitsSequence('sandbox_scenario')).toBe(false);
     expect(familyEmitsSequence(null)).toBe(false);
+  });
+
+  it('scenario depende do sandboxKind — o TERMINAL emite, o chat ainda não', () => {
+    // A família `scenario` passou a emitir em 2026-08, mas só pelo sandbox de
+    // TERMINAL. Responder pela família sozinha viraria toda linha de chat de
+    // "esse kind ainda não emite" (verdade, e explicado) para "o aluno não fez
+    // nada" (mentira, e sem explicação).
+    expect(familyEmitsSequence('sandbox_scenario', { sandboxKind: 'terminal' })).toBe(true);
+    expect(familyEmitsSequence('sandbox_scenario', { sandboxKind: 'cloud-core-chat' })).toBe(false);
+    // Sem snapshot, a resposta conservadora: não promete sequência.
+    expect(familyEmitsSequence('sandbox_scenario')).toBe(false);
+    expect(familyEmitsSequence('sandbox_scenario', null)).toBe(false);
   });
 });
 

@@ -97,9 +97,27 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 - **`src/utils/liveActivityGate.ts`** — `learnerActivityGate({timerRunning,
   expired, answered})` → `{started, locked, readOnly, canComplete}`. Única
   fonte de verdade de quando o aluno pode responder ao vivo.
-- **`@iterahq/activity-spec/runtime`** — reducers puros do `ChatModel` do
-  `sandbox_scenario`. O hook `useSandboxScenario` só liga reducer a
-  `useState`; todo julgamento é do runtime.
+- **`@iterahq/activity-spec/runtime`** — reducers puros do `sandbox_scenario`,
+  nos **dois** `sandboxKind`. Os hooks (`useSandboxScenario` pro chat,
+  `useTerminalSandbox` pro terminal) só ligam reducer a `useState`; todo
+  julgamento é do runtime.
+  - **`sandbox_scenario` tem DOIS sandboxes**, despachados por
+    `spec.sandboxKind` dentro de `SandboxScenarioActivity.tsx` — não por kind
+    novo, que custaria migration human-gated em `db/migrations/`:
+    - `cloud-core-chat` → `ChatModel`, variantes por forma do spec
+      (`slots` / `choices` / nenhum);
+    - `terminal` → `TerminalModel`, variantes por `spec.inputMode`
+      (`freeText` / `options`), em
+      `src/components/branded/activity/terminal/`. Engines resolvidos por
+      NOME (`initialState.engine`), default `none` = terminal genérico com
+      saída 100% autorada. Plano
+      [`20260806-itera-terminal-sandbox-activity`](https://plans.devfellowship.com/20260806-itera-terminal-sandbox-activity).
+  - ⚠️ **O terminal NÃO usa `answerMachine`, de propósito** (ADR-7 do mesmo
+    plano) — e o sandbox de chat também não. `answerMachine` modela *uma
+    resposta, um submit, um veredito*; um terminal é N turnos contra um modelo
+    de mundo com progressão derivada de predicado. A regra que continua valendo
+    é a de baixo: nada de lógica derivada de correção **inline no componente** —
+    ela mora no `runtime/` do pacote.
 
 ### Validação de spec
 
@@ -253,11 +271,40 @@ crescer uma prop fora do contrato.
       (`activity_results.feedback.response`, com teto). O trace guarda O QUE ele
       tocou e QUANDO, nunca o que ele escreveu — duplicar significa dois lugares
       pra manter em dia e dois pra apagar.
+      - ⚠️ **UMA exceção, autorizada e escopada: `command_run.command`** (o
+        sandbox de TERMINAL, `spec.sandboxKind === 'terminal'`). Um comando de
+        shell é texto livre pela letra da regra, e é gravado assim mesmo —
+        **só na forma NORMALIZADA**, nunca a linha crua. Decisão do Tainan
+        (question Q3 → B do plano
+        [`20260806-itera-terminal-sandbox-activity`](https://plans.devfellowship.com/20260806-itera-terminal-sandbox-activity)),
+        e ela está escrita aqui **porque sem isso o próximo agente lê a regra
+        acima e desfaz achando que é bug.**
+        - **Por quê:** é o único dado que separa erro de verdade de matcher
+          rígido demais. Sem ele, o aluno que digitou uma variante legítima que
+          o autor esqueceu de listar aparece como erro comum, indistinguível de
+          quem não sabe o comando — a atividade fica "quebrada" pra ele e "ok"
+          pra gente.
+        - **A leitura que mantém a regra coerente:** comando de terminal é
+          **vocabulário de ferramenta**, mesma categoria do valor autorado de
+          `slot_set`, e não a prosa do aluno. Um terminal não tem "texto de
+          resposta" — a resposta dele É quais comandos rodou.
+        - Enumerada como dado em `FREE_TEXT_PAYLOAD_CARVE_OUTS`
+          (`src/utils/activityFamilies.ts`), pra auditoria não depender de grep
+          em comentário. `PAYLOADS_CARRY_NO_FREE_TEXT` continua `true`: ele rege
+          todo o resto.
     - **`FAMILY_EMITTED` é ledger, não meta.** Ele lista o que este build
-      realmente emite (hoje: `selection` e `arrangement`). Declarar sem emitir
-      faz toda query downstream ler trace de duas ações como se fosse sequência
-      completa — `src/test/activityFamilies.test.ts` e
+      realmente emite (hoje: `selection`, `arrangement` e `scenario`). Declarar
+      sem emitir faz toda query downstream ler trace de duas ações como se fosse
+      sequência completa — `src/test/activityFamilies.test.ts` e
       `src/test/activityTraceEmission.test.tsx` travam os dois lados.
+      - ⚠️ **`scenario` é PARCIALMENTE ligada:** o sandbox de **terminal** emite
+        (`command_run`, `sandbox_reset`); o de **chat** ainda não. Quem consulta
+        `activity_traces` da família `scenario` **tem que filtrar por
+        `spec.sandboxKind`**, não supor uniformidade — foi por isso que
+        `familyEmitsSequence()` (`src/utils/replaySession.ts`) passou a receber
+        o spec: responder só pela família viraria toda linha de chat de "esse
+        kind ainda não emite" (verdade, e explicado na tela) para "o aluno não
+        fez nada" (mentira, e sem explicação).
   - **O cano já existe — use, não reinvente.** O contrato versionado está em
     `src/utils/learningTrace.ts` e a linha vai pra `itera.activity_traces`
     (migration `db/migrations/0034_activity_traces.sql`), **uma linha por

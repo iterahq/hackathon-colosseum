@@ -258,20 +258,34 @@ function readKind(r: Record<string, unknown>): ActivityKind | null {
 }
 
 /**
- * Does this kind's family hand a RICH sequence up, in the build that wrote this
- * row's era? Read off `FAMILY_EMITTED`, which is the single source of truth for
- * what is wired — the same map `activityTraceEmission.test.tsx` holds the
- * components to.
+ * Does this row hand a RICH sequence up, in the build that wrote its era? Read
+ * off `FAMILY_EMITTED`, which is the single source of truth for what is wired —
+ * the same map `activityTraceEmission.test.tsx` holds the components to.
  *
  * The surface uses this to say ON SCREEN why a trace has only two actions,
  * instead of letting a viewer read "opened → settled" as "the learner did
- * nothing". 32% of the catalogue is wired today; presenting the other 68% as if
- * it were broken is the failure mode the plan's risk table names.
+ * nothing". Presenting an unwired kind as if it were broken is the failure mode
+ * the plan's risk table names.
+ *
+ * ⚠️ `sandbox_scenario` NEEDS THE SPEC, not just the kind. Since 2026-08 the
+ * `scenario` family is wired for the TERMINAL sandbox
+ * (`spec.sandboxKind === 'terminal'`) and still unwired for the chat one — so
+ * `FAMILY_EMITTED.scenario` is non-empty while most rows of that kind still
+ * carry no sequence. Answering from the family alone would flip every chat
+ * sandbox row from "this kind does not emit yet" (true, and explained) to "the
+ * learner did nothing" (false, and unexplained), which is precisely the
+ * misreading this function exists to prevent. When the spec is unavailable the
+ * answer is the conservative one: NO sequence promised.
  */
-export function familyEmitsSequence(kind: ActivityKind | null): boolean {
+export function familyEmitsSequence(
+  kind: ActivityKind | null,
+  spec?: Record<string, unknown> | null,
+): boolean {
   if (!kind) return false;
   const family: ActivityFamily = ACTIVITY_FAMILY[kind];
-  return FAMILY_EMITTED[family].length > 0;
+  if (FAMILY_EMITTED[family].length === 0) return false;
+  if (kind === 'sandbox_scenario') return spec?.sandboxKind === 'terminal';
+  return true;
 }
 
 /**

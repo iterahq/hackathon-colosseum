@@ -1,0 +1,410 @@
+{
+  "t1": {
+    "id": "t1",
+    "sandboxKind": "terminal",
+    "openness": "fixed",
+    "title": {
+      "pt": "Sua primeira branch",
+      "en": "Your first branch"
+    },
+    "inputMode": "freeText",
+    "initialState": {
+      "engine": "git",
+      "ps1": "aluno@itera:~/meu-projeto$",
+      "windowTitle": "bash — sandbox",
+      "welcome": [
+        "Repositório pronto. Você está na branch main."
+      ],
+      "seed": {
+        "defaultBranch": "main",
+        "seedFiles": {
+          "README.md": "# meu-projeto"
+        },
+        "seedCommitMessage": "primeiro commit"
+      },
+      "unknownCommand": {
+        "lines": [
+          "comando não suportado neste sandbox"
+        ],
+        "isError": true
+      }
+    },
+    "steps": [
+      {
+        "id": "criar-branch",
+        "prompt": {
+          "pt": "Crie a branch **feat/perfil** e mude para ela.",
+          "en": "Create the **feat/perfil** branch and switch to it."
+        },
+        "hint": {
+          "pt": "git checkout -b feat/perfil",
+          "en": "git checkout -b feat/perfil"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git checkout -b feat/perfil",
+            "accept": [
+              "git switch -c feat/perfil"
+            ]
+          }
+        }
+      },
+      {
+        "id": "conferir",
+        "prompt": {
+          "pt": "Confirme em qual branch você está.",
+          "en": "Check which branch you are on."
+        },
+        "hint": {
+          "pt": "git status",
+          "en": "git status"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git status"
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "conferir"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Você criou uma branch e conferiu onde estava. 🎉",
+        "en": "You created a branch and checked where you were. 🎉"
+      },
+      "masterLine": [
+        "git checkout -b feat/perfil",
+        "git status"
+      ]
+    }
+  },
+  "t2": {
+    "id": "t2",
+    "sandboxKind": "terminal",
+    "openness": "fixed",
+    "title": {
+      "pt": "Salvando seu trabalho",
+      "en": "Saving your work"
+    },
+    "inputMode": "freeText",
+    "initialState": {
+      "engine": "git",
+      "ps1": "aluno@itera:~/meu-projeto$",
+      "windowTitle": "bash — sandbox",
+      "welcome": [
+        "Você está na branch main, com o README já commitado."
+      ],
+      "seed": {
+        "defaultBranch": "main",
+        "seedFiles": {
+          "README.md": "# meu-projeto"
+        },
+        "seedCommitMessage": "primeiro commit"
+      },
+      "unknownCommand": {
+        "lines": [
+          "comando não suportado neste sandbox"
+        ],
+        "isError": true
+      }
+    },
+    "steps": [
+      {
+        "id": "criar-arquivo",
+        "prompt": {
+          "pt": "Crie o arquivo **perfil.md**.",
+          "en": "Create the **perfil.md** file."
+        },
+        "hint": {
+          "pt": "touch perfil.md",
+          "en": "touch perfil.md"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "touch perfil.md"
+          }
+        }
+      },
+      {
+        "id": "salvar",
+        "prompt": {
+          "pt": "Prepare tudo e faça o commit — nessa ordem.",
+          "en": "Stage everything and commit — in that order."
+        },
+        "hint": {
+          "pt": "git add . e depois git commit -m \"sua mensagem\"",
+          "en": "git add . then git commit -m \"your message\""
+        },
+        "unlock": {
+          "commandSequence": {
+            "ordered": true,
+            "cmds": [
+              {
+                "cmd": "git add .",
+                "accept": [
+                  "git add -A",
+                  "git add --all",
+                  "git add perfil.md"
+                ]
+              },
+              {
+                "cmd": "git commit -m",
+                "argPattern": {
+                  "-m": "^.{3,}$"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "salvar"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Preparar e commitar, nessa ordem — é o par que você vai repetir a vida toda. 🎉",
+        "en": "Stage then commit, in that order — the pair you will repeat forever. 🎉"
+      },
+      "masterLine": [
+        "touch perfil.md",
+        "git add .",
+        "git commit -m \"cria perfil\""
+      ]
+    }
+  },
+  "t3": {
+    "id": "t3",
+    "sandboxKind": "terminal",
+    "openness": "fixed",
+    "title": {
+      "pt": "Sua primeira branch (opções)",
+      "en": "Your first branch (options)"
+    },
+    "inputMode": "options",
+    "initialState": {
+      "engine": "git",
+      "ps1": "aluno@itera:~/meu-projeto$",
+      "windowTitle": "bash — sandbox",
+      "welcome": [
+        "Repositório pronto. Você está na branch main."
+      ],
+      "seed": {
+        "defaultBranch": "main",
+        "seedFiles": {
+          "README.md": "# meu-projeto"
+        },
+        "seedCommitMessage": "primeiro commit"
+      },
+      "unknownCommand": {
+        "lines": [
+          "comando não suportado neste sandbox"
+        ],
+        "isError": true
+      }
+    },
+    "steps": [
+      {
+        "id": "criar-branch",
+        "prompt": {
+          "pt": "Crie a branch **feat/perfil** e mude para ela.",
+          "en": "Create the **feat/perfil** branch and switch to it."
+        },
+        "hint": {
+          "pt": "git checkout -b feat/perfil",
+          "en": "git checkout -b feat/perfil"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git checkout -b feat/perfil",
+            "accept": [
+              "git switch -c feat/perfil"
+            ]
+          }
+        },
+        "expose": {
+          "optionGranularity": "command",
+          "commands": [
+            "git checkout -b feat/perfil",
+            "git branch feat/perfil",
+            "git checkout feat/perfil"
+          ]
+        }
+      },
+      {
+        "id": "conferir",
+        "prompt": {
+          "pt": "Confirme em qual branch você está.",
+          "en": "Check which branch you are on."
+        },
+        "hint": {
+          "pt": "git status",
+          "en": "git status"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git status"
+          }
+        },
+        "expose": {
+          "optionGranularity": "token",
+          "tokens": [
+            "git",
+            "status",
+            "log",
+            "add",
+            "commit",
+            "-b"
+          ]
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "conferir"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Você criou uma branch e conferiu onde estava. 🎉",
+        "en": "You created a branch and checked where you were. 🎉"
+      },
+      "masterLine": [
+        "git checkout -b feat/perfil",
+        "git status"
+      ]
+    }
+  },
+  "t4": {
+    "id": "t4",
+    "sandboxKind": "terminal",
+    "openness": "fixed",
+    "title": {
+      "pt": "Instalando as dependências",
+      "en": "Installing dependencies"
+    },
+    "inputMode": "freeText",
+    "initialState": {
+      "engine": "none",
+      "ps1": "aluno@itera:~/app$",
+      "windowTitle": "bash — sandbox",
+      "welcome": [
+        "Você acabou de clonar o projeto. Ele ainda não roda."
+      ],
+      "cannedOutput": {
+        "ls": {
+          "lines": [
+            "package.json  src  README.md"
+          ]
+        },
+        "npm install": {
+          "lines": [
+            "added 128 packages in 4s",
+            "",
+            "found 0 vulnerabilities"
+          ]
+        },
+        "npm i": {
+          "lines": [
+            "added 128 packages in 4s",
+            "",
+            "found 0 vulnerabilities"
+          ]
+        },
+        "npm test": {
+          "lines": [
+            "> test",
+            "✓ 3 passing"
+          ]
+        },
+        "npm start": {
+          "lines": [
+            "sh: vite: not found — você instalou as dependências?"
+          ],
+          "isError": true
+        }
+      },
+      "unknownCommand": {
+        "lines": [
+          "comando não suportado neste sandbox"
+        ],
+        "isError": true
+      }
+    },
+    "steps": [
+      {
+        "id": "listar",
+        "prompt": {
+          "pt": "Veja o que tem na pasta.",
+          "en": "See what is in the folder."
+        },
+        "hint": {
+          "pt": "ls",
+          "en": "ls"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "ls"
+          }
+        }
+      },
+      {
+        "id": "instalar",
+        "prompt": {
+          "pt": "Instale as dependências do projeto.",
+          "en": "Install the project dependencies."
+        },
+        "hint": {
+          "pt": "npm install",
+          "en": "npm install"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "npm install",
+            "accept": [
+              "npm i"
+            ]
+          }
+        }
+      },
+      {
+        "id": "testar",
+        "prompt": {
+          "pt": "Rode os testes.",
+          "en": "Run the tests."
+        },
+        "hint": {
+          "pt": "npm test",
+          "en": "npm test"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "npm test"
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "testar"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Olhar, instalar, testar — o começo de todo projeto. 🎉",
+        "en": "Look, install, test — how every project starts. 🎉"
+      },
+      "masterLine": [
+        "ls",
+        "npm install",
+        "npm test"
+      ]
+    }
+  }
+}

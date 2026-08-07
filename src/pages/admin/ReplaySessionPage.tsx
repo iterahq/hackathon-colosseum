@@ -149,7 +149,7 @@ export default function ReplaySessionPage() {
   // purpose: distinguishing them would confirm another tenant's row exists.
   if (!data) return <AdminEmpty message={t('replay.notFound')} />;
 
-  const emits = familyEmitsSequence(data.kind);
+  const emits = familyEmitsSequence(data.kind, spec);
   const label = (id: string) => labels[id] ?? id;
 
   return (

@@ -160,7 +160,7 @@ export function SandboxScenarioShell({
 
         {/* Post-success reveal recap stays in-window (the celebratory card); the
             terminal "Continuar" moved to the shell's fixed FeedbackFooter. */}
-        {s.done && <SandboxReveal scenario={scenario} locale={locale} lines={s.revealLines} />}
+        {s.done && <SandboxReveal recap={scenario.reveal.recap} locale={locale} lines={s.revealLines} />}
       </div>
     </ActivityShell>
   );
