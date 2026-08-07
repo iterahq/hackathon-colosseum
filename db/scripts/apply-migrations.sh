@@ -40,6 +40,28 @@
 #   rebaseline FILE  re-record the checksum of an already-applied file
 #                    (--reason required). The explicit, audited way to say
 #                    "yes, I edited an applied migration, and here is why".
+#   baseline-add FILE  record FILE as applied WITHOUT running it (--reason
+#                    required). For a migration that was already applied to this
+#                    database out of ANOTHER repo and has now been consolidated
+#                    into this one. See "adopting an already-applied file" below.
+#
+# -- Adopting an already-applied file ----------------------------------------
+# `db/migrations/.baseline` reconciles the pre-ledger past, but it is ONE-SHOT:
+# it is read only while the ledger has zero rows for this repo, and it has had
+# rows since 2026-08-04. So it cannot be used to adopt a file that arrives later
+# and is already applied — appending to it would be inert AND a lie in the repo.
+#
+# That case is real and recurring: on 2026-08-04 the `itera-api` and `itera-mcp`
+# `migrations/` directories were deleted and their 14 files consolidated into
+# this series (Tainan TG: *"deleta /migrations nesses dois repos e não permite
+# mais criar via CI check"*). Every object they create already existed. Executing
+# them would have re-run production DDL; leaving them unregistered would have
+# made `db-apply` try to on the next merge.
+#
+# `baseline-add` is that operation, and it is deliberately the SAME INSERT
+# `reconcile_baseline` performs — same `baseline:` provenance prefix, same
+# never-execute semantics — just invocable after the one-shot has passed, with a
+# mandatory reason recorded in the row.
 #
 # -- Connection --------------------------------------------------------------
 # Either give a full URL:
@@ -77,9 +99,9 @@ CMD="apply"
 REASON=""
 TARGET=""
 case "${1:-}" in
-  apply|status|plan|drift|census-refresh|census-accept|rebaseline) CMD="$1"; shift ;;
-  --dry-run)                                                      CMD="plan"; shift ;;
-  -h|--help) sed -n '2,62p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  apply|status|plan|drift|census-refresh|census-accept|rebaseline|baseline-add) CMD="$1"; shift ;;
+  --dry-run)                                                                    CMD="plan"; shift ;;
+  -h|--help) sed -n '2,84p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
   "")        ;;
   *) echo "ERROR: unknown command '$1' (see --help)" >&2; exit 2 ;;
 esac
@@ -87,7 +109,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run)  CMD="plan"; shift ;;
     --reason)   REASON="${2:-}"; shift 2 ;;
-    -h|--help)  sed -n '2,62p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    -h|--help)  sed -n '2,84p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
     -*)         echo "ERROR: unknown flag '$1'" >&2; exit 2 ;;
     *)          TARGET="$1"; shift ;;
   esac
@@ -457,6 +479,41 @@ case "$CMD" in
               applied_by = '$(lit "rebaseline:${APPLIED_BY}: ${REASON}")'
         where id = '$(lit "${REPO_NAME}:${b}")'" >/dev/null || die "rebaseline failed" 1
     rep "rebaselined ${b} — reason: ${REASON}"
+    exit 0
+    ;;
+
+  # -- baseline-add ----------------------------------------------------------
+  # Record a file as applied WITHOUT executing it, after the one-shot .baseline
+  # reconciliation is spent. The insert is deliberately identical to the one in
+  # reconcile_baseline(), including the `baseline:` provenance prefix, because it
+  # is the same claim: "this was applied to this database before it arrived in
+  # this series, and re-running it is not what we want".
+  #
+  # REFUSES if the file already has a ledger row. That is not a nicety: silently
+  # overwriting an existing row would let someone launder a checksum mismatch
+  # through this command instead of through `rebaseline`, which is the one that
+  # requires you to say a human decided the file changed.
+  #
+  # It does NOT touch the census — nothing about the schema changed. If the
+  # adopted objects were previously reported as unaccounted-for by `drift`
+  # (they would have been, being out-of-band), accept that separately with
+  # `census-accept --reason '<why>'`.
+  baseline-add)
+    [[ -n "$TARGET" ]] || die "baseline-add needs a filename"
+    [[ -n "$REASON" ]] || die "baseline-add requires --reason '<why this file is already applied>'"
+    b="$(basename "$TARGET")"; f="${MIG_DIR}/${b}"
+    [[ -f "$f" ]] || die "no such migration: ${b}"
+    if [[ -n "${LEDGER_SUM[$b]:-}" ]]; then
+      die "${b} is ALREADY in the ledger. baseline-add never overwrites a row — if the
+       file was edited after being applied, that is a rebaseline decision:
+         apply-migrations.sh rebaseline ${b} --reason '<why>'" 3
+    fi
+    git_sha="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    q "insert into itera.schema_migrations (id, repo, filename, checksum, applied_by)
+       values ('$(lit "${REPO_NAME}:${b}")', '$(lit "$REPO_NAME")', '$(lit "$b")',
+               '$(lit "$(sum_of "$f")")', '$(lit "baseline-add:${git_sha}: ${REASON}")')" \
+      >/dev/null || die "baseline-add insert failed for ${b}" 1
+    rep "baseline-added ${b} — recorded as applied at ${git_sha}, NOT executed. Reason: ${REASON}"
     exit 0
     ;;
 

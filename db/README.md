@@ -4,6 +4,36 @@ Itera owns its OWN Supabase project + IAM schema (ADR-3 / ADR-26), independent
 of `dfl-schema`. Schema lives in THIS monorepo (schema-in-monorepo, ADR-F1) —
 **NOT** in `devfellowship/dfl-schema`.
 
+## THIS DIRECTORY IS THE ONLY PLACE ITERA MIGRATIONS LIVE (2026-08-04)
+
+Until 2026-08-04 three repos wrote DDL into this one database — `itera-player`
+(here), `itera-api` (`migrations/`) and `itera-mcp` (`migrations/`) — each with
+its own independently incrementing `00NN` sequence. Three numbering series
+against one database is a collision waiting to happen, and only this one ever
+grew a ledger and an apply pipeline, so the other two were files that looked
+like infrastructure and applied nothing.
+
+Tainan, TG 2026-08-04: *"deleta /migrations nesses dois repos e não permite mais
+criar via CI check"*. So:
+
+- Their 14 files were **consolidated into this series** as `0041`–`0054`, named
+  `NNNN_api00NN_*` / `NNNN_mcp00NN_*` so the source repo and original filename
+  stay legible, each carrying a header saying where it came from and that it was
+  already applied. They were **renumbered into the order they were actually
+  applied**, which is also their dependency order — `itera-api`'s `0003` really
+  did land after its `0010`/`0011`, and `itera-mcp`'s `0002` has to precede
+  `itera-api`'s `0012`, which calls `itera.current_author_tenant_ids()`.
+- All 14 were registered in the ledger as applied **without being executed**
+  (`baseline-add`, below). Every object they create was confirmed present in the
+  live database by a read-only `SELECT` first — 66 objects, zero missing, so
+  there was no backlog to lose.
+- `migrations/` was deleted from both repos, and a **CI guard** in each fails the
+  build if one reappears, pointing here.
+
+A migration for the Itera database — whoever needs it, whichever service — is a
+PR against **this** directory. Nothing about `itera-api` or `itera-mcp` owning
+its own runtime changed; what changed is that neither owns schema any more.
+
 ## Target
 
 - Project: **Itera** Supabase `kjefmwlopzeaqgqtlbdn` (https://kjefmwlopzeaqgqtlbdn.supabase.co)
@@ -19,9 +49,15 @@ db/
     0003_itera_seed.sql        # pilot tenant + 1x program/unit/lesson/activities + tenant B
     0004_tenant_admin_metrics.sql  # tenant_admin role + admin RLS (membership-join) + access-token claim hook
     0005_tenant_admin_fixture.sql  # verification fixture: learners + results across tenant A/B
+    ...
+    0041_mcp0002_*.sql .. 0054_api0014_*.sql
+                               # consolidated 2026-08-04 from itera-mcp/itera-api.
+                               # Already applied when they arrived; registered via
+                               # `baseline-add`, never executed here.
     .baseline                  # the pre-ledger past: files applied by hand before
                                # itera.schema_migrations existed. Read ONCE, when
-                               # the ledger is empty. Never append to it.
+                               # the ledger is empty. Never append to it — to adopt
+                               # an already-applied file use `baseline-add`.
   scripts/
     apply-migrations.sh        # ledger-backed apply / status / drift / census
     seed-smoke-user.sh         # create + link the ITERA_SMOKE_* auth user
@@ -104,9 +140,10 @@ The key is the **filename**, not the numeric prefix, and that is load-bearing:
 two `0006_*` files exist on `main`, and `0023` was merged *after* `0024`. A
 "highest number applied" cursor would have skipped `0023` forever, silently. The
 decision is a **set difference** over filenames — "which files have no row" —
-never a high-water mark. The `repo` column is there because three repos write DDL
-into this one database (`itera-player`, `itera-api`, `itera-mcp`) with
-overlapping numbering; only this one is automated so far.
+never a high-water mark. The `repo` column was added when three repos wrote DDL
+into this one database with overlapping numbering; since the 2026-08-04
+consolidation there is only one series, and every row reads `itera-player`. The
+column stays as the audit trail of where each file came from.
 
 **Editing a migration that was already applied makes the apply FAIL**, loudly,
 rather than silently skipping it — the repo and the database would otherwise
@@ -183,6 +220,29 @@ everything" would have replayed 36 files against production.
 nothing should ever be appended to it — a new migration gets applied, not
 baselined.
 
+### Adopting a file that is already applied — `baseline-add`
+
+Because `.baseline` is spent, it cannot absorb a migration that arrives *later*
+and is *already applied*. Appending to it would be inert (nothing reads it) and
+a lie in the repo (it would claim to be part of a reconciliation that already
+happened). That case turned up the same day, with the `itera-api` / `itera-mcp`
+consolidation above: 14 files whose objects all already existed. Executing them
+would have replayed production DDL; leaving them unregistered would have made
+the next merge's `db-apply` try to.
+
+```bash
+bash db/scripts/apply-migrations.sh baseline-add 0042_api0001_api_keys.sql \
+  --reason 'consolidated from itera-api; applied by hand 2026-06-19; objects verified present'
+```
+
+It performs **the same INSERT** `reconcile_baseline` does — same `baseline:`
+provenance prefix, same never-execute semantics — with a mandatory `--reason`
+recorded in the row, and it **refuses** if the file already has a ledger row (an
+edited applied file is a `rebaseline` decision, not this one).
+
+Use it **only** for a file that is provably already applied — verify the objects
+with a read-only `SELECT` first. For anything else the answer is `apply`.
+
 ## Drift detection
 
 `db-apply` closes the gap going forward. It cannot tell you about the days it did
@@ -205,16 +265,18 @@ out-of-band change stays red until a human signs it off:
 bash db/scripts/apply-migrations.sh census-accept --reason 'hand-applied itera-mcp 0008'
 ```
 
-⚠️ **Expect check 4 to fire when someone hand-applies an `itera-api` or
-`itera-mcp` migration.** That is correct, not noise: those series are out-of-band
-with respect to this pipeline, and they stay that way until they join the same
-ledger.
+~~⚠️ Expect check 4 to fire when someone hand-applies an `itera-api` or
+`itera-mcp` migration.~~ **No longer a thing as of 2026-08-04** — those series no
+longer exist and CI in both repos refuses to let them come back. A census diff
+with no apply behind it now means genuinely out-of-band DDL: someone with the DB
+password ran it by hand. Treat it as such; do not refresh it away.
 
 > The rest of the design — PR-time validation, ephemeral replay, and locking
 > out-of-band DDL by credential custody — is in
 > [`20260728-itera-migration-ci-lock`](https://plans.devfellowship.com/20260728-itera-migration-ci-lock).
-> Fase 1, 2, 3 (apply half) and 5 (camada 1) are implemented. Fase 4 (the lock)
-> and Fase 6 (unifying the three series) are **not**.
+> Fase 1, 2, 3 (apply half), 5 (camada 1) and **6 (one series — done by
+> consolidation, not by teaching the ledger three repos)** are implemented.
+> Fase 4 (the lock) is **not**.
 
 ## PostgREST schema exposure
 
