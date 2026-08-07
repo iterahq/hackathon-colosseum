@@ -20,15 +20,27 @@ import type { TerminalLine } from '@iterahq/activity-spec/runtime';
  * `max-h-[34dvh]` — the cap is what keeps a long session from eating the page,
  * and it only engages once there IS a long session. Do not reintroduce a
  * `min-h`/`h-` here: that is the gap, restated.
+ *
+ * ── THE SUCCESS MARK ────────────────────────────────────────────────────────
+ * `successLines` says which line ends a command that COMPLETED A STEP (plan §2;
+ * which lines those are is `terminalSuccessMarks`, and why it is `unlocked` and
+ * not `ok` is documented there). The line keeps its own colour — the mark is an
+ * added element, not a restyling of the output, exactly as §2 asks.
  */
 export function TerminalTranscript({
   lines,
   ps1,
   emptyHint,
+  successLines,
+  successLabel,
 }: {
   lines: TerminalLine[];
   ps1: string;
   emptyHint: string;
+  /** Indices of lines that end a step-completing command. */
+  successLines: ReadonlySet<number>;
+  /** Accessible name of the mark — a bare "✓" reads as nothing to a screen reader. */
+  successLabel: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -65,6 +77,16 @@ export function TerminalTranscript({
             </>
           ) : (
             line.text
+          )}
+          {successLines.has(i) && (
+            <span
+              data-testid="terminal-success-mark"
+              aria-label={successLabel}
+              title={successLabel}
+              className="ml-2 font-semibold text-evergreen"
+            >
+              ✓
+            </span>
           )}
         </div>
       ))}

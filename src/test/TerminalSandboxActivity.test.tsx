@@ -176,6 +176,44 @@ describe('a correct run — the verdict is the scenario s own criterion', () => 
   });
 });
 
+/**
+ * §2 of `20260807-itera-terminal-sandbox-refinamentos`. Where the mark goes is
+ * unit-tested in `terminalSuccessMarks.test.ts`; what is asserted here is that
+ * the component actually RENDERS it, on the right line and on no other.
+ */
+describe('the success mark — the acerto gets its own signal', () => {
+  it('marks the output of the command that completed the step', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    type('touch perfil.md');
+
+    const marks = screen.getAllByTestId('terminal-success-mark');
+    expect(marks).toHaveLength(1);
+    // On the OUTPUT line ("criado: perfil.md"), not on the echo and not loose
+    // in the transcript.
+    expect(marks[0]!.parentElement?.textContent).toContain('criado: perfil.md');
+    expect(marks[0]!.parentElement?.getAttribute('data-line-kind')).toBe('out');
+  });
+
+  it('does NOT mark a command that failed', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    type('git commit -m "cedo demais"');
+    expect(transcript()).toContain('nada em stage para commitar');
+    expect(screen.queryAllByTestId('terminal-success-mark')).toHaveLength(0);
+  });
+
+  it('does NOT mark a command that ran fine but unlocked nothing', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    type('git log');
+    expect(screen.queryAllByTestId('terminal-success-mark')).toHaveLength(0);
+  });
+
+  it('carries an accessible name — a bare ✓ reads as nothing', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    type('touch perfil.md');
+    expect(screen.getByTestId('terminal-success-mark').getAttribute('aria-label')).toBeTruthy();
+  });
+});
+
 describe('a WRONG run — "sempre tem certo e errado"', () => {
   it('runs the command, prints the error, and does NOT unlock', () => {
     const cap = captor();

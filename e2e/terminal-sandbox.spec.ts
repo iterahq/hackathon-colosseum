@@ -105,6 +105,38 @@ for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * §2 — THE ACERTO GETS ITS OWN SIGNAL
+ *
+ * Before this, only failure was visible: a wrong command printed in red, a
+ * right one printed in the ordinary colour, and "I did it" had to be inferred
+ * from the ABSENCE of red. Both sides are asserted here — an assertion that
+ * only checked the happy path would pass for a terminal that ticks every line.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+test('§2 the step-completing command is ticked, the failing one is not', async ({ page }) => {
+  await open(page, TERMINAL_FREE_TEXT);
+  const input = page.getByTestId('terminal-input');
+  const marks = page.getByTestId('terminal-success-mark');
+
+  // A command that errors: output, no tick.
+  await input.fill('git commit -m "cedo demais"');
+  await input.press('Enter');
+  await expect(page.getByTestId('terminal-transcript')).toContainText('nada em stage');
+  await expect(marks).toHaveCount(0);
+
+  // A command that runs fine but unlocks nothing: still no tick.
+  await input.fill('git log');
+  await input.press('Enter');
+  await expect(marks).toHaveCount(0);
+
+  // The move the step asked for: ticked, exactly once.
+  await input.fill('git checkout -b feat/perfil');
+  await input.press('Enter');
+  await expect(marks).toHaveCount(1);
+  await expect(page.locator('[data-line-kind="out"]', { has: marks })).toContainText('feat/perfil');
+});
+
 test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
   await open(page, TERMINAL_FREE_TEXT);
 

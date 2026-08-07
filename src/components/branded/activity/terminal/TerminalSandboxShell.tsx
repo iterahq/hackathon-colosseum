@@ -119,6 +119,8 @@ export function TerminalSandboxShell({
           <TerminalTranscript
             lines={s.model.lines}
             ps1={s.ps1}
+            successLines={s.successLines}
+            successLabel={t({ pt: 'passo concluído', en: 'step completed' }, locale)}
             emptyHint={t(
               variant === 'options'
                 ? { pt: '# monte um comando nas opções abaixo', en: '# build a command from the options below' }

@@ -13,6 +13,7 @@ import {
   type TerminalScenario,
 } from '@iterahq/activity-spec/runtime';
 import type { ActionRecorder } from '@/hooks/useActionRecorder';
+import { terminalSuccessMarks } from '@/utils/terminalSuccessMarks';
 
 /** Which input surface produced a command — kept in the trace, see `command_run`. */
 export type CommandSource = 'typed' | 'option' | 'tokens';
@@ -90,8 +91,16 @@ export function useTerminalSandbox(
     [readOnly, scenario, locale, recorder, currentStep],
   );
 
+  /**
+   * Which transcript lines end a step-completing command (plan §2). Derived,
+   * never stored — see `terminalSuccessMarks` for why a remembered set would
+   * drift after a restart.
+   */
+  const successLines = useMemo(() => terminalSuccessMarks(model), [model]);
+
   return {
     model,
+    successLines,
     draft,
     won,
     done,
