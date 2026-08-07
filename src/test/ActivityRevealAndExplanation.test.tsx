@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { mapActivity } from '@/services/programs.service';
 import type { Activity, ActivityKind } from '@/types/content';
 
 /**
@@ -196,5 +197,183 @@ describe('a reveal with no submission always gets the why', () => {
     renderActivity(makeActivity(kind as ActivityKind, spec), true);
 
     expect(screen.getByTestId('answer-explanation')).toHaveTextContent(spec.explanation);
+  });
+});
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * THE BILINGUAL SHAPE — the one production actually stores
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Every fixture above writes `explanation` as a plain string. Not one row in
+ * production does. Audited 2026-08-07 against `itera.activities`: 41 rows carry
+ * `spec.explanation` (quiz 34, single_choice 5, multi_choice 2) and **41 of 41
+ * are `{ en, pt }` bags** — zero plain strings, zero empty locale values. The
+ * shape the tests exercised was the shape nobody authors.
+ *
+ * `@iterahq/activity-spec` declares the field as `LocalizedTextSchema.optional()`
+ * on all three kinds, so BOTH shapes are legitimate and both are locked here.
+ *
+ * `SPEC_ROW_*` below are verbatim `itera.activities.spec` payloads (ids
+ * elided), NOT invented ones — an invented fixture can accidentally agree with
+ * whatever the code happens to do.
+ *
+ * These assert the explanation **TEXT**, not that the component "renders". A
+ * bag reaching `AnswerExplanation` used to render a blank panel: no card, no
+ * error, no console warning. A test asserting "renders without error" passes
+ * happily against a panel the learner never sees, which is exactly how a blank
+ * explanation would survive review. So every assertion here is on the sentence.
+ */
+
+/** Verbatim prod row (`quiz`): a bilingual prompt AND a bilingual explanation. */
+const SPEC_ROW_QUIZ = {
+  prompt: {
+    en: 'In a Pull Request diff, the red line with `−` is a line that has an error.',
+    pt: 'No diff de um Pull Request, a linha vermelha com `−` é uma linha que deu erro.',
+  },
+  options: [
+    { id: 'v', text: 'VERDADEIRO', isCorrect: false },
+    { id: 'f', text: 'FALSO', isCorrect: true },
+  ],
+  explanation: {
+    en: "Red with `−` is not an error — it's a line that **left** the file. Green with `+` is a line that came in. The diff is a before-and-after, not a bug report.",
+    pt: 'Vermelho com `−` não é erro — é uma linha que **saiu** do arquivo. Verde com `+` é uma linha que entrou. O diff é um antes-e-depois, não um relatório de bugs.',
+  },
+};
+
+/** Verbatim prod row (`quiz`): plain-string prompt, bilingual explanation. */
+const SPEC_ROW_QUIZ_MIXED = {
+  prompt: 'Pulse 2 — Um Cliente faz quantos Pedidos?',
+  options: [
+    { text: 'Um-para-muitos', isCorrect: true },
+    { text: 'Um-para-um', isCorrect: false },
+    { text: { en: 'Not related', pt: 'Sem relação' }, isCorrect: false },
+  ],
+  question: 'Pulse 2 — Um Cliente faz quantos Pedidos?',
+  explanation: {
+    en: "A Customer places MANY Orders, but each Order belongs to ONE Customer — one-to-many. Ask 'for one X, how many Y?' in both directions.",
+    pt: "Um Cliente faz MUITOS Pedidos, mas cada Pedido pertence a UM Cliente — um-para-muitos. Pergunte 'para um X, quantos Y?' nas duas direções.",
+  },
+};
+
+/** The DB row shape `programs.service.mapActivity` consumes. */
+function row(kind: string, spec: Record<string, unknown>) {
+  return { id: `row-${kind}`, lesson_id: 'l', ordinal: 0, kind, spec };
+}
+
+afterEach(() => localStorage.clear());
+
+describe('a bilingual explanation reaches the learner in their own language', () => {
+  /**
+   * THE PRODUCTION PATH, END TO END: DB row → `mapActivity` → renderer → DOM.
+   *
+   * This is the invariant that actually protects the learner, and it spans two
+   * files that have no other reason to be tested together. `mapActivity` is what
+   * collapses the bag (`resolveLocalizedSpec`); `AnswerExplanation` is what puts
+   * it on screen. Delete the resolution from the service and every OTHER
+   * explanation test still passes — they all hand-feed plain strings. This one
+   * fails, which is the whole point of it existing.
+   */
+  it.each([
+    ['pt' as const, 'não é erro', 'is not an error'],
+    ['en' as const, 'is not an error', 'não é erro'],
+  ])('%s: quiz row from the DB renders the %s copy', (locale, expected, notExpected) => {
+    localStorage.setItem('itera.locale', locale);
+    renderActivity(mapActivity(row('quiz', SPEC_ROW_QUIZ)));
+
+    fireEvent.click(screen.getByText('VERDADEIRO'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+
+    const card = screen.getByTestId('answer-explanation');
+    expect(card).toHaveTextContent(expected);
+    expect(card).not.toHaveTextContent(notExpected);
+  });
+
+  it('a row mixing plain-string and bilingual fields still explains itself', () => {
+    localStorage.setItem('itera.locale', 'en');
+    renderActivity(mapActivity(row('quiz', SPEC_ROW_QUIZ_MIXED)));
+
+    fireEvent.click(screen.getByText('Um-para-um'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+
+    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(
+      'each Order belongs to ONE Customer'
+    );
+  });
+
+  /**
+   * The component's OWN defense, with the service deliberately out of the way.
+   *
+   * `ActivityTestHarness` (the author's "run as student") and the stories mount
+   * `ActivityRenderer` with a spec that never passed through a mapper. Before
+   * this, `typeof raw === 'string'` sent every such bag to the blank branch.
+   */
+  it.each([
+    ['pt' as const, 'não é erro'],
+    ['en' as const, 'is not an error'],
+  ])('%s: an UNMAPPED bag no longer renders a blank panel', (locale, expected) => {
+    localStorage.setItem('itera.locale', locale);
+    renderActivity(
+      makeActivity('single_choice', {
+        options: [
+          { id: 'a', label: 'Alfa' },
+          { id: 'b', label: 'Beta' },
+        ],
+        correct_option_id: 'b',
+        explanation: SPEC_ROW_QUIZ.explanation,
+      })
+    );
+
+    fireEvent.click(screen.getByText('Alfa'));
+    fireEvent.click(screen.getByTestId('single-choice-submit'));
+
+    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(expected);
+  });
+
+  /**
+   * A bag missing the reader's locale falls back to `pt`, the product default
+   * (`DEFAULT_LOCALE`) and the language every row was authored in before the EN
+   * backfill of #253. Blank was the old answer here too, and it is the worst
+   * one: the author wrote the sentence, it just never arrived.
+   */
+  it('en reader, pt-only bag: gets the Portuguese sentence, not nothing', () => {
+    localStorage.setItem('itera.locale', 'en');
+    renderActivity(
+      makeActivity('multi_choice', {
+        options: [
+          { id: 'a', label: 'Alfa' },
+          { id: 'b', label: 'Beta' },
+          { id: 'c', label: 'Gama' },
+        ],
+        correct_option_ids: ['a', 'c'],
+        explanation: { pt: 'Só a redação em português existe nesta linha.' },
+      })
+    );
+
+    fireEvent.click(screen.getByText('Beta'));
+    fireEvent.click(screen.getByTestId('multi-choice-submit'));
+
+    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(
+      'Só a redação em português existe nesta linha.'
+    );
+  });
+
+  /** A bag whose every locale is blank is still "the author wrote nothing". */
+  it('an empty bag stays a non-card', () => {
+    renderActivity(
+      makeActivity('single_choice', {
+        options: [
+          { id: 'a', label: 'Alfa' },
+          { id: 'b', label: 'Beta' },
+        ],
+        correct_option_id: 'b',
+        explanation: { pt: '   ', en: '' },
+      })
+    );
+
+    fireEvent.click(screen.getByText('Alfa'));
+    fireEvent.click(screen.getByTestId('single-choice-submit'));
+
+    expect(screen.queryByTestId('answer-explanation')).toBeNull();
   });
 });

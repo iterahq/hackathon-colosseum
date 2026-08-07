@@ -29,11 +29,38 @@ function isLocaleBag(o: Record<string, unknown>): boolean {
   return keys.length > 0 && keys.every((k) => LOCALE_KEYS.has(k) && typeof o[k] === 'string');
 }
 
+/**
+ * Resolve ONE authored text field that may arrive in either legitimate shape:
+ * a plain string, or a `{ pt, en }` bag. Returns `null` — not `''` — when the
+ * value is neither, so a caller can tell "the author wrote nothing" apart from
+ * "the author wrote an empty string" and refuse to render a card either way.
+ *
+ * Fallback order is `active locale → pt → en`. `pt` comes first because it is
+ * the product default (`DEFAULT_LOCALE` in `@/i18n`) and the language every row
+ * was authored in before the EN backfill of #253 — an EN reader looking at a
+ * bag that only carries `pt` is better served by the Portuguese sentence the
+ * author actually wrote than by a blank panel.
+ *
+ * ⚠️ This is the SAME resolution `resolveLocalizedSpec` applies field-by-field
+ * (it is literally the function the deep walk calls). Resolve a single field
+ * through this rather than re-deriving the fallback order at a call site: two
+ * orders that disagree is how an EN reader ends up seeing a different sentence
+ * depending on which component rendered it.
+ */
+export function resolveLocalizedText(value: unknown, locale: Locale): string | null {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const o = value as Record<string, unknown>;
+    if (isLocaleBag(o)) return (o[locale] as string) ?? (o.pt as string) ?? (o.en as string) ?? null;
+  }
+  return null;
+}
+
 function resolveDeep(value: unknown, locale: Locale): unknown {
   if (Array.isArray(value)) return value.map((v) => resolveDeep(v, locale));
   if (value && typeof value === 'object') {
     const o = value as Record<string, unknown>;
-    if (isLocaleBag(o)) return (o[locale] as string) ?? (o.pt as string) ?? (o.en as string) ?? '';
+    if (isLocaleBag(o)) return resolveLocalizedText(o, locale) ?? '';
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(o)) out[k] = resolveDeep(v, locale);
     return out;

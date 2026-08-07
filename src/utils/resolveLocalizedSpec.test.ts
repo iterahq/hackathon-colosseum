@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveLocalizedSpec } from './resolveLocalizedSpec';
+import { resolveLocalizedSpec, resolveLocalizedText } from './resolveLocalizedSpec';
 
 afterEach(() => localStorage.clear());
 
@@ -80,6 +80,18 @@ describe('resolveLocalizedSpec', () => {
       });
     });
 
+    it('resolves a single field exactly as the deep walk resolves it', () => {
+      // `resolveLocalizedText` IS the bag branch of the deep walk, exported so a
+      // component resolving ONE field cannot drift from the rest of the spec.
+      const bag = { pt: 'Porque sim', en: 'Because yes' };
+      expect(resolveLocalizedText(bag, 'en')).toBe(
+        (resolveLocalizedSpec({ explanation: bag }, 'en') as { explanation: string }).explanation
+      );
+      expect(resolveLocalizedText(bag, 'pt')).toBe(
+        (resolveLocalizedSpec({ explanation: bag }, 'pt') as { explanation: string }).explanation
+      );
+    });
+
     it('leaves an EN string that mirrors PT alone (the backfill fixes data, not this)', () => {
       // A mirrored bag is indistinguishable from a legitimately identical one
       // (a command, an identifier). Resolution must not try to be clever here.
@@ -87,5 +99,30 @@ describe('resolveLocalizedSpec', () => {
         cmd: 'git status',
       });
     });
+  });
+});
+
+describe('resolveLocalizedText', () => {
+  it('passes a plain string through — both shapes are legitimate', () => {
+    expect(resolveLocalizedText('já é texto', 'en')).toBe('já é texto');
+  });
+
+  it('falls back to pt (the product default) when the active locale is absent', () => {
+    expect(resolveLocalizedText({ pt: 'Só PT' }, 'en')).toBe('Só PT');
+  });
+
+  it('falls back to en when pt is absent', () => {
+    expect(resolveLocalizedText({ en: 'EN only' }, 'pt')).toBe('EN only');
+  });
+
+  it.each([
+    ['a number', 42],
+    ['null', null],
+    ['undefined', undefined],
+    ['an array', ['pt']],
+    ['a non-bag object', { foo: 'bar' }],
+    ['a bag with a non-string value', { pt: 'ok', en: 7 }],
+  ])('returns null for %s — "nothing authored" is not an empty string', (_n, value) => {
+    expect(resolveLocalizedText(value, 'pt')).toBeNull();
   });
 });
