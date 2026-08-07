@@ -1,0 +1,34 @@
+# db/scripts/migration-number-exemptions.txt
+#
+# Migration filenames allowed to share a 4-digit number with another file.
+# Read by db/scripts/check-migration-numbers.sh. One filename per line;
+# `#` starts a comment. A number is only forgiven when EVERY file claiming it is
+# listed here — so adding a third file to an exempted number still fails.
+#
+# THIS LIST IS NOT A CONVENIENCE. Every entry is a collision that could not be
+# undone, because undoing it means RENAMING A MIGRATION THAT IS ALREADY APPLIED,
+# and itera.schema_migrations is keyed by filename: the renamed file has no
+# ledger row, `classify()` calls it PENDING, and the next `db-apply` re-runs it
+# against the ITERA production database. For a file containing a DROP or a
+# non-fixpoint backfill that is an outage, not an inconvenience.
+#
+# If your new migration collides, RENUMBER YOUR OWN FILE — it is not applied yet,
+# so renaming it costs nothing. Do not add it here.
+
+# ── 0006 ─────────────────────────────────────────────────────────────────────
+# Two migrations claimed 0006 before the ledger existed; both were applied by
+# hand and both are named in db/migrations/.baseline, which says so explicitly:
+# "Both 0006 files are listed. That is not a typo." Frozen since 2026-08-04.
+0006_dfl_federation_dfl_batch.sql
+0006_flatten_dfl_batch_spec_i18n.sql
+
+# ── 0041 ─────────────────────────────────────────────────────────────────────
+# 0041_activity_traces_guest_admin_read.sql was applied by db-apply on
+# 2026-08-05 (run 31045824414). 0041_mcp0002_author_role_and_authoring_rls.sql
+# is the itera-mcp consolidation (PR #282), registered in the ledger on
+# 2026-08-04 under exactly this filename. BOTH carry a ledger row keyed by the
+# name below, so neither can be renamed. Their relative order is moot: both were
+# applied long before either name existed on main, and a re-run of either is
+# what the exemption exists to prevent.
+0041_activity_traces_guest_admin_read.sql
+0041_mcp0002_author_role_and_authoring_rls.sql

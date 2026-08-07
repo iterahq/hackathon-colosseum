@@ -1,0 +1,86 @@
+name: DB Migration Numbering
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TWO MIGRATIONS MAY NOT CLAIM THE SAME NUMBER.
+#
+# The apply order of db/migrations/ is `LC_ALL=C sort` of the filename. When two
+# files share a 4-digit prefix, the order between them is decided by the
+# DESCRIPTION text — a word picked for readability, not for sequencing. If one
+# depends on the other, that dependency is resolved alphabetically by accident.
+#
+# WHY NOW. On 2026-08-07 the daily `db-drift` alarm (issue #288) was red with 14
+# ORPHAN ledger rows, and while diagnosing it two live number collisions turned
+# up that NOTHING in CI had mentioned:
+#   * 0041 — a merged migration and an unmerged one (PR #282)
+#   * 0050 — two OPEN PRs at once (#282 and #286)
+# The drift alarm watches `main` against the database. It has no opinion about
+# two PRs on a collision course, and by the time it does, one of them is merged.
+#
+# ⚠️ WHAT THIS CHECK CANNOT DO, STATED RATHER THAN IMPLIED. A `pull_request` run
+# sees main + THIS PR. It cannot see a sibling PR's files, so two open PRs both
+# adding `0055_*.sql` BOTH pass — until the first one merges, at which point the
+# second goes red on its next run and is renumbered before it can land. That is
+# a real gap, and it is the whole gap: the collision is caught before anything
+# reaches the database, which is what matters. Closing it properly would mean
+# querying every open PR's diff on every run, which trades a large amount of
+# fragility for a warning that arrives one merge earlier.
+#
+# THE RULE IS NOT "NEVER DUPLICATE". `main` already carries two legitimate pairs
+# that CANNOT be renamed, because a rename makes an APPLIED migration look
+# UNAPPLIED — itera.schema_migrations is keyed by filename, the new name has no
+# row, and the next `db-apply` re-runs the file against the ITERA production
+# database. Those pairs are frozen in
+# db/scripts/migration-number-exemptions.txt with a reason each; anything not on
+# that list is refused.
+#
+# THE LOGIC LIVES IN db/scripts/check-migration-numbers.sh, not inline here, so
+# it can be unit-tested and run by hand — the same shape as
+# migration-human-gate.yml. `db/scripts/test-check-migration-numbers.sh` asserts
+# every verdict INCLUDING the allowed ones (a guard that only refuses gets
+# switched off within a day), and the selftest job runs first.
+#
+# This check applies NO DDL and reads NO database. It needs no secret.
+#
+# RUNNER: `[self-hosted, dfl-runner]` — the iterahq-scoped registrations, same
+# labels as every other workflow here. See the header of ci.yml.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/**'
+      - 'db/scripts/check-migration-numbers.sh'
+      - 'db/scripts/migration-number-exemptions.txt'
+      - 'db/scripts/test-check-migration-numbers.sh'
+      - '.github/workflows/db-migration-numbering.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/**'
+      - 'db/scripts/check-migration-numbers.sh'
+      - 'db/scripts/migration-number-exemptions.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-migration-numbering-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    name: numbering guard self-test (blocks AND allows)
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove both verdicts against temp fixtures
+        run: bash db/scripts/test-check-migration-numbers.sh
+
+  check:
+    name: no two migrations share a number
+    runs-on: [self-hosted, dfl-runner]
+    needs: selftest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check migration numbering
+        run: bash db/scripts/check-migration-numbers.sh
