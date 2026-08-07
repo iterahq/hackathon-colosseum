@@ -1,0 +1,77 @@
+-- itera:no-transaction
+-- ============================================================================
+-- Itera activity taxonomy — split `sandbox_scenario` into two explicit kinds:
+-- `chat_sandbox` and `terminal_sandbox`.
+--
+-- Applies to the ITERA Supabase project (kjefmwlopzeaqgqtlbdn) ONLY.
+-- NOT dfl-schema. NOT DFL prod (yoojxnggaxcqtsyjdrdx).
+--
+-- WHY
+-- ---
+-- Today there is ONE kind, `sandbox_scenario` (added in 0016), and the actual
+-- flavour of sandbox is carried by a string discriminator inside the spec —
+-- `spec.sandboxKind`. That discriminator has exactly ONE legal value in
+-- practice: every one of the 48 existing rows (19 in `itera.activity_defs`,
+-- 29 in `itera.activities`) carries `cloud-core-chat`. A discriminator with a
+-- single inhabitant is not a discriminator, it is a kind wearing a disguise:
+-- the enum — the thing the database, the RLS policies, the MCP tools and the
+-- player all switch on — cannot tell a chat sandbox from a terminal sandbox,
+-- so every consumer has to reach into the jsonb to find out what it is
+-- looking at. Tainan decided on 2026-08-07 to make the distinction explicit
+-- and put it back in the type.
+--
+-- WHY NOW, AND NOT LATER
+-- ----------------------
+-- `terminal_sandbox` starts EMPTY — no terminal activity has ever been
+-- authored. So right now the split costs exactly one enum addition plus a
+-- 48-row relabel of content that is all one flavour. Every terminal activity
+-- authored before the split would be another row to migrate and another
+-- consumer to teach about the legacy shape. This is the cheapest this change
+-- will ever be.
+--
+-- WHAT THIS FILE DOES **NOT** DO — read before assuming
+-- ----------------------------------------------------
+-- 1. NO DML. Not one UPDATE, no backfill, no relabel of the 48 rows. Per
+--    CLAUDE.md's DDL≠DML rule (Tainan TG 2026-07-28: "prs nao sao para
+--    remover rows ou inserir seeds. pra isso use mcp"), a migration is for
+--    SCHEMA. It runs as superuser, with RLS off and with no attribution to
+--    any real user — which is precisely wrong for rewriting content rows.
+--    The 48-row move from `sandbox_scenario` to `chat_sandbox` runs through
+--    an MCP tool with the caller's user-JWT, on its own, after this lands.
+--    That separation is the point, not an oversight.
+-- 2. It does NOT remove `sandbox_scenario`. It CANNOT, safely: the 48 rows
+--    still carry that value until the data move above runs, and Postgres has
+--    no `ALTER TYPE ... DROP VALUE` — removing an enum value means recreating
+--    the type and rewriting every column that uses it. That is a separate,
+--    later migration, and it is only correct once a `select count(*) ...
+--    where kind = 'sandbox_scenario'` returns 0 in BOTH tables.
+--
+-- So the intended end state arrives in three steps, of which this is the
+-- first: (1) add the two kinds [this file], (2) move the rows via MCP,
+-- (3) retire `sandbox_scenario` in a future migration once nothing carries it.
+-- Between (1) and (3) the enum legitimately holds all three values, and every
+-- consumer must tolerate that.
+--
+-- 🚨 APPLY NOTE — why line 1 is `-- itera:no-transaction`
+-- ------------------------------------------------------
+-- `ALTER TYPE ... ADD VALUE` cannot run inside a transaction block.
+-- `db/scripts/apply-migrations.sh` (`apply_one()`) picks the transaction mode
+-- by READING the file: it selects mode `none` only when the FIRST line carries
+-- the `itera:no-transaction` marker, and it flips to mode `self` if the file
+-- opens its own transaction. Hence: marker on line 1, and this file opens no
+-- transaction of its own.
+--
+-- The documented cost of mode `none` is that the ledger INSERT lands just
+-- AFTER the file commits — if the connection dies in that gap, the file is
+-- applied but unrecorded and the next run re-applies it. `IF NOT EXISTS` on
+-- both statements is what makes that harmless, and idempotency is mandatory in
+-- this repo for exactly this reason (db/README.md, "Idempotency is STILL
+-- mandatory").
+--
+-- One more Postgres rule worth stating: a new enum value cannot be USED in the
+-- same transaction that added it. Nothing here uses them — another reason the
+-- data move is a separate, later operation.
+-- ============================================================================
+
+ALTER TYPE itera.activity_kind ADD VALUE IF NOT EXISTS 'chat_sandbox';
+ALTER TYPE itera.activity_kind ADD VALUE IF NOT EXISTS 'terminal_sandbox';
