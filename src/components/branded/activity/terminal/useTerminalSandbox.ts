@@ -115,7 +115,10 @@ export function useTerminalSandbox(
     canRun,
     canClear,
     canRestart,
-    ps1: scenario.initialState.ps1 ?? '$',
+    // ⚠️ NO `ps1` HERE. It is chrome, and its fallback has to be localizable —
+    // so it is resolved in the shell, which is the layer that holds the
+    // dictionary. See `TerminalSandboxShell` for the whole story, including
+    // what still cannot be translated and why.
     revealLines: scenario.reveal.masterLine ?? [],
     /** Commands that unlocked nothing — surfaced for the instructor (Q5 → C). */
     unmatched: unmatchedCommandCount(model),

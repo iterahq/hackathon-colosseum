@@ -79,6 +79,35 @@ export function TerminalSandboxShell({
     }
   }, [settled, verdict, recap, onComplete, trace]);
 
+  /**
+   * ── i18n OF THE TERMINAL (plan §3) — WHAT IS FIXED AND WHAT IS NOT ─────────
+   *
+   * FIXED HERE: every string this component owns now comes from the app
+   * dictionary (`terminal.*` in `src/i18n`), in both locales. They used to be
+   * `{ pt, en }` object literals inlined in the JSX — translated, but invisible
+   * to anyone auditing what the activity says, and unreviewable without opening
+   * the component. `src/test/terminalI18n.test.ts` keeps them from coming back.
+   *
+   * STILL NOT FIXED, and it is NOT fixable in this repo: the strings the AUTHOR
+   * writes inside the spec — `initialState.ps1`, `windowTitle`, `welcome`,
+   * `cannedOutput[*].lines`, `unknownCommand.lines`. Those are typed
+   * `z.string()` by `@iterahq/activity-spec`, and the spec is Zod-validated at
+   * the render boundary (`SandboxScenarioGuard`), so authoring `{ pt, en }`
+   * there today renders the invalid-spec card. Widening those five fields to
+   * `z.union([z.string(), I18nSchema])` is a change in the PACKAGE repo, plus a
+   * republish and a version bump here.
+   *
+   * The two `t(…)` calls below are already tolerant of that widening — `t`
+   * accepts `I18n | string` — so the day the package ships it, this file needs
+   * no edit. What is NOT tolerant is `welcome` / `cannedOutput`, because those
+   * are resolved inside `initialTerminalModel` / `runCommand`, in the package.
+   *
+   * ✅ Engine output IS bilingual already: engines emit structured events and a
+   * `ResponseTable` of `{ pt, en }` templates renders them, so "nothing staged
+   * to commit" and its Portuguese twin come from the same code path.
+   */
+  const ps1 = t(scenario.initialState.ps1 ?? tr('terminal.ps1'), locale);
+
   const stepLabel = s.currentStep
     ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}`
     : undefined;
@@ -106,43 +135,34 @@ export function TerminalSandboxShell({
               </p>
             )}
             {coachHint && (
-              <SandboxHint
-                hint={coachHint}
-                label={t({ pt: 'ver dica', en: 'see hint' }, locale)}
-              />
+              <SandboxHint hint={coachHint} label={tr('terminal.hint')} />
             )}
           </div>
         )}
 
         {/* MIDDLE ZONE — the window: transcript AND prompt inside it. */}
-        <SandboxWindow title={scenario.initialState.windowTitle ?? 'bash — sandbox'}>
+        <SandboxWindow title={t(scenario.initialState.windowTitle ?? tr('terminal.windowTitle'), locale)}>
           <TerminalTranscript
             lines={s.model.lines}
-            ps1={s.ps1}
+            ps1={ps1}
             successLines={s.successLines}
-            successLabel={t({ pt: 'passo concluído', en: 'step completed' }, locale)}
-            emptyHint={t(
-              variant === 'options'
-                ? { pt: '# monte um comando nas opções abaixo', en: '# build a command from the options below' }
-                : { pt: '# digite um comando e aperte Enter', en: '# type a command and press Enter' },
-              locale,
-            )}
+            successLabel={tr('terminal.stepCompleted')}
+            emptyHint={tr(variant === 'options' ? 'terminal.empty.options' : 'terminal.empty.freeText')}
           />
           {showControls && (
             <TerminalPromptBar
-              ps1={s.ps1}
+              ps1={ps1}
               value={s.draft}
               editable={variant === 'freeText'}
-              placeholder={t(
+              placeholder={tr(
                 variant === 'options'
-                  ? { pt: 'escolha abaixo…', en: 'pick below…' }
-                  : { pt: 'digite um comando…', en: 'type a command…' },
-                locale,
+                  ? 'terminal.placeholder.options'
+                  : 'terminal.placeholder.freeText',
               )}
               canRun={s.canRun}
               onChange={s.setDraft}
               onRun={() => s.runDraft(variant === 'options' ? 'tokens' : 'typed')}
-              runLabel={t({ pt: 'Rodar', en: 'Run' }, locale)}
+              runLabel={tr('terminal.run')}
             />
           )}
         </SandboxWindow>
@@ -158,11 +178,8 @@ export function TerminalSandboxShell({
                 disabled={s.readOnly}
                 onPickCommand={s.runCommandOption}
                 onPickToken={s.appendToken}
-                label={t(
-                  s.granularity === 'command'
-                    ? { pt: 'Escolha o comando', en: 'Pick the command' }
-                    : { pt: 'Monte o comando', en: 'Build the command' },
-                  locale,
+                label={tr(
+                  s.granularity === 'command' ? 'terminal.pickCommand' : 'terminal.buildCommand',
                 )}
               />
             )}
@@ -181,7 +198,7 @@ export function TerminalSandboxShell({
                 className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-evergreen/50 hover:text-foreground disabled:opacity-40"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                {t({ pt: 'Recomeçar', en: 'Restart' }, locale)}
+                {tr('terminal.restart')}
               </button>
               {s.canClear && variant === 'options' && (
                 <button
@@ -190,7 +207,7 @@ export function TerminalSandboxShell({
                   data-testid="terminal-clear"
                   className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-evergreen/50 hover:text-foreground"
                 >
-                  {t({ pt: 'Limpar', en: 'Clear' }, locale)}
+                  {tr('terminal.clear')}
                 </button>
               )}
             </div>

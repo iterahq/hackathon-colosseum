@@ -319,6 +319,24 @@ export const TERMINAL_OPTIONS: ActivityFixture = {
   spec: terminalScenarios.options as unknown as Record<string, unknown>,
 };
 
+/**
+ * The same scenario with `ps1`, `windowTitle`, `welcome` and `unknownCommand`
+ * REMOVED, so every string on screen belongs to the player or to the engine —
+ * i.e. to the two layers that can be localized today.
+ *
+ * It is not a contrivance: a scenario that authors none of that chrome is the
+ * normal case, and it is the ONLY case in which the prompt prefix is the
+ * player's to translate. An authored `ps1` is `z.string()` in
+ * `@iterahq/activity-spec` and renders verbatim in both locales — the gap is
+ * pinned in `src/test/terminalRenderedLocale.test.tsx`.
+ */
+export const TERMINAL_PLAYER_CHROME: ActivityFixture = {
+  id: id(20),
+  kind: 'sandbox_scenario',
+  label: 'sandbox_scenario · terminal (chrome do player)',
+  spec: terminalScenarios.playerChrome as unknown as Record<string, unknown>,
+};
+
 /* ────────────────────────────────────────────────────────────────────────────
  * INVALID SPECS — estado F. A mal-authored spec must render the friendly card,
  * never crash the learner's screen. One per validation SITE, because the two
@@ -382,6 +400,7 @@ export const ALL_FIXTURES: readonly ActivityFixture[] = [
   SANDBOX_SCENARIO,
   TERMINAL_FREE_TEXT,
   TERMINAL_OPTIONS,
+  TERMINAL_PLAYER_CHROME,
   INVALID_SINGLE_CHOICE,
   INVALID_CODE,
   CONCEPT_REVEAL,

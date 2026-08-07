@@ -183,5 +183,77 @@
         "git status"
       ]
     }
+  },
+  "playerChrome": {
+    "id": "t1-default-chrome",
+    "sandboxKind": "terminal",
+    "openness": "fixed",
+    "title": {
+      "pt": "Sua primeira branch",
+      "en": "Your first branch"
+    },
+    "inputMode": "freeText",
+    "initialState": {
+      "engine": "git",
+      "seed": {
+        "defaultBranch": "main",
+        "seedFiles": {
+          "README.md": "# meu-projeto"
+        },
+        "seedCommitMessage": "primeiro commit"
+      }
+    },
+    "steps": [
+      {
+        "id": "criar-branch",
+        "prompt": {
+          "pt": "Crie a branch **feat/perfil** e mude para ela.",
+          "en": "Create the **feat/perfil** branch and switch to it."
+        },
+        "hint": {
+          "pt": "git checkout -b feat/perfil",
+          "en": "git checkout -b feat/perfil"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git checkout -b feat/perfil",
+            "accept": [
+              "git switch -c feat/perfil"
+            ]
+          }
+        }
+      },
+      {
+        "id": "conferir",
+        "prompt": {
+          "pt": "Confirme em qual branch você está.",
+          "en": "Check which branch you are on."
+        },
+        "hint": {
+          "pt": "git status",
+          "en": "git status"
+        },
+        "unlock": {
+          "commandMatched": {
+            "cmd": "git status"
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "conferir"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Você criou uma branch e conferiu onde estava. 🎉",
+        "en": "You created a branch and checked where you were. 🎉"
+      },
+      "masterLine": [
+        "git checkout -b feat/perfil",
+        "git status"
+      ]
+    }
   }
 }

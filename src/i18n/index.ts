@@ -521,6 +521,24 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.continue': 'Continuar',
     'activity.reveal.show': 'Ver resposta',
     'activity.reveal.hide': 'Esconder resposta',
+    // Terminal sandbox — TODO o chrome (plano
+    // `20260807-itera-terminal-sandbox-refinamentos` §3). Antes disso cada
+    // string vivia como objeto `{ pt, en }` cravado no componente: traduzido,
+    // mas invisível para quem procura o que a atividade diz, e impossível de
+    // revisar sem abrir o JSX. Ver `terminalI18n.test.ts`, que impede a volta.
+    'terminal.ps1': 'aluno@itera:~$',
+    'terminal.windowTitle': 'bash — sandbox',
+    'terminal.hint': 'ver dica',
+    'terminal.placeholder.freeText': 'digite um comando…',
+    'terminal.placeholder.options': 'escolha abaixo…',
+    'terminal.empty.freeText': '# digite um comando e aperte Enter',
+    'terminal.empty.options': '# monte um comando nas opções abaixo',
+    'terminal.run': 'Rodar',
+    'terminal.restart': 'Recomeçar',
+    'terminal.clear': 'Limpar',
+    'terminal.pickCommand': 'Escolha o comando',
+    'terminal.buildCommand': 'Monte o comando',
+    'terminal.stepCompleted': 'passo concluído',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Painel do administrador',
     'admin.title': 'Observabilidade da sua organização',
@@ -1171,6 +1189,20 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.continue': 'Continue',
     'activity.reveal.show': 'Show answer',
     'activity.reveal.hide': 'Hide answer',
+    // Terminal sandbox chrome — see the pt block for the rationale.
+    'terminal.ps1': 'student@itera:~$',
+    'terminal.windowTitle': 'bash — sandbox',
+    'terminal.hint': 'see hint',
+    'terminal.placeholder.freeText': 'type a command…',
+    'terminal.placeholder.options': 'pick below…',
+    'terminal.empty.freeText': '# type a command and press Enter',
+    'terminal.empty.options': '# build a command from the options below',
+    'terminal.run': 'Run',
+    'terminal.restart': 'Restart',
+    'terminal.clear': 'Clear',
+    'terminal.pickCommand': 'Pick the command',
+    'terminal.buildCommand': 'Build the command',
+    'terminal.stepCompleted': 'step completed',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Admin dashboard',
     'admin.title': "Your organization's observability",

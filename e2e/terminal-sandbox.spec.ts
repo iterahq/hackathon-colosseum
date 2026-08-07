@@ -28,13 +28,22 @@ import {
   ALL_FIXTURES,
   TERMINAL_FREE_TEXT,
   TERMINAL_OPTIONS,
+  TERMINAL_PLAYER_CHROME,
   type ActivityFixture,
 } from './support/activityFixtures';
 import { installHarnessSubstrate, harnessUrl } from './support/harnessStub';
 
+type Locale = 'pt' | 'en';
+
 /** Open a terminal fixture in the author harness, mounted and dispatched. */
-async function open(page: Page, fx: ActivityFixture): Promise<void> {
+async function open(page: Page, fx: ActivityFixture, locale?: Locale): Promise<void> {
   await installHarnessSubstrate(page, ALL_FIXTURES);
+  if (locale) {
+    // `I18nProvider` reads the persisted choice on its first render, so this has
+    // to land BEFORE any app script runs. The stub's `users` row carries no
+    // `locale`, so `useLocaleSync` never overrides it.
+    await page.addInitScript((l) => window.localStorage.setItem('itera.locale', l), locale);
+  }
   await page.goto(harnessUrl(fx));
   await expect(page.getByTestId('activity-test-harness')).toBeVisible();
   // A spec that failed its Zod boundary renders the invalid card — asserting
@@ -135,6 +144,101 @@ test('§2 the step-completing command is ticked, the failing one is not', async 
   await input.press('Enter');
   await expect(marks).toHaveCount(1);
   await expect(page.locator('[data-line-kind="out"]', { has: marks })).toContainText('feat/perfil');
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * §3 — THE SAME ACTIVITY, IN BOTH LANGUAGES
+ *
+ * The plan is explicit that asserting a key exists in the dictionary is empty
+ * verification. So this section runs the SAME activity twice and compares the
+ * two renders against each other — never against an expected constant, which
+ * would just be the dictionary restated.
+ *
+ * Three layers are checked, because they are localized by three different
+ * mechanisms and each can rot alone:
+ *   chrome  → the app dictionary (`terminal.*`)
+ *   engine  → the package's `ResponseTable` of `{ pt, en }` templates
+ *   prompt  → the player's bilingual `ps1` fallback
+ *
+ * ⚠️ NOT checked, because it CANNOT pass: strings the author writes into the
+ * spec (`ps1`, `windowTitle`, `welcome`, `cannedOutput`, `unknownCommand`) are
+ * `z.string()` in `@iterahq/activity-spec` and render verbatim in both locales.
+ * `TERMINAL_PLAYER_CHROME` is the fixture that authors none of them. The gap is
+ * pinned by an explicit test in `src/test/terminalRenderedLocale.test.tsx`.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** Everything the player owns on screen, in one read. */
+async function chromeOf(page: Page): Promise<Record<string, string>> {
+  return {
+    step: (await page.getByTestId('sandbox-instruction').textContent()) ?? '',
+    placeholder: (await page.getByTestId('terminal-input').getAttribute('placeholder')) ?? '',
+    hint: (await page.getByTestId('sandbox-hint-toggle').textContent()) ?? '',
+    run: (await page.getByTestId('terminal-run').getAttribute('aria-label')) ?? '',
+    restart: (await page.getByTestId('terminal-restart').textContent()) ?? '',
+    empty: (await page.getByTestId('terminal-transcript').textContent()) ?? '',
+  };
+}
+
+test('§3 every piece of chrome changes with the locale', async ({ page }) => {
+  await open(page, TERMINAL_PLAYER_CHROME, 'pt');
+  const pt = await chromeOf(page);
+  await open(page, TERMINAL_PLAYER_CHROME, 'en');
+  const en = await chromeOf(page);
+
+  for (const key of Object.keys(pt)) {
+    expect(en[key], `"${key}" is identical in both locales`).not.toBe(pt[key]);
+    expect(en[key]!.trim().length, `"${key}" rendered empty`).toBeGreaterThan(0);
+  }
+});
+
+test('§3 the prompt prefix and the engine output change with the locale', async ({ page }) => {
+  const transcriptAfter = async (locale: Locale, line: string) => {
+    await open(page, TERMINAL_PLAYER_CHROME, locale);
+    const input = page.getByTestId('terminal-input');
+    await input.fill(line);
+    await input.press('Enter');
+    await expect(page.getByTestId('terminal-transcript')).not.toBeEmpty();
+    return (await page.getByTestId('terminal-transcript').textContent()) ?? '';
+  };
+
+  // The prompt prefix — §3 names it. Player-owned fallback, so it translates.
+  const ptOk = await transcriptAfter('pt', 'git checkout -b feat/perfil');
+  const enOk = await transcriptAfter('en', 'git checkout -b feat/perfil');
+  expect(ptOk).toContain('aluno@itera');
+  expect(enOk).toContain('student@itera');
+
+  // A SUCCESS line, from the engine's response table.
+  expect(ptOk).toContain('Mudou para o novo ramo');
+  expect(enOk).toContain('Switched to a new branch');
+
+  // An ERROR line. Both sides, as §3 asks.
+  expect(await transcriptAfter('pt', 'git commit -m "cedo"')).toContain('nada em stage');
+  expect(await transcriptAfter('en', 'git commit -m "too soon"')).toContain('nothing staged');
+});
+
+test('§3 no Portuguese survives in the en render', async ({ page }) => {
+  await open(page, TERMINAL_PLAYER_CHROME, 'en');
+  const input = page.getByTestId('terminal-input');
+  await input.fill('git commit -m "too soon"');
+  await input.press('Enter');
+  await expect(page.getByTestId('terminal-transcript')).toContainText('nothing staged');
+
+  // The activity's own subtree — not the app shell, which is out of this plan's
+  // scope, and not authored content, which this fixture deliberately has none of.
+  const rendered = (await page.locator('[data-sandbox-kind="terminal"]').innerText()).toLowerCase();
+  for (const word of [
+    'passo',
+    'dica',
+    'recomeçar',
+    'rodar',
+    'digite',
+    'escolha',
+    'nada em stage',
+    'mudou para',
+    'aluno@',
+  ]) {
+    expect(rendered, `"${word}" leaked into the en render`).not.toContain(word);
+  }
 });
 
 test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
