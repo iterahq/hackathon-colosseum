@@ -187,8 +187,13 @@ export function TerminalSandboxShell({
           {showControls && (
             <TerminalPromptBar
               ps1={ps1}
-              value={s.draft}
+              value={s.line}
               editable={submitMode === 'enter'}
+              /* §5: the token surface composes CHIPS, not text. The other two
+                 surfaces pass `null` and keep the string rendering. */
+              pills={submitMode === 'assemble' ? s.pickedTokens : null}
+              onRemovePill={s.unpickToken}
+              removeLabel={tr('terminal.removeChip')}
               /* THE RUN BUTTON EXISTS ONLY WHERE IT DOES SOMETHING (plan §4). */
               showRun={submitMode !== 'tap'}
               submitMode={submitMode}
@@ -208,10 +213,11 @@ export function TerminalSandboxShell({
               <TerminalOptionPalette
                 granularity={s.granularity}
                 commands={s.optionCommands}
-                tokens={s.optionTokens}
+                tokens={s.availableTokens}
                 disabled={s.readOnly}
                 onPickCommand={s.runCommandOption}
-                onPickToken={s.appendToken}
+                onPickToken={s.pickToken}
+                emptyLabel={tr('terminal.paletteEmpty')}
                 label={tr(
                   s.granularity === 'command' ? 'terminal.pickCommand' : 'terminal.buildCommand',
                 )}

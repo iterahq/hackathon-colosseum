@@ -272,7 +272,9 @@ describe('the options surface judges identically', () => {
     tap('git');
     tap('add');
     tap('.');
-    expect(screen.getByTestId('terminal-draft').textContent).toBe('git add .');
+    // The composed line lives in `data-draft`: on the token surface the visible
+    // form is CHIPS, so `textContent` is the concatenation and not the line.
+    expect(screen.getByTestId('terminal-draft').getAttribute('data-draft')).toBe('git add .');
     fireEvent.click(screen.getByTestId('terminal-run'));
 
     tap('git');
@@ -284,14 +286,27 @@ describe('the options surface judges identically', () => {
     expect(cap.calls[0]!.correct).toBe(true);
   });
 
-  it('a token palette is not consumed — the same token can be tapped twice', () => {
+  /**
+   * §5 REVERSED THIS. The palette used to be reusable — a token could be tapped
+   * twice — on the reasoning that typing lets you repeat a word. Tainan asked
+   * for a TRANSFER between two trays instead ("dois lados do mesmo conjunto"),
+   * so a chip is in exactly one tray and the sum is invariant. A step that
+   * genuinely needs `git` twice authors it twice; chips carry an index, so the
+   * two entries are two independent chips.
+   */
+  it('a chip moves OUT of the palette when it moves INTO the prompt', () => {
     mount(OPTIONS_SPEC, captor().fn, 'a-options-2');
     fireEvent.click(screen.getByText('touch perfil.md'));
-    const tap = (token: string) =>
-      fireEvent.click(within(screen.getByTestId('terminal-options')).getByText(token));
-    tap('git');
-    tap('git');
-    expect(screen.getByTestId('terminal-draft').textContent).toBe('git git');
+
+    const paletteChips = () => screen.getAllByTestId('terminal-option-token');
+    const pills = () => screen.queryAllByTestId('terminal-pill');
+    const total = paletteChips().length;
+
+    fireEvent.click(within(screen.getByTestId('terminal-options')).getByText('git'));
+    expect(paletteChips()).toHaveLength(total - 1);
+    expect(pills()).toHaveLength(1);
+    // …and it is gone from below, so it cannot be tapped again.
+    expect(within(screen.getByTestId('terminal-options')).queryByText('git')).toBeNull();
   });
 });
 
@@ -357,6 +372,108 @@ describe('submission differs by input mode', () => {
     expect(mode()).toBe('tap');
     fireEvent.click(screen.getByText('touch perfil.md'));
     expect(mode()).toBe('assemble');
+  });
+});
+
+/**
+ * §5 — "montar comando" is a TRAY OF CHIPS with movement in BOTH directions,
+ * not a text input. The palette and the prompt are two sides of one set, and
+ * the interaction is transfer.
+ *
+ * The invariant every test here leans on: **palette + prompt = the authored
+ * list, always.** It is what makes "the chip moved" checkable rather than
+ * "something appeared somewhere".
+ */
+describe('chips move in both directions', () => {
+  /** Reach the token step — step 1 of OPTIONS_SPEC is the whole-command one. */
+  function atTokenStep(id: string) {
+    mount(OPTIONS_SPEC, captor().fn, id);
+    fireEvent.click(screen.getByText('touch perfil.md'));
+  }
+
+  const palette = () => screen.queryAllByTestId('terminal-option-token');
+  const pills = () => screen.queryAllByTestId('terminal-pill');
+  const line = () => screen.getByTestId('terminal-draft').getAttribute('data-draft');
+  const tapPalette = (token: string) =>
+    fireEvent.click(within(screen.getByTestId('terminal-options')).getByText(token));
+
+  const AUTHORED = OPTIONS_SPEC.steps[1]!.expose!.tokens!.length;
+
+  it('keeps the two sides summing to the authored list, move after move', () => {
+    atTokenStep('a-chips-sum');
+    expect(palette()).toHaveLength(AUTHORED);
+    expect(pills()).toHaveLength(0);
+
+    tapPalette('git');
+    expect(palette().length + pills().length).toBe(AUTHORED);
+    tapPalette('add');
+    expect(palette().length + pills().length).toBe(AUTHORED);
+
+    fireEvent.click(pills()[0]!);
+    expect(palette().length + pills().length).toBe(AUTHORED);
+    expect(pills()).toHaveLength(1);
+  });
+
+  it('clicking a pill sends it back DOWN to the palette', () => {
+    atTokenStep('a-chips-back');
+    tapPalette('git');
+    expect(within(screen.getByTestId('terminal-options')).queryByText('git')).toBeNull();
+
+    fireEvent.click(pills()[0]!);
+    // Back in the tray, and out of the prompt.
+    expect(within(screen.getByTestId('terminal-options')).getByText('git')).toBeTruthy();
+    expect(pills()).toHaveLength(0);
+    expect(line()).toBe('');
+  });
+
+  it('the composed line is the chips, in the order they were moved', () => {
+    atTokenStep('a-chips-order');
+    tapPalette('git');
+    tapPalette('add');
+    tapPalette('.');
+    expect(line()).toBe('git add .');
+
+    // Remove the middle one: the line closes up, it does not leave a hole.
+    fireEvent.click(pills()[1]!);
+    expect(line()).toBe('git .');
+  });
+
+  it('renders the composed line as pills, not as text', () => {
+    atTokenStep('a-chips-pills');
+    tapPalette('git');
+    // Each chip is its own control — that is what makes the return trip
+    // clickable at all — and it says what clicking it does.
+    expect(pills()).toHaveLength(1);
+    expect(pills()[0]!.getAttribute('aria-label')).toContain('git');
+    expect(pills()[0]!.tagName).toBe('BUTTON');
+  });
+
+  it('empties the palette completely, and says so instead of vanishing', () => {
+    atTokenStep('a-chips-empty');
+    for (const token of OPTIONS_SPEC.steps[1]!.expose!.tokens!) tapPalette(token);
+    expect(palette()).toHaveLength(0);
+    expect(pills()).toHaveLength(AUTHORED);
+    expect(screen.getByTestId('terminal-options-empty')).toBeTruthy();
+  });
+
+  it('Limpar sends every chip back at once', () => {
+    atTokenStep('a-chips-clear');
+    tapPalette('git');
+    tapPalette('add');
+    fireEvent.click(screen.getByTestId('terminal-clear'));
+    expect(pills()).toHaveLength(0);
+    expect(palette()).toHaveLength(AUTHORED);
+  });
+
+  it('running the line returns every chip to the palette', () => {
+    atTokenStep('a-chips-run');
+    tapPalette('git');
+    tapPalette('add');
+    tapPalette('.');
+    fireEvent.click(screen.getByTestId('terminal-run'));
+    expect(transcript()).toContain('git add .');
+    expect(pills()).toHaveLength(0);
+    expect(palette()).toHaveLength(AUTHORED);
   });
 });
 

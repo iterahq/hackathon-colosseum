@@ -301,6 +301,69 @@ test('§4 token options: chips do NOT submit, Run submits once', async ({ page }
   await expect(ranCommands(page)).toHaveCount(before + 1);
 });
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * §5 — "MONTAR COMANDO" IS A TRAY OF CHIPS, NOT A TEXT INPUT
+ *
+ * The palette and the prompt are two sides of ONE set, and the interaction is
+ * TRANSFER: a chip tapped below leaves the tray and appears above as a pill; a
+ * pill tapped above goes back down. The invariant every assertion leans on is
+ * that the two sides always sum to the authored list — which is what makes
+ * "the chip moved" checkable instead of "something appeared somewhere".
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+test('§5 chips transfer both ways, and the two sides always sum', async ({ page }) => {
+  await open(page, TERMINAL_OPTIONS);
+  // Clear the tap step to reach the token step.
+  await page.getByTestId('terminal-option-command').filter({ hasText: 'checkout -b' }).click();
+
+  const palette = page.getByTestId('terminal-option-token');
+  const pills = page.getByTestId('terminal-pill');
+  const authored = await palette.count();
+  expect(authored).toBeGreaterThan(2);
+  await expect(pills).toHaveCount(0);
+
+  // UP: out of the tray, into the prompt.
+  await palette.filter({ hasText: /^git$/ }).click();
+  await expect(palette).toHaveCount(authored - 1);
+  await expect(pills).toHaveCount(1);
+  await expect(page.getByTestId('terminal-option-token').filter({ hasText: /^git$/ })).toHaveCount(
+    0,
+  );
+
+  await palette.filter({ hasText: /^status$/ }).click();
+  await expect(page.getByTestId('terminal-draft')).toHaveAttribute('data-draft', 'git status');
+  expect((await palette.count()) + (await pills.count())).toBe(authored);
+
+  // DOWN: tap the pill, it returns to the tray.
+  await pills.first().click();
+  await expect(pills).toHaveCount(1);
+  await expect(palette).toHaveCount(authored - 1);
+  await expect(page.getByTestId('terminal-draft')).toHaveAttribute('data-draft', 'status');
+  expect((await palette.count()) + (await pills.count())).toBe(authored);
+});
+
+test('§5 the composed line is pills, and running it returns them all', async ({ page }) => {
+  await open(page, TERMINAL_OPTIONS);
+  await page.getByTestId('terminal-option-command').filter({ hasText: 'checkout -b' }).click();
+
+  const palette = page.getByTestId('terminal-option-token');
+  const authored = await palette.count();
+  // `git log` on purpose: it RUNS but unlocks nothing, so the activity does not
+  // settle and the tray is still mounted to be counted. Composing the winning
+  // command here would end the activity and unmount the thing under test.
+  await palette.filter({ hasText: /^git$/ }).click();
+  await palette.filter({ hasText: /^log$/ }).click();
+
+  // Each chip is its own control — that is what makes the return trip clickable.
+  await expect(page.getByTestId('terminal-pill')).toHaveCount(2);
+  await expect(page.getByTestId('terminal-pill').first()).toHaveAttribute('aria-label', /git/);
+
+  await page.getByTestId('terminal-run').click();
+  await expect(page.getByTestId('terminal-transcript')).toContainText('git log');
+  await expect(page.getByTestId('terminal-pill')).toHaveCount(0);
+  await expect(palette).toHaveCount(authored);
+});
+
 test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
   await open(page, TERMINAL_FREE_TEXT);
 

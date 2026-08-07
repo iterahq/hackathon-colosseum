@@ -541,6 +541,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.clear': 'Limpar',
     'terminal.pickCommand': 'Escolha o comando',
     'terminal.buildCommand': 'Monte o comando',
+    // §5 — a paleta e o input são dois lados do MESMO conjunto; a interação é
+    // de transferência, então cada lado precisa dizer o que o clique faz.
+    'terminal.removeChip': 'toque para devolver à paleta',
+    'terminal.paletteEmpty': 'todas as peças estão no comando acima',
     'terminal.stepCompleted': 'passo concluído',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Painel do administrador',
@@ -1206,6 +1210,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.clear': 'Clear',
     'terminal.pickCommand': 'Pick the command',
     'terminal.buildCommand': 'Build the command',
+    'terminal.removeChip': 'tap to send it back to the tray',
+    'terminal.paletteEmpty': 'every piece is up in the command',
     'terminal.stepCompleted': 'step completed',
     // Tenant-admin observability (plan #6)
     'admin.kicker': 'Admin dashboard',

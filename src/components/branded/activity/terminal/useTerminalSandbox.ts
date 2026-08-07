@@ -40,8 +40,24 @@ export function useTerminalSandbox(
   recorder: ActionRecorder<'scenario'>,
 ) {
   const [model, setModel] = useState<TerminalModel>(() => initialTerminalModel(scenario));
-  /** The line being composed — free-text typing, or tokens tapped together. */
+  /** The line being TYPED. Only the free-text surface uses it. */
   const [draft, setDraft] = useState('');
+  /**
+   * The chips moved UP into the prompt, in the order they were moved (plan §5).
+   *
+   * Stored as INDICES into the step's `tokens`, not as strings: a palette may
+   * legitimately offer the same token twice (`git`, `git`) and the two chips
+   * have to be independently movable. Strings would make them the same chip.
+   *
+   * Scoped to the step id so a palette change cannot leave stale indices
+   * behind. That is why it is one state object and not two — deriving
+   * "do these picks belong to the step I am rendering?" beats an effect that
+   * clears them one render late.
+   */
+  const [picked, setPicked] = useState<{ stepId: string | null; indices: number[] }>({
+    stepId: null,
+    indices: [],
+  });
 
   const won = isTerminalSuccess(scenario, model);
   const done = won || reveal;
@@ -63,8 +79,37 @@ export function useTerminalSandbox(
   const optionCommands = useMemo(() => expose?.commands ?? [], [expose]);
   const optionTokens = useMemo(() => expose?.tokens ?? [], [expose]);
 
-  const canRun = !readOnly && draft.trim().length > 0;
-  const canClear = !readOnly && draft.length > 0;
+  /**
+   * The token surface is a TRANSFER between two trays, not a text field (§5).
+   * `assembling` is what tells the rest of the hook which of the two composition
+   * models is live — typing, or moving chips.
+   */
+  const assembling = inputMode === 'options' && granularity === 'token';
+  const stepId = currentStep?.id ?? null;
+  const pickedIdx = useMemo(
+    () => (picked.stepId === stepId ? picked.indices : []),
+    [picked, stepId],
+  );
+
+  /** The chips currently UP in the prompt, in the order the learner moved them. */
+  const pickedTokens = useMemo(
+    () => pickedIdx.map((i) => ({ index: i, token: optionTokens[i] ?? '' })),
+    [pickedIdx, optionTokens],
+  );
+  /** The chips still DOWN in the palette. The two sides sum to the authored list. */
+  const availableTokens = useMemo(
+    () =>
+      optionTokens
+        .map((token, index) => ({ index, token }))
+        .filter(({ index }) => !pickedIdx.includes(index)),
+    [optionTokens, pickedIdx],
+  );
+
+  /** What Run would actually execute: the typed line, or the assembled chips. */
+  const line = assembling ? pickedTokens.map((p) => p.token).join(' ') : draft;
+
+  const canRun = !readOnly && line.trim().length > 0;
+  const canClear = !readOnly && (assembling ? pickedIdx.length > 0 : draft.length > 0);
   const canRestart = !readOnly && model.commands.length > 0;
 
   const run = useCallback(
@@ -87,6 +132,7 @@ export function useTerminalSandbox(
         return next;
       });
       setDraft('');
+      setPicked({ stepId: null, indices: [] });
     },
     [readOnly, scenario, locale, recorder, currentStep],
   );
@@ -110,8 +156,13 @@ export function useTerminalSandbox(
     needs,
     inputMode,
     granularity,
+    assembling,
     optionCommands,
     optionTokens,
+    pickedTokens,
+    availableTokens,
+    /** The line Run would execute — typed text, or the chips joined. */
+    line,
     canRun,
     canClear,
     canRestart,
@@ -126,16 +177,33 @@ export function useTerminalSandbox(
     setDraft: (value: string) => {
       if (!readOnly) setDraft(value);
     },
-    /** Tap a token: append it to the line. The palette is NOT consumed. */
-    appendToken: (token: string) => {
+    /**
+     * Move a chip UP: out of the palette, into the prompt. Idempotent on an
+     * index already up, so a double-fire cannot duplicate it.
+     */
+    pickToken: (index: number) => {
       if (readOnly) return;
-      setDraft((prev) => (prev.trim() ? `${prev.trim()} ${token}` : token));
+      setPicked((prev) => {
+        const current = prev.stepId === stepId ? prev.indices : [];
+        if (current.includes(index)) return { stepId, indices: current };
+        return { stepId, indices: [...current, index] };
+      });
+    },
+    /** Move a chip back DOWN: out of the prompt, into the palette. */
+    unpickToken: (index: number) => {
+      if (readOnly) return;
+      setPicked((prev) => {
+        const current = prev.stepId === stepId ? prev.indices : [];
+        return { stepId, indices: current.filter((i) => i !== index) };
+      });
     },
     clearDraft: () => {
-      if (!readOnly) setDraft('');
+      if (readOnly) return;
+      setDraft('');
+      setPicked({ stepId, indices: [] });
     },
     /** Free-text Enter / the Run button / a token line. */
-    runDraft: (source: CommandSource) => run(draft, source),
+    runDraft: (source: CommandSource) => run(line, source),
     /** One-tap whole-command option. */
     runCommandOption: (cmd: string) => run(cmd, 'option'),
     restart: () => {
@@ -149,6 +217,7 @@ export function useTerminalSandbox(
         return next;
       });
       setDraft('');
+      setPicked({ stepId: null, indices: [] });
     },
   };
 }
