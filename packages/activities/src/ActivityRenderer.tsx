@@ -30,7 +30,11 @@
  * WHAT IT SHIPS, AND WHAT IT ASKS THE HOST FOR
  * ─────────────────────────────────────────────────────────────────────────────
  * Built in: `concept`, `concept_reveal`, `video`, `single_choice`,
- * `multi_choice`, `match`, `order` — every kind that needs no backend.
+ * `multi_choice`, `match`, `order`, `sandbox_scenario` — every kind that needs
+ * no backend. `sandbox_scenario` joined in Fase C step 4 and is the first one
+ * that is not a single-submit question: it is N turns against a world model,
+ * and it still asks the host for nothing but i18n, because all of its judging
+ * is `@iterahq/activity-spec/runtime`'s.
  * Everything else comes from `ActivityHostContext.renderers`, and a kind with
  * neither renders a visible, inert placeholder and emits `port.unavailable`
  * rather than throwing (ADR-3: degrade explicitly).
@@ -47,6 +51,7 @@ import { SingleChoiceActivity } from './kinds/SingleChoiceActivity.js';
 import { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 import { MatchActivity } from './kinds/MatchActivity.js';
 import { OrderActivity } from './kinds/OrderActivity.js';
+import { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
 
 /**
  * The kinds this package renders on its own.
@@ -63,6 +68,7 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'multi_choice',
   'match',
   'order',
+  'sandbox_scenario',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -75,6 +81,7 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   multi_choice: MultiChoiceActivity as ComponentType<ActivityRendererProps>,
   match: MatchActivity as ComponentType<ActivityRendererProps>,
   order: OrderActivity as ComponentType<ActivityRendererProps>,
+  sandbox_scenario: SandboxScenarioActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */

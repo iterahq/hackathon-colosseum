@@ -16,21 +16,20 @@
 import { useEffect, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { t, type Scenario } from '@iterahq/activity-spec/runtime';
-import { useI18n } from '@/i18n';
-import type { Activity } from '@/types/content';
-import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
-import { ActivityShell } from '../parts';
-import { RichSpans } from '../RichSpans';
-import { parseInline } from '@/utils/richText';
-import { SandboxChatLog } from './SandboxChatLog';
-import { SandboxClearButton } from './SandboxClearButton';
-import { SandboxControls, type SandboxVariant } from './SandboxControls';
-import { SandboxHint } from './SandboxHint';
-import { SandboxInputBar } from './SandboxInputBar';
-import { SandboxReveal } from './SandboxReveal';
-import { SandboxWindow } from './SandboxWindow';
-import { useSandboxScenario } from './useSandboxScenario';
-import { useAssistantStream } from './useAssistantStream';
+import { useActivityI18n } from '../../context.js';
+import { ActivityShell } from '../../components/parts.js';
+import { RichSpans } from '../../components/RichSpans.js';
+import { parseInline } from '../../internal/richText.js';
+import { SandboxChatLog } from './SandboxChatLog.js';
+import { SandboxClearButton } from './SandboxClearButton.js';
+import { SandboxControls, type SandboxVariant } from './SandboxControls.js';
+import { SandboxHint } from './SandboxHint.js';
+import { SandboxInputBar } from './SandboxInputBar.js';
+import { SandboxReveal } from './SandboxReveal.js';
+import { SandboxWindow } from './SandboxWindow.js';
+import { useSandboxScenario } from './useSandboxScenario.js';
+import { useAssistantStream } from './useAssistantStream.js';
+import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 
 export function SandboxScenarioShell({
   activity,
@@ -38,13 +37,13 @@ export function SandboxScenarioShell({
   variant,
   reveal = false,
 }: {
-  activity: Activity;
-  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
+  activity: PortableActivity;
+  onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   variant: SandboxVariant;
   /** Reveal the success state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
 }) {
-  const { t: tr, locale } = useI18n();
+  const { t: tr, locale } = useActivityI18n();
   const scenario = activity.spec as unknown as Scenario;
   const isDone = activity.status === 'done';
   const s = useSandboxScenario(scenario, locale, reveal, isDone);

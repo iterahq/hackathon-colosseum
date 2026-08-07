@@ -59,6 +59,27 @@ export { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 export { MatchActivity } from './kinds/MatchActivity.js';
 export { OrderActivity } from './kinds/OrderActivity.js';
 
+/* ─────────────────────────── sandbox_scenario ────────────────────────────── */
+// Fase C step 4. ONE kind (`sandbox_scenario`) with five activity types behind
+// it: the dispatcher picks off the AUTHORED SHAPE, never off a second enum —
+// `sandboxKind: 'terminal'` splits by `inputMode`, everything else is the chat
+// sandbox split by `slots` / `choices`. The five are exported individually as
+// well, for the same reason the choice kinds are: a host that already knows
+// which one it has should not have to go through a switch to mount it.
+//
+// It needs NO backend port. That is a property of the kind, not an omission:
+// the whole thing runs on `@iterahq/activity-spec/runtime`'s pure reducers, so
+// a host gets a multi-turn, graded micro-experiment with nothing injected but
+// i18n. The AI-judged live twin (`sandbox-live`) is the one that needs `api`,
+// and it has not moved yet — see README.
+
+export { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
+export { SandboxAIActivity } from './kinds/sandbox/SandboxAIActivity.js';
+export { SandboxAIWithOptionsActivity } from './kinds/sandbox/SandboxAIWithOptionsActivity.js';
+export { SandboxAICompleteWordsActivity } from './kinds/sandbox/SandboxAICompleteWordsActivity.js';
+export { TerminalFreeTextActivity } from './kinds/terminal/TerminalFreeTextActivity.js';
+export { TerminalOptionsActivity } from './kinds/terminal/TerminalOptionsActivity.js';
+
 /* ───────────────────────────────── i18n ──────────────────────────────────── */
 
 export { ACTIVITY_DICTIONARY, ACTIVITY_I18N_KEYS, createActivityI18n } from './i18n/dictionary.js';
@@ -74,6 +95,7 @@ export type {
   ActivityActionRecorder,
   ActivityRecordedAction,
   ArrangementAction,
+  ScenarioAction,
   SelectionAction,
 } from './internal/actionRecorder.js';
 
@@ -83,8 +105,18 @@ export type {
 // (Fase C steps 4 and 5). They are the seam of an unfinished extraction, not a
 // design for outside use.
 
+export { ActivityTextarea } from './components/ActivityTextarea.js';
+export type { ActivityTextareaProps } from './components/ActivityTextarea.js';
 export { AnswerExplanation } from './components/AnswerExplanation.js';
 export { InstructionImage } from './components/InstructionImage.js';
+// The chat-sandbox pieces the Player's un-extracted LIVE sandbox still composes
+// with (`SandboxScenarioLiveActivity` renders the same window and transcript
+// against an AI-backed model). They leave this section when that one moves.
+export { SandboxBubble } from './kinds/sandbox/SandboxBubble.js';
+export { SandboxChatLog } from './kinds/sandbox/SandboxChatLog.js';
+export { SandboxClearButton } from './kinds/sandbox/SandboxClearButton.js';
+export { SandboxWindow } from './kinds/sandbox/SandboxWindow.js';
+export { useAssistantStream } from './kinds/sandbox/useAssistantStream.js';
 export { InstructionPanel } from './components/InstructionPanel.js';
 export { RichBlock } from './components/RichBlock.js';
 export { RichSpans } from './components/RichSpans.js';

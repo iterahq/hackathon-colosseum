@@ -1,10 +1,10 @@
 import type { I18n, Locale, Scenario } from '@iterahq/activity-spec/runtime';
 import { t } from '@iterahq/activity-spec/runtime';
-import { SandboxSlotPanel } from './SandboxSlotPanel';
-import { SandboxChoiceChips } from './SandboxChoiceChips';
-import { SandboxSeedChip } from './SandboxSeedChip';
-import { SandboxEvalPanel } from './SandboxEvalPanel';
-import type { useSandboxScenario } from './useSandboxScenario';
+import { SandboxSlotPanel } from './SandboxSlotPanel.js';
+import { SandboxChoiceChips } from './SandboxChoiceChips.js';
+import { SandboxSeedChip } from './SandboxSeedChip.js';
+import { SandboxEvalPanel } from './SandboxEvalPanel.js';
+import type { useSandboxScenario } from './useSandboxScenario.js';
 
 /** The compose affordance each sandbox activity type offers the learner. */
 export type SandboxVariant = 'ai' | 'options' | 'words';

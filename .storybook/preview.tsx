@@ -10,6 +10,7 @@ import '../src/lib/monaco-loader';
 // `.storybook/preview-head.html` — não há import de CSS pra elas aqui.
 import { I18nProvider } from '../src/i18n';
 import { AuthProvider } from '../src/auth/AuthContext';
+import { IteraActivityHost } from '../src/components/branded/activity/IteraActivityHost';
 
 /** The app forces a dark theme via `class="dark"` on the document — mirror it
  *  in Storybook so the evergreen-on-obsidiana tokens resolve. */
@@ -34,12 +35,25 @@ const withTheme: Decorator = (Story) => (
 /** Most branded components consume the i18n context, react-router, and (a few)
  *  the auth context. AuthProvider yields an anonymous session in Storybook —
  *  components fall back to their empty/Learner states, which is exactly what we
- *  want to showcase. */
+ *  want to showcase.
+ *
+ *  `IteraActivityHost` is the SAME adapter `src/App.tsx` mounts at its root, and
+ *  it is here for the same reason it is there: since Fase C the activity
+ *  renderers live in `@iterahq/activities` and read i18n / learner scope from the
+ *  ACTIVITY host context, not from `@/i18n`. Without it every activity story
+ *  renders against the package's fallback context — the strings are identical
+ *  (asserted by `activityDefaultI18n.test.tsx`) but the locale is pinned to `pt`
+ *  and the learner scope is absent, so a story would quietly stop being a
+ *  picture of the app. It wraps everything rather than only the activity stories
+ *  because a decorator that has to be remembered per story is a decorator that
+ *  will be forgotten. */
 const withProviders: Decorator = (Story) => (
   <MemoryRouter>
     <AuthProvider>
       <I18nProvider>
-        <Story />
+        <IteraActivityHost>
+          <Story />
+        </IteraActivityHost>
       </I18nProvider>
     </AuthProvider>
   </MemoryRouter>

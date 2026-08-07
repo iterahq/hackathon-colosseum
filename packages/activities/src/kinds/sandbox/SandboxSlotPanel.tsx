@@ -1,5 +1,5 @@
 import { t, type ChatModel, type Locale, type Scenario } from '@iterahq/activity-spec/runtime';
-import { ActivityTextarea } from '@/components/branded/activity/ActivityTextarea';
+import { ActivityTextarea } from '../../components/ActivityTextarea.js';
 
 /** Renders a scenario's slots (select → chips, text → textarea) above the input. */
 export function SandboxSlotPanel({

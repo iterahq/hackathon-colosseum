@@ -19,20 +19,19 @@
 import { useEffect, useRef } from 'react';
 import { RotateCcw, TerminalSquare } from 'lucide-react';
 import { t, type TerminalScenario } from '@iterahq/activity-spec/runtime';
-import { useI18n } from '@/i18n';
-import { useActionRecorder } from '@/hooks/useActionRecorder';
-import type { Activity } from '@/types/content';
-import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
-import { ActivityShell } from '../parts';
-import { RichSpans } from '../RichSpans';
-import { parseInline } from '@/utils/richText';
-import { SandboxHint } from '../sandbox/SandboxHint';
-import { SandboxReveal } from '../sandbox/SandboxReveal';
-import { SandboxWindow } from '../sandbox/SandboxWindow';
-import { TerminalOptionPalette } from './TerminalOptionPalette';
-import { TerminalPromptBar } from './TerminalPromptBar';
-import { TerminalTranscript } from './TerminalTranscript';
-import { useTerminalSandbox } from './useTerminalSandbox';
+import { useActivityI18n } from '../../context.js';
+import { useActivityActionRecorder, type ScenarioAction } from '../../internal/actionRecorder.js';
+import { ActivityShell } from '../../components/parts.js';
+import { RichSpans } from '../../components/RichSpans.js';
+import { parseInline } from '../../internal/richText.js';
+import { SandboxHint } from '../sandbox/SandboxHint.js';
+import { SandboxReveal } from '../sandbox/SandboxReveal.js';
+import { SandboxWindow } from '../sandbox/SandboxWindow.js';
+import { TerminalOptionPalette } from './TerminalOptionPalette.js';
+import { TerminalPromptBar } from './TerminalPromptBar.js';
+import { TerminalTranscript } from './TerminalTranscript.js';
+import { useTerminalSandbox } from './useTerminalSandbox.js';
+import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 
 export type TerminalVariant = 'freeText' | 'options';
 
@@ -69,16 +68,16 @@ export function TerminalSandboxShell({
   variant,
   reveal = false,
 }: {
-  activity: Activity;
-  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
+  activity: PortableActivity;
+  onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   variant: TerminalVariant;
   /** Reveal the settled state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
 }) {
-  const { t: tr, locale } = useI18n();
+  const { t: tr, locale } = useActivityI18n();
   const scenario = activity.spec as unknown as TerminalScenario;
   const isDone = activity.status === 'done';
-  const trace = useActionRecorder('scenario', activity.id);
+  const trace = useActivityActionRecorder<ScenarioAction>(activity.id);
   const s = useTerminalSandbox(scenario, locale, reveal, isDone, trace);
 
   const showControls = !s.done;

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider, type Locale } from '@/i18n';
+import { ActivityI18nBridge } from '@/components/branded/activity/IteraActivityHost';
 import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
 import type { Activity } from '@/types/content';
 
@@ -71,12 +72,26 @@ function makeActivity(spec: unknown, id = 'a'): Activity {
   return { id, lessonId: 'l', ordinal: 0, kind: 'sandbox_scenario', spec: spec as Record<string, unknown>, rubric: null };
 }
 
-/** Mount at a locale. `I18nProvider` reads the persisted choice on first render. */
+/**
+ * Mount at a locale. `I18nProvider` reads the persisted choice on first render.
+ *
+ * ⚠️ `ActivityI18nBridge` IS LOAD-BEARING HERE, and it is the reason this whole
+ * file is worth keeping after Fase C step 4. The terminal now lives in
+ * `@iterahq/activities` and reads its locale from the ACTIVITY host context, not
+ * from `@/i18n`. A tree with `I18nProvider` and no `<ActivityProvider>` falls
+ * back to the package's own dictionary, which is byte-identical to the app's
+ * but PINNED TO `pt` — so every assertion below would have compared Portuguese
+ * against Portuguese and reported "the chrome did not change between locales",
+ * which is exactly what it did the first time this ran. Mounting the bridge is
+ * what the app itself does at its root; anything less is not the app.
+ */
 function mountAt(locale: Locale, spec: unknown = SPEC) {
   localStorage.setItem('itera.locale', locale);
   return render(
     <I18nProvider>
-      <SandboxScenarioActivity activity={makeActivity(spec, `a-${locale}`)} onComplete={vi.fn()} />
+      <ActivityI18nBridge>
+        <SandboxScenarioActivity activity={makeActivity(spec, `a-${locale}`)} onComplete={vi.fn()} />
+      </ActivityI18nBridge>
     </I18nProvider>,
   );
 }

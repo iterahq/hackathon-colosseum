@@ -6,9 +6,10 @@ No bottom bar, no progress bar, no hearts, no routing: those stay in the
 `LessonPlayer`.
 
 > **Fase C landed: the renderers are here.** v0.1.0 shipped types only; the
-> package now has runtime and renders seven kinds on its own. What did NOT move
-> — and why each one stayed — is the table below; read it before assuming a
-> kind is available.
+> package now has runtime and renders **eight** kinds on its own — the seven
+> backend-free question kinds from steps 1–3, plus `sandbox_scenario` from step
+> 4. What did NOT move — and why each one stayed — is the table below; read it
+> before assuming a kind is available.
 
 The design doc — port-by-port rationale, per-kind coverage, extraction order —
 is [`CONTRACT.md`](./CONTRACT.md). The proof that this is genuinely consumable
@@ -24,7 +25,8 @@ renders from fixture specs with no bundler and no Itera anything.
 | Kind | Here? | Why |
 | --- | --- | --- |
 | `concept` · `concept_reveal` · `video` · `single_choice` · `multi_choice` · `match` · `order` | ✅ | Backend-free. Fase C steps 1–3. |
-| `sandbox_scenario` · BYOC | ❌ | Fase C **step 4** — they go through the `api` ports, and the ports are declared but not yet consumed. Also the area two other PRs were editing while this one landed. |
+| `sandbox_scenario` | ✅ | Fase C **step 4**. One kind, five activity types: the chat sandbox (open / choices / slots) and the terminal sandbox (free text / options). **It needs no port** — every reducer is `@iterahq/activity-spec/runtime`'s, so a host gets a multi-turn graded micro-experiment with nothing injected but i18n. |
+| the LIVE sandbox (`sandbox-live`) · BYOC | ❌ | The AI-judged twins. They are the ones that actually consume `api.respond` / `api.judge` / `api.generateByoc`, and BYOC had ~10 of its 12 files open in another PR while this one landed. Extracting under that is conflict, not extraction. |
 | `code` | ❌ | Fase C **step 5** — Monaco behind a separate `@iterahq/activities/code` entrypoint (ADR-5), never in the base bundle. |
 | `document` · `diagram` · `quiz` | ❌ | Not files: they are inline functions inside the Player's 700-line dispatcher. `CONTRACT.md` finding 4 says to lift them when the PR queue drains. |
 

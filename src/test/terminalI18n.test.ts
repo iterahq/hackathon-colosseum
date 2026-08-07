@@ -26,7 +26,17 @@ import { resources } from '@/i18n';
  * cost 2026-08-07.
  */
 
-const TERMINAL_DIR = 'src/components/branded/activity/terminal';
+/**
+ * The terminal components moved into `@iterahq/activities` in Fase C step 4.
+ *
+ * This constant is the whole reason the first case below exists ("a moved
+ * folder must not pass silently"): a source scan whose directory disappears
+ * finds zero files, and every "no copy here" assertion passes vacuously. So the
+ * path is repointed at the package, and the file-count guard stays exactly as
+ * it was — it is what turns the next move into a red test instead of a green
+ * lie.
+ */
+const TERMINAL_DIR = 'packages/activities/src/kinds/terminal';
 
 function terminalSources(): Array<{ file: string; text: string }> {
   return readdirSync(TERMINAL_DIR)

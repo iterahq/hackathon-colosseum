@@ -12,8 +12,8 @@ import {
   type TerminalModel,
   type TerminalScenario,
 } from '@iterahq/activity-spec/runtime';
-import type { ActionRecorder } from '@/hooks/useActionRecorder';
-import { terminalSuccessMarks } from '@/utils/terminalSuccessMarks';
+import type { ActivityActionRecorder, ScenarioAction } from '../../internal/actionRecorder.js';
+import { terminalSuccessMarks } from '../../internal/terminalSuccessMarks.js';
 
 /** Which input surface produced a command — kept in the trace, see `command_run`. */
 export type CommandSource = 'typed' | 'option' | 'tokens';
@@ -37,7 +37,7 @@ export function useTerminalSandbox(
   locale: Locale,
   reveal: boolean,
   isDone: boolean,
-  recorder: ActionRecorder<'scenario'>,
+  recorder: ActivityActionRecorder<ScenarioAction>,
 ) {
   const [model, setModel] = useState<TerminalModel>(() => initialTerminalModel(scenario));
   /** The line being TYPED. Only the free-text surface uses it. */

@@ -70,16 +70,30 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
-⚠️ **Desde a Fase C (2026-08-07), sete kinds NÃO moram mais aqui.** `concept`,
-`concept_reveal`, `video`, `single_choice`, `multi_choice`, `match` e `order`
-foram extraídos para `@iterahq/activities` (`packages/activities/src/kinds/`),
-junto com os primitivos (`InstructionPanel`, `RichText*`, `parts`,
-`AnswerExplanation`) e a lógica pura (`answerMachine`, shuffle, parser de
-markdown-leve). Os arquivos antigos continuam existindo como **re-export de uma
-linha**, então todo import por `@/components/branded/activity/<Kind>` segue
-valendo — mas **editar o arquivo aqui não muda nada**: a implementação está no
-pacote. Os que ficaram: `sandbox*`, `terminal/`, `byoc/`, `code/`, e
+⚠️ **Desde a Fase C (2026-08-07), OITO kinds NÃO moram mais aqui.** `concept`,
+`concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order`
+(passos 1–3) e **`sandbox_scenario`** (passo 4) foram extraídos para
+`@iterahq/activities` (`packages/activities/src/kinds/`), junto com os
+primitivos (`InstructionPanel`, `RichText*`, `parts`, `AnswerExplanation`,
+`ActivityTextarea`) e a lógica pura (`answerMachine`, shuffle, parser de
+markdown-leve, `terminalSuccessMarks`). Os arquivos antigos continuam existindo
+como **re-export de uma linha**, então todo import por
+`@/components/branded/activity/<Kind>` segue valendo — mas **editar o arquivo
+aqui não muda nada**: a implementação está no pacote.
+
+O `sandbox_scenario` levou junto as pastas **`sandbox/` e `terminal/` inteiras**
+— hoje em `packages/activities/src/kinds/sandbox/` e `.../kinds/terminal/`. Só
+ficaram no app os pontos que o app precisa: `sandbox-live/` (o gêmeo julgado por
+IA, que consome `api.respond`/`api.judge`), `byoc/`, `code/`, `JudgeHeatmap` e
 `document`/`diagram`/`quiz` (ainda inline no dispatcher).
+
+🌍 **Uma activity dentro do pacote lê i18n do `<ActivityProvider>`, NÃO do
+`@/i18n`.** Uma árvore com `I18nProvider` e sem `ActivityProvider` cai no
+dicionário do próprio pacote, que é idêntico ao do app mas **fixo em `pt`** —
+então um teste/story sensível a idioma monta `ActivityI18nBridge` (ou
+`IteraActivityHost`). Sem isso ele compara português com português e passa por
+engano; foi exatamente o que aconteceu com `terminalRenderedLocale.test.tsx` no
+passo 4.
 
 Os **12 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união

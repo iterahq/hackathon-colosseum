@@ -100,6 +100,12 @@ jobs:
       # appears in exactly one extracted file and nowhere in `src/`:
       #   • `cursor-zoom-in`  -> packages/activities components/InstructionImage
       #   • `marker:text-evergreen` -> packages/activities components/RichBlock
+      #   • `caret-evergreen` -> packages/activities kinds/terminal/TerminalPromptBar
+      #
+      # The third one was added with step 4 on purpose: the first two are both
+      # in `components/`, so a glob that reached the shared primitives but not
+      # `kinds/**` would have kept this step green while every extracted KIND
+      # went unstyled. One sentinel per moved tree, not one per package.
       # If a future refactor makes one of them appear in `src/` too, this check
       # goes quiet without going red — pick a different class then, do not
       # delete the step.
@@ -112,7 +118,7 @@ jobs:
           # `grep -qF`: Tailwind escapes the variant colon, so the emitted
           # selector is `.marker\:text-evergreen` with a LITERAL backslash — a
           # basic-regex pattern eats it and reports a false purge.
-          for CLASS in 'cursor-zoom-in' 'marker\:text-evergreen'; do
+          for CLASS in 'cursor-zoom-in' 'marker\:text-evergreen' 'caret-evergreen'; do
             if ! grep -qF -- "$CLASS" "$CSS"; then
               echo "::error::'$CLASS' was purged from $CSS - packages/*/dist is missing from tailwind.config.ts content globs, and every extracted activity is now unstyled"
               exit 1

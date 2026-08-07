@@ -1,7 +1,7 @@
 import { Lightbulb } from 'lucide-react';
 import { t, type I18n, type Locale } from '@iterahq/activity-spec/runtime';
-import { RichSpans } from '../RichSpans';
-import { parseInline } from '@/utils/richText';
+import { RichSpans } from '../../components/RichSpans.js';
+import { parseInline } from '../../internal/richText.js';
 
 /**
  * Post-success reveal — the recap + optional master lines (the ONE place a

@@ -224,6 +224,13 @@ const PUBLIC_RUNTIME_SURFACE = [
   'OrderActivity',
   'SingleChoiceActivity',
   'VideoActivity',
+  // sandbox_scenario — one kind, five activity types (Fase C step 4)
+  'SandboxScenarioActivity',
+  'SandboxAIActivity',
+  'SandboxAIWithOptionsActivity',
+  'SandboxAICompleteWordsActivity',
+  'TerminalFreeTextActivity',
+  'TerminalOptionsActivity',
   // i18n
   'ACTIVITY_DICTIONARY',
   'ACTIVITY_I18N_KEYS',
@@ -243,6 +250,12 @@ const PUBLIC_RUNTIME_SURFACE = [
   'RichSpans',
   'RichText',
   'SubmitButton',
+  'ActivityTextarea',
+  'SandboxBubble',
+  'SandboxChatLog',
+  'SandboxClearButton',
+  'SandboxWindow',
+  'useAssistantStream',
   'answerMachine',
   'anonLearnerScope',
   'isLocaleBag',
@@ -271,7 +284,12 @@ describe('activities public contract', () => {
     for (const kind of contract.BUILT_IN_ACTIVITY_KINDS) {
       expect(contract.isBuiltInActivityKind(kind)).toBe(true);
     }
-    expect(contract.isBuiltInActivityKind('sandbox_scenario')).toBe(false);
+    // The negative case has to stay a NEGATIVE case, or the assertion above is
+    // the only thing here and it can never fail on a kind that was dropped from
+    // the dispatcher but left in the list. `code` is the honest choice now:
+    // Fase C step 5 gives it its own entrypoint (ADR-5, Monaco is heavy), so
+    // the BASE bundle must keep answering "no, ask the host" for it.
+    expect(contract.isBuiltInActivityKind('code')).toBe(false);
   });
 
   it('keeps the type-level assertions above referenced', () => {

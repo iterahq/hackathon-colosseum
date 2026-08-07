@@ -1,45 +1,8 @@
-import { useEffect, useRef } from 'react';
-import type { Message } from '@iterahq/activity-spec/runtime';
-import { SandboxBubble } from './SandboxBubble';
-
 /**
- * The chat transcript — STRICTLY the message exchange, nothing else. Steps,
- * instructions, choices and ratings live outside the chat (below/beside it) so
- * the chat reads like a real conversation for someone who has never used one.
- * The message at `streamIndex` is paced by `useAssistantStream`
- * (dots → typewriter) so the newest reply reads as typed live. Auto-scrolls.
+ * MOVED — `SandboxChatLog` now lives in `@iterahq/activities` (Fase C, step 4).
+ *
+ * Kept as the app's import path so the not-yet-extracted live sandbox, the
+ * stories and the tests keep resolving it. It is re-exported from the package's
+ * PROVISIONAL surface, which shrinks when `sandbox-live` follows.
  */
-export function SandboxChatLog({
-  messages,
-  streamIndex,
-  dots,
-  revealed,
-}: {
-  messages: Message[];
-  streamIndex: number;
-  dots: boolean;
-  revealed: number;
-}) {
-  const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
-  }, [messages.length, revealed]);
-
-  return (
-    <div className="flex flex-col gap-3.5" data-testid="sandbox-chat">
-      {messages.map((m, i) => {
-        const streaming = i === streamIndex;
-        return (
-          <SandboxBubble
-            key={i}
-            role={m.role}
-            text={streaming && dots ? '' : streaming ? m.text.slice(0, revealed) : m.text}
-            streaming={streaming && !dots}
-            dots={streaming && dots}
-          />
-        );
-      })}
-      <div ref={endRef} />
-    </div>
-  );
-}
+export { SandboxChatLog } from '@iterahq/activities';

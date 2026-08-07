@@ -6,7 +6,20 @@ import {
   type TerminalScenario,
 } from '@iterahq/activity-spec/runtime';
 import scenarios from '@/test/fixtures/terminal-scenarios.json';
-import { terminalSuccessMarks } from '@/utils/terminalSuccessMarks';
+// ⚠️ A DELIBERATE DEEP IMPORT INTO THE PACKAGE SOURCE, not through the barrel.
+//
+// `terminalSuccessMarks` moved into `@iterahq/activities` with the terminal
+// sandbox (Fase C step 4) and stayed INTERNAL: it is how the transcript decides
+// where to draw a tick, not a promise to consumers, and putting it in the
+// public barrel to satisfy a test would grow the API for the test's
+// convenience. The alternative — deleting these cases — would drop the only
+// coverage of the reset alignment invariant (`lines` truncates, `commands` does
+// not), which is subtle enough that `TerminalSandboxActivity.test.tsx` says in
+// as many words that it relies on this file for it.
+//
+// So the import is relative and loud. If it ever needs to be `@iterahq/activities`,
+// that is a decision about the API, and it should look like one.
+import { terminalSuccessMarks } from '../../packages/activities/src/internal/terminalSuccessMarks';
 
 /**
  * The success mark, at the layer where it is decided (plan

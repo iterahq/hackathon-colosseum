@@ -29,6 +29,22 @@
  *
  * ⚠️ Do NOT add keys here that the package's own renderers do not use. This is
  * the package's vocabulary, not a mirror of the app's dictionary.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THERE IS A SECOND PREFIX (`terminal.`) SINCE FASE C STEP 4
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Until `sandbox_scenario` moved, every key here began with `activity.`, and
+ * `src/test/activityDefaultI18n.test.tsx` asserted exactly that. The terminal
+ * sandbox arrived with its own 15-key namespace, created by the very refinement
+ * (`20260807-itera-terminal-sandbox-refinamentos` §3) that pulled its copy OUT
+ * of inline `{ pt, en }` literals and into the dictionary — so renaming those
+ * keys to `activity.terminal.*` on the way in would undo a rename someone made
+ * on purpose two days ago, and desynchronise this file from the Player's,
+ * which is the one thing this dictionary may not do.
+ *
+ * So the rule is now a short ALLOWLIST of prefixes rather than a single one,
+ * and it is still a closed list: `activity.` and `terminal.`. A third prefix is
+ * a decision, not an accident, which is exactly what the assertion is for.
  */
 import type { ActivityLocale } from '../ports.js';
 
@@ -53,12 +69,30 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'activity.orderHint': 'Arraste ou use as setas para ordenar',
     'activity.reveal.hide': 'Esconder resposta',
     'activity.reveal.show': 'Ver resposta',
+    'activity.sandboxScenario': 'Sandbox',
     'activity.selectAll': 'Selecione todas as corretas',
     'activity.sent': 'Enviado',
     'activity.singleChoice': 'Escolha única',
+    'activity.step': 'Passo',
     'activity.submit': 'Enviar',
     'activity.video': 'Vídeo',
     'activity.video.missing': 'Vídeo não configurado',
+    'terminal.buildCommand': 'Monte o comando',
+    'terminal.clear': 'Limpar',
+    'terminal.empty.freeText': '# digite um comando e aperte Enter',
+    'terminal.empty.options': '# monte um comando nas opções abaixo',
+    'terminal.hint': 'ver dica',
+    'terminal.paletteEmpty': 'todas as peças estão no comando acima',
+    'terminal.pickCommand': 'Escolha o comando',
+    'terminal.placeholder.assemble': 'monte o comando e aperte Rodar',
+    'terminal.placeholder.freeText': 'digite um comando…',
+    'terminal.placeholder.tap': 'toque numa opção abaixo — ela já roda',
+    'terminal.ps1': 'aluno@itera:~$',
+    'terminal.removeChip': 'toque para devolver à paleta',
+    'terminal.restart': 'Recomeçar',
+    'terminal.run': 'Rodar',
+    'terminal.stepCompleted': 'passo concluído',
+    'terminal.windowTitle': 'bash — sandbox',
   },
   en: {
     'activity.concept': 'Concept',
@@ -79,12 +113,30 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'activity.orderHint': 'Drag or use the arrows to reorder',
     'activity.reveal.hide': 'Hide answer',
     'activity.reveal.show': 'Show answer',
+    'activity.sandboxScenario': 'Sandbox',
     'activity.selectAll': 'Select all that apply',
     'activity.sent': 'Sent',
     'activity.singleChoice': 'Single choice',
+    'activity.step': 'Step',
     'activity.submit': 'Submit',
     'activity.video': 'Video',
     'activity.video.missing': 'No video configured',
+    'terminal.buildCommand': 'Build the command',
+    'terminal.clear': 'Clear',
+    'terminal.empty.freeText': '# type a command and press Enter',
+    'terminal.empty.options': '# build a command from the options below',
+    'terminal.hint': 'see hint',
+    'terminal.paletteEmpty': 'every piece is up in the command',
+    'terminal.pickCommand': 'Pick the command',
+    'terminal.placeholder.assemble': 'build the command, then press Run',
+    'terminal.placeholder.freeText': 'type a command…',
+    'terminal.placeholder.tap': 'tap an option below — it runs right away',
+    'terminal.ps1': 'student@itera:~$',
+    'terminal.removeChip': 'tap to send it back to the tray',
+    'terminal.restart': 'Restart',
+    'terminal.run': 'Run',
+    'terminal.stepCompleted': 'step completed',
+    'terminal.windowTitle': 'bash — sandbox',
   },
 };
 

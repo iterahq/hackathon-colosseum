@@ -1,20 +1,9 @@
 /**
- * SandboxAIWithOptions — the learner adds context by picking ONE choice chip
- * (`scenario.choices`), sends, then rates the answer. Its authoring shape is a
- * base prompt plus a set of context choices. Delegates the chat/reveal scaffold
- * to `SandboxScenarioShell`.
+ * MOVED — `SandboxAIWithOptionsActivity` now lives in `@iterahq/activities` (Fase C, step 4: the
+ * `sandbox_scenario` kind).
+ *
+ * Kept as the app's import path so `ActivityRenderer.tsx`, the stories and the
+ * tests keep resolving it — the extraction is meant to be invisible to the
+ * Player, exactly as steps 1–3 were.
  */
-import type { Activity } from '@/types/content';
-import { SandboxScenarioShell } from './sandbox/SandboxScenarioShell';
-
-export function SandboxAIWithOptionsActivity({
-  activity,
-  onComplete,
-  reveal = false,
-}: {
-  activity: Activity;
-  onComplete: (correct: boolean) => void;
-  reveal?: boolean;
-}) {
-  return <SandboxScenarioShell activity={activity} onComplete={onComplete} reveal={reveal} variant="options" />;
-}
+export { SandboxAIWithOptionsActivity } from '@iterahq/activities';

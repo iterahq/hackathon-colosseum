@@ -137,7 +137,13 @@ export const ACTIVITY_TRACE_ACTIONS = {
     'pair_broken',
     'answer_submitted',
   ],
+  // Added in Fase C step 4, with `sandbox_scenario`. Only the TERMINAL sandbox
+  // emits today; the chat sandbox is deliberately silent (see the ledger note
+  // on `FAMILY_EMITTED.scenario` in the Player's `activityFamilies.ts`). The
+  // asymmetry travels with the code rather than being re-discovered here.
+  scenario: ['command_run', 'sandbox_reset'],
 } as const;
 
 export type SelectionAction = (typeof ACTIVITY_TRACE_ACTIONS)['selection'][number];
 export type ArrangementAction = (typeof ACTIVITY_TRACE_ACTIONS)['arrangement'][number];
+export type ScenarioAction = (typeof ACTIVITY_TRACE_ACTIONS)['scenario'][number];

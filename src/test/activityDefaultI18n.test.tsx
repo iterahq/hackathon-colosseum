@@ -36,7 +36,20 @@ describe('@iterahq/activities default dictionary', () => {
 
   it('is scoped to activities — nothing else may sneak in', () => {
     // The package's vocabulary, not a mirror of the app's 600-key dictionary.
-    for (const key of ACTIVITY_I18N_KEYS) expect(key.startsWith('activity.')).toBe(true);
+    //
+    // A CLOSED ALLOWLIST, not a single prefix. `terminal.*` joined in Fase C
+    // step 4 with the terminal sandbox, whose 15 keys were pulled out of inline
+    // `{ pt, en }` literals two days earlier by
+    // `20260807-itera-terminal-sandbox-refinamentos` §3. Renaming them on the
+    // way into the package would have undone that rename and desynchronised
+    // this dictionary from the Player's — the one thing it may not do.
+    //
+    // Keep this list SHORT and keep the assertion exact-match rather than
+    // "contains a dot": the point is that a third namespace has to be argued
+    // for in a review, not that keys look tidy.
+    const ALLOWED = ['activity.', 'terminal.'];
+    const strays = ACTIVITY_I18N_KEYS.filter((k) => !ALLOWED.some((p) => k.startsWith(p)));
+    expect(strays).toEqual([]);
   });
 
   it.each(['pt', 'en'] as const)('says exactly what the Player says (%s)', (locale) => {

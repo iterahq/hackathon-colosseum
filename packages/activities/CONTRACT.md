@@ -2,11 +2,13 @@
 
 **Plan:** [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/20260803-itera-player-activities-lib)
 · **Parent:** `20260803-itera-learning-control-plane-prototipo`
-**Status:** Fase A done · Fase B done · **Fase C steps 1–3 done** — pure logic,
-the shared primitives and the seven backend-free kinds now live here, together
-with `<ActivityProvider>` and the package's own `<ActivityRenderer>`. Steps 4–5
-(`sandbox_scenario` · BYOC · `code`) and the three kinds still inline in the
-Player's dispatcher have **not** moved; see *What Fase C left behind*.
+**Status:** Fase A done · Fase B done · **Fase C steps 1–3 done**, and **step 4
+done for `sandbox_scenario`** — pure logic, the shared primitives, the seven
+backend-free question kinds and the whole sandbox (chat + terminal) now live
+here, together with `<ActivityProvider>` and the package's own
+`<ActivityRenderer>`. Still out: the **AI-judged** half of step 4
+(`sandbox-live` · BYOC · `JudgeHeatmap`), step 5 (`code`), and the three kinds
+inline in the Player's dispatcher; see *What Fase C left behind*.
 **Source:** `packages/activities/src/`
 **Guards:** `src/test/activityPublicContract.test.ts` (surface + prop fit) ·
 `src/test/activityDefaultI18n.test.tsx` (dictionary parity) ·
@@ -332,11 +334,31 @@ true is the reason the shuffle exists at all.
 That is the shape of coupling worth hunting for in steps 4–5: not the import
 that breaks the build, but the host read whose absence still renders.
 
+### Step 4 split in two, and the reason is worth writing down
+
+The plan groups step 4 as *"kinds com backend — SandboxScenario, Byoc, Judge\* →
+passam pelas portas injetadas"*. Executing it showed the grouping is wrong for
+one of its three members: the self-paced `sandbox_scenario` **has no backend**.
+Its entire world model — `runCommand`, `sendPrompt`, `evaluate`, `isSuccess` —
+is pure reducers in `@iterahq/activity-spec/runtime`, and the only thing it ever
+asked the Player for was `useI18n()` and the action recorder.
+
+The audit table in the plan put it in the backend column because its *live twin*
+(`SandboxScenarioLiveActivity`, reached through `LiveActivityRenderer`, not
+through `ActivityRenderer`) calls `respond` and `judge`. Two components, two
+files, one kind name. Finding 3 of this document already flagged that split; step
+4 is where it became load-bearing.
+
+The practical consequence is good news for a host: the richest kind the package
+ships — N turns, a world model, per-step gating, its own success predicate — is
+also one of the ones that needs **nothing injected but i18n**.
+
 ## What Fase C left behind, and why
 
 | Not moved | Reason |
 | --- | --- |
-| `sandbox_scenario`, `sandbox-live`, BYOC, `JudgeHeatmap` | Step 4. They consume the `api` ports, which are declared but not yet wired by any host. Also the exact trees two other PRs were editing while this landed — racing them would have produced a merge conflict, not an extraction. |
+| ~~`sandbox_scenario`~~ | ✅ **MOVED** in step 4 (chat + terminal, five activity types, one dispatcher). It turned out to be the half of step 4 that needs **no port at all** — see the note below. |
+| `sandbox-live`, BYOC, `JudgeHeatmap` | Still step 4, and now the whole of what step 4 has left: these are the AI-judged surfaces, the ones that genuinely consume `api.respond` / `api.judge` / `api.generateByoc` and read `identity.authenticated`. BYOC had ~10 of its 12 files open in PR #296 while this landed, and `sandbox-live` is in PR #285 — extracting under an open rewrite produces a conflict, not an extraction. `JudgeHeatmap` renders an `ActivityJudgeVerdict` and has no reason to move before its only two callers do. |
 | `code` / Monaco / the preview iframe | Step 5 + ADR-5: a separate `@iterahq/activities/code` entrypoint, never in the base bundle. |
 | `document`, `diagram`, `quiz` | Finding 4: they are inline functions inside the Player's 700-line dispatcher, which every open PR touches. Lifting them out is its own PR, sequenced when the queue drains. |
 | `FeedbackFooter` | It is the **global viewport-fixed** footer, mounted by `LessonPlayer` and `LiveSessionPage`. ADR-1 puts it on the player side of the line. `activityFeedbackKinds.ts` (`FOOTER_GRADED_KINDS`) is footer-routing policy and stays with it. |

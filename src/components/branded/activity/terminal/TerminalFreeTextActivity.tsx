@@ -1,29 +1,9 @@
 /**
- * TerminalFreeText — the learner TYPES the command and presses Enter. The
- * superset of the two terminal types: the options mode can only ever produce
- * strings this mode also accepts, which is why it was built first — it is the
- * one that actually exercises the normalizer and the matcher.
- * Delegates the whole scaffold to `TerminalSandboxShell`.
+ * MOVED — `TerminalFreeTextActivity` now lives in `@iterahq/activities` (Fase C, step 4: the
+ * `sandbox_scenario` kind).
+ *
+ * Kept as the app's import path so `ActivityRenderer.tsx`, the stories and the
+ * tests keep resolving it — the extraction is meant to be invisible to the
+ * Player, exactly as steps 1–3 were.
  */
-import type { Activity } from '@/types/content';
-import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
-import { TerminalSandboxShell } from './TerminalSandboxShell';
-
-export function TerminalFreeTextActivity({
-  activity,
-  onComplete,
-  reveal = false,
-}: {
-  activity: Activity;
-  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
-  reveal?: boolean;
-}) {
-  return (
-    <TerminalSandboxShell
-      activity={activity}
-      onComplete={onComplete}
-      reveal={reveal}
-      variant="freeText"
-    />
-  );
-}
+export { TerminalFreeTextActivity } from '@iterahq/activities';

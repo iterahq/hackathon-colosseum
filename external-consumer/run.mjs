@@ -195,6 +195,31 @@ function host(children, { onEvent, i18n } = {}) {
   );
 }
 
+/**
+ * Type a line into the terminal and press Enter.
+ *
+ * React tracks the DOM value on the node itself, so setting `el.value` and
+ * firing `input` is ignored — the synthetic event arrives with the OLD value
+ * and the keystroke is silently dropped. The native setter is how you tell
+ * React the value really changed. Without this the sandbox check would pass on
+ * an empty command line and prove nothing.
+ */
+function typeAndEnter(view, el, line) {
+  const setter = Object.getOwnPropertyDescriptor(
+    dom.window.HTMLInputElement.prototype,
+    'value',
+  ).set;
+  act(() => {
+    setter.call(el, line);
+    el.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+  act(() => {
+    el.dispatchEvent(
+      new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+    );
+  });
+}
+
 function renderKind(name, props = {}) {
   const activity = FIXTURES[name];
   assert(activity, `no fixture for ${name}`);
@@ -239,7 +264,7 @@ check('advertises the kinds it can render, and only those', () => {
     assert(isBuiltInActivityKind(kind), `${kind} advertised but not dispatchable`);
     assert(FIXTURES[kind], `${kind} advertised but this harness has no fixture for it`);
   }
-  assert(!isBuiltInActivityKind('sandbox_scenario'), 'claims a kind it did not extract');
+  assert(!isBuiltInActivityKind('code'), 'claims a kind it did not extract');
 });
 
 section('2. every advertised kind renders from a fixture spec');
@@ -324,6 +349,68 @@ check('the action SEQUENCE rides up with the verdict', () => {
   view.unmount();
 });
 
+check('sandbox_scenario: N turns against a world model, graded by the spec', () => {
+  // The first kind here that is not a single-submit question. It matters as an
+  // external-consumer check precisely because it is the one with a RUNTIME:
+  // `@iterahq/activity-spec/runtime` reduces the command, the engine prints
+  // output, the step unlocks and the scenario's own `success` predicate decides
+  // the verdict — all of it inside a host that supplies nothing but a locale.
+  const { view, completions, events } = renderKind('sandbox_scenario');
+
+  const input = view.one('[data-testid="terminal-input"]');
+  assert(input, 'the terminal never rendered its prompt');
+  assert(view.text().includes('Crie perfil.md'), 'the authored step prompt is not on screen');
+
+  // A WRONG command first: it must produce output and NOT settle the activity.
+  typeAndEnter(view, input, 'git status');
+  assert(completions.length === 0, 'a non-matching command settled the activity');
+
+  typeAndEnter(view, input, 'touch perfil.md');
+
+  assert(completions.length === 1, `onComplete fired ${completions.length} times, expected 1`);
+  assert(completions[0].correct === true, 'the matching command was graded wrong');
+  assert(
+    completions[0].detail?.explanation === 'Boa!',
+    `the reveal recap did not ride up: ${JSON.stringify(completions[0].detail)}`,
+  );
+
+  // The trace is the HOW. Both commands are in it, and the miss is marked as one.
+  const runs = (completions[0].detail?.actions ?? []).filter((a) => a.type === 'command_run');
+  assert(runs.length === 2, `expected 2 command_run actions, got ${runs.length}`);
+  assert(runs[0].payload?.matched === false, 'the wrong command was recorded as a match');
+  assert(runs[1].payload?.matched === true, 'the right command was not recorded as a match');
+
+  assert(
+    events.some((e) => e.type === 'activity.completed' && e.payload?.correct === true),
+    'the host was not told the sandbox settled',
+  );
+  view.unmount();
+});
+
+check('sandbox_scenario: the engine output is localized by the host locale', () => {
+  const read = (locale) => {
+    const view = mount(
+      host(h(ActivityRenderer, { activity: FIXTURES.sandbox_scenario, onComplete: () => {} }), {
+        i18n: createActivityI18n(locale),
+      }),
+    );
+    const input = view.one('[data-testid="terminal-input"]');
+    typeAndEnter(view, input, 'touch perfil.md');
+    const text = view.one('[data-testid="terminal-transcript"]').textContent ?? '';
+    view.unmount();
+    return text;
+  };
+  const pt = read('pt');
+  const en = read('en');
+  // The chrome (`aluno@` vs `student@`) AND the engine's own line ("criado:" vs
+  // "created:") both follow the port — the second is the one that proves the
+  // locale reaches the runtime and not just the labels.
+  assert(pt.includes('aluno@itera'), `pt prompt prefix missing: ${pt.slice(0, 80)}`);
+  assert(en.includes('student@itera'), `en prompt prefix missing: ${en.slice(0, 80)}`);
+  assert(pt.includes('criado:'), `pt engine output missing: ${pt.slice(0, 120)}`);
+  assert(en.includes('created:'), `en engine output missing: ${en.slice(0, 120)}`);
+});
+
 section('4. telemetry reaches the host (ADR-4)');
 
 check('emits activity.viewed on mount and activity.completed on settle', () => {
@@ -377,7 +464,10 @@ check('rendering and answering touched the network ZERO times', () => {
 });
 
 check('a kind the package did not extract degrades visibly, without throwing', () => {
-  const { view, events } = renderKind('sandbox_scenario');
+  // `code` is the kind that is NOT in the base entrypoint, on purpose: ADR-5
+  // keeps Monaco out of the bundle everybody pays for. So a base-only consumer
+  // must get the visible, inert placeholder — not a crash, and not silence.
+  const { view, events } = renderKind('code');
   const placeholder = view.one('[data-unsupported-kind="true"]');
   assert(placeholder, 'an unsupported kind should render a placeholder, not vanish');
   assert(
@@ -396,9 +486,9 @@ check('a host CAN supply the missing kind itself', () => {
       ActivityProvider,
       {
         i18n: createActivityI18n('pt'),
-        renderers: { sandbox_scenario: HostKind },
+        renderers: { code: HostKind },
       },
-      h(ActivityRenderer, { activity: FIXTURES.sandbox_scenario, onComplete: () => {} }),
+      h(ActivityRenderer, { activity: FIXTURES.code, onComplete: () => {} }),
     ),
   );
   assert(view.one(`[data-testid="${marker}"]`), 'the host renderer was ignored');
