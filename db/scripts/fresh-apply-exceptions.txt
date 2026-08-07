@@ -1,0 +1,89 @@
+# db/scripts/fresh-apply-exceptions.txt
+#
+# The declared deviations between "LC_ALL=C sort of db/migrations/*.sql" and a
+# build order that actually works from an EMPTY database. Read by
+# db/scripts/fresh-apply.sh.
+#
+# ⚠️ THIS FILE IS CLOSED TO NEW MIGRATIONS. fresh-apply.sh REFUSES a run in
+# which a file added by the pull request appears here (exit 4). Every entry
+# below is a fact about the pre-2026-08-07 past that cannot be edited away —
+# see "why nothing can just be fixed" at the bottom. A new migration that does
+# not build from zero is a broken migration; renumber or fix it.
+#
+# FORMAT — one directive per line, `#` starts a comment:
+#
+#   hoist <filename> before <anchor-filename>
+#       Apply <filename> immediately before <anchor-filename> instead of at its
+#       sorted position. Both files must exist.
+#
+#   skip <filename>
+#       Do not apply <filename> at all.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. THE CONSOLIDATED itera-api / itera-mcp SERIES (PR #282, 2026-08-04)
+# ─────────────────────────────────────────────────────────────────────────────
+# PR #282 moved 14 migrations out of `itera-api` and `itera-mcp` into this
+# series and renumbered them 0041–0054. The header of
+# 0047_mcp0003_activity_status_draft_published.sql states the intent:
+#
+#     "The new number is the order in which it was ACTUALLY applied, which is
+#      also its dependency order"
+#
+# MEASURED 2026-08-07 AGAINST AN EMPTY POSTGRES: that is not true. In sorted
+# order, 0024_activity_defs_reusable_library.sql fails four times over —
+#
+#     itera.activity_status  (created by 0047_mcp0003)  -> column `status`
+#     itera.media            (created by 0048_mcp0004)  -> FK thumbnail_media_id
+#     itera.set_updated_at() (created by 0050_mcp0006)  -> trigger
+#     itera.member_role 'author' (added by 0041_mcp0002) -> used by 0026
+#
+# — every one of them a reference FORWARD into the block that was numbered
+# after it. None of the 14 files depends on anything created at 0024 or later
+# (checked file by file), so the whole block moves ahead of 0024 as a unit.
+# With that single move the entire series builds from zero, twice, clean.
+#
+# WHY NOTHING CAN JUST BE FIXED. itera.schema_migrations is keyed by FILENAME
+# and carries a CHECKSUM. Renumbering an applied file makes it look unapplied
+# and the next `db-apply` re-runs it against the ITERA production database;
+# editing one trips checksum drift and `db-apply` then refuses to apply
+# ANYTHING until a human rebaselines it. Both are worse than a declared,
+# reviewed exception file. Tracked separately — see the issue linked from the
+# PR that introduced this check.
+#
+# THIS IS NOT THE ORDER `db-apply` USES, AND IT NEVER COULD BE. `db-apply`
+# applies only PENDING files onto the live schema; it has never built anything
+# from zero and has no opinion about the order of files applied long ago. The
+# order below is the one that reconstructs the schema, which is a different and
+# newly-checkable claim.
+hoist 0041_mcp0002_author_role_and_authoring_rls.sql       before 0024_activity_defs_reusable_library.sql
+hoist 0042_api0001_api_keys.sql                            before 0024_activity_defs_reusable_library.sql
+hoist 0043_api0002_billing.sql                             before 0024_activity_defs_reusable_library.sql
+hoist 0044_api0010_plg_subscribe_flow.sql                  before 0024_activity_defs_reusable_library.sql
+hoist 0045_api0011_plg_provisioning_reassert.sql           before 0024_activity_defs_reusable_library.sql
+hoist 0046_api0003_drop_artifact_overlay.sql               before 0024_activity_defs_reusable_library.sql
+hoist 0047_mcp0003_activity_status_draft_published.sql     before 0024_activity_defs_reusable_library.sql
+hoist 0048_mcp0004_media_registry.sql                      before 0024_activity_defs_reusable_library.sql
+hoist 0049_mcp0005_unit_versions.sql                       before 0024_activity_defs_reusable_library.sql
+hoist 0050_mcp0006_activity_comments.sql                   before 0024_activity_defs_reusable_library.sql
+hoist 0051_mcp0007_grant_author_fn.sql                     before 0024_activity_defs_reusable_library.sql
+hoist 0052_api0012_byoc_generations.sql                    before 0024_activity_defs_reusable_library.sql
+hoist 0053_api0013_reap_stale_live_class_sessions.sql      before 0024_activity_defs_reusable_library.sql
+hoist 0054_api0014_byoc_attempt_notes.sql                  before 0024_activity_defs_reusable_library.sql
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. THE ONE FILE THAT CANNOT RUN ANYWHERE BUT PRODUCTION
+# ─────────────────────────────────────────────────────────────────────────────
+# 0005 inserts memberships against two HARD-CODED tenant UUIDs
+# (96786037-… "itera" and 0618cad6-… "acme"). Those are the ids those rows
+# happen to have in the ITERA production database. 0003_itera_seed.sql creates
+# the same two tenants with `gen_random_uuid()` and no explicit id, so in any
+# other database they have different ids and the FK fails:
+#
+#     ERROR: insert or update on table "memberships" violates foreign key
+#            constraint "memberships_tenant_id_fkey"
+#     DETAIL: Key (tenant_id)=(96786037-…) is not present in table "tenants".
+#
+# It is a verification FIXTURE, not schema — it creates no object, so skipping
+# it costs the check nothing. It is also the reason a fixture like this should
+# never have been a migration; new ones go through MCP (CLAUDE.md, DDL vs DML).
+skip 0005_tenant_admin_fixture.sql

@@ -61,6 +61,16 @@ db/
   scripts/
     apply-migrations.sh        # ledger-backed apply / status / drift / census
     seed-smoke-user.sh         # create + link the ITERA_SMOKE_* auth user
+    fresh-apply.sh             # CI: build the schema from ZERO on a throwaway
+                               # Postgres, twice, then run the PR's migrations
+                               # through apply-migrations.sh. See below.
+    fresh-apply-bootstrap.sql  #   the Supabase runtime objects the docker image
+                               #   does not ship (realtime.messages, topic())
+    fresh-apply-exceptions.txt #   the declared, closed list of deviations
+                               #   between sorted order and a working build order
+    test-fresh-apply.sh        #   proves fresh-apply.sh both refuses and allows
+    ci-wait-for-postgres.sh    #   the service container is not up when
+                               #   pg_isready first says so
 ```
 
 ## Schema shape (v1 — ADR-102)
@@ -242,6 +252,64 @@ edited applied file is a `rebaseline` decision, not this one).
 
 Use it **only** for a file that is provably already applied — verify the objects
 with a read-only `SELECT` first. For anything else the answer is `apply`.
+
+## Before merge: the migration actually runs (2026-08-07)
+
+Every guard above watches **`main` versus the database**. None of them ever
+executed a line of SQL, so until now the first machine to run a new migration
+was the ITERA production database. The human gate protects against the wrong
+*intent*; nothing protected against SQL that simply does not run.
+
+`.github/workflows/db-migration-check.yml` fires on any PR touching
+`db/migrations/**` and, against a throwaway `supabase/postgres:17.6.1.160`
+service container (ITERA production is PostgreSQL 17.6 — **not** 15 like DFL):
+
+1. applies **every** migration from an **empty** database, in the declared
+   order, stopping at the first error;
+2. applies the whole series **again** — the idempotency this README has always
+   required and nothing enforced;
+3. seeds the ledger with everything already on `main` and hands the database to
+   **`apply-migrations.sh apply`**, so the PR's own migrations go through the
+   exact script `db-apply` runs on merge — transaction-mode detection, ledger
+   write and all. That script is 563 lines and CI had never executed it.
+
+It needs **no secret**, and `fresh-apply.sh` refuses a `PGHOST` that looks like
+a real Supabase project.
+
+Run it locally against any throwaway Postgres:
+
+```bash
+docker run -d --name pg -e POSTGRES_PASSWORD=postgres -p 55432:5432 \
+  supabase/postgres:17.6.1.160
+export PGHOST=localhost PGPORT=55432 PGUSER=supabase_admin \
+       PGPASSWORD=postgres PGDATABASE=postgres
+bash db/scripts/ci-wait-for-postgres.sh
+
+MIGRATION=db/migrations/<the file your PR adds>
+bash db/scripts/fresh-apply.sh --new "$MIGRATION"
+```
+
+### `fresh-apply-exceptions.txt` — and why it is closed
+
+Sorted order is **not** a working build order for this series, and that is a
+fact about the past rather than a design choice. PR #282 renumbered 14 files out
+of `itera-api`/`itera-mcp` to 0041–0054, but `0024_activity_defs_reusable_library.sql`
+references four objects those files create (`itera.activity_status`,
+`itera.media`, `itera.set_updated_at()`, and the `author` label on
+`itera.member_role`, which 0026 also uses). Measured against an empty Postgres,
+not inferred. The exceptions file declares the repair — the whole consolidated
+block is *hoisted* ahead of 0024 — plus the one `skip`,
+`0005_tenant_admin_fixture.sql`, which hard-codes production tenant UUIDs that
+`0003_itera_seed.sql` generates randomly anywhere else.
+
+Nothing there can simply be fixed: `itera.schema_migrations` is keyed by
+**filename** and carries a **checksum**, so renumbering an applied file makes it
+look unapplied and the next `db-apply` re-runs it against production, while
+editing one trips checksum drift and stops `db-apply` applying anything at all.
+
+**The file is closed to new migrations.** `fresh-apply.sh` exits 4 if a file
+added by the PR appears in it. An exception list a PR can append to is not a
+check.
 
 ## Drift detection
 

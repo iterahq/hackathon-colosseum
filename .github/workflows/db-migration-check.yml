@@ -1,0 +1,239 @@
+name: DB Migration Check
+
+# ──────────────────────────────────────────────────────────────────────────────
+# A MIGRATION NOW RUNS SOMEWHERE BEFORE IT RUNS IN PRODUCTION.
+#
+# `db/migrations/**` already had four guards and NOT ONE of them executed a line
+# of SQL:
+#
+#   db-migration-numbering  two files may not claim the same number
+#   migration-human-gate    a code owner must merge
+#   db-drift                daily: does `main` still match the database?
+#   db-apply                merging applies it — to ITERA production
+#
+# So the FIRST machine ever to execute a new migration was the ITERA production
+# database (Supabase kjefmwlopzeaqgqtlbdn). The human gate protects against the
+# wrong INTENT. Nothing protected against SQL that simply does not run — a typo,
+# a column that is not there, a function renamed three migrations ago. On merge
+# that lands as a red `db-apply` and a schema that is half-migrated, which is the
+# state db-apply's own header calls "a mystery".
+#
+# PRECEDENT: devfellowship/dfl-schema `.github/workflows/migration-check.yml`.
+# It stands up a `supabase/postgres` service container on a RANDOM ephemeral
+# host port, waits for health, and applies the migrations with
+# `psql -v ON_ERROR_STOP=1`. Same shape here, deliberately not a new one.
+#
+# FOUR DIFFERENCES FROM dfl-schema, EACH FORCED BY THIS REPO:
+#
+#  1. POSTGRES 17, NOT 15. dfl-schema pins `supabase/postgres:15.14.1.134`
+#     because DFL prod is on 15. The ITERA project is on **PostgreSQL 17.6**
+#     (`select version()` against kjefmwlopzeaqgqtlbdn, read-only, 2026-08-07),
+#     so this pins 17.6.1.160. Checking a 17 database against a 15 container is
+#     how a check tells you the opposite of the truth.
+#
+#  2. IT RUNS THE SERIES TWICE. Every migration in this repo is REQUIRED to be
+#     re-runnable — apply-migrations.sh says so in its header and the ledger's
+#     safety rests on it. Nothing enforced it. The second pass does.
+#
+#  3. IT HANDS THE DATABASE TO apply-migrations.sh. After the build, the ledger
+#     is seeded with everything already on `main` and the PR's own migrations go
+#     through the REAL applier — the same script `db-apply` runs on merge,
+#     including its transaction-mode detection and its ledger write. That script
+#     is 563 lines and CI has never executed it.
+#
+#  4. IT NEEDS NO SECRET, AND MUST NOT HAVE ONE. Everything happens against a
+#     throwaway container. `db-apply` holds `SUPABASE_DB_PASSWORD`; this job
+#     deliberately does not, and fresh-apply.sh refuses a PGHOST that looks like
+#     a real Supabase project.
+#
+# WHAT IT STILL DOES NOT PROVE, STATED RATHER THAN IMPLIED. The container is an
+# empty database; production is not. A migration that is correct against an
+# empty schema and wrong against real ROWS — a backfill that violates a
+# constraint only existing data can violate, a NOT NULL added to a column with
+# nulls in it — passes here and fails on merge. Narrowing that needs anonymised
+# production-shaped data, which this repo does not have. `db-apply` stopping at
+# the first failure remains the backstop.
+#
+# RUNNER: `[self-hosted, dfl-runner]` — the iterahq-scoped registrations, same
+# labels every other workflow in this repo uses. See the header of ci.yml for
+# why iterahq has its own runners on the same hosts. Service containers work
+# there because the runner containers mount the host docker socket and use
+# `network_mode: host`, so a published service port is reachable on localhost
+# (dfl-infra:vps/dfl-runner/docker-compose.iterahq.yml).
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  pull_request:
+    paths:
+      - 'db/migrations/**'
+      - 'db/scripts/fresh-apply.sh'
+      - 'db/scripts/fresh-apply-bootstrap.sql'
+      - 'db/scripts/fresh-apply-exceptions.txt'
+      - 'db/scripts/test-fresh-apply.sh'
+      - 'db/scripts/apply-migrations.sh'
+      - '.github/workflows/db-migration-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'db/migrations/**'
+      - 'db/scripts/fresh-apply.sh'
+      - 'db/scripts/fresh-apply-bootstrap.sql'
+      - 'db/scripts/fresh-apply-exceptions.txt'
+      - 'db/scripts/apply-migrations.sh'
+
+permissions:
+  contents: read
+
+# Nothing here touches a real database, so cancelling a superseded run is free.
+concurrency:
+  group: db-migration-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# NOTE for whoever edits this: the image tag is written out in full in both
+# `services:` blocks rather than held in a workflow-level `env`. `services.image`
+# is evaluated before the `env` context is available to a job, so a variable
+# there resolves to the empty string and the job fails at "Initialize
+# containers" with an unhelpful message. The tag must track the ITERA project's
+# major version — PostgreSQL 17.6, verified 2026-08-07 with `select version()`
+# against kjefmwlopzeaqgqtlbdn (read-only). Change both.
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # The guard's own red and green, asserted on throwaway fixtures in seconds.
+  # Same posture as db-migration-numbering.yml's selftest job: a check nobody
+  # has watched go red is not evidence, and one that only ever refuses gets
+  # switched off within a day. Its own service container, so the real check
+  # below still starts from a genuinely empty database.
+  # ────────────────────────────────────────────────────────────────────────────
+  selftest:
+    name: the check blocks AND allows
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 10
+
+    services:
+      db:
+        image: supabase/postgres:17.6.1.160
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          # A random ephemeral host port, not a fixed one: two of these jobs can
+          # land on the same self-hosted runner host and a fixed binding makes
+          # the second fail at "Initialize containers" with "address already in
+          # use". Resolved into $PGPORT below. (dfl-schema learned this one the
+          # hard way; inherited rather than re-learned.)
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      PGHOST: localhost
+      PGUSER: supabase_admin
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve DB host port
+        run: echo "PGPORT=${{ job.services.db.ports['5432'] }}" >> "$GITHUB_ENV"
+
+      - name: Ensure psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+
+      - name: Wait until the database really answers
+        run: bash db/scripts/ci-wait-for-postgres.sh
+
+      - name: Prove every verdict
+        run: bash db/scripts/test-fresh-apply.sh
+
+  # ────────────────────────────────────────────────────────────────────────────
+  check:
+    name: the schema builds from zero, twice
+    runs-on: [self-hosted, dfl-runner]
+    needs: selftest
+    timeout-minutes: 15
+
+    services:
+      db:
+        image: supabase/postgres:17.6.1.160
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    env:
+      PGHOST: localhost
+      # `postgres` is NOT a superuser in the supabase/postgres image, and several
+      # migrations need one: CREATE EXTENSION pg_cron (0053) and the policies on
+      # realtime.messages (0022/0023/0029/0036). Same choice dfl-schema makes.
+      PGUSER: supabase_admin
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The added-files diff below needs both sides of the PR.
+          fetch-depth: 0
+
+      - name: Resolve DB host port
+        run: echo "PGPORT=${{ job.services.db.ports['5432'] }}" >> "$GITHUB_ENV"
+
+      - name: Ensure psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql --version
+
+      - name: Wait until the database really answers
+        run: bash db/scripts/ci-wait-for-postgres.sh
+
+      - name: Which migrations does this pull request add?
+        id: added
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -uo pipefail
+          if [ -z "${BASE:-}" ]; then
+            echo "not a pull_request event — building from zero only"
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          FILES="$(git diff --name-only --diff-filter=A "$BASE" "$HEAD" -- 'db/migrations/*.sql' | tr '\n' ' ')"
+          echo "added: ${FILES:-(none)}"
+          echo "files=${FILES}" >> "$GITHUB_OUTPUT"
+
+      - name: Build the schema from an empty database, and run this PR's migrations
+        run: bash db/scripts/fresh-apply.sh --new "${{ steps.added.outputs.files }}"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### DB Migration Check"
+            echo
+            echo "- server: \`$(psql -qtAX -c 'show server_version' 2>/dev/null || echo unknown)\` (ITERA production is PostgreSQL 17.6)"
+            echo "- migrations added by this PR: \`${{ steps.added.outputs.files }}\`"
+            echo
+            echo "Every migration was applied to a throwaway Postgres from zero, then a"
+            echo "second time to prove it is re-runnable, then this PR's own migrations were"
+            echo "applied through \`db/scripts/apply-migrations.sh\` — the same script"
+            echo "\`db-apply\` runs against ITERA production on merge."
+          } >> "$GITHUB_STEP_SUMMARY"
