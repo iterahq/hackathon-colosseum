@@ -62,13 +62,13 @@ export default defineConfig({
   // Don't clash with vitest (which globs src/**/*.{test,spec}.*).
   testMatch: /.*\.spec\.ts$/,
   /**
-   * The activity characterization baseline is a DIFFERENT suite with the
-   * opposite contract: hermetic, credential-free, and BLOCKING on every PR via
-   * `ci.yml` (`playwright.baseline.config.ts`). It must never be picked up here,
-   * where `baseURL` points at live prod and absent capabilities turn into skips —
-   * a baseline that can skip is not a baseline.
+   * The hermetic PR suites are a DIFFERENT contract: credential-free, built from
+   * the tree under test, and BLOCKING on every PR via `ci.yml`
+   * (`playwright.baseline.config.ts`). They must never be picked up here, where
+   * `baseURL` points at live prod and absent capabilities turn into skips — a
+   * gate that can skip is not a gate. Mirror of that config's `testMatch`.
    */
-  testIgnore: /activity-baseline\.spec\.ts$/,
+  testIgnore: /(activity-baseline|terminal-sandbox)\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

@@ -21,12 +21,20 @@ import { defineConfig, devices } from '@playwright/test';
  * `gate.ts` here on purpose: **every test must run, every time, or the job is
  * red.** That is the entire contract with sub-plano 1.
  *
- * `testMatch` is pinned to the one spec file, and the legacy config now carries
- * a matching `testIgnore`, so neither suite can pick up the other's tests.
+ * `testMatch` is pinned to the hermetic spec files, and the legacy config
+ * carries the mirrored `testIgnore`, so neither suite can pick up the other's
+ * tests.
+ *
+ * TWO files match, and they are NOT the same kind of suite — see the header of
+ * `terminal-sandbox.spec.ts`. They run under one config because they share the
+ * substrate (hermetic, credential-free, built from the tree under test) and the
+ * property that matters here: **every test runs, every time, or the job is
+ * red.** Adding a file to this list means adding it to `testIgnore` over in
+ * `playwright.config.ts`, or the prod suite starts running it against live prod.
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /activity-baseline\.spec\.ts$/,
+  testMatch: /(activity-baseline|terminal-sandbox)\.spec\.ts$/,
 
   // Hermetic: no shared server state, no login, no DB. Parallel is free, and
   // it is what keeps the suite inside the 10-minute budget (V3).

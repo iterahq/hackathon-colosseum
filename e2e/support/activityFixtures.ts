@@ -30,6 +30,7 @@
  */
 
 import sandboxScenarioSpec from './fixtures/sandbox-scenario.spec.json' with { type: 'json' };
+import terminalScenarios from './fixtures/terminal-scenarios.spec.json' with { type: 'json' };
 
 /** Ids are STABLE and arbitrary — the stub resolves the fixture by this id. */
 export interface ActivityFixture {
@@ -289,6 +290,36 @@ export const SANDBOX_SCENARIO: ActivityFixture = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
+ * TERMINAL SANDBOXES — the SAME kind (`sandbox_scenario`) with
+ * `sandboxKind: "terminal"`, one per input surface. Both specs are copied
+ * verbatim from the package's own conformance corpus
+ * (`@iterahq/activity-spec:src/schemas/fixtures/terminal-scenarios.ts`, mirrored
+ * in `src/test/fixtures/terminal-scenarios.json`), so what the browser drives
+ * here is what the package replays — not a second, hand-made shape that could
+ * agree with nothing.
+ *
+ * They exist for `e2e/terminal-sandbox.spec.ts`, which asserts the things only a
+ * real browser can see: layout geometry, the success marker, and the rendered
+ * locale. `activity-baseline.spec.ts` deliberately does NOT drive them — that
+ * suite is frozen characterization and these assertions are about behaviour we
+ * are actively changing.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const TERMINAL_FREE_TEXT: ActivityFixture = {
+  id: id(18),
+  kind: 'sandbox_scenario',
+  label: 'sandbox_scenario · terminal (texto livre)',
+  spec: terminalScenarios.freeText as unknown as Record<string, unknown>,
+};
+
+export const TERMINAL_OPTIONS: ActivityFixture = {
+  id: id(19),
+  kind: 'sandbox_scenario',
+  label: 'sandbox_scenario · terminal (opções)',
+  spec: terminalScenarios.options as unknown as Record<string, unknown>,
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
  * INVALID SPECS — estado F. A mal-authored spec must render the friendly card,
  * never crash the learner's screen. One per validation SITE, because the two
  * sites produce different testids and different i18n keys.
@@ -349,6 +380,8 @@ export const ALL_FIXTURES: readonly ActivityFixture[] = [
   CODE_WITH_FAILING_CHECKS,
   VIDEO,
   SANDBOX_SCENARIO,
+  TERMINAL_FREE_TEXT,
+  TERMINAL_OPTIONS,
   INVALID_SINGLE_CHOICE,
   INVALID_CODE,
   CONCEPT_REVEAL,

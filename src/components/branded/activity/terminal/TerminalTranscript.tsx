@@ -7,6 +7,19 @@ import type { TerminalLine } from '@iterahq/activity-spec/runtime';
  * and lives INSIDE the same `SandboxWindow` chrome, per the 3-zone law of plan
  * `20260717-iterahq-activities-visual-ux-redesign` (whose target image is,
  * literally, the DFL-Labs git sandbox).
+ *
+ * ── HEIGHT: IT GROWS DOWNWARD, IT IS NOT A FIXED PANE ───────────────────────
+ * Until 2026-08-07 this box was `h-[34dvh] min-h-[220px]`, i.e. a FIXED pane.
+ * On the first frame that reserved ~220px for a transcript holding one welcome
+ * line, so the prompt bar underneath was pushed to the bottom of the window and
+ * the learner met an empty gap between the context line and the cursor
+ * (Tainan's screenshot, plan `20260807-itera-terminal-sandbox-refinamentos` §1).
+ *
+ * A real terminal grows DOWN from the last line: the cursor starts glued to the
+ * context and the history pushes it. So the height is now intrinsic, capped by
+ * `max-h-[34dvh]` — the cap is what keeps a long session from eating the page,
+ * and it only engages once there IS a long session. Do not reintroduce a
+ * `min-h`/`h-` here: that is the gap, restated.
  */
 export function TerminalTranscript({
   lines,
@@ -26,7 +39,7 @@ export function TerminalTranscript({
   return (
     <div
       ref={scrollRef}
-      className="h-[34dvh] min-h-[220px] max-h-[400px] overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed"
+      className="max-h-[34dvh] overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed"
       data-testid="terminal-transcript"
     >
       {lines.length === 0 && <div className="text-muted-foreground">{emptyHint}</div>}
@@ -34,6 +47,9 @@ export function TerminalTranscript({
         <div
           key={i}
           data-line-kind={line.kind}
+          // The handle the layout assertion measures against: "is the prompt
+          // glued to the last line". Only the LAST line carries it.
+          data-testid={i === lines.length - 1 ? 'transcript-last-line' : undefined}
           className={`whitespace-pre-wrap ${
             line.kind === 'err'
               ? 'text-destructive'
