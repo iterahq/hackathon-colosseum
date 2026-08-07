@@ -101,11 +101,21 @@ jobs:
       #   • `cursor-zoom-in`  -> packages/activities components/InstructionImage
       #   • `marker:text-evergreen` -> packages/activities components/RichBlock
       #   • `caret-evergreen` -> packages/activities kinds/terminal/TerminalPromptBar
+      #   • `text-red-600`    -> packages/activities code/CodeLivePreview
       #
       # The third one was added with step 4 on purpose: the first two are both
       # in `components/`, so a glob that reached the shared primitives but not
       # `kinds/**` would have kept this step green while every extracted KIND
       # went unstyled. One sentinel per moved tree, not one per package.
+      #
+      # The fourth arrived with step 5 and guards a tree the other three cannot
+      # see at all: `code/` is behind the SECOND entrypoint
+      # (`@iterahq/activities/code`, ADR-5), so it is compiled to
+      # `dist/code/**.js` — a path `./packages/*/dist/**/*.js` happens to cover
+      # today and a narrower future glob (`dist/*.js`, say) would silently drop.
+      # `text-red-600` is the transpile-error strip in the preview: the one
+      # thing a learner sees when their code does not compile, and the one
+      # utility used in exactly one moved file and nowhere in `src/`.
       # If a future refactor makes one of them appear in `src/` too, this check
       # goes quiet without going red — pick a different class then, do not
       # delete the step.
@@ -118,7 +128,7 @@ jobs:
           # `grep -qF`: Tailwind escapes the variant colon, so the emitted
           # selector is `.marker\:text-evergreen` with a LITERAL backslash — a
           # basic-regex pattern eats it and reports a false purge.
-          for CLASS in 'cursor-zoom-in' 'marker\:text-evergreen' 'caret-evergreen'; do
+          for CLASS in 'cursor-zoom-in' 'marker\:text-evergreen' 'caret-evergreen' 'text-red-600'; do
             if ! grep -qF -- "$CLASS" "$CSS"; then
               echo "::error::'$CLASS' was purged from $CSS - packages/*/dist is missing from tailwind.config.ts content globs, and every extracted activity is now unstyled"
               exit 1

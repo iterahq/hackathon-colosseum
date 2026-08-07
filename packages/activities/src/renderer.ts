@@ -24,6 +24,7 @@ import type { ActivityEventHandler } from './events.js';
 import type { ActivityRecordedAction } from './internal/actionRecorder.js';
 import type {
   ActivityApiPort,
+  ActivityCodeEditorProps,
   ActivityI18n,
   ActivityIdentity,
   ActivityStoragePort,
@@ -190,6 +191,23 @@ export interface ActivityHostContext {
   theme?: ActivityTheme;
   /** Draft persistence for the `code` kind. Omit ⇒ localStorage, as today. */
   storage?: ActivityStoragePort;
+  /**
+   * The editor the `code` kind renders (`@iterahq/activities/code`).
+   *
+   * One more optional member on the SAME context, not a second injection
+   * mechanism — that is the whole reason it is here and not a registry, a
+   * global, or a prop threaded through `<ActivityRenderer>`. Omit it and
+   * `/code` renders a dependency-free `<textarea>`; the Itera Player injects
+   * `src/components/editor/CodeEditor.tsx`, which keeps its live-class caret
+   * mirroring and its self-hosted Monaco/TypeScript setup **in the app**.
+   *
+   * Typed here (rather than in the `/code` entrypoint) because
+   * `ActivityHostContext` is one object and a host builds it in one place. It
+   * costs the base bundle a type, which is erased — the base graph still
+   * reaches nothing under `code/`, asserted by
+   * `scripts/assert-entrypoint-isolation.mjs`.
+   */
+  codeEditor?: ComponentType<ActivityCodeEditorProps>;
   /**
    * Provider-level telemetry sink. Merged with the per-activity `onEvent`:
    * BOTH are called, provider first. A host wiring one exporter for a whole

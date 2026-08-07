@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { I18nProvider } from '@/i18n';
+import type { ReactNode } from 'react';
+import { ActivityProvider } from '@iterahq/activities';
+import type { ActivityCodeEditorProps } from '@iterahq/activities';
+import { I18nProvider, useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { ITERA_ACTIVITY_STORAGE } from '@/components/branded/activity/IteraActivityHost';
 import { readCodeSnapshot, saveCodeSnapshot } from '@/services/codeSnapshot.service';
 import { rememberStorageScope } from '@/utils/storageScope';
 
@@ -13,30 +17,47 @@ import { rememberStorageScope } from '@/utils/storageScope';
  *
  * So these tests run against the REAL `codeSnapshot.service` and the REAL
  * localStorage: mocking the store would prove the hook calls a function, not
- * that the work actually survives a reload. Only Monaco and the preview iframe
- * are stubbed, because jsdom cannot run either.
+ * that the work actually survives a reload.
+ *
+ * ⚠️ Since Fase C step 5 they are ALSO the compatibility guard for the storage
+ * port. `useCodeSnack` moved into `@iterahq/activities/code` and now writes
+ * through `ActivityStoragePort`; `ITERA_ACTIVITY_STORAGE` is the adapter that
+ * routes it back to `codeSnapshot.service`. Every `readCodeSnapshot(...)`
+ * assertion below therefore asserts, verbatim and per activity, that the
+ * extraction did not move a single learner's draft. Injecting the adapter here
+ * rather than letting the package fall back to its own localStorage default is
+ * the whole reason these tests still mean something.
+ *
+ * Monaco is stubbed the new way — as an injected `codeEditor` port rather than
+ * a `vi.mock` of the app module, because the package imports its own editor
+ * surface and would never see the mock. The preview iframe is no longer stubbed
+ * at all: jsdom renders it inert, and nothing here submits.
  */
 
 // Every value the editor is asked to render, in order — that is how we prove
 // the restored code is on screen from the FIRST paint, with no starter flash.
 const rendered = vi.hoisted(() => ({ values: [] as string[] }));
 
-vi.mock('@/components/editor/CodeEditor', () => ({
-  CodeEditor: ({ value, onChange }: { value: string; onChange?: (v: string) => void }) => {
-    rendered.values.push(value);
-    return (
-      <textarea
-        data-testid="mock-editor"
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-    );
-  },
-}));
+function RecordingEditor({ value, onChange }: ActivityCodeEditorProps) {
+  rendered.values.push(value);
+  return (
+    <textarea
+      data-testid="mock-editor"
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  );
+}
 
-vi.mock('@/components/branded/activity/code/CodeLivePreview', () => ({
-  CodeLivePreview: () => <div data-testid="mock-preview" />,
-}));
+/** The Player's own host context, minus the parts a draft test does not need. */
+function Host({ children }: { children: ReactNode }) {
+  const i18n = useI18n();
+  return (
+    <ActivityProvider i18n={i18n} storage={ITERA_ACTIVITY_STORAGE} codeEditor={RecordingEditor}>
+      {children}
+    </ActivityProvider>
+  );
+}
 
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 
@@ -52,7 +73,9 @@ function open(id = 'act-todo') {
   rendered.values = [];
   return render(
     <I18nProvider>
-      <CodeSnackActivity activity={makeActivity(id)} onComplete={vi.fn()} />
+      <Host>
+        <CodeSnackActivity activity={makeActivity(id)} onComplete={vi.fn()} />
+      </Host>
     </I18nProvider>,
   );
 }
@@ -145,7 +168,9 @@ describe('code snack — o trabalho do aluno sobrevive ao reload', () => {
     saveCodeSnapshot('act-dois', 'trabalho salvo da dois');
     const view = render(
       <I18nProvider>
-        <CodeSnackActivity activity={makeActivity('act-um')} onComplete={vi.fn()} />
+        <Host>
+          <CodeSnackActivity activity={makeActivity('act-um')} onComplete={vi.fn()} />
+        </Host>
       </I18nProvider>,
     );
     type('trabalho da um');
@@ -153,7 +178,9 @@ describe('code snack — o trabalho do aluno sobrevive ao reload', () => {
 
     view.rerender(
       <I18nProvider>
-        <CodeSnackActivity activity={makeActivity('act-dois')} onComplete={vi.fn()} />
+        <Host>
+          <CodeSnackActivity activity={makeActivity('act-dois')} onComplete={vi.fn()} />
+        </Host>
       </I18nProvider>,
     );
 

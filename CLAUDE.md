@@ -70,11 +70,11 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
-⚠️ **Desde a Fase C (2026-08-07), OITO kinds NÃO moram mais aqui.** `concept`,
+⚠️ **Desde a Fase C (2026-08-07), NOVE kinds NÃO moram mais aqui.** `concept`,
 `concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order`
-(passos 1–3) e **`sandbox_scenario`** (passo 4) foram extraídos para
-`@iterahq/activities` (`packages/activities/src/kinds/`), junto com os
-primitivos (`InstructionPanel`, `RichText*`, `parts`, `AnswerExplanation`,
+(passos 1–3), **`sandbox_scenario`** (passo 4) e **`code`** (passo 5) foram
+extraídos para `@iterahq/activities`, junto com os primitivos
+(`InstructionPanel`, `RichText*`, `parts`, `AnswerExplanation`,
 `ActivityTextarea`) e a lógica pura (`answerMachine`, shuffle, parser de
 markdown-leve, `terminalSuccessMarks`). Os arquivos antigos continuam existindo
 como **re-export de uma linha**, então todo import por
@@ -84,8 +84,35 @@ aqui não muda nada**: a implementação está no pacote.
 O `sandbox_scenario` levou junto as pastas **`sandbox/` e `terminal/` inteiras**
 — hoje em `packages/activities/src/kinds/sandbox/` e `.../kinds/terminal/`. Só
 ficaram no app os pontos que o app precisa: `sandbox-live/` (o gêmeo julgado por
-IA, que consome `api.respond`/`api.judge`), `byoc/`, `code/`, `JudgeHeatmap` e
+IA, que consome `api.respond`/`api.judge`), `byoc/`, `JudgeHeatmap` e
 `document`/`diagram`/`quiz` (ainda inline no dispatcher).
+
+📦 **O `code` mora num SEGUNDO entrypoint: `@iterahq/activities/code`** (ADR-5).
+Ele não está em `BUILT_IN_ACTIVITY_KINDS` de propósito — o bundle base responde
+"não, pergunta ao host" para `code`, e quem quer o kind importa `/code` e o
+registra em `ActivityHostContext.renderers`. Foram junto `useCodeSnack`,
+`useCodeChecks`, `transpileSnack`, o documento do iframe de preview e o runtime
+de correção (`packages/activities/src/code/`); os caminhos antigos em
+`src/hooks/`, `src/utils/`, `src/consts/` e `src/components/branded/activity/code/`
+são re-export de uma linha. `scripts/assert-entrypoint-isolation.mjs` percorre o
+grafo de módulos do `dist/` e falha se o entrypoint base alcançar qualquer coisa
+de `code/` — roda no `npm test` e de novo dentro do `external-consumer/check.sh`.
+
+⌨️ **O Monaco NÃO foi para o pacote, e isso é a decisão do passo 5.**
+`src/components/editor/CodeEditor.tsx` continua no app porque ele carrega duas
+coisas que são da Itera e não de qualquer consumidor: o CustomEvent de caret que
+a aula ao vivo espelha no telão, e a configuração do worker de TypeScript escrita
+contra o Monaco self-hosted deste repo. O pacote recebe o editor pela MESMA porta
+que recebe i18n e auth — `<ActivityProvider codeEditor={…}>` — e, sem injeção,
+desenha um `<textarea>` funcional (sem highlight). `IteraActivityHost` injeta o
+`CodeEditor` do app.
+
+💾 **O rascunho do `code` também virou porta.** `useCodeSnack` não chama mais
+`@/services/codeSnapshot.service`: escreve por `ActivityStoragePort`, e
+`ITERA_ACTIVITY_STORAGE` (em `IteraActivityHost.tsx`) traduz de volta — mesma
+chave por aluno, mesmo envelope `{code, savedAt}`, mesmo `CODE_SNAPSHOT_EVENT`.
+`src/test/codeDraftKeyCompat.test.tsx` trava isso: se a chave mudar, todo
+rascunho no disco de uma sala vira inalcançável **em silêncio**.
 
 🌍 **Uma activity dentro do pacote lê i18n do `<ActivityProvider>`, NÃO do
 `@/i18n`.** Uma árvore com `I18nProvider` e sem `ActivityProvider` cai no
@@ -183,15 +210,19 @@ testes — não crie um segundo conjunto.
 ### Contrato público do `@iterahq/activities`
 
 As activities são um pacote instalável (plano
-`20260803-itera-player-activities-lib`). **Fases A, B e C (passos 1–3) estão
-feitas** — os renderers sem backend já renderizam fora do Player.
+`20260803-itera-player-activities-lib`). **Fases A, B e C (passos 1–5) estão
+feitas** — os renderers sem backend já renderizam fora do Player, e o `code` sai
+por um segundo entrypoint. Falta de C: a metade julgada por IA do passo 4
+(`sandbox-live`, BYOC, `JudgeHeatmap`) e os três kinds ainda inline no
+dispatcher.
 
 Este repo é um **monorepo de npm workspaces** (ADR-2 — workspaces puro, NÃO
 Turborepo). O app fica na raiz; os pacotes publicáveis ficam em `packages/*`:
 
-- `packages/activities/` → **`@iterahq/activities`**. Contém a API pública
-  **e os renderers sem backend** (Fase C). O que ficou de fora e por quê está na
-  tabela do [`README`](packages/activities/README.md). Racional, ordem
+- `packages/activities/` → **`@iterahq/activities`**, com DOIS entrypoints: o
+  base (API pública + renderers sem backend) e **`@iterahq/activities/code`**
+  (o kind pesado, ADR-5 — nunca no bundle base). O que ficou de fora e por quê
+  está na tabela do [`README`](packages/activities/README.md). Racional, ordem
   de extração e cobertura por kind:
   [`packages/activities/CONTRACT.md`](packages/activities/CONTRACT.md). Setup de
   consumidor (`.npmrc` + token):

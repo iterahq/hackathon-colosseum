@@ -46,6 +46,12 @@ grep -qx 'package/dist/index.js' <<<"$MANIFEST" \
   || { echo "::error::the packed tarball has no dist/index.js"; exit 1; }
 grep -qx 'package/dist/index.d.ts' <<<"$MANIFEST" \
   || { echo "::error::the packed tarball has no type declarations"; exit 1; }
+# The SECOND door (ADR-5). `exports` can point at `./dist/code/index.js` and be
+# perfectly valid in the workspace while `files` never ships it — a consumer's
+# `import '@iterahq/activities/code'` then throws ERR_MODULE_NOT_FOUND, which is
+# the exact class of bug this whole harness exists for.
+grep -qx 'package/dist/code/index.js' <<<"$MANIFEST" \
+  || { echo "::error::the packed tarball has no ./code entrypoint"; exit 1; }
 # And what is NOT inside it matters too: shipping `src/` would let a consumer
 # accidentally deep-import past the public barrel.
 if grep -q '^package/src/' <<<"$MANIFEST"; then
@@ -60,6 +66,14 @@ rm -rf "$HERE/node_modules" "$HERE/package-lock.json"
 echo "==> proving nothing resolves back into the workspace"
 test ! -L "$HERE/node_modules/@iterahq/activities" \
   || { echo "::error::@iterahq/activities is a symlink — the workspace leaked in"; exit 1; }
+
+# ADR-5, checked on what was actually INSTALLED rather than on what was built.
+# The in-repo test (`src/test/activityEntrypointIsolation.test.ts`) runs the same
+# script over `packages/activities/dist`; here the subject is the unpacked
+# tarball, so a `files`/`exports` mistake that ships the code tree into the base
+# graph — or drops `dist/code/` entirely — fails HERE and nowhere else.
+echo "==> proving the code kind is unreachable from the base entrypoint"
+node "$ROOT/scripts/assert-entrypoint-isolation.mjs" "$HERE/node_modules/@iterahq/activities"
 
 echo "==> rendering activities outside the Itera Player"
 ( cd "$HERE" && node run.mjs )

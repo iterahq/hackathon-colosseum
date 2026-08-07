@@ -18,7 +18,7 @@
       },
       "reveal": {
         "prompt": "O que aparece em vermelho?",
-        "answer": "Arquivos modificados que ainda n\u00e3o entraram no stage."
+        "answer": "Arquivos modificados que ainda não entraram no stage."
       }
     }
   },
@@ -107,7 +107,7 @@
       "right": [
         {
           "id": "r-stage",
-          "label": "p\u00f5e no stage"
+          "label": "põe no stage"
         },
         {
           "id": "r-snapshot",
@@ -216,8 +216,34 @@
     "id": "fixture-code",
     "kind": "code",
     "spec": {
-      "prompt": "Escreva um componente.",
-      "starter": "export default () => null;"
+      "prompt": "Faça o botão dizer **Gostei**.",
+      "starter": "export default function App() {\n  return <button className=\"bg-slate-500\">Curtir</button>;\n}\n",
+      "language": "tsx",
+      "help": {
+        "label": "Como funciona o useState",
+        "url": "https://react.dev/reference/react/useState"
+      },
+      "checks": [
+        {
+          "id": "texto",
+          "label": "O botão diz \"Gostei\"",
+          "selector": "button",
+          "assert": {
+            "type": "text",
+            "contains": "Gostei"
+          },
+          "hint": "Troque o rótulo do <button>."
+        },
+        {
+          "id": "cor",
+          "label": "O botão está verde",
+          "selector": "button",
+          "assert": {
+            "type": "class",
+            "contains": "bg-emerald-500"
+          }
+        }
+      ]
     }
   }
 }

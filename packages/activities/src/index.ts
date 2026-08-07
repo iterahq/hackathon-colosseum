@@ -38,6 +38,20 @@
  *    section shrinks. Do not build on them expecting stability.
  *  • The default dictionary's raw `ACTIVITY_DICTIONARY` map is exported, but
  *    `createActivityI18n` is the supported way in.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHAT IS BEHIND THE OTHER DOOR — `@iterahq/activities/code`
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Nothing in this file reaches the `code` kind, and that is a MECHANICAL
+ * property rather than a convention: `scripts/assert-entrypoint-isolation.mjs`
+ * walks the built module graph from `dist/index.js` and fails if any reachable
+ * file lives under `dist/code/` or names `sucrase` / `monaco-editor` /
+ * `@monaco-editor/react`. It runs in `npm test` against the workspace build and
+ * again inside `external-consumer/check.sh` against the INSTALLED tarball — the
+ * artifact a consumer actually gets.
+ *
+ * `code` is therefore absent from `BUILT_IN_ACTIVITY_KINDS` on purpose: this
+ * bundle answers "no, ask the host" for it (ADR-5). See `./code/index.ts`.
  */
 
 /* ───────────────────────────── the entry points ──────────────────────────── */
@@ -100,10 +114,16 @@ export type {
 } from './internal/actionRecorder.js';
 
 /* ──────────── shared primitives — for the not-yet-extracted kinds ────────── */
-// ⚠️ PROVISIONAL SURFACE. These exist so the Itera Player's `sandbox`,
-// `terminal`, `byoc` and `code` trees keep compiling while they wait their turn
-// (Fase C steps 4 and 5). They are the seam of an unfinished extraction, not a
-// design for outside use.
+// ⚠️ PROVISIONAL SURFACE. These exist so the Itera Player's live-sandbox and
+// `byoc` trees keep compiling while they wait their turn (the AI-judged half of
+// Fase C step 4). They are the seam of an unfinished extraction, not a design
+// for outside use.
+//
+// `code` left this list in step 5. It does NOT re-export from here: the pieces
+// it composes with (`DoneButton`, `RichText`) are imported by relative path
+// from inside `./code/`, so the `/code` entrypoint depends on the base module
+// graph while the base depends on nothing of `/code` — which is the asymmetry
+// the entrypoint-isolation assertion checks.
 
 export { ActivityTextarea } from './components/ActivityTextarea.js';
 export type { ActivityTextareaProps } from './components/ActivityTextarea.js';
@@ -159,6 +179,7 @@ export type {
 export type {
   ActivityApiPort,
   ActivityBrief,
+  ActivityCodeEditorProps,
   ActivityI18n,
   ActivityIdentity,
   ActivityJudgeContext,

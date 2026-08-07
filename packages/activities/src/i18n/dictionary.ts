@@ -28,7 +28,12 @@
  * in the app without changing it here (or the reverse) and that test goes red.
  *
  * ⚠️ Do NOT add keys here that the package's own renderers do not use. This is
- * the package's vocabulary, not a mirror of the app's dictionary.
+ * the package's vocabulary, not a mirror of the app's dictionary. "Its own
+ * renderers" includes the ones behind the `/code` entrypoint: the per-key
+ * fallback lives in `../context.tsx`, i.e. in the BASE, so splitting the
+ * dictionary per entrypoint would mean every consumer of `/code` had to merge
+ * two dictionaries by hand — precisely the homework this file exists to
+ * remove. Fifteen extra strings in the base is the cheaper side of that trade.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY THERE IS A SECOND PREFIX (`terminal.`) SINCE FASE C STEP 4
@@ -43,8 +48,13 @@
  * which is the one thing this dictionary may not do.
  *
  * So the rule is now a short ALLOWLIST of prefixes rather than a single one,
- * and it is still a closed list: `activity.` and `terminal.`. A third prefix is
- * a decision, not an accident, which is exactly what the assertion is for.
+ * and it is still a closed list: `activity.`, `terminal.` and — since Fase C
+ * step 5 — `code.`. The `code.` namespace arrived for the same reason
+ * `terminal.` did: the keys already exist under that name in the Player's
+ * `src/i18n/index.ts`, and renaming them on the way in would desynchronise the
+ * two dictionaries, which is the one thing this file may not do. A FOURTH
+ * prefix is a decision, not an accident, which is exactly what the assertion
+ * is for.
  */
 import type { ActivityLocale } from '../ports.js';
 
@@ -52,6 +62,21 @@ import type { ActivityLocale } from '../ports.js';
 export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>> = {
   pt: {
     'activity.concept': 'Conceito',
+    'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
+    'activity.codeSnackHint': 'Edite o código; o preview atualiza sozinho.',
+    'activity.continue': 'Continuar',
+    'code.checks.allPassed': 'Tudo certo! Você conseguiu.',
+    'code.checks.continueAnyway': 'Seguir mesmo assim',
+    'code.checks.editAgain': 'Editar de novo',
+    'code.checks.frozen': 'O editor fica travado enquanto o resultado está na tela.',
+    'code.checks.retry': 'Tentar de novo',
+    'code.checks.running': 'Conferindo…',
+    'code.checks.score': '{passed} de {total}',
+    'code.checks.someFailed': 'Quase lá — falta pouco.',
+    'code.reset.action': 'Recomeçar do código inicial',
+    'code.reset.cancel': 'Continuar editando',
+    'code.reset.confirm': 'Sim, recomeçar',
+    'code.reset.confirmPrompt': 'Isso apaga o que você escreveu e traz o código inicial de volta. Quer recomeçar?',
     'activity.conceptReveal': 'Pense antes',
     'activity.done': 'Concluída',
     'activity.explanationTitle': 'Entenda o porquê',
@@ -96,6 +121,21 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
   },
   en: {
     'activity.concept': 'Concept',
+    'activity.codeInvalid': 'This code activity has an invalid configuration.',
+    'activity.codeSnackHint': 'Edit the code; the preview updates live.',
+    'activity.continue': 'Continue',
+    'code.checks.allPassed': 'All good! You did it.',
+    'code.checks.continueAnyway': 'Continue anyway',
+    'code.checks.editAgain': 'Edit again',
+    'code.checks.frozen': 'The editor stays locked while the result is on screen.',
+    'code.checks.retry': 'Try again',
+    'code.checks.running': 'Checking…',
+    'code.checks.score': '{passed} of {total}',
+    'code.checks.someFailed': 'Almost there — just a bit more.',
+    'code.reset.action': 'Start over from the first code',
+    'code.reset.cancel': 'Keep editing',
+    'code.reset.confirm': 'Yes, start over',
+    'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',
     'activity.conceptReveal': 'Think first',
     'activity.done': 'Done',
     'activity.explanationTitle': 'Here is why',
@@ -148,7 +188,8 @@ export const ACTIVITY_I18N_KEYS: readonly string[] = Object.keys(ACTIVITY_DICTIO
  *
  * The shortest possible host adapter: `<ActivityProvider i18n={createActivityI18n('pt')}>`.
  * `{name}`-style interpolation is supported so the port behaves the same way
- * the Player's `t` does, even though no key here takes a variable today.
+ * the Player's `t` does — and since step 5 it is load-bearing rather than
+ * defensive: `code.checks.score` is `'{passed} de {total}'`.
  */
 export function createActivityI18n(locale: ActivityLocale = 'pt') {
   return {

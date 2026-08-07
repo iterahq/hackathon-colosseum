@@ -28,17 +28,26 @@ So this project removes every borrowed condition, deliberately:
 | Itera itself | No `@/i18n`, no `AuthContext`, no supabase client, no Tailwind pipeline, no router. The whole host is ~40 lines |
 
 It also checks the **shape of the published artifact**, which only ever fails at
-someone else's install: `dist/index.js` and `dist/index.d.ts` must be in the
-tarball, and `src/` must **not** be (shipping it would let a consumer
-deep-import past the public barrel, and the barrel is the API).
+someone else's install: `dist/index.js`, `dist/index.d.ts` and — since step 5 —
+`dist/code/index.js` must be in the tarball, and `src/` must **not** be
+(shipping it would let a consumer deep-import past the public barrel, and the
+barrel is the API).
+
+And it runs `scripts/assert-entrypoint-isolation.mjs` over the **installed**
+package: the module graph from `dist/index.js` may not reach anything under
+`dist/code/`, nor name `sucrase` / `monaco-editor` / `@monaco-editor/react`.
+That is ADR-5 checked on the artifact rather than on the source — the in-repo
+test runs the same script over the workspace build, which is a different
+subject with the same claim.
 
 ## What it asserts
 
 1. **Resolution + surface** — imports as ESM from Node with no bundler; the
    barrel does not leak internals; `BUILT_IN_ACTIVITY_KINDS` matches what the
    dispatcher can actually render.
-2. **Rendering** — all seven extracted kinds render from a fixture spec, with
-   the authored instruction text and the light-markdown formatting on screen.
+2. **Rendering** — every kind the base entrypoint advertises renders from a
+   fixture spec, with the authored instruction text and the light-markdown
+   formatting on screen.
 3. **Answering** — pick + submit on `single_choice` produces `onComplete(true)`
    with the answer text and the full action sequence, and a wrong pick grades
    false.
@@ -55,6 +64,16 @@ deep-import past the public barrel, and the barrel is the API).
 8. **The shuffle** — two learner ids get two different arrangements of the same
    options, and one learner gets the same arrangement twice. This is the
    property that fails **silently** when `identity.userId` stops being wired.
+9. **The `code` kind, through the other door (ADR-5)** — `@iterahq/activities/code`
+   resolves as a subpath export while the base still refuses `code`; a host that
+   registers `CodeActivity` in `renderers` renders a real snack with **no editor
+   injected** (the package's textarea fallback) and with its own editor when it
+   passes one; the graded lifecycle runs end to end — submit, fail with the
+   authored hint, retry with the work intact, pass, settle with the SOURCE in
+   `detail.response`; and the draft is read from and written to the injected
+   `storage` port under the documented key. The preview's sandboxed iframe is
+   stood in for over its real message protocol, because jsdom will not execute
+   it — everything on the parent side is the shipped code.
 
 ## What it is not
 
@@ -71,10 +90,15 @@ deep-import past the public barrel, and the barrel is the API).
 
 ## Adding a kind
 
-When Fase C step 4 or 5 lands a kind (`sandbox_scenario`, `code`, BYOC, the
-AI-judged `document`), add a fixture to `fixtures.json` under its kind name.
-The "advertises the kinds it can render" check **fails if a kind is advertised
-and has no fixture**, so coverage cannot quietly fall behind the package.
+When the rest of Fase C lands a kind (BYOC, the live sandbox, the AI-judged
+`document`), add a fixture to `fixtures.json` under its kind name. The
+"advertises the kinds it can render" check **fails if a kind is advertised and
+has no fixture**, so coverage cannot quietly fall behind the package.
+
+A kind behind its own entrypoint (today only `code`) does not appear in
+`BUILT_IN_ACTIVITY_KINDS`, so that check will not find it. It needs its own
+section, importing the entrypoint and registering the kind through
+`ActivityHostContext.renderers` — see section 9.
 
 Kinds that need a port must be exercised with a **stub** port injected here —
 never a real client. A harness that talks to `api.iterahq.dev` is testing the

@@ -1,71 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import { I18nProvider } from '@/i18n';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import type { Activity } from '@/types/content';
+import {
+  CodeActivityHost,
+  codeEditorEl,
+  previewIframe,
+  typeCode,
+} from './support/codeActivityHost';
 
-// Monaco + the iframe/react-live preview are heavy for jsdom — stub both to a
-// controllable textarea / passthrough so the test targets the snack's logic
-// (debounced autosave + Done wiring + optional help link).
-vi.mock('@/components/editor/CodeEditor', () => ({
-  CodeEditor: ({
-    value,
-    onChange,
-    readOnly,
-  }: {
-    value: string;
-    onChange?: (v: string) => void;
-    readOnly?: boolean;
-  }) => (
-    <textarea
-      data-testid="mock-editor"
-      value={value}
-      readOnly={readOnly}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
-}));
-
-// The preview stub also plays the iframe's part in the grading protocol: it
-// answers a `checksRequest` with whatever the test scripted, so the pane/hook
-// lifecycle can be exercised without a real sandbox. (The REAL evaluation is
-// covered against a real DOM in `codePreviewRuntime.test.tsx`.)
-const preview = vi.hoisted(() => ({
-  results: [] as { id: string; passed: boolean }[],
-  requests: [] as { token: number; code: string }[],
-  /** Simulates a preview that crashed / never booted: the request is dropped. */
-  silent: false,
-  /** Replays the last request's answer — a slow iframe reporting in too late. */
-  answerLate: (() => {}) as () => void,
-}));
-
-vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
-  const React = await vi.importActual<typeof import('react')>('react');
-  return {
-    CodeLivePreview: ({
-      code,
-      checksRequest,
-      onChecksResult,
-    }: {
-      code: string;
-      checksRequest?: { token: number; code: string } | null;
-      onChecksResult?: (r: { id: string; passed: boolean }[], token: number) => void;
-    }) => {
-      React.useEffect(() => {
-        if (!checksRequest) return;
-        preview.requests.push({ token: checksRequest.token, code: checksRequest.code });
-        preview.answerLate = () => onChecksResult?.(preview.results, checksRequest.token);
-        if (preview.silent) return;
-        onChecksResult?.(preview.results, checksRequest.token);
-      }, [checksRequest, onChecksResult]);
-      return React.createElement('div', { 'data-testid': 'mock-preview' }, code);
-    },
-  };
-});
-
-// The persistence layer is stubbed here so these tests stay about the snack's
-// lifecycle. `readCodeSnapshot` answers "nothing saved" by default, which is the
-// first-open case; the restore behaviour itself is covered against REAL
-// localStorage in `CodeSnackRestore.test.tsx`.
+/**
+ * The persistence layer is stubbed so these tests stay about the snack's
+ * lifecycle. `readCodeSnapshot` answers "nothing saved" by default, which is the
+ * first-open case; the restore behaviour itself is covered against REAL
+ * localStorage in `CodeSnackRestore.test.tsx`.
+ *
+ * ⚠️ It is still `@/services/codeSnapshot.service` that is mocked, even though
+ * the hook doing the saving now lives inside `@iterahq/activities/code`. That is
+ * the storage PORT working as designed: the package writes through
+ * `ActivityStoragePort`, `ITERA_ACTIVITY_STORAGE` (in `IteraActivityHost`) is
+ * the adapter that turns those calls into `codeSnapshot.service` calls, and the
+ * adapter is app code — so mocking the service still observes exactly the write
+ * that reaches disk. Assertions like `toHaveBeenCalledWith('t-code', …)` are
+ * therefore also a live check that the key survived the extraction.
+ */
 const saveCodeSnapshot = vi.fn();
 const clearCodeSnapshot = vi.fn();
 const readCodeSnapshot = vi.fn((_id: string) => null as { code: string } | null);
@@ -83,9 +40,9 @@ function makeActivity(spec: Record<string, unknown>): Activity {
 
 function renderSnack(spec: Record<string, unknown>, onComplete = vi.fn()) {
   render(
-    <I18nProvider>
+    <CodeActivityHost>
       <CodeSnackActivity activity={makeActivity(spec)} onComplete={onComplete} />
-    </I18nProvider>,
+    </CodeActivityHost>,
   );
   return onComplete;
 }
@@ -149,11 +106,22 @@ describe('CodeSnackActivity', () => {
     expect(screen.queryByTestId('code-submit')).not.toBeInTheDocument();
   });
 });
-
 /**
  * The graded lifecycle: `editing → submitted → editing` (Tentar de novo) and
  * `→ settled`. The screen while editing must stay editor + preview ONLY — no
  * permanent checklist (Tainan, 2026-07-23).
+ *
+ * ⚠️ Since Fase C step 5 these run against the REAL `CodeLivePreview` and its
+ * real message protocol, with `previewIframe()` standing in for the sandboxed
+ * document jsdom refuses to execute. The old version mocked the whole component
+ * away, which meant the parent-side of the protocol — the ready gate, the token
+ * echo, the "answer arrived for a run nobody is waiting for" drop — was never
+ * exercised by anything but the mock's own imitation of it.
+ *
+ * One consequence, and it is load-bearing: every source these tests type must
+ * actually TRANSPILE. `CodeLivePreview` answers a submit itself, immediately and
+ * all-failed, when sucrase cannot parse the submitted code — so a placeholder
+ * string like `'novo codigo'` would short-circuit the protocol under test.
  */
 describe('CodeSnackActivity — deterministic checks', () => {
   const CHECKS = [
@@ -173,14 +141,22 @@ describe('CodeSnackActivity — deterministic checks', () => {
   ];
   const SPEC = { prompt: 'Deixe o botão verde', starter: 'const a = 1', checks: CHECKS };
 
+  /** The sandbox stand-in for the current render. */
+  let sandbox: ReturnType<typeof previewIframe>;
+
+  /** Render the snack and boot its preview, i.e. one normal page load. */
+  function open(spec: Record<string, unknown> = SPEC, onComplete = vi.fn()) {
+    const cb = renderSnack(spec, onComplete);
+    sandbox = previewIframe();
+    sandbox.boot();
+    return cb;
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
     saveCodeSnapshot.mockClear();
     clearCodeSnapshot.mockClear();
     readCodeSnapshot.mockClear();
-    preview.results = [];
-    preview.requests = [];
-    preview.silent = false;
   });
   afterEach(() => {
     vi.runOnlyPendingTimers();
@@ -193,8 +169,14 @@ describe('CodeSnackActivity — deterministic checks', () => {
     });
   }
 
+  /** Submit, then let the sandbox come back with these verdicts. */
+  function submitAndAnswer(results: { id: string; passed: boolean }[]) {
+    submit();
+    sandbox.answer(results);
+  }
+
   it('shows no feedback at all while editing — just editor + preview', () => {
-    renderSnack(SPEC);
+    open();
     expect(screen.getByTestId('code-submit')).toBeInTheDocument();
     expect(screen.queryByTestId('code-checks-feedback')).not.toBeInTheDocument();
     expect(screen.queryByTestId('code-check-item')).not.toBeInTheDocument();
@@ -203,22 +185,25 @@ describe('CodeSnackActivity — deterministic checks', () => {
   });
 
   it('grades the code the learner submitted, not a stale render', () => {
-    renderSnack(SPEC);
-    act(() => {
-      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'novo codigo' } });
-    });
+    open();
+    typeCode('const novo = 1;');
     submit();
-    expect(preview.requests).toHaveLength(1);
-    expect(preview.requests[0].code).toBe('novo codigo');
+    expect(sandbox.runs).toHaveLength(1);
+    // TRANSPILED, not raw — the sandbox has no compiler, so what crosses the
+    // isolation boundary is sucrase's output. What matters is WHOSE source it
+    // is: the one on screen at submit time, not the last one rendered.
+    expect(sandbox.runs[0].code).toContain('const novo = 1;');
+    // The check list rides along with the source, so the sandbox never has to
+    // remember which submit it is answering.
+    expect(sandbox.runs[0].checks.map((c) => c.id)).toEqual(['verde', 'texto']);
   });
 
   it('reveals one line per check after submitting, with the hint only where it failed', () => {
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: false },
       { id: 'texto', passed: true },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
 
     const items = screen.getAllByTestId('code-check-item');
     expect(items).toHaveLength(2);
@@ -234,15 +219,12 @@ describe('CodeSnackActivity — deterministic checks', () => {
   });
 
   it('"Tentar de novo" hides the feedback and KEEPS the learner code', () => {
-    preview.results = [
+    open();
+    typeCode('const tentativa = "minha";');
+    submitAndAnswer([
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
-    ];
-    renderSnack(SPEC);
-    act(() => {
-      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'minha tentativa' } });
-    });
-    submit();
+    ]);
     expect(screen.getByTestId('code-checks-feedback')).toBeInTheDocument();
 
     act(() => {
@@ -251,34 +233,28 @@ describe('CodeSnackActivity — deterministic checks', () => {
 
     expect(screen.queryByTestId('code-checks-feedback')).not.toBeInTheDocument();
     // NOT a reset: the work survives, and the starter is not restored.
-    expect((screen.getByTestId('mock-editor') as HTMLTextAreaElement).value).toBe(
-      'minha tentativa',
-    );
+    expect(codeEditorEl().value).toBe('const tentativa = "minha";');
     expect(screen.getByTestId('code-submit')).toBeEnabled();
   });
 
   it('a second submit re-runs the checks and can now pass', () => {
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: false },
       { id: 'texto', passed: true },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-retry'));
     });
 
-    preview.results = [
+    typeCode('const agora = "vai";');
+    submitAndAnswer([
       { id: 'verde', passed: true },
       { id: 'texto', passed: true },
-    ];
-    act(() => {
-      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'agora vai' } });
-    });
-    submit();
+    ]);
 
-    expect(preview.requests).toHaveLength(2);
-    expect(preview.requests[1].token).toBeGreaterThan(preview.requests[0].token);
+    expect(sandbox.runs).toHaveLength(2);
+    expect(sandbox.runs[1].token).toBeGreaterThan(sandbox.runs[0].token);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
     // Success keeps the way back in: the editor is frozen from the submit
     // onwards, so this explicit click is the only door.
@@ -293,52 +269,43 @@ describe('CodeSnackActivity — deterministic checks', () => {
   // Call de líderes 2026-07-28: the learner submitted correct code, was marked
   // correct, then edited it into something broken — and the green badge stayed.
   it('freezes the editor once a verdict is on screen, and reopens it on click', () => {
-    preview.results = [
+    open();
+    expect(codeEditorEl()).not.toHaveAttribute('readonly');
+
+    submitAndAnswer([
       { id: 'verde', passed: true },
       { id: 'texto', passed: true },
-    ];
-    renderSnack(SPEC);
-    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
-
-    submit();
-    expect(screen.getByTestId('mock-editor')).toHaveAttribute('readonly');
+    ]);
+    expect(codeEditorEl()).toHaveAttribute('readonly');
 
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-retry'));
     });
-    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
+    expect(codeEditorEl()).not.toHaveAttribute('readonly');
   });
 
   it('never reports a verdict that no longer describes the code on screen', () => {
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: true },
       { id: 'texto', passed: true },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
 
     // The source moves away from what was graded. The frozen editor is what
     // stops this in the UI; the guard under test covers any other path that
     // could move the code while a verdict is up.
-    act(() => {
-      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'quebrei tudo' } });
-    });
+    typeCode('const quebrei = "tudo";');
 
     // The verdict leaves with the code it described, and the editor reopens —
     // no green badge over unknown code, and no dead button either.
     expect(screen.queryByTestId('code-checks-feedback')).toBeNull();
-    expect(screen.getByTestId('mock-editor')).not.toHaveAttribute('readonly');
+    expect(codeEditorEl()).not.toHaveAttribute('readonly');
     expect(onComplete).not.toHaveBeenCalled();
   });
 
   it('ignores a verdict for a run the learner already walked away from', () => {
-    preview.results = [
-      { id: 'verde', passed: true },
-      { id: 'texto', passed: true },
-    ];
-    preview.silent = true;
-    renderSnack(SPEC);
+    open();
     submit();
 
     // The learner gives up waiting and goes back to editing…
@@ -349,20 +316,20 @@ describe('CodeSnackActivity — deterministic checks', () => {
       fireEvent.click(screen.getByTestId('code-checks-retry'));
     });
 
-    // …and only THEN the iframe answers the run it was still chewing on.
-    act(() => {
-      preview.answerLate();
-    });
+    // …and only THEN the sandbox answers the run it was still chewing on.
+    sandbox.answer([
+      { id: 'verde', passed: true },
+      { id: 'texto', passed: true },
+    ]);
     expect(screen.queryByTestId('code-checks-feedback')).toBeNull();
   });
 
   it('records the REAL result when the learner moves on after failing', () => {
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: true },
       { id: 'texto', passed: false },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
 
     // The advance is never blocked — but what gets recorded is false.
@@ -373,12 +340,11 @@ describe('CodeSnackActivity — deterministic checks', () => {
   });
 
   it('offers "seguir mesmo assim" when every check fails — a stuck learner is not trapped', () => {
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
     expect(screen.getByTestId('code-checks-retry')).toBeInTheDocument();
 
@@ -391,12 +357,11 @@ describe('CodeSnackActivity — deterministic checks', () => {
   it('keeps the verdicts on screen after settling, with the actions spent', () => {
     // In the live class the learner does NOT self-advance, so the activity
     // stays mounted after reporting — the feedback must not vanish.
-    preview.results = [
+    const onComplete = open();
+    submitAndAnswer([
       { id: 'verde', passed: false },
       { id: 'texto', passed: false },
-    ];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    ]);
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
@@ -415,9 +380,8 @@ describe('CodeSnackActivity — deterministic checks', () => {
   });
 
   it('a check the preview never reported back counts as not passed', () => {
-    preview.results = [{ id: 'texto', passed: true }];
-    const onComplete = renderSnack(SPEC);
-    submit();
+    const onComplete = open();
+    submitAndAnswer([{ id: 'texto', passed: true }]);
 
     const items = screen.getAllByTestId('code-check-item');
     expect(items).toHaveLength(2);
@@ -431,9 +395,8 @@ describe('CodeSnackActivity — deterministic checks', () => {
   });
 
   it('falls back to "nothing passed" if the preview never answers', () => {
-    // The preview crashed / never booted — the submit must not hang forever.
-    preview.silent = true;
-    renderSnack(SPEC);
+    // The sandbox crashed / never booted — the submit must not hang forever.
+    open();
     submit();
     expect(screen.queryByTestId('code-checks-feedback')).not.toBeInTheDocument();
     act(() => {
@@ -442,13 +405,24 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
     expect(screen.getByTestId('code-checks-retry')).toBeInTheDocument();
   });
+
+  it('answers a submit ITSELF when the source does not even transpile', () => {
+    // New in step 5, and only assertable now that the real component is in the
+    // tree: source that sucrase cannot parse never reaches the sandbox — there
+    // is nothing to render — so the parent replies "nothing passed" straight
+    // away and the learner already has the syntax error on screen. It is also
+    // the check that proves the transpiler travelled INTO the package rather
+    // than being left behind in the app.
+    open();
+    typeCode('export default function( { return <div/> }');
+    submit();
+
+    expect(sandbox.runs).toHaveLength(0);
+    expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
+    expect(screen.getByTestId('code-preview-error')).toBeInTheDocument();
+  });
 });
 
-/**
- * "Recomeçar do código inicial" — the escape hatch for a learner who broke the
- * starter beyond repair. It is a DIFFERENT control from "Tentar de novo": that
- * one preserves the work, this one discards it (and therefore asks first).
- */
 describe('CodeSnackActivity — recomeçar do código inicial', () => {
   const STARTER = 'const inicio = 1';
 
@@ -457,21 +431,14 @@ describe('CodeSnackActivity — recomeçar do código inicial', () => {
     saveCodeSnapshot.mockClear();
     clearCodeSnapshot.mockClear();
     readCodeSnapshot.mockClear();
-    preview.results = [];
-    preview.requests = [];
-    preview.silent = false;
   });
   afterEach(() => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
   });
 
-  function type(value: string) {
-    act(() => {
-      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value } });
-    });
-  }
-  const editor = () => screen.getByTestId('mock-editor') as HTMLTextAreaElement;
+  const type = typeCode;
+  const editor = codeEditorEl;
 
   it('asks before discarding — one tap alone changes nothing', () => {
     renderSnack({ prompt: 'p', starter: STARTER });
@@ -547,12 +514,14 @@ describe('CodeSnackActivity — recomeçar do código inicial', () => {
 
   it('walks the feedback screen back to editing with the starter', () => {
     const CHECKS = [{ id: 'a', label: 'checa', selector: 'button', assert: { type: 'text', equals: 'x' } }];
-    preview.results = [{ id: 'a', passed: false }];
     renderSnack({ prompt: 'p', starter: STARTER, checks: CHECKS });
-    type('tentativa quebrada');
+    const sandbox = previewIframe();
+    sandbox.boot();
+    type('const tentativa = 1;');
     act(() => {
       fireEvent.click(screen.getByTestId('code-submit'));
     });
+    sandbox.answer([{ id: 'a', passed: false }]);
     expect(screen.getByTestId('code-checks-feedback')).toBeInTheDocument();
 
     act(() => {

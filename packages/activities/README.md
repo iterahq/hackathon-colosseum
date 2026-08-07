@@ -6,10 +6,11 @@ No bottom bar, no progress bar, no hearts, no routing: those stay in the
 `LessonPlayer`.
 
 > **Fase C landed: the renderers are here.** v0.1.0 shipped types only; the
-> package now has runtime and renders **eight** kinds on its own — the seven
-> backend-free question kinds from steps 1–3, plus `sandbox_scenario` from step
-> 4. What did NOT move — and why each one stayed — is the table below; read it
-> before assuming a kind is available.
+> package now has runtime and renders **eight** kinds from its base entrypoint —
+> the seven backend-free question kinds from steps 1–3, plus `sandbox_scenario`
+> from step 4 — and a ninth, `code`, from a **separate entrypoint**
+> (`@iterahq/activities/code`, step 5). What did NOT move — and why each one
+> stayed — is the table below; read it before assuming a kind is available.
 
 The design doc — port-by-port rationale, per-kind coverage, extraction order —
 is [`CONTRACT.md`](./CONTRACT.md). The proof that this is genuinely consumable
@@ -27,7 +28,7 @@ renders from fixture specs with no bundler and no Itera anything.
 | `concept` · `concept_reveal` · `video` · `single_choice` · `multi_choice` · `match` · `order` | ✅ | Backend-free. Fase C steps 1–3. |
 | `sandbox_scenario` | ✅ | Fase C **step 4**. One kind, five activity types: the chat sandbox (open / choices / slots) and the terminal sandbox (free text / options). **It needs no port** — every reducer is `@iterahq/activity-spec/runtime`'s, so a host gets a multi-turn graded micro-experiment with nothing injected but i18n. |
 | the LIVE sandbox (`sandbox-live`) · BYOC | ❌ | The AI-judged twins. They are the ones that actually consume `api.respond` / `api.judge` / `api.generateByoc`, and BYOC had ~10 of its 12 files open in another PR while this one landed. Extracting under that is conflict, not extraction. |
-| `code` | ❌ | Fase C **step 5** — Monaco behind a separate `@iterahq/activities/code` entrypoint (ADR-5), never in the base bundle. |
+| `code` | ⚠️ **other entrypoint** | Fase C **step 5**. It is here, but behind `@iterahq/activities/code` (ADR-5) and deliberately absent from `BUILT_IN_ACTIVITY_KINDS`, so a consumer that never renders a snack pays for none of it. See *Consuming the `/code` entrypoint*. |
 | `document` · `diagram` · `quiz` | ❌ | Not files: they are inline functions inside the Player's 700-line dispatcher. `CONTRACT.md` finding 4 says to lift them when the PR queue drains. |
 
 A kind that is not here is **not a dead end**: pass your own component through
@@ -164,10 +165,101 @@ falls back to one per-browser anonymous scope: each still sees a stable order,
 nothing errors, and the pedagogical property is simply gone. Pass an opaque,
 stable per-learner id.
 
+## Consuming the `/code` entrypoint
+
+`code` is a single-file React snack: an editor on the left, a live preview on the
+right, and — when the spec ships `checks` — a deterministic submit/verdict/retry
+lifecycle graded against the DOM the learner's code produced.
+
+It is not in `BUILT_IN_ACTIVITY_KINDS`. `<ActivityRenderer>` from the base
+bundle answers `code` with the unsupported-kind placeholder until you register
+it, through the same `renderers` seam any host-supplied kind uses:
+
+```tsx
+import { ActivityProvider, ActivityRenderer, createActivityI18n } from '@iterahq/activities';
+import { CodeActivity } from '@iterahq/activities/code';
+
+<ActivityProvider
+  i18n={createActivityI18n('pt')}
+  renderers={{ code: CodeActivity }}
+>
+  <ActivityRenderer activity={row} onComplete={(correct, detail) => …} />
+</ActivityProvider>
+```
+
+### The editor is a port, not a dependency
+
+**This package ships no editor.** Not Monaco, not CodeMirror, not even as an
+optional peer. Omit `codeEditor` and you get a plain, dependency-free
+`<textarea>` (`data-testid="code-editor"`) — a real editing surface; what a
+learner loses is syntax highlighting, not the exercise.
+
+To use your own, pass a component with four props — `value`, `onChange`,
+`language`, `readOnly`:
+
+```tsx
+import Editor from '@monaco-editor/react';           // your dependency, not ours
+
+const MonacoSurface = ({ value, onChange, language, readOnly }) => (
+  <Editor
+    height="100%"
+    language={language}
+    value={value}
+    onChange={(next) => onChange?.(next ?? '')}
+    options={{ readOnly, minimap: { enabled: false } }}
+  />
+);
+
+<ActivityProvider i18n={…} codeEditor={MonacoSurface} renderers={{ code: CodeActivity }}>
+```
+
+Why the package refuses to own that choice: the Itera Player's own editor
+publishes every caret move on a `window` CustomEvent so a live class can mirror
+the learner's cursor onto the professor's stage, and it configures Monaco's
+TypeScript worker against that repo's self-hosted vendoring. Both are Itera
+concerns. Shipping them would export a live-session protocol and a build-time
+asset layout to every consumer — so the Player injects its editor exactly the
+way you inject yours.
+
+### ⚠️ The preview needs three files served by YOUR app
+
+The preview runs the learner's code inside `<iframe sandbox="allow-scripts">`
+(opaque origin — student code cannot reach your app, its cookies or its
+storage). Because that document may not fetch anything at runtime, it loads
+three scripts from **your** origin, at absolute paths:
+
+```
+/vendor/react.production.min.js
+/vendor/react-dom.production.min.js
+/vendor/tailwind-play-cdn.js
+```
+
+Serve those and the preview works. Don't, and you get an editor, a working
+submit, and an empty preview — no error, because a sandboxed iframe cannot
+report one. This is the `code` twin of the Tailwind-tokens gap below: a real
+host requirement that no test in this repo can go red for.
+
+### Drafts go through the `storage` port
+
+The learner's source is autosaved (debounced, 600ms) under
+`` `${CODE_DRAFT_KEY_PREFIX}${activity.id}` `` — `itera.code.snapshot:<id>`.
+Omit `storage` and that lands in `localStorage`. Inject it and read, write and
+clear all travel together, which is not optional: overriding the write alone
+hands the learner back the wrong source on the next open.
+
+Both `CODE_DRAFT_KEY_PREFIX` and `codeDraftKey(activityId)` are exported, so an
+adapter that has to translate the key into its own store (the Itera Player
+routes it to a per-learner, event-emitting snapshot service) is three lines.
+
 ## Dependencies
 
 **Runtime:** `lucide-react`, `framer-motion` — real dependencies, installed with
-the package.
+the package. `sucrase` too, and it is **only ever loaded by `/code`**: it is the
+transpiler that turns the learner's single-file JSX into something the preview
+iframe can run. A base-only consumer installs it and never imports it, which is
+install weight rather than bundle weight — and bundle weight is what ADR-5 is
+about. That the base graph cannot reach it is checked mechanically, over the
+built `dist/`, by `scripts/assert-entrypoint-isolation.mjs`.
 
 **Peers:** `react` (^18.3.1) and `@iterahq/activity-spec` (>=0.8.0). The spec
 package is a **types-only** peer: `dist/**/*.js` contains no import of it, so a

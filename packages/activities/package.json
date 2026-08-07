@@ -1,7 +1,7 @@
 {
   "name": "@iterahq/activities",
-  "version": "0.2.0",
-  "description": "Portable Itera activity renderers \u2014 render an activity outside the Itera Player.",
+  "version": "0.3.0",
+  "description": "Portable Itera activity renderers — render an activity outside the Itera Player.",
   "license": "UNLICENSED",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./code": {
+      "types": "./dist/code/index.d.ts",
+      "import": "./dist/code/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -45,6 +49,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.462.0",
+    "sucrase": "^3.35.1",
     "tailwind-merge": "^2.6.0"
   }
 }

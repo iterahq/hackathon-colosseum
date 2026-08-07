@@ -27,13 +27,21 @@
  *               (asserted in `src/test/activityPublicContract.test.ts`).
  * `identity` ✅ — `authenticated` + `loading` + the learner scope. See below:
  *               this is the one that would have broken silently.
- * `api`    ❌ — the kinds that need it (`sandbox_scenario`, BYOC, the AI-judged
+ * `api`    ❌ — the kinds that need it (BYOC, the live sandbox, the AI-judged
  *               `document`) have NOT been extracted yet; they still call
  *               `@/api/iteraApi` directly, from inside the app. Wiring the port
  *               now would be a second, unused path to the same backend, and a
- *               reader would reasonably assume it was live. It lands with
- *               Fase C step 4, together with the kinds that consume it.
- * `storage`❌ — same reasoning, for the `code` kind (Fase C step 5).
+ *               reader would reasonably assume it was live. It lands with the
+ *               rest of Fase C step 4, together with the kinds that consume it.
+ * `storage`✅ — Fase C step 5. `useCodeSnack` no longer imports
+ *               `codeSnapshot.service`; it reads and writes through the port,
+ *               and the adapter below is what keeps the ON-DISK KEY AND
+ *               BEHAVIOUR identical. See the ⚠️ block at the bottom.
+ * `codeEditor` ✅ — Fase C step 5. Monaco stays in the app, and so do the two
+ *               things that make this editor Itera's rather than anybody's:
+ *               the caret CustomEvent the live class mirrors, and the
+ *               TypeScript-worker configuration written against this repo's
+ *               self-hosted Monaco vendoring.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * ⚠️ `identity.userId` IS THE SHUFFLE SEED, AND IT IS LOAD-BEARING
@@ -61,9 +69,64 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityProvider } from '@iterahq/activities';
+import type { ActivityStoragePort } from '@iterahq/activities';
+import { CODE_DRAFT_KEY_PREFIX, codeDraftActivityId } from '@iterahq/activities/code';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
+import { CodeEditor } from '@/components/editor/CodeEditor';
+import {
+  clearCodeSnapshot,
+  readCodeSnapshot,
+  saveCodeSnapshot,
+} from '@/services/codeSnapshot.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
+
+/**
+ * The draft-persistence adapter — the whole reason the `code` extraction did
+ * not cost a single learner their work.
+ *
+ * The package hands this port a key it minted (`itera.code.snapshot:<id>`) and
+ * a plain string. This adapter unwraps the key and delegates to
+ * `codeSnapshot.service`, so what lands on disk is BYTE-FOR-BYTE what landed
+ * there before step 5:
+ *
+ *   · the same key — `scopedKey('itera.code.snapshot', activityId)`, i.e.
+ *     `itera.code.snapshot:<learner>:<activity>`. The learner scope is not
+ *     decoration: the lab machines at Educar+ are shared, and an unscoped key
+ *     served the next student the previous student's source;
+ *   · the same `{ code, savedAt }` envelope, which `stageAnswerContent` reads
+ *     when the professor pulls a learner to the stage;
+ *   · the same `CODE_SNAPSHOT_EVENT` on every save AND every clear, which
+ *     `useClassSession` and `LiveSessionPage` listen to for "this learner has
+ *     work in progress" / "ainda não começou".
+ *
+ * A package that wrote its own key would have kept working, silently, while
+ * every mid-lesson draft on disk became unreachable and the professor's picker
+ * went quiet. `src/test/codeDraftKeyCompat.test.tsx` pins exactly that.
+ *
+ * Module-level and not a hook: it closes over nothing, so rebuilding it per
+ * render would only churn the provider's memo.
+ */
+export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
+  read: (key) => readCodeSnapshot(codeDraftActivityId(key))?.code ?? null,
+  write: (key, value) => saveCodeSnapshot(codeDraftActivityId(key), value),
+  clear: (key) => clearCodeSnapshot(codeDraftActivityId(key)),
+};
+
+/**
+ * Fail loudly at DEV time if the package ever mints a key this adapter does not
+ * recognise. `codeDraftActivityId` answers `''` for a foreign key and every
+ * `codeSnapshot.service` function no-ops on an empty id — i.e. the failure mode
+ * of a renamed prefix is a draft store that silently stops working, which is
+ * the single worst outcome this port has.
+ */
+if (import.meta.env?.DEV && !CODE_DRAFT_KEY_PREFIX.startsWith('itera.code.snapshot')) {
+  console.warn(
+    '[IteraActivityHost] @iterahq/activities/code changed its draft-key prefix to',
+    CODE_DRAFT_KEY_PREFIX,
+    '- learners mid-lesson will not get their work back. See codeDraftKeyCompat.test.tsx.',
+  );
+}
 
 export function IteraActivityHost({ children }: { children: ReactNode }) {
   const i18n = useI18n();
@@ -83,7 +146,12 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ActivityProvider i18n={i18n} identity={identity}>
+    <ActivityProvider
+      i18n={i18n}
+      identity={identity}
+      storage={ITERA_ACTIVITY_STORAGE}
+      codeEditor={CodeEditor}
+    >
       {children}
     </ActivityProvider>
   );
@@ -107,8 +175,20 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
  * So: a locale-sensitive test or story mounts THIS. It is not a test-only
  * shim — it is the honest statement that a tree rendering activities owes them
  * an i18n port, and the app's own root supplies a richer one.
+ *
+ * It carries the STORAGE port too, since step 5. A tree that renders a `code`
+ * snack without it would autosave to the package's own default key instead of
+ * the Player's scoped one — nothing throws, the test even passes, and the
+ * assertion about where a learner's draft lives quietly stops describing the
+ * app. It does NOT carry `codeEditor`: Monaco does not run in jsdom, so a test
+ * that wants an editor injects its own stub (see
+ * `src/test/support/codeActivityHost.tsx`).
  */
 export function ActivityI18nBridge({ children }: { children: ReactNode }) {
   const i18n = useI18n();
-  return <ActivityProvider i18n={i18n}>{children}</ActivityProvider>;
+  return (
+    <ActivityProvider i18n={i18n} storage={ITERA_ACTIVITY_STORAGE}>
+      {children}
+    </ActivityProvider>
+  );
 }

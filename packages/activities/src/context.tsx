@@ -92,8 +92,21 @@ export function ActivityProvider({ children, ...host }: ActivityProviderProps) {
     // Spread into stable scalars so a host that builds the object inline (the
     // common case: `<ActivityProvider i18n={useI18n()} …>`) does not remount
     // the whole activity tree on every render of the host.
+    // `codeEditor` and `renderers` are in the list for the same reason as the
+    // rest: they are things a host can swap at runtime (a lazily-loaded editor,
+    // a kind registered once a feature flag flips), and a memo that ignored
+    // them would keep serving the old one with nothing to show for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [host.i18n, host.api, host.identity, host.theme, host.storage, host.onEvent],
+    [
+      host.i18n,
+      host.api,
+      host.identity,
+      host.theme,
+      host.storage,
+      host.onEvent,
+      host.codeEditor,
+      host.renderers,
+    ],
   );
   return createElement(ActivityHostCtx.Provider, { value }, children);
 }

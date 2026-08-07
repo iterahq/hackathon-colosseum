@@ -279,3 +279,46 @@ export interface ActivityStoragePort {
   write: (key: string, value: string) => void;
   clear: (key: string) => void;
 }
+
+/* ─────────────────────────────── code editor ─────────────────────────────── */
+
+/**
+ * The props a code editor gets from the `code` kind — the whole of them.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY THE EDITOR IS A PORT AND NOT A DEPENDENCY
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ADR-5 keeps Monaco out of the base bundle. Fase C step 5 found that keeping
+ * it out of the `/code` bundle too is both possible and better, because the
+ * Player's editor is not a generic editor: `src/components/editor/CodeEditor.tsx`
+ * dispatches a `window` CustomEvent on every caret move so the LIVE CLASS can
+ * mirror the learner's cursor to the room, and it configures Monaco's
+ * TypeScript worker against this repo's self-hosted vendoring
+ * (`scripts/vendor-monaco.ts`, `/vendor/monaco/vs`). Both are Itera Player
+ * concerns. Shipping them to every consumer would export a live-session
+ * protocol and a build-time asset layout along with the renderers.
+ *
+ * So the host supplies the editor, exactly the way it supplies i18n and the
+ * backend: through `<ActivityProvider>`. Omit it and the `/code` entrypoint
+ * renders a plain, dependency-free `<textarea>` surface — a real editor with no
+ * syntax highlighting, not a placeholder. See the `/code` README section.
+ *
+ * The four members are MEASURED, not designed: `CodeSnackPane` passes exactly
+ * `value`, `onChange`, `language` and `readOnly`. The Player's `CodeEditor`
+ * takes four more (`highlightLines`, `fontSize`, `remoteCaret`,
+ * `semanticValidation`), all optional and all read by the live stage rather
+ * than by an activity — which is why it is assignable to this without a shim.
+ */
+export interface ActivityCodeEditorProps {
+  /** The current source. Controlled — the kind owns it. */
+  value: string;
+  /** Every learner-originated edit. Absent ⇒ the surface is display-only. */
+  onChange?: (value: string) => void;
+  /**
+   * The authored language of the snack (`spec.language`), defaulting to
+   * `typescript`. Read by the host's editor to pick its grammar.
+   */
+  language?: string;
+  /** Frozen while a verdict is on screen (see `useCodeSnack.readOnly`). */
+  readOnly?: boolean;
+}

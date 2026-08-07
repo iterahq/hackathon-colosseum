@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { I18nProvider } from '@/i18n';
 import type { Activity } from '@/types/content';
+import { CodeActivityHost, previewIframe, typeCode } from './support/codeActivityHost';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { buildAttemptFeedback, MAX_RESPONSE_CHARS } from '@/services/progress.service';
 import { buildArtifact } from '@/services/artifactPolicy';
@@ -31,50 +31,6 @@ import { buildArtifact } from '@/services/artifactPolicy';
  * submission travels.
  */
 
-vi.mock('@/components/editor/CodeEditor', () => ({
-  CodeEditor: ({
-    value,
-    onChange,
-    readOnly,
-  }: {
-    value: string;
-    onChange?: (v: string) => void;
-    readOnly?: boolean;
-  }) => (
-    <textarea
-      data-testid="mock-editor"
-      value={value}
-      readOnly={readOnly}
-      onChange={(e) => onChange?.(e.target.value)}
-    />
-  ),
-}));
-
-const preview = vi.hoisted(() => ({
-  results: [] as { id: string; passed: boolean }[],
-}));
-
-vi.mock('@/components/branded/activity/code/CodeLivePreview', async () => {
-  const React = await vi.importActual<typeof import('react')>('react');
-  return {
-    CodeLivePreview: ({
-      code,
-      checksRequest,
-      onChecksResult,
-    }: {
-      code: string;
-      checksRequest?: { token: number; code: string } | null;
-      onChecksResult?: (r: { id: string; passed: boolean }[], token: number) => void;
-    }) => {
-      React.useEffect(() => {
-        if (!checksRequest) return;
-        onChecksResult?.(preview.results, checksRequest.token);
-      }, [checksRequest, onChecksResult]);
-      return React.createElement('div', { 'data-testid': 'mock-preview' }, code);
-    },
-  };
-});
-
 vi.mock('@/services/codeSnapshot.service', () => ({
   saveCodeSnapshot: vi.fn(),
   clearCodeSnapshot: vi.fn(),
@@ -94,23 +50,18 @@ function renderSnack(spec: Record<string, unknown>) {
   const details: (ActivityCompleteDetail | undefined)[] = [];
   const onComplete = vi.fn((_c: boolean, d?: ActivityCompleteDetail) => details.push(d));
   render(
-    <I18nProvider>
+    <CodeActivityHost>
       <CodeSnackActivity activity={makeActivity(spec)} onComplete={onComplete} />
-    </I18nProvider>
+    </CodeActivityHost>
   );
   return { onComplete, detail: () => details[0] };
 }
 
-function type(source: string) {
-  act(() => {
-    fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: source } });
-  });
-}
+const type = typeCode;
 
 describe('the code snack hands the settled SOURCE up, not just a boolean', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    preview.results = [];
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -139,7 +90,7 @@ describe('the code snack hands the settled SOURCE up, not just a boolean', () =>
     // A pass tells you they got there. A fail plus the source tells you WHERE
     // they were stuck, which is the question the attempt log exists to answer
     // and the one a boolean can never answer.
-    preview.results = [{ id: 'c1', passed: false }];
+    const ATTEMPT = 'export default function App() { return <p>quase</p>; }';
     const { onComplete, detail } = renderSnack({
       prompt: 'p',
       starter: STARTER,
@@ -147,16 +98,20 @@ describe('the code snack hands the settled SOURCE up, not just a boolean', () =>
         { id: 'c1', label: 'o botão diz "oi"', selector: 'p', assert: { type: 'text', equals: 'oi' } },
       ],
     });
-    type('minha tentativa quebrada');
+    const sandbox = previewIframe();
+    sandbox.boot();
+    type(ATTEMPT);
     act(() => {
       fireEvent.click(screen.getByTestId('code-submit'));
     });
+    sandbox.answer([{ id: 'c1', passed: false }]);
     act(() => {
       fireEvent.click(screen.getByTestId('code-checks-continue'));
     });
 
-    expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: 'minha tentativa quebrada' }));
-    expect(detail()?.response).toBe('minha tentativa quebrada');
+    expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: ATTEMPT }));
+    // The SOURCE the learner wrote, not the transpiled form the sandbox graded.
+    expect(detail()?.response).toBe(ATTEMPT);
   });
 });
 

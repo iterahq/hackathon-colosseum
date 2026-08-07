@@ -2,19 +2,23 @@
 
 **Plan:** [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/20260803-itera-player-activities-lib)
 · **Parent:** `20260803-itera-learning-control-plane-prototipo`
-**Status:** Fase A done · Fase B done · **Fase C steps 1–3 done**, and **step 4
-done for `sandbox_scenario`** — pure logic, the shared primitives, the seven
-backend-free question kinds and the whole sandbox (chat + terminal) now live
-here, together with `<ActivityProvider>` and the package's own
-`<ActivityRenderer>`. Still out: the **AI-judged** half of step 4
-(`sandbox-live` · BYOC · `JudgeHeatmap`), step 5 (`code`), and the three kinds
-inline in the Player's dispatcher; see *What Fase C left behind*.
+**Status:** Fase A done · Fase B done · **Fase C steps 1–3 done**, **step 4
+done for `sandbox_scenario`**, **step 5 done for `code`** — pure logic, the
+shared primitives, the seven backend-free question kinds, the whole sandbox
+(chat + terminal) and the code snack now live here, together with
+`<ActivityProvider>` and the package's own `<ActivityRenderer>`. `code` is the
+only one behind a SECOND entrypoint (`@iterahq/activities/code`, ADR-5). Still
+out: the **AI-judged** half of step 4 (`sandbox-live` · BYOC · `JudgeHeatmap`)
+and the three kinds inline in the Player's dispatcher; see *What Fase C left
+behind*.
 **Source:** `packages/activities/src/`
 **Guards:** `src/test/activityPublicContract.test.ts` (surface + prop fit) ·
 `src/test/activityDefaultI18n.test.tsx` (dictionary parity) ·
 `src/test/activityTraceVocabulary.test.ts` (action names) ·
 `src/test/activityHostAdapter.test.tsx` (the shuffle seed really arrives) ·
-`external-consumer/` (portability, from a packed tarball, in CI)
+`src/test/activityEntrypointIsolation.test.ts` (ADR-5, over the built module
+graph) · `src/test/codeDraftKeyCompat.test.tsx` (the learner's draft did not
+move) · `external-consumer/` (portability, from a packed tarball, in CI)
 
 > Fase A wrote this doc inside `src/components/branded/activity/contract/` so it
 > would travel with the code it describes. Fase B moved it here, next to the
@@ -199,8 +203,9 @@ per step, not per phase.
    first** — today they are inline functions in the 700-line dispatcher.
 4. **Backend-backed kinds** — `sandbox_scenario`, BYOC, the AI-judge `document`
    path, `JudgeHeatmap` → all go through the injected ports.
-5. **Heavy kinds** — `code` / Monaco / the preview iframe → separate entrypoint
-   `@iterahq/activities/code` (ADR-5), never in the base bundle.
+5. **Heavy kinds** — `code` / the preview iframe → separate entrypoint
+   `@iterahq/activities/code` (ADR-5), never in the base bundle. ✅ **Done.**
+   Monaco did NOT come along: the editor became a port (see finding 6).
 6. **i18n** — swap the 24 imports for the provider. Last, and alone: it is the
    biggest coupling and the one whose failure mode is "every string breaks".
 
@@ -225,12 +230,12 @@ first argument must be `boolean`.
 | `quiz` | ✅ | `i18n` | Inline in the dispatcher. |
 | `sandbox_scenario` (self-paced) | ✅ | `i18n` | Judging is `@iterahq/activity-spec/runtime` — pure, no backend. |
 | `sandbox_scenario` (live/BYOC) | ✅ | `i18n`, `api.respond`/`judge`, `identity` | Reached via `LiveActivityRenderer`, not `ActivityRenderer` → see finding 3. |
-| `code` | ✅ | `i18n`, **`storage`** | Monaco behind the `/code` entrypoint (ADR-5) → see finding 2. |
+| `code` | ✅ | `i18n`, **`storage`**, optionally `codeEditor` | Behind the `/code` entrypoint (ADR-5). Monaco is NOT in the package — the editor is a port, and without one the kind draws a plain textarea → see findings 2 and 6. |
 | BYOC (a **layer**, not a kind) | ⚠️ one extra prop | `i18n`, `api.generateByoc`/`readByoc`, `identity` | `ByocActivity` takes `spec` in addition. It is a dispatcher-internal handoff (`resolveByocSpec` runs *before* the kind switch), never something a host supplies — so the public surface is unchanged. Asserted explicitly so a *second* extra prop turns the test red. |
 
-**Verdict: the contract covers every kind.** The four things worth flagging are
-below — none of them require bending the contract, but two of them mean the
-plan's coupling table was incomplete.
+**Verdict: the contract covers every kind.** The seven things worth flagging are
+below — none of them require bending the contract, but three of them mean the
+plan's coupling table was incomplete, and findings 5–7 arrived with step 5.
 
 ## Findings — where reality disagreed with the plan
 
@@ -251,6 +256,18 @@ plan's coupling table was incomplete.
    `UseCodeSnackCallbacks.onAutosave` already documents why overriding only the
    write side hands the learner back the wrong source.
 
+   **Closed in step 5, and the postscript is the interesting part:**
+   `onAutosave` — the write-only override whose own comment warned against
+   itself — had **zero call sites**. `CodeSnackPane` only ever passed
+   `onComplete`. So the half-measure left with the move instead of being carried
+   into the package's public surface, and what replaced it is the whole port.
+   The compatibility risk is the opposite direction and it is real: the package
+   mints its own key, so `ITERA_ACTIVITY_STORAGE` in `IteraActivityHost.tsx`
+   translates it back to the Player's scoped one. Get that wrong and every draft
+   on every lab machine becomes unreachable **without a single error** — which is
+   why `src/test/codeDraftKeyCompat.test.tsx` asserts the literal on-disk key,
+   the envelope, and the DOM event, from a real render.
+
 3. **There are two dispatchers, and only one is in scope.**
    `LiveActivityRenderer` wraps `ActivityRenderer` with the same props plus
    `forceLive`, and it — not `ActivityRenderer` — is what routes the live BYOC
@@ -266,6 +283,56 @@ plan's coupling table was incomplete.
    can move them, and that lift is the one step in the whole extraction that
    touches the dispatcher every other open PR also touches. Sequence it when the
    PR queue is drained.
+
+5. **The `code` kind is not self-contained, and no test in this repo can go
+   red for it.** The preview iframe is a document that must not fetch anything
+   at runtime, so it loads `/vendor/react.production.min.js`,
+   `/vendor/react-dom.production.min.js` and `/vendor/tailwind-play-cdn.js` from
+   the HOST's origin, at absolute paths. In this repo those are `public/vendor/`
+   assets produced by a vendoring script; in any other consumer they are a setup
+   step nobody is told about until the preview silently renders nothing — a
+   sandboxed iframe cannot report a failed subresource to its parent. Documented
+   in the README rather than fixed, because the alternatives (a fourth port for
+   a base path, or inlining ~150 KB of React into a string) both cost more than
+   a paragraph. Same shape as *"design tokens não viajam"*: a real host
+   requirement, asserted nowhere.
+
+6. **The editor could not travel, and finding that out is what shaped step 5.**
+   The plan's coupling table listed `@/components/editor/CodeEditor` under
+   "Monaco + sandbox iframe → isolate in an optional entrypoint (weight)". Weight
+   was the smaller half of the problem. That component ALSO dispatches a `window`
+   CustomEvent on every caret move — the channel the live class uses to mirror a
+   learner's cursor onto the professor's stage — and configures Monaco's
+   TypeScript worker against this repo's self-hosted vendoring (`/vendor/monaco/vs`).
+   Neither is a rendering concern; both are Itera Player concerns that ADR-1
+   keeps out of an activity.
+
+   So the editor became a **port** (`ActivityHostContext.codeEditor`) rather than
+   a dependency, and the package ships **no editor at all** — not even a lazily
+   imported optional peer, which would have been a "default" that only renders in
+   a host that separately installed it. The fallback is a plain `<textarea>`: a
+   working editing surface minus syntax highlighting. Two things follow, and both
+   are better than the alternative:
+
+   · ADR-5's guarantee is now STRUCTURAL. There is no arrangement of dynamic
+     imports for a future edit to get wrong, because there is nothing to import.
+     `scripts/assert-entrypoint-isolation.mjs` walks the built module graph from
+     each entrypoint and asserts the shape both ways — the base reaches nothing
+     under `code/`, and `/code` DOES reach the transpiler, which is what stops a
+     broken walker from reporting a vacuous green.
+   · the external-consumer harness can drive a code snack end to end. Monaco
+     cannot render in jsdom; a textarea can, so "a consumer can render AND answer
+     a `code` activity" is now proven from outside the repo rather than asserted.
+
+7. **`spec.language` is read by nobody.** `CodeSpecSchema` has carried a
+   `language` field (default `"tsx"`) since the kind existed, and
+   `CodeSnackPane` has always hardcoded `language="typescript"` on the editor.
+   The seam made it visible — the port's prop interface has a `language` member,
+   and wiring it meant looking at where the value comes from. It is **not fixed
+   here**: step 5 may not change behaviour, and forwarding the field naively
+   would send `"tsx"` to Monaco, which has no such language id, silently
+   unstyling every authored snack. The fix needs an audit of the authored
+   content plus a mapping, and it is its own PR.
 
 Also worth recording, though not a contract problem: the app's `Activity` type
 carries `lessonId`, `ordinal`, `publishStatus` and `artifactPolicy`, and **no
@@ -284,7 +351,7 @@ package, which is what ADR-1 refuses.
 | ADR-2 | **npm workspaces**, not Turborepo. |
 | ADR-3 | Dependency inversion — the host injects ports; the package never fetches and never reads a session. |
 | ADR-4 | `onEvent` ships in v1 with an open payload. |
-| ADR-5 | Monaco/`code` behind `@iterahq/activities/code`, not the base bundle. |
+| ADR-5 | `code` behind `@iterahq/activities/code`, not the base bundle. Step 5 went one better and kept Monaco out of the package entirely — the editor is a port (finding 6). |
 | — | `@devfellowship/components` is a **peerDependency** (plan Open Question 3). |
 | ADR-6 | Package is **PRIVATE** — DFL/Itera IP. Registry: **GitHub Packages** under the `iterahq` GitHub org (2026-08-04; npm free orgs can only publish public). |
 
@@ -302,6 +369,8 @@ package, which is what ADR-1 refuses.
 | 1 — pure logic | `answerMachine`, `seededShuffle`, `richText` + `richTextInline`, `localizedText`, the action recorder, the activity spec types | `packages/activities/src/internal/`, `src/specs.ts` |
 | 2 — primitives | `RichSpans`, `RichBlock`, `RichText`, `InstructionImage`, `InstructionPanel`, `AnswerExplanation`, `parts` (`ActivityShell` · `KindBadge` · `DoneButton` · `SubmitButton`) | `packages/activities/src/components/` |
 | 3 — backend-free kinds | `concept`, `concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order` | `packages/activities/src/kinds/` |
+| 4 — the sandbox | `sandbox_scenario` and its five activity types: `sandbox/` and `terminal/` whole | `packages/activities/src/kinds/sandbox/`, `.../kinds/terminal/` |
+| 5 — the heavy kind | `code`: `CodeSnackActivity` → `CodeActivity`, `CodeSnackPane`, `CodeLivePreview`, `CodeChecksFeedback`/`List`, `CodeResetControl`, `useCodeSnack`, `useCodeChecks`, `transpileSnack`, the preview iframe document and its check runtime | `packages/activities/src/code/` — behind `exports["./code"]`, **not** the base barrel |
 | new | `<ActivityProvider>` + the package's own `<ActivityRenderer>` + the activity dictionary | `src/context.tsx`, `src/ActivityRenderer.tsx`, `src/i18n/` |
 
 The app keeps a **one-line re-export at every old path**, which is what the plan
@@ -319,6 +388,8 @@ behaviour?".
 | `@/hooks/useActionRecorder` | generic over `FamilyAction<F>` from Itera's taxonomy | generic over a plain string union in the package; the app's hook is a typed wrapper, and `activityTraceVocabulary.test.ts` asserts the names still line up |
 | `@/utils/learnerShuffle` → `currentStorageScope()` | read the Itera user id from `localStorage` | `identity.userId` on the port |
 | `@/types/content` | spec shapes lived beside the Itera content model | spec shapes are in the package; `Activity`/`Lesson`/`Unit`/`Program` stay in the app and `content.ts` re-exports the half that moved |
+| `@/services/codeSnapshot.service` (step 5) | `useCodeSnack` read/wrote/cleared the learner's draft directly, per-learner scoped, firing a DOM event the live class listens to | `useActivityStorage()` off the port. `ITERA_ACTIVITY_STORAGE` in `IteraActivityHost.tsx` translates the package's key back to the Player's, so the on-disk key, the `{code, savedAt}` envelope and `CODE_SNAPSHOT_EVENT` are all unchanged — pinned by `codeDraftKeyCompat.test.tsx` |
+| `@/components/editor/CodeEditor` (step 5) | Monaco, imported by `CodeSnackPane`, carrying the live-class caret CustomEvent and this repo's TS-worker configuration | `ActivityHostContext.codeEditor`. The package ships no editor and falls back to a `<textarea>`; the Player injects the same component it always had, and both Itera-specific behaviours stay in the app |
 
 ### The coupling the plan's audit missed
 
@@ -359,7 +430,9 @@ also one of the ones that needs **nothing injected but i18n**.
 | --- | --- |
 | ~~`sandbox_scenario`~~ | ✅ **MOVED** in step 4 (chat + terminal, five activity types, one dispatcher). It turned out to be the half of step 4 that needs **no port at all** — see the note below. |
 | `sandbox-live`, BYOC, `JudgeHeatmap` | Still step 4, and now the whole of what step 4 has left: these are the AI-judged surfaces, the ones that genuinely consume `api.respond` / `api.judge` / `api.generateByoc` and read `identity.authenticated`. BYOC had ~10 of its 12 files open in PR #296 while this landed, and `sandbox-live` is in PR #285 — extracting under an open rewrite produces a conflict, not an extraction. `JudgeHeatmap` renders an `ActivityJudgeVerdict` and has no reason to move before its only two callers do. |
-| `code` / Monaco / the preview iframe | Step 5 + ADR-5: a separate `@iterahq/activities/code` entrypoint, never in the base bundle. |
+| ~~`code` / the preview iframe~~ | ✅ **MOVED** in step 5, into `@iterahq/activities/code` — the second entrypoint, absent from `BUILT_IN_ACTIVITY_KINDS` on purpose. |
+| Monaco (`src/components/editor/CodeEditor.tsx`, `monacoTypescript.ts`) | Stayed, and step 5 is why: it carries the live-class caret CustomEvent and this repo's self-hosted Monaco/TS configuration. The editor is a PORT now — see finding 6. |
+| `codeSnapshot.service`, `CodeSnapshot` | The Player's on-disk draft store: per-learner scoped key, `{ code, savedAt }` envelope, `CODE_SNAPSHOT_EVENT` for the live "em andamento" indicator. The package speaks plain strings through `ActivityStoragePort`; shipping the envelope would be the package dictating how every consumer stores a draft. |
 | `document`, `diagram`, `quiz` | Finding 4: they are inline functions inside the Player's 700-line dispatcher, which every open PR touches. Lifting them out is its own PR, sequenced when the queue drains. |
 | `FeedbackFooter` | It is the **global viewport-fixed** footer, mounted by `LessonPlayer` and `LiveSessionPage`. ADR-1 puts it on the player side of the line. `activityFeedbackKinds.ts` (`FOOTER_GRADED_KINDS`) is footer-routing policy and stays with it. |
 | `LiveActivityRenderer` | Finding 3: host routing, not an activity. |

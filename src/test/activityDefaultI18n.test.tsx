@@ -44,10 +44,19 @@ describe('@iterahq/activities default dictionary', () => {
     // way into the package would have undone that rename and desynchronised
     // this dictionary from the Player's — the one thing it may not do.
     //
+    // `code.*` joined in Fase C step 5 for the same reason `terminal.*` did:
+    // the fifteen keys already exist under that name in the Player, and
+    // renaming them on the way into the package would desynchronise the two
+    // dictionaries — which is precisely what the third assertion in this file
+    // exists to prevent. They are in the BASE dictionary although the kind
+    // itself is behind `@iterahq/activities/code`, because the per-key fallback
+    // lives in the base provider: splitting the dictionary per entrypoint would
+    // hand every `/code` consumer a dictionary-merging chore.
+    //
     // Keep this list SHORT and keep the assertion exact-match rather than
-    // "contains a dot": the point is that a third namespace has to be argued
+    // "contains a dot": the point is that a fourth namespace has to be argued
     // for in a review, not that keys look tidy.
-    const ALLOWED = ['activity.', 'terminal.'];
+    const ALLOWED = ['activity.', 'terminal.', 'code.'];
     const strays = ACTIVITY_I18N_KEYS.filter((k) => !ALLOWED.some((p) => k.startsWith(p)));
     expect(strays).toEqual([]);
   });

@@ -125,6 +125,13 @@ const React = (await import('react')).default;
 const { createRoot } = await import('react-dom/client');
 const { act } = await import('react');
 const pkg = await import('@iterahq/activities');
+/**
+ * The SECOND entrypoint (ADR-5). Importing it here, in the same process, is
+ * itself part of the proof: `exports["./code"]` has to resolve from a packed
+ * tarball with no bundler, and the transpiler it pulls (`sucrase`) has to come
+ * through this package's own manifest — there is no app tree to borrow it from.
+ */
+const codePkg = await import('@iterahq/activities/code');
 
 const {
   ActivityProvider,
@@ -147,6 +154,17 @@ function check(name, fn) {
   checks += 1;
   try {
     fn();
+    console.log(`  ok   ${name}`);
+  } catch (err) {
+    failures += 1;
+    console.log(`  FAIL ${name}\n       ${err.message}`);
+  }
+}
+/** Same, for a check that has to wait on real time (a debounce, say). */
+async function checkAsync(name, fn) {
+  checks += 1;
+  try {
+    await fn();
     console.log(`  ok   ${name}`);
   } catch (err) {
     failures += 1;
@@ -218,6 +236,62 @@ function typeAndEnter(view, el, line) {
       new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
     );
   });
+}
+
+/**
+ * Set a controlled input/textarea's value the way a keystroke would.
+ *
+ * Same reason as `typeAndEnter`: React tracks the DOM value on the node, so a
+ * plain `el.value = x` is discarded and the component never sees the edit.
+ */
+function setValue(el, value) {
+  const proto =
+    el.tagName === 'TEXTAREA'
+      ? dom.window.HTMLTextAreaElement.prototype
+      : dom.window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+  act(() => {
+    setter.call(el, value);
+    el.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  });
+}
+
+/**
+ * Stand in for the preview's sandboxed iframe, over its real message protocol.
+ *
+ * jsdom renders `<iframe sandbox="allow-scripts" srcDoc>` and never executes a
+ * line of it, so the document inside stays silent forever. This captures what
+ * the parent posts INTO the frame and posts the answers back OUT, with
+ * `event.source` set to the frame's own window — which is exactly the check
+ * `CodeLivePreview` uses to refuse messages from anywhere else.
+ *
+ * It is a stand-in for the SANDBOX, not for the package: everything on the
+ * parent side (the ready gate, the transpile, the token echo, the verdict
+ * reconciliation against the authored check list) is the shipped code.
+ */
+function previewSandbox(view) {
+  const frame = view.one('[data-testid="code-preview-iframe"]');
+  assert(frame, 'the code kind rendered no preview iframe');
+  const source = frame.contentWindow;
+  assert(source, 'the preview iframe has no contentWindow');
+  const posted = [];
+  source.postMessage = (message) => posted.push(message);
+  const deliver = (data) => {
+    act(() => {
+      dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data, source }));
+    });
+  };
+  return {
+    posted,
+    get runs() {
+      return posted.filter((m) => m.type === 'itera:run-checks');
+    },
+    boot: () => deliver({ type: 'itera:ready' }),
+    answer(results, token) {
+      const runs = posted.filter((m) => m.type === 'itera:run-checks');
+      deliver({ type: 'itera:checks', results, token: token ?? runs[runs.length - 1]?.token });
+    },
+  };
 }
 
 function renderKind(name, props = {}) {
@@ -559,6 +633,211 @@ check('two learner ids produce two different arrangements', () => {
   assert(a.join() !== b.join(), 'both learners saw the SAME order — the shuffle is not seeded');
   // Deterministic for one learner: this is the property the Player relies on.
   assert(order('learner-a').join() === a.join(), 'the same learner got two different orders');
+});
+
+section('9. the `code` kind — the other door (ADR-5)');
+
+/**
+ * Everything above proves the BASE bundle. This section proves the thing that
+ * made the base bundle worth protecting: a consumer who actually wants `code`
+ * can have it, from a second entrypoint, without the base ever having known.
+ *
+ * The mirror-image assertion — that `dist/index.js` cannot reach any of this —
+ * is `scripts/assert-entrypoint-isolation.mjs`, which `check.sh` runs over the
+ * INSTALLED package right before this file. Two halves of one claim: `/code`
+ * works, and the base does not carry it.
+ */
+
+const { CodeActivity, CODE_DRAFT_KEY_PREFIX, codeDraftKey } = codePkg;
+
+/** A host that registers the code kind, with whatever ports the check needs. */
+function codeHost(children, { storage, codeEditor, onEvent } = {}) {
+  return h(
+    ActivityProvider,
+    {
+      i18n: createActivityI18n('pt'),
+      identity: { authenticated: false, userId: 'external-consumer-learner' },
+      renderers: { code: CodeActivity },
+      storage,
+      codeEditor,
+      onEvent,
+    },
+    children,
+  );
+}
+
+function renderCode(opts = {}) {
+  const events = [];
+  const completions = [];
+  const view = mount(
+    codeHost(
+      h(ActivityRenderer, {
+        activity: FIXTURES.code,
+        onComplete: (correct, detail) => completions.push({ correct, detail }),
+      }),
+      { ...opts, onEvent: (e) => events.push(e) },
+    ),
+  );
+  return { view, events, completions };
+}
+
+check('the ./code subpath export resolves, and the base still refuses the kind', () => {
+  assert(typeof CodeActivity === 'function', 'CodeActivity is not a component');
+  assert(!isBuiltInActivityKind('code'), 'the base dispatcher claims `code` after all');
+  assert(!('CodeActivity' in pkg), 'the base barrel re-exports the code kind');
+  assert(typeof CODE_DRAFT_KEY_PREFIX === 'string', 'the draft-key contract is not exported');
+});
+
+check('a host that REGISTERS it renders a real code snack — no editor required', () => {
+  // Nothing is injected but the renderer. The package ships no editor (the
+  // editor is a port), so what a bare consumer gets is the fallback textarea:
+  // a real editing surface, not a placeholder.
+  const { view } = renderCode();
+  const shell = view.one('[data-testid="activity-shell"]');
+  assert(shell?.getAttribute('data-activity-kind') === 'code', 'no code shell rendered');
+  const editor = view.one('[data-testid="code-editor"]');
+  assert(editor, 'no editing surface — the fallback editor did not render');
+  assert(editor.value.includes('Curtir'), 'the editor did not open on the authored starter');
+  assert(view.text().includes('Gostei'), 'the authored prompt is not on screen');
+  assert(view.one('strong'), '**bold** in the prompt did not survive — the parser did not come along');
+  assert(view.one('[data-testid="code-reset"]'), 'the "recomeçar" escape hatch is missing');
+  view.unmount();
+});
+
+check("a host's own editor wins over the fallback", () => {
+  // The seam the Itera Player uses to keep Monaco — and its live-class caret
+  // mirroring — inside the app instead of inside this package.
+  const HostEditor = ({ value }) => h('div', { 'data-testid': 'host-editor' }, value);
+  const { view } = renderCode({ codeEditor: HostEditor });
+  assert(view.one('[data-testid="host-editor"]'), 'the injected editor was ignored');
+  assert(!view.one('[data-testid="code-editor"]'), 'the fallback rendered anyway');
+  view.unmount();
+});
+
+check('the graded lifecycle runs end to end: submit, fail, retry, pass, settle', () => {
+  const { view, completions, events } = renderCode();
+  const sandbox = previewSandbox(view);
+  sandbox.boot();
+
+  // Nothing is on screen while editing — no permanent checklist.
+  assert(!view.one('[data-testid="code-checks-feedback"]'), 'a verdict before any submit');
+
+  view.click(view.one('[data-testid="code-submit"]'));
+  assert(sandbox.runs.length === 1, `expected 1 graded run, got ${sandbox.runs.length}`);
+  // What crosses the isolation boundary is TRANSPILED — the sandbox has no
+  // compiler. That the JSX became `React.createElement` here is the proof that
+  // sucrase came through the package's own manifest.
+  assert(
+    sandbox.runs[0].code.includes('createElement'),
+    `the submitted source was not transpiled: ${sandbox.runs[0].code.slice(0, 80)}`,
+  );
+  assert(
+    sandbox.runs[0].checks.map((c) => c.id).join() === 'texto,cor',
+    'the authored check list did not ride along with the submit',
+  );
+
+  sandbox.answer([{ id: 'texto', passed: false }, { id: 'cor', passed: false }]);
+  const items = view.all('[data-testid="code-check-item"]');
+  assert(items.length === 2, `expected 2 verdict lines, got ${items.length}`);
+  assert(items.every((el) => el.getAttribute('data-passed') === 'false'), 'a check passed by accident');
+  // The hint shows only where it failed, and only after the submit.
+  assert(view.text().includes('Troque o rótulo'), 'the authored hint never reached the screen');
+  assert(completions.length === 0, 'a failed submit settled the activity on its own');
+
+  // "Tentar de novo" walks back to editing with the work intact.
+  view.click(view.one('[data-testid="code-checks-retry"]'));
+  assert(!view.one('[data-testid="code-checks-feedback"]'), 'the verdict survived a retry');
+  const editor = view.one('[data-testid="code-editor"]');
+  assert(!editor.readOnly, 'the editor stayed frozen after a retry');
+
+  setValue(editor, 'export default () => <button className="bg-emerald-500">Gostei</button>;');
+  view.click(view.one('[data-testid="code-submit"]'));
+  assert(sandbox.runs.length === 2, 'the second submit never reached the sandbox');
+  assert(
+    sandbox.runs[1].token > sandbox.runs[0].token,
+    'the run token did not advance — a late answer could overwrite a newer verdict',
+  );
+  sandbox.answer([{ id: 'texto', passed: true }, { id: 'cor', passed: true }]);
+  assert(
+    view.one('[data-testid="code-checks-feedback"]')?.getAttribute('data-all-passed') === 'true',
+    'a fully passing run was not reported as passing',
+  );
+
+  view.click(view.one('[data-testid="code-checks-continue"]'));
+  assert(completions.length === 1, `onComplete fired ${completions.length} times, expected 1`);
+  assert(completions[0].correct === true, 'the passing run was graded wrong');
+  assert(
+    completions[0].detail?.response?.includes('bg-emerald-500'),
+    'the learner SOURCE did not ride up with the verdict',
+  );
+  assert(
+    events.some((e) => e.type === 'activity.completed' && e.payload?.correct === true),
+    'the host was not told the snack settled',
+  );
+  view.unmount();
+});
+
+check('a stuck learner is never trapped — "seguir mesmo assim" records the REAL result', () => {
+  const { view, completions } = renderCode();
+  const sandbox = previewSandbox(view);
+  sandbox.boot();
+  view.click(view.one('[data-testid="code-submit"]'));
+  sandbox.answer([{ id: 'texto', passed: false }, { id: 'cor', passed: true }]);
+  view.click(view.one('[data-testid="code-checks-continue"]'));
+  assert(completions[0]?.correct === false, 'moving on after failing was recorded as a pass');
+  view.unmount();
+});
+
+check('the draft port: the kind READS through it, under the documented key', () => {
+  const key = codeDraftKey('fixture-code');
+  assert(key === `${CODE_DRAFT_KEY_PREFIX}fixture-code`, `unexpected draft key: ${key}`);
+  const store = new Map([[key, 'const trabalho = "de ontem";']]);
+  const storage = {
+    read: (k) => store.get(k) ?? null,
+    write: (k, v) => store.set(k, v),
+    clear: (k) => store.delete(k),
+  };
+  const { view } = renderCode({ storage });
+  // On the FIRST paint, not after an effect: a flash of the starter reads as
+  // "my code is gone" even when it comes back a frame later.
+  assert(
+    view.one('[data-testid="code-editor"]').value === 'const trabalho = "de ontem";',
+    'the saved draft was not restored — the host storage port is not being read',
+  );
+
+  // …and "recomeçar" really drops it, through the same port.
+  view.click(view.one('[data-testid="code-reset"]'));
+  view.click(view.one('[data-testid="code-reset-confirm"]'));
+  assert(!store.has(key), 'recomeçar left the discarded draft on the host store');
+  view.unmount();
+});
+
+await checkAsync('the draft port: the kind WRITES through it, debounced', async () => {
+  const store = new Map();
+  const storage = {
+    read: (k) => store.get(k) ?? null,
+    write: (k, v) => store.set(k, v),
+    clear: (k) => store.delete(k),
+  };
+  const { view } = renderCode({ storage });
+  setValue(view.one('[data-testid="code-editor"]'), 'const meu = "trabalho";');
+  assert(store.size === 0, 'the autosave fired without waiting for the debounce');
+
+  // Real time, not fake: this harness has no timer control, and 600ms of wall
+  // clock is the honest price of asserting a debounce from outside.
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  assert(
+    store.get(codeDraftKey('fixture-code')) === 'const meu = "trabalho";',
+    `nothing was written under the documented key: ${[...store.keys()].join(', ') || '(empty)'}`,
+  );
+  view.unmount();
+});
+
+check('the code kind touched the network ZERO times either', () => {
+  assert(
+    networkAttempts.length === 0,
+    `the package attempted ${networkAttempts.length}: ${networkAttempts.join('; ')}`,
+  );
 });
 
 /* ═════════════════════════════════ verdict ════════════════════════════════ */

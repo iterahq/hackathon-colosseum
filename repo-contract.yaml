@@ -53,14 +53,18 @@ provides:
       Lógica derivada de resposta/correção vive na máquina pura
       src/utils/answerMachine.ts; o gate do ao-vivo em
       src/utils/liveActivityGate.ts.
-      Fase C (2026-08-07): as oito kinds sem backend (concept, concept_reveal,
-      video, single_choice, multi_choice, match, order — passos 1-3 — e
-      sandbox_scenario, com as pastas sandbox/ e terminal/ inteiras, passo 4),
-      os primitivos e a lógica pura foram extraídos para @iterahq/activities em
-      packages/activities/; os caminhos antigos em src/ viraram re-export de
-      uma linha e src/utils/answerMachine.ts é um desses. Editar o pacote, não
-      o shim. Ficaram no app: sandbox-live/, byoc/, code/, JudgeHeatmap e os
-      kinds inline no dispatcher.
+      Fase C (2026-08-07): as nove kinds sem backend (concept, concept_reveal,
+      video, single_choice, multi_choice, match, order — passos 1-3 —,
+      sandbox_scenario, com as pastas sandbox/ e terminal/ inteiras, passo 4, e
+      code, passo 5), os primitivos e a lógica pura foram extraídos para
+      @iterahq/activities em packages/activities/; os caminhos antigos em src/
+      viraram re-export de uma linha e src/utils/answerMachine.ts é um desses.
+      Editar o pacote, não o shim. O code sai por um SEGUNDO entrypoint
+      (@iterahq/activities/code, ADR-5) e não está em BUILT_IN_ACTIVITY_KINDS:
+      o host o registra em ActivityHostContext.renderers. O Monaco fica no app
+      (src/components/editor/CodeEditor.tsx) e é injetado pela porta codeEditor,
+      e o rascunho passa pela porta storage. Ficaram no app: sandbox-live/,
+      byoc/, JudgeHeatmap e os kinds inline no dispatcher.
     entry: src/components/branded/activity/
 
   - type: ui

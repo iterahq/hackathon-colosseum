@@ -24,6 +24,7 @@
  * file moves with them.
  */
 import * as contract from '@iterahq/activities';
+import * as codeEntry from '@iterahq/activities/code';
 import type {
   ActivityByocGeneration,
   ActivityBrief,
@@ -271,6 +272,41 @@ const PUBLIC_RUNTIME_SURFACE = [
   'seededShuffle',
 ].sort();
 
+/**
+ * THE SECOND DOOR — `@iterahq/activities/code` (ADR-5, Fase C step 5).
+ *
+ * It gets its own exact list for the same reason the base one has one: a name
+ * added here is a promise to consumers, and the review moment where someone has
+ * to say so out loud is worth more than the keystrokes it costs.
+ *
+ * Note what this list does NOT contain: any editor. The editor is a port
+ * (`ActivityHostContext.codeEditor`), and the guarantee that neither entrypoint
+ * can reach Monaco is asserted over the BUILT module graph in
+ * `activityEntrypointIsolation.test.ts` — a list of names could never prove it,
+ * because the offending import would be three files down from one of them.
+ */
+const CODE_ENTRYPOINT_SURFACE = [
+  'CodeActivity',
+  'CodeSnackPane',
+  'CodeLivePreview',
+  'CodeChecksFeedback',
+  'CodeChecksList',
+  'CodeResetControl',
+  'CodeEditorSurface',
+  'FallbackCodeEditor',
+  'useCodeSnack',
+  'useCodeChecks',
+  'transpileSnack',
+  'CODE_PREVIEW_IFRAME_HTML',
+  'CODE_PREVIEW_RUNTIME_SOURCE',
+  'createRequireShim',
+  'installPreviewDialogShims',
+  'runCodeChecks',
+  'CODE_DRAFT_KEY_PREFIX',
+  'codeDraftActivityId',
+  'codeDraftKey',
+].sort();
+
 describe('activities public contract', () => {
   it('exports exactly the documented public surface — no more, no less', () => {
     expect(Object.keys(contract).sort()).toEqual(PUBLIC_RUNTIME_SURFACE);
@@ -290,6 +326,21 @@ describe('activities public contract', () => {
     // Fase C step 5 gives it its own entrypoint (ADR-5, Monaco is heavy), so
     // the BASE bundle must keep answering "no, ask the host" for it.
     expect(contract.isBuiltInActivityKind('code')).toBe(false);
+  });
+
+  it('exposes the `code` kind through its own entrypoint, exactly', () => {
+    expect(Object.keys(codeEntry).sort()).toEqual(CODE_ENTRYPOINT_SURFACE);
+  });
+
+  it('does NOT re-export the code kind from the base barrel', () => {
+    // The list assertion above would already fail on a stray export, but this
+    // says WHY out loud: `code` is behind `/code` because Monaco-class weight
+    // must not ride in the bundle every consumer pays for (ADR-5), and the base
+    // dispatcher answering "no, ask the host" is how a host finds that out
+    // before it mounts rather than after.
+    for (const name of CODE_ENTRYPOINT_SURFACE) {
+      expect(name in contract).toBe(false);
+    }
   });
 
   it('keeps the type-level assertions above referenced', () => {
