@@ -53,10 +53,19 @@ describe('@iterahq/activities default dictionary', () => {
     // lives in the base provider: splitting the dictionary per entrypoint would
     // hand every `/code` consumer a dictionary-merging chore.
     //
+    // `quiz.` joined in Fase D, and it is ONE key — `quiz.trueOrFalse`, the
+    // eyebrow above a two-option question. The argument the previous paragraph
+    // demanded, made: the Player has shipped that key under that name since
+    // before any of this was a package, and renaming it to
+    // `activity.quiz.trueOrFalse` on the way in would buy a tidier namespace at
+    // the price of the exact divergence the third assertion in this file exists
+    // to prevent. If it is ever to be folded into `activity.`, the rename
+    // happens in the PLAYER first and the package follows.
+    //
     // Keep this list SHORT and keep the assertion exact-match rather than
-    // "contains a dot": the point is that a fourth namespace has to be argued
-    // for in a review, not that keys look tidy.
-    const ALLOWED = ['activity.', 'terminal.', 'code.'];
+    // "contains a dot": the point is that a namespace has to be argued for in a
+    // review, not that keys look tidy.
+    const ALLOWED = ['activity.', 'terminal.', 'code.', 'quiz.'];
     const strays = ACTIVITY_I18N_KEYS.filter((k) => !ALLOWED.some((p) => k.startsWith(p)));
     expect(strays).toEqual([]);
   });

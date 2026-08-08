@@ -10,12 +10,15 @@
  * rather than effort:
  *
  *  1. Most of it is not dispatch. It carries spec VALIDATION
- *     (`activitySpecBoundary`), the BYOC layer resolution, live-vs-self-paced
- *     routing, and three kinds (`document`, `diagram`, `quiz`) written as inline
- *     functions rather than files. `packages/activities/CONTRACT.md` finding 4
- *     already recorded that lifting those out touches the one file every other
- *     open PR touches, and says to sequence it when the queue drains. It has
- *     not drained.
+ *     (`activitySpecBoundary`) and the BYOC layer resolution — both of which
+ *     belong BEFORE a renderer, not inside one.
+ *
+ *     It also carried three kinds (`document`, `diagram`, `quiz`) written as
+ *     inline functions rather than files. **That is no longer true as of Fase
+ *     D**: they are `./kinds/DocumentActivity.tsx`, `./kinds/DiagramActivity.tsx`
+ *     and `./kinds/QuizActivity.tsx` here, and the Player's copies are one-line
+ *     re-exports. `CONTRACT.md` finding 4 said to sequence that when the queue
+ *     drained; it drained enough.
  *  2. A host does not want the Player's dispatch. Validation belongs before the
  *     renderer (`ActivityRendererProps.activity` is documented as already
  *     validated); live/self-paced routing is player chrome, which ADR-1 keeps
@@ -30,11 +33,13 @@
  * WHAT IT SHIPS, AND WHAT IT ASKS THE HOST FOR
  * ─────────────────────────────────────────────────────────────────────────────
  * Built in: `concept`, `concept_reveal`, `video`, `single_choice`,
- * `multi_choice`, `match`, `order`, `sandbox_scenario` — every kind that needs
- * no backend. `sandbox_scenario` joined in Fase C step 4 and is the first one
- * that is not a single-submit question: it is N turns against a world model,
- * and it still asks the host for nothing but i18n, because all of its judging
- * is `@iterahq/activity-spec/runtime`'s.
+ * `multi_choice`, `match`, `order`, `sandbox_scenario`, `document`, `diagram`,
+ * `quiz`. `sandbox_scenario` joined in Fase C step 4 and is the first one that
+ * is not a single-submit question: it is N turns against a world model, and it
+ * still asks the host for nothing but i18n, because all of its judging is
+ * `@iterahq/activity-spec/runtime`'s. `document` / `diagram` / `quiz` joined in
+ * Fase D — they had no files to move, only inline functions in the Player's
+ * dispatcher, which is why they were last.
  * Everything else comes from `ActivityHostContext.renderers`, and a kind with
  * neither renders a visible, inert placeholder and emits `port.unavailable`
  * rather than throwing (ADR-3: degrade explicitly).
@@ -52,6 +57,9 @@ import { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 import { MatchActivity } from './kinds/MatchActivity.js';
 import { OrderActivity } from './kinds/OrderActivity.js';
 import { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
+import { DocumentActivity } from './kinds/DocumentActivity.js';
+import { DiagramActivity } from './kinds/DiagramActivity.js';
+import { QuizActivity } from './kinds/QuizActivity.js';
 
 /**
  * The kinds this package renders on its own.
@@ -69,6 +77,22 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'match',
   'order',
   'sandbox_scenario',
+  // Fase D. These three were never files: they were inline functions in the
+  // Player's own ~700-line dispatcher, which is why Fase C left them behind
+  // (`CONTRACT.md` finding 4: lifting them touches the file every other open PR
+  // touches). They are 48% of the authored library — `document` 24 defs, `quiz`
+  // 22, `diagram` 13 of 123 — so every host but the Player could render the
+  // majority of the catalogue as an "unsupported kind" placeholder until now.
+  //
+  // `document` is the first BUILT-IN that can want the `api` port: its
+  // AI-judged variant needs `api.judge`. It is still listed here without
+  // qualification, and correctly so — absence of the port degrades it to the
+  // reflection renderer, which is a real screen, not a placeholder. A kind
+  // belongs on this list when the package can render it at all, not when the
+  // host has every optional port.
+  'document',
+  'diagram',
+  'quiz',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -82,6 +106,9 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   match: MatchActivity as ComponentType<ActivityRendererProps>,
   order: OrderActivity as ComponentType<ActivityRendererProps>,
   sandbox_scenario: SandboxScenarioActivity as ComponentType<ActivityRendererProps>,
+  document: DocumentActivity as ComponentType<ActivityRendererProps>,
+  diagram: DiagramActivity as ComponentType<ActivityRendererProps>,
+  quiz: QuizActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */

@@ -98,3 +98,78 @@ export interface OrderSpec {
 
 /** Bilingual bag stored as jsonb (`{ pt, en }`). */
 export type I18nText = { pt?: string; en?: string; [k: string]: string | undefined };
+
+/* ─────────── Fase D — the three kinds that were inline in the Player ─────── */
+/*
+ * `document`, `diagram` and `quiz` never had a file: they were functions inside
+ * `src/components/branded/activity/ActivityRenderer.tsx`, and the shapes below
+ * were `as` casts written at their top. They are collected here for the same
+ * reason the seven above are — a renderer reads them, so they travel with the
+ * renderers — and kept just as loose, for the same reason: every field a
+ * renderer tolerates being absent is optional, so a half-authored row degrades
+ * into an empty panel instead of throwing.
+ */
+
+/**
+ * `document` — a prompt with an optional body. THREE renderers read this one
+ * shape, and which of them runs is decided by the RUBRIC, not by the spec:
+ * `rubric.mode === 'ai-judge'` (with the judge port present) is the AI-judged
+ * open-scope variant, a `prompt` or a `min_words` rubric is the reflection
+ * variant, and anything else is the read-only card.
+ */
+export interface DocumentSpec {
+  prompt?: string;
+  body?: string;
+  title?: string;
+}
+
+/**
+ * The `document` rubric, reduced to the two fields the renderers read.
+ *
+ * It is a RUBRIC and not a spec: `min_words` is a grading threshold and
+ * `mode` selects the grader. `PortableActivity.rubric` is where it arrives.
+ */
+export interface DocumentRubric {
+  mode?: string;
+  min_words?: number;
+}
+
+/** One labelled callout beside a `diagram`. */
+export interface DiagramHighlight {
+  term: string;
+  caption?: string;
+}
+
+/** `diagram` — an image OR a mermaid source, plus optional highlighted terms. */
+export interface DiagramSpec {
+  prompt?: string;
+  mermaid?: string;
+  imageUrl?: string;
+  highlights?: DiagramHighlight[];
+}
+
+/**
+ * One `quiz` option.
+ *
+ * ⚠️ Correctness rides on the OPTION (`isCorrect`), not on a top-level
+ * `correct_option_id` the way `single_choice` does — that is the reason `quiz`
+ * is a separate contract rather than a variation of the choice family. And the
+ * id is OPTIONAL, which is why the quiz keys its trace on the index: it is the
+ * one kind in the selection family with no authored id to key on, and the one
+ * kind that does not shuffle, so the index IS the authored position.
+ */
+export interface QuizOption {
+  id?: string;
+  label?: string;
+  text?: string;
+  isCorrect?: boolean;
+}
+
+/** `quiz` — the hero kind: one question, options carrying their own verdict. */
+export interface QuizSpec {
+  prompt?: string;
+  question?: string;
+  label?: string;
+  options?: QuizOption[];
+  explanation?: string;
+}

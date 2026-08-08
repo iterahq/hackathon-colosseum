@@ -212,6 +212,52 @@
       }
     }
   },
+  "document": {
+    "id": "fixture-document",
+    "kind": "document",
+    "spec": {
+      "prompt": "Escreva **o que você aprendeu** sobre commits.",
+      "body": "Um parágrafo basta."
+    },
+    "rubric": {
+      "min_words": 3
+    }
+  },
+  "diagram": {
+    "id": "fixture-diagram",
+    "kind": "diagram",
+    "spec": {
+      "prompt": "A linha do tempo de commits: cada ponto é uma foto do projeto",
+      "mermaid": "graph LR; A[commit 1] --> B[commit 2] --> C[commit 3]",
+      "highlights": [
+        {
+          "term": "HEAD",
+          "caption": "onde você está agora"
+        },
+        {
+          "term": "main",
+          "caption": "o ramo principal"
+        }
+      ]
+    }
+  },
+  "quiz": {
+    "id": "fixture-quiz",
+    "kind": "quiz",
+    "spec": {
+      "question": "O `git commit` **envia** seu trabalho para o GitHub.",
+      "options": [
+        {
+          "text": "Verdadeiro"
+        },
+        {
+          "text": "Falso",
+          "isCorrect": true
+        }
+      ],
+      "explanation": "`commit` grava localmente; quem envia é o `push`."
+    }
+  },
   "code": {
     "id": "fixture-code",
     "kind": "code",

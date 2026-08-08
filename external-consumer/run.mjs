@@ -343,19 +343,112 @@ check('advertises the kinds it can render, and only those', () => {
 
 section('2. every advertised kind renders from a fixture spec');
 
+/**
+ * ⚠️ `quiz` IS THE ONE KIND WITH NO `activity-shell`, AND THAT IS THE DESIGN.
+ *
+ * Every other kind renders inside the rounded card `ActivityShell` draws. The
+ * quiz is the hero: it IS the screen, so a card around it would put a border
+ * around the whole page. It therefore carries `data-testid="activity-quiz"` at
+ * its root instead.
+ *
+ * The check below reads the ROOT for each kind rather than hard-coding the
+ * shell, so it still asserts the same thing — something rendered, and it
+ * declares the kind it was asked for — without demanding a wrapper the design
+ * deliberately omits. Special-casing it with an `if (kind === 'quiz') return`
+ * would have skipped the assertion instead of adjusting it.
+ */
+const KIND_ROOT = {
+  quiz: '[data-testid="activity-quiz"]',
+};
+
 for (const kind of BUILT_IN_ACTIVITY_KINDS) {
   check(`${kind} renders real content`, () => {
     const { view } = renderKind(kind);
-    const shell = view.one('[data-testid="activity-shell"]');
-    assert(shell, 'no activity shell in the output');
+    const root = view.one(KIND_ROOT[kind] ?? '[data-testid="activity-shell"]');
+    assert(root, 'no activity root in the output');
     assert(
-      shell.getAttribute('data-activity-kind') === kind,
-      `shell says ${shell.getAttribute('data-activity-kind')}, expected ${kind}`,
+      root.getAttribute('data-activity-kind') === kind,
+      `root says ${root.getAttribute('data-activity-kind')}, expected ${kind}`,
     );
     assert(view.text().trim().length > 0, 'rendered nothing');
     view.unmount();
   });
 }
+
+/*
+ * The three kinds Fase D brought across. They were inline functions in the
+ * Itera Player's dispatcher until 0.4.0, so an external consumer could not
+ * render them at all — and they are 48% of the authored library, which is why
+ * they get content assertions of their own rather than only the generic root
+ * check above.
+ */
+
+check('document: the reflection variant is a REAL input, not a prompt and a button', () => {
+  // The failure this pins is a real one from the Player's history: the document
+  // once rendered its prompt plus a "mark done" button and NO textarea, so the
+  // activity asked a question the learner had nowhere to answer.
+  const { view } = renderKind('document');
+  assert(view.one('[data-testid="document-reflection-input"]'), 'no textarea to write in');
+  assert(view.text().includes('o que você aprendeu'), 'the authored prompt is not on screen');
+  assert(view.one('strong'), '**bold** did not become <strong> in the prompt');
+  view.unmount();
+});
+
+check('document: no `api.judge` degrades to reflection instead of throwing', () => {
+  // ADR-3 in its most concrete form. This harness supplies NO api port at all,
+  // so the assertion above already exercises the degraded path — this one says
+  // so explicitly, and pins that the AI-judge surface is genuinely absent
+  // rather than present-and-broken.
+  const { view } = renderKind('document');
+  assert(!view.one('[data-testid="judge-submit"]'), 'offered an AI judge with no judge port');
+  assert(!view.one('[data-testid="judge-heatmap"]'), 'rendered a verdict panel with no judge');
+  view.unmount();
+});
+
+check('diagram: the highlights render, and the mermaid source is not swallowed', () => {
+  const { view } = renderKind('diagram');
+  const highlights = view.one('[data-testid="diagram-highlights"]');
+  assert(highlights, 'the authored highlights are missing');
+  assert(view.text().includes('HEAD'), 'a highlighted term did not reach the DOM');
+  assert(view.text().includes('onde você está agora'), 'a highlight caption is missing');
+  view.unmount();
+});
+
+check('quiz: options carry their authored text, and the eyebrow is the 2-option default', () => {
+  const { view } = renderKind('quiz');
+  const options = view.all('[data-testid="quiz-option"]').map((el) => el.textContent.trim());
+  assert(options.length === 2, `expected 2 options, got ${options.length}`);
+  assert(options.includes('Falso'), 'an authored option label is missing');
+  // A two-option quiz with no authored `label` falls back to the canonical
+  // true/false eyebrow — and it comes from the package's OWN dictionary here,
+  // since this host injects only a locale.
+  const eyebrow = view.one('[data-testid="quiz-eyebrow"]');
+  assert(eyebrow, 'no eyebrow above the question');
+  assert(
+    eyebrow.textContent.trim() === 'Verdadeiro ou falso?',
+    `eyebrow said "${eyebrow.textContent.trim()}"`,
+  );
+  view.unmount();
+});
+
+check('quiz: a wrong pick grades false AND shows the authored explanation', () => {
+  // The quiz is the only kind whose contract DECLARES `explanation`, and it is
+  // shown only on a wrong answer — getting it right and being told why is not
+  // the moment a beginner needs it. Grading keys on `options[].isCorrect`, not
+  // on a top-level `correct_option_id`, which is why the quiz is its own kind.
+  const { view, completions } = renderKind('quiz');
+  const wrong = view
+    .all('[data-testid="quiz-option"]')
+    .find((el) => el.textContent.trim() === 'Verdadeiro');
+  view.click(wrong);
+  view.click(view.one('[data-testid="quiz-submit"]'));
+
+  assert(completions.length === 1, `onComplete fired ${completions.length} times, expected 1`);
+  assert(completions[0].correct === false, 'the wrong answer was graded right');
+  assert(completions[0].detail?.response === 'Verdadeiro', 'the chosen option did not come up');
+  assert(view.one('[data-testid="answer-explanation"]'), 'no explanation after a wrong answer');
+  view.unmount();
+});
 
 check('the instruction text of the spec actually reaches the DOM', () => {
   const { view } = renderKind('concept');

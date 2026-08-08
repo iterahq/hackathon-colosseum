@@ -49,6 +49,9 @@ import { MultiChoiceActivity } from '@/components/branded/activity/MultiChoiceAc
 import { MatchActivity } from '@/components/branded/activity/MatchActivity';
 import { OrderActivity } from '@/components/branded/activity/OrderActivity';
 import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
+import { DocumentActivity } from '@/components/branded/activity/DocumentActivity';
+import { DiagramActivity } from '@/components/branded/activity/DiagramActivity';
+import { QuizActivity } from '@/components/branded/activity/QuizActivity';
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 import { ByocActivity } from '@/components/branded/activity/byoc/ByocActivity';
 import { ByocActivityView } from '@/components/branded/activity/byoc/ByocActivityView';
@@ -96,6 +99,13 @@ type _multiChoice = Expect<IsNever<Uncovered<typeof MultiChoiceActivity>>>;
 type _match = Expect<IsNever<Uncovered<typeof MatchActivity>>>;
 type _order = Expect<IsNever<Uncovered<typeof OrderActivity>>>;
 type _sandboxScenario = Expect<IsNever<Uncovered<typeof SandboxScenarioActivity>>>;
+// Fase D. These three were inline functions in the Player's dispatcher until
+// now, so they were the only kinds in the taxonomy this file could not assert
+// over — a function declared inside another module is not importable, and the
+// contract check therefore had a hole exactly where the un-refactored code was.
+type _document = Expect<IsNever<Uncovered<typeof DocumentActivity>>>;
+type _diagram = Expect<IsNever<Uncovered<typeof DiagramActivity>>>;
+type _quiz = Expect<IsNever<Uncovered<typeof QuizActivity>>>;
 type _code = Expect<IsNever<Uncovered<typeof CodeSnackActivity>>>;
 type _dispatcher = Expect<IsNever<Uncovered<typeof ActivityRenderer>>>;
 
@@ -131,6 +141,9 @@ type _verdictMulti = Expect<Assignable<Verdict<typeof MultiChoiceActivity>, bool
 type _verdictMatch = Expect<Assignable<Verdict<typeof MatchActivity>, boolean>>;
 type _verdictOrder = Expect<Assignable<Verdict<typeof OrderActivity>, boolean>>;
 type _verdictSandbox = Expect<Assignable<Verdict<typeof SandboxScenarioActivity>, boolean>>;
+type _verdictDocument = Expect<Assignable<Verdict<typeof DocumentActivity>, boolean>>;
+type _verdictDiagram = Expect<Assignable<Verdict<typeof DiagramActivity>, boolean>>;
+type _verdictQuiz = Expect<Assignable<Verdict<typeof QuizActivity>, boolean>>;
 type _verdictCode = Expect<Assignable<Verdict<typeof CodeSnackActivity>, boolean>>;
 type _verdictByoc = Expect<Assignable<Verdict<typeof ByocActivity>, boolean>>;
 type _verdictDispatcher = Expect<Assignable<Verdict<typeof ActivityRenderer>, boolean>>;
@@ -225,6 +238,10 @@ const PUBLIC_RUNTIME_SURFACE = [
   'OrderActivity',
   'SingleChoiceActivity',
   'VideoActivity',
+  // Fase D — the three that had no file to move
+  'DocumentActivity',
+  'DiagramActivity',
+  'QuizActivity',
   // sandbox_scenario — one kind, five activity types (Fase C step 4)
   'SandboxScenarioActivity',
   'SandboxAIActivity',
@@ -243,6 +260,8 @@ const PUBLIC_RUNTIME_SURFACE = [
   // provisional: shared primitives the un-extracted kinds still compose with
   'AnswerExplanation',
   'ActivityShell',
+  'ArtifactVisibilityNotice',
+  'JudgeHeatmap',
   'DoneButton',
   'InstructionImage',
   'InstructionPanel',

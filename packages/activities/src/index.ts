@@ -73,6 +73,23 @@ export { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 export { MatchActivity } from './kinds/MatchActivity.js';
 export { OrderActivity } from './kinds/OrderActivity.js';
 
+/* ───────── document · diagram · quiz — Fase D, the last three inline ─────── */
+// They had no file to move: they were functions inside the Player's dispatcher,
+// which is why Fase C stopped short of them. Together they are 48% of the
+// authored library, so until this release a host that was not the Itera Player
+// rendered most of the catalogue as an "unsupported kind" placeholder.
+//
+// `DocumentActivity` is ONE kind with THREE renderers behind it, picked off the
+// RUBRIC and the host's ports (`rubric.mode === 'ai-judge'` + `api.judge` →
+// AI-judged; a prompt or a `min_words` rubric → reflection; otherwise a
+// read-only card). The two inner renderers are NOT exported: which one a
+// document is, is a decision the kind makes from data the host already passed,
+// and exporting them would invite a host to make it differently.
+
+export { DocumentActivity } from './kinds/DocumentActivity.js';
+export { DiagramActivity } from './kinds/DiagramActivity.js';
+export { QuizActivity } from './kinds/QuizActivity.js';
+
 /* ─────────────────────────── sandbox_scenario ────────────────────────────── */
 // Fase C step 4. ONE kind (`sandbox_scenario`) with five activity types behind
 // it: the dispatcher picks off the AUTHORED SHAPE, never off a second enum —
@@ -129,6 +146,12 @@ export { ActivityTextarea } from './components/ActivityTextarea.js';
 export type { ActivityTextareaProps } from './components/ActivityTextarea.js';
 export { AnswerExplanation } from './components/AnswerExplanation.js';
 export { InstructionImage } from './components/InstructionImage.js';
+// Fase D. `ArtifactVisibilityNotice` reads `identity.artifactAudience` and
+// nothing else, so it is safe for any host to compose with; `JudgeHeatmap`
+// renders an `ActivityJudgeVerdict` and is exported because the Player's
+// Storybook story mounts it directly.
+export { ArtifactVisibilityNotice } from './components/ArtifactVisibilityNotice.js';
+export { JudgeHeatmap } from './components/JudgeHeatmap.js';
 // The chat-sandbox pieces the Player's un-extracted LIVE sandbox still composes
 // with (`SandboxScenarioLiveActivity` renders the same window and transcript
 // against an AI-backed model). They leave this section when that one moves.
@@ -209,12 +232,18 @@ export type {
   ChoiceOption,
   ConceptRevealSpec,
   ConceptSpec,
+  DiagramHighlight,
+  DiagramSpec,
+  DocumentRubric,
+  DocumentSpec,
   I18nText,
   InstructionPanelSpec,
   MatchPair,
   MatchSpec,
   MultiChoiceSpec,
   OrderSpec,
+  QuizOption,
+  QuizSpec,
   SingleChoiceSpec,
   VideoSpec,
 } from './specs.js';

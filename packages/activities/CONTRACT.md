@@ -198,9 +198,10 @@ per step, not per phase.
 2. **Primitives** — `InstructionPanel`, `RichText`/`RichSpans`/`RichBlock`/
    `RichSteps`/`RichReveal`, `AnswerExplanation`, `parts`, `FeedbackFooter`.
 3. **Backend-free kinds** — `concept`, `video`, `single_choice`,
-   `multi_choice`, `match`, `order`. Plus `document`/`diagram`/`quiz`, which
-   have to be **lifted out of `ActivityRenderer.tsx` into their own files
-   first** — today they are inline functions in the 700-line dispatcher.
+   `multi_choice`, `match`, `order`. ✅ **Done** (Fase C steps 1–3.) Plus
+   `document`/`diagram`/`quiz`, which had to be **lifted out of
+   `ActivityRenderer.tsx` into their own files first** because they were inline
+   functions in the 700-line dispatcher. ✅ **Done in Fase D** — see finding 4.
 4. **Backend-backed kinds** — `sandbox_scenario`, BYOC, the AI-judge `document`
    path, `JudgeHeatmap` → all go through the injected ports.
 5. **Heavy kinds** — `code` / the preview iframe → separate entrypoint
@@ -225,9 +226,9 @@ first argument must be `boolean`.
 | `multi_choice` | ✅ | `i18n` | — |
 | `match` | ✅ | `i18n` | — |
 | `order` | ✅ | `i18n` | — |
-| `document` | ✅ | `i18n`, `api.listSeeds`/`generateContext`/`judge`, `identity` | Two paths (reflection · AI-judge). Inline in the dispatcher; also mounts `ArtifactVisibilityNotice` → see finding 1. |
-| `diagram` | ✅ | `i18n` | Inline in the dispatcher. |
-| `quiz` | ✅ | `i18n` | Inline in the dispatcher. |
+| `document` | ✅ | `i18n`; optionally `api.listSeeds`/`generateContext`/`judge` + `identity` | **THREE** paths, not two: read-only · reflection · AI-judge. Extracted in Fase D. The AI-judge path is selected by `Boolean(api?.judge)` — absence degrades to reflection, so a judge-less host still shows a working activity. Also mounts `ArtifactVisibilityNotice` → see finding 1, now closed. |
+| `diagram` | ✅ | `i18n` | Extracted in Fase D. ⚠️ Its image field is `imageUrl` (camelCase), unlike the InstructionPanel's `image_url` — both spellings are live in production and neither is a typo. |
+| `quiz` | ✅ | `i18n` | Extracted in Fase D. The one kind whose trace keys on the option INDEX — its options carry no required id, and it is also the one kind that does not shuffle, so the index IS the authored position. A quiz that ever starts shuffling must grow authored ids in the same change. |
 | `sandbox_scenario` (self-paced) | ✅ | `i18n` | Judging is `@iterahq/activity-spec/runtime` — pure, no backend. |
 | `sandbox_scenario` (live/BYOC) | ✅ | `i18n`, `api.respond`/`judge`, `identity` | Reached via `LiveActivityRenderer`, not `ActivityRenderer` → see finding 3. |
 | `code` | ✅ | `i18n`, **`storage`**, optionally `codeEditor` | Behind the `/code` entrypoint (ADR-5). Monaco is NOT in the package — the editor is a port, and without one the kind draws a plain textarea → see findings 2 and 6. |
@@ -247,6 +248,13 @@ plan's coupling table was incomplete, and findings 5–7 arrived with step 5.
    client, so the host resolves the fact and passes the answer:
    `identity.artifactAudience`. Omitted ⇒ `'unknown'` ⇒ the notice stays
    hidden, which is exactly the component's existing fail-closed behaviour.
+
+   ✅ **Closed in Fase D**, with the component. One thing changed that the
+   finding did not predict: the resolution moved from **per document activity
+   mounted** to **once per authenticated session**, in `IteraActivityHost`. That
+   is strictly fewer queries, not more — and it is gated on `authenticated`, so
+   an anonymous visitor now makes none at all where they used to make two per
+   reflection card.
 
 2. **The `code` kind needs a storage port.** `useCodeSnack` autosaves the
    learner's source through `@/services/codeSnapshot.service` (localStorage) so
@@ -278,11 +286,29 @@ plan's coupling table was incomplete, and findings 5–7 arrived with step 5.
    variant as a kind the base dispatcher can reach. Confirm before Fase C step 4
    — getting it wrong drags live-class concerns into the package.
 
-4. **`document` / `diagram` / `quiz` are not files.** They are inline functions
-   inside `ActivityRenderer.tsx`. Fase C step 3 has to lift them out before it
-   can move them, and that lift is the one step in the whole extraction that
-   touches the dispatcher every other open PR also touches. Sequence it when the
-   PR queue is drained.
+4. **`document` / `diagram` / `quiz` were not files.** They were inline
+   functions inside `ActivityRenderer.tsx`, and that lift was the one step in
+   the whole extraction that touches the dispatcher every other open PR also
+   touches — so it was sequenced last, when the queue drained.
+
+   ✅ **Closed in Fase D**, and the interesting part is what it cost the file
+   they came out of: `ActivityRenderer.tsx` went from ~700 lines to ~180, and
+   what is left is exactly the three things ADR-1 keeps in the host — the BYOC
+   layer resolution, the fail-closed spec-validation boundary, and the kinds
+   that have not crossed. **The Player now runs a second kind switch that
+   parallels the package's**, which is a debt this document should not lose:
+   a second switch that agrees today disagrees later, silently, for one kind.
+   When the last un-extracted kind crosses, the Player's dispatcher should
+   DELEGATE rather than keep its own switch.
+
+   The extraction also carried the `document` kind's env read across, and it
+   changed shape doing so: `iteraApiConfigured()` — a build-time
+   `import.meta.env` read — became `Boolean(api?.judge)`. That is not a
+   refactor for tidiness. Compiled into a package, the env read reports on the
+   machine that BUILT the library, so it would have answered `false` for every
+   consumer forever. `IteraActivityHost` now withholds the whole `api` object
+   when the base URL is unset, which is what makes the runtime probe give the
+   same answer the build-time one used to.
 
 5. **The `code` kind is not self-contained, and no test in this repo can go
    red for it.** The preview iframe is a document that must not fetch anything
@@ -429,14 +455,15 @@ also one of the ones that needs **nothing injected but i18n**.
 | Not moved | Reason |
 | --- | --- |
 | ~~`sandbox_scenario`~~ | ✅ **MOVED** in step 4 (chat + terminal, five activity types, one dispatcher). It turned out to be the half of step 4 that needs **no port at all** — see the note below. |
-| `sandbox-live`, BYOC, `JudgeHeatmap` | Still step 4, and now the whole of what step 4 has left: these are the AI-judged surfaces, the ones that genuinely consume `api.respond` / `api.judge` / `api.generateByoc` and read `identity.authenticated`. BYOC had ~10 of its 12 files open in PR #296 while this landed, and `sandbox-live` is in PR #285 — extracting under an open rewrite produces a conflict, not an extraction. `JudgeHeatmap` renders an `ActivityJudgeVerdict` and has no reason to move before its only two callers do. |
+| `sandbox-live`, BYOC | The AI-judged surfaces that consume `api.respond` / `api.generateByoc` and read `identity.authenticated`. BYOC had ~10 of its 12 files open in PR #296 while step 4 landed, and `sandbox-live` is in PR #285 — extracting under an open rewrite produces a conflict, not an extraction. |
+| ~~`JudgeHeatmap`~~ | ✅ **MOVED** in Fase D, with the AI-judged `document` — which was its only production caller, so the reason it was waiting ("no reason to move before its callers do") expired the moment `document` crossed. It is the first thing in the package to consume the `api` port for real. |
 | ~~`code` / the preview iframe~~ | ✅ **MOVED** in step 5, into `@iterahq/activities/code` — the second entrypoint, absent from `BUILT_IN_ACTIVITY_KINDS` on purpose. |
 | Monaco (`src/components/editor/CodeEditor.tsx`, `monacoTypescript.ts`) | Stayed, and step 5 is why: it carries the live-class caret CustomEvent and this repo's self-hosted Monaco/TS configuration. The editor is a PORT now — see finding 6. |
 | `codeSnapshot.service`, `CodeSnapshot` | The Player's on-disk draft store: per-learner scoped key, `{ code, savedAt }` envelope, `CODE_SNAPSHOT_EVENT` for the live "em andamento" indicator. The package speaks plain strings through `ActivityStoragePort`; shipping the envelope would be the package dictating how every consumer stores a draft. |
 | `document`, `diagram`, `quiz` | Finding 4: they are inline functions inside the Player's 700-line dispatcher, which every open PR touches. Lifting them out is its own PR, sequenced when the queue drains. |
 | `FeedbackFooter` | It is the **global viewport-fixed** footer, mounted by `LessonPlayer` and `LiveSessionPage`. ADR-1 puts it on the player side of the line. `activityFeedbackKinds.ts` (`FOOTER_GRADED_KINDS`) is footer-routing policy and stays with it. |
 | `LiveActivityRenderer` | Finding 3: host routing, not an activity. |
-| `ArtifactVisibilityNotice` | Queries Supabase directly. Moves with `document` in step 4, behind `identity.artifactAudience`. |
+| ~~`ArtifactVisibilityNotice`~~ | ✅ **MOVED** in Fase D, with `document`, behind `identity.artifactAudience` exactly as planned. See finding 1. |
 | `ActivitySkeleton`, `InvalidSpecCard` | Player-side loading and validation-failure chrome; the package draws its own unsupported-kind placeholder. |
 | `activityFamilies.ts`, `learningTrace.ts` | Itera's telemetry taxonomy and trace builder. Shipping them would hand every consumer Itera's event model. |
 

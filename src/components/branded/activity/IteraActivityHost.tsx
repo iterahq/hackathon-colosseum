@@ -27,12 +27,30 @@
  *               (asserted in `src/test/activityPublicContract.test.ts`).
  * `identity` ✅ — `authenticated` + `loading` + the learner scope. See below:
  *               this is the one that would have broken silently.
- * `api`    ❌ — the kinds that need it (BYOC, the live sandbox, the AI-judged
- *               `document`) have NOT been extracted yet; they still call
- *               `@/api/iteraApi` directly, from inside the app. Wiring the port
- *               now would be a second, unused path to the same backend, and a
- *               reader would reasonably assume it was live. It lands with the
- *               rest of Fase C step 4, together with the kinds that consume it.
+ * `api`    ✅ — Fase D, and it lands with the ONE kind that consumes it: the
+ *               AI-judged `document`. BYOC and the live sandbox are still in
+ *               the app and still call `@/api/iteraApi` directly; when they
+ *               cross, they read the same port rather than a second one.
+ *
+ *               ⚠️ IT IS SUPPLIED CONDITIONALLY, AND THE CONDITION IS THE
+ *               BEHAVIOUR. `DocumentActivity` chooses the AI-judged renderer
+ *               with `Boolean(api?.judge)`, which REPLACED the app's
+ *               `iteraApiConfigured()` — a build-time read of
+ *               `import.meta.env.VITE_ITERA_API_BASE` that could never travel
+ *               into another app's bundle. Handing the port over
+ *               unconditionally would make that probe answer `true` on an
+ *               unconfigured deploy, and a learner would get the judge screen
+ *               with a backend that is not there. So the adapter withholds the
+ *               object entirely when the base URL is unset, which is exactly
+ *               what the env read used to say.
+ *
+ * `identity.artifactAudience` ✅ — Fase D. `ArtifactVisibilityNotice` used to
+ *               query Supabase from inside the activity tree, on mount, once
+ *               per document activity. The host resolves it instead — once per
+ *               session, and only when authenticated, which is strictly fewer
+ *               queries than before. Fail-closed is preserved: it stays
+ *               `'unknown'` until the answer is in, and `'unknown'` hides the
+ *               notice.
  * `storage`✅ — Fase C step 5. `useCodeSnack` no longer imports
  *               `codeSnapshot.service`; it reads and writes through the port,
  *               and the adapter below is what keeps the ON-DISK KEY AND
@@ -66,19 +84,26 @@
  * characterization caught it ("a ordem inicial é ESTÁVEL para o mesmo aluno
  * entre montagens"); nothing else did, and nothing threw.
  */
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityProvider } from '@iterahq/activities';
-import type { ActivityStoragePort } from '@iterahq/activities';
+import type { ActivityApiPort, ActivityIdentity, ActivityStoragePort } from '@iterahq/activities';
 import { CODE_DRAFT_KEY_PREFIX, codeDraftActivityId } from '@iterahq/activities/code';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import {
+  generateContext,
+  iteraApiConfigured,
+  judge,
+  listSeeds,
+} from '@/api/iteraApi';
+import {
   clearCodeSnapshot,
   readCodeSnapshot,
   saveCodeSnapshot,
 } from '@/services/codeSnapshot.service';
+import { hasTenantAudience } from '@/services/artifact.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
 
 /**
@@ -140,14 +165,22 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
   // localStorage does not notify the tab that wrote it.
   const scope = useSyncExternalStore(subscribeStorageScope, currentStorageScope, () => null);
 
-  const identity = useMemo(
-    () => ({ authenticated, loading, userId: scope }),
-    [authenticated, loading, scope],
+  // Who, besides the learner, can read what they produce. Resolved HERE because
+  // a library cannot hold a Supabase client (ports.ts names this component's
+  // consumer by name). `'unknown'` is the honest starting value and the
+  // fail-closed one: the notice stays hidden until we can confirm a reader.
+  const artifactAudience = useArtifactAudience(authenticated);
+  const api = useIteraActivityApi(session?.access_token ?? '');
+
+  const identity = useMemo<ActivityIdentity>(
+    () => ({ authenticated, loading, userId: scope, artifactAudience }),
+    [authenticated, loading, scope, artifactAudience],
   );
 
   return (
     <ActivityProvider
       i18n={i18n}
+      api={api}
       identity={identity}
       storage={ITERA_ACTIVITY_STORAGE}
       codeEditor={CodeEditor}
@@ -155,6 +188,84 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
       {children}
     </ActivityProvider>
   );
+}
+
+/**
+ * The backend adapter — the port's own header sketches this closure almost
+ * verbatim, with one addition that is load-bearing.
+ *
+ * ⚠️ IT IS `undefined` WHEN THE API IS NOT CONFIGURED, and that is not a
+ * micro-optimisation. `DocumentActivity` picks the AI-judged renderer off
+ * `Boolean(api?.judge)`, which REPLACED the component's inline
+ * `iteraApiConfigured()`. Supplying a port that would fetch against an empty
+ * base URL turns that probe into a permanent `true`, and the learner gets a
+ * judge screen backed by nothing — on exactly the deploys (previews, local dev,
+ * any host without `VITE_ITERA_API_BASE`) where the app used to fall through to
+ * the reflection renderer. Same expression, same answer; it has only moved to
+ * the one place allowed to know about `import.meta.env`.
+ *
+ * ⚠️ NO TOKEN CROSSES THE BOUNDARY. The two methods that need one close over it
+ * here, so the package receives functions that are ALREADY authenticated and
+ * never a credential it would have to hold. That is the entire reason
+ * `ActivityApiPort` dropped the `token` parameter every `iteraApi` function
+ * takes.
+ *
+ * Memoised on the token alone: a new object on every render would churn the
+ * provider's context for no change in behaviour. It does NOT remount anything —
+ * a context value change re-renders consumers, it does not reset their state —
+ * so a token refresh mid-answer is invisible to the learner.
+ */
+function useIteraActivityApi(token: string): ActivityApiPort | undefined {
+  return useMemo<ActivityApiPort | undefined>(
+    () =>
+      iteraApiConfigured()
+        ? {
+            listSeeds,
+            generateContext: (activityId, seed) => generateContext(activityId, seed, token),
+            judge: (activityId, content, ctx) => judge(activityId, content, token, ctx),
+          }
+        : undefined,
+    [token],
+  );
+}
+
+/**
+ * Resolve `artifactAudience` once per authenticated session.
+ *
+ * ⚠️ IT MUST NOT RUN FOR AN ANONYMOUS VISITOR. `hasTenantAudience()` resolves
+ * `itera.users.id` and then the tenant — two round trips whose answer for a
+ * guest is always `false`. Gating on `authenticated` makes this strictly fewer
+ * queries than the component-level version it replaces (which fired once per
+ * document activity mounted, guest or not), rather than more.
+ *
+ * ⚠️ THE ERROR PATH IS THE PRODUCT DECISION, not an oversight: a rejected
+ * promise leaves the value at `'unknown'`, which HIDES the notice. Claiming
+ * "your employer can read this" when we could not confirm it teaches the
+ * learner to distrust the notice on the day it is true.
+ */
+function useArtifactAudience(authenticated: boolean): ActivityIdentity['artifactAudience'] {
+  const [audience, setAudience] =
+    useState<ActivityIdentity['artifactAudience']>('unknown');
+
+  useEffect(() => {
+    if (!authenticated) {
+      setAudience('unknown');
+      return;
+    }
+    let alive = true;
+    hasTenantAudience()
+      .then((yes) => {
+        if (alive) setAudience(yes ? 'tenant' : 'none');
+      })
+      .catch(() => {
+        /* stay 'unknown' — never claim a reader exists when we cannot confirm it */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [authenticated]);
+
+  return audience;
 }
 
 /**

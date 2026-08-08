@@ -55,6 +55,22 @@
  * two dictionaries, which is the one thing this file may not do. A FOURTH
  * prefix is a decision, not an accident, which is exactly what the assertion
  * is for.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE FOURTH PREFIX — `quiz.`, AND WHY IT IS EXACTLY ONE KEY (Fase D)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `quiz.trueOrFalse` is the eyebrow a two-option quiz shows above the question.
+ * It arrived with `QuizActivity` and it is the ONLY key under this prefix — the
+ * quiz's other five strings are all `activity.*` already.
+ *
+ * The decision the assertion asked for, made out loud: renaming it to
+ * `activity.quiz.trueOrFalse` on the way in would be a nicer namespace and a
+ * WORSE outcome, because the Player has shipped it as `quiz.trueOrFalse` since
+ * before any of this was a package, and the two dictionaries agreeing verbatim
+ * is the property that keeps an un-provided render faithful instead of merely
+ * plausible. A tidy name is not worth a divergence. If the prefix is ever to be
+ * folded into `activity.`, it is a rename in the PLAYER first, and this file
+ * follows.
  */
 import type { ActivityLocale } from '../ports.js';
 
@@ -78,6 +94,15 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.reset.confirm': 'Sim, recomeçar',
     'code.reset.confirmPrompt': 'Isso apaga o que você escreveu e traz o código inicial de volta. Quer recomeçar?',
     'activity.conceptReveal': 'Pense antes',
+    'activity.diagram': 'Diagrama',
+    'activity.document': 'Documento',
+    'activity.artifactVisibilityNotice':
+      'O que você escrever aqui fica salvo na sua conta e pode ser lido pelo administrador da sua organização.',
+    'activity.minWords': 'mínimo',
+    'activity.quizPrompt': 'Selecione a resposta correta',
+    'activity.reflectionPlaceholder': 'Escreva aqui o que você aprendeu…',
+    'activity.words': 'palavras',
+    'quiz.trueOrFalse': 'Verdadeiro ou falso?',
     'activity.done': 'Concluída',
     'activity.explanationTitle': 'Entenda o porquê',
     'activity.instructionZoomClose': 'Fechar',
@@ -137,6 +162,15 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.reset.confirm': 'Yes, start over',
     'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',
     'activity.conceptReveal': 'Think first',
+    'activity.diagram': 'Diagram',
+    'activity.document': 'Document',
+    'activity.artifactVisibilityNotice':
+      'What you write here is saved to your account and can be read by your organization\'s administrator.',
+    'activity.minWords': 'minimum',
+    'activity.quizPrompt': 'Select the correct answer',
+    'activity.reflectionPlaceholder': 'Write what you learned here…',
+    'activity.words': 'words',
+    'quiz.trueOrFalse': 'True or false?',
     'activity.done': 'Done',
     'activity.explanationTitle': 'Here is why',
     'activity.instructionZoomClose': 'Close',
