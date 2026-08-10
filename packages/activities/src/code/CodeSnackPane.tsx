@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Code2, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
@@ -6,6 +7,7 @@ import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import { DoneButton } from '../components/parts.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
+import { parseEditableRegions } from './editableRegions.js';
 import { CODE_PANE_BOX, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
 import { CodeHelpLink } from './CodeHelpLink.js';
 import { useCodeSnack } from './useCodeSnack.js';
@@ -61,6 +63,11 @@ export function CodeSnackPane({
     complete,
   } = useCodeSnack(activity.id, spec, { onComplete });
   const isDone = activity.status === 'done';
+  // Recomputed from the CURRENT source, never from the starter: the learner's
+  // own saved draft and every edit they make move the marker lines around, and
+  // a region pinned to the starter's line numbers would drift onto locked code
+  // after the first newline. See `./editableRegions.ts`.
+  const editableRegions = useMemo(() => parseEditableRegions(code), [code]);
   // The feedback survives into `settled` on purpose: in the LIVE class the
   // learner does not self-advance, so after reporting the result they stay on
   // this screen — hiding the verdicts there would leave them staring at a dead
@@ -116,6 +123,7 @@ export function CodeSnackPane({
               onChange={setCode}
               language="typescript"
               readOnly={readOnly}
+              editableRegions={editableRegions}
             />
           </div>
           <CodeHelpLink help={spec.help} />

@@ -348,12 +348,20 @@ export interface ActivityLiveBufferPort {
  * renders a plain, dependency-free `<textarea>` surface — a real editor with no
  * syntax highlighting, not a placeholder. See the `/code` README section.
  *
- * The four members are MEASURED, not designed: `CodeSnackPane` passes exactly
- * `value`, `onChange`, `language` and `readOnly`. The Player's `CodeEditor`
- * takes four more (`highlightLines`, `fontSize`, `remoteCaret`,
- * `semanticValidation`), all optional and all read by the live stage rather
- * than by an activity — which is why it is assignable to this without a shim.
+ * The members are MEASURED, not designed: `CodeSnackPane` passes exactly
+ * `value`, `onChange`, `language`, `readOnly` and `editableRegions`. The
+ * Player's `CodeEditor` takes four more (`highlightLines`, `fontSize`,
+ * `remoteCaret`, `semanticValidation`), all optional and all read by the live
+ * stage rather than by an activity — which is why it is assignable to this
+ * without a shim.
  */
+export interface EditableRegion {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+}
+
 export interface ActivityCodeEditorProps {
   /** The current source. Controlled — the kind owns it. */
   value: string;
@@ -366,4 +374,16 @@ export interface ActivityCodeEditorProps {
   language?: string;
   /** Frozen while a verdict is on screen (see `useCodeSnack.readOnly`). */
   readOnly?: boolean;
+  /**
+   * The only ranges of `value` the learner may change, derived from the marker
+   * comments in the source (`code/editableRegions.ts`). Empty ⇒ the whole file
+   * is editable, which is what every activity authored so far gets.
+   *
+   * Enforcement is the HOST's, because only the host's editor knows what an
+   * edit IS: Monaco can reject one range and leave the rest of the file live,
+   * while a `<textarea>` only ever reports a whole new string. A host that
+   * cannot enforce it ignores the prop and the activity stays playable — it
+   * loses the guard rails, not the exercise.
+   */
+  editableRegions?: readonly EditableRegion[];
 }

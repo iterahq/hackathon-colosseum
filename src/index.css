@@ -254,3 +254,14 @@
   50% { transform: scale(1.05); }
   100% { transform: scale(1); opacity: 1; }
 }
+
+/* Editable regions of a `code` snack (see packages/activities/src/code/editableRegions.ts).
+   The learner has to SEE which lines accept typing — without the contrast the
+   locked file just feels broken when the keyboard does nothing. */
+.editable-region-line {
+  background: rgba(84, 214, 143, 0.09);
+}
+.editable-region-gutter {
+  border-left: 2px solid #54d68f;
+  margin-left: 3px;
+}

@@ -209,6 +209,7 @@ export type {
   ActivityApiPort,
   ActivityBrief,
   ActivityCodeEditorProps,
+  EditableRegion,
   ActivityI18n,
   ActivityIdentity,
   ActivityJudgeContext,

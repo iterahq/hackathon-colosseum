@@ -135,4 +135,9 @@ export type {
   GuidedVariant,
   UseGuidedCodeCallbacks,
 } from './guided/types.js';
-export type { ActivityCodeEditorProps } from '../ports.js';
+export {
+  parseEditableRegions,
+  hasEditableRegions,
+  isEditAllowed,
+} from './editableRegions.js';
+export type { ActivityCodeEditorProps, EditableRegion } from '../ports.js';

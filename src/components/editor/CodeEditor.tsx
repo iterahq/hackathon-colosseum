@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
+import type { EditableRegion } from '@iterahq/activities';
+import { isEditAllowed } from '@iterahq/activities/code';
 import { CODE_CARET_EVENT, type CodeCaretEventDetail } from '@/utils/stageCursorDom';
 import { configureTypeScriptDefaults, modelPathFor } from './monacoTypescript';
 
 type MonacoEditorInstance = Parameters<OnMount>[0];
+type MonacoNamespace = Parameters<OnMount>[1];
+type DecorationsCollection = ReturnType<MonacoEditorInstance['createDecorationsCollection']>;
 
 interface CodeEditorProps {
   value: string;
@@ -32,6 +36,19 @@ interface CodeEditorProps {
    * "fix the type error" exercise can opt back in.
    */
   semanticValidation?: boolean;
+  /**
+   * The ONLY ranges the learner may change (`@iterahq/activities/code`'s
+   * `parseEditableRegions`). Empty/absent ⇒ the whole file is editable.
+   *
+   * Enforced by reverting: an edit that lands outside every region is undone
+   * the instant it is applied, instead of being blocked at the keystroke.
+   * Blocking at the key level would have to reimplement what counts as an edit
+   * (paste, drag-drop, multi-cursor, autocomplete, the TypeScript quick-fix)
+   * and would silently miss whichever path it forgot; the model change event is
+   * the ONE funnel every one of those goes through, so "reject what arrives" is
+   * complete by construction.
+   */
+  editableRegions?: readonly EditableRegion[];
 }
 
 /**
@@ -53,6 +70,7 @@ export function CodeEditor({
   fontSize = 14,
   semanticValidation = false,
   remoteCaret = null,
+  editableRegions,
 }: CodeEditorProps) {
   // Claimed lazily once per mounted editor; stable across re-renders.
   const instanceIdRef = useRef<number>();
@@ -61,8 +79,34 @@ export function CodeEditor({
   }
   const path = modelPathFor(language, instanceIdRef.current);
   const editorRef = useRef<MonacoEditorInstance | null>(null);
+  const monacoRef = useRef<MonacoNamespace | null>(null);
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
+  // Read inside the model-change listener, which fires SYNCHRONOUSLY with the
+  // edit — so this still holds the regions as they were BEFORE it, which is the
+  // coordinate system `change.range` speaks.
+  const regionsRef = useRef<readonly EditableRegion[] | undefined>(editableRegions);
+  regionsRef.current = editableRegions;
+  const regionDecorationsRef = useRef<DecorationsCollection | null>(null);
+
+  // Paint the region so "you may type here" is visible, not folklore. Kept in
+  // an effect rather than in `onMount` because the regions move with every
+  // newline the learner types.
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    const decorations = (editableRegions ?? []).map((r) => ({
+      range: new monaco.Range(r.startLineNumber, 1, r.endLineNumber, r.endColumn),
+      options: {
+        isWholeLine: true,
+        className: 'editable-region-line',
+        linesDecorationsClassName: 'editable-region-gutter',
+      },
+    }));
+    if (regionDecorationsRef.current) regionDecorationsRef.current.set(decorations);
+    else regionDecorationsRef.current = editor.createDecorationsCollection(decorations);
+  }, [editableRegions]);
 
   // Apply the remote caret. `revealLineInCenter` only fires when the caret has
   // left the visible range: following every keystroke would fight the viewer,
@@ -148,6 +192,18 @@ export function CodeEditor({
         onMount={(editor, monaco) => {
           monaco.editor.setTheme('iterate-dark');
           editorRef.current = editor;
+          monacoRef.current = monaco;
+
+          // The wall. Undo (rather than prevent) for the reason in the prop's
+          // doc; `isUndoing` guards the recursion, since the revert is itself a
+          // model change whose ranges are, by definition, outside the region.
+          editor.onDidChangeModelContent((e) => {
+            const regions = regionsRef.current;
+            if (!regions || regions.length === 0) return;
+            if (e.isUndoing || e.isRedoing) return;
+            if (e.changes.every((c) => isEditAllowed(regions, c.range))) return;
+            editor.trigger('editableRegions', 'undo', null);
+          });
 
           // Publish the local caret on a window event rather than a callback
           // prop: the only consumer is the live-class layer, and the editor sits
