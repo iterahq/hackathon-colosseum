@@ -346,6 +346,14 @@ const CODE_ENTRYPOINT_SURFACE = [
   'codeBlanksDraftKey',
   'codeDraftActivityId',
   'codeDraftKey',
+  // The split geometry, and the promise is narrower than it looks: a host that
+  // MIRRORS a learner's pane needs the same classes rather than similar ones,
+  // because the live cursor is normalized against the box and two shapes make
+  // the coordinates lie. `@/utils/codeStageGeometry` is a re-export of these.
+  'CODE_PANE_BOX',
+  'CODE_SPLIT_GRID',
+  'CODE_SPLIT_EDITOR',
+  'CODE_SPLIT_PREVIEW',
 ].sort();
 
 describe('activities public contract', () => {

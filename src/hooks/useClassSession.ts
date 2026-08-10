@@ -32,6 +32,7 @@ import type {
   ClassTimer,
   StageCursor,
   StageCursorCaret,
+  StageCursorFrame,
   StagedAnswer,
   UseClassSession,
 } from '@/types/liveClass';
@@ -40,6 +41,7 @@ import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
+import { MAX_PANE_PX } from '@/utils/stageCursorPlacement';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
 
@@ -766,7 +768,11 @@ export function useClassSession(
         // stage" — a classmate cannot move the cursor the class is watching.
         if (p.userId !== stageAuthorRef.current) return;
         if (p.activityId !== currentActivityIdRef.current) return;
-        if (typeof p.x !== 'number' || typeof p.y !== 'number') return;
+        // `Number.isFinite`, not `typeof number`: NaN survives the clamp below
+        // (`Math.min(1, Math.max(0, NaN))` is NaN) and then poisons the overlay's
+        // tween ref, freezing the mirrored pointer for the rest of the class.
+        if (typeof p.x !== 'number' || !Number.isFinite(p.x)) return;
+        if (typeof p.y !== 'number' || !Number.isFinite(p.y)) return;
         // Broadcast gives no ordering guarantee, and a late packet would yank
         // the cursor visibly backwards — worse than a dropped frame.
         const t = typeof p.t === 'number' ? p.t : 0;
@@ -776,11 +782,22 @@ export function useClassSession(
           p.caret && typeof p.caret.line === 'number' && typeof p.caret.column === 'number'
             ? { line: p.caret.line, column: p.caret.column }
             : null;
+        // Only a POSITIVE finite size within a plausible screen is carried
+        // through. A zero (the retract frame) or a garbage value would make the
+        // overlay place the pointer at 0px, i.e. pinned to the top-left corner,
+        // which is worse than the percent fallback it drops back to when the size
+        // is absent. The upper bound is there because the sender is forgeable.
+        const size = (v: unknown) =>
+          typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= MAX_PANE_PX
+            ? v
+            : undefined;
         setStageCursor({
           activityId: p.activityId,
           userId: p.userId,
           x: Math.min(1, Math.max(0, p.x)),
           y: Math.min(1, Math.max(0, p.y)),
+          paneW: size(p.paneW),
+          paneH: size(p.paneH),
           visible: p.visible !== false,
           caret,
           t,
@@ -812,7 +829,7 @@ export function useClassSession(
   isStageCursorSourceRef.current = isStageCursorSource;
 
   const sendStageCursor = useCallback(
-    (frame: { x: number; y: number; visible: boolean; caret: StageCursorCaret | null }) => {
+    (frame: StageCursorFrame) => {
       const channel = cursorRef.current;
       const activityId = currentActivityIdRef.current;
       const userId = identityRef.current?.userId;
@@ -826,6 +843,8 @@ export function useClassSession(
             userId,
             x: frame.x,
             y: frame.y,
+            paneW: frame.paneW,
+            paneH: frame.paneH,
             visible: frame.visible,
             caret: frame.caret,
             t: Date.now(),

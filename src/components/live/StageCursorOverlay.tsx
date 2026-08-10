@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { stageCursorPlacement } from '@/utils/stageCursorPlacement';
 import type { StageCursor } from '@/types/liveClass';
 
 /**
@@ -13,6 +14,9 @@ import type { StageCursor } from '@/types/liveClass';
  * system cursor is roughly 12×19 CSS px) and carries the author's name, because
  * a bare arrow on a screen that already has the viewer's own arrow is
  * ambiguous exactly when it matters.
+ *
+ * Placement is in PIXELS of the EMITTER's pane, never percent of this one — see
+ * `utils/stageCursorPlacement` for why percent lands on the wrong line.
  *
  * ## Interpolation is what buys the low rate
  *
@@ -46,6 +50,12 @@ export function StageCursorOverlay({
   const visible = Boolean(cursor?.visible);
   const x = cursor?.x ?? 0;
   const y = cursor?.y ?? 0;
+  const paneW = cursor?.paneW;
+  const paneH = cursor?.paneH;
+  // Read through a ref inside the tween: the pane resizes mid-class, and a
+  // closure captured when the rAF loop started would keep the old size forever.
+  const paneRef = useRef({ paneW, paneH });
+  paneRef.current = { paneW, paneH };
 
   useEffect(() => {
     if (!visible) {
@@ -74,8 +84,8 @@ export function StageCursorOverlay({
       const alpha = 1 - Math.exp(-dt / tauRef.current);
       pos.x += (target.x - pos.x) * alpha;
       pos.y += (target.y - pos.y) * alpha;
-      el.style.left = `${pos.x * 100}%`;
-      el.style.top = `${pos.y * 100}%`;
+      const { paneW: w, paneH: h } = paneRef.current;
+      Object.assign(el.style, stageCursorPlacement(pos.x, pos.y, w, h));
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
@@ -91,9 +101,10 @@ export function StageCursorOverlay({
       // Above Monaco's own layers, inert to the mouse: this is a picture of
       // someone else's pointer, it must never eat a click on the mirror.
       className="pointer-events-none absolute z-30 will-change-transform"
+      // The first paint has to agree with the tween, or the pointer appears at the
+      // percent spot for one frame and jumps.
       style={{
-        left: `${cursor.x * 100}%`,
-        top: `${cursor.y * 100}%`,
+        ...stageCursorPlacement(x, y, paneW, paneH),
         width: SIZE_PX,
         height: SIZE_PX,
       }}

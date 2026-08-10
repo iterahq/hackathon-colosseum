@@ -168,13 +168,25 @@ export interface StageCursorCaret {
   column: number;
 }
 
+/** What the emitter measures locally, before it becomes a `StageCursor` on the wire. */
+export interface StageCursorFrame {
+  x: number;
+  y: number;
+  paneW: number;
+  paneH: number;
+  visible: boolean;
+  caret: StageCursorCaret | null;
+}
+
 /**
  * One frame of the on-stage cursor (plan 20260728-…, Fases 2/3).
  *
- * Coordinates are NORMALIZED 0..1 against the code editor pane, so they survive
- * different screen sizes, browser zoom and the responsive layout — and so that
- * anything outside that pane is, by construction, never transmitted (ADR-4:
- * one decision covering both fidelity and privacy).
+ * Coordinates are NORMALIZED 0..1 against the code editor pane, so anything
+ * outside that pane is by construction never transmitted (ADR-4: one decision
+ * covering both fidelity and privacy).
+ *
+ * ⚠️ Normalized is not enough on its own — the frame also carries the emitter's
+ * pane size, and `utils/stageCursorPlacement` explains why.
  */
 export interface StageCursor {
   activityId: string;
@@ -184,6 +196,9 @@ export interface StageCursor {
   x: number;
   /** 0..1 down the editor pane. */
   y: number;
+  /** The EMITTER's pane size in CSS px. Absent on a frame from an older client. */
+  paneW?: number;
+  paneH?: number;
   /** False = the pointer left the pane. Sent once, as an edge, not streamed. */
   visible: boolean;
   /** Where the person is actually typing; null when unknown. */

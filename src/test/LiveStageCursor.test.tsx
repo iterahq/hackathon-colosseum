@@ -6,6 +6,7 @@ import {
   STAGE_CURSOR_MIRROR_SELECTOR,
   STAGE_CURSOR_SOURCE_SELECTOR,
 } from '@/utils/stageCursorDom';
+import { CODE_PANE_BOX, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID } from '@/utils/codeStageGeometry';
 
 const caretApplied: ({ line: number; column: number } | null)[] = [];
 
@@ -73,6 +74,16 @@ describe('LiveStage — the mirrored cursor', () => {
     expect(pane!.className).toContain('relative');
   });
 
+  it('places in PIXELS of the emitter pane once the frame carries its size', () => {
+    // The mirror is a different size from the emitter and Monaco's font is not,
+    // so percent would land on a different LINE on the projector. Measured on the
+    // 06/08 layout: y=0.5 was line 10 for the learner, line 14 on the palco.
+    mount({ cursor: cursor({ x: 0.5, y: 0.25, paneW: 900, paneH: 480 }) });
+    const el = screen.getByTestId('stage-cursor');
+    expect(el.style.left).toBe('450px');
+    expect(el.style.top).toBe('120px');
+  });
+
   it('names whose pointer it is', () => {
     mount({ cursor: cursor() });
     expect(screen.getByTestId('stage-cursor-label').textContent).toBe('Alba');
@@ -120,14 +131,21 @@ describe('LiveStage — the mirrored cursor', () => {
   });
 });
 
-describe('the emitter and the mirror describe the SAME pane', () => {
+describe('the emitter and the mirror keep the same pane SHAPE', () => {
   /**
-   * Normalized 0..1 coordinates are only honest between containers of equal
-   * shape (plan ADR-4). The two panes are declared in different files, so this
-   * guard is what stops one of them being restyled alone — the failure that
-   * would follow is a cursor landing consistently a few pixels off, which reads
-   * as "the feature is a bit broken" rather than as a regression anyone can
-   * bisect.
+   * The panes are declared in different files, so this guard is what stops one of
+   * them being restyled alone. Shape, not size: px placement already absorbs the
+   * size gap, but it assumes the two boxes have the same ASPECT — restyle one
+   * pane's height or grid span alone and normalized x/y start meaning different
+   * things on each side, which reads as "the feature is a bit off" rather than as
+   * a regression anyone can bisect.
+   *
+   * ⚠️ What this can and cannot catch. Both sides import the same constant, so the
+   * guard detects DIVERGENCE (someone hardcodes one pane again) — it cannot tell
+   * whether the shared value is the RIGHT one. It also compares the tokens as
+   * whole strings, so it only holds while the geometry stays contiguous in one
+   * module; split `CODE_PANE_BOX` across two constants and the assertion keeps
+   * passing on the half it still knows about.
    */
   it('both panes carry their marker and the same geometry classes', () => {
     const { container: mirror } = mount({ cursor: cursor() });
@@ -154,9 +172,43 @@ describe('the emitter and the mirror describe the SAME pane', () => {
 
     expect(mirrorPane).not.toBeNull();
     expect(sourcePane).not.toBeNull();
-    for (const cls of ['h-[360px]', 'overflow-hidden', 'rounded-2xl']) {
+    for (const cls of CODE_PANE_BOX.split(' ')) {
       expect(sourcePane.className).toContain(cls);
       expect(mirrorPane.className).toContain(cls);
     }
+  });
+
+  /**
+   * The WIDTH half of the same contract, and the one the old guard missed: the
+   * pane box fixes the height, but each pane is a fifth-based grid child, so a
+   * 60/40 split on one side against 50/50 on the other would skew normalized x
+   * with both panes still passing the box assertion above.
+   */
+  it('both panes sit in a grid child of the same span', () => {
+    const { container: mirror } = mount({ cursor: cursor() });
+    const mirrorPane = mirror.querySelector(STAGE_CURSOR_MIRROR_SELECTOR) as HTMLElement;
+
+    const { container: source } = render(
+      <I18nProvider>
+        <CodeSnackPane
+          activity={{ id: 'act-1', kind: 'code', title: 'x', status: 'todo', spec: {} } as never}
+          spec={{ prompt: 'p', starter: '' } as never}
+          onComplete={() => {}}
+        />
+      </I18nProvider>
+    );
+    const sourcePane = source.querySelector(STAGE_CURSOR_SOURCE_SELECTOR) as HTMLElement;
+
+    // `classList` holds raw tokens, so the arbitrary-variant colon needs no
+    // escaping the way a CSS selector would.
+    const gridOf = (pane: HTMLElement) => {
+      let el: HTMLElement | null = pane;
+      while (el && !el.classList.contains(CODE_SPLIT_EDITOR)) el = el.parentElement;
+      expect(el).not.toBeNull();
+      return el?.parentElement?.className ?? '';
+    };
+
+    expect(gridOf(sourcePane)).toContain(CODE_SPLIT_GRID);
+    expect(gridOf(mirrorPane)).toContain(CODE_SPLIT_GRID);
   });
 });

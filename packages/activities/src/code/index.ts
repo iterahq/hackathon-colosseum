@@ -82,6 +82,20 @@ export { useCodeSnack } from './useCodeSnack.js';
 export { useCodeChecks } from './useCodeChecks.js';
 export { useGuidedCode } from './guided/useGuidedCode.js';
 
+/**
+ * The split-pane geometry. Public because a host that MIRRORS a learner's pane —
+ * the Itera Player's live class projects it to the whole room — needs the SAME
+ * classes rather than an approximation: the mirror normalizes the learner's
+ * pointer against the box, so two shapes make the coordinates lie. See
+ * `./geometry.ts`.
+ */
+export {
+  CODE_PANE_BOX,
+  CODE_SPLIT_EDITOR,
+  CODE_SPLIT_GRID,
+  CODE_SPLIT_PREVIEW,
+} from './geometry.js';
+
 export { transpileSnack } from './transpileSnack.js';
 export { CODE_PREVIEW_IFRAME_HTML } from './codePreviewIframe.js';
 export {

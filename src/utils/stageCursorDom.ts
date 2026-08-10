@@ -12,13 +12,15 @@
  *
  * ## Why the EDITOR PANE and not the whole activity
  *
- * Normalized coordinates are only honest between containers of the same shape
- * (plan ADR-4). The one element that is byte-for-byte identical on both sides —
- * `h-[360px] overflow-hidden rounded-2xl` — is the Monaco pane in
- * `CodeSnackPane` and its read-only twin in `LiveStage`. The preview pane next
- * to it is a sandboxed cross-origin `<iframe>`: pointer events inside it never
- * reach us, so a cursor normalized against the *pair* of panes would freeze
- * halfway across the screen with no way to tell the class why (plan ADR-8).
+ * Capture is scoped to ONE element that exists on both sides: the Monaco pane in
+ * `CodeSnackPane` and its read-only twin in `LiveStage`, both styled from the
+ * shared tokens in `utils/codeStageGeometry`. That gives them the same class
+ * tokens — NOT the same measured size, since the height is viewport-relative and
+ * the two parents differ; the size gap is closed on the wire instead, in
+ * `utils/stageCursorPlacement`. The preview pane next to it is a sandboxed
+ * cross-origin `<iframe>`: pointer events inside it never reach us, so a cursor
+ * normalized against the *pair* of panes would freeze halfway across the screen
+ * with no way to tell the class why (plan ADR-8).
  *
  * Scoping capture to the editor pane makes that boundary explicit and gives the
  * privacy rule for free: a pointer outside the pane is not transmitted at all.

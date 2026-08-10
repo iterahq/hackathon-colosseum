@@ -5,6 +5,13 @@ import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePrev
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStageAnswerCard } from '@/components/live/LiveStageAnswerCard';
 import { StageCursorOverlay } from '@/components/live/StageCursorOverlay';
+import { WIDE_COLUMN_MAX_WIDTH } from '@/utils/activityColumnWidth';
+import {
+  CODE_PANE_BOX,
+  CODE_SPLIT_EDITOR,
+  CODE_SPLIT_GRID,
+  CODE_SPLIT_PREVIEW,
+} from '@/utils/codeStageGeometry';
 import type { Activity } from '@/types/content';
 import type { StageCursor, StagedAnswer } from '@/types/liveClass';
 
@@ -36,32 +43,39 @@ export function LiveStageBody({
   const answered = staged.kind === 'answer' && staged.status !== 'not_started';
 
   if (staged.kind === 'code' && staged.status !== 'not_started') {
+    // O cap vem da regra COMPARTILHADA de largura de `code`, não de um
+    // `max-w-4xl` local: (a) aquele cap re-estreitava o palco justamente no kind
+    // que o módulo existe pra alargar, e (b) na tela do aluno esta faixa é irmã
+    // da coluna (full-bleed), então sem cap ela abriria muito mais que o painel
+    // do emissor — e a largura entra na normalização do cursor.
     return (
-      <div className="mx-auto max-w-4xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className={`mx-auto w-full ${WIDE_COLUMN_MAX_WIDTH}`}>
+        <div className={CODE_SPLIT_GRID}>
           {/* `relative` + o marcador são a metade-espelho do contrato de cursor:
-              o mesmo painel de 360px contra o qual o emissor normaliza, para que
-              0..1 volte ao mesmo ponto em qualquer tela. O preview ao lado é um
-              iframe sandbox cross-origin e deliberadamente NÃO é espelhado —
-              eventos de ponteiro nunca saem dele (ADR-8), então um cursor ali
-              seria inventado. */}
-          <div
-            data-stage-cursor-mirror
-            className="relative h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]"
-          >
-            <CodeEditor
-              value={staged.content}
-              language="typescript"
-              readOnly
-              remoteCaret={cursor?.caret ?? null}
-            />
-            <StageCursorOverlay
-              cursor={cursor}
-              authorName={staged.author.name}
-              intervalMs={cursorIntervalMs}
-            />
+              o MESMO painel (tokens de `codeStageGeometry`) contra o qual o
+              emissor normaliza, para que 0..1 volte ao mesmo ponto em qualquer
+              tela. O preview ao lado é um iframe sandbox cross-origin e
+              deliberadamente NÃO é espelhado — eventos de ponteiro nunca saem
+              dele (ADR-8), então um cursor ali seria inventado. */}
+          <div className={CODE_SPLIT_EDITOR}>
+            <div
+              data-stage-cursor-mirror
+              className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
+            >
+              <CodeEditor
+                value={staged.content}
+                language="typescript"
+                readOnly
+                remoteCaret={cursor?.caret ?? null}
+              />
+              <StageCursorOverlay
+                cursor={cursor}
+                authorName={staged.author.name}
+                intervalMs={cursorIntervalMs}
+              />
+            </div>
           </div>
-          <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
+          <div className={`${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border`}>
             <CodeLivePreview code={staged.content} />
           </div>
         </div>

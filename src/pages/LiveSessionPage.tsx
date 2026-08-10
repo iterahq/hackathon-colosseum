@@ -45,6 +45,7 @@ import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
+import { LiveOwnWorkDivider } from '@/components/live/LiveOwnWorkDivider';
 import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
@@ -610,14 +611,30 @@ export default function LiveSessionPage() {
               (o X caía em cima do avatar) e, por ser irmão da linha flex, cortava
               a sidebar sticky ao meio. */}
           {stagedAnswer && !ended && (
-            <div className="-mx-4 md:-mx-8 mb-6">
-              <LiveStage
-                staged={stagedAnswer}
-                cursor={stageCursor}
-                cursorIntervalMs={stageCursorPlan.intervalMs}
-                cursorOff={!stageCursorPlan.enabled}
-              />
-            </div>
+            <>
+              {/* O `mb-6` é do palco, não do divisor: o divisor é condicional e
+                  sem ele o palco encostava no LiveBreakCard / no gate de nome. */}
+              <div className="-mx-4 md:-mx-8 mb-6">
+                <LiveStage
+                  staged={stagedAnswer}
+                  cursor={stageCursor}
+                  cursorIntervalMs={stageCursorPlan.intervalMs}
+                  cursorOff={!stageCursorPlan.enabled}
+                />
+              </div>
+              {/* P3: as duas caixas renderizam o MESMO kind com a mesma cara, e
+                  empilhadas sem fronteira o aluno perdia onde acabava o palco e
+                  começava a atividade dele.
+                  A legenda ROTULA a caixa de baixo, então ela só entra quando a
+                  caixa de baixo é de fato a atividade do aluno: no intervalo, no
+                  gate de nome e no skeleton, "Sua atividade" apontaria pra outra
+                  coisa. */}
+              {current && !onBreak && !gateNeeded && (
+                <div className="mb-6">
+                  <LiveOwnWorkDivider />
+                </div>
+              )}
+            </>
           )}
 
           <div

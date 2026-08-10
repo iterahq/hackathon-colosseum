@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useStageCursorCapture, type StageCursorFrame } from '@/hooks/useStageCursorCapture';
+import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
+import type { StageCursorFrame } from '@/types/liveClass';
 import { CODE_CARET_EVENT } from '@/utils/stageCursorDom';
 import {
   stageCursorPlan,
@@ -214,7 +215,10 @@ describe('useStageCursorCapture — what is NOT sent', () => {
     await new Promise((r) => setTimeout(r, 60));
     frames.length = 0;
     hook.rerender({ active: false });
-    expect(frames).toEqual([{ x: 0, y: 0, visible: false, caret: null }]);
+    // Zero size on a retract frame is deliberate: the receiver only carries a
+    // POSITIVE size through, so a zero reads as "no size" instead of pinning the
+    // pointer to the top-left corner.
+    expect(frames).toEqual([{ x: 0, y: 0, paneW: 0, paneH: 0, visible: false, caret: null }]);
     hook.unmount();
   });
 });

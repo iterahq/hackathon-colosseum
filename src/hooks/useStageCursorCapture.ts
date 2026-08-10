@@ -4,14 +4,7 @@ import {
   STAGE_CURSOR_SOURCE_SELECTOR,
   type CodeCaretEventDetail,
 } from '@/utils/stageCursorDom';
-import type { StageCursorCaret } from '@/types/liveClass';
-
-export interface StageCursorFrame {
-  x: number;
-  y: number;
-  visible: boolean;
-  caret: StageCursorCaret | null;
-}
+import type { StageCursorCaret, StageCursorFrame } from '@/types/liveClass';
 
 /**
  * Captures the local pointer over the code editor pane and hands it to `send`
@@ -65,7 +58,7 @@ export function useStageCursorCapture(opts: {
     let paneEl: HTMLElement | null = null;
     let lastSentAt = 0;
     let timer: number | null = null;
-    let pending: { x: number; y: number } | null = null;
+    let pending: { x: number; y: number; paneW: number; paneH: number } | null = null;
     let lastPoint: { x: number; y: number } | null = null;
     let visible = false;
 
@@ -87,7 +80,7 @@ export function useStageCursorCapture(opts: {
       pending = null;
       lastPoint = next;
       visible = true;
-      emit({ x: next.x, y: next.y, visible: true, caret: caretRef.current });
+      emit({ ...next, visible: true, caret: caretRef.current });
     };
 
     const schedule = () => {
@@ -111,7 +104,7 @@ export function useStageCursorCapture(opts: {
       }
       // The privacy edge is NOT throttled: the class must stop seeing the
       // pointer the instant it leaves the exercise, not up to 500ms later.
-      emit({ x: 0, y: 0, visible: false, caret: null });
+      emit({ x: 0, y: 0, paneW: 0, paneH: 0, visible: false, caret: null });
     };
 
     // Capture phase + document level: the pane's own content is Monaco, whose
@@ -135,7 +128,13 @@ export function useStageCursorCapture(opts: {
       const rx = Math.round(x * 1000) / 1000;
       const ry = Math.round(y * 1000) / 1000;
       if (lastPoint && lastPoint.x === rx && lastPoint.y === ry && visible) return;
-      pending = { x: rx, y: ry };
+      // The pane size rides along on every frame rather than being measured once:
+      // it changes with a window resize and, since the height is viewport-relative
+      // (`codeStageGeometry`), a stale value would place the mirrored pointer on
+      // the wrong line for the rest of the class.
+      // Rounded: a fractional pane size is sub-pixel precision nobody can see,
+      // and unrounded it broadcasts the learner's zoom/DPI to the whole room.
+      pending = { x: rx, y: ry, paneW: Math.round(r.width), paneH: Math.round(r.height) };
       schedule();
     };
 
@@ -145,7 +144,7 @@ export function useStageCursorCapture(opts: {
       if (timer !== null) clearTimeout(timer);
       // Coming off the stage (or unmounting) must retract the cursor, or the
       // class is left staring at a pointer frozen where its owner last was.
-      if (visible) sendRef.current({ x: 0, y: 0, visible: false, caret: null });
+      if (visible) sendRef.current({ x: 0, y: 0, paneW: 0, paneH: 0, visible: false, caret: null });
     };
   }, [active, intervalMs]);
 }

@@ -6,6 +6,7 @@ import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import { DoneButton } from '../components/parts.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
+import { CODE_PANE_BOX, CODE_SPLIT_EDITOR, CODE_SPLIT_GRID, CODE_SPLIT_PREVIEW } from './geometry.js';
 import { CodeHelpLink } from './CodeHelpLink.js';
 import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
@@ -84,21 +85,21 @@ export function CodeSnackPane({
         <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex flex-col">
+      <div className={`mt-4 ${CODE_SPLIT_GRID}`}>
+        <div className={`flex flex-col ${CODE_SPLIT_EDITOR}`}>
           {/* The marker (the Player's `utils/stageCursorDom`) is what the
               live-class layer finds to mirror this learner's pointer to the
               class while they are on stage. A DATA ATTRIBUTE, not a prop, and
               that is exactly why it could travel into the package: the activity
               tree's public contract carries no live-session concerns, and an
               attribute costs a consumer that has no live class precisely
-              nothing. The pane is geometrically identical to its twin in
-              <LiveStage> — `src/test/LiveStageCursor.test.tsx` pins the three
-              classes both panes share — which is what makes normalized
-              coordinates honest. */}
+              nothing. The SHAPE comes from `./geometry.ts`, shared with the twin
+              pane in <LiveStage> — `src/test/LiveStageCursor.test.tsx` pins both
+              against those tokens — which is what makes normalized coordinates
+              honest; the remaining size difference is handled on the wire. */}
           <div
             data-stage-cursor-source
-            className="h-[360px] overflow-hidden rounded-2xl border border-border bg-[#0a0a0a]"
+            className={`${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
           >
             {/* ⚠️ `language` is HARDCODED, and `spec.language` is ignored. That
                 is a defect this extraction surfaced rather than introduced —
@@ -127,7 +128,7 @@ export function CodeSnackPane({
           />
         </div>
 
-        <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
+        <div className={`${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border`}>
           <CodeLivePreview
             code={code}
             checksRequest={hasChecks ? checksRequest : null}
