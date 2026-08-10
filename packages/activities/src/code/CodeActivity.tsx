@@ -2,6 +2,8 @@ import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
 import type { ActivityRendererProps } from '../renderer.js';
 import { CodeSnackPane } from './CodeSnackPane.js';
+import { isGuidedCodeSpec } from './guided/guidedCode.js';
+import { GuidedCodePane } from './guided/GuidedCodePane.js';
 
 /**
  * `code` — a single-file, client-only React code snack, and the only kind that
@@ -54,6 +56,18 @@ export function CodeActivity({ activity, onComplete }: ActivityRendererProps) {
         {t('activity.codeInvalid')}
       </div>
     );
+  }
+  /**
+   * Guided or open, decided by the SHAPE of the spec — `blanks` present means the
+   * template is locked and only the authored holes are interactive.
+   *
+   * Not a new `ActivityKind`: that would cost a DB enum migration, an itera-mcp
+   * sync and an entry in every exhaustiveness map, all to express something the
+   * spec already says. The schema forbids `blanks` and `checks` together, so the
+   * two surfaces cannot both claim one activity.
+   */
+  if (isGuidedCodeSpec(parsed.data)) {
+    return <GuidedCodePane activity={activity} spec={parsed.data} onComplete={onComplete} />;
   }
   return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} />;
 }

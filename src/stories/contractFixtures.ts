@@ -367,6 +367,115 @@ export const CODE_SPEC = {
 };
 
 /* ------------------------------------------------------------------ *
+ * 5b · Código GUIADO — variantes do MESMO kind `code`, reconhecidas pela
+ * presença de `blanks` (igual ao `sandbox_scenario`, que despacha por
+ * `slots`/`choices`). O editor vem travado e só as lacunas aceitam interação:
+ * o exercício deixa de ser "lembre a sintaxe" e passa a ser a UMA decisão que a
+ * atividade quer ensinar. As três sobem em dificuldade — colocar uma palavra que
+ * já está na tela, escolher numa lista ao lado da lacuna, digitar de cabeça.
+ * ------------------------------------------------------------------ */
+
+/** `§…§` são só marcadores DESTA fixture; a lacuna de verdade é `{{blank:<id>}}`. */
+const GUIDED_TEMPLATE = `export default function ClubeDeLeitura() {
+  const [curtidas, setCurtidas] = §HOOK§(0);
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-6 text-center">
+      <h1 className="text-xl font-bold text-slate-800">Clube de leitura</h1>
+      <p className="mt-2 text-slate-600">Quem gostou do livro da semana?</p>
+      <button
+        §EVENTO§={() => setCurtidas(curtidas + 1)}
+        className="mt-4 rounded-full bg-emerald-600 px-5 py-2 font-medium text-white"
+      >
+        Gostei: {curtidas}
+      </button>
+    </div>
+  );
+}
+`;
+
+const guidedStarter = (hook: string, evento: string) =>
+  GUIDED_TEMPLATE.replace('§HOOK§', hook).replace('§EVENTO§', evento);
+
+/** `bank` → CodeWithOptions: as palavras estão todas na tela, o exercício é colocar. */
+export const CODE_OPTIONS_SPEC = {
+  prompt: 'O código do clube já está escrito. Coloque as duas palavras que faltam.',
+  starter: guidedStarter('{{blank:hook}}', '{{blank:evento}}'),
+  language: 'tsx',
+  word_bank: ['useState', 'onClick', 'useEffect', 'onChange'],
+  blanks: [
+    {
+      id: 'hook',
+      kind: 'bank',
+      answer: 'useState',
+      hint: 'Guardar um número que muda pede o hook de ESTADO.',
+    },
+    { id: 'evento', kind: 'bank', answer: 'onClick', hint: 'O botão reage ao CLIQUE.' },
+  ],
+};
+
+/** `select` → CodeWithDropdown: os candidatos ficam ao lado da lacuna. */
+export const CODE_DROPDOWN_SPEC = {
+  prompt: 'Escolha, em cada lacuna, a opção que faz o contador funcionar.',
+  starter: guidedStarter('{{blank:hook}}', '{{blank:evento}}'),
+  language: 'tsx',
+  blanks: [
+    {
+      id: 'hook',
+      kind: 'select',
+      answer: 'useState',
+      options: ['useState', 'useEffect', 'useMemo'],
+      hint: 'Só um desses guarda um valor que muda entre os cliques.',
+    },
+    {
+      id: 'evento',
+      kind: 'select',
+      answer: 'onClick',
+      options: ['onClick', 'onChange', 'onSubmit'],
+      hint: 'A pessoa vai CLICAR no botão, não digitar nele.',
+    },
+  ],
+};
+
+/** `text` → CodeWithTextInput: nada é dado, o exercício é lembrar. */
+export const CODE_TEXT_SPEC = {
+  prompt: 'Escreva o que falta para o contador começar em zero e saber somar.',
+  starter: `export default function ClubeDeLeitura() {
+  const [curtidas, {{blank:setter}}] = useState({{blank:inicial}});
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-6 text-center">
+      <h1 className="text-xl font-bold text-slate-800">Clube de leitura</h1>
+      <button
+        onClick={() => setCurtidas(curtidas + 1)}
+        className="mt-4 rounded-full bg-emerald-600 px-5 py-2 font-medium text-white"
+      >
+        Gostei: {curtidas}
+      </button>
+    </div>
+  );
+}
+`,
+  language: 'tsx',
+  blanks: [
+    {
+      id: 'setter',
+      kind: 'text',
+      answer: 'setCurtidas',
+      placeholder: 'setAlgo',
+      hint: 'O botão já chama esse nome mais abaixo — repare no `onClick`.',
+    },
+    {
+      id: 'inicial',
+      kind: 'text',
+      answer: '0',
+      placeholder: '?',
+      hint: 'Ninguém curtiu ainda quando a tela abre.',
+    },
+  ],
+};
+
+/* ------------------------------------------------------------------ *
  * 6 · Cenário com IA — o aluno conversa com uma IA dentro de um roteiro.
  * ------------------------------------------------------------------ */
 
@@ -522,6 +631,30 @@ export const ACTIVITY_CONTRACTS = {
     spec: CODE_SPEC,
     validated: true,
     note: '{ prompt, starter?, language, help? } — starter SEM import (o iframe não tem require).',
+  },
+  code_options: {
+    kind: 'code',
+    fn: '5 · Produção',
+    label: 'Code · Guiado por palavras',
+    spec: CODE_OPTIONS_SPEC,
+    validated: true,
+    note: '`blanks[].kind:"bank"` + `word_bank` → template travado, o aluno coloca as palavras.',
+  },
+  code_dropdown: {
+    kind: 'code',
+    fn: '5 · Produção',
+    label: 'Code · Guiado por dropdown',
+    spec: CODE_DROPDOWN_SPEC,
+    validated: true,
+    note: '`blanks[].kind:"select"` → cada lacuna traz as próprias `options` inline.',
+  },
+  code_text: {
+    kind: 'code',
+    fn: '5 · Produção',
+    label: 'Code · Guiado por digitação',
+    spec: CODE_TEXT_SPEC,
+    validated: true,
+    note: '`blanks[].kind:"text"` → digitação livre na lacuna; sem `options`, correção pelo `answer`.',
   },
   sandbox_open: {
     kind: 'sandbox_scenario',

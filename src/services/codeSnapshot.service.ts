@@ -94,3 +94,69 @@ export function clearCodeSnapshot(activityId: string): void {
     // Storage unavailable — there is nothing persisted to clear either.
   }
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE GUIDED VARIANTS' SECOND SLOT
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A guided template saves the substituted SOURCE under the key above — which is
+ * what keeps the professor's stage projecting real code without knowing guided
+ * exists — plus the learner's ANSWERS BY BLANK ID here, because a substituted
+ * source cannot be reversed into which chip went into which hole.
+ *
+ * Same execution stamping and the same per-learner scope, on purpose: the two
+ * halves of one draft must expire together, or a new class would put yesterday's
+ * chips back into today's starter.
+ *
+ * NO `CODE_SNAPSHOT_EVENT` here. The pane writes both halves in the same tick and
+ * the source write already fired it; a second event would make the professor's
+ * picker flicker for one draft.
+ */
+const blanksKeyFor = (activityId: string) => scopedKey('itera.code.blanks', activityId);
+
+/** The raw JSON the package handed us, or `null` for another execution's draft. */
+export function readGuidedBlanks(activityId: string): string | null {
+  if (!activityId) return null;
+  const key = blanksKeyFor(activityId);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const envelope = parsed as { blanks?: string; execution?: string | null };
+    if (typeof envelope.blanks !== 'string') return null;
+    if (!belongsToExecution(envelope.execution, currentExecutionId())) return null;
+    return envelope.blanks;
+  } catch {
+    return null;
+  }
+}
+
+export function saveGuidedBlanks(activityId: string, blanks: string): void {
+  if (!activityId) return;
+  const key = blanksKeyFor(activityId);
+  if (!key) return;
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        blanks,
+        savedAt: new Date().toISOString(),
+        execution: currentExecutionId(),
+      }),
+    );
+  } catch {
+    // Storage unavailable (private mode/quota) — autosave degrades only.
+  }
+}
+
+export function clearGuidedBlanks(activityId: string): void {
+  if (!activityId) return;
+  const key = blanksKeyFor(activityId);
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable — there is nothing persisted to clear either.
+  }
+}

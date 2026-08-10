@@ -453,6 +453,20 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.editAgain': 'Editar de novo',
     'code.checks.frozen': 'O editor fica travado enquanto o resultado está na tela.',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
+    // Variantes GUIADAS: o código vem escrito e travado, e só as lacunas
+    // autoradas aceitam interação. A instrução é por variante porque colocar
+    // uma palavra, escolher numa lista e digitar de cabeça não são a mesma tarefa.
+    'code.guided.blankLabel': 'lacuna do código',
+    'code.guided.bankLabel': 'palavras disponíveis',
+    'code.guided.hint.options': 'O código já está escrito. Toque numa palavra e ela entra na lacuna.',
+    'code.guided.hint.dropdown': 'O código já está escrito. Escolha a opção certa em cada lacuna.',
+    'code.guided.hint.text': 'O código já está escrito. Digite o que falta em cada lacuna.',
+    'code.guided.hint.mixed': 'O código já está escrito. Complete cada lacuna do seu jeito.',
+    'code.guided.previewWaiting': 'Complete as lacunas para ver o resultado rodando.',
+    'code.guided.wrongBlank': 'Essa lacuna ainda não está certa.',
+    // A posição é o que liga a linha do veredito à lacuna na tela: sem ela,
+    // "essa lacuna" com três erros na lista não diz qual.
+    'code.guided.blankPosition': 'Lacuna {position}',
     // Recomeçar ≠ tentar de novo: "Tentar de novo" volta a editar SEM perder
     // nada; este aqui joga fora o que a pessoa escreveu e traz o código inicial
     // de volta — por isso pergunta antes.
@@ -1132,6 +1146,15 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.editAgain': 'Edit again',
     'code.checks.frozen': 'The editor stays locked while the result is on screen.',
     'code.checks.continueAnyway': 'Continue anyway',
+    'code.guided.blankLabel': 'code blank',
+    'code.guided.bankLabel': 'available words',
+    'code.guided.hint.options': 'The code is already written. Tap a word and it drops into the blank.',
+    'code.guided.hint.dropdown': 'The code is already written. Pick the right option in each blank.',
+    'code.guided.hint.text': 'The code is already written. Type what is missing in each blank.',
+    'code.guided.hint.mixed': 'The code is already written. Fill in each blank your own way.',
+    'code.guided.previewWaiting': 'Fill in the blanks to see it running.',
+    'code.guided.wrongBlank': 'This blank is not right yet.',
+    'code.guided.blankPosition': 'Blank {position}',
     'code.reset.action': 'Start over from the first code',
     'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',
     'code.reset.confirm': 'Yes, start over',

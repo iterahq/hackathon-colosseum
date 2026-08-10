@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
-import { Code2, ExternalLink, Loader2 } from 'lucide-react';
+import { Code2, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import { DoneButton } from '../components/parts.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
+import { CodeHelpLink } from './CodeHelpLink.js';
 import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
 import { CodeChecksFeedback } from './CodeChecksFeedback.js';
@@ -114,17 +115,7 @@ export function CodeSnackPane({
               readOnly={readOnly}
             />
           </div>
-          {spec.help && (
-            <a
-              href={spec.help.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="code-help-link"
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-evergreen-hi hover:underline"
-            >
-              <ExternalLink className="w-3.5 h-3.5" /> {spec.help.label}
-            </a>
-          )}
+          <CodeHelpLink help={spec.help} />
           {/* Spent once the activity is settled/done, and held back mid-grading
               so a reset cannot land between the submit and its verdicts. It
               stays available ON the feedback screen on purpose: that is exactly

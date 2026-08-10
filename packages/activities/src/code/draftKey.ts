@@ -43,3 +43,39 @@ export function codeDraftKey(activityId: string): string {
 export function codeDraftActivityId(key: string): string {
   return key.startsWith(CODE_DRAFT_KEY_PREFIX) ? key.slice(CODE_DRAFT_KEY_PREFIX.length) : '';
 }
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * THE GUIDED VARIANTS NEED A SECOND SLOT, AND IT COULD NOT BE ONE MORE FIELD
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A guided template autosaves TWO things: the substituted SOURCE, which is what
+ * the key above already holds and what the professor's stage projects without
+ * knowing guided exists, and the learner's ANSWERS BY BLANK ID, which is the
+ * only way to put the widgets back — substituted source cannot be reversed into
+ * which chip went into which hole.
+ *
+ * The obvious move is to widen the host's draft envelope with a `blanks` field.
+ * `ActivityStoragePort` forbids it: it is `(key, value: string)`, deliberately,
+ * so the package never dictates how a consumer stores a draft. A package that
+ * shipped the envelope would be doing exactly that.
+ *
+ * So the second half gets its own key. The value is a JSON object of
+ * `{ [blankId]: answer }` — opaque to the host, which stores the string it was
+ * handed, and filtered on the way back in by `restoreGuidedValues` (see
+ * `guided/guidedCodeBank.ts`) because a draft store is hand-editable.
+ */
+
+/** Prefix of the guided variants' answers key. */
+export const CODE_BLANKS_DRAFT_KEY_PREFIX = 'itera.code.blanks:';
+
+/** The storage key for one activity's guided answers. */
+export function codeBlanksDraftKey(activityId: string): string {
+  return `${CODE_BLANKS_DRAFT_KEY_PREFIX}${activityId}`;
+}
+
+/** The inverse; `''` for a key this package did not mint. */
+export function codeBlanksDraftActivityId(key: string): string {
+  return key.startsWith(CODE_BLANKS_DRAFT_KEY_PREFIX)
+    ? key.slice(CODE_BLANKS_DRAFT_KEY_PREFIX.length)
+    : '';
+}

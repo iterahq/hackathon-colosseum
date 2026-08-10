@@ -88,7 +88,12 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityProvider } from '@iterahq/activities';
 import type { ActivityApiPort, ActivityIdentity, ActivityStoragePort } from '@iterahq/activities';
-import { CODE_DRAFT_KEY_PREFIX, codeDraftActivityId } from '@iterahq/activities/code';
+import {
+  CODE_BLANKS_DRAFT_KEY_PREFIX,
+  CODE_DRAFT_KEY_PREFIX,
+  codeBlanksDraftActivityId,
+  codeDraftActivityId,
+} from '@iterahq/activities/code';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -100,8 +105,11 @@ import {
 } from '@/api/iteraApi';
 import {
   clearCodeSnapshot,
+  clearGuidedBlanks,
   readCodeSnapshot,
+  readGuidedBlanks,
   saveCodeSnapshot,
+  saveGuidedBlanks,
 } from '@/services/codeSnapshot.service';
 import { hasTenantAudience } from '@/services/artifact.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
@@ -133,10 +141,28 @@ import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope
  * render would only churn the provider's memo.
  */
 export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
-  read: (key) => readCodeSnapshot(codeDraftActivityId(key))?.code ?? null,
-  write: (key, value) => saveCodeSnapshot(codeDraftActivityId(key), value),
-  clear: (key) => clearCodeSnapshot(codeDraftActivityId(key)),
+  read: (key) =>
+    isBlanksKey(key)
+      ? readGuidedBlanks(codeBlanksDraftActivityId(key))
+      : (readCodeSnapshot(codeDraftActivityId(key))?.code ?? null),
+  write: (key, value) =>
+    isBlanksKey(key)
+      ? saveGuidedBlanks(codeBlanksDraftActivityId(key), value)
+      : saveCodeSnapshot(codeDraftActivityId(key), value),
+  clear: (key) =>
+    isBlanksKey(key)
+      ? clearGuidedBlanks(codeBlanksDraftActivityId(key))
+      : clearCodeSnapshot(codeDraftActivityId(key)),
 };
+
+/**
+ * Which of the two draft slots a key names. Routed on the PREFIX and not on the
+ * value's shape: both slots hold a string, and guessing from the content would
+ * make a learner whose source happens to be JSON land in the wrong slot.
+ */
+function isBlanksKey(key: string): boolean {
+  return key.startsWith(CODE_BLANKS_DRAFT_KEY_PREFIX);
+}
 
 /**
  * Fail loudly at DEV time if the package ever mints a key this adapter does not

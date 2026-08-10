@@ -41,6 +41,7 @@ import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer
 import type { Activity, ActivityKind } from '@/types/content';
 import { makeActivity } from '@/stories/activityFixtures';
 import { ACTIVITY_CONTRACTS, type ContractKey } from '@/stories/contractFixtures';
+import { fillGuidedBlanks, settleGuided } from '@/stories/guidedInteractions';
 import {
   arrangeOrder,
   composeSandboxPrompt,
@@ -219,6 +220,43 @@ const DRIVES: Record<ContractKey, Drive> = {
       'componente troca o "Enviar" pelo "Concluir"). As 4 fases do `CodeSnackPhase` e os ' +
       'checks pass/fail são do browser mode (ADR-8) — o Monaco e o iframe de preview não são ' +
       'dirigíveis em jsdom.',
+  },
+
+  /* As três variantes GUIADAS do `code`. Ao contrário do `code` aberto, estas
+   * SÃO dirigíveis em jsdom: o template é DOM comum e o veredito é local — o
+   * Monaco e o round-trip com o iframe não entram no caminho. */
+  code_options: {
+    kind: 'code',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onClick' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useEffect', evento: 'onClick' });
+      await settleGuided(c);
+    },
+  },
+  code_dropdown: {
+    kind: 'code',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onClick' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onChange' });
+      await settleGuided(c);
+    },
+  },
+  code_text: {
+    kind: 'code',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { setter: 'setCurtidas', inicial: '0' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { setter: 'setLikes', inicial: '0' });
+      await settleGuided(c);
+    },
   },
 
   sandbox_open: {

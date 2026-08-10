@@ -53,9 +53,34 @@ export { CodeChecksFeedback } from './CodeChecksFeedback.js';
 export { CodeChecksList } from './CodeChecksList.js';
 export { CodeResetControl } from './CodeResetControl.js';
 export { CodeEditorSurface, FallbackCodeEditor } from './CodeEditorSurface.js';
+export { CodeHelpLink } from './CodeHelpLink.js';
+
+/**
+ * The GUIDED variants — the same kind with a locked template and authored holes,
+ * dispatched by `isGuidedCodeSpec` inside `CodeActivity`. The pane and the pure
+ * half are public so a host can mount the guided surface on its own (the design
+ * playground does) and so the grading rules can be asserted without a DOM.
+ */
+export { GuidedCodePane } from './guided/GuidedCodePane.js';
+export {
+  allBlanksFilled,
+  blankWidthCh,
+  gradeGuided,
+  guidedVariant,
+  isBlankCorrect,
+  isGuidedCodeSpec,
+  splitGuidedTemplate,
+  substituteBlanks,
+} from './guided/guidedCode.js';
+export {
+  buildWordBank,
+  restoreGuidedValues,
+  spentBankCounts,
+} from './guided/guidedCodeBank.js';
 
 export { useCodeSnack } from './useCodeSnack.js';
 export { useCodeChecks } from './useCodeChecks.js';
+export { useGuidedCode } from './guided/useGuidedCode.js';
 
 export { transpileSnack } from './transpileSnack.js';
 export { CODE_PREVIEW_IFRAME_HTML } from './codePreviewIframe.js';
@@ -72,7 +97,10 @@ export {
  * draft landed. See `./draftKey.ts` for why this is public at all.
  */
 export {
+  CODE_BLANKS_DRAFT_KEY_PREFIX,
   CODE_DRAFT_KEY_PREFIX,
+  codeBlanksDraftActivityId,
+  codeBlanksDraftKey,
   codeDraftActivityId,
   codeDraftKey,
 } from './draftKey.js';
@@ -84,4 +112,13 @@ export type {
   TranspileResult,
   UseCodeSnackCallbacks,
 } from './types.js';
+export type {
+  GuidedGrade,
+  GuidedLine,
+  GuidedPhase,
+  GuidedSegment,
+  GuidedValues,
+  GuidedVariant,
+  UseGuidedCodeCallbacks,
+} from './guided/types.js';
 export type { ActivityCodeEditorProps } from '../ports.js';
