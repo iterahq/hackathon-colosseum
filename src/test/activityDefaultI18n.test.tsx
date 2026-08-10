@@ -65,7 +65,16 @@ describe('@iterahq/activities default dictionary', () => {
     // Keep this list SHORT and keep the assertion exact-match rather than
     // "contains a dot": the point is that a namespace has to be argued for in a
     // review, not that keys look tidy.
-    const ALLOWED = ['activity.', 'terminal.', 'code.', 'quiz.'];
+    //
+    // `chat.` joined on 2026-08-10 with the live-class chat mirror, and it is
+    // the argument this list asks for, made: it is the KIND namespace of
+    // `chat_sandbox`, exactly parallel to `terminal.` two lines up, and the two
+    // kinds were split out of one enum value — giving one a namespace and
+    // folding the other into `activity.` would make the pair asymmetric for no
+    // reason a reader could reconstruct. Both current keys (`chat.mirror.*`) are
+    // the read-only mirror's strings, and their `terminal.mirror.*` twins live
+    // under `terminal.` already.
+    const ALLOWED = ['activity.', 'terminal.', 'chat.', 'code.', 'quiz.'];
     const strays = ACTIVITY_I18N_KEYS.filter((k) => !ALLOWED.some((p) => k.startsWith(p)));
     expect(strays).toEqual([]);
   });

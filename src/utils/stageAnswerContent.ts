@@ -3,13 +3,14 @@
  * work to the class stage (`stage-answer`). All data is read from the learner's
  * OWN local state — no DB, no migration (the class is synchronous, the student is
  * online): the terminal screen on display (`readTerminalLiveBuffer`) is staged as
- * `terminal`; the code-snack source on screen (`readCodeLiveBuffer`, falling back
+ * `terminal`; the chat conversation on display (`readChatLiveBuffer`) is staged
+ * as `chat`; the code-snack source on screen (`readCodeLiveBuffer`, falling back
  * to the saved `readCodeSnapshot`) is staged as `code`; otherwise a best-effort
  * correct/wrong summary from `readStoredAnswer`.
  *
- * The two live buffers are mutually exclusive in practice — one activity is one
+ * The three live buffers are mutually exclusive in practice — one activity is one
  * kind — so their order only decides which wins if a stale entry ever survived a
- * `forget`, and the terminal is checked first so the most recently added mirror
+ * `forget`, and the newest mirrors are checked first so a more recently added one
  * cannot be masked by an older one.
  *
  * ADR-4 (revised 2026-07-23): the professor pulls WORK IN PROGRESS too, not only
@@ -23,10 +24,12 @@
  * It is also NOT the same as "nothing to project": a `code` reply can be
  * `not_started` and still carry the starter the learner is staring at.
  */
+import { readChatLiveBuffer } from '@/services/chatLiveBuffer.service';
 import { readCodeLiveBuffer } from '@/services/codeLiveBuffer.service';
 import { readCodeSnapshot } from '@/services/codeSnapshot.service';
 import { readTerminalLiveBuffer } from '@/services/terminalLiveBuffer.service';
 import { readStoredAnswer } from '@/utils/liveAnswerStorage';
+import { clampStageChat } from '@/utils/stageChatScreen';
 import { clampStageTerminal } from '@/utils/stageTerminalScreen';
 import type { StageContent, StageWorkStatus } from '@/types/liveClass';
 
@@ -63,6 +66,27 @@ export function gatherStageContent(sessionId: string, activityId: string): Stage
       // rodado), sem esconder da turma a tela que ele está olhando.
       status: submitted ? 'submitted' : terminal.hasWork ? 'in_progress' : 'not_started',
       terminal: clampStageTerminal(terminal.screen),
+    };
+  }
+  // O CHAT, pela mesma razão do terminal: sem este ramo o palco não tinha nada
+  // do aluno pra ler num `chat_sandbox` e caía no espelho da atividade, que
+  // MONTA a activity no cliente de quem assiste e semeia `initialModel` — a
+  // saudação autorada, e nada da conversa dele (Tainan, TG 2026-08-10: *"sim
+  // conserta p otro sandbox"*).
+  //
+  // ⚠️ O que viaja aqui é PROSA do aluno, e só a ENVIADA. O buffer nunca recebe
+  // o rascunho do compositor; ver `chatLiveBuffer.service` para as três
+  // restrições que fazem disto um espelho, e não uma coleta.
+  const chat = readChatLiveBuffer(activityId);
+  if (chat) {
+    return {
+      kind: 'chat',
+      // `content` vazio DE PROPÓSITO, mesma regra do terminal.
+      content: '',
+      // Mesmo critério: `not_started` fala do TRABALHO (nenhuma mensagem
+      // enviada), sem esconder da turma a tela que ele está olhando.
+      status: submitted ? 'submitted' : chat.hasWork ? 'in_progress' : 'not_started',
+      chat: clampStageChat(chat.screen),
     };
   }
   // O buffer vivo vem PRIMEIRO porque ele existe desde o mount, enquanto o

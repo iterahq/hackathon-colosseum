@@ -43,6 +43,7 @@ import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
 import { parseStageTerminal } from '@/utils/stageTerminalScreen';
+import { parseStageChat } from '@/utils/stageChatScreen';
 import { acceptPanePx } from '@/utils/stageCursorPlacement';
 import {
   parseScoreboard,
@@ -52,6 +53,7 @@ import {
 } from '@/utils/liveScoreboard';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
+import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
 import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
 import { getSessionScoreboard } from '@/services/classScoreboard.service';
 
@@ -576,6 +578,7 @@ export function useClassSession(
               status: gathered.status,
               response: gathered.response,
               terminal: gathered.terminal,
+              chat: gathered.chat,
               author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
             },
           });
@@ -591,6 +594,7 @@ export function useClassSession(
                 status?: unknown;
                 response?: unknown;
                 terminal?: unknown;
+                chat?: unknown;
                 author?: { userId?: string; name?: string; avatarUrl?: string | null };
               }
             | null;
@@ -605,6 +609,7 @@ export function useClassSession(
             status: parseStageStatus(p.status),
             response: clampStageResponse(p.response),
             terminal: parseStageTerminal(p.terminal),
+            chat: parseStageChat(p.chat),
             author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
           });
           // If MY work is the one on stage, start streaming edits; if someone
@@ -681,6 +686,7 @@ export function useClassSession(
                 status?: unknown;
                 response?: unknown;
                 terminal?: unknown;
+                chat?: unknown;
                 author?: unknown;
               }
             | null;
@@ -702,6 +708,7 @@ export function useClassSession(
               status: parseStageStatus(p.status),
               response: clampStageResponse(p.response),
               terminal: parseStageTerminal(p.terminal),
+              chat: parseStageChat(p.chat),
               author: p.author,
             },
           });
@@ -720,6 +727,7 @@ export function useClassSession(
                 status?: unknown;
                 response?: unknown;
                 terminal?: unknown;
+                chat?: unknown;
                 author?: unknown;
               }
             | null;
@@ -736,6 +744,7 @@ export function useClassSession(
               status: parseStageStatus(p.status),
               response: clampStageResponse(p.response),
               terminal: parseStageTerminal(p.terminal),
+              chat: parseStageChat(p.chat),
               author: p.author,
             },
           });
@@ -1248,6 +1257,7 @@ export function useClassSession(
           status: gathered.status,
           response: gathered.response,
           terminal: gathered.terminal,
+          chat: gathered.chat,
           author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
         },
       });
@@ -1259,9 +1269,14 @@ export function useClassSession(
     // it would be invisible to the room, which is the half of the defect that a
     // one-shot mirror does not fix.
     window.addEventListener(TERMINAL_LIVE_EVENT, onSnapshot);
+    // The chat has no snapshot service either, and the same half of the defect
+    // applies: without this line a message the learner sends AFTER the pull never
+    // reaches the room, and the stage shows a conversation that stopped.
+    window.addEventListener(CHAT_LIVE_EVENT, onSnapshot);
     return () => {
       window.removeEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
       window.removeEventListener(TERMINAL_LIVE_EVENT, onSnapshot);
+      window.removeEventListener(CHAT_LIVE_EVENT, onSnapshot);
     };
   }, []);
 

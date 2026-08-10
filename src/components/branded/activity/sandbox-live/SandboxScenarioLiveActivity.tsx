@@ -24,7 +24,7 @@
  * composer INSIDE it (middle zone) → the rating buttons / outcome OUTWARD
  * below the window, near the action (bottom zone, P3).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, RotateCcw, Send } from 'lucide-react';
 import { t, type Locale } from '@iterahq/activity-spec/runtime';
 import { useI18n } from '@/i18n';
@@ -39,6 +39,11 @@ import { SandboxClearButton } from '@/components/branded/activity/sandbox/Sandbo
 import { SandboxWindow } from '@/components/branded/activity/sandbox/SandboxWindow';
 import { useAssistantStream } from '@/components/branded/activity/sandbox/useAssistantStream';
 import { useSandboxScenarioLive } from './useSandboxScenarioLive';
+import {
+  forgetChatLiveBuffer,
+  publishChatLiveBuffer,
+  type ActivityChatScreen,
+} from '@/services/chatLiveBuffer.service';
 import type { ByocLiveSpec } from './byocLive';
 
 export function SandboxScenarioLiveActivity({
@@ -106,6 +111,41 @@ export function SandboxScenarioLiveActivity({
       onComplete(settledCorrect, s.feedback ? { explanation: s.feedback } : undefined);
     }
   }, [s.won, settledCorrect, s.feedback, onComplete]);
+
+  /**
+   * O MESMO espelho de palco do sandbox de chat determinístico, para a variante
+   * BYOC — que é app-side e por isso publica direto no serviço em vez de pela
+   * porta do pacote. Sem isto, um aluno puxado numa row `openness: 'byoc'`
+   * cairia no vazio explicado, porque `mirrorsFromViewerState` (com razão) barra
+   * o palco de remontar a atividade: remontar aqui semearia o compositor do
+   * espectador E dispararia uma chamada de LLM real na máquina dele.
+   *
+   * ⚠️ E AQUI A REGRA DO RASCUNHO É LITERAL. Esta é a única superfície de chat
+   * com digitação livre de verdade: `input` é a prosa crua do aluno, ainda não
+   * enviada. Ela NÃO entra em `screen` — só `s.messages`, que são os turnos que
+   * ele já mandou pra conversa. Ver `ActivityChatScreen`.
+   *
+   * `hasWork` conta os turnos DELE: a conversa começa com o seed autorado, então
+   * `messages.length` marcaria todo aluno ocioso como "em andamento".
+   */
+  const sentCount = s.messages.filter((m) => m.role === 'user').length;
+  const screen = useMemo<ActivityChatScreen>(
+    () => ({
+      messages: s.messages.map((m) => ({ role: m.role, text: m.text })),
+      // Sem lista de passos autorada: o BYOC é um fluxo de duas fases, e um
+      // contador aqui seria número inventado pelo espelho.
+      stepIdx: 0,
+      stepCount: 0,
+      stepPrompt: showEval ? ratePrompt : composePrompt,
+      won: s.won,
+      sentCount,
+    }),
+    [s.messages, s.won, sentCount, showEval, ratePrompt, composePrompt],
+  );
+  useEffect(() => {
+    publishChatLiveBuffer(activity.id, screen, sentCount > 0);
+    return () => forgetChatLiveBuffer(activity.id);
+  }, [activity.id, screen, sentCount]);
 
   function doSend() {
     if (!canSend) return;

@@ -66,7 +66,8 @@ export function LiveStage({
   // (ou o terminal recém-aberto), e sem selo a turma leria aquilo como resposta
   // dele. O selo fala da TELA ("sem edições"), não da pessoa — a turma inteira
   // está vendo.
-  const hasOwnScreen = staged.kind === 'code' || staged.kind === 'terminal';
+  const hasOwnScreen =
+    staged.kind === 'code' || staged.kind === 'terminal' || staged.kind === 'chat';
   const isUntouched = hasOwnScreen && staged.status === 'not_started';
   // Nada DO ALUNO pra projetar, e por isso o palco cai no espelho da atividade.
   // Uma tela própria intocada não entra aqui: ela tem o que mostrar.
@@ -74,20 +75,32 @@ export function LiveStage({
     !isUntouched && (staged.kind === 'empty' || staged.status === 'not_started');
   // ⚠️ MONTAR O RENDERER NÃO É ESPELHAR — a regra que este `null` codifica.
   //
-  // `code` e `terminal_sandbox` são os kinds que reconstroem a tela a partir do
-  // ESTADO LOCAL de quem renderiza: o editor semeia do storage do espectador, e
-  // `useTerminalSandbox` semeia um `initialTerminalModel` limpo. Espelhar a
-  // atividade neles projeta a tela do PROFESSOR com o nome do ALUNO em cima.
+  // Estes são os kinds que reconstroem a tela a partir do ESTADO LOCAL de quem
+  // renderiza: o editor semeia do storage do espectador, `useTerminalSandbox`
+  // semeia um `initialTerminalModel` limpo, e `useSandboxScenario` semeia um
+  // `initialModel` — a saudação autorada e mais nada. Espelhar a atividade neles
+  // projeta a tela do PROFESSOR com o nome do ALUNO em cima.
   //
   // No `code` isso sempre foi barrado. No terminal não era, e o defeito ficou
-  // invisível justamente porque o resultado PARECE um terminal funcionando —
-  // só que vazio, o que a sala lê como "o aluno não fez nada" (Tainan, TG
-  // 2026-08-10). Os dois passaram a ter a mesma trava.
+  // invisível justamente porque o resultado PARECE um terminal funcionando — só
+  // que vazio, o que a sala lê como "o aluno não fez nada" (Tainan, TG
+  // 2026-08-10). No chat era idêntico, e ainda mais difícil de ver: uma janela
+  // de chat com uma saudação dentro parece um chat funcionando. Os três passaram
+  // a ter a mesma trava.
+  //
+  // `sandbox_scenario` entra pelo KIND DA ROW, não pelo `spec.sandboxKind`
+  // deprecado: as rows que ainda carregam o kind legado são de chat, e mesmo se
+  // uma de terminal sobrasse, as duas semeiam do cliente de quem assiste. O
+  // discriminador de spec não é consultado em lugar nenhum aqui.
   //
   // O enunciado não se perde: ele viaja DENTRO da tela espelhada
-  // (`terminal.stepPrompt`), vindo do cliente do aluno, que é a única fonte que
-  // sabe em que passo ele está.
-  const mirrorsFromViewerState = activity?.kind === 'code' || activity?.kind === 'terminal_sandbox';
+  // (`terminal.stepPrompt` / `chat.stepPrompt`), vindo do cliente do aluno, que é
+  // a única fonte que sabe em que passo ele está.
+  const mirrorsFromViewerState =
+    activity?.kind === 'code' ||
+    activity?.kind === 'terminal_sandbox' ||
+    activity?.kind === 'chat_sandbox' ||
+    activity?.kind === 'sandbox_scenario';
   const mirrorActivity = activity && !mirrorsFromViewerState ? activity : null;
 
   return (

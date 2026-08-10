@@ -559,6 +559,11 @@ export const resources: Record<Locale, Record<string, string>> = {
     // "o aluno ainda não começou".
     'terminal.mirror.completed': 'roteiro concluído',
     'terminal.mirror.empty': '# o aluno ainda não rodou nenhum comando',
+    // Espelho read-only do CHAT no palco. Mesma regra do vazio do terminal: o
+    // vazio de quem assiste não é o do aluno. E aqui o espelho carrega prosa do
+    // aluno, decidido em TG 2026-08-10 — só o que ele ENVIOU, nunca o rascunho.
+    'chat.mirror.completed': 'roteiro concluído',
+    'chat.mirror.empty': 'O aluno ainda não enviou nenhuma mensagem.',
     'terminal.placeholder.freeText': 'digite um comando…',
     // Um por modo de submissão (§4): o que envia é diferente em cada um, e o
     // placeholder é onde o aluno lê isso antes de tentar.
@@ -1249,6 +1254,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.hint': 'see hint',
     'terminal.mirror.completed': 'scenario completed',
     'terminal.mirror.empty': '# the learner has not run a command yet',
+    'chat.mirror.completed': 'scenario completed',
+    'chat.mirror.empty': 'The learner has not sent a message yet.',
     'terminal.placeholder.freeText': 'type a command…',
     'terminal.placeholder.tap': 'tap an option below — it runs right away',
     'terminal.placeholder.assemble': 'build the command, then press Run',

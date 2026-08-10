@@ -1,5 +1,5 @@
 import { MousePointer2 } from 'lucide-react';
-import { TerminalScreenMirror } from '@iterahq/activities';
+import { ChatScreenMirror, TerminalScreenMirror } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePreview';
@@ -32,9 +32,9 @@ interface LiveStageBodyProps {
  * embaixo A RESPOSTA do aluno — nessa ordem, porque o professor puxa alguém pra
  * discutir a resposta com a turma, e sem o enunciado ao lado ninguém acompanha.
  *
- * `code` e `terminal` são as exceções, pela MESMA razão: neles a tela do aluno já
- * é a resposta, e remontar a atividade ao lado semearia estado do espectador
- * (ver `LiveStage.mirrorsFromViewerState`). O enunciado do terminal não some por
+ * `code`, `terminal` e `chat` são as exceções, pela MESMA razão: neles a tela do
+ * aluno já é a resposta, e remontar a atividade ao lado semearia estado do
+ * espectador (ver `LiveStage.mirrorsFromViewerState`). O enunciado não some por
  * isso — ele viaja dentro da tela espelhada, escrito pelo cliente do aluno.
  */
 export function LiveStageBody({
@@ -55,6 +55,20 @@ export function LiveStageBody({
     return (
       <div className={`mx-auto w-full ${WIDE_COLUMN_MAX_WIDTH}`} data-testid="live-stage-terminal">
         <TerminalScreenMirror screen={staged.terminal} />
+      </div>
+    );
+  }
+
+  // O CHAT do aluno, REDESENHADO — mesma regra, mesmo componente compartilhado
+  // com a janela dele (`ChatScreenMirror` reusa `SandboxWindow`/`SandboxChatLog`
+  // /`CHAT_SCROLL`). Sem reducer e sem runtime: não consegue inventar um turno.
+  //
+  // ⚠️ Só os turnos ENVIADOS chegam aqui. O compositor do aluno — onde mora o
+  // rascunho ainda não enviado — não atravessa a rede; ver `ActivityChatScreen`.
+  if (staged.kind === 'chat' && staged.chat) {
+    return (
+      <div className={`mx-auto w-full ${WIDE_COLUMN_MAX_WIDTH}`} data-testid="live-stage-chat">
+        <ChatScreenMirror screen={staged.chat} />
       </div>
     );
   }

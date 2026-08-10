@@ -141,6 +141,9 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'activity.submit': 'Enviar',
     'activity.video': 'Vídeo',
     'activity.video.missing': 'Vídeo não configurado',
+    // Espelho read-only do chat no palco da aula ao vivo.
+    'chat.mirror.completed': 'roteiro concluído',
+    'chat.mirror.empty': 'O aluno ainda não enviou nenhuma mensagem.',
     'terminal.buildCommand': 'Monte o comando',
     'terminal.clear': 'Limpar',
     'terminal.empty.freeText': '# digite um comando e aperte Enter',
@@ -220,6 +223,8 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'activity.submit': 'Submit',
     'activity.video': 'Video',
     'activity.video.missing': 'No video configured',
+    'chat.mirror.completed': 'scenario completed',
+    'chat.mirror.empty': 'The learner has not sent a message yet.',
     'terminal.buildCommand': 'Build the command',
     'terminal.clear': 'Clear',
     'terminal.empty.freeText': '# type a command and press Enter',

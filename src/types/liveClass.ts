@@ -1,4 +1,4 @@
-import type { ActivityTerminalScreen } from '@iterahq/activities';
+import type { ActivityChatScreen, ActivityTerminalScreen } from '@iterahq/activities';
 import type { StageCursorPlan } from '@/utils/stageCursorRate';
 
 export type ClassSessionStatus = 'pending' | 'live' | 'ended';
@@ -100,7 +100,7 @@ export type StageWorkStatus = 'submitted' | 'in_progress' | 'not_started';
 
 /** What a learner replies with on `stage-request` (see utils/stageAnswerContent). */
 export interface StageContent {
-  /** `code` | `terminal` | `answer` | `empty` (nothing local yet). */
+  /** `code` | `terminal` | `chat` | `answer` | `empty` (nothing local yet). */
   kind: string;
   content: string;
   status: StageWorkStatus;
@@ -116,6 +116,14 @@ export interface StageContent {
    * vez de dentro dele.
    */
   terminal?: StageTerminalScreen;
+  /**
+   * A conversa do `chat_sandbox` do aluno, quando é ela que está sendo puxada.
+   *
+   * Campo PRÓPRIO pela mesma regra de compatibilidade do `terminal`: um cliente
+   * de build anterior lê um `kind` que não conhece e cai no estado vazio
+   * explicado, em vez de renderizar JSON no projetor.
+   */
+  chat?: StageChatScreen;
 }
 
 /**
@@ -125,6 +133,15 @@ export interface StageContent {
  * imagens precisam bater.
  */
 export type StageTerminalScreen = ActivityTerminalScreen;
+
+/**
+ * A conversa de chat que viaja no palco. Alias pelo MESMO motivo do de cima:
+ * quem DESENHA é o `ChatScreenMirror` de `@iterahq/activities`.
+ *
+ * ⚠️ Só os turnos ENVIADOS. O rascunho não-enviado do compositor não entra neste
+ * tipo em lugar nenhum — a regra e o porquê estão em `ActivityChatScreen`.
+ */
+export type StageChatScreen = ActivityChatScreen;
 
 /**
  * One row of the single "sala ao vivo" list (see utils/liveRoomRows): everything
@@ -176,8 +193,8 @@ export interface LiveRoomRowActions extends LiveRoomModeration {
 }
 
 /**
- * The work pulled to the class stage: `code` carries raw source, `terminal`
- * carries the learner's screen, else a summary.
+ * The work pulled to the class stage: `code` carries raw source, `terminal` and
+ * `chat` carry the learner's screen, else a summary.
  */
 export interface StagedAnswer {
   activityId: string;
@@ -189,6 +206,8 @@ export interface StagedAnswer {
   response?: string;
   /** A tela do terminal do aluno — só em `kind === 'terminal'`. */
   terminal?: StageTerminalScreen;
+  /** A conversa do chat do aluno — só em `kind === 'chat'`. */
+  chat?: StageChatScreen;
   author: StagedAuthor;
 }
 

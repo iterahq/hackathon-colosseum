@@ -334,6 +334,32 @@ export interface ActivityLiveBufferPort {
     hasWork: boolean,
   ) => void;
   /**
+   * The `chat_sandbox` conversation. A THIRD method, for the same structural
+   * reason as the second: a chat's on-screen state is a turn list, and neither a
+   * source string nor a terminal transcript can carry it.
+   *
+   * ⚠️ THIS ONE CARRIES THE LEARNER'S OWN PROSE, and that is a decision, not a
+   * side effect. A terminal mirrors TOOL VOCABULARY — `git status` is the same
+   * string for everyone who knows the tool. A chat mirrors what the learner
+   * WROTE. Putting that on a projector was escalated as a privacy question and
+   * approved explicitly (Tainan, TG 2026-08-10, *"sim conserta p otro
+   * sandbox"*). The approval is for a MIRROR, so the three constraints that made
+   * it a mirror stay enforceable here and are stated where the data leaves the
+   * activity:
+   *
+   *   1. **Ephemeral.** The host is expected to hold this in memory only, exactly
+   *      as `ActivityLiveBufferPort` already requires. Nothing here is written to
+   *      a database, and nothing is persisted client-side either.
+   *   2. **Only on an explicit pull.** Publishing fills a buffer; it does not
+   *      transmit. What leaves the learner's tab is the reply to an instructor's
+   *      `stage-request`. There is no ambient broadcast of typing.
+   *   3. **SENT TURNS ONLY — never the composer.** See `ActivityChatScreen`.
+   *
+   * OPTIONAL like its siblings: a host that mirrors no chat injects nothing and
+   * every call is a no-op.
+   */
+  publishChat?: (activityId: string, screen: ActivityChatScreen, hasWork: boolean) => void;
+  /**
    * The learner left this activity (unmounted, or switched to another one).
    * Without it a mirror keeps projecting the last source of a screen that no
    * longer exists, with no way for the viewer to know.
@@ -386,6 +412,61 @@ export interface ActivityTerminalScreen {
   won: boolean;
   /** How many commands the learner has run. Zero ⇒ an untouched terminal. */
   commandCount: number;
+}
+
+/**
+ * One turn of a mirrored chat transcript. Mirrors the runtime's `Message`, minus
+ * `quality`.
+ *
+ * `quality` is dropped ON PURPOSE and it is not a size saving: it is the canned
+ * answer's authored grade, and judging weak-vs-strong is the exercise itself
+ * (`SandboxBubble` refuses to badge it for the same reason). A mirror that
+ * carried it would hand the room the answer to the step the learner is still on.
+ */
+export interface ActivityChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+/**
+ * The `chat_sandbox` screen, reduced to what a READ-ONLY mirror needs to redraw
+ * it. Sibling of `ActivityTerminalScreen`, and IT IS A SCREEN, NOT A MODEL for
+ * the same reason: `ChatModel` also carries `slots`, `choicesMade`, `runs`,
+ * `evaluations` and `completedSteps` — the judging rail, not a picture.
+ *
+ * ⚠️ THE COMPOSER IS NOT HERE, AND MUST NOT BE ADDED.
+ *
+ * The chat sandbox has two different texts on screen, and only one of them is
+ * something the learner said:
+ *
+ *   · `model.messages` — the turns the learner SENT. A finished thought,
+ *     addressed to the sandbox, already visible to them as part of a
+ *     conversation. That is what travels.
+ *   · `useSandboxScenario().inputText` — the composed preview sitting in the
+ *     composer, which the learner has picked/filled/typed but NOT sent. That is
+ *     a half-formed thought, and mirroring it would project someone thinking.
+ *
+ * The two are cleanly separable at the source, so the narrower behaviour is the
+ * one implemented: no field of this type is ever fed from the composer. The
+ * distinction survives review because it is stated here, at the type, and not
+ * only at the one call site that fills it.
+ */
+export interface ActivityChatScreen {
+  /** The conversation, oldest first — SENT turns only, never the composer. */
+  messages: readonly ActivityChatMessage[];
+  /** 0-based step the learner is on; equals `stepCount` once the scenario is won. */
+  stepIdx: number;
+  stepCount: number;
+  /** The current step's instruction, already localized. `null` once finished. */
+  stepPrompt: string | null;
+  /** The scenario's own `success` predicate is satisfied. */
+  won: boolean;
+  /**
+   * How many prompts the LEARNER has sent. Zero ⇒ the transcript on screen is
+   * entirely the authored `seedMessages` opener — on screen, but not work. Same
+   * distinction the terminal draws with `commandCount`.
+   */
+  sentCount: number;
 }
 
 /* ─────────────────────────────── code editor ─────────────────────────────── */

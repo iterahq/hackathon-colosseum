@@ -258,6 +258,10 @@ const PUBLIC_RUNTIME_SURFACE = [
   // second time to show someone else's terminal — that seeds a fresh model from
   // the VIEWER's client and projects an empty prompt under the learner's name.
   'TerminalScreenMirror',
+  // Its chat twin, and the same reason: mounting a `chat_sandbox` a second time
+  // seeds a fresh `initialModel` from the VIEWER's client, so the room sees the
+  // authored opener under the learner's name instead of their conversation.
+  'ChatScreenMirror',
   // …and the deprecated kind they were split out of, which now only delegates.
   'SandboxScenarioActivity',
   // i18n

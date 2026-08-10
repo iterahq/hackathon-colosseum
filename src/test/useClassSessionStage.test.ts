@@ -80,7 +80,12 @@ import {
   forgetTerminalLiveBuffer,
   publishTerminalLiveBuffer,
 } from '@/services/terminalLiveBuffer.service';
-import type { StageTerminalScreen } from '@/types/liveClass';
+import {
+  CHAT_LIVE_EVENT,
+  forgetChatLiveBuffer,
+  publishChatLiveBuffer,
+} from '@/services/chatLiveBuffer.service';
+import type { StageChatScreen, StageTerminalScreen } from '@/types/liveClass';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 function emit(event: string, payload: unknown) {
@@ -95,6 +100,7 @@ beforeEach(() => {
   // do mesmo arquivo se ninguém o esquecer.
   forgetCodeLiveBuffer(ACTIVITY);
   forgetTerminalLiveBuffer(ACTIVITY);
+  forgetChatLiveBuffer(ACTIVITY);
   rememberStorageScope(STUDENT);
 });
 
@@ -110,6 +116,28 @@ function terminalScreen(commands: string[]): StageTerminalScreen {
     stepPrompt: 'Confira a branch.',
     won: false,
     commandCount: commands.length,
+  };
+}
+
+/**
+ * Uma conversa de chat com N turnos ENVIADOS pelo aluno, do jeito que o pacote
+ * publica. O seed autorado abre a lista — é ele que faz `messages.length` ser um
+ * mau `hasWork`, e `sentCount` ser o bom.
+ */
+function chatScreen(sent_: string[]): StageChatScreen {
+  return {
+    messages: [
+      { role: 'assistant' as const, text: 'Manda seu pedido que eu respondo.' },
+      ...sent_.flatMap((text) => [
+        { role: 'user' as const, text },
+        { role: 'assistant' as const, text: `resposta a: ${text}` },
+      ]),
+    ],
+    stepIdx: sent_.length,
+    stepCount: 2,
+    stepPrompt: 'Avalia a resposta.',
+    won: false,
+    sentCount: sent_.length,
   };
 }
 
@@ -491,6 +519,94 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
     expect(result.current.stagedAnswer!.terminal).toBeUndefined();
   });
 
+  /**
+   * ── O CHAT (Tainan, TG 2026-08-10: *"sim conserta p otro sandbox"*) ───────
+   * Mesmo buraco do terminal, um kind adiante: sem canal, `gatherStageContent`
+   * respondia `empty` e o palco remontava a atividade no cliente de quem
+   * assiste — a saudação autorada com o nome do aluno em cima, e nada da
+   * conversa dele.
+   */
+  it('replies with the learner OWN chat conversation, sent turns included', async () => {
+    publishChatLiveBuffer(ACTIVITY, chatScreen(['o que é contexto?']), true);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    const payload = sent.find((s) => s.event === 'stage-answer')!.payload as {
+      kind: string;
+      status: string;
+      chat: StageChatScreen;
+    };
+    expect(payload.kind).toBe('chat');
+    expect(payload.status).toBe('in_progress');
+    expect(payload.chat.messages.filter((m) => m.role === 'user').map((m) => m.text)).toEqual([
+      'o que é contexto?',
+    ]);
+  });
+
+  it('replies with an UNTOUCHED chat instead of nothing', async () => {
+    publishChatLiveBuffer(ACTIVITY, chatScreen([]), false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'chat',
+      status: 'not_started',
+    });
+  });
+
+  it('carries the chat conversation through the instructor gate into stage-show', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'chat',
+      content: '',
+      status: 'in_progress',
+      chat: chatScreen(['o que é contexto?']),
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    const show = sent.find((s) => s.event === 'stage-show')!.payload as { chat: StageChatScreen };
+    expect(show.chat.messages.some((m) => m.text === 'o que é contexto?')).toBe(true);
+  });
+
+  it('renders a received stage-show chat into stagedAnswer', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'chat',
+      content: '',
+      status: 'in_progress',
+      chat: chatScreen(['o que é contexto?']),
+      author: { userId: 'other', name: 'Bento', avatarUrl: null },
+    });
+
+    expect(result.current.stagedAnswer!.kind).toBe('chat');
+    expect(result.current.stagedAnswer!.chat!.sentCount).toBe(1);
+    expect(result.current.stagedAnswer!.chat!.messages[1]!.text).toBe('o que é contexto?');
+  });
+
+  it('drops a malformed chat payload instead of staging it', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'chat',
+      content: '',
+      chat: 'nem parece uma conversa',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    expect(result.current.stagedAnswer!.chat).toBeUndefined();
+  });
+
   it('defaults a status-less stage-show to submitted (client on the previous build)', async () => {
     const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
 
@@ -604,6 +720,64 @@ describe('useClassSession — live stage streaming (B3)', () => {
     });
     expect(sent.find((s) => s.event === 'stage-update')).toBeTruthy();
     expect(TERMINAL_LIVE_EVENT).toBe('itera:terminal-live');
+  });
+
+  /**
+   * Igual ao terminal: o chat não persiste rascunho, então carrega o próprio
+   * sinal. Sem isto o palco congelaria no instante do puxão e toda mensagem
+   * enviada depois seria invisível pra sala.
+   */
+  it('the staged learner re-broadcasts stage-update when a new message is sent', async () => {
+    publishChatLiveBuffer(ACTIVITY, chatScreen(['o que é contexto?']), true);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'chat',
+      content: '',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      publishChatLiveBuffer(ACTIVITY, chatScreen(['o que é contexto?', 'e agora?']), true);
+    });
+
+    const update = sent.find((s) => s.event === 'stage-update')!.payload as {
+      kind: string;
+      chat: StageChatScreen;
+    };
+    expect(update.kind).toBe('chat');
+    expect(update.chat.messages.filter((m) => m.role === 'user').map((m) => m.text)).toEqual([
+      'o que é contexto?',
+      'e agora?',
+    ]);
+  });
+
+  it('does not stream on a chat that only MOUNTED — hasWork gates the signal', async () => {
+    publishChatLiveBuffer(ACTIVITY, chatScreen([]), false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'chat',
+      content: '',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      publishChatLiveBuffer(ACTIVITY, chatScreen([]), false);
+    });
+
+    expect(sent.find((s) => s.event === 'stage-update')).toBeUndefined();
+    // O evento existe e é o que o `useClassSession` escuta — dispará-lo à mão
+    // prova que o silêncio acima veio do `hasWork`, e não de um listener ausente.
+    act(() => {
+      publishChatLiveBuffer(ACTIVITY, chatScreen(['oi']), true);
+    });
+    expect(sent.find((s) => s.event === 'stage-update')).toBeTruthy();
+    expect(CHAT_LIVE_EVENT).toBe('itera:chat-live');
   });
 
   it('a NON-staged learner does not stream on autosave', async () => {

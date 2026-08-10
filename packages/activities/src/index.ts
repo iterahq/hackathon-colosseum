@@ -121,6 +121,11 @@ export { TerminalOptionsActivity } from './kinds/terminal/TerminalOptionsActivit
 // second time — mounting seeds a fresh model from the viewer's own client, which
 // projects an empty terminal under the learner's name. See the component header.
 export { TerminalScreenMirror } from './kinds/terminal/TerminalScreenMirror.js';
+// The same read-only twin for the chat sandbox, and the same rule: the stage
+// draws THIS instead of mounting the activity a second time. Mounting seeds a
+// fresh `initialModel` from the viewer's client, so the room gets the authored
+// opener under the learner's name and none of their conversation.
+export { ChatScreenMirror } from './kinds/sandbox/ChatScreenMirror.js';
 
 /* ───────────────────────────────── i18n ──────────────────────────────────── */
 
@@ -224,6 +229,8 @@ export type {
   ActivityLocale,
   ActivityTerminalLine,
   ActivityTerminalScreen,
+  ActivityChatMessage,
+  ActivityChatScreen,
   ActivityResponderResult,
   ActivitySeed,
   ActivityStoragePort,

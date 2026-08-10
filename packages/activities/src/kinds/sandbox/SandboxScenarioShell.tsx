@@ -13,7 +13,7 @@
  * rating panel OUTWARD below the window (bottom zone). Step count is entirely
  * DATA-DRIVEN off `scenario.steps.length`.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { t, type Scenario } from '@iterahq/activity-spec/runtime';
 import { useActivityI18n } from '../../context.js';
@@ -28,7 +28,10 @@ import { SandboxInputBar } from './SandboxInputBar.js';
 import { SandboxReveal } from './SandboxReveal.js';
 import { SandboxWindow } from './SandboxWindow.js';
 import { useSandboxScenario } from './useSandboxScenario.js';
+import { useChatScreenMirror } from './useChatScreenMirror.js';
 import { useAssistantStream } from './useAssistantStream.js';
+import { CHAT_SCROLL } from './chatGeometry.js';
+import type { ActivityChatScreen } from '../../ports.js';
 import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 
 export function SandboxScenarioShell({
@@ -97,6 +100,39 @@ export function SandboxScenarioShell({
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
 
+  /**
+   * WHAT A MIRROR GETS — the drawn conversation, not the model. See
+   * `ActivityChatScreen` for why those are different objects, and
+   * `useChatScreenMirror` for the defect that made this necessary.
+   *
+   * ⚠️ `s.model.messages` AND NOTHING ELSE FROM THE COMPOSER. `s.inputText` is
+   * on screen too, and it is the one thing that must not travel: it is the
+   * preview of a turn the learner has ASSEMBLED BUT NOT SENT. Mirroring what
+   * they have submitted into the conversation is the behaviour that was
+   * approved; mirroring what they are still typing is not, and the two are
+   * separable right here, which is why the narrow one is implemented rather
+   * than described.
+   *
+   * Memoised because the publish effect keeps it in its deps: a fresh object per
+   * render would re-publish on every chip click, and the host's mirror
+   * re-broadcasts on publish.
+   */
+  const screen = useMemo<ActivityChatScreen>(
+    () => ({
+      messages: s.model.messages.map((m) => ({ role: m.role, text: m.text })),
+      stepIdx: s.stepIdx,
+      stepCount: scenario.steps.length,
+      stepPrompt: coachPrompt ?? null,
+      won: s.won,
+      sentCount: s.model.ranPromptCount,
+    }),
+    [s.model, s.stepIdx, s.won, coachPrompt, scenario.steps.length],
+  );
+  // A chat showing only its authored opener is ON SCREEN but is not WORK — the
+  // same distinction `hasWork` draws for the code snack and the terminal, and
+  // the one that keeps an idle learner from being announced as "em andamento".
+  useChatScreenMirror(activity.id, screen, s.model.ranPromptCount > 0);
+
   // O kind vem da ROW, não de um literal: telemetria e e2e leem
   // `data-activity-kind`, e uma tela de `chat_sandbox` que se anuncia como
   // `sandbox_scenario` atribuiria a atividade ao kind errado exatamente durante
@@ -123,10 +159,10 @@ export function SandboxScenarioShell({
         {/* MIDDLE ZONE — the isolated "Cloud Cowork" window: transcript AND the
             composer live INSIDE it, the composer at 100% width. */}
         <SandboxWindow>
-          <div
-            className="h-[34dvh] min-h-[220px] max-h-[400px] overflow-y-auto pr-1"
-            data-testid="sandbox-scroll"
-          >
+          {/* The box is a shared constant, not a local literal: `ChatScreenMirror`
+              draws the same transcript for the room, and two shapes for one chat
+              would drift exactly where the two are meant to be compared. */}
+          <div className={CHAT_SCROLL} data-testid="sandbox-scroll">
             <SandboxChatLog
               messages={s.model.messages}
               streamIndex={stream.streamIndex}

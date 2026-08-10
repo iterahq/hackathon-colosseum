@@ -93,6 +93,7 @@ import { readLiveEntryRole } from '@/utils/liveEntryRole';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
+import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
 import { isGenericName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
@@ -277,9 +278,13 @@ export default function LiveSessionPage() {
     // "nada" na lista do professor, e o motivo de puxar alguém pro palco é
     // justamente ver quem está trabalhando.
     window.addEventListener(TERMINAL_LIVE_EVENT, sync);
+    // Idem pro chat: sem esta linha um aluno que trocou dez mensagens com o
+    // sandbox continuava aparecendo como "nada" na lista do professor.
+    window.addEventListener(CHAT_LIVE_EVENT, sync);
     return () => {
       window.removeEventListener(CODE_SNAPSHOT_EVENT, sync);
       window.removeEventListener(TERMINAL_LIVE_EVENT, sync);
+      window.removeEventListener(CHAT_LIVE_EVENT, sync);
     };
   }, [sessionId, currentActivityId, setWorkingOn]);
 

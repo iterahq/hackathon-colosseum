@@ -111,6 +111,10 @@ import {
   publishTerminalLiveBuffer,
 } from '@/services/terminalLiveBuffer.service';
 import {
+  forgetChatLiveBuffer,
+  publishChatLiveBuffer,
+} from '@/services/chatLiveBuffer.service';
+import {
   generateContext,
   iteraApiConfigured,
   judge,
@@ -199,14 +203,21 @@ function isBlanksKey(key: string): boolean {
 export const ITERA_ACTIVITY_LIVE_BUFFER: ActivityLiveBufferPort = {
   publish: publishCodeLiveBuffer,
   publishTerminal: publishTerminalLiveBuffer,
-  // ⚠️ FORGET CLEARS BOTH BUFFERS, and it has to. The port has one `forget` for
-  // two publish channels, and an activity is one kind — so a `forget` that only
-  // reached the code map would leave a terminal screen projected after the
-  // learner walked away from it, which is the exact staleness the call exists to
-  // prevent. Both are no-ops on a key they do not hold.
+  publishChat: publishChatLiveBuffer,
+  // ⚠️ FORGET CLEARS ALL THREE BUFFERS, and it has to. The port has one `forget`
+  // for three publish channels, and an activity is one kind — so a `forget` that
+  // only reached the code map would leave a terminal screen (or a learner's
+  // conversation) projected after they walked away from it, which is the exact
+  // staleness the call exists to prevent. Each is a no-op on a key it does not
+  // hold.
+  //
+  // ⚠️ A NEW PUBLISH CHANNEL MUST BE ADDED HERE TOO. The chat one carries the
+  // learner's own prose, so a channel left out of this list does not degrade a
+  // projection — it keeps someone's words on the projector after they left.
   forget: (activityId: string) => {
     forgetCodeLiveBuffer(activityId);
     forgetTerminalLiveBuffer(activityId);
+    forgetChatLiveBuffer(activityId);
   },
 };
 
