@@ -8,18 +8,34 @@ import type { TerminalLine } from '@iterahq/activity-spec/runtime';
  * `20260717-iterahq-activities-visual-ux-redesign` (whose target image is,
  * literally, the DFL-Labs git sandbox).
  *
- * ── HEIGHT: IT GROWS DOWNWARD, IT IS NOT A FIXED PANE ───────────────────────
- * Until 2026-08-07 this box was `h-[34dvh] min-h-[220px]`, i.e. a FIXED pane.
- * On the first frame that reserved ~220px for a transcript holding one welcome
- * line, so the prompt bar underneath was pushed to the bottom of the window and
- * the learner met an empty gap between the context line and the cursor
- * (Tainan's screenshot, plan `20260807-itera-terminal-sandbox-refinamentos` §1).
+ * ── HEIGHT: THIS BOX DOES NOT DECIDE THE HEIGHT — THE WINDOW BODY DOES ──────
+ * It is the growing member of the window body's flex column: `grow basis-0`
+ * with `min-h-0` so it can shrink below its content, and `overflow-y-auto` so a
+ * long session scrolls HERE instead of pushing the prompt bar off the box or
+ * the page down. The floor that makes the window terminal-shaped lives on the
+ * body (`TERMINAL_BODY` in `TerminalSandboxShell`), which is the only place it
+ * can live if the prompt is to stay pinned to the bottom.
  *
- * A real terminal grows DOWN from the last line: the cursor starts glued to the
- * context and the history pushes it. So the height is now intrinsic, capped by
- * `max-h-[34dvh]` — the cap is what keeps a long session from eating the page,
- * and it only engages once there IS a long session. Do not reintroduce a
- * `min-h`/`h-` here: that is the gap, restated.
+ * ⚠️ `grow basis-0`, NOT `flex-1` — they are not interchangeable HERE, and the
+ * difference is invisible until you measure. Tailwind's `flex-1` is
+ * `flex: 1 1 0%`, and a PERCENTAGE flex-basis resolved against a column whose
+ * height is indefinite (this one: `min-height` only) falls back to `content`.
+ * The box then sizes to the transcript and grows without bound — measured
+ * 2026-08-10: a 12-command session produced a 621px window instead of 314px,
+ * with the transcript never scrolling. `basis-0` is `flex-basis: 0px`, which
+ * has no such fallback, so the floor is what decides and the overflow lands
+ * here.
+ *
+ * ⚠️ TWO SETTINGS ALREADY FAILED HERE — do not reach for a third by feel:
+ *   · `h-[34dvh] min-h-[220px]` (until 2026-08-07) — a fixed pane that could
+ *     not scroll independently and grew with the viewport, not with a design.
+ *   · `max-h-[34dvh]` with intrinsic height (PR #303, until 2026-08-10) — the
+ *     transcript, and with it the whole window, collapsed to one line of canned
+ *     output and read as a code block. That is the screenshot Tainan sent on
+ *     2026-08-10.
+ * `grow basis-0 min-h-0` is neither: this box claims the space the body gives
+ * it, no more and no less. Putting a `h-`, `min-h-` or `max-h-` back on it takes
+ * the height decision away from the body and breaks the bottom rail.
  *
  * ── THE SUCCESS MARK ────────────────────────────────────────────────────────
  * `successLines` says which line ends a command that COMPLETED A STEP (plan §2;
@@ -51,7 +67,7 @@ export function TerminalTranscript({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[34dvh] overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed"
+      className="min-h-0 grow basis-0 overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed"
       data-testid="terminal-transcript"
     >
       {lines.length === 0 && <div className="text-muted-foreground">{emptyHint}</div>}

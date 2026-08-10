@@ -13,12 +13,20 @@ import type { ReactNode } from 'react';
  * the `code` activity's editor chrome (see `ActivityRenderer.tsx`
  * `CodePlaceholder`) — two neutral dots + one evergreen accent dot. Clay is
  * reserved for Q&A, so it's never used here.
+ *
+ * `bodyClassName` is the ONE seam the chrome exposes: the terminal makes its
+ * body a fixed-height flex column (see `TerminalSandboxShell`), the chat sizes
+ * its own transcript instead. It defaults to empty, so the chat sandbox renders
+ * byte-identical to before the seam existed.
  */
 export function SandboxWindow({
   title = 'chat — sandbox',
+  bodyClassName = '',
   children,
 }: {
   title?: string;
+  /** Extra classes on the window BODY (the padded area below the title bar). */
+  bodyClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -35,7 +43,9 @@ export function SandboxWindow({
         <span className="h-2.5 w-2.5 rounded-full bg-evergreen/70" />
         <span className="ml-2 font-mono text-xs text-muted-foreground">{title}</span>
       </div>
-      <div className="p-4">{children}</div>
+      <div className={`p-4 ${bodyClassName}`} data-testid="sandbox-window-body">
+        {children}
+      </div>
     </div>
   );
 }

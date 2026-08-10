@@ -653,3 +653,44 @@ describe('the engineless terminal — ADR-4 is real, not aspirational', () => {
     expect(cap.calls[0]!.correct).toBe(true);
   });
 });
+
+/**
+ * THE BOTTOM RAIL — the half of the 2026-08-10 layout that jsdom CAN adjudicate.
+ *
+ * Tainan's ask has two halves: a floor under the window, and the prompt pinned
+ * to the bottom of it. The floor is geometry and only a browser can measure it
+ * (`e2e/terminal-sandbox.spec.ts` §1). The pinning is STRUCTURE: it works only
+ * while the transcript is the first child of the window body and the prompt bar
+ * is the LAST. Reorder them, or slip anything between the prompt bar and the
+ * end of the column, and the rail moves — in a browser that shows up as a
+ * layout bug, here it shows up as a failing assertion in milliseconds.
+ *
+ * These are deliberately assertions about the TREE, not about class names. A
+ * test that read `className` would pass for a component that carries the right
+ * utilities in the wrong order, which is precisely the failure being guarded.
+ */
+describe('the terminal window is a column with the prompt as its last child', () => {
+  const body = () => screen.getByTestId('sandbox-window-body');
+
+  for (const [surface, spec, id] of [
+    ['freeText', TERMINAL_SPEC, 'a-rail-free'],
+    ['options', OPTIONS_SPEC, 'a-rail-options'],
+  ] as const) {
+    it(`${surface}: transcript first, prompt bar last, nothing after it`, () => {
+      mount(spec, captor().fn, id);
+
+      const children = Array.from(body().children);
+      expect(children.length).toBe(2);
+      expect(children[0]).toBe(screen.getByTestId('terminal-transcript'));
+      expect(children[children.length - 1]).toBe(screen.getByTestId('terminal-prompt-bar'));
+    });
+
+    it(`${surface}: the option palette is OUTSIDE the window, not in the scroll area`, () => {
+      mount(spec, captor().fn, `${id}-palette`);
+
+      const controls = screen.getByTestId('terminal-controls');
+      expect(body().contains(controls)).toBe(false);
+      expect(screen.getByTestId('sandbox-window').contains(controls)).toBe(false);
+    });
+  }
+});

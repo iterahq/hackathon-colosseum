@@ -19,6 +19,11 @@ import { CornerDownLeft, X } from 'lucide-react';
  * button there is not harmless: a control that never does anything still says
  * "a second action is expected", and the learner waits for a step that does not
  * exist. See `TerminalSubmitMode` for the three surfaces.
+ *
+ * `shrink-0` is load-bearing, not tidiness: this bar is the LAST child of the
+ * window body's flex column and the transcript above it is `flex-1`, so the
+ * bottom rail only stays put while this bar refuses to be squeezed. Without it
+ * a long session shrinks the composer instead of scrolling the transcript.
  */
 export function TerminalPromptBar({
   ps1,
@@ -59,7 +64,7 @@ export function TerminalPromptBar({
 }) {
   return (
     <div
-      className="mt-3 flex w-full items-center gap-2 border-t border-border/60 pt-3"
+      className="mt-3 flex w-full shrink-0 items-center gap-2 border-t border-border/60 pt-3"
       data-testid="terminal-prompt-bar"
       data-submit-mode={submitMode}
     >

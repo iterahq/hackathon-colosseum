@@ -54,31 +54,43 @@ async function open(page: Page, fx: ActivityFixture, locale?: Locale): Promise<v
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
- * §1 — THE PROMPT IS BORN AT THE TOP
+ * §1 — THE TERMINAL IS A TERMINAL-SIZED BOX, AND THE PROMPT IS ITS BOTTOM RAIL
  *
- * The transcript used to be a FIXED `h-[34dvh] min-h-[220px]` pane, so on the
- * first frame the window reserved ~220px for one welcome line and parked the
- * prompt at the bottom of it. The learner met a dead gap between the context
- * line and the cursor. A terminal grows DOWNWARD: the cursor starts glued to
- * the last line and the history pushes it.
+ * Tainan, TG 2026-08-10, looking at `terminal_sandbox` in the author harness:
+ * *"o terminal component deve ter um min-height (…350px?), de forma que mesmo
+ * qndo tem pouco conteudo fica parecendo um terminal mesmo. veja que o bloco de
+ * input continua alinhado ao bottom"*.
  *
- * ── WHY NOT THE PLAN'S LITERAL PROXY ───────────────────────────────────────
- * The plan proposed "the input box's `top` is less than half the panel height".
- * That proxy is UNSATISFIABLE once the fix lands, and it was already failing
- * before it — measured on Desktop Chrome, `sandbox-window` at y=355:
+ * ── THIS SECTION USED TO ASSERT THE OPPOSITE. READ WHY BEFORE YOU REVERT ────
+ * Until 2026-08-10 §1 was "THE PROMPT IS BORN AT THE TOP": it required the
+ * transcript to reserve NO empty space and the prompt to be glued to the last
+ * line. That was PR #303, and it was written from a screenshot of the failure
+ * at the other extreme — a `h-[34dvh] min-h-[220px]` transcript that reserved
+ * ~220px inside itself for one welcome line.
  *
- *   before the fix:  window height ~332px (36 chrome + 220 reserved + prompt),
- *                    prompt top ~639  vs midline ~521  → BELOW the midline
- *   after  the fix:  window height  152px, prompt top 462 vs midline 431
- *                    → still BELOW the midline
+ * #303 fixed the reserved space by making the transcript intrinsic, and the
+ * whole window collapsed with it: one line of canned output produced a ~152px
+ * box that reads as a code block, not as a terminal. That is the 2026-08-10
+ * screenshot. Both screenshots are real; the setting that satisfies neither is
+ * "let the content decide the height".
  *
- * The reason is structural: the prompt bar is the LAST child of a window that
- * now shrinks to its content, so it necessarily occupies the bottom slice. The
- * midline says nothing about the gap — it only measures how much history there
- * is. What actually distinguishes the two screenshots is SLACK: 199px of
- * reserved emptiness before, 0px after. So that is what is asserted here, on
- * both surfaces, plus the gap to the prompt and the downward growth.
+ * So the law changed shape rather than direction: the BOX gets a floor
+ * (`TERMINAL_BODY` on the window body), and the CONTENT gets none. The prompt
+ * bar is the last, rigid child of that full-height column, the transcript is
+ * the first and only growing one, and the empty space between them is the
+ * screen real estate a terminal is supposed to have.
+ *
+ * WHAT EACH TEST HERE WOULD CATCH:
+ *   · the floor deleted, or moved onto the transcript  → "terminal-sized body"
+ *   · the prompt no longer last / no longer rigid      → "bottom rail"
+ *   · `grow basis-0`/`min-h-0` lost by the transcript  → "scrolls inside"
+ *   · a hard px floor that ignores small screens       → "narrow viewport"
+ *   · the palette pulled inside the window             → "outside the window"
  * ══════════════════════════════════════════════════════════════════════════ */
+
+/** Mirrors `TERMINAL_BODY` in `TerminalSandboxShell`: `min(314px, 40dvh)`. */
+const BODY_FLOOR_PX = 314;
+const BODY_FLOOR_DVH = 0.4;
 
 async function boxOf(page: Page, testId: string) {
   const box = await page.getByTestId(testId).boundingBox();
@@ -86,34 +98,158 @@ async function boxOf(page: Page, testId: string) {
   return box!;
 }
 
+/**
+ * The floor the body must be sitting on RIGHT NOW, computed from the live
+ * viewport rather than hard-coded — the whole point of the `min()` is that the
+ * number is different on a phone, so a constant would only test one branch.
+ */
+async function expectedFloor(page: Page): Promise<number> {
+  const vh = await page.evaluate(() => window.innerHeight);
+  return Math.min(BODY_FLOOR_PX, BODY_FLOOR_DVH * vh);
+}
+
 for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
   const surface = fx === TERMINAL_FREE_TEXT ? 'freeText' : 'options';
   const promptTestId = surface === 'freeText' ? 'terminal-input' : 'terminal-draft';
 
-  test(`§1 ${surface}: the transcript reserves no empty space`, async ({ page }) => {
+  test(`§1 ${surface}: the window keeps a terminal-sized body on almost no content`, async ({
+    page,
+  }) => {
     await open(page, fx);
 
-    const transcript = await boxOf(page, 'terminal-transcript');
-    const lastLine = await boxOf(page, 'transcript-last-line');
+    const body = await boxOf(page, 'sandbox-window-body');
+    const floor = await expectedFloor(page);
 
-    // How much of the transcript box is blank below its own content.
-    const slack = transcript.height - (lastLine.y + lastLine.height - transcript.y);
-    expect(slack, `transcript reserved ${slack}px of empty space below its content`).toBeLessThan(
-      8,
+    // EQUALITY, not `>=`. `>=` would also pass for a transcript that happened
+    // to be tall enough this run, which is the state being ruled out — with one
+    // canned line the content is ~60px, so anything else means the floor is
+    // doing the work.
+    expect(body.height, `window body was ${body.height}px, floor is ${floor}px`).toBeGreaterThan(
+      floor - 2,
     );
+    expect(body.height).toBeLessThan(floor + 2);
   });
 
-  test(`§1 ${surface}: no dead gap between the last line and the prompt`, async ({ page }) => {
+  test(`§1 ${surface}: the prompt is the bottom rail, the transcript the top`, async ({ page }) => {
     await open(page, fx);
 
+    const body = await boxOf(page, 'sandbox-window-body');
+    const transcript = await boxOf(page, 'terminal-transcript');
+    const bar = await boxOf(page, 'terminal-prompt-bar');
     const lastLine = await boxOf(page, 'transcript-last-line');
-    const promptBox = await boxOf(page, promptTestId);
+    const PAD = 16; // the body's `p-4`
 
-    const gap = promptBox.y - (lastLine.y + lastLine.height);
-    expect(gap, `gap between last transcript line and prompt was ${gap}px`).toBeLessThan(48);
-    expect(gap).toBeGreaterThanOrEqual(0);
+    // Top of the column: the transcript starts where the content box starts.
+    expect(transcript.y - body.y, 'transcript is not at the top of the body').toBeLessThan(PAD + 2);
+
+    // Bottom rail: the prompt bar ends where the content box ends.
+    const belowBar = body.y + body.height - (bar.y + bar.height);
+    expect(belowBar, `${belowBar}px of body left below the prompt bar`).toBeLessThan(PAD + 2);
+    expect(belowBar).toBeGreaterThan(-1);
+
+    // And the empty space Tainan asked for is BETWEEN them — the exact quantity
+    // #303 drove to zero. This is what goes red if the floor is removed.
+    const gap = bar.y - (lastLine.y + lastLine.height);
+    expect(gap, `only ${gap}px between the last line and the prompt`).toBeGreaterThan(80);
+
+    // The prompt is still ON SCREEN, which is the point of pinning it.
+    const promptBox = await boxOf(page, promptTestId);
+    expect(promptBox.y + promptBox.height).toBeLessThan(body.y + body.height + 1);
   });
 }
+
+test('§1 the prompt stays on the bottom rail as commands land', async ({ page }) => {
+  await open(page, TERMINAL_FREE_TEXT);
+
+  const before = await boxOf(page, 'terminal-input');
+  const input = page.getByTestId('terminal-input');
+  await input.fill('git checkout -b feat/perfil');
+  await input.press('Enter');
+  await expect(page.getByTestId('terminal-transcript')).toContainText('feat/perfil');
+
+  const after = await boxOf(page, 'terminal-input');
+  // History fills the transcript from the top; the composer does not move.
+  // Before 2026-08-10 this asserted the opposite (`after.y > before.y`) — see
+  // the section header.
+  expect(Math.abs(after.y - before.y), 'the prompt moved with the history').toBeLessThan(2);
+});
+
+test('§1 a long session scrolls INSIDE the terminal, and the box does not grow', async ({
+  page,
+}) => {
+  await open(page, TERMINAL_FREE_TEXT);
+
+  const bodyBefore = await boxOf(page, 'sandbox-window-body');
+  const pageBefore = await page.evaluate(() => document.body.scrollHeight);
+
+  // `git log` runs and unlocks nothing, so the activity never settles and the
+  // prompt stays mounted. Twelve of them is far more than the box can hold.
+  const input = page.getByTestId('terminal-input');
+  for (let i = 0; i < 12; i += 1) {
+    await input.fill('git log');
+    await input.press('Enter');
+  }
+
+  const transcript = page.getByTestId('terminal-transcript');
+  const overflow = await transcript.evaluate(
+    (el) => el.scrollHeight - el.clientHeight,
+  );
+  expect(overflow, 'the transcript never overflowed - test is not exercising scroll').toBeGreaterThan(
+    40,
+  );
+
+  const bodyAfter = await boxOf(page, 'sandbox-window-body');
+  expect(Math.abs(bodyAfter.height - bodyBefore.height), 'the window grew with the history')
+    .toBeLessThan(2);
+  expect(
+    await page.evaluate(() => document.body.scrollHeight),
+    'the page grew with the history',
+  ).toBeLessThan(pageBefore + 2);
+
+  // The composer is still visible, which is the reason to scroll inside at all.
+  const bar = await boxOf(page, 'terminal-prompt-bar');
+  expect(bar.y + bar.height).toBeLessThan(bodyAfter.y + bodyAfter.height + 1);
+});
+
+test('§1 narrow viewport: the floor degrades instead of eating the screen', async ({ page }) => {
+  // iPhone SE portrait — the case a hard 350px would dominate.
+  await page.setViewportSize({ width: 375, height: 667 });
+  await open(page, TERMINAL_OPTIONS);
+
+  const body = await boxOf(page, 'sandbox-window-body');
+  const floor = await expectedFloor(page);
+
+  // The `min()` must have BOUND here, or this test proves nothing about the
+  // degrade: 40% of 667 is ~267, well under the 314px desktop floor.
+  expect(floor).toBeLessThan(BODY_FLOOR_PX - 20);
+  expect(body.height).toBeGreaterThan(floor - 2);
+  expect(body.height).toBeLessThan(floor + 2);
+
+  // Still a terminal, and still bottom-railed.
+  const bar = await boxOf(page, 'terminal-prompt-bar');
+  const belowBar = body.y + body.height - (bar.y + bar.height);
+  // `p-4` plus the sub-pixel slack of a fractional `40dvh` floor (266.8px here).
+  expect(belowBar).toBeLessThan(20);
+
+  // No horizontal overflow at 375px.
+  const overflowX = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflowX, 'the page scrolls sideways at 375px').toBeLessThan(2);
+});
+
+test('§1 options: the palette stays OUTSIDE the terminal window', async ({ page }) => {
+  await open(page, TERMINAL_OPTIONS);
+
+  const win = await boxOf(page, 'sandbox-window');
+  const controls = await boxOf(page, 'terminal-controls');
+
+  // "ESCOLHA O COMANDO" is the third zone. Inside the window it would ride the
+  // transcript's scroll area and disappear mid-session.
+  expect(controls.y, 'the option palette moved inside the window').toBeGreaterThan(
+    win.y + win.height - 1,
+  );
+});
 
 /* ══════════════════════════════════════════════════════════════════════════
  * §2 — THE ACERTO GETS ITS OWN SIGNAL
@@ -365,21 +501,6 @@ test('§5 the composed line is pills, and running it returns them all', async ({
   await expect(palette).toHaveCount(authored);
 });
 
-test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
-  await open(page, TERMINAL_FREE_TEXT);
-
-  const before = await boxOf(page, 'terminal-input');
-  const input = page.getByTestId('terminal-input');
-  await input.fill('git checkout -b feat/perfil');
-  await input.press('Enter');
-  await expect(page.getByTestId('terminal-transcript')).toContainText('feat/perfil');
-
-  const after = await boxOf(page, 'terminal-input');
-  // The history pushed the prompt DOWN. A fixed-height pane would leave it put,
-  // which is exactly the regression this file exists to catch.
-  expect(after.y).toBeGreaterThan(before.y);
-});
-
 /* ══════════════════════════════════════════════════════════════════════════
  * §7 — THE MIGRATED CHAT KIND STILL RENDERS THE CHAT
  *
@@ -407,3 +528,4 @@ test('§7 chat_sandbox mounts the chat, not the invalid card', async ({ page }) 
   await expect(page.getByTestId('sandbox-window')).toBeVisible();
   await expect(page.getByTestId('terminal-transcript')).toHaveCount(0);
 });
+
