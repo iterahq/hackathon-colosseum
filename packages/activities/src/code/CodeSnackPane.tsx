@@ -99,7 +99,9 @@ export function CodeSnackPane({
               honest; the remaining size difference is handled on the wire. */}
           <div
             data-stage-cursor-source
-            className={`${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
+            // `relative` é a outra metade do contrato: o host desenha o ponteiro
+            // do professor DENTRO deste painel por portal, posicionado em % dele.
+            className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
           >
             {/* ⚠️ `language` is HARDCODED, and `spec.language` is ignored. That
                 is a defect this extraction surfaced rather than introduced —

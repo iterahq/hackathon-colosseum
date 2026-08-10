@@ -27,6 +27,7 @@ import { useLessonContent } from '@/hooks';
 import { useClassCompleters, useClassSessionById } from '@/hooks/useLiveClass';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
+import { STAGE_CURSOR_MIRROR_SELECTOR } from '@/utils/stageCursorDom';
 import { queryKeys } from '@/lib/queryKeys';
 import {
   advanceClassSession,
@@ -144,7 +145,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -159,6 +160,20 @@ function ClassControl({
     active: isStageCursorSource && stageCursorPlan.enabled,
     intervalMs: stageCursorPlan.intervalMs,
     send: sendStageCursor,
+  });
+  // O caminho INVERSO (K1): sobre o trabalho de OUTRA pessoa, o ponteiro do
+  // professor vai pra tela da turma — e pra do próprio aluno no palco. Ele mede
+  // o painel ESPELHO, que é o que ele tem na tela, e a geometria de 360px é
+  // idêntica à do editor do aluno, então o 0..1 cai no mesmo caractere.
+  //
+  // Clique LIGADO só aqui: o do aluno já viaja como caret (o espelho desenha o
+  // caret), o do professor não tem substituto — ele não digita no editor do aluno.
+  useStageCursorCapture({
+    active: isInstructorCursorSource && stageCursorPlan.enabled,
+    intervalMs: stageCursorPlan.intervalMs,
+    selector: STAGE_CURSOR_MIRROR_SELECTOR,
+    clicks: true,
+    send: sendInstructorCursor,
   });
   const sound = useLiveSound();
   const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);

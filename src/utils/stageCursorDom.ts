@@ -47,3 +47,37 @@ export interface CodeCaretEventDetail {
   line: number;
   column: number;
 }
+
+/**
+ * Normalizes a viewport point against a pane, or null when it falls outside it.
+ *
+ * Lives beside the selectors rather than inside the capture hook because BOTH
+ * emitters measure with it — the learner on stage over their own editor and the
+ * professor over the mirror — and because it is where the two rounding decisions
+ * are made. It is the measuring half of the same contract the attributes above
+ * declare, and it is pure, so it is checkable without a pointer.
+ */
+export function normalizedPointIn(
+  el: HTMLElement,
+  clientX: number,
+  clientY: number
+): { x: number; y: number; paneW: number; paneH: number } | null {
+  const r = el.getBoundingClientRect();
+  if (r.width <= 0 || r.height <= 0) return null;
+  if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return null;
+  // Sub-pixel jitter is not movement. Rounding to the transported precision also
+  // makes "did it change" the same question on both sides of the wire.
+  //
+  // The pane size rides along on EVERY frame rather than being measured once: it
+  // changes with a window resize and, since the height is viewport-relative
+  // (`codeStageGeometry`), a stale value would place the mirrored pointer on the
+  // wrong line for the rest of the class. Rounded because a fractional pane size
+  // is precision nobody can see, and unrounded it broadcasts the emitter's
+  // zoom/DPI to the whole room.
+  return {
+    x: Math.round(((clientX - r.left) / r.width) * 1000) / 1000,
+    y: Math.round(((clientY - r.top) / r.height) * 1000) / 1000,
+    paneW: Math.round(r.width),
+    paneH: Math.round(r.height),
+  };
+}

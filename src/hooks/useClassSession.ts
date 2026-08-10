@@ -30,6 +30,7 @@ import type {
   ClassIdentity as Identity,
   ClassPresenceMember,
   ClassTimer,
+  StageClick,
   StageCursor,
   StageCursorCaret,
   StageCursorFrame,
@@ -41,7 +42,7 @@ import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
-import { MAX_PANE_PX } from '@/utils/stageCursorPlacement';
+import { acceptPanePx } from '@/utils/stageCursorPlacement';
 import {
   parseScoreboard,
   SCOREBOARD_MAX_ENTRIES,
@@ -108,6 +109,11 @@ const STAGE_REPLY_TIMEOUT_MS = 6000;
 // unwritable until it opts in. Until 0036 is applied the sends are refused and
 // the mirror simply never appears — the stage itself is untouched.
 const STAGE_CURSOR_EVENT = 'stage-cursor';
+// O caminho INVERSO, no MESMO tópico: quem emite é o professor e quem assiste é
+// a turma (inclusive o aluno no palco). Evento separado, e não uma flag no
+// `stage-cursor`, porque os dois ponteiros coexistem na tela — um `payload` só
+// faria o cursor do professor sobrescrever o do aluno a cada frame.
+const INSTRUCTOR_CURSOR_EVENT = 'instructor-cursor';
 const cursorTopic = (sessionId: string) => `class:${sessionId}:cursor`;
 
 export function useClassSession(
@@ -140,6 +146,10 @@ export function useClassSession(
   const [stageUnreachableUserId, setStageUnreachableUserId] = useState<string | null>(null);
   // Latest cursor frame from whoever is on stage (see the cursor topic below).
   const [stageCursor, setStageCursor] = useState<StageCursor | null>(null);
+  // O caminho INVERSO (K1): o ponteiro do professor sobre o palco, desenhado na
+  // tela de quem assiste — inclusive na do aluno que está no palco.
+  const [instructorCursor, setInstructorCursor] = useState<StageCursor | null>(null);
+  const [instructorClick, setInstructorClick] = useState<StageClick | null>(null);
   const [onBreak, setOnBreak] = useState(false);
   // Lido na sincronização de presença: quem entra no meio da pausa não ouviu o
   // broadcast que a abriu, então o professor a reanuncia quando alguém chega.
@@ -198,6 +208,11 @@ export function useClassSession(
   const stageAuthorRef = useRef<string | null>(null);
   stageAuthorRef.current = stagedAnswer?.author.userId ?? null;
   const stageCursorTsRef = useRef(0);
+  // Quem pode mover o cursor do PROFESSOR, lido da linha do banco (ver o
+  // handler): a presença é auto-declarada e por isso não serve de prova.
+  const instructorIdRef = useRef<string | null>(null);
+  instructorIdRef.current = session?.instructorId ?? null;
+  const instructorCursorTsRef = useRef(0);
 
   const trackPresence = useCallback(() => {
     const channel = channelRef.current;
@@ -850,6 +865,9 @@ export function useClassSession(
     if (!sessionId || !isSupabaseConfigured || !stageOn) {
       setStageCursor(null);
       stageCursorTsRef.current = 0;
+      setInstructorCursor(null);
+      setInstructorClick(null);
+      instructorCursorTsRef.current = 0;
       return;
     }
     const sb = getSupabase();
@@ -886,26 +904,55 @@ export function useClassSession(
           p.caret && typeof p.caret.line === 'number' && typeof p.caret.column === 'number'
             ? { line: p.caret.line, column: p.caret.column }
             : null;
-        // Only a POSITIVE finite size within a plausible screen is carried
-        // through. A zero (the retract frame) or a garbage value would make the
-        // overlay place the pointer at 0px, i.e. pinned to the top-left corner,
-        // which is worse than the percent fallback it drops back to when the size
-        // is absent. The upper bound is there because the sender is forgeable.
-        const size = (v: unknown) =>
-          typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= MAX_PANE_PX
-            ? v
-            : undefined;
         setStageCursor({
           activityId: p.activityId,
           userId: p.userId,
           x: Math.min(1, Math.max(0, p.x)),
           y: Math.min(1, Math.max(0, p.y)),
-          paneW: size(p.paneW),
-          paneH: size(p.paneH),
+          paneW: acceptPanePx(p.paneW),
+          paneH: acceptPanePx(p.paneH),
           visible: p.visible !== false,
           caret,
           t,
         });
+      })
+      .on('broadcast', { event: INSTRUCTOR_CURSOR_EVENT }, ({ payload }) => {
+        const p = payload as Partial<StageCursor & { click?: boolean }> | null;
+        if (!p || typeof p.userId !== 'string' || typeof p.activityId !== 'string') return;
+        // Aqui o receptor NÃO pode estreitar por "quem está no palco" — o
+        // emissor é justamente quem não está. Estreita pela LINHA do banco
+        // (`class_sessions.instructor_id`), e não pela presença: presença é
+        // auto-declarada, então `is_instructor` ali é forjável por qualquer
+        // aluno da sala. Um colega continua podendo colocar bytes no tópico; o
+        // que ele não consegue é desenhar um ponteiro de professor na tela da
+        // turma.
+        if (p.userId !== instructorIdRef.current) return;
+        if (p.activityId !== currentActivityIdRef.current) return;
+        if (typeof p.x !== 'number' || typeof p.y !== 'number') return;
+        const t = typeof p.t === 'number' ? p.t : 0;
+        if (t < instructorCursorTsRef.current) return;
+        instructorCursorTsRef.current = t;
+        const x = Math.min(1, Math.max(0, p.x));
+        const y = Math.min(1, Math.max(0, p.y));
+        // Sem caret, de propósito: o professor está sobre um painel READ-ONLY,
+        // então ele não tem caret pra mostrar — e o caret desenhado no espelho é
+        // o de quem está digitando de verdade.
+        // Mesmo motivo do cursor do aluno: o painel do professor e o do aluno
+        // têm alturas diferentes (`h-[clamp(360px,55vh,720px)]`), então sem o
+        // tamanho do painel de origem o ponteiro cai em percentual e erra
+        // algumas linhas na tela do aluno.
+        setInstructorCursor({
+          activityId: p.activityId,
+          userId: p.userId,
+          x,
+          y,
+          paneW: acceptPanePx(p.paneW),
+          paneH: acceptPanePx(p.paneH),
+          visible: p.visible !== false,
+          caret: null,
+          t,
+        });
+        if (p.click === true) setInstructorClick({ x, y, t });
       })
       .subscribe();
     return () => {
@@ -913,6 +960,9 @@ export function useClassSession(
       void sb.removeChannel(channel).catch(() => undefined);
       setStageCursor(null);
       stageCursorTsRef.current = 0;
+      setInstructorCursor(null);
+      setInstructorClick(null);
+      instructorCursorTsRef.current = 0;
     };
   }, [sessionId, stageOn]);
 
@@ -923,6 +973,9 @@ export function useClassSession(
   useEffect(() => {
     setStageCursor(null);
     stageCursorTsRef.current = 0;
+    setInstructorCursor(null);
+    setInstructorClick(null);
+    instructorCursorTsRef.current = 0;
   }, [stageAuthorId]);
 
   // The single emitter in the room (ADR-2): the client whose own work is staged.
@@ -960,6 +1013,43 @@ export function useClassSession(
     },
     []
   );
+
+  // O emissor do caminho inverso: o professor, e só enquanto há palco de OUTRA
+  // pessoa. Sobre o próprio trabalho ele já é o `isStageCursorSource` de cima —
+  // ligar os dois faria a turma ver dois ponteiros dele, no mesmo lugar.
+  const isInstructorCursorSource = Boolean(
+    identity?.userId &&
+      session &&
+      identity.userId === session.instructorId &&
+      stagedAnswer &&
+      stagedAnswer.author.userId !== identity.userId
+  );
+  const isInstructorCursorSourceRef = useRef(false);
+  isInstructorCursorSourceRef.current = isInstructorCursorSource;
+
+  const sendInstructorCursor = useCallback((frame: StageCursorFrame) => {
+    const channel = cursorRef.current;
+    const activityId = currentActivityIdRef.current;
+    const userId = identityRef.current?.userId;
+    if (!channel || !activityId || !userId || !isInstructorCursorSourceRef.current) return;
+    void channel
+      .send({
+        type: 'broadcast',
+        event: INSTRUCTOR_CURSOR_EVENT,
+        payload: {
+          activityId,
+          userId,
+          x: frame.x,
+          y: frame.y,
+          paneW: frame.paneW,
+          paneH: frame.paneH,
+          visible: frame.visible,
+          click: frame.click === true,
+          t: Date.now(),
+        },
+      })
+      .catch(() => undefined);
+  }, []);
 
   // How fast that emitter may go, given how many people would be billed for each
   // frame. Recomputed as the roster changes, so a room that grows mid-class slows
@@ -1221,6 +1311,10 @@ export function useClassSession(
     stageCursorPlan: cursorPlan,
     isStageCursorSource,
     sendStageCursor,
+    instructorCursor,
+    instructorClick,
+    isInstructorCursorSource,
+    sendInstructorCursor,
     refetch,
   };
 }

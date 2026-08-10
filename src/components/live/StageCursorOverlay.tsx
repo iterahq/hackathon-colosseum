@@ -31,15 +31,29 @@ const SIZE_PX = 28;
 /** Time constant of the smoothing, as a fraction of the inter-sample gap. */
 const TAU_RATIO = 0.45;
 
+/**
+ * Duas cores porque os dois ponteiros aparecem AO MESMO TEMPO no mesmo painel
+ * (K1): o aluno no palco e o professor apontando nele. `streak` é clay-leaning
+ * (`--streak: 30 65% 66%`), então o do professor não pode ser clay — seria a
+ * mesma seta. `ink` é o neutro da marca e é literalmente a cara de um cursor de
+ * sistema, que é o que um ponteiro emprestado deve parecer.
+ */
+const VARIANTS = {
+  learner: { arrow: 'text-streak', label: 'bg-streak text-obsidiana' },
+  instructor: { arrow: 'text-ink', label: 'bg-ink text-obsidiana' },
+} as const;
+
 export function StageCursorOverlay({
   cursor,
   authorName,
   intervalMs,
+  variant = 'learner',
 }: {
   cursor: StageCursor | null;
   authorName: string;
   /** Expected gap between samples — tunes the tween, not the transport. */
   intervalMs: number;
+  variant?: keyof typeof VARIANTS;
 }) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const targetRef = useRef<{ x: number; y: number } | null>(null);
@@ -98,6 +112,7 @@ export function StageCursorOverlay({
       ref={elRef}
       data-testid="stage-cursor"
       data-stage-cursor-author={cursor.userId}
+      data-stage-cursor-variant={variant}
       // Above Monaco's own layers, inert to the mouse: this is a picture of
       // someone else's pointer, it must never eat a click on the mirror.
       className="pointer-events-none absolute z-30 will-change-transform"
@@ -120,7 +135,7 @@ export function StageCursorOverlay({
         <path
           d="M4 2.5 19 12l-6.6 1.3L9.6 20 4 2.5Z"
           fill="currentColor"
-          className="text-streak"
+          className={VARIANTS[variant].arrow}
           stroke="#0a0a0a"
           strokeWidth="1.2"
           strokeLinejoin="round"
@@ -128,7 +143,7 @@ export function StageCursorOverlay({
       </svg>
       <span
         data-testid="stage-cursor-label"
-        className="absolute left-5 top-5 whitespace-nowrap rounded-full bg-streak px-2 py-0.5 text-[10px] font-medium leading-tight text-obsidiana shadow"
+        className={`absolute left-5 top-5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight shadow ${VARIANTS[variant].label}`}
       >
         {authorName}
       </span>

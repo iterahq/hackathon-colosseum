@@ -26,6 +26,17 @@
 export const MAX_PANE_PX = 8192;
 
 /**
+ * Zero (the retract frame) or garbage would place the pointer at 0px, pinned to
+ * the top-left corner — worse than the percent fallback that an absent size
+ * falls back to.
+ */
+export function acceptPanePx(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= MAX_PANE_PX
+    ? v
+    : undefined;
+}
+
+/**
  * `paneW`/`paneH` absent = a frame from a client that predates px placement.
  * Falling back to percent keeps an old emitter drawing (a little off) instead of
  * not at all.

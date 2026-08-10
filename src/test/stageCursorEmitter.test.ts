@@ -250,3 +250,59 @@ describe('useStageCursorCapture — payload', () => {
     expect(frames.find((f) => f.visible)?.caret).toEqual({ line: 42, column: 7 });
   });
 });
+
+/* ── o segundo emissor: o professor sobre o painel espelho (K1) ────────────────
+   Mesmo capturador, mesma geometria, outro painel — e o clique, que só este lado
+   liga. O do aluno já viaja como caret, então ligar clique lá seria pagar
+   mensagem por informação que o espelho já desenha. */
+describe('useStageCursorCapture — o painel é escolhível', () => {
+  it('mede o painel ESPELHO quando é ele o pedido, e ignora o de origem', async () => {
+    const mirror = document.createElement('div');
+    mirror.setAttribute('data-stage-cursor-mirror', '');
+    mirror.getBoundingClientRect = () =>
+      ({ left: 1000, top: 0, right: 1400, bottom: 360, width: 400, height: 360, x: 1000, y: 0 }) as DOMRect;
+    document.body.appendChild(mirror);
+
+    const frames: StageCursorFrame[] = [];
+    const hook = renderHook(() =>
+      useStageCursorCapture({
+        active: true,
+        intervalMs: 50,
+        selector: '[data-stage-cursor-mirror]',
+        send: (f) => frames.push(f),
+      })
+    );
+    // Dentro do painel de ORIGEM, fora do espelho: não é movimento pra este emissor.
+    movePointer(100, 100);
+    await new Promise((r) => setTimeout(r, 60));
+    expect(frames.filter((f) => f.visible)).toHaveLength(0);
+
+    // Metade do espelho, normalizada contra ELE (0.5), não contra o outro painel.
+    movePointer(1200, 180);
+    await new Promise((r) => setTimeout(r, 60));
+    hook.unmount();
+    mirror.remove();
+    expect(frames.find((f) => f.visible)).toMatchObject({ x: 0.5, y: 0.5, visible: true });
+  });
+
+  it('emite o CLIQUE fora do throttle quando pedido', async () => {
+    const frames: StageCursorFrame[] = [];
+    const hook = renderHook(() =>
+      useStageCursorCapture({ active: true, intervalMs: 5000, clicks: true, send: (f) => frames.push(f) })
+    );
+    // Um throttle de 5s: se o clique passasse por ele, nada sairia.
+    pane.dispatchEvent(new MouseEvent('pointerdown', { clientX: 200, clientY: 180, bubbles: true }));
+    hook.unmount();
+    expect(frames[0]).toMatchObject({ x: 0.5, y: 0.5, visible: true, click: true });
+  });
+
+  it('não emite clique nenhum por default', async () => {
+    const frames: StageCursorFrame[] = [];
+    const hook = renderHook(() =>
+      useStageCursorCapture({ active: true, intervalMs: 5000, send: (f) => frames.push(f) })
+    );
+    pane.dispatchEvent(new MouseEvent('pointerdown', { clientX: 200, clientY: 180, bubbles: true }));
+    hook.unmount();
+    expect(frames.filter((f) => f.click === true)).toHaveLength(0);
+  });
+});

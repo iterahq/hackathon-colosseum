@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import {
   CODE_CARET_EVENT,
+  normalizedPointIn,
   STAGE_CURSOR_SOURCE_SELECTOR,
   type CodeCaretEventDetail,
 } from '@/utils/stageCursorDom';
@@ -27,15 +28,33 @@ import type { StageCursorCaret, StageCursorFrame } from '@/types/liveClass';
  * heartbeat. Leaving the pane sends exactly one `visible: false` and then goes
  * quiet; that single edge is what makes "the class only sees the pointer while
  * it is over the exercise" true in the transport rather than in the renderer.
+ *
+ * ## Dois emissores, um capturador (K1)
+ *
+ * O `selector` existe porque o cursor agora corre nos DOIS sentidos: o aluno no
+ * palco emite sobre o painel de origem (o editor dele) e o PROFESSOR emite sobre
+ * o painel espelho. São os dois lados do mesmo contrato de `stageCursorDom`, com
+ * a mesma geometria, então a única coisa que muda é qual painel medir.
  */
 export function useStageCursorCapture(opts: {
   /** This client's work is the one on stage. Everyone else is inert. */
   active: boolean;
   /** From `stageCursorPlan(roomSize)`. `Infinity` (mirror off) disables capture. */
   intervalMs: number;
+  /** Painel a medir. Default = o painel de ORIGEM (o editor de quem está no palco). */
+  selector?: string;
+  /**
+   * Emitir também um frame por CLIQUE, fora do throttle.
+   *
+   * Desligado por default, e não por prudência: o clique do aluno sobre o
+   * próprio editor é o caret, e o caret o espelho JÁ desenha (`remoteCaret`) —
+   * ligar ali seria pagar mensagem por uma informação que a turma já vê. O do
+   * professor não tem esse substituto: ele não digita no editor do aluno.
+   */
+  clicks?: boolean;
   send: (frame: StageCursorFrame) => void;
 }): void {
-  const { active, intervalMs } = opts;
+  const { active, intervalMs, selector = STAGE_CURSOR_SOURCE_SELECTOR, clicks = false } = opts;
   const sendRef = useRef(opts.send);
   sendRef.current = opts.send;
 
@@ -64,8 +83,14 @@ export function useStageCursorCapture(opts: {
 
     const pane = (): HTMLElement | null => {
       if (paneEl && paneEl.isConnected) return paneEl;
-      paneEl = document.querySelector<HTMLElement>(STAGE_CURSOR_SOURCE_SELECTOR);
+      paneEl = document.querySelector<HTMLElement>(selector);
       return paneEl;
+    };
+
+    /** Ponto normalizado + tamanho do painel medido, ou null se está fora dele. */
+    const at = (e: PointerEvent) => {
+      const el = pane();
+      return el ? normalizedPointIn(el, e.clientX, e.clientY) : null;
     };
 
     const emit = (frame: StageCursorFrame) => {
@@ -111,40 +136,36 @@ export function useStageCursorCapture(opts: {
     // internals we do not want to reach into, and capture means no descendant
     // can stop us seeing the move.
     const onMove = (e: PointerEvent) => {
-      const el = pane();
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      if (r.width <= 0 || r.height <= 0) return;
-      const inside =
-        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-      if (!inside) {
+      const p = at(e);
+      if (!p) {
         leave();
         return;
       }
-      const x = (e.clientX - r.left) / r.width;
-      const y = (e.clientY - r.top) / r.height;
-      // Sub-pixel jitter is not movement. Rounding to the transported precision
-      // also makes "did it change" the same question on both sides of the wire.
-      const rx = Math.round(x * 1000) / 1000;
-      const ry = Math.round(y * 1000) / 1000;
-      if (lastPoint && lastPoint.x === rx && lastPoint.y === ry && visible) return;
-      // The pane size rides along on every frame rather than being measured once:
-      // it changes with a window resize and, since the height is viewport-relative
-      // (`codeStageGeometry`), a stale value would place the mirrored pointer on
-      // the wrong line for the rest of the class.
-      // Rounded: a fractional pane size is sub-pixel precision nobody can see,
-      // and unrounded it broadcasts the learner's zoom/DPI to the whole room.
-      pending = { x: rx, y: ry, paneW: Math.round(r.width), paneH: Math.round(r.height) };
+      if (lastPoint && lastPoint.x === p.x && lastPoint.y === p.y && visible) return;
+      pending = p;
       schedule();
     };
 
+    // Fora do throttle, como a borda de privacidade: um clique é raro e é um
+    // gesto de "olha AQUI". Atrasá-lo até 500ms desfaz o sentido dele — o
+    // professor já estaria falando de outra coisa quando o pulso aparecesse.
+    const onDown = (e: PointerEvent) => {
+      const p = at(e);
+      if (!p) return;
+      lastPoint = p;
+      visible = true;
+      emit({ ...p, visible: true, caret: caretRef.current, click: true });
+    };
+
     document.addEventListener('pointermove', onMove, { capture: true, passive: true });
+    if (clicks) document.addEventListener('pointerdown', onDown, { capture: true, passive: true });
     return () => {
       document.removeEventListener('pointermove', onMove, { capture: true });
+      if (clicks) document.removeEventListener('pointerdown', onDown, { capture: true });
       if (timer !== null) clearTimeout(timer);
       // Coming off the stage (or unmounting) must retract the cursor, or the
       // class is left staring at a pointer frozen where its owner last was.
       if (visible) sendRef.current({ x: 0, y: 0, paneW: 0, paneH: 0, visible: false, caret: null });
     };
-  }, [active, intervalMs]);
+  }, [active, intervalMs, selector, clicks]);
 }

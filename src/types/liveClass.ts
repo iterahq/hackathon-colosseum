@@ -168,7 +168,10 @@ export interface StageCursorCaret {
   column: number;
 }
 
-/** What the emitter measures locally, before it becomes a `StageCursor` on the wire. */
+/**
+ * O que o CAPTURADOR local entrega ao transporte: um frame já normalizado, sem
+ * a identidade nem o relógio, que quem envia acrescenta.
+ */
 export interface StageCursorFrame {
   x: number;
   y: number;
@@ -176,6 +179,8 @@ export interface StageCursorFrame {
   paneH: number;
   visible: boolean;
   caret: StageCursorCaret | null;
+  /** Este frame é um CLIQUE — ver `StageClick`. Só com captura de clique ligada. */
+  click?: boolean;
 }
 
 /**
@@ -204,6 +209,25 @@ export interface StageCursor {
   /** Where the person is actually typing; null when unknown. */
   caret: StageCursorCaret | null;
   /** Emitter clock (ms). Out-of-order frames are dropped. */
+  t: number;
+}
+
+/**
+ * Um CLIQUE sobre o painel, para o pulso que aparece e some (K1 — Samuel na
+ * call de 06/08: "uma sinalização quando ele clica, que vai sumindo talvez?").
+ *
+ * Separado do `StageCursor` de propósito: o cursor é estado contínuo, que a
+ * posição seguinte sobrescreve; o clique é EVENTO — dois cliques no mesmo ponto
+ * são dois pulsos, e é o `t` que os distingue (ele é a chave de render do
+ * pulso). Como campo do frame de cursor viraria "um pulso por posição", ou seja
+ * quem clica duas vezes pra insistir veria um pulso só.
+ */
+export interface StageClick {
+  /** 0..1 across the editor pane. */
+  x: number;
+  /** 0..1 down the editor pane. */
+  y: number;
+  /** Emitter clock (ms) — identidade do pulso, não só ordenação. */
   t: number;
 }
 
@@ -413,11 +437,21 @@ export interface UseClassSession {
    */
   isStageCursorSource: boolean;
   /** Emit one cursor frame. No-op unless this client is the stage source. */
-  sendStageCursor: (frame: {
-    x: number;
-    y: number;
-    visible: boolean;
-    caret: StageCursorCaret | null;
-  }) => void;
+  sendStageCursor: (frame: StageCursorFrame) => void;
+  /**
+   * O cursor do PROFESSOR sobre o palco, para quem ESTÁ ASSISTINDO (K1 — Tainan
+   * na call de 06/08: "aí o prof ajuda dentro da tela do proprio user").
+   *
+   * É o caminho INVERSO do `stageCursor`: ali o aluno no palco emite e a turma
+   * assiste; aqui o professor emite sobre o espelho e a turma — inclusive o
+   * aluno no palco, na tela dele — vê onde ele está apontando.
+   */
+  instructorCursor: StageCursor | null;
+  /** Último clique do professor sobre o palco. Some sozinho; ver `StageClick`. */
+  instructorClick: StageClick | null;
+  /** True apenas no cliente do professor enquanto há palco: é ele quem emite. */
+  isInstructorCursorSource: boolean;
+  /** Emite um frame do cursor do professor. No-op em qualquer outro cliente. */
+  sendInstructorCursor: (frame: StageCursorFrame) => void;
   refetch: () => void;
 }

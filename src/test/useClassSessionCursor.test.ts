@@ -148,7 +148,7 @@ describe('cursor topic — lifecycle', () => {
 });
 
 describe('cursor topic — one emitter', () => {
-  const frame = { x: 0.5, y: 0.25, visible: true, caret: { line: 3, column: 4 } };
+  const frame = { x: 0.5, y: 0.25, paneW: 800, paneH: 400, visible: true, caret: { line: 3, column: 4 } };
 
   it('sends on the cursor topic when MY work is on stage', async () => {
     const { result } = await mountAs('student-1');

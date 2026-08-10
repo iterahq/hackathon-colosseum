@@ -46,6 +46,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
 import { LiveOwnWorkDivider } from '@/components/live/LiveOwnWorkDivider';
+import { InstructorCursorLayer } from '@/components/live/InstructorCursorLayer';
 import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
@@ -132,7 +133,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, instructorCursor, instructorClick, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -155,6 +156,14 @@ export default function LiveSessionPage() {
     intervalMs: stageCursorPlan.intervalMs,
     send: sendStageCursor,
   });
+
+  // O caminho de volta (K1): o ponteiro do professor. Quem está no palco vê no
+  // PRÓPRIO editor — é literalmente o professor apontando na tela dele; quem
+  // assiste vê no espelho. O nome sai do roster porque o rótulo do ponteiro é o
+  // que desfaz a ambiguidade com o cursor do próprio aluno.
+  const instructorPointerName =
+    roster.find((m) => m.userId === instructorCursor?.userId)?.name ??
+    t('live.stage.instructorPointer');
 
   // Guest content is served by itera-api, scoped to the invited session — the
   // ONE read a membership-less JWT cannot do for itself.
@@ -646,6 +655,16 @@ export default function LiveSessionPage() {
                 </div>
               )}
             </>
+          )}
+
+          {stagedAnswer && !ended && (
+            <InstructorCursorLayer
+              cursor={instructorCursor}
+              click={instructorClick}
+              onStage={isStageCursorSource}
+              instructorName={instructorPointerName}
+              intervalMs={stageCursorPlan.intervalMs}
+            />
           )}
 
           <div
