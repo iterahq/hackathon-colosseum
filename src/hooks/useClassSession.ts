@@ -42,8 +42,15 @@ import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
 import { MAX_PANE_PX } from '@/utils/stageCursorPlacement';
+import {
+  parseScoreboard,
+  SCOREBOARD_MAX_ENTRIES,
+  SCOREBOARD_REPLY_DEBOUNCE_MS,
+  SCOREBOARD_REPLY_MIN_GAP_MS,
+} from '@/utils/liveScoreboard';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
 import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
+import { getSessionScoreboard } from '@/services/classScoreboard.service';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -77,6 +84,13 @@ const HAND_LOWER_EVENT = 'hand-lower';
 // um aluno não pode congelar a sala dos outros. Não trava resposta nenhuma: é
 // sinalização, e quem já estava digitando termina.
 const BREAK_EVENT = 'break';
+// Placar: PEDIDO no tópico compartilhado (é onde o aluno pode enviar), RESPOSTA
+// no de staff. Diferente do `answered`, que é auto-atestado por design, a
+// resposta fala pelos OUTROS — no tópico compartilhado um aluno reescreveria o
+// pódio da turma. Quem pede é quem acabou de conectar, porque é ele que sabe que
+// está sem placar. Ver `utils/liveScoreboard.ts` pro defeito que isso corrige.
+const SCOREBOARD_REQUEST_EVENT = 'scoreboard-request';
+const SCOREBOARD_EVENT = 'scoreboard';
 // The pull is peer-to-peer: only a client that is ONLINE can answer it. A learner
 // who closed the tab / lost the network never replies, so give up after a grace
 // window and tell the professor — an endless spinner reads as a broken feature.
@@ -211,7 +225,11 @@ export function useClassSession(
   const recordAnswer = useCallback(
     (activityId: string, userId: string, correct: boolean, elapsedMs?: number) => {
       setAnswers((prev) => {
-        if (prev[activityId]?.[userId] === true && !correct) return prev;
+        const known = prev[activityId]?.[userId];
+        // Repetição é no-op de IDENTIDADE, não só de valor: uma resposta de placar
+        // repete dezenas de entradas que o cliente já tem, e devolver objeto novo
+        // re-renderizaria pódio e roster inteiros por nada.
+        if (known === correct || (known === true && !correct)) return prev;
         return { ...prev, [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct } };
       });
       if (!correct || typeof elapsedMs !== 'number') return;
@@ -288,6 +306,8 @@ export function useClassSession(
     let everJoined = false;
     let attempt = 0;
     let retryTimer: number | null = null;
+    let scoreboardReplyTimer: number | null = null;
+    let lastScoreboardReplyAt = 0;
     let current: RealtimeChannel | null = null;
     let currentCtrl: RealtimeChannel | null = null;
 
@@ -319,6 +339,44 @@ export function useClassSession(
       });
     };
 
+    // A resposta do professor ao pedido de placar. Sai do BANCO, nunca do placar
+    // que ele ouviu: o `answered` é auto-atestado no tópico compartilhado, e
+    // repassá-lo daqui carimbaria um acerto forjado com a autoridade do tópico de
+    // staff, de forma irreversível (o `recordAnswer` é monótono).
+    //
+    // Coalescida E com piso entre respostas: depois de uma queda de rede a turma
+    // reconecta junta, e o pedido é uma mensagem que qualquer participante (aluno
+    // ou convidado) pode repetir à vontade — sem o piso, um cliente em loop viraria
+    // uma leitura do banco e um broadcast grande a cada 400 ms no MESMO tópico que
+    // carrega `advance` / `timer` / `stage-show`. Pedido dentro do piso não é
+    // descartado: ele empurra a resposta para a borda da janela.
+    //
+    // Falha na leitura = silêncio, não placar vazio — por isso
+    // `getSessionScoreboard` lança em vez de devolver [].
+    const replyWithScoreboard = (ctrl: RealtimeChannel) => {
+      if (disposed || scoreboardReplyTimer !== null) return;
+      const sinceLast = Date.now() - lastScoreboardReplyAt;
+      const wait = Math.max(SCOREBOARD_REPLY_DEBOUNCE_MS, SCOREBOARD_REPLY_MIN_GAP_MS - sinceLast);
+      scoreboardReplyTimer = window.setTimeout(() => {
+        scoreboardReplyTimer = null;
+        if (disposed || currentCtrl !== ctrl) return;
+        void getSessionScoreboard(sessionId)
+          .then((entries) => {
+            if (disposed || currentCtrl !== ctrl || entries.length === 0) return;
+            lastScoreboardReplyAt = Date.now();
+            // Corta no remetente, não só na leitura: o teto existe pra resposta
+            // grande não ser RECUSADA inteira, e uma recusa deixaria o
+            // recém-chegado sem placar nenhum — justo o que estamos consertando.
+            return ctrl.send({
+              type: 'broadcast',
+              event: SCOREBOARD_EVENT,
+              payload: { entries: entries.slice(0, SCOREBOARD_MAX_ENTRIES) },
+            });
+          })
+          .catch(() => undefined);
+      }, wait);
+    };
+
     const reconnectNow = () => {
       if (disposed) return;
       const old = current;
@@ -346,6 +404,12 @@ export function useClassSession(
         if (!(mainJoined && ctrlJoined)) return;
         attempt = 0;
         setReconnecting(false);
+        // O aluno pede o placar da turma aqui, e não no SUBSCRIBED do canal
+        // compartilhado, porque a RESPOSTA vem no de staff: pedir antes de estar
+        // ouvindo os dois seria pedir e perder. Pedido repetido é barato — o
+        // professor coalesce (`replyWithScoreboard`).
+        if (identityRef.current?.isInstructor === true) return;
+        void channel.send({ type: 'broadcast', event: SCOREBOARD_REQUEST_EVENT, payload: {} });
       };
       const presenceKey =
         identityRef.current?.userId ?? `anon-${Math.random().toString(36).slice(2, 10)}`;
@@ -510,6 +574,14 @@ export function useClassSession(
         .on('broadcast', { event: BREAK_EVENT }, ({ payload }) => {
           setOnBreak((payload as { on?: unknown } | null)?.on === true);
         })
+        // O placar do professor chegando. Dobra pelo `recordAnswer`, que é
+        // MONOTONE: o anúncio só pode ACRESCENTAR o que este cliente não ouviu,
+        // nunca rebaixar um acerto que ele viu nem reescrever um tempo.
+        .on('broadcast', { event: SCOREBOARD_EVENT }, ({ payload }) => {
+          for (const e of parseScoreboard(payload)) {
+            recordAnswer(e.activityId, e.userId, e.correct, e.elapsedMs);
+          }
+        })
         // Abaixar a mão de outro é impossível por escrita (presença é do dono),
         // então é o cliente do aluno que abaixa a própria e re-publica.
         .on('broadcast', { event: HAND_LOWER_EVENT }, ({ payload }) => {
@@ -622,6 +694,13 @@ export function useClassSession(
           if (!p?.activity_id || !p.user_id) return;
           recordAnswer(p.activity_id, p.user_id, p.correct === true, p.elapsed_ms);
         })
+        // scoreboard-request (learner → professor). Só o professor responde, e a
+        // resposta é uma só pra todo mundo — o tópico já entrega em quem estava
+        // offline junto. Ver `replyWithScoreboard`.
+        .on('broadcast', { event: SCOREBOARD_REQUEST_EVENT }, () => {
+          if (identityRef.current?.isInstructor !== true) return;
+          replyWithScoreboard(ctrl);
+        })
         .on(
           'postgres_changes',
           { event: 'UPDATE', schema: 'itera', table: 'class_sessions', filter: `id=eq.${sessionId}` },
@@ -642,9 +721,8 @@ export function useClassSession(
           // pausa é justo quando as mãos sobem — sem o filtro, cada mão vira um
           // broadcast para a sala inteira.
           if (currentPresences.length > 0) return;
-          if (onBreakRef.current && identityRef.current?.isInstructor === true) {
-            void ctrl.send({ type: 'broadcast', event: BREAK_EVENT, payload: { on: true } });
-          }
+          if (!onBreakRef.current || identityRef.current?.isInstructor !== true) return;
+          void ctrl.send({ type: 'broadcast', event: BREAK_EVENT, payload: { on: true } });
         })
         .on('presence', { event: 'leave' }, syncRoster)
         .subscribe((s) => {
@@ -670,6 +748,31 @@ export function useClassSession(
             // leaving the reception. Re-read the durable row on every (re)subscribe
             // so it always converges instead of getting stranded in the lobby.
             void getClassSession(sessionId).then(applySession);
+            // O pódio re-hidrata do banco a cada (re)join pelo mesmo motivo do
+            // advance: broadcast não é reenviado depois de um blip. O PROFESSOR
+            // lê do banco, porque é ele que responde pela
+            // turma e um professor que recarrega no meio da aula não pode virar a
+            // fonte do placar sem TER o placar. O ALUNO pede — a RLS de
+            // `class_answers` devolveria a ele só a própria linha, e é ele que sabe
+            // que acabou de conectar sem o placar dos colegas (defeito B1).
+            if (identityRef.current?.isInstructor === true) {
+              void getSessionScoreboard(sessionId)
+                .then((entries) => {
+                  if (disposed || current !== channel) return;
+                  for (const e of entries) {
+                    recordAnswer(e.activityId, e.userId, e.correct, e.elapsedMs);
+                  }
+                })
+                .catch(() => undefined);
+              // E responde sem ninguém pedir, uma vez. O pedido do aluno é uma
+              // mensagem só, sem retry: quem pediu antes deste professor existir na
+              // sala — ele abre a aula depois dos alunos, recarrega, ou ainda estava
+              // resolvendo a identidade quando o pedido passou — ficaria com o pódio
+              // de uma pessoa pelo resto da aula. Diferente do reanúncio por
+              // presença que isto substituiu, aqui não há chave fantasma no meio: o
+              // gatilho é o próprio (re)subscribe dele.
+              replyWithScoreboard(ctrl);
+            }
             trackPresence();
             return;
           }
@@ -698,6 +801,7 @@ export function useClassSession(
     return () => {
       disposed = true;
       if (retryTimer !== null) clearTimeout(retryTimer);
+      if (scoreboardReplyTimer !== null) clearTimeout(scoreboardReplyTimer);
       document.removeEventListener('visibilitychange', onVisible);
       const old = current;
       const oldCtrl = currentCtrl;

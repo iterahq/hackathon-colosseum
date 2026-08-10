@@ -219,6 +219,19 @@ export interface StoredLiveAnswer {
   response?: string;
 }
 
+/**
+ * One learner's result for one activity, as it travels between clients — see
+ * `src/utils/liveScoreboard.ts` for why the professor hands the whole board to
+ * whoever joins.
+ */
+export interface ScoreboardEntry {
+  activityId: string;
+  userId: string;
+  correct: boolean;
+  /** Only ever set for a correct answer; the podium ranks on it. */
+  elapsedMs?: number;
+}
+
 export interface ClassRankingEntry {
   userId: string;
   name: string;

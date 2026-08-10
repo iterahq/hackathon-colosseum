@@ -73,6 +73,7 @@ import { recordClassAttendance } from '@/services/classReport.service';
 import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
+import { mergeSeenLearners } from '@/utils/liveRoster';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import { learnerActivityGate, canLearnerReopen } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
@@ -96,7 +97,7 @@ import { isInstructor as isStaffInstructor } from '@/services/membership.service
 import { useProfile } from '@/hooks/useProfile';
 import { useGuestMode } from '@/guest/GuestModeContext';
 import type { Activity } from '@/types/content';
-import type { ClassCompleter } from '@/types/liveClass';
+import type { ClassCompleter, ClassPresenceMember } from '@/types/liveClass';
 import { isScenarioKind } from '@/utils/activityFamilies';
 
 
@@ -467,8 +468,18 @@ export default function LiveSessionPage() {
     : 0;
 
   const ended = status === 'ended';
+  // `rankByScore` percorre o ROSTER, não `answers`: um colega ausente da
+  // presença deste cliente não entra no pódio nem com a resposta dele em mãos.
+  // Era a segunda causa do defeito relatado — o professor já rankeava por
+  // `mergeSeenLearners` e via a turma, o aluno rankeava só quem estava online
+  // naquele instante e via a si mesmo.
+  const seenLearnersRef = useRef<Map<string, ClassPresenceMember>>(new Map());
+  useEffect(() => {
+    seenLearnersRef.current = mergeSeenLearners(seenLearnersRef.current, roster);
+  }, [roster]);
   const podiumRanking = useMemo(
-    () => rankByScore(roster, elapsed, answers),
+    () =>
+      rankByScore([...mergeSeenLearners(seenLearnersRef.current, roster).values()], elapsed, answers),
     [roster, elapsed, answers]
   );
   const roomRows = useMemo(
