@@ -27,7 +27,10 @@ export function LiveRoomActionsToggle({ name, open, onToggle }: LiveRoomActionsT
           ? 'top-1.5 w-8 h-8 rounded-full'
           : // Fechado o alvo ocupa a altura inteira da linha: com w-7 h-6 o dedo
             // caía em 24px de altura, metade do mínimo de toque.
-            'inset-y-0 w-9 rounded-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
+            // O revelar por foco é `:focus-visible`, não `:focus`: fechar as
+            // ações por clique deixa ESTE botão focado, e com focus-within o ⋯
+            // ficava preso visível (e a pontuação escondida) até um clique fora.
+            'inset-y-0 w-9 rounded-lg opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
       }`}
     >
       {open ? <X className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}

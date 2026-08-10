@@ -67,6 +67,20 @@ describe('per-student actions', () => {
     expect(screen.getAllByTestId('live-room-actions-open').length).toBeGreaterThan(0);
   });
 
+  it('não deixa o ⋯ preso visível depois de fechar as ações por clique', () => {
+    renderRoom();
+    openRow(0);
+    fireEvent.click(screen.getByTestId('live-room-actions-close'));
+    // Fechar por clique deixa ESTE botão com `:focus`. Enquanto o revelar
+    // dependia de `focus-within`, o ⋯ ficava visível e a pontuação escondida
+    // até o professor clicar em outro lugar da tela.
+    const toggle = screen.getAllByTestId('live-room-actions-open')[0];
+    expect(toggle.className).not.toContain('group-focus-within');
+    expect(toggle.className).toContain('group-has-[:focus-visible]:opacity-100');
+    const info = screen.getAllByTestId('live-room-score')[0].parentElement;
+    expect(info?.className).not.toContain('group-focus-within');
+  });
+
   it('gives and takes back a star on the learner of that row', () => {
     const { onStar } = renderRoom({ a: 1 });
     openRow(0);
