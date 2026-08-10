@@ -170,7 +170,43 @@ export function runCodeChecks(options: {
       // Read the ATTRIBUTE rather than `el.className`, which is an
       // SVGAnimatedString (not a string) on SVG nodes.
       const cls = el.getAttribute('class') || '';
-      return cls.indexOf(assert.contains) !== -1;
+
+      // `equals` — new in `@iterahq/activity-spec@0.13.0`. `contains` is
+      // tolerant by design (a learner who solves the exercise and then adds
+      // classes of their own still passes); `equals` is the exact form, for
+      // "give it exactly these three utilities". The schema requires exactly
+      // one of the two, so the author picks the tolerance per exercise instead
+      // of the schema picking it for every exercise at once.
+      //
+      // Set comparison, not string comparison: order, repeated whitespace and a
+      // duplicated class are NOT differences. One extra class on the element
+      // is, which is the whole point of the form.
+      //
+      // ⚠️ The split is INLINE rather than `classTokens` from the package, and
+      // it has to be: this function is serialised with `String(fn)` into an
+      // opaque-origin iframe (see the file header), where an imported symbol
+      // would be a `ReferenceError`. That is exactly the "two implementations
+      // of what counts as one class" the package warns about, so the copy is
+      // not left on trust — `codePreviewRuntime.test.tsx` asserts this split
+      // agrees with `classTokens` itself, over the cases that distinguish them.
+      if (assert.equals !== undefined) {
+        const want = assert.equals.split(/\s+/).filter(Boolean);
+        const have = cls.split(/\s+/).filter(Boolean);
+        for (let i = 0; i < want.length; i++) {
+          if (have.indexOf(want[i]) === -1) return false;
+        }
+        for (let i = 0; i < have.length; i++) {
+          if (want.indexOf(have[i]) === -1) return false;
+        }
+        return true;
+      }
+      // `contains` — substring of the class attribute, byte for byte as before.
+      if (assert.contains !== undefined) return cls.indexOf(assert.contains) !== -1;
+      // Unreachable through the schema (exactly one of the two is required, and
+      // a bare `{ type: 'class' }` stopped parsing in 0.13.0 precisely because
+      // it asserted nothing and always passed). Kept explicit so a spec that
+      // reached here some other way fails LOUD rather than passing vacuously.
+      return false;
     }
     // `attr`
     const value = el.getAttribute(assert.name);

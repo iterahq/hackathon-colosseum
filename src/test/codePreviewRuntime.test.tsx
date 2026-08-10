@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from '@testing-library/react';
-import type { CodeCheck } from '@iterahq/activity-spec';
+import { CodeAssertSchema, classTokens, type CodeCheck } from '@iterahq/activity-spec';
 import {
   CODE_PREVIEW_RUNTIME_SOURCE,
   createRequireShim,
@@ -164,6 +164,125 @@ describe('runCodeChecks — assert evaluation', () => {
         check({ selector: 'button', assert: { type: 'class', contains: 'bg-emerald-500' } }),
       ]),
     ).toEqual([{ id: 'c1', passed: false }]);
+  });
+
+  /**
+   * `equals` — the EXACT form, new in `@iterahq/activity-spec@0.13.0` and
+   * reachable from an author for the first time on the 0.14.0 bump.
+   *
+   * `contains` decided a pedagogical question by omission: for "make the button
+   * green" its tolerance is right, and for "give it exactly these three
+   * utilities" it is wrong. `equals` is how an author says which one they mean.
+   */
+  describe('class — the exact form', () => {
+    const exact = (equals: string) =>
+      check({ selector: 'button', assert: { type: 'class', equals } });
+
+    it('passes on the same SET, whatever the order', async () => {
+      const html = '<button class="px-4 bg-emerald-500 text-white">Enviar</button>';
+      expect(await runAgainstHtml(html, [exact('px-4 bg-emerald-500 text-white')])).toEqual([
+        { id: 'c1', passed: true },
+      ]);
+      expect(await runAgainstHtml(html, [exact('text-white px-4 bg-emerald-500')])).toEqual([
+        { id: 'c1', passed: true },
+      ]);
+    });
+
+    it('ignores repeated whitespace and duplicates on BOTH sides', async () => {
+      // A duplicate is not a difference: the assertion is over a SET, and an
+      // author who writes a class twice means the class once.
+      expect(
+        await runAgainstHtml('<button class="  px-4   px-4  bg-emerald-500 ">x</button>', [
+          exact('bg-emerald-500\tpx-4'),
+        ]),
+      ).toEqual([{ id: 'c1', passed: true }]);
+    });
+
+    it('FAILS on one extra class — the whole reason the form exists', async () => {
+      // The case that separates `equals` from `contains`. `contains` passes here.
+      const html = '<button class="px-4 bg-emerald-500 rounded">x</button>';
+      expect(await runAgainstHtml(html, [exact('px-4 bg-emerald-500')])).toEqual([
+        { id: 'c1', passed: false },
+      ]);
+      expect(
+        await runAgainstHtml(html, [
+          check({ selector: 'button', assert: { type: 'class', contains: 'bg-emerald-500' } }),
+        ]),
+      ).toEqual([{ id: 'c1', passed: true }]);
+    });
+
+    it('FAILS on a missing class', async () => {
+      expect(
+        await runAgainstHtml('<button class="px-4">x</button>', [exact('px-4 bg-emerald-500')]),
+      ).toEqual([{ id: 'c1', passed: false }]);
+    });
+
+    it('FAILS on an element with no class attribute at all', async () => {
+      expect(await runAgainstHtml('<button>x</button>', [exact('px-4')])).toEqual([
+        { id: 'c1', passed: false },
+      ]);
+    });
+  });
+
+  /**
+   * 🔴 THE TWO-IMPLEMENTATIONS GUARD.
+   *
+   * `codePreviewRuntime.ts` is serialised with `String(fn)` into an
+   * opaque-origin iframe, so it CANNOT import `classTokens` — an imported
+   * symbol would be a `ReferenceError` in there. The split is therefore
+   * duplicated by necessity, and `@iterahq/activity-spec` says in as many words
+   * why that is dangerous: "two implementations of what counts as one class is
+   * how an exercise starts passing in the author's preview and failing for the
+   * learner."
+   *
+   * So the copy is not left on trust. Each case below is a string where a
+   * plausible-but-wrong split would diverge, and the expectation is derived from
+   * `classTokens` at run time rather than hard-coded — a hard-coded expectation
+   * would keep passing after the package changed its mind.
+   */
+  describe('the inline class split agrees with classTokens from the package', () => {
+    const CASES = [
+      'px-4 bg-emerald-500',
+      '  px-4   bg-emerald-500  ', // collapsed runs + leading/trailing
+      'px-4\tbg-emerald-500\nrounded', // tab and newline are separators too
+      'px-4 px-4', // a duplicate collapses to one member
+      '', // the empty set
+      '   ', // whitespace only is ALSO the empty set
+      'a',
+    ];
+
+    it.each(CASES)('agrees on %j', async (value) => {
+      const expected = [...classTokens(value)].sort();
+
+      // Drive the REAL runtime rather than a re-implementation of it: build an
+      // element carrying exactly these classes and assert `equals` passes for
+      // the token set the package computes, in a shuffled order.
+      const html = `<button class="${value}">x</button>`;
+      const shuffled = [...expected].reverse().join('  ');
+
+      if (expected.length === 0) {
+        // The empty set is unauthorable — 0.13.0 rejects an `equals` of only
+        // whitespace, because it passes only on an element with no classes and
+        // `selector` says that better. Assert the SCHEMA refuses it, so this
+        // case is covered by the layer that actually owns it.
+        expect(CodeAssertSchema.safeParse({ type: 'class', equals: value }).success).toBe(false);
+        return;
+      }
+
+      expect(
+        await runAgainstHtml(html, [
+          check({ selector: 'button', assert: { type: 'class', equals: shuffled } }),
+        ]),
+      ).toEqual([{ id: 'c1', passed: true }]);
+
+      // ...and adding any one token the package did NOT produce must fail, which
+      // is what proves the runtime's set is not merely a superset.
+      expect(
+        await runAgainstHtml(html, [
+          check({ selector: 'button', assert: { type: 'class', equals: `${shuffled} zzz-extra` } }),
+        ]),
+      ).toEqual([{ id: 'c1', passed: false }]);
+    });
   });
 
   it('attr — equals / contains / missing attribute', async () => {
