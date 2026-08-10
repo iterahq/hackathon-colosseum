@@ -233,8 +233,16 @@ jobs:
       # resolve pelo cache dele e pode instalar uma revisão de Chromium DIFERENTE
       # da que o `@playwright/test` do lock exige — aí o teste roda com um browser
       # que não existe e falha com "Executable doesn't exist". Queimado 2026-07-31.
+      # ⚠️ `--with-deps` roda `apt-get` no HOST. Runner com o dpkg em estado
+      # interrompido reprova este gate em ~20s por um motivo que não é do PR — e
+      # como o `safe-admin-merge` exige TODO context verde, um host doente tranca
+      # o merge do repo inteiro. As libs do Chromium já estão nesses hosts: o
+      # fallback baixa só o browser. Se faltar lib de verdade o teste quebra no
+      # launch, que é o lugar honesto pra isso aparecer. Queimado 2026-08-10.
       - name: Install Chromium
-        run: node node_modules/playwright/cli.js install --with-deps chromium
+        run: |
+          node node_modules/playwright/cli.js install --with-deps chromium ||
+            node node_modules/playwright/cli.js install chromium
 
       # O `webServer` da config faz o `vite build` + `vite preview` com a origem
       # Supabase stub. Nada de rede externa, nada de login, nada de DB.
@@ -316,8 +324,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Só o Chromium: as instâncias do projeto de browser declaram apenas ele.
+      # Mesmo fallback de dpkg do `activity-baseline`, e pelo `cli.js` do lock —
+      # o `npx` resolve pelo cache dele e pode baixar outra revisão (ver o aviso
+      # no `activity-baseline`).
       - name: Install Chromium for the Vitest browser provider
-        run: npx playwright install --with-deps chromium
+        run: |
+          node node_modules/playwright/cli.js install --with-deps chromium ||
+            node node_modules/playwright/cli.js install chromium
 
       # `npm run test:browser` usa `vitest.browser.config.ts`, que seleciona
       # SOMENTE as stories com a tag `browser-mode` (hoje: match e code).
