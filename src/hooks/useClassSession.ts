@@ -135,6 +135,10 @@ export function useClassSession(
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
   const [elapsed, setElapsed] = useState<Record<string, Record<string, number>>>({});
+  // `activityId|userId` de quem já ACERTOU: marca o tempo como definitivo. Não é
+  // estado porque ninguém renderiza a marca — ela só decide se o próximo tempo
+  // entra (ver `recordAnswer`).
+  const settledTimeRef = useRef<Set<string>>(new Set());
   const [timer, setTimer] = useState<ClassTimer | null>(null);
   // The activity whose timer was just STOPPED by the professor — cue to reveal
   // the correct answer to everyone. Cleared on advance.
@@ -235,8 +239,8 @@ export function useClassSession(
   // `answered` is the one event a learner still sends, so it is self-attested:
   // the scoreboard it feeds is DECORATION and itera.class_answers (RLS: a learner
   // writes only its own row) stays the durable truth. Recording is MONOTONE — a
-  // hit never flips to a miss and a time is never rewritten — so a forged event
-  // can't sabotage a peer.
+  // hit never flips to a miss and the time of a hit is never rewritten — so a
+  // forged event can't sabotage a peer.
   const recordAnswer = useCallback(
     (activityId: string, userId: string, correct: boolean, elapsedMs?: number) => {
       setAnswers((prev) => {
@@ -247,9 +251,19 @@ export function useClassSession(
         if (known === correct || (known === true && !correct)) return prev;
         return { ...prev, [activityId]: { ...(prev[activityId] ?? {}), [userId]: correct } };
       });
-      if (!correct || typeof elapsedMs !== 'number') return;
+      if (typeof elapsedMs !== 'number') return;
+      // O tempo de um ERRO é PROVISÓRIO. O professor precisa ver quanto o aluno
+      // levou mesmo errando — antes disso a linha de quem errou não tinha tempo
+      // nenhum, indistinguível de quem não respondeu, e o `totalMs` dele no
+      // pódio era 0, que como desempate valeria "o mais rápido da turma".
+      // Um acerto posterior SUBSTITUI o provisório, porque o desempate é
+      // tempo-até-acertar; depois disso o tempo congela, e é esse congelamento
+      // que o replay de placar (SCOREBOARD_EVENT) chama de monótono.
+      const key = `${activityId}|${userId}`;
+      if (settledTimeRef.current.has(key)) return;
+      if (correct) settledTimeRef.current.add(key);
       setElapsed((prev) => {
-        if (typeof prev[activityId]?.[userId] === 'number') return prev;
+        if (prev[activityId]?.[userId] === elapsedMs) return prev;
         return { ...prev, [activityId]: { ...(prev[activityId] ?? {}), [userId]: elapsedMs } };
       });
     },

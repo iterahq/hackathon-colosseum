@@ -21,7 +21,7 @@
  *     maioria errou — vale revisar") so the professor can decide whether to
  *     advance or review — the sidebar as teaching support, not just telemetry.
  *
- * Playground-only code (src/stories/): the proposal does NOT touch the
+ * Playground-only code (design-playground/): the proposal does NOT touch the
  * production components; approve here first, then port.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -47,7 +47,7 @@ import {
   UserMinus,
   PartyPopper,
   MoreHorizontal,
-  Star,
+  ChevronDown,
   MonitorPlay,
   X,
 } from 'lucide-react';
@@ -87,8 +87,6 @@ interface RoomSim {
   /** Aula encerrada — o painel troca a sala pelo pódio. */
   finished: boolean;
   podium: PodiumEntry[];
-  /** Estrelinhas por aluno (reconhecimento do professor). */
-  stars: Map<string, number>;
   /** Alunos no palco, na ordem em que foram chamados. */
   onStage: string[];
 }
@@ -582,8 +580,6 @@ function useRoomSim() {
   const [students, setStudents] = useState<Student[]>(() => INITIAL_STUDENTS.map(makeStudent));
   const [answers, setAnswers] = useState<Map<string, { state: 'done' | 'wrong'; elapsedMs: number }>>(new Map());
   const [scores, setScores] = useState<Map<string, Score>>(new Map());
-  /** Estrelinhas dadas pelo professor — reconhecimento, não pontuação. */
-  const [stars, setStars] = useState<Map<string, number>>(new Map());
   /** Quem está no palco sendo acompanhado ao vivo (ordem de chamada). */
   const [onStage, setOnStage] = useState<string[]>([]);
   const [finished, setFinished] = useState(false);
@@ -679,8 +675,8 @@ function useRoomSim() {
     );
   }
 
-  /** Professor tira o aluno da aula: sai da lista, das respostas, do placar,
-   *  das estrelas e do palco — nada dele pode sobrar pendurado. */
+  /** Professor tira o aluno da aula: sai da lista, das respostas, do placar e do
+   *  palco — nada dele pode sobrar pendurado. */
   function removeStudent(userId: string) {
     setStudents((prev) => prev.filter((s) => s.id !== userId));
     setAnswers((prev) => {
@@ -693,17 +689,7 @@ function useRoomSim() {
       next.delete(userId);
       return next;
     });
-    setStars((prev) => {
-      const next = new Map(prev);
-      next.delete(userId);
-      return next;
-    });
     setOnStage((prev) => prev.filter((id) => id !== userId));
-  }
-
-  /** "Dar uma estrelinha" — acumula, o professor pode reconhecer mais de uma vez. */
-  function awardStar(userId: string) {
-    setStars((prev) => new Map(prev).set(userId, (prev.get(userId) ?? 0) + 1));
   }
 
   /** Chama ao palco / tira do palco (o mesmo botão alterna). */
@@ -745,7 +731,6 @@ function useRoomSim() {
     allAnswered,
     finished,
     podium,
-    stars,
     onStage,
   };
 
@@ -755,7 +740,6 @@ function useRoomSim() {
     resetAnswers,
     addStudent,
     removeStudent,
-    awardStar,
     toggleStage,
     toggleTimer,
     addTime,
@@ -960,7 +944,6 @@ interface RoomRow {
 
 /** Ações que o professor tem sobre um aluno, a partir do menu da linha. */
 interface RowActions {
-  onAwardStar: (userId: string) => void;
   onToggleStage: (userId: string) => void;
   onRemove: (userId: string) => void;
 }
@@ -994,28 +977,31 @@ function rankRoom(answerers: ClassAnswerer[]): RoomRow[] {
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 /**
- * Uma linha da sala: posição · avatar · nome · estrelas · tempo · estado.
+ * Uma linha da sala: posição · avatar · nome · tempo · estado.
  *
  * Três estados, um de cada vez na MESMA linha (nada de popover: a lista rola
  * com `overflow-y-auto`, que recortaria qualquer menu posicionado por cima):
  *
  *   idle       → hover/foco revela o "⋯" no lugar do tempo+estado
- *   actions    → estrela · palco · remover, com o nome à esquerda
+ *   actions    → palco · Mais, com o nome à esquerda
  *   confirming → só a remoção pede confirmação (não tem desfazer ao vivo)
  *
  * Em telas sem hover (tablet) o "⋯" fica sempre visível — senão as ações
  * seriam inalcançáveis por toque.
+ *
+ * Tirar da aula mora atrás do "Mais": ao lado do botão de palco, o professor da
+ * primeira aula com alunos reais confundiu os dois — "tirar da sala" e "tirar do
+ * palco" são a mesma frase até a última palavra, e uma delas expulsa um
+ * adolescente. O palco se usa toda hora, a remoção quase nunca.
  */
 function RoomRowItem({
   row,
   compact,
-  stars,
   onStage,
   actions,
 }: {
   row: RoomRow;
   compact: boolean;
-  stars: number;
   onStage: boolean;
   actions?: RowActions;
 }) {
@@ -1023,15 +1009,7 @@ function RoomRowItem({
   const wrong = row.state === 'wrong';
   const [mode, setMode] = useState<'idle' | 'actions' | 'confirming'>('idle');
   const confirming = mode === 'confirming';
-  /** Incrementa a cada estrela dada. Serve de `key` para REINICIAR a animação
-   *  de feedback a cada clique (sem isso, o segundo clique não anima nada e o
-   *  professor não vê que a estrela foi registrada). */
-  const [pulse, setPulse] = useState(0);
-
-  function handleStar() {
-    actions?.onAwardStar(row.userId);
-    setPulse((p) => p + 1);
-  }
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   const iconBtn =
     'w-8 h-8 shrink-0 grid place-items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-1';
@@ -1040,8 +1018,8 @@ function RoomRowItem({
     <motion.li
       layout
       transition={{ type: 'spring', stiffness: 420, damping: 38 }}
-      /* Gap menor no modo de ações: com 4 controles numa sidebar de 300px, o
-         gap-3 espremia o nome a ~20px e a barra virava anônima. */
+      /* Gap menor no modo de ações: com os controles enfileirados numa sidebar de
+         300px, o gap-3 espremia o nome a ~20px e a barra virava anônima. */
       className={`group relative flex items-center rounded-xl ${mode === 'actions' ? 'gap-1.5' : 'gap-3'} ${
         compact ? 'py-1.5 px-2' : 'py-2 px-2.5'
       } ${
@@ -1085,50 +1063,6 @@ function RoomRowItem({
           <LiveAvatar name={row.name} avatarUrl={row.avatarUrl} size="w-6 h-6" />
           <span className="flex-1 min-w-0 truncate text-sm text-foreground">{row.name.split(' ')[0]}</span>
 
-          {/* Feedback do clique mora AQUI, no próprio botão: o contador sobe na
-              hora (estado puro, sempre correto), o ícone dá um pop e um "+1"
-              sobe e some. Antes só existia o badge do estado normal — que fica
-              escondido enquanto o menu está aberto, então o professor clicava e
-              não via nada acontecer. */}
-          <button
-            onClick={handleStar}
-            aria-label={`Dar uma estrela para ${row.name}${stars > 0 ? ` (tem ${stars})` : ''}`}
-            title="Dar uma estrela"
-            data-testid="row-star"
-            className={`relative h-8 min-w-8 px-2 shrink-0 inline-flex items-center justify-center gap-1 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-1 border-streak/40 bg-streak/10 text-streak hover:bg-streak/20 focus-visible:ring-streak/50`}
-          >
-            <motion.span
-              key={pulse}
-              initial={pulse === 0 ? false : { scale: 0.55 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 600, damping: 18 }}
-              className="grid place-items-center"
-            >
-              <Star className={`w-4 h-4 ${stars > 0 ? 'fill-current' : ''}`} />
-            </motion.span>
-
-            {stars > 0 && (
-              <span className="font-mono text-[10px] tabular-nums leading-none" data-testid="row-star-count">
-                {stars}
-              </span>
-            )}
-
-            {/* "+1" efêmero — decorativo: se a animação não rodar, o contador
-                acima já entregou a informação. */}
-            {pulse > 0 && (
-              <motion.span
-                key={`plus-${pulse}`}
-                initial={{ opacity: 1, y: 0 }}
-                animate={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.7, ease: 'easeOut' }}
-                className="pointer-events-none absolute -top-1 left-1/2 -translate-x-1/2 font-mono text-[10px] font-bold text-streak"
-                aria-hidden
-              >
-                +1
-              </motion.span>
-            )}
-          </button>
-
           <button
             onClick={() => actions?.onToggleStage(row.userId)}
             aria-label={onStage ? `Tirar ${row.name} do palco` : `Chamar ${row.name} ao palco`}
@@ -1144,18 +1078,34 @@ function RoomRowItem({
             <MonitorPlay className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setMode('confirming')}
-            aria-label={`Remover ${row.name} da aula`}
-            title="Remover da aula"
-            data-testid="row-remove"
-            className={`${iconBtn} border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive/50`}
-          >
-            <UserMinus className="w-4 h-4" />
-          </button>
+          {removeOpen ? (
+            <button
+              onClick={() => setMode('confirming')}
+              aria-label={`Remover ${row.name} da aula`}
+              title="Remover da aula"
+              data-testid="row-remove"
+              className={`${iconBtn} border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:ring-destructive/50`}
+            >
+              <UserMinus className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setRemoveOpen(true)}
+              aria-label={`Mais ações para ${row.name}`}
+              title="Mais"
+              data-testid="row-more"
+              className="h-8 px-2 shrink-0 inline-flex items-center gap-1 rounded-full text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-evergreen/50"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+              Mais
+            </button>
+          )}
 
           <button
-            onClick={() => setMode('idle')}
+            onClick={() => {
+              setMode('idle');
+              setRemoveOpen(false);
+            }}
             aria-label="Fechar ações"
             title="Fechar"
             data-testid="row-actions-close"
@@ -1191,20 +1141,6 @@ function RoomRowItem({
             >
               {row.name}
             </span>
-            {stars > 0 && (
-              <motion.span
-                key={stars}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                className="shrink-0 inline-flex items-center gap-0.5 text-streak"
-                data-testid="row-stars"
-                title={`${stars} ${stars === 1 ? 'estrela' : 'estrelas'}`}
-              >
-                <Star className="w-3.5 h-3.5 fill-current" />
-                {stars > 1 && <span className="font-mono text-[10px] tabular-nums">{stars}</span>}
-              </motion.span>
-            )}
           </span>
 
           {/* Slot de largura fixa: info e ação se alternam no MESMO espaço. */}
@@ -1331,14 +1267,12 @@ function SalaAoVivo({
   answerers,
   instructors,
   compact,
-  stars,
   onStage,
   actions,
 }: {
   answerers: ClassAnswerer[];
   instructors: ClassPresenceMember[];
   compact: boolean;
-  stars: Map<string, number>;
   onStage: string[];
   actions?: RowActions;
 }) {
@@ -1383,7 +1317,6 @@ function SalaAoVivo({
               key={r.userId}
               row={r}
               compact={compact}
-              stars={stars.get(r.userId) ?? 0}
               onStage={onStage.includes(r.userId)}
               actions={actions}
             />
@@ -1618,7 +1551,6 @@ function SidebarV3({
         answerers={sim.answerers}
         instructors={instructors}
         compact={compact}
-        stars={sim.stars}
         onStage={sim.onStage}
         actions={actions}
       />
@@ -1868,7 +1800,6 @@ function ResponsiveLab() {
             onBegin={() => room.setInReception(false)}
             onToggleTimer={room.toggleTimer}
             actions={{
-              onAwardStar: room.awardStar,
               onToggleStage: room.toggleStage,
               onRemove: room.removeStudent,
             }}

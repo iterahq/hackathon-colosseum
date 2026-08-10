@@ -23,6 +23,7 @@ import { LiveStage } from '@/components/live/LiveStage';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
+import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColumnWidth';
 import { CODE_SPEC, CODE_STARTER } from '@/stories/contractFixtures';
 import type { Activity } from '@/types/content';
 import type {
@@ -211,7 +212,13 @@ function StageCodeScene({
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         <main className="flex-1 min-h-0 px-4 md:px-8 lg:overflow-y-auto pt-10 md:pt-14 pb-8">
-          <div className="mx-auto w-full max-w-4xl">
+          {/* Largura pela MESMA regra da página real: um `max-w-4xl` fixo aqui
+              mostrava o split pane do Monaco mais estreito do que o aluno vê, que
+              é exatamente a divergência por superfície que `activityColumnWidth`
+              existe pra impedir. */}
+          <div
+            className={`mx-auto w-full ${columnMaxWidthClass(activity.kind, LIVE_COLUMN_OVERRIDES)}`}
+          >
             <CodeSnackActivity activity={activity} onComplete={() => {}} />
           </div>
         </main>

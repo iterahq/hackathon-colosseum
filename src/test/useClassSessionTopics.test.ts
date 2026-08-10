@@ -162,18 +162,27 @@ describe('useClassSession — a forged `answered` cannot sabotage a peer', () =>
     expect(result.current.answers[ACTIVITY]?.['student-2']).toBe(true);
   });
 
-  it('never rewrites a recorded time, and ignores the time of a miss', async () => {
+  it('records the time of a miss, so the row of who got it wrong is not timeless', async () => {
     const { result } = await mountAs('student-1', false);
 
     emit('answered', { activity_id: ACTIVITY, user_id: 'student-2', correct: false, elapsed_ms: 5 });
-    expect(result.current.elapsed[ACTIVITY]?.['student-2']).toBeUndefined();
+    expect(result.current.elapsed[ACTIVITY]?.['student-2']).toBe(5);
+  });
 
+  it('a hit REPLACES the provisional time of a miss, and then freezes it', async () => {
+    const { result } = await mountAs('student-1', false);
+
+    emit('answered', { activity_id: ACTIVITY, user_id: 'student-2', correct: false, elapsed_ms: 5 });
     emit('answered', {
       activity_id: ACTIVITY,
       user_id: 'student-2',
       correct: true,
       elapsed_ms: 1200,
     });
+    // O desempate do pódio é tempo-até-ACERTAR, então os 5 ms do erro não podem
+    // sobreviver ao acerto — senão errar rápido valeria mais que acertar.
+    expect(result.current.elapsed[ACTIVITY]?.['student-2']).toBe(1200);
+
     emit('answered', {
       activity_id: ACTIVITY,
       user_id: 'student-2',
@@ -183,12 +192,22 @@ describe('useClassSession — a forged `answered` cannot sabotage a peer', () =>
     expect(result.current.elapsed[ACTIVITY]?.['student-2']).toBe(1200);
   });
 
+  it('a second miss moves the provisional time, because it is the current attempt', async () => {
+    const { result } = await mountAs('student-1', false);
+
+    emit('answered', { activity_id: ACTIVITY, user_id: 'student-2', correct: false, elapsed_ms: 5 });
+    emit('answered', { activity_id: ACTIVITY, user_id: 'student-2', correct: false, elapsed_ms: 90 });
+    expect(result.current.elapsed[ACTIVITY]?.['student-2']).toBe(90);
+  });
+
   it('keeps two learners independent', async () => {
     const { result } = await mountAs('student-1', false);
 
     emit('answered', { activity_id: ACTIVITY, user_id: 'student-2', correct: true, elapsed_ms: 10 });
     emit('answered', { activity_id: ACTIVITY, user_id: 'student-3', correct: false });
     expect(result.current.answers[ACTIVITY]).toEqual({ 'student-2': true, 'student-3': false });
+    // `student-3` errou sem mandar tempo, então segue sem tempo — o que muda é
+    // ignorar o tempo do erro, não inventar um.
     expect(result.current.elapsed[ACTIVITY]).toEqual({ 'student-2': 10 });
   });
 });
