@@ -1,33 +1,20 @@
 /**
- * SandboxScenario dispatcher — the `sandbox_scenario` kind splits into activity
- * types that differ only by how the learner composes their turn. We pick the
- * concrete component off the scenario's authoring shape, never off a second
- * enum value.
+ * ⚠️ `sandbox_scenario` — DEPRECATED, kept only for rows still carrying the old
+ * kind. It owns no rendering of its own anymore: it reads the legacy
+ * `spec.sandboxKind` discriminator and delegates to whichever of the two real
+ * kinds that string selected.
  *
- * FIRST, by `sandboxKind` — the two sandboxes have different world models and
- * different `initialState` shapes:
- *   - `terminal` → the terminal sandbox, then split again by `spec.inputMode`:
- *       · `options`  → TerminalWithOptions (palette at the bottom of the screen)
- *       · otherwise  → TerminalFreeText    (type it and press Enter)
- *   - anything else → the chat sandbox (`cloud-core-chat`), split by shape:
- *       · `slots`   → SandboxAICompleteWords (fill-in slots)
- *       · `choices` → SandboxAIWithOptions   (pick a context chip)
- *       · neither   → SandboxAI              (open free compose)
+ * The discriminator is read off the RAW spec, not off the parsed type: 0.10.0
+ * removed `sandboxKind` from `TerminalScenario` (terminal-ness is the activity
+ * KIND now), but the un-migrated database rows still carry the field, and those
+ * rows are exactly the ones that land here.
  *
- * The terminal is ONE `sandboxKind` with an `inputMode` field rather than two
- * (plan ADR-2). Two kinds would mean two notions of "correct" that can drift,
- * and the same authored content grading differently depending on which surface
- * the learner was given. With one kind, the matcher is literally the same code
- * and the options mode only narrows the input space before it runs.
- *
- * Kept at the original name/path so `ActivityRenderer` dispatches unchanged.
+ * `initialState.engine` is the fallback because a terminal row authored after
+ * the split would arrive without the legacy field, and rendering a shell
+ * scenario as a chat is a blank screen rather than an error.
  */
-import type { Scenario, TerminalScenario } from '@iterahq/activity-spec/runtime';
-import { SandboxAIActivity } from './sandbox/SandboxAIActivity.js';
-import { SandboxAIWithOptionsActivity } from './sandbox/SandboxAIWithOptionsActivity.js';
-import { SandboxAICompleteWordsActivity } from './sandbox/SandboxAICompleteWordsActivity.js';
-import { TerminalFreeTextActivity } from './terminal/TerminalFreeTextActivity.js';
-import { TerminalOptionsActivity } from './terminal/TerminalOptionsActivity.js';
+import { ChatSandboxActivity } from './ChatSandboxActivity.js';
+import { TerminalSandboxActivity } from './TerminalSandboxActivity.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 export function SandboxScenarioActivity(props: {
@@ -35,16 +22,11 @@ export function SandboxScenarioActivity(props: {
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
 }) {
-  const spec = props.activity.spec as unknown as Scenario | TerminalScenario;
+  const spec = (props.activity.spec ?? {}) as Record<string, unknown>;
+  const initialState = (spec.initialState ?? {}) as Record<string, unknown>;
 
-  if (spec.sandboxKind === 'terminal') {
-    const terminal = spec as TerminalScenario;
-    if (terminal.inputMode === 'options') return <TerminalOptionsActivity {...props} />;
-    return <TerminalFreeTextActivity {...props} />;
+  if (spec.sandboxKind === 'terminal' || 'engine' in initialState) {
+    return <TerminalSandboxActivity {...props} />;
   }
-
-  const scenario = spec as Scenario;
-  if (scenario.slots?.length) return <SandboxAICompleteWordsActivity {...props} />;
-  if (scenario.choices?.length) return <SandboxAIWithOptionsActivity {...props} />;
-  return <SandboxAIActivity {...props} />;
+  return <ChatSandboxActivity {...props} />;
 }

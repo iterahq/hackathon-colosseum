@@ -62,6 +62,7 @@ import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
 import { canStepBack, stepBack, stepForward } from '@/utils/lessonNavigation';
 import { lessonExitPath } from '@/utils/lessonExitPath';
 import type { Activity, LessonPosition } from '@/types/content';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -176,7 +177,7 @@ export default function LessonPlayer() {
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
   // into a scroll. Trim the top/bottom padding for the sandbox kind.
-  const isSandbox = current?.kind === 'sandbox_scenario';
+  const isSandbox = !!current && isScenarioKind(current.kind);
   // Width of the focused column follows the activity KIND (see
   // `columnMaxWidthClass`). The completion/loading/error states are plain prose
   // cards, so they always keep the narrow measure.

@@ -33,6 +33,7 @@ vi.mock('@/auth/AuthContext', () => ({
 // Import AFTER the mocks are registered.
 import { SandboxScenarioLiveActivity } from '@/components/branded/activity/sandbox-live/SandboxScenarioLiveActivity';
 import { LiveActivityRenderer } from '@/components/branded/activity/LiveActivityRenderer';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 
 const BYOC_SPEC = {
   openness: 'byoc',
@@ -162,6 +163,31 @@ describe('LiveActivityRenderer — additive dispatch (delegates non-live to the 
       </I18nProvider>,
     );
     expect(screen.getByTestId('byoc-live')).toBeInTheDocument();
+  });
+});
+
+describe('ActivityRenderer — o BYOC ao vivo é isento do parse do guard', () => {
+  // Regressão medida: a row `273e631e` de `itera.activities` (trilha BYOC)
+  // passava no activity-spec 0.9.0 e reprova no 0.12.1, porque o `.strict()`
+  // parou de descartar as chaves da camada BYOC e o `system` dela é bag bilíngue
+  // onde o schema de chat quer `z.string()`. O aluno entra por AQUI, não pelo
+  // `LiveActivityRenderer` — que é do harness de autor.
+  const PROD_SHAPE = {
+    id: 'byoc-context-muda-tudo',
+    live: true,
+    title: { pt: 'Contexto muda tudo', en: 'Context changes everything' },
+    prompt: { pt: 'Traga seu contexto', en: 'Bring your context' },
+    system: { pt: 'Você é uma IA...', en: 'You are an AI...' },
+    steps: [{ id: 'rodar-vago', mode: 'compose', expose: {}, unlock: {} }],
+  };
+
+  it('não vira card de spec inválido', () => {
+    render(
+      <I18nProvider>
+        <ActivityRenderer activity={makeActivity(PROD_SHAPE)} onComplete={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.queryByTestId('sandbox-invalid')).not.toBeInTheDocument();
   });
 });
 

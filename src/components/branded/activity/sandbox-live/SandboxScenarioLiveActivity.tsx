@@ -115,7 +115,7 @@ export function SandboxScenarioLiveActivity({
   }
 
   return (
-    <ActivityShell kind="sandbox_scenario" icon={MessageSquare} label={tr('activity.sandboxScenario')}>
+    <ActivityShell kind={activity.kind} icon={MessageSquare} label={tr('activity.sandboxScenario')}>
       <div className="flex flex-col gap-4" data-testid="byoc-live" data-openness="byoc">
         {/* TOP ZONE — instruction lives OUTSIDE/above the sandbox window (P4c),
             same law as the deterministic sibling. */}

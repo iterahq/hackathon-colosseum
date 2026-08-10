@@ -96,6 +96,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useGuestMode } from '@/guest/GuestModeContext';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter } from '@/types/liveClass';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 
 export default function LiveSessionPage() {
@@ -508,7 +509,7 @@ export default function LiveSessionPage() {
 
   // The sandbox owns a fixed viewport-relative height, so its surface is pinned
   // to the viewport with the scroll living INSIDE the stage — never the page.
-  const onSandbox = current?.kind === 'sandbox_scenario';
+  const onSandbox = !!current && isScenarioKind(current.kind);
 
   // Global fixed feedback footer (Duolingo pattern), shared with the async
   // player. In LIVE mode the learner does NOT self-advance (the instructor

@@ -31,12 +31,15 @@
  *
  * ## Non-regression, stated precisely
  *
- * Every one of the 123 activities in the database has `artifact_policy = '{}'`,
- * which resolves to `mode: 'auto'`. Under `auto` the kind defaults below persist
- * `document` and nothing else — which is EXACTLY what the renderer did before
- * this module existed. Turning this on changes no existing lesson's behaviour;
- * it only makes the behaviour addressable. `artifactPolicy.test.ts` pins that
- * equivalence so a future edit to the defaults table cannot silently break it.
+ * Every one of the 281 activities in the database has `artifact_policy = '{}'`
+ * (medido em 2026-08-09), which resolves to `mode: 'auto'`. Under `auto` the kind
+ * defaults below persist `document` and `code`, and nothing else. Turning this on
+ * changed no existing lesson's behaviour; it only made the behaviour addressable.
+ *
+ * `document` era o único quando este módulo nasceu; `code` entrou depois, no #260,
+ * quando o código do aluno parou de morrer no `localStorage`. `artifactPolicy.test.ts`
+ * deriva a lista de `ACTIVITY_KINDS` em vez de repetir esta frase, porque foi
+ * justamente uma lista escrita à mão aqui que ficou desatualizada em silêncio.
  *
  * ## Purity
  *
@@ -110,7 +113,7 @@ interface KindDefault {
  *
  * `diagram` is `false` because the mermaid comes from the AUTHOR's spec — the
  * learner only reads it and clicks Done, so there is nothing of theirs to keep.
- * `sandbox_scenario` is `false` because its replies are canned; the transcript
+ * The sandbox kinds are `false` because their replies are canned; the transcript
  * is a plausible future deliverable, which is why it has a filename ready.
  */
 export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
@@ -126,6 +129,8 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   order: { persist: false, type: 'text', filename: 'answer.md' },
   video: { persist: false, type: 'text', filename: 'notes.md' },
   sandbox_scenario: { persist: false, type: 'document', filename: 'transcript.md' },
+  chat_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
+  terminal_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
 };
 
 const MODES: ReadonlySet<string> = new Set<ArtifactMode>(['auto', 'always', 'never']);

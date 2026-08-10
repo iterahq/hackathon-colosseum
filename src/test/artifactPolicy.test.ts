@@ -10,6 +10,7 @@
  * ever breaks, shipping the change would silently alter live lessons.
  */
 import { describe, it, expect } from 'vitest';
+import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
 import type { ActivityKind } from '@/types/content';
 import {
   KIND_ARTIFACT_DEFAULTS,
@@ -30,20 +31,10 @@ const act = (kind: ActivityKind, artifactPolicy: unknown = {}) =>
 
 describe('KIND_ARTIFACT_DEFAULTS', () => {
   it('covers every activity kind (a missing kind would silently never persist)', () => {
-    const kinds: ActivityKind[] = [
-      'diagram',
-      'document',
-      'quiz',
-      'code',
-      'concept',
-      'concept_reveal',
-      'single_choice',
-      'multi_choice',
-      'match',
-      'order',
-      'video',
-      'sandbox_scenario',
-    ];
+    // Derivado de `ACTIVITY_KINDS` em vez de escrito à mão: a lista manual que
+    // vivia aqui virou dívida na primeira vez que o enum cresceu, e o teste
+    // passou a cobrar manutenção sem provar nada além de si mesmo.
+    const kinds: ActivityKind[] = [...ACTIVITY_KINDS];
     for (const kind of kinds) {
       expect(KIND_ARTIFACT_DEFAULTS[kind], `missing default for ${kind}`).toBeDefined();
     }
@@ -52,22 +43,19 @@ describe('KIND_ARTIFACT_DEFAULTS', () => {
 });
 
 describe('non-regression: an unconfigured activity behaves exactly as before 0027', () => {
-  it('persists `document` and nothing else', () => {
-    // This is the pre-0027 renderer behaviour, restated as an assertion.
-    expect(persistsArtifact(act('document'))).toBe(true);
+  /**
+   * Derivado do enum, e não de uma lista à mão: a lista de 9 kinds que vivia aqui
+   * nunca mencionou `code`, `concept_reveal` nem os dois kinds novos de sandbox —
+   * então um kind que passasse a persistir sozinho não reprovava nada, e o próprio
+   * título ("`document` e nada mais") descrevia errado a tabela: `code` também
+   * persiste, com `solution.txt`, e persistia antes desta suíte existir.
+   */
+  const PERSISTEM: readonly ActivityKind[] = ['document', 'code'];
 
-    for (const kind of [
-      'diagram',
-      'quiz',
-      'concept',
-      'single_choice',
-      'multi_choice',
-      'match',
-      'order',
-      'video',
-      'sandbox_scenario',
-    ] as ActivityKind[]) {
-      expect(persistsArtifact(act(kind)), `${kind} must not persist by default`).toBe(false);
+  it('persiste só `document` e `code`', () => {
+    for (const kind of ACTIVITY_KINDS) {
+      const esperado = PERSISTEM.includes(kind);
+      expect(persistsArtifact(act(kind)), `${kind} deveria persistir=${esperado}`).toBe(esperado);
     }
   });
 

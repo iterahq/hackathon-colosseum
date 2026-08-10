@@ -18,6 +18,7 @@
  */
 import type { ActivityKind } from '@/types/content';
 import scenarios from '@/test/fixtures/sandbox-scenarios.json';
+import terminalScenarios from '@/test/fixtures/terminal-scenarios.json';
 import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_IMAGE_A, SAMPLE_IMAGE_B, SAMPLE_IMAGE_C, SAMPLE_VIDEO } from './activityFixtures';
 
 /** As funções pedagógicas — a camada de agrupamento da sidebar do Storybook. */
@@ -47,6 +48,7 @@ export interface ContractFixture {
 }
 
 const bySlug = scenarios as Record<string, Record<string, unknown>>;
+const terminalById = terminalScenarios as Record<string, Record<string, unknown>>;
 
 /* ------------------------------------------------------------------ *
  * 1 · Exposição — o aluno consome conteúdo e marca como concluído.
@@ -92,8 +94,15 @@ export const DIAGRAM_MERMAID_SPEC = {
   ].join('\n'),
 };
 
-/** `document` SEM prompt e SEM rubric → leitura pura (só "marcar concluída"). */
+/**
+ * `document` SEM rubric → leitura pura (só "marcar concluída").
+ *
+ * O que separa leitura de redação é a RUBRIC (`min_words`), não o `prompt`: o
+ * spec de `document` exige `prompt` (49/49 rows de produção o têm), e o `title`
+ * fica como o cabeçalho legado que o renderer só lê quando não há prompt.
+ */
 export const DOCUMENT_READING_SPEC = {
+  prompt: 'Como organizar seus estudos da semana',
   title: 'Como organizar seus estudos da semana',
   body: [
     'Separar o conteúdo em blocos curtos ajuda o cérebro a fixar melhor.',
@@ -121,10 +130,10 @@ export const DOCUMENT_READING_SPEC = {
  * quebrar. Este é o caso "metadata confiável" da fala do Tainan.
  */
 export const DEGENERATE_SPECS = {
-  document_vazio: {
+  document_sem_corpo: {
     kind: 'document' as ActivityKind,
-    spec: {},
-    note: 'sem `prompt` e sem `body` → leitura pura de um documento vazio.',
+    spec: { prompt: 'Documento ainda sem material de referência.' },
+    note: 'sem `body` → só o enunciado, nada para ler embaixo.',
   },
   diagram_sem_fonte: {
     kind: 'diagram' as ActivityKind,
@@ -260,6 +269,7 @@ export const MULTI_CHOICE_SPEC = {
  * contrato abaixo foi montado a partir do que o `QuizActivity` de fato lê.
  */
 export const QUIZ_TRUE_FALSE_SPEC = {
+  prompt: 'Uma chave primária pode se repetir em duas linhas da mesma tabela.',
   question: 'Uma chave primária pode se repetir em duas linhas da mesma tabela.',
   options: [
     { id: 'v', text: 'Verdadeiro', isCorrect: false },
@@ -373,6 +383,27 @@ export const SANDBOX_SLOTS_SPEC = bySlug.c6;
  * de uma tabela determinística. Ele é reconhecido por `isByocLive()`, NÃO pelo
  * `SandboxScenarioSpecSchema` — daí `validated: false` abaixo.
  */
+/**
+ * O MESMO cenário de chat, autorado sob o kind novo. O spec é idêntico: a
+ * divisão do `sandbox_scenario` trocou o discriminador de campo (`sandboxKind`)
+ * por kind da activity, e não mexeu no contrato de dentro.
+ */
+export const CHAT_SANDBOX_SPEC = SANDBOX_OPEN_SPEC;
+
+/**
+ * Terminal autorado sob o kind novo — sem `sandboxKind`.
+ *
+ * As fixtures em `terminal-scenarios.json` ainda carregam o campo porque são o
+ * retrato das rows não-migradas do banco, e o schema do `sandbox_scenario`
+ * legado continua aceitando-o de propósito. Sob `terminal_sandbox` ele é chave
+ * desconhecida: a terminal-idade É o kind agora, então repeti-la no spec seria
+ * a mesma informação em dois lugares.
+ */
+export const TERMINAL_SANDBOX_SPEC = (() => {
+  const { sandboxKind: _legacy, ...rest } = terminalById.t1;
+  return rest;
+})();
+
 export const SANDBOX_BYOC_SPEC = {
   openness: 'byoc',
   title: { pt: 'Contexto muda tudo', en: 'Context changes everything' },
@@ -417,7 +448,7 @@ export const ACTIVITY_CONTRACTS = {
     label: 'Diagram',
     spec: DIAGRAM_MERMAID_SPEC,
     validated: true,
-    note: '{ prompt, mermaid? | imageUrl? } — stub loose no Zod; forma lida do renderer.',
+    note: '{ prompt, mermaid? | imageUrl? }.',
   },
   document_reading: {
     kind: 'document',
@@ -425,7 +456,7 @@ export const ACTIVITY_CONTRACTS = {
     label: 'Document (leitura)',
     spec: DOCUMENT_READING_SPEC,
     validated: true,
-    note: '{ title?, body } SEM prompt e SEM rubric → leitura pura.',
+    note: '{ prompt, title?, body } SEM rubric → leitura pura; a rubric é que faz virar redação.',
   },
   single_choice: {
     kind: 'single_choice',
@@ -457,7 +488,7 @@ export const ACTIVITY_CONTRACTS = {
     label: 'Quiz',
     spec: QUIZ_TRUE_FALSE_SPEC,
     validated: true,
-    note: '{ question|prompt, label?, options[{ text|label, isCorrect }], explanation? } — correção inline na opção.',
+    note: '{ prompt, question?, label?, options[{ text, isCorrect }], explanation } — correção inline na opção.',
   },
   match: {
     kind: 'match',
@@ -523,6 +554,22 @@ export const ACTIVITY_CONTRACTS = {
     spec: SANDBOX_BYOC_SPEC,
     validated: false,
     note: 'openness:"byoc" + LLM real; reconhecido por isByocLive(), NÃO pelo SandboxScenarioSpecSchema.',
+  },
+  chat_sandbox: {
+    kind: 'chat_sandbox',
+    fn: '6 · Cenário com IA',
+    label: 'Chat sandbox',
+    spec: CHAT_SANDBOX_SPEC,
+    validated: true,
+    note: 'O kind novo do cenário de chat — mesmo contrato do sandbox_scenario, sem o `sandboxKind`.',
+  },
+  terminal_sandbox: {
+    kind: 'terminal_sandbox',
+    fn: '6 · Cenário com IA',
+    label: 'Terminal sandbox',
+    spec: TERMINAL_SANDBOX_SPEC,
+    validated: true,
+    note: '{ initialState.engine, steps[], success } — terminal-idade é o KIND, então NÃO leva `sandboxKind`.',
   },
 } as const satisfies Record<string, ContractFixture>;
 

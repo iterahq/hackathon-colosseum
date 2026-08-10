@@ -156,11 +156,12 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
   it('quiz: submit grades AND completes in one step, then locks to "Enviado"', () => {
     const onComplete = renderActivity(
       makeActivity('quiz', {
-        question: 'Pick B',
+        prompt: 'Pick B',
         options: [
-          { id: 'a', label: 'A', isCorrect: false },
-          { id: 'b', label: 'B', isCorrect: true },
+          { id: 'a', text: 'A', isCorrect: false },
+          { id: 'b', text: 'B', isCorrect: true },
         ],
+        explanation: 'B é a resposta.',
       }),
     );
     fireEvent.click(screen.getByText('B'));

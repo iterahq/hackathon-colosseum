@@ -16,6 +16,7 @@ import {
   QUIZ_TRUE_FALSE_SPEC,
   SANDBOX_CHOICES_SPEC,
   SINGLE_CHOICE_SPEC,
+  TERMINAL_SANDBOX_SPEC,
   UNGUARDED_INVALID_SPECS,
   VIDEO_SPEC,
 } from './contractFixtures';
@@ -136,6 +137,24 @@ export const SandboxScenario: Story = {
   args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC) },
 };
 
+/**
+ * kind = chat_sandbox — o kind próprio do cenário de chat. A escolha do
+ * componente por forma da autoria continua idêntica; o que mudou é que a
+ * chat-idade agora é o KIND e não um campo dentro do spec.
+ */
+export const ChatSandbox: Story = {
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_CHOICES_SPEC) },
+};
+
+/**
+ * kind = terminal_sandbox — o outro lado da divisão. Esta story é o que prova
+ * que o roteamento é por KIND: o spec NÃO carrega `sandboxKind`, e ainda assim
+ * cai no terminal.
+ */
+export const TerminalSandbox: Story = {
+  args: { activity: makeActivity('terminal_sandbox', TERMINAL_SANDBOX_SPEC) },
+};
+
 /* EIXO E · reveal — gabarito exposto SEM submissão ------------------ */
 
 /**
@@ -183,6 +202,16 @@ export const RevealSandboxScenario: Story = {
   args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC), reveal: true },
 };
 
+/** kind = chat_sandbox com `reveal` — o `reveal` atravessa o kind novo igual. */
+export const RevealChatSandbox: Story = {
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_CHOICES_SPEC), reveal: true },
+};
+
+/** kind = terminal_sandbox com `reveal` — libera "Continuar" sem rodar o roteiro. */
+export const RevealTerminalSandbox: Story = {
+  args: { activity: makeActivity('terminal_sandbox', TERMINAL_SANDBOX_SPEC), reveal: true },
+};
+
 /* EIXO H — spec que o Zod ACEITA, no extremo degenerado ------------- */
 
 /**
@@ -192,9 +221,9 @@ export const RevealSandboxScenario: Story = {
  * renderizar, mesmo quando o campo opcional não veio.
  */
 
-/** `document` sem `prompt` E sem `body` → leitura pura de um documento vazio. */
-export const DocumentVazio: Story = {
-  args: { activity: makeActivity('document', DEGENERATE_SPECS.document_vazio.spec) },
+/** `document` com `prompt` e sem `body` → leitura sem material de referência. */
+export const DocumentSemCorpo: Story = {
+  args: { activity: makeActivity('document', DEGENERATE_SPECS.document_sem_corpo.spec) },
 };
 
 /** `diagram` sem `mermaid` e sem `imageUrl` → só o enunciado. */
@@ -259,6 +288,20 @@ export const ConceptRevealSemCard: Story = {
 /** `sandbox_scenario` com lixo — ESTE é barrado: card `sandbox-invalid`, sem crash. */
 export const SandboxEspecInvalida: Story = {
   args: { activity: makeActivity('sandbox_scenario', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
+};
+
+/** `chat_sandbox` com lixo — o guard valida pelo KIND da row, não pelo literal antigo. */
+export const ChatSandboxEspecInvalida: Story = {
+  args: { activity: makeActivity('chat_sandbox', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
+};
+
+/**
+ * `terminal_sandbox` com lixo — mesmo card. É a metade da divisão que mais
+ * importa provar: um spec de terminal validado contra o schema do chat também
+ * reprovaria, e aí o card seria um falso negativo em vez de um achado.
+ */
+export const TerminalSandboxEspecInvalida: Story = {
+  args: { activity: makeActivity('terminal_sandbox', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
 };
 
 /* EIXO G — kind desconhecido --------------------------------------- */

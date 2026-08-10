@@ -90,5 +90,9 @@ export function columnMaxWidthClass(
  * pre-existing `sandbox_scenario` = `max-w-4xl` rule, preserved verbatim.
  */
 export const LIVE_COLUMN_OVERRIDES: ColumnMaxWidthOverrides = {
+  // Os três kinds de sandbox: a regra é sobre a LARGURA da janela do sandbox, que
+  // a divisão do 0.11.0 não mudou.
   sandbox_scenario: 'max-w-4xl',
+  chat_sandbox: 'max-w-4xl',
+  terminal_sandbox: 'max-w-4xl',
 };

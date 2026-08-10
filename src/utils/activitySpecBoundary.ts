@@ -1,5 +1,5 @@
 /**
- * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 12 kinds, fail-closed.
+ * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 14 kinds, fail-closed.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
  * passar CI se criarmos novo kind que não esteja coberto"*. Isto SUPERSEDE a
@@ -22,22 +22,42 @@
  * ⚠️ Limite declarado: `video` tem **0 rows** no banco inteiro — o caminho de
  * validação dele NÃO foi exercido por dado de produção.
  *
- * ────────────────────────────────────────────────────────────────────────────
- * O QUE "VALIDADO" SIGNIFICA — 8 kinds de verdade, 3 são stub
- * ────────────────────────────────────────────────────────────────────────────
- * `SPEC_SCHEMAS` do `@iterahq/activity-spec` mapeia `document`, `diagram` e
- * `quiz` para `z.record(z.string(), z.unknown())` — stubs LOOSE deliberados
- * (`src/schemas/stubs.ts` do pacote: *"they keep the historical loose
- * `z.record` contract … but they are NOT validated"*). Consequência prática:
- * `safeParseActivitySpec('quiz', {})` **passa**. Para esses 3 kinds,
- * "validado" hoje quer dizer apenas **"é um objeto JSON"** — o que ainda pega
- * `null` / string / array, mas não pega um quiz sem `options`.
+ * **REMEDIDO no 0.12.0 (2026-08-09), porque o aperto dos schemas invalida a
+ * medição acima:** `itera.activities` = 281 rows, **281 PASSAM**;
+ * `itera.activity_defs` = 108 rows, **102 passam e 6 reprovam** — os 6 são
+ * `sandbox_scenario` com `initialState.systemPrompt` objeto onde o schema quer
+ * string, e reprovavam IDÊNTICOS no 0.9.0 (defeito de autoria pré-existente, não
+ * do aperto). `video` segue com 0 rows.
  *
- * Por isso `auditKindValidationCoverage()` CLASSIFICA em vez de só contar: um
- * kind stub NUNCA é reportado como plenamente coberto. Apertar esses 3 schemas
- * é mudança de forma no repo `iterahq/activity-spec` (consumido aqui do
- * GitHub Packages privado, `^0.7.0`), exige bump + republish + bump do range,
- * e está FORA de escopo aqui — só declarado.
+ * ⚠️ **CORREÇÃO (2026-08-10), snapshot de 435 rows do pacote:** "nenhuma row de
+ * `activities` reprova" ficou FALSO — `273e631e`, a trilha BYOC ao vivo, passava
+ * no 0.9.0 e reprova no 0.12.1, porque o `.strict()` parou de descartar as chaves
+ * da camada BYOC e o `system` dela é bag bilíngue onde o schema de chat quer
+ * `z.string()`. Ela não vira card porque a isenção de camada #2 abaixo cobre o
+ * caso — mas a isenção precisou ser REPETIDA no `SandboxScenarioGuard`
+ * (`ActivityRenderer.tsx`), que é o caminho real do aluno e chamava o parse
+ * direto. `LiveActivityRenderer`, o único que a honrava, só é usado pelo harness
+ * de autor. Lá a isenção ROTEIA pro `SandboxScenarioLiveActivity`: o spec BYOC
+ * não tem `initialState`, e o runtime determinístico quebra sem ele.
+ *
+ * Os números batem EXATOS no 0.11.0 e no 0.12.0, medidos separadamente: o alias
+ * de chat que o 0.12.0 pôs no `sandbox_scenario` não mudou conformance porque
+ * todas as rows do kind legado são de chat.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * O QUE "VALIDADO" SIGNIFICA — 14 kinds, ZERO stub desde 0.10.0
+ * ────────────────────────────────────────────────────────────────────────────
+ * `document`, `diagram` e `quiz` eram `z.record(z.string(), z.unknown())` —
+ * stubs LOOSE que faziam `safeParseActivitySpec('quiz', {})` PASSAR, ou seja um
+ * quiz sem `options` chegava ao aluno como tela vazia. O
+ * `@iterahq/activity-spec` 0.10.0 derivou os três da produção e os apertou, e
+ * `KNOWN_STUB_KINDS` está vazia por isso — a lacuna que este arquivo declarava
+ * fechou.
+ *
+ * `auditKindValidationCoverage()` continua CLASSIFICANDO em vez de só contar:
+ * a distinção schema-de-verdade × stub é o que tornaria visível uma REGRESSÃO
+ * (alguém afrouxar um schema no pacote), e é ela que cobra a atualização
+ * deliberada aqui em vez de o repo passar a "cobrir" um kind em silêncio.
  *
  * ────────────────────────────────────────────────────────────────────────────
  * BYOC É UMA CAMADA, NÃO UM KIND — as duas isenções deliberadas
@@ -133,6 +153,20 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
     invalidTestId: 'sandbox-invalid',
     messageKey: 'activity.sandboxInvalid',
   },
+  // Os dois kinds em que o `sandbox_scenario` foi partido. Herdam `site` e
+  // testid do kind de origem porque são a MESMA tela: um e2e ou um teste que
+  // procura `sandbox-invalid` não deve passar a depender de qual dos dois kinds
+  // a row carrega.
+  chat_sandbox: {
+    site: 'component',
+    invalidTestId: 'sandbox-invalid',
+    messageKey: 'activity.sandboxInvalid',
+  },
+  terminal_sandbox: {
+    site: 'component',
+    invalidTestId: 'sandbox-invalid',
+    messageKey: 'activity.sandboxInvalid',
+  },
 };
 
 /** As camadas deliberadamente isentas da fronteira (ver cabeçalho). */
@@ -156,12 +190,15 @@ export function specSchemaClass(kind: ActivityKind): SpecSchemaClass {
 }
 
 /**
- * Os 3 kinds cujo schema é stub loose HOJE. **Pinado de propósito:** se alguém
- * apertar um desses schemas lá no `iterahq/activity-spec` e re-vendorizar, o
- * teste de cobertura quebra e força uma atualização deliberada aqui (em vez de
- * o repo silenciosamente passar a "cobrir" um kind que ninguém revisou).
+ * Os kinds cujo schema ainda é stub loose. **VAZIA desde o 0.10.0**, que apertou
+ * os três últimos (`document`, `diagram`, `quiz`).
+ *
+ * Continua pinada de propósito, agora no sentido inverso: se alguém AFROUXAR um
+ * schema no `iterahq/activity-spec`, o teste de cobertura fica vermelho e cobra
+ * uma atualização deliberada aqui — em vez de o repo silenciosamente parar de
+ * cobrir um kind que ninguém revisou.
  */
-export const KNOWN_STUB_KINDS: readonly ActivityKind[] = ['document', 'diagram', 'quiz'];
+export const KNOWN_STUB_KINDS: readonly ActivityKind[] = [];
 
 export interface KindCoverage {
   kind: string;

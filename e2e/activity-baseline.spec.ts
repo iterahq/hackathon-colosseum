@@ -177,7 +177,11 @@ async function connectPair(page: Page, leftId: string, rightId: string): Promise
  * ══════════════════════════════════════════════════════════════════════════ */
 
 test.describe('exposição — kinds sem caminho de erro', () => {
-  for (const fx of [DIAGRAM, VIDEO, DOCUMENT_READONLY] as const) {
+  // ♨️ `document` SAIU deste grupo em 09/08/2026: o contrato 0.11.0 exige
+  // `prompt`, então toda activity de `document` que a fronteira aceita cai no ramo
+  // de reflexão — textarea + concluir travado na contagem. Ela deixou de ser
+  // exposição, e as duas formas que restam são medidas no §3.
+  for (const fx of [DIAGRAM, VIDEO] as const) {
     // ♨️ DESCONGELADO em 03/08/2026: estes três tinham `activity-done` cravado em
     // `onComplete(true)`. Conteúdo não é exercício — enquanto o botão existiu,
     // metade da turma não clicava e o pódio da aula ao vivo virava ranking de
@@ -288,16 +292,18 @@ test.describe('document (reflexão com rubric.min_words)', () => {
     await expectVerdict(page, true);
   });
 
-  test('🧊 FROZEN — o variante "somente leitura" também mostra o textarea de reflexão', async ({ page }) => {
+  test('sem rubric: o textarea existe e "concluir" abre com UMA palavra', async ({ page }) => {
     await open(page, DOCUMENT_READONLY);
     // `DocumentActivity` takes the reflection branch whenever `spec.prompt` is
-    // present OR `min_words > 0`. A spec with only `body`/`title` is the ONLY
-    // shape that reaches the plain read-only screen — so "document without a
-    // rubric" is not the read-only variant most people assume it is.
-    await expect(page.getByTestId('document-reflection-input')).toHaveCount(0);
+    // present OR `min_words > 0` — and `prompt` is REQUIRED since 0.11.0, so a
+    // document without a rubric is not the read-only screen most people assume
+    // it is. Without a `min_words` the gate falls back to `>= 1` word, which is
+    // the only thing that separates the two shapes on screen.
+    await expect(page.getByTestId('document-reflection-input')).toBeVisible();
     await expect(page.getByTestId('document-min-words')).toHaveCount(0);
-    // Sem rubric não há o que entregar — e sem entrega não há conclusão.
-    await expect(page.getByTestId('activity-done')).toHaveCount(0);
+    await expect(page.getByTestId('activity-done')).toBeDisabled();
+    await page.getByTestId('document-reflection-input').fill('pronto');
+    await expect(page.getByTestId('activity-done')).toBeEnabled();
   });
 });
 

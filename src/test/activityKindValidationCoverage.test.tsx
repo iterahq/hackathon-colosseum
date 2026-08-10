@@ -1,10 +1,14 @@
 /**
- * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 12 kinds.
+ * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 14 kinds.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
  * passar CI se criarmos novo kind que não esteja coberto"* (ADR-15). Eram 11
- * quando ele escreveu; `concept_reveal` virou o 12º em 2026-07-31 — e foi a
- * trap que cobrou a linha nova.
+ * quando ele escreveu; `concept_reveal` virou o 12º em 2026-07-31 e o
+ * `sandbox_scenario` foi partido em `chat_sandbox` + `terminal_sandbox` no
+ * 0.11.0 — a trap cobrou cada linha nova.
+ *
+ * ⚠️ 14 é o número da TRANSIÇÃO: o `sandbox_scenario` só existe no enum enquanto
+ * houver row não-migrada no banco. Quando ele sair, isto vira 13.
  *
  * Este arquivo é o lado RUNTIME da trap (o lado de TIPO é o
  * `Record<ActivityKind, …>` em `src/utils/activitySpecBoundary.ts`, que já
@@ -27,8 +31,23 @@
  * de outro round) nem o `activityMatrixCoverage.test.ts` (guarda de matriz de
  * stories, Fase 2). Arquivos separados de propósito.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+
+/**
+ * A itera-api chega DESCONFIGURADA em teste, que é o estado dos 14 kinds abaixo.
+ * O flag existe só para o par de testes de BYOC no fim do arquivo, que precisa
+ * ligá-la para que a camada resolva.
+ */
+const apiConfigured = vi.fn(() => false);
+vi.mock('@/api/iteraApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/api/iteraApi')>()),
+  iteraApiConfigured: () => apiConfigured(),
+}));
+// `ByocActivity` lê a sessão; este arquivo renderiza sem `AuthProvider` porque os
+// outros 14 kinds não precisam de nenhuma.
+vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ session: null, loading: false }) }));
+
 import { ACTIVITY_KINDS, safeParseActivitySpec, type ActivityKind } from '@iterahq/activity-spec';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
@@ -68,9 +87,10 @@ function renderActivity(activity: Activity) {
 /**
  * Um spec SABIDAMENTE inválido por kind.
  *
- * Os 3 kinds de schema stub (`z.record`) aceitam QUALQUER objeto — inclusive
- * `{}` — então para eles o único spec rejeitável é um não-objeto. É exatamente
- * essa assimetria que a classificação abaixo torna visível em vez de esconder.
+ * `document`, `diagram` e `quiz` continuam com o não-objeto que usavam na época
+ * dos stubs: o 0.10.0 apertou os três, então `{ totalmente: 'inválido' }` também
+ * reprovaria — manter o não-objeto conserva o caso de borda mais grosseiro, que
+ * é o único que os stubs conseguiam rejeitar.
  */
 const INVALID_SPEC: Record<ActivityKind, unknown> = {
   document: 'isto não é um objeto',
@@ -85,7 +105,20 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   order: { totalmente: 'inválido' },
   video: { totalmente: 'inválido' },
   sandbox_scenario: { totalmente: 'inválido' },
+  chat_sandbox: { totalmente: 'inválido' },
+  terminal_sandbox: { totalmente: 'inválido' },
 };
+
+/** Harness mínimo que o `ByocSpecSchema` ACEITA — o `{seed}` é obrigatório. */
+const RESOLVABLE_BYOC = {
+  seed: { prompt: 'Conte um hobby seu.' },
+  harness: { interaction: 'pick_best', generation_prompt: 'Monte sobre {seed}' },
+};
+
+afterEach(() => {
+  apiConfigured.mockReturnValue(false);
+  localStorage.clear();
+});
 
 /** Primeiro contrato VÁLIDO registrado para o kind — o controle positivo. */
 function validSpecFor(kind: ActivityKind): Record<string, unknown> {
@@ -95,7 +128,7 @@ function validSpecFor(kind: ActivityKind): Record<string, unknown> {
   return hit.spec;
 }
 
-describe('fronteira de validação de spec — cobertura dos 12 kinds', () => {
+describe('fronteira de validação de spec — cobertura dos 14 kinds', () => {
   it('todo kind de ACTIVITY_KINDS está registrado (espelho runtime da trap de tipo)', () => {
     const report = auditKindValidationCoverage();
     expect(report.missing).toEqual([]);
@@ -134,11 +167,12 @@ describe('fronteira de validação de spec — cobertura dos 12 kinds', () => {
     },
   );
 
-  it('os 3 kinds stub aceitam `{}` — a lacuna declarada, explicitada aqui', () => {
-    for (const kind of KNOWN_STUB_KINDS) {
-      expect(safeParseActivitySpec(kind, {}).success).toBe(true);
-    }
-    for (const kind of KINDS.filter((k) => !KNOWN_STUB_KINDS.includes(k))) {
+  it('nenhum kind aceita `{}` — a lacuna dos stubs fechou no 0.10.0', () => {
+    // A lista VAZIA é a afirmação, não um detalhe: é ela que faz o laço abaixo
+    // cobrir os 14 kinds. Sem esta linha, reintroduzir um stub tiraria aquele kind
+    // do laço em silêncio, e o teste seguiria verde medindo menos.
+    expect(KNOWN_STUB_KINDS).toEqual([]);
+    for (const kind of KINDS) {
       expect(safeParseActivitySpec(kind, {}).success).toBe(false);
     }
   });
@@ -188,15 +222,38 @@ describe('BYOC — isenções deliberadas (camada, não kind)', () => {
     expect(specBoundaryFailure(makeActivity('sandbox_scenario', live.spec))).toBeNull();
   });
 
+  /**
+   * A isenção é por ORDEM: `resolveByocSpec()` roda ANTES do switch de kind no
+   * `ActivityRenderer`, então o spec de uma activity BYOC é assunto do
+   * `ByocSpecSchema` — nunca do schema do kind hospedeiro.
+   *
+   * ⚠️ Isto SÓ é observável no RENDERER, e só com a itera-api configurada.
+   * `specBoundaryFailure()` é uma função pura que não sabe nada dessa ordem, e
+   * até o 0.10.0 esta asserção era feita nela com um harness deliberadamente
+   * quebrado — passava porque `quiz` ainda era stub loose e aceitava qualquer
+   * coisa, não porque a isenção existia. Quando o 0.11.0 deu contrato de
+   * verdade ao `quiz`, o teste virou vermelho e expôs que media a coisa errada.
+   */
   it('o kind hospedeiro de uma activity BYOC não é validado pela fronteira (isenção por ORDEM)', () => {
-    // `resolveByocSpec()` roda ANTES do switch de kind no ActivityRenderer, então
-    // o spec de uma activity BYOC é assunto do `ByocSpecSchema` — nunca do schema
-    // do kind hospedeiro. Aqui isso é asserido no nível do RENDERER: o ramo BYOC
-    // devolve antes de a fronteira ser consultada (ver ActivityRenderer.tsx).
-    const hostSpecThatFailsItsKind = { byoc: { seed: {}, harness: {} } };
-    // Sem a itera-api configurada `resolveByocSpec` devolve null e o fluxo cai na
-    // fronteira — o que prova, pelo contrapositivo, que a ordem é o que isenta.
-    expect(specBoundaryFailure(makeActivity('quiz', hostSpecThatFailsItsKind))).toBeNull();
+    apiConfigured.mockReturnValue(true);
+    // Um spec que REPROVARIA no QuizSpecSchema (sem `prompt`, sem `options`) mas
+    // cujo harness resolve: o ramo BYOC devolve antes de a fronteira ser lida.
+    renderActivity(makeActivity('quiz', { byoc: RESOLVABLE_BYOC }));
+
+    expect(screen.queryByTestId('quiz-invalid')).toBeNull();
+    expect(document.querySelector('[data-invalid-spec]')).toBeNull();
+  });
+
+  it('BYOC que NÃO resolve cai na fronteira — a isenção é da camada viva, não do prefixo `byoc`', () => {
+    // O complemento honesto do teste acima, e a razão de ele precisar da api: sem
+    // resolução não há camada BYOC nenhuma, então o spec volta a ser do kind
+    // hospedeiro. Fail-closed: o aluno vê o card, não um render pela metade.
+    apiConfigured.mockReturnValue(false);
+    expect(specBoundaryFailure(makeActivity('quiz', { byoc: RESOLVABLE_BYOC }))).toEqual({
+      kind: 'quiz',
+      invalidTestId: 'quiz-invalid',
+      messageKey: 'activity.specInvalid',
+    });
   });
 });
 

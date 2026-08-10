@@ -11,6 +11,7 @@
  * Padrão do projeto: componente → hook (useQuery) → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { isScenarioKind } from '@/utils/activityFamilies';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import type { Activity, I18nText, Program } from '@/types/content';
 
@@ -56,7 +57,9 @@ function mapActivity(a: Row): Activity {
     kind,
     // The sandbox runtime resolves its own bilingual bags; every other kind
     // renders spec strings directly, so collapse bags before they reach the DOM.
-    spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
+    // ⚠️ TODOS os kinds de sandbox, não só o legado: colapsar o bag de uma row
+    // migrada reprova o spec na fronteira e o aluno perde o sandbox inteiro.
+    spec: isScenarioKind(kind) ? rawSpec : resolveLocalizedSpec(rawSpec),
     // Bilingual too, and resolved by nothing downstream — see the twin comment
     // in programs.service.mapActivity.
     rubric:

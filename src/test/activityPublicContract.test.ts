@@ -242,13 +242,18 @@ const PUBLIC_RUNTIME_SURFACE = [
   'DocumentActivity',
   'DiagramActivity',
   'QuizActivity',
-  // sandbox_scenario — one kind, five activity types (Fase C step 4)
-  'SandboxScenarioActivity',
+  // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
+  // dispatchers are public because the app switches on KIND; the five leaves are
+  // public because the stories drive them directly.
+  'ChatSandboxActivity',
+  'TerminalSandboxActivity',
   'SandboxAIActivity',
   'SandboxAIWithOptionsActivity',
   'SandboxAICompleteWordsActivity',
   'TerminalFreeTextActivity',
   'TerminalOptionsActivity',
+  // …and the deprecated kind they were split out of, which now only delegates.
+  'SandboxScenarioActivity',
   // i18n
   'ACTIVITY_DICTIONARY',
   'ACTIVITY_I18N_KEYS',

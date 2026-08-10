@@ -62,6 +62,7 @@ import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import type { Activity } from '@/types/content';
 import type { ClassPresenceMember } from '@/types/liveClass';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 // The countdown duration is resolved PER ACTIVITY by `liveTimerSeconds`:
 // per-kind default (code = 5 min, everything else 1 min) with an optional
@@ -425,7 +426,7 @@ function ClassControl({
   );
   const stageHint = selfStaged
     ? t('live.instructor.selfStagedHint')
-    : current?.kind === 'sandbox_scenario'
+    : current && isScenarioKind(current.kind)
       ? t('live.instructor.mirrorHint')
       : null;
 
@@ -524,7 +525,7 @@ function ClassControl({
           <div
             data-testid="instructor-main"
             className={`w-full mx-auto ${columnMaxWidthClass(current?.kind, LIVE_COLUMN_OVERRIDES)} ${
-              current?.kind === 'sandbox_scenario' ? 'py-6' : 'my-auto py-10'
+              current && isScenarioKind(current.kind) ? 'py-6' : 'my-auto py-10'
             }`}
           >
             {onPodium ? (
@@ -564,7 +565,7 @@ function ClassControl({
               // stays interactive throughout.
               <LiveActivityStage
                 activity={current}
-                readOnly={current.kind !== 'sandbox_scenario' && revealCurrent}
+                readOnly={!isScenarioKind(current.kind) && revealCurrent}
                 reveal={revealCurrent}
                 testid="instructor-activity-stage"
                 footer={

@@ -56,23 +56,34 @@ export const CONCEPT: ActivityFixture = {
   kind: 'concept',
   label: 'concept',
   spec: {
-    instruction: { text: 'Um commit é uma foto do projeto num instante.' },
-    body: 'O Git guarda cada commit como um instantâneo completo da árvore.',
+    instruction: {
+      text: 'Um commit é uma foto do projeto num instante.',
+      description: 'O Git guarda cada commit como um instantâneo completo da árvore.',
+    },
   },
 };
 
 /**
- * ⚠️ NOTE THE ABSENT `prompt`. `DocumentActivity` takes the REFLECTION branch
- * whenever `spec.prompt` is truthy OR `rubric.min_words > 0`, so a spec with
- * only `title`/`body` is the one and only shape that reaches the plain
- * read-only screen. Adding a `prompt` here silently changes which screen this
- * fixture characterizes.
+ * ⚠️ THE READ-ONLY `document` SCREEN IS NO LONGER AUTHORABLE, so this fixture is
+ * the reflection one instead.
+ *
+ * `DocumentActivity` takes the read-only branch only when `spec.prompt` is falsy
+ * AND there is no `rubric.min_words` — and since 0.11.0 the `document` contract
+ * REQUIRES `prompt`, so that branch is unreachable for any spec the boundary
+ * accepts. It is not a regression of the tightening: all 49 `document` rows in
+ * production (read 2026-08-09) already carry a `prompt`, so no live activity ever
+ * reached it.
+ *
+ * What the baseline still needs from this entry is the thing it always measured —
+ * that exposition offers no completion affordance — so the shape moved and the
+ * assertion did not.
  */
 export const DOCUMENT_READONLY: ActivityFixture = {
   id: id(2),
   kind: 'document',
-  label: 'document (somente leitura)',
+  label: 'document (leitura, sem rubric)',
   spec: {
+    prompt: 'Versionamento',
     title: 'Versionamento',
     body: 'Versionar é registrar decisões, não apenas arquivos.',
   },
@@ -290,13 +301,26 @@ export const SANDBOX_SCENARIO: ActivityFixture = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
- * TERMINAL SANDBOXES — the SAME kind (`sandbox_scenario`) with
- * `sandboxKind: "terminal"`, one per input surface. Both specs are copied
- * verbatim from the package's own conformance corpus
+ * TERMINAL SANDBOXES — `kind: 'terminal_sandbox'`, one per input surface. The
+ * specs are copied verbatim from the package's own conformance corpus
  * (`@iterahq/activity-spec:src/schemas/fixtures/terminal-scenarios.ts`, mirrored
  * in `src/test/fixtures/terminal-scenarios.json`), so what the browser drives
  * here is what the package replays — not a second, hand-made shape that could
  * agree with nothing.
+ *
+ * ── WHY THE KIND, AND WHY `sandboxKind` IS STRIPPED ────────────────────────
+ * These three used to be `kind: 'sandbox_scenario'` + `sandboxKind: 'terminal'`,
+ * because that was the only shape the schema had. In activity-spec 0.12.0 the
+ * legacy kind became a thin ALIAS of `ChatSandboxSpecSchema` and the runtime
+ * `sandboxKind` dispatcher was deleted, so a terminal spec no longer parses
+ * under it — mounted that way, all of `terminal-sandbox.spec.ts` asserts against
+ * the invalid-spec card. And `terminal_sandbox` is `.strict()`, so it rejects the
+ * deprecated field. One shape survives, and it is this one.
+ *
+ * Costs nothing in fidelity: production has 0 rows with
+ * `spec.sandboxKind === 'terminal'` (measured 2026-08-09), so the old fixtures
+ * described a row that never existed. `src/test/sandboxKindCoexistence.test.ts`
+ * holds the same statement as a parse-level measurement.
  *
  * They exist for `e2e/terminal-sandbox.spec.ts`, which asserts the things only a
  * real browser can see: layout geometry, the success marker, and the rendered
@@ -305,18 +329,24 @@ export const SANDBOX_SCENARIO: ActivityFixture = {
  * are actively changing.
  * ──────────────────────────────────────────────────────────────────────────── */
 
+/** Drops the deprecated `sandboxKind`, which `terminal_sandbox` rejects. */
+const asTerminalSpec = (spec: unknown): Record<string, unknown> => {
+  const { sandboxKind: _dropped, ...rest } = spec as Record<string, unknown>;
+  return rest;
+};
+
 export const TERMINAL_FREE_TEXT: ActivityFixture = {
   id: id(18),
-  kind: 'sandbox_scenario',
-  label: 'sandbox_scenario · terminal (texto livre)',
-  spec: terminalScenarios.freeText as unknown as Record<string, unknown>,
+  kind: 'terminal_sandbox',
+  label: 'terminal_sandbox (texto livre)',
+  spec: asTerminalSpec(terminalScenarios.freeText),
 };
 
 export const TERMINAL_OPTIONS: ActivityFixture = {
   id: id(19),
-  kind: 'sandbox_scenario',
-  label: 'sandbox_scenario · terminal (opções)',
-  spec: terminalScenarios.options as unknown as Record<string, unknown>,
+  kind: 'terminal_sandbox',
+  label: 'terminal_sandbox (opções)',
+  spec: asTerminalSpec(terminalScenarios.options),
 };
 
 /**
@@ -332,9 +362,32 @@ export const TERMINAL_OPTIONS: ActivityFixture = {
  */
 export const TERMINAL_PLAYER_CHROME: ActivityFixture = {
   id: id(20),
-  kind: 'sandbox_scenario',
-  label: 'sandbox_scenario · terminal (chrome do player)',
-  spec: terminalScenarios.playerChrome as unknown as Record<string, unknown>,
+  kind: 'terminal_sandbox',
+  label: 'terminal_sandbox (chrome do player)',
+  spec: asTerminalSpec(terminalScenarios.playerChrome),
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * CHAT, MIGRATED — the legacy sandbox row as `chat_sandbox`.
+ *
+ * `SANDBOX_SCENARIO` above is the UN-migrated shape, which is what all 48 live
+ * sandbox rows still are; this is the shape they take after the migration. It
+ * exists because the browser is the only place that proves the player dispatches
+ * the new kind at all — a kind the DB can hold (migration 0057) but no row uses
+ * yet, so a player that only handled the legacy kind would be green everywhere
+ * and blank the screen the day the rows move.
+ *
+ * The spec is passed INTACT on purpose: `chat_sandbox` tolerates the deprecated
+ * `spec.sandboxKind`, so a chat row moves with a COLUMN-only UPDATE. The terminal
+ * fixtures above cannot — that asymmetry is the migration's own sequencing, and
+ * `src/test/sandboxKindCoexistence.test.ts` measures it.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+export const CHAT_SANDBOX_MIGRATED: ActivityFixture = {
+  id: id(21),
+  kind: 'chat_sandbox',
+  label: 'chat_sandbox (row migrada, spec intocado)',
+  spec: sandboxScenarioSpec as unknown as Record<string, unknown>,
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -401,6 +454,7 @@ export const ALL_FIXTURES: readonly ActivityFixture[] = [
   TERMINAL_FREE_TEXT,
   TERMINAL_OPTIONS,
   TERMINAL_PLAYER_CHROME,
+  CHAT_SANDBOX_MIGRATED,
   INVALID_SINGLE_CHOICE,
   INVALID_CODE,
   CONCEPT_REVEAL,

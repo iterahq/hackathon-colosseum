@@ -22,6 +22,7 @@ import type { Activity } from '@/types/content';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { SandboxScenarioLiveActivity } from '@/components/branded/activity/sandbox-live/SandboxScenarioLiveActivity';
 import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 export function LiveActivityRenderer({
   activity,
@@ -37,7 +38,7 @@ export function LiveActivityRenderer({
    *  before its DB spec is flagged. Ignored for non-sandbox kinds. */
   forceLive?: boolean;
 }) {
-  const wantsLive = isByocLive(activity) || (forceLive && activity.kind === 'sandbox_scenario');
+  const wantsLive = isByocLive(activity) || (forceLive && isScenarioKind(activity.kind));
 
   // Only take the live path when the Results-API is configured; otherwise fall
   // through to Samuel's renderer so an unconfigured deploy never regresses.

@@ -112,3 +112,9 @@ export const LockedCode: Story = stage('code', EXPIRED);
 
 /** 6 · Cenário com IA — sandbox_scenario travado. */
 export const LockedSandboxScenario: Story = stage('sandbox_open', EXPIRED);
+
+/** 6 · Cenário com IA — chat_sandbox travado: o lock não depende do kind. */
+export const LockedChatSandbox: Story = stage('chat_sandbox', EXPIRED);
+
+/** 6 · Cenário com IA — terminal_sandbox travado: o prompt não aceita comando. */
+export const LockedTerminalSandbox: Story = stage('terminal_sandbox', EXPIRED);

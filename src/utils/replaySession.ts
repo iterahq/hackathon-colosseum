@@ -284,6 +284,11 @@ export function familyEmitsSequence(
   if (!kind) return false;
   const family: ActivityFamily = ACTIVITY_FAMILY[kind];
   if (FAMILY_EMITTED[family].length === 0) return false;
+  // Só o sandbox de TERMINAL emite sequência (o de chat ainda não). Desde o
+  // 0.11.0 isso é legível no próprio kind; no kind legado ainda depende do
+  // `sandboxKind` do spec.
+  if (kind === 'terminal_sandbox') return true;
+  if (kind === 'chat_sandbox') return false;
   if (kind === 'sandbox_scenario') return spec?.sandboxKind === 'terminal';
   return true;
 }

@@ -59,7 +59,14 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
       'video',
     ]);
     expect(kindsOfFamily('editor')).toEqual(['code']);
-    expect(kindsOfFamily('scenario')).toEqual(['sandbox_scenario']);
+    // Os três kinds de cenário são UMA família: partir o `sandbox_scenario` em
+    // `chat_sandbox` + `terminal_sandbox` foi trocar o discriminador de lugar, e
+    // a família descreve a forma do ESTADO — que não mudou.
+    expect(kindsOfFamily('scenario').sort()).toEqual([
+      'chat_sandbox',
+      'sandbox_scenario',
+      'terminal_sandbox',
+    ]);
   });
 
   it('every family states the shape of its state — the Fase A "signature"', () => {

@@ -97,9 +97,20 @@ describe('DocumentActivity — reflection (min_words)', () => {
     );
   });
 
-  // Ao vivo esse botão dava ponto no pódio por ter LIDO um texto, enquanto o
-  // professor avançava a turma de qualquer jeito — o ranking media obediência.
-  it('a pure read-only document (body, no prompt) has NO Mark done button', () => {
+  /**
+   * ESTE TESTE MEDIA A TELA DE LEITURA PURA — que deixou de existir.
+   *
+   * `prompt` virou obrigatório no contrato do `document` (0.11.0), então um spec
+   * com só `body` REPROVA na fronteira: o aluno vê o card de spec inválido, não a
+   * tela de leitura. As duas asserções antigas (`queryBy…toBeNull()`) continuavam
+   * VERDES exatamente por isso — passavam a valer sobre o card de erro, e o teste
+   * já não podia falhar.
+   *
+   * Não é regressão do aperto: as 49 rows de `document` em produção (lidas em
+   * 2026-08-09) todas têm `prompt`, ou seja nenhuma atividade viva chegava nesse
+   * ramo. Ele segue no `DocumentActivity` alcançável só por `prompt: ''`.
+   */
+  it('document sem `prompt` é reprovado na fronteira, não renderiza leitura', () => {
     renderActivity({
       id: 'doc-2',
       lessonId: 'l1',
@@ -108,7 +119,8 @@ describe('DocumentActivity — reflection (min_words)', () => {
       spec: { body: 'Leia este conteúdo.' },
       rubric: null,
     });
-    expect(screen.queryByTestId('document-reflection-input')).toBeNull();
+    expect(screen.getByTestId('document-invalid')).toBeInTheDocument();
+    expect(screen.queryByTestId('document-prompt')).toBeNull();
     expect(screen.queryByTestId('activity-done')).toBeNull();
   });
 });

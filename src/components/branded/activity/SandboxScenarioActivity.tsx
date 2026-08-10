@@ -6,4 +6,8 @@
  * tests keep resolving it — the extraction is meant to be invisible to the
  * Player, exactly as steps 1–3 were.
  */
-export { SandboxScenarioActivity } from '@iterahq/activities';
+export {
+  SandboxScenarioActivity,
+  ChatSandboxActivity,
+  TerminalSandboxActivity,
+} from '@iterahq/activities';

@@ -109,7 +109,7 @@ export default function ReplaySessionPage() {
     if (enunciado.status === 'captured') {
       // Collapse any `{pt,en}` bags for the locale THE LEARNER READ — never the
       // watcher's. Already-resolved specs pass through untouched, which is the
-      // normal case; `sandbox_scenario` is the one kind snapshotted unresolved.
+      // normal case; the sandbox kinds are the ones snapshotted unresolved.
       const locale: Locale = enunciado.locale === 'en' ? 'en' : 'pt';
       return resolveLocalizedSpec(enunciado.spec, locale);
     }

@@ -163,8 +163,329 @@
     "id": "fixture-sandbox-scenario",
     "kind": "sandbox_scenario",
     "spec": {
+      "id": "c1",
+      "sandboxKind": "cloud-core-chat",
+      "openness": "fixed",
+      "title": {
+        "pt": "O pedido vago",
+        "en": "The vague ask"
+      },
+      "initialState": {
+        "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+        "seedMessages": [
+          {
+            "role": "assistant",
+            "text": {
+              "pt": "Oi! Manda um pedido pra eu responder.",
+              "en": "Hi! Send me a request."
+            }
+          }
+        ],
+        "basePrompt": {
+          "pt": "me ajuda",
+          "en": "help me"
+        },
+        "cannedResults": {
+          "vago": {
+            "quality": "ruim",
+            "text": {
+              "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder.",
+              "en": "Help with what? I need to know what you want help with."
+            },
+            "critique": {
+              "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca.",
+              "en": "It bounced a question back instead of helping. That's a weak answer."
+            }
+          },
+          "especifico": {
+            "quality": "top",
+            "text": {
+              "pt": "Boa! Pra uma redação de escola sobre meio ambiente, começa com uma pergunta que faça o leitor pensar: 'E se amanhã acabasse a água?'. Depois traz um dado real, uma história curta e fecha com o que dá pra fazer no bairro. Quer que eu escreva um parágrafo de exemplo?",
+              "en": "Nice! For a school essay on the environment, start with a question that makes the reader think: 'What if the water ran out tomorrow?'. Then bring a real fact, a short story, and close with what can be done in your neighborhood."
+            },
+            "critique": {
+              "pt": "Ela te deu um caminho pronto pro teu pedido. Isso é resposta forte.",
+              "en": "It handed you a ready path for your ask. That's a strong answer."
+            }
+          }
+        },
+        "resultResolver": {
+          "kind": "match-first",
+          "rules": [
+            {
+              "when": {
+                "choseOption": {
+                  "id": "add-especifico"
+                }
+              },
+              "use": "especifico"
+            }
+          ],
+          "fallback": "vago"
+        }
+      },
+      "choices": [
+        {
+          "id": "add-especifico",
+          "label": {
+            "pt": "pra uma redação de escola sobre meio ambiente",
+            "en": "for a school essay about the environment"
+          },
+          "appends": {
+            "pt": "É pra uma redação de escola sobre meio ambiente.",
+            "en": "It's for a school essay about the environment."
+          }
+        },
+        {
+          "id": "add-oi",
+          "label": {
+            "pt": "oi, tudo bem?",
+            "en": "hi, how are you?"
+          },
+          "appends": {
+            "pt": "Oi, tudo bem?",
+            "en": "Hi, how are you?"
+          }
+        },
+        {
+          "id": "add-agora",
+          "label": {
+            "pt": "me ajuda agora",
+            "en": "help me now"
+          },
+          "appends": {
+            "pt": "Preciso agora.",
+            "en": "I need it now."
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "montar-especifico",
+          "prompt": {
+            "pt": "Agora escolhe UMA coisa pra adicionar no pedido e manda de novo.",
+            "en": "Now pick ONE thing to add and send again."
+          },
+          "hint": {
+            "pt": "Só uma delas ajuda de verdade. Qual?",
+            "en": "Only one actually helps. Which?"
+          },
+          "mode": "compose",
+          "expose": {
+            "choices": [
+              "add-especifico",
+              "add-oi",
+              "add-agora"
+            ]
+          },
+          "unlock": {
+            "ranPrompt": {
+              "withContext": true
+            }
+          }
+        },
+        {
+          "id": "avaliar-especifico",
+          "prompt": {
+            "pt": "E essa resposta, como ficou?",
+            "en": "And this answer, how was it?"
+          },
+          "mode": "evaluate",
+          "unlock": {
+            "all": [
+              {
+                "ranPromptCount": {
+                  "eq": 1
+                }
+              },
+              {
+                "evaluated": {
+                  "correct": true
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "success": {
+        "stepCompleted": {
+          "id": "avaliar-especifico"
+        }
+      },
+      "reveal": {
+        "recap": {
+          "pt": "Uma palavra a mais mudou a resposta inteira. Isso é contexto.",
+          "en": "One extra word changed the whole answer. That's context."
+        }
+      }
+    }
+  },
+  "chat_sandbox": {
+    "id": "fixture-chat-sandbox",
+    "kind": "chat_sandbox",
+    "spec": {
+      "id": "c1",
+      "sandboxKind": "cloud-core-chat",
+      "openness": "fixed",
+      "title": {
+        "pt": "O pedido vago",
+        "en": "The vague ask"
+      },
+      "initialState": {
+        "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+        "seedMessages": [
+          {
+            "role": "assistant",
+            "text": {
+              "pt": "Oi! Manda um pedido pra eu responder.",
+              "en": "Hi! Send me a request."
+            }
+          }
+        ],
+        "basePrompt": {
+          "pt": "me ajuda",
+          "en": "help me"
+        },
+        "cannedResults": {
+          "vago": {
+            "quality": "ruim",
+            "text": {
+              "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder.",
+              "en": "Help with what? I need to know what you want help with."
+            },
+            "critique": {
+              "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca.",
+              "en": "It bounced a question back instead of helping. That's a weak answer."
+            }
+          },
+          "especifico": {
+            "quality": "top",
+            "text": {
+              "pt": "Boa! Pra uma redação de escola sobre meio ambiente, começa com uma pergunta que faça o leitor pensar: 'E se amanhã acabasse a água?'. Depois traz um dado real, uma história curta e fecha com o que dá pra fazer no bairro. Quer que eu escreva um parágrafo de exemplo?",
+              "en": "Nice! For a school essay on the environment, start with a question that makes the reader think: 'What if the water ran out tomorrow?'. Then bring a real fact, a short story, and close with what can be done in your neighborhood."
+            },
+            "critique": {
+              "pt": "Ela te deu um caminho pronto pro teu pedido. Isso é resposta forte.",
+              "en": "It handed you a ready path for your ask. That's a strong answer."
+            }
+          }
+        },
+        "resultResolver": {
+          "kind": "match-first",
+          "rules": [
+            {
+              "when": {
+                "choseOption": {
+                  "id": "add-especifico"
+                }
+              },
+              "use": "especifico"
+            }
+          ],
+          "fallback": "vago"
+        }
+      },
+      "choices": [
+        {
+          "id": "add-especifico",
+          "label": {
+            "pt": "pra uma redação de escola sobre meio ambiente",
+            "en": "for a school essay about the environment"
+          },
+          "appends": {
+            "pt": "É pra uma redação de escola sobre meio ambiente.",
+            "en": "It's for a school essay about the environment."
+          }
+        },
+        {
+          "id": "add-oi",
+          "label": {
+            "pt": "oi, tudo bem?",
+            "en": "hi, how are you?"
+          },
+          "appends": {
+            "pt": "Oi, tudo bem?",
+            "en": "Hi, how are you?"
+          }
+        },
+        {
+          "id": "add-agora",
+          "label": {
+            "pt": "me ajuda agora",
+            "en": "help me now"
+          },
+          "appends": {
+            "pt": "Preciso agora.",
+            "en": "I need it now."
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "montar-especifico",
+          "prompt": {
+            "pt": "Agora escolhe UMA coisa pra adicionar no pedido e manda de novo.",
+            "en": "Now pick ONE thing to add and send again."
+          },
+          "hint": {
+            "pt": "Só uma delas ajuda de verdade. Qual?",
+            "en": "Only one actually helps. Which?"
+          },
+          "mode": "compose",
+          "expose": {
+            "choices": [
+              "add-especifico",
+              "add-oi",
+              "add-agora"
+            ]
+          },
+          "unlock": {
+            "ranPrompt": {
+              "withContext": true
+            }
+          }
+        },
+        {
+          "id": "avaliar-especifico",
+          "prompt": {
+            "pt": "E essa resposta, como ficou?",
+            "en": "And this answer, how was it?"
+          },
+          "mode": "evaluate",
+          "unlock": {
+            "all": [
+              {
+                "ranPromptCount": {
+                  "eq": 1
+                }
+              },
+              {
+                "evaluated": {
+                  "correct": true
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "success": {
+        "stepCompleted": {
+          "id": "avaliar-especifico"
+        }
+      },
+      "reveal": {
+        "recap": {
+          "pt": "Uma palavra a mais mudou a resposta inteira. Isso é contexto.",
+          "en": "One extra word changed the whole answer. That's context."
+        }
+      }
+    }
+  },
+  "terminal_sandbox": {
+    "id": "fixture-terminal-sandbox",
+    "kind": "terminal_sandbox",
+    "spec": {
       "id": "external-terminal",
-      "sandboxKind": "terminal",
       "openness": "fixed",
       "title": {
         "pt": "Salvando",

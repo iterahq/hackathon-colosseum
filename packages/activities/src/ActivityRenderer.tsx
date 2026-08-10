@@ -33,10 +33,11 @@
  * WHAT IT SHIPS, AND WHAT IT ASKS THE HOST FOR
  * ─────────────────────────────────────────────────────────────────────────────
  * Built in: `concept`, `concept_reveal`, `video`, `single_choice`,
- * `multi_choice`, `match`, `order`, `sandbox_scenario`, `document`, `diagram`,
- * `quiz`. `sandbox_scenario` joined in Fase C step 4 and is the first one that
- * is not a single-submit question: it is N turns against a world model, and it
- * still asks the host for nothing but i18n, because all of its judging is
+ * `multi_choice`, `match`, `order`, `chat_sandbox`, `terminal_sandbox` (and the
+ * deprecated `sandbox_scenario` they were split out of), `document`, `diagram`,
+ * `quiz`. The sandboxes joined in Fase C step 4 and are the first ones that are
+ * not a single-submit question: N turns against a world model, and they still ask
+ * the host for nothing but i18n, because all of their judging is
  * `@iterahq/activity-spec/runtime`'s. `document` / `diagram` / `quiz` joined in
  * Fase D — they had no files to move, only inline functions in the Player's
  * dispatcher, which is why they were last.
@@ -57,6 +58,8 @@ import { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 import { MatchActivity } from './kinds/MatchActivity.js';
 import { OrderActivity } from './kinds/OrderActivity.js';
 import { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
+import { ChatSandboxActivity } from './kinds/ChatSandboxActivity.js';
+import { TerminalSandboxActivity } from './kinds/TerminalSandboxActivity.js';
 import { DocumentActivity } from './kinds/DocumentActivity.js';
 import { DiagramActivity } from './kinds/DiagramActivity.js';
 import { QuizActivity } from './kinds/QuizActivity.js';
@@ -77,6 +80,8 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'match',
   'order',
   'sandbox_scenario',
+  'chat_sandbox',
+  'terminal_sandbox',
   // Fase D. These three were never files: they were inline functions in the
   // Player's own ~700-line dispatcher, which is why Fase C left them behind
   // (`CONTRACT.md` finding 4: lifting them touches the file every other open PR
@@ -106,6 +111,8 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   match: MatchActivity as ComponentType<ActivityRendererProps>,
   order: OrderActivity as ComponentType<ActivityRendererProps>,
   sandbox_scenario: SandboxScenarioActivity as ComponentType<ActivityRendererProps>,
+  chat_sandbox: ChatSandboxActivity as ComponentType<ActivityRendererProps>,
+  terminal_sandbox: TerminalSandboxActivity as ComponentType<ActivityRendererProps>,
   document: DocumentActivity as ComponentType<ActivityRendererProps>,
   diagram: DiagramActivity as ComponentType<ActivityRendererProps>,
   quiz: QuizActivity as ComponentType<ActivityRendererProps>,

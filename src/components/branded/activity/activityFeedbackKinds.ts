@@ -26,7 +26,13 @@ export const FOOTER_GRADED_KINDS: ReadonlySet<string> = new Set([
   'order',
   'match',
   'quiz',
+  // Os TRÊS kinds de sandbox: o 0.11.0 partiu `sandbox_scenario` e os três
+  // coexistem. Faltar um aqui não deixa o footer feio — deixa a atividade SEM
+  // veredito e SEM "Continuar", porque o CTA in-window foi removido justamente
+  // por confiar neste conjunto.
   'sandbox_scenario',
+  'chat_sandbox',
+  'terminal_sandbox',
 ]);
 
 /** Whether an activity kind's feedback should surface in the fixed footer. */

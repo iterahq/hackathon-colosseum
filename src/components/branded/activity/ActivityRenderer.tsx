@@ -48,7 +48,11 @@ import { SingleChoiceActivity } from './SingleChoiceActivity';
 import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
-import { SandboxScenarioActivity } from './SandboxScenarioActivity';
+import {
+  ChatSandboxActivity,
+  SandboxScenarioActivity,
+  TerminalSandboxActivity,
+} from './SandboxScenarioActivity';
 // Fase D — the three that were inline in this file until now. Imported through
 // the app's own paths (one-line re-exports of `@iterahq/activities`) for the
 // same reason every Fase C kind is: the extraction is meant to be invisible
@@ -61,6 +65,9 @@ import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { InvalidSpecCard } from './InvalidSpecCard';
 import { resolveByocSpec } from './byoc/byocSpec';
+import { isByocLive } from './sandbox-live/byocLive';
+import { SandboxScenarioLiveActivity } from './sandbox-live/SandboxScenarioLiveActivity';
+import { iteraApiConfigured } from '@/api/iteraApi';
 
 export function ActivityRenderer({
   activity,
@@ -142,6 +149,8 @@ export function ActivityRenderer({
     case 'order':
       return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'sandbox_scenario':
+    case 'chat_sandbox':
+    case 'terminal_sandbox':
       return <SandboxScenarioGuard activity={activity} onComplete={onComplete} reveal={reveal} />;
     default:
       return <UnknownActivity activity={activity} />;
@@ -162,17 +171,48 @@ function SandboxScenarioGuard({
   onComplete: (c: boolean) => void;
   reveal?: boolean;
 }) {
-  const parsed = safeParseActivitySpec('sandbox_scenario', activity.spec);
+  // Valida pelo kind da própria activity, não pelo literal `sandbox_scenario`:
+  // uma row `terminal_sandbox` reprovaria no schema do chat, que é justamente o
+  // que a divisão dos dois kinds existe para separar.
+  const kind = activity.kind as 'sandbox_scenario' | 'chat_sandbox' | 'terminal_sandbox';
+  // Mesma isenção de camada que `specBoundaryFailure` já aplica: o BYOC ao vivo
+  // não tem contrato Zod, e o `system` dele é o bag bilíngue que o schema de chat
+  // declara `z.string()`. No 0.9.0 as chaves da camada eram descartadas em
+  // silêncio e a row passava; com `.strict()` ela reprovaria — e é esta a porta
+  // por onde o aluno entra (`LiveActivityRenderer` só é usado pelo harness de
+  // autor). Sem isto, a row `273e631e` da trilha BYOC vira card de spec inválido.
+  // O destino é o componente AO VIVO, não o runtime determinístico: este spec não
+  // tem `initialState`, e o runtime compartilhado quebra sem ele. Sem a API de
+  // resultados configurada não há caminho ao vivo — cai no parse, fail-closed.
+  if (isByocLive(activity) && iteraApiConfigured()) {
+    return (
+      <SandboxScenarioLiveActivity activity={activity} onComplete={onComplete} reveal={reveal} />
+    );
+  }
+  const parsed = safeParseActivitySpec(kind, activity.spec);
   if (!parsed.success) {
     // Mesmo card, mesmo testid — agora pela primitiva compartilhada (a mensagem
     // saiu do literal PT hardcoded para o i18n, sem mudar o texto pt-BR).
     return (
       <InvalidSpecCard
-        kind="sandbox_scenario"
-        testId={KIND_VALIDATION.sandbox_scenario.invalidTestId}
-        messageKey={KIND_VALIDATION.sandbox_scenario.messageKey}
+        kind={kind}
+        testId={KIND_VALIDATION[kind].invalidTestId}
+        messageKey={KIND_VALIDATION[kind].messageKey}
       />
     );
+  }
+  // Os kinds novos vão DIRETO ao componente do seu kind, e o delegador legado
+  // atende só as rows que ainda carregam o kind velho — que no 0.12.0 são
+  // necessariamente de CHAT: o `sandbox_scenario` virou alias do schema de chat,
+  // então um spec de terminal reprova no parse acima e nem chega ao delegador.
+  // O ramo de terminal DENTRO do `SandboxScenarioActivity` ficou inalcançável por
+  // aqui; não foi removido neste bump para o diff que apaga caminho de render ser
+  // revisável sozinho.
+  if (kind === 'chat_sandbox') {
+    return <ChatSandboxActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+  }
+  if (kind === 'terminal_sandbox') {
+    return <TerminalSandboxActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
   }
   return <SandboxScenarioActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
 }

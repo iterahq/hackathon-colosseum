@@ -97,8 +97,12 @@ export function SandboxScenarioShell({
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
 
+  // O kind vem da ROW, não de um literal: telemetria e e2e leem
+  // `data-activity-kind`, e uma tela de `chat_sandbox` que se anuncia como
+  // `sandbox_scenario` atribuiria a atividade ao kind errado exatamente durante
+  // a migração, quando os dois kinds coexistem no banco.
   return (
-    <ActivityShell kind="sandbox_scenario" icon={MessageSquare} label={tr('activity.sandboxScenario')}>
+    <ActivityShell kind={activity.kind} icon={MessageSquare} label={tr('activity.sandboxScenario')}>
       <div className="flex flex-col gap-4">
         {/* TOP ZONE — instruction lives OUTSIDE/above the sandbox window, below
             the "SANDBOX" kind badge. The hint is a collapsed toggle here. */}

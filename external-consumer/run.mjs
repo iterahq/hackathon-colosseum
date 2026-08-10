@@ -516,13 +516,17 @@ check('the action SEQUENCE rides up with the verdict', () => {
   view.unmount();
 });
 
-check('sandbox_scenario: N turns against a world model, graded by the spec', () => {
+check('terminal_sandbox: N turns against a world model, graded by the spec', () => {
   // The first kind here that is not a single-submit question. It matters as an
   // external-consumer check precisely because it is the one with a RUNTIME:
   // `@iterahq/activity-spec/runtime` reduces the command, the engine prints
   // output, the step unlocks and the scenario's own `success` predicate decides
   // the verdict — all of it inside a host that supplies nothing but a locale.
-  const { view, completions, events } = renderKind('sandbox_scenario');
+  //
+  // It drove `sandbox_scenario` until activity-spec 0.12.0, where that kind
+  // became an alias of the CHAT schema — so this terminal spec no longer parses
+  // under it, and `terminal_sandbox` is the only kind it can be.
+  const { view, completions, events } = renderKind('terminal_sandbox');
 
   const input = view.one('[data-testid="terminal-input"]');
   assert(input, 'the terminal never rendered its prompt');
@@ -554,10 +558,10 @@ check('sandbox_scenario: N turns against a world model, graded by the spec', () 
   view.unmount();
 });
 
-check('sandbox_scenario: the engine output is localized by the host locale', () => {
+check('terminal_sandbox: the engine output is localized by the host locale', () => {
   const read = (locale) => {
     const view = mount(
-      host(h(ActivityRenderer, { activity: FIXTURES.sandbox_scenario, onComplete: () => {} }), {
+      host(h(ActivityRenderer, { activity: FIXTURES.terminal_sandbox, onComplete: () => {} }), {
         i18n: createActivityI18n(locale),
       }),
     );

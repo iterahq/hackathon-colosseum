@@ -11,6 +11,7 @@
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { normalizeProgressStatus } from '@/utils/normalizeProgressStatus';
+import { isScenarioKind } from '@/utils/activityFamilies';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import type {
   Activity,
@@ -185,7 +186,9 @@ export function mapActivity(a: Row): Activity {
     kind,
     // The sandbox runtime resolves its own bilingual bags; every other kind
     // renders spec strings directly, so collapse bags before they reach the DOM.
-    spec: kind === 'sandbox_scenario' ? rawSpec : resolveLocalizedSpec(rawSpec),
+    // ⚠️ TODOS os kinds de sandbox, não só o legado: colapsar o bag de uma row
+    // migrada reprova o spec na fronteira e o aluno perde o sandbox inteiro.
+    spec: isScenarioKind(kind) ? rawSpec : resolveLocalizedSpec(rawSpec),
     // The rubric is bilingual too (`criteria[]`, `artifact` — the AI-judge
     // prompt and the artifact label). Nothing downstream resolves it, so an
     // unresolved bag here would reach the judge as "[object Object]" and would

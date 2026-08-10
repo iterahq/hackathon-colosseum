@@ -43,7 +43,11 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
   'order',
   'quiz',
   'code',
+  // Os três kinds de sandbox — sem timer, o ao-vivo não tem contagem nem
+  // trava de "canetas no chão" numa row migrada.
   'sandbox_scenario',
+  'chat_sandbox',
+  'terminal_sandbox',
 ]);
 
 /**
@@ -66,6 +70,8 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'order',
   'quiz',
   'sandbox_scenario',
+  'chat_sandbox',
+  'terminal_sandbox',
   'concept_reveal',
 ]);
 

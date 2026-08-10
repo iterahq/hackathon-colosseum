@@ -18,6 +18,7 @@
  *            decide PASS/FAIL — see `computeOutcome` below.
  */
 import type { I18n } from '@iterahq/activity-spec/runtime';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 /** The learner's binary rating of the AI response (Tainan: 2 buttons). */
 export type ByocRating = 'good' | 'bad';
@@ -57,7 +58,7 @@ export interface ByocLiveSpec {
  * flow through Samuel's untouched renderer.
  */
 export function isByocLive(activity: { kind: string; spec: Record<string, unknown> | null | undefined }): boolean {
-  if (activity.kind !== 'sandbox_scenario') return false;
+  if (!isScenarioKind(activity.kind)) return false;
   const s = (activity.spec ?? {}) as ByocLiveSpec;
   return s.openness === 'byoc' || s.live === true;
 }

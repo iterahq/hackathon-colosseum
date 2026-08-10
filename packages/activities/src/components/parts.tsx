@@ -22,6 +22,17 @@ export function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: stri
   );
 }
 
+/**
+ * The sandbox kinds get tighter padding: their content is a chat window or a
+ * terminal, which already carries its own frame.
+ *
+ * All three are listed because the split of `sandbox_scenario` into
+ * `chat_sandbox` + `terminal_sandbox` would otherwise have loosened the padding
+ * on every migrated row — a layout regression with no failing test to catch it,
+ * since `data-activity-kind` and the spacing were reading the same literal.
+ */
+const COMPACT_KINDS = new Set(['sandbox_scenario', 'chat_sandbox', 'terminal_sandbox']);
+
 /** The rounded branded card shell every non-hero activity kind lives inside. */
 export function ActivityShell({
   kind,
@@ -34,18 +45,19 @@ export function ActivityShell({
   label: string;
   children: React.ReactNode;
 }) {
+  const compact = COMPACT_KINDS.has(kind);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className={`w-full rounded-3xl border border-border bg-card px-6 md:px-8 ${
-        kind === 'sandbox_scenario' ? 'py-4 md:py-5' : 'py-6 md:py-8'
+        compact ? 'py-4 md:py-5' : 'py-6 md:py-8'
       }`}
       data-testid="activity-shell"
       data-activity-kind={kind}
     >
       <KindBadge icon={icon} label={label} />
-      <div className={kind === 'sandbox_scenario' ? 'mt-3' : 'mt-5'}>{children}</div>
+      <div className={compact ? 'mt-3' : 'mt-5'}>{children}</div>
     </motion.div>
   );
 }

@@ -253,6 +253,25 @@ const DRIVES: Record<ContractKey, Drive> = {
       'ele não é dirigível, e mockar rede AQUI contaminaria os outros 15 contratos deste ' +
       'arquivo. Vive em `byocLivePhases.test.tsx`, com `vi.mock("@/api/iteraApi")`.',
   },
+  chat_sandbox: {
+    kind: 'chat_sandbox',
+    correct: async (c) => {
+      await composeSandboxPrompt(c);
+      await sendSandboxPrompt(c);
+      await rateSandbox(c, 'top');
+    },
+    why:
+      'dirigido igual ao `sandbox_open` de propósito: o kind novo tem que provar o MESMO ' +
+      'invariante que o legado, senão a divisão teria trocado o discriminador e perdido a ' +
+      'garantia no caminho.',
+  },
+  terminal_sandbox: {
+    kind: 'terminal_sandbox',
+    why:
+      'o terminal avança por COMANDO reconhecido, não por submissão — o veredito sai de ' +
+      '`useTerminalSandbox` casando o comando digitado com o `unlock` do passo. Está coberto ' +
+      'em `TerminalSandboxActivity.test.tsx` e `terminalSuccessMarks.test.ts`.',
+  },
 };
 
 function activityFor(key: ContractKey, status?: Activity['status']): Activity {
@@ -416,4 +435,30 @@ describe('V4 — invariante: todo contrato monta, é dirigível, e emite o vered
     },
     20000,
   );
+
+  /**
+   * A PREMISSA DO `sameScreen` NA MATRIZ, MEDIDA.
+   *
+   * `activityMatrixCoverage.test.ts` marca 7 células de `chat_sandbox` como
+   * `sameScreen` da story do `sandbox_scenario`, afirmando que uma story nova
+   * seria "a mesma árvore renderizada por um `kind` diferente". Isso é o que
+   * autoriza não duplicar as stories — e era a única parte do guard que ninguém
+   * verificava: se `chat_sandbox` ganhar um componente próprio, as 7 células
+   * passariam a apontar para a tela de OUTRO kind e o guard seguiria verde.
+   *
+   * Aqui a afirmação vira medição. O `data-activity-kind` é normalizado de
+   * propósito: ele DEVE diferir (é a row se anunciando pelo seu próprio kind, o
+   * bug que este lote consertou); o resto da árvore é que não pode.
+   */
+  it('chat_sandbox renderiza a MESMA árvore do sandbox_scenario (premissa do `sameScreen`)', () => {
+    const treeOf = (key: ContractKey) => {
+      const canvas = mount(activityFor(key), vi.fn());
+      const html = canvas.innerHTML;
+      expect(html.length, `arvore vazia para ${key}`).toBeGreaterThan(500);
+      cleanup();
+      return html.replace(/data-activity-kind="(chat_sandbox|sandbox_scenario)"/g, 'kind="KIND"');
+    };
+    expect(treeOf('chat_sandbox')).toBe(treeOf('sandbox_open'));
+    expect(consoleErrors).toEqual([]);
+  });
 });

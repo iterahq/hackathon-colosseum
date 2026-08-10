@@ -143,9 +143,12 @@ export function TerminalSandboxShell({
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
 
+  // Mesmo motivo do shell de chat: o `data-activity-kind` é o da ROW. O
+  // `data-sandbox-kind="terminal"` abaixo continua fixo de propósito — ele
+  // descreve a TELA, e é o que os testes de terminal já usam.
   return (
     <ActivityShell
-      kind="sandbox_scenario"
+      kind={activity.kind}
       icon={TerminalSquare}
       label={tr('activity.sandboxScenario')}
     >

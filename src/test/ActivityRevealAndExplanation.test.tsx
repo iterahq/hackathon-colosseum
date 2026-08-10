@@ -20,7 +20,7 @@ import type { Activity, ActivityKind } from '@/types/content';
  */
 
 const QUIZ_SPEC = {
-  question: 'Qual delas identifica a linha de forma única?',
+  prompt: 'Qual delas identifica a linha de forma única?',
   options: [
     { id: 'a', text: 'Nome', isCorrect: false },
     { id: 'b', text: 'Matrícula', isCorrect: true },
@@ -178,14 +178,25 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     expect(screen.queryByTestId('answer-explanation')).toBeNull();
   });
 
-  it.each([
-    ['whitespace only', '   '],
-    ['not a string', 42],
-  ])('single_choice: %s never becomes a card', (_name, explanation) => {
-    renderActivity(makeActivity('single_choice', { ...SINGLE_CHOICE_SPEC, explanation }));
+  it('single_choice: whitespace only never becomes a card', () => {
+    renderActivity(makeActivity('single_choice', { ...SINGLE_CHOICE_SPEC, explanation: '   ' }));
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
+    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+  });
+
+  /**
+   * Um `explanation` não-string já não chega ao renderer: desde o 0.11.0 o
+   * schema por kind é `.strict()` e tipa o campo como texto localizado, então a
+   * fronteira REPROVA o spec. A garantia ficou mais forte (o defeito morre antes
+   * de renderizar), e é por isso que a asserção mudou de "não vira card" para
+   * "não vira atividade".
+   */
+  it('single_choice: explanation não-string é reprovado na fronteira', () => {
+    renderActivity(makeActivity('single_choice', { ...SINGLE_CHOICE_SPEC, explanation: 42 }));
+
+    expect(screen.getByTestId('single-choice-invalid')).toBeInTheDocument();
     expect(screen.queryByTestId('answer-explanation')).toBeNull();
   });
 });

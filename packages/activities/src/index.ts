@@ -90,13 +90,17 @@ export { DocumentActivity } from './kinds/DocumentActivity.js';
 export { DiagramActivity } from './kinds/DiagramActivity.js';
 export { QuizActivity } from './kinds/QuizActivity.js';
 
-/* ─────────────────────────── sandbox_scenario ────────────────────────────── */
-// Fase C step 4. ONE kind (`sandbox_scenario`) with five activity types behind
-// it: the dispatcher picks off the AUTHORED SHAPE, never off a second enum —
-// `sandboxKind: 'terminal'` splits by `inputMode`, everything else is the chat
-// sandbox split by `slots` / `choices`. The five are exported individually as
-// well, for the same reason the choice kinds are: a host that already knows
-// which one it has should not have to go through a switch to mount it.
+/* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
+// Fase C step 4. TWO kinds with five activity types behind them: each
+// dispatcher picks off the AUTHORED SHAPE, never off a second enum —
+// `terminal_sandbox` splits by `inputMode`, `chat_sandbox` by `slots` /
+// `choices`. The five are exported individually as well, for the same reason
+// the choice kinds are: a host that already knows which one it has should not
+// have to go through a switch to mount it.
+//
+// `sandbox_scenario` is the deprecated kind the two were split out of. Since
+// activity-spec 0.12.0 it is an ALIAS of the chat schema, so it delegates to
+// the chat side and nothing else can reach it.
 //
 // It needs NO backend port. That is a property of the kind, not an omission:
 // the whole thing runs on `@iterahq/activity-spec/runtime`'s pure reducers, so
@@ -105,6 +109,8 @@ export { QuizActivity } from './kinds/QuizActivity.js';
 // and it has not moved yet — see README.
 
 export { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
+export { ChatSandboxActivity } from './kinds/ChatSandboxActivity.js';
+export { TerminalSandboxActivity } from './kinds/TerminalSandboxActivity.js';
 export { SandboxAIActivity } from './kinds/sandbox/SandboxAIActivity.js';
 export { SandboxAIWithOptionsActivity } from './kinds/sandbox/SandboxAIWithOptionsActivity.js';
 export { SandboxAICompleteWordsActivity } from './kinds/sandbox/SandboxAICompleteWordsActivity.js';

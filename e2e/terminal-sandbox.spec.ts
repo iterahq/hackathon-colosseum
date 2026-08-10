@@ -26,6 +26,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   ALL_FIXTURES,
+  CHAT_SANDBOX_MIGRATED,
   TERMINAL_FREE_TEXT,
   TERMINAL_OPTIONS,
   TERMINAL_PLAYER_CHROME,
@@ -377,4 +378,32 @@ test('§1 the transcript GROWS downward as commands land', async ({ page }) => {
   // The history pushed the prompt DOWN. A fixed-height pane would leave it put,
   // which is exactly the regression this file exists to catch.
   expect(after.y).toBeGreaterThan(before.y);
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * §7 — THE MIGRATED CHAT KIND STILL RENDERS THE CHAT
+ *
+ * `chat_sandbox` is a kind the DB can hold (migration 0057) and no row uses yet:
+ * all 48 live sandbox rows are still `sandbox_scenario`. Nothing else in either
+ * suite mounts it, so a player that only dispatched the legacy kind would be
+ * green everywhere and then blank the screen the day the rows move. This is the
+ * fixtures' own post-migration shape, so a difference here is a difference in the
+ * DISPATCH and nothing else.
+ *
+ * There is no `terminal_sandbox` twin of this test any more, and that is not a
+ * gap: since 0.12.0 the terminal spec parses under NO other kind, so every
+ * `open()` above already mounts `terminal_sandbox` — the dispatch is asserted by
+ * the whole file rather than by one case. `CHAT_SANDBOX_MIGRATED` keeps its own
+ * test because the legacy kind can still hold a chat spec, so its dispatch is the
+ * one that can silently go missing.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+test('§7 chat_sandbox mounts the chat, not the invalid card', async ({ page }) => {
+  await installHarnessSubstrate(page, ALL_FIXTURES);
+  await page.goto(harnessUrl(CHAT_SANDBOX_MIGRATED));
+
+  await expect(page.getByTestId('activity-test-harness')).toBeVisible();
+  await expect(page.locator('[data-invalid-spec="true"]')).toHaveCount(0);
+  await expect(page.getByTestId('sandbox-window')).toBeVisible();
+  await expect(page.getByTestId('terminal-transcript')).toHaveCount(0);
 });

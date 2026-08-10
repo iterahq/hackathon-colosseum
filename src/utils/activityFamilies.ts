@@ -133,6 +133,8 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   code: 'editor',
   // — scenario: turns against a world model —
   sandbox_scenario: 'scenario',
+  chat_sandbox: 'scenario',
+  terminal_sandbox: 'scenario',
 };
 
 /**
@@ -364,6 +366,27 @@ export const FREE_TEXT_PAYLOAD_CARVE_OUTS: readonly string[] = ['command_run.com
 /** Which family a kind belongs to. Total by construction (the trap above). */
 export function familyOf(kind: ActivityKind): ActivityFamily {
   return ACTIVITY_FAMILY[kind];
+}
+
+/**
+ * True for EVERY sandbox kind — `sandbox_scenario`, `chat_sandbox` and
+ * `terminal_sandbox`.
+ *
+ * ⚠️ USE ISTO EM VEZ DE COMPARAR COM `'sandbox_scenario'`. A divisão do 0.11.0
+ * deixou os três coexistindo (o kind legado sobrevive enquanto houver row não
+ * migrada), então um site que testa o literal trata uma row MIGRADA como um kind
+ * comum — e a falha nunca é um crash, é o sandbox perdendo em silêncio o
+ * comportamento que aquele site controla. O pior caso era o
+ * `src/services/programs.service.ts`: ele colapsa os bags bilíngues de todo kind
+ * não-sandbox, e o runtime do sandbox precisa deles NÃO colapsados, então virar
+ * a coluna `kind` transformaria os 24 sandboxes vivos em card de spec inválido.
+ *
+ * Anda sobre o `ACTIVITY_FAMILY`, então herda a trap de exaustividade daquele
+ * mapa: um quarto kind de sandbox não entra no enum sem ser classificado, e
+ * classificá-lo como `scenario` é o que o torna verdadeiro aqui.
+ */
+export function isScenarioKind(kind: string): boolean {
+  return kind in ACTIVITY_FAMILY && ACTIVITY_FAMILY[kind as ActivityKind] === 'scenario';
 }
 
 /** The kinds in one family, in enum order. */

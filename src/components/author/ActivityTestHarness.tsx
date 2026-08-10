@@ -31,6 +31,7 @@ import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import { ByocAuthorDiagnosis } from './ByocAuthorDiagnosis';
 import { ByocAuthorReRoll } from './ByocAuthorReRoll';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 /** A single in-memory attempt result — never persisted. */
 export interface TestAttempt {
@@ -66,7 +67,7 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
   // "run as student" preview matches production. Scoped to the sandbox so other
   // kinds keep the harness's plain in-memory verdict row.
   const showSandboxFooter =
-    activity.kind === 'sandbox_scenario' && !!attempt && !footerDismissed;
+    isScenarioKind(activity.kind) && !!attempt && !footerDismissed;
 
   // A spec the resolver refuses renders the AUTHORED FALLBACK, which looks like a
   // working activity — so the author's only signal is that this panel silently

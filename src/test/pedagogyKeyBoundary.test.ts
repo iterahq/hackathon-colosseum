@@ -142,28 +142,21 @@ describe('spec.pedagogy atravessa a fronteira de validação', () => {
   );
 
   /**
-   * ⚠️ TESTE DE CARACTERIZAÇÃO — ele fixa um DEFEITO, não um contrato desejado.
+   * ✅ O BURACO FECHOU — este era um teste de caracterização e virou contrato.
    *
-   * `pedagogy` não é declarada por schema nenhum, então o Zod a **descarta** na
-   * saída do parse. Hoje isso é inofensivo em dois lugares e só em dois:
+   * Até o 0.10.0, `pedagogy` não era declarada por schema nenhum, então o Zod a
+   * **descartava** na saída do parse. Aquilo só era inofensivo por coincidência
+   * de implementação em dois repos (o `itera-mcp` gravava o `spec` cru, e a
+   * fronteira daqui usava o parse apenas como predicado); no dia em que qualquer
+   * um dos dois passasse a consumir a saída, o bloco morreria na escrita
+   * seguinte, sem erro. Era o cenário de `iterahq/activity-spec#24`.
    *
-   *   - o `itera-mcp` grava o `spec` **cru** que recebeu, não o valor parseado;
-   *   - a fronteira deste repo usa o parse só como PREDICADO (passa/não passa) e
-   *     renderiza a partir do `spec` original.
-   *
-   * Ou seja: o bloco sobrevive porque **ninguém consome a saída do parse**. Isso
-   * é uma coincidência de implementação em dois repos, não uma garantia — e
-   * Tainan já aprovou mudar exatamente ela (kinds `strict` + o MCP passando a
-   * gravar o valor parseado). No dia em que qualquer um dos dois lados passar a
-   * usar a saída, `spec.pedagogy` é **deletada na próxima escrita, sem erro**.
-   *
-   * Este teste passa HOJE porque descreve o mundo como ele é. Quando `pedagogy`
-   * virar campo DECLARADO no `@iterahq/activity-spec` — que é a correção certa,
-   * rastreada em iterahq/activity-spec#24 — ele fica **vermelho**, e a ação
-   * correta é apagá-lo com a nota de que o buraco fechou. Um teste vermelho é a
-   * notificação; o silêncio de hoje é o problema.
+   * O 0.10.0 declarou `pedagogy` como camada `.passthrough()`, e a asserção
+   * inverteu: o bloco AGORA sobrevive ao parse. Ela fica aqui em vez de ser
+   * apagada porque o que precisava de guarda nunca foi o defeito — era a
+   * sobrevivência da anotação, que hoje é garantia e não mais sorte.
    */
-  it('🩹 HOJE a saída do parse PERDE o bloco — por isso ele precisa ser declarado', () => {
+  it('a saída do parse PRESERVA o bloco — `pedagogy` é declarada desde o 0.10.0', () => {
     const parsed = safeParseActivitySpec('single_choice', {
       ...MINIMAL_VALID_SPEC.single_choice,
       pedagogy: T_E_1_PEDAGOGY,
@@ -171,11 +164,8 @@ describe('spec.pedagogy atravessa a fronteira de validação', () => {
     expect(parsed.success).toBe(true);
     if (!parsed.success) return;
 
-    expect(
-      parsed.data,
-      'Se isto ficou vermelho, `pedagogy` passou a ser declarada no pacote — ' +
-        'apague este teste de caracterização (o buraco fechou) e mantenha os outros.'
-    ).not.toHaveProperty('pedagogy');
+    expect(parsed.data).toHaveProperty('pedagogy');
+    expect((parsed.data as { pedagogy: unknown }).pedagogy).toEqual(T_E_1_PEDAGOGY);
   });
 
   it('todo kind da matriz está coberto pelo enum canônico', () => {

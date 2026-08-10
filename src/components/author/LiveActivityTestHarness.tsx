@@ -19,6 +19,7 @@ import { LiveActivityRenderer } from '@/components/branded/activity/LiveActivity
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
+import { isScenarioKind } from '@/utils/activityFamilies';
 
 /** A single in-memory attempt result — never persisted (player side). */
 export interface TestAttempt {
@@ -46,7 +47,7 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
   // fixed FeedbackFooter (same as the live class) — carry the `byoc-continue`
   // testid so the e2e continue-locator resolves to the footer CTA.
   const showSandboxFooter =
-    activity.kind === 'sandbox_scenario' && !!attempt && !footerDismissed;
+    isScenarioKind(activity.kind) && !!attempt && !footerDismissed;
 
   return (
     <div className="flex flex-col gap-4" data-testid="live-activity-test-harness">
