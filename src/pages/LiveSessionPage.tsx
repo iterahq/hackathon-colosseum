@@ -98,7 +98,7 @@ import { isInstructor as isStaffInstructor } from '@/services/membership.service
 import { useProfile } from '@/hooks/useProfile';
 import { useGuestMode } from '@/guest/GuestModeContext';
 import type { Activity } from '@/types/content';
-import type { ClassCompleter, ClassPresenceMember } from '@/types/liveClass';
+import type { ClassCompleter, ClassPresenceMember, StoredLiveAnswer } from '@/types/liveClass';
 import { isScenarioKind } from '@/utils/activityFamilies';
 
 
@@ -223,9 +223,7 @@ export default function LiveSessionPage() {
   // Per-activity local answer state (result writes stay per-user) + the moment
   // the current activity opened for THIS learner (the elapsed-time origin). Both
   // reset whenever the professor force-advances to a different activity.
-  const [answered, setAnswered] = useState<{ id: string; correct: boolean; elapsedMs: number } | null>(
-    null
-  );
+  const [answered, setAnswered] = useState<({ id: string } & StoredLiveAnswer) | null>(null);
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [reopened, setReopened] = useState(false);
@@ -349,12 +347,17 @@ export default function LiveSessionPage() {
     // com wifi ruim ficaria datada de quando a conexão voltou.
     const settledAt = Date.now();
     const elapsedMs = sample?.elapsedMs ?? 0;
-    setAnswered({ id: current.id, correct, elapsedMs });
+    // O `message`/`explanation` que a atividade acabou de entregar viaja junto:
+    // é a mesma coisa que o LessonPlayer já leva pro footer, e era o único dado
+    // do `detail` que o ao-vivo lia e jogava fora.
+    const verdict = { message: detail?.message, explanation: detail?.explanation };
+    setAnswered({ id: current.id, correct, elapsedMs, ...verdict });
     setReopened(false);
     if (sessionId)
       storeAnswer(sessionId, current.id, {
         correct,
         elapsedMs,
+        ...verdict,
         response: stageResponseText(current.kind, detail?.response),
       });
     sound.onAnswer(correct);
@@ -560,7 +563,13 @@ export default function LiveSessionPage() {
   const footerGraded = isFooterGradedKind(current?.kind) || (!!current && isByocActivity(current));
   const answeredHere = Boolean(current && answered?.id === current.id);
   const footerResult: FooterResult | null =
-    footerGraded && answeredHere && answered ? { correct: answered.correct } : null;
+    footerGraded && answeredHere && answered
+      ? {
+          correct: answered.correct,
+          message: answered.message,
+          explanation: answered.explanation,
+        }
+      : null;
   const answeredWaitHint = answered ? (
     <span
       className="inline-flex items-center gap-2 justify-end flex-wrap"

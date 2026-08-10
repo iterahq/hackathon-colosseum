@@ -241,6 +241,15 @@ export interface StoredLiveAnswer {
    * dizer "respondeu", que é justamente a informação que o professor já tinha.
    */
   response?: string;
+  /**
+   * O veredito AUTORADO que a atividade entrega junto do booleano — o recap do
+   * sandbox, o porquê do judge. Fica guardado com a resposta porque o footer do
+   * ao-vivo continua na tela depois de um refresh, e um footer que reaparece sem
+   * a frase é pior que um que nunca a teve: o aluno viu a explicação, recarregou
+   * pra reler, e ela sumiu.
+   */
+  message?: string;
+  explanation?: string;
 }
 
 /**
