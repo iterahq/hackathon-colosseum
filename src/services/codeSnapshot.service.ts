@@ -13,9 +13,16 @@
  * The second one is the whole point of saving: a refresh, a dropped connection
  * or a restored tab mid-class used to send the learner back to the starter.
  *
+ * ⚠️ O rascunho é do aluno E DA EXECUÇÃO desde 06/08 (ver
+ * `utils/activityExecution`): dentro da mesma aula um refresh devolve o
+ * trabalho, mas uma aula NOVA nasce no starter em vez de trazer o código da
+ * turma anterior. A etiqueta é gravada no envelope e conferida na LEITURA — o
+ * dado velho continua em disco e é simplesmente sobrescrito no primeiro save.
+ *
  * Padrão do projeto: no React here — pure functions returning values.
  */
 import { scopedKey } from '@/utils/storageScope';
+import { belongsToExecution, currentExecutionId } from '@/utils/activityExecution';
 import type { CodeSnapshot } from '@/types/codeSnack';
 
 export type { CodeSnapshot } from '@/types/codeSnack';
@@ -39,7 +46,10 @@ export function readCodeSnapshot(activityId: string): CodeSnapshot | null {
     const raw = localStorage.getItem(key);
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;
     if (parsed && typeof parsed === 'object' && typeof (parsed as CodeSnapshot).code === 'string') {
-      return parsed as CodeSnapshot;
+      const snapshot = parsed as CodeSnapshot;
+      // Rascunho de outra execução não é meu: a atividade nasce limpa.
+      if (!belongsToExecution(snapshot.execution, currentExecutionId())) return null;
+      return snapshot;
     }
     return null;
   } catch {
@@ -52,7 +62,11 @@ export function saveCodeSnapshot(activityId: string, code: string): void {
   const key = keyFor(activityId);
   if (!key) return;
   try {
-    const snapshot: CodeSnapshot = { code, savedAt: new Date().toISOString() };
+    const snapshot: CodeSnapshot = {
+      code,
+      savedAt: new Date().toISOString(),
+      execution: currentExecutionId(),
+    };
     localStorage.setItem(key, JSON.stringify(snapshot));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(CODE_SNAPSHOT_EVENT, { detail: { activityId } }));

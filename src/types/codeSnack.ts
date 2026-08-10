@@ -21,4 +21,11 @@ export type {
 export interface CodeSnapshot {
   code: string;
   savedAt: string;
+  /**
+   * Qual EXECUÇÃO gravou este rascunho (ver `utils/activityExecution`). Vai no
+   * payload e não na chave de propósito: chave por execução deixaria um rascunho
+   * órfão em disco por aula dada, e um rascunho gravado ANTES desta regra não
+   * teria como ser reconhecido como legado — seria só inalcançável.
+   */
+  execution?: string | null;
 }
