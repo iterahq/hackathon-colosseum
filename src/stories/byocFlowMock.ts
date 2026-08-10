@@ -5,12 +5,10 @@
  * superfície é o ponto: se o estado real ganhar uma fase, isto para de compilar
  * em vez de mostrar na vitrine um fluxo que não existe mais.
  *
- * As três diferenças entre `reset` e `tryAnotherSeed` do `useByoc` são imitadas
- * aqui de propósito, porque colapsá-las é o jeito silencioso de a vitrine mentir:
- * `reset` RELÊ (passa por `loading` e volta pra linha que o servidor já tem),
- * `tryAnotherSeed` não relê (a linha que ele acharia é justamente a reserva que o
- * aluno quer trocar), e a falha PERSISTE uma linha degradada em vez de deixar
- * `generation` nula — estado que a itera-api não produz.
+ * Duas fidelidades ao `useByoc` são imitadas aqui de propósito, porque colapsá-las
+ * é o jeito silencioso de a vitrine mentir: `reset` RELÊ (passa por `loading` e
+ * volta pra linha que o servidor já tem), e a falha PERSISTE uma linha degradada
+ * em vez de deixar `generation` nula — estado que a itera-api não produz.
  *
  * ⚠️ A espera é fake. 2,2s aqui só imita a ordem de grandeza da produção pós
  * itera-api#37 (~6s ponta a ponta) — não é medição.
@@ -141,14 +139,7 @@ export function useMockByoc({
     });
   }, [schedule]);
 
-  const tryAnotherSeed = useCallback(() => {
-    persisted.current = null;
-    setGeneration(null);
-    setSeedError(null);
-    setPhase('seed');
-  }, []);
-
-  return { phase, generation, seedError, submitSeed, reset, tryAnotherSeed };
+  return { phase, generation, seedError, submitSeed, reset };
 }
 
 /**

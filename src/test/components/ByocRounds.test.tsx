@@ -57,12 +57,62 @@ describe('ByocRounds', () => {
     expect(assembled).toContain('jogar futebol');
     expect(assembled).toContain(String(tree.rounds[0].options[0].content));
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(onComplete).toHaveBeenCalledWith(true);
+    expect(onComplete).toHaveBeenCalledWith(true, { response: assembled });
   });
 
   it('does not re-report an activity finished in an earlier session', () => {
     const onComplete = setup(true);
-    expect(screen.getByTestId('byoc-assembled-context')).toBeInTheDocument();
+    expect(screen.getByTestId('byoc-rounds')).toBeInTheDocument();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  // The picks of an earlier session are not in this render, so printing the
+  // assembly would show the bare seed under "this is the request you built".
+  it('does not claim an assembled prompt it does not have', () => {
+    setup(true);
+    expect(screen.queryByTestId('byoc-assembled-context')).not.toBeInTheDocument();
+  });
+
+  // The closing question is built from the learner's OWN picks, so an earlier
+  // session — whose picks this render does not have — must not show an empty one.
+  it('closes with a question made of the learner picks, and only when it has them', () => {
+    setup(true);
+    expect(screen.queryByTestId('byoc-closing-question')).not.toBeInTheDocument();
+  });
+
+  it('reveals the AI reply again from the closing question, without grading it', () => {
+    setup();
+    for (let i = 0; i < tree.rounds.length; i += 1) {
+      fireEvent.click(screen.getAllByTestId('byoc-round-option')[0]);
+      fireEvent.click(next());
+    }
+    const options = screen.getAllByTestId('byoc-closing-option');
+    expect(options).toHaveLength(tree.rounds.length);
+    fireEvent.click(options[0]);
+    expect(options[0].dataset.selected).toBe('true');
+    expect(options[0].querySelector('[data-tone="picked"]')).toBeInTheDocument();
+    // Option ids are unique per ROUND, not across the tree — every round here
+    // has an `a` and a `b`. Identifying a closing option by `option.id` picked
+    // all of them at once and gave React duplicate keys.
+    expect(options.slice(1).map((o) => o.dataset.selected)).toEqual([undefined, undefined]);
+  });
+
+  // The host rebuilds `onComplete` on every render; as an effect dependency it
+  // reported completion again on each one.
+  it('reports once even when the host hands a new callback every render', () => {
+    const onComplete = vi.fn();
+    const view = (fn: (correct: boolean) => void) => (
+      <I18nProvider>
+        <ByocRounds tree={tree} seed="jogar futebol" onComplete={fn} />
+      </I18nProvider>
+    );
+    const { rerender } = render(view(onComplete));
+    for (let i = 0; i < tree.rounds.length; i += 1) {
+      fireEvent.click(screen.getAllByTestId('byoc-round-option')[0]);
+      fireEvent.click(next());
+    }
+    rerender(view((c: boolean) => onComplete(c)));
+    rerender(view((c: boolean) => onComplete(c)));
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 });

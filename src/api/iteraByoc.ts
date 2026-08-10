@@ -21,10 +21,21 @@ function checkedGeneration(raw: ByocGeneration): ByocGeneration {
 }
 
 /**
- * Sits ABOVE the server's own 90s generation budget: without it a stalled socket
- * parks the learner on the spinner forever, with no way back to the seed form.
+ * Sits ABOVE the server's own budget: without it a stalled socket parks the
+ * learner on the spinner forever, with no way back.
  */
-const BYOC_TIMEOUT_MS = 120_000;
+const BYOC_READ_TIMEOUT_MS = 120_000;
+
+/**
+ * Capped WAY below the server's 90s budget: since itera-api#37 a healthy
+ * generation lands in ~6s, so past ten the honest move is to stop waiting and
+ * serve the authored fallback.
+ *
+ * Aborting here does NOT cancel the server, which finishes and persists the row.
+ * So the fallback is not a life sentence — the next time the learner OPENS the
+ * activity, `readByoc` finds the real generation.
+ */
+const BYOC_GENERATE_TIMEOUT_MS = 10_000;
 
 function timeout(ms: number) {
   const controller = new AbortController();
@@ -37,15 +48,15 @@ function timeout(ms: number) {
  *
  * Idempotent by default: a learner who already generated gets that SAME tree
  * back (`reused: true`, no model call), so a reload never re-rolls the question
- * they are graded on. Generation measured 26–58s in production against the free
- * model; the server's own timeout is 90s.
+ * they are graded on.
  *
  * `regenerate` is the escape from that idempotency, and the SERVER decides
  * whether to honor it — the client asking is not enough. Over a degraded row
  * (`fallback_used`) anyone gets it, or the learner who generated during an
  * outage would be served the ready-made example forever. Over a real generation
  * only someone who can author the activity does, because a stable question is
- * what makes correction local for everybody else.
+ * what makes correction local for everybody else. Since the learner-facing
+ * re-roll was removed, `ByocAuthorReRoll` is the only caller that asks.
  */
 export async function generateByoc(
   activityId: string,
@@ -53,7 +64,7 @@ export async function generateByoc(
   token: string,
   regenerate = false
 ): Promise<ByocGeneration> {
-  const t = timeout(BYOC_TIMEOUT_MS);
+  const t = timeout(BYOC_GENERATE_TIMEOUT_MS);
   try {
     const raw = await postJson<ByocGeneration>(
       `/v1/embed/activity/${encodeURIComponent(activityId)}/byoc`,
@@ -79,7 +90,7 @@ export async function readByoc(
 ): Promise<ByocGeneration | null> {
   const base = iteraApiBase();
   if (!base) return null;
-  const t = timeout(BYOC_TIMEOUT_MS);
+  const t = timeout(BYOC_READ_TIMEOUT_MS);
   try {
     const res = await fetch(`${base}/v1/embed/activity/${encodeURIComponent(activityId)}/byoc`, {
       headers: { Authorization: `Bearer ${token}` },

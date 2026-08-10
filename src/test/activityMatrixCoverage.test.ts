@@ -348,30 +348,19 @@ const BYOC_LIVE_COVERAGE: Record<string, string> = {
  * Também não entra na matriz por kind, e pelo mesmo motivo do bloco acima: BYOC
  * é camada (`spec.byoc`) sobre um kind hospedeiro, então uma linha aqui seria um
  * 13º kind que o enum não tem. O que precisa ser garantido é outra coisa: que
- * cada `interaction` do union de `GeneratedChoiceTree` apareça na vitrine nos
- * DOIS níveis — a árvore isolada e o fluxo de dois passos —, porque a queixa que
- * originou isto foi exatamente ver o passo 1 no Storybook e o passo 2 em lugar
- * nenhum.
+ * cada `interaction` do union de `GeneratedChoiceTree` apareça na vitrine no
+ * fluxo de DOIS PASSOS, porque a queixa que originou isto foi exatamente ver o
+ * passo 1 no Storybook e o passo 2 em lugar nenhum. Antes eram dois níveis (a
+ * árvore isolada também); a árvore sozinha nunca provou a transição, que é o
+ * que faltava, e viver em pasta própria só espalhava o BYOC pela vitrine.
  *
- * `build_context` não tem célula de correção em nível nenhum: não há certo nem
- * errado, chegar ao fim É o acerto.
+ * `build_context` não tem célula de correção: não há certo nem errado, chegar
+ * ao fim É o acerto.
  */
-const BYOC_TREE_COVERAGE: Record<
-  GeneratedChoiceTree['interaction'],
-  { tree: string; flow: string }
-> = {
-  pick_best: {
-    tree: 'activities-ia-byoc-tree--pick-best',
-    flow: 'activities-ia-byoc-fluxo--pick-best',
-  },
-  judge_each: {
-    tree: 'activities-ia-byoc-tree--judge-each',
-    flow: 'activities-ia-byoc-fluxo--judge-each',
-  },
-  build_context: {
-    tree: 'activities-ia-byoc-tree--build-context',
-    flow: 'activities-ia-byoc-fluxo--build-context',
-  },
+const BYOC_TREE_COVERAGE: Record<GeneratedChoiceTree['interaction'], string> = {
+  pick_best: 'activities-ia-byoc--byoc-text-area-pick-best',
+  judge_each: 'activities-ia-byoc--byoc-text-area-judge-each',
+  build_context: 'activities-ia-byoc--byoc-text-area-tree-pick-best',
 };
 
 const STORY_IDS = new Set(indexStories().map((s) => s.id));
@@ -430,9 +419,8 @@ describe('guard da matriz de estados das activities (V3)', () => {
     expect(STORY_IDS.has('activities-ia-sandbox-byoc-live--revealed-in-live')).toBe(true);
   });
 
-  it('toda interação da árvore BYOC tem story isolada E de fluxo completo', () => {
-    for (const [interaction, { tree, flow }] of Object.entries(BYOC_TREE_COVERAGE)) {
-      expect(STORY_IDS.has(tree), `${interaction}: falta a árvore isolada`).toBe(true);
+  it('toda interação da árvore BYOC tem story de fluxo completo', () => {
+    for (const [interaction, flow] of Object.entries(BYOC_TREE_COVERAGE)) {
       expect(STORY_IDS.has(flow), `${interaction}: falta o fluxo completo`).toBe(true);
     }
   });

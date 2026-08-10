@@ -30,8 +30,6 @@ export interface ByocState {
   submitSeed: (seed: string) => void;
   /** Leave the dead end and let the learner try another seed. */
   reset: () => void;
-  /** Back to the form, this time asking the server for a genuinely new tree. */
-  tryAnotherSeed: () => void;
 }
 
 /** A degraded row carries the authored tree, so it lands on `fallback`, not `ready`. */
@@ -65,13 +63,11 @@ export function useByoc({
   const tokenRef = useRef(token);
   tokenRef.current = token;
   const hasToken = Boolean(token);
-  const regenerateRef = useRef(false);
 
   useEffect(() => {
     const run = ++runRef.current;
     setGeneration(null);
     setSeedError(null);
-    regenerateRef.current = false;
     if (!ready) {
       setPhase('loading');
       return;
@@ -98,10 +94,9 @@ export function useByoc({
       const run = runRef.current;
       setSeedError(null);
       setPhase('generating');
-      generateByoc(activityId, seed, tokenRef.current, regenerateRef.current)
+      generateByoc(activityId, seed, tokenRef.current)
         .then((row) => {
           if (runRef.current !== run) return;
-          regenerateRef.current = false;
           setGeneration(row);
           setPhase(landingPhase(row));
         })
@@ -124,19 +119,5 @@ export function useByoc({
 
   const reset = useCallback(() => setAttempt((n) => n + 1), []);
 
-  // Unlike `reset`, this does NOT re-read: the row it would find is the very
-  // fallback the learner is trying to leave, and reading it back would land them
-  // right where they started.
-  // Regenerating is armed ONLY off a degraded row. Reached from a dropped
-  // response instead, the server may well hold a perfectly good generation the
-  // learner never saw — re-rolling that is exactly the re-roll idempotency exists
-  // to prevent, so there the plain idempotent POST is the right one.
-  const tryAnotherSeed = useCallback(() => {
-    regenerateRef.current = Boolean(generation?.fallback_used);
-    setSeedError(null);
-    setGeneration(null);
-    setPhase('seed');
-  }, [generation]);
-
-  return { phase, generation, seedError, submitSeed, reset, tryAnotherSeed };
+  return { phase, generation, seedError, submitSeed, reset };
 }

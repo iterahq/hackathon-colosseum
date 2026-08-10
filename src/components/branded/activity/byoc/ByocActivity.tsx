@@ -12,6 +12,7 @@
 import type { ByocSpec } from '@iterahq/activity-spec';
 import { useAuth } from '@/auth/AuthContext';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { ByocActivityView } from './ByocActivityView';
 import { useByoc } from './useByoc';
 
@@ -23,7 +24,7 @@ export function ByocActivity({
 }: {
   activity: Activity;
   spec: ByocSpec;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
 }) {
   const { session, loading } = useAuth();

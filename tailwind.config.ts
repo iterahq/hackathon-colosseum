@@ -113,6 +113,10 @@ export default {
         evergreen: "#3FD17F",
         "evergreen-hi": "#62D996",
         "evergreen-soft": "#1C3A2A",
+        // Blue is NOT a brand accent — it exists so a pick with no right answer
+        // never borrows the green that means "correct" everywhere else.
+        azul: "#4C8DF6",
+        "azul-hi": "#7FB0FF",
         ink: "#F4EDE2",
         panel: "#141210",
         "panel-2": "#1C1916",

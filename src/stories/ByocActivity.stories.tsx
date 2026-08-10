@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { ByocActivityView } from '@/components/branded/activity/byoc/ByocActivityView';
+import { ByocTree } from '@/components/branded/activity/byoc/ByocTree';
+import { noop } from './activityFixtures';
 import { ByocFlow } from './ByocFlow';
 import { byocHostActivity } from './byocFlowMock';
 import {
@@ -13,23 +15,23 @@ import {
 import { withActivityWidth } from './decorators';
 
 /**
- * BYOC ("Bring Your Own Context") — **o fluxo inteiro, os dois passos**.
+ * BYOC ("Bring Your Own Context") — **os dois passos, numa pasta só**.
  *
  * BYOC não é um `kind`: é uma CAMADA (`spec.byoc`) sobre qualquer atividade. O
- * aluno escreve o próprio contexto (passo 1), a itera-api gera a árvore em cima
- * dele, e o aluno responde essa árvore (passo 2). As stories irmãs mostram cada
- * passo isolado; esta mostra a TRANSIÇÃO — que é o que faltava na vitrine.
+ * aluno escreve o próprio contexto numa textarea (passo 1), a itera-api gera a
+ * árvore em cima dele, e o aluno responde essa árvore (passo 2). Toda story aqui
+ * mostra o fluxo INTEIRO — o formulário e a árvore isolados viviam em pastas
+ * separadas e diziam menos do que a transição entre eles.
  *
- * **A geração é mockada, o resto não.** O componente aqui é o mesmo
- * `ByocActivityView` que o app monta; só o `useByoc` (que fala com a itera-api)
- * é trocado por um relógio local (`byocFlowMock.ts`). Plugar IA de verdade no
- * Storybook seria complexidade à toa: o valor da vitrine é o contrato visual e
- * as fases, não a geração. ⚠️ A espera aqui é fake (2,2s); em produção são ~6s
- * desde a troca de modelo (itera-api#37) — não leia esta story como medição.
+ * Os três tipos: **BYOC TextArea Pick Best** (uma opção certa), **BYOC TextArea
+ * Judge Each** (classificar cada opção) e **BYOC TextArea Tree Pick Best**
+ * (rodadas sem certo nem errado, que montam um pedido).
+ *
+ * ⚠️ A espera aqui é fake (2,2s); em produção são ~6s (itera-api#37).
  */
 const meta: Meta<typeof ByocActivityView> = {
-  title: 'Organisms/Activities/6 · BYOC (contexto do aluno)/0 · fluxo completo',
-  id: 'activities-ia-byoc-fluxo',
+  title: 'Organisms/Activities/6 · BYOC (contexto do aluno)',
+  id: 'activities-ia-byoc',
   component: ByocActivityView,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
@@ -42,51 +44,52 @@ const judgeEachActivity = byocHostActivity(BYOC_JUDGE_EACH_SPEC);
 const buildContextActivity = byocHostActivity(BYOC_BUILD_CONTEXT_SPEC);
 
 /**
- * Escreva seu contexto, espere a geração, responda a árvore. Enviar qualquer
- * texto percorre `seed → generating → ready` no canvas.
- *
- * A seed do aluno volta ecoada acima da árvore (`byoc-seed-echo`): é o que
- * prova, na tela, que a atividade foi montada em cima do contexto DELE.
+ * Enviar qualquer texto percorre `seed → generating → ready` no canvas. A seed
+ * volta ecoada acima da árvore (`byoc-seed-echo`): é o que prova, na tela, que a
+ * atividade foi montada em cima do contexto DELE. A `ai_response` de cada opção
+ * fica escondida até o envio — aberta antes, entrega o gabarito.
  */
-export const PickBest: Story = {
-  name: 'BYOC Tree · Pick Best',
+export const BYOCTextAreaPickBest: Story = {
+  name: 'BYOC TextArea Pick Best',
   render: () => (
     <ByocFlow activity={pickBestActivity} spec={BYOC_PICK_BEST_SPEC} tree={BYOC_PICK_BEST} />
   ),
 };
 
-/** O mesmo fluxo, classificando cada opção como boa ou ruim. */
-export const JudgeEach: Story = {
-  name: 'BYOC Tree · Judge Each',
+/** O mesmo fluxo, classificando cada opção como boa ou ruim — acerto só com TODAS certas. */
+export const BYOCTextAreaJudgeEach: Story = {
+  name: 'BYOC TextArea Judge Each',
   render: () => (
     <ByocFlow activity={judgeEachActivity} spec={BYOC_JUDGE_EACH_SPEC} tree={BYOC_JUDGE_EACH} />
   ),
 };
 
 /**
- * O mesmo fluxo sem certo nem errado: cada rodada é uma faceta do pedido, e a
- * última tela devolve o prompt que o aluno acabou de escrever — a seed dele na
- * primeira linha. Chegar ao fim É o acerto, então não há envio nem nota.
+ * O mesmo fluxo **sem certo nem errado**: cada rodada é uma faceta do pedido, a
+ * escolha revela na hora o que a IA responderia com AQUELA faceta, e a última
+ * tela devolve o prompt que o aluno acabou de escrever. Chegar ao fim É o acerto.
+ *
+ * Depois do pedido montado vem uma pergunta de fechamento cujas opções são as
+ * escolhas do próprio aluno: só ELE pode respondê-la, e por isso ela não precisa
+ * de conteúdo autorado.
  */
-export const BuildContext: Story = {
-  name: 'BYOC Tree Multiple Choice · Build Context',
+export const BYOCTextAreaTreePickBest: Story = {
+  name: 'BYOC TextArea Tree Pick Best',
   render: () => (
     <ByocFlow
       activity={buildContextActivity}
       spec={BYOC_BUILD_CONTEXT_SPEC}
       tree={BYOC_BUILD_CONTEXT}
-      note="Vitrine: a geração é mockada e espera 2,2s. Depois disso, uma rodada por tela — a escolha revela na hora o que a IA responderia."
+      note="Vitrine: a geração espera 2,2s. Depois disso, uma rodada por tela — a escolha revela na hora o que a IA responderia."
     />
   ),
 };
 
 /**
- * **O aluno que VOLTA** — e é a primeira pintura que TODO aluno vê, porque o
- * `useByoc` real nasce em `loading` e LÊ antes de escrever.
- *
- * A geração é idempotente por aluno+atividade: recarregar tem que cair na mesma
- * árvore, não sortear outra. Então quem já gerou nunca mais vê o formulário de
- * seed — vai de `loading` direto pro passo 2, com a própria seed ecoada em cima.
+ * **O aluno que VOLTA** — a primeira pintura que TODO aluno vê, porque o
+ * `useByoc` real nasce em `loading` e LÊ antes de escrever. A geração é
+ * idempotente por aluno+atividade: recarregar cai na MESMA árvore, e quem já
+ * gerou nunca mais vê o formulário de seed.
  */
 export const Retornando: Story = {
   render: () => (
@@ -101,13 +104,9 @@ export const Retornando: Story = {
 };
 
 /**
- * **Seed recusada** — a triagem de conteúdo da itera-api é determinística e roda
- * ANTES de qualquer chamada de modelo, então nada é gasto pra construir algo que
- * a gente recusaria.
- *
- * A tela é o ponto: recusa devolve o aluno ao passo 1 com a mensagem do servidor
- * e o texto dele preservado — não é erro de validação nem acusação. Aqui a
- * primeira seed é recusada seja qual for; a segunda passa.
+ * **Seed recusada** — a triagem da itera-api é determinística e roda ANTES de
+ * qualquer chamada de modelo. Recusa devolve o aluno ao passo 1 com a mensagem
+ * do servidor e o texto dele preservado: não é erro de validação nem acusação.
  */
 export const SeedRecusada: Story = {
   render: () => (
@@ -122,8 +121,11 @@ export const SeedRecusada: Story = {
 };
 
 /**
- * Geração falhou e a autoria escreveu uma árvore de reserva (ADR-7): o aluno
- * responde a reserva e ainda pode voltar e tentar outro contexto.
+ * Geração estourou o teto de 10s (ou falhou) e a autoria escreveu uma árvore de
+ * reserva (ADR-7): o aluno responde a reserva e segue a aula.
+ *
+ * Sem saída lateral aqui de propósito. Parar de esperar não cancela o servidor,
+ * que termina e persiste a linha — a próxima leitura cai na geração de verdade.
  */
 export const CaiNoFallback: Story = {
   render: () => (
@@ -131,15 +133,17 @@ export const CaiNoFallback: Story = {
   ),
 };
 
-/** Geração falhou e NÃO há reserva — o único caminho é tentar de novo. */
-export const Indisponivel: Story = {
-  render: () => (
-    <ByocFlow
-      activity={pickBestActivity}
-      spec={BYOC_PICK_BEST_SPEC}
-      tree={BYOC_PICK_BEST}
-      failing
-      withFallback={false}
-    />
-  ),
+/**
+ * `reveal` — aula ao vivo: gabarito e respostas da IA já abertos. Renderiza a
+ * árvore direto, porque no ao vivo não há passo 1.
+ */
+export const ReveladoAoVivo: Story = {
+  name: 'Pick Best · revelado ao vivo',
+  render: () => <ByocTree tree={BYOC_PICK_BEST} onComplete={noop} reveal />,
+};
+
+/** `done` — concluída numa sessão anterior: trancada, não refazível. */
+export const JaConcluida: Story = {
+  name: 'Pick Best · já concluída',
+  render: () => <ByocTree tree={BYOC_PICK_BEST} onComplete={noop} done />,
 };

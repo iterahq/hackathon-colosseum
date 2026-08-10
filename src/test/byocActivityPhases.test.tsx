@@ -30,7 +30,6 @@ function state(phase: ByocPhase, generation: ByocGeneration | null = null): Byoc
     seedError: null,
     submitSeed: () => {},
     reset: () => {},
-    tryAnotherSeed: () => {},
   };
 }
 
@@ -79,7 +78,7 @@ describe('fases do BYOC', () => {
   it('fallback: a árvore autorada, avisada como reserva e SEM eco da seed', () => {
     show('fallback');
     expect(screen.getByTestId('byoc-fallback-note')).toBeInTheDocument();
-    expect(screen.getByTestId('byoc-try-another-seed')).toBeInTheDocument();
+    expect(screen.queryByTestId('byoc-try-another-seed')).not.toBeInTheDocument();
     expect(screen.getByTestId('byoc-tree')).toBeInTheDocument();
     expect(screen.queryByTestId('byoc-seed-echo')).not.toBeInTheDocument();
   });

@@ -12,11 +12,11 @@
  * in production too. A test would mock the module instead (see
  * `byocLivePhases.test.tsx`); Storybook cannot.
  */
-import { useCallback, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import type { ByocSpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
+import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { InstructionPanel } from '../InstructionPanel';
 import { ActivityShell } from '../parts';
 import { resolveByocInstruction } from './byocSpec';
@@ -34,24 +34,12 @@ export function ByocActivityView({
 }: {
   activity: Activity;
   spec: ByocSpec;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
   reveal?: boolean;
   state: ByocState;
 }) {
   const { t, locale } = useI18n();
-  const { phase, generation, seedError, submitSeed, reset, tryAnotherSeed } = state;
-  // `activity.status` is the status this render was handed, and it does not flip
-  // the moment the learner answers — so it alone would leave the escape hatch on
-  // screen after a graded submit, and a second generation would be a second,
-  // easier question for the same activity.
-  const [answered, setAnswered] = useState(false);
-  const handleComplete = useCallback(
-    (correct: boolean) => {
-      setAnswered(true);
-      onComplete(correct);
-    },
-    [onComplete]
-  );
+  const { phase, generation, seedError, submitSeed, reset } = state;
   const isDone = activity.status === 'done';
   // BYOC replaces the host kind's whole render, so the host's own teaching
   // context would silently vanish under the layer if we didn't carry it over.
@@ -96,21 +84,9 @@ export function ByocActivityView({
 
       {phase === 'fallback' && fallbackTree && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground" data-testid="byoc-fallback-note">
-              {t('byoc.fallbackNote')}
-            </p>
-            {!isDone && !answered && (
-              <button
-                type="button"
-                onClick={tryAnotherSeed}
-                data-testid="byoc-try-another-seed"
-                className="h-9 px-4 rounded-full text-sm font-medium border border-border text-foreground transition-colors hover:bg-muted"
-              >
-                {t('byoc.tryAnotherSeed')}
-              </button>
-            )}
-          </div>
+          <p className="text-sm text-muted-foreground" data-testid="byoc-fallback-note">
+            {t('byoc.fallbackNote')}
+          </p>
           <div className="mt-4">
             <ByocTree
               key={generation?.generation_id ?? 'authored'}
@@ -118,7 +94,7 @@ export function ByocActivityView({
               seed={generation?.seed ?? ''}
               reveal={reveal}
               done={isDone}
-              onComplete={handleComplete}
+              onComplete={onComplete}
             />
           </div>
         </>
@@ -136,7 +112,7 @@ export function ByocActivityView({
               seed={generation.seed}
               reveal={reveal}
               done={isDone}
-              onComplete={handleComplete}
+              onComplete={onComplete}
             />
           </div>
         </>

@@ -125,7 +125,7 @@ describe('two-step flow', () => {
     fireEvent.click(screen.getByTestId('byoc-seed-submit'));
 
     await screen.findByTestId('byoc-tree');
-    expect(generateByoc).toHaveBeenCalledWith('act-byoc', 'futebol', 'tok', false);
+    expect(generateByoc).toHaveBeenCalledWith('act-byoc', 'futebol', 'tok');
 
     fireEvent.click(screen.getAllByTestId('byoc-pick-option')[1]);
     fireEvent.click(screen.getByTestId('byoc-submit'));
@@ -231,68 +231,14 @@ describe('degraded generation', () => {
     expect(screen.queryByTestId('byoc-seed-echo')).toBeNull();
   });
 
-  it('lets the learner escape the sticky row by asking for a new generation', async () => {
+  // The re-roll affordance was removed: the server keeps generating after the
+  // client stops waiting, so the next read lands on the real tree on its own.
+  // Offering a re-roll here also handed the learner a second, different question
+  // for the same graded activity.
+  it('offers no re-roll out of the degraded row', async () => {
     readByoc.mockResolvedValue(degraded);
     renderActivity(activity);
-    fireEvent.click(await screen.findByTestId('byoc-try-another-seed'));
-
-    fireEvent.change(await screen.findByTestId('byoc-seed-input'), { target: { value: 'pipa' } });
-    fireEvent.click(screen.getByTestId('byoc-seed-submit'));
-    await screen.findByTestId('byoc-seed-echo');
-    expect(generateByoc).toHaveBeenCalledWith('act-byoc', 'pipa', 'tok', true);
-  });
-
-  it('does not re-roll a good generation the dropped response may have produced', async () => {
-    generateByoc.mockRejectedValue(new Error('rede caiu'));
-    renderActivity({ ...activity, spec: { byoc: { ...byocSpec, fallback: fallbackTree } } });
-    fireEvent.change(await screen.findByTestId('byoc-seed-input'), { target: { value: 'x' } });
-    fireEvent.click(screen.getByTestId('byoc-seed-submit'));
-
-    fireEvent.click(await screen.findByTestId('byoc-try-another-seed'));
-    generateByoc.mockResolvedValue(generation);
-    fireEvent.change(await screen.findByTestId('byoc-seed-input'), { target: { value: 'pipa' } });
-    fireEvent.click(screen.getByTestId('byoc-seed-submit'));
-    await screen.findByTestId('byoc-seed-echo');
-    expect(generateByoc).toHaveBeenLastCalledWith('act-byoc', 'pipa', 'tok', false);
-  });
-
-  it('hides the escape hatch once the activity is already graded', async () => {
-    readByoc.mockResolvedValue(degraded);
-    renderActivity({ ...activity, status: 'done' });
     await screen.findByTestId('byoc-fallback-note');
     expect(screen.queryByTestId('byoc-try-another-seed')).toBeNull();
-  });
-
-  // `activity.status` is the status this render was handed and does not flip at
-  // submit time, so gating on it alone would let the learner answer, regenerate,
-  // and answer a SECOND question for the same activity.
-  it('hides the escape hatch the moment the learner answers', async () => {
-    readByoc.mockResolvedValue(degraded);
-    renderActivity(activity);
-    await screen.findByTestId('byoc-tree');
-
-    fireEvent.click(screen.getAllByTestId('byoc-pick-option')[1]);
-    fireEvent.click(screen.getByTestId('byoc-submit'));
-    expect(screen.queryByTestId('byoc-try-another-seed')).toBeNull();
-  });
-
-  // Re-rolling a degraded row can land on the SAME authored tree, so the answer
-  // state has to belong to the row, not to the position on screen.
-  it('does not carry a selection across a re-roll that degrades again', async () => {
-    readByoc.mockResolvedValue(degraded);
-    generateByoc.mockResolvedValue({ ...degraded, generation_id: 'g2', attempt: 2 });
-    renderActivity(activity);
-    await screen.findByTestId('byoc-tree');
-    fireEvent.click(screen.getAllByTestId('byoc-pick-option')[1]);
-
-    fireEvent.click(screen.getByTestId('byoc-try-another-seed'));
-    fireEvent.change(await screen.findByTestId('byoc-seed-input'), { target: { value: 'pipa' } });
-    fireEvent.click(screen.getByTestId('byoc-seed-submit'));
-
-    await waitFor(() =>
-      expect(
-        screen.getAllByTestId('byoc-pick-option').some((o) => o.dataset.selected === 'true')
-      ).toBe(false)
-    );
   });
 });

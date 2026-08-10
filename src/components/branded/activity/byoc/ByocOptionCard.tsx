@@ -14,11 +14,13 @@ export function ByocOptionCard({
   option,
   tone,
   revealResponse,
+  className = '',
   children,
 }: {
   option: GeneratedOption;
   tone: OptionTone;
   revealResponse: boolean;
+  className?: string;
   /** Interaction-specific controls (the judge_each good/bad pair). */
   children?: React.ReactNode;
 }) {
@@ -27,7 +29,7 @@ export function ByocOptionCard({
     <div
       data-testid="byoc-option"
       data-tone={tone}
-      className={`rounded-2xl border px-5 py-4 transition-colors ${BYOC_TONE_CLASS[tone]}`}
+      className={`rounded-2xl border px-5 py-4 transition-colors ${BYOC_TONE_CLASS[tone]} ${className}`}
     >
       <div className="flex items-start gap-3">
         <p className="flex-1 min-w-0 whitespace-normal break-words text-left">

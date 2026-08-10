@@ -6,6 +6,7 @@
  * rather than fall through to whichever branch happened to be the `else`.
  */
 import type { GeneratedChoiceTree } from '@iterahq/activity-spec';
+import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
 import { ByocGradedTree } from './ByocGradedTree';
 import { ByocRounds } from './ByocRounds';
 
@@ -22,7 +23,7 @@ export function ByocTree({
   reveal?: boolean;
   /** Already completed in an earlier session — render locked, not answerable. */
   done?: boolean;
-  onComplete: (correct: boolean) => void;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
 }) {
   switch (tree.interaction) {
     case 'build_context':
