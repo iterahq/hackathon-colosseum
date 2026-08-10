@@ -25,16 +25,20 @@ import { defineConfig, devices } from '@playwright/test';
  * carries the mirrored `testIgnore`, so neither suite can pick up the other's
  * tests.
  *
- * TWO files match, and they are NOT the same kind of suite — see the header of
+ * THREE files match, and they are NOT the same kind of suite — see the header of
  * `terminal-sandbox.spec.ts`. They run under one config because they share the
  * substrate (hermetic, credential-free, built from the tree under test) and the
  * property that matters here: **every test runs, every time, or the job is
  * red.** Adding a file to this list means adding it to `testIgnore` over in
  * `playwright.config.ts`, or the prod suite starts running it against live prod.
+ *
+ * `feedback-footer-width.spec.ts` joined them on 2026-08-10 and is the same kind
+ * as `terminal-sandbox.spec.ts`: assertions written from a screenshot, stating
+ * what the UI MUST do, measured in a real browser because jsdom has no layout.
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(activity-baseline|terminal-sandbox)\.spec\.ts$/,
+  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width)\.spec\.ts$/,
 
   // Hermetic: no shared server state, no login, no DB. Parallel is free, and
   // it is what keeps the suite inside the 10-minute budget (V3).
