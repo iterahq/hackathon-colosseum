@@ -1,0 +1,1171 @@
+{
+  "_README": "CHARACTERIZATION BASELINE for the ai-judge grading path, captured READ-ONLY from the ITERA production database (Supabase project kjefmwlopzeaqgqtlbdn) at the instant in `_capturedAt`. `rows` = every itera.activity_defs and itera.activities row whose `rubric` is non-empty — the exact set that plan 20260807-itera-activity-defs-registry-restructure phase 3e folds into `spec.evaluation`. `verdicts` = every itera.activity_results row whose feedback carries a `criteria` array, i.e. every AI-judge verdict production has ever recorded. REDACTION: `criteria[].note` and `feedback` are model prose ABOUT a real learner submission and are NOT stored — only a boolean saying they were present. The upstream provider `user_id` inside `degradedReason` is masked. `criterion` strings ARE stored: they are the model's paraphrase of the AUTHORED rubric, carry no learner content, and are the evidence that text cannot be a key. `ref` = first 8 chars of the row uuid. Learner ids, submissions and artifacts are not selected at all. Consumed by src/test/judgeGradingBaseline.test.tsx. Regenerate: see scripts/dump-grading-baseline.md.",
+  "_capturedAt": "2026-08-10T16:06Z",
+  "_project": "kjefmwlopzeaqgqtlbdn",
+  "_rowCount": 35,
+  "_verdictCount": 9,
+  "rows": [
+    {
+      "source": "activities",
+      "ref": "0f240990",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "≥3 Table no DBML",
+          "≥1 Ref: (relacionamento)"
+        ],
+        "tiers": [
+          "parse",
+          "tests",
+          "judge"
+        ],
+        "criteria": [
+          {
+            "en": "≥3 entities with a primary key",
+            "pt": "≥3 entidades com chave primária"
+          },
+          {
+            "en": "≥1 relationship with explicit cardinality",
+            "pt": "≥1 relacionamento com cardinalidade explícita"
+          },
+          {
+            "en": "Uses a foreign key (does not copy attributes)",
+            "pt": "Usa chave estrangeira (não copia atributos)"
+          }
+        ],
+        "artifact_file": "er-diagram.dbml",
+        "template_repo": "https://github.com/iterahq/itera-course-data-modeling-template"
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "1c439644",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Modelo ER da telemetria de frota",
+        "criteria": [
+          {
+            "en": "Has Vehicle, Trip, Driver, and Event as entities",
+            "pt": "Tem Veículo, Viagem, Motorista e Evento como entidades"
+          },
+          {
+            "en": "Trip aggregates the raw signals (does not model an isolated GPS point)",
+            "pt": "Viagem agrega os sinais crus (não modela ponto GPS isolado)"
+          },
+          {
+            "en": "Relationships with cardinality (Vehicle 1→N Trip)",
+            "pt": "Relacionamentos com cardinalidade (Veículo 1→N Viagem)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "53629ad4",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Modelo ER do produtor unificado cross-unidade",
+        "criteria": [
+          {
+            "en": "Producer is a single entity with a key (tax ID number)",
+            "pt": "Produtor é uma entidade única com chave (CPF/CNPJ)"
+          },
+          {
+            "en": "Models the Producer → Receivables relationship (one-to-many)",
+            "pt": "Modela o relacionamento Produtor → Recebíveis (1-para-muitos)"
+          },
+          {
+            "en": "Shows the cross-unit link (Producer present in multiple units)",
+            "pt": "Mostra a ligação cross-unidade (Produtor presente em várias unidades)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "bf47965a",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agentic architecture diagram (decision + execution)",
+          "pt": "Diagrama de arquitetura agêntica (decisão + execução)"
+        },
+        "criteria": [
+          {
+            "en": "Shows trigger → agent → decision table lookup → tool/action",
+            "pt": "Mostra gatilho → agente → consulta à tabela de decisão → ferramenta/ação"
+          },
+          "Indica onde entra o humano (escalonamento)",
+          "Nomeia as ferramentas/sistemas que o agente aciona"
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "e1f1d27a",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Business process flowchart with decisions and tasks separated",
+          "pt": "Fluxograma do processo de negócio com decisões e tarefas separadas"
+        },
+        "criteria": [
+          {
+            "en": "Has an explicit trigger and outcome",
+            "pt": "Tem gatilho e resultado explícitos"
+          },
+          {
+            "en": "At least 1 decision (diamond) and 2 tasks (rectangles)",
+            "pt": "Pelo menos 1 decisão (losango) e 2 tarefas (retângulos)"
+          },
+          {
+            "en": "The decision paths are labeled (yes/no / queue A/B)",
+            "pt": "Os caminhos da decisão estão rotulados (sim/não / fila A/B)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "05e58fa8",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agentic architecture diagram (decision + execution)",
+          "pt": "Diagrama de arquitetura agêntica (decisão + execução)"
+        },
+        "criteria": [
+          {
+            "en": "Shows trigger → agent → decision table lookup → tool/action",
+            "pt": "Mostra gatilho → agente → consulta à tabela de decisão → ferramenta/ação"
+          },
+          "Indica onde entra o humano (escalonamento)",
+          "Nomeia as ferramentas/sistemas que o agente aciona"
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "251c7568",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Modelo ER da telemetria de frota",
+        "criteria": [
+          {
+            "en": "Has Vehicle, Trip, Driver, and Event as entities",
+            "pt": "Tem Veículo, Viagem, Motorista e Evento como entidades"
+          },
+          {
+            "en": "Trip aggregates the raw signals (does not model an isolated GPS point)",
+            "pt": "Viagem agrega os sinais crus (não modela ponto GPS isolado)"
+          },
+          {
+            "en": "Relationships with cardinality (Vehicle 1→N Trip)",
+            "pt": "Relacionamentos com cardinalidade (Veículo 1→N Viagem)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "34f65f33",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Modelo ER do produtor unificado cross-unidade",
+        "criteria": [
+          {
+            "en": "Producer is a single entity with a key (tax ID number)",
+            "pt": "Produtor é uma entidade única com chave (CPF/CNPJ)"
+          },
+          {
+            "en": "Models the Producer → Receivables relationship (one-to-many)",
+            "pt": "Modela o relacionamento Produtor → Recebíveis (1-para-muitos)"
+          },
+          {
+            "en": "Shows the cross-unit link (Producer present in multiple units)",
+            "pt": "Mostra a ligação cross-unidade (Produtor presente em várias unidades)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "b131c808",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "≥3 Table no DBML",
+          "≥1 Ref: (relacionamento)"
+        ],
+        "tiers": [
+          "parse",
+          "tests",
+          "judge"
+        ],
+        "criteria": [
+          {
+            "en": "≥3 entities with a primary key",
+            "pt": "≥3 entidades com chave primária"
+          },
+          {
+            "en": "≥1 relationship with explicit cardinality",
+            "pt": "≥1 relacionamento com cardinalidade explícita"
+          },
+          {
+            "en": "Uses a foreign key (does not copy attributes)",
+            "pt": "Usa chave estrangeira (não copia atributos)"
+          }
+        ],
+        "artifact_file": "er-diagram.dbml",
+        "template_repo": "https://github.com/iterahq/itera-course-data-modeling-template"
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "d2649461",
+      "kind": "diagram",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Business process flowchart with decisions and tasks separated",
+          "pt": "Fluxograma do processo de negócio com decisões e tarefas separadas"
+        },
+        "criteria": [
+          {
+            "en": "Has an explicit trigger and outcome",
+            "pt": "Tem gatilho e resultado explícitos"
+          },
+          {
+            "en": "At least 1 decision (diamond) and 2 tasks (rectangles)",
+            "pt": "Pelo menos 1 decisão (losango) e 2 tarefas (retângulos)"
+          },
+          {
+            "en": "The decision paths are labeled (yes/no / queue A/B)",
+            "pt": "Os caminhos da decisão estão rotulados (sim/não / fila A/B)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "0160948f",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Brief de agente completo, pronto para um arquiteto implementar",
+        "criteria": [
+          {
+            "en": "Goal in 1 sentence, focused on outcome (not steps)",
+            "pt": "Objetivo em 1 frase, focado em resultado (não em passos)"
+          },
+          {
+            "en": "Lists ≥2 concrete tools (real business systems)",
+            "pt": "Lista ≥2 ferramentas concretas (sistemas reais do negócio)"
+          },
+          {
+            "en": "Includes the decision table (policy)",
+            "pt": "Inclui a tabela de decisão (política)"
+          },
+          "Tem ≥2 guardrails de escalonamento humano",
+          {
+            "en": "Has ≥2 verification checks",
+            "pt": "Tem ≥2 checagens de verificação"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "18adeaf3",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "seção de justificativa não-vazia (>=80 chars)"
+        ],
+        "tiers": [
+          "parse",
+          "judge"
+        ],
+        "criteria": [
+          {
+            "en": "Lists ≥3 concrete corrections to the AI's model",
+            "pt": "Lista ≥3 correções concretas ao modelo da IA"
+          },
+          {
+            "en": "Demonstrates understanding of normalization (FK vs. copy)",
+            "pt": "Demonstra entendimento de normalização (FK vs cópia)"
+          },
+          {
+            "en": "Clarity of the specification",
+            "pt": "Clareza da especificação"
+          }
+        ],
+        "artifact_file": "data-spec.md"
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "191a4bc0",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "min_words": 10
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "2228e494",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "≥3 CREATE TABLE",
+          "≥1 PRIMARY KEY",
+          "≥1 REFERENCES (FK)"
+        ],
+        "tests": [
+          "roda em Postgres de rascunho",
+          "≥3 tabelas criadas",
+          "≥1 FOREIGN KEY constraint",
+          "toda tabela tem PRIMARY KEY"
+        ],
+        "tiers": [
+          "parse",
+          "tests",
+          "judge"
+        ],
+        "criteria": [
+          "Schema reflete o ER",
+          {
+            "en": "Correct normalization",
+            "pt": "Normalização correta"
+          },
+          "Constraints fazem sentido"
+        ],
+        "artifact_file": "schema.sql"
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "315a4ef5",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Spec da camada de dados de frota com IA",
+        "criteria": [
+          {
+            "en": "Describes signals → entities (aggregation)",
+            "pt": "Descreve sinais → entidades (agregação)"
+          },
+          {
+            "en": "Lists ≥2 business questions the AI can answer",
+            "pt": "Lista ≥2 perguntas de negócio respondíveis pela IA"
+          },
+          {
+            "en": "Names the source of the signals (device/telematics)",
+            "pt": "Nomeia a fonte dos sinais (dispositivo/telemática)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "721323ea",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Decision table (DMN-style) that an agent can operate",
+          "pt": "Tabela de decisão (DMN-style) operável por um agente"
+        },
+        "criteria": [
+          {
+            "en": "Covers all condition combinations (or states a default)",
+            "pt": "Cobre todas as combinações de condição (ou declara default)"
+          },
+          {
+            "en": "Explicitly defines what escalates to a human",
+            "pt": "Define explicitamente o que escala para humano"
+          },
+          "Sem regras conflitantes"
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "ce2cef0b",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agentic prioritization reflection",
+          "pt": "Reflexão de priorização agêntica"
+        },
+        "criteria": [
+          "Escolhe um processo concreto",
+          {
+            "en": "Justifies with criteria (frequency × pain × clarity of the decision)",
+            "pt": "Justifica com critério (frequência × dor × clareza da decisão)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "d5d991b2",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Spec do portal-produtor com camada de IA",
+        "criteria": [
+          {
+            "en": "Defines users and the consolidated view",
+            "pt": "Define usuários e a visão consolidada"
+          },
+          "Nomeia as fontes de dados (sistemas/unidades)",
+          {
+            "en": "Includes ≥1 actionable AI suggestion on the unified data",
+            "pt": "Inclui ≥1 sugestão acionável de IA sobre os dados unificados"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "dc481679",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "min_words": 60
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "dfdf6e05",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "List of automatable decisions with inputs and rules",
+          "pt": "Lista de decisões automatizáveis com inputs e regras"
+        },
+        "criteria": [
+          {
+            "en": "Lists ≥2 decisions with a clear question",
+            "pt": "Lista ≥2 decisões com pergunta clara"
+          },
+          {
+            "en": "Each decision names its inputs (data/systems)",
+            "pt": "Cada decisão nomeia seus inputs (dados/sistemas)"
+          },
+          {
+            "en": "Each decision describes the current human rule",
+            "pt": "Cada decisão descreve a regra humana atual"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "eb426dc5",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agro credit agent brief (final artifact)",
+          "pt": "Brief de agente de crédito agro (artefato final)"
+        },
+        "criteria": [
+          {
+            "en": "Clear goal linked to receivables/credit",
+            "pt": "Objetivo claro ligado a recebível/crédito"
+          },
+          {
+            "en": "Policy = credit decision table",
+            "pt": "Política = tabela de decisão de crédito"
+          },
+          {
+            "en": "Escalation guardrail based on exposure",
+            "pt": "Guardrail de escalonamento por exposição"
+          },
+          {
+            "en": "Includes verification of the result",
+            "pt": "Inclui verificação do resultado"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "f6986f48",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Brief de agente de frota (artefato final)",
+        "criteria": [
+          {
+            "en": "Measurable goal (e.g., % downtime)",
+            "pt": "Objetivo mensurável (ex: % de parada)"
+          },
+          "≥2 ferramentas concretas de frota",
+          {
+            "en": "Policy includes maintenance and/or route",
+            "pt": "Política inclui manutenção e/ou rota"
+          },
+          {
+            "en": "≥2 guardrails + ≥2 verifications",
+            "pt": "≥2 guardrails + ≥2 verificações"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "2c269361",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Brief de agente completo, pronto para um arquiteto implementar",
+        "criteria": [
+          {
+            "en": "Goal in 1 sentence, focused on outcome (not steps)",
+            "pt": "Objetivo em 1 frase, focado em resultado (não em passos)"
+          },
+          {
+            "en": "Lists ≥2 concrete tools (real business systems)",
+            "pt": "Lista ≥2 ferramentas concretas (sistemas reais do negócio)"
+          },
+          {
+            "en": "Includes the decision table (policy)",
+            "pt": "Inclui a tabela de decisão (política)"
+          },
+          "Tem ≥2 guardrails de escalonamento humano",
+          {
+            "en": "Has ≥2 verification checks",
+            "pt": "Tem ≥2 checagens de verificação"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "2ca5f72f",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Spec do portal-produtor com camada de IA",
+        "criteria": [
+          {
+            "en": "Defines users and the consolidated view",
+            "pt": "Define usuários e a visão consolidada"
+          },
+          "Nomeia as fontes de dados (sistemas/unidades)",
+          {
+            "en": "Includes ≥1 actionable AI suggestion on the unified data",
+            "pt": "Inclui ≥1 sugestão acionável de IA sobre os dados unificados"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "3c8246c6",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agentic prioritization reflection",
+          "pt": "Reflexão de priorização agêntica"
+        },
+        "criteria": [
+          "Escolhe um processo concreto",
+          {
+            "en": "Justifies with criteria (frequency × pain × clarity of the decision)",
+            "pt": "Justifica com critério (frequência × dor × clareza da decisão)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "4c961cc8",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "≥3 CREATE TABLE",
+          "≥1 PRIMARY KEY",
+          "≥1 REFERENCES (FK)"
+        ],
+        "tests": [
+          "roda em Postgres de rascunho",
+          "≥3 tabelas criadas",
+          "≥1 FOREIGN KEY constraint",
+          "toda tabela tem PRIMARY KEY"
+        ],
+        "tiers": [
+          "parse",
+          "tests",
+          "judge"
+        ],
+        "criteria": [
+          "Schema reflete o ER",
+          {
+            "en": "Correct normalization",
+            "pt": "Normalização correta"
+          },
+          "Constraints fazem sentido"
+        ],
+        "artifact_file": "schema.sql"
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "4de254b3",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Agro credit agent brief (final artifact)",
+          "pt": "Brief de agente de crédito agro (artefato final)"
+        },
+        "criteria": [
+          {
+            "en": "Clear goal linked to receivables/credit",
+            "pt": "Objetivo claro ligado a recebível/crédito"
+          },
+          {
+            "en": "Policy = credit decision table",
+            "pt": "Política = tabela de decisão de crédito"
+          },
+          {
+            "en": "Escalation guardrail based on exposure",
+            "pt": "Guardrail de escalonamento por exposição"
+          },
+          {
+            "en": "Includes verification of the result",
+            "pt": "Inclui verificação do resultado"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "4ed5c58c",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Brief de agente de frota (artefato final)",
+        "criteria": [
+          {
+            "en": "Measurable goal (e.g., % downtime)",
+            "pt": "Objetivo mensurável (ex: % de parada)"
+          },
+          "≥2 ferramentas concretas de frota",
+          {
+            "en": "Policy includes maintenance and/or route",
+            "pt": "Política inclui manutenção e/ou rota"
+          },
+          {
+            "en": "≥2 guardrails + ≥2 verifications",
+            "pt": "≥2 guardrails + ≥2 verificações"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "72e4afa9",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "List of automatable decisions with inputs and rules",
+          "pt": "Lista de decisões automatizáveis com inputs e regras"
+        },
+        "criteria": [
+          {
+            "en": "Lists ≥2 decisions with a clear question",
+            "pt": "Lista ≥2 decisões com pergunta clara"
+          },
+          {
+            "en": "Each decision names its inputs (data/systems)",
+            "pt": "Cada decisão nomeia seus inputs (dados/sistemas)"
+          },
+          {
+            "en": "Each decision describes the current human rule",
+            "pt": "Cada decisão descreve a regra humana atual"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "797579b9",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "min_words": 10
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "9e80de2e",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "Decision table (DMN-style) that an agent can operate",
+          "pt": "Tabela de decisão (DMN-style) operável por um agente"
+        },
+        "criteria": [
+          {
+            "en": "Covers all condition combinations (or states a default)",
+            "pt": "Cobre todas as combinações de condição (ou declara default)"
+          },
+          {
+            "en": "Explicitly defines what escalates to a human",
+            "pt": "Define explicitamente o que escala para humano"
+          },
+          "Sem regras conflitantes"
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "d4b66be8",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "parse": [
+          "seção de justificativa não-vazia (>=80 chars)"
+        ],
+        "tiers": [
+          "parse",
+          "judge"
+        ],
+        "criteria": [
+          {
+            "en": "Lists ≥3 concrete corrections to the AI's model",
+            "pt": "Lista ≥3 correções concretas ao modelo da IA"
+          },
+          {
+            "en": "Demonstrates understanding of normalization (FK vs. copy)",
+            "pt": "Demonstra entendimento de normalização (FK vs cópia)"
+          },
+          {
+            "en": "Clarity of the specification",
+            "pt": "Clareza da especificação"
+          }
+        ],
+        "artifact_file": "data-spec.md"
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "f615c88a",
+      "kind": "document",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": "Spec da camada de dados de frota com IA",
+        "criteria": [
+          {
+            "en": "Describes signals → entities (aggregation)",
+            "pt": "Descreve sinais → entidades (agregação)"
+          },
+          {
+            "en": "Lists ≥2 business questions the AI can answer",
+            "pt": "Lista ≥2 perguntas de negócio respondíveis pela IA"
+          },
+          {
+            "en": "Names the source of the signals (device/telematics)",
+            "pt": "Nomeia a fonte dos sinais (dispositivo/telemática)"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activities",
+      "ref": "273e631e",
+      "kind": "sandbox_scenario",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "The AI's response to the real, contextualized request the student wrote",
+          "pt": "A resposta da IA ao pedido real e contextualizado que o aluno escreveu"
+        },
+        "criteria": [
+          {
+            "en": "Uses the context the student gave (who it's for, what it's for, tone and format) instead of answering generically",
+            "pt": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico"
+          },
+          {
+            "en": "Is specific and ready to use for the student's REAL task — not an answer that would work for anyone",
+            "pt": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa"
+          },
+          "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          {
+            "en": "Fails when the answer is generic, evasive, or off-topic: a sign that the student's context was weak or missing",
+            "pt": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando"
+          }
+        ]
+      }
+    },
+    {
+      "source": "activity_defs",
+      "ref": "0f0a9a9c",
+      "kind": "sandbox_scenario",
+      "specPromptPresent": true,
+      "rubric": {
+        "mode": "ai-judge",
+        "artifact": {
+          "en": "The AI's response to the real, contextualized request the student wrote",
+          "pt": "A resposta da IA ao pedido real e contextualizado que o aluno escreveu"
+        },
+        "criteria": [
+          {
+            "en": "Uses the context the student gave (who it's for, what it's for, tone and format) instead of answering generically",
+            "pt": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico"
+          },
+          {
+            "en": "Is specific and ready to use for the student's REAL task — not an answer that would work for anyone",
+            "pt": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa"
+          },
+          "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          {
+            "en": "Fails when the answer is generic, evasive, or off-topic: a sign that the student's context was weak or missing",
+            "pt": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando"
+          }
+        ]
+      }
+    }
+  ],
+  "verdicts": [
+    {
+      "ref": "2034f490",
+      "activityRef": "273e631e",
+      "attempt": 1,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Específica e no tema do pedido (não genérica nem evasiva)",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Diretamente útil para o input dado pelo aluno",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Adapta linguagem/exemplos ao público ou contexto que o aluno indicou",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Não ignora o contexto nem foge do assunto",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "fe1b4c0b",
+      "activityRef": "273e631e",
+      "attempt": 1,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa",
+          "met": false,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "8197729b",
+      "activityRef": "273e631e",
+      "attempt": 2,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "d1f98418",
+      "activityRef": "273e631e",
+      "attempt": 2,
+      "passed": false,
+      "score": 20,
+      "status": "failed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Específica e no tema do pedido (não genérica nem evasiva)",
+          "met": false,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Diretamente útil para o input dado pelo aluno",
+          "met": false,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Adapta linguagem/exemplos ao público ou contexto que o aluno indicou",
+          "met": false,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Não ignora o contexto nem foge do assunto",
+          "met": false,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "6fb999ef",
+      "activityRef": "273e631e",
+      "attempt": 3,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa",
+          "met": false,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "969f57eb",
+      "activityRef": "273e631e",
+      "attempt": 3,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Específica e no tema do pedido (não genérica nem evasiva)",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Diretamente útil para o input dado pelo aluno",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Adapta linguagem/exemplos ao público ou contexto que o aluno indicou",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Não ignora o contexto nem foge do assunto",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "bc411231",
+      "activityRef": "273e631e",
+      "attempt": 4,
+      "passed": false,
+      "score": null,
+      "status": "pending",
+      "judgeAvailable": false,
+      "model": "tencent/hy3:free",
+      "degradedReason": "model call failed: judge model HTTP 404: {\"error\":{\"message\":\"This model is unavailable for free. The paid version is available now - use this slug instead: tencent/hy3\",\"code\":404},\"user_id\":\"[REDACTED]\"}",
+      "feedbackRedacted": true,
+      "criteria": []
+    },
+    {
+      "ref": "fa342f24",
+      "activityRef": "273e631e",
+      "attempt": 4,
+      "passed": true,
+      "score": 85,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Específica e no tema do pedido (não genérica nem evasiva)",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Diretamente útil para o input dado pelo aluno",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Adapta linguagem/exemplos ao público ou contexto que o aluno indicou",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Não ignora o contexto nem foge do assunto",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    },
+    {
+      "ref": "8848d81b",
+      "activityRef": "273e631e",
+      "attempt": 5,
+      "passed": true,
+      "score": 100,
+      "status": "passed",
+      "judgeAvailable": true,
+      "model": "tencent/hy3:free",
+      "degradedReason": null,
+      "feedbackRedacted": true,
+      "criteria": [
+        {
+          "criterion": "Usa o contexto que o aluno deu (pra quem, pra quê, tom e formato) em vez de responder no genérico",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "É específica e pronta pra usar na tarefa REAL do aluno — não uma resposta que serviria pra qualquer pessoa",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Respeita o formato e o tamanho pedidos e responde no idioma do pedido",
+          "met": true,
+          "noteRedacted": true
+        },
+        {
+          "criterion": "Reprova quando a resposta é genérica, evasiva ou foge do tema: sinal de que o contexto do aluno veio fraco ou faltando",
+          "met": true,
+          "noteRedacted": true
+        }
+      ]
+    }
+  ]
+}
