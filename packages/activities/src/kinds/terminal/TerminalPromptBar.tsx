@@ -1,4 +1,5 @@
 import { CornerDownLeft, X } from 'lucide-react';
+import { promptSigil } from './ps1.js';
 
 /**
  * The live prompt — INSIDE the sandbox window, 100% width (the middle zone of
@@ -24,6 +25,24 @@ import { CornerDownLeft, X } from 'lucide-react';
  * window body's flex column and the transcript above it is `flex-1`, so the
  * bottom rail only stays put while this bar refuses to be squeezed. Without it
  * a long session shrinks the composer instead of scrolling the transcript.
+ *
+ * ── BELOW `sm`, THE PREFIX COLLAPSES TO ITS SIGIL (Tainan, TG 2026-08-10) ───
+ * *"no mobile não aparece o input completo, talvez no mobile mostrar só $ para
+ * aparecer o restante do input"*. The prefix is `shrink-0` — which is correct,
+ * a prompt that shrinks is a prompt that lies — so on a phone it took the
+ * width from the only element that can give it: the learner's own line. His
+ * screenshot showed the typed command clipped to two characters.
+ *
+ * BOTH forms are rendered and CSS picks one. Not `matchMedia`, not a resize
+ * listener: the choice is made by the same cascade that lays the bar out, in
+ * the same frame, so there is no first paint at the wrong width and no state
+ * to keep in sync. The cost is one hidden node; `display: none` keeps it out of
+ * the a11y tree too, so a screen reader hears exactly one prefix.
+ *
+ * ⚠️ `data-ps1` carries the FULL authored prompt on the wrapper regardless of
+ * which form is painted. Assertions and anything reading the composed line get
+ * the authored value at every width — the shortening never reaches data. See
+ * `ps1.ts` for why the short form is a sigil rather than the trailing path.
  */
 export function TerminalPromptBar({
   ps1,
@@ -68,7 +87,18 @@ export function TerminalPromptBar({
       data-testid="terminal-prompt-bar"
       data-submit-mode={submitMode}
     >
-      <span className="shrink-0 font-mono text-[13px] font-semibold text-evergreen">{ps1}</span>
+      <span
+        className="shrink-0 font-mono text-[13px] font-semibold text-evergreen"
+        data-testid="terminal-ps1"
+        data-ps1={ps1}
+      >
+        <span data-testid="terminal-ps1-short" title={ps1} className="sm:hidden">
+          {promptSigil(ps1)}
+        </span>
+        <span data-testid="terminal-ps1-full" className="hidden sm:inline">
+          {ps1}
+        </span>
+      </span>
       {pills ? (
         <div
           data-testid="terminal-draft"

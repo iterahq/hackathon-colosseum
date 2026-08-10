@@ -51,6 +51,25 @@ async function open(page: Page, fx: ActivityFixture, locale?: Locale): Promise<v
   // against that screen would be asserting about nothing.
   await expect(page.locator('[data-invalid-spec="true"]')).toHaveCount(0);
   await expect(page.getByTestId('terminal-transcript')).toBeVisible();
+
+  /**
+   * ⚠️ WAIT FOR THE FONTS, OR EVERY MEASUREMENT IN THIS FILE IS A COIN FLIP.
+   *
+   * The terminal is `font-mono` end to end, and JetBrains Mono is the ONE brand
+   * face `index.html` does not preload — it arrives on demand under
+   * `font-display: swap`. So the first paint measures the system fallback and
+   * the second measures the real face, with different metrics: the prompt bar's
+   * line box changes height, and every `boundingBox()` below shifts with it.
+   *
+   * Observed 2026-08-10 while adding §6, on the UNCHANGED §1 assertions: the
+   * same build produced `18.7px of body left below the prompt bar` (threshold
+   * 18) on one cold run and passed on the next, and `the prompt moved with the
+   * history` failed by 4.5px the same way. Both are geometry with ~2px of
+   * slack, so a font swap alone is enough to flip them. This is not a new
+   * flake — it just had no reason to be noticed until a section arrived that
+   * measures glyph advance directly.
+   */
+  await page.evaluate(() => document.fonts.ready);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -500,6 +519,149 @@ test('§5 the composed line is pills, and running it returns them all', async ({
   await expect(page.getByTestId('terminal-pill')).toHaveCount(0);
   await expect(palette).toHaveCount(authored);
 });
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * §6 — ON A PHONE, THE PROMPT PREFIX GIVES ITS WIDTH BACK TO THE LEARNER
+ *
+ * Tainan, TG 2026-08-10, with a phone screenshot of the composer: *"no mobile
+ * não aparece o input completo, talvez no mobile mostrar só $ para aparecer o
+ * restante do input"*. In that screenshot the typed command was clipped to TWO
+ * characters. `aluno@itera:~/meu-projeto$` is 26 monospace glyphs — ~200px at
+ * 13px — and it is `shrink-0` (correctly: a prefix that shrinks is a prefix
+ * that lies), so on a 375px screen the only element left to squeeze was the
+ * learner's own line.
+ *
+ * ── WHAT THESE ASSERTIONS ARE ABOUT, AND WHAT THEY ARE NOT ─────────────────
+ * The first test is the bug, stated as a measurement: at 375px the composer
+ * must hold a real command with NO horizontal clipping. It is deliberately not
+ * "the short span is visible" — that would pass for a `$` sitting next to an
+ * input that is still 40px wide, which is the failure, not the fix. The
+ * visibility checks are the second test, and they exist to say WHICH mechanism
+ * produced the width, so a red run points at a cause.
+ *
+ * ── THE REGRESSION RISK IS THE DESKTOP, NOT THE PHONE ──────────────────────
+ * `#339` tuned this window a few hours before this change. So §6 also asserts
+ * the desktop render is UNCHANGED (full prefix, no sigil), and re-checks the
+ * §1 floor and bottom rail at 375px in BOTH input modes — the layout that just
+ * landed has to survive a change to its first child.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** iPhone SE portrait — below Tailwind's `sm` (640px), and the width he shot. */
+const PHONE = { width: 375, height: 667 };
+
+/** The command the free-text scenario's own hint tells the learner to type. */
+const REAL_COMMAND = 'git checkout -b feat/perfil';
+
+/**
+ * How many characters of their own text the learner can see AT ONCE.
+ *
+ * Measured, not assumed: a 60-glyph probe is far wider than the field, so the
+ * input's `scrollWidth` is the CONTENT width and the division gives the real
+ * advance of the rendered monospace face — no hard-coded 7.8px that goes stale
+ * the day the font or the `text-[13px]` changes.
+ *
+ * ⚠️ The probe is written straight onto the DOM node and put back, NOT typed
+ * with `fill()`. `fill()` waits for actionability, and the exact regression
+ * this function exists to measure — the composer squeezed to a sliver by a
+ * full-length prefix — is *not visible* to Playwright, so the number would be
+ * replaced by a 45-second timeout that names the probe instead of the width.
+ * Measured with the fix reverted: this returns ~2.3, and `fill()` times out.
+ * The value is restored before returning, so React's controlled state and the
+ * DOM still agree.
+ */
+async function visibleChars(page: Page): Promise<number> {
+  return page.getByTestId('terminal-input').evaluate((el: HTMLInputElement, n) => {
+    const before = el.value;
+    el.value = 'x'.repeat(n);
+    const chars = el.clientWidth / (el.scrollWidth / n);
+    el.value = before;
+    return chars;
+  }, 60);
+}
+
+test('§6 phone: the composer is wide enough to read what you type', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await open(page, TERMINAL_FREE_TEXT);
+
+  // THE ASSERTION, in the unit Tainan used — he counted characters, not pixels:
+  // his screenshot showed TWO. Measured on this build: ~25 with the sigil, ~2
+  // with the full prefix, so the floor sits an order of magnitude away from
+  // both and states a property rather than pinning today's layout.
+  const chars = await visibleChars(page);
+  expect(chars, `only ${chars.toFixed(1)} characters of the typed line are visible`).toBeGreaterThan(
+    20,
+  );
+
+  // A real command is then READABLE — at most a couple of glyphs scroll out of
+  // the field, which is ordinary text-input behaviour and not the bug.
+  const input = page.getByTestId('terminal-input');
+  await input.fill(REAL_COMMAND);
+  await expect(input).toHaveValue(REAL_COMMAND);
+  expect(chars, `"${REAL_COMMAND}" is ${REAL_COMMAND.length} characters`).toBeGreaterThan(
+    REAL_COMMAND.length - 4,
+  );
+
+  // …and the composer is most of the bar, not a sliver beside the prefix.
+  const bar = await boxOf(page, 'terminal-prompt-bar');
+  const box = await boxOf(page, 'terminal-input');
+  expect(box.width / bar.width, 'the composer is a sliver of the prompt bar').toBeGreaterThan(0.7);
+
+  // Nothing has escaped sideways, and the Run button is still reachable.
+  await expect(page.getByTestId('terminal-run')).toBeVisible();
+  const overflowX = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflowX, 'the page scrolls sideways at 375px').toBeLessThan(2);
+
+  // The command still RUNS, and the transcript echoes the FULL prefix — the
+  // `user@host:dir` context is displaced, not deleted.
+  await input.press('Enter');
+  await expect(page.getByTestId('terminal-transcript')).toContainText('aluno@itera');
+});
+
+for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
+  const surface = fx === TERMINAL_FREE_TEXT ? 'freeText' : 'options';
+
+  test(`§6 ${surface}: the phone sees the sigil, the desktop sees the full prefix`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(PHONE);
+    await open(page, fx);
+
+    await expect(page.getByTestId('terminal-ps1-short')).toBeVisible();
+    await expect(page.getByTestId('terminal-ps1-short')).toHaveText('$');
+    await expect(page.getByTestId('terminal-ps1-full')).toBeHidden();
+    // The authored prompt is never rewritten — only its rendering is chosen.
+    await expect(page.getByTestId('terminal-ps1')).toHaveAttribute('data-ps1', /aluno@itera/);
+
+    // DESKTOP — the state `#339` tuned, which must not have moved.
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(page.getByTestId('terminal-ps1-full')).toBeVisible();
+    await expect(page.getByTestId('terminal-ps1-full')).toHaveText(/aluno@itera/);
+    await expect(page.getByTestId('terminal-ps1-short')).toBeHidden();
+  });
+
+  test(`§6 ${surface}: the #339 window survives at 375px`, async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await open(page, fx);
+
+    // Same two properties §1 owns, re-measured with the prefix shortened: the
+    // floor still binds, and the prompt is still the bottom rail.
+    const body = await boxOf(page, 'sandbox-window-body');
+    const floor = await expectedFloor(page);
+    expect(body.height).toBeGreaterThan(floor - 2);
+    expect(body.height).toBeLessThan(floor + 2);
+
+    const bar = await boxOf(page, 'terminal-prompt-bar');
+    const belowBar = body.y + body.height - (bar.y + bar.height);
+    expect(belowBar, `${belowBar}px of body left below the prompt bar`).toBeLessThan(20);
+    expect(belowBar).toBeGreaterThan(-1);
+
+    // The bar is ONE line: a prefix that wrapped would push the window past its
+    // floor, which is the failure `TERMINAL_BODY`'s `min-h` was left open for.
+    expect(bar.height, `the prompt bar wrapped to ${bar.height}px`).toBeLessThan(56);
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
  * §7 — THE MIGRATED CHAT KIND STILL RENDERS THE CHAT

@@ -694,3 +694,57 @@ describe('the terminal window is a column with the prompt as its last child', ()
     });
   }
 });
+
+/**
+ * ── THE PROMPT PREFIX SHORTENS ON A PHONE, AND ONLY VISUALLY ────────────────
+ *
+ * Tainan, TG 2026-08-10, with a phone screenshot: *"no mobile não aparece o
+ * input completo, talvez no mobile mostrar só $ para aparecer o restante do
+ * input"*. `aluno@itera:~/proj$` is `shrink-0`, so on a 375px screen it took
+ * the width from the learner's own line — his screenshot showed two characters
+ * of it.
+ *
+ * WHICH form is painted is a media query, and jsdom has no layout, so THAT is
+ * measured in `e2e/terminal-sandbox.spec.ts` §6 at 375px. What this file owns
+ * is the half that needs no pixels and is the actual risk: that shortening the
+ * DISPLAY never reaches the DATA. The authored `ps1` must still be on the
+ * element, verbatim, at every width — a future refactor that "simplifies" this
+ * by storing the sigil is the regression these assertions exist to catch.
+ */
+describe('the composer prefix has a short form, and the authored one survives it', () => {
+  for (const [surface, spec, id] of [
+    ['freeText', TERMINAL_SPEC, 'a-ps1-free'],
+    ['options', OPTIONS_SPEC, 'a-ps1-options'],
+  ] as const) {
+    it(`${surface}: renders both the sigil and the authored prefix`, () => {
+      mount(spec, captor().fn, id);
+
+      // The authored value, untouched, on the element the composer owns.
+      expect(screen.getByTestId('terminal-ps1').getAttribute('data-ps1')).toBe(
+        'aluno@itera:~/proj$',
+      );
+      expect(screen.getByTestId('terminal-ps1-full').textContent).toBe('aluno@itera:~/proj$');
+      // …and the one-glyph stand-in, read off the authored prompt's own sigil.
+      expect(screen.getByTestId('terminal-ps1-short').textContent).toBe('$');
+    });
+
+    it(`${surface}: the short form is the one that hides above sm, and vice versa`, () => {
+      mount(spec, captor().fn, `${id}-bp`);
+
+      // Class names, deliberately: the breakpoint IS a class here, and there is
+      // no other observable for it in an environment without layout. The
+      // browser-side assertion that the phone actually sees `$` is §6 of the
+      // e2e suite.
+      expect(screen.getByTestId('terminal-ps1-short').className).toContain('sm:hidden');
+      const full = screen.getByTestId('terminal-ps1-full').className;
+      expect(full).toContain('hidden');
+      expect(full).toContain('sm:inline');
+    });
+  }
+
+  it('the transcript keeps echoing the FULL prefix — that is where the context lives', () => {
+    mount(TERMINAL_SPEC, captor().fn, 'a-ps1-transcript');
+    type('touch perfil.md');
+    expect(transcript()).toContain('aluno@itera:~/proj$');
+  });
+});
