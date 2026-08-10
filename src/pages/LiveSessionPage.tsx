@@ -92,6 +92,7 @@ import { wantsLearnerView } from '@/utils/liveLearnerView';
 import { readLiveEntryRole } from '@/utils/liveEntryRole';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
+import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { isGenericName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
@@ -271,7 +272,15 @@ export default function LiveSessionPage() {
     };
     sync();
     window.addEventListener(CODE_SNAPSHOT_EVENT, sync);
-    return () => window.removeEventListener(CODE_SNAPSHOT_EVENT, sync);
+    // O terminal não grava rascunho, então não passa pelo snapshot do snack —
+    // sem esta linha um aluno que rodou dez comandos continuava aparecendo como
+    // "nada" na lista do professor, e o motivo de puxar alguém pro palco é
+    // justamente ver quem está trabalhando.
+    window.addEventListener(TERMINAL_LIVE_EVENT, sync);
+    return () => {
+      window.removeEventListener(CODE_SNAPSHOT_EVENT, sync);
+      window.removeEventListener(TERMINAL_LIVE_EVENT, sync);
+    };
   }, [sessionId, currentActivityId, setWorkingOn]);
 
   const { onTimeUp } = sound;

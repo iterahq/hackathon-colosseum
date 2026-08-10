@@ -2,9 +2,15 @@
  * Gathers the content a learner replies with when the instructor pulls their
  * work to the class stage (`stage-answer`). All data is read from the learner's
  * OWN local state — no DB, no migration (the class is synchronous, the student is
- * online): the code-snack source on screen (`readCodeLiveBuffer`, falling back to
- * the saved `readCodeSnapshot`) wins and is staged as `code`; otherwise a
- * best-effort correct/wrong summary from `readStoredAnswer`.
+ * online): the terminal screen on display (`readTerminalLiveBuffer`) is staged as
+ * `terminal`; the code-snack source on screen (`readCodeLiveBuffer`, falling back
+ * to the saved `readCodeSnapshot`) is staged as `code`; otherwise a best-effort
+ * correct/wrong summary from `readStoredAnswer`.
+ *
+ * The two live buffers are mutually exclusive in practice — one activity is one
+ * kind — so their order only decides which wins if a stale entry ever survived a
+ * `forget`, and the terminal is checked first so the most recently added mirror
+ * cannot be masked by an older one.
  *
  * ADR-4 (revised 2026-07-23): the professor pulls WORK IN PROGRESS too, not only
  * finished answers — following how the class is advancing is the whole point. So
@@ -19,7 +25,9 @@
  */
 import { readCodeLiveBuffer } from '@/services/codeLiveBuffer.service';
 import { readCodeSnapshot } from '@/services/codeSnapshot.service';
+import { readTerminalLiveBuffer } from '@/services/terminalLiveBuffer.service';
 import { readStoredAnswer } from '@/utils/liveAnswerStorage';
+import { clampStageTerminal } from '@/utils/stageTerminalScreen';
 import type { StageContent, StageWorkStatus } from '@/types/liveClass';
 
 export type { StageContent, StageWorkStatus } from '@/types/liveClass';
@@ -37,6 +45,26 @@ export function parseStageStatus(value: unknown): StageWorkStatus {
 
 export function gatherStageContent(sessionId: string, activityId: string): StageContent {
   const submitted = readStoredAnswer(sessionId, activityId);
+  // O TERMINAL vem primeiro, e a ordem importa: sem este ramo o palco não tinha
+  // nada do aluno pra ler num `terminal_sandbox` e caía no espelho da atividade,
+  // que MONTA a activity no cliente de quem assiste e semeia um terminal vazio.
+  // A sala via o nome do aluno em cima de um prompt limpo — nem o que ele
+  // digitou, nem o estado do sandbox (Tainan, TG 2026-08-10). Ver
+  // `terminalLiveBuffer.service`.
+  const terminal = readTerminalLiveBuffer(activityId);
+  if (terminal) {
+    return {
+      kind: 'terminal',
+      // `content` fica vazio DE PROPÓSITO: a tela viaja tipada em `terminal`, e
+      // um cliente de build anterior lê um `kind` que não conhece e cai no
+      // estado vazio explicado em vez de renderizar JSON no projetor.
+      content: '',
+      // Mesmo critério do `code`: `not_started` fala do TRABALHO (nenhum comando
+      // rodado), sem esconder da turma a tela que ele está olhando.
+      status: submitted ? 'submitted' : terminal.hasWork ? 'in_progress' : 'not_started',
+      terminal: clampStageTerminal(terminal.screen),
+    };
+  }
   // O buffer vivo vem PRIMEIRO porque ele existe desde o mount, enquanto o
   // snapshot só nasce depois da primeira tecla — era essa diferença que fazia o
   // aluno ter que "mexer em algo" antes do professor conseguir puxá-lo (P1).

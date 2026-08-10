@@ -318,11 +318,74 @@ export interface ActivityLiveBufferPort {
    */
   publish: (activityId: string, code: string, hasWork: boolean) => void;
   /**
+   * The `terminal_sandbox` screen. A SECOND method rather than a wider `publish`
+   * because a terminal's on-screen state is not a source string and never can
+   * be: it is a transcript plus where the learner is in the scenario, and a
+   * mirror handed a flattened string could show what was typed but not what the
+   * sandbox answered — i.e. exactly half of what the viewer pulled it up for.
+   *
+   * OPTIONAL, so a host that only mirrors code keeps compiling and a terminal
+   * simply projects nothing there. Same capability-probe rule as the port
+   * itself.
+   */
+  publishTerminal?: (
+    activityId: string,
+    screen: ActivityTerminalScreen,
+    hasWork: boolean,
+  ) => void;
+  /**
    * The learner left this activity (unmounted, or switched to another one).
    * Without it a mirror keeps projecting the last source of a screen that no
    * longer exists, with no way for the viewer to know.
    */
   forget: (activityId: string) => void;
+}
+
+/** One rendered line of a terminal transcript. Mirrors the runtime's `TerminalLine`. */
+export interface ActivityTerminalLine {
+  kind: 'cmd' | 'out' | 'err';
+  text: string;
+}
+
+/**
+ * The `terminal_sandbox` screen, reduced to what a READ-ONLY mirror needs to
+ * redraw it.
+ *
+ * ⚠️ IT IS A SCREEN, NOT A MODEL. `TerminalModel` also carries `engineState`,
+ * the structured `events` and the `RanCommand[]` rail — a judge's trajectory,
+ * not a picture. Publishing the model would put the engine's internals on a
+ * host's wire and make every future engine field a breaking change to a mirror
+ * that never reads it. What travels is what is drawn.
+ *
+ * The step fields travel WITH the transcript on purpose. A viewer looking at a
+ * mirrored terminal sees `git switch -c feature` and has no way to know what was
+ * asked; the prompt is the authored instruction the learner has on screen right
+ * now, so sending it costs one string and is the difference between a log and a
+ * screen.
+ */
+export interface ActivityTerminalScreen {
+  /** The transcript, oldest first: echoed commands AND the sandbox's output. */
+  lines: readonly ActivityTerminalLine[];
+  /** The shell prompt drawn before each echoed command. Already localized. */
+  ps1: string;
+  /** Title of the window chrome. Already localized. */
+  windowTitle: string;
+  /**
+   * Indices into `lines` that END a step-completing command — the ✓ marks.
+   * Derived by the emitter, not by the mirror: the rule lives in
+   * `terminalSuccessMarks` and reproducing it viewer-side would be a second
+   * implementation of the same predicate, free to drift.
+   */
+  successLines: readonly number[];
+  /** 0-based step the learner is on; equals `stepCount` once the scenario is won. */
+  stepIdx: number;
+  stepCount: number;
+  /** The current step's instruction, already localized. `null` once finished. */
+  stepPrompt: string | null;
+  /** The scenario's own `success` predicate is satisfied. */
+  won: boolean;
+  /** How many commands the learner has run. Zero ⇒ an untouched terminal. */
+  commandCount: number;
 }
 
 /* ─────────────────────────────── code editor ─────────────────────────────── */

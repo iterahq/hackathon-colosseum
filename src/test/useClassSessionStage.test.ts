@@ -75,6 +75,12 @@ import {
   forgetCodeLiveBuffer,
   publishCodeLiveBuffer,
 } from '@/services/codeLiveBuffer.service';
+import {
+  TERMINAL_LIVE_EVENT,
+  forgetTerminalLiveBuffer,
+  publishTerminalLiveBuffer,
+} from '@/services/terminalLiveBuffer.service';
+import type { StageTerminalScreen } from '@/types/liveClass';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 function emit(event: string, payload: unknown) {
@@ -88,8 +94,24 @@ beforeEach(() => {
   // O buffer vivo é um Map de módulo, não localStorage: sobrevive entre testes
   // do mesmo arquivo se ninguém o esquecer.
   forgetCodeLiveBuffer(ACTIVITY);
+  forgetTerminalLiveBuffer(ACTIVITY);
   rememberStorageScope(STUDENT);
 });
+
+/** Uma tela de terminal com N comandos rodados, do jeito que o pacote publica. */
+function terminalScreen(commands: string[]): StageTerminalScreen {
+  return {
+    lines: commands.map((text) => ({ kind: 'cmd' as const, text })),
+    ps1: 'aluno@itera:~$',
+    windowTitle: 'bash — sandbox',
+    successLines: [],
+    stepIdx: commands.length,
+    stepCount: 2,
+    stepPrompt: 'Confira a branch.',
+    won: false,
+    commandCount: commands.length,
+  };
+}
 
 async function mountAs(identity: { userId: string; isInstructor: boolean }) {
   const hook = renderHook(() =>
@@ -379,6 +401,96 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
     });
   });
 
+  /**
+   * ── O TERMINAL (Tainan, TG 2026-08-10) ────────────────────────────────────
+   * Antes disto o `gatherStageContent` não tinha canal nenhum para um
+   * `terminal_sandbox`: respondia `empty`, e o palco caía no espelho da
+   * atividade — que remonta o renderer no cliente de quem assiste e semeia um
+   * terminal limpo. A sala via um prompt vazio com o nome do aluno em cima.
+   */
+  it('replies with the learner OWN terminal screen, commands included', async () => {
+    publishTerminalLiveBuffer(ACTIVITY, terminalScreen(['git checkout -b feat/perfil']), true);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    const payload = sent.find((s) => s.event === 'stage-answer')!.payload as {
+      kind: string;
+      status: string;
+      terminal: StageTerminalScreen;
+    };
+    expect(payload.kind).toBe('terminal');
+    expect(payload.status).toBe('in_progress');
+    expect(payload.terminal.lines.map((l) => l.text)).toEqual(['git checkout -b feat/perfil']);
+  });
+
+  it('replies with an UNTOUCHED terminal instead of nothing', async () => {
+    // Mesmo raciocínio do starter do `code`: o aluno abriu e está olhando pra
+    // uma tela real. `not_started` fala do trabalho, não de "não há o que ver".
+    publishTerminalLiveBuffer(ACTIVITY, terminalScreen([]), false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'terminal',
+      status: 'not_started',
+    });
+  });
+
+  it('carries the terminal screen through the instructor gate into stage-show', async () => {
+    const { result } = await mountAs({ userId: INSTRUCTOR, isInstructor: true });
+    act(() => result.current.requestStage(STUDENT));
+    const nonce = sent.find((s) => s.event === 'stage-request')!.payload.nonce;
+
+    emit('stage-answer', {
+      activityId: ACTIVITY,
+      userId: STUDENT,
+      nonce,
+      kind: 'terminal',
+      content: '',
+      status: 'in_progress',
+      terminal: terminalScreen(['git status']),
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    const show = sent.find((s) => s.event === 'stage-show')!.payload as {
+      terminal: StageTerminalScreen;
+    };
+    expect(show.terminal.lines.map((l) => l.text)).toEqual(['git status']);
+  });
+
+  it('renders a received stage-show terminal into stagedAnswer', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'terminal',
+      content: '',
+      status: 'in_progress',
+      terminal: terminalScreen(['git status']),
+      author: { userId: 'other', name: 'Bento', avatarUrl: null },
+    });
+
+    expect(result.current.stagedAnswer!.kind).toBe('terminal');
+    expect(result.current.stagedAnswer!.terminal!.commandCount).toBe(1);
+    expect(result.current.stagedAnswer!.terminal!.lines[0]!.text).toBe('git status');
+  });
+
+  it('drops a malformed terminal payload instead of staging it', async () => {
+    const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'terminal',
+      content: '',
+      terminal: 'rm -rf /',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    expect(result.current.stagedAnswer!.terminal).toBeUndefined();
+  });
+
   it('defaults a status-less stage-show to submitted (client on the previous build)', async () => {
     const { result } = await mountAs({ userId: STUDENT, isInstructor: false });
 
@@ -429,6 +541,69 @@ describe('useClassSession — live stage streaming (B3)', () => {
       kind: 'code',
       content: 'const cor = "verde";',
     });
+  });
+
+  /**
+   * O terminal não tem serviço de snapshot pra carona — ele não persiste
+   * rascunho —, então carrega o próprio sinal. Sem isto o palco congelaria no
+   * instante do puxão e todo comando rodado depois seria invisível pra sala:
+   * metade do defeito que um espelho de um tiro só não conserta.
+   */
+  it('the staged learner re-broadcasts stage-update when a new command runs', async () => {
+    publishTerminalLiveBuffer(ACTIVITY, terminalScreen(['git status']), true);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'terminal',
+      content: '',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      publishTerminalLiveBuffer(
+        ACTIVITY,
+        terminalScreen(['git status', 'git checkout -b feat/perfil']),
+        true,
+      );
+    });
+
+    const update = sent.find((s) => s.event === 'stage-update')!.payload as {
+      kind: string;
+      terminal: StageTerminalScreen;
+    };
+    expect(update.kind).toBe('terminal');
+    expect(update.terminal.lines.map((l) => l.text)).toEqual([
+      'git status',
+      'git checkout -b feat/perfil',
+    ]);
+  });
+
+  it('does not stream on a terminal that only MOUNTED — hasWork gates the signal', async () => {
+    publishTerminalLiveBuffer(ACTIVITY, terminalScreen([]), false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+    emit('stage-show', {
+      activityId: ACTIVITY,
+      kind: 'terminal',
+      content: '',
+      author: { userId: STUDENT, name: 'Alba', avatarUrl: null },
+    });
+
+    act(() => {
+      publishTerminalLiveBuffer(ACTIVITY, terminalScreen([]), false);
+    });
+
+    expect(sent.find((s) => s.event === 'stage-update')).toBeUndefined();
+    // O evento existe e é o que o `useClassSession` escuta — dispará-lo à mão
+    // prova que o silêncio acima veio do `hasWork`, e não de um listener ausente.
+    act(() => {
+      publishTerminalLiveBuffer(ACTIVITY, terminalScreen(['ls']), true);
+    });
+    expect(sent.find((s) => s.event === 'stage-update')).toBeTruthy();
+    expect(TERMINAL_LIVE_EVENT).toBe('itera:terminal-live');
   });
 
   it('a NON-staged learner does not stream on autosave', async () => {

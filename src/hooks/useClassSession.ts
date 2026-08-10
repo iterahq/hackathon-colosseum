@@ -42,6 +42,7 @@ import { parseTimerEvent, timerAfterStop } from '@/utils/liveTimer';
 import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
+import { parseStageTerminal } from '@/utils/stageTerminalScreen';
 import { acceptPanePx } from '@/utils/stageCursorPlacement';
 import {
   parseScoreboard,
@@ -50,6 +51,7 @@ import {
   SCOREBOARD_REPLY_MIN_GAP_MS,
 } from '@/utils/liveScoreboard';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
+import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
 import { getSessionScoreboard } from '@/services/classScoreboard.service';
 
@@ -573,6 +575,7 @@ export function useClassSession(
               content: gathered.content,
               status: gathered.status,
               response: gathered.response,
+              terminal: gathered.terminal,
               author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
             },
           });
@@ -587,6 +590,7 @@ export function useClassSession(
                 content?: string;
                 status?: unknown;
                 response?: unknown;
+                terminal?: unknown;
                 author?: { userId?: string; name?: string; avatarUrl?: string | null };
               }
             | null;
@@ -600,6 +604,7 @@ export function useClassSession(
             content: p.content,
             status: parseStageStatus(p.status),
             response: clampStageResponse(p.response),
+            terminal: parseStageTerminal(p.terminal),
             author: { userId: a.userId, name: a.name, avatarUrl: a.avatarUrl ?? null },
           });
           // If MY work is the one on stage, start streaming edits; if someone
@@ -675,6 +680,7 @@ export function useClassSession(
                 content?: string;
                 status?: unknown;
                 response?: unknown;
+                terminal?: unknown;
                 author?: unknown;
               }
             | null;
@@ -695,6 +701,7 @@ export function useClassSession(
               content: p.content,
               status: parseStageStatus(p.status),
               response: clampStageResponse(p.response),
+              terminal: parseStageTerminal(p.terminal),
               author: p.author,
             },
           });
@@ -712,6 +719,7 @@ export function useClassSession(
                 content?: string;
                 status?: unknown;
                 response?: unknown;
+                terminal?: unknown;
                 author?: unknown;
               }
             | null;
@@ -727,6 +735,7 @@ export function useClassSession(
               content: p.content,
               status: parseStageStatus(p.status),
               response: clampStageResponse(p.response),
+              terminal: parseStageTerminal(p.terminal),
               author: p.author,
             },
           });
@@ -1238,12 +1247,22 @@ export function useClassSession(
           content: gathered.content,
           status: gathered.status,
           response: gathered.response,
+          terminal: gathered.terminal,
           author: { userId: id.userId, name: id.name, avatarUrl: id.avatarUrl ?? null },
         },
       });
     };
     window.addEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
-    return () => window.removeEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
+    // The terminal has no snapshot service to piggyback on — it persists no
+    // draft — so it carries its own signal. Without this line the stage would
+    // freeze at the instant of the pull and every command the learner ran after
+    // it would be invisible to the room, which is the half of the defect that a
+    // one-shot mirror does not fix.
+    window.addEventListener(TERMINAL_LIVE_EVENT, onSnapshot);
+    return () => {
+      window.removeEventListener(CODE_SNAPSHOT_EVENT, onSnapshot);
+      window.removeEventListener(TERMINAL_LIVE_EVENT, onSnapshot);
+    };
   }, []);
 
   const broadcast = useCallback(

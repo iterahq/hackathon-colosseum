@@ -252,6 +252,12 @@ const PUBLIC_RUNTIME_SURFACE = [
   'SandboxAICompleteWordsActivity',
   'TerminalFreeTextActivity',
   'TerminalOptionsActivity',
+  // The READ-ONLY twin of the two above: it DRAWS a published
+  // `ActivityTerminalScreen` and owns no model. Public because a host that
+  // mirrors a learner (the live-class stage) must never mount the activity a
+  // second time to show someone else's terminal — that seeds a fresh model from
+  // the VIEWER's client and projects an empty prompt under the learner's name.
+  'TerminalScreenMirror',
   // …and the deprecated kind they were split out of, which now only delegates.
   'SandboxScenarioActivity',
   // i18n

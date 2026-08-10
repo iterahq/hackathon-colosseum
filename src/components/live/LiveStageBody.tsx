@@ -1,4 +1,5 @@
 import { MousePointer2 } from 'lucide-react';
+import { TerminalScreenMirror } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePreview';
@@ -30,7 +31,11 @@ interface LiveStageBodyProps {
  * Numa atividade de resposta o palco mostra a PERGUNTA (espelho da atividade) e
  * embaixo A RESPOSTA do aluno — nessa ordem, porque o professor puxa alguém pra
  * discutir a resposta com a turma, e sem o enunciado ao lado ninguém acompanha.
- * `code` é a exceção: o próprio editor já é a resposta.
+ *
+ * `code` e `terminal` são as exceções, pela MESMA razão: neles a tela do aluno já
+ * é a resposta, e remontar a atividade ao lado semearia estado do espectador
+ * (ver `LiveStage.mirrorsFromViewerState`). O enunciado do terminal não some por
+ * isso — ele viaja dentro da tela espelhada, escrito pelo cliente do aluno.
  */
 export function LiveStageBody({
   staged,
@@ -41,6 +46,18 @@ export function LiveStageBody({
 }: LiveStageBodyProps) {
   const { t } = useI18n();
   const answered = staged.kind === 'answer' && staged.status !== 'not_started';
+
+  // O TERMINAL do aluno, REDESENHADO — não remontado. Quem desenha é o
+  // `TerminalScreenMirror` do `@iterahq/activities`, o mesmo componente que
+  // compõe a janela do aluno, para que as duas imagens batam por construção.
+  // Ele não tem reducer e não tem engine: não consegue inventar uma linha.
+  if (staged.kind === 'terminal' && staged.terminal) {
+    return (
+      <div className={`mx-auto w-full ${WIDE_COLUMN_MAX_WIDTH}`} data-testid="live-stage-terminal">
+        <TerminalScreenMirror screen={staged.terminal} />
+      </div>
+    );
+  }
 
   // Sem filtro por `status`: um `code` só chega aqui quando há fonte pra
   // projetar, e `not_started` num code quer dizer "o aluno ainda não digitou" —

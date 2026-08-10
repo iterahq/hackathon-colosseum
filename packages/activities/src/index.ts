@@ -116,6 +116,11 @@ export { SandboxAIWithOptionsActivity } from './kinds/sandbox/SandboxAIWithOptio
 export { SandboxAICompleteWordsActivity } from './kinds/sandbox/SandboxAICompleteWordsActivity.js';
 export { TerminalFreeTextActivity } from './kinds/terminal/TerminalFreeTextActivity.js';
 export { TerminalOptionsActivity } from './kinds/terminal/TerminalOptionsActivity.js';
+// The READ-ONLY twin of the two above. A host that mirrors a learner's surface
+// (the Itera Player's live class) draws THIS instead of mounting the activity a
+// second time — mounting seeds a fresh model from the viewer's own client, which
+// projects an empty terminal under the learner's name. See the component header.
+export { TerminalScreenMirror } from './kinds/terminal/TerminalScreenMirror.js';
 
 /* ───────────────────────────────── i18n ──────────────────────────────────── */
 
@@ -217,6 +222,8 @@ export type {
   ActivityJudgeVerdict,
   ActivityLiveBufferPort,
   ActivityLocale,
+  ActivityTerminalLine,
+  ActivityTerminalScreen,
   ActivityResponderResult,
   ActivitySeed,
   ActivityStoragePort,

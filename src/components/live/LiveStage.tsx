@@ -62,18 +62,33 @@ export function LiveStage({
 }: LiveStageProps) {
   const { t } = useI18n();
   const isDraft = staged.status === 'in_progress';
-  // O aluno abriu o exercício e não tem trabalho nele: o palco projeta o starter,
-  // e sem selo a turma leria aquele código como resposta dele. O selo fala do
-  // CÓDIGO ("sem edições"), não da pessoa — a turma inteira está vendo a tela.
-  const isUntouched = staged.kind === 'code' && staged.status === 'not_started';
+  // O aluno abriu o exercício e não tem trabalho nele: o palco projeta o starter
+  // (ou o terminal recém-aberto), e sem selo a turma leria aquilo como resposta
+  // dele. O selo fala da TELA ("sem edições"), não da pessoa — a turma inteira
+  // está vendo.
+  const hasOwnScreen = staged.kind === 'code' || staged.kind === 'terminal';
+  const isUntouched = hasOwnScreen && staged.status === 'not_started';
   // Nada DO ALUNO pra projetar, e por isso o palco cai no espelho da atividade.
-  // Um `code` intocado não entra aqui: ele tem o starter na tela pra mostrar.
+  // Uma tela própria intocada não entra aqui: ela tem o que mostrar.
   const noLearnerWork =
     !isUntouched && (staged.kind === 'empty' || staged.status === 'not_started');
-  // `code` is the ONE kind whose absence is trustworthy — it means the learner's
-  // editor is not even mounted — and the renderer would seed from the VIEWER's
-  // own storage, projecting the professor's draft under the learner's name.
-  const mirrorActivity = activity && activity.kind !== 'code' ? activity : null;
+  // ⚠️ MONTAR O RENDERER NÃO É ESPELHAR — a regra que este `null` codifica.
+  //
+  // `code` e `terminal_sandbox` são os kinds que reconstroem a tela a partir do
+  // ESTADO LOCAL de quem renderiza: o editor semeia do storage do espectador, e
+  // `useTerminalSandbox` semeia um `initialTerminalModel` limpo. Espelhar a
+  // atividade neles projeta a tela do PROFESSOR com o nome do ALUNO em cima.
+  //
+  // No `code` isso sempre foi barrado. No terminal não era, e o defeito ficou
+  // invisível justamente porque o resultado PARECE um terminal funcionando —
+  // só que vazio, o que a sala lê como "o aluno não fez nada" (Tainan, TG
+  // 2026-08-10). Os dois passaram a ter a mesma trava.
+  //
+  // O enunciado não se perde: ele viaja DENTRO da tela espelhada
+  // (`terminal.stepPrompt`), vindo do cliente do aluno, que é a única fonte que
+  // sabe em que passo ele está.
+  const mirrorsFromViewerState = activity?.kind === 'code' || activity?.kind === 'terminal_sandbox';
+  const mirrorActivity = activity && !mirrorsFromViewerState ? activity : null;
 
   return (
     <div data-testid="live-stage">

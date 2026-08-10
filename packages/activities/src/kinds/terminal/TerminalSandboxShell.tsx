@@ -16,7 +16,7 @@
  * or one ordered array per step, and no evaluation step — a terminal already
  * has an objective right and wrong, so paying for a judge would be paying twice).
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { RotateCcw, TerminalSquare } from 'lucide-react';
 import { t, type TerminalScenario } from '@iterahq/activity-spec/runtime';
 import { useActivityI18n } from '../../context.js';
@@ -31,6 +31,9 @@ import { TerminalOptionPalette } from './TerminalOptionPalette.js';
 import { TerminalPromptBar } from './TerminalPromptBar.js';
 import { TerminalTranscript } from './TerminalTranscript.js';
 import { useTerminalSandbox } from './useTerminalSandbox.js';
+import { useTerminalScreenMirror } from './useTerminalScreenMirror.js';
+import { TERMINAL_BODY } from './terminalGeometry.js';
+import type { ActivityTerminalScreen } from '../../ports.js';
 import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 
 export type TerminalVariant = 'freeText' | 'options';
@@ -61,40 +64,6 @@ const PLACEHOLDER_KEY: Record<TerminalSubmitMode, string> = {
   tap: 'terminal.placeholder.tap',
   assemble: 'terminal.placeholder.assemble',
 };
-
-/**
- * ── THE WINDOW IS A TERMINAL-SIZED BOX, AND THE PROMPT IS ITS BOTTOM RAIL ────
- * Tainan, TG 2026-08-10, on the `terminal_sandbox` activity in the author
- * harness: *"o terminal component deve ter um min-height (…350px?), de forma
- * que mesmo qndo tem pouco conteudo fica parecendo um terminal mesmo. veja que
- * o bloco de input continua alinhado ao bottom"*.
- *
- * ⚠️ THIS SUPERSEDES PR #303, WHICH DID THE OPPOSITE — read this before you
- * "restore" anything. #303 made the transcript intrinsically sized so the
- * prompt would sit glued to the last line, and the whole window collapsed with
- * it: one canned output line produced a ~152px box that reads as a CODE BLOCK,
- * not as a terminal. The screenshot that motivated #303 and the screenshot that
- * motivated this change are the same window at two extremes, and the answer to
- * both is the same: the BOX gets a floor, the CONTENT does not. #303 put the
- * reserved space inside the transcript (`h-[34dvh] min-h-[220px]`), where it
- * could grow without bound and could not scroll independently; here it lives on
- * the body, and the transcript is the thing that scrolls.
- *
- * WHY `min-h` AND NOT `h`: the transcript is `flex-1` (basis 0), so it never
- * contributes to the box's intrinsic height and the floor is what you get —
- * `min-h` behaves as a height in every normal case. It stays `min-h` so the box
- * GROWS instead of clipping in the one case that can exceed it: a prompt bar
- * that wraps (long `ps1`, many token chips) on a very narrow screen. Clipping
- * the composer is the one failure the learner cannot work around.
- *
- * THE NUMBER: 314px of body + the 36px title bar = a 350px window, which is the
- * size Tainan pointed at. `min(…, 40dvh)` is the small-screen degrade — a hard
- * 350px is over half of a 667px phone viewport, with the instruction above it
- * and the option palette below. At 40dvh that phone gets a 267px body (a 303px
- * window) and a landscape phone gets proportionally less. On any viewport
- * taller than ~785px the 314px floor is what binds.
- */
-const TERMINAL_BODY = 'flex flex-col min-h-[min(314px,40dvh)]';
 
 export function TerminalSandboxShell({
   activity,
@@ -176,6 +145,35 @@ export function TerminalSandboxShell({
     : undefined;
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
+  const windowTitle = t(scenario.initialState.windowTitle ?? tr('terminal.windowTitle'), locale);
+
+  /**
+   * WHAT A MIRROR GETS — the drawn screen, not the model. See
+   * `ActivityTerminalScreen` for why those are different objects, and
+   * `useTerminalScreenMirror` for the defect that made this necessary.
+   *
+   * Memoised because the publish effect keeps it in its deps: a fresh object per
+   * render would re-publish on every keystroke of the draft line, and the host's
+   * mirror re-broadcasts on publish.
+   */
+  const screen = useMemo<ActivityTerminalScreen>(
+    () => ({
+      lines: s.model.lines,
+      ps1,
+      windowTitle,
+      successLines: [...s.successLines],
+      stepIdx: s.stepIdx,
+      stepCount: scenario.steps.length,
+      stepPrompt: coachPrompt ?? null,
+      won: s.won,
+      commandCount: s.model.commands.length,
+    }),
+    [s.model, s.successLines, s.stepIdx, s.won, ps1, windowTitle, coachPrompt, scenario.steps.length],
+  );
+  // A terminal showing only its authored welcome banner is ON SCREEN but is not
+  // WORK — the same distinction `hasWork` draws for the code snack, and the one
+  // that keeps an idle learner from being announced as "em andamento".
+  useTerminalScreenMirror(activity.id, screen, s.model.commands.length > 0);
 
   // Mesmo motivo do shell de chat: o `data-activity-kind` é o da ROW. O
   // `data-sandbox-kind="terminal"` abaixo continua fixo de propósito — ele
@@ -215,10 +213,7 @@ export function TerminalSandboxShell({
             full-height column. Transcript first and growing, prompt LAST and
             rigid: that ordering is the layout, not decoration. See
             `TERMINAL_BODY` above. */}
-        <SandboxWindow
-          title={t(scenario.initialState.windowTitle ?? tr('terminal.windowTitle'), locale)}
-          bodyClassName={TERMINAL_BODY}
-        >
+        <SandboxWindow title={windowTitle} bodyClassName={TERMINAL_BODY}>
           <TerminalTranscript
             lines={s.model.lines}
             ps1={ps1}

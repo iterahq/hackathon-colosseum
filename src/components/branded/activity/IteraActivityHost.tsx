@@ -107,6 +107,10 @@ import {
   publishCodeLiveBuffer,
 } from '@/services/codeLiveBuffer.service';
 import {
+  forgetTerminalLiveBuffer,
+  publishTerminalLiveBuffer,
+} from '@/services/terminalLiveBuffer.service';
+import {
   generateContext,
   iteraApiConfigured,
   judge,
@@ -194,7 +198,16 @@ function isBlanksKey(key: string): boolean {
  */
 export const ITERA_ACTIVITY_LIVE_BUFFER: ActivityLiveBufferPort = {
   publish: publishCodeLiveBuffer,
-  forget: forgetCodeLiveBuffer,
+  publishTerminal: publishTerminalLiveBuffer,
+  // ⚠️ FORGET CLEARS BOTH BUFFERS, and it has to. The port has one `forget` for
+  // two publish channels, and an activity is one kind — so a `forget` that only
+  // reached the code map would leave a terminal screen projected after the
+  // learner walked away from it, which is the exact staleness the call exists to
+  // prevent. Both are no-ops on a key they do not hold.
+  forget: (activityId: string) => {
+    forgetCodeLiveBuffer(activityId);
+    forgetTerminalLiveBuffer(activityId);
+  },
 };
 
 /**

@@ -1,3 +1,4 @@
+import type { ActivityTerminalScreen } from '@iterahq/activities';
 import type { StageCursorPlan } from '@/utils/stageCursorRate';
 
 export type ClassSessionStatus = 'pending' | 'live' | 'ended';
@@ -99,13 +100,31 @@ export type StageWorkStatus = 'submitted' | 'in_progress' | 'not_started';
 
 /** What a learner replies with on `stage-request` (see utils/stageAnswerContent). */
 export interface StageContent {
-  /** `code` | `answer` | `empty` (nothing local yet). */
+  /** `code` | `terminal` | `answer` | `empty` (nothing local yet). */
   kind: string;
   content: string;
   status: StageWorkStatus;
   /** O texto da resposta do aluno — ver `StoredLiveAnswer.response`. */
   response?: string;
+  /**
+   * A tela do `terminal_sandbox` do aluno, quando é ela que está sendo puxada.
+   *
+   * Campo PRÓPRIO, e não `content` serializado, porque um cliente de build
+   * anterior lê `kind` que não conhece e cai no estado vazio explicado; um JSON
+   * enfiado em `content` renderizaria como texto no palco da turma. É a mesma
+   * regra de compatibilidade que fez `response` nascer ao lado de `content` em
+   * vez de dentro dele.
+   */
+  terminal?: StageTerminalScreen;
 }
+
+/**
+ * A tela de terminal que viaja no palco. Alias do contrato do pacote: quem
+ * DESENHA é o `TerminalScreenMirror` de `@iterahq/activities`, então o app não
+ * pode ter uma segunda definição — as duas divergiriam exatamente onde as duas
+ * imagens precisam bater.
+ */
+export type StageTerminalScreen = ActivityTerminalScreen;
 
 /**
  * One row of the single "sala ao vivo" list (see utils/liveRoomRows): everything
@@ -156,7 +175,10 @@ export interface LiveRoomRowActions extends LiveRoomModeration {
   unreachable: boolean;
 }
 
-/** The work pulled to the class stage: `code` carries raw source, else a summary. */
+/**
+ * The work pulled to the class stage: `code` carries raw source, `terminal`
+ * carries the learner's screen, else a summary.
+ */
 export interface StagedAnswer {
   activityId: string;
   kind: string;
@@ -165,6 +187,8 @@ export interface StagedAnswer {
   status: StageWorkStatus;
   /** O texto da resposta do aluno — ver `StoredLiveAnswer.response`. */
   response?: string;
+  /** A tela do terminal do aluno — só em `kind === 'terminal'`. */
+  terminal?: StageTerminalScreen;
   author: StagedAuthor;
 }
 

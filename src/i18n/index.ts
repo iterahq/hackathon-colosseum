@@ -553,6 +553,12 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.ps1': 'aluno@itera:~$',
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'ver dica',
+    // Espelho read-only do terminal no palco da aula ao vivo. O vazio do
+    // ESPECTADOR não é o do aluno: "digite um comando" é uma instrução que
+    // quem assiste não pode seguir, e leria como espelho quebrado em vez de
+    // "o aluno ainda não começou".
+    'terminal.mirror.completed': 'roteiro concluído',
+    'terminal.mirror.empty': '# o aluno ainda não rodou nenhum comando',
     'terminal.placeholder.freeText': 'digite um comando…',
     // Um por modo de submissão (§4): o que envia é diferente em cada um, e o
     // placeholder é onde o aluno lê isso antes de tentar.
@@ -1241,6 +1247,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'terminal.ps1': 'student@itera:~$',
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'see hint',
+    'terminal.mirror.completed': 'scenario completed',
+    'terminal.mirror.empty': '# the learner has not run a command yet',
     'terminal.placeholder.freeText': 'type a command…',
     'terminal.placeholder.tap': 'tap an option below — it runs right away',
     'terminal.placeholder.assemble': 'build the command, then press Run',
