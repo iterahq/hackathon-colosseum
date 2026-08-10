@@ -53,7 +53,7 @@ describe('LiveRoomList', () => {
     expect(screen.getByTestId('live-roster-count').textContent).toBe('3');
   });
 
-  it('hides correctness and times from learners — a wrong answer reads as "answered"', () => {
+  it('hides the score from learners — nobody is labelled wrong', () => {
     renderList(false);
     const rows = screen.getAllByTestId('live-room-row');
     expect(rows[1].getAttribute('data-state')).toBe('answered');
@@ -67,6 +67,24 @@ describe('LiveRoomList', () => {
     expect(rows[1].getAttribute('data-state')).toBe('wrong');
     expect(rows[0]).toHaveTextContent('2/2');
     expect(screen.getAllByTestId('live-room-time')[0].textContent).toContain('0:07');
+  });
+
+  /* ── check CINZA para quem errou (Tainan 2026-08-06) ─────────────────────────
+     O verde só é de quem acertou. Errar na tela do aluno é perder o verde, não
+     ganhar um X: o X segue exclusivo da tela do professor. */
+  it('gives the learner a GRAY check for a peer who missed — never the green one', () => {
+    renderList(false);
+    const icons = screen.getAllByTestId('live-room-state');
+    expect(icons[0].getAttribute('data-variant')).toBe('done');
+    expect(icons[0].getAttribute('class')).toContain('text-menta');
+    expect(icons[1].getAttribute('data-variant')).toBe('missed');
+    expect(icons[1].getAttribute('class')).not.toContain('text-menta');
+  });
+
+  it('keeps the error X on the professor view', () => {
+    renderList(true);
+    const icons = screen.getAllByTestId('live-room-state');
+    expect(icons[1].getAttribute('data-variant')).toBe('wrong');
   });
 
   it('answers the "quantos já responderam" question in one line', () => {
