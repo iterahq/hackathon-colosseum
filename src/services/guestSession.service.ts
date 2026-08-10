@@ -74,27 +74,52 @@ export function guestJoinConfigured(): boolean {
  */
 const STORE_PREFIX = 'itera.guest.';
 
-export function readStoredGuestSession(code: string): GuestSession | null {
+/**
+ * `lastUsedAt` is persistence-only — it never enters `GuestSession`, because it
+ * answers a question only the STORE has: which of several stored classes is the
+ * one this browser is actually in. Entries written before it existed read as 0,
+ * which sorts them behind any class that has been used since.
+ */
+function readStoredEntry(code: string): { session: GuestSession; lastUsedAt: number } | null {
   try {
     const raw = localStorage.getItem(STORE_PREFIX + code);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<GuestSession>;
+    const parsed = JSON.parse(raw) as Partial<GuestSession> & { lastUsedAt?: unknown };
     if (!parsed?.sessionId || !parsed?.iteraUserId) return null;
     return {
-      code,
-      sessionId: parsed.sessionId,
-      iteraUserId: parsed.iteraUserId,
-      displayName: parsed.displayName ?? '',
-      avatarUrl: parsed.avatarUrl ?? null,
+      session: {
+        code,
+        sessionId: parsed.sessionId,
+        iteraUserId: parsed.iteraUserId,
+        displayName: parsed.displayName ?? '',
+        avatarUrl: parsed.avatarUrl ?? null,
+      },
+      lastUsedAt:
+        typeof parsed.lastUsedAt === 'number' && Number.isFinite(parsed.lastUsedAt)
+          ? parsed.lastUsedAt
+          : 0,
     };
   } catch {
     return null;
   }
 }
 
+export function readStoredGuestSession(code: string): GuestSession | null {
+  return readStoredEntry(code)?.session ?? null;
+}
+
+/**
+ * Write (or re-stamp) the class this browser is in. Called on a fresh join AND
+ * every time the guest surface mounts with a stored session, so an entry left
+ * over from an earlier class cannot keep winning the tie-break forever — which
+ * includes entries written before `lastUsedAt` existed.
+ */
 export function storeGuestSession(guest: GuestSession): void {
   try {
-    localStorage.setItem(STORE_PREFIX + guest.code, JSON.stringify(guest));
+    localStorage.setItem(
+      STORE_PREFIX + guest.code,
+      JSON.stringify({ ...guest, lastUsedAt: Date.now() })
+    );
   } catch {
     /* private mode / quota — the gate simply shows again on reload */
   }
@@ -109,22 +134,31 @@ export function clearStoredGuestSession(code: string): void {
 }
 
 /**
- * The guest code this browser last joined with, if any.
+ * The guest code this browser last used, if any.
  *
  * Used to send a guest who wandered onto an authenticated route back to THEIR
  * class instead of into the app shell. Scans the `itera.guest.*` keys rather
  * than taking a code from the URL, because the whole point is that we are on a
  * route that carries no code.
+ *
+ * Picks by `lastUsedAt`, not by iteration order: `localStorage.key(i)` order is
+ * unspecified, so a browser that joined two classes could be sent to whichever
+ * key happened to come last — someone ELSE's class, on a URL the guest never
+ * typed. Ties keep the first one seen, which is arbitrary but bounded to
+ * genuinely indistinguishable entries.
  */
 export function findStoredGuestCode(): string | null {
   try {
-    let newest: { code: string; sessionId: string } | null = null;
+    let newest: { code: string; lastUsedAt: number } | null = null;
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
       if (!key || !key.startsWith(STORE_PREFIX)) continue;
       const code = key.slice(STORE_PREFIX.length);
-      const stored = readStoredGuestSession(code);
-      if (stored) newest = { code, sessionId: stored.sessionId };
+      const entry = readStoredEntry(code);
+      if (!entry) continue;
+      if (!newest || entry.lastUsedAt > newest.lastUsedAt) {
+        newest = { code, lastUsedAt: entry.lastUsedAt };
+      }
     }
     return newest?.code ?? null;
   } catch {

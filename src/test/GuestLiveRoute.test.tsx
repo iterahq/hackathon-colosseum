@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
@@ -16,19 +16,21 @@ import { I18nProvider } from '@/i18n';
 const mocks = vi.hoisted(() => ({
   configured: true,
   createGuestSession: vi.fn(),
+  storeGuestSession: vi.fn(),
   stored: null as unknown,
   codeActive: true,
+  probe: (): Promise<boolean> => Promise.resolve(true),
 }));
 
 vi.mock('@/services/guestSession.service', () => ({
   guestJoinConfigured: () => mocks.configured,
   readStoredGuestSession: () => mocks.stored,
   createGuestSession: mocks.createGuestSession,
-  storeGuestSession: vi.fn(),
+  storeGuestSession: mocks.storeGuestSession,
   clearStoredGuestSession: vi.fn(),
   // Advisory liveness probe. Defaults to "still live" so these cases exercise
-  // the normal path; the expired-link case overrides it.
-  isGuestCodeActive: () => Promise.resolve(mocks.codeActive),
+  // the normal path; the expired-link and in-flight cases override it.
+  isGuestCodeActive: () => mocks.probe(),
 }));
 
 // The live page itself is exercised by its own tests; here we only care that the
@@ -83,6 +85,7 @@ describe('GuestLiveRoute', () => {
     mocks.configured = true;
     mocks.stored = null;
     mocks.codeActive = true;
+    mocks.probe = () => Promise.resolve(mocks.codeActive);
     mocks.createGuestSession.mockResolvedValue(joined);
   });
 
@@ -163,12 +166,38 @@ describe('GuestLiveRoute', () => {
     expect(screen.queryByTestId('guest-code-expired')).toBeNull();
   });
 
-  it('does not re-probe for a guest who already joined in this browser', async () => {
-    // They hold a session; the live page handles the class ending on its own.
+  it('does not eject a guest who joined while the probe was still in flight', async () => {
+    // The probe left while the class was still `pending`; the join that followed
+    // re-checked `status='live'` SERVER-side, so it outranks the stale answer.
+    let answerProbe: (active: boolean) => void = () => undefined;
+    mocks.probe = () => new Promise<boolean>((resolve) => (answerProbe = resolve));
+    renderRoute();
+    fireEvent.change(screen.getByTestId('live-name-input'), { target: { value: 'Ana' } });
+    fireEvent.click(screen.getByTestId('live-name-gate-submit'));
+    await waitFor(() => expect(screen.getByTestId('live-session-page')).toBeInTheDocument());
+
+    await act(async () => answerProbe(false));
+    expect(screen.getByTestId('live-session-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('guest-end-card')).toBeNull();
+  });
+
+  it('re-stamps the stored class on arrival, so a stale one stops winning', () => {
+    mocks.stored = joined;
+    renderRoute();
+    expect(mocks.storeGuestSession).toHaveBeenCalledWith(joined);
+  });
+
+  it('shows a returning guest the end-card instead of mounting a class that is over', async () => {
+    // The stored session outlives the class. Skipping the probe here mounted the
+    // live page on a session that had ended hours before, and the page errored
+    // instead of saying the class was over.
     mocks.stored = joined;
     mocks.codeActive = false;
     renderRoute();
-    await waitFor(() => expect(screen.getByTestId('live-session-page')).toBeInTheDocument());
-    expect(screen.queryByTestId('guest-code-expired')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('guest-end-card')).toBeInTheDocument());
+    expect(screen.queryByTestId('live-session-page')).toBeNull();
+    // Terminal screen: there is nothing live to go back into.
+    expect(screen.queryByTestId('guest-end-back')).toBeNull();
+    expect(screen.getByTestId('guest-end-signup').getAttribute('href')).toBe('/signup');
   });
 });
