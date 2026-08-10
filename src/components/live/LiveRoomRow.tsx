@@ -96,9 +96,7 @@ export function LiveRoomRow({
           {/* Info and the ⋯ share ONE fixed slot, so opening the actions never
               reflows the row and the name never jumps under the pointer. */}
           <span
-            className={`relative shrink-0 h-6 ${
-              showDetail ? (row.stars > 0 ? 'w-[132px]' : 'w-[100px]') : 'w-[58px]'
-            }`}
+            className={`relative shrink-0 h-6 ${showDetail ? 'w-[100px]' : 'w-[58px]'}`}
           >
             <span
               // Inerte ao toque: cobre o mesmo canto do ⋯ e engolia o tap.
@@ -107,7 +105,7 @@ export function LiveRoomRow({
               }`}
             >
               {showDetail && (
-                <LiveRoomScore correct={row.correctCount} answered={row.answeredCount} stars={row.stars} />
+                <LiveRoomScore correct={row.correctCount} answered={row.answeredCount} />
               )}
               {typeof row.elapsedMs === 'number' && row.state !== 'pending' && (
                 <span className="font-mono text-xs tabular-nums text-muted-foreground" data-testid="live-room-time">

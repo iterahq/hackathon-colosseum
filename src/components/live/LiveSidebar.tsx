@@ -35,7 +35,7 @@ interface LiveSidebarProps {
   stageUnreachableUserId?: string | null;
   /** Instructor: pull this learner's work onto the stage (or take it off). */
   onToggleStage?: (userId: string) => void;
-  /** Instructor: star, lower hand and remove. Absent leaves the rows inert. */
+  /** Instructor: lower hand and remove. Absent leaves the rows inert. */
   moderation?: LiveRoomModeration;
   /** Learner: raise-hand toggle, pinned above the list so it is never missed. */
   handSlot?: ReactNode;

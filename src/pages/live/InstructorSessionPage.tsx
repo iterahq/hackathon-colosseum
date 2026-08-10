@@ -144,7 +144,7 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, stars, awardStar, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -228,7 +228,6 @@ function ClassControl({
     roster: ClassPresenceMember[];
     elapsed: typeof elapsed;
     answers: typeof answers;
-    stars: typeof stars;
   } | null>(null);
   // Live ranking for the sidebar. Merges the CURRENT roster in directly (not
   // just the ref) so a fresh joiner appears immediately — the ref-updating
@@ -238,18 +237,16 @@ function ClassControl({
       rankByScore(
         [...mergeSeenLearners(seenLearnersRef.current, roster).values()],
         elapsed,
-        answers,
-        stars
+        answers
       ),
-    [roster, elapsed, answers, stars]
+    [roster, elapsed, answers]
   );
   const podiumRanking = useMemo(() => {
     if (!podiumSnapshot) return liveRanking;
     return rankByScore(
       podiumSnapshot.roster,
       podiumSnapshot.elapsed,
-      podiumSnapshot.answers,
-      podiumSnapshot.stars
+      podiumSnapshot.answers
     );
   }, [podiumSnapshot, liveRanking]);
   // Learners still in the ranking (seen at least once) but no longer in the live
@@ -345,7 +342,6 @@ function ClassControl({
         roster: [...seenLearnersRef.current.values()],
         elapsed,
         answers,
-        stars,
       });
       // Defer invalidation to handleLeavePodium; doing it now unmounts this control before the podium renders.
       setShowPodium(true);
@@ -434,13 +430,11 @@ function ClassControl({
   // rede: sem o aviso, o professor acha que tirou o aluno e ele continua lá.
   const moderation = useMemo(
     () => ({
-      onStar: (userId: string, delta: 1 | -1) =>
-        void awardStar(userId, delta).then((ok) => ok || toast.error(t('live.room.action.failed'))),
       onLowerHand: lowerHand,
       onRemove: (userId: string) =>
         void removeLearner(userId).then((ok) => ok || toast.error(t('live.room.action.failed'))),
     }),
-    [awardStar, lowerHand, removeLearner, t]
+    [lowerHand, removeLearner, t]
   );
 
   // The single sidebar list: podium order + this activity's state per row.

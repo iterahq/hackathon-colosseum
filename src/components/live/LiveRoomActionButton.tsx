@@ -17,17 +17,15 @@ export function LiveRoomActionButton({
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  tone?: 'neutral' | 'primary' | 'star' | 'danger';
+  tone?: 'neutral' | 'primary' | 'danger';
   testId: string;
 }) {
   const toneClass =
     tone === 'primary'
       ? 'border-streak/40 bg-streak/10 text-streak hover:bg-streak/20'
-      : tone === 'star'
-        ? 'border-amber-400/40 bg-amber-400/10 text-amber-500 hover:bg-amber-400/20'
-        : tone === 'danger'
-          ? 'border-transparent text-destructive/80 hover:bg-destructive/10 hover:text-destructive'
-          : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
+      : tone === 'danger'
+        ? 'border-transparent text-destructive/80 hover:bg-destructive/10 hover:text-destructive'
+        : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
 
   return (
     <button

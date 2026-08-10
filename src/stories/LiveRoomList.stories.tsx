@@ -15,9 +15,9 @@ const actionsFor = roomActionsFactory({
  * LiveRoomList — the ONE class list of the live sidebar: everyone in the room in
  * cumulative podium order, each row carrying its state on the current activity.
  *
- * The professor's five actions per learner (star, take a star back, lower the
- * hand, stage, remove) open INLINE on the row, never in a popover: the list is
- * `overflow-y-auto` and would clip anything layered on top.
+ * The professor's actions per learner (lower the hand, stage, remove) open INLINE
+ * on the row, never in a popover: the list is `overflow-y-auto` and would clip
+ * anything layered on top.
  */
 const meta: Meta<typeof LiveRoomList> = {
   title: 'Organisms/Live/LiveRoomList',
@@ -36,10 +36,10 @@ type Story = StoryObj<typeof LiveRoomList>;
 /** The learner's view: no actions, no correctness — just who is in the room. */
 export const Learner: Story = {};
 
-/** The professor's view: correctness, cumulative score and stars per row. */
+/** The professor's view: correctness and cumulative score per row. */
 export const Instructor: Story = { args: { showDetail: true, actionsFor } };
 
-/** The five actions, open on the top row. Hover/tap the ⋯ to get here. */
+/** The everyday actions, open on the first row. Tap the ⋯ to get here. */
 export const ActionsOpen: Story = {
   args: { showDetail: true, actionsFor },
   play: async ({ canvasElement }) => {
@@ -49,14 +49,19 @@ export const ActionsOpen: Story = {
 };
 
 /**
- * Removing confirms on the row itself — never in a modal. The class is watching
- * the projected screen, and a centred dialog turns discipline into a public trial.
+ * Tirar da sala mora atrás do "Mais" (C1 do plano
+ * 20260806-itera-aula-ao-vivo-alunos-reais: na primeira aula com alunos reais o
+ * professor confundia com "tirar do palco") e confirma na própria linha — nunca
+ * em modal.
+ * A turma está vendo a tela projetada, e um diálogo no centro transforma
+ * disciplina em julgamento público.
  */
 export const RemoveConfirmation: Story = {
   args: { showDetail: true, actionsFor },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getAllByTestId('live-room-actions-open')[0]);
+    await userEvent.click(canvas.getByTestId('live-room-more'));
     await userEvent.click(canvas.getByTestId('live-room-remove'));
   },
 };

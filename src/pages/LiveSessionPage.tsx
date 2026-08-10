@@ -130,7 +130,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, stars, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -451,8 +451,8 @@ export default function LiveSessionPage() {
 
   const ended = status === 'ended';
   const podiumRanking = useMemo(
-    () => rankByScore(roster, elapsed, answers, stars),
-    [roster, elapsed, answers, stars]
+    () => rankByScore(roster, elapsed, answers),
+    [roster, elapsed, answers]
   );
   const roomRows = useMemo(
     () =>

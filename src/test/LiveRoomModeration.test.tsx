@@ -8,10 +8,10 @@ import { rankByScore } from '@/utils/rankByScore';
 import type { ClassAnswerer, ClassPresenceMember } from '@/types/liveClass';
 
 /**
- * The professor's per-student menu: star (worth a podium point), unstar, lower
- * hand, stage and remove. The two that change durable state — star and remove —
- * are the ones this file guards hardest, because a misfire hits the wrong
- * student in front of the whole class.
+ * O menu por aluno do professor: abaixar a mão, palco e tirar da sala. A única
+ * que muda estado durável — tirar da sala — é a que este arquivo guarda mais,
+ * porque um erro de alvo atinge o aluno errado na frente da turma inteira. Por
+ * isso ela nasce ESCONDIDA atrás do "Mais" e ainda confirma na linha.
  */
 
 const roster: ClassPresenceMember[] = [
@@ -25,14 +25,15 @@ const answerers: ClassAnswerer[] = [
   { userId: 'b', name: 'Bruno', avatarUrl: null, state: 'pending' },
 ];
 
-function renderRoom(stars: Record<string, number> = {}) {
-  const handlers = {
-    onStar: vi.fn(),
-    onLowerHand: vi.fn(),
-    onRemove: vi.fn(),
-    onToggleStage: vi.fn(),
-  };
-  const ranking = rankByScore(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } }, stars);
+const actionHandlers = () => ({
+  onLowerHand: vi.fn(),
+  onRemove: vi.fn(),
+  onToggleStage: vi.fn(),
+});
+
+function renderRoom() {
+  const handlers = actionHandlers();
+  const ranking = rankByScore(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } });
   render(
     <I18nProvider>
       <LiveRoomList
@@ -49,21 +50,18 @@ function renderRoom(stars: Record<string, number> = {}) {
 const openRow = (i: number) => fireEvent.click(screen.getAllByTestId('live-room-actions-open')[i]);
 
 describe('per-student actions', () => {
-  it('offers the five actions on one row', () => {
+  it('offers the everyday actions on one row', () => {
     renderRoom();
     openRow(0);
-    expect(screen.getByTestId('live-room-star')).toBeTruthy();
-    expect(screen.getByTestId('live-room-unstar')).toBeTruthy();
     expect(screen.getByTestId('live-room-lower-hand')).toBeTruthy();
     expect(screen.getByTestId('live-room-stage')).toBeTruthy();
-    expect(screen.getByTestId('live-room-remove')).toBeTruthy();
   });
 
   it('fecha as ações no segundo clique do mesmo botão', () => {
     renderRoom();
     openRow(0);
     fireEvent.click(screen.getByTestId('live-room-actions-close'));
-    expect(screen.queryByTestId('live-room-star')).toBeNull();
+    expect(screen.queryByTestId('live-room-stage')).toBeNull();
     expect(screen.getAllByTestId('live-room-actions-open').length).toBeGreaterThan(0);
   });
 
@@ -81,21 +79,6 @@ describe('per-student actions', () => {
     expect(info?.className).not.toContain('group-focus-within');
   });
 
-  it('gives and takes back a star on the learner of that row', () => {
-    const { onStar } = renderRoom({ a: 1 });
-    openRow(0);
-    fireEvent.click(screen.getByTestId('live-room-star'));
-    expect(onStar).toHaveBeenCalledWith('a', 1);
-    fireEvent.click(screen.getByTestId('live-room-unstar'));
-    expect(onStar).toHaveBeenCalledWith('a', -1);
-  });
-
-  it('cannot take back a star nobody has', () => {
-    renderRoom();
-    openRow(0);
-    expect(screen.getByTestId('live-room-unstar')).toBeDisabled();
-  });
-
   it('only lowers a hand that is up', () => {
     const { onLowerHand } = renderRoom();
     openRow(0);
@@ -106,9 +89,21 @@ describe('per-student actions', () => {
     expect(screen.getByTestId('live-room-lower-hand')).toBeDisabled();
   });
 
+  // C1 do plano 20260806-itera-aula-ao-vivo-alunos-reais: na primeira aula com
+  // alunos reais o professor confundiu "tirar da sala" com "tirar do palco", que
+  // fica na faixa de cima e se usa toda hora.
+  it('nem mostra o tirar da sala junto do palco — ele mora atrás do "Mais"', () => {
+    renderRoom();
+    openRow(0);
+    expect(screen.queryByTestId('live-room-remove')).toBeNull();
+    fireEvent.click(screen.getByTestId('live-room-more'));
+    expect(screen.getByTestId('live-room-remove')).toBeTruthy();
+  });
+
   it('never removes on a single click — it confirms on the row first', () => {
     const { onRemove } = renderRoom();
     openRow(0);
+    fireEvent.click(screen.getByTestId('live-room-more'));
     fireEvent.click(screen.getByTestId('live-room-remove'));
     expect(onRemove).not.toHaveBeenCalled();
     expect(screen.getByTestId('live-room-remove-cancel')).toBeTruthy();
@@ -122,24 +117,22 @@ describe('per-student actions', () => {
         <LiveRoomList rows={[]} instructors={[]} showDetail />
       </I18nProvider>
     );
-    const rowsFor = (stars: Record<string, number>) =>
-      buildLiveRoomRows({
-        ranking: rankByScore(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } }, stars),
-        answerers,
-        roster,
-        currentActivityId: 'act-1',
-      });
-    const list = (stars: Record<string, number>) => (
+    const list = (
+      elapsed: Record<string, Record<string, number>>,
+      answers: Record<string, Record<string, boolean>>
+    ) => (
       <I18nProvider>
         <LiveRoomList
-          rows={rowsFor(stars)}
+          rows={buildLiveRoomRows({
+            ranking: rankByScore(roster, elapsed, answers),
+            answerers,
+            roster,
+            currentActivityId: 'act-1',
+          })}
           instructors={roster.filter((m) => m.isInstructor)}
           showDetail
           actionsFor={() => ({
-            onStar: vi.fn(),
-            onLowerHand: vi.fn(),
-            onRemove: vi.fn(),
-            onToggleStage: vi.fn(),
+            ...actionHandlers(),
             onStage: false,
             pending: false,
             unreachable: false,
@@ -147,11 +140,14 @@ describe('per-student actions', () => {
         />
       </I18nProvider>
     );
-    rerender(list({}));
+    rerender(list({ 'act-1': { a: 4000 } }, { 'act-1': { a: true } }));
     expect(screen.getAllByTestId('live-room-row')[0]).toHaveTextContent('Ana');
     openRow(0);
-    // Bruno overtakes Ana mid-menu; the open row must stay where the finger is.
-    rerender(list({ b: 5 }));
+    // Bruno overtakes Ana mid-menu (same score, faster time); the open row must
+    // stay where the finger is.
+    rerender(
+      list({ 'act-1': { a: 4000, b: 1000 } }, { 'act-1': { a: true, b: true } })
+    );
     expect(screen.getAllByTestId('live-room-row')[0]).toHaveTextContent('Ana');
   });
 
@@ -161,11 +157,15 @@ describe('per-student actions', () => {
       { userId: 'b', name: 'Bruno', avatarUrl: null, isInstructor: false },
       { userId: 'c', name: 'Carla', avatarUrl: null, isInstructor: false },
     ];
-    const list = (members: ClassPresenceMember[], stars: Record<string, number>) => (
+    const list = (
+      members: ClassPresenceMember[],
+      elapsed: Record<string, Record<string, number>>,
+      answers: Record<string, Record<string, boolean>>
+    ) => (
       <I18nProvider>
         <LiveRoomList
           rows={buildLiveRoomRows({
-            ranking: rankByScore(members, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } }, stars),
+            ranking: rankByScore(members, elapsed, answers),
             answerers,
             roster: members,
             currentActivityId: 'act-1',
@@ -173,10 +173,7 @@ describe('per-student actions', () => {
           instructors={members.filter((m) => m.isInstructor)}
           showDetail
           actionsFor={() => ({
-            onStar: vi.fn(),
-            onLowerHand: vi.fn(),
-            onRemove: vi.fn(),
-            onToggleStage: vi.fn(),
+            ...actionHandlers(),
             onStage: false,
             pending: false,
             unreachable: false,
@@ -184,38 +181,14 @@ describe('per-student actions', () => {
         />
       </I18nProvider>
     );
-    const { rerender } = render(list(roster, {}));
+    const { rerender } = render(
+      list(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } })
+    );
     openRow(0);
     // Ana is removed while her menu is open — nothing can close it, so the list
     // has to notice on its own or it stays frozen for the rest of the class.
-    rerender(list(later, { c: 3 }));
+    rerender(list(later, { 'act-1': { c: 1000 } }, { 'act-1': { c: true } }));
     expect(screen.getAllByTestId('live-room-row')[0]).toHaveTextContent('Carla');
-  });
-});
-
-describe('star points', () => {
-  it('a star is worth a podium point', () => {
-    const ranking = rankByScore(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } }, { b: 2 });
-    expect(ranking.ranked.map((r) => r.userId)).toEqual(['b', 'a']);
-    expect(ranking.ranked[0].stars).toBe(2);
-    expect(ranking.ranked[0].correctCount).toBe(0);
-  });
-
-  it('ranks a starred learner who has not answered anything yet', () => {
-    const ranking = rankByScore(roster, {}, {}, { b: 1 });
-    expect(ranking.ranked.map((r) => r.userId)).toEqual(['b']);
-    expect(ranking.waiting.map((w) => w.userId)).toEqual(['a']);
-  });
-
-  it('puts a star-only learner behind whoever earned the same points answering', () => {
-    const ranking = rankByScore(roster, { 'act-1': { a: 4000 } }, { 'act-1': { a: true } }, { b: 1 });
-    expect(ranking.ranked.map((r) => r.userId)).toEqual(['a', 'b']);
-  });
-
-  it('floors a negative balance at zero instead of ranking below nothing', () => {
-    const ranking = rankByScore(roster, {}, {}, { b: -3 });
-    expect(ranking.ranked).toHaveLength(0);
-    expect(ranking.waiting.map((w) => w.userId)).toEqual(['a', 'b']);
   });
 });
 

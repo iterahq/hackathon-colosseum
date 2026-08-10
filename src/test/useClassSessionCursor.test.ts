@@ -84,8 +84,6 @@ vi.mock('@/services/liveClass.service', () => ({
 
 vi.mock('@/services/classModeration.service', () => ({
   amIRemovedFrom: () => Promise.resolve(false),
-  awardStar: () => Promise.resolve(),
-  getSessionStars: () => Promise.resolve({}),
   removeFromClass: () => Promise.resolve(),
 }));
 

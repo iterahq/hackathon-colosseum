@@ -85,7 +85,6 @@ export function LivePodium({
                 )}
                 <span className="font-mono text-xs tabular-nums text-clay">
                   {t('live.podium.score', { n: String(entry.correctCount) })}
-                  {entry.stars > 0 && <span className="ml-1 text-amber-500">⭐{entry.stars}</span>}
                 </span>
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground" data-testid="live-podium-time">
                   {formatMmss(entry.totalMs / 1000)}
@@ -123,7 +122,6 @@ export function LivePodium({
                 </span>
                 <span className="font-mono text-xs tabular-nums text-clay flex-shrink-0">
                   {t('live.podium.score', { n: String(r.correctCount) })}
-                  {r.stars > 0 && <span className="ml-1 text-amber-500">⭐{r.stars}</span>}
                 </span>
               </li>
             );

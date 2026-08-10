@@ -27,8 +27,8 @@ const roster: ClassPresenceMember[] = [
 
 const ranking: ClassRanking = {
   ranked: [
-    { userId: 'g1', name: 'Ana Souza', avatarUrl: null, totalMs: 6000, answeredCount: 2, correctCount: 2, stars: 0, rank: 1, isGuest: true },
-    { userId: 'a', name: 'Ana Souza', avatarUrl: null, totalMs: 9000, answeredCount: 2, correctCount: 2, stars: 0, rank: 2 },
+    { userId: 'g1', name: 'Ana Souza', avatarUrl: null, totalMs: 6000, answeredCount: 2, correctCount: 2, rank: 1, isGuest: true },
+    { userId: 'a', name: 'Ana Souza', avatarUrl: null, totalMs: 9000, answeredCount: 2, correctCount: 2, rank: 2 },
   ],
   waiting: [{ userId: 'g2', name: 'Visitante', avatarUrl: null, isGuest: true }],
 };
@@ -112,8 +112,8 @@ describe('guest badge — podium', () => {
     const long: ClassRanking = {
       ranked: [
         ...ranking.ranked,
-        { userId: 'x', name: 'Caio', avatarUrl: null, totalMs: 11000, answeredCount: 1, correctCount: 1, stars: 0, rank: 3 },
-        { userId: 'g3', name: 'Duda', avatarUrl: null, totalMs: 12000, answeredCount: 1, correctCount: 1, stars: 0, rank: 4, isGuest: true },
+        { userId: 'x', name: 'Caio', avatarUrl: null, totalMs: 11000, answeredCount: 1, correctCount: 1, rank: 3 },
+        { userId: 'g3', name: 'Duda', avatarUrl: null, totalMs: 12000, answeredCount: 1, correctCount: 1, rank: 4, isGuest: true },
       ],
       waiting: [],
     };

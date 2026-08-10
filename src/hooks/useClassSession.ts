@@ -16,8 +16,8 @@
  *   3. presence  — the live roster (who's in the room right now).
  *
  * The hook is shared by students (read + presence) and the professor (who ALSO
- * calls `broadcast()` on advance). Its only DB writes are the moderation ones
- * (star / remove, via classModeration.service), which are durable on purpose;
+ * calls `broadcast()` on advance). Its only DB write is the moderation one
+ * (remove, via classModeration.service), which is durable on purpose;
  * the class pointer is persisted by the professor page via
  * liveClass.service.advanceClassSession (durable) THEN broadcast() (fast).
  * Result writes stay elsewhere (LessonPlayer / progress.service).
@@ -41,12 +41,7 @@ import { reconnectDelayMs } from '@/utils/liveReconnect';
 import { gatherStageContent, parseStageStatus } from '@/utils/stageAnswerContent';
 import { clampStageResponse } from '@/utils/stageResponseText';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
-import {
-  amIRemovedFrom,
-  awardStar as awardStarRow,
-  getSessionStars,
-  removeFromClass,
-} from '@/services/classModeration.service';
+import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
 
 export type { ClassPresenceMember, UseClassSession } from '@/types/liveClass';
 
@@ -68,12 +63,11 @@ const STAGE_CLEAR_EVENT = 'stage-clear';
 // forwards those as fresh stage-show. Same trust model as the one-shot pull —
 // gated on the resolved (userId + activityId) target, not a fresh nonce.
 const STAGE_UPDATE_EVENT = 'stage-update';
-// Ações do professor sobre um aluno. `star` e `kick` só AVISAM — a verdade está
-// em itera.class_stars / itera.class_removals, cuja RLS exige staff da aula, e é
-// dela que todo cliente re-hidrata ao (re)entrar. `hand-lower` não tem verdade
-// durável nenhuma: a mão vive em presença, que só o dono escreve, então é
-// sempre um PEDIDO ao cliente do aluno.
-const STAR_EVENT = 'star';
+// Ações do professor sobre um aluno. `kick` só AVISA — a verdade está em
+// itera.class_removals, cuja RLS exige staff da aula, e é dela que todo cliente
+// re-hidrata ao (re)entrar. `hand-lower` não tem verdade durável nenhuma: a mão
+// vive em presença, que só o dono escreve, então é sempre um PEDIDO ao cliente
+// do aluno.
 const KICK_EVENT = 'kick';
 const HAND_LOWER_EVENT = 'hand-lower';
 // Pausa para dúvidas: a turma para de olhar a atividade e olha o professor. Vai
@@ -135,7 +129,6 @@ export function useClassSession(
   // broadcast que a abriu, então o professor a reanuncia quando alguém chega.
   const onBreakRef = useRef(false);
   onBreakRef.current = onBreak;
-  const [stars, setStars] = useState<Record<string, number>>({});
   const [removed, setRemoved] = useState(false);
   // Lido dentro do efeito do canal (que só depende de sessionId) para impedir
   // que o retry fique tentando reentrar num canal cuja RLS já nega o JOIN.
@@ -506,18 +499,6 @@ export function useClassSession(
           stagedSelfRef.current =
             me && a.userId === me && answeredStageRef.current === p.activityId ? p.activityId : null;
         })
-        // Fast path do placar: o número certo vem do banco no (re)join logo
-        // abaixo, então um evento perdido no meio de um blip só atrasa a
-        // animação — não desalinha o pódio.
-        .on('broadcast', { event: STAR_EVENT }, ({ payload }) => {
-          const p = payload as { user_id?: string; delta?: number } | null;
-          if (!p?.user_id || (p.delta !== 1 && p.delta !== -1)) return;
-          const uid = p.user_id;
-          const delta = p.delta;
-          // Soma crua: o piso em zero é do pódio (rankByScore). Aplicá-lo aqui
-          // faria o placar local divergir do saldo do banco depois de um -1 a mais.
-          setStars((prev) => ({ ...prev, [uid]: (prev[uid] ?? 0) + delta }));
-        })
         // Só o alvo reage: a linha em class_removals já nega o JOIN dele, isto
         // é o que troca a tela na hora em vez de deixá-lo vendo um spinner.
         .on('broadcast', { event: KICK_EVENT }, ({ payload }) => {
@@ -687,9 +668,6 @@ export function useClassSession(
             // leaving the reception. Re-read the durable row on every (re)subscribe
             // so it always converges instead of getting stranded in the lobby.
             void getClassSession(sessionId).then(applySession);
-            // O placar de estrelas re-hidrata do banco a cada (re)join pelo mesmo
-            // motivo do advance: broadcast não é reenviado depois de um blip.
-            void getSessionStars(sessionId).then(setStars).catch(() => undefined);
             trackPresence();
             return;
           }
@@ -872,30 +850,6 @@ export function useClassSession(
       trackPresence();
     },
     [trackPresence]
-  );
-
-  // A escrita vai no banco ANTES do aviso: se a RLS recusar (quem não é staff
-  // da aula), nada é anunciado — em vez de pintar uma estrela na tela da turma
-  // que some no próximo refetch.
-  const awardStar = useCallback(
-    (userId: string, delta: 1 | -1) => {
-      const sid = sessionIdRef.current;
-      if (!sid || !userId) return Promise.resolve(false);
-      return awardStarRow(sid, userId, delta).then(
-        () => {
-          // O canal é self:true, então o próprio handler do STAR_EVENT aplica o
-          // delta local — aplicar aqui também contaria a estrela duas vezes.
-          ctrlRef.current?.send({
-            type: 'broadcast',
-            event: STAR_EVENT,
-            payload: { user_id: userId, delta },
-          });
-          return true;
-        },
-        () => false
-      );
-    },
-    []
   );
 
   const lowerHand = useCallback((userId: string) => {
@@ -1126,7 +1080,6 @@ export function useClassSession(
     stagedAnswer,
     stagePendingUserId,
     stageUnreachableUserId,
-    stars,
     removed,
     handRaised,
     onBreak,
@@ -1136,7 +1089,6 @@ export function useClassSession(
     broadcastTimer,
     clearTimer,
     setHandRaised,
-    awardStar,
     lowerHand,
     removeLearner,
     setWorkingOn,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hand, Loader2, MonitorPlay, Star, StarOff, UserMinus } from 'lucide-react';
+import { ChevronDown, Hand, Loader2, MonitorPlay, UserMinus } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRoomActionButton } from '@/components/live/LiveRoomActionButton';
@@ -11,13 +11,19 @@ import type { LiveRoomRow, LiveRoomRowActions } from '@/types/liveClass';
  * coisa posicionada por cima.
  *
  * A divisão em faixas não é estética: o nome fica no cabeçalho, no meio o que se
- * usa várias vezes por aula (estrela, abaixar a mão, palco), e embaixo o que
- * corrige um engano ou encerra a participação. "Dar estrela" e "tirar da sala"
- * lado a lado no mesmo alvo de toque seriam vizinhos com consequências opostas.
+ * usa várias vezes por aula (abaixar a mão, palco), e embaixo o que encerra a
+ * participação.
  *
  * As ações moram numa faixa própria com `flex-wrap` porque a barra vive numa
  * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura.
  * Fechar é o `LiveRoomActionsToggle` da linha, no mesmo canto do ⋯ que abriu.
+ *
+ * **Tirar da sala fica atrás de um "Mais" fechado por padrão.** Ele estava
+ * visível ao lado do botão de palco e na primeira aula com alunos reais o
+ * professor confundiu os dois — "tirar da sala" e "tirar do palco" são a mesma
+ * frase até a última palavra, e uma delas expulsa um adolescente da aula. O
+ * palco é o que se usa toda hora; a remoção é o que se usa quase nunca, então
+ * ela custa um toque extra de propósito.
  *
  * Tirar da sala confirma na própria linha — nunca em modal. A turma está vendo a
  * tela projetada, e um diálogo no centro transforma disciplina em julgamento
@@ -33,6 +39,7 @@ export function LiveRoomRowActionsBar({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const [removeOpen, setRemoveOpen] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const { onStage } = actions;
 
@@ -44,13 +51,6 @@ export function LiveRoomRowActionsBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 pl-8">
-        <LiveRoomActionButton
-          icon={Star}
-          label={t('live.room.action.star')}
-          onClick={() => actions.onStar(row.userId, 1)}
-          tone="star"
-          testId="live-room-star"
-        />
         <LiveRoomActionButton
           icon={Hand}
           label={t('live.room.action.lowerHand')}
@@ -105,24 +105,24 @@ export function LiveRoomRowActionsBar({
               {t('live.room.action.removeNo')}
             </button>
           </>
+        ) : removeOpen ? (
+          <LiveRoomActionButton
+            icon={UserMinus}
+            label={t('live.room.action.remove')}
+            onClick={() => setConfirmingRemove(true)}
+            tone="danger"
+            testId="live-room-remove"
+          />
         ) : (
-          <>
-            <LiveRoomActionButton
-              icon={StarOff}
-              label={t('live.room.action.unstar')}
-              onClick={() => actions.onStar(row.userId, -1)}
-              disabled={row.stars <= 0}
-              testId="live-room-unstar"
-            />
-            <span className="flex-1" />
-            <LiveRoomActionButton
-              icon={UserMinus}
-              label={t('live.room.action.remove')}
-              onClick={() => setConfirmingRemove(true)}
-              tone="danger"
-              testId="live-room-remove"
-            />
-          </>
+          <button
+            type="button"
+            onClick={() => setRemoveOpen(true)}
+            data-testid="live-room-more"
+            className="h-8 px-2.5 shrink-0 inline-flex items-center gap-1 rounded-full text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+            {t('live.room.action.more')}
+          </button>
         )}
       </div>
     </div>

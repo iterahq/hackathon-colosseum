@@ -33,7 +33,7 @@
  *   - `stage-update` — the staged learner re-broadcasts their work on every
  *     autosave (600 ms debounce ⇒ ~1.7 events/s), and the instructor forwards
  *     each one as a fresh `stage-show`: ~2 × 1.7 × (roomSize + 1);
- *   - `answered`, `advance`, `timer`, `star`, plus presence sync on every join,
+ *   - `answered`, `advance`, `timer`, `break`, plus presence sync on every join,
  *     leave, hand raise and `working_on` change;
  *   - a second class running at the same time.
  *
