@@ -39,7 +39,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Pencil } from 'lucide-react';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
@@ -73,7 +73,7 @@ import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColu
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
-import { learnerActivityGate } from '@/utils/liveActivityGate';
+import { learnerActivityGate, canLearnerReopen } from '@/utils/liveActivityGate';
 import { LivePodium } from '@/components/live/LivePodium';
 import { LiveHandButton } from '@/components/live/LiveHandButton';
 import { LiveWaitingIndicator } from '@/components/live/LiveWaitingIndicator';
@@ -216,6 +216,8 @@ export default function LiveSessionPage() {
     null
   );
   const [activityStartedAt, setActivityStartedAt] = useState<number | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [reopened, setReopened] = useState(false);
   // Hidden-time tally on top of that origin — see src/utils/activityDuration.ts
   // for what `elapsedMs` vs `visibleMs` mean. Read once, when the answer settles.
   const duration = useActivityDuration(activityStartedAt);
@@ -237,6 +239,8 @@ export default function LiveSessionPage() {
       sessionId && currentActivityId ? readStoredAnswer(sessionId, currentActivityId) : null;
     setAnswered(stored && currentActivityId ? { id: currentActivityId, ...stored } : null);
     setSaving(false);
+    setAttempt(0);
+    setReopened(false);
     setTimeUpFor(null);
     setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
@@ -290,7 +294,7 @@ export default function LiveSessionPage() {
   const isExercise = isExerciseActivity(current);
   const timerRunning = Boolean(timer && current && timer.activityId === current.id);
   const expired = isExercise && timeUpFor !== null && timeUpFor === current?.id;
-  const hasAnswered = answered?.id === current?.id;
+  const hasAnswered = Boolean(current && answered?.id === current.id);
   // The clock running out (or the professor stopping it) takes the activity away
   // from any learner who hasn't answered — UNIVERSALLY, every answerable kind
   // including `code`. Whether a correct answer can be shown on screen is a
@@ -301,8 +305,19 @@ export default function LiveSessionPage() {
     timerRunning,
     expired,
     answered: hasAnswered,
+    reopened,
   });
   const { started, locked } = gate;
+  // `saving` on top of the two ADR-1 halves: reopening mid-write would let the
+  // learner resubmit into `handleComplete`'s own early return — the activity would
+  // spend its buttons and the page would register nothing at all.
+  const canReopen = !saving && canLearnerReopen(gate, current?.kind);
+  const reopen = useCallback(() => {
+    setReopened(true);
+    setAttempt((n) => n + 1);
+    // The elapsed-time origin deliberately STAYS, so `elapsed_ms` measures how long
+    // the learner took to reach their FINAL answer instead of restarting the clock.
+  }, []);
 
   async function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving || !gate.canComplete) return;
@@ -324,6 +339,7 @@ export default function LiveSessionPage() {
     const settledAt = Date.now();
     const elapsedMs = sample?.elapsedMs ?? 0;
     setAnswered({ id: current.id, correct, elapsedMs });
+    setReopened(false);
     if (sessionId)
       storeAnswer(sessionId, current.id, {
         correct,
@@ -683,9 +699,11 @@ export default function LiveSessionPage() {
               <LiveActivityStage
                 activity={{
                   ...current,
-                  status: answered?.id === current.id && answered.correct ? 'done' : current.status,
+                  status:
+                    hasAnswered && !gate.editing && answered?.correct ? 'done' : current.status,
                 }}
                 readOnly={gate.readOnly}
+                attempt={attempt}
                 reveal={timeUpFor !== null && timeUpFor === current.id}
                 onComplete={handleComplete}
                 onSubmit={sound.onSubmit}
@@ -702,7 +720,7 @@ export default function LiveSessionPage() {
                         global fixed FeedbackFooter below. Non-graded kinds (the
                         sandbox) keep it inline here so their below-stage hint
                         isn't lost. */}
-                    {!footerGraded && answered?.id === current.id && (
+                    {!footerGraded && answered?.id === current.id && !gate.editing && (
                       <div
                         className={`mt-5 flex flex-wrap items-center justify-center gap-2 text-sm ${answered.correct ? 'text-menta' : 'text-clay'}`}
                         data-testid="live-answered-hint"
@@ -715,6 +733,22 @@ export default function LiveSessionPage() {
                             · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
                           </span>
                         </span>
+                      </div>
+                    )}
+                    {/* Has to live in the `footer` slot rather than inside the
+                        activity: the stage goes `inert` once answered, so a button
+                        in there would render and refuse to be clicked. */}
+                    {canReopen && (
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={reopen}
+                          data-testid="live-reopen-answer"
+                          className="inline-flex h-10 items-center gap-2 rounded-full border border-border px-5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          {t('live.answer.reopen')}
+                        </button>
                       </div>
                     )}
                   </>

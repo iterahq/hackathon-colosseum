@@ -1,3 +1,4 @@
+import { canReopenSubmission } from '@/utils/isAnswerableLiveKind';
 import type { LearnerGate, LearnerGateInput } from '@/types/liveClass';
 
 /**
@@ -23,15 +24,41 @@ import type { LearnerGate, LearnerGateInput } from '@/types/liveClass';
  *     with the lock again. An earlier build tied the lock to `hasRevealableAnswer`
  *     so `code` never locked; that contradicted the "pens down" rule and was
  *     reverted here.
+ *   - ANSWERING IS NOT FINAL WHILE THE ROUND IS OPEN (ADR-1 do plano
+ *     `20260728-itera-aula-ao-vivo-call-lideres`, Tainan 2026-07-28: "enquanto o
+ *     timer tiver rolando, aluno pode voltar a editar (acho que tem que ser um
+ *     clique explícito)"). `canReopen` is that authorization. It is bounded by
+ *     EXPIRY, not by `timerRunning`: most live rounds run with no countdown armed
+ *     at all, and requiring one would leave the affordance off exactly where the
+ *     learner asked for it (first real class, 06/08). Once the clock runs out or
+ *     the professor stops it, "pens down" wins over ADR-1.
+ *   - ⚠️ REOPENING DOES NOT UN-ANSWER. `answered` means "a submitted answer of
+ *     mine exists", and `reopened` is the separate fact that they are working on
+ *     it again — because `locked` reads `answered`. Folding the two together (a
+ *     reopen that flips `answered` back to false) put a learner whose countdown
+ *     expired mid-edit on the "pens down" screen as if they had never answered,
+ *     with their verdict gone from the UI while the row sat in the database.
  */
 export function learnerActivityGate({
   timerRunning,
   expired,
   answered,
+  reopened = false,
 }: LearnerGateInput): LearnerGate {
   const started = timerRunning || expired;
   const locked = expired && !answered;
-  const readOnly = locked || answered;
-  const canComplete = !locked && !answered;
-  return { started, locked, readOnly, canComplete };
+  const editing = answered && reopened && !expired;
+  const readOnly = expired || (answered && !editing);
+  const canComplete = !expired && (!answered || editing);
+  const canReopen = answered && !reopened && !expired;
+  return { started, locked, readOnly, canComplete, canReopen, editing };
+}
+
+/**
+ * Both halves of the ADR-1 authorization, which is what a surface actually wants:
+ * the ROUND (`gate.canReopen`) and the KIND (`canReopenSubmission`). Composed here
+ * so no caller can get the conjunction half-right.
+ */
+export function canLearnerReopen(gate: LearnerGate, kind: string | null | undefined): boolean {
+  return gate.canReopen && canReopenSubmission(kind);
 }

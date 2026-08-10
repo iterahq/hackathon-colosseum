@@ -297,6 +297,12 @@ export interface LearnerGateInput {
   expired: boolean;
   /** The learner already answered THIS activity. */
   answered: boolean;
+  /**
+   * The learner took that answer back to work on it again. Stays true until they
+   * resubmit, so `answered` keeps meaning "there is a submitted answer of mine"
+   * — which is what the expiry lock reads.
+   */
+  reopened?: boolean;
 }
 
 export interface LearnerGate {
@@ -308,6 +314,13 @@ export interface LearnerGate {
   readOnly: boolean;
   /** A completion may be persisted/broadcast (never locked or already answered). */
   canComplete: boolean;
+  /**
+   * The learner may take their own submission back and work on it again. Says
+   * nothing about the KIND — that is `canReopenSubmission`.
+   */
+  canReopen: boolean;
+  /** They took it back and the round is still open — editing a second time. */
+  editing: boolean;
 }
 
 export interface UseClassSession {

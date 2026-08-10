@@ -114,3 +114,19 @@ describe('New live.block.* keys in i18n', () => {
     });
   }
 });
+
+/* ── 5. Reopen label (ADR-1) ─────────────────────────────────────────────── */
+
+describe('live.answer.reopen in i18n', () => {
+  it('is present in both locales', () => {
+    expect(resources.pt['live.answer.reopen']).toBeTruthy();
+    expect(resources.en['live.answer.reopen']).toBeTruthy();
+  });
+
+  it('matches the in-activity label for the same affordance', () => {
+    // Same button, two surfaces (the activity's own retry and the live page's
+    // reopen). Divergent wording read as two different features to the learner.
+    expect(resources.pt['live.answer.reopen']).toBe(resources.pt['code.checks.editAgain']);
+    expect(resources.en['live.answer.reopen']).toBe(resources.en['code.checks.editAgain']);
+  });
+});

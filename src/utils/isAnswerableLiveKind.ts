@@ -1,6 +1,6 @@
 /**
- * TWO different questions about an activity kind in a live class — deliberately
- * TWO predicates. Do NOT collapse them back into one.
+ * THREE different questions about an activity kind in a live class —
+ * deliberately THREE predicates. Do NOT collapse them into one.
  *
  *   1. `isAnswerableLiveKind(kind)` — "does the learner PRODUCE something here?"
  *      Drives the shared countdown (`liveTimerSeconds`): a content kind
@@ -13,7 +13,13 @@
  *      screen?" Drives ONLY the instructor's "Revelar resposta" control. It does
  *      NOT gate the learner lock — the lock is universal over answerable kinds.
  *
- * They diverge on two kinds, in OPPOSITE directions — which is the whole reason
+ *   3. `canReopenSubmission(kind)` — "may the learner take their submission back
+ *      and work on it again?" (ADR-1 do plano
+ *      `20260728-itera-aula-ao-vivo-call-lideres`). The timing half of that
+ *      authorization is `learnerActivityGate.canReopen`; this is the KIND half,
+ *      and the two are separate because the reason each says no is different.
+ *
+ * The first two diverge on two kinds, in OPPOSITE directions — which is the whole reason
  * neither one can be derived from the other:
  *   - `code` IS answerable but has NOTHING to reveal → it gets a countdown
  *     (5 min, see `liveTimerSeconds`) and locks on expiry like everything else,
@@ -32,7 +38,8 @@
  * reveal predicate governs (an earlier build wired `hasRevealableAnswer` into the
  * lock so `code` never locked; that contradicted "pens down" and was reverted).
  *
- * If you add a new kind, ask BOTH questions separately before editing the sets.
+ * If you add a new kind, ask ALL THREE questions separately before editing the
+ * sets.
  */
 
 /** Kinds with an answer FLOW (learner produces something) → eligible for a timer. */
@@ -76,6 +83,27 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Kinds whose submission the learner may reopen and redo (ADR-1).
+ *
+ * ⚠️ THE MEMBERSHIP RULE IS "DID THE FEEDBACK HAND OVER THE ANSWER?", and it is
+ * the OPPOSITE of `REVEALABLE_ANSWER_KINDS` for a reason that is pedagogical,
+ * not technical: on an MCQ family kind the learner has already SEEN the right
+ * option by the time they could reopen, so a second try is not a second attempt
+ * — it is a free point, and the podium would rank the room by who clicked
+ * "editar" instead of who knew the answer.
+ *
+ * `code` is the one kind where the verdict says WHICH check failed and never the
+ * solution, so reopening costs real work — and it is the kind a learner actually
+ * asked to reopen in the first real class (06/08).
+ *
+ * `sandbox_scenario` is deliberately OUT even though it is answerable: it already
+ * owns an in-window critique→retry loop
+ * (`components/branded/activity/sandbox/useSandboxScenario.ts`), so bolting a
+ * second reopen on top would give the same round two different ways back.
+ */
+const REOPENABLE_KINDS: ReadonlySet<string> = new Set(['code']);
+
+/**
  * Does this kind have an answer flow? Use for TIMER decisions only.
  * NOT a proxy for "we can reveal an answer" — use `hasRevealableAnswer` there.
  */
@@ -90,4 +118,12 @@ export function isAnswerableLiveKind(kind: string | null | undefined): boolean {
  */
 export function hasRevealableAnswer(kind: string | null | undefined): boolean {
   return !!kind && REVEALABLE_ANSWER_KINDS.has(kind);
+}
+
+/**
+ * May the learner reopen their own submission on this kind? The WHEN is
+ * `learnerActivityGate.canReopen`; use `canLearnerReopen` to ask both at once.
+ */
+export function canReopenSubmission(kind: string | null | undefined): boolean {
+  return !!kind && REOPENABLE_KINDS.has(kind);
 }

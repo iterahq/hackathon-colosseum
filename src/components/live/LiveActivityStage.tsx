@@ -32,6 +32,15 @@ interface LiveActivityStageProps {
   footer?: ReactNode;
   /** Overrides the inner wrapper testid (kept for the instructor mirror). */
   testid?: string;
+  /**
+   * Bumped when the learner reopens their submission (ADR-1), to force the same
+   * activity to remount. A liquidated activity sits in its own terminal phase
+   * (`useCodeChecks` `settled`) and nothing outside it can walk that back — the
+   * remount is what puts it back in `editing`. `code` re-seeds the editor from its
+   * own autosaved snapshot, so the work survives whenever that snapshot does
+   * (`useCodeSnack` debounces the autosave, so the last keystrokes may not).
+   */
+  attempt?: number;
 }
 
 const noop = () => {};
@@ -50,6 +59,7 @@ export function LiveActivityStage({
   timerSlot,
   footer,
   testid,
+  attempt = 0,
 }: LiveActivityStageProps) {
   const handleClick = (e: MouseEvent<HTMLDivElement>) => {
     if (readOnly || !onSubmit) return;
@@ -68,7 +78,7 @@ export function LiveActivityStage({
         onClick={handleClick}
         {...(readOnly ? { inert: '' } : {})}
       >
-        <ActivityRenderer key={activity.id} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live />
+        <ActivityRenderer key={`${activity.id}:${attempt}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live />
       </div>
       {footer}
     </div>

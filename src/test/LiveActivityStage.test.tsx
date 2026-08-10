@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
@@ -40,5 +40,49 @@ describe('LiveActivityStage', () => {
     });
     expect(screen.getByTestId('stage-timer')).toBeTruthy();
     expect(screen.getByTestId('stage-footer')).toBeTruthy();
+  });
+
+  it('the footer sits OUTSIDE the inert wrapper, so its buttons stay clickable when read-only', () => {
+    // This is what lets the reopen button (ADR-1) work at all: the activity is
+    // inert the moment it is answered, so a button inside it would render and
+    // refuse the click.
+    renderStage({
+      readOnly: true,
+      testid: 'stage',
+      footer: <button data-testid="stage-footer-action" />,
+    });
+    const wrapper = screen.getByTestId('stage');
+    expect(wrapper).toHaveAttribute('inert');
+    expect(wrapper.contains(screen.getByTestId('stage-footer-action'))).toBe(false);
+  });
+
+  it('bumping attempt remounts the same activity (ADR-1 reopen)', () => {
+    const choice = makeActivity('single_choice', {
+      instruction: { text: 'Escolha uma.' },
+      options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }],
+      correct_option_id: 'a',
+    });
+    const view = render(
+      <MemoryRouter>
+        <I18nProvider>
+          <LiveActivityStage activity={choice} attempt={0} onComplete={() => {}} />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getAllByTestId('single-choice-option')[0]);
+    expect(screen.getAllByTestId('single-choice-option')[0]).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+
+    view.rerender(
+      <MemoryRouter>
+        <I18nProvider>
+          <LiveActivityStage activity={choice} attempt={1} onComplete={() => {}} />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    expect(screen.getAllByTestId('single-choice-option')[0]).not.toHaveAttribute('data-selected');
   });
 });
