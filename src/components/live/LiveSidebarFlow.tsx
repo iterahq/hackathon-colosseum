@@ -27,7 +27,7 @@ export function LiveSidebarFlow({
   controls?: ReactNode;
 }) {
   return (
-    <div className="shrink-0 max-h-[52vh] overflow-y-auto divide-y divide-border border-b border-border">
+    <div className="shrink-0 max-h-[52dvh] overflow-y-auto divide-y divide-border border-b border-border">
       <div>
         {showActivity && activityCount > 0 && (
           <LiveActivityStepper index={activityIndex} count={activityCount} />

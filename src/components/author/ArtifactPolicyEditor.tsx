@@ -165,7 +165,7 @@ export function ArtifactPolicyEditor({
             </div>
           </fieldset>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block">
               <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 {t('authoring.artifact.type')}

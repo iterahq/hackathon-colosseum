@@ -133,8 +133,8 @@ export interface SidebarContract {
  *   `LiveSessionPage` / `InstructorSessionPage` wrap it in
  *   `flex flex-col lg:flex-row`, and `LiveSidebar` is
  *   `w-full lg:w-[340px] … border-t lg:border-t-0 lg:border-l … lg:sticky`.
- *   The learner variant (`collapsible = role !== 'instructor'`) additionally
- *   renders a `lg:hidden` toggle and keeps its body `hidden` until tapped.
+ *   Nos dois papéis a lista de alunos é gaveta: um toggle `lg:hidden` e o corpo
+ *   `hidden` até alguém tocar.
  *
  * So, below `lg` (phone AND tablet): a full-bleed stacked block with a toggle.
  * At `lg+`: a 340px right rail that starts where the content ends — never on

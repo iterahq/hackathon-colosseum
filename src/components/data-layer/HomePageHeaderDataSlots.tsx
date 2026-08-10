@@ -58,7 +58,7 @@ export function HomePageHeaderDataSlots() {
             <Trophy className="h-4 w-4 text-xp" />
           </Button>
         </DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader>
             <DrawerTitle>Conquistas</DrawerTitle>
           </DrawerHeader>
@@ -87,7 +87,7 @@ export function HomePageHeaderDataSlots() {
             <NotificationBellIcon unreadCount={previewNotifications.unreadCount} />
           </Button>
         </DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader>
             <DrawerTitle>Notificações</DrawerTitle>
           </DrawerHeader>
@@ -116,7 +116,7 @@ export function HomePageHeaderDataSlots() {
             <Settings className="h-4 w-4" />
           </Button>
         </DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[85dvh]">
           <div className="overflow-y-auto px-4 pb-2 pt-2">
             <PreviewSectionLabel taskId="T2" />
             <AppearanceSettingsPanel preferences={previewUserPreferences} />

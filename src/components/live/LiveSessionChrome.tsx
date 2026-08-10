@@ -63,7 +63,7 @@ export function LiveSessionChrome({
         onClick={onClose}
         aria-label={t('common.back')}
         data-testid="live-close"
-        className="absolute top-2.5 left-3 md:left-4 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+        className="absolute top-2.5 left-3 md:left-4 z-10 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>
@@ -72,8 +72,10 @@ export function LiveSessionChrome({
         <div className="absolute top-12 left-3 md:left-4 z-40">{closeConfirm}</div>
       )}
 
+      {/* Sem teto este grupo cresce por cima do X — que é pintado antes — e
+          engole o botão de sair a 360px. O teto reserva 3rem de cada lado. */}
       <div
-        className="absolute top-2.5 left-1/2 -translate-x-1/2 h-9 flex items-center gap-2"
+        className="absolute top-2.5 left-1/2 -translate-x-1/2 h-10 sm:h-9 flex items-center gap-2 max-w-[calc(100%_-_6rem)] min-w-0"
         data-testid="live-indicator"
         data-status={ended ? 'ended' : 'live'}
       >
@@ -87,7 +89,7 @@ export function LiveSessionChrome({
           </span>
         ) : (
           <span
-            className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-full border text-xs font-medium ${
+            className={`inline-flex shrink-0 items-center gap-1.5 px-2 sm:px-3 h-8 rounded-full border text-xs font-medium ${
               connected
                 ? 'border-clay/50 bg-clay/10 text-clay'
                 : 'border-border bg-card text-muted-foreground'
@@ -99,7 +101,7 @@ export function LiveSessionChrome({
               )}
               <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
             </span>
-            {t('live.badge.label')}
+            <span className="sr-only sm:not-sr-only">{t('live.badge.label')}</span>
             {/* Presence count hides on phones so pill + prominent timer never
                 overflow onto the close button / sound toggle; N/M stays. */}
             <span className="opacity-70 hidden sm:inline">· {presenceCount}</span>

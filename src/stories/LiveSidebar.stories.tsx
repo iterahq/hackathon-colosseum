@@ -11,8 +11,8 @@ import { noopModeration, sampleAnswerers, sampleRoomRows, sampleRoster } from '.
  * so it is never missed) plus the participation pulse. Instructor: activity stats,
  * the stage banner and the per-student actions.
  *
- * ⚠️ The learner body is `lg:`-gated — below 1024 px it collapses behind the
- * toggle. View these stories on a desktop-width canvas.
+ * ⚠️ The room list is `lg:`-gated in BOTH roles — below 1024 px it collapses
+ * behind the toggle. View these stories on a desktop-width canvas.
  */
 const meta: Meta<typeof LiveSidebar> = {
   title: 'Organisms/Live/LiveSidebar',

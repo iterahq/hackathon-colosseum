@@ -24,7 +24,7 @@ export function LiveHandButton({ raised, onToggle, full = false }: LiveHandButto
       aria-pressed={raised}
       aria-label={raised ? t('live.hand.lower') : t('live.hand.raise')}
       className={`inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors ${
-        full ? 'w-full h-10 justify-center text-sm' : 'h-8 px-2.5 sm:px-3 text-xs'
+        full ? 'w-full h-10 justify-center text-sm' : 'h-10 px-3 sm:h-8 text-xs'
       } ${
         raised
           ? 'bg-clay text-white border-clay animate-pulse'

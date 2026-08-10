@@ -75,11 +75,11 @@ export function LiveSidebar({
   const showActivity = isInstructor && hasActivity;
   const instructors = roster.filter((m) => m.isInstructor);
 
-  const collapsible = !isInstructor;
   const [open, setOpen] = useState(false);
-  const bodyClass = collapsible
-    ? `min-h-0 flex flex-col lg:flex-1 lg:max-h-none lg:flex ${open ? 'max-h-[45vh]' : 'hidden'}`
-    : 'flex-1 min-h-0 flex flex-col';
+  // A lista de alunos vira gaveta nos dois papéis: no celular a sidebar cai
+  // embaixo da coluna inteira e, aberta, o professor rolava uma parede de nomes
+  // pra chegar nos controles de encerrar.
+  const bodyClass = `min-h-0 flex flex-col lg:flex-1 lg:max-h-none lg:flex ${open ? 'max-h-[45dvh]' : 'hidden'}`;
 
   // Only while an activity is on screen: there is nothing to pull during reception.
   const actionsFor = showActivity
@@ -92,9 +92,7 @@ export function LiveSidebar({
       data-testid={isInstructor ? 'instructor-sidebar' : 'live-sidebar'}
       data-compact={compact ? 'true' : 'false'}
     >
-      {collapsible && (
-        <LiveSidebarToggle open={open} count={roster.length} onToggle={() => setOpen((o) => !o)} />
-      )}
+      <LiveSidebarToggle open={open} count={roster.length} onToggle={() => setOpen((o) => !o)} />
 
       {handSlot && <div className="hidden lg:block px-4 pb-3 border-b border-border">{handSlot}</div>}
 

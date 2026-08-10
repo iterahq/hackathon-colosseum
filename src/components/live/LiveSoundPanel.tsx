@@ -26,7 +26,7 @@ export function LiveSoundPanel({ volumePct, onVolume, musicOn, onMusic }: LiveSo
           {volumePct}%
         </span>
       </div>
-      <div className="grid grid-cols-6 gap-1" role="group" aria-label={t('live.sound.volume')}>
+      <div className="grid grid-cols-3 gap-1.5" role="group" aria-label={t('live.sound.volume')}>
         {VOLUME_STEPS.map((step) => {
           const pct = Math.round(step * 100);
           const active = volumePct === pct;
@@ -37,7 +37,7 @@ export function LiveSoundPanel({ volumePct, onVolume, musicOn, onMusic }: LiveSo
               onClick={() => onVolume(step)}
               data-testid={`live-volume-${pct}`}
               aria-pressed={active}
-              className={`rounded-lg border py-1.5 text-[10px] font-medium tabular-nums transition-colors ${
+              className={`rounded-lg border py-2.5 text-[11px] font-medium tabular-nums transition-colors ${
                 active
                   ? 'border-menta/50 bg-menta/10 text-menta'
                   : 'border-border text-muted-foreground hover:text-foreground hover:border-menta/40'

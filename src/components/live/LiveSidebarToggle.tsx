@@ -2,8 +2,8 @@ import { Users, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/i18n';
 
 /**
- * Learner-only, phone-only: on a narrow screen the room list is a drawer, so the
- * activity keeps the whole viewport until the learner asks to see the class.
+ * Phone-only: on a narrow screen the room list is a drawer, so the activity
+ * keeps the whole viewport until someone asks to see the class.
  */
 export function LiveSidebarToggle({
   open,
