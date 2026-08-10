@@ -4,15 +4,17 @@ import { useI18n } from '@/i18n';
 
 interface LiveSessionChromeProps {
   progressPct: number;
-  connected: boolean;
-  presenceCount: number;
   ended: boolean;
-  /** Current activity position (0-based) + total, for the N/M cue. */
+  /**
+   * Kept for the `data-*` on the indicator so a test/analytics reader can still
+   * tell WHERE in the flow a class was, even though the chrome no longer paints
+   * the N/M cue (`LiveActivityStepper`, in the sidebar, is the one place for it).
+   */
   activityIndex?: number;
   activityCount?: number;
-  /** A prominent running timer, rendered beside the LIVE pill (top-center). */
+  /** A prominent running timer, pinned to the RIGHT (Tainan 2026-08-06). */
   timerSlot?: ReactNode;
-  /** Learner hand-raise toggle, pinned beside the timer (top-center). */
+  /** Learner hand-raise toggle, rendered beside the timer. */
   handSlot?: ReactNode;
   onClose: () => void;
   /** Confirmação ancorada sob o X. O chrome só posiciona; quem decide é a página. */
@@ -20,16 +22,21 @@ interface LiveSessionChromeProps {
 }
 
 /**
- * The immersive top chrome of a live class — progress bar, close, the LIVE
- * pill + presence count and position cue. Shared by the
- * learner surface AND the instructor surface so the professor sees the SAME
- * frame the students do (screen-share parity); the professor just adds controls
- * around this, never a different shell.
+ * The immersive top chrome of a live class — progress bar, close, the ended
+ * indicator, timer + hand. Shared by the learner surface AND the instructor
+ * surface so the professor sees the SAME frame the students do (screen-share
+ * parity); the professor just adds controls around this, never a different shell.
+ *
+ * ⚠️ It no longer carries a LIVE pill with presence count and position. Both
+ * were already on screen — the roster IS the presence count and
+ * `LiveActivityStepper` IS the N/M cue — and in the first class with real
+ * students the duplicate read as chrome noise competing with the stage
+ * ("o outro badge do centro ali tirar (redundante)", Tainan 2026-08-06). The
+ * `connected` state now surfaces only through `LiveReconnectBanner`, which says
+ * what a dot cannot: what the learner should do about it.
  */
 export function LiveSessionChrome({
   progressPct,
-  connected,
-  presenceCount,
   ended,
   activityIndex,
   activityCount,
@@ -39,8 +46,6 @@ export function LiveSessionChrome({
   closeConfirm,
 }: LiveSessionChromeProps) {
   const { t } = useI18n();
-  const showPosition =
-    typeof activityIndex === 'number' && activityIndex >= 0 && (activityCount ?? 0) > 0;
 
   return (
     <header className="relative z-30">
@@ -78,8 +83,10 @@ export function LiveSessionChrome({
         className="absolute top-2.5 left-1/2 -translate-x-1/2 h-10 sm:h-9 flex items-center gap-2 max-w-[calc(100%_-_6rem)] min-w-0"
         data-testid="live-indicator"
         data-status={ended ? 'ended' : 'live'}
+        data-activity-index={typeof activityIndex === 'number' ? activityIndex + 1 : undefined}
+        data-activity-count={activityCount}
       >
-        {ended ? (
+        {ended && (
           <span
             className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-border bg-card text-xs font-medium text-muted-foreground"
             data-testid="live-indicator-ended"
@@ -87,34 +94,17 @@ export function LiveSessionChrome({
             <span className="inline-flex h-2 w-2 rounded-full bg-muted-foreground" aria-hidden="true" />
             {t('live.status.ended')}
           </span>
-        ) : (
-          <span
-            className={`inline-flex shrink-0 items-center gap-1.5 px-2 sm:px-3 h-8 rounded-full border text-xs font-medium ${
-              connected
-                ? 'border-clay/50 bg-clay/10 text-clay'
-                : 'border-border bg-card text-muted-foreground'
-            }`}
-          >
-            <span className="relative flex h-2 w-2" aria-hidden="true">
-              {connected && (
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-clay opacity-75" />
-              )}
-              <span className={`relative inline-flex h-2 w-2 rounded-full ${connected ? 'bg-clay' : 'bg-muted-foreground'}`} />
-            </span>
-            <span className="sr-only sm:not-sr-only">{t('live.badge.label')}</span>
-            {/* Presence count hides on phones so pill + prominent timer never
-                overflow onto the close button / sound toggle; N/M stays. */}
-            <span className="opacity-70 hidden sm:inline">· {presenceCount}</span>
-            {showPosition && (
-              <span className="opacity-70 font-mono tabular-nums" data-testid="live-position-chrome">
-                · {(activityIndex as number) + 1}/{activityCount}
-              </span>
-            )}
-          </span>
         )}
-        {!ended && timerSlot}
-        {!ended && handSlot}
       </div>
+
+      {/* Timer + hand to the RIGHT: in the centre the countdown sat on top of the
+          stage and read as part of the activity. */}
+      {!ended && (timerSlot || handSlot) && (
+        <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-2" data-testid="live-chrome-right">
+          {timerSlot}
+          {handSlot}
+        </div>
+      )}
     </header>
   );
 }

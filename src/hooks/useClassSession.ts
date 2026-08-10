@@ -140,6 +140,12 @@ export function useClassSession(
   // entra (ver `recordAnswer`).
   const settledTimeRef = useRef<Set<string>>(new Set());
   const [timer, setTimer] = useState<ClassTimer | null>(null);
+  // O cronômetro só existe em broadcast, e broadcast não se repete. Numa aula
+  // `timer_gated` isso trava de verdade: quem reconecta ou chega atrasado fica
+  // sem `timerRunning` e o portão o deixa read-only pela rodada inteira. O ref
+  // é o que deixa o professor devolver o prazo junto do placar.
+  const timerRef = useRef<ClassTimer | null>(null);
+  timerRef.current = timer;
   // The activity whose timer was just STOPPED by the professor — cue to reveal
   // the correct answer to everyone. Cleared on advance.
   const [stoppedFor, setStoppedFor] = useState<string | null>(null);
@@ -389,9 +395,14 @@ export function useClassSession(
       scoreboardReplyTimer = window.setTimeout(() => {
         scoreboardReplyTimer = null;
         if (disposed || currentCtrl !== ctrl) return;
+        const armed = timerRef.current;
         void getSessionScoreboard(sessionId)
           .then((entries) => {
-            if (disposed || currentCtrl !== ctrl || entries.length === 0) return;
+            if (disposed || currentCtrl !== ctrl) return;
+            // Placar vazio + cronômetro armado é EXATAMENTE o começo de uma
+            // rodada cronometrada, que é quando alguém chega atrasado. Sair
+            // calado aqui deixaria esse aluno travado até o tempo estourar.
+            if (entries.length === 0 && !armed) return;
             lastScoreboardReplyAt = Date.now();
             // Corta no remetente, não só na leitura: o teto existe pra resposta
             // grande não ser RECUSADA inteira, e uma recusa deixaria o
@@ -399,7 +410,12 @@ export function useClassSession(
             return ctrl.send({
               type: 'broadcast',
               event: SCOREBOARD_EVENT,
-              payload: { entries: entries.slice(0, SCOREBOARD_MAX_ENTRIES) },
+              payload: {
+                entries: entries.slice(0, SCOREBOARD_MAX_ENTRIES),
+                timer: armed
+                  ? { activity_id: armed.activityId, deadline: armed.deadline }
+                  : null,
+              },
             });
           })
           .catch(() => undefined);
@@ -610,6 +626,10 @@ export function useClassSession(
           for (const e of parseScoreboard(payload)) {
             recordAnswer(e.activityId, e.userId, e.correct, e.elapsedMs);
           }
+          // `deadline` é absoluto, então repetir o mesmo prazo pra quem já o tem
+          // não muda nada — e é o que rehidrata quem não tem.
+          const armed = parseTimerEvent((payload as { timer?: unknown } | null)?.timer);
+          if (armed) setTimer(armed);
         })
         // Abaixar a mão de outro é impossível por escrita (presença é do dono),
         // então é o cliente do aluno que abaixa a própria e re-publica.

@@ -181,6 +181,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     // "Pens down" — mesmo aviso pra todo kind respondível quando o tempo acaba,
     // `code` incluído. Não existe mais um "pode continuar": se o clock zera, trava.
     'live.timer.lockedHint': 'Tempo esgotado. Aguarde o professor avançar.',
+    // Antes da largada a atividade também está inerte, mas por outro motivo — e
+    // dizer "tempo esgotado" num exercício que nem começou é a pior leitura possível.
+    'live.timer.awaitingHint': 'Aguarde o professor iniciar o tempo.',
     'live.timer.addTime.aria': 'Ajustar o tempo do cronômetro',
     'live.timer.addTime.title': 'Ajustar tempo',
     'live.timer.addTime.hintRunning': 'Muda o tempo que resta para a turma.',
@@ -254,6 +257,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.start.error': 'Não foi possível iniciar a aula.',
     'live.instructor.start.loadingActivities': 'Carregando as atividades da lição…',
     'live.instructor.start.noActivities': 'Esta lição ainda não tem atividades.',
+    'live.instructor.start.timerGated': 'Travar exercício até eu iniciar o tempo',
+    'live.instructor.start.timerGatedHint':
+      'A turma só pode responder depois de você apertar "Iniciar tempo". Slides e leituras seguem livres.',
     'live.instructor.schedule.label': 'Ou agende para depois',
     'live.instructor.schedule.cta': 'Agendar aula',
     'live.instructor.schedule.startNow': 'Iniciar agora',
@@ -881,6 +887,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.timer.done': "Time's up",
     'live.timer.stop': 'Stop',
     'live.timer.lockedHint': "Time's up. Wait for the instructor to advance.",
+    'live.timer.awaitingHint': 'Wait for the instructor to start the timer.',
     'live.timer.addTime.aria': 'Adjust the timer',
     'live.timer.addTime.title': 'Adjust time',
     'live.timer.addTime.hintRunning': 'Changes the time the class has left.',
@@ -987,6 +994,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.instructor.start.error': 'Could not start the class.',
     'live.instructor.start.loadingActivities': 'Loading the lesson activities…',
     'live.instructor.start.noActivities': 'This lesson has no activities yet.',
+    'live.instructor.start.timerGated': 'Lock exercises until I start the timer',
+    'live.instructor.start.timerGatedHint':
+      'The class can only answer after you press "Start timer". Slides and readings stay open.',
     'live.instructor.schedule.label': 'Or schedule for later',
     'live.instructor.schedule.cta': 'Schedule class',
     'live.instructor.schedule.startNow': 'Start now',

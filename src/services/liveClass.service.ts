@@ -27,7 +27,7 @@ const posIntOrNull = (v: unknown): number | null =>
   typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : null;
 
 const SELECT_COLS =
-  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, podium_every, scheduled_at, started_at, ended_at, created_at';
+  'id, tenant_id, lesson_id, instructor_id, current_activity_id, status, scope, podium_every, timer_gated, scheduled_at, started_at, ended_at, created_at';
 
 export function mapSession(row: Row): ClassSession {
   return {
@@ -39,6 +39,10 @@ export function mapSession(row: Row): ClassSession {
     status: (str(row.status) || 'pending') as ClassSessionStatus,
     scope: (str(row.scope) || 'tenant') as ClassScope,
     podiumEvery: posIntOrNull(row.podium_every),
+    // Só `true` liga o travamento: uma linha vinda de um schema sem a coluna
+    // (backup antigo, ambiente pré-0057) lê como aula sem trava, não como aula
+    // que trava a turma inteira por engano.
+    timerGated: row.timer_gated === true,
     scheduledAt: strOrNull(row.scheduled_at),
     startedAt: strOrNull(row.started_at),
     endedAt: strOrNull(row.ended_at),
@@ -175,6 +179,7 @@ export async function startClassSession(params: {
   instructorId: string;
   scope?: ClassScope;
   podiumEvery?: number | null;
+  timerGated?: boolean;
 }): Promise<ClassSession> {
   const sb = getSupabase();
   const podiumEvery =
@@ -191,6 +196,7 @@ export async function startClassSession(params: {
       status: 'live',
       scope: params.scope ?? 'tenant',
       podium_every: podiumEvery,
+      timer_gated: params.timerGated === true,
       started_at: new Date().toISOString(),
     })
     .select(SELECT_COLS)
@@ -212,6 +218,7 @@ export async function scheduleClassSession(params: {
   scheduledAt: string;
   scope?: ClassScope;
   podiumEvery?: number | null;
+  timerGated?: boolean;
 }): Promise<ClassSession> {
   const sb = getSupabase();
   const podiumEvery =
@@ -228,6 +235,7 @@ export async function scheduleClassSession(params: {
       status: 'pending',
       scope: params.scope ?? 'tenant',
       podium_every: podiumEvery,
+      timer_gated: params.timerGated === true,
       scheduled_at: params.scheduledAt,
       started_at: null,
     })

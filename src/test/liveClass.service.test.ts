@@ -125,6 +125,7 @@ describe('mapSession', () => {
       status: 'live',
       scope: 'global',
       podiumEvery: 3,
+      timerGated: false,
       scheduledAt: null,
       startedAt: '2026-07-02T10:00:00Z',
       endedAt: null,
@@ -145,5 +146,14 @@ describe('mapSession', () => {
   it('coerces an absent/invalid podium_every to null', () => {
     expect(mapSession({ ...liveRow, podium_every: null }).podiumEvery).toBeNull();
     expect(mapSession({ ...liveRow, podium_every: 0 }).podiumEvery).toBeNull();
+  });
+
+  it('só lê timerGated como ligado no `true` explícito', () => {
+    // Uma linha de um schema sem a coluna (0057 não aplicada, backup antigo) tem
+    // que ler como aula SEM trava. O erro contrário deixaria a turma inteira
+    // impedida de responder sem ninguém ter pedido isso.
+    expect(mapSession({ ...liveRow, timer_gated: true }).timerGated).toBe(true);
+    expect(mapSession({ ...liveRow, timer_gated: 'true' }).timerGated).toBe(false);
+    expect(mapSession(liveRow).timerGated).toBe(false);
   });
 });

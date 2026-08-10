@@ -15,7 +15,7 @@ import { withActivityWidth } from './decorators';
  *
  * Por que a story é do `LiveActivityStage` e não de cada activity: `locked` NÃO
  * é prop de componente de activity. Ele é PRODUZIDO por
- * `learnerActivityGate({ timerRunning, expired, answered })` na
+ * `learnerActivityGate({ timerRunning, expired, answered, timerConfigured })` na
  * `src/pages/LiveSessionPage.tsx` e CONSUMIDO aqui, como a prop `readOnly` do
  * stage — que aplica `inert` (mata pointer/teclado e some da árvore de a11y) e
  * `select-none`. Renderizar "locked" dentro de um `SingleChoiceActivity`
@@ -24,6 +24,11 @@ import { withActivityWidth } from './decorators';
  * As stories abaixo passam pelo gate DE VERDADE (`expired: true, answered:
  * false` ⇒ `locked`), em vez de hard-codar `readOnly` — assim, se a regra do
  * gate mudar, a vitrine muda junto.
+ *
+ * ⚠️ `locked` não é mais o único produtor de `readOnly`: numa aula criada com
+ * `timer_gated`, `awaitingStart` deixa o exercício igualmente inerte ANTES da
+ * largada. Visualmente é o mesmo estado desenhado aqui; o que muda é o aviso
+ * embaixo (`live.timer.awaitingHint`, não "tempo esgotado").
  *
  * Os specs vêm todos de `contractFixtures.ts` (fonte única, Zod-validada pelo
  * guard `src/test/activityContractFixtures.test.ts`).

@@ -8,16 +8,18 @@
 import { describe, it, expect } from 'vitest';
 import { learnerActivityGate, canLearnerReopen } from './liveActivityGate';
 import { hasRevealableAnswer } from './isAnswerableLiveKind';
+import { liveTimerSeconds } from './liveTimerSeconds';
 
 const base = { timerRunning: false, expired: false, answered: false };
 
 describe('learnerActivityGate', () => {
-  describe('interactive on arrival (no pre-start gate)', () => {
+  describe('interactive on arrival (activity WITHOUT a clock)', () => {
     it('lets the learner answer as soon as the activity is advanced to', () => {
       const g = learnerActivityGate({ ...base });
       expect(g.readOnly).toBe(false);
       expect(g.canComplete).toBe(true);
       expect(g.locked).toBe(false);
+      expect(g.awaitingStart).toBe(false);
     });
 
     it('stays interactive while a timer runs', () => {
@@ -25,6 +27,90 @@ describe('learnerActivityGate', () => {
       expect(g.started).toBe(true);
       expect(g.readOnly).toBe(false);
       expect(g.canComplete).toBe(true);
+    });
+  });
+
+  describe('pre-start lock (activity WITH a clock the professor has not started)', () => {
+    it('is inert before the professor starts the clock', () => {
+      const g = learnerActivityGate({ ...base, timerConfigured: true });
+      expect(g.awaitingStart).toBe(true);
+      expect(g.readOnly).toBe(true);
+      expect(g.canComplete).toBe(false);
+      // Não é expiry: quem lê `locked` mostra "tempo esgotado", e o tempo nem começou.
+      expect(g.locked).toBe(false);
+      expect(g.started).toBe(false);
+    });
+
+    it('opens the moment the clock starts', () => {
+      const g = learnerActivityGate({ ...base, timerConfigured: true, timerRunning: true });
+      expect(g.awaitingStart).toBe(false);
+      expect(g.readOnly).toBe(false);
+      expect(g.canComplete).toBe(true);
+    });
+
+    it('reads as expiry, not as pre-start, once the clock ran out', () => {
+      const g = learnerActivityGate({ ...base, timerConfigured: true, expired: true });
+      expect(g.awaitingStart).toBe(false);
+      expect(g.locked).toBe(true);
+      expect(g.canComplete).toBe(false);
+    });
+
+    it('an activity with no clock is never caught by the pre-start lock', () => {
+      // É esta assimetria que impede a regressão do build antigo, em que o gate
+      // armado só por `timerRunning` deixava TODO slide/sandbox read-only.
+      expect(learnerActivityGate({ ...base, timerConfigured: false }).awaitingStart).toBe(false);
+      expect(learnerActivityGate({ ...base }).awaitingStart).toBe(false);
+    });
+
+    it('never reopens an activity the learner already answered', () => {
+      const g = learnerActivityGate({ ...base, timerConfigured: true, answered: true });
+      expect(g.awaitingStart).toBe(false);
+      expect(g.readOnly).toBe(true);
+      expect(g.canComplete).toBe(false);
+    });
+  });
+
+  /* A composição EXATA do LiveSessionPage. O gate sozinho não erra; o que já
+     errou uma vez foi a expressão que alimenta ele. */
+  describe('as composed by LiveSessionPage (aula + atividade)', () => {
+    const compose = (timerGated: boolean, kind: string, spec?: unknown) =>
+      learnerActivityGate({
+        timerRunning: false,
+        expired: false,
+        answered: false,
+        timerConfigured: Boolean(timerGated && liveTimerSeconds(kind, spec) > 0),
+      });
+
+    it('aula sem trava: nada fica inerte, nem o exercício', () => {
+      expect(compose(false, 'single_choice').canComplete).toBe(true);
+      expect(compose(false, 'code').canComplete).toBe(true);
+    });
+
+    it('aula com trava: o exercício espera a largada', () => {
+      expect(compose(true, 'single_choice').awaitingStart).toBe(true);
+      expect(compose(true, 'code').awaitingStart).toBe(true);
+      expect(compose(true, 'sandbox_scenario').awaitingStart).toBe(true);
+    });
+
+    it('aula com trava: slide/leitura seguem livres (a regressão do build antigo)', () => {
+      for (const kind of ['concept', 'concept_reveal', 'video', 'diagram']) {
+        const g = compose(true, kind);
+        expect(g.awaitingStart).toBe(false);
+        expect(g.canComplete).toBe(true);
+      }
+    });
+
+    it('aula com trava: BYOC num concept É exercício e espera a largada', () => {
+      // BYOC transforma o kind de conteúdo em rodada avaliada, e é `liveTimerSeconds`
+      // quem já sabe disso — por isso a expressão passa o spec, não só o kind.
+      const spec = {
+        byoc: {
+          seed: { prompt: 'Conte um hobby seu.' },
+          harness: { generation_prompt: 'Crie duas versões sobre {seed}.', interaction: 'pick_best' },
+        },
+      };
+      expect(liveTimerSeconds('concept', spec)).toBeGreaterThan(0);
+      expect(compose(true, 'concept', spec).awaitingStart).toBe(true);
     });
   });
 
@@ -83,6 +169,7 @@ describe('learnerActivityGate', () => {
       expect(afterTimerStops()).toEqual({
         started: true,
         locked: true,
+        awaitingStart: false,
         readOnly: true,
         canComplete: false,
         canReopen: false,
@@ -162,6 +249,45 @@ describe('learnerActivityGate', () => {
 
     it('an unanswered learner still gets the real lock on expiry', () => {
       expect(learnerActivityGate({ ...base, expired: true }).locked).toBe(true);
+    });
+  });
+
+  /* ── ADR-1 × pre-start gate ──────────────────────────────────────────────────
+     Neither rule was written knowing about the other, and they overlap in one
+     reachable state: a learner who already submitted while the round was open,
+     and then sees the clock armed-but-not-started again (the professor walks the
+     class back to this activity). "Antes ou depois de terminar, n deve poder
+     mexer" is the newer instruction and the stricter one, so it wins: the way
+     back is withheld until the professor starts the clock. */
+  describe('an armed-but-unstarted clock outranks ADR-1', () => {
+    const armedAgain = { ...base, timerConfigured: true, answered: true };
+
+    it('withholds the way back until the professor starts the clock', () => {
+      const g = learnerActivityGate(armedAgain);
+      expect(g.canReopen).toBe(false);
+      expect(canLearnerReopen(g, 'code')).toBe(false);
+      expect(g.readOnly).toBe(true);
+    });
+
+    it('refuses to honour a reopen that predates the largada', () => {
+      // `reopened` is page state, so it survives the professor rearming the clock.
+      // Honouring it here would hand out an edit box for a round that has not
+      // opened, and the resubmit would land outside the window being timed.
+      const g = learnerActivityGate({ ...armedAgain, reopened: true });
+      expect(g.editing).toBe(false);
+      expect(g.readOnly).toBe(true);
+      expect(g.canComplete).toBe(false);
+      // Still not the expiry screen: nothing has run out.
+      expect(g.locked).toBe(false);
+      expect(g.awaitingStart).toBe(false);
+    });
+
+    it('hands ADR-1 back the moment the clock is running', () => {
+      const g = learnerActivityGate({ ...armedAgain, timerRunning: true });
+      expect(g.canReopen).toBe(true);
+      expect(learnerActivityGate({ ...armedAgain, timerRunning: true, reopened: true }).editing).toBe(
+        true
+      );
     });
   });
 

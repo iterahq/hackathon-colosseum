@@ -13,6 +13,12 @@ export interface ClassSession {
   status: ClassSessionStatus;
   scope: ClassScope;
   podiumEvery: number | null;
+  /**
+   * The professor chose, at class creation, that a timed exercise stays INERT
+   * until he starts the clock (migration 0057). `false` = today's behaviour: the
+   * activity is answerable the moment it lands on screen.
+   */
+  timerGated: boolean;
   /** Intended start time for a scheduled (pending) class; null when started immediately. */
   scheduledAt: string | null;
   startedAt: string | null;
@@ -364,6 +370,12 @@ export interface LearnerGateInput {
    * — which is what the expiry lock reads.
    */
   reopened?: boolean;
+  /**
+   * THIS activity has a countdown to be started (`liveTimerSeconds(kind, spec) > 0`).
+   * Optional: absent means "unknown", which keeps the pre-start behaviour of every
+   * call site that predates the flag.
+   */
+  timerConfigured?: boolean;
 }
 
 export interface LearnerGate {
@@ -371,6 +383,8 @@ export interface LearnerGate {
   started: boolean;
   /** Time ran out before the learner answered — inert + revealed. */
   locked: boolean;
+  /** The countdown exists but the professor hasn't started it — inert, NOT revealed. */
+  awaitingStart: boolean;
   /** The activity stage renders read-only (inert). */
   readOnly: boolean;
   /** A completion may be persisted/broadcast (never locked or already answered). */

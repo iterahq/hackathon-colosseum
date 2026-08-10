@@ -45,8 +45,6 @@ describe('LiveSessionChrome close confirmation', () => {
       <I18nProvider>
         <LiveSessionChrome
           progressPct={40}
-          connected
-          presenceCount={3}
           ended={false}
           onClose={() => {}}
           closeConfirm={<LiveLeaveConfirm onConfirm={() => {}} onCancel={() => {}} />}
@@ -60,15 +58,52 @@ describe('LiveSessionChrome close confirmation', () => {
   it('has no confirmation by default', () => {
     render(
       <I18nProvider>
-        <LiveSessionChrome
-          progressPct={0}
-          connected={false}
-          presenceCount={0}
-          ended={false}
-          onClose={() => {}}
-        />
+        <LiveSessionChrome progressPct={0} ended={false} onClose={() => {}} />
       </I18nProvider>
     );
     expect(screen.queryByTestId('live-leave-confirm')).toBeNull();
+  });
+});
+
+describe('LiveSessionChrome layout (Tainan 2026-08-06)', () => {
+  const renderChrome = (props: Partial<Parameters<typeof LiveSessionChrome>[0]> = {}) =>
+    render(
+      <I18nProvider>
+        <LiveSessionChrome
+          progressPct={20}
+          ended={false}
+          activityIndex={2}
+          activityCount={9}
+          timerSlot={<span data-testid="slot-timer" />}
+          handSlot={<span data-testid="slot-hand" />}
+          onClose={() => {}}
+          {...props}
+        />
+      </I18nProvider>
+    );
+
+  it('puts timer and hand on the right, not in the centre', () => {
+    renderChrome();
+    const right = screen.getByTestId('live-chrome-right');
+    expect(right.className).toContain('right-3');
+    expect(right).toContainElement(screen.getByTestId('slot-timer'));
+    expect(right).toContainElement(screen.getByTestId('slot-hand'));
+    expect(screen.getByTestId('live-indicator')).not.toContainElement(screen.getByTestId('slot-timer'));
+  });
+
+  it('no longer paints the redundant LIVE pill with presence and N/M', () => {
+    renderChrome();
+    // A posição segue legível por atributo (analytics/E2E), sem ocupar a tela.
+    const indicator = screen.getByTestId('live-indicator');
+    expect(indicator).toHaveAttribute('data-activity-index', '3');
+    expect(indicator).toHaveAttribute('data-activity-count', '9');
+    expect(indicator).toHaveTextContent('');
+    expect(screen.queryByTestId('live-position-chrome')).toBeNull();
+  });
+
+  it('keeps the ended indicator and drops the timer once the class ends', () => {
+    renderChrome({ ended: true });
+    expect(screen.getByTestId('live-indicator-ended')).toBeTruthy();
+    expect(screen.queryByTestId('live-chrome-right')).toBeNull();
   });
 });

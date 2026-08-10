@@ -363,6 +363,10 @@ function StartClass({
   const [slug, setSlug] = useState<string>('');
   const [lessonId, setLessonId] = useState<string>('');
   const [scheduledAt, setScheduledAt] = useState<string>('');
+  // Desligado por default: a aula sem trava é a que funcionou na primeira turma
+  // real, e ligar isso sem querer deixa a turma inteira sem responder até o
+  // professor lembrar de apertar "Iniciar tempo".
+  const [timerGated, setTimerGated] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -404,6 +408,7 @@ function StartClass({
         tenantId,
         lessonId,
         instructorId,
+        timerGated,
       });
       onStarted(session);
     } catch (e) {
@@ -423,6 +428,7 @@ function StartClass({
         lessonId,
         instructorId,
         scheduledAt: new Date(scheduledAt).toISOString(),
+        timerGated,
       });
       setScheduledAt('');
       onScheduled();
@@ -488,6 +494,22 @@ function StartClass({
           </option>
         ))}
       </select>
+
+      {/* Step 3 — cronômetro obrigatório. Vale para as DUAS saídas abaixo
+          (começar agora e agendar), por isso vive acima das duas. */}
+      <label className="flex items-start gap-2.5 mb-6 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={timerGated}
+          onChange={(e) => setTimerGated(e.target.checked)}
+          data-testid="instructor-timer-gated"
+          className="mt-0.5 h-4 w-4 rounded border-border accent-clay"
+        />
+        <span className="text-[13px]">
+          <span className="font-medium text-foreground">{t('live.instructor.start.timerGated')}</span>
+          <span className="block text-muted-foreground">{t('live.instructor.start.timerGatedHint')}</span>
+        </span>
+      </label>
 
       {error && (
         <p className="text-sm text-destructive mb-4" data-testid="instructor-start-error" role="alert">

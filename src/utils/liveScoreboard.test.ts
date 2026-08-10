@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseScoreboard, SCOREBOARD_MAX_ENTRIES } from './liveScoreboard';
+import { parseTimerEvent } from './liveTimer';
 
 describe('parseScoreboard', () => {
   it('lê o placar que o professor respondeu', () => {
@@ -55,5 +56,28 @@ describe('parseScoreboard', () => {
       correct: true,
     }));
     expect(parseScoreboard({ entries })).toHaveLength(SCOREBOARD_MAX_ENTRIES);
+  });
+});
+
+// A resposta de placar carrega o cronômetro de carona: numa aula `timer_gated`
+// quem reconecta sem prazo fica read-only a rodada inteira, e broadcast não se
+// repete. As duas leituras têm que conviver no MESMO payload.
+describe('cronômetro de carona na resposta de placar', () => {
+  const payload = {
+    entries: [{ activityId: 'act-1', userId: 'ana', correct: true }],
+    timer: { activity_id: 'act-1', deadline: 1_700_000_000_000 },
+  };
+
+  it('lê o placar e o prazo do mesmo payload', () => {
+    expect(parseScoreboard(payload)).toHaveLength(1);
+    expect(parseTimerEvent(payload.timer)).toEqual({
+      activityId: 'act-1',
+      deadline: 1_700_000_000_000,
+    });
+  });
+
+  it('resposta sem cronômetro não inventa prazo nenhum', () => {
+    expect(parseTimerEvent(null)).toBeNull();
+    expect(parseTimerEvent({ activity_id: 'act-1' })).toBeNull();
   });
 });

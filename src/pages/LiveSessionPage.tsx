@@ -57,7 +57,7 @@ import {
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { isExerciseActivity } from '@/utils/isExerciseActivity';
 import { LiveTimer } from '@/components/live/LiveTimer';
-import { LiveStopwatch } from '@/components/live/LiveStopwatch';
+import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { useLessonContent } from '@/hooks';
 import { useClassSession } from '@/hooks/useClassSession';
@@ -315,6 +315,14 @@ export default function LiveSessionPage() {
     expired,
     answered: hasAnswered,
     reopened,
+    // Duas condições, e as duas são necessárias. A da AULA (`timerGated`,
+    // escolhida na criação) é o que Tainan pediu e o que impede a turma de um
+    // professor que não usa cronômetro de ficar sem responder nada. A da
+    // ATIVIDADE (`liveTimerSeconds > 0`, que é 0 em todo kind de conteúdo) é o
+    // que impede a volta do build antigo, onde slide e sandbox ficavam read-only.
+    timerConfigured: Boolean(
+      session?.timerGated && current && liveTimerSeconds(current.kind, current.spec) > 0
+    ),
   });
   const { started, locked } = gate;
   // `saving` on top of the two ADR-1 halves: reopening mid-write would let the
@@ -594,19 +602,12 @@ export default function LiveSessionPage() {
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
       <LiveSessionChrome
         progressPct={progressPct}
-        connected={connected}
-        presenceCount={roster.length}
         ended={ended}
         activityIndex={activityIdx}
         activityCount={activities.length}
         timerSlot={
           timerRunning && timer && current ? (
             <LiveTimer prominent deadline={timer.deadline} onExpire={handleTimeUp} onWarn={sound.onWarn} />
-          ) : isExercise && !answered && !locked && activityStartedAt ? (
-            // Sem contagem regressiva o mesmo lugar mostra o cronômetro pessoal:
-            // solto no meio da coluna ele lia como parte da atividade. Só em
-            // exercício — num slide o relógio cobra pressa de quem só lê.
-            <LiveStopwatch startedAt={activityStartedAt} />
           ) : undefined
         }
         handSlot={
@@ -770,6 +771,11 @@ export default function LiveSessionPage() {
                     {locked && (
                       <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
                         {t('live.timer.lockedHint')}
+                      </p>
+                    )}
+                    {gate.awaitingStart && (
+                      <p className="mt-5 text-center text-sm text-muted-foreground" data-testid="live-awaiting-hint">
+                        {t('live.timer.awaitingHint')}
                       </p>
                     )}
                     {/* For GRADED (MCQ) kinds the answered hint moves into the

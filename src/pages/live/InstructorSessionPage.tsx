@@ -506,8 +506,6 @@ function ClassControl({
       <LiveReconnectBanner show={reconnecting} />
       <LiveSessionChrome
         progressPct={progressPct}
-        connected={connected}
-        presenceCount={roster.length}
         ended={ended || showPodium}
         activityIndex={idx}
         activityCount={activities.length}
