@@ -9,9 +9,9 @@ interface LiveStageProps {
   staged: StagedAnswer;
   /**
    * The activity currently on the class. Shown read-only when the learner has
-   * nothing local to project: `gatherStageContent` only sees a code snapshot or
-   * a submitted answer, so every other kind reports `not_started` even while the
-   * learner is working it. Pulling someone means showing the CURRENT state.
+   * nothing local to project: `gatherStageContent` only sees a code source or a
+   * submitted answer, so every other kind reports `empty` even while the learner
+   * is working it. Pulling someone means showing the CURRENT state.
    *
    * Only the instructor surface passes it: the learner already has their own
    * copy of the same activity right below the stage.
@@ -61,11 +61,18 @@ export function LiveStage({
   cursorOff = false,
 }: LiveStageProps) {
   const { t } = useI18n();
-  const isEmpty = staged.kind === 'empty' || staged.status === 'not_started';
   const isDraft = staged.status === 'in_progress';
-  // `code` is the ONE kind whose absence is trustworthy, and the renderer would
-  // seed the editor from the VIEWER's own localStorage — projecting the
-  // professor's draft under the learner's name.
+  // O aluno abriu o exercício e não tem trabalho nele: o palco projeta o starter,
+  // e sem selo a turma leria aquele código como resposta dele. O selo fala do
+  // CÓDIGO ("sem edições"), não da pessoa — a turma inteira está vendo a tela.
+  const isUntouched = staged.kind === 'code' && staged.status === 'not_started';
+  // Nada DO ALUNO pra projetar, e por isso o palco cai no espelho da atividade.
+  // Um `code` intocado não entra aqui: ele tem o starter na tela pra mostrar.
+  const noLearnerWork =
+    !isUntouched && (staged.kind === 'empty' || staged.status === 'not_started');
+  // `code` is the ONE kind whose absence is trustworthy — it means the learner's
+  // editor is not even mounted — and the renderer would seed from the VIEWER's
+  // own storage, projecting the professor's draft under the learner's name.
   const mirrorActivity = activity && activity.kind !== 'code' ? activity : null;
 
   return (
@@ -81,13 +88,19 @@ export function LiveStage({
           </p>
           <div className="flex items-center gap-2 mt-0.5 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{staged.author.name}</p>
-            {(isDraft || (isEmpty && mirrorActivity)) && (
+            {(isDraft || isUntouched || (noLearnerWork && mirrorActivity)) && (
               <span
                 data-testid="live-stage-status"
                 className="shrink-0 inline-flex items-center gap-1 h-5 px-2 rounded-full border border-streak/50 bg-streak/15 text-[10px] font-medium uppercase tracking-wide text-streak"
               >
                 <Pencil className="w-2.5 h-2.5" />
-                {t(isDraft ? 'live.stage.status.inProgress' : 'live.stage.status.current')}
+                {t(
+                  isDraft
+                    ? 'live.stage.status.inProgress'
+                    : isUntouched
+                      ? 'live.stage.status.untouched'
+                      : 'live.stage.status.current',
+                )}
               </span>
             )}
           </div>

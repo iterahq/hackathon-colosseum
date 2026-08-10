@@ -214,6 +214,7 @@ export type {
   ActivityJudgeContext,
   ActivityJudgeCriterion,
   ActivityJudgeVerdict,
+  ActivityLiveBufferPort,
   ActivityLocale,
   ActivityResponderResult,
   ActivitySeed,

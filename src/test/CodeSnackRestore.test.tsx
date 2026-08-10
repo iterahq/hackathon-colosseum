@@ -5,8 +5,12 @@ import { ActivityProvider } from '@iterahq/activities';
 import type { ActivityCodeEditorProps } from '@iterahq/activities';
 import { I18nProvider, useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
-import { ITERA_ACTIVITY_STORAGE } from '@/components/branded/activity/IteraActivityHost';
+import {
+  ITERA_ACTIVITY_LIVE_BUFFER,
+  ITERA_ACTIVITY_STORAGE,
+} from '@/components/branded/activity/IteraActivityHost';
 import { readCodeSnapshot, saveCodeSnapshot } from '@/services/codeSnapshot.service';
+import { forgetCodeLiveBuffer, readCodeLiveBuffer } from '@/services/codeLiveBuffer.service';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 /**
@@ -49,11 +53,22 @@ function RecordingEditor({ value, onChange }: ActivityCodeEditorProps) {
   );
 }
 
-/** The Player's own host context, minus the parts a draft test does not need. */
+/**
+ * The Player's own host context, minus the parts a draft test does not need.
+ *
+ * Both REAL adapters, for the same reason: with the live-buffer port absent the
+ * package's publish is a silent no-op, so every `readCodeLiveBuffer` assertion
+ * below would read `null` and could only ever prove the projection is empty.
+ */
 function Host({ children }: { children: ReactNode }) {
   const i18n = useI18n();
   return (
-    <ActivityProvider i18n={i18n} storage={ITERA_ACTIVITY_STORAGE} codeEditor={RecordingEditor}>
+    <ActivityProvider
+      i18n={i18n}
+      storage={ITERA_ACTIVITY_STORAGE}
+      liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER}
+      codeEditor={RecordingEditor}
+    >
       {children}
     </ActivityProvider>
   );
@@ -101,6 +116,9 @@ describe('code snack — o trabalho do aluno sobrevive ao reload', () => {
     localStorage.clear();
     rememberStorageScope('aluno-a');
     rendered.values = [];
+    // O buffer vivo é um Map de módulo: sobrevive entre testes se ninguém o
+    // esquecer, e aí um teste herdaria a tela do anterior.
+    ['act-todo', 'act-um', 'act-dois'].forEach(forgetCodeLiveBuffer);
   });
   afterEach(() => {
     vi.runOnlyPendingTimers();
@@ -141,6 +159,52 @@ describe('code snack — o trabalho do aluno sobrevive ao reload', () => {
     open();
     settleAutosave();
     expect(readCodeSnapshot('act-todo')).toBeNull();
+  });
+
+  it('publica o starter intocado pro palco, sem inventar snapshot', () => {
+    // As duas metades do defeito P1 são independentes: o palco precisa TER o que
+    // projetar desde o mount, e o `hasWork: false` é o que impede a turma de ler
+    // o starter como resposta do aluno (e a presença de anunciá-lo trabalhando).
+    open();
+    expect(readCodeLiveBuffer('act-todo')).toEqual({ code: STARTER, hasWork: false });
+    settleAutosave();
+    expect(readCodeSnapshot('act-todo')).toBeNull();
+  });
+
+  it('depois do reload, o trabalho restaurado conta como trabalho', () => {
+    // A regressão que a review pegou: o buffer nascia intocado porque ninguém
+    // digitou NESTA montagem, então código de verdade ia pro projetor rotulado
+    // "sem edições" e o aluno era reportado como não trabalhando.
+    saveCodeSnapshot('act-todo', WORK);
+    open();
+    expect(readCodeLiveBuffer('act-todo')).toEqual({ code: WORK, hasWork: true });
+  });
+
+  it('"Recomeçar" volta o buffer pro starter intocado antes de limpar o snapshot', () => {
+    open();
+    type('quebrei tudo');
+    settleAutosave();
+    expect(readCodeLiveBuffer('act-todo')?.hasWork).toBe(true);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('code-reset-confirm'));
+    });
+
+    // Sem isso o palco e a presença seguiriam anunciando o rascunho que o aluno
+    // acabou de jogar fora — o `clearCodeSnapshot` despacha o evento na hora.
+    expect(readCodeLiveBuffer('act-todo')).toEqual({ code: STARTER, hasWork: false });
+  });
+
+  it('esquece o buffer quando o aluno sai da atividade', () => {
+    const view = open();
+    type(WORK);
+    view.unmount();
+    // Aba fechada / outro kind na tela: o palco tem que cair no snapshot em vez
+    // de projetar uma tela que não existe mais.
+    expect(readCodeLiveBuffer('act-todo')).toBeNull();
   });
 
   it('keeps each activity in its own drawer — no code leaks across them', () => {

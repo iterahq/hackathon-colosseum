@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { ActivityProvider } from '@iterahq/activities';
 import type { ActivityCodeEditorProps } from '@iterahq/activities';
 import { I18nProvider, useI18n } from '@/i18n';
-import { ITERA_ACTIVITY_STORAGE } from '@/components/branded/activity/IteraActivityHost';
+import { ITERA_ACTIVITY_LIVE_BUFFER, ITERA_ACTIVITY_STORAGE } from '@/components/branded/activity/IteraActivityHost';
 
 /**
  * The test-side twin of `IteraActivityHost`, for the `code` kind.
@@ -57,11 +57,14 @@ function Bridge({
   codeEditor: typeof MockCodeEditor;
 }) {
   const i18n = useI18n();
-  // The REAL storage adapter, on purpose: a test that let the package fall back
-  // to its own localStorage default would still pass while asserting nothing
-  // about where a learner's draft actually lands in the Player.
+  // The REAL adapters, on purpose: falling back to the package's own defaults
+  // would still pass while asserting nothing about where a learner's draft lands
+  // — and with `liveBuffer` absent the publish is a no-op, so anything asked
+  // about the stage reads as "não começou" no matter what the learner did.
   return (
-    <ActivityProvider i18n={i18n} storage={ITERA_ACTIVITY_STORAGE} codeEditor={codeEditor}>
+    <ActivityProvider
+      i18n={i18n} storage={ITERA_ACTIVITY_STORAGE}
+      liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER} codeEditor={codeEditor}>
       {children}
     </ActivityProvider>
   );

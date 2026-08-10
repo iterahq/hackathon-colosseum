@@ -71,6 +71,10 @@ vi.mock('@/services/liveClass.service', () => ({
 }));
 
 import { useClassSession } from '@/hooks/useClassSession';
+import {
+  forgetCodeLiveBuffer,
+  publishCodeLiveBuffer,
+} from '@/services/codeLiveBuffer.service';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 function emit(event: string, payload: unknown) {
@@ -81,6 +85,9 @@ beforeEach(() => {
   handlers = {};
   sent = [];
   localStorage.clear();
+  // O buffer vivo é um Map de módulo, não localStorage: sobrevive entre testes
+  // do mesmo arquivo se ninguém o esquecer.
+  forgetCodeLiveBuffer(ACTIVITY);
   rememberStorageScope(STUDENT);
 });
 
@@ -283,7 +290,66 @@ describe('useClassSession — pulling work in progress (ADR-4 revised)', () => {
     });
   });
 
+  it('replies with the STARTER on screen before the learner types a single character', async () => {
+    // O defeito P1 da aula de 06/08: o snapshot só nasce depois da primeira
+    // tecla, então quem tinha só aberto o exercício respondia vazio e a turma
+    // via o placeholder — o professor precisava pedir "mexe em algo aí".
+    publishCodeLiveBuffer(ACTIVITY, 'const cor = "";', false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'code',
+      content: 'const cor = "";',
+      // `not_started` continua verdade sobre o ALUNO. O que mudou é que ela não
+      // implica mais "não há nada pra projetar".
+      status: 'not_started',
+    });
+  });
+
+  it('prefers the live buffer over a stale saved snapshot', async () => {
+    // O aluno salvou e continuou digitando: o snapshot no disco é mais VELHO que
+    // a tela, porque a escrita é debounced. O palco tem que mostrar a tela.
+    localStorage.setItem(
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
+      JSON.stringify({ code: 'versao velha', savedAt: new Date().toISOString() })
+    );
+    publishCodeLiveBuffer(ACTIVITY, 'versao na tela', true);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'code',
+      content: 'versao na tela',
+      status: 'in_progress',
+    });
+  });
+
+  it('acabou de clicar em "Recomeçar": projeta o starter, não o rascunho descartado', async () => {
+    // Janela real: o `resetToStarter` publica o buffer intocado ANTES de apagar o
+    // snapshot, então por um instante os dois existem. Ler o snapshot aqui poria
+    // no projetor exatamente o que o aluno acabou de jogar fora.
+    localStorage.setItem(
+      `itera.code.snapshot:${STUDENT}:${ACTIVITY}`,
+      JSON.stringify({ code: 'rascunho descartado', savedAt: new Date().toISOString() })
+    );
+    publishCodeLiveBuffer(ACTIVITY, 'const cor = "";', false);
+    await mountAs({ userId: STUDENT, isInstructor: false });
+
+    emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });
+
+    expect(sent.find((s) => s.event === 'stage-answer')!.payload).toMatchObject({
+      kind: 'code',
+      content: 'const cor = "";',
+      status: 'not_started',
+    });
+  });
+
   it('a learner who has not started replies with an explicit empty state', async () => {
+    // Sem buffer vivo E sem snapshot: nem o editor de código está montado (é
+    // outro kind, ou a aba caiu). É o único caso que segue `empty`.
     await mountAs({ userId: STUDENT, isInstructor: false });
 
     emit('stage-request', { activityId: ACTIVITY, targetUserId: STUDENT, nonce: 'n1' });

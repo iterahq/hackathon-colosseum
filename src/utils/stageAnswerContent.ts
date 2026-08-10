@@ -2,18 +2,22 @@
  * Gathers the content a learner replies with when the instructor pulls their
  * work to the class stage (`stage-answer`). All data is read from the learner's
  * OWN local state — no DB, no migration (the class is synchronous, the student is
- * online): a saved code-snack source (`readCodeSnapshot`) wins and is staged as
- * `code`; otherwise a best-effort correct/wrong summary from `readStoredAnswer`.
+ * online): the code-snack source on screen (`readCodeLiveBuffer`, falling back to
+ * the saved `readCodeSnapshot`) wins and is staged as `code`; otherwise a
+ * best-effort correct/wrong summary from `readStoredAnswer`.
  *
  * ADR-4 (revised 2026-07-23): the professor pulls WORK IN PROGRESS too, not only
  * finished answers — following how the class is advancing is the whole point. So
  * this NEVER returns null anymore. It always returns a `status` describing where
  * the learner is, so the pull never fails in silence (which looked to the
  * professor like a broken button). `not_started` is a statement about THIS
- * signal, not about the learner: only a code snapshot or a submitted answer is
+ * signal, not about the learner: only a code source or a submitted answer is
  * visible here, so a learner mid-way through any other kind reports it too —
  * which is why the stage projects the current activity instead of announcing it.
+ * It is also NOT the same as "nothing to project": a `code` reply can be
+ * `not_started` and still carry the starter the learner is staring at.
  */
+import { readCodeLiveBuffer } from '@/services/codeLiveBuffer.service';
 import { readCodeSnapshot } from '@/services/codeSnapshot.service';
 import { readStoredAnswer } from '@/utils/liveAnswerStorage';
 import type { StageContent, StageWorkStatus } from '@/types/liveClass';
@@ -33,14 +37,23 @@ export function parseStageStatus(value: unknown): StageWorkStatus {
 
 export function gatherStageContent(sessionId: string, activityId: string): StageContent {
   const submitted = readStoredAnswer(sessionId, activityId);
-  const snapshot = readCodeSnapshot(activityId);
-  // The code snack autosaves every 600ms, so a snapshot exists long before the
-  // learner clicks Done — that draft IS the interesting artifact to project.
-  if (snapshot) {
+  // O buffer vivo vem PRIMEIRO porque ele existe desde o mount, enquanto o
+  // snapshot só nasce depois da primeira tecla — era essa diferença que fazia o
+  // aluno ter que "mexer em algo" antes do professor conseguir puxá-lo (P1).
+  // O snapshot segue como fallback pro caso do buffer não existir: aba fechada,
+  // outro kind na tela, cliente de build antigo. Ignorá-lo quando há buffer é
+  // seguro porque o editor semeia DO snapshot — o buffer nunca é o mais velho.
+  const live = readCodeLiveBuffer(activityId);
+  const source = live ?? readCodeSnapshot(activityId);
+  if (source) {
     return {
       kind: 'code',
-      content: snapshot.code,
-      status: submitted ? 'submitted' : 'in_progress',
+      content: source.code,
+      // `not_started` aqui é a verdade sobre o ALUNO (abriu e não tem trabalho)
+      // sem esconder da turma o código que está na tela dele. É `hasWork`, e não
+      // "digitou nesta montagem": quem recarregou a aba e teve o rascunho
+      // restaurado TEM trabalho, e projetá-lo como intocado seria falso.
+      status: submitted ? 'submitted' : live && !live.hasWork ? 'not_started' : 'in_progress',
     };
   }
   if (submitted) {

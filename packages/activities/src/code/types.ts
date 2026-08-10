@@ -11,6 +11,21 @@
 import type { CodeCheck } from '@iterahq/activity-spec';
 import type { ActivityCompletion } from '../renderer.js';
 
+/**
+ * The snack's editable source, plus whether it is the LEARNER's or the pristine
+ * starter. The two always move together — that is why this is one object and not
+ * two pieces of state: a `code` that changed without its `hasWork` is exactly
+ * the bug a mirror cannot detect (see `./codeSource.ts`).
+ *
+ * NOT re-exported from `./index.ts`, on purpose. The live-buffer port already
+ * carries the same pair as two plain arguments, so a consumer never needs this
+ * name — and a type in the public surface is a promise to keep it.
+ */
+export interface CodeSource {
+  code: string;
+  hasWork: boolean;
+}
+
 export interface UseCodeSnackCallbacks {
   /**
    * Report the settled attempt upward. The `detail` carries the learner's SOURCE

@@ -87,7 +87,12 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { ActivityProvider } from '@iterahq/activities';
-import type { ActivityApiPort, ActivityIdentity, ActivityStoragePort } from '@iterahq/activities';
+import type {
+  ActivityApiPort,
+  ActivityIdentity,
+  ActivityLiveBufferPort,
+  ActivityStoragePort,
+} from '@iterahq/activities';
 import {
   CODE_BLANKS_DRAFT_KEY_PREFIX,
   CODE_DRAFT_KEY_PREFIX,
@@ -97,6 +102,10 @@ import {
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import { CodeEditor } from '@/components/editor/CodeEditor';
+import {
+  forgetCodeLiveBuffer,
+  publishCodeLiveBuffer,
+} from '@/services/codeLiveBuffer.service';
 import {
   generateContext,
   iteraApiConfigured,
@@ -165,6 +174,30 @@ function isBlanksKey(key: string): boolean {
 }
 
 /**
+ * The projection adapter — what the professor's stage puts on the room's screen.
+ *
+ * Straight pass-through, and it is allowed to be: `codeLiveBuffer.service` was
+ * written to the port's signature, so nothing is unwrapped here the way
+ * `ITERA_ACTIVITY_STORAGE` unwraps a draft key. The `activityId` arrives raw
+ * because a live buffer needs no key at all — it never touches disk, so it never
+ * needs the learner scope that makes the draft key safe on a shared machine.
+ *
+ * Why this is a SECOND port and not more work for the storage one is in
+ * `ActivityLiveBufferPort`: publishing is not persisting. The short version is
+ * that the draft is deliberately withheld until the first keystroke, so before
+ * step 5 the stage had nothing to project for a learner who had only opened the
+ * exercise — the defect measured in the 2026-08-06 class.
+ *
+ * Module-level for the same reason as the storage adapter: it closes over
+ * nothing, and rebuilding it per render would churn the provider's memo — which
+ * here would also re-run the publish effect inside every mounted snack.
+ */
+export const ITERA_ACTIVITY_LIVE_BUFFER: ActivityLiveBufferPort = {
+  publish: publishCodeLiveBuffer,
+  forget: forgetCodeLiveBuffer,
+};
+
+/**
  * Fail loudly at DEV time if the package ever mints a key this adapter does not
  * recognise. `codeDraftActivityId` answers `''` for a foreign key and every
  * `codeSnapshot.service` function no-ops on an empty id — i.e. the failure mode
@@ -209,6 +242,7 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
       api={api}
       identity={identity}
       storage={ITERA_ACTIVITY_STORAGE}
+      liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER}
       codeEditor={CodeEditor}
     >
       {children}
@@ -320,11 +354,20 @@ function useArtifactAudience(authenticated: boolean): ActivityIdentity['artifact
  * app. It does NOT carry `codeEditor`: Monaco does not run in jsdom, so a test
  * that wants an editor injects its own stub (see
  * `src/test/support/codeActivityHost.tsx`).
+ *
+ * The LIVE BUFFER rides along for the identical reason, and the failure is even
+ * quieter: without the port the package's publish is a no-op, so a test that
+ * asks what the stage would project reads `null` and reports "o aluno não
+ * começou" — a wrong answer that looks exactly like a correct one.
  */
 export function ActivityI18nBridge({ children }: { children: ReactNode }) {
   const i18n = useI18n();
   return (
-    <ActivityProvider i18n={i18n} storage={ITERA_ACTIVITY_STORAGE}>
+    <ActivityProvider
+      i18n={i18n}
+      storage={ITERA_ACTIVITY_STORAGE}
+      liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER}
+    >
       {children}
     </ActivityProvider>
   );

@@ -29,3 +29,21 @@ export interface CodeSnapshot {
    */
   execution?: string | null;
 }
+
+/**
+ * The source on the learner's screen right now — see `codeLiveBuffer.service`
+ * for why this is separate from `CodeSnapshot`. `hasWork` is the difference
+ * between *"opened the exercise"* and *"there is work here"*: it is what the
+ * stage badge and the professor's presence signal actually need, and a snapshot
+ * restored after a reload counts as work even though nobody typed this mount.
+ *
+ * Stayed here for the same reason `CodeSnapshot` did: this is the shape the
+ * PLAYER's in-memory buffer keeps and the professor's stage reads. The package
+ * publishes into it through `ActivityLiveBufferPort`, which speaks the two
+ * fields as plain arguments — so no consumer inherits the Itera's idea of what
+ * a live buffer is.
+ */
+export interface CodeLiveBuffer {
+  code: string;
+  hasWork: boolean;
+}

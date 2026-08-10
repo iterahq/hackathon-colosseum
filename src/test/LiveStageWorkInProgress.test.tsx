@@ -49,6 +49,22 @@ describe('LiveStage — work-in-progress labelling', () => {
     expect(screen.getByTestId('stage-code').textContent).toBe('const cor = "azul";');
   });
 
+  it('projects an UNTOUCHED code source, badged as "sem edições"', () => {
+    // P1: o palco filtrava `not_started` e caía no placeholder, então o aluno
+    // tinha que digitar algo antes de poder ser puxado. Agora projeta — e o selo
+    // fala do CÓDIGO, não da pessoa, porque a turma inteira lê essa faixa.
+    renderStage({
+      activityId: 'act-1',
+      kind: 'code',
+      content: 'const cor = "";',
+      status: 'not_started',
+      author,
+    });
+    expect(screen.getByTestId('stage-code').textContent).toBe('const cor = "";');
+    expect(screen.queryByTestId('live-stage-empty')).toBeNull();
+    expect(screen.getByTestId('live-stage-status').textContent).toContain('Sem edições');
+  });
+
   it('shows NO badge for a finished answer (nothing to disambiguate)', () => {
     renderStage({
       activityId: 'act-1',
@@ -61,8 +77,8 @@ describe('LiveStage — work-in-progress labelling', () => {
     expect(screen.getByTestId('live-stage-summary')).toBeTruthy();
   });
 
-  // `gatherStageContent` only ever sees a code snapshot or a submitted answer,
-  // so every other kind replies `not_started` even mid-work. Pulling someone
+  // `gatherStageContent` only ever sees a code source or a submitted answer,
+  // so every other kind replies `empty` even mid-work. Pulling someone
   // means projecting the CURRENT activity, never accusing them of not starting.
   it('projects the current activity when the learner has nothing local to send', () => {
     const activity: Activity = {
@@ -85,8 +101,8 @@ describe('LiveStage — work-in-progress labelling', () => {
 
   // The `code` renderer seeds its editor from the VIEWER's localStorage, so
   // mirroring it would project the professor's own draft under the learner's
-  // name — and `code` is the one kind whose absence `gatherStageContent` reads
-  // faithfully anyway.
+  // name — and `code` is the one kind whose absence is faithful: it means the
+  // learner's editor is not mounted at all.
   it('never mirrors a code activity, to avoid projecting the viewer own draft', () => {
     const activity: Activity = {
       id: 'act-1',

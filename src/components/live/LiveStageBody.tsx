@@ -42,7 +42,11 @@ export function LiveStageBody({
   const { t } = useI18n();
   const answered = staged.kind === 'answer' && staged.status !== 'not_started';
 
-  if (staged.kind === 'code' && staged.status !== 'not_started') {
+  // Sem filtro por `status`: um `code` só chega aqui quando há fonte pra
+  // projetar, e `not_started` num code quer dizer "o aluno ainda não digitou" —
+  // não "não há nada na tela dele". Esse filtro era a segunda metade do P1: o
+  // aluno passou a responder com o starter e a turma via o placeholder igual.
+  if (staged.kind === 'code') {
     // O cap vem da regra COMPARTILHADA de largura de `code`, não de um
     // `max-w-4xl` local: (a) aquele cap re-estreitava o palco justamente no kind
     // que o módulo existe pra alargar, e (b) na tela do aluno esta faixa é irmã

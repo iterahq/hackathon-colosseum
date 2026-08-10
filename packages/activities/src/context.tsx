@@ -44,7 +44,7 @@
 import { createContext, createElement, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { ActivityEvent, ActivityEventHandler } from './events.js';
-import type { ActivityI18n, ActivityStoragePort } from './ports.js';
+import type { ActivityI18n, ActivityLiveBufferPort, ActivityStoragePort } from './ports.js';
 import type { ActivityHostContext, ActivityProviderProps } from './renderer.js';
 import { ACTIVITY_DICTIONARY, createActivityI18n } from './i18n/dictionary.js';
 
@@ -103,6 +103,7 @@ export function ActivityProvider({ children, ...host }: ActivityProviderProps) {
       host.identity,
       host.theme,
       host.storage,
+      host.liveBuffer,
       host.onEvent,
       host.codeEditor,
       host.renderers,
@@ -157,6 +158,26 @@ export function useActivityStorage(): ActivityStoragePort {
       },
     [storage],
   );
+}
+
+/**
+ * Shared and module-level so the "no live class" case is REFERENTIALLY STABLE.
+ * The publish effect keeps this port in its deps; a fresh object per render
+ * would re-run it on every keystroke of every unrelated re-render.
+ */
+const NO_LIVE_BUFFER: ActivityLiveBufferPort = { publish: () => {}, forget: () => {} };
+
+/**
+ * The projection port, defaulted to a pair of no-ops.
+ *
+ * No localStorage fallback here, and that asymmetry with `useActivityStorage` is
+ * the point: a missing `storage` would LOSE the learner's work, so the package
+ * substitutes something that works. A missing `liveBuffer` loses a projection
+ * nobody is watching — inventing a durable default would give a consumer with no
+ * live class a second copy of the source it never asked to keep.
+ */
+export function useActivityLiveBuffer(): ActivityLiveBufferPort {
+  return useActivityHost().liveBuffer ?? NO_LIVE_BUFFER;
 }
 
 /**

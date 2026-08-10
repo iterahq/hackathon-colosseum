@@ -1,30 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityStorage } from '../context.js';
-import type { ActivityStoragePort } from '../ports.js';
+import { seedCodeSource } from './codeSource.js';
 import { codeDraftKey } from './draftKey.js';
 import type { UseCodeSnackCallbacks } from './types.js';
 import { useCodeChecks } from './useCodeChecks.js';
+import { useCodeLiveBuffer } from './useCodeLiveBuffer.js';
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
-
-/**
- * What the editor opens with: the learner's OWN saved work when there is any,
- * the authored starter otherwise.
- *
- * The port swallows a broken/blocked storage and answers `null` (the package's
- * localStorage default does; the Itera Player's adapter delegates to
- * `codeSnapshot.service`, which has always done the same), so a browser in
- * private mode simply falls back to the starter — an activity must never fail
- * to open because localStorage said no.
- */
-function seedFor(
-  storage: ActivityStoragePort,
-  activityId: string,
-  starter: string | undefined,
-): string {
-  return storage.read(codeDraftKey(activityId)) ?? starter ?? '';
-}
 
 /**
  * Owns the code-snack's editable source and its persistence (autosave AND
@@ -49,13 +32,21 @@ export function useCodeSnack(
   // first paint already shows the learner's work. Seeding with the starter and
   // swapping it in an effect would flash the starter — mid-class that reads as
   // "my code is gone" even when it comes back a frame later.
-  const [code, setCodeState] = useState(() => seedFor(storage, activityId, spec.starter));
+  const [source, setSource] = useState(() => seedCodeSource(storage, activityId, spec.starter));
+  const { code, hasWork } = source;
   /**
-   * Has the learner actually touched THIS activity's source? Only their own
-   * edits deserve a snapshot. Without this flag the debounce would write the
-   * seed back one tick after every mount — which would (a) resurrect the code a
-   * reset just discarded and (b) tell the professor "em andamento" about someone
-   * who merely opened the screen.
+   * TWO flags, and collapsing them re-breaks something either way:
+   *
+   * · `hasWork` (state) — is this source the learner's, or the pristine starter?
+   *   Read by the stage badge and the professor's presence signal, so a RESTORED
+   *   draft counts: a learner who reloads mid-exercise must not be projected as
+   *   "sem edições". State and not a ref, because the publish effect has to
+   *   re-run when it flips WITHOUT the code changing (resetting an editor that
+   *   already held the starter).
+   *
+   * · `touchedRef` — did the learner TYPE during this mount? Only that deserves
+   *   a draft WRITE. Without it the debounce would write the seed back one tick
+   *   after every mount, resurrecting the code a reset just discarded.
    */
   const touchedRef = useRef(false);
 
@@ -67,8 +58,12 @@ export function useCodeSnack(
   /** The editor's onChange — every learner-originated edit comes through here. */
   const setCode = useCallback((next: string) => {
     touchedRef.current = true;
-    setCodeState(next);
+    setSource({ code: next, hasWork: true });
   }, []);
+
+  // The mirror reads THIS, not the draft — `useCodeLiveBuffer` has the measured
+  // reason. The port comes back for `resetToStarter`'s ordered publish below.
+  const liveBuffer = useCodeLiveBuffer(activityId, code, hasWork);
 
   const persist = useCallback(
     (next: string) => {
@@ -82,7 +77,7 @@ export function useCodeSnack(
   // work, so moving back and forth between activities never crosses their code.
   useEffect(() => {
     touchedRef.current = false;
-    setCodeState(seedFor(storage, activityId, spec.starter));
+    setSource(seedCodeSource(storage, activityId, spec.starter));
     reset();
     // `storage` is intentionally OUT of the deps. `useActivityStorage()` returns
     // a memo over the injected port, so a host that rebuilds its adapter object
@@ -114,10 +109,17 @@ export function useCodeSnack(
    */
   const resetToStarter = useCallback(() => {
     touchedRef.current = false;
+    const starter = spec.starter ?? '';
+    // BEFORE the clear, and the order is the whole point: a host's `clear` may
+    // notify its own listeners SYNCHRONOUSLY (the Itera Player's dispatches
+    // `CODE_SNAPSHOT_EVENT`, and whoever hears it re-reads the buffer).
+    // Publishing afterwards would leave the mirror showing the draft the learner
+    // just threw away, with no second event coming to correct it.
+    liveBuffer.publish(activityId, starter, false);
     storage.clear(codeDraftKey(activityId));
-    setCodeState(spec.starter ?? '');
+    setSource({ code: starter, hasWork: false });
     reset();
-  }, [activityId, spec.starter, reset, storage]);
+  }, [activityId, spec.starter, reset, storage, liveBuffer]);
 
   /**
    * Report the REAL outcome upward, WITH the source the learner settled on.
@@ -126,20 +128,13 @@ export function useCodeSnack(
    * about). This is what turns `itera.class_answers.correct` — today always
    * `true` for code — into real data for the post-class report and the podium.
    *
-   * ═════════════════════════════════════════════════════════════════════════
-   * WHY THE SOURCE RIDES UP HERE — the gap this closes
-   * ═════════════════════════════════════════════════════════════════════════
-   *
-   * Until now `code` reported a bare boolean and the learner's work existed in
-   * exactly ONE place: the host's local draft store (`localStorage`, via the
-   * Player's `codeSnapshot.service`). It never left the machine. Measured on
-   * 2026-08-03: of 556 attempt rows only 29 (5%) carry any `response` at all,
-   * and NOT ONE of them is a code attempt — the kind where *"how did they get
-   * there"* is the entire question.
-   *
-   * A cleared cache, a different browser, a borrowed Chromebook, and the work is
-   * gone with no record that it ever existed. That loss is not recoverable
-   * later, which is the same argument the whole telemetry plan rests on.
+   * WHY THE SOURCE RIDES UP HERE: `code` used to report a bare boolean and the
+   * learner's work existed in exactly ONE place, the host's local draft store
+   * (`localStorage`, via the Player's `codeSnapshot.service`). Measured on
+   * 2026-08-03, of 556 attempt rows only 29 (5%) carry any `response`, and NOT
+   * ONE is a code attempt — the kind where *"how did they get there"* is the
+   * entire question. A cleared cache, a different browser, a borrowed
+   * Chromebook, and the work is gone with no record that it ever existed.
    *
    * 🔑 THE DRAFT STAYS LOCAL. This does NOT move autosave to the server: the
    * debounced snapshot keeps writing through the `storage` port exactly as

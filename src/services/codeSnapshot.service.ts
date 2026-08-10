@@ -6,12 +6,15 @@
  * carries no free-text column, so the code text lives client-side and the answer
  * ROW is recorded via the existing `recordClassAnswer` path on completion.
  *
- * TWO readers, and for a long time only one of them existed:
- *   • the PROFESSOR pulls the snapshot to the class stage (`stageAnswerContent`);
- *   • the LEARNER gets their own work back when the page reloads
- *     (`useCodeSnack` seeds the editor from here).
- * The second one is the whole point of saving: a refresh, a dropped connection
- * or a restored tab mid-class used to send the learner back to the starter.
+ * The reader that justifies saving at all is the LEARNER: `useCodeSnack` seeds
+ * the editor from here, because a refresh, a dropped connection or a restored
+ * tab mid-class used to send them back to the starter.
+ *
+ * ⚠️ The class STAGE is no longer a reader of this — it reads the volatile
+ * `codeLiveBuffer.service` and only falls back here when the learner's editor
+ * is not mounted. Do not route the stage back through this module: the write is
+ * gated on the first keystroke on purpose, and that gate is exactly what used
+ * to project a placeholder for anyone who had merely opened the exercise.
  *
  * ⚠️ O rascunho é do aluno E DA EXECUÇÃO desde 06/08 (ver
  * `utils/activityExecution`): dentro da mesma aula um refresh devolve o

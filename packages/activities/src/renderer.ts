@@ -27,6 +27,7 @@ import type {
   ActivityCodeEditorProps,
   ActivityI18n,
   ActivityIdentity,
+  ActivityLiveBufferPort,
   ActivityStoragePort,
   ActivityTheme,
 } from './ports.js';
@@ -191,6 +192,15 @@ export interface ActivityHostContext {
   theme?: ActivityTheme;
   /** Draft persistence for the `code` kind. Omit ⇒ localStorage, as today. */
   storage?: ActivityStoragePort;
+  /**
+   * Where the on-screen source is projected for a host that MIRRORS the learner
+   * (the Itera Player's live class puts it on the room's screen). Omit ⇒ every
+   * call is a no-op, which is the right answer for a host with no live class.
+   *
+   * Deliberately NOT folded into `storage`: publishing is not persisting, and
+   * `ActivityLiveBufferPort` explains what breaks when the two are collapsed.
+   */
+  liveBuffer?: ActivityLiveBufferPort;
   /**
    * The editor the `code` kind renders (`@iterahq/activities/code`).
    *

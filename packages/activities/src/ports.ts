@@ -280,6 +280,51 @@ export interface ActivityStoragePort {
   clear: (key: string) => void;
 }
 
+/* ────────────────────────────── live buffer ──────────────────────────────── */
+
+/**
+ * What is ON SCREEN right now, for a host that MIRRORS the learner's surface.
+ *
+ * PUBLISHING IS NOT PERSISTING, and that distinction is the entire reason this
+ * is a second port instead of another write through `ActivityStoragePort`. A
+ * draft says *"there is work here"*, so it is deliberately debounced and held
+ * back until the first keystroke; the Itera Player's live class measured the
+ * consequence on 2026-08-06 — a learner who opened a code exercise and typed
+ * nothing was projected to the room as a blank screen, and the instructor had to
+ * ask them to "type something" before pulling their work up. Making the draft
+ * eager would have fixed the projection by breaking the draft: an untouched
+ * starter would be RESTORED over the authored one on the next open, and every
+ * idle learner would report as "em andamento".
+ *
+ * So the two channels answer different questions and both stay honest:
+ *   · `storage` — what should survive a reload (the learner's own work);
+ *   · this — what is on the screen this instant, work or pristine starter, told
+ *     apart by `hasWork` rather than by guessing from the content.
+ *
+ * Nothing here is expected to be durable. A host is free to keep it in memory
+ * and lose it on unload; the Itera Player does exactly that.
+ *
+ * Optional, and its absence is the capability probe as usual: a consumer with no
+ * live class injects nothing and every call is a no-op. Dropping a projection
+ * costs that consumer nothing, which is why this may be silently absent while
+ * `storage` gets a working default instead.
+ */
+export interface ActivityLiveBufferPort {
+  /**
+   * `hasWork` distinguishes *"opened the exercise"* from *"there is work here"*.
+   * A source restored from a draft counts as work even though nobody typed
+   * during this mount — otherwise a learner who reloads mid-exercise is
+   * announced as idle.
+   */
+  publish: (activityId: string, code: string, hasWork: boolean) => void;
+  /**
+   * The learner left this activity (unmounted, or switched to another one).
+   * Without it a mirror keeps projecting the last source of a screen that no
+   * longer exists, with no way for the viewer to know.
+   */
+  forget: (activityId: string) => void;
+}
+
 /* ─────────────────────────────── code editor ─────────────────────────────── */
 
 /**
