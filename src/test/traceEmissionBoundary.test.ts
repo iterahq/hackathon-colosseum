@@ -137,6 +137,39 @@ describe('o recorder de ações produz valor, nunca escreve', () => {
   });
 });
 
+/**
+ * O ELENCO DO ALUNO — a mesma fronteira, agora para o dado pessoal.
+ *
+ * A promessa da tela é literal: *"só você vê — instrutor e administrador não têm
+ * acesso"*. A RLS da 0060 sustenta isso no banco; aqui trancamos os dois jeitos
+ * de furar a promessa pelo cliente, e nenhum deles quebraria nada em runtime.
+ */
+describe('o elenco do aluno não vaza da máquina dele', () => {
+  const files = ACTIVITY_TREE.flatMap(sourcesUnder);
+
+  it.each(['@/services/personalization.service', '@/personalization/PersonalizationProvider'])(
+    'nenhum componente de atividade importa %s',
+    (mod) => {
+      const offenders = files.filter((f) => importsModule(readFileSync(f, 'utf-8'), mod));
+      expect(
+        offenders.map((f) => path.relative(ROOT, f)),
+        `${mod} é a camada de dados; a árvore de atividades só pode enxergar a PORTA pura, senão o harness do autor passa a carregar o cliente do Supabase junto.`
+      ).toEqual([]);
+    }
+  );
+
+  it.each([
+    'src/components/author/ActivityTestHarness.tsx',
+    'src/pages/author/UnitCanvasPage.tsx',
+  ])('%s monta a atividade com a personalização DESLIGADA', (rel) => {
+    // O provider envolve todas as rotas, e o autor está dentro delas: sem este
+    // empurrão explícito, a superfície de autoria pede o nome da mãe do AUTOR e
+    // grava na linha dele.
+    const src = readFileSync(path.join(ROOT, rel), 'utf-8');
+    expect(src).toContain('PERSONALIZATION_OFF');
+  });
+});
+
 describe('a emissão do trace mora no serviço, não nos call-sites', () => {
   const service = readFileSync(path.join(ROOT, 'src/services/progress.service.ts'), 'utf-8');
 

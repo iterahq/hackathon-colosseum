@@ -110,6 +110,11 @@ export const queryKeys = {
     activityTest: (activityId: string, locale: string) =>
       ['author', 'activity-test', activityId, { locale }] as const,
   },
+  // O elenco do aluno (nome/profissão/idade de quem o enunciado cita). Sem
+  // locale: são nomes próprios digitados pelo aluno, não conteúdo autorado.
+  personalization: {
+    mine: ['personalization', 'mine'] as const,
+  },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {
     mine: ['artifacts', 'mine'] as const,

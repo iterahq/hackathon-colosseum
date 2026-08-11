@@ -47,6 +47,13 @@
  * dropped the file, the replay degrades — and it says "asset unavailable"
  * rather than rendering a broken box.
  *
+ * ⚠️ PERSONALIZATION TOKENS STAY RAW. A snapshot may show `{{familiar.nome}}`
+ * where the learner read a name. Substitution happens inside the renderer, after
+ * the snapshot is taken, and that is on purpose: the filled value is a
+ * teenager's family data, and this table is readable by instructors and tenant
+ * admins while `learner_personalization` is own-row only. The wording is
+ * faithful; the cast is withheld.
+ *
  * READ-ONLY: no writes, no `progress.service` import, no mutation of any kind.
  * A curator watching must never become learner data.
  */

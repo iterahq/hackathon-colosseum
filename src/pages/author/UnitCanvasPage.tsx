@@ -64,6 +64,10 @@ import { CommentModal, type CommentModalTarget } from '@/components/author/Comme
 import { CommentSidebar } from '@/components/author/CommentSidebar';
 import { ArtifactPolicyEditor } from '@/components/author/ArtifactPolicyEditor';
 import { resolveArtifactPolicy } from '@/services/artifactPolicy';
+import {
+  PERSONALIZATION_OFF,
+  PersonalizationContext,
+} from '@/personalization/personalizationPort';
 import type { Activity, I18nText } from '@/types/content';
 import type { ActivityComment } from '@/types/comments';
 
@@ -550,8 +554,12 @@ function ActivityCell({
       {/* Bare live activity + comment-capture overlay. No card/frame — just a
           faint ring on hover/select so it's still identifiable & selectable. */}
       <div className="relative rounded-xl ring-1 ring-transparent transition-shadow group-hover:ring-border group-focus-within:ring-border">
+        {/* Personalization OFF: this is the author's canvas, and the preview is
+            pointer-blocked anyway — a form here would be unanswerable. */}
         <div className="pointer-events-none select-none">
-          <ActivityRenderer activity={activity} onComplete={noop} />
+          <PersonalizationContext.Provider value={PERSONALIZATION_OFF}>
+            <ActivityRenderer activity={activity} onComplete={noop} />
+          </PersonalizationContext.Provider>
         </div>
 
         {/* Anchor pins for this version's comments on this activity. */}

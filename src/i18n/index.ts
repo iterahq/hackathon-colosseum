@@ -750,6 +750,30 @@ export const resources: Record<Locale, Record<string, string>> = {
     'profile.saved': 'Perfil atualizado!',
     'profile.saveError': 'Não foi possível salvar. Tente novamente.',
     'profile.loadError': 'Não foi possível carregar seu perfil.',
+
+    'personalization.eyebrow': 'Sua turma',
+    'personalization.title': 'Quem entra nos exercícios?',
+    'personalization.subtitle':
+      'A gente usa esses nomes nos enunciados pra a aula falar da sua vida. Você responde uma vez só, e pode mudar depois no seu perfil.',
+    'personalization.submit': 'Usar nos exercícios',
+    'personalization.saving': 'Salvando…',
+    'personalization.dismiss': 'Prefiro não dizer — usar nomes de exemplo',
+    'personalization.section': 'Quem entra nos exercícios',
+    'personalization.sectionHint':
+      'Esses nomes aparecem nos enunciados das atividades. Só você vê — instrutor e administrador não têm acesso.',
+    'personalization.saved': 'Pronto! Os exercícios já usam esses nomes.',
+    'personalization.field.euNome': 'Seu nome',
+    'personalization.field.euIdade': 'Sua idade',
+    'personalization.field.euProfissao': 'No que você trabalha ou quer trabalhar',
+    'personalization.field.familiarNome': 'Nome de alguém da sua família',
+    'personalization.field.familiarParentesco': 'Essa pessoa é sua…',
+    'personalization.field.familiarProfissao': 'No que essa pessoa trabalha',
+    'personalization.field.familiarIdade': 'Idade dessa pessoa',
+    'personalization.field.amigoNome': 'Nome de um amigo ou amiga',
+    'personalization.field.amigoProfissao': 'No que essa pessoa trabalha ou estuda',
+    'personalization.field.amigoIdade': 'Idade dessa pessoa',
+    'personalization.field.assuntoDominio': 'Um assunto que você manja (ex.: consertar bicicleta)',
+
     'lang.pt': 'Português',
     'lang.en': 'Inglês',
     
@@ -1551,6 +1575,30 @@ export const resources: Record<Locale, Record<string, string>> = {
     'profile.saved': 'Profile updated!',
     'profile.saveError': 'Could not save. Please try again.',
     'profile.loadError': 'Could not load your profile.',
+
+    'personalization.eyebrow': 'Your people',
+    'personalization.title': 'Who shows up in the exercises?',
+    'personalization.subtitle':
+      'We drop these names into the exercises so the class talks about your life. Answer once — you can change it later in your profile.',
+    'personalization.submit': 'Use these in the exercises',
+    'personalization.saving': 'Saving…',
+    'personalization.dismiss': "I'd rather not say — use example names",
+    'personalization.section': 'Who shows up in the exercises',
+    'personalization.sectionHint':
+      'These names appear in the activity prompts. Only you can see them — instructors and admins cannot.',
+    'personalization.saved': 'Done! The exercises now use these names.',
+    'personalization.field.euNome': 'Your name',
+    'personalization.field.euIdade': 'Your age',
+    'personalization.field.euProfissao': 'What you do, or want to do, for a living',
+    'personalization.field.familiarNome': 'Name of someone in your family',
+    'personalization.field.familiarParentesco': 'That person is your…',
+    'personalization.field.familiarProfissao': 'What that person does for a living',
+    'personalization.field.familiarIdade': "That person's age",
+    'personalization.field.amigoNome': "A friend's name",
+    'personalization.field.amigoProfissao': 'What that friend does or studies',
+    'personalization.field.amigoIdade': "That friend's age",
+    'personalization.field.assuntoDominio': 'A subject you know well (e.g. fixing bicycles)',
+
     'lang.pt': 'Portuguese',
     'lang.en': 'English',
 

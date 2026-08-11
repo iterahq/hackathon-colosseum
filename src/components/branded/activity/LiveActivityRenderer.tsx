@@ -22,10 +22,11 @@ import type { Activity } from '@/types/content';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { SandboxScenarioLiveActivity } from '@/components/branded/activity/sandbox-live/SandboxScenarioLiveActivity';
 import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive';
+import { usePersonalizedActivity } from '@/personalization/usePersonalizedActivity';
 import { isScenarioKind } from '@/utils/activityFamilies';
 
 export function LiveActivityRenderer({
-  activity,
+  activity: authored,
   onComplete,
   reveal = false,
   forceLive = false,
@@ -38,6 +39,9 @@ export function LiveActivityRenderer({
    *  before its DB spec is flagged. Ignored for non-sandbox kinds. */
   forceLive?: boolean;
 }) {
+  // O elenco do aluno entra AQUI, não só no renderer base: o ramo abaixo sai
+  // antes dele, e sem isto a aula ao vivo mostraria `{{familiar.nome}}` cru.
+  const activity = usePersonalizedActivity(authored);
   const wantsLive = isByocLive(activity) || (forceLive && isScenarioKind(activity.kind));
 
   // Only take the live path when the Results-API is configured; otherwise fall

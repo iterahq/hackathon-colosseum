@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n';
 import { useProfileForm } from '@/hooks/useProfileForm';
 import { ProfilePreview } from '@/components/profile/ProfilePreview';
 import { ProfileAvatarPicker } from '@/components/profile/ProfileAvatarPicker';
+import { PersonalizationSection } from '@/components/profile/PersonalizationSection';
 
 export default function ProfilePage() {
   const { t } = useI18n();
@@ -118,6 +119,8 @@ export default function ProfilePage() {
             </button>
           </motion.form>
         )}
+
+        <PersonalizationSection />
       </main>
     </div>
   );

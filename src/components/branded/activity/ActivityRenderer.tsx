@@ -34,6 +34,7 @@
  * interfaces, in `packages/activities/src/specs.ts` — no longer as `as` casts
  * written at the top of a function.
  */
+import { useMemo } from 'react';
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
@@ -63,6 +64,10 @@ import { DiagramActivity } from './DiagramActivity';
 import { QuizActivity } from './QuizActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
+import { PersonalizationGate } from './PersonalizationGate';
+import { usePersonalization } from '@/personalization/personalizationPort';
+import { usePersonalizedActivity } from '@/personalization/usePersonalizedActivity';
+import { missingFields } from '@/utils/personalization';
 import { InvalidSpecCard } from './InvalidSpecCard';
 import { resolveByocSpec } from './byoc/byocSpec';
 import { isByocLive } from './sandbox-live/byocLive';
@@ -70,7 +75,7 @@ import { SandboxScenarioLiveActivity } from './sandbox-live/SandboxScenarioLiveA
 import { iteraApiConfigured } from '@/api/iteraApi';
 
 export function ActivityRenderer({
-  activity,
+  activity: authored,
   onComplete,
   reveal = false,
   live = false,
@@ -91,9 +96,39 @@ export function ActivityRenderer({
    */
   live?: boolean;
 }) {
+  const { locale } = useI18n();
+  const { values, mayAsk } = usePersonalization();
+
+  /*
+   * PERSONALIZAÇÃO POR PREENCHIMENTO — a via rápida do "conteúdo com a cara do
+   * aluno". O autor escreveu `{{familiar.nome}}`; aqui isso vira o nome que o
+   * aluno deu, em TODO o spec de uma vez (varredura de strings em qualquer
+   * profundidade). Sem modelo, sem chamada de rede, sem espera — ao contrário
+   * do BYOC gerativo, que mede 26–73s por atividade.
+   *
+   * Fica ANTES do BYOC e antes da fronteira de validação porque o que corre daí
+   * pra baixo tem que ser o texto que o aluno vai LER: um token cru vazando
+   * para o schema, para o judge ou para a tela é o mesmo defeito.
+   */
+  const activity = usePersonalizedActivity(authored);
+
+  /*
+   * Só o que ESTA atividade cita e o aluno ainda não preencheu.
+   *
+   * NUNCA ao vivo: lá o cronômetro já está correndo, e três campos entre o aluno
+   * e o exercício custam a atividade inteira. Na aula o elenco cai no fallback e
+   * a pergunta espera o /profile.
+   */
+  const missing = useMemo(
+    () => (mayAsk && !live ? missingFields(authored.spec, values) : []),
+    [mayAsk, live, authored.spec, values]
+  );
+  if (missing.length > 0) {
+    return <PersonalizationGate fields={missing} />;
+  }
+
   // BYOC is a LAYER, not a kind: an activity of ANY kind whose spec carries an
   // authored harness is generated from the learner's own context first.
-  const { locale } = useI18n();
   const byoc = resolveByocSpec(activity, locale);
   if (byoc) {
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;

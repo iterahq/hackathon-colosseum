@@ -211,6 +211,16 @@ export const MAX_TRACE_ACTIONS = 500;
  * UNRESOLVED (that runtime resolves its own bags), so for that kind the
  * snapshot holds bags. Either way `locale` is what a reader needs to render it
  * the way the learner saw it.
+ *
+ * ⚠️ SEGUNDA EXCEÇÃO, DELIBERADA: os tokens de PERSONALIZAÇÃO (`{{eu.nome}}`,
+ * `{{familiar.nome}}` — `src/utils/personalization.ts`) ficam CRUS no snapshot.
+ * A troca acontece dentro do renderer (`usePersonalizedActivity`), depois de o
+ * snapshot ser montado. Não é descuido: o valor preenchido é o nome e a idade
+ * de gente da família de um adolescente, e `activity_traces` é lido por
+ * instrutor e admin do tenant. Gravar o texto substituído copiaria esse dado
+ * pessoal pra uma tabela cuja RLS é MAIS aberta que a da tabela que o guarda
+ * (`learner_personalization` é estritamente do próprio dono). Quem lê o replay
+ * vê o token, não a frase — é o preço certo a pagar.
  */
 export interface TraceSpecSnapshot {
   /** The activity spec exactly as this learner was rendered it. */

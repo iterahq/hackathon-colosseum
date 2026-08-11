@@ -25,6 +25,7 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import OtpLoginPage from "./pages/auth/OtpLoginPage";
 import { AuthProvider } from "./auth/AuthContext";
+import { PersonalizationProvider } from "./personalization/PersonalizationProvider";
 // The app side of ADR-3: injects i18n + the learner identity into
 // `@iterahq/activities`, which cannot import either. See the file.
 import { IteraActivityHost } from "./components/branded/activity/IteraActivityHost";
@@ -102,6 +103,7 @@ const App = () => (
     <I18nProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>
+          <PersonalizationProvider>
           <TooltipProvider>
             {/* ADR-3 host adapter for @iterahq/activities. Mounted here, not
                 around <ActivityRenderer>, because activities are mounted from
@@ -458,6 +460,7 @@ const App = () => (
             </BrowserRouter>
             </IteraActivityHost>
           </TooltipProvider>
+          </PersonalizationProvider>
         </QueryClientProvider>
       </AuthProvider>
     </I18nProvider>

@@ -28,6 +28,10 @@ import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import { diagnoseByoc } from '@/components/branded/activity/byoc/byocSpec';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { useI18n } from '@/i18n';
+import {
+  PERSONALIZATION_OFF,
+  PersonalizationContext,
+} from '@/personalization/personalizationPort';
 import type { Activity } from '@/types/content';
 import { ByocAuthorDiagnosis } from './ByocAuthorDiagnosis';
 import { ByocAuthorReRoll } from './ByocAuthorReRoll';
@@ -92,9 +96,15 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
         <ByocAuthorReRoll activityId={activity.id} onRegenerated={reset} />
       )}
 
-      {/* The real renderer, remounted on reset via `key`. */}
+      {/* The real renderer, remounted on reset via `key`. Personalization is
+          forced OFF here: the provider wraps every route, so without this the
+          harness would ask the AUTHOR for his mother's name and write it to his
+          own row. He sees the fallback cast instead — same text a learner who
+          declined gets. */}
       <div key={runKey}>
-        <ActivityRenderer activity={activity} onComplete={handleComplete} />
+        <PersonalizationContext.Provider value={PERSONALIZATION_OFF}>
+          <ActivityRenderer activity={activity} onComplete={handleComplete} />
+        </PersonalizationContext.Provider>
       </div>
 
       {showSandboxFooter && attempt && (
