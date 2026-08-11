@@ -181,6 +181,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     // "Pens down" — mesmo aviso pra todo kind respondível quando o tempo acaba,
     // `code` incluído. Não existe mais um "pode continuar": se o clock zera, trava.
     'live.timer.lockedHint': 'Tempo esgotado. Aguarde o professor avançar.',
+    // Quem encerrou foi o professor (parou o cronômetro ou revelou a resposta).
+    // Dizer "tempo esgotado" numa rodada em que relógio nenhum correu fez a turma
+    // de 10/08 reportar o aviso como erro do app.
+    'live.timer.stoppedHint': 'O professor encerrou esta rodada. Aguarde ele avançar.',
     // Antes da largada a atividade também está inerte, mas por outro motivo — e
     // dizer "tempo esgotado" num exercício que nem começou é a pior leitura possível.
     'live.timer.awaitingHint': 'Aguarde o professor iniciar o tempo.',
@@ -1008,6 +1012,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.timer.done': "Time's up",
     'live.timer.stop': 'Stop',
     'live.timer.lockedHint': "Time's up. Wait for the instructor to advance.",
+    'live.timer.stoppedHint': 'The instructor closed this round. Wait for them to advance.',
     'live.timer.awaitingHint': 'Wait for the instructor to start the timer.',
     'live.timer.addTime.aria': 'Adjust the timer',
     'live.timer.addTime.title': 'Adjust time',

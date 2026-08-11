@@ -237,6 +237,10 @@ export default function LiveSessionPage() {
   // Keyed on the id — NOT a bare boolean — so an advance right after a timeout
   // never paints the NEXT activity as locked for a frame while an effect catches up.
   const [timeUpFor, setTimeUpFor] = useState<string | null>(null);
+  // ...e QUEM encerrou. A turma de 10/08 leu "Tempo esgotado" numa rodada em que
+  // relógio nenhum correu — o professor tinha revelado a resposta — e reportou o
+  // aviso vermelho como erro. O motivo do fechamento é dado que a tela tem.
+  const [closedByInstructor, setClosedByInstructor] = useState<string | null>(null);
   // Raised hand (presence-tracked). Auto-lowers whenever the class advances.
   // O estado mora no hook, junto da presença que ele publica — uma cópia local
   // aqui dessincronizaria assim que o professor abaixasse a mão pelo menu dele.
@@ -253,6 +257,7 @@ export default function LiveSessionPage() {
     setAttempt(0);
     setReopened(false);
     setTimeUpFor(null);
+    setClosedByInstructor(null);
     setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [sessionId, currentActivityId, setHandRaised]);
@@ -293,20 +298,26 @@ export default function LiveSessionPage() {
     // Already answered THIS activity → no "time's up" sound (only the lock).
     if (answered?.id !== currentActivityId) onTimeUp();
     setTimeUpFor(currentActivityId);
+    setClosedByInstructor((prev) => (prev === currentActivityId ? null : prev));
   }, [onTimeUp, currentActivityId, answered]);
 
   // Professor stopped the timer → end the round for everyone. "Pens down": the
   // gate below locks every answerable kind on expiry/stop, `code` INCLUDED
   // (Tainan 2026-07-23 "se acabar o clock deve disable tudo mesmo").
   useEffect(() => {
-    if (stoppedFor && current && stoppedFor === current.id) setTimeUpFor(current.id);
-  }, [stoppedFor, current]);
+    if (!stoppedFor || !current || stoppedFor !== current.id) return;
+    // Só conta como "o professor encerrou" se o relógio ainda não tinha estourado
+    // sozinho: quem chega depois do timeout não muda a história da rodada.
+    if (timeUpFor !== current.id) setClosedByInstructor(current.id);
+    setTimeUpFor(current.id);
+  }, [stoppedFor, current, timeUpFor]);
 
   // Professor restarted the clock → a fresh timer for THIS activity, still
   // running, must lift the expiry lock so the learner can work again.
   useEffect(() => {
     if (timer && current && timer.activityId === current.id && timer.deadline > Date.now()) {
       setTimeUpFor((prev) => (prev === current.id ? null : prev));
+      setClosedByInstructor((prev) => (prev === current.id ? null : prev));
     }
   }, [timer, current]);
 
@@ -339,6 +350,7 @@ export default function LiveSessionPage() {
     ),
   });
   const { started, locked } = gate;
+  const roundClosedByInstructor = Boolean(current && closedByInstructor === current.id);
   // `saving` on top of the two ADR-1 halves: reopening mid-write would let the
   // learner resubmit into `handleComplete`'s own early return — the activity would
   // spend its buttons and the page would register nothing at all.
@@ -781,11 +793,17 @@ export default function LiveSessionPage() {
                 onSubmit={sound.onSubmit}
                 footer={
                   <>
-                    {/* "Pens down" when the clock runs out — same locked hint for
-                        every answerable kind, `code` included. */}
+                    {/* "Pens down" when the round closes — mesmo lock pra todo kind
+                        respondível, `code` incluído. O TEXTO muda com o motivo:
+                        vermelho de "esgotou" só quando um relógio de fato correu. */}
                     {locked && (
-                      <p className="mt-5 text-center text-sm text-destructive" data-testid="live-locked-hint">
-                        {t('live.timer.lockedHint')}
+                      <p
+                        className={`mt-5 text-center text-sm ${
+                          roundClosedByInstructor ? 'text-muted-foreground' : 'text-destructive'
+                        }`}
+                        data-testid="live-locked-hint"
+                      >
+                        {t(roundClosedByInstructor ? 'live.timer.stoppedHint' : 'live.timer.lockedHint')}
                       </p>
                     )}
                     {gate.awaitingStart && (
