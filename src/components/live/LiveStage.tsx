@@ -2,6 +2,7 @@ import { Pencil, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveStageBody } from '@/components/live/LiveStageBody';
+import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import type { Activity } from '@/types/content';
 import type { StageCursor, StagedAnswer } from '@/types/liveClass';
 
@@ -13,8 +14,10 @@ interface LiveStageProps {
    * submitted answer, so every other kind reports `empty` even while the learner
    * is working it. Pulling someone means showing the CURRENT state.
    *
-   * Only the instructor surface passes it: the learner already has their own
-   * copy of the same activity right below the stage.
+   * Both surfaces pass it. The learner one used not to, on the grounds that it
+   * already has its own copy below the stage — but that copy is not what the
+   * professor pointed at, so without the mirror the whole class read the empty
+   * state as the projection being broken.
    */
   activity?: Activity | null;
   /** Instructor-only affordance to dismiss the stage for everyone. */
@@ -96,11 +99,16 @@ export function LiveStage({
   // O enunciado não se perde: ele viaja DENTRO da tela espelhada
   // (`terminal.stepPrompt` / `chat.stepPrompt`), vindo do cliente do aluno, que é
   // a única fonte que sabe em que passo ele está.
+  //
+  // O BYOC não é kind, é camada, e cai na mesma regra por um caminho próprio:
+  // `useByoc` BUSCA a árvore na montagem, então cada espectador geraria a dele e
+  // veria uma atividade diferente com o nome do mesmo aluno em cima.
   const mirrorsFromViewerState =
     activity?.kind === 'code' ||
     activity?.kind === 'terminal_sandbox' ||
     activity?.kind === 'chat_sandbox' ||
-    activity?.kind === 'sandbox_scenario';
+    activity?.kind === 'sandbox_scenario' ||
+    (!!activity && isByocActivity(activity));
   const mirrorActivity = activity && !mirrorsFromViewerState ? activity : null;
 
   return (

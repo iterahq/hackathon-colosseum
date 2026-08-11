@@ -435,6 +435,24 @@ function ClassControl({
     () => void (instructorId && toggleStage(instructorId)),
     [instructorId, toggleStage]
   );
+  // Congelar o palco do professor serve pra solução exibida não ser mexida —
+  // então só vale onde existe solução a exibir, e nunca enquanto a tela dele é a
+  // que está projetada (a mesma razão do bloco acima). Um `code` não revela nada
+  // (`hasRevealableAnswer`), e mesmo assim o fim do cronômetro deixava o editor
+  // do professor `inert` PERMANENTEMENTE: `stoppedFor`/`expiredFor` só caem ao
+  // trocar de atividade ou ao religar o relógio.
+  //
+  // O BYOC entra pelo MESMO par que decide o botão de revelar (`canReveal`
+  // abaixo): ele é camada, não kind, e roda quase sempre sobre um `concept` —
+  // perguntar só ao kind o descongelaria junto com o `code`, e ali existe
+  // gabarito na tela pra proteger.
+  const ownStageFrozen = Boolean(
+    current &&
+      revealCurrent &&
+      !selfStaged &&
+      !isScenarioKind(current.kind) &&
+      (hasRevealableAnswer(current.kind) || isByocActivity(current))
+  );
   const stageHint = selfStaged
     ? t('live.instructor.selfStagedHint')
     : current && isScenarioKind(current.kind)
@@ -567,12 +585,10 @@ function ClassControl({
               // The professor's own stage is INTERACTIVE — they can work the
               // activity live on the projector (type in the code snack, click a
               // choice to demonstrate). It only freezes into a static mirror once
-              // the answer is revealed, so the shown solution can't be fiddled.
-              // sandbox_scenario is facilitator-driven and never reveals, so it
-              // stays interactive throughout.
+              // there is a revealed answer to protect (`ownStageFrozen`).
               <LiveActivityStage
                 activity={current}
-                readOnly={!isScenarioKind(current.kind) && revealCurrent}
+                readOnly={ownStageFrozen}
                 reveal={revealCurrent}
                 testid="instructor-activity-stage"
                 footer={

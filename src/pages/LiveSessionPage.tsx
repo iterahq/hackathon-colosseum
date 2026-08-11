@@ -661,6 +661,7 @@ export default function LiveSessionPage() {
               <div className="-mx-4 md:-mx-8 mb-6">
                 <LiveStage
                   staged={stagedAnswer}
+                  activity={current}
                   cursor={stageCursor}
                   cursorIntervalMs={stageCursorPlan.intervalMs}
                   cursorOff={!stageCursorPlan.enabled}
