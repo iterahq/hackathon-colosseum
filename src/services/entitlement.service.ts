@@ -32,7 +32,7 @@ export async function getMyEntitlement(): Promise<Entitlement> {
   if (!isSupabaseConfigured) return inactive;
   const sb = getSupabase();
   // itera.my_subscription is in the REST-exposed `itera` schema (the client's
-  // default schema). Since itera-api migration 0014 it can return MORE than one row: a
+  // default schema). Since db/migrations/0055 it can return MORE than one row: a
   // user who belongs to an exempt tenant and also has a lapsed subscription of
   // their own gets both. Taking the first row (the old `.limit(1)`) picked one
   // at random — so the entitled row is chosen explicitly.

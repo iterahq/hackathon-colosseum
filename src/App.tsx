@@ -281,7 +281,7 @@ const App = () => (
                     other learner surfaces (it was the one paid surface left open,
                     and it is the most expensive one — realtime + LLM). A tenant
                     that gives the class away (`tenants.subscription_exempt`,
-                    itera-api migration 0014) reads as entitled, so a free cohort
+                    db/migrations/0055) reads as entitled, so a free cohort
                     still walks in. `graceOnError` só aqui: uma leitura que falha
                     no wifi da escola não pode derrubar o aluno no meio da aula.
                     Guests come through /g/:code, never here. */}

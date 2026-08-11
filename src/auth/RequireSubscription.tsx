@@ -12,7 +12,7 @@
  *   - Grandfathered users (created_at before VITE_SUBSCRIPTION_GATE_DATE, default
  *     '2026-07-06') are ENTITLED — existing free users keep access (D3).
  *   - a tenant that gives its classes away (`itera.tenants.subscription_exempt`,
- *     itera-api migration 0014) surfaces an ENTITLED row in
+ *     db/migrations/0055) surfaces an ENTITLED row in
  *     `itera.my_subscription`, so a free cohort passes through the SAME
  *     authority — not a second bypass here.
  *   - `graceOnError` (opt-in, hoje só a aula ao vivo) deixa passar quando a
