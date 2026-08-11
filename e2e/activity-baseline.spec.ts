@@ -214,8 +214,12 @@ test.describe('exposição — kinds sem caminho de erro', () => {
   test('video: o player é exibido, e ele é a atividade inteira', async ({ page }) => {
     await open(page, VIDEO);
     await expect(page.getByTestId('video-player')).toBeVisible();
-    // Sem gate de assistir e sem conclusão: o vídeo é exposição pura. Note que
-    // `video-skeleton` nunca limpa aqui — a mídia não carrega num run hermético.
+    // O fixture é um link do YouTube — o link que um autor cola de verdade. Como
+    // `<video src>` toca arquivo e não página, ele NÃO vira player: vira o cartão
+    // que abre em nova aba. Congelado aqui porque a alternativa é a tela preta
+    // muda que o aluno via antes.
+    await expect(page.getByTestId('instruction-video-external')).toBeVisible();
+    // Sem gate de assistir e sem conclusão: o vídeo é exposição pura.
     await expect(page.getByTestId('activity-done')).toHaveCount(0);
   });
 

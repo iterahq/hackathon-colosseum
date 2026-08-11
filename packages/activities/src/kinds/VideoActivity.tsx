@@ -3,15 +3,16 @@
  * own kind: renders the video prominently, with an optional InstructionPanel
  * for surrounding context. Non-interactive → completes correct after watch.
  *
- * Skeleton: a pulse placeholder reserves space at the video's natural height
- * (h-[28rem]) while the media loads, preventing layout shift.
+ * O player é o MESMO `InstructionVideo` do painel de instrução, só mais alto:
+ * um vídeo que não toca precisa cair no cartão de link aqui também, e essa era
+ * a segunda cópia da mesma tag `<video>`.
  */
-import { useState } from 'react';
 import { Video as VideoIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { PortableActivity } from '../renderer.js';
 import type { VideoSpec } from '../specs.js';
 import { InstructionPanel } from '../components/InstructionPanel.js';
+import { InstructionVideo } from '../components/InstructionVideo.js';
 import { ActivityShell } from '../components/parts.js';
 
 export function VideoActivity({
@@ -23,7 +24,6 @@ export function VideoActivity({
 }) {
   const { t } = useActivityI18n();
   const spec = activity.spec as unknown as VideoSpec;
-  const [videoLoaded, setVideoLoaded] = useState(false);
 
   return (
     <ActivityShell kind="video" icon={VideoIcon} label={t('activity.video')}>
@@ -33,23 +33,8 @@ export function VideoActivity({
         </div>
       )}
       {spec?.video_url ? (
-        <div
-          className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden"
-          data-testid="video-player"
-        >
-          {!videoLoaded && (
-            <div
-              className="w-full h-[28rem] animate-pulse bg-muted-foreground/10"
-              aria-hidden="true"
-              data-testid="video-skeleton"
-            />
-          )}
-          <video
-            src={spec.video_url}
-            controls
-            className={`w-full max-h-[28rem] bg-black transition-opacity duration-300 ${videoLoaded ? 'opacity-100' : 'opacity-0 h-0'}`}
-            onLoadedMetadata={() => setVideoLoaded(true)}
-          />
+        <div data-testid="video-player">
+          <InstructionVideo src={spec.video_url} height="h-[28rem]" maxHeight="max-h-[28rem]" />
         </div>
       ) : (
         <div className="flex items-center justify-center gap-3 py-12 text-muted-foreground rounded-2xl border border-border bg-obsidiana/60">
