@@ -68,6 +68,35 @@ export const SemStarter: Story = {
   },
 };
 
+/**
+ * Variação: `starter` com marcadores `>>>` / `<<<` → só as linhas da faixa
+ * aceitam digitação (`parseEditableRegions`), e o resto do arquivo fica apagado.
+ * O contraste é o que responde "onde eu escrevo?" sem depender de o aluno ler o
+ * comentário — foi assim que uma turma real leu o editor travado como quebrado.
+ */
+export const ComFaixaEditavel: Story = {
+  args: {
+    activity: makeActivity('code', {
+      prompt: 'Só a faixa verde aceita digitação. Escreva o `useState` ali dentro.',
+      language: 'tsx',
+      starter: [
+        'function Contador() {',
+        '  // >>> escreva nesta linha',
+        '  ',
+        '  // <<<',
+        '  return (',
+        '    <button className="rounded bg-orange-500 px-4 py-2 text-white">',
+        '      cliques: 0',
+        '    </button>',
+        '  );',
+        '}',
+        '',
+        'export default Contador;',
+      ].join('\n'),
+    }),
+  },
+};
+
 /** Variação de ESTADO: activity concluída → botão travado em "Concluída". */
 export const Concluida: Story = {
   args: { activity: makeActivity('code', CODE_SPEC, 'done') },

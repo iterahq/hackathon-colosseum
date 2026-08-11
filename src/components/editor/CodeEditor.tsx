@@ -1,13 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import type { EditableRegion } from '@iterahq/activities';
 import { isEditAllowed } from '@iterahq/activities/code';
 import { CODE_CARET_EVENT, type CodeCaretEventDetail } from '@/utils/stageCursorDom';
+import { lockedLineRuns } from './lockedLineRuns';
 import { configureTypeScriptDefaults, modelPathFor } from './monacoTypescript';
 
 type MonacoEditorInstance = Parameters<OnMount>[0];
 type MonacoNamespace = Parameters<OnMount>[1];
 type DecorationsCollection = ReturnType<MonacoEditorInstance['createDecorationsCollection']>;
+type Decoration = Parameters<DecorationsCollection['set']>[0][number];
 
 interface CodeEditorProps {
   value: string;
@@ -88,25 +90,48 @@ export function CodeEditor({
   const regionsRef = useRef<readonly EditableRegion[] | undefined>(editableRegions);
   regionsRef.current = editableRegions;
   const regionDecorationsRef = useRef<DecorationsCollection | null>(null);
+  // Monaco mounts ASYNCHRONOUSLY, after the effect below has already run and
+  // found no editor. Nothing else re-renders this component, so without a state
+  // flip the paint waited for the learner's FIRST keystroke — the file opened
+  // with no band at all, which is the exact moment they need to see it.
+  const [editorReady, setEditorReady] = useState(false);
 
   // Paint the region so "you may type here" is visible, not folklore. Kept in
   // an effect rather than in `onMount` because the regions move with every
   // newline the learner types.
+  //
+  // Painting the band alone was not enough with a real class: a highlight reads
+  // as decoration until something else reads as OFF. So the locked code is faded
+  // in the same pass, and the two together say where the keyboard works.
   useEffect(() => {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
-    if (!editor || !monaco) return;
-    const decorations = (editableRegions ?? []).map((r) => ({
+    const model = editor?.getModel();
+    if (!editor || !monaco || !model) return;
+    const regions = editableRegions ?? [];
+    const decorations: Decoration[] = regions.map((r) => ({
       range: new monaco.Range(r.startLineNumber, 1, r.endLineNumber, r.endColumn),
       options: {
         isWholeLine: true,
         className: 'editable-region-line',
         linesDecorationsClassName: 'editable-region-gutter',
+        lineNumberClassName: 'editable-region-number',
       },
     }));
+    for (const run of lockedLineRuns(regions, model.getLineCount())) {
+      decorations.push({
+        range: new monaco.Range(
+          run.startLineNumber,
+          1,
+          run.endLineNumber,
+          model.getLineMaxColumn(run.endLineNumber)
+        ),
+        options: { inlineClassName: 'locked-region-text' },
+      });
+    }
     if (regionDecorationsRef.current) regionDecorationsRef.current.set(decorations);
     else regionDecorationsRef.current = editor.createDecorationsCollection(decorations);
-  }, [editableRegions]);
+  }, [editableRegions, editorReady]);
 
   // Apply the remote caret. `revealLineInCenter` only fires when the caret has
   // left the visible range: following every keystroke would fight the viewer,
@@ -193,6 +218,7 @@ export function CodeEditor({
           monaco.editor.setTheme('iterate-dark');
           editorRef.current = editor;
           monacoRef.current = monaco;
+          setEditorReady(true);
 
           // The wall. Undo (rather than prevent) for the reason in the prop's
           // doc; `isUndoing` guards the recursion, since the revert is itself a
