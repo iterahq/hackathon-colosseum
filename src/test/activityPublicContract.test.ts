@@ -289,6 +289,7 @@ const PUBLIC_RUNTIME_SURFACE = [
   'SandboxBubble',
   'SandboxChatLog',
   'SandboxClearButton',
+  'SandboxStepHeader',
   'SandboxWindow',
   'useAssistantStream',
   'answerMachine',

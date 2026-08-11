@@ -176,6 +176,11 @@ export { SandboxChatLog } from './kinds/sandbox/SandboxChatLog.js';
 export { SandboxClearButton } from './kinds/sandbox/SandboxClearButton.js';
 export { SandboxWindow } from './kinds/sandbox/SandboxWindow.js';
 export { useAssistantStream } from './kinds/sandbox/useAssistantStream.js';
+// Exported for the same reason as `JudgeHeatmap`: the Player's Storybook mounts
+// it directly. A track drawn only inside a running sandbox can't be reviewed
+// step by step, and stepping through a whole scenario to see state 2 of 3 is
+// what kept it out of design review.
+export { SandboxStepHeader } from './components/SandboxStepHeader.js';
 export { InstructionPanel } from './components/InstructionPanel.js';
 export { RichBlock } from './components/RichBlock.js';
 export { RichSpans } from './components/RichSpans.js';
