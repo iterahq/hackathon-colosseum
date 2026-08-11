@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { cn } from '@devfellowship/components';
 import { Button } from '@devfellowship/components';
 import { Sparkles, Timer } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { DailyChallenge } from './types';
 
 /**
@@ -14,19 +15,19 @@ export interface DailyChallengeBannerProps {
   className?: string;
 }
 
-function formatExpiry(iso: string) {
-  const date = new Date(iso);
-  const now = new Date();
-  const isToday = date.toDateString() === now.toDateString();
-  if (isToday) return 'Expira hoje';
-  return `Expira em ${date.toLocaleDateString('pt-BR')}`;
-}
-
 export function DailyChallengeBanner({ challenge, className }: DailyChallengeBannerProps) {
+  const { t, locale } = useI18n();
+  const expiresAt = new Date(challenge.expiresAt);
+  const expiresToday = expiresAt.toDateString() === new Date().toDateString();
+  const expiry = expiresToday
+    ? t('daily-challenge.expiry')
+    : t('daily-challenge.expiryOn', {
+        date: expiresAt.toLocaleDateString(locale === 'pt' ? 'pt-BR' : 'en-US'),
+      });
   return (
     <section
       className={cn(
-        'relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-5 md:p-6',
+        "relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-5 md:p-6",
         className,
       )}
       data-testid="daily-challenge-banner"
@@ -36,21 +37,27 @@ export function DailyChallengeBanner({ challenge, className }: DailyChallengeBan
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-semibold text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Desafio do dia
+              {t("daily-challenge.label")}
             </span>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Timer className="h-3.5 w-3.5" />
-              {formatExpiry(challenge.expiresAt)}
+              {expiry}
             </span>
             <span className="rounded-full bg-xp/15 px-2 py-0.5 text-xs font-bold text-xp">
               +{challenge.bonusXp} XP
             </span>
           </div>
-          <h2 className="text-lg font-bold text-foreground">{challenge.title}</h2>
-          <p className="text-sm text-muted-foreground max-w-xl">{challenge.description}</p>
+          <h2 className="text-lg font-bold text-foreground">
+            {challenge.title}
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-xl">
+            {challenge.description}
+          </p>
         </div>
         <Button asChild className="shrink-0 w-full md:w-auto">
-          <Link to={`/lesson/${challenge.targetLessonId}`}>Ver desafio</Link>
+          <Link to={`/lesson/${challenge.targetLessonId}`}>
+            {t("home.viewChallenge")}
+          </Link>
         </Button>
       </div>
     </section>

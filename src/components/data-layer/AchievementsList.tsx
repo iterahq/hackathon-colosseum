@@ -1,5 +1,6 @@
 import { cn } from '@devfellowship/components';
 import { Lock } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { UserAchievement } from './types';
 
 /**
@@ -21,10 +22,11 @@ function formatUnlockedDate(iso: string) {
 }
 
 export function AchievementsList({ achievements, className }: AchievementsListProps) {
+  const { t } = useI18n();
   if (achievements.length === 0) {
     return (
       <p className={cn('text-sm text-muted-foreground text-center py-6', className)}>
-        Nenhuma conquista cadastrada.
+        {t('achievements.none')}
       </p>
     );
   }
@@ -38,28 +40,38 @@ export function AchievementsList({ achievements, className }: AchievementsListPr
           <li
             key={item.id}
             className={cn(
-              'flex gap-3 rounded-lg border p-3',
+              "flex gap-3 rounded-lg border p-3",
               unlocked
-                ? 'border-primary/20 bg-primary/5'
-                : 'border-border bg-muted/30 opacity-75',
+                ? "border-primary/20 bg-primary/5"
+                : "border-border bg-muted/30 opacity-75",
             )}
           >
             <span
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background text-xl"
               aria-hidden
             >
-              {unlocked ? item.iconEmoji : <Lock className="h-4 w-4 text-muted-foreground" />}
+              {unlocked ? (
+                item.iconEmoji
+              ) : (
+                <Lock className="h-4 w-4 text-muted-foreground" />
+              )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm text-foreground">{item.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+              <p className="font-semibold text-sm text-foreground">
+                {item.title}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {item.description}
+              </p>
               {unlocked && item.unlockedAt && (
                 <p className="text-xs text-primary mt-1.5">
-                  Desbloqueada em {formatUnlockedDate(item.unlockedAt)}
+                  {t("achievements.unlockedOn", {
+                    date: formatUnlockedDate(item.unlockedAt),
+                  })}
                 </p>
               )}
               {!unlocked && (
-                <p className="text-xs text-muted-foreground mt-1.5">Bloqueada</p>
+                <p className="text-xs text-muted-foreground mt-1.5">{t('achievements.locked')}</p>
               )}
             </div>
           </li>

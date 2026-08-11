@@ -1,5 +1,6 @@
 import { cn } from '@devfellowship/components';
 import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { Announcement, AnnouncementSeverity } from './types';
 
 /**
@@ -34,13 +35,14 @@ export interface AnnouncementListProps {
 }
 
 export function AnnouncementList({ announcements, className }: AnnouncementListProps) {
+  const { t } = useI18n();
   if (announcements.length === 0) {
     return (
       <p
         className={cn('text-sm text-muted-foreground text-center py-4', className)}
         data-testid="announcement-list-empty"
       >
-        Nenhum aviso no momento.
+        {t('announcements.none')}
       </p>
     );
   }

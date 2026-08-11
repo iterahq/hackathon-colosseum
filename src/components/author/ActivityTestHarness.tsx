@@ -83,12 +83,14 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
         data-testid="test-sandbox-banner"
       >
         <FlaskConical className="h-3.5 w-3.5" />
-        {byoc ? t('authorTest.byoc.persisted') : t('authorTest.sandboxed')}
+        {byoc ? t("authorTest.byoc.persisted") : t("authorTest.sandboxed")}
       </div>
 
       <ByocAuthorDiagnosis diagnosis={diagnosis} />
 
-      {byoc && <ByocAuthorReRoll activityId={activity.id} onRegenerated={reset} />}
+      {byoc && (
+        <ByocAuthorReRoll activityId={activity.id} onRegenerated={reset} />
+      )}
 
       {/* The real renderer, remounted on reset via `key`. */}
       <div key={runKey}>
@@ -97,7 +99,11 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
 
       {showSandboxFooter && attempt && (
         <FeedbackFooter
-          result={{ correct: attempt.correct, message: attempt.detail?.message, explanation: attempt.detail?.explanation }}
+          result={{
+            correct: attempt.correct,
+            message: attempt.detail?.message,
+            explanation: attempt.detail?.explanation,
+          }}
           onContinue={() => setFooterDismissed(true)}
           continueTestId="sandbox-continue"
         />
@@ -107,7 +113,7 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
       {attempt && (
         <div
           data-testid="test-verdict"
-          data-correct={attempt.correct ? 'true' : 'false'}
+          data-correct={attempt.correct ? "true" : "false"}
           className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
         >
           <div className="flex items-center gap-2">
@@ -117,13 +123,22 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
               <XCircle className="h-5 w-5 text-destructive" />
             )}
             <span className="text-sm font-semibold text-foreground">
-              {attempt.correct ? 'Correct' : 'Incorrect'}
+              {attempt.correct
+                ? t("test.verdict.correct")
+                : t("test.verdict.incorrect")}
             </span>
-            <Badge variant="secondary">not saved</Badge>
+            <Badge variant="secondary" data-testid="test-not-saved">
+              {t("author.notSaved")}
+            </Badge>
           </div>
-          <Button variant="outline" size="sm" onClick={reset} data-testid="test-reset">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reset}
+            data-testid="test-reset"
+          >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset
+            {t("liveTest.reset")}
           </Button>
         </div>
       )}

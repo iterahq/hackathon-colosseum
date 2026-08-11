@@ -17,6 +17,7 @@ import { CheckCircle2, FlaskConical, RotateCcw, XCircle } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { LiveActivityRenderer } from '@/components/branded/activity/LiveActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import { useI18n } from "@/i18n";
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
 import { isScenarioKind } from '@/utils/activityFamilies';
@@ -29,6 +30,7 @@ export interface TestAttempt {
 }
 
 export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
+  const { t } = useI18n();
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
   const [runKey, setRunKey] = useState(0);
   const [footerDismissed, setFooterDismissed] = useState(false);
@@ -50,19 +52,30 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
     isScenarioKind(activity.kind) && !!attempt && !footerDismissed;
 
   return (
-    <div className="flex flex-col gap-4" data-testid="live-activity-test-harness">
+    <div
+      className="flex flex-col gap-4"
+      data-testid="live-activity-test-harness"
+    >
       <div className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
         <FlaskConical className="h-3.5 w-3.5" />
-        Live test mode — real AI responder + judge, player-side nothing saved
+        {t("liveTest.mode")}
       </div>
 
       <div key={runKey}>
-        <LiveActivityRenderer activity={activity} onComplete={handleComplete} forceLive />
+        <LiveActivityRenderer
+          activity={activity}
+          onComplete={handleComplete}
+          forceLive
+        />
       </div>
 
       {showSandboxFooter && attempt && (
         <FeedbackFooter
-          result={{ correct: attempt.correct, message: attempt.detail?.message, explanation: attempt.detail?.explanation }}
+          result={{
+            correct: attempt.correct,
+            message: attempt.detail?.message,
+            explanation: attempt.detail?.explanation,
+          }}
           onContinue={() => setFooterDismissed(true)}
           continueTestId="byoc-continue"
         />
@@ -71,7 +84,7 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
       {attempt && (
         <div
           data-testid="test-verdict"
-          data-correct={attempt.correct ? 'true' : 'false'}
+          data-correct={attempt.correct ? "true" : "false"}
           className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
         >
           <div className="flex items-center gap-2">
@@ -81,13 +94,22 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
               <XCircle className="h-5 w-5 text-destructive" />
             )}
             <span className="text-sm font-semibold text-foreground">
-              {attempt.correct ? 'Correct' : 'Incorrect'}
+              {attempt.correct
+                ? t("test.verdict.correct")
+                : t("test.verdict.incorrect")}
             </span>
-            <Badge variant="secondary">not saved</Badge>
+            <Badge variant="secondary" data-testid="test-not-saved">
+              {t("author.notSaved")}
+            </Badge>
           </div>
-          <Button variant="outline" size="sm" onClick={reset} data-testid="test-reset">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={reset}
+            data-testid="test-reset"
+          >
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset
+            {t("liveTest.reset")}
           </Button>
         </div>
       )}

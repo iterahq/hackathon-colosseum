@@ -25,6 +25,7 @@ import {
   previewUserStats,
 } from '@/components/data-layer/preview.mock';
 import { PreviewSectionLabel } from './PreviewSectionLabel';
+import { useI18n } from "@/i18n";
 
 /**
  * Preview + slots T1, T2, T4, T6 no header da `HomePage`.
@@ -36,6 +37,7 @@ import { PreviewSectionLabel } from './PreviewSectionLabel';
  * Fellow T10: drawer 🔔 → `useGetNotifications()`.
  */
 export function HomePageHeaderDataSlots() {
+  const { t } = useI18n();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -53,14 +55,14 @@ export function HomePageHeaderDataSlots() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            aria-label="Conquistas"
+            aria-label={t("achievements.title")}
           >
             <Trophy className="h-4 w-4 text-xp" />
           </Button>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader>
-            <DrawerTitle>Conquistas</DrawerTitle>
+            <DrawerTitle>{t("achievements.title")}</DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-2">
             <PreviewSectionLabel taskId="T6" />
@@ -68,7 +70,7 @@ export function HomePageHeaderDataSlots() {
           </div>
           <DrawerClose asChild>
             <Button variant="outline" className="mx-4 mb-4">
-              Fechar
+              {t("common.close")}
             </Button>
           </DrawerClose>
         </DrawerContent>
@@ -82,14 +84,16 @@ export function HomePageHeaderDataSlots() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            aria-label="Notificações"
+            aria-label={t("notifications.title")}
           >
-            <NotificationBellIcon unreadCount={previewNotifications.unreadCount} />
+            <NotificationBellIcon
+              unreadCount={previewNotifications.unreadCount}
+            />
           </Button>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader>
-            <DrawerTitle>Notificações</DrawerTitle>
+            <DrawerTitle>{t("notifications.title")}</DrawerTitle>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-2">
             <PreviewSectionLabel taskId="T10" />
@@ -97,7 +101,7 @@ export function HomePageHeaderDataSlots() {
           </div>
           <DrawerClose asChild>
             <Button variant="outline" className="mx-4 mb-4">
-              Fechar
+              {t("common.close")}
             </Button>
           </DrawerClose>
         </DrawerContent>
@@ -111,7 +115,7 @@ export function HomePageHeaderDataSlots() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 shrink-0"
-            aria-label="Preferências"
+            aria-label={t("appearance.title")}
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -123,7 +127,7 @@ export function HomePageHeaderDataSlots() {
           </div>
           <DrawerClose asChild>
             <Button variant="outline" className="mx-4 mb-4">
-              Fechar
+              {t("common.close")}
             </Button>
           </DrawerClose>
         </DrawerContent>

@@ -1,5 +1,6 @@
 import { cn } from '@devfellowship/components';
 import { Award, BookCheck, Flame } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { ActivityEvent, ActivityEventType } from './types';
 
 /**
@@ -31,10 +32,11 @@ function formatOccurredAt(iso: string) {
 }
 
 export function RecentActivityFeed({ events, className }: RecentActivityFeedProps) {
+  const { t } = useI18n();
   if (events.length === 0) {
     return (
       <p className={cn('text-sm text-muted-foreground text-center py-6', className)}>
-        Nenhuma atividade recente.
+        {t('recent-activity.empty')}
       </p>
     );
   }

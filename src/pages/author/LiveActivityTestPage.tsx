@@ -14,16 +14,17 @@ import { ArrowLeft } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { LiveActivityTestHarness } from '@/components/author/LiveActivityTestHarness';
 import { useActivity } from '@/hooks/useAuthorCanvas';
+import { useI18n } from '@/i18n';
 
 export default function LiveActivityTestPage() {
   const { activityId } = useParams<{ activityId: string }>();
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const { data: activity, isPending, isError, refetch } = useActivity(activityId);
 
   const backUnitId = searchParams.get('unit');
   const backTo = backUnitId ? `/author/units/${backUnitId}/canvas` : '/author';
-  const backLabel = backUnitId ? 'Back to canvas' : 'Author';
-
+  const backLabel = backUnitId ? t("author.backToCanvas"): t("author.authoring");
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
@@ -36,19 +37,26 @@ export default function LiveActivityTestPage() {
           >
             <ArrowLeft className="w-4 h-4" /> {backLabel}
           </Link>
-          <h1 className="text-sm font-semibold text-foreground" data-testid="test-page-title">
-            Test as student · live AI
+          <h1
+            className="text-sm font-semibold text-foreground"
+            data-testid="test-page-title"
+          >
+            {t("authorTest.liveTitle")}
           </h1>
         </div>
       </div>
 
       <main className="flex-1 max-w-[760px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
-        {isPending && <p className="text-sm text-muted-foreground">Loading activity…</p>}
+        {isPending && (
+          <p className="text-sm text-muted-foreground">
+            {t("author.loadingActivity")}
+          </p>
+        )}
         {isError && (
           <div className="text-sm text-muted-foreground">
-            Could not load this activity.{' '}
+            {t("authorTest.error")}{" "}
             <button className="underline" onClick={() => refetch()}>
-              Try again
+              {t("common.retry")}
             </button>
           </div>
         )}

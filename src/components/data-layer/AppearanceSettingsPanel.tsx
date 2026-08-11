@@ -1,5 +1,6 @@
 import { cn } from '@devfellowship/components';
 import { Monitor, Moon, Sun, Volume2, VolumeX, Languages } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { ThemePreference, UserPreferences } from './types';
 
 /**
@@ -33,10 +34,11 @@ export function AppearanceSettingsPanel({
   preferences,
   className,
 }: AppearanceSettingsPanelProps) {
+  const { t } = useI18n();
   const rows = [
     {
       icon: <ThemeIcon theme={preferences.theme} />,
-      label: 'Tema',
+      label: t('appearance.theme'),
       value: THEME_LABELS[preferences.theme],
     },
     {
@@ -45,19 +47,19 @@ export function AppearanceSettingsPanel({
       ) : (
         <VolumeX className="h-4 w-4 text-muted-foreground" />
       ),
-      label: 'Sons',
-      value: preferences.soundEffectsEnabled ? 'Ativados' : 'Desativados',
+      label: t('appearance.sounds'),
+      value: preferences.soundEffectsEnabled ? t('appearance.enabled') : t('appearance.disabled'),
     },
     {
       icon: <Languages className="h-4 w-4 text-muted-foreground" />,
-      label: 'Idioma',
+      label: t('appearance.language'),
       value: LANGUAGE_LABELS[preferences.language],
     },
   ];
 
   return (
     <div className={cn('space-y-1', className)} data-testid="appearance-settings-panel">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Preferências</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">{t('appearance.title')}</h2>
       <ul className="divide-y divide-border rounded-lg border border-border">
         {rows.map((row) => (
           <li
@@ -75,7 +77,7 @@ export function AppearanceSettingsPanel({
         ))}
       </ul>
       <p className="text-xs text-muted-foreground pt-3">
-        Edição de preferências disponível em breve.
+        {t('appearance.note')}
       </p>
     </div>
   );

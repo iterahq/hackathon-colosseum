@@ -81,7 +81,7 @@ const CANVAS_INITIAL_SCALE = 0.7;
 
 export default function UnitCanvasPage() {
   const { unitId } = useParams<{ unitId: string }>();
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
 
   const canvasQ = useUnitCanvas(unitId);
   const versionsQ = useUnitVersions(unitId);
@@ -190,30 +190,40 @@ export default function UnitCanvasPage() {
             to="/author"
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <ArrowLeft className="w-4 h-4" /> Author
+            <ArrowLeft className="w-4 h-4" /> {t("author.authoring")}
           </Link>
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold text-foreground truncate" data-testid="canvas-unit-title">
-              {canvas ? `${pick(canvas.program.title)} · ${pick(canvas.unit.title)}` : 'Unit canvas'}
+            <h1
+              className="text-sm font-semibold text-foreground truncate"
+              data-testid="canvas-unit-title"
+            >
+              {canvas
+                ? `${pick(canvas.program.title)} · ${pick(canvas.unit.title)}`
+                : t("author.unitCanvas")}
             </h1>
           </div>
           <span className="hidden lg:inline text-[11px] font-mono text-muted-foreground/70">
-            drag to pan · scroll to pan · ⌘/pinch to zoom · C to comment
+            {t("author.canvasHint")}
           </span>
           <div className="flex items-center gap-2 ml-auto">
             <Button
-              variant={commentMode ? 'default' : 'outline'}
+              variant={commentMode ? "default" : "outline"}
               size="sm"
               onClick={() => setCommentMode((v) => !v)}
               data-testid="comment-mode-toggle"
               aria-pressed={commentMode}
             >
               <MessageSquarePlus className="mr-1.5 h-4 w-4" />
-              Comment{commentMode ? ' (on)' : ''}
+              {commentMode ? t("author.commentOn") : t("author.comment")}
             </Button>
-            <Button variant="outline" size="sm" onClick={refreshAll} data-testid="canvas-refresh">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshAll}
+              data-testid="canvas-refresh"
+            >
               <RefreshCw className="mr-1.5 h-4 w-4" />
-              Refresh
+              {t("common.refresh")}
             </Button>
             <Button
               variant="outline"
@@ -221,7 +231,9 @@ export default function UnitCanvasPage() {
               onClick={() => setSidebarOpen((v) => !v)}
               data-testid="toggle-sidebar"
             >
-              {sidebarOpen ? 'Hide' : 'Show'} comments
+              {sidebarOpen
+                ? t("author.hideComments")
+                : t("author.showComments")}
             </Button>
           </div>
         </div>
@@ -234,31 +246,36 @@ export default function UnitCanvasPage() {
           style={{
             // Figma-style dotted grid so it reads as an infinite canvas.
             backgroundImage:
-              'radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
+              "radial-gradient(circle, hsl(var(--border)) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
           }}
         >
           {/* Loading / error / empty states — overlaid, NOT inside the transform
               so they stay centered and readable regardless of pan/zoom. */}
           {canvasQ.isPending && (
             <div className="absolute inset-0 grid place-items-center">
-              <p className="text-sm text-muted-foreground">Loading unit…</p>
+              <p className="text-sm text-muted-foreground">
+                {t("author.loadingUnit")}
+              </p>
             </div>
           )}
           {canvasQ.isError && (
             <div className="absolute inset-0 grid place-items-center">
               <div className="text-sm text-muted-foreground text-center">
-                Could not load this unit.{' '}
+                {t("author.loadUnitError")}{" "}
                 <button className="underline" onClick={() => canvasQ.refetch()}>
-                  Try again
+                  {t("common.retry")}
                 </button>
               </div>
             </div>
           )}
           {canvas && canvas.lessons.length === 0 && (
             <div className="absolute inset-0 grid place-items-center">
-              <p className="text-sm text-muted-foreground" data-testid="canvas-empty">
-                This unit has no lessons yet.
+              <p
+                className="text-sm text-muted-foreground"
+                data-testid="canvas-empty"
+              >
+                {t("author.noLessons")}
               </p>
             </div>
           )}
@@ -270,12 +287,16 @@ export default function UnitCanvasPage() {
               initialScale={CANVAS_INITIAL_SCALE}
               limitToBounds={false}
               centerOnInit
-              wheel={{ wheelDisabled: true, smoothStep: PINCH_ZOOM_SENSITIVITY }}
+              wheel={{
+                wheelDisabled: true,
+                smoothStep: PINCH_ZOOM_SENSITIVITY,
+              }}
               panning={{ velocityDisabled: true, wheelPanning: true }}
               doubleClick={{ disabled: true }}
-              onTransformed={(_ref: ReactZoomPanPinchRef, s: { scale: number }) =>
-                setScale(s.scale)
-              }
+              onTransformed={(
+                _ref: ReactZoomPanPinchRef,
+                s: { scale: number },
+              ) => setScale(s.scale)}
             >
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
@@ -285,7 +306,7 @@ export default function UnitCanvasPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => zoomIn()}
-                      aria-label="Zoom in"
+                      aria-label={t("author.zoomIn")}
                       data-testid="canvas-zoom-in"
                     >
                       <ZoomIn className="h-4 w-4" />
@@ -300,7 +321,7 @@ export default function UnitCanvasPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => zoomOut()}
-                      aria-label="Zoom out"
+                      aria-label={t("author.zoomOut")}
                       data-testid="canvas-zoom-out"
                     >
                       <ZoomOut className="h-4 w-4" />
@@ -309,7 +330,7 @@ export default function UnitCanvasPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => resetTransform()}
-                      aria-label="Reset view"
+                      aria-label={t("author.resetView")}
                       data-testid="canvas-zoom-reset"
                     >
                       <Maximize className="h-4 w-4" />
@@ -332,19 +353,22 @@ export default function UnitCanvasPage() {
                         >
                           <div className="flex items-baseline gap-2 mb-3">
                             <span className="text-[11px] font-mono uppercase tracking-wider text-menta tabular-nums">
-                              L{String(lesson.ordinal).padStart(2, '0')}
+                              L{String(lesson.ordinal).padStart(2, "0")}
                             </span>
                             <h2 className="text-sm font-semibold text-foreground truncate">
                               {pick(lesson.title)}
                             </h2>
                             <span className="text-[11px] font-mono text-muted-foreground">
-                              {lesson.activities.length} activit
-                              {lesson.activities.length === 1 ? 'y' : 'ies'}
+                              {t("author.activitiesCount", {
+                                n: lesson.activities.length,
+                              })}
                             </span>
                           </div>
 
                           {lesson.activities.length === 0 ? (
-                            <p className="text-xs text-muted-foreground pl-1">No activities.</p>
+                            <p className="text-xs text-muted-foreground pl-1">
+                              {t("author.noActivities")}
+                            </p>
                           ) : (
                             <div className="flex gap-6">
                               {lesson.activities.map((activity) => (
@@ -353,7 +377,9 @@ export default function UnitCanvasPage() {
                                   activity={activity}
                                   unitId={unitId}
                                   commentMode={commentMode}
-                                  commentCount={commentCounts.get(activity.id) ?? 0}
+                                  commentCount={
+                                    commentCounts.get(activity.id) ?? 0
+                                  }
                                   pins={versionComments.filter(
                                     (c) => c.activityId === activity.id,
                                   )}
@@ -392,7 +418,9 @@ export default function UnitCanvasPage() {
             onSelectVersion={setSelectedVersionId}
             comments={versionComments}
             activityRefs={activityRefs}
-            onResolveToggle={(c) => toggleResolved.mutate({ id: c.id, resolved: !c.resolved })}
+            onResolveToggle={(c) =>
+              toggleResolved.mutate({ id: c.id, resolved: !c.resolved })
+            }
             onDelete={(c) => deleteComment.mutate(c.id)}
             onBumpVersion={() =>
               bumpVersion.mutate(undefined, {
@@ -441,6 +469,7 @@ function ActivityCell({
   onCommentClick: (anchorX: number, anchorY: number) => void;
 }) {
   const published = activity.publishStatus === 'published';
+  const { t } = useI18n();
   const [policyOpen, setPolicyOpen] = useState(false);
   const setPolicy = useSetArtifactPolicy(unitId);
   // Resolved through the SAME function the player uses, so the canvas cannot
@@ -465,7 +494,7 @@ function ActivityCell({
       data-testid="canvas-cell"
       data-activity-id={activity.id}
       data-activity-kind={activity.kind}
-      data-status={activity.publishStatus ?? 'unknown'}
+      data-status={activity.publishStatus ?? "unknown"}
       className="group relative w-[640px] shrink-0"
     >
       {/* Hover-revealed control strip — the only chrome. Hidden at rest; the
@@ -473,22 +502,31 @@ function ActivityCell({
       <div className="pointer-events-none absolute -top-9 left-0 right-0 z-20 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
         <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
           <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
-            #{String(activity.ordinal).padStart(2, '0')}
+            #{String(activity.ordinal).padStart(2, "0")}
           </span>
           <span className="text-[10px] font-mono text-muted-foreground/70">
             {activity.kind}
           </span>
-          <Badge variant={published ? 'default' : 'secondary'} data-testid="cell-status-badge">
-            {published ? 'published' : 'draft'}
+          <Badge
+            variant={published ? "default" : "secondary"}
+            data-testid="cell-status-badge"
+          >
+            {published ? t("author.published") : t("author.draft")}
           </Badge>
           {commentCount > 0 && (
             <Badge variant="outline" data-testid="cell-comment-badge">
               {commentCount} 💬
             </Badge>
           )}
-          <Button variant="ghost" size="sm" className="h-7 px-2" asChild data-testid="cell-test-link">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            asChild
+            data-testid="cell-test-link"
+          >
             <Link to={testHref}>
-              <FlaskConical className="mr-1.5 h-3.5 w-3.5" /> Test
+              <FlaskConical className="mr-1.5 h-3.5 w-3.5" /> {t("author.test")}
             </Link>
           </Button>
           {/* "What persists?" — the authored artifact policy (migration 0027).
@@ -501,10 +539,10 @@ function ActivityCell({
             className="h-7 px-2"
             onClick={() => setPolicyOpen(true)}
             data-testid="cell-artifact-policy"
-            data-artifact-persists={persists ? 'true' : 'false'}
+            data-artifact-persists={persists ? "true" : "false"}
           >
             <Archive className="mr-1.5 h-3.5 w-3.5" />
-            {persists ? resolvedPolicy.filename : 'no artifact'}
+            {persists ? resolvedPolicy.filename : t("author.noArtifact")}
           </Button>
         </div>
       </div>
@@ -522,7 +560,10 @@ function ActivityCell({
             <span
               key={c.id}
               className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-clay ring-2 ring-background"
-              style={{ left: `${c.anchorX * 100}%`, top: `${c.anchorY * 100}%` }}
+              style={{
+                left: `${c.anchorX * 100}%`,
+                top: `${c.anchorY * 100}%`,
+              }}
               title={c.body}
               data-testid="comment-pin"
             />
@@ -533,7 +574,7 @@ function ActivityCell({
         {commentMode && (
           <div
             role="button"
-            aria-label="Add comment on this activity"
+            aria-label={t("author.addCommentOnActivity")}
             data-testid="cell-comment-overlay"
             onClick={handleOverlayClick}
             className="absolute inset-0 cursor-crosshair rounded-xl bg-clay/5 hover:bg-clay/10"

@@ -1,4 +1,5 @@
 import { cn } from '@devfellowship/components';
+import { useI18n } from "@/i18n";
 import type { UserProfile } from './types';
 
 /**
@@ -16,6 +17,7 @@ export function UserProfileCard({
   variant = 'default',
   className,
 }: UserProfileCardProps) {
+  const { t } = useI18n();
   if (variant === 'compact') {
     return (
       <div
@@ -53,7 +55,7 @@ export function UserProfileCard({
       <div className="min-w-0">
         <p className="font-semibold text-foreground truncate">{profile.name}</p>
         <p className="text-sm text-muted-foreground truncate">{profile.email}</p>
-        <p className="text-xs text-muted-foreground">{profile.age} anos</p>
+        <p className="text-xs text-muted-foreground">{t('profile.age', { age: profile.age })}</p>
       </div>
     </article>
   );

@@ -11,7 +11,7 @@ import { useAuthorPrograms } from '@/hooks/useAuthorCanvas';
 import type { I18nText } from '@/types/content';
 
 export default function AuthorHomePage() {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const { data: programs, isPending, isError, refetch } = useAuthorPrograms();
 
   const pick = (b: I18nText | undefined) =>
@@ -26,33 +26,41 @@ export default function AuthorHomePage() {
             <PencilRuler className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[13px] uppercase tracking-wider text-menta">Authoring</span>
+            <span className="text-[13px] uppercase tracking-wider text-menta">
+              {t("author.authoring")}
+            </span>
             <h1
               className="font-display font-bold text-foreground leading-tight text-xl"
               data-testid="author-title"
             >
-              Review canvas
+              {t("author.reviewCanvas")}
             </h1>
           </div>
         </div>
         <p className="text-sm text-muted-foreground mb-6">
-          Pick a unit to review its activities, leave comments, and publish. Content
-          edits happen via the agent (itera-mcp) — this canvas is review + publish.
+          {t("author.homeSubtitle")}
         </p>
 
-        {isPending && <p className="text-sm text-muted-foreground">Loading programs…</p>}
+        {isPending && (
+          <p className="text-sm text-muted-foreground">
+            {t("author.loadingPrograms")}
+          </p>
+        )}
         {isError && (
           <div className="text-sm text-muted-foreground">
-            Could not load your programs.{' '}
+            {t("author.loadError")}{" "}
             <button className="underline" onClick={() => refetch()}>
-              Try again
+              {t("common.retry")}
             </button>
           </div>
         )}
 
         {!isPending && !isError && (programs?.length ?? 0) === 0 && (
-          <p className="text-sm text-muted-foreground" data-testid="author-empty">
-            No programs available for your tenant.
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="author-empty"
+          >
+            {t("author.noPrograms")}
           </p>
         )}
 
@@ -65,13 +73,17 @@ export default function AuthorHomePage() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <FolderTree className="w-4 h-4 text-menta" />
-                <h2 className="text-sm font-semibold text-foreground">{pick(program.title)}</h2>
+                <h2 className="text-sm font-semibold text-foreground">
+                  {pick(program.title)}
+                </h2>
                 <span className="text-[11px] font-mono text-muted-foreground">
-                  {units.length} unit{units.length === 1 ? '' : 's'}
+                  {t("author.unitsCount", { n: units.length })}
                 </span>
               </div>
               {units.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No units yet.</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("author.noUnits")}
+                </p>
               ) : (
                 <ul className="flex flex-col gap-1.5">
                   {units.map((u) => (
@@ -83,11 +95,13 @@ export default function AuthorHomePage() {
                       >
                         <span className="flex items-center gap-2 min-w-0">
                           <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
-                            {String(u.ordinal).padStart(2, '0')}
+                            {String(u.ordinal).padStart(2, "0")}
                           </span>
-                          <span className="truncate text-sm text-foreground">{pick(u.title)}</span>
+                          <span className="truncate text-sm text-foreground">
+                            {pick(u.title)}
+                          </span>
                           <span className="text-[11px] font-mono text-muted-foreground/70">
-                            {u.lessonCount} lesson{u.lessonCount === 1 ? '' : 's'}
+                            {t("author.lessonsCount", { n: u.lessonCount })}
                           </span>
                         </span>
                         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-menta" />

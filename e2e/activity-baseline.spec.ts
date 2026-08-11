@@ -818,7 +818,7 @@ test.describe('garantia do harness', () => {
   test('todo veredito é rotulado "not saved" e é resetável', async ({ page }) => {
     await open(page, CODE_NO_CHECKS);
     await page.getByTestId('activity-done').click();
-    await expect(verdict(page)).toContainText('not saved');
+    await expect(verdict(page).getByTestId('test-not-saved')).toBeVisible();
     await page.getByTestId('test-reset').click();
     await expectNoVerdict(page);
   });

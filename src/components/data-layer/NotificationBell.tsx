@@ -1,5 +1,6 @@
 import { cn } from '@devfellowship/components';
 import { Bell } from 'lucide-react';
+import { useI18n } from "@/i18n";
 import type { NotificationsSummary } from './types';
 
 /**
@@ -14,13 +15,14 @@ export interface NotificationBellIconProps {
 
 /** Ícone do sino com badge — usar como trigger do drawer no slot. */
 export function NotificationBellIcon({ unreadCount, className }: NotificationBellIconProps) {
+  const { t } = useI18n();
   return (
     <span className={cn('relative inline-flex', className)}>
       <Bell className="h-4 w-4" />
       {unreadCount > 0 && (
         <span
           className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground"
-          aria-label={`${unreadCount} não lidas`}
+          aria-label={`${unreadCount} ${t('notifications.unread')}`}
         >
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
@@ -45,10 +47,16 @@ function formatCreatedAt(iso: string) {
 
 /** Lista de notificações — conteúdo do drawer. */
 export function NotificationList({ summary, className }: NotificationListProps) {
+  const { t } = useI18n();
   if (summary.items.length === 0) {
     return (
-      <p className={cn('text-sm text-muted-foreground text-center py-6', className)}>
-        Nenhuma notificação.
+      <p
+        className={cn(
+          "text-sm text-muted-foreground text-center py-6",
+          className,
+        )}
+      >
+        {t("notifications.empty")}
       </p>
     );
   }

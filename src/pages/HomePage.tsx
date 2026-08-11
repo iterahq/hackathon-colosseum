@@ -52,13 +52,18 @@ export default function HomePage() {
                   </div>
                   <h1
                     className="font-display font-bold mt-3 text-foreground"
-                    style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', lineHeight: 1.1 }}
+                    style={{
+                      fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)",
+                      lineHeight: 1.1,
+                    }}
                   >
-                    {t('home.heroTitle')}{' '}
-                    <span className="text-gradient">{t('home.heroAccent')}</span>
+                    {t("home.heroTitle")}{" "}
+                    <span className="text-gradient">
+                      {t("home.heroAccent")}
+                    </span>
                   </h1>
                   <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-md">
-                    {t('home.heroSubtitle')}
+                    {t("home.heroSubtitle")}
                   </p>
                 </div>
               </div>
@@ -75,21 +80,32 @@ export default function HomePage() {
           <NextScheduledClassBlock />
 
           {/* Programs */}
-          <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>
+          <Section
+            title={t("home.yourPrograms")}
+            subtitle={t("home.programsSubtitle")}
+          >
             {isPending ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer" />
+                  <div
+                    key={i}
+                    className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
+                  />
                 ))}
               </div>
             ) : isError ? (
-              <div className="flex flex-col items-center gap-4 py-12" data-testid="programs-error">
-                <p className="text-muted-foreground text-center max-w-md">{t('home.error')}</p>
+              <div
+                className="flex flex-col items-center gap-4 py-12"
+                data-testid="programs-error"
+              >
+                <p className="text-muted-foreground text-center max-w-md">
+                  {t("home.error")}
+                </p>
                 <button
                   onClick={() => refetch()}
                   className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
                 >
-                  {t('common.retry')}
+                  {t("common.retry")}
                 </button>
               </div>
             ) : programs.length === 0 ? (
@@ -97,25 +113,36 @@ export default function HomePage() {
                 className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center"
                 data-testid="programs-empty"
               >
-                <p className="font-display text-lg text-foreground">{t('home.empty')}</p>
-                <p className="text-sm text-muted-foreground mt-2">{t('home.emptyHint')}</p>
+                <p className="font-display text-lg text-foreground">
+                  {t("home.empty")}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("home.emptyHint")}
+                </p>
                 {/* Empty dashboard → send the user to the catalog to discover +
                     enroll (round-1 finding #1: the flagship lives in another
                     tenant and was otherwise undiscoverable). */}
                 <button
                   type="button"
-                  onClick={() => navigate('/catalog')}
+                  onClick={() => navigate("/catalog")}
                   data-testid="programs-empty-browse"
                   className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
                 >
                   <GraduationCap className="w-4 h-4" />
-                  {t('nav.catalog')}
+                  {t("nav.catalog")}
                 </button>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="programs-grid">
+              <div
+                className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
+                data-testid="programs-grid"
+              >
                 {programs.map((p) => (
-                  <ProgramCard key={p.id} program={p} onClick={() => navigate(`/program/${p.slug}`)} />
+                  <ProgramCard
+                    key={p.id}
+                    program={p}
+                    onClick={() => navigate(`/program/${p.slug}`)}
+                  />
                 ))}
               </div>
             )}
@@ -123,9 +150,9 @@ export default function HomePage() {
 
           {/* Badges */}
           <Section
-            title={t('badges.title')}
-            subtitle={t('badges.subtitle')}
-            seeAllLabel={t('badges.seeAll')}
+            title={t("badges.title")}
+            subtitle={t("badges.subtitle")}
+            seeAllLabel={t("badges.seeAll")}
           >
             <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
               <BadgeGrid badges={badges} loading={badgesLoading} />
@@ -137,9 +164,9 @@ export default function HomePage() {
       <footer className="shrink-0 border-t border-border mt-auto">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <span>Itera</span>
+            <span>{t("home.footerBrand")}</span>
             <span className="text-verde-tech">/</span>
-            <span>by DevFellowship</span>
+            <span>{t("home.footerBy")}</span>
           </div>
         </div>
       </footer>

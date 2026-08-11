@@ -4,7 +4,7 @@
  * re-keyed onto an ACTIVITY target and wired to `@devfellowship/components`
  * primitives. Opened when Comment mode is ON and an activity cell is clicked.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,9 @@ import {
   DialogFooter,
   Textarea,
   Button,
-} from '@devfellowship/components';
-import { padNumber } from '@/lib/comment-format';
+} from "@devfellowship/components";
+import { padNumber } from "@/lib/comment-format";
+import { useI18n } from "@/i18n";
 
 export interface CommentModalTarget {
   activityId: string;
@@ -43,14 +44,15 @@ export const CommentModal = ({
   onClose,
   onSubmit,
 }: CommentModalProps) => {
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { t } = useI18n();
 
   const open = target !== null;
 
   useEffect(() => {
     if (open) {
-      setBody('');
+      setBody("");
       const t = setTimeout(() => textareaRef.current?.focus(), 50);
       return () => clearTimeout(t);
     }
@@ -68,12 +70,15 @@ export const CommentModal = ({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md" data-testid="comment-modal">
         <DialogHeader>
-          <DialogTitle>Add comment</DialogTitle>
+          <DialogTitle>{t("comment.modalTitle")}</DialogTitle>
           {target && (
             <DialogDescription className="font-mono text-[11px]">
-              lesson {padNumber(target.lessonOrdinal)}
-              {target.lessonTitle ? ` — ${target.lessonTitle}` : ''} · activity{' '}
-              {padNumber(target.activityOrdinal)} ({target.activityKind})
+              {t("comment.context", {
+                lesson: padNumber(target.lessonOrdinal),
+                title: target.lessonTitle ? ` — ${target.lessonTitle}` : "",
+                activity: padNumber(target.activityOrdinal),
+                kind: target.activityKind,
+              })}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -82,11 +87,11 @@ export const CommentModal = ({
           ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="e.g. troca o enunciado pro pt-BR / adiciona uma opção distratora…"
+          placeholder={t("comment.bodyPlaceholder")}
           className="min-h-[120px]"
           data-testid="comment-body-input"
           onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
               e.preventDefault();
               handleSubmit();
             }
@@ -95,10 +100,14 @@ export const CommentModal = ({
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            Cancel
+            {t("comment.cancel")}
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit} data-testid="comment-submit">
-            {submitting ? 'Adding…' : 'Add comment'}
+          <Button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            data-testid="comment-submit"
+          >
+            {submitting ? t("comment.submitting") : t("comment.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>
