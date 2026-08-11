@@ -18,12 +18,10 @@ import { MessageSquare } from 'lucide-react';
 import { t, type Scenario } from '@iterahq/activity-spec/runtime';
 import { useActivityI18n } from '../../context.js';
 import { ActivityShell } from '../../components/parts.js';
-import { RichSpans } from '../../components/RichSpans.js';
-import { parseInline } from '../../internal/richText.js';
+import { SandboxStepHeader } from '../../components/SandboxStepHeader.js';
 import { SandboxChatLog } from './SandboxChatLog.js';
 import { SandboxClearButton } from './SandboxClearButton.js';
 import { SandboxControls, type SandboxVariant } from './SandboxControls.js';
-import { SandboxHint } from './SandboxHint.js';
 import { SandboxInputBar } from './SandboxInputBar.js';
 import { SandboxReveal } from './SandboxReveal.js';
 import { SandboxWindow } from './SandboxWindow.js';
@@ -96,7 +94,6 @@ export function SandboxScenarioShell({
     }
   }, [settled, verdict, recap, onComplete]);
   // Data-driven — reads `scenario.steps.length` directly; never hard-capped.
-  const stepLabel = s.currentStep ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}` : undefined;
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
 
@@ -142,18 +139,14 @@ export function SandboxScenarioShell({
       <div className="flex flex-col gap-4">
         {/* TOP ZONE — instruction lives OUTSIDE/above the sandbox window, below
             the "SANDBOX" kind badge. The hint is a collapsed toggle here. */}
-        {showControls && (stepLabel || coachPrompt) && (
-          <div className="flex flex-col gap-2" data-testid="sandbox-instruction">
-            {stepLabel && <div className="font-mono text-[11px] uppercase tracking-wider text-menta">{stepLabel}</div>}
-            {coachPrompt && (
-              <p className="text-[15px] font-medium text-foreground">
-                <RichSpans spans={parseInline(coachPrompt)} />
-              </p>
-            )}
-            {coachHint && (
-              <SandboxHint hint={coachHint} label={t({ pt: 'ver dica', en: 'see hint' }, locale)} />
-            )}
-          </div>
+        {showControls && s.currentStep && (
+          <SandboxStepHeader
+            stepIdx={s.stepIdx}
+            stepCount={scenario.steps.length}
+            prompt={coachPrompt}
+            hint={coachHint}
+            hintLabel={t({ pt: 'ver dica', en: 'see hint' }, locale)}
+          />
         )}
 
         {/* MIDDLE ZONE — the isolated "Cloud Cowork" window: transcript AND the

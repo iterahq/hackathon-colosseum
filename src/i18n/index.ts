@@ -542,6 +542,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     // sandbox_scenario (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Passo',
+    'activity.stepCleared': 'passo concluído',
     'activity.continue': 'Continuar',
     'activity.reveal.show': 'Ver resposta',
     'activity.reveal.hide': 'Esconder resposta',
@@ -1354,6 +1355,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     // sandbox_scenario (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Step',
+    'activity.stepCleared': 'step cleared',
     'activity.continue': 'Continue',
     'activity.reveal.show': 'Show answer',
     'activity.reveal.hide': 'Hide answer',

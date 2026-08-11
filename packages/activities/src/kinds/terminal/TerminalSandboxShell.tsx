@@ -22,9 +22,7 @@ import { t, type TerminalScenario } from '@iterahq/activity-spec/runtime';
 import { useActivityI18n } from '../../context.js';
 import { useActivityActionRecorder, type ScenarioAction } from '../../internal/actionRecorder.js';
 import { ActivityShell } from '../../components/parts.js';
-import { RichSpans } from '../../components/RichSpans.js';
-import { parseInline } from '../../internal/richText.js';
-import { SandboxHint } from '../sandbox/SandboxHint.js';
+import { SandboxStepHeader } from '../../components/SandboxStepHeader.js';
 import { SandboxReveal } from '../sandbox/SandboxReveal.js';
 import { SandboxWindow } from '../sandbox/SandboxWindow.js';
 import { TerminalOptionPalette } from './TerminalOptionPalette.js';
@@ -140,9 +138,6 @@ export function TerminalSandboxShell({
   const submitMode: TerminalSubmitMode =
     variant === 'freeText' ? 'enter' : s.granularity === 'command' ? 'tap' : 'assemble';
 
-  const stepLabel = s.currentStep
-    ? `${tr('activity.step')} ${s.stepIdx + 1}/${scenario.steps.length}`
-    : undefined;
   const coachPrompt = s.currentStep ? t(s.currentStep.prompt, locale) : undefined;
   const coachHint = s.currentStep?.hint ? t(s.currentStep.hint, locale) : undefined;
   const windowTitle = t(scenario.initialState.windowTitle ?? tr('terminal.windowTitle'), locale);
@@ -191,22 +186,14 @@ export function TerminalSandboxShell({
         data-submit-mode={submitMode}
       >
         {/* TOP ZONE — the instruction lives outside/above the window. */}
-        {showControls && (stepLabel || coachPrompt) && (
-          <div className="flex flex-col gap-2" data-testid="sandbox-instruction">
-            {stepLabel && (
-              <div className="font-mono text-[11px] uppercase tracking-wider text-menta">
-                {stepLabel}
-              </div>
-            )}
-            {coachPrompt && (
-              <p className="text-[15px] font-medium text-foreground">
-                <RichSpans spans={parseInline(coachPrompt)} />
-              </p>
-            )}
-            {coachHint && (
-              <SandboxHint hint={coachHint} label={tr('terminal.hint')} />
-            )}
-          </div>
+        {showControls && s.currentStep && (
+          <SandboxStepHeader
+            stepIdx={s.stepIdx}
+            stepCount={scenario.steps.length}
+            prompt={coachPrompt}
+            hint={coachHint}
+            hintLabel={tr('terminal.hint')}
+          />
         )}
 
         {/* MIDDLE ZONE — the window: transcript AND prompt inside it, as a

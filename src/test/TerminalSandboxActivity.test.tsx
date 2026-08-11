@@ -174,6 +174,21 @@ describe('a correct run — the verdict is the scenario s own criterion', () => 
     type('touch perfil.md');
     expect(instruction()).toContain('2/2');
   });
+
+  it('draws the progress track and flashes the step that was just cleared', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    const states = () =>
+      Array.from(screen.getByTestId('sandbox-step-track').children).map((el) =>
+        el.getAttribute('data-step-state'),
+      );
+    expect(states()).toEqual(['current', 'todo']);
+    expect(screen.queryByTestId('sandbox-step-cleared')).toBeNull();
+
+    type('touch perfil.md');
+
+    expect(states()).toEqual(['done', 'current']);
+    expect(screen.getByTestId('sandbox-step-cleared').textContent).toContain('1/2');
+  });
 });
 
 /**
