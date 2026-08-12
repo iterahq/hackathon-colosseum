@@ -294,12 +294,31 @@ export async function advanceClassSession(
   const sb = getSupabase();
   const { data, error } = await sb
     .from('class_sessions')
-    .update({ current_activity_id: activityId })
+    .update({ current_activity_id: activityId, heartbeat_at: new Date().toISOString() })
     .eq('id', sessionId)
     .select(SELECT_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? 'Could not advance the class.');
   return mapSession(data as Row);
+}
+
+/**
+ * "O professor ainda está aqui" — o sinal de aula viva que faltava no banco.
+ * O reaper (`itera.reap_stale_class_sessions`) julga abandono por resposta de
+ * aluno e por entrada na sala; uma turma ouvindo explicação não produz nenhuma
+ * das duas, e em 10/08 uma aula real foi encerrada sozinha no meio.
+ *
+ * Falha em silêncio de propósito: perder um batimento só adianta o relógio de
+ * ociosidade em alguns minutos, e não existe ação associada a um erro disso na
+ * tela do professor no meio da aula.
+ */
+export async function touchClassSessionHeartbeat(sessionId: string): Promise<void> {
+  const sb = getSupabase();
+  await sb
+    .from('class_sessions')
+    .update({ heartbeat_at: new Date().toISOString() })
+    .eq('id', sessionId)
+    .eq('status', 'live');
 }
 
 /** End the session (status='ended'). Never deletes — keeps the audit trail. */

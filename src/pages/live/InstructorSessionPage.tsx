@@ -26,6 +26,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLessonContent } from '@/hooks';
 import { useClassCompleters, useClassSessionById } from '@/hooks/useLiveClass';
 import { useClassSession } from '@/hooks/useClassSession';
+import { useClassHeartbeat } from '@/hooks/useClassHeartbeat';
 import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
 import { STAGE_CURSOR_MIRROR_SELECTOR } from '@/utils/stageCursorDom';
 import { queryKeys } from '@/lib/queryKeys';
@@ -175,6 +176,9 @@ function ClassControl({
     clicks: true,
     send: sendInstructorCursor,
   });
+  // O console aberto é a prova de que a aula não foi abandonada — sem ela o
+  // reaper de ociosidade encerra uma turma que está só ouvindo explicação.
+  useClassHeartbeat(session.id, status === 'live');
   const sound = useLiveSound();
   const { data: lesson, isPending: lessonPending } = useLessonContent(session.lessonId);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
