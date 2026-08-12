@@ -1,0 +1,579 @@
+{
+  "schema_version": "1.3.0",
+  "app_id": "itera-player",
+  "app_version": "2026-08-12-63cdc99",
+  "source": "build",
+  "generated_at": "2026-08-12T10:42:46-03:00",
+  "tech_stack": [
+    "react",
+    "vite",
+    "react-router",
+    "typescript",
+    "tailwind",
+    "supabase"
+  ],
+  "test_metadata": {
+    "auth_strategy": "supabase password sign-in at /login (data-testid login-form / submit-login); ITERA_SMOKE_* in Infisical /shared",
+    "default_viewport": "desktop",
+    "base_url": "https://app.iterahq.dev",
+    "test_user_secret_path": "/shared/ITERA_SMOKE_USERNAME + /shared/ITERA_SMOKE_PASSWORD",
+    "notes": "Screens are derived from the single route table in src/App.tsx. screenshots[] is empty by design — the capture harness (plan 20260812-ux-map-observed-reality-lens, P3) fills it."
+  },
+  "screens": [
+    {
+      "id": "home",
+      "name": "Descobrir (home do aluno)",
+      "route": "/",
+      "source_ref": {
+        "component_file": "src/pages/HomePage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true"
+        ]
+      }
+    },
+    {
+      "id": "not_found",
+      "name": "Not found",
+      "route": "/*",
+      "source_ref": {
+        "component_file": "src/pages/NotFound.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "admin",
+      "name": "Admin — layout",
+      "route": "/admin",
+      "source_ref": {
+        "component_file": "src/pages/admin/AdminLayout.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_artifacts",
+      "name": "Admin — arquivos dos alunos",
+      "route": "/admin/artifacts",
+      "source_ref": {
+        "component_file": "src/pages/admin/AdminArtifactsPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_engagement",
+      "name": "Admin — engajamento",
+      "route": "/admin/engagement",
+      "source_ref": {
+        "component_file": "src/pages/admin/EngagementPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_programs",
+      "name": "Admin — conclusão por programa",
+      "route": "/admin/programs",
+      "source_ref": {
+        "component_file": "src/pages/admin/CompletionPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_replay",
+      "name": "Admin — replays",
+      "route": "/admin/replay",
+      "source_ref": {
+        "component_file": "src/pages/admin/ReplayPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_replay_traceid",
+      "name": "Admin — replay de uma tentativa",
+      "route": "/admin/replay/:traceId",
+      "source_ref": {
+        "component_file": "src/pages/admin/ReplaySessionPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "admin_roster",
+      "name": "Admin — alunos",
+      "route": "/admin/roster",
+      "source_ref": {
+        "component_file": "src/pages/admin/RosterPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "tenant_admin"
+      }
+    },
+    {
+      "id": "artifacts",
+      "name": "Meus arquivos",
+      "route": "/artifacts",
+      "source_ref": {
+        "component_file": "src/pages/ArtifactsPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true"
+        ]
+      }
+    },
+    {
+      "id": "auth_code",
+      "name": "Entrar com código (OTP)",
+      "route": "/auth/code",
+      "source_ref": {
+        "component_file": "src/pages/auth/OtpLoginPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "auth_dfl_callback",
+      "name": "Callback do login DFL",
+      "route": "/auth/dfl/callback",
+      "source_ref": {
+        "component_file": "src/pages/auth/DflCallbackPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "auth_forgot",
+      "name": "Esqueci a senha",
+      "route": "/auth/forgot",
+      "source_ref": {
+        "component_file": "src/pages/auth/ForgotPasswordPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "auth_reset",
+      "name": "Redefinir senha",
+      "route": "/auth/reset",
+      "source_ref": {
+        "component_file": "src/pages/auth/ResetPasswordPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "author",
+      "name": "Autoria — início",
+      "route": "/author",
+      "source_ref": {
+        "component_file": "src/pages/author/AuthorHomePage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "author"
+      }
+    },
+    {
+      "id": "author_activities_activityid_test",
+      "name": "Autoria — testar atividade",
+      "route": "/author/activities/:activityId/test",
+      "source_ref": {
+        "component_file": "src/pages/author/ActivityTestPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "author"
+      }
+    },
+    {
+      "id": "author_activities_activityid_test_live",
+      "name": "Autoria — testar atividade ao vivo",
+      "route": "/author/activities/:activityId/test-live",
+      "source_ref": {
+        "component_file": "src/pages/author/LiveActivityTestPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "author"
+      }
+    },
+    {
+      "id": "author_units_unitid_canvas",
+      "name": "Autoria — canvas da unidade",
+      "route": "/author/units/:unitId/canvas",
+      "source_ref": {
+        "component_file": "src/pages/author/UnitCanvasPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "author"
+      }
+    },
+    {
+      "id": "catalog",
+      "name": "Catálogo de cursos",
+      "route": "/catalog",
+      "source_ref": {
+        "component_file": "src/pages/CatalogPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true"
+        ]
+      }
+    },
+    {
+      "id": "g_code",
+      "name": "Aula ao vivo (convidado)",
+      "route": "/g/:code",
+      "source_ref": {
+        "component_file": "src/pages/GuestLiveRoute.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "lesson_lessonid",
+      "name": "Player da lição",
+      "route": "/lesson/:lessonId",
+      "source_ref": {
+        "component_file": "src/pages/LessonPlayer.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true"
+        ]
+      }
+    },
+    {
+      "id": "live_sessionid",
+      "name": "Aula ao vivo (aluno)",
+      "route": "/live/:sessionId",
+      "source_ref": {
+        "component_file": "src/pages/LiveSessionPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true",
+          "um tenant_admin/owner escolhe o lado (aluno ou professor) antes da sessão montar"
+        ]
+      }
+    },
+    {
+      "id": "live_instructor",
+      "name": "Turmas ao vivo (professor)",
+      "route": "/live/instructor",
+      "source_ref": {
+        "component_file": "src/pages/live/InstructorClassPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "instructor"
+      }
+    },
+    {
+      "id": "live_instructor_sessionid",
+      "name": "Sessão ao vivo (professor)",
+      "route": "/live/instructor/:sessionId",
+      "source_ref": {
+        "component_file": "src/pages/live/InstructorSessionPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "instructor"
+      }
+    },
+    {
+      "id": "live_instructor_report_sessionid",
+      "name": "Relatório pós-aula",
+      "route": "/live/instructor/report/:sessionId",
+      "source_ref": {
+        "component_file": "src/pages/live/InstructorReportPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "auth_role": "instructor"
+      }
+    },
+    {
+      "id": "login",
+      "name": "Entrar",
+      "route": "/login",
+      "source_ref": {
+        "component_file": "src/pages/auth/LoginPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "profile",
+      "name": "Perfil",
+      "route": "/profile",
+      "source_ref": {
+        "component_file": "src/pages/ProfilePage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true
+      }
+    },
+    {
+      "id": "program_slug",
+      "name": "Programa",
+      "route": "/program/:slug",
+      "source_ref": {
+        "component_file": "src/pages/ProgramPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true,
+        "preconditions_in_app": [
+          "assinatura ativa no tenant, ou tenants.subscription_exempt = true"
+        ]
+      }
+    },
+    {
+      "id": "signup",
+      "name": "Criar conta",
+      "route": "/signup",
+      "source_ref": {
+        "component_file": "src/pages/auth/SignupPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
+    },
+    {
+      "id": "subscribe",
+      "name": "Assinar",
+      "route": "/subscribe",
+      "source_ref": {
+        "component_file": "src/pages/SubscribePage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true
+      }
+    },
+    {
+      "id": "subscribe_return",
+      "name": "Retorno do checkout",
+      "route": "/subscribe/return",
+      "source_ref": {
+        "component_file": "src/pages/SubscribeReturnPage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": true
+      }
+    }
+  ],
+  "flows": [
+    {
+      "name": "Entrar com senha",
+      "start": "login",
+      "description": "O aluno entra com e-mail e senha. O gate RequireSubscription decide entre a home e /subscribe.",
+      "steps": [
+        "login",
+        "home"
+      ]
+    },
+    {
+      "name": "Criar conta",
+      "start": "signup",
+      "description": "Registro self-serve. Um visitante novo cria a conta e o gate o leva a /subscribe.",
+      "steps": [
+        "signup",
+        "subscribe",
+        "subscribe_return",
+        "home"
+      ]
+    },
+    {
+      "name": "Recuperar a senha",
+      "start": "login",
+      "description": "O aluno pede o link por e-mail e define a senha nova na página de destino.",
+      "steps": [
+        "login",
+        "auth_forgot",
+        "auth_reset",
+        "home"
+      ]
+    },
+    {
+      "name": "Entrar sem senha (OTP)",
+      "start": "login",
+      "description": "Sign-in por código de uso único / magic link.",
+      "steps": [
+        "login",
+        "auth_code",
+        "home"
+      ]
+    },
+    {
+      "name": "Entrar com a conta DFL",
+      "start": "login",
+      "description": "Federação: o token da DFL vira uma sessão Itera no callback.",
+      "steps": [
+        "login",
+        "auth_dfl_callback",
+        "home"
+      ]
+    },
+    {
+      "name": "Descobrir e estudar um curso",
+      "start": "home",
+      "description": "O caminho principal do aluno: catálogo, programa, lição.",
+      "steps": [
+        "home",
+        "catalog",
+        "program_slug",
+        "lesson_lessonid"
+      ]
+    },
+    {
+      "name": "Ver o meu repositório",
+      "start": "home",
+      "description": "O aluno abre o que ele produziu, na estrutura de pastas.",
+      "steps": [
+        "home",
+        "artifacts"
+      ]
+    },
+    {
+      "name": "Editar o perfil",
+      "start": "home",
+      "description": "Nome e foto continuam editáveis sem plano ativo.",
+      "steps": [
+        "home",
+        "profile"
+      ]
+    },
+    {
+      "name": "Assinar",
+      "start": "subscribe",
+      "description": "Checkout PLG. O retorno do Stripe cai em /subscribe/return.",
+      "steps": [
+        "subscribe",
+        "subscribe_return",
+        "home"
+      ]
+    },
+    {
+      "name": "Aula ao vivo — aluno",
+      "start": "home",
+      "description": "O aluno entra na sessão ao vivo pelo deep-link da turma.",
+      "steps": [
+        "home",
+        "live_sessionid"
+      ]
+    },
+    {
+      "name": "Aula ao vivo — convidado",
+      "start": "g_code",
+      "description": "Um visitante sem conta entra pela sala com o link do professor. Fora de RequireAuth por construção.",
+      "steps": [
+        "g_code"
+      ]
+    },
+    {
+      "name": "Aula ao vivo — professor",
+      "start": "live_instructor",
+      "description": "O professor abre a turma, conduz a sessão e lê o relatório pós-aula.",
+      "steps": [
+        "live_instructor",
+        "live_instructor_sessionid",
+        "live_instructor_report_sessionid"
+      ]
+    },
+    {
+      "name": "Observabilidade do tenant",
+      "start": "admin_roster",
+      "description": "O tenant_admin lê alunos, conclusão e engajamento. Somente leitura.",
+      "steps": [
+        "admin_roster",
+        "admin_programs",
+        "admin_engagement",
+        "admin_artifacts"
+      ]
+    },
+    {
+      "name": "Assistir ao replay de uma tentativa",
+      "start": "admin_replay",
+      "description": "O admin do tenant do aluno abre a lista e assiste a um trace gravado.",
+      "steps": [
+        "admin_replay",
+        "admin_replay_traceid"
+      ]
+    },
+    {
+      "name": "Revisar e testar uma atividade",
+      "start": "author",
+      "description": "A superfície de autoria: canvas de comentários, teste da atividade e teste ao vivo.",
+      "steps": [
+        "author",
+        "author_units_unitid_canvas",
+        "author_activities_activityid_test",
+        "author_activities_activityid_test_live"
+      ]
+    }
+  ]
+}
