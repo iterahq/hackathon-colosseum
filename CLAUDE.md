@@ -269,7 +269,40 @@ crescer uma prop fora do contrato.
 - `npm run storybook` — vitrine; publicada em `storybook.iterahq.dev` no push
   para `main` (PR é build-only, sem preview).
 - E2E Playwright fica em `e2e/`, **fora do gate por PR** (`workflow_dispatch` +
-  cron diário), todos capability-gated.
+  cron diário), todos capability-gated. **Duas exceções hermeticas, blocantes
+  em toda PR:** `npm run e2e:baseline` (caracterização de activity) e
+  `npm run e2e:stamp` (o carimbo `data-source`, abaixo). As duas rodam contra um
+  `vite preview` da própria árvore, sem credencial nenhuma.
+
+### 🏷️ `data-source` — carimbo de build, SÓ em build de captura
+
+`scripts/source-stamp.ts` é um plugin do Vite que escreve
+`data-source="src/pages/HomePage.tsx:42"` em cada elemento HOST que os nossos
+`.tsx` renderizam. Ele existe para o mapa de UX: com a caixa de cada elemento na
+tela, clicar numa REGIÃO de um screenshot devolve o arquivo exato — sem modelo,
+sem clonar o repo do outro lado.
+
+🚨 **Nunca em produção.** O carimbo é peso morto para o aluno e publica o
+layout de um repositório PRIVADO no DOM de quem abrir o dev tools.
+
+⚠️ **O portão é `ITERA_SOURCE_STAMP=1` no ambiente do processo, e NÃO o `mode`.**
+Um build de captura *é* um build em modo produção, então `mode !== "development"`
+falharia ABERTO. Não troque por um teste de modo; o `componentTagger()` no
+`vite.config.ts` é gatilhado assim e está certo, porque é ferramenta de dev
+server — o caso aqui é o oposto.
+
+Dois guardas, e cada um sozinho seria fraco:
+
+- `npm run assert:no-source-stamp` — lê o `dist/` e exige **zero** carimbos.
+  Roda no `build-test`, sobre o artefato que a release produziria.
+- `npm run e2e:stamp` — o job `source-stamp` builda **com** a flag, resolve cada
+  carimbo contra a árvore de arquivos (inclusive: a tag escrita naquela linha é a
+  tag do elemento), e depois roda o **mesmo** detector exigindo que ele ache os
+  carimbos. Um detector, dois builds, veredictos opostos.
+
+Não são atribuídos: `@devfellowship/components`, `@iterahq/activities` e Radix —
+todos compilados antes do Vite. Um elemento desses resolve pelo **ancestral
+carimbado mais próximo**, que é o arquivo que montou o componente.
 
 ## Contracts
 

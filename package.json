@@ -26,6 +26,8 @@
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:baseline": "playwright test --config playwright.baseline.config.ts",
+    "e2e:stamp": "playwright test --config playwright.stamp.config.ts",
+    "assert:no-source-stamp": "node scripts/assert-no-source-stamp.mjs dist",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "build:packages": "npm run build --workspaces --if-present",

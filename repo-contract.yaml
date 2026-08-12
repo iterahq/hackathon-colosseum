@@ -141,6 +141,16 @@ environment:
       default: "true"
     - name: VITE_SENTRY_DSN
       description: DSN do Sentry
+    # ⚠️ NÃO é VITE_*: é lido pelo vite.config.ts no processo de build, nunca
+    # pelo app. Liga o plugin scripts/source-stamp.ts, que carimba
+    # data-source="<arquivo>:<linha>" em cada elemento host — só para o build de
+    # CAPTURA do mapa de UX. Ausente = desligado, e o CI prova isso sobre o
+    # dist/ (npm run assert:no-source-stamp). Nunca em produção: peso morto e
+    # expõe o layout de um repo privado. Ver CLAUDE.md.
+    - name: ITERA_SOURCE_STAMP
+      description: >
+        Build de captura do mapa de UX. `1` liga o carimbo data-source.
+      default: "unset (off)"
 
 health_check:
   command: npm run build
@@ -183,6 +193,17 @@ testing:
     config: playwright.config.ts
     dir: e2e/
     in_pr_gate: false # workflow_dispatch + cron diário, capability-gated
+    # Duas suítes hermeticas rodam contra `vite preview` da própria árvore, sem
+    # credencial, e BLOQUEIAM toda PR. Cada uma tem config própria porque o
+    # substrato difere: a segunda builda com ITERA_SOURCE_STAMP=1, e a primeira
+    # tem que continuar caracterizando o build PADRÃO.
+    hermetic_pr_gates:
+      - config: playwright.baseline.config.ts
+        script: npm run e2e:baseline
+        proves: o comportamento das activities não mudou nesta PR
+      - config: playwright.stamp.config.ts
+        script: npm run e2e:stamp
+        proves: cada carimbo data-source resolve para um arquivo e uma linha reais
 
 observability:
   provider: opentelemetry

@@ -81,6 +81,29 @@ jobs:
         run: npm run build
 
       # ────────────────────────────────────────────────────────────────────
+      # THE `data-source` STAMP MUST NOT SHIP
+      #
+      # `scripts/source-stamp.ts` writes `data-source="<file>:<line>"` on every
+      # host element so the UX-map capture can turn a REGION of a screenshot
+      # into an exact source file. It is for capture builds only: it is dead
+      # payload for a learner, and it prints the layout of a PRIVATE repository
+      # into the DOM of anyone who opens dev tools.
+      #
+      # The gate is the env var `ITERA_SOURCE_STAMP`, absent here. This step is
+      # what makes that a fact rather than an intention: the step above just
+      # produced the artifact a release would produce, and this reads it. A
+      # `.env` file, a Dockerfile `ENV` line or a deploy job could all set the
+      # variable without touching the plugin - and this would go red.
+      #
+      # The complement runs in the `source-stamp` job below, which builds WITH
+      # the flag and asserts the SAME detector finds stamps. Two builds, one
+      # detector, opposite verdicts, both on every PR - so this check cannot
+      # quietly become one that always passes.
+      # ────────────────────────────────────────────────────────────────────
+      - name: The data-source stamp is absent from the production build
+        run: npm run assert:no-source-stamp
+
+      # ────────────────────────────────────────────────────────────────────
       # THE TAILWIND GLOB IS LOAD-BEARING, AND ITS FAILURE IS SILENT
       #
       # Fase C moved the activity renderers into `packages/activities`, which
@@ -254,6 +277,87 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: activity-baseline-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # THE `data-source` STAMP, PROVED END TO END (P4 of plan
+  # `20260812-ux-map-observed-reality-lens`)
+  #
+  # WHAT IT PROVES, AND WHY A PRESENCE CHECK WOULD NOT
+  #
+  # The stamp exists so a designer can click a REGION of a screenshot and get
+  # the exact source file, with no model call and no repository on his side. A
+  # stamp that names a file which does not exist, or a line that holds another
+  # tag, is worse than no stamp at all: it sends him somewhere confidently, and
+  # the somewhere is wrong. So `e2e/source-stamp.spec.ts` opens a real browser
+  # on a real stamped build, walks the DOM of seven screens, and resolves EVERY
+  # stamp against the file tree - including that the tag written at the named
+  # line is the tag of the element carrying the stamp. Zero unresolved is the
+  # pass condition.
+  #
+  # WHY A SEPARATE CONFIG AND A SEPARATE JOB
+  #
+  # This is the only suite that must build with `ITERA_SOURCE_STAMP=1`. The
+  # activity baseline must NOT: it characterizes the DEFAULT artifact, and a
+  # baseline built with a non-default flag characterizes something that never
+  # ships. Same reason `activity-baseline` is its own job: the browser cost
+  # stays visible in the wall-clock instead of hiding inside `build-test`.
+  #
+  # THE SECOND HALF OF THE PRODUCTION GUARD LIVES HERE
+  #
+  # `build-test` asserts ZERO stamps in the default build. That check would
+  # keep passing if the detector were broken. The last step below runs the SAME
+  # detector over the build this job just made WITH the flag and requires it to
+  # find stamps. One detector, two builds, opposite verdicts, every PR.
+  # ──────────────────────────────────────────────────────────────────────────
+  source-stamp:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com
+          scope: '@iterahq'
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same two rules as `activity-baseline`: the lockfile's own CLI, never
+      # `npx` (which can fetch a different Chromium revision), and a fallback
+      # without `--with-deps` so a host with an interrupted dpkg does not fail
+      # this gate for a reason that has nothing to do with the PR.
+      - name: Install Chromium
+        run: |
+          node node_modules/playwright/cli.js install --with-deps chromium ||
+            node node_modules/playwright/cli.js install chromium
+
+      # The config's `webServer` builds with `ITERA_SOURCE_STAMP=1` and the stub
+      # Supabase origin, then previews it on loopback only.
+      - name: Every stamp resolves to a real file and line
+        run: npm run e2e:stamp
+
+      # `dist/` is the build the step above just used. The detector that
+      # requires ZERO stamps in `build-test` must find them here, or it is not
+      # detecting anything anywhere.
+      - name: The same detector sees the stamps in a capture build
+        run: node scripts/assert-no-source-stamp.mjs dist --expect-present
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-stamp-report
           path: |
             playwright-report/
             test-results/

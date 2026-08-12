@@ -20,5 +20,10 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["e2e/**/*.ts", "playwright.config.ts", "playwright.baseline.config.ts"]
+  "include": [
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    "playwright.baseline.config.ts",
+    "playwright.stamp.config.ts"
+  ]
 }

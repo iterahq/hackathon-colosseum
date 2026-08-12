@@ -8,7 +8,12 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    // `scripts/` joined `src/` when the build-time `data-source` stamp landed
+    // there (`scripts/source-stamp.ts`). Build tooling that decides what ships
+    // deserves the same unit coverage as product code, and the alternative -
+    // parking its test under `src/` - would put a `typescript` import inside the
+    // app's own tsconfig program for no reason.
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.{test,spec}.ts"],
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
