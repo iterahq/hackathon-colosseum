@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/devfellowship/dfl-ux-paths/main/schema/v1.json",
+  "title": "DFL UX Paths v1",
+  "description": "Versioned per-app user-flow JSON schema for migration-gap analysis and dead-code detection. Accepts schema_version 1.0.0, 1.1.0, 1.2.0 and 1.3.0 (all additive — v1.1 adds optional navigation/prereq/test_metadata fields; v1.2 adds optional source_ref (screen→repo file) and screenshots[] (per platform×orientation), and documents `route` as the canonical shared route nomenclature for 1:1 cross-app mapping; v1.3 adds optional source (build|spec), phases[], and phase/description on screen and flow, so the format can also describe a product that has not been built yet. Backward compatible — v1.0/v1.1/v1.2 files still validate).",
+  "$comment": "schema v1.2 — additive over v1.1. New optional screen fields: source_ref { component_file, file_path_chain? } links a screen to the repo file(s) that render it (Figma-Code-Connect style); screenshots[] { platform, orientation, viewport?, url, captured_at? } captures rendered images per platform×orientation for vision-first comparison. `screen.id` is the STICKY 1:1 JOIN KEY across apps — comparators pair screens by shared id. `route` is the canonical shared route nomenclature (e.g. studio/project/:id/editor) letting two apps map 1:1 by the same name even when their real URLs differ. Draft 2020-12. The file `$id` is intentionally unchanged across additive bumps so consumers pinned to the canonical URL keep working. || schema v1.3 — additive over v1.2, and the first bump aimed at files authored BEFORE the code exists. `source: \"spec\"` says so explicitly: routes are proposed nomenclature, app_version carries the zero-sha `init` emits, and the absence of source_ref/screenshots/base_url is correct rather than incomplete. `phases[]` declares the app's delivery-phase vocabulary once; `screen.phase` / `flow.phase` reference a phase id. That pair is what lets a viewer render committed scope differently from work the requirement explicitly parks (`phases[].optional: true`) instead of showing one undifferentiated blob — the distinction a client reads as 'what am I actually getting'. `screen.description` / `flow.description` carry the prose a spec needs and a generated-from-code file usually does not.",
+  "type": "object",
+  "required": ["schema_version", "app_id", "app_version", "screens", "flows"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0"],
+      "description": "Version of the dfl-ux-paths schema this file conforms to. v1.1.0 adds optional navigation_path, prerequisites, test_metadata, and richer flow step objects. v1.2.0 adds optional screen.source_ref (screen→repo file link) and screen.screenshots[] (per platform×orientation), and documents `route` as the canonical shared route nomenclature for 1:1 cross-app mapping. v1.3.0 adds optional spec-first authoring fields: top-level `source` (build|spec) and `phases[]`, plus optional `phase`/`description` on screens and flows."
+    },
+    "app_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for the app (e.g. 'dfl-learn-mobile')."
+    },
+    "app_version": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}-[0-9a-f]{4,40}$",
+      "description": "App build identifier in the form YYYY-MM-DD-<git-sha-short>. A file authored before any build exists uses the zero-sha form `YYYY-MM-DD-0000000` that `dfl-ux-paths init` already emits, and should also set `source: \"spec\"`."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["build", "spec"],
+      "description": "v1.3 — provenance of this file. 'build' (the assumed default when omitted) means it was derived from a shipped build, so `route` values are real and source_ref/screenshots are meaningful. 'spec' means it was authored from a requirement document before the code exists: routes are PROPOSED nomenclature, app_version carries a zero-sha, and the absence of source_ref/screenshots/test_metadata.base_url is expected rather than a gap. Optional, additive."
+    },
+    "phases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/phase" },
+      "description": "v1.3 — the app's delivery-phase vocabulary, declared once and referenced by `screen.phase` / `flow.phase`. Phase ids are free-form on purpose (every product names its phases differently). Mark a phase `optional: true` when the requirement explicitly parks it outside committed scope. Optional, additive."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this snapshot was generated."
+    },
+    "tech_stack": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of tech-stack tags (e.g. 'react-native', 'expo', 'powersync')."
+    },
+    "test_metadata": {
+      "$ref": "#/$defs/testMetadata",
+      "description": "v1.1 — app-level metadata used by e2e-user-persona / Playwright skills to bootstrap a session (auth strategy, default viewport, base URL)."
+    },
+    "screens": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/screen" }
+    },
+    "flows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/flow" }
+    },
+    "dead_code": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deadCodeEntry" }
+    }
+  },
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "description": "v1.3 — one entry in the app's delivery-phase vocabulary.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable phase id referenced by `screen.phase` / `flow.phase` (e.g. 'alpha', 'beta', 'mvp', 'optional')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable phase name."
+        },
+        "description": {
+          "type": "string",
+          "description": "What this phase covers — ideally quoting the source requirement rather than paraphrasing it."
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "True when the requirement explicitly parks this phase outside committed scope (e.g. 'eventual landing, not in MVP'). Viewers and generated Mermaid MUST render it as visually distinct from in-scope work, so a reader never mistakes parked work for a commitment."
+        }
+      }
+    },
+    "screen": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable screen identifier (snake_case recommended). REQUIRED. This is the STICKY 1:1 JOIN KEY across apps: cross-app comparators (web ↔ mobile, old build ↔ new build) pair screens by shared `id`. Treat it as a contract — keep ids stable across versions and identical across apps you intend to map 1:1, or diffs/parity comparisons break."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable screen name."
+        },
+        "route": {
+          "type": "string",
+          "description": "v1.2 — canonical SHARED route nomenclature for 1:1 cross-app mapping (e.g. 'studio/project/:id/editor'). Lets two apps (web ↔ mobile) map by the same route name even when their real URLs/deep-links differ. Also doubles as the screen's route/path/deep-link when the app uses a single URL scheme. Use ':param' for dynamic segments. Optional, additive."
+        },
+        "description": {
+          "type": "string",
+          "description": "v1.3 — free-form prose describing this screen. For a spec-first file the description IS the requirement, so keep it faithful to the source document. Optional, additive."
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1,
+          "description": "v1.3 — id of the phase (from top-level `phases[]`) this screen belongs to. Optional, additive."
+        },
+        "source_ref": {
+          "$ref": "#/$defs/sourceRef",
+          "description": "v1.2 — link from this screen to the repo file(s) that render it (route/page/modal component). Figma-Code-Connect style. Optional, additive — populated by the route→file resolver (bin/resolve-routes.mjs) or by hand."
+        },
+        "screenshots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/screenshot" },
+          "description": "v1.2 — rendered screenshots of this screen, one entry per platform×orientation(×viewport). URLs are committed (e.g. S3 via supabase-upload) so humans AND agents view the same image for vision-first comparison. Optional, additive."
+        },
+        "components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Component identifiers rendered on this screen."
+        },
+        "api_calls": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "API endpoints or RPC calls invoked from this screen."
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "navigation_path": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/navigationStep" },
+          "description": "v1.1 — ordered list of UI actions to navigate TO this screen from the app entrypoint. Used by e2e-user-persona to auto-generate persona scripts instead of LLM-driven discovery. When multiple navigationStep entries are present, the runner tries them in order and the first matching selector wins (useful for resilience across renames)."
+        },
+        "prerequisites": {
+          "$ref": "#/$defs/prerequisites",
+          "description": "v1.1 — preconditions that must hold for this screen to be reachable / functional."
+        }
+      }
+    },
+    "sourceRef": {
+      "type": "object",
+      "required": ["component_file"],
+      "additionalProperties": false,
+      "description": "v1.2 — points a screen at the repo file(s) that render it.",
+      "properties": {
+        "component_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path to the route/page/modal component that renders this screen (e.g. 'app/studio/[id]/editor.tsx' for Expo Router, 'app/studio/[id]/editor/page.tsx' for Next app-router). This is what the route→file resolver emits."
+        },
+        "file_path_chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Optional — ordered repo-relative paths from the app entry (e.g. 'App.tsx' / 'app/_layout.tsx') down to the component, giving the 'tree' from app root to this screen's renderer."
+        }
+      }
+    },
+    "screenshot": {
+      "type": "object",
+      "required": ["platform", "orientation", "url"],
+      "additionalProperties": false,
+      "description": "v1.2 — one rendered screenshot of a screen, keyed by platform×orientation(×viewport).",
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["web", "mobile"],
+          "description": "Rendering platform the screenshot was captured on."
+        },
+        "orientation": {
+          "type": "string",
+          "enum": ["portrait", "landscape"],
+          "description": "Device/viewport orientation."
+        },
+        "viewport": {
+          "type": "string",
+          "description": "Optional viewport dimensions string, e.g. '375x812' or '1440x900'."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Public URL of the committed screenshot (e.g. S3 via supabase-upload)."
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional ISO-8601 timestamp when the screenshot was captured."
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["id", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "next_screen": {
+          "type": "string",
+          "description": "Screen id the user lands on after this action."
+        },
+        "side_effect": {
+          "type": "string",
+          "description": "Free-form description of side effect (mutation, analytics, etc.)."
+        }
+      }
+    },
+    "flow": {
+      "type": "object",
+      "required": ["name", "start", "steps"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "v1.3 — free-form prose describing what this flow accomplishes and why it matters. Optional, additive."
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1,
+          "description": "v1.3 — id of the phase (from top-level `phases[]`) this flow belongs to. Optional, additive."
+        },
+        "start": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Screen id where the flow starts."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "v1.0 — screen id traversed in this flow."
+              },
+              {
+                "$ref": "#/$defs/flowStepObject"
+              }
+            ]
+          },
+          "description": "Ordered list of flow steps. v1.0 accepts plain screen ids (strings); v1.1 additionally accepts step objects with action/selector/target_screen for executable scripts. Mixed arrays are allowed during migration."
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered list of action ids exercised during this flow."
+        },
+        "tested_by": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References to tests (file paths, test names) that cover this flow."
+        }
+      }
+    },
+    "flowStepObject": {
+      "type": "object",
+      "required": ["screen"],
+      "additionalProperties": false,
+      "properties": {
+        "screen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Screen id where this step is executed."
+        },
+        "action": {
+          "type": "string",
+          "description": "Action verb (tap, type, scroll, swipe, navigate, wait, assert, etc.)."
+        },
+        "selector": {
+          "type": "string",
+          "description": "Playwright-compatible selector (e.g. 'text=Next', 'role=button[name=Save]', 'css=[data-testid=foo]')."
+        },
+        "value": {
+          "type": "string",
+          "description": "Optional value to type / select / assert."
+        },
+        "target_screen": {
+          "type": "string",
+          "description": "Screen id the user lands on after this step."
+        },
+        "wait_for_target": {
+          "type": "string",
+          "description": "Selector / condition to wait for to confirm the target screen rendered."
+        },
+        "note": {
+          "type": "string",
+          "description": "Free-form annotation for humans / debugging."
+        }
+      }
+    },
+    "navigationStep": {
+      "type": "object",
+      "required": ["selector", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "selector": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Playwright-compatible selector (e.g. 'text=Studio', 'role=tab[name=Studio]', 'css=[data-testid=studio-tab]')."
+        },
+        "action": {
+          "type": "string",
+          "enum": ["tap", "click", "type", "scroll", "swipe", "navigate", "wait", "assert"],
+          "description": "Interaction primitive to execute."
+        },
+        "value": {
+          "type": "string",
+          "description": "Optional value for type/select/assert."
+        },
+        "wait_for": {
+          "type": "string",
+          "description": "Selector / condition to wait for after performing the action to confirm success."
+        },
+        "note": {
+          "type": "string",
+          "description": "Free-form annotation."
+        }
+      }
+    },
+    "prerequisites": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auth_required": {
+          "type": "boolean",
+          "description": "True if a logged-in user session is required to reach this screen."
+        },
+        "auth_role": {
+          "type": "string",
+          "description": "Optional — specific role required (e.g. 'admin', 'instructor'). Omit for any authenticated user."
+        },
+        "data_required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Free-form descriptions of DB/state preconditions (e.g. 'lesson_studio.projects has >= 0 rows')."
+        },
+        "preconditions_in_app": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Free-form descriptions of in-app preconditions (feature flag enabled, onboarding complete, etc.)."
+        },
+        "feature_flags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Feature flag identifiers that must be enabled."
+        }
+      }
+    },
+    "testMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auth_strategy": {
+          "type": "string",
+          "description": "Brief description of how to authenticate (e.g. 'supabase-anon + CLAUDE_SMOKE creds', 'magic-link', 'oauth google')."
+        },
+        "default_viewport": {
+          "type": "string",
+          "enum": ["mobile", "tablet", "desktop", "responsive"],
+          "description": "Hint for test runners — preferred viewport for this app."
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Production / smoke-target base URL (e.g. 'https://mobile.devfellowship.com/')."
+        },
+        "test_user_secret_path": {
+          "type": "string",
+          "description": "Infisical path to credentials suitable for smoke tests (e.g. '/shared/CLAUDE_SMOKE_USERNAME')."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form notes for test authors / persona-script generators."
+        }
+      }
+    },
+    "deadCodeEntry": {
+      "type": "object",
+      "required": ["component", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "component": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

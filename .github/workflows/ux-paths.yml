@@ -1,0 +1,171 @@
+name: UX Paths
+
+# `.dfl-ux-paths/flows.json` must stay present, valid, and matching the code.
+#
+# WHY THIS GATE EXISTS
+# --------------------
+# The map this repo gained in #355 describes 31 screens, 15 flows and a
+# `source_ref` for every screen. Measured across the fleet on 2026-08-12,
+# fourteen repos ship such a file and NOTHING anywhere asserted that any of them
+# was present, valid or current: apart from this one, the newest had not been
+# touched in 48 days, nine of the fourteen had exactly one commit ever, four did
+# not validate against the schema they declare, and one was an un-filled `init`
+# stub with zero screens. Without this gate, ours joins them on the next refactor.
+#
+# WHY IT IS NOT A ONE-LINE `uses:`
+# --------------------------------
+# Every `devfellowship/*` repo adopts this guard with
+# `uses: devfellowship/dfl-ci/.github/workflows/ux-paths-guard.yml@main`. This
+# repo cannot: a reusable workflow in a PRIVATE repo is callable only from the
+# SAME organization (`gh api repos/devfellowship/dfl-ci/actions/permissions/access`
+# -> `{"access_level":"organization"}`), and `iterahq` is on the Free plan, so no
+# enterprise scope exists that could widen it. So `scripts/ux-paths/guard.mjs`
+# and `scripts/ux-paths/schema-v1.json` are byte-identical copies, and the
+# `vendored-copy` job below is what stops them drifting. See
+# `scripts/ux-paths/UPSTREAM.md`.
+#
+# RUNNER: `[self-hosted, dfl-runner]`, the iterahq-scoped runners — same as every
+# other workflow in this repo. See the header of `ci.yml` for why iterahq has its
+# own registrations.
+#
+# ⚠️ This workflow deliberately does NOT touch `db/migrations/**`. That path is
+# under a human merge gate (`migration-human-gate.yml`, `CODEOWNERS`), because
+# merging there applies a migration to the ITERA production database.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ux-paths-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # The copy must remain a copy.
+  #
+  # The realistic accident is not malice, it is helpfulness: someone finds a bug
+  # in the guard, fixes it HERE because that is where they are, and the fleet
+  # never gets the fix. Two implementations then drift apart while both stay
+  # green. This job costs three seconds and closes that.
+  #
+  # What it CANNOT do is compare against upstream — no token in this org can read
+  # the private `devfellowship/dfl-ci`. It asserts only that the files still match
+  # the digests recorded in UPSTREAM.md when they were copied. The other half of
+  # the chain (that dfl-ci's own schema copy matches `dfl-ux-paths`) is mechanised
+  # over there, daily.
+  # ──────────────────────────────────────────────────────────────────────────
+  vendored-copy:
+    name: the vendored guard is unmodified
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Digests match scripts/ux-paths/UPSTREAM.md
+        run: |
+          set -euo pipefail
+          EXPECTED_GUARD="dd2477f6721dbf65ce7b4f7c78f5f5b092ba81525fb3fe230a36363fdf705176"
+          EXPECTED_SCHEMA="80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1"
+          ACTUAL_GUARD="$(sha256sum scripts/ux-paths/guard.mjs   | cut -d' ' -f1)"
+          ACTUAL_SCHEMA="$(sha256sum scripts/ux-paths/schema-v1.json | cut -d' ' -f1)"
+          FAILED=0
+          if [ "$ACTUAL_GUARD" != "$EXPECTED_GUARD" ]; then
+            echo "::error title=vendored guard edited::scripts/ux-paths/guard.mjs is $ACTUAL_GUARD, UPSTREAM.md records $EXPECTED_GUARD. This file is a byte-identical copy of devfellowship/dfl-ci:scripts/ux-paths-guard.mjs. Send the change upstream and re-copy, or — if you DID re-copy — update the digest in scripts/ux-paths/UPSTREAM.md and in this workflow, in the same PR."
+            FAILED=1
+          fi
+          if [ "$ACTUAL_SCHEMA" != "$EXPECTED_SCHEMA" ]; then
+            echo "::error title=vendored schema edited::scripts/ux-paths/schema-v1.json is $ACTUAL_SCHEMA, UPSTREAM.md records $EXPECTED_SCHEMA. The schema is owned by devfellowship/dfl-ux-paths; a local edit here silently makes this repo validate against a contract the fleet does not use."
+            FAILED=1
+          fi
+          test "$FAILED" -eq 0
+          echo "ok: both vendored files match the digests recorded in UPSTREAM.md"
+
+  ux-paths:
+    name: flows.json is present, valid and current
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # NO `npm ci`, and that is deliberate. A full install here is ~625
+      # packages and needs a GitHub Packages token for the `@iterahq` scope. A
+      # BLOCKING gate that depends on both is how a gate ends up permanently red
+      # for reasons that have nothing to do with the map — the same reasoning
+      # that made `activity-baseline` a zero-secret job (see `ci.yml`).
+      #
+      # Three packages, from the PUBLIC registry, into a directory of their own:
+      #   typescript  — the extractor parses `src/App.tsx` with its JSX parser
+      #   ajv + ajv-formats — the schema engine, and the reference implementation
+      #                       that `dfl-ux-paths` measures its own validator against
+      #
+      # The guard prefers `@devfellowship/ux-paths-spec` — the zero-dependency
+      # package built for exactly this — whenever it resolves. It is not on the
+      # registry yet (E404 on 2026-08-12), so it is attempted first and Ajv is
+      # the fallback. When it publishes, this step starts finding it with no edit,
+      # and `scripts/ux-paths/schema-v1.json` can be deleted.
+      #
+      # A directory of its own is not tidiness either: Node's resolver walks UP
+      # through ancestor `node_modules`, and the guard refuses any Ajv resolved
+      # outside the directory it was pointed at, precisely so a stray older copy
+      # cannot silently change the verdict.
+      #
+      # ⚠️ ONE `npm install`, not two. `npm install --no-save X` reconciles
+      # node_modules against package.json plus X — so a SECOND `--no-save`
+      # install PRUNES whatever the first one put there. Two calls here removed
+      # typescript again, the extractor died with MODULE_NOT_FOUND, printed no
+      # routes, and the guard refused the empty list. Caught by running this
+      # step verbatim before pushing it; it would have failed identically in CI.
+      # Availability is probed with `npm view`, which installs nothing.
+      - name: Install the extractor's compiler and the schema engine
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ux-paths-tools
+          cd /tmp/ux-paths-tools
+          npm init -y >/dev/null 2>&1
+          PKGS=('typescript@^5.9.3')
+          if npm view '@devfellowship/ux-paths-spec@^1.3.0' version >/dev/null 2>&1; then
+            echo "spec source: the published @devfellowship/ux-paths-spec"
+            PKGS+=('@devfellowship/ux-paths-spec@^1.3.0')
+          else
+            echo "::notice title=ux-paths::@devfellowship/ux-paths-spec is not on the registry yet — falling back to Ajv over the vendored schema."
+            PKGS+=('ajv@^8' 'ajv-formats@^3')
+          fi
+          npm install --no-save --no-audit --no-fund --loglevel=error "${PKGS[@]}"
+          node -e "require.resolve('typescript')" || {
+            echo "::error::typescript did not survive the install"; exit 1; }
+
+      # Written to a file rather than piped, so a non-zero exit from the
+      # extractor fails the job HERE, with its own message. `list-routes.mjs`
+      # refuses rather than guessing on any construct it cannot resolve — a
+      # partial route list would make the guard blame the map for the tool's
+      # blind spot.
+      - name: Extract the routes the code actually serves
+        env:
+          UX_PATHS_TS_DIR: /tmp/ux-paths-tools
+        run: |
+          set -euo pipefail
+          node scripts/list-routes.mjs > "$RUNNER_TEMP/routes.txt"
+          echo "routes served by src/App.tsx:"
+          sed 's/^/  /' "$RUNNER_TEMP/routes.txt"
+
+      - name: Run the guard
+        run: |
+          set -euo pipefail
+          node scripts/ux-paths/guard.mjs \
+            --repo-root "$GITHUB_WORKSPACE" \
+            --flows .dfl-ux-paths/flows.json \
+            --spec-dir /tmp/ux-paths-tools \
+            --vendored-schema "$GITHUB_WORKSPACE/scripts/ux-paths/schema-v1.json" \
+            --routes-file "$RUNNER_TEMP/routes.txt"
