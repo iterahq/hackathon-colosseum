@@ -7,9 +7,17 @@
  * missing, and the config header advertised that as a feature ("green-with-skips
  * rather than red"). The consequence is measurable: the daily `e2e.yml` cron has
  * been GREEN for its whole life while executing essentially nothing, because the
- * repo has never had `ITERA_SMOKE_*`, `CLAUDE_SMOKE_*` or
- * `DFL_BATCH_RESULTS_API_KEY` as Actions secrets. A test that silently skips
- * itself and reports green is worse than no test: it buys false confidence.
+ * repo has never had `ITERA_SMOKE_*` or `CLAUDE_SMOKE_*` as Actions secrets. A
+ * test that silently skips itself and reports green is worse than no test: it
+ * buys false confidence.
+ *
+ * ## A capability is only allowed to exist while a test needs it
+ *
+ * The rule cuts both ways. A `required` capability that no spec names is a
+ * secret CI must provide for zero assertions — the same false signal in the
+ * other direction. When a spec is deleted, its now-orphaned capabilities go
+ * with it (2026-08-13: `itera-api`, `learn-app`, `dfl-batch-results` and
+ * `dfl-schema-527` left with `itera-fellowship.spec.ts`).
  *
  * ## The rule
  *
@@ -63,8 +71,6 @@ async function reachable(target: string): Promise<boolean> {
 }
 
 export const ITERA_BASE_URL = url('ITERA_BASE_URL', 'https://app.iterahq.dev');
-export const ITERA_API_URL = url('ITERA_API_URL', 'https://api.iterahq.dev');
-export const LEARN_BASE_URL = url('LEARN_BASE_URL', 'https://learn.devfellowship.com');
 
 /**
  * `ITERA_PLAYER_URL` historically defaulted to `http://127.0.0.1:8081` in three
@@ -90,31 +96,17 @@ export const CAPABILITIES = {
     remedy:
       'Add repo Actions secrets ITERA_SMOKE_USERNAME + ITERA_SMOKE_PASSWORD (the itera-smoke identity; values live in Infisical /shared, NEVER in the repo). A blocking question is open with Tainan on plan 20260728-itera-activity-testing — this red clears the moment it is answered.',
   },
-  'itera-api': {
-    tier: 'required',
-    probe: () => reachable(`${ITERA_API_URL}/v1/health`),
-    unlocks: 'the Itera<->Fellowship federated loop and the Results-API readback',
-    remedy: `itera-api at ${ITERA_API_URL}/v1/health did not answer 2xx. Check the API deploy before re-running.`,
-  },
-  'learn-app': {
-    tier: 'required',
-    probe: () => reachable(`${LEARN_BASE_URL}/login`),
-    unlocks: 'the dfl-learn side of the federated loop',
-    remedy: `dfl-learn at ${LEARN_BASE_URL} did not answer 2xx on /login.`,
-  },
-  'dfl-batch-results': {
-    tier: 'required',
-    env: ['DFL_BATCH_RESULTS_API_KEY'],
-    unlocks: 'the Results-API pull-readback and the tenant-isolation assertion',
-    remedy:
-      'Add the repo Actions secret DFL_BATCH_RESULTS_API_KEY (dfl-batch tenant Results-API key). It is declared by e2e.yml but has never existed, so itera-fellowship.spec.ts has never run.',
-  },
+  // `itera-api`, `learn-app` and `dfl-batch-results` used to live here. They
+  // unlocked ONE spec — `itera-fellowship.spec.ts` — and that spec is gone
+  // (see e2e/README.md, "What is NOT covered"). A `required` capability that
+  // unlocks nothing is a secret CI must provide for zero assertions, so they
+  // were removed with the spec instead of being left behind.
   'claude-smoke': {
     tier: 'required',
     env: ['CLAUDE_SMOKE_USERNAME', 'CLAUDE_SMOKE_PASSWORD'],
-    unlocks: 'the dfl-learn login used by the federated loop and the lesson-unlock spec',
+    unlocks: 'the lesson-unlock spec',
     remedy:
-      'Add the repo Actions secrets CLAUDE_SMOKE_USERNAME + CLAUDE_SMOKE_PASSWORD. Declared by e2e.yml, never provisioned.',
+      'Add the repo Actions secrets CLAUDE_SMOKE_USERNAME + CLAUDE_SMOKE_PASSWORD.',
   },
 
   // ── optional: foreign / dedicated substrate the workflow does NOT declare ──
@@ -148,13 +140,12 @@ export const CAPABILITIES = {
     unlocks: 'the BYOC live responder+judge comparison spec',
     remedy: 'Pin the BYOC sandbox_scenario activity id via ITERA_BYOC_ACTIVITY_ID.',
   },
-  'dfl-schema-527': {
-    tier: 'optional',
-    env: ['__NEVER_SET__'],
-    unlocks: 'the E3/Gantt join on lms.milestones.external_ref',
-    remedy:
-      'BLOCKED upstream: dfl-schema #527 is unmerged and is a human gate. This is not a missing secret — it is a dependency, and it is reported so it stays visible instead of hiding behind an unconditional test.skip(true).',
-  },
+  // `dfl-schema-527` used to sit here. It gated ONE test inside
+  // `itera-fellowship.spec.ts` (the E3/Gantt join on
+  // `lms.milestones.external_ref`) and existed only to keep an unconditional
+  // skip visible in the census. The spec is deleted, so the entry gated
+  // nothing. The dependency it named is still unmerged; e2e/README.md records
+  // it, which is where a gap belongs once no test carries it.
 } as const satisfies Record<string, Capability>;
 
 export type CapabilityName = keyof typeof CAPABILITIES;

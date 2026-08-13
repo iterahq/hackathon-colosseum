@@ -1,34 +1,38 @@
-name: E2E (Itera↔Fellowship)
+name: E2E (Itera player)
 
-# Heavy end-to-end harness (plan #7). Needs BOTH apps live (dfl-learn +
-# itera-api), the dfl-batch Results-API key, and learn login creds. It is
+# Heavy end-to-end harness. It drives the deployed Itera player and is
 # deliberately NOT part of the per-PR `ci.yml` gate — it runs MANUALLY
 # (workflow_dispatch) or on a daily SCHEDULE.
+#
+# 🔻 SCOPE SHRANK, 2026-08-13. This workflow was named "Itera↔Fellowship"
+# because it carried `itera-fellowship.spec.ts`, the only spec that crossed into
+# dfl-learn. That spec is DELETED and the DFL↔ITERA federated embed now has no
+# automated coverage at all. The reason is recorded in `e2e/README.md`, under
+# "What is NOT covered" — read it before you assume the loop is tested.
 #
 # 🚨 GREEN MUST MEAN "IT RAN AND PASSED" (Tainan, 2026-07-28) 🚨
 #
 # This workflow used to advertise "green-with-skips" as a feature. It was not
-# one: the repo has never held `ITERA_SMOKE_*`, `CLAUDE_SMOKE_*` or
-# `DFL_BATCH_RESULTS_API_KEY` as Actions secrets, so this cron has been GREEN
-# for its entire life while executing essentially nothing. `E2E_REQUIRE_CAPABILITIES=1`
+# one: the repo has never held `ITERA_SMOKE_*` or `CLAUDE_SMOKE_*` as Actions
+# secrets, so this cron has been GREEN for its entire life while executing
+# essentially nothing. `E2E_REQUIRE_CAPABILITIES=1`
 # below fixes that: `e2e/preflight.spec.ts` fails ONCE, naming every missing
 # secret/substrate and the fix, and the skip census prints every skipped test
 # with its reason at the end of every run.
 #
-# ✅ THE SECRETS EXIST NOW (2026-08-13). All five names this workflow declares
+# ✅ THE SECRETS EXIST NOW (2026-08-13). The four names this workflow declares
 # — ITERA_SMOKE_USERNAME, ITERA_SMOKE_PASSWORD, CLAUDE_SMOKE_USERNAME,
-# CLAUDE_SMOKE_PASSWORD, DFL_BATCH_RESULTS_API_KEY — are repo Actions secrets,
-# sourced from Infisical (`/shared` for the four smoke credentials,
-# `/apps/itera` `ITERA_API_KEY_DFL_BATCH` for the Results-API key). Before that
-# the run had failed 10 times out of its last 10, always on the same preflight
-# assertion, always naming the same three capabilities.
+# CLAUDE_SMOKE_PASSWORD — are repo Actions secrets, sourced from Infisical
+# `/shared`. Before that the run had failed 10 times out of its last 10, always
+# on the same preflight assertion, always naming the same three capabilities.
 #
 # Do NOT weaken the check to restore a green. A red here still means "we are not
 # testing", and that is now a real signal instead of a standing condition.
 #
-# ⚠️ WHAT THIS SUITE TOUCHES: live production. app.iterahq.dev, api.iterahq.dev
-# and learn.devfellowship.com, daily, as a real tenant_admin of the `itera`
-# tenant. Any spec added here inherits that.
+# ⚠️ WHAT THIS SUITE TOUCHES: live production. app.iterahq.dev, daily, as a real
+# tenant_admin of the `itera` tenant. Any spec added here inherits that.
+# (`api.iterahq.dev` and `learn.devfellowship.com` left the blast radius with
+# `itera-fellowship.spec.ts`.)
 #
 # 📏 MEASURED, 2026-08-13 — and it corrects the sentence that used to sit here
 # ("opening a diagram lesson writes an attempt row"). A full run was diffed
@@ -47,8 +51,9 @@ name: E2E (Itera↔Fellowship)
 #     as Actions secrets. They exist in Infisical `/apps/itera`;
 #   · `author-activity-kinds` drives the author harness, which writes nothing BY
 #     DESIGN (that boundary is what keeps author testing out of learner data);
-#   · `itera-fellowship` is the one genuine write spec that runs, and it FAILS
-#     before it settles anything.
+#   · `itera-fellowship` was the one genuine write spec that ran, and it FAILED
+#     before it settled anything. It is now deleted, so that row is gone for
+#     good, not merely failing.
 # Do not read the absent rows as "the app stopped recording attempts".
 #
 # Also carries the per-kind author-harness smoke (plan
@@ -122,9 +127,12 @@ jobs:
       # the rule). Unset locally, so a developer without credentials still gets
       # the old skip behaviour and is not blocked.
       E2E_REQUIRE_CAPABILITIES: '1'
-      ITERA_API_URL: ${{ vars.ITERA_API_URL || 'https://api.iterahq.dev' }}
-      LEARN_BASE_URL: ${{ vars.LEARN_BASE_URL || 'https://learn.devfellowship.com' }}
-      DFL_BATCH_RESULTS_API_KEY: ${{ secrets.DFL_BATCH_RESULTS_API_KEY }}
+      # `ITERA_API_URL`, `LEARN_BASE_URL` and `DFL_BATCH_RESULTS_API_KEY` were
+      # declared here for `itera-fellowship.spec.ts`, which is deleted (see
+      # e2e/README.md). Declaring an env here MAKES it a required capability,
+      # so leaving them would demand a secret for zero assertions. The
+      # `DFL_BATCH_RESULTS_API_KEY` Actions secret itself is left in place — it
+      # is a real key, and this workflow is no longer its consumer.
       CLAUDE_SMOKE_USERNAME: ${{ secrets.CLAUDE_SMOKE_USERNAME }}
       CLAUDE_SMOKE_PASSWORD: ${{ secrets.CLAUDE_SMOKE_PASSWORD }}
       # The Itera player itself (app.iterahq.dev) — the substrate for
