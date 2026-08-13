@@ -119,6 +119,22 @@ fi
 
 PSQL=(psql -v ON_ERROR_STOP=1 -qX)
 
+# ONE engine, not two. Migrations go through db/scripts/tx-mode.sh, the same
+# module apply-migrations.sh uses on merge, instead of this script carrying its
+# own `psql -f`. TX_FROM_ZERO=1 states explicitly what this script used to do by
+# accident: a from-zero build runs every file in autocommit, because the
+# BEGIN/COMMIT wrapper exists to keep a file atomic with its ledger row on
+# production and there is no production here. apply-migrations.sh takes the same
+# branch through the same flag when it proves the target database is empty.
+#
+# This is not a way for a broken migration to slip through. Phase 4 below hands
+# the pull request's NEW files to apply-migrations.sh against a SEEDED ledger,
+# where TX_FROM_ZERO is 0 and `wrap` is real.
+# shellcheck source=db/scripts/tx-mode.sh
+. "${ROOT}/scripts/tx-mode.sh"
+TX_PSQL=("${PSQL[@]}")
+TX_FROM_ZERO=1
+
 # Every migration here is written to be re-runnable, so a from-scratch build
 # emits hundreds of "already exists, skipping" NOTICEs on the second pass and a
 # fair number on the first. They bury the one line that matters. WARNING and
@@ -219,7 +235,7 @@ apply_pass() {
   local label="$1" b rc=0
   say "── ${label} ──"
   for b in "${ORDER[@]}"; do
-    if ! "${PSQL[@]}" -f "${MIG_DIR}/${b}" > >(sed "s/^/    /") 2>&1; then
+    if ! tx_apply "${MIG_DIR}/${b}" "" > >(sed "s/^/    /") 2>&1; then
       say ""
       say "FAILED: ${b}  (${label})"
       if [[ "$label" == second\ pass* ]]; then

@@ -152,6 +152,14 @@ command -v psql >/dev/null 2>&1 || die "psql not found on PATH"
 q() { psql "$ITERA_DB_URL" -v ON_ERROR_STOP=1 -qtAX -c "$1"; }
 lit() { printf "%s" "${1//\'/\'\'}"; }   # single-quote escaping for SQL literals
 
+# The transaction-mode logic lives in ONE place, db/scripts/tx-mode.sh, and is
+# shared with db/scripts/fresh-apply.sh. Before that, each script carried its
+# own copy and they disagreed: this one wrapped 55 of the 66 files in
+# BEGIN/COMMIT, the checker ran every file in autocommit. See that file.
+# shellcheck source=db/scripts/tx-mode.sh
+. "${ROOT}/scripts/tx-mode.sh"
+TX_PSQL=(psql "$ITERA_DB_URL" -v ON_ERROR_STOP=1 -qX)
+
 # -- the ledger DDL, bootstrapped by the tool itself -------------------------
 # Chicken and egg: the script cannot read a ledger that does not exist. It
 # creates the two tables from the same DDL as migration 0039, which is why 0039
@@ -459,61 +467,26 @@ classify() {
 # safe only because every migration is idempotent. That is one of the two
 # reasons idempotency is still mandatory even with a ledger.
 apply_one() {
-  local f="$1" b s start end dur no_tx=0 self_tx=0 mode rc
+  local f="$1" b s mode rc start end dur
   b="$(basename "$f")"; s="$(sum_of "$f")"
-  head -1 "$f" | command grep -q 'itera:no-transaction' && no_tx=1
-  command grep -qiE '^[[:space:]]*begin[[:space:]]*;' "$f" && self_tx=1
-  if   [[ "$no_tx"   -eq 1 ]]; then mode=none
-  elif [[ "$self_tx" -eq 1 ]]; then mode=self
-  else                              mode=wrap
-  fi
-
-  # ── building an empty database: never add the wrapper ──────────────────────
-  # MEASURED 2026-08-12. `wrap` puts BEGIN/COMMIT around a whole file, and
-  # 0041_mcp0002 adds the `author` label to itera.member_role and then USES it:
-  #
-  #   ERROR: unsafe use of new value "author" of enum type member_role
-  #   HINT:  New enum values must be committed before they can be used.
-  #
-  # It never failed on production because the label was already there, so the
-  # ALTER TYPE was a no-op and nothing new needed committing. It fails the first
-  # time anybody rebuilds the schema — which is the run that matters for
-  # disaster recovery.
-  #
-  # db/scripts/fresh-apply.sh runs every file with a plain `psql -f`, statement
-  # by statement in autocommit, which is why the from-zero check was green while
-  # this path was not. Two runners, one series, different semantics: the check
-  # was not checking the thing that would actually run.
-  #
-  # So a from-zero build uses the same autocommit semantics as the checker. The
-  # wrapper exists to keep a file and its ledger row atomic on PRODUCTION, and
-  # there is no production here — the database is empty, and every migration is
-  # idempotent, so re-running after a failure is safe. That trade is only made
-  # on the from-zero path; the production path is untouched.
-  #
-  # The alternative — putting `-- itera:no-transaction` on 0041 — edits an
-  # already-applied migration. Its checksum then mismatches the ledger, and
-  # `apply` REFUSES to apply anything to production until a human rebaselines
-  # it. Fixing a recovery path by breaking the live one is not a fix.
-  if [[ "${FROM_ZERO:-0}" -eq 1 && "$mode" == "wrap" ]]; then mode=none; fi
+  # ONE implementation, in db/scripts/tx-mode.sh, shared with fresh-apply.sh.
+  # The from-zero carve-out (`wrap` collapses to `none` on an empty database,
+  # so 0041_mcp0002 can build a schema from nothing) lives there too, behind
+  # TX_FROM_ZERO, instead of being restated here and implied there.
+  TX_FROM_ZERO="$FROM_ZERO"
+  mode="$(tx_mode_of "$f")"
 
   start="$(date +%s%3N)"
-  # NOTE: every branch below ends in a command that SUCCEEDS. `set -o pipefail`
-  # takes the rightmost non-zero status in the pipeline, so a trailing
+  # NOTE: tx_apply ends in a command that SUCCEEDS. `set -o pipefail` takes the
+  # rightmost non-zero status in the pipeline, so a trailing
   # `[[ cond ]] && echo ...` whose condition is false would make this function
   # report a failure for a migration that applied perfectly. That bug was real
   # and was caught by the ephemeral-Postgres test before this shipped.
-  {
-    echo "\\set ON_ERROR_STOP on"
-    if [[ "$mode" == "wrap" ]]; then echo "begin;"; fi
-    printf '\\i %s\n' "$f"
-    echo "insert into itera.schema_migrations (id, repo, filename, checksum, applied_by)
-          values ('$(lit "${REPO_NAME}:${b}")', '$(lit "$REPO_NAME")', '$(lit "$b")',
-                  '$(lit "$s")', '$(lit "$APPLIED_BY")')
-          on conflict (id) do nothing;"
-    if [[ "$mode" == "wrap" ]]; then echo "commit;"; fi
-    true
-  } | psql "$ITERA_DB_URL" -v ON_ERROR_STOP=1 -qX
+  tx_apply "$f" \
+    "insert into itera.schema_migrations (id, repo, filename, checksum, applied_by)
+           values ('$(lit "${REPO_NAME}:${b}")', '$(lit "$REPO_NAME")', '$(lit "$b")',
+                   '$(lit "$s")', '$(lit "$APPLIED_BY")')
+           on conflict (id) do nothing;"
   rc=$?
   end="$(date +%s%3N)"; dur=$((end - start))
 

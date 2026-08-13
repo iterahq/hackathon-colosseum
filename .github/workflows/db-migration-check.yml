@@ -70,6 +70,8 @@ on:
       - 'db/scripts/fresh-apply-bootstrap.sql'
       - 'db/scripts/fresh-apply-exceptions.txt'
       - 'db/scripts/test-fresh-apply.sh'
+      - 'db/scripts/tx-mode.sh'
+      - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
@@ -86,6 +88,8 @@ on:
       - 'db/scripts/fresh-apply.sh'
       - 'db/scripts/fresh-apply-bootstrap.sql'
       - 'db/scripts/fresh-apply-exceptions.txt'
+      - 'db/scripts/tx-mode.sh'
+      - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
@@ -161,6 +165,14 @@ jobs:
 
       - name: Wait until the database really answers
         run: bash db/scripts/ci-wait-for-postgres.sh
+
+      # ONE runner. apply-migrations.sh and fresh-apply.sh used to carry two
+      # different answers to "does this file go inside a transaction?", and the
+      # green check was therefore not running the file the way the merge would.
+      # The structural half of this test fails if either script grows its own
+      # copy of that decision again.
+      - name: Prove every verdict — one transaction-mode engine
+        run: bash db/scripts/test-tx-mode.sh
 
       - name: Prove every verdict — fresh-apply
         run: bash db/scripts/test-fresh-apply.sh
