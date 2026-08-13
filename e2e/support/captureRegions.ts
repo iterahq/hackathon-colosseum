@@ -48,10 +48,20 @@
  * self-hosted (`public/vendor/fonts/`, see `index.html`), so there is no CDN in
  * the loop — but GLYPH RASTERISATION still belongs to the host: a different
  * FreeType or fontconfig renders the same text with different anti-aliasing.
- * Two captures on ONE machine are therefore byte-identical, and that is exactly
- * what this module promises and proves. Two captures on DIFFERENT machines are
- * not promised, and a cross-machine diff must run in one container to mean
- * anything. `performance.now()` is deliberately left real: freezing it stalls
+ * Two captures on ONE machine are therefore byte-identical, and that is what
+ * this module's own suite asserts.
+ *
+ * ✅ Measured 2026-08-13, the cross-machine case turned out to hold too, for a
+ * reason worth knowing: Chrome-for-Testing bundles its own Skia and FreeType,
+ * and this app's fonts are self-hosted woff2 that the PAGE loads — so the host's
+ * font stack never enters the raster at all. All 8 recorded pairs reproduced
+ * byte-for-byte across a Debian 11 host, an Ubuntu 24.04 container, and a
+ * `dfl-runner` VPS. The pixels follow the CHROMIUM REVISION, not the host.
+ * Evidence and its limits: the header of `scripts/ux-capture/digests.mjs`.
+ *
+ * ⚠️ This module still promises only the one-machine case, and the suite still
+ * asserts only that. The cross-machine result is an observation about the
+ * current pin, not a contract — do not build a check on it here. `performance.now()` is deliberately left real: freezing it stalls
  * React's scheduler and any `requestAnimationFrame` loop, which trades a
  * cosmetic wobble for a hang.
  *

@@ -37,6 +37,22 @@ echo "out     : $OUT_DIR"
 echo "node    : $(node --version)"
 echo "chromium: $(node -e 'const{chromium}=require("playwright");console.log(chromium.executablePath())' 2>/dev/null || echo '(not resolvable)')"
 
+# WHO RAN THIS. Recorded because `capture-digests.json` is keyed by
+# `chromium` + `arch`, and the day a pixel digest moves the FIRST question is
+# "did the machine change?" — a question that is unanswerable after the fact
+# unless the answer was written down at the time.
+#
+# It is not decoration: the cross-host result this whole design rests on
+# (8 of 8 pairs identical between a Debian 11 host, an Ubuntu 24.04 container
+# and a dfl-runner VPS) is only readable as evidence because the hosts are
+# distinguishable. A future mismatch on an unmeasured key — a Chromium bump,
+# an arm64 runner — should be diagnosable from the artifact alone.
+CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^ *//' || echo unknown)"
+# shellcheck disable=SC1091  # /etc/os-release is provided by the OS, not the repo
+OS_NAME="$(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME" || echo unknown)"
+echo "os      : $OS_NAME"
+echo "cpu     : $CPU_MODEL ($(nproc 2>/dev/null || echo '?') cores)"
+
 if [ "$SKIP_BUILD" != "1" ]; then
   echo "── building the stamped bundle ────────────────────────────────────────"
   ITERA_SOURCE_STAMP=1 \
@@ -91,8 +107,27 @@ if [ -d "$REPO_ROOT/playwright-report" ]; then
   cp -a "$REPO_ROOT/playwright-report" "$OUT_DIR/"
 fi
 cp "$REPO_ROOT/e2e/support/capture-digests.json" "$OUT_DIR/capture-digests.recorded.json" 2>/dev/null || true
-printf '{"suite_status":%d,"digest_status":%d}\n' "$SUITE_STATUS" "$DIGEST_STATUS" \
-  > "$OUT_DIR/status.json"
+# `status.json` carries the two verdicts AND the machine that produced them, so
+# the artifact answers "what changed" and "where did it run" without needing the
+# job log, which expires long before a digest question gets asked.
+python3 - "$OUT_DIR/status.json" "$SUITE_STATUS" "$DIGEST_STATUS" "$OS_NAME" "$CPU_MODEL" <<'PYEOF'
+import json, os, platform, sys
+out, suite, digest, os_name, cpu = sys.argv[1:6]
+json.dump(
+    {
+        "suite_status": int(suite),
+        "digest_status": int(digest),
+        "host": {
+            "os": os_name,
+            "cpu": cpu,
+            "cores": os.cpu_count(),
+            "arch": platform.machine(),
+        },
+    },
+    open(out, "w"),
+    indent=2,
+)
+PYEOF
 
 echo "suite exit=$SUITE_STATUS  digest exit=$DIGEST_STATUS"
 

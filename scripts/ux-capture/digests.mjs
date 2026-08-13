@@ -25,11 +25,28 @@
  * dependent Skia paths. What is left is a pure function of the CHROMIUM
  * REVISION — which `package-lock.json` pins.
  *
- * ⚠️ WHAT WAS **NOT** SHOWN, and must not be read in: both runs were on ONE
- * physical machine, so one CPU. A different SIMD feature set is precisely what
- * `--disable-skia-runtime-opts` is there to neutralise, and that flag is
- * UNPROVEN. This is why the screenshot comparison below is KEYED, and why a
- * key mismatch records instead of failing.
+ * ⚠️ That first measurement had a real hole, and it is worth keeping the record
+ * of how it was closed. Both of those runs were on ONE physical machine, so one
+ * CPU — and a different SIMD feature set is precisely what
+ * `--disable-skia-runtime-opts` exists to neutralise. The flag was therefore
+ * UNPROVEN, and this file said so.
+ *
+ * ✅ It is proven now. The first scheduled-workflow run
+ * (`.github/workflows/ux-capture.yml`, run 31713197566, 2026-08-13) executed
+ * the same container on a **`dfl-runner` VPS** — a different physical host, in a
+ * different fleet, from the one that recorded `capture-digests.json`. Verdict:
+ *
+ *     screens compared : 8   layout moved : 0   PIXELS MOVED : 0
+ *
+ * So the pixels crossed a machine boundary, not only a rootfs boundary.
+ *
+ * ⚠️ The comparison below stays KEYED anyway, and that is deliberate. What is
+ * now evidenced is that the key `chromium 1228 / x64` reproduces on two hosts;
+ * what remains untested is every OTHER key — a Chromium bump, an arm64 runner.
+ * A key mismatch therefore still RECORDS rather than fails, because the honest
+ * default for an unmeasured combination is "we do not know", not "it is fine".
+ * The `host` block each run writes into its artifact is what makes a future
+ * mismatch diagnosable instead of mysterious.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * THE TWO KINDS OF DIGEST, AND WHY THEY ARE TREATED DIFFERENTLY

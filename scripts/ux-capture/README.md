@@ -83,7 +83,14 @@ Measured 2026-08-13, all of it re-derivable with the commands above:
   `e2e/support/capture-manifest.REJECTED.md`
 - **2 frames** to settle, every screen, every run — 56 measurements across 4
   runs. See `settleUntilStable` in `e2e/support/captureRegions.ts`
-- **17 of 17** capture pairs byte-identical between a Debian 11 host and an
-  Ubuntu 24.04 container. The pixels follow the **Chromium revision**, not the
-  host distro. See the header of `digests.mjs` — and note the one thing that was
-  *not* shown: both runs were on one CPU.
+- **byte-identical across three environments**, not two: a Debian 11 host, an
+  Ubuntu 24.04 container (17 of 17 pairs), and — on the first scheduled workflow
+  run — a **`dfl-runner` VPS**, a different physical machine, where all 8
+  recorded digests still matched (`pixels moved: 0`). The pixels follow the
+  **Chromium revision**, not the host. Mechanism and limits: the header of
+  `digests.mjs`.
+
+  ⚠️ What that does *not* license: every **other** key is still unmeasured — a
+  Chromium bump, an arm64 runner. That is why the record stays keyed and why a
+  key mismatch records rather than fails. Each run writes its `host` block into
+  `status.json` so a future mismatch is diagnosable from the artifact.
