@@ -30,6 +30,35 @@ function client() {
   return getSupabase();
 }
 
+/**
+ * The program slug resolved to NOTHING — the row does not exist, or it exists
+ * and this user is NOT enrolled in its tenant, so RLS hides it. PostgREST
+ * answers both cases identically (an empty result, HTTP 200, no error), so the
+ * client genuinely CANNOT tell them apart. The UI must therefore say both.
+ *
+ * The distinction that DOES matter is permanent-vs-transient: retrying can
+ * never fix either case, so this error must be separable from a transport
+ * failure. Same shape, same reason, same guard style as
+ * `ActivityNotFoundError` in `authorCanvas.service.ts` — see that file for the
+ * precedent (E2E 2026-07-28, D5).
+ */
+export class ProgramNotFoundError extends Error {
+  readonly slug: string;
+  constructor(slug: string) {
+    super(`Program not found or not accessible: ${slug}`);
+    this.name = 'ProgramNotFoundError';
+    this.slug = slug;
+  }
+}
+
+/**
+ * Type guard for the above. Compares `name` rather than using `instanceof` so it
+ * survives duplicated module instances / transpiled subclassing.
+ */
+export function isProgramNotFoundError(e: unknown): e is ProgramNotFoundError {
+  return e instanceof Error && e.name === 'ProgramNotFoundError';
+}
+
 /** Evergreen-family accents so each program card gets a stable colored glow. */
 const ACCENTS = [
   'from-emerald-500 to-teal-700',
@@ -120,7 +149,7 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!data) throw new Error(`Program not found: ${slug}`);
+  if (!data) throw new ProgramNotFoundError(slug);
   const row = data as Row;
 
   const units: Unit[] = asRows(row.units)

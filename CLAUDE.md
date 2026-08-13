@@ -122,16 +122,33 @@ então um teste/story sensível a idioma monta `ActivityI18nBridge` (ou
 engano; foi exatamente o que aconteceu com `terminalRenderedLocale.test.tsx` no
 passo 4.
 
-Os **12 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
+<!-- activity-kinds:begin — bloco VERIFICADO por scripts/verify-activity-kinds.mjs.
+     A lista e a contagem aqui dentro são comparadas com o enum derivado de
+     db/migrations/*.sql. Editar um nome ou um número sem editar o enum = CI
+     vermelha. Não remova os marcadores para calar o check. -->
+
+Os **14 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
 literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
-Restam dois pontos a sincronizar na mão: o enum do banco e o `ACTIVITY_KINDS` de
+Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
 `iterahq/itera-mcp:src/tools/activities.ts`.
 
 `concept` · `concept_reveal` · `document` · `diagram` · `video` ·
 `quiz` (o *hero*) ·
 `single_choice` · `multi_choice` · `match` · `order` · `code` ·
-`sandbox_scenario`
+`chat_sandbox` · `terminal_sandbox` · `sandbox_scenario`
+
+<!-- activity-kinds:end -->
+
+⚠️ **`sandbox_scenario` está DEPRECADO, não retirado.** Medido no banco da Itera
+em 2026-08-13: o valor está vivo no enum e **zero linhas** o carregam — nem em
+`itera.activities` nem em `itera.activity_defs`. As 48 linhas (29 + 19) foram
+relabeladas para `chat_sandbox` por DML em 2026-08-10. O valor **não sai do
+enum**: o Postgres não tem `ALTER TYPE … DROP VALUE`, então removê-lo exigiria
+recriar o tipo e reescrever toda coluna que o usa. A remoção no nível do pacote e
+do app está na PR **`iterahq/itera-player#353`** (`activity-spec` 1.0.0), que
+segue **ABERTA** — ela não contém migration nenhuma. Até lá, todo consumidor
+tolera os três valores de sandbox.
 
 Rotas que montam o engine: **`/lesson/:lessonId`** (LessonPlayer),
 **`/programs`/`/catalog`** (navegação), **`/live/*`** (aula ao vivo, aluno e
@@ -173,7 +190,7 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 
 ### Validação de spec
 
-**Fail-closed nos 12 kinds desde 2026-07-28** (ADR-15 do plano
+**Fail-closed em TODOS os kinds desde 2026-07-28** (ADR-15 do plano
 `20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
 ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
 `@iterahq/activity-spec`, hoje resolvido do GitHub Packages privado) era
@@ -568,12 +585,19 @@ comparação entre máquinas diferentes exige um container só.
       compila, e `src/test/activityFamilies.test.ts` cruza o mapa com o
       `ACTIVITY_KINDS` do pacote nas DUAS direções (chave órfã também falha).
     - 🔴 **AINDA NÃO trava:** **não existe** checker que exija que um kind novo
-      EMITA evento de tracking — é a **Fase 5** do plano acima, e ela depende de
-      uma lista canônica de kinds que hoje não existe (enum do banco 12 × union
-      TS 11 × switch 11 discordam). Até lá, **este** item é regra escrita, não
-      trava: não conte com a CI para pegá-lo, e não descreva em PR como se ela
-      pegasse. (O cano em si — Fases 2-4 — **já existe**; era só ele que faltava
-      quando esta linha foi escrita.)
+      EMITA evento de tracking — é a **Fase 5** do plano acima. Até lá, **este**
+      item é regra escrita, não trava: não conte com a CI para pegá-lo, e não
+      descreva em PR como se ela pegasse. (O cano em si — Fases 2-4 — **já
+      existe**; era só ele que faltava quando esta linha foi escrita.)
+      ⚠️ **A lista canônica de kinds, que esta linha dizia não existir, EXISTE.**
+      Medido em 2026-08-13: enum do banco **14** (derivado de `db/migrations/`,
+      confirmado no `pg_enum` ao vivo e em `db/census/expected-schema.txt`),
+      `ACTIVITY_KINDS` de `@iterahq/activity-spec@0.15.0` **14**, e o `switch` de
+      `src/components/branded/activity/ActivityRenderer.tsx` **14**. Os três
+      **concordam** — o texto antigo dizia 12 x 11 x 11 e estava errado nos três.
+      `BUILT_IN_ACTIVITY_KINDS` do pacote tem **13**, e isso é de propósito:
+      `code` sai pelo segundo entrypoint (ADR-5). Quem for construir a Fase 5
+      parte dessa lista, não de uma nova.
 - Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
   mesma feature.
 - Lógica derivada de resposta/correção vai para `answerMachine`, não inline no

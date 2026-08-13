@@ -9,16 +9,66 @@
  */
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, GitBranch } from 'lucide-react';
+import { ChevronLeft, GitBranch, SearchX } from 'lucide-react';
 import { AppHeader, ProgramIcon, SkillTree } from '@/components/branded';
 import { useProgram } from '@/hooks';
+import { isProgramNotFoundError } from '@/services/programs.service';
 import { useI18n } from '@/i18n';
+
+/**
+ * The route resolved to no program. Two causes, ONE screen, on purpose: the
+ * client cannot tell "no such slug" from "you are not enrolled, so RLS hid it"
+ * — PostgREST answers both with an empty result. So the copy names both, and
+ * the way forward is the catalog, where enrolment actually happens.
+ *
+ * It replaces a `Retry` button that could never succeed, and it is also the
+ * fallback for "the query settled with nothing and no error" — the branch that
+ * used to render `null` and left `<main>` empty (DFL-006A7).
+ */
+function ProgramUnavailable() {
+  const { t } = useI18n();
+  return (
+    <div
+      className="rounded-3xl border border-dashed border-border bg-card/50 p-10 text-center flex flex-col items-center gap-3"
+      data-testid="program-unavailable"
+    >
+      <div className="w-11 h-11 rounded-2xl bg-muted/40 border border-border flex items-center justify-center text-muted-foreground">
+        <SearchX className="w-5 h-5" />
+      </div>
+      <h2 className="text-base font-semibold text-foreground">{t('program.noAccess.title')}</h2>
+      <p className="text-sm text-muted-foreground max-w-[46ch]">{t('program.noAccess.body')}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+        <Link
+          to="/catalog"
+          className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+          data-testid="program-unavailable-catalog"
+        >
+          {t('program.noAccess.browse')}
+        </Link>
+        <Link
+          to="/"
+          className="h-10 px-5 inline-flex items-center rounded-full border border-border text-foreground hover:bg-card transition-colors"
+          data-testid="program-unavailable-home"
+        >
+          {t('program.noAccess.home')}
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function ProgramPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t, tText } = useI18n();
-  const { data: program, isPending, isError, refetch } = useProgram(slug);
+  const { data: program, isPending, isError, error, refetch } = useProgram(slug);
+
+  // A missing route param can never resolve either (the query stays disabled and
+  // therefore permanently `isPending`) — treat it exactly like a hidden/absent
+  // program so this route never renders an eternal skeleton. Same shape as
+  // `ActivityTestPage`.
+  const unavailable = !slug || (isError && isProgramNotFoundError(error));
+  const loading = Boolean(slug) && isPending && !unavailable;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,15 +98,17 @@ export default function ProgramPage() {
       )}
 
       <main className="flex-1 max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
-        {isPending ? (
-          <div className="space-y-4">
+        {loading ? (
+          <div className="space-y-4" data-testid="program-loading">
             <div className="h-40 rounded-3xl ds-shimmer" />
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-16 rounded-2xl ds-shimmer" />
             ))}
           </div>
+        ) : unavailable ? (
+          <ProgramUnavailable />
         ) : isError ? (
-          <div className="flex flex-col items-center gap-4 py-16">
+          <div className="flex flex-col items-center gap-4 py-16" data-testid="program-error">
             <p className="text-muted-foreground">{t('program.notFound')}</p>
             <button
               onClick={() => refetch()}
@@ -101,7 +153,13 @@ export default function ProgramPage() {
               />
             )}
           </>
-        ) : null}
+        ) : (
+          // The query settled, there is no error, and there is still nothing to
+          // show. Before DFL-006A7 this branch was `null` and `<main>` rendered
+          // EMPTY — no error, no empty state, no redirect. It now falls back to
+          // the same explicit screen.
+          <ProgramUnavailable />
+        )}
       </main>
     </div>
   );

@@ -297,6 +297,19 @@ jobs:
       - name: Verify docs match the code
         run: bash scripts/verify-docs.sh
 
+      # The kind list/count in prose vs the `itera.activity_kind` enum derived
+      # from `db/migrations/*.sql`. Added 2026-08-13 (DFL-006B9): the enum had
+      # held 14 values since `0057_chat_and_terminal_sandbox_kinds.sql`, while
+      # CLAUDE.md, repo-contract.yaml and db/README.md said 12, 12 and 4. Every
+      # one of those numbers was prose, so nothing could notice.
+      #
+      # Reads NOTHING from node_modules, which is why it fits this job — this
+      # job runs no `npm install`. The TypeScript half of the same fact
+      # (`ACTIVITY_KINDS` ⊆ the enum) is a vitest file and rides in `build-test`:
+      # `src/test/activityKindEnumParity.test.ts`.
+      - name: Verify the activity-kind lists match the enum
+        run: node scripts/verify-activity-kinds.mjs
+
   # ──────────────────────────────────────────────────────────────────────────
   # ACTIVITY CHARACTERIZATION BASELINE — BLOQUEANTE (sub-plano 0 de
   # `20260731-itera-eventos-aprendizagem`, Q4 respondida "entra no gate de PR").

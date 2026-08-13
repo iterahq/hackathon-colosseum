@@ -47,9 +47,10 @@ provides:
     name: activity-engine
     description: >
       Engine canônico de activity. O ActivityRenderer despacha uma linha de
-      itera.activities para a view do seu `kind`. Os 12 kinds de
-      itera.activity_kind: concept, concept_reveal, document, diagram, video,
-      quiz, single_choice, multi_choice, match, order, code, sandbox_scenario.
+      itera.activities para a view do seu `kind`. A lista dos kinds vive UMA vez
+      neste arquivo, na chave `activity_kinds` lá embaixo — não a repita aqui.
+      Ela é verificada contra db/migrations/*.sql por
+      scripts/verify-activity-kinds.mjs.
       Lógica derivada de resposta/correção vive na máquina pura
       src/utils/answerMachine.ts; o gate do ao-vivo em
       src/utils/liveActivityGate.ts.
@@ -167,9 +168,19 @@ scripts:
 agent_entry_point: CLAUDE.md
 
 activity_kinds:
+  # ⚠️ LISTA VERIFICADA. scripts/verify-activity-kinds.mjs compara esta lista,
+  # nome a nome, com o enum itera.activity_kind derivado de db/migrations/*.sql
+  # (e com db/census/expected-schema.txt). Editar aqui sem a migration = CI
+  # vermelha, e vice-versa. Rode `node scripts/verify-activity-kinds.mjs`.
+  #
   # Espelha o union ActivityKind em src/types/content.ts, ACTIVITY_KINDS de
   # @iterahq/activity-spec e iterahq/itera-mcp:src/tools/activities.ts.
   # Os três precisam continuar em sincronia.
+  #
+  # sandbox_scenario está DEPRECADO, não retirado: valor vivo no enum, ZERO
+  # linhas o carregam desde o DML de 2026-08-10 (as 48 viraram chat_sandbox), e
+  # o Postgres não tem ALTER TYPE ... DROP VALUE. A remoção no pacote/app está
+  # em iterahq/itera-player#353, ABERTA — essa PR não contém migration.
   - concept
   - concept_reveal
   - document
@@ -181,6 +192,8 @@ activity_kinds:
   - match
   - order
   - code
+  - chat_sandbox
+  - terminal_sandbox
   - sandbox_scenario
 
 testing:

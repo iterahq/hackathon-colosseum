@@ -35,10 +35,17 @@ import { defineConfig, devices } from '@playwright/test';
  * `feedback-footer-width.spec.ts` joined them on 2026-08-10 and is the same kind
  * as `terminal-sandbox.spec.ts`: assertions written from a screenshot, stating
  * what the UI MUST do, measured in a real browser because jsdom has no layout.
+ *
+ * `program-access.spec.ts` joined them on 2026-08-13 (DFL-006A7). It is a third
+ * kind again: a REGRESSION gate for a route that rendered an empty `<main>` and
+ * still answered 200. It belongs here for the substrate reason — the state it
+ * asserts is reached by an empty RLS-scoped read, which the stub origin can
+ * produce exactly, with no credential. `route-access-matrix.spec.ts` asks the
+ * neighbouring question but needs real logins, so it can only skip.
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width)\.spec\.ts$/,
+  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access)\.spec\.ts$/,
 
   // Hermetic: no shared server state, no login, no DB. Parallel is free, and
   // it is what keeps the suite inside the 10-minute budget (V3).

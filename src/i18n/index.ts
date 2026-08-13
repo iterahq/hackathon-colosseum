@@ -423,6 +423,11 @@ export const resources: Record<Locale, Record<string, string>> = {
     'program.continue': 'Continuar',
     'program.percentComplete': '{n}% concluído',
     'program.notFound': 'Programa não encontrado.',
+    'program.noAccess.title': 'Curso indisponível',
+    'program.noAccess.body':
+      'Este curso não existe, ou você ainda não está matriculado nele. Procure-o no catálogo para se matricular.',
+    'program.noAccess.browse': 'Ver o catálogo',
+    'program.noAccess.home': 'Voltar para o início',
     'journey.title': 'Jornada',
     'journey.basecamp': 'Acampamento base · sua jornada começa aqui',
     'journey.summit': 'Conclua o programa',
@@ -1274,6 +1279,11 @@ export const resources: Record<Locale, Record<string, string>> = {
     'program.continue': 'Continue',
     'program.percentComplete': '{n}% complete',
     'program.notFound': 'Program not found.',
+    'program.noAccess.title': 'Course unavailable',
+    'program.noAccess.body':
+      'This course does not exist, or you are not enrolled in it yet. Find it in the catalog to enroll.',
+    'program.noAccess.browse': 'Browse the catalog',
+    'program.noAccess.home': 'Back to home',
     'journey.title': 'Journey',
     'journey.basecamp': 'Base camp · your climb starts here',
     'journey.summit': 'Finish the program',

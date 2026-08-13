@@ -75,15 +75,46 @@ db/
 
 ## Schema shape (v1 — ADR-102)
 
-- **Content** (`programs → units(stage) → lessons → activities`) with `*_i18n jsonb`
-  titles (bilingual day-1, ADR-35). `activities.kind` ∈ `diagram|document|quiz|code`.
+- **Content** (`programs → units → lessons → activities`) with `*_i18n jsonb`
+  titles (bilingual day-1, ADR-35). `itera.units` is exactly
+  `id, program_id, ordinal, title_i18n` (`0001_itera_schema_v1.sql:85-90`) —
+  ordering is `ordinal`. There is **no `stage` column**, and there never was
+  one. The header comment at `0001_itera_schema_v1.sql:74` still writes
+  `units(stage)`; that comment stays wrong, because `db/migrations/**` is
+  append-only here — a merge there APPLIES to the production database, so it is
+  human-gated (see "Applying migrations" below). This README is the correction.
+
+<!-- activity-kinds:begin — VERIFIED block, checked by scripts/verify-activity-kinds.mjs
+     against the enum derived from db/migrations/*.sql. Editing a name or the
+     count here without the matching migration turns CI red. Do not delete the
+     markers to silence the check. -->
+
+  The **14 kinds** of `itera.activity_kind`:
+  `diagram` · `document` · `quiz` · `code` · `concept` · `single_choice` ·
+  `multi_choice` · `match` · `order` · `video` · `sandbox_scenario` ·
+  `concept_reveal` · `chat_sandbox` · `terminal_sandbox`
+
+<!-- activity-kinds:end -->
+
+  They are listed above in `enumsortorder` — the order the migrations added
+  them, which is the order the live `pg_enum` returns.
+
+  ⚠️ `sandbox_scenario` is **deprecated, not retired**. Measured on the Itera
+  database on 2026-08-13: the value is live in the enum and **zero rows** carry
+  it, in either `itera.activities` or `itera.activity_defs`. A DML pass on
+  2026-08-10 relabelled its last 48 rows (29 + 19) onto `chat_sandbox`. The
+  value cannot leave the enum: Postgres has no `ALTER TYPE … DROP VALUE`.
+  Removal at the package/app level rides in `iterahq/itera-player#353`, which is
+  still **OPEN** and contains **no migration**.
 - **Tenancy + Itera-local IAM** (`tenants`, `users`, `identities`, `memberships`).
   User ids are **Itera-local**; federated identities link IN via `identities`
   (`provider` ∈ `dfl|google|oidc|password`) — never FK out to DFL (ADR-4/26).
 - **Gamification** (`progress`, `xp_events`, `badges`, `user_badges`) — minimal
   (hearts/streaks deferred, ADR-14).
 - **Results + artifacts** (`activity_results` with INTERNAL-only `score_internal`
-  per ADR-15; `artifacts` typed `diagram|document|site`, ADR-28).
+  per ADR-15; `artifacts` typed `diagram|document|site|code|text` — ADR-28 named
+  the first three, `0025_artifacts_learner_work.sql:38-39` added `code` and
+  `text`).
 
 ## RLS
 

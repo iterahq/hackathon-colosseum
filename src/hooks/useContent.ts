@@ -15,6 +15,7 @@ import {
   getProgramBySlug,
   getPrograms,
   getUserStats,
+  isProgramNotFoundError,
 } from '@/services/programs.service';
 import { getGuestLessonContent } from '@/services/guestSession.service';
 
@@ -30,6 +31,12 @@ export function useProgram(slug: string | undefined) {
     queryKey: queryKeys.programs.bySlug(slug ?? '', locale),
     queryFn: () => getProgramBySlug(slug as string),
     enabled: Boolean(slug),
+    // A program the caller is not enrolled in is hidden by RLS, so the read
+    // resolves to nothing — permanently. The default 3 retries then held the
+    // learner ~7s on a skeleton that has ZERO text before any message appeared.
+    // Same rule and same reason as `useActivity` in `useAuthorCanvas.ts`:
+    // settle a not-found immediately, keep retrying a transport failure.
+    retry: (failureCount, error) => !isProgramNotFoundError(error) && failureCount < 3,
   });
 }
 
