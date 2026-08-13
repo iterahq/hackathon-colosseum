@@ -34,11 +34,51 @@ name: UX Capture (portable)
 #     · `regions.json` — layout, no rasterisation — matches the committed record
 #     · the container ran to completion with no credential of any kind
 #
+#     · the capture reached media and the index (see the next block)
+#
 #   RECORDED (reported, and it opens an issue, but the job stays GREEN)
 #     · `screenshot.png` digests that moved. Under the SAME chromium+arch key
 #       that is a real UI change, which is the PRODUCT of this plan — the
 #       answer to "what changed since João validated this". Under a DIFFERENT
 #       key it is expected and is labelled as such, never as a regression.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# 📤 THE RUN PUBLISHES ITS OWN OUTPUT — added 2026-08-13
+# ═══════════════════════════════════════════════════════════════════════════
+# Until this change the ONLY output of this workflow was
+# `actions/upload-artifact@v4`, which expires after 30 days. It never uploaded
+# anything to media and never wrote a row in `engineering.ux_map_*`. Every row
+# in the production index had been put there by hand, from a developer host. So
+# a green run here proved the capture was portable and then fed NOTHING — the
+# index the Realidade lens reads was refreshed by a person or not at all, and
+# the question the plan exists to answer (*is this screen changed since it was
+# validated?*) was asked against a table that only rotted.
+#
+# `scripts/ux-capture/publish-capture.mjs` closes it: uploads every pair to
+# media, emits the observed flows document through the SAME emitter the
+# authenticated run uses, and writes the index through
+# `engineering.index_ux_map_capture`.
+#
+# ⚠️ THE CAPTURE ITSELF STILL HAS NO CREDENTIAL. That property is untouched and
+# it still matters — the container authenticates to nothing, so the thing being
+# proved portable stays portable. The credential belongs to PUBLISHING, which
+# happens on the runner after the container has exited, and it is a real user
+# session (`CLAUDE_SMOKE_*`, already a repo secret for `e2e.yml`, already IAM
+# level 50, and already the account that indexed every existing row of this
+# table). There is deliberately NO service_role path: the RPC takes the writer
+# from `auth.uid()`.
+#
+# ⚠️ Publishing is SKIPPED when the suite failed, and that is not leniency. A
+# red suite means the frozen manifest no longer describes the app, so the map
+# this run produced is known-wrong — writing it to the index would replace a
+# correct answer with a wrong one and stamp it as newer.
+#
+# ⚠️ Coverage is 2 of 31 declared screens, and it is published as 2 of 31. This
+# substrate is signed out: 24 screens redirect to /login and 5 of the 7 that
+# render are proved by marker rather than photographed. The other 29 are indexed
+# with a NULL digest, which is the schema's coverage signal. The authenticated
+# capture that reaches 26 of 31 is a different run with a different credential
+# and is NOT what this workflow does.
 #
 # ═══════════════════════════════════════════════════════════════════════════
 # WHERE A FAILURE GOES — it is routed, not left to email
@@ -171,6 +211,40 @@ jobs:
           docker cp "$CONTAINER:/out/." capture-out/ || echo "::warning::nothing at /out"
           ls -R capture-out | head -60
 
+      # `node_modules` is deliberately NOT installed — the same reasoning
+      # `ux-paths.yml` states for its own gate: an `npm ci` here is ~625
+      # packages plus a GitHub Packages token, and a step that must not be
+      # allowed to fail for reasons unrelated to its job should not depend on
+      # both. `publish-capture.mjs` has zero dependencies, and Node ≥ 22.18
+      # strips types natively, which is what lets it REUSE
+      # `emit-observed-flows.ts` verbatim instead of carrying a second copy of
+      # the emitter that could drift from the authenticated run's.
+      - name: Set up Node for publishing
+        if: always() && steps.run.outputs.suite_exit == '0'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # Skipped when the suite failed — see the header. A known-wrong map must
+      # not be written to the index as the newest capture.
+      - name: Publish to media and write the index
+        id: publish
+        if: always() && steps.run.outputs.suite_exit == '0'
+        env:
+          # The project URL is public — it is in every DFL browser bundle. The
+          # anon key is the `apikey` ticket and the CLAUDE_SMOKE pair is the
+          # session; all three come from Infisical and live here as repo
+          # Actions secrets, exactly as `e2e.yml`'s four do.
+          DFL_SUPABASE_URL: https://yoojxnggaxcqtsyjdrdx.supabase.co
+          DFL_SUPABASE_ANON_KEY: ${{ secrets.DFL_SUPABASE_ANON_KEY }}
+          DFL_CAPTURE_USERNAME: ${{ secrets.CLAUDE_SMOKE_USERNAME }}
+          DFL_CAPTURE_PASSWORD: ${{ secrets.CLAUDE_SMOKE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          node scripts/ux-capture/publish-capture.mjs \
+            --out capture-out \
+            --commit-sha "$GITHUB_SHA"
+
       - name: Report what moved
         id: report
         if: always()
@@ -181,6 +255,13 @@ jobs:
             echo
             if [ -f capture-out/status.json ]; then
               echo '```json'; cat capture-out/status.json; echo '```'
+            fi
+            echo
+            echo "### Where this capture went"
+            if [ -f capture-out/index-result.json ]; then
+              echo '```json'; cat capture-out/index-result.json; echo '```'
+            else
+              echo "It did not reach the index. A run whose only output is this page feeds nothing."
             fi
             if [ -f capture-out/digest-drift.json ]; then
               echo
@@ -219,23 +300,28 @@ jobs:
       # clears — a cron that files a fresh issue every week is the same silence
       # as no issue at all.
       #
-      # TWO conditions, two issues, because they need different readers:
+      # THREE conditions, three issues, because they need different readers:
       #   · the frozen capture no longer matches the app  → a FAULT
       #   · the observed UI changed                        → NEWS, and the
       #     actual product of this plan
-      # One issue for both would train everyone to close it unread.
+      #   · the capture never reached the index            → a DELIVERY failure.
+      #     The run can be perfect and still feed nothing, which is exactly the
+      #     silence this workflow shipped with for its first weeks.
+      # One issue for all three would train everyone to close it unread.
       #
       # Schedule only. A `workflow_dispatch` is somebody watching the run
       # already; filing an issue at them is noise.
       # ────────────────────────────────────────────────────────────────────
-      - name: Open, update or close the two ux-capture issues
+      - name: Open, update or close the three ux-capture issues
         if: always() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
           SUITE_EXIT: ${{ steps.run.outputs.suite_exit }}
           DRIFT: ${{ steps.report.outputs.drift }}
+          PUBLISH: ${{ steps.publish.outcome }}
           FAULT_TITLE: '[ux-capture] the frozen capture manifest no longer matches the app'
           DRIFT_TITLE: '[ux-capture] the observed UI changed'
+          PUBLISH_TITLE: '[ux-capture] the capture is not reaching the index'
         run: |
           set -u
           RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -268,6 +354,15 @@ jobs:
             route "$DRIFT_TITLE" broken "$(printf 'The capture ran clean and the frozen manifest still holds — but one or more screens no longer match `e2e/support/capture-digests.json`.\n\n- run: %s\n\n**This is not a failure.** It is the product of plan `20260812-ux-map-observed-reality-lens`: the answer to *what changed since this was last looked at*. The screens are named in the run summary and the images are in the run artefact.\n\nNote which kind moved:\n\n- **layout moved** — `regions.json` differs. That travels between hosts, so it is a real change.\n- **pixels moved** — only meaningful under the same `chromium` + `arch` key. The summary says whether the key matched.\n\nIf the change is intended: `npm run ux-capture:digests -- --write`.\n\nThis issue is reused. It closes itself when the record matches again.\n' "$RUN_URL")"
           else
             route "$DRIFT_TITLE" clear ""
+          fi
+
+          # The DELIVERY condition. `skipped` is not a pass and it is not this
+          # issue's business either — the suite already failed and the FAULT
+          # issue is open — so only a real `failure` routes here.
+          if [ "$PUBLISH" = "failure" ]; then
+            route "$PUBLISH_TITLE" broken "$(printf 'The capture ran, and then did not reach `engineering.ux_map_*`.\n\n- run: %s\n\n**Read this as loudly as a red capture.** A run that publishes nothing leaves the index frozen at whatever was written last, while every green run says the map is fresh. That silence is the exact defect this step was added to remove.\n\nThe likely causes, in the order they are worth checking:\n\n- **a missing Actions secret** — `DFL_SUPABASE_ANON_KEY`, `CLAUDE_SMOKE_USERNAME`, `CLAUDE_SMOKE_PASSWORD`. The script names the one it wanted.\n- **the sign-in was refused** — the probe account changed password, or lost its IAM `member` role. `engineering.index_ux_map_capture` admits DFL members only, and it refuses with 42501.\n- **`scripts/ux-capture/published-screens.json` no longer describes the capture** — a screen id or an artifact directory was renamed. Fix the DATA; do not widen the check.\n- **the RPC is absent** — the dfl-schema migration was rolled back.\n\nThere is deliberately no service_role fallback. Do not add one to make this green.\n\nThis issue is reused. It closes itself when a run publishes again.\n' "$RUN_URL")"
+          elif [ "$PUBLISH" = "success" ]; then
+            route "$PUBLISH_TITLE" clear ""
           fi
 
       # The image is ~2.5 GB and this runner fleet is disk-constrained. Removing

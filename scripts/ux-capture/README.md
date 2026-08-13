@@ -32,6 +32,7 @@ missing a field. Add the field.
 | `verify-states.mjs` | replays each claimed state from a FRESH context, promotes only what reproduces | **no** |
 | `digests.mjs` | records / compares `regions.json` + `screenshot.png` digests, keyed by Chromium revision | **no** |
 | `run-capture.sh` | the whole capture as one command, for the container | **no** |
+| `publish-capture.mjs` | uploads the pairs to media and writes `engineering.ux_map_*` | **no** |
 
 The model appears exactly once, and not in this directory: it is invoked by hand
 through the `ux-capture-explore` skill in `devfellowship/dfl-harness`.
@@ -94,6 +95,53 @@ Measured 2026-08-13, all of it re-derivable with the commands above:
   Chromium bump, an arm64 runner. That is why the record stays keyed and why a
   key mismatch records rather than fails. Each run writes its `host` block into
   `status.json` so a future mismatch is diagnosable from the artifact.
+
+## Where a run GOES — `publish-capture.mjs`
+
+A capture that nobody publishes is a capture nobody can ask a question of.
+Until 2026-08-13 the weekly workflow's only output was a GitHub run artefact
+with 30-day retention: it never uploaded to media and never wrote a row, so
+every row in the production index had been put there by hand from a developer
+host, and a green weekly run fed nothing.
+
+```bash
+OUT_DIR=/tmp/ux-capture npm run ux-capture        # the capture
+node scripts/ux-capture/publish-capture.mjs \
+  --out /tmp/ux-capture --commit-sha "$(git rev-parse HEAD)"
+```
+
+It uploads each `screenshot.png` + `regions.json` to media, hands those URLs to
+`emit-observed-flows.ts` — the same emitter the authenticated run uses — uploads
+the resulting document, and writes one capture through
+`engineering.index_ux_map_capture`. `--dry-run` needs no credential and prints
+what would be sent.
+
+Credentials come from the environment and nothing else:
+`DFL_SUPABASE_ANON_KEY` plus either `DFL_SUPABASE_USER_JWT` or
+`DFL_CAPTURE_USERNAME` / `DFL_CAPTURE_PASSWORD`. The RPC takes the writer from
+`auth.uid()` and admits DFL members (IAM level ≥ 50). **There is no
+`service_role` path and there must not be one** — the `dfl-schema` migration
+that created the function removed that requirement on purpose.
+
+### What it will and will not claim
+
+- **Coverage is 2 of 31, and it is published as 2 of 31.** This substrate is
+  signed out. The mapping from artefact directory to declared screen id is
+  DATA — `published-screens.json` — and the script refuses to guess it: a
+  rename on either side goes red with both names printed, rather than
+  publishing a row with a null screenshot and calling it coverage.
+- **The role is `anonymous-hermetic`, not `anonymous`.** The lens reads *the
+  newest capture per app and role*, and a signed-out capture of the LIVE
+  substrate already exists under `anonymous` with wider coverage. One role for
+  both substrates would let the weekly cron overwrite the richer capture every
+  Monday.
+- ⚠️ **A run of an unchanged application still writes a new capture row.** The
+  observed document embeds each screenshot's media URL, an upload mints a fresh
+  media id every time, and the document's digest is the version key (ADR-3). The
+  per-screen `screenshot_digest` is computed from the local bytes and does NOT
+  drift, so *which screens changed* stays correct — it is only the row count
+  that is generous. Reusing a previous upload's URL when the image digest is
+  unchanged would fix it, and is not done yet.
 
 ---
 

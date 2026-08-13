@@ -1,0 +1,39 @@
+{
+  "role": "anonymous-hermetic",
+  "substrate": "hermetic-stub",
+  "why_this_file_is_data": [
+    "The capture writes its artifacts under directory names of its OWN choosing:",
+    "`e2e/artifacts/regions/<harness screen name>` from capture-regions.spec.ts, and",
+    "`e2e/artifacts/manifest/<state id>` from capture-manifest.spec.ts. Neither name is",
+    "a screen id from `.dfl-ux-paths/flows.json`, and two of them (`not-found` vs",
+    "`not_found`) differ only in punctuation.",
+    "So the mapping is DATA, stated once, and `publish-capture.mjs` refuses to guess it.",
+    "A screen renamed on either side goes RED here with both names printed, instead of",
+    "quietly publishing an index row with a null screenshot and calling it coverage."
+  ],
+  "why_only_two": [
+    "The hermetic run photographs what a signed-out visitor can see. Of the 31 declared",
+    "screens, 7 render without a session and 24 redirect to /login — and of those 7 only",
+    "`login` and `not_found` are photographed today, because `capture-manifest.spec.ts`",
+    "proves the other five with a marker and a settle measurement rather than with a",
+    "screenshot pair.",
+    "2 of 31 is therefore the honest number for this substrate, and it is published as",
+    "such: the other 29 screens are indexed with a NULL digest, which is the coverage",
+    "signal the schema is built to carry.",
+    "The authenticated capture (`capture-live.ts`, 26 of 31) is a different run with a",
+    "different credential and is NOT what this workflow does."
+  ],
+  "why_the_role_is_not_plain_anonymous": [
+    "`ux_map_captures` has no substrate column, and the lens's primary read is `the",
+    "newest capture of this app in this role`. A signed-out capture of the LIVE",
+    "substrate already exists under role `anonymous` with 7 of 31 screens. Publishing",
+    "this thinner hermetic capture under the same role would make the weekly cron",
+    "overwrite the richer capture as `current`, every Monday.",
+    "`role` is free text by the RPC's own contract (roles are per-application), so the",
+    "substrate travels in the role name and again in the coverage note."
+  ],
+  "screens": {
+    "login": "regions/login",
+    "not_found": "regions/not-found"
+  }
+}
