@@ -52,6 +52,16 @@ new_fixture() {   # -> sets $DIR and $SCHEMA
   # wipe the previous pass's objects and quietly make every fixture look
   # re-runnable — which is how the "not idempotent" case first passed by
   # accident. Isolation comes from the per-case schema NAME, not from a reset.
+  # Every fixture supplies what db/scripts/census.sql needs to run at all: the
+  # `itera` schema it reads, and `cron.job` (migration 0053 creates the
+  # extension in the real series). fresh-apply.sh censuses between the two
+  # passes to assert the second one changes nothing, and a census that cannot
+  # RUN is an error, not a pass — so a fixture that omitted these would fail
+  # every case for the wrong reason.
+  cat > "${DIR}/0000_census_prereqs.sql" <<SQL
+create extension if not exists pg_cron;
+create schema if not exists itera;
+SQL
   cat > "${DIR}/0001_base.sql" <<SQL
 create schema if not exists ${SCHEMA};
 create table if not exists ${SCHEMA}.thing (id int primary key);
@@ -92,6 +102,43 @@ cat > "${DIR}/0002_nonidem.sql" <<SQL
 create table ${SCHEMA}.once (id int);
 SQL
 run_case "a non-idempotent migration fails on the second pass" 1 --new "0002_nonidem.sql"
+
+# ── REFUSE: applies twice cleanly, and CHANGES THE SCHEMA ───────────────────
+# The defect this assertion was added for, in miniature. `grant ... on all
+# tables` is a snapshot of the tables that exist when it runs, so a second pass
+# reaches the table a later migration created and grants more than the first
+# pass did. Both passes exit 0. Only the census sees it.
+# ⚠️ These two cases must live in the `itera` schema, unlike every other
+# fixture: the fixpoint assertion is measured with db/scripts/census.sql, which
+# reads `itera` and `billing` and nothing else. A per-case schema would be
+# invisible to it and the case would pass by not being looked at. Isolation
+# comes from the per-case TABLE names instead, and the cases are still
+# independent because the census only ever compares pass 1 with pass 2 of the
+# SAME run — anything an earlier case left behind is constant across both.
+# The census also reads cron.job, which no fixture creates, so 0000 supplies it.
+new_fixture
+cat > "${DIR}/0002_grant_all.sql" <<SQL
+create table if not exists itera.gsnap_a_thing (id int primary key);
+grant select on all tables in schema itera to anon;
+SQL
+cat > "${DIR}/0003_later_table.sql" <<SQL
+create table if not exists itera.gsnap_a_later (id int primary key);
+SQL
+run_case "a clean second pass that widens a grant fails" 5 --new "0003_later_table.sql"
+
+# ── ALLOW: …and naming the relation repairs exactly that ────────────────────
+# The counterpart, so the case above is known to be about the SNAPSHOT and not
+# about grants in general.
+new_fixture
+cat > "${DIR}/0002_grant_named.sql" <<SQL
+create table if not exists itera.gsnap_b_thing (id int primary key);
+grant select on itera.gsnap_b_thing to anon;
+SQL
+cat > "${DIR}/0003_later_table.sql" <<SQL
+create table if not exists itera.gsnap_b_later (id int primary key);
+revoke all on itera.gsnap_b_later from anon;
+SQL
+run_case "naming the relation instead of 'all tables' passes" 0 --new "0003_later_table.sql"
 
 # ── REFUSE: forward reference, in sorted order ──────────────────────────────
 # The defect that made this whole check worth writing: 0024 referencing a type

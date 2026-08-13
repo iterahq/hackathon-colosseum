@@ -29,6 +29,18 @@
 #      says so in its header, and the ledger's safety depends on it (a restore,
 #      a `-- itera:no-transaction` file that died between its DDL and its ledger
 #      row, a fresh environment). Nothing enforced it until now.
+#   2b. AND THE SECOND PASS CHANGES NOTHING. "Applies without an error" and "is
+#      a no-op" are different claims, and only the first one was ever checked.
+#      The census (db/scripts/census.sql, the SAME ruler --parity uses) is taken
+#      after pass 1 and again after pass 2, and the two must be identical.
+#
+#      Measured 2026-08-13 on this series: the second pass exited 0 and added
+#      EIGHT grant rows over five relations. `grant select on all tables in
+#      schema itera` in 0002 is a SNAPSHOT, not a rule; from zero it reaches the
+#      14 tables of 0001, re-run against a current schema it reaches all 65.
+#      Two of the five — itera.schema_migrations and itera.schema_object_census
+#      — have RLS DISABLED, so the grant alone is the whole of the protection.
+#      Migration 0065 makes the series a fixpoint. Exit code 5.
 #   3. THE REAL APPLIER RUNS THE NEW FILES. With `--new`, the ledger is seeded
 #      with everything already on main and `apply-migrations.sh apply` is then
 #      pointed at the throwaway database — so the PR's migrations go through the
@@ -48,7 +60,7 @@
 #                           (pass /dev/null for none)
 #     --parity              after the FIRST pass, assert the catalogue equals
 #                           db/census/expected-schema.txt (schema-parity.sh)
-#     --no-second-pass      skip the idempotency pass
+#     --no-second-pass      skip the idempotency pass AND the fixpoint assertion
 #     --no-applier          skip the apply-migrations.sh phase
 #
 #   Connection comes from the standard PG* environment — PGHOST, PGPORT,
@@ -61,6 +73,7 @@
 #   1  a migration FAILED to apply (first pass, second pass, or via the applier)
 #   2  usage / environment error
 #   4  a file added by this PR is listed in fresh-apply-exceptions.txt
+#   5  the second pass applied cleanly but CHANGED the schema
 # ============================================================================
 set -uo pipefail
 
@@ -87,7 +100,7 @@ while [[ $# -gt 0 ]]; do
     --no-applier)      RUN_APPLIER=0; shift ;;
     --print-order)     PRINT_ORDER=1; shift ;;
     --print-skips)     PRINT_SKIPS=1; shift ;;
-    -h|--help)         sed -n '2,64p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+    -h|--help)         sed -n '2,76p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
     *)                 echo "ERROR: unknown argument '$1' (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -269,30 +282,86 @@ apply_pass "first pass — building the schema from an empty database" || exit 1
 # guaranteeing it — and that is the only well-defined "the schema this
 # repository builds".
 #
-# ⚠️ MEASURED 2026-08-12, and it is not a subtlety: THE SECOND PASS CHANGES THE
-# SCHEMA. 0002_itera_rls.sql line 152 is
+# ⚠️ MEASURED 2026-08-12: THE SECOND PASS USED TO CHANGE THE SCHEMA.
+# 0002_itera_rls.sql line 152 is
 #
 #     grant select on all tables in schema itera to anon, authenticated;
 #
 # `ON ALL TABLES` is a snapshot of the moment it runs, not a rule. On pass 1 it
-# sees only 0001's tables. On pass 2 the whole series exists, so `anon` picks up
-# SELECT on sixteen more relations — including itera.api_keys and the migration
-# ledger itself. Same files, same order, different schema, decided purely by how
-# many times you ran them.
+# sees only 0001's tables. On pass 2 the whole series exists, so `anon` picked
+# up SELECT on relations created long after 0002. Same files, same order,
+# different schema, decided purely by how many times you ran them. That is
+# exactly how production got the grant set it has — the pre-ledger applier
+# re-ran every file on every invocation — and it is recorded as D1 in
+# db/census/known-differences.txt.
 #
-# That is exactly how production got the grant set it has (the pre-ledger
-# applier re-ran every file on every invocation) and it is recorded as D1 in
-# db/census/known-differences.txt. The second pass still runs, and still proves
-# every file is re-runnable without ERRORING — which is what it was written to
-# prove. It simply cannot be the thing the declaration is measured against.
+# ✅ CLOSED 2026-08-13 by migration 0065, which revokes the eight rows a
+# re-run added and nothing else. Re-measured after it: the census is identical
+# after pass 1 and after pass 2, 933 facts each. The series is a fixpoint, and
+# step 3 below now ASSERTS that instead of this comment describing it.
+#
+# The placement above still stands on its own reasoning: after the first pass
+# every file has run exactly once, which is what a real bootstrap does.
 if [[ "$PARITY" -eq 1 ]]; then
   say "── the schema built here vs db/census/expected-schema.txt ──"
   bash "${ROOT}/scripts/schema-parity.sh" check || exit 1
 fi
 
-# ── 3. again, for idempotency ───────────────────────────────────────────────
+# ── 3. again, for idempotency, and it must CHANGE NOTHING ──────────────────
+# The comment on 2b above used to end "the second pass changes the schema, so it
+# cannot be the thing the declaration is measured against". That was true and it
+# was the right call for --parity. It also left the change itself unasserted:
+# eight grant rows appeared on every second pass, with exit code 0.
+#
+# Migration 0065 removes them, so the series is a fixpoint and this can be
+# asserted rather than described. The ruler is census.sql — the SAME one
+# --parity and db-drift use. A second ruler here would recreate exactly the
+# problem census.sql was extracted to solve.
+census_to() {
+  local out="$1"
+  psql -v ON_ERROR_STOP=1 -qtAX -f "${ROOT}/scripts/census.sql" > "$out" 2>/dev/null || return 1
+  [[ -s "$out" ]] || return 1
+  LC_ALL=C sort -o "$out" "$out" || return 1
+}
+
 if [[ "$SECOND_PASS" -eq 1 ]]; then
+  CEN1="$(mktemp)"; CEN2="$(mktemp)"
+  trap 'rm -f "$CEN1" "$CEN2"' EXIT
+  census_to "$CEN1" || die "could not census the schema after the first pass" 1
+  say "census after pass 1: $(wc -l < "$CEN1" | tr -d ' ') facts"
+
   apply_pass "second pass — every migration must be re-runnable" || exit 1
+
+  census_to "$CEN2" || die "could not census the schema after the second pass" 1
+  say "census after pass 2: $(wc -l < "$CEN2" | tr -d ' ') facts"
+
+  # `comm`, not `diff`: the diff in the supabase/postgres image is BusyBox and
+  # emits unified format only, so a parser written for GNU '<' / '>' markers
+  # prints an EMPTY delta there. Burned exactly that way while writing this.
+  ONLY1="$(LC_ALL=C comm -23 "$CEN1" "$CEN2")"
+  ONLY2="$(LC_ALL=C comm -13 "$CEN1" "$CEN2")"
+  if [[ -n "$ONLY1" || -n "$ONLY2" ]]; then
+    say ""
+    say "FAILED: the second pass applied cleanly and CHANGED THE SCHEMA."
+    say ""
+    say "  '-' only the FIRST pass produced it."
+    say "  '+' the SECOND pass added it — this is what re-applying the series"
+    say "      would do to a database that is already current."
+    say ""
+    [[ -n "$ONLY1" ]] && printf '%s\n' "$ONLY1" | sed 's/^/  -/'
+    [[ -n "$ONLY2" ]] && printf '%s\n' "$ONLY2" | sed 's/^/  +/'
+    say ""
+    say "A migration in this series is not a fixpoint. The usual cause is a"
+    say "statement that reads the schema at execution time instead of naming its"
+    say "objects: 'grant ... on all tables in schema itera', a DO block looping"
+    say "over pg_class, an UPDATE with no predicate. From zero it sees a small"
+    say "schema; re-run against a current one it sees everything."
+    say ""
+    say "If you just added a table: grant it explicitly to the roles that need"
+    say "it and 'revoke all ... from anon', the way 0060 does. Not via 0002."
+    exit 5
+  fi
+  say "the second pass changed nothing — the series is a fixpoint"
 fi
 
 # ── 4. the real applier, on the PR's new files ──────────────────────────────
