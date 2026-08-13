@@ -6,10 +6,19 @@ edit them. Changes go upstream and come back as a re-copy.
 
 | File here | Upstream | sha256 |
 |---|---|---|
-| `guard.mjs` | `devfellowship/dfl-ci:scripts/ux-paths-guard.mjs` | `dd2477f6721dbf65ce7b4f7c78f5f5b092ba81525fb3fe230a36363fdf705176` |
+| `guard.mjs` | `devfellowship/dfl-ci:scripts/ux-paths-guard.mjs` | `4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722` |
 | `schema-v1.json` | `devfellowship/dfl-ci:schema/ux-paths-v1.json`, itself a copy of `devfellowship/dfl-ux-paths:spec/schema/v1.json` | `80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1` |
 
 Introduced by [devfellowship/dfl-ci#76](https://github.com/devfellowship/dfl-ci/pull/76).
+Last re-synced 2026-08-13 from [devfellowship/dfl-ci#77](https://github.com/devfellowship/dfl-ci/pull/77),
+which added check 7 — `action-targets`: every `screen.actions[].next_screen` must
+name a declared screen — and [devfellowship/dfl-ci#78](https://github.com/devfellowship/dfl-ci/pull/78),
+which fixed how the guard loads `@devfellowship/ux-paths-spec`. The package
+published at `1.3.0` that morning; the guard resolved it with
+`createRequire(…).resolve()`, the package is correctly ESM-only, and Node threw
+`ERR_PACKAGE_PATH_NOT_EXPORTED`. That took this repo's ux-paths job red on every
+PR for a reason with nothing to do with the map. `schema-v1.json` did **not**
+move in either change; only `guard.mjs` did.
 
 ## Why a copy instead of the reusable workflow
 

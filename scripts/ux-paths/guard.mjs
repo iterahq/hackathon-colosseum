@@ -33,9 +33,18 @@
  *                    Schema cannot express a cross-reference, so a flow pointing
  *                    at a deleted screen validates and then renders as a broken
  *                    edge in the atlas.
- *   7. LIVE REFS   — every `source_ref.component_file` and every
+ *   7. ACTION TARGETS — every `screen.actions[].next_screen` names a declared
+ *                    screen. The SAME class of defect as 6, on the other half of
+ *                    the graph, and it was unguarded until 2026-08-13:
+ *                    `dfl-event-management` declared `create_event` as an action
+ *                    target with no screen of that id, and the guard passed it.
+ *                    Actions are edges. A flow is a named path through them, so
+ *                    checking only the named paths leaves every edge that no
+ *                    flow happens to walk unchecked — and the atlas draws them
+ *                    all.
+ *   8. LIVE REFS   — every `source_ref.component_file` and every
  *                    `file_path_chain[]` entry still exists in the tree.
- *   8. ROUTE PARITY— the declared `screen.route` set equals the route set the
+ *   9. ROUTE PARITY— the declared `screen.route` set equals the route set the
  *                    repo's own extractor prints. Opt-in: a repo supplies the
  *                    extractor, because only the repo knows its router.
  *
@@ -49,27 +58,27 @@
  * the same `generated_at`, so "how old is this field" answers nothing about
  * whether the map still describes the code.
  *
- * Checks 7 and 8 are therefore the freshness signal, and each catches a
+ * Checks 8 and 9 are therefore the freshness signal, and each catches a
  * different half:
  *
- *   - **7 catches code that moved out from under the map.** A component renamed,
+ *   - **8 catches code that moved out from under the map.** A component renamed,
  *     moved or deleted while `flows.json` still points at its old path. This is
  *     the commonest rot and it needs no configuration.
- *   - **8 catches the app growing without the map.** A route added to the router
+ *   - **9 catches the app growing without the map.** A route added to the router
  *     and never declared, or a declared route the app no longer serves.
  *
  * ### What they do NOT catch — stated plainly, because a guard that oversells
  * ### itself is worse than no guard
  *
  *   - A component file that still exists but no longer renders that screen.
- *     The path is live, so check 7 passes. Nothing here reads the component.
+ *     The path is live, so check 8 passes. Nothing here reads the component.
  *   - A screen whose behaviour changed completely while its route and its file
  *     stayed put. This gate proves the map's *skeleton* matches the code; it
  *     says nothing about what the screen now does.
  *   - Modal/dialog states modelled as screens (ADR-7 of the plan). They usually
- *     carry no unique route, so check 8 cannot see them at all, and a modal that
+ *     carry no unique route, so check 9 cannot see them at all, and a modal that
  *     disappeared from the product leaves a screen entry nothing will flag.
- *   - Anything at all about routes, when the repo supplies no extractor. Check 8
+ *   - Anything at all about routes, when the repo supplies no extractor. Check 9
  *     then reports SKIP, loudly, and the run can still be green. It is opt-in on
  *     purpose — a wrong extractor is worse than an absent one — but a SKIP is a
  *     hole, not a pass.
@@ -101,6 +110,49 @@ export const DEFAULT_FLOWS_PATH = ".dfl-ux-paths/flows.json";
 // ---------------------------------------------------------------------------
 
 /**
+ * The ESM entry of an installed package, read from its own manifest.
+ *
+ * ⚠️ THIS EXISTS BECAUSE `require.resolve` CANNOT LOAD THIS PACKAGE.
+ *
+ * `@devfellowship/ux-paths-spec` is `"type": "module"` and its `exports["."]`
+ * map declares only `types` and `import` — there is no `require` condition.
+ * That is a correct ESM-only package. `createRequire(…).resolve()` resolves
+ * under the CJS condition set, finds no `require` branch, and throws
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED` — *No "exports" main defined*. The `main`
+ * field sitting next to `exports` does not rescue it, because `exports` wins
+ * whenever it is present.
+ *
+ * The old code could not have shown this, and did not: the package returned
+ * E404 until 2026-08-13T11:58Z, so the branch that reaches for it had NEVER run
+ * against a real install. It executed for the first time the minute the package
+ * appeared, and took the ux-paths job red in `iterahq/itera-player` on every PR
+ * — for a reason with nothing to do with the map being checked. **A fallback
+ * that activates "with no edit here" also activates untested.**
+ *
+ * Reading the manifest keeps the property that made `createRequire` attractive
+ * and strengthens it: the entry is joined onto `pkgMain`, which is already
+ * under `--spec-dir`, so an ancestor `node_modules` cannot answer instead. The
+ * hazard the Ajv branch below guards against with a bounds check is closed here
+ * by construction.
+ *
+ * @param {Record<string, unknown>} manifest parsed `package.json`
+ * @param {string} pkgMain the package directory, for the error message
+ * @returns {string} package-relative path to the module entry
+ */
+function packageEntry(manifest, pkgMain) {
+  const dot = manifest.exports?.["."];
+  const entry =
+    (typeof dot === "string" ? dot : (dot?.import ?? dot?.default)) ?? manifest.module ?? manifest.main;
+  if (typeof entry !== "string") {
+    throw new GuardSetupError(
+      `@devfellowship/ux-paths-spec is installed at ${pkgMain} but its package.json names no ` +
+        `ESM entry — no exports["."].import, no exports["."].default, no module, no main.`,
+    );
+  }
+  return entry;
+}
+
+/**
  * Resolves a validator, preferring `@devfellowship/ux-paths-spec`.
  *
  * The package is the sanctioned source — it ships the schema, the types
@@ -108,11 +160,10 @@ export const DEFAULT_FLOWS_PATH = ".dfl-ux-paths/flows.json";
  * Ajv is pinned by a parity test in `dfl-ux-paths`. Prefer it whenever it
  * resolves.
  *
- * It is **not on the registry yet** (checked 2026-08-12: `npm view` returns
- * E404). Its publish workflow exists and is `workflow_dispatch`, and the
- * `NPM_TOKEN` it was blocked on now exists as an org secret — so publishing is
- * a decision away, not a build away. Until then the vendored copy of
- * `schema/v1.json` in this repo, evaluated by Ajv, is the fallback.
+ * It **published on 2026-08-13T11:58Z** at `1.3.0`, so this is now the live
+ * path, not the aspirational one. The vendored copy of `schema/v1.json` in this
+ * repo, evaluated by Ajv, remains the fallback for a runner that cannot reach
+ * the registry.
  *
  * Ajv is not a weaker gate. It is the reference implementation of JSON Schema
  * and the engine the package's own parity test measures itself against, so if
@@ -124,6 +175,8 @@ export const DEFAULT_FLOWS_PATH = ".dfl-ux-paths/flows.json";
  *
  * The day the package publishes, this function starts preferring it with no
  * edit here, and the drift workflow starts diffing against the registry too.
+ * That day was 2026-08-13, and the untested branch broke on arrival — see
+ * `packageEntry` above for what it cost and why the resolution changed.
  *
  * @param {{ specDir?: string, vendoredSchema?: string, cwd?: string }} opts
  * @returns {Promise<{ source: string, describe: string, validate: (doc: unknown) => { valid: boolean, errors: {formatted: string}[] } }>}
@@ -135,12 +188,15 @@ export async function loadSpec(opts = {}) {
   if (specDir) {
     const pkgMain = path.join(specDir, "node_modules", "@devfellowship", "ux-paths-spec");
     if (fs.existsSync(pkgMain)) {
-      const req = createRequire(path.join(specDir, "noop.js"));
-      const resolved = req.resolve("@devfellowship/ux-paths-spec");
+      const manifest = JSON.parse(fs.readFileSync(path.join(pkgMain, "package.json"), "utf8"));
+      const resolved = path.join(pkgMain, packageEntry(manifest, pkgMain));
+      if (!fs.existsSync(resolved)) {
+        throw new GuardSetupError(
+          `@devfellowship/ux-paths-spec at ${pkgMain} names an entry its own tarball does not ship: ${resolved}`,
+        );
+      }
       const mod = await import(pathToFileURL(resolved).href);
-      const version = JSON.parse(
-        fs.readFileSync(path.join(pkgMain, "package.json"), "utf8"),
-      ).version;
+      const version = manifest.version;
       return {
         source: "package",
         describe: `@devfellowship/ux-paths-spec@${version} (its own zero-dependency validate())`,
@@ -454,7 +510,60 @@ export function runGuard(opts) {
     );
   }
 
-  // 7. LIVE REFS -------------------------------------------------------------
+  // 7. ACTION TARGETS --------------------------------------------------------
+  // The same cross-reference JSON Schema cannot express, on the other half of
+  // the graph. A flow is a NAMED PATH through the actions; checking only the
+  // named paths leaves every action no flow happens to walk unchecked, and the
+  // atlas draws them all. Measured 2026-08-13: `dfl-event-management` declared
+  // `create_event` as a next_screen with no screen of that id, across a corpus
+  // where the guard reported green.
+  //
+  // An EMPTY string is not a dangling reference, it is an absent one — the same
+  // reading check 6 gives a step with no `screen`. The schema allows it, and a
+  // repo that writes `next_screen: ""` to mean "stays here" is not describing a
+  // screen that vanished.
+  const danglingTargets = new Map();
+  let targetCount = 0;
+  for (const screen of screens) {
+    const actions = Array.isArray(screen?.actions) ? screen.actions : [];
+    for (const action of actions) {
+      const target = action?.next_screen;
+      if (typeof target !== "string" || target.trim() === "") continue;
+      targetCount += 1;
+      if (declaredIds.has(target)) continue;
+      const where = `${screen?.id ?? "<screen with no id>"}.${action?.id ?? "<action with no id>"}`;
+      if (!danglingTargets.has(target)) danglingTargets.set(target, new Set());
+      danglingTargets.get(target).add(where);
+    }
+  }
+  if (targetCount === 0) {
+    checks.push(
+      check("action-targets", "every action.next_screen names a declared screen", SKIP, [
+        `no screen declares an action with a next_screen, so there is nothing to resolve.`,
+        `Actions are what turn a screen list into a graph. Without them the atlas has`,
+        `only the edges that a named flow happens to walk.`,
+      ]),
+    );
+  } else if (danglingTargets.size > 0) {
+    checks.push(
+      check("action-targets", "every action.next_screen names a declared screen", FAIL, [
+        `${danglingTargets.size} action target${danglingTargets.size === 1 ? "" : "s"} that no screen declares:`,
+        ...[...danglingTargets].map(([id, where]) => `  - "${id}"   (targeted by: ${[...where].sort().join(", ")})`),
+        ``,
+        `\`next_screen\` is a cross-reference, and JSON Schema cannot express one — so this`,
+        `validates cleanly and then renders as an edge into nothing. Either declare the`,
+        `screen, or point the action at the screen the user really lands on.`,
+      ]),
+    );
+  } else {
+    checks.push(
+      check("action-targets", "every action.next_screen names a declared screen", PASS, [
+        `${targetCount} action target${targetCount === 1 ? "" : "s"}, every one resolved`,
+      ]),
+    );
+  }
+
+  // 8. LIVE REFS -------------------------------------------------------------
   const refs = [];
   for (const screen of screens) {
     const ref = screen?.source_ref;
@@ -499,7 +608,7 @@ export function runGuard(opts) {
     );
   }
 
-  // 8. ROUTE PARITY ----------------------------------------------------------
+  // 9. ROUTE PARITY ----------------------------------------------------------
   if (opts.routesText === null || opts.routesText === undefined) {
     checks.push(
       check("route-parity", "declared routes match the routes in the code", SKIP, [

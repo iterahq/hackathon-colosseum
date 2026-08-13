@@ -70,7 +70,7 @@ jobs:
       - name: Digests match scripts/ux-paths/UPSTREAM.md
         run: |
           set -euo pipefail
-          EXPECTED_GUARD="dd2477f6721dbf65ce7b4f7c78f5f5b092ba81525fb3fe230a36363fdf705176"
+          EXPECTED_GUARD="4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722"
           EXPECTED_SCHEMA="80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1"
           ACTUAL_GUARD="$(sha256sum scripts/ux-paths/guard.mjs   | cut -d' ' -f1)"
           ACTUAL_SCHEMA="$(sha256sum scripts/ux-paths/schema-v1.json | cut -d' ' -f1)"
