@@ -69,3 +69,9 @@ db/.rollback-*.json
 # (`e2e/capture-regions.spec.ts`). Cópias para consumo humano vão pro
 # media.devfellowship.com e são linkadas na PR.
 /e2e/artifacts/
+
+# Written by scripts/ux-capture/run-capture.sh while it serves the preview.
+preview.log
+# The pre-pass output is an INPUT to authoring the manifest, never a committed
+# artifact — e2e/support/capture-manifest.json is what survives.
+/prepass.json

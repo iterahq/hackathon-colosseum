@@ -1,0 +1,391 @@
+{
+  "version": 1,
+  "substrate": "hermetic-stub",
+  "captured_with": {
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "supabase": "http://stub.supabase.invalid (unresolvable by design)",
+    "session": "none"
+  },
+  "provenance": {
+    "routes": "measured — scripts/ux-capture/prepass.mjs, no model in the loop",
+    "states": "opencode-go/qwen3.7-max + @playwright/mcp, ONE bounded session, 2026-08-13, 55 browser tool calls, ~5.5 min wall clock. Every entry below was re-verified deterministically before it was written here; the ones that did not survive are in e2e/support/capture-manifest.REJECTED.md."
+  },
+  "routes": [
+    {
+      "id": "home",
+      "route": "/",
+      "target": "/",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "not_found",
+      "route": "/*",
+      "target": "/there-is-no-such-route",
+      "min_regions": 3,
+      "reachability": "renders",
+      "marker": "h1:text-is(\"404\")"
+    },
+    {
+      "id": "admin",
+      "route": "/admin",
+      "target": "/admin",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_artifacts",
+      "route": "/admin/artifacts",
+      "target": "/admin/artifacts",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_engagement",
+      "route": "/admin/engagement",
+      "target": "/admin/engagement",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_programs",
+      "route": "/admin/programs",
+      "target": "/admin/programs",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_replay",
+      "route": "/admin/replay",
+      "target": "/admin/replay",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_replay_traceid",
+      "route": "/admin/replay/:traceId",
+      "target": "/admin/replay/00000000-0000-4000-8000-000000000001",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "admin_roster",
+      "route": "/admin/roster",
+      "target": "/admin/roster",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "artifacts",
+      "route": "/artifacts",
+      "target": "/artifacts",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "auth_code",
+      "route": "/auth/code",
+      "target": "/auth/code",
+      "min_regions": 9,
+      "reachability": "renders",
+      "marker": "[data-testid=\"otp-page\"]"
+    },
+    {
+      "id": "auth_dfl_callback",
+      "route": "/auth/dfl/callback",
+      "target": "/auth/dfl/callback",
+      "min_regions": 4,
+      "reachability": "renders",
+      "marker": "[data-testid=\"dfl-callback\"]"
+    },
+    {
+      "id": "auth_forgot",
+      "route": "/auth/forgot",
+      "target": "/auth/forgot",
+      "min_regions": 9,
+      "reachability": "renders",
+      "marker": "[data-testid=\"forgot-page\"]"
+    },
+    {
+      "id": "auth_reset",
+      "route": "/auth/reset",
+      "target": "/auth/reset",
+      "min_regions": 7,
+      "reachability": "renders",
+      "marker": "[data-testid=\"reset-page\"]"
+    },
+    {
+      "id": "author",
+      "route": "/author",
+      "target": "/author",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "author_activities_activityid_test",
+      "route": "/author/activities/:activityId/test",
+      "target": "/author/activities/00000000-0000-4000-8000-000000000002/test",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "author_activities_activityid_test_live",
+      "route": "/author/activities/:activityId/test-live",
+      "target": "/author/activities/00000000-0000-4000-8000-000000000002/test-live",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "author_units_unitid_canvas",
+      "route": "/author/units/:unitId/canvas",
+      "target": "/author/units/00000000-0000-4000-8000-000000000003/canvas",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "catalog",
+      "route": "/catalog",
+      "target": "/catalog",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "g_code",
+      "route": "/g/:code",
+      "target": "/g/ABC123",
+      "min_regions": 3,
+      "reachability": "renders",
+      "marker": "[data-testid=\"guest-not-configured\"]"
+    },
+    {
+      "id": "lesson_lessonid",
+      "route": "/lesson/:lessonId",
+      "target": "/lesson/00000000-0000-4000-8000-000000000004",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "live_sessionid",
+      "route": "/live/:sessionId",
+      "target": "/live/00000000-0000-4000-8000-000000000005",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "live_instructor",
+      "route": "/live/instructor",
+      "target": "/live/instructor",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "live_instructor_sessionid",
+      "route": "/live/instructor/:sessionId",
+      "target": "/live/instructor/00000000-0000-4000-8000-000000000005",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "live_instructor_report_sessionid",
+      "route": "/live/instructor/report/:sessionId",
+      "target": "/live/instructor/report/00000000-0000-4000-8000-000000000005",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "login",
+      "route": "/login",
+      "target": "/login",
+      "min_regions": 13,
+      "reachability": "renders",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "profile",
+      "route": "/profile",
+      "target": "/profile",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "program_slug",
+      "route": "/program/:slug",
+      "target": "/program/itera-fellowship",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "signup",
+      "route": "/signup",
+      "target": "/signup",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "subscribe",
+      "route": "/subscribe",
+      "target": "/subscribe",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "subscribe_return",
+      "route": "/subscribe/return",
+      "target": "/subscribe/return",
+      "min_regions": 13,
+      "reachability": "redirects",
+      "lands_on": "/login",
+      "marker": "[data-testid=\"login-page\"]"
+    }
+  ],
+  "states": [
+    {
+      "id": "login_locale_en",
+      "base_screen": "login",
+      "url": "/login",
+      "label": "Tela de login em inglês",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"locale-toggle\"]"
+        }
+      ],
+      "proof": "text=Welcome back",
+      "why": "A página inteira muda para inglês (heading, labels, botões), estado que uma visita única não captura."
+    },
+    {
+      "id": "login_auth_error",
+      "base_screen": "login",
+      "url": "/login",
+      "label": "Erro de autenticação no login",
+      "steps": [
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"email-input\"]",
+          "value": "test@example.com"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"password-input\"]",
+          "value": "password123"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"submit-login\"]"
+        }
+      ],
+      "proof": "[data-testid=\"login-error\"]",
+      "why": "Mensagem de erro inline que aparece após submissão com credenciais inválidas (backend stub falha)."
+    },
+    {
+      "id": "otp_step2_code_input",
+      "base_screen": "otp",
+      "url": "/auth/code",
+      "label": "Segundo passo do OTP: inserir código",
+      "steps": [
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"otp-email-input\"]",
+          "value": "test@example.com"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"submit-otp-send\"]"
+        }
+      ],
+      "proof": "[data-testid=\"otp-code-input\"]",
+      "why": "Formulário multi-step: após enviar o email, a tela muda para input de código de 6 dígitos + botões Entrar e Reenviar código."
+    },
+    {
+      "id": "otp_invalid_code_error",
+      "base_screen": "otp",
+      "url": "/auth/code",
+      "label": "Erro de código OTP inválido",
+      "steps": [
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"otp-email-input\"]",
+          "value": "test@example.com"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"submit-otp-send\"]"
+        },
+        {
+          "action": "fill",
+          "selector": "[data-testid=\"otp-code-input\"]",
+          "value": "000000"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"submit-otp-verify\"]"
+        }
+      ],
+      "proof": "[data-testid=\"otp-error\"]",
+      "why": "Mensagem de erro inline após submeter código inválido, estado distinto do step 2 limpo."
+    },
+    {
+      "id": "forgot_locale_en",
+      "base_screen": "forgot",
+      "url": "/auth/forgot",
+      "label": "Tela de recuperar senha em inglês",
+      "steps": [
+        {
+          "action": "click",
+          "selector": "[data-testid=\"locale-toggle\"]"
+        }
+      ],
+      "proof": "text=Reset your password",
+      "why": "Cabeçalho muda de 'Recuperar senha' para 'Reset your password', botão de 'Enviar link' para 'Send link'."
+    }
+  ]
+}

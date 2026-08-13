@@ -1,0 +1,280 @@
+name: UX Capture (portable)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# P8 of plan `20260812-ux-map-observed-reality-lens` — the capture, off-host.
+#
+# It BUILDS the capture image and RUNS it, so the thing this workflow verifies
+# is not "the tests pass on a runner" (`ci.yml` already asserts that on every
+# PR) but "the capture is portable": one image, no host credentials, no
+# `/root/.claude`, no mounted secret, producing the observed artifact for
+# `app.iterahq.dev` on any x64 Docker host.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# 🚨 WHAT THIS ASSERTS, AND WHAT IT ONLY RECORDS
+# ═══════════════════════════════════════════════════════════════════════════
+# A scheduled screenshot job has one classic way of being useless: it compares
+# pixels against a stored baseline, the baseline was made on another machine,
+# and it fails forever for a reason that has nothing to do with the product.
+# Everyone then ignores it. So the split here is deliberate, and it is backed by
+# a measurement rather than by caution (2026-08-13, recorded in the header of
+# `scripts/ux-capture/digests.mjs`):
+#
+#   Debian 11 host and an Ubuntu 24.04 container, different glibc, different
+#   fontconfig, 135 vs 50 system fonts, SAME Chromium revision — 17 of 17
+#   screens byte-identical, `screenshot.png` AND `regions.json`.
+#
+# The pixels turned out to be a function of the CHROMIUM REVISION, not of the
+# host. So:
+#
+#   ASSERTED (the job goes RED)
+#     · the frozen manifest still describes the app — every reachable route
+#       proves it is itself, every gated route is still gated, every
+#       interaction state still replays
+#     · two captures of one screen inside this run are byte-identical
+#     · `regions.json` — layout, no rasterisation — matches the committed record
+#     · the container ran to completion with no credential of any kind
+#
+#   RECORDED (reported, and it opens an issue, but the job stays GREEN)
+#     · `screenshot.png` digests that moved. Under the SAME chromium+arch key
+#       that is a real UI change, which is the PRODUCT of this plan — the
+#       answer to "what changed since João validated this". Under a DIFFERENT
+#       key it is expected and is labelled as such, never as a regression.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# WHERE A FAILURE GOES — it is routed, not left to email
+# ═══════════════════════════════════════════════════════════════════════════
+# The repo's other scheduled workflow (`e2e.yml`) says plainly that its alerting
+# is "whatever GitHub does by default for a failed scheduled run", which is an
+# email to the workflow file's last committer. That is the silent-failure class
+# this plan already carries a guard task for, so this workflow does not repeat
+# it: every outcome that needs a human OPENS OR UPDATES A GITHUB ISSUE in this
+# repository, with the run URL and the named screens. An issue is assignable,
+# closable and visible to everyone — an email to one person is none of those.
+#
+# ⚠️ Two DIFFERENT issues on purpose, because they need different readers:
+#   · "the frozen capture no longer matches the app" is a FAULT — someone
+#     changed a route or a gate and the map is now wrong.
+#   · "the observed UI changed" is NEWS — it is what the designer wants.
+# One issue for both would train everyone to close it without reading.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# SCHEDULE, AND WHY IT IS WEEKLY RATHER THAN DAILY
+# ═══════════════════════════════════════════════════════════════════════════
+# The image carries a full Playwright base (~2.5 GB) and the run does a `vite
+# build`. `ci.yml` documents this runner fleet's disk pressure at length and
+# `dfl-infra:vps/dfl-runner/scripts/dfl-runner-disk-guard.sh` exists because of
+# it. The substrate is hermetic — no network, no clock in the UI, a frozen
+# `Date` — so a daily run and a weekly run would observe the same thing unless a
+# COMMIT changed something, and a commit is already covered per-PR by the
+# `source-stamp` job in `ci.yml`. Weekly buys the off-host proof without
+# spending a Chromium image a day.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# NO SECRETS, AND THAT IS THE POINT
+# ═══════════════════════════════════════════════════════════════════════════
+# `e2e.yml` is RED BY DESIGN because `ITERA_SMOKE_*` and friends are not
+# provisioned in this repo. This workflow cannot inherit that failure mode: it
+# authenticates to nothing. `NODE_AUTH_TOKEN` is the single exception, it is
+# needed only at IMAGE BUILD time for the private `@iterahq/activity-spec`, and
+# it is the built-in `GITHUB_TOKEN` — which works because the package and this
+# workflow are both in `iterahq`. It is passed as a BuildKit **secret**, so it
+# is never recorded in `docker history` and never present in the image that
+# runs.
+#
+# RUNNER: `[self-hosted, dfl-runner]`, the iterahq-scoped registrations — the
+# same fleet every other workflow here uses. `iterahq` is on the Free plan and
+# its hosted-minutes allowance was exhausted on 2026-07-29; self-hosted minutes
+# are free, and being a private repo is what makes self-hosted safe (the
+# fork-PR RCE hazard that bans it on public repos does not apply). Full history
+# in the header of `e2e.yml`.
+#
+# ⚠️ The runner containers mount `/var/run/docker.sock`, so `docker run` here
+# starts a SIBLING of this job, not a child. A `-v "$PWD/out:/out"` bind would
+# resolve against the HOST filesystem and silently mount an empty directory —
+# the artifacts would vanish and the job would still pass. `docker cp` off a
+# stopped container is used instead, which needs no shared filesystem at all.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays 06:40 UTC. Off the hour and deliberately clear of the two other
+    # heavy crons that share this runner fleet: `bringup-capture.yml` at 05:20
+    # and the daily `e2e.yml` at 06:00 (30-minute timeout). Three 45-minute
+    # container jobs queued behind each other on four runners is how a weekly
+    # signal becomes a weekly timeout.
+    - cron: '40 6 * * 1'
+
+permissions:
+  contents: read
+  packages: read
+  issues: write
+
+concurrency:
+  group: ux-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 45
+    env:
+      IMAGE: itera-ux-capture:${{ github.sha }}
+      CONTAINER: ux-capture-${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker is reachable
+        run: |
+          set -euo pipefail
+          docker version --format '{{.Server.Version}}' \
+            || { echo "::error title=ux-capture::no docker daemon on this runner — the socket mount in dfl-infra:vps/dfl-runner/docker-compose.iterahq.yml is what provides it"; exit 1; }
+
+      # BuildKit is required for `--mount=type=secret`. Without it the classic
+      # builder ignores the flag and the build fails inside `npm ci` with a
+      # registry 401, which reads as a credential problem rather than a builder
+      # problem.
+      - name: Build the capture image
+        env:
+          DOCKER_BUILDKIT: '1'
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$NODE_AUTH_TOKEN" > /tmp/node_auth_token
+          trap 'rm -f /tmp/node_auth_token' EXIT
+          docker build \
+            --file docker/ux-capture.Dockerfile \
+            --secret id=NODE_AUTH_TOKEN,src=/tmp/node_auth_token \
+            --tag "$IMAGE" \
+            .
+
+      # `create` + `start -a` + `cp`, never `run --rm`: the artifacts have to be
+      # copied OFF the container, and `--rm` would delete it the moment it
+      # exits. `|| true` on start so a failing suite still gets its artifacts
+      # collected — a red run without its screenshots is a red run nobody can
+      # diagnose.
+      - name: Run the capture in the container
+        id: run
+        run: |
+          set -euo pipefail
+          docker create --name "$CONTAINER" "$IMAGE" > /dev/null
+          set +e
+          docker start -a "$CONTAINER"
+          echo "suite_exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Copy the artifacts out
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p capture-out
+          docker cp "$CONTAINER:/out/." capture-out/ || echo "::warning::nothing at /out"
+          ls -R capture-out | head -60
+
+      - name: Report what moved
+        id: report
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## UX capture — $(date -u +%FT%TZ)"
+            echo
+            if [ -f capture-out/status.json ]; then
+              echo '```json'; cat capture-out/status.json; echo '```'
+            fi
+            if [ -f capture-out/digest-drift.json ]; then
+              echo
+              echo "### Screens that differ from the committed record"
+              echo '```json'; cat capture-out/digest-drift.json; echo '```'
+              echo "drift=true" >> "$GITHUB_OUTPUT"
+            else
+              echo
+              echo "No screen differs from \`e2e/support/capture-digests.json\`."
+              echo "drift=false" >> "$GITHUB_OUTPUT"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-capture-${{ github.run_id }}
+          path: capture-out/
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ────────────────────────────────────────────────────────────────────
+      # ROUTING — the repo's OWN pattern, not a second one.
+      #
+      # `e2e.yml` and `db-drift.yml` already open, comment on and CLOSE a single
+      # named issue with the `gh` CLI, and `e2e.yml` says in as many words that
+      # it is "modelled on the identical step in db-drift.yml, deliberately not
+      # a second pattern". An earlier draft of this workflow shipped a
+      # `scripts/ux-capture/report-issue.sh` helper. It was deleted: a third
+      # notifier with its own semantics is exactly what that comment warns
+      # against, and its stated reason (that `gh` might be missing from the
+      # runner image) is disproved by `e2e.yml` using `gh` on this same fleet.
+      #
+      # ONE issue per condition, reused. It closes itself when the condition
+      # clears — a cron that files a fresh issue every week is the same silence
+      # as no issue at all.
+      #
+      # TWO conditions, two issues, because they need different readers:
+      #   · the frozen capture no longer matches the app  → a FAULT
+      #   · the observed UI changed                        → NEWS, and the
+      #     actual product of this plan
+      # One issue for both would train everyone to close it unread.
+      #
+      # Schedule only. A `workflow_dispatch` is somebody watching the run
+      # already; filing an issue at them is noise.
+      # ────────────────────────────────────────────────────────────────────
+      - name: Open, update or close the two ux-capture issues
+        if: always() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUITE_EXIT: ${{ steps.run.outputs.suite_exit }}
+          DRIFT: ${{ steps.report.outputs.drift }}
+          FAULT_TITLE: '[ux-capture] the frozen capture manifest no longer matches the app'
+          DRIFT_TITLE: '[ux-capture] the observed UI changed'
+        run: |
+          set -u
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          # $1 title, $2 condition (broken|clear), $3 body
+          route() {
+            title="$1"; state="$2"; body="$3"
+            existing="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' || true)"
+            if [ "$state" = "clear" ]; then
+              if [ -n "$existing" ]; then
+                gh issue comment "$existing" --body "Clear again as of ${RUN_URL}."
+                gh issue close "$existing"
+              fi
+              return 0
+            fi
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "Still true as of ${RUN_URL}."
+            else
+              gh issue create --title "$title" --body "$body" --label bug
+            fi
+          }
+
+          if [ "$SUITE_EXIT" = "0" ]; then
+            route "$FAULT_TITLE" clear ""
+          else
+            route "$FAULT_TITLE" broken "$(printf 'The scheduled capture FAILED. Something the frozen manifest asserts is no longer true.\n\n- run: %s\n\nHow to read it:\n\n- **a reachable route stopped proving itself** — its marker moved. Fix `marker` in `e2e/support/capture-manifest.json`.\n- **a gated route stopped redirecting** — :rotating_light: read this as a SECURITY finding first. `RequireAuth` redirects silently, so nothing else in this repository would have noticed.\n- **a state stopped replaying** — the form changed. Fix `steps` / `proof`, then re-run `npm run ux-capture:verify`.\n- **a capture stopped being byte-identical to its own second shot** — determinism broke; read `e2e/support/captureRegions.ts`.\n\nUpdate the DATA. Do NOT re-explore with a model.\n\nThis issue is reused, not reopened weekly. It closes itself when the capture matches again.\n' "$RUN_URL")"
+          fi
+
+          if [ "$DRIFT" = "true" ]; then
+            route "$DRIFT_TITLE" broken "$(printf 'The capture ran clean and the frozen manifest still holds — but one or more screens no longer match `e2e/support/capture-digests.json`.\n\n- run: %s\n\n**This is not a failure.** It is the product of plan `20260812-ux-map-observed-reality-lens`: the answer to *what changed since this was last looked at*. The screens are named in the run summary and the images are in the run artefact.\n\nNote which kind moved:\n\n- **layout moved** — `regions.json` differs. That travels between hosts, so it is a real change.\n- **pixels moved** — only meaningful under the same `chromium` + `arch` key. The summary says whether the key matched.\n\nIf the change is intended: `npm run ux-capture:digests -- --write`.\n\nThis issue is reused. It closes itself when the record matches again.\n' "$RUN_URL")"
+          else
+            route "$DRIFT_TITLE" clear ""
+          fi
+
+      # The image is ~2.5 GB and this runner fleet is disk-constrained. Removing
+      # it here rather than leaving it to the host's disk guard keeps the cost
+      # of this workflow inside this workflow.
+      - name: Clean up
+        if: always()
+        run: |
+          docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+          docker rmi -f "$IMAGE" >/dev/null 2>&1 || true

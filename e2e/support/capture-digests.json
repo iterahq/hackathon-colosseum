@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "recorded_for": {
+    "chromium": "1228",
+    "arch": "x64"
+  },
+  "note": "Digests of the capture pairs. `regions` is layout and travels between hosts; `screenshot` is pixels and is comparable only under the same `recorded_for` key. Refresh with: npm run ux-capture:digests -- --write",
+  "screens": {
+    "manifest/forgot_locale_en": {
+      "regions": "32e155c458f2318809e1f3034b99a77df1b4eaa804561a1198d747b8f652aeec",
+      "screenshot": "19a1a31cdbf4ae8f744ea3e189540f879f6a3dfd2cbac37ebae3ff5c5fcaa777"
+    },
+    "manifest/login_auth_error": {
+      "regions": "ef7b1b764ef4092ff2cbb8eb7232a962e6b5033b5366c6ca2ca0ac32343fcde4",
+      "screenshot": "57bd9d25b3b7d34e57ac4217d0be7fc465b1b9b6f2b231520b8eee0d8bd36f68"
+    },
+    "manifest/login_locale_en": {
+      "regions": "2aeef492195735413b6b20c8d1ca3adee5ee7d6a92f92a38afef2cb6e52bf6a3",
+      "screenshot": "8b10a9e63844b96e99ef73809b1c1a35a38d4407833451fdbb75d71ef8330a4f"
+    },
+    "manifest/otp_invalid_code_error": {
+      "regions": "8c3df5fac9f028ed7b09dc18eeb20d346c4771f99bc5185c0a37e35b5859bc35",
+      "screenshot": "302df65cd0ab14d81d7455aed8d330bd05701a6f254e6839d01760100195b850"
+    },
+    "manifest/otp_step2_code_input": {
+      "regions": "dff1f65f65ea70da6ba3b7fa9c1c0232a64af8410e0a6905ccd6077186795b29",
+      "screenshot": "d5697bd4352466f1ff462450f823e22b3d865347d2f323535681cd5e6717fbc1"
+    },
+    "regions/harness-single-choice": {
+      "regions": "44d3ab7744a5d5d3cf52e615a8c5ab79bd714c8fa4dcf9ee92d1326ec59f9203",
+      "screenshot": "08e3253a38fddade15c760e7e705f182bb6cbe5b49ba247a01de0fd3311edfb5"
+    },
+    "regions/login": {
+      "regions": "878f42120793dd8af5cd01f32241aec6805abe9e1be83d1938b37e32c709a3b5",
+      "screenshot": "51c0d68ad471dc7d474aab23398ad8f8f3a9b27533d9394e981b845cac378005"
+    },
+    "regions/not-found": {
+      "regions": "29b90666ec48814c58f3a909b0226f5ca6ac40ee9c821bcecb4901f7d858da89",
+      "screenshot": "1045cb099927b3199119f97c2e96d102e99fbf0c2cd758e62c78a44bf7b16058"
+    }
+  }
+}

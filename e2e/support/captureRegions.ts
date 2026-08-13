@@ -344,7 +344,99 @@ export async function settleForCapture(page: Page): Promise<void> {
   // A fixed, unconditional quiet period. Deliberately a constant and not a
   // network-idle wait: `networkidle` is timing-dependent, so it would make the
   // capture depend on the very thing we are trying to remove.
+  //
+  // ⚠️ 300ms is a GUESS, not a measurement, and it is honest to say so. It is
+  // sufficient for a screen reached by a plain navigation, which is every
+  // screen `capture-regions.spec.ts` shoots. It is NOT sufficient for a screen
+  // reached by INTERACTION — see `settleUntilStable` below and the numbers in
+  // its header.
   await page.waitForTimeout(300);
+}
+
+/**
+ * The MEASURED stop condition: shoot only when two consecutive frames are
+ * byte-identical.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY A SECOND SETTLE RULE EXISTS, AND WHY IT IS NOT THE DEFAULT
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `settleForCapture` ends in a fixed 300ms wait. That is enough for a screen
+ * reached by `page.goto`, because the navigation itself already waited. It is
+ * not enough for a screen reached by INTERACTION — the states in
+ * `e2e/support/capture-manifest.json` are reached by filling a form and
+ * clicking, and the error banner they photograph appears only when a request
+ * to the stub origin REJECTS. That rejection is DNS-bound, so its arrival time
+ * is a property of the host, not of the app.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHAT WAS MEASURED, AND WHAT IT ACTUALLY SHOWED
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 2026-08-13, this tree, `pollMs: 120`, 4 consecutive runs of
+ * `--project manifest`, 14 measurements per run = 56 in total, over the 7
+ * navigable routes and the 5 interaction states:
+ *
+ *   frames until two consecutive screenshots matched: **2, every single time.**
+ *   Never 3. Not once, in either kind of screen.
+ *
+ * ⚠️ Read that result honestly, because it is NOT "the interaction case needed
+ * a longer wait after all". It is the opposite, and the reason is the
+ * interesting part: the manifest suite waits for the state's own PROOF
+ * SELECTOR to be visible before it captures. That is a CONTENT-based stop
+ * condition — the error banner is on screen, or the test has already failed —
+ * and by the time it is satisfied the screen has stopped moving. The proof
+ * selector is doing the settling. This function only measures that it did.
+ *
+ * So the value here is not the waiting. It is the ASSERTION: it converts "we
+ * hope 300ms was enough" into "two consecutive frames were identical", which
+ * is a fact the run can fail on. `stable === false` is a real failure mode the
+ * suite checks for and has never yet seen — and the day a screen starts
+ * needing 3 frames, the number is in
+ * `e2e/artifacts/manifest/stability-frames/` instead of showing up months later
+ * as a flaky byte-identity test.
+ *
+ * ⚠️ And note what this does NOT license: 2 frames is measured on THIS host,
+ * where the stub origin fails DNS resolution almost instantly. A host whose
+ * resolver holds the request longer would paint the error later. That is
+ * exactly why the stop condition is the proof selector and not a frame count.
+ *
+ * `settleForCapture`'s fixed 300ms is deliberately left alone: the navigation
+ * case measured 2 frames as well, so adding a poll loop there would spend an
+ * extra screenshot per capture to re-prove a settled fact.
+ *
+ * ⚠️ This function returns rather than throws when it runs out of attempts.
+ * The caller decides: the manifest suite fails on `stable === false`, because
+ * a state that never stops moving is a state that cannot be diffed — but a
+ * future consumer that only wants a best-effort image should not be forced to
+ * crash. `frames` is reported so a screen that starts creeping toward the
+ * limit is visible before it hits it.
+ */
+export interface StabilityResult {
+  /** The image the last two attempts agreed on. */
+  png: Buffer;
+  /** How many screenshots were taken. 2 is the floor. */
+  frames: number;
+  /** False when `maxFrames` ran out before two matched. */
+  stable: boolean;
+}
+
+export async function settleUntilStable(
+  page: Page,
+  options: { maxFrames?: number; pollMs?: number } = {}
+): Promise<StabilityResult> {
+  const maxFrames = options.maxFrames ?? 8;
+  const pollMs = options.pollMs ?? 120;
+
+  const shoot = () =>
+    page.screenshot({ fullPage: false, animations: 'disabled', caret: 'hide', scale: 'css' });
+
+  let previous = await shoot();
+  for (let frames = 2; frames <= maxFrames; frames += 1) {
+    await page.waitForTimeout(pollMs);
+    const current = await shoot();
+    if (current.equals(previous)) return { png: current, frames, stable: true };
+    previous = current;
+  }
+  return { png: previous, frames: maxFrames, stable: false };
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -565,6 +657,13 @@ export interface CaptureOptions {
   screen: string;
   /** Repository root for resolving stamps. Defaults to this repository. */
   root?: string;
+  /**
+   * Use the MEASURED stop condition (`settleUntilStable`) instead of the single
+   * shot. Costs one extra screenshot in the good case. Turn it on for a screen
+   * reached by INTERACTION, where the fixed wait in `settleForCapture` is a
+   * guess; leave it off for a screen reached by navigation, where it is not.
+   */
+  stabilise?: boolean;
 }
 
 export interface CaptureResult {
@@ -573,6 +672,8 @@ export interface CaptureResult {
   jsonPath: string;
   png: Buffer;
   manifest: RegionsFile;
+  /** Present only when `stabilise` was asked for. See `settleUntilStable`. */
+  stability?: { frames: number; stable: boolean };
 }
 
 /**
@@ -583,12 +684,20 @@ export interface CaptureResult {
 export async function captureScreen(page: Page, options: CaptureOptions): Promise<CaptureResult> {
   await settleForCapture(page);
 
-  const png = await page.screenshot({
-    fullPage: false,
-    animations: "disabled",
-    caret: "hide",
-    scale: "css",
-  });
+  let stability: { frames: number; stable: boolean } | undefined;
+  let png: Buffer;
+  if (options.stabilise) {
+    const result = await settleUntilStable(page);
+    png = result.png;
+    stability = { frames: result.frames, stable: result.stable };
+  } else {
+    png = await page.screenshot({
+      fullPage: false,
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+    });
+  }
 
   const collected = await collectRegions(page, { root: options.root });
 
@@ -611,5 +720,5 @@ export async function captureScreen(page: Page, options: CaptureOptions): Promis
   await writeFile(pngPath, png);
   await writeFile(jsonPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-  return { outDir: options.outDir, pngPath, jsonPath, png, manifest };
+  return { outDir: options.outDir, pngPath, jsonPath, png, manifest, stability };
 }

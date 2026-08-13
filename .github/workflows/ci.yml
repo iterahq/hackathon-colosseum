@@ -471,11 +471,22 @@ jobs:
       # The config's `webServer` builds with `ITERA_SOURCE_STAMP=1` and the stub
       # Supabase origin, then previews it on loopback only.
       #
-      # ⚠️ ONE invocation, no `--project`. It runs BOTH projects — `stamp` and
-      # `capture` — against ONE server, and that is the point: `webServer` does
-      # a full `vite build`, `reuseExistingServer` is false under CI, so two
-      # `--project` steps would build this tree twice on every PR.
-      - name: Every stamp resolves to a file, and the capture repeats byte for byte
+      # ⚠️ ONE invocation, no `--project`. It runs ALL THREE projects — `stamp`,
+      # `capture` and `manifest` — against ONE server, and that is the point:
+      # `webServer` does a full `vite build`, `reuseExistingServer` is false
+      # under CI, so three `--project` steps would build this tree three times
+      # on every PR.
+      #
+      # `manifest` was added 2026-08-13 and it is why this step's name changed.
+      # It asserts the FROZEN EXPLORATION (`e2e/support/capture-manifest.json`):
+      # every route recorded as reachable proves it is itself, every route
+      # recorded as gated STILL redirects to `/login`, and every
+      # interaction-reachable state still replays. The second of those is a
+      # security assertion wearing a capture assertion's clothes — 24 of the 31
+      # declared routes are gated, `RequireAuth` redirects SILENTLY rather than
+      # rendering a 403, and nothing else in this repository would notice a gate
+      # going missing. See the header of `e2e/capture-manifest.spec.ts`.
+      - name: Every stamp resolves to a file, the capture repeats, the map still holds
         run: npm run e2e:stamp
 
       # `dist/` is the build the step above just used. The detector that

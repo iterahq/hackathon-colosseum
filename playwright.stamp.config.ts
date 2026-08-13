@@ -108,5 +108,23 @@ export default defineConfig({
         launchOptions: { args: CAPTURE_LAUNCH_ARGS },
       },
     },
+    {
+      // THE FROZEN EXPLORATION. Reads `e2e/support/capture-manifest.json` and
+      // asserts it against the running app: reachable routes prove they are
+      // themselves, gated routes prove they are still gated, and every
+      // interaction state replays and captures.
+      //
+      // A third project rather than more tests in `capture`, because the two
+      // answer different questions and a reviewer should be able to read which
+      // one went red without opening a report: `capture` is "does the harness
+      // work", `manifest` is "does the app still match the map we froze".
+      // Both still share the one `webServer`, so the `vite build` is paid once.
+      name: 'manifest',
+      testMatch: /capture-manifest\.spec\.ts$/,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: CAPTURE_LAUNCH_ARGS },
+      },
+    },
   ],
 });
