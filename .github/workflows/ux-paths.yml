@@ -117,16 +117,19 @@ jobs:
       # for reasons that have nothing to do with the map — the same reasoning
       # that made `activity-baseline` a zero-secret job (see `ci.yml`).
       #
-      # Three packages, from the PUBLIC registry, into a directory of their own:
-      #   typescript  — the extractor parses `src/App.tsx` with its JSX parser
+      # Packages, from the PUBLIC registry, into a directory of their own:
+      #   @devfellowship/ux-paths-routes — the FLEET's route extractor. It brings
+      #       its own `typescript`, which is the JSX parser it reads src/App.tsx
+      #       with. This repo used to carry a second implementation of it
+      #       (`scripts/list-routes.mjs`) because nothing here could install the
+      #       first one; the package is what removed that wall.
       #   ajv + ajv-formats — the schema engine, and the reference implementation
       #                       that `dfl-ux-paths` measures its own validator against
       #
       # The guard prefers `@devfellowship/ux-paths-spec` — the zero-dependency
-      # package built for exactly this — whenever it resolves. It is not on the
-      # registry yet (E404 on 2026-08-12), so it is attempted first and Ajv is
-      # the fallback. When it publishes, this step starts finding it with no edit,
-      # and `scripts/ux-paths/schema-v1.json` can be deleted.
+      # package built for exactly this — whenever it resolves, and Ajv over the
+      # vendored schema is the fallback. When the spec resolves,
+      # `scripts/ux-paths/schema-v1.json` can be deleted.
       #
       # A directory of its own is not tidiness either: Node's resolver walks UP
       # through ancestor `node_modules`, and the guard refuses any Ajv resolved
@@ -140,35 +143,47 @@ jobs:
       # routes, and the guard refused the empty list. Caught by running this
       # step verbatim before pushing it; it would have failed identically in CI.
       # Availability is probed with `npm view`, which installs nothing.
-      - name: Install the extractor's compiler and the schema engine
+      - name: Install the route extractor and the schema engine
         run: |
           set -euo pipefail
           mkdir -p /tmp/ux-paths-tools
           cd /tmp/ux-paths-tools
           npm init -y >/dev/null 2>&1
-          PKGS=('typescript@^5.9.3')
+          PKGS=('@devfellowship/ux-paths-routes@^0.1.0')
           if npm view '@devfellowship/ux-paths-spec@^1.3.0' version >/dev/null 2>&1; then
             echo "spec source: the published @devfellowship/ux-paths-spec"
             PKGS+=('@devfellowship/ux-paths-spec@^1.3.0')
           else
-            echo "::notice title=ux-paths::@devfellowship/ux-paths-spec is not on the registry yet — falling back to Ajv over the vendored schema."
+            echo "::notice title=ux-paths::@devfellowship/ux-paths-spec did not resolve — falling back to Ajv over the vendored schema."
             PKGS+=('ajv@^8' 'ajv-formats@^3')
           fi
           npm install --no-save --no-audit --no-fund --loglevel=error "${PKGS[@]}"
-          node -e "require.resolve('typescript')" || {
-            echo "::error::typescript did not survive the install"; exit 1; }
+          # The extractor is a BIN, not a module this job imports, so what has to
+          # exist is the executable. `require.resolve` would be the wrong probe
+          # twice over: the package is ESM-only, and a CommonJS resolve of an
+          # ESM-only package answers ERR_PACKAGE_PATH_NOT_EXPORTED — a correct
+          # package reported as a broken install.
+          test -x /tmp/ux-paths-tools/node_modules/.bin/ux-paths-routes || {
+            echo "::error::@devfellowship/ux-paths-routes did not survive the install"; exit 1; }
 
       # Written to a file rather than piped, so a non-zero exit from the
-      # extractor fails the job HERE, with its own message. `list-routes.mjs`
-      # refuses rather than guessing on any construct it cannot resolve — a
-      # partial route list would make the guard blame the map for the tool's
-      # blind spot.
+      # extractor fails the job HERE, with its own message. The extractor refuses
+      # rather than guessing on any construct it cannot resolve — a partial route
+      # list would make the guard blame the map for the tool's blind spot. In
+      # `--format lines` it also refuses an unreadable `path={…}` (the route
+      # printed would be the PARENT's path — wrong, not missing) and an empty
+      # list (a guard reads that as "every declared route is stale").
+      #
+      # `--convention react-router` is FORCED rather than auto-detected. This
+      # repo owns no `app/` directory today, so auto-detect would reach the same
+      # answer — but the day one appears, a silent switch to a file-tree
+      # convention would report a different route set and blame the map for it.
       - name: Extract the routes the code actually serves
-        env:
-          UX_PATHS_TS_DIR: /tmp/ux-paths-tools
         run: |
           set -euo pipefail
-          node scripts/list-routes.mjs > "$RUNNER_TEMP/routes.txt"
+          /tmp/ux-paths-tools/node_modules/.bin/ux-paths-routes "$GITHUB_WORKSPACE" \
+            --convention react-router --router-file src/App.tsx \
+            --format lines > "$RUNNER_TEMP/routes.txt"
           echo "routes served by src/App.tsx:"
           sed 's/^/  /' "$RUNNER_TEMP/routes.txt"
 

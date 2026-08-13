@@ -127,3 +127,14 @@ The day it publishes, `schema-v1.json` can be deleted from here with no other
 change: the workflow already installs the package first and falls back second.
 `guard.mjs` still has to be a copy, because the cross-org workflow limit is
 about GitHub, not about npm — unless the guard itself ships as a package too.
+
+**One of the two copies is already gone, and it went by that route.** The route
+extractor used to live here as `scripts/list-routes.mjs`, a second
+implementation of `dfl-ux-paths`'s React-Router adapter, kept for the same
+reason as this directory: nothing in `iterahq` could install the first one. That
+adapter now publishes as
+[`@devfellowship/ux-paths-routes`](https://www.npmjs.com/package/@devfellowship/ux-paths-routes)
+on the PUBLIC registry, so `.github/workflows/ux-paths.yml` installs it and the
+duplicate was deleted. npm crosses the org boundary that GitHub does not, which
+is precisely the fix this section predicted — applied to the extractor first
+because it was a library, and a library packages more easily than a workflow.
