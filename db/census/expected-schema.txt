@@ -39,7 +39,7 @@ cmt   rel itera.activity_defs 0912b393ab3d
 cmt   rel itera.activity_i18n_backup eb7ff5dd9b61
 cmt   rel itera.activity_results 3e186773d213
 cmt   rel itera.activity_traces 5c3eabdf57fb
-cmt   rel itera.api_keys 23f2e831f996
+cmt   rel itera.api_keys e77a2c34a427
 cmt   rel itera.byoc_generations 68d118ede09a
 cmt   rel itera.class_removals 4c1d828f5273
 cmt   rel itera.class_stars 1072f9c8bdb8
