@@ -70,6 +70,7 @@ on:
       - 'db/scripts/fresh-apply-bootstrap.sql'
       - 'db/scripts/fresh-apply-exceptions.txt'
       - 'db/scripts/test-fresh-apply.sh'
+      - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
       - '.github/workflows/db-migration-check.yml'
   push:
@@ -79,6 +80,7 @@ on:
       - 'db/scripts/fresh-apply.sh'
       - 'db/scripts/fresh-apply-bootstrap.sql'
       - 'db/scripts/fresh-apply-exceptions.txt'
+      - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
 
 permissions:
@@ -223,6 +225,21 @@ jobs:
       - name: Build the schema from an empty database, and run this PR's migrations
         run: bash db/scripts/fresh-apply.sh --new "${{ steps.added.outputs.files }}"
 
+      # ────────────────────────────────────────────────────────────────────────
+      # Everything above asks "did the SQL run?". This asks "does the policy DO
+      # anything?" — and nothing in this repo asked that until 2026-08-10, when
+      # `activities_select_tenant` was found in production with its `status`
+      # predicate missing and 24 draft activities readable by learners.
+      #
+      # A shape check could not have caught it: `itera.schema_object_census`
+      # records object NAMES, so that policy's line is byte-identical in every
+      # snapshot before and after the regression. This step runs a learner and
+      # an author against the schema just built and asserts what each may SELECT,
+      # then strips the predicate and requires the learner assertion to go red.
+      # ────────────────────────────────────────────────────────────────────────
+      - name: A learner cannot read a draft activity, and an author can
+        run: bash db/scripts/test-rls-activity-visibility.sh
+
       - name: Summary
         if: always()
         run: |
@@ -236,4 +253,8 @@ jobs:
             echo "second time to prove it is re-runnable, then this PR's own migrations were"
             echo "applied through \`db/scripts/apply-migrations.sh\` — the same script"
             echo "\`db-apply\` runs against ITERA production on merge."
+            echo
+            echo "RLS behaviour was then asserted on the result: a learner reads only"
+            echo "published activities, an author of the tenant also reads drafts, and"
+            echo "removing the predicate turns that assertion red."
           } >> "$GITHUB_STEP_SUMMARY"
