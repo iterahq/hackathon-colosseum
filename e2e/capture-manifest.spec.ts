@@ -48,12 +48,23 @@
  *     every screen this suite captures must prove it is ITSELF, by a marker
  *     that only that screen carries.
  *  2. The inverse is a security assertion, and it is cheap: a route recorded as
- *     `redirects` must KEEP redirecting. The day `RequireAuth` is dropped from
- *     `/admin/roster` by a refactor, no test in this repository would notice —
- *     except this one, which fails naming the route that stopped being gated.
+ *     `redirects` must KEEP redirecting. The day a gate is dropped from a route
+ *     by a refactor, no test in this repository would notice — except this one,
+ *     which fails naming the route that stopped being gated.
  *
  * That pair is why the manifest records BOTH kinds of route instead of listing
  * only the reachable ones.
+ *
+ * ⚠️ **MEASURED, and weaker than this file used to claim.** Point 2 said the
+ * suite catches `RequireAuth` being dropped from `/admin/roster`. A mutation
+ * test on 2026-08-13 — `RequireAuth` returning its children unconditionally,
+ * app rebuilt, suite run — says otherwise: only **3 of the 24** gated routes
+ * stopped redirecting (`profile`, `subscribe`, `subscribe_return`). The other
+ * 21 still bounce, because on this credential-free substrate a second guard or
+ * a failed data load bounces them anyway. So this suite catches "the route
+ * became reachable with no session", which is the property worth asserting —
+ * it does NOT prove that `RequireAuth` specifically is still mounted on any
+ * given route. Do not read a green here as the latter.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * WHAT IT DELIBERATELY DOES NOT ASSERT
@@ -227,12 +238,82 @@ test.describe('capture manifest', () => {
    *
    * ⚠️ Read a failure here carefully: it does not mean the capture broke. It
    * means a route that required a session stopped requiring one.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ONE TEST PER ROUTE, AND THAT IS A TIMING FIX (2026-08-13)
+   * ═══════════════════════════════════════════════════════════════════════════
+   * This was ONE test with the 24 routes in a `for` loop, and it went red 8
+   * times in the 39 executions that followed the merge that introduced it —
+   * always `Test timeout of 45000ms exceeded`, always green when re-run at the
+   * same SHA. Nothing was leaking and no gate had moved. The arithmetic did it:
+   *
+   *   - `playwright.stamp.config.ts` sets ONE `timeout: 45_000`. It was sized
+   *     on 2026-08-12 for `source-stamp.spec.ts`, where a test opens ONE
+   *     context and reads ONE screen (measured 1.5s - 7.1s).
+   *   - This walk opens **24 contexts in sequence**, so its cost is O(routes)
+   *     while its budget is a constant. Measured on the runner across 22 green
+   *     executions: median 23.8s, p90 34.9s, worst green 42.5s — against 45s.
+   *   - A test whose median sits at HALF its timeout does not fail rarely. It
+   *     fails whenever the shared 4-vCPU runner is busy, which is often.
+   *
+   * A bigger constant would have moved that cliff, not removed it: the 25th
+   * gated route puts it back. Splitting removes the scaling instead. Each test
+   * below does ONE navigation against the same untouched 45s budget, and the 24
+   * of them spread across the 4 workers. Measured A/B on one machine, same
+   * load, `--workers=4`:
+   *
+   *   | | slowest single test | suite wall |
+   *   |---|---|---|
+   *   | one 24-route loop | 24.7s / 24.3s | 36.2s / 36.9s |
+   *   | 24 tests          | 10.4s / 10.0s (a DIFFERENT test) | 35.9s / 34.6s |
+   *
+   * The 24 gated units themselves land at 1.2s min / 1.5s median / 1.8s max —
+   * roughly 25x headroom instead of 1.9x — and the suite pays no wall-clock for
+   * it. The slowest test is now the 7-route `renders` walk, which has always
+   * been there and is 4x under the budget.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🚨 AND THE LOOP HID THE REAL FAILURE BEHIND THE SAME MESSAGE
+   * ═══════════════════════════════════════════════════════════════════════════
+   * This is the part that makes the split a SECURITY fix and not only a timing
+   * one. Mutation test, run before and after: `RequireAuth` was made to return
+   * its children unconditionally — a gate removed — and the suite was run
+   * against that build.
+   *
+   *   - **Loop version:** one failure, reading `Test timeout of 45000ms
+   *     exceeded` plus a teardown protocol error. It named NO route. Three
+   *     routes stopped redirecting, so three iterations each burned the full
+   *     15s marker wait; 3 x 15s alone exhausts the 45s budget, and the loop
+   *     was killed before it could reach its own `expect`.
+   *   - **Split version:** three failures, `gated route profile …`,
+   *     `gated route subscribe …`, `gated route subscribe_return …`.
+   *
+   * So the flake and a genuinely removed gate produced BYTE-IDENTICAL failure
+   * text. Anyone taught by the flake to re-run would have re-run the real one
+   * too. That is the failure mode the split closes: a red here now says which
+   * route, and a timeout can no longer be the thing that reports it.
+   *
+   * Two properties the loop had, kept on purpose:
+   *
+   *  1. **One bad route must not hide the others.** The loop collected
+   *     `problems` instead of throwing. Independent tests give the same result
+   *     structurally — all 24 run — and the route name moves into the TEST
+   *     TITLE, so a reviewer reads which gate opened without opening a report.
+   *  2. **A fresh context per route.** Not cosmetic: it is what makes the claim
+   *     "with no session" true for every route rather than only the first.
+   *
+   * ⚠️ **Zero routes would mean zero tests, and zero tests is green.** That
+   * trap is real for any test generated from data, and it is closed above, not
+   * here: the well-formedness test asserts `redirects.length > 0` AND that the
+   * manifest is route-for-route with `flows.json`. A gated route cannot leave
+   * this list quietly — it either breaks that comparison, or it is reclassified
+   * as `renders` and then has to prove it shows its own marker.
    */
-  test('every route recorded as gated still redirects to the login page', async ({ browser }) => {
-    const ungated: string[] = [];
-    for (const entry of redirects) {
+  for (const entry of redirects) {
+    test(`gated route ${entry.id} still redirects to the login page`, async ({ browser }) => {
       const context = await browser.newContext(CAPTURE_CONTEXT_OPTIONS);
       const page = await context.newPage();
+      const ungated: string[] = [];
       try {
         await freezeForCapture(page);
         await page.goto(entry.target, { waitUntil: 'domcontentloaded' });
@@ -247,9 +328,9 @@ test.describe('capture manifest', () => {
         );
       }
       await context.close();
-    }
-    expect(ungated, `${ungated.length} gated route(s) changed behaviour`).toEqual([]);
-  });
+      expect(ungated, `${entry.id} changed behaviour`).toEqual([]);
+    });
+  }
 
   /**
    * The states. Each one is replayed from a clean context, proved, and

@@ -65,6 +65,25 @@ export default defineConfig({
   retries: 0,
   workers: process.env.CI ? 4 : undefined,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
+  /**
+   * 🚨 ONE constant for every test here, so **no test in this config may cost
+   * O(n)** in anything the manifest can grow.
+   *
+   * That rule is written down because breaking it already cost a day. The
+   * `manifest` project arrived on 2026-08-13 with a test that walked 24 gated
+   * routes in ONE `for` loop. Its median on the runner was 23.8s and its worst
+   * green was 42.5s, against this 45s — so it went red 8 times in 39 executions
+   * with `Test timeout of 45000ms exceeded`, and passed every re-run at the
+   * same SHA. It is a SECURITY gate (see `capture-manifest.spec.ts`), and a
+   * security gate that reds on timing teaches people to re-run it.
+   *
+   * The fix was to split that walk into one test per route, NOT to raise this
+   * number: raising it moves the cliff to the next route added. Write a walk as
+   * `for (const entry of …) test(…)`, never as `test(… for (const entry of …))`.
+   *
+   * ⚠️ `retries` stays 0 for the same reason. A retry would have made the
+   * symptom disappear and left the arithmetic in place.
+   */
   timeout: 45_000,
   expect: { timeout: 10_000 },
 
