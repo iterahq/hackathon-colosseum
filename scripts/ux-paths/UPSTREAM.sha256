@@ -21,9 +21,9 @@
 #   guard.mjs        from scripts/ux-paths-guard.mjs
 #                    at ec849d10ca1c578aaa1e0c5ff095aa9e87ef7292  (2026-08-13)
 #   schema-v1.json   from schema/ux-paths-v1.json
-#                    at 3afd15ed0d9853205771d6a1696d760bd7213001  (2026-08-12)
+#                    at b1d688881763b5e0702960287416928f282acbfa  (2026-08-13)
 #   dfl-ci HEAD when this file was written:
-#                    f01a50046da58e8498630cffc8530661a1c16bcc
+#                    b1d688881763b5e0702960287416928f282acbfa
 #
 # ⚠️ THE PIN IS A RECORD, NOT A LOCK. Nothing inside `iterahq` can read
 # `devfellowship/dfl-ci` — it is private, and a private repo is readable only
@@ -48,4 +48,4 @@
 # Format below is exactly `sha256sum` output, so `sha256sum -c` reads it.
 
 4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722  scripts/ux-paths/guard.mjs
-80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1  scripts/ux-paths/schema-v1.json
+ac8b8c6bda1e8f19c266002e92c749100e839b02a142670a0509b4bcf53e542e  scripts/ux-paths/schema-v1.json

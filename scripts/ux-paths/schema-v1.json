@@ -140,7 +140,8 @@
         "navigation_path": {
           "type": "array",
           "items": { "$ref": "#/$defs/navigationStep" },
-          "description": "v1.1 — ordered list of UI actions to navigate TO this screen from the app entrypoint. Used by e2e-user-persona to auto-generate persona scripts instead of LLM-driven discovery. When multiple navigationStep entries are present, the runner tries them in order and the first matching selector wins (useful for resilience across renames)."
+          "description": "v1.1 — the ordered SEQUENCE of UI actions that reaches this screen from the app entrypoint. A runner executes EVERY entry, in array order, and the screen is reached only after the last one. Entry N+1 is the step that follows entry N; it is never an alternative selector for it, and a runner must not stop at the first selector that matches. Used by e2e-user-persona to auto-generate persona scripts instead of LLM-driven discovery.",
+          "$comment": "This field is a SEQUENCE, not a fallback list. Tainan settled it on 2026-08-13. The v1.1 wording described BOTH structures in one paragraph — 'ordered list of actions to navigate to this screen' and, two sentences later, 'the runner tries them in order and the first matching selector wins' — and the JSON shape is identical under either reading, so the same document validated while two implementations disagreed about what it meant. Only the sequence reading survives. Alternative selectors for a SINGLE step are not expressible in v1: a screen that needs them wants a new field in a later version, not a second entry here."
         },
         "prerequisites": {
           "$ref": "#/$defs/prerequisites",
@@ -312,6 +313,7 @@
       "type": "object",
       "required": ["selector", "action"],
       "additionalProperties": false,
+      "description": "v1.1 — ONE step of a screen's `navigation_path`. The steps form a sequence: every step runs, in array order. A step is not an alternative to the step before it.",
       "properties": {
         "selector": {
           "type": "string",

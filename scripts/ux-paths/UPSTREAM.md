@@ -27,6 +27,21 @@ published at `1.3.0` that morning; the guard resolved it with
 PR for a reason with nothing to do with the map. `schema-v1.json` did **not**
 move in either change; only `guard.mjs` did.
 
+Re-synced again the same day from
+[devfellowship/dfl-ci#85](https://github.com/devfellowship/dfl-ci/pull/85), which
+re-copied the schema after
+[devfellowship/dfl-ux-paths#55](https://github.com/devfellowship/dfl-ux-paths/pull/55).
+Tainan settled what `screen.navigation_path` means: it is an ordered **sequence**,
+and every step runs, in order, to reach the screen. The v1.1 description had named
+two data structures in one paragraph — a sequence, and a fallback list where "the
+first matching selector wins" — and the JSON shape is identical under both, so a
+document validated either way while two implementations could disagree. This time
+`schema-v1.json` moved and `guard.mjs` did **not**.
+
+Nothing in this repo behaves differently. The change is a description; no field,
+no enum value and no assertion moved, so `guard.mjs` accepts and rejects exactly
+the documents it did before.
+
 ## Why a copy instead of the reusable workflow
 
 Every `devfellowship/*` repo adopts this guard in one job:
