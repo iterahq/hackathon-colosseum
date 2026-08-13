@@ -15,10 +15,21 @@ name: E2E (Itera↔Fellowship)
 # secret/substrate and the fix, and the skip census prints every skipped test
 # with its reason at the end of every run.
 #
-# ⚠️ EXPECTED CONSEQUENCE, AND IT IS CORRECT: until the secrets are provisioned
-# this scheduled run goes RED. Red here means "we are not testing", which is
-# true today. Do NOT weaken the check to restore the green — provision the
-# secrets (a blocking question is open with Tainan for `ITERA_SMOKE_*`).
+# ✅ THE SECRETS EXIST NOW (2026-08-13). All five names this workflow declares
+# — ITERA_SMOKE_USERNAME, ITERA_SMOKE_PASSWORD, CLAUDE_SMOKE_USERNAME,
+# CLAUDE_SMOKE_PASSWORD, DFL_BATCH_RESULTS_API_KEY — are repo Actions secrets,
+# sourced from Infisical (`/shared` for the four smoke credentials,
+# `/apps/itera` `ITERA_API_KEY_DFL_BATCH` for the Results-API key). Before that
+# the run had failed 10 times out of its last 10, always on the same preflight
+# assertion, always naming the same three capabilities.
+#
+# Do NOT weaken the check to restore a green. A red here still means "we are not
+# testing", and that is now a real signal instead of a standing condition.
+#
+# ⚠️ WHAT THIS SUITE TOUCHES: live production. app.iterahq.dev, api.iterahq.dev
+# and learn.devfellowship.com, daily, as a real tenant_admin of the `itera`
+# tenant. Reads are not free — opening a diagram lesson writes an attempt row.
+# Any spec added here inherits that.
 #
 # Also carries the per-kind author-harness smoke (plan
 # 20260728-itera-activity-testing, Fase 4 / tier T3): one activity per kind
@@ -28,9 +39,12 @@ name: E2E (Itera↔Fellowship)
 # OUT of the per-PR `ci.yml` gate; this workflow is its only home. Adding
 # viewports changed nothing about that.
 #
-# ⚠️ Failure alerting is whatever GitHub does by default for a failed scheduled
-# run (an email to the workflow file's last committer). The repo has no other
-# notification path today and this workflow deliberately does not invent one.
+# ⚠️ FAILURE ALERTING. A daily cron whose failure only mails one person is a
+# cron nobody reads. The last step of the job opens a GitHub issue when the run
+# fails, comments on it when it fails again, and CLOSES it when the suite goes
+# green — the same shape db-drift.yml already uses, so there is one place to
+# look and it is a place humans already look. The run still goes red: loud in
+# both places, per that workflow's own rule.
 #
 # Runner: self-hosted `dfl-runner` fleet (changed 2026-07-29 — was ubuntu-latest).
 #
@@ -64,6 +78,8 @@ on:
 permissions:
   contents: read
   packages: read
+  # The failure-notification step opens, comments on and closes ONE issue.
+  issues: write
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -129,6 +145,7 @@ jobs:
       # plus `mobile` and `tablet` (only the `@responsive` tests). The skip
       # census prints at the end and also lands in the job summary.
       - name: Run E2E harness (capability-enforced)
+        id: harness
         run: npm run e2e
 
       - name: Upload Playwright report
@@ -141,3 +158,41 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+      # ONE issue, not one per day. A cron that files a fresh issue every
+      # morning is the same silence as no issue at all — the list becomes
+      # noise and stops being read. So: open it once, comment while it stays
+      # broken, close it the day the suite passes. Modelled on the identical
+      # step in db-drift.yml, deliberately not a second pattern.
+      #
+      # It runs only on the SCHEDULE. A workflow_dispatch is somebody watching
+      # the run already; filing an issue at them is noise.
+      - name: Open, update or close the e2e issue
+        if: always() && github.event_name == 'schedule'
+        env:
+          OUTCOME: ${{ steps.harness.outcome }}
+          GH_TOKEN: ${{ github.token }}
+          TITLE: '[e2e] the daily Itera↔Fellowship suite is failing'
+        run: |
+          set -u
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          EXISTING="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number' || true)"
+
+          if [ "$OUTCOME" = "success" ]; then
+            echo ":white_check_mark: the suite ran and passed." >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "The suite is green again as of ${RUN_URL}."
+              gh issue close "$EXISTING"
+            fi
+            exit 0
+          fi
+
+          BODY="$(printf 'The daily E2E suite failed against live production.\n\n- run: %s\n- targets: `app.iterahq.dev`, `api.iterahq.dev`, `learn.devfellowship.com`\n\nHow to read it:\n\n- **preflight failed** — a capability CI is supposed to provide is absent. The failure names every missing secret and the fix. All five Actions secrets were provisioned on 2026-08-13; a preflight failure now means one expired, was deleted, or a probed host is down.\n- **a spec failed** — a real regression, or production is down. The Playwright report is attached to the run as an artefact.\n- **skips** — the skip census at the end of the run lists every test that did not run and why. A skip is UNVERIFIED, not passing.\n\nThis issue is reused, not reopened daily. It closes itself when the suite goes green.\n' "$RUN_URL")"
+
+          printf '%s\n' "$BODY" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still failing as of ${RUN_URL}."
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label bug
+          fi
