@@ -24,6 +24,25 @@ export default {
      * paper over a stale build instead of surfacing it.
      */
     "./packages/*/dist/**/*.js",
+    /**
+     * `@devfellowship/components` (v3.2.0 and later). Same failure mode as the
+     * glob above, from a different direction.
+     *
+     * Up to v0.2.0 the package emitted plain shadcn semantic classes —
+     * `bg-primary`, `h-10 px-4 py-2` — every one of which `./src/**` also uses,
+     * so Tailwind emitted them anyway and the missing glob never showed.
+     *
+     * From v1.1.0 the components emit DESIGN-TOKEN classes instead:
+     * `bg-[var(--c-button-primary-bg)]`, `shadow-[var(--c-toast-shadow)]`.
+     * Those strings appear NOWHERE in `./src`, so without this glob Tailwind
+     * emits none of them and every shared component renders with no background
+     * — a clean build, a green test suite, and an invisible UI.
+     *
+     * ⚠️ `dist`, not `src`: the package ships built JS only, and the class
+     * strings are literals inside it. CI asserts two of them survive the purge
+     * (`.github/workflows/ci.yml`, "Tailwind classes survived the purge").
+     */
+    "./node_modules/@devfellowship/components/dist/**/*.js",
   ],
   prefix: "",
   theme: {

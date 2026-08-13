@@ -26,8 +26,30 @@ const toastVariants = cva(
   "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
+      /**
+       * These must cover EVERY member of `ToastVariant` from
+       * `@devfellowship/components/hooks`, because `useToast()` hands this
+       * component whatever the caller passed. The union widened in v1.1.0 from
+       * `"default" | "destructive"` to `"default" | "success" | "warning" |
+       * "danger" | "info" | "destructive"`, and a variant with no entry here
+       * does not fail — `cva` simply applies no variant class, so the toast
+       * renders with the base shell and no intent colour at all.
+       *
+       * The colours are ITERA's, not DFL's: the toast tells a learner whether
+       * something worked, and "worked" is evergreen in this product the same
+       * way it is evergreen on every answer they get right.
+       */
       variant: {
         default: "border bg-background text-foreground",
+        success: "border-success bg-success text-success-foreground",
+        /** Clay, per the `--warning` token — Itera reserves it for human/Q&A signals. */
+        warning: "border-warning bg-warning text-warning-foreground",
+        danger: "destructive group border-destructive bg-destructive text-destructive-foreground",
+        /** `azul` is deliberately not a brand accent: it is the neutral that
+         *  never borrows the green meaning "correct". Exactly right for info. */
+        info: "border-azul bg-azul text-brand-bg",
+        /** @deprecated upstream in favour of `danger` — same rendering, kept
+         *  because every existing call-site in this app still passes it. */
         destructive: "destructive group border-destructive bg-destructive text-destructive-foreground",
       },
     },

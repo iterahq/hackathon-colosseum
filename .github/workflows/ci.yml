@@ -159,6 +159,51 @@ jobs:
           done
           echo "ok: the packages/*/dist content glob is doing its job"
 
+      # ────────────────────────────────────────────────────────────────────
+      # THE SAME TRAP, FROM THE OTHER DIRECTION — `@devfellowship/components`
+      #
+      # Up to v0.2.0 the shared components emitted plain shadcn classes
+      # (`bg-primary`, `h-10 px-4 py-2`). `./src/**` uses every one of those, so
+      # Tailwind emitted them regardless and the package needed no content glob.
+      #
+      # From v1.1.0 they emit DESIGN-TOKEN classes — `bg-[var(--c-button-primary-bg)]`,
+      # `shadow-[var(--c-toast-shadow)]` — which appear in NO file under `./src`.
+      # Drop `./node_modules/@devfellowship/components/dist/**/*.js` from the
+      # content globs and, exactly as above, nothing fails: the build is green,
+      # the tests are green, and every shared Button, Toast and Dialog renders
+      # with no background.
+      #
+      # Two sentinels, from two different components, so a glob narrowed to one
+      # entry point cannot keep this green:
+      #   • `bg-[var(--c-button-primary-bg)]` -> button.tsx
+      #   • `bg-[var(--c-toast-bg)]`          -> toast.tsx
+      #
+      # ⚠️ The pattern is the ESCAPED SELECTOR, not the bare variable name.
+      # `src/index.css` imports the package's `tokens.css`, so the string
+      # `--c-button-primary-bg` is present in the bundle as a DECLARATION even
+      # when the utility was purged. Only `.bg-\[var\(--c-button-primary-bg\)\]`
+      # proves the utility itself survived.
+      # ────────────────────────────────────────────────────────────────────
+      - name: The design-system token classes survived the purge
+        run: |
+          set -euo pipefail
+          CSS="$(ls dist/assets/*.css | head -1)"
+          test -n "$CSS" || { echo "::error::no built CSS to check"; exit 1; }
+          for CLASS in 'bg-\[var\(--c-button-primary-bg\)\]' 'bg-\[var\(--c-toast-bg\)\]'; do
+            if ! grep -qF -- "$CLASS" "$CSS"; then
+              echo "::error::'$CLASS' was purged from $CSS - node_modules/@devfellowship/components/dist is missing from tailwind.config.ts content globs, and every shared component now renders with no background"
+              exit 1
+            fi
+          done
+          # And the tokens those utilities read must be DEFINED, or the
+          # utilities resolve to nothing and the result looks identical.
+          # `src/index.css` imports `@devfellowship/components/tokens` for this.
+          if ! grep -qF -- '--c-button-primary-bg:' "$CSS"; then
+            echo "::error::the DFL token declarations are absent from $CSS - src/index.css no longer imports '@devfellowship/components/tokens', so every --c-*/--s-* variable the shared components read is undefined"
+            exit 1
+          fi
+          echo "ok: the @devfellowship/components content glob and the token import are both doing their job"
+
       - name: Test
         run: npm test
 

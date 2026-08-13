@@ -1,3 +1,37 @@
+/*
+ * DFL design-system tokens (`--p-*` primitives, `--s-*` semantic, `--c-*`
+ * component). REQUIRED from `@devfellowship/components` v1.1.0 onward: the
+ * shared components stopped emitting shadcn semantic classes and now emit
+ * `bg-[var(--c-button-primary-bg)]` and friends. Without these declarations
+ * every one of those variables is undefined and the components render with no
+ * background at all.
+ *
+ * ⚠️ `/tokens`, NOT `/styles`. `/styles` (theme.css) is the package's full
+ * entry point: it also fetches Google Fonts over the network and repaints
+ * `body` with `--s-surface-page`. Both are wrong here — this app self-hosts its
+ * fonts (`public/vendor/fonts/`, and the capture harness must stay offline and
+ * deterministic), and its page background is Itera obsidiana `#0A0908`, not
+ * DFL's. `tokens.css` is pure `:root` custom properties: no `@import`, no
+ * `body`/`html` rule, no font fetch.
+ *
+ * The two variable namespaces are DISJOINT — DFL owns `--p-*`/`--s-*`/`--c-*`,
+ * Itera owns `--background`/`--primary`/… below. Nothing here is overwritten,
+ * and this file adds NO override into the DFL namespace.
+ *
+ * 🎨 That last sentence is a decision, not an omission, and it is visible:
+ * the `/login` CTA is DFL amber `#E07A4A` after this change, where it was Itera
+ * evergreen `#3FD17F` before. Up to v0.2.0 the shared `Button` emitted
+ * `bg-primary`, which resolved through the Itera theme below; from v1.1.0 it
+ * emits the DFL token and ignores the consumer theme. Re-theming it back is
+ * supported — the package invites it ("Override any --p-* / --s-* / --c-*
+ * variable in your own CSS to retheme") and would take one `:root` block
+ * setting `--c-button-primary-bg` and `--s-brand-solid` to evergreen.
+ * It is deliberately NOT done here: which brand an Itera CTA wears is a design
+ * decision for Tainan and João, and burying it inside a dependency bump would
+ * hide it. Before/after captures are linked from the PR that made this change.
+ */
+@import '@devfellowship/components/tokens';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
