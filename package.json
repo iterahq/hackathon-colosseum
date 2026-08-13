@@ -36,7 +36,7 @@
     "ux-capture:prepass": "node scripts/ux-capture/prepass.mjs",
     "ux-capture:verify": "node scripts/ux-capture/verify-states.mjs",
     "ux-capture:digests": "node scripts/ux-capture/digests.mjs --artifacts e2e/artifacts",
-    "assert:no-source-stamp": "node scripts/assert-no-source-stamp.mjs dist",
+    "assert:no-source-stamp": "ux-paths-assert-no-stamp dist",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
     "build:packages": "npm run build --workspaces --if-present",
@@ -129,6 +129,7 @@
     }
   },
   "devDependencies": {
+    "@devfellowship/ux-paths-capture": "^0.1.0",
     "@eslint/js": "^9.32.0",
     "@fast-check/vitest": "0.4.1",
     "@playwright/test": "^1.61.0",

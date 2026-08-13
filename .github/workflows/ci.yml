@@ -83,11 +83,19 @@ jobs:
       # ────────────────────────────────────────────────────────────────────
       # THE `data-source` STAMP MUST NOT SHIP
       #
-      # `scripts/source-stamp.ts` writes `data-source="<file>:<line>"` on every
-      # host element so the UX-map capture can turn a REGION of a screenshot
-      # into an exact source file. It is for capture builds only: it is dead
-      # payload for a learner, and it prints the layout of a PRIVATE repository
-      # into the DOM of anyone who opens dev tools.
+      # The build stamp writes `data-source="<file>:<line>"` on every host
+      # element so the UX-map capture can turn a REGION of a screenshot into an
+      # exact source file. It is for capture builds only: it is dead payload for
+      # a learner, and it prints the layout of a PRIVATE repository into the DOM
+      # of anyone who opens dev tools.
+      #
+      # 🚚 The stamp AND this detector now come from
+      # `@devfellowship/ux-paths-capture`, not from `scripts/`. The guard did not
+      # get weaker by moving: it is the same detector, it still self-tests on
+      # every run, it still refuses an empty directory, and both of its verdicts
+      # are still exercised on every PR (see the complement below). What changed
+      # is that a second application is now held to the SAME guard instead of
+      # writing a second one.
       #
       # The gate is the env var `ITERA_SOURCE_STAMP`, absent here. This step is
       # what makes that a fact rather than an intention: the step above just
@@ -493,7 +501,7 @@ jobs:
       # requires ZERO stamps in `build-test` must find them here, or it is not
       # detecting anything anywhere.
       - name: The same detector sees the stamps in a capture build
-        run: node scripts/assert-no-source-stamp.mjs dist --expect-present
+        run: npx ux-paths-assert-no-stamp dist --expect-present
 
       - name: Upload Playwright report
         if: always()

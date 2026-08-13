@@ -105,7 +105,7 @@ export default defineConfig({
       // that DOES use `page` still gets a sane browser.
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: { args: CAPTURE_LAUNCH_ARGS },
+        launchOptions: { args: [...CAPTURE_LAUNCH_ARGS] },
       },
     },
     {
@@ -123,7 +123,7 @@ export default defineConfig({
       testMatch: /capture-manifest\.spec\.ts$/,
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: { args: CAPTURE_LAUNCH_ARGS },
+        launchOptions: { args: [...CAPTURE_LAUNCH_ARGS] },
       },
     },
   ],

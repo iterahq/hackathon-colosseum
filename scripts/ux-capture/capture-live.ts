@@ -249,7 +249,7 @@ async function main(): Promise<void> {
     `capturing ${screens.length} declared screen(s) of ${doc.app_id} as role=${role} from ${base}`
   );
 
-  const browser: Browser = await chromium.launch({ args: CAPTURE_LAUNCH_ARGS });
+  const browser: Browser = await chromium.launch({ args: [...CAPTURE_LAUNCH_ARGS] });
   const context = await browser.newContext(CAPTURE_CONTEXT_OPTIONS);
   const page = await context.newPage();
 
