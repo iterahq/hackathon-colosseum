@@ -86,4 +86,35 @@ hoist 0054_api0014_byoc_attempt_notes.sql                  before 0024_activity_
 # It is a verification FIXTURE, not schema — it creates no object, so skipping
 # it costs the check nothing. It is also the reason a fixture like this should
 # never have been a migration; new ones go through MCP (CLAUDE.md, DDL vs DML).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 2026-08-12 — "IT CREATES NO OBJECT" IS NOW MEASURED, NOT ASSERTED
+# ─────────────────────────────────────────────────────────────────────────────
+# That sentence was the whole justification for the skip, and nothing checked
+# it. If anybody ever added DDL to this file, the skip would have hidden it in
+# silence — a skipped file is exactly where a missing object is hardest to see.
+#
+# db/census/expected-schema.txt is generated from a build that omits 0005, and
+# it matches the live ITERA database fact for fact across 933 catalogue facts:
+# relations, columns, defaults, constraints, indexes, function bodies, RLS
+# policy predicates, grants, triggers, publication membership and COMMENTs. So
+# the claim is now a measurement. Put DDL in 0005 and schema-parity.sh goes red.
+#
+# WHY THE FILE ITSELF IS NOT FIXED. The two obvious repairs are to make 0005
+# resolve the tenants by slug, or to make 0003 write the ids explicitly. Both
+# EDIT AN ALREADY-APPLIED MIGRATION. itera.schema_migrations records a
+# checksum, so the edited file no longer matches its ledger row, and
+# apply-migrations.sh then REFUSES TO APPLY ANYTHING to production until a
+# human runs `rebaseline`. The next merge of an unrelated migration would fail
+# on a database that is perfectly healthy. Repairing a recovery path by
+# breaking the live one is not a repair.
+#
+# WHAT IS FIXED INSTEAD, so this cannot happen again:
+#   * db/scripts/check-no-invented-ids.sh refuses any NEW migration that
+#     hard-codes a UUID without saying why. This defect is a class, and the
+#     class is now closed even though this instance stays.
+#   * apply-migrations.sh honours this file's order when it builds an EMPTY
+#     database, and records a declared skip as `declared-skip:` in the ledger —
+#     never as `applied`. A recovered database therefore reports 0 pending
+#     instead of carrying 0005 as permanently outstanding.
 skip 0005_tenant_admin_fixture.sql

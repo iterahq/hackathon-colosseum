@@ -46,6 +46,8 @@
 #     --exceptions FILE     default db/scripts/fresh-apply-exceptions.txt
 #     --bootstrap FILE      default db/scripts/fresh-apply-bootstrap.sql
 #                           (pass /dev/null for none)
+#     --parity              after the FIRST pass, assert the catalogue equals
+#                           db/census/expected-schema.txt (schema-parity.sh)
 #     --no-second-pass      skip the idempotency pass
 #     --no-applier          skip the apply-migrations.sh phase
 #
@@ -68,6 +70,9 @@ EXC_FILE="${ROOT}/scripts/fresh-apply-exceptions.txt"
 BOOTSTRAP="${ROOT}/scripts/fresh-apply-bootstrap.sql"
 SECOND_PASS=1
 RUN_APPLIER=1
+PARITY=0
+PRINT_ORDER=0
+PRINT_SKIPS=0
 NEW_FILES=()
 
 while [[ $# -gt 0 ]]; do
@@ -78,7 +83,10 @@ while [[ $# -gt 0 ]]; do
     --exceptions)      EXC_FILE="${2:?}"; shift 2 ;;
     --bootstrap)       BOOTSTRAP="${2:?}"; shift 2 ;;
     --no-second-pass)  SECOND_PASS=0; shift ;;
+    --parity)          PARITY=1; shift ;;
     --no-applier)      RUN_APPLIER=0; shift ;;
+    --print-order)     PRINT_ORDER=1; shift ;;
+    --print-skips)     PRINT_SKIPS=1; shift ;;
     -h|--help)         sed -n '2,64p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
     *)                 echo "ERROR: unknown argument '$1' (see --help)" >&2; exit 2 ;;
   esac
@@ -87,18 +95,27 @@ done
 say()  { printf '[fresh-apply] %s\n' "$*"; }
 die()  { printf '[fresh-apply] ERROR: %s\n' "$1" >&2; exit "${2:-2}"; }
 
-command -v psql >/dev/null 2>&1 || die "psql not found on PATH"
 [[ -d "$MIG_DIR" ]] || die "no such migrations dir: $MIG_DIR"
 
-# A bare `psql` with no host is a unix-socket connection to a database this
-# script must never assume anything about. Require the target to be stated.
-[[ -n "${PGHOST:-}" ]] || die "PGHOST is unset — refusing to guess the target database"
-# Belt for the one mistake that would be unrecoverable: this script applies DDL,
-# so it must never be pointed at either production project.
-case "${PGHOST}:${PGDATABASE:-}" in
-  *kjefmwlopzeaqgqtlbdn*|*yoojxnggaxcqtsyjdrdx*|*supabase.com*|*supabase.co*)
-    die "REFUSED: PGHOST looks like a real Supabase project. This script applies DDL and is for throwaway databases only." ;;
-esac
+# --print-order / --print-skips touch no database, so they are checked before
+# the connection guards. That matters: apply-migrations.sh calls
+# `--print-order` to bootstrap a real project from zero, and it must not be
+# refused by a guard that exists to stop this script APPLYING DDL there.
+PRINT_ONLY=0
+[[ "$PRINT_ORDER" -eq 1 || "$PRINT_SKIPS" -eq 1 ]] && PRINT_ONLY=1
+
+if [[ "$PRINT_ONLY" -eq 0 ]]; then
+  command -v psql >/dev/null 2>&1 || die "psql not found on PATH"
+  # A bare `psql` with no host is a unix-socket connection to a database this
+  # script must never assume anything about. Require the target to be stated.
+  [[ -n "${PGHOST:-}" ]] || die "PGHOST is unset — refusing to guess the target database"
+  # Belt for the one mistake that would be unrecoverable: this script applies DDL,
+  # so it must never be pointed at either production project.
+  case "${PGHOST}:${PGDATABASE:-}" in
+    *kjefmwlopzeaqgqtlbdn*|*yoojxnggaxcqtsyjdrdx*|*supabase.com*|*supabase.co*)
+      die "REFUSED: PGHOST looks like a real Supabase project. This script applies DDL and is for throwaway databases only." ;;
+  esac
+fi
 
 PSQL=(psql -v ON_ERROR_STOP=1 -qX)
 
@@ -175,6 +192,19 @@ build_order() {
 }
 
 mapfile -t ORDER < <(build_order)
+
+# The ONE declared build order, published so there cannot be a second one.
+# apply-migrations.sh consumes these two flags when it bootstraps an empty
+# database; duplicating the parser there is how the two would silently diverge.
+if [[ "$PRINT_SKIPS" -eq 1 ]]; then
+  for _b in "${!SKIP[@]}"; do printf '%s\n' "$_b"; done | LC_ALL=C sort
+  exit 0
+fi
+if [[ "$PRINT_ORDER" -eq 1 ]]; then
+  printf '%s\n' ${ORDER[@]+"${ORDER[@]}"}
+  exit 0
+fi
+
 [[ "${#ORDER[@]}" -gt 0 ]] && say "order resolved: ${#ORDER[@]} file(s) to apply, ${#SKIP[@]} skipped, ${#HOIST_ORDER[@]} hoisted"
 [[ "${#ORDER[@]}" -eq 0 ]] && die "no migrations to apply in $MIG_DIR"
 
@@ -216,6 +246,33 @@ fi
 
 # ── 2. from zero ────────────────────────────────────────────────────────────
 apply_pass "first pass — building the schema from an empty database" || exit 1
+
+# ── 2b. the schema this build produced IS the schema the repo declares ──────
+# Deliberately BETWEEN the two passes, because after the first pass every file
+# has run EXACTLY ONCE — which is what a real bootstrap does, the ledger
+# guaranteeing it — and that is the only well-defined "the schema this
+# repository builds".
+#
+# ⚠️ MEASURED 2026-08-12, and it is not a subtlety: THE SECOND PASS CHANGES THE
+# SCHEMA. 0002_itera_rls.sql line 152 is
+#
+#     grant select on all tables in schema itera to anon, authenticated;
+#
+# `ON ALL TABLES` is a snapshot of the moment it runs, not a rule. On pass 1 it
+# sees only 0001's tables. On pass 2 the whole series exists, so `anon` picks up
+# SELECT on sixteen more relations — including itera.api_keys and the migration
+# ledger itself. Same files, same order, different schema, decided purely by how
+# many times you ran them.
+#
+# That is exactly how production got the grant set it has (the pre-ledger
+# applier re-ran every file on every invocation) and it is recorded as D1 in
+# db/census/known-differences.txt. The second pass still runs, and still proves
+# every file is re-runnable without ERRORING — which is what it was written to
+# prove. It simply cannot be the thing the declaration is measured against.
+if [[ "$PARITY" -eq 1 ]]; then
+  say "── the schema built here vs db/census/expected-schema.txt ──"
+  bash "${ROOT}/scripts/schema-parity.sh" check || exit 1
+fi
 
 # ── 3. again, for idempotency ───────────────────────────────────────────────
 if [[ "$SECOND_PASS" -eq 1 ]]; then

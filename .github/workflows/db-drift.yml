@@ -88,10 +88,39 @@ jobs:
           : > "$REPORT_FILE"
           bash db/scripts/apply-migrations.sh drift
 
+      # ── and the question the four checks above cannot ask ────────────────
+      # Checks 1-4 all compare production against ITS OWN earlier state, so
+      # they detect change over time and are blind, by construction, to "the
+      # repository can no longer rebuild this". Measured 2026-08-12: production
+      # and a from-zero build differed in 11 catalogue facts — ten `anon`
+      # table grants and one RLS policy predicate — with every check green.
+      #
+      # This step diffs the LIVE database against db/census/expected-schema.txt,
+      # tolerating only what db/census/known-differences.txt declares. It reads
+      # and never writes. Its verdict joins the same report, so a new
+      # disagreement opens the same issue as any other drift.
+      - name: Does the repository still rebuild production?
+        id: parity
+        if: always()
+        env:
+          PGHOST: aws-1-us-east-1.pooler.supabase.com
+          PGPORT: '5432'
+          PGUSER: postgres.kjefmwlopzeaqgqtlbdn
+          PGDATABASE: postgres
+          PGSSLMODE: require
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          REPORT_FILE: ${{ runner.temp }}/db-drift-report.txt
+        run: |
+          if [ -z "${PGPASSWORD}" ]; then
+            echo "::error::secrets.SUPABASE_DB_PASSWORD is empty — the parity check cannot see the database."
+            exit 1
+          fi
+          bash db/scripts/schema-parity.sh production
+
       - name: Open, update or close the drift issue
         if: always()
         env:
-          OUTCOME: ${{ steps.drift.outcome }}
+          OUTCOME: ${{ (steps.drift.outcome == 'success' && steps.parity.outcome == 'success') && 'success' || 'failure' }}
           REPORT_FILE: ${{ runner.temp }}/db-drift-report.txt
           GH_TOKEN: ${{ github.token }}
           TITLE: '[db-drift] the Itera database and `main` disagree'
@@ -109,7 +138,7 @@ jobs:
             exit 0
           fi
 
-          BODY="$(printf 'The daily drift check found a disagreement between `main` and the Itera database (`kjefmwlopzeaqgqtlbdn`).\n\n```\n%s\n```\n\nWhat to do:\n\n- **NOT APPLIED** — a migration is merged but not in the database. Re-run the `DB Apply` workflow (`workflow_dispatch`); if it fails, the failure is the real story.\n- **CHECKSUM** — an applied migration file was edited. Either `rebaseline` it with a reason, or revert the file and write a new migration.\n- **ORPHAN** — a ledger row has no file. Someone deleted or renamed a migration.\n- **census diff** — DDL reached the database outside this pipeline. Often a hand-applied `itera-api` / `itera-mcp` migration; those series are not automated yet. Acknowledge with `apply-migrations.sh census-accept --reason ...`.\n\n_run: %s/%s/actions/runs/%s_\n' \
+          BODY="$(printf 'The daily drift check found a disagreement between `main` and the Itera database (`kjefmwlopzeaqgqtlbdn`).\n\n```\n%s\n```\n\nWhat to do:\n\n- **NOT APPLIED** — a migration is merged but not in the database. Re-run the `DB Apply` workflow (`workflow_dispatch`); if it fails, the failure is the real story.\n- **CHECKSUM** — an applied migration file was edited. Either `rebaseline` it with a reason, or revert the file and write a new migration.\n- **ORPHAN** — a ledger row has no file. Someone deleted or renamed a migration.\n- **UNDECLARED DIFFERENCE / STALE ALLOWANCE** — production and `main` disagree about the schema itself. A `-` line is DDL that reached production outside `db/migrations/`, or a migration recorded as applied without being run; a `+` line is a migration that merged and never took effect. Resolve it, or declare it in `db/census/known-differences.txt` with the reason.\n- **census diff** — DDL reached the database outside this pipeline. Often a hand-applied `itera-api` / `itera-mcp` migration; those series are not automated yet. Acknowledge with `apply-migrations.sh census-accept --reason ...`.\n\n_run: %s/%s/actions/runs/%s_\n' \
             "$REPORT" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
 
           printf '%s\n' "$BODY" >> "$GITHUB_STEP_SUMMARY"

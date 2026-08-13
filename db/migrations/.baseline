@@ -1,4 +1,4 @@
-# db/migrations/.baseline — the pre-ledger past, declared once.
+# db/migrations/.baseline — the pre-ledger past, declared once, WITH EVIDENCE.
 #
 # WHAT THIS IS
 # ------------
@@ -18,60 +18,105 @@
 # everything" — is the pre-ledger behaviour we are leaving behind, and it would
 # replay 36 files against production.
 #
-# There is no way to infer the answer from the database: the old script left no
-# record of what it ran. So the answer is DECLARED here, in the repo, reviewed in
-# the PR that introduced the ledger, against a live read of the schema.
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️ 2026-08-12 — THE SECOND COLUMN IS NEW, AND IT IS THE POINT OF THIS FILE NOW
+# ─────────────────────────────────────────────────────────────────────────────
+# Until today this file was a bare list of filenames, and "these were already
+# applied" was a CLAIM WITH NO EVIDENCE ATTACHED. An empty ledger was taken as
+# proof that the database was the pre-ledger production database. It is not
+# proof. An empty ledger is also what a BRAND NEW, EMPTY database has.
 #
-# ONE-SHOT. This file is read ONLY when the ledger is empty. Once reconciliation
-# has run it is inert, and NOTHING should ever be added to it — a new migration
-# gets APPLIED, not baselined. It stays in the repo as the audit trail of what
-# the reconciliation claimed.
+# MEASURED, on a throwaway Postgres 17.6 on 2026-08-12, running
+# `apply-migrations.sh apply` against an empty database:
 #
-# Verified against the live project (kjefmwlopzeaqgqtlbdn) on 2026-08-04, read
-# only: every object created by the files below exists, and NONE of the objects
-# created by 0036/0037/0038 do — no `itera_class_cursor_send` policy on
-# realtime.messages, and no `spec_snapshot` / `spec_locale` /
-# `pedagogical_context` column on itera.activity_traces.
+#     [migrate] FIRST RUN — ledger is empty. Reconciling 36 baselined file(s)
+#               as already applied, WITHOUT running them.
+#     [migrate]   baselined 36 file(s) as applied at unknown (NOT executed)
+#     ...
+#     ledger_rows | itera_tables | itera_functions | billing_schema
+#              36 |            2 |               0 |              0
+#
+# Thirty-six migrations recorded as applied. Two tables in the schema, and both
+# of them are the ledger's own. Zero functions. No `billing` schema. The
+# database that a disaster recovery would have produced was EMPTY, and the
+# ledger asserted it was complete. (The run happened to stop at 0036 with
+# `function itera.can_access_class_topic(text) does not exist` — created by
+# 0022, which had just been marked applied without running. The error is luck,
+# not a guard: it depends on a later file referencing an earlier one.)
+#
+# So each line now carries the OBJECT THAT PROVES ITS FILE RAN, and
+# apply-migrations.sh checks every one before it baselines anything:
+#
+#   * every probe holds   -> this really is the pre-ledger database. Baseline.
+#   * no probe holds      -> this is an EMPTY database. Do NOT baseline; apply
+#                            every file normally, which is what builds a schema.
+#   * some probes hold    -> REFUSE (exit 3). A half-built database is not a
+#                            state this file can describe, and guessing between
+#                            "apply" and "skip" is how one gets silently wrong.
+#
+# ONE-SHOT, still. This file is read ONLY when the ledger is empty. Once
+# reconciliation has run it is inert, and NOTHING should ever be added to it — a
+# new migration gets APPLIED, not baselined. It stays in the repo as the audit
+# trail of what the reconciliation claimed, and now also of how that claim can
+# be checked.
+#
+# FORMAT — `<filename>  <probe>`; `#` starts a comment; blank lines ignored.
+#
+#   table    <schema>.<table>
+#   column   <schema>.<table>.<column>
+#   function <schema>.<name>              (any signature)
+#   policy   <schema>.<table> <policyname>
+#   trigger  <schema>.<table> <triggername>
+#   enum     <schema>.<type> <label>
+#   none     <reason>                     -- the file creates NO catalogue
+#                                            object, so its application cannot
+#                                            be observed. Declared, not hidden.
+#
+# `none` is honest rather than convenient: those files are pure DML, so
+# baselining them cannot hide a missing object, and re-running them is safe
+# because every migration here is idempotent. They take no part in the vote.
+#
+# Verified against the live project (kjefmwlopzeaqgqtlbdn) on 2026-08-12, read
+# only: every probe below holds, and NONE of the objects created by
+# 0036/0037/0038 do.
 #
 # Both 0006 files are listed. That is not a typo: two different migrations
 # claimed the same number, which is one of the reasons this ledger is keyed by
 # filename rather than by number.
-#
-# Blank lines and lines starting with # are ignored.
 
-0001_itera_schema_v1.sql
-0002_itera_rls.sql
-0003_itera_seed.sql
-0004_tenant_admin_metrics.sql
-0005_tenant_admin_fixture.sql
-0006_dfl_federation_dfl_batch.sql
-0006_flatten_dfl_batch_spec_i18n.sql
-0007_dfl_batch_pilot_content.sql
-0008_xp_award_on_completion.sql
-0009_dfl_federation_autoprovision.sql
-0010_users_avatar_url.sql
-0011_users_update_self_locale.sql
-0012_catalog_and_enroll.sql
-0013_class_sessions.sql
-0014_activity_kinds_v1.sql
-0015_federation_plg_owner_leak_fix.sql
-0016_activity_kind_sandbox_scenario.sql
-0017_sandbox_evaluate_quality_gate.sql
-0018_class_sessions_podium_every.sql
-0019_users_dfl_avatar_url.sql
-0020_class_answers_attendance.sql
-0021_class_sessions_scheduled_at.sql
-0022_realtime_class_channel_private.sql
-0023_realtime_class_control_topic.sql
-0024_activity_defs_reusable_library.sql
-0025_artifacts_learner_work.sql
-0026_guest_link_live_session.sql
-0027_artifact_policy_and_repo_path.sql
-0028_activity_results_truth_boundary.sql
-0029_class_stars_and_removals.sql
-0030_backfill_activity_defs_titles.sql
-0031_activity_kind_concept_reveal.sql
-0032_programs_archived_at.sql
-0033_activity_results_duration.sql
-0034_activity_traces.sql
-0035_activity_i18n_backup.sql
+0001_itera_schema_v1.sql                  table    itera.tenants
+0002_itera_rls.sql                        function itera.current_itera_user_id
+0003_itera_seed.sql                       none     seeds tenant/program rows only; creates no object
+0004_tenant_admin_metrics.sql             function itera.current_admin_tenant_ids
+0005_tenant_admin_fixture.sql             none     verification fixture rows only; creates no object
+0006_dfl_federation_dfl_batch.sql         column   itera.users.dfl_subject
+0006_flatten_dfl_batch_spec_i18n.sql      none     rewrites activity spec JSON in place; creates no object
+0007_dfl_batch_pilot_content.sql          none     seeds pilot content rows; creates no object
+0008_xp_award_on_completion.sql           function itera.award_activity_xp
+0009_dfl_federation_autoprovision.sql     function itera.handle_new_federated_user
+0010_users_avatar_url.sql                 column   itera.users.avatar_url
+0011_users_update_self_locale.sql         policy   itera.users users_update_self
+0012_catalog_and_enroll.sql               function itera.catalog_programs
+0013_class_sessions.sql                   table    itera.class_sessions
+0014_activity_kinds_v1.sql                enum     itera.activity_kind video
+0015_federation_plg_owner_leak_fix.sql    none     replaces the 0009 function body and re-creates its trigger; adds no new object
+0016_activity_kind_sandbox_scenario.sql   enum     itera.activity_kind sandbox_scenario
+0017_sandbox_evaluate_quality_gate.sql    none     updates activity spec JSON in place; creates no object
+0018_class_sessions_podium_every.sql      column   itera.class_sessions.podium_every
+0019_users_dfl_avatar_url.sql             column   itera.users.dfl_avatar_url
+0020_class_answers_attendance.sql         table    itera.class_answers
+0021_class_sessions_scheduled_at.sql      column   itera.class_sessions.scheduled_at
+0022_realtime_class_channel_private.sql   function itera.can_access_class_topic
+0023_realtime_class_control_topic.sql     function itera.can_control_class_topic
+0024_activity_defs_reusable_library.sql   table    itera.activity_defs
+0025_artifacts_learner_work.sql           column   itera.artifacts.tenant_id
+0026_guest_link_live_session.sql          table    itera.class_guests
+0027_artifact_policy_and_repo_path.sql    column   itera.activities.artifact_policy
+0028_activity_results_truth_boundary.sql  none     a COMMENT ON TABLE only; the census covers it, a probe cannot
+0029_class_stars_and_removals.sql         table    itera.class_stars
+0030_backfill_activity_defs_titles.sql    none     backfills titles through a temp table; creates no lasting object
+0031_activity_kind_concept_reveal.sql     enum     itera.activity_kind concept_reveal
+0032_programs_archived_at.sql             column   itera.programs.archived_at
+0033_activity_results_duration.sql        column   itera.activity_results.elapsed_ms
+0034_activity_traces.sql                  table    itera.activity_traces
+0035_activity_i18n_backup.sql             table    itera.activity_i18n_backup

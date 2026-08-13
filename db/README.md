@@ -226,6 +226,36 @@ Note what the two obvious shortcuts would have done: "mark everything present as
 applied" would have swallowed `0036/0037/0038` permanently, and "apply
 everything" would have replayed 36 files against production.
 
+⚠️ **And an empty ledger was not evidence of anything (fixed 2026-08-12).** It
+was read as "this is the pre-ledger production database". It is also what a
+brand-new database has. Measured, on a throwaway Postgres:
+
+```
+[migrate] FIRST RUN — ledger is empty. Reconciling 36 baselined file(s)
+          as already applied, WITHOUT running them.
+
+ ledger_rows | itera_tables | itera_functions | billing_schema
+          36 |            2 |               0 |              0
+```
+
+Thirty-six migrations recorded as applied, over a schema whose only two tables
+were the ledger's own. Disaster recovery produced an empty database and reported
+success.
+
+So every line of `.baseline` now names the object that proves its file ran, and
+the script checks all of them **before** it writes a single ledger row:
+
+| what it finds | what it does |
+|---|---|
+| every probe holds | the pre-ledger production database — baseline, as before |
+| **no** probe holds | an empty database — **do not baseline**, build it instead |
+| some hold, some do not | **refuse** (exit 3) — a half-built database is not a state this file can describe |
+
+A file that creates no catalogue object declares `none <reason>` and takes no
+part in the vote; a bare filename with no evidence column is a usage error, because
+accepting it would re-open the hole. Proven both ways by
+`db/scripts/test-baseline-precondition.sh` (7 assertions, throwaway fixtures).
+
 `.baseline` is **one-shot**. It is never read again once the ledger has rows, and
 nothing should ever be appended to it — a new migration gets applied, not
 baselined.
@@ -323,10 +353,28 @@ watching. `.github/workflows/db-drift.yml` runs daily and **opens a GitHub issue
 3. a ledger row has **no file** (deleted or renamed migration);
 4. the database contains **objects no migration accounts for**.
 
-Check 4 works off `itera.schema_object_census` — a fingerprint of every relation,
-column, index, function, enum, policy and trigger in `itera` + `billing` (plus
-this project's `itera%` policies on `realtime.messages`), refreshed by the apply
-script after each successful run. So the legitimate path self-heals, and an
+There is a **fifth** question since 2026-08-12, and it is the one the other four
+cannot ask: *does the repository still rebuild production?* Checks 1-4 all
+compare production against its own earlier state. The daily job now also runs
+`db/scripts/schema-parity.sh production`, which reads the live catalogue and
+diffs it against `db/census/expected-schema.txt`, tolerating only what
+`db/census/known-differences.txt` declares — and failing on a declared
+difference that has **disappeared**, so a resolved entry cannot sit there
+forever as a blindfold.
+
+Check 4 works off `itera.schema_object_census`, whose definition now lives in
+`db/scripts/census.sql` — one file, shared with `schema-parity.sh` and with the
+daily job. It also got much sharper. The old census read relation names, column
+types, index NAMES, function SIGNATURES and policy NAMES, and was therefore
+blind to a policy that keeps its name and changes its predicate, a function that
+keeps its signature and changes its body, a CHECK or FOREIGN KEY constraint, a
+column default, a GRANT, whether RLS is enabled at all, and every COMMENT. All
+of those are in now.
+
+The census is **versioned** (`#cens version=N`, first line). `drift` compares the
+version before the contents and re-records instead of reporting a diff when it
+moved — otherwise editing `census.sql` would masquerade as a schema-drift
+incident on the next daily run. So the legitimate path self-heals, and an
 out-of-band change stays red until a human signs it off:
 
 ```bash

@@ -72,6 +72,12 @@ on:
       - 'db/scripts/test-fresh-apply.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
+      - 'db/scripts/census.sql'
+      - 'db/scripts/schema-parity.sh'
+      - 'db/scripts/test-schema-parity.sh'
+      - 'db/scripts/test-baseline-precondition.sh'
+      - 'db/scripts/check-no-invented-ids.sh'
+      - 'db/census/**'
       - '.github/workflows/db-migration-check.yml'
   push:
     branches: [main]
@@ -82,6 +88,9 @@ on:
       - 'db/scripts/fresh-apply-exceptions.txt'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/apply-migrations.sh'
+      - 'db/scripts/census.sql'
+      - 'db/scripts/schema-parity.sh'
+      - 'db/census/**'
 
 permissions:
   contents: read
@@ -153,8 +162,15 @@ jobs:
       - name: Wait until the database really answers
         run: bash db/scripts/ci-wait-for-postgres.sh
 
-      - name: Prove every verdict
+      - name: Prove every verdict — fresh-apply
         run: bash db/scripts/test-fresh-apply.sh
+
+      # The .baseline evidence gate. Until 2026-08-12 an empty ledger was read
+      # as "this is the pre-ledger production database", which is also what an
+      # EMPTY database looks like: 36 files were recorded as applied over a
+      # schema with 2 tables and 0 functions. Three verdicts, all asserted.
+      - name: Prove every verdict — the .baseline evidence gate
+        run: bash db/scripts/test-baseline-precondition.sh
 
   # ────────────────────────────────────────────────────────────────────────────
   check:
@@ -222,8 +238,24 @@ jobs:
           echo "added: ${FILES:-(none)}"
           echo "files=${FILES}" >> "$GITHUB_OUTPUT"
 
+      # A migration may not depend on an id this series did not put there —
+      # 0005 does, which is why the from-zero build has to skip it. Only files
+      # this PR ADDS are checked; four existing files would trip it, and they
+      # are the history this guard exists to stop repeating.
+      - name: No migration invents an identifier it did not create
+        if: steps.added.outputs.files != ''
+        run: bash db/scripts/check-no-invented-ids.sh ${{ steps.added.outputs.files }}
+
       - name: Build the schema from an empty database, and run this PR's migrations
-        run: bash db/scripts/fresh-apply.sh --new "${{ steps.added.outputs.files }}"
+        run: bash db/scripts/fresh-apply.sh --parity --new "${{ steps.added.outputs.files }}"
+
+      # "It builds" and "it builds the same thing" are different claims, and
+      # only the second one is disaster recovery. `--parity` above asserts it
+      # BETWEEN the two passes, where every file has run exactly once. This
+      # proves the assertion itself can fail — a check nobody has watched go red
+      # is not evidence that it can.
+      - name: Prove every verdict — schema parity
+        run: bash db/scripts/test-schema-parity.sh
 
       # ────────────────────────────────────────────────────────────────────────
       # Everything above asks "did the SQL run?". This asks "does the policy DO

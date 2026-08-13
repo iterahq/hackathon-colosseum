@@ -1,0 +1,933 @@
+#cens version=2
+cmt   col itera.activities.artifact_policy 13503dcad2f9
+cmt   col itera.activities.def_id af4931b3ca64
+cmt   col itera.activity_defs.artifact_policy 51da8aff244e
+cmt   col itera.activity_results.attempt c301b5abd033
+cmt   col itera.activity_results.elapsed_ms 56af5fc95c50
+cmt   col itera.activity_results.passed 6fe12cd954fc
+cmt   col itera.activity_results.visible_ms 104c933c6eb7
+cmt   col itera.activity_traces.actions 68b0ac8744f1
+cmt   col itera.activity_traces.actions_truncated 734cbbd6e359
+cmt   col itera.activity_traces.outcome 4602dbd47bd1
+cmt   col itera.activity_traces.pedagogical_context 1b17b439c6d3
+cmt   col itera.activity_traces.schema_version 7632bf29e042
+cmt   col itera.activity_traces.spec_locale b25f65aced6c
+cmt   col itera.activity_traces.spec_snapshot 4d43b04fadca
+cmt   col itera.activity_traces.started_at 6857bc7d5f2a
+cmt   col itera.artifacts.content_sha256 b7596542e312
+cmt   col itera.artifacts.repo_path 3b664cccf5c9
+cmt   col itera.artifacts.tenant_id a0e2ba4b3fff
+cmt   col itera.artifacts.version 8a455d69d065
+cmt   col itera.byoc_generations.attempt_notes c4d01a54626f
+cmt   col itera.class_sessions.guest_code a518c300b943
+cmt   col itera.class_sessions.scheduled_at d9d43b8df850
+cmt   col itera.programs.archived_at 6a35b3be8fe7
+cmt   col itera.progress.status 045877055942
+cmt   col itera.tenants.subscription_exempt d2d0fda9f6ed
+cmt   col itera.users.avatar_url f1ef917bde85
+cmt   col itera.users.dfl_avatar_url 83003b8605bd
+cmt   col itera.users.dfl_subject be81d4b7ba64
+cmt   col itera.users.is_guest b469e2a44c32
+cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
+cmt   fn  itera.handle_new_federated_user() 78c2f01cc8b9
+cmt   fn  itera.is_action_trace(a jsonb) abb9e8cc400d
+cmt   fn  itera.is_current_user_guest_of(p_session_id uuid) 755664bb2207
+cmt   fn  itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) f0dca134765c
+cmt   fn  itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) 69822a298f18
+cmt   rel billing.webhook_events 57d67b2b3281
+cmt   rel itera.activity_defs 0912b393ab3d
+cmt   rel itera.activity_i18n_backup eb7ff5dd9b61
+cmt   rel itera.activity_results 3e186773d213
+cmt   rel itera.activity_traces 5c3eabdf57fb
+cmt   rel itera.api_keys 23f2e831f996
+cmt   rel itera.byoc_generations 68d118ede09a
+cmt   rel itera.class_removals 4c1d828f5273
+cmt   rel itera.class_stars 1072f9c8bdb8
+cmt   rel itera.my_subscription 544f0daaa76f
+cmt   rel itera.schema_migrations e49a0636c66f
+cmt   rel itera.schema_object_census 5de564b60431
+col   billing.customers.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.customers.email text default=- ident=- gen=-
+col   billing.customers.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   billing.customers.stripe_customer_id text NOT NULL default=- ident=- gen=-
+col   billing.customers.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   billing.customers.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.invoices.amount_due bigint default=- ident=- gen=-
+col   billing.invoices.amount_paid bigint default=- ident=- gen=-
+col   billing.invoices.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.invoices.currency text default=- ident=- gen=-
+col   billing.invoices.hosted_invoice_url text default=- ident=- gen=-
+col   billing.invoices.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   billing.invoices.status text NOT NULL default='draft'::text ident=- gen=-
+col   billing.invoices.stripe_invoice_id text NOT NULL default=- ident=- gen=-
+col   billing.invoices.subscription_id uuid default=- ident=- gen=-
+col   billing.invoices.tenant_id uuid default=- ident=- gen=-
+col   billing.invoices.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.subscriptions.cancel_at_period_end boolean NOT NULL default=false ident=- gen=-
+col   billing.subscriptions.canceled_at timestamp with time zone default=- ident=- gen=-
+col   billing.subscriptions.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.subscriptions.current_period_end timestamp with time zone default=- ident=- gen=-
+col   billing.subscriptions.current_period_start timestamp with time zone default=- ident=- gen=-
+col   billing.subscriptions.customer_id uuid NOT NULL default=- ident=- gen=-
+col   billing.subscriptions.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   billing.subscriptions.seat_count integer NOT NULL default=1 ident=- gen=-
+col   billing.subscriptions.status text NOT NULL default='incomplete'::text ident=- gen=-
+col   billing.subscriptions.stripe_seat_item_id text default=- ident=- gen=-
+col   billing.subscriptions.stripe_subscription_id text NOT NULL default=- ident=- gen=-
+col   billing.subscriptions.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   billing.subscriptions.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.webhook_events.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   billing.webhook_events.payload jsonb default=- ident=- gen=-
+col   billing.webhook_events.processed_at timestamp with time zone default=- ident=- gen=-
+col   billing.webhook_events.received_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   billing.webhook_events.stripe_event_id text NOT NULL default=- ident=- gen=-
+col   billing.webhook_events.type text NOT NULL default=- ident=- gen=-
+col   itera.activities.artifact_policy jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activities.def_id uuid default=- ident=- gen=-
+col   itera.activities.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.activities.kind itera.activity_kind NOT NULL default=- ident=- gen=-
+col   itera.activities.lesson_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activities.ordinal integer NOT NULL default=0 ident=- gen=-
+col   itera.activities.rubric jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activities.spec jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activities.status itera.activity_status NOT NULL default='draft'::itera.activity_status ident=- gen=-
+col   itera.activity_comments.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.anchor_x double precision default=- ident=- gen=-
+col   itera.activity_comments.anchor_y double precision default=- ident=- gen=-
+col   itera.activity_comments.author_id uuid NOT NULL default=auth.uid() ident=- gen=-
+col   itera.activity_comments.body text NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_comments.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.activity_comments.lesson_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.program_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.resolved boolean NOT NULL default=false ident=- gen=-
+col   itera.activity_comments.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.unit_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.unit_version_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_comments.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_defs.artifact_policy jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_defs.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_defs.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.activity_defs.kind itera.activity_kind NOT NULL default=- ident=- gen=-
+col   itera.activity_defs.rubric jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_defs.spec jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_defs.status itera.activity_status NOT NULL default='draft'::itera.activity_status ident=- gen=-
+col   itera.activity_defs.summary_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_defs.tags text[] NOT NULL default='{}'::text[] ident=- gen=-
+col   itera.activity_defs.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_defs.thumbnail_media_id uuid default=- ident=- gen=-
+col   itera.activity_defs.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_defs.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_i18n_backup.batch_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_i18n_backup.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_i18n_backup.id bigint NOT NULL default=nextval('itera.activity_i18n_backup_id_seq'::regclass) ident=- gen=-
+col   itera.activity_i18n_backup.row_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_i18n_backup.rubric jsonb NOT NULL default=- ident=- gen=-
+col   itera.activity_i18n_backup.source_table text NOT NULL default=- ident=- gen=-
+col   itera.activity_i18n_backup.spec jsonb NOT NULL default=- ident=- gen=-
+col   itera.activity_i18n_backup.title_i18n jsonb default=- ident=- gen=-
+col   itera.activity_results.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_results.attempt integer NOT NULL default=1 ident=- gen=-
+col   itera.activity_results.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_results.elapsed_ms integer default=- ident=- gen=-
+col   itera.activity_results.feedback jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.activity_results.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.activity_results.passed boolean NOT NULL default=false ident=- gen=-
+col   itera.activity_results.score_internal numeric default=- ident=- gen=-
+col   itera.activity_results.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_results.visible_ms integer default=- ident=- gen=-
+col   itera.activity_traces.actions jsonb NOT NULL default='[]'::jsonb ident=- gen=-
+col   itera.activity_traces.actions_truncated boolean NOT NULL default=false ident=- gen=-
+col   itera.activity_traces.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.activity_traces.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.activity_traces.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.activity_traces.outcome text default=- ident=- gen=-
+col   itera.activity_traces.pedagogical_context jsonb default=- ident=- gen=-
+col   itera.activity_traces.schema_version smallint NOT NULL default=- ident=- gen=-
+col   itera.activity_traces.spec_locale text default=- ident=- gen=-
+col   itera.activity_traces.spec_snapshot jsonb default=- ident=- gen=-
+col   itera.activity_traces.started_at timestamp with time zone NOT NULL default=- ident=- gen=-
+col   itera.activity_traces.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.api_keys.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.api_keys.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.api_keys.key_hash text NOT NULL default=- ident=- gen=-
+col   itera.api_keys.key_prefix text NOT NULL default=- ident=- gen=-
+col   itera.api_keys.name text NOT NULL default='api-key'::text ident=- gen=-
+col   itera.api_keys.revoked_at timestamp with time zone default=- ident=- gen=-
+col   itera.api_keys.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.artifacts.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.artifacts.content_sha256 text default=- ident=- gen=-
+col   itera.artifacts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.artifacts.filename text default=- ident=- gen=-
+col   itera.artifacts.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.artifacts.mime_type text default=- ident=- gen=-
+col   itera.artifacts.repo_path text default=- ident=- gen=-
+col   itera.artifacts.repo_url text default=- ident=- gen=-
+col   itera.artifacts.size_bytes integer default=- ident=- gen=-
+col   itera.artifacts.storage_path text default=- ident=- gen=-
+col   itera.artifacts.tenant_id uuid default=- ident=- gen=-
+col   itera.artifacts.type itera.artifact_type NOT NULL default=- ident=- gen=-
+col   itera.artifacts.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.artifacts.version integer default=1 ident=- gen=-
+col   itera.badges.icon text default=- ident=- gen=-
+col   itera.badges.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.badges.slug text NOT NULL default=- ident=- gen=-
+col   itera.badges.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.badges.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.byoc_generations.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.byoc_generations.attempt integer NOT NULL default=1 ident=- gen=-
+col   itera.byoc_generations.attempt_notes jsonb NOT NULL default='[]'::jsonb ident=- gen=-
+col   itera.byoc_generations.attempts_used smallint NOT NULL default=0 ident=- gen=-
+col   itera.byoc_generations.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.byoc_generations.degraded_reason text default=- ident=- gen=-
+col   itera.byoc_generations.fallback_used boolean NOT NULL default=false ident=- gen=-
+col   itera.byoc_generations.generated jsonb NOT NULL default=- ident=- gen=-
+col   itera.byoc_generations.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.byoc_generations.mode text NOT NULL default='choice_tree'::text ident=- gen=-
+col   itera.byoc_generations.model text default=- ident=- gen=-
+col   itera.byoc_generations.seed text NOT NULL default=- ident=- gen=-
+col   itera.byoc_generations.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_answers.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_answers.correct boolean NOT NULL default=- ident=- gen=-
+col   itera.class_answers.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_answers.elapsed_ms integer default=- ident=- gen=-
+col   itera.class_answers.session_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_answers.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_attendance.joined_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_attendance.session_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_attendance.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_guests.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_guests.display_name text default=- ident=- gen=-
+col   itera.class_guests.session_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_guests.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_removals.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_removals.removed_by uuid NOT NULL default=- ident=- gen=-
+col   itera.class_removals.session_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_removals.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_sessions.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_sessions.current_activity_id uuid default=- ident=- gen=-
+col   itera.class_sessions.ended_at timestamp with time zone default=- ident=- gen=-
+col   itera.class_sessions.guest_code text default=- ident=- gen=-
+col   itera.class_sessions.heartbeat_at timestamp with time zone default=- ident=- gen=-
+col   itera.class_sessions.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.class_sessions.instructor_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_sessions.lesson_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_sessions.podium_every integer default=- ident=- gen=-
+col   itera.class_sessions.scheduled_at timestamp with time zone default=- ident=- gen=-
+col   itera.class_sessions.scope itera.class_scope NOT NULL default='global'::itera.class_scope ident=- gen=-
+col   itera.class_sessions.started_at timestamp with time zone default=- ident=- gen=-
+col   itera.class_sessions.status itera.class_session_status NOT NULL default='pending'::itera.class_session_status ident=- gen=-
+col   itera.class_sessions.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_sessions.timer_gated boolean NOT NULL default=false ident=- gen=-
+col   itera.class_stars.awarded_by uuid NOT NULL default=- ident=- gen=-
+col   itera.class_stars.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.class_stars.delta smallint NOT NULL default=- ident=- gen=-
+col   itera.class_stars.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.class_stars.session_id uuid NOT NULL default=- ident=- gen=-
+col   itera.class_stars.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.identities.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.identities.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.identities.provider itera.identity_provider NOT NULL default=- ident=- gen=-
+col   itera.identities.provider_subject text NOT NULL default=- ident=- gen=-
+col   itera.identities.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.learner_personalization.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.learner_personalization.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.learner_personalization.values jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.lessons.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.lessons.ordinal integer NOT NULL default=0 ident=- gen=-
+col   itera.lessons.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.lessons.unit_id uuid NOT NULL default=- ident=- gen=-
+col   itera.media.checksum text default=- ident=- gen=-
+col   itera.media.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.media.created_by uuid NOT NULL default=auth.uid() ident=- gen=-
+col   itera.media.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.media.kind itera.media_kind NOT NULL default=- ident=- gen=-
+col   itera.media.metadata jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.media.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.media.url text NOT NULL default=- ident=- gen=-
+col   itera.media.version integer NOT NULL default=1 ident=- gen=-
+col   itera.memberships.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.memberships.role itera.member_role NOT NULL default='learner'::itera.member_role ident=- gen=-
+col   itera.memberships.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.memberships.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.my_subscription.cancel_at_period_end boolean default=- ident=- gen=-
+col   itera.my_subscription.current_period_end timestamp with time zone default=- ident=- gen=-
+col   itera.my_subscription.is_active boolean default=- ident=- gen=-
+col   itera.my_subscription.seat_count integer default=- ident=- gen=-
+col   itera.my_subscription.status text default=- ident=- gen=-
+col   itera.my_subscription.tenant_id uuid default=- ident=- gen=-
+col   itera.programs.archived_at timestamp with time zone default=- ident=- gen=-
+col   itera.programs.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.programs.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.programs.is_catalog boolean NOT NULL default=false ident=- gen=-
+col   itera.programs.slug text NOT NULL default=- ident=- gen=-
+col   itera.programs.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.programs.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.progress.activity_id uuid NOT NULL default=- ident=- gen=-
+col   itera.progress.completed_at timestamp with time zone default=- ident=- gen=-
+col   itera.progress.status itera.progress_status NOT NULL default='not_started'::itera.progress_status ident=- gen=-
+col   itera.progress.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.schema_migrations.applied_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.schema_migrations.applied_by text NOT NULL default=- ident=- gen=-
+col   itera.schema_migrations.checksum text NOT NULL default=- ident=- gen=-
+col   itera.schema_migrations.duration_ms integer default=- ident=- gen=-
+col   itera.schema_migrations.filename text NOT NULL default=- ident=- gen=-
+col   itera.schema_migrations.id text NOT NULL default=- ident=- gen=-
+col   itera.schema_migrations.repo text NOT NULL default=- ident=- gen=-
+col   itera.schema_object_census.captured_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.schema_object_census.captured_by text NOT NULL default=- ident=- gen=-
+col   itera.schema_object_census.digest text NOT NULL default=- ident=- gen=-
+col   itera.schema_object_census.id bigint NOT NULL default=- ident=d gen=-
+col   itera.schema_object_census.note text default=- ident=- gen=-
+col   itera.schema_object_census.objects text NOT NULL default=- ident=- gen=-
+col   itera.tenants.branding jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.tenants.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.tenants.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.tenants.live_class_enabled boolean NOT NULL default=false ident=- gen=-
+col   itera.tenants.name text NOT NULL default=- ident=- gen=-
+col   itera.tenants.slug text NOT NULL default=- ident=- gen=-
+col   itera.tenants.subscription_exempt boolean NOT NULL default=false ident=- gen=-
+col   itera.unit_versions.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.unit_versions.created_by uuid NOT NULL default=auth.uid() ident=- gen=-
+col   itera.unit_versions.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.unit_versions.label text default=- ident=- gen=-
+col   itera.unit_versions.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.unit_versions.unit_id uuid NOT NULL default=- ident=- gen=-
+col   itera.unit_versions.version_number integer NOT NULL default=- ident=- gen=-
+col   itera.units.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.units.ordinal integer NOT NULL default=0 ident=- gen=-
+col   itera.units.program_id uuid NOT NULL default=- ident=- gen=-
+col   itera.units.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   itera.user_badges.awarded_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.user_badges.badge_id uuid NOT NULL default=- ident=- gen=-
+col   itera.user_badges.user_id uuid NOT NULL default=- ident=- gen=-
+col   itera.users.avatar_url text default=- ident=- gen=-
+col   itera.users.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.users.dfl_avatar_url text default=- ident=- gen=-
+col   itera.users.dfl_subject text default=- ident=- gen=-
+col   itera.users.display_name text default=- ident=- gen=-
+col   itera.users.email text NOT NULL default=- ident=- gen=-
+col   itera.users.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.users.is_guest boolean NOT NULL default=false ident=- gen=-
+col   itera.users.locale text NOT NULL default='pt'::text ident=- gen=-
+col   itera.xp_events.amount integer NOT NULL default=- ident=- gen=-
+col   itera.xp_events.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.xp_events.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.xp_events.reason text default=- ident=- gen=-
+col   itera.xp_events.tenant_id uuid NOT NULL default=- ident=- gen=-
+col   itera.xp_events.user_id uuid NOT NULL default=- ident=- gen=-
+con   billing.customers customers_pkey PRIMARY KEY (id)
+con   billing.customers customers_stripe_customer_id_key UNIQUE (stripe_customer_id)
+con   billing.customers customers_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   billing.invoices invoices_pkey PRIMARY KEY (id)
+con   billing.invoices invoices_stripe_invoice_id_key UNIQUE (stripe_invoice_id)
+con   billing.invoices invoices_subscription_id_fkey FOREIGN KEY (subscription_id) REFERENCES billing.subscriptions(id) ON DELETE SET NULL
+con   billing.invoices invoices_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE SET NULL
+con   billing.subscriptions subscriptions_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES billing.customers(id) ON DELETE CASCADE
+con   billing.subscriptions subscriptions_pkey PRIMARY KEY (id)
+con   billing.subscriptions subscriptions_seat_count_check CHECK ((seat_count >= 0))
+con   billing.subscriptions subscriptions_stripe_subscription_id_key UNIQUE (stripe_subscription_id)
+con   billing.subscriptions subscriptions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   billing.webhook_events webhook_events_pkey PRIMARY KEY (id)
+con   billing.webhook_events webhook_events_stripe_event_id_key UNIQUE (stripe_event_id)
+con   itera.activities activities_artifact_policy_chk CHECK (((jsonb_typeof(artifact_policy) = 'object'::text) AND (((artifact_policy ->> 'mode'::text) IS NULL) OR ((artifact_policy ->> 'mode'::text) = ANY (ARRAY['auto'::text, 'always'::text, 'never'::text]))) AND (((artifact_policy ->> 'type'::text) IS NULL) OR ((artifact_policy ->> 'type'::text) = ANY (ARRAY['code'::text, 'text'::text, 'document'::text, 'diagram'::text, 'site'::text])))))
+con   itera.activities activities_def_id_fkey FOREIGN KEY (def_id) REFERENCES itera.activity_defs(id) ON DELETE SET NULL
+con   itera.activities activities_lesson_id_fkey FOREIGN KEY (lesson_id) REFERENCES itera.lessons(id) ON DELETE CASCADE
+con   itera.activities activities_pkey PRIMARY KEY (id)
+con   itera.activity_comments activity_comments_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.activity_comments activity_comments_lesson_id_fkey FOREIGN KEY (lesson_id) REFERENCES itera.lessons(id) ON DELETE CASCADE
+con   itera.activity_comments activity_comments_pkey PRIMARY KEY (id)
+con   itera.activity_comments activity_comments_program_id_fkey FOREIGN KEY (program_id) REFERENCES itera.programs(id) ON DELETE CASCADE
+con   itera.activity_comments activity_comments_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.activity_comments activity_comments_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES itera.units(id) ON DELETE CASCADE
+con   itera.activity_comments activity_comments_unit_version_id_fkey FOREIGN KEY (unit_version_id) REFERENCES itera.unit_versions(id) ON DELETE CASCADE
+con   itera.activity_defs activity_defs_artifact_policy_chk CHECK (((jsonb_typeof(artifact_policy) = 'object'::text) AND (((artifact_policy ->> 'mode'::text) IS NULL) OR ((artifact_policy ->> 'mode'::text) = ANY (ARRAY['auto'::text, 'always'::text, 'never'::text]))) AND (((artifact_policy ->> 'type'::text) IS NULL) OR ((artifact_policy ->> 'type'::text) = ANY (ARRAY['code'::text, 'text'::text, 'document'::text, 'diagram'::text, 'site'::text])))))
+con   itera.activity_defs activity_defs_pkey PRIMARY KEY (id)
+con   itera.activity_defs activity_defs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.activity_defs activity_defs_thumbnail_media_id_fkey FOREIGN KEY (thumbnail_media_id) REFERENCES itera.media(id) ON DELETE SET NULL
+con   itera.activity_i18n_backup activity_i18n_backup_pkey PRIMARY KEY (id)
+con   itera.activity_i18n_backup activity_i18n_backup_source_table_chk CHECK ((source_table = ANY (ARRAY['activities'::text, 'activity_defs'::text])))
+con   itera.activity_results activity_results_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.activity_results activity_results_elapsed_ms_nonneg CHECK (((elapsed_ms IS NULL) OR (elapsed_ms >= 0)))
+con   itera.activity_results activity_results_pkey PRIMARY KEY (id)
+con   itera.activity_results activity_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.activity_results activity_results_visible_ms_nonneg CHECK (((visible_ms IS NULL) OR (visible_ms >= 0)))
+con   itera.activity_traces activity_traces_actions_shape CHECK (itera.is_action_trace(actions))
+con   itera.activity_traces activity_traces_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.activity_traces activity_traces_pkey PRIMARY KEY (id)
+con   itera.activity_traces activity_traces_schema_version_known CHECK ((schema_version >= 1))
+con   itera.activity_traces activity_traces_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.api_keys api_keys_key_hash_key UNIQUE (key_hash)
+con   itera.api_keys api_keys_pkey PRIMARY KEY (id)
+con   itera.api_keys api_keys_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.artifacts artifacts_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.artifacts artifacts_pkey PRIMARY KEY (id)
+con   itera.artifacts artifacts_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE SET NULL
+con   itera.artifacts artifacts_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.badges badges_pkey PRIMARY KEY (id)
+con   itera.badges badges_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.badges badges_tenant_id_slug_key UNIQUE (tenant_id, slug)
+con   itera.byoc_generations byoc_generations_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.byoc_generations byoc_generations_attempt_check CHECK ((attempt >= 1))
+con   itera.byoc_generations byoc_generations_attempt_notes_is_array CHECK ((jsonb_typeof(attempt_notes) = 'array'::text))
+con   itera.byoc_generations byoc_generations_attempts_used_check CHECK ((attempts_used >= 0))
+con   itera.byoc_generations byoc_generations_mode_check CHECK ((mode = ANY (ARRAY['choice_tree'::text, 'cosmetic'::text])))
+con   itera.byoc_generations byoc_generations_pkey PRIMARY KEY (id)
+con   itera.byoc_generations byoc_generations_seed_check CHECK (((length(seed) >= 1) AND (length(seed) <= 2000)))
+con   itera.byoc_generations byoc_generations_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_answers class_answers_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.class_answers class_answers_elapsed_ms_check CHECK (((elapsed_ms IS NULL) OR (elapsed_ms >= 0)))
+con   itera.class_answers class_answers_pkey PRIMARY KEY (session_id, activity_id, user_id)
+con   itera.class_answers class_answers_session_id_fkey FOREIGN KEY (session_id) REFERENCES itera.class_sessions(id) ON DELETE CASCADE
+con   itera.class_answers class_answers_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_attendance class_attendance_pkey PRIMARY KEY (session_id, user_id)
+con   itera.class_attendance class_attendance_session_id_fkey FOREIGN KEY (session_id) REFERENCES itera.class_sessions(id) ON DELETE CASCADE
+con   itera.class_attendance class_attendance_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_guests class_guests_pkey PRIMARY KEY (session_id, user_id)
+con   itera.class_guests class_guests_session_id_fkey FOREIGN KEY (session_id) REFERENCES itera.class_sessions(id) ON DELETE CASCADE
+con   itera.class_guests class_guests_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_removals class_removals_pkey PRIMARY KEY (session_id, user_id)
+con   itera.class_removals class_removals_removed_by_fkey FOREIGN KEY (removed_by) REFERENCES itera.users(id) ON DELETE RESTRICT
+con   itera.class_removals class_removals_session_id_fkey FOREIGN KEY (session_id) REFERENCES itera.class_sessions(id) ON DELETE CASCADE
+con   itera.class_removals class_removals_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_sessions class_sessions_current_activity_id_fkey FOREIGN KEY (current_activity_id) REFERENCES itera.activities(id) ON DELETE SET NULL
+con   itera.class_sessions class_sessions_instructor_id_fkey FOREIGN KEY (instructor_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.class_sessions class_sessions_lesson_id_fkey FOREIGN KEY (lesson_id) REFERENCES itera.lessons(id) ON DELETE CASCADE
+con   itera.class_sessions class_sessions_pkey PRIMARY KEY (id)
+con   itera.class_sessions class_sessions_podium_every_check CHECK (((podium_every IS NULL) OR (podium_every >= 1)))
+con   itera.class_sessions class_sessions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.class_stars class_stars_awarded_by_fkey FOREIGN KEY (awarded_by) REFERENCES itera.users(id) ON DELETE RESTRICT
+con   itera.class_stars class_stars_delta_check CHECK ((delta = ANY (ARRAY['-1'::integer, 1])))
+con   itera.class_stars class_stars_pkey PRIMARY KEY (id)
+con   itera.class_stars class_stars_session_id_fkey FOREIGN KEY (session_id) REFERENCES itera.class_sessions(id) ON DELETE CASCADE
+con   itera.class_stars class_stars_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.identities identities_pkey PRIMARY KEY (id)
+con   itera.identities identities_provider_provider_subject_key UNIQUE (provider, provider_subject)
+con   itera.identities identities_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.learner_personalization learner_personalization_pkey PRIMARY KEY (user_id)
+con   itera.learner_personalization learner_personalization_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.learner_personalization learner_personalization_values_object CHECK (((jsonb_typeof("values") = 'object'::text) AND (pg_column_size("values") <= 4096)))
+con   itera.lessons lessons_pkey PRIMARY KEY (id)
+con   itera.lessons lessons_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES itera.units(id) ON DELETE CASCADE
+con   itera.media media_pkey PRIMARY KEY (id)
+con   itera.media media_tenant_id_checksum_key UNIQUE (tenant_id, checksum)
+con   itera.media media_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.memberships memberships_pkey PRIMARY KEY (user_id, tenant_id)
+con   itera.memberships memberships_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.memberships memberships_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.programs programs_pkey PRIMARY KEY (id)
+con   itera.programs programs_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.programs programs_tenant_id_slug_key UNIQUE (tenant_id, slug)
+con   itera.progress progress_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES itera.activities(id) ON DELETE CASCADE
+con   itera.progress progress_pkey PRIMARY KEY (user_id, activity_id)
+con   itera.progress progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.schema_migrations schema_migrations_pkey PRIMARY KEY (id)
+con   itera.schema_object_census schema_object_census_pkey PRIMARY KEY (id)
+con   itera.tenants tenants_pkey PRIMARY KEY (id)
+con   itera.tenants tenants_slug_key UNIQUE (slug)
+con   itera.unit_versions unit_versions_pkey PRIMARY KEY (id)
+con   itera.unit_versions unit_versions_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.unit_versions unit_versions_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES itera.units(id) ON DELETE CASCADE
+con   itera.unit_versions unit_versions_unit_id_version_number_key UNIQUE (unit_id, version_number)
+con   itera.units units_pkey PRIMARY KEY (id)
+con   itera.units units_program_id_fkey FOREIGN KEY (program_id) REFERENCES itera.programs(id) ON DELETE CASCADE
+con   itera.user_badges user_badges_badge_id_fkey FOREIGN KEY (badge_id) REFERENCES itera.badges(id) ON DELETE CASCADE
+con   itera.user_badges user_badges_pkey PRIMARY KEY (user_id, badge_id)
+con   itera.user_badges user_badges_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   itera.users users_email_key UNIQUE (email)
+con   itera.users users_pkey PRIMARY KEY (id)
+con   itera.xp_events xp_events_pkey PRIMARY KEY (id)
+con   itera.xp_events xp_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
+con   itera.xp_events xp_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+cron  itera-reap-stale-live-class-sessions */5 * * * *
+fn    itera.award_activity_xp(p_activity_id uuid, p_amount integer) -> integer kind=f vol=v secdef=t cfg=search_path=itera, public body=f0c61d278cd7
+fn    itera.can_access_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=38f7b8a697e1
+fn    itera.can_control_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=68090bcf41e7
+fn    itera.catalog_programs() -> TABLE(id uuid, tenant_id uuid, tenant_slug text, slug text, title_i18n jsonb, created_at timestamp with time zone, unit_count bigint, lesson_count bigint, activity_count bigint, already_enrolled boolean) kind=f vol=s secdef=t cfg=search_path=itera, public body=d806aea81e8f
+fn    itera.current_admin_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=b3d6eca40600
+fn    itera.current_author_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=4e77cb18b8f1
+fn    itera.current_instructor_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=08a9b3b7c3c0
+fn    itera.current_itera_user_id() -> uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=51907c5533de
+fn    itera.current_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=d06b680bc884
+fn    itera.custom_access_token_hook(event jsonb) -> jsonb kind=f vol=s secdef=t cfg=search_path=itera, public body=4049100b48ef
+fn    itera.enroll_in_program(p_program_id uuid) -> TABLE(out_tenant_id uuid, out_role itera.member_role, out_enrolled boolean) kind=f vol=v secdef=t cfg=search_path=itera, public body=4b91d3fff556
+fn    itera.ensure_current_unit_version(p_unit_id uuid) -> uuid kind=f vol=v secdef=t cfg=search_path=itera, public body=a6eefa3146f9
+fn    itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=3c29b94e3c0e
+fn    itera.handle_new_federated_user() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public, auth body=4373ad818b87
+fn    itera.is_action_trace(a jsonb) -> boolean kind=f vol=i secdef=f cfg=- body=49d68086a077
+fn    itera.is_current_user_guest_of(p_session_id uuid) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=96c6a0f0a9f5
+fn    itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) -> TABLE(id uuid, tenant_id uuid, instructor_id uuid, started_at timestamp with time zone, last_activity_at timestamp with time zone, reason text) kind=f vol=v secdef=t cfg=search_path=itera, pg_catalog, public body=11d2151f264d
+fn    itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=2daeccada8fe
+fn    itera.set_updated_at() -> trigger kind=f vol=v secdef=f cfg=- body=301a884953d3
+fn    itera.sync_activity_def_to_instances() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public body=60f7f31b28b0
+gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) anon exec=t
+gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) authenticated exec=t
+gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) service_role exec=t
+gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) supabase_auth_admin exec=t
+gfn   itera.can_access_class_topic(topic_name text) anon exec=t
+gfn   itera.can_access_class_topic(topic_name text) authenticated exec=t
+gfn   itera.can_access_class_topic(topic_name text) service_role exec=t
+gfn   itera.can_access_class_topic(topic_name text) supabase_auth_admin exec=t
+gfn   itera.can_control_class_topic(topic_name text) anon exec=t
+gfn   itera.can_control_class_topic(topic_name text) authenticated exec=t
+gfn   itera.can_control_class_topic(topic_name text) service_role exec=t
+gfn   itera.can_control_class_topic(topic_name text) supabase_auth_admin exec=t
+gfn   itera.catalog_programs() anon exec=t
+gfn   itera.catalog_programs() authenticated exec=t
+gfn   itera.catalog_programs() service_role exec=t
+gfn   itera.catalog_programs() supabase_auth_admin exec=t
+gfn   itera.current_admin_tenant_ids() anon exec=t
+gfn   itera.current_admin_tenant_ids() authenticated exec=t
+gfn   itera.current_admin_tenant_ids() service_role exec=t
+gfn   itera.current_admin_tenant_ids() supabase_auth_admin exec=t
+gfn   itera.current_author_tenant_ids() anon exec=t
+gfn   itera.current_author_tenant_ids() authenticated exec=t
+gfn   itera.current_author_tenant_ids() service_role exec=t
+gfn   itera.current_author_tenant_ids() supabase_auth_admin exec=t
+gfn   itera.current_instructor_tenant_ids() anon exec=t
+gfn   itera.current_instructor_tenant_ids() authenticated exec=t
+gfn   itera.current_instructor_tenant_ids() service_role exec=t
+gfn   itera.current_instructor_tenant_ids() supabase_auth_admin exec=t
+gfn   itera.current_itera_user_id() anon exec=t
+gfn   itera.current_itera_user_id() authenticated exec=t
+gfn   itera.current_itera_user_id() service_role exec=t
+gfn   itera.current_itera_user_id() supabase_auth_admin exec=t
+gfn   itera.current_tenant_ids() anon exec=t
+gfn   itera.current_tenant_ids() authenticated exec=t
+gfn   itera.current_tenant_ids() service_role exec=t
+gfn   itera.current_tenant_ids() supabase_auth_admin exec=t
+gfn   itera.custom_access_token_hook(event jsonb) anon exec=t
+gfn   itera.custom_access_token_hook(event jsonb) authenticated exec=t
+gfn   itera.custom_access_token_hook(event jsonb) service_role exec=t
+gfn   itera.custom_access_token_hook(event jsonb) supabase_auth_admin exec=t
+gfn   itera.enroll_in_program(p_program_id uuid) anon exec=t
+gfn   itera.enroll_in_program(p_program_id uuid) authenticated exec=t
+gfn   itera.enroll_in_program(p_program_id uuid) service_role exec=t
+gfn   itera.enroll_in_program(p_program_id uuid) supabase_auth_admin exec=t
+gfn   itera.ensure_current_unit_version(p_unit_id uuid) anon exec=t
+gfn   itera.ensure_current_unit_version(p_unit_id uuid) authenticated exec=t
+gfn   itera.ensure_current_unit_version(p_unit_id uuid) service_role exec=t
+gfn   itera.ensure_current_unit_version(p_unit_id uuid) supabase_auth_admin exec=t
+gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) anon exec=t
+gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) authenticated exec=t
+gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) service_role exec=t
+gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) supabase_auth_admin exec=t
+gfn   itera.handle_new_federated_user() anon exec=t
+gfn   itera.handle_new_federated_user() authenticated exec=t
+gfn   itera.handle_new_federated_user() service_role exec=t
+gfn   itera.handle_new_federated_user() supabase_auth_admin exec=t
+gfn   itera.is_action_trace(a jsonb) anon exec=t
+gfn   itera.is_action_trace(a jsonb) authenticated exec=t
+gfn   itera.is_action_trace(a jsonb) service_role exec=t
+gfn   itera.is_action_trace(a jsonb) supabase_auth_admin exec=t
+gfn   itera.is_current_user_guest_of(p_session_id uuid) anon exec=t
+gfn   itera.is_current_user_guest_of(p_session_id uuid) authenticated exec=t
+gfn   itera.is_current_user_guest_of(p_session_id uuid) service_role exec=t
+gfn   itera.is_current_user_guest_of(p_session_id uuid) supabase_auth_admin exec=t
+gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) anon exec=f
+gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) authenticated exec=f
+gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) service_role exec=f
+gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) supabase_auth_admin exec=f
+gfn   itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) anon exec=t
+gfn   itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) authenticated exec=t
+gfn   itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) service_role exec=t
+gfn   itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) supabase_auth_admin exec=t
+gfn   itera.set_updated_at() anon exec=t
+gfn   itera.set_updated_at() authenticated exec=t
+gfn   itera.set_updated_at() service_role exec=t
+gfn   itera.set_updated_at() supabase_auth_admin exec=t
+gfn   itera.sync_activity_def_to_instances() anon exec=t
+gfn   itera.sync_activity_def_to_instances() authenticated exec=t
+gfn   itera.sync_activity_def_to_instances() service_role exec=t
+gfn   itera.sync_activity_def_to_instances() supabase_auth_admin exec=t
+gsch  billing anon usage=f create=f
+gsch  billing authenticated usage=f create=f
+gsch  billing service_role usage=f create=f
+gsch  billing supabase_auth_admin usage=f create=f
+gsch  itera anon usage=t create=f
+gsch  itera authenticated usage=t create=f
+gsch  itera service_role usage=t create=f
+gsch  itera supabase_auth_admin usage=t create=f
+gtbl  billing.customers anon -
+gtbl  billing.customers authenticated -
+gtbl  billing.customers service_role -
+gtbl  billing.customers supabase_auth_admin -
+gtbl  billing.invoices anon -
+gtbl  billing.invoices authenticated -
+gtbl  billing.invoices service_role -
+gtbl  billing.invoices supabase_auth_admin -
+gtbl  billing.subscriptions anon -
+gtbl  billing.subscriptions authenticated -
+gtbl  billing.subscriptions service_role -
+gtbl  billing.subscriptions supabase_auth_admin -
+gtbl  billing.webhook_events anon -
+gtbl  billing.webhook_events authenticated -
+gtbl  billing.webhook_events service_role -
+gtbl  billing.webhook_events supabase_auth_admin -
+gtbl  itera.activities anon SELECT
+gtbl  itera.activities authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.activities service_role -
+gtbl  itera.activities supabase_auth_admin -
+gtbl  itera.activity_comments anon -
+gtbl  itera.activity_comments authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.activity_comments service_role -
+gtbl  itera.activity_comments supabase_auth_admin -
+gtbl  itera.activity_defs anon SELECT
+gtbl  itera.activity_defs authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.activity_defs service_role -
+gtbl  itera.activity_defs supabase_auth_admin -
+gtbl  itera.activity_i18n_backup anon -
+gtbl  itera.activity_i18n_backup authenticated -
+gtbl  itera.activity_i18n_backup service_role -
+gtbl  itera.activity_i18n_backup supabase_auth_admin -
+gtbl  itera.activity_i18n_backup_id_seq anon -
+gtbl  itera.activity_i18n_backup_id_seq authenticated -
+gtbl  itera.activity_i18n_backup_id_seq service_role -
+gtbl  itera.activity_i18n_backup_id_seq supabase_auth_admin -
+gtbl  itera.activity_results anon SELECT
+gtbl  itera.activity_results authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.activity_results service_role -
+gtbl  itera.activity_results supabase_auth_admin -
+gtbl  itera.activity_traces anon SELECT
+gtbl  itera.activity_traces authenticated INSERT,SELECT
+gtbl  itera.activity_traces service_role -
+gtbl  itera.activity_traces supabase_auth_admin -
+gtbl  itera.api_keys anon -
+gtbl  itera.api_keys authenticated -
+gtbl  itera.api_keys service_role -
+gtbl  itera.api_keys supabase_auth_admin -
+gtbl  itera.artifacts anon SELECT
+gtbl  itera.artifacts authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.artifacts service_role -
+gtbl  itera.artifacts supabase_auth_admin -
+gtbl  itera.badges anon SELECT
+gtbl  itera.badges authenticated SELECT
+gtbl  itera.badges service_role -
+gtbl  itera.badges supabase_auth_admin -
+gtbl  itera.byoc_generations anon -
+gtbl  itera.byoc_generations authenticated INSERT,SELECT
+gtbl  itera.byoc_generations service_role -
+gtbl  itera.byoc_generations supabase_auth_admin -
+gtbl  itera.class_answers anon -
+gtbl  itera.class_answers authenticated INSERT,SELECT,UPDATE
+gtbl  itera.class_answers service_role -
+gtbl  itera.class_answers supabase_auth_admin -
+gtbl  itera.class_attendance anon -
+gtbl  itera.class_attendance authenticated INSERT,SELECT
+gtbl  itera.class_attendance service_role -
+gtbl  itera.class_attendance supabase_auth_admin -
+gtbl  itera.class_guests anon -
+gtbl  itera.class_guests authenticated SELECT
+gtbl  itera.class_guests service_role -
+gtbl  itera.class_guests supabase_auth_admin -
+gtbl  itera.class_removals anon -
+gtbl  itera.class_removals authenticated DELETE,INSERT,SELECT
+gtbl  itera.class_removals service_role -
+gtbl  itera.class_removals supabase_auth_admin -
+gtbl  itera.class_sessions anon SELECT
+gtbl  itera.class_sessions authenticated INSERT,SELECT,UPDATE
+gtbl  itera.class_sessions service_role -
+gtbl  itera.class_sessions supabase_auth_admin -
+gtbl  itera.class_stars anon -
+gtbl  itera.class_stars authenticated SELECT
+gtbl  itera.class_stars service_role -
+gtbl  itera.class_stars supabase_auth_admin -
+gtbl  itera.identities anon SELECT
+gtbl  itera.identities authenticated SELECT
+gtbl  itera.identities service_role -
+gtbl  itera.identities supabase_auth_admin -
+gtbl  itera.learner_personalization anon -
+gtbl  itera.learner_personalization authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.learner_personalization service_role -
+gtbl  itera.learner_personalization supabase_auth_admin -
+gtbl  itera.lessons anon SELECT
+gtbl  itera.lessons authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.lessons service_role -
+gtbl  itera.lessons supabase_auth_admin -
+gtbl  itera.media anon -
+gtbl  itera.media authenticated INSERT,SELECT,UPDATE
+gtbl  itera.media service_role -
+gtbl  itera.media supabase_auth_admin -
+gtbl  itera.memberships anon SELECT
+gtbl  itera.memberships authenticated SELECT
+gtbl  itera.memberships service_role -
+gtbl  itera.memberships supabase_auth_admin -
+gtbl  itera.my_subscription anon -
+gtbl  itera.my_subscription authenticated SELECT
+gtbl  itera.my_subscription service_role -
+gtbl  itera.my_subscription supabase_auth_admin -
+gtbl  itera.programs anon SELECT
+gtbl  itera.programs authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.programs service_role -
+gtbl  itera.programs supabase_auth_admin -
+gtbl  itera.progress anon SELECT
+gtbl  itera.progress authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.progress service_role -
+gtbl  itera.progress supabase_auth_admin -
+gtbl  itera.schema_migrations anon -
+gtbl  itera.schema_migrations authenticated -
+gtbl  itera.schema_migrations service_role -
+gtbl  itera.schema_migrations supabase_auth_admin -
+gtbl  itera.schema_object_census anon -
+gtbl  itera.schema_object_census authenticated -
+gtbl  itera.schema_object_census service_role -
+gtbl  itera.schema_object_census supabase_auth_admin -
+gtbl  itera.schema_object_census_id_seq anon -
+gtbl  itera.schema_object_census_id_seq authenticated -
+gtbl  itera.schema_object_census_id_seq service_role -
+gtbl  itera.schema_object_census_id_seq supabase_auth_admin -
+gtbl  itera.tenants anon SELECT
+gtbl  itera.tenants authenticated SELECT
+gtbl  itera.tenants service_role -
+gtbl  itera.tenants supabase_auth_admin -
+gtbl  itera.unit_versions anon -
+gtbl  itera.unit_versions authenticated INSERT,SELECT
+gtbl  itera.unit_versions service_role -
+gtbl  itera.unit_versions supabase_auth_admin -
+gtbl  itera.units anon SELECT
+gtbl  itera.units authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  itera.units service_role -
+gtbl  itera.units supabase_auth_admin -
+gtbl  itera.user_badges anon SELECT
+gtbl  itera.user_badges authenticated SELECT
+gtbl  itera.user_badges service_role -
+gtbl  itera.user_badges supabase_auth_admin -
+gtbl  itera.users anon SELECT
+gtbl  itera.users authenticated SELECT,UPDATE
+gtbl  itera.users service_role -
+gtbl  itera.users supabase_auth_admin -
+gtbl  itera.xp_events anon SELECT
+gtbl  itera.xp_events authenticated SELECT
+gtbl  itera.xp_events service_role -
+gtbl  itera.xp_events supabase_auth_admin -
+idx   CREATE INDEX activities_def_id_idx ON itera.activities USING btree (def_id)
+idx   CREATE INDEX activities_status_idx ON itera.activities USING btree (status)
+idx   CREATE INDEX activity_comments_activity_idx ON itera.activity_comments USING btree (activity_id)
+idx   CREATE INDEX activity_comments_unit_version_idx ON itera.activity_comments USING btree (unit_id, unit_version_id)
+idx   CREATE INDEX activity_defs_kind_idx ON itera.activity_defs USING btree (tenant_id, kind)
+idx   CREATE INDEX activity_defs_status_idx ON itera.activity_defs USING btree (tenant_id, status)
+idx   CREATE INDEX activity_defs_tags_gin ON itera.activity_defs USING gin (tags)
+idx   CREATE INDEX activity_defs_tenant_idx ON itera.activity_defs USING btree (tenant_id)
+idx   CREATE INDEX activity_i18n_backup_row_idx ON itera.activity_i18n_backup USING btree (source_table, row_id)
+idx   CREATE INDEX class_stars_session_idx ON itera.class_stars USING btree (session_id)
+idx   CREATE INDEX idx_activities_artifact_policy ON itera.activities USING gin (artifact_policy) WHERE (artifact_policy <> '{}'::jsonb)
+idx   CREATE INDEX idx_activities_lesson ON itera.activities USING btree (lesson_id)
+idx   CREATE INDEX idx_activity_traces_abandoned ON itera.activity_traces USING btree (activity_id) WHERE (outcome = 'abandoned'::text)
+idx   CREATE INDEX idx_activity_traces_activity ON itera.activity_traces USING btree (activity_id)
+idx   CREATE INDEX idx_activity_traces_user ON itera.activity_traces USING btree (user_id)
+idx   CREATE INDEX idx_api_keys_tenant ON itera.api_keys USING btree (tenant_id)
+idx   CREATE INDEX idx_artifacts_sha ON itera.artifacts USING btree (content_sha256)
+idx   CREATE INDEX idx_artifacts_tenant ON itera.artifacts USING btree (tenant_id)
+idx   CREATE INDEX idx_artifacts_tenant_repo_path ON itera.artifacts USING btree (tenant_id, repo_path) WHERE (tenant_id IS NOT NULL)
+idx   CREATE INDEX idx_artifacts_user ON itera.artifacts USING btree (user_id)
+idx   CREATE INDEX idx_artifacts_user_activity_version ON itera.artifacts USING btree (user_id, activity_id, version DESC)
+idx   CREATE INDEX idx_artifacts_user_repo_path ON itera.artifacts USING btree (user_id, repo_path)
+idx   CREATE INDEX idx_billing_invoices_subscription ON billing.invoices USING btree (subscription_id)
+idx   CREATE INDEX idx_billing_invoices_tenant ON billing.invoices USING btree (tenant_id)
+idx   CREATE INDEX idx_billing_subscriptions_customer ON billing.subscriptions USING btree (customer_id)
+idx   CREATE INDEX idx_billing_subscriptions_tenant ON billing.subscriptions USING btree (tenant_id)
+idx   CREATE INDEX idx_billing_webhook_events_type ON billing.webhook_events USING btree (type)
+idx   CREATE INDEX idx_byoc_generations_activity ON itera.byoc_generations USING btree (activity_id, created_at DESC)
+idx   CREATE INDEX idx_byoc_generations_latest ON itera.byoc_generations USING btree (user_id, activity_id, created_at DESC)
+idx   CREATE INDEX idx_class_sessions_live ON itera.class_sessions USING btree (scope, status) WHERE (status = 'live'::itera.class_session_status)
+idx   CREATE INDEX idx_class_sessions_status ON itera.class_sessions USING btree (status)
+idx   CREATE INDEX idx_class_sessions_tenant ON itera.class_sessions USING btree (tenant_id)
+idx   CREATE INDEX idx_lessons_unit ON itera.lessons USING btree (unit_id)
+idx   CREATE INDEX idx_memberships_tenant ON itera.memberships USING btree (tenant_id)
+idx   CREATE INDEX idx_programs_live ON itera.programs USING btree (tenant_id) WHERE (archived_at IS NULL)
+idx   CREATE INDEX idx_programs_tenant ON itera.programs USING btree (tenant_id)
+idx   CREATE INDEX idx_results_user ON itera.activity_results USING btree (user_id)
+idx   CREATE INDEX idx_units_program ON itera.units USING btree (program_id)
+idx   CREATE INDEX media_kind_idx ON itera.media USING btree (kind)
+idx   CREATE INDEX media_tenant_id_idx ON itera.media USING btree (tenant_id)
+idx   CREATE INDEX schema_object_census_captured_at_idx ON itera.schema_object_census USING btree (captured_at DESC)
+idx   CREATE INDEX unit_versions_unit_id_idx ON itera.unit_versions USING btree (unit_id)
+idx   CREATE INDEX users_is_guest_idx ON itera.users USING btree (is_guest) WHERE is_guest
+idx   CREATE UNIQUE INDEX activities_pkey ON itera.activities USING btree (id)
+idx   CREATE UNIQUE INDEX activity_comments_pkey ON itera.activity_comments USING btree (id)
+idx   CREATE UNIQUE INDEX activity_defs_pkey ON itera.activity_defs USING btree (id)
+idx   CREATE UNIQUE INDEX activity_i18n_backup_batch_row_uidx ON itera.activity_i18n_backup USING btree (batch_id, source_table, row_id)
+idx   CREATE UNIQUE INDEX activity_i18n_backup_pkey ON itera.activity_i18n_backup USING btree (id)
+idx   CREATE UNIQUE INDEX activity_results_pkey ON itera.activity_results USING btree (id)
+idx   CREATE UNIQUE INDEX activity_traces_pkey ON itera.activity_traces USING btree (id)
+idx   CREATE UNIQUE INDEX api_keys_key_hash_key ON itera.api_keys USING btree (key_hash)
+idx   CREATE UNIQUE INDEX api_keys_pkey ON itera.api_keys USING btree (id)
+idx   CREATE UNIQUE INDEX artifacts_pkey ON itera.artifacts USING btree (id)
+idx   CREATE UNIQUE INDEX badges_pkey ON itera.badges USING btree (id)
+idx   CREATE UNIQUE INDEX badges_tenant_id_slug_key ON itera.badges USING btree (tenant_id, slug)
+idx   CREATE UNIQUE INDEX byoc_generations_pkey ON itera.byoc_generations USING btree (id)
+idx   CREATE UNIQUE INDEX class_answers_pkey ON itera.class_answers USING btree (session_id, activity_id, user_id)
+idx   CREATE UNIQUE INDEX class_attendance_pkey ON itera.class_attendance USING btree (session_id, user_id)
+idx   CREATE UNIQUE INDEX class_guests_pkey ON itera.class_guests USING btree (session_id, user_id)
+idx   CREATE UNIQUE INDEX class_removals_pkey ON itera.class_removals USING btree (session_id, user_id)
+idx   CREATE UNIQUE INDEX class_sessions_guest_code_key ON itera.class_sessions USING btree (guest_code) WHERE (guest_code IS NOT NULL)
+idx   CREATE UNIQUE INDEX class_sessions_pkey ON itera.class_sessions USING btree (id)
+idx   CREATE UNIQUE INDEX class_stars_pkey ON itera.class_stars USING btree (id)
+idx   CREATE UNIQUE INDEX customers_pkey ON billing.customers USING btree (id)
+idx   CREATE UNIQUE INDEX customers_stripe_customer_id_key ON billing.customers USING btree (stripe_customer_id)
+idx   CREATE UNIQUE INDEX identities_pkey ON itera.identities USING btree (id)
+idx   CREATE UNIQUE INDEX identities_provider_provider_subject_key ON itera.identities USING btree (provider, provider_subject)
+idx   CREATE UNIQUE INDEX invoices_pkey ON billing.invoices USING btree (id)
+idx   CREATE UNIQUE INDEX invoices_stripe_invoice_id_key ON billing.invoices USING btree (stripe_invoice_id)
+idx   CREATE UNIQUE INDEX learner_personalization_pkey ON itera.learner_personalization USING btree (user_id)
+idx   CREATE UNIQUE INDEX lessons_pkey ON itera.lessons USING btree (id)
+idx   CREATE UNIQUE INDEX media_pkey ON itera.media USING btree (id)
+idx   CREATE UNIQUE INDEX media_tenant_id_checksum_key ON itera.media USING btree (tenant_id, checksum)
+idx   CREATE UNIQUE INDEX memberships_pkey ON itera.memberships USING btree (user_id, tenant_id)
+idx   CREATE UNIQUE INDEX programs_pkey ON itera.programs USING btree (id)
+idx   CREATE UNIQUE INDEX programs_tenant_id_slug_key ON itera.programs USING btree (tenant_id, slug)
+idx   CREATE UNIQUE INDEX progress_pkey ON itera.progress USING btree (user_id, activity_id)
+idx   CREATE UNIQUE INDEX schema_migrations_pkey ON itera.schema_migrations USING btree (id)
+idx   CREATE UNIQUE INDEX schema_migrations_repo_filename_idx ON itera.schema_migrations USING btree (repo, filename)
+idx   CREATE UNIQUE INDEX schema_object_census_pkey ON itera.schema_object_census USING btree (id)
+idx   CREATE UNIQUE INDEX subscriptions_pkey ON billing.subscriptions USING btree (id)
+idx   CREATE UNIQUE INDEX subscriptions_stripe_subscription_id_key ON billing.subscriptions USING btree (stripe_subscription_id)
+idx   CREATE UNIQUE INDEX tenants_pkey ON itera.tenants USING btree (id)
+idx   CREATE UNIQUE INDEX tenants_slug_key ON itera.tenants USING btree (slug)
+idx   CREATE UNIQUE INDEX unit_versions_pkey ON itera.unit_versions USING btree (id)
+idx   CREATE UNIQUE INDEX unit_versions_unit_id_version_number_key ON itera.unit_versions USING btree (unit_id, version_number)
+idx   CREATE UNIQUE INDEX units_pkey ON itera.units USING btree (id)
+idx   CREATE UNIQUE INDEX uq_activity_traces_attempt ON itera.activity_traces USING btree (user_id, activity_id, started_at)
+idx   CREATE UNIQUE INDEX uq_billing_customers_tenant ON billing.customers USING btree (tenant_id)
+idx   CREATE UNIQUE INDEX uq_byoc_generations_user_activity_attempt ON itera.byoc_generations USING btree (user_id, activity_id, attempt)
+idx   CREATE UNIQUE INDEX uq_users_dfl_subject ON itera.users USING btree (dfl_subject) WHERE (dfl_subject IS NOT NULL)
+idx   CREATE UNIQUE INDEX user_badges_pkey ON itera.user_badges USING btree (user_id, badge_id)
+idx   CREATE UNIQUE INDEX users_email_key ON itera.users USING btree (email)
+idx   CREATE UNIQUE INDEX users_pkey ON itera.users USING btree (id)
+idx   CREATE UNIQUE INDEX webhook_events_pkey ON billing.webhook_events USING btree (id)
+idx   CREATE UNIQUE INDEX webhook_events_stripe_event_id_key ON billing.webhook_events USING btree (stripe_event_id)
+idx   CREATE UNIQUE INDEX xp_events_activity_complete_uniq ON itera.xp_events USING btree (user_id, reason) WHERE (reason ~~ 'activity_complete:%'::text)
+idx   CREATE UNIQUE INDEX xp_events_pkey ON itera.xp_events USING btree (id)
+pol   itera.activities activities_author_delete cmd=d perm=t roles=authenticated using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.activities activities_author_insert cmd=a perm=t roles=authenticated using=- check=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.activities activities_author_update cmd=w perm=t roles=authenticated using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.activities activities_select_tenant cmd=r perm=t roles=PUBLIC using=((lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) AND ((status = 'published'::itera.activity_status) OR (lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))))) check=-
+pol   itera.activity_comments activity_comments_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.activity_comments activity_comments_owner_delete cmd=d perm=t roles=authenticated using=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid())) check=-
+pol   itera.activity_comments activity_comments_owner_update cmd=w perm=t roles=authenticated using=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid())) check=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid()))
+pol   itera.activity_comments activity_comments_select_tenant cmd=r perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.activity_defs activity_defs_author_delete cmd=d perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=-
+pol   itera.activity_defs activity_defs_author_insert cmd=a perm=t roles=PUBLIC using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.activity_defs activity_defs_author_update cmd=w perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.activity_defs activity_defs_select_tenant cmd=r perm=t roles=PUBLIC using=((tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) AND ((status = 'published'::itera.activity_status) OR (tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.activity_results results_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.activity_results results_select_admin cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.activity_results results_select_instructor cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.activity_traces traces_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.activity_traces traces_select_admin cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.activity_traces traces_select_admin_guest cmd=r perm=t roles=authenticated using=(user_id IN ( SELECT cg.user_id FROM (itera.class_guests cg JOIN itera.class_sessions s ON ((s.id = cg.session_id))) WHERE (s.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.activity_traces traces_select_instructor cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.artifacts artifacts_read_tenant_admin cmd=r perm=t roles=authenticated using=((tenant_id IS NOT NULL) AND (EXISTS ( SELECT 1 FROM itera.memberships m WHERE ((m.user_id = itera.current_itera_user_id()) AND (m.tenant_id = artifacts.tenant_id) AND (m.role = ANY (ARRAY['tenant_admin'::itera.member_role, 'owner'::itera.member_role])))))) check=-
+pol   itera.artifacts artifacts_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.badges badges_select_tenant cmd=r perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.byoc_generations byoc_generations_rw_self cmd=* perm=t roles=authenticated using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.byoc_generations byoc_generations_select_admin cmd=r perm=t roles=authenticated using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.byoc_generations byoc_generations_select_author cmd=r perm=t roles=authenticated using=(activity_id IN ( SELECT a.id FROM (((itera.activities a JOIN itera.lessons l ON ((l.id = a.lesson_id))) JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.byoc_generations byoc_generations_select_instructor cmd=r perm=t roles=authenticated using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.class_answers class_answers_insert_self cmd=a perm=t roles=authenticated using=- check=((user_id = itera.current_itera_user_id()) AND (session_id IN ( SELECT s.id FROM itera.class_sessions s)))
+pol   itera.class_answers class_answers_select cmd=r perm=t roles=authenticated using=((user_id = itera.current_itera_user_id()) OR (session_id IN ( SELECT s.id FROM itera.class_sessions s WHERE (s.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids))))) check=-
+pol   itera.class_answers class_answers_update_self cmd=w perm=t roles=authenticated using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.class_attendance class_attendance_insert_self cmd=a perm=t roles=authenticated using=- check=((user_id = itera.current_itera_user_id()) AND (session_id IN ( SELECT s.id FROM itera.class_sessions s)))
+pol   itera.class_attendance class_attendance_select cmd=r perm=t roles=authenticated using=((user_id = itera.current_itera_user_id()) OR (session_id IN ( SELECT s.id FROM itera.class_sessions s WHERE (s.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids))))) check=-
+pol   itera.class_guests class_guests_select_instructor cmd=r perm=t roles=authenticated using=(session_id IN ( SELECT s.id FROM itera.class_sessions s WHERE (s.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.class_guests class_guests_select_self cmd=r perm=t roles=authenticated using=(user_id = itera.current_itera_user_id()) check=-
+pol   itera.class_removals class_removals_delete_staff cmd=d perm=t roles=authenticated using=itera.can_control_class_topic(('class:'::text || (session_id)::text)) check=-
+pol   itera.class_removals class_removals_insert_staff cmd=a perm=t roles=authenticated using=- check=((removed_by = itera.current_itera_user_id()) AND itera.can_control_class_topic(('class:'::text || (session_id)::text)))
+pol   itera.class_removals class_removals_select cmd=r perm=t roles=authenticated using=((user_id = itera.current_itera_user_id()) OR (session_id IN ( SELECT s.id FROM itera.class_sessions s WHERE (s.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids))))) check=-
+pol   itera.class_sessions class_sessions_insert_staff cmd=a perm=t roles=authenticated using=- check=((instructor_id = itera.current_itera_user_id()) AND (tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))
+pol   itera.class_sessions class_sessions_select cmd=r perm=t roles=PUBLIC using=(((scope = 'global'::itera.class_scope) AND (status = 'live'::itera.class_session_status)) OR (tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) OR itera.is_current_user_guest_of(id)) check=-
+pol   itera.class_sessions class_sessions_update_staff cmd=w perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids))
+pol   itera.class_stars class_stars_insert_staff cmd=a perm=t roles=authenticated using=- check=((awarded_by = itera.current_itera_user_id()) AND itera.can_control_class_topic(('class:'::text || (session_id)::text)))
+pol   itera.class_stars class_stars_select cmd=r perm=t roles=authenticated using=itera.can_access_class_topic(('class:'::text || (session_id)::text)) check=-
+pol   itera.identities identities_select_self cmd=r perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=-
+pol   itera.learner_personalization personalization_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.lessons lessons_author_delete cmd=d perm=t roles=authenticated using=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.lessons lessons_author_insert cmd=a perm=t roles=authenticated using=- check=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.lessons lessons_author_update cmd=w perm=t roles=authenticated using=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.lessons lessons_select_tenant cmd=r perm=t roles=PUBLIC using=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) check=-
+pol   itera.media media_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.media media_author_update cmd=w perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.media media_select_tenant cmd=r perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.memberships memberships_select_admin cmd=r perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)) check=-
+pol   itera.memberships memberships_select_instructor cmd=r perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)) check=-
+pol   itera.memberships memberships_select_self cmd=r perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=-
+pol   itera.programs programs_author_delete cmd=d perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=-
+pol   itera.programs programs_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.programs programs_author_update cmd=w perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.programs programs_select_tenant cmd=r perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.progress progress_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
+pol   itera.progress progress_select_admin cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.progress progress_select_instructor cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.tenants tenants_select_member cmd=r perm=t roles=authenticated using=(id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.tenants tenants_select_public cmd=r perm=t roles=PUBLIC using=(slug !~~ 'plg-%'::text) check=-
+pol   itera.unit_versions unit_versions_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
+pol   itera.unit_versions unit_versions_select_tenant cmd=r perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
+pol   itera.units units_author_delete cmd=d perm=t roles=authenticated using=(program_id IN ( SELECT p.id FROM itera.programs p WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.units units_author_insert cmd=a perm=t roles=authenticated using=- check=(program_id IN ( SELECT p.id FROM itera.programs p WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.units units_author_update cmd=w perm=t roles=authenticated using=(program_id IN ( SELECT p.id FROM itera.programs p WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=(program_id IN ( SELECT p.id FROM itera.programs p WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
+pol   itera.units units_select_tenant cmd=r perm=t roles=PUBLIC using=(program_id IN ( SELECT p.id FROM itera.programs p WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) check=-
+pol   itera.user_badges user_badges_select_self cmd=r perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=-
+pol   itera.users users_select_admin cmd=r perm=t roles=PUBLIC using=(id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
+pol   itera.users users_select_instructor cmd=r perm=t roles=PUBLIC using=(id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
+pol   itera.users users_select_self cmd=r perm=t roles=PUBLIC using=(id = itera.current_itera_user_id()) check=-
+pol   itera.users users_update_self cmd=w perm=t roles=PUBLIC using=(id = itera.current_itera_user_id()) check=(id = itera.current_itera_user_id())
+pol   itera.xp_events xp_select_self cmd=r perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=-
+pol   realtime.messages itera_class_control_send cmd=a perm=t roles=authenticated using=- check=((realtime.topic() ~~ 'class:%:ctrl'::text) AND itera.can_control_class_topic(realtime.topic()))
+pol   realtime.messages itera_class_cursor_send cmd=a perm=t roles=authenticated using=- check=((realtime.topic() ~~ 'class:%:cursor'::text) AND itera.can_access_class_topic(realtime.topic()))
+pol   realtime.messages itera_class_members_read cmd=r perm=t roles=authenticated using=((realtime.topic() ~~ 'class:%'::text) AND itera.can_access_class_topic(realtime.topic())) check=-
+pol   realtime.messages itera_class_members_send cmd=a perm=t roles=authenticated using=- check=((realtime.topic() ~~ 'class:%'::text) AND (split_part(realtime.topic(), ':'::text, 3) = ''::text) AND itera.can_access_class_topic(realtime.topic()))
+pub   supabase_realtime itera.class_sessions
+rel   billing.customers r rls=t force=f
+rel   billing.invoices r rls=t force=f
+rel   billing.subscriptions r rls=t force=f
+rel   billing.webhook_events r rls=t force=f
+rel   itera.activities r rls=t force=f
+rel   itera.activity_comments r rls=t force=f
+rel   itera.activity_defs r rls=t force=f
+rel   itera.activity_i18n_backup r rls=t force=f
+rel   itera.activity_i18n_backup_id_seq S rls=f force=f
+rel   itera.activity_results r rls=t force=f
+rel   itera.activity_traces r rls=t force=f
+rel   itera.api_keys r rls=t force=f
+rel   itera.artifacts r rls=t force=f
+rel   itera.badges r rls=t force=f
+rel   itera.byoc_generations r rls=t force=f
+rel   itera.class_answers r rls=t force=f
+rel   itera.class_attendance r rls=t force=f
+rel   itera.class_guests r rls=t force=f
+rel   itera.class_removals r rls=t force=f
+rel   itera.class_sessions r rls=t force=f
+rel   itera.class_stars r rls=t force=f
+rel   itera.identities r rls=t force=f
+rel   itera.learner_personalization r rls=t force=f
+rel   itera.lessons r rls=t force=f
+rel   itera.media r rls=t force=f
+rel   itera.memberships r rls=t force=f
+rel   itera.my_subscription v rls=f force=f
+rel   itera.programs r rls=t force=f
+rel   itera.progress r rls=t force=f
+rel   itera.schema_migrations r rls=f force=f
+rel   itera.schema_object_census r rls=f force=f
+rel   itera.schema_object_census_id_seq S rls=f force=f
+rel   itera.tenants r rls=t force=f
+rel   itera.unit_versions r rls=t force=f
+rel   itera.units r rls=t force=f
+rel   itera.user_badges r rls=t force=f
+rel   itera.users r rls=t force=f
+rel   itera.xp_events r rls=t force=f
+seq   itera.activity_i18n_backup_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
+seq   itera.schema_object_census_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
+trg   CREATE TRIGGER activity_comments_set_updated_at BEFORE UPDATE ON itera.activity_comments FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at()
+trg   CREATE TRIGGER activity_defs_set_updated_at BEFORE UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at()
+trg   CREATE TRIGGER activity_defs_sync_instances AFTER UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.sync_activity_def_to_instances()
+trg   CREATE TRIGGER on_auth_user_created_provision_itera AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION itera.handle_new_federated_user()
+type  itera.activity_kind e [diagram,document,quiz,code,concept,single_choice,multi_choice,match,order,video,sandbox_scenario,concept_reveal,chat_sandbox,terminal_sandbox]
+type  itera.activity_status e [draft,published]
+type  itera.artifact_type e [diagram,document,site,code,text]
+type  itera.class_scope e [global,tenant]
+type  itera.class_session_status e [pending,live,ended]
+type  itera.identity_provider e [dfl,google,oidc,password]
+type  itera.media_kind e [audio,image,video]
+type  itera.member_role e [learner,instructor,tenant_admin,owner,author]
+type  itera.progress_status e [not_started,in_progress,completed]
+view  itera.my_subscription daa750eb7bbb
