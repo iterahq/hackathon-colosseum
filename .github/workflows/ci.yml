@@ -204,6 +204,59 @@ jobs:
           fi
           echo "ok: the @devfellowship/components content glob and the token import are both doing their job"
 
+      # ────────────────────────────────────────────────────────────────────
+      # THE ITERA BRAND OVERRIDE IS STILL ATTACHED
+      #
+      # `src/index.css` re-points the DS brand tokens at Itera evergreen
+      # (Tainan, 2026-08-12, plan `20260812-design-implementation-flow`, B).
+      # Most of it rides on eight `--s-*` declarations and needs no guard: if
+      # they disappear the login CTA turns amber and the capture diff shouts.
+      #
+      # Three shared components are different. `Button`, `Badge` and `Dialog`
+      # bake `#E07A4A` into their focus-ring CLASS NAME instead of reading a
+      # token, so the override reaches them through an attribute selector that
+      # matches that literal string. A DS release that reformats the string —
+      # a space, a different surface token, a rename — makes the selector stop
+      # matching, and the failure is SILENT: the ring simply goes back to amber
+      # on a screen no capture focuses.
+      #
+      # So assert both halves of each pair. The upstream rule proves the string
+      # is still what the override targets; the override rule proves the
+      # override still ships.
+      # ────────────────────────────────────────────────────────────────────
+      - name: The shared focus rings are Itera evergreen
+        run: |
+          set -euo pipefail
+          CSS="$(ls dist/assets/*.css | head -1)"
+          test -n "$CSS" || { echo "::error::no built CSS to check"; exit 1; }
+          # `grep -F`: these patterns carry literal backslashes, brackets and
+          # parentheses that a basic regex would eat.
+          check() {
+            grep -qF -- "$2" "$CSS" || { echo "::error::$1"; exit 1; }
+          }
+          check "the shared Button no longer emits the amber ring class this override targets - re-read its class string in node_modules/@devfellowship/components/dist/index.js and update the selector in src/index.css" \
+            '.focus-visible\:shadow-\[0_0_0_2px_var\(--s-surface-page\)\,_0_0_0_3px_\#E07A4A\]'
+          check "the Button focus-ring override is missing from src/index.css - every shared Button now draws a DFL amber ring around an Itera evergreen fill" \
+            'html [class*="var(--s-surface-page),_0_0_0_3px_#E07A4A"]:focus-visible'
+          check "the shared Badge no longer emits the amber ring class this override targets - see the Button message above" \
+            '.focus-visible\:\[box-shadow\:0_0_0_2px_var\(--background\)\,0_0_0_3px_\#E07A4A\]'
+          check "the Badge focus-ring override is missing from src/index.css" \
+            'html [class*="var(--background),0_0_0_3px_#E07A4A"]:focus-visible'
+          check "the shared Dialog close button no longer emits the amber ring class this override targets - see the Button message above" \
+            '.focus-visible\:shadow-\[0_0_0_2px_var\(--c-dialog-bg\)\,_0_0_0_3px_\#E07A4A\]'
+          check "the Dialog focus-ring override is missing from src/index.css" \
+            'html [class*="var(--c-dialog-bg),_0_0_0_3px_#E07A4A"]:focus-visible'
+          # And the brand tokens themselves. `--p-amber-500` must SURVIVE: the
+          # override is scoped to the semantic layer on purpose, so a component
+          # that wants amber-as-amber still gets it.
+          check "the Itera brand override is gone from src/index.css - the shared components render DFL amber" \
+            '--s-brand-solid:#3fd17f'
+          check "--s-border-focus is no longer evergreen - shared inputs and textareas draw an amber focus ring" \
+            '--s-border-focus:#62d996'
+          check "--p-amber-500 was overwritten - the override must stay on the SEMANTIC layer, never the primitives" \
+            '--p-amber-500:#e07a4a'
+          echo "ok: the Itera brand override covers the tokens and all three hardcoded focus rings"
+
       - name: Test
         run: npm test
 
