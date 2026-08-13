@@ -28,8 +28,28 @@ name: E2E (Itera↔Fellowship)
 #
 # ⚠️ WHAT THIS SUITE TOUCHES: live production. app.iterahq.dev, api.iterahq.dev
 # and learn.devfellowship.com, daily, as a real tenant_admin of the `itera`
-# tenant. Reads are not free — opening a diagram lesson writes an attempt row.
-# Any spec added here inherits that.
+# tenant. Any spec added here inherits that.
+#
+# 📏 MEASURED, 2026-08-13 — and it corrects the sentence that used to sit here
+# ("opening a diagram lesson writes an attempt row"). A full run was diffed
+# against exact row counts of ALL 30 tables in the `itera` schema, before and
+# after. Exactly ONE table moved: `class_sessions`, +3 rows, all as the
+# `itera-smoke` tenant_admin — the live-sidebar test in `responsive-shell.spec.ts`
+# starting and ending a class once per viewport project. `activity_results`,
+# `activity_traces`, `progress`, `class_answers`, `xp_events` and `artifacts` did
+# not move at all.
+#
+# So this suite currently writes NO learner rows, for three separate reasons, and
+# none of them is a defect in the app:
+#   · the specs that would write as a LEARNER (`artifact-persistence`,
+#     `live-instructor-routed`) skip — `ITERA_E2E_ALUNO1/2_*`, `ITERA_E2E_PROF_*`
+#     and `ITERA_E2E_LESSON_ID` are `tier: 'optional'` and were never provisioned
+#     as Actions secrets. They exist in Infisical `/apps/itera`;
+#   · `author-activity-kinds` drives the author harness, which writes nothing BY
+#     DESIGN (that boundary is what keeps author testing out of learner data);
+#   · `itera-fellowship` is the one genuine write spec that runs, and it FAILS
+#     before it settles anything.
+# Do not read the absent rows as "the app stopped recording attempts".
 #
 # Also carries the per-kind author-harness smoke (plan
 # 20260728-itera-activity-testing, Fase 4 / tier T3): one activity per kind
