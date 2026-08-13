@@ -154,6 +154,133 @@
             ]
           }
         ]
+      },
+      {
+        "ordinal": 1,
+        "title_i18n": {
+          "pt": "Cobertura de kinds do autor",
+          "en": "Author kind coverage"
+        },
+        "_comment": [
+          "WHY A SECOND UNIT EXISTS, AND WHY IT IS SEPARATE FROM UNIT 0.",
+          "",
+          "e2e/author-activity-kinds.spec.ts drives one activity PER KIND through",
+          "the author test harness. It does not pin ids: it crawls the author",
+          "surface, and RLS scopes that crawl to itera.current_author_tenant_ids()",
+          "— the tenants where the running identity may author. Today",
+          "`itera-smoke@iterahq.dev` is tenant_admin of BOTH `itera` and `qa-e2e`,",
+          "so the crawl reaches the `itera` tenant's quiz/document/diagram rows.",
+          "",
+          "Plan 20260813-itera-test-identity-tenant-isolation, round-1 question,",
+          "answered A by Tainan 2026-08-13: `itera-smoke` leaves the `itera`",
+          "tenant. On the day the revoke runs, the crawl stops reaching `itera`",
+          "content. Without this unit, the spec would silently lose `quiz` and",
+          "`diagram` — it degrades to a LOUD skip, never to a false pass, but a",
+          "skip is not coverage.",
+          "",
+          "So these two kinds are seeded here BEFORE the revoke, not after. The",
+          "unit is separate from unit 0 on purpose: unit 0 serves",
+          "artifact-persistence (reflection must be ordinal 0) and",
+          "live-instructor-routed (needs something to advance to). Appending to",
+          "it would couple two unrelated specs to one lesson's ordering.",
+          "",
+          "This unit adds no kind the `itera` tenant did not already give the",
+          "spec, so coverage after the revoke equals coverage before it, plus the",
+          "`single_choice` that unit 0 already contributes."
+        ],
+        "lessons": [
+          {
+            "ordinal": 0,
+            "key": "kinds",
+            "title_i18n": {
+              "pt": "Aula de cobertura de kinds",
+              "en": "Kind coverage lesson"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "kind": "quiz",
+                "status": "published",
+                "spec": {
+                  "prompt": {
+                    "pt": "QA — esta pergunta existe só para o teste automatizado.",
+                    "en": "QA — this question exists only for the automated test."
+                  },
+                  "question": {
+                    "pt": "QA — esta pergunta existe só para o teste automatizado.",
+                    "en": "QA — this question exists only for the automated test."
+                  },
+                  "options": [
+                    {
+                      "text": {
+                        "pt": "Esta é a opção correta",
+                        "en": "This is the correct option"
+                      },
+                      "isCorrect": true
+                    },
+                    {
+                      "text": {
+                        "pt": "Esta não é a opção correta",
+                        "en": "This is not the correct option"
+                      },
+                      "isCorrect": false
+                    },
+                    {
+                      "text": {
+                        "pt": "Esta também não é a opção correta",
+                        "en": "This is not the correct option either"
+                      },
+                      "isCorrect": false
+                    }
+                  ],
+                  "explanation": {
+                    "pt": "Conteúdo de QA. Não é material pedagógico.",
+                    "en": "QA content. This is not teaching material."
+                  }
+                },
+                "rubric": {},
+                "_comment": [
+                  "Shape copied from a production `quiz` row in the `itera` tenant,",
+                  "read 2026-08-13 — the contract the renderer actually consumes,",
+                  "not one invented here. `prompt` AND `question` both carry the",
+                  "text because the production row does; the renderer reads one and",
+                  "an authoring surface reads the other.",
+                  "",
+                  "author-activity-kinds drives this kind to `verdict`: it clicks",
+                  "`quiz-option` then `quiz-submit`, so the options array is the",
+                  "load-bearing part. Exactly one isCorrect."
+                ]
+              },
+              {
+                "ordinal": 1,
+                "kind": "diagram",
+                "status": "published",
+                "spec": {
+                  "prompt": {
+                    "pt": "QA — diagrama de teste automatizado. Nada aqui é conteúdo real.",
+                    "en": "QA — automated test diagram. Nothing here is real content."
+                  }
+                },
+                "rubric": {},
+                "_comment": [
+                  "Shape copied from the minimal production `diagram` row (a bare",
+                  "i18n `prompt`, empty rubric), read 2026-08-13.",
+                  "",
+                  "author-activity-kinds drives this kind at depth `render`, via",
+                  "expectContent(): the shell must mount and `activity-done` must",
+                  "NOT exist, because a diagram is content and content has no",
+                  "completion to click. No `imageUrl`: the other production row",
+                  "carries one that points at a third-party CDN, and a fixture that",
+                  "depends on a foreign host fails for reasons that have nothing to",
+                  "do with this product.",
+                  "",
+                  "`rubric: {}` and no `mode: ai-judge`: an AI-judged rubric would",
+                  "make a QA fixture call a model on every run."
+                ]
+              }
+            ]
+          }
+        ]
       }
     ]
   },

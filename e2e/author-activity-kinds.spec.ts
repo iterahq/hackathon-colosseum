@@ -15,19 +15,39 @@
  *
  * ## ⚠️ Which persona this run actually represents
  *
- * `ITERA_SMOKE_*` is `itera-smoke@iterahq.dev`: **`tenant_admin` of the `itera`
- * tenant**. It is NOT a clean learner, and as of 2026-07-28 it is NOT `author`
- * in `dfl-batch` either. So a green run here proves the AUTHOR/TENANT-ADMIN
- * surface of the `itera` tenant — nothing about the learner path, and nothing
- * about content owned by another tenant.
+ * `ITERA_SMOKE_*` is `itera-smoke@iterahq.dev`. It is NOT a clean learner, and
+ * as of 2026-07-28 it is NOT `author` in `dfl-batch` either. So a green run
+ * here proves an AUTHOR/TENANT-ADMIN surface — nothing about the learner path,
+ * and nothing about content owned by a tenant this identity cannot author in.
  *
- * That has a direct, measurable consequence: RLS scopes discovery to the
- * `itera` tenant, which today authors only `quiz`, `document` and `diagram`.
- * The other eight kinds live in `dfl-batch` / `plg-*` and are INVISIBLE to this
- * identity, so their cases skip with an explicit reason. **A run that is
- * green-with-skips proves the gating works — it does NOT prove those kinds
- * work.** The skip census prints every one of them at the end of the run, so
- * this can no longer be mistaken for coverage.
+ * That has a direct, measurable consequence: RLS scopes discovery to
+ * `itera.current_author_tenant_ids()`. The other kinds live in `dfl-batch` /
+ * `plg-*` and are INVISIBLE to this identity, so their cases skip with an
+ * explicit reason. **A run that is green-with-skips proves the gating works —
+ * it does NOT prove those kinds work.** The skip census prints every one of
+ * them at the end of the run, so this can no longer be mistaken for coverage.
+ *
+ * ### Which tenants that is, and why it is changing
+ *
+ * Plan `20260813-itera-test-identity-tenant-isolation` moves the test
+ * identities into the `qa-e2e` tenant so they stop being counted as real
+ * learners. Round-1 question, answered **A** by Tainan on 2026-08-13:
+ * `itera-smoke` leaves the `itera` tenant, and the specs that depend on it
+ * being `tenant_admin` there point at QA-tenant content instead.
+ *
+ * | when | tenants this identity may author in | kinds the crawl reaches |
+ * |---|---|---|
+ * | before the revoke | `itera` + `qa-e2e` | quiz · document · diagram · single_choice |
+ * | after the revoke | `qa-e2e` only | quiz · document · diagram · single_choice |
+ *
+ * The row is the same because `db/seeds/qa-tenant.fixture.json` seeds `quiz`
+ * and `diagram` into the QA tenant **before** the revoke runs, in unit 1. Read
+ * that unit's `_comment` for the reasoning. Run `npm run seed:qa-tenant` after
+ * pulling this change; the seed is idempotent.
+ *
+ * ⚠️ Do not "simplify" by deleting unit 1 from the fixture. Without it the
+ * revoke takes `quiz` and `diagram` out of this spec's reach, and the loss
+ * shows up as two more lines in the skip census rather than as a failure.
  *
  * To cover a kind this persona cannot see, provision an identity that can (e.g.
  * `ITERA_E2E_AUTHOR_*`) — do not relabel the smoke user as something it is not.
