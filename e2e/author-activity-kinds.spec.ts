@@ -10,7 +10,8 @@
  *
  * ## Where this runs — ADR-3, binding
  *
- * `.github/workflows/e2e.yml` ONLY (workflow_dispatch + daily 06:00 UTC cron).
+ * `.github/workflows/e2e.yml` ONLY (workflow_dispatch + a WEEKLY cron, Monday
+ * 06:00 UTC — it was daily until 2026-08-13; Tainan asked for weekly).
  * **Never `ci.yml`.** Playwright stays out of the per-PR gate.
  *
  * ## ⚠️ Which persona this run actually represents
@@ -37,17 +38,27 @@
  *
  * | when | tenants this identity may author in | kinds the crawl reaches |
  * |---|---|---|
- * | before the revoke | `itera` + `qa-e2e` | quiz · document · diagram · single_choice |
- * | after the revoke | `qa-e2e` only | quiz · document · diagram · single_choice |
+ * | before the revoke | `itera` + `qa-e2e` | quiz · document · diagram · single_choice · **order** |
+ * | after the revoke, before this fix | `qa-e2e` only | quiz · document · diagram · single_choice |
+ * | now | `qa-e2e` only | quiz · document · diagram · single_choice · order |
  *
- * The row is the same because `db/seeds/qa-tenant.fixture.json` seeds `quiz`
- * and `diagram` into the QA tenant **before** the revoke runs, in unit 1. Read
- * that unit's `_comment` for the reasoning. Run `npm run seed:qa-tenant` after
- * pulling this change; the seed is idempotent.
+ * `db/seeds/qa-tenant.fixture.json` is what holds that last row up: unit 1
+ * seeds `quiz`, `diagram` and `order` into the QA tenant. Read that unit's
+ * `_comment` for the reasoning. Run `npm run seed:qa-tenant` after pulling this
+ * change; the seed is idempotent.
  *
- * ⚠️ Do not "simplify" by deleting unit 1 from the fixture. Without it the
- * revoke takes `quiz` and `diagram` out of this spec's reach, and the loss
- * shows up as two more lines in the skip census rather than as a failure.
+ * ⚠️ THE MIDDLE ROW IS THE LESSON, and it is not hypothetical — it was true
+ * for part of 2026-08-13. The seed shipped with `quiz` and `diagram`, from a
+ * hand-written list of what `itera` lent the crawl. The list MISSED `order`:
+ * `itera` published two `order` activities in `lcpwci-matriz-gramatica-v0`,
+ * units 1 and 3, both inside `MAX_UNITS`. So the revoke cut coverage from five
+ * kinds to four, and this spec REPORTED SUCCESS while it happened, because an
+ * unreachable kind becomes `skipBlocked` and a skip does not fail a run.
+ *
+ * Two rules follow. Do not "simplify" by deleting unit 1 — that repeats the
+ * loss on purpose. And never state what the crawl reaches from prose: derive
+ * it, as `itera-smoke` with RLS enforced, from
+ * `itera.current_author_tenant_ids()`, and compare it against `CASES` below.
  *
  * To cover a kind this persona cannot see, provision an identity that can (e.g.
  * `ITERA_E2E_AUTHOR_*`) — do not relabel the smoke user as something it is not.
@@ -323,7 +334,10 @@ async function discover(p: Page) {
   }
 
   discoverySummary =
-    `scanned ${scanned}/${units.length} unit canvas(es) as tenant_admin(itera); ` +
+    // The tenant is NOT named here on purpose. It used to say "tenant_admin
+    // (itera)", which stopped being true the day the revoke ran and then
+    // misreported every skip reason for the rest of that run.
+    `scanned ${scanned}/${units.length} unit canvas(es) in this identity's author scope; ` +
     `kinds visible: ${[...FOUND.keys()].sort().join(', ') || 'none'}`;
   // Surfaced in the run log so a green-with-skips run is self-explaining.
   console.log(`[author-activity-kinds] ${discoverySummary}`);
@@ -350,7 +364,7 @@ test.describe('author test harness — one activity per kind', () => {
       const id = FOUND.get(kind);
       if (!id) {
         skipBlocked(
-          `no '${kind}' activity is visible to this persona (tenant_admin of 'itera'). ${discoverySummary}. ` +
+          `no '${kind}' activity is visible to this persona. ${discoverySummary}. ` +
             `This is a SKIP, not a pass — the kind is UNVERIFIED. Pin one with ITERA_SMOKE_ACTIVITY_IDS ` +
             `or use an identity whose tenant authors this kind.`
         );

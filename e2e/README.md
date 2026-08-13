@@ -5,7 +5,7 @@ Two kinds of spec live here, and they run in different places.
 | | where it runs | what it needs |
 |---|---|---|
 | **Hermetic** (`activity-baseline`, `source-stamp`, `capture-*`) | blocking on **every PR** (`ci.yml`) | a `vite preview` of this tree. No credential. |
-| **Live** (everything else) | `e2e.yml` only — `workflow_dispatch` + daily cron | the deployed player, plus real identities |
+| **Live** (everything else) | `e2e.yml` only — `workflow_dispatch` + **weekly** cron (Monday 06:00 UTC; daily until 2026-08-13) | the deployed player, plus real identities |
 
 Every live spec is capability-gated through `support/gate.ts`. Read
 `support/capabilities.ts` first: it holds the registry, the tiers, and the rule

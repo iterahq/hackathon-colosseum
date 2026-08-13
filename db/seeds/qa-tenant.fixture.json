@@ -167,26 +167,40 @@
           "e2e/author-activity-kinds.spec.ts drives one activity PER KIND through",
           "the author test harness. It does not pin ids: it crawls the author",
           "surface, and RLS scopes that crawl to itera.current_author_tenant_ids()",
-          "— the tenants where the running identity may author. Today",
-          "`itera-smoke@iterahq.dev` is tenant_admin of BOTH `itera` and `qa-e2e`,",
-          "so the crawl reaches the `itera` tenant's quiz/document/diagram rows.",
+          "— the tenants where the running identity may author. Until the revoke",
+          "`itera-smoke@iterahq.dev` was tenant_admin of BOTH `itera` and",
+          "`qa-e2e`, so the crawl also reached the `itera` tenant's rows.",
           "",
           "Plan 20260813-itera-test-identity-tenant-isolation, round-1 question,",
           "answered A by Tainan 2026-08-13: `itera-smoke` leaves the `itera`",
-          "tenant. On the day the revoke runs, the crawl stops reaching `itera`",
-          "content. Without this unit, the spec would silently lose `quiz` and",
-          "`diagram` — it degrades to a LOUD skip, never to a false pass, but a",
+          "tenant. The revoke RAN on 2026-08-13, so the crawl no longer reaches",
+          "`itera` content at all. Without this unit the spec would silently lose",
+          "those kinds — it degrades to a LOUD skip, never to a false pass, but a",
           "skip is not coverage.",
           "",
-          "So these two kinds are seeded here BEFORE the revoke, not after. The",
-          "unit is separate from unit 0 on purpose: unit 0 serves",
-          "artifact-persistence (reflection must be ordinal 0) and",
-          "live-instructor-routed (needs something to advance to). Appending to",
-          "it would couple two unrelated specs to one lesson's ordering.",
+          "So the kinds are seeded here, and the unit is separate from unit 0 on",
+          "purpose: unit 0 serves artifact-persistence (reflection must be",
+          "ordinal 0) and live-instructor-routed (needs something to advance to).",
+          "Appending to it would couple two unrelated specs to one lesson's",
+          "ordering.",
           "",
-          "This unit adds no kind the `itera` tenant did not already give the",
-          "spec, so coverage after the revoke equals coverage before it, plus the",
-          "`single_choice` that unit 0 already contributes."
+          "⚠️ THE KIND LIST HERE WAS INCOMPLETE ONCE, AND IT COST COVERAGE.",
+          "This unit shipped with `quiz` and `diagram` only, on the belief that",
+          "those were the kinds `itera` lent the crawl. `itera` also published",
+          "TWO `order` activities (program `lcpwci-matriz-gramatica-v0`, units 1",
+          "and 3, both inside MAX_UNITS=8), which nobody enumerated. The revoke",
+          "therefore took author coverage from FIVE kinds to four, and the spec",
+          "stayed green while it happened. `order` was added on 2026-08-13 to",
+          "restore the fifth.",
+          "",
+          "Read that as a rule, not as an anecdote: a kind is 'covered' only when",
+          "a row in THIS file produces it. Before you trust any statement about",
+          "what the crawl reaches, re-derive it — as itera-smoke, with RLS",
+          "enforced — from itera.current_author_tenant_ids(). Do not trust a",
+          "prose list, including this one.",
+          "",
+          "Coverage today, all five from `qa-e2e`: `document` and `single_choice`",
+          "from unit 0, `quiz`, `diagram` and `order` from this unit."
         ],
         "lessons": [
           {
@@ -276,6 +290,81 @@
                   "",
                   "`rubric: {}` and no `mode: ai-judge`: an AI-judged rubric would",
                   "make a QA fixture call a model on every run."
+                ]
+              },
+              {
+                "ordinal": 2,
+                "kind": "order",
+                "status": "published",
+                "spec": {
+                  "instruction": {
+                    "text": {
+                      "pt": "QA — coloque os passos na ordem correta. Nada aqui é conteúdo real.",
+                      "en": "QA — put the steps in the correct order. Nothing here is real content."
+                    }
+                  },
+                  "items": [
+                    {
+                      "id": "1",
+                      "label": {
+                        "pt": "QA — primeiro passo",
+                        "en": "QA — first step"
+                      }
+                    },
+                    {
+                      "id": "2",
+                      "label": {
+                        "pt": "QA — segundo passo",
+                        "en": "QA — second step"
+                      }
+                    },
+                    {
+                      "id": "3",
+                      "label": {
+                        "pt": "QA — terceiro passo",
+                        "en": "QA — third step"
+                      }
+                    },
+                    {
+                      "id": "4",
+                      "label": {
+                        "pt": "QA — quarto passo",
+                        "en": "QA — fourth step"
+                      }
+                    }
+                  ],
+                  "correct_order": ["1", "2", "3", "4"]
+                },
+                "rubric": {},
+                "_comment": [
+                  "THE FIFTH KIND, and the one nobody enumerated. Added 2026-08-13,",
+                  "after the revoke. Shape copied from the two production `order`",
+                  "rows in the `itera` tenant (program `lcpwci-matriz-gramatica-v0`,",
+                  "units 1 and 3): `instruction.text` as a bilingual bag, `items[]`",
+                  "with bilingual `label`, `correct_order` as a permutation of the",
+                  "ids, and an empty rubric.",
+                  "",
+                  "WHY IT EXISTS. Unit 1 was written to carry `quiz` and `diagram`,",
+                  "the kinds the `itera` tenant used to lend the crawl. That list was",
+                  "INCOMPLETE: `itera` also published `order`, inside the crawl bound",
+                  "MAX_UNITS=8. When `itera-smoke` left the `itera` tenant the crawl",
+                  "lost `order` too, and author-surface coverage fell from five kinds",
+                  "to four while the spec stayed green — the loss shows up only as",
+                  "one more line in the skip census. This entry restores the fifth.",
+                  "",
+                  "FOUR items, and the count is load-bearing in two ways.",
+                  "`OrderSpecSchema` demands at least two, and `correct_order` must",
+                  "be an exact permutation of `items[].id`. And the spec drives this",
+                  "kind to `verdict`: it clicks the first `order-down` and then",
+                  "`order-submit`. `SubmitButton` stays disabled until the learner",
+                  "MOVES an item (the `touched` gate in OrderActivity), so a list too",
+                  "short to nudge would hang the click, not skip the test.",
+                  "",
+                  "The verdict may be correct or incorrect and the spec accepts",
+                  "either — it asserts `data-correct` is `true` or `false`, never a",
+                  "particular value. `learnerShuffleAvoidingSolution` deals a start",
+                  "order that is never the solution, per learner, so a fixture cannot",
+                  "pin which one comes out."
                 ]
               }
             ]
