@@ -313,6 +313,21 @@ jobs:
   # keep passing if the detector were broken. The last step below runs the SAME
   # detector over the build this job just made WITH the flag and requires it to
   # find stamps. One detector, two builds, opposite verdicts, every PR.
+  #
+  # AND THE CAPTURE BUILT ON TOP OF IT (2026-08-13)
+  #
+  # The `capture` project of the same config writes the pair a designer
+  # actually consumes: `screenshot.png` + `regions.json` per screen, where a
+  # coordinate resolves to a file. Its hardest assertion is that the SAME
+  # screen captured twice is BYTE-IDENTICAL — everything downstream compares
+  # two screenshots and asks whether the diff reached zero, and that question
+  # has no answer if an unchanged screen already churns.
+  #
+  # ⚠️ It is a GATE and not an artifact-producing afterthought, because the
+  # non-determinism it catches is INTERMITTENT: the harness capture drifted by
+  # 19 pixels in about one run out of three before `CAPTURE_LAUNCH_ARGS` fixed
+  # it (see `e2e/support/captureRegions.ts`). A check that only ran on demand
+  # would have declared that fixed two times out of three.
   # ──────────────────────────────────────────────────────────────────────────
   source-stamp:
     runs-on: [self-hosted, dfl-runner]
@@ -344,7 +359,12 @@ jobs:
 
       # The config's `webServer` builds with `ITERA_SOURCE_STAMP=1` and the stub
       # Supabase origin, then previews it on loopback only.
-      - name: Every stamp resolves to a real file and line
+      #
+      # ⚠️ ONE invocation, no `--project`. It runs BOTH projects — `stamp` and
+      # `capture` — against ONE server, and that is the point: `webServer` does
+      # a full `vite build`, `reuseExistingServer` is false under CI, so two
+      # `--project` steps would build this tree twice on every PR.
+      - name: Every stamp resolves to a file, and the capture repeats byte for byte
         run: npm run e2e:stamp
 
       # `dist/` is the build the step above just used. The detector that
@@ -361,6 +381,21 @@ jobs:
           path: |
             playwright-report/
             test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # The capture's OUTPUT, not its report: one `screenshot.png` +
+      # `regions.json` per screen. It is uploaded because the pair IS the
+      # deliverable of this job — a reviewer who wants to know what the map
+      # says downloads it and reads the JSON, instead of taking the assertions'
+      # word for it. `e2e/artifacts/` is gitignored, so this is the only way
+      # the artifact of a CI run is reachable at all.
+      - name: Upload the captured screenshot + regions pairs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capture-regions
+          path: e2e/artifacts/regions/
           if-no-files-found: ignore
           retention-days: 7
 

@@ -61,3 +61,11 @@ db/.rollback-*.json
 # never be the thing under test. The versions that matter are pinned in
 # `external-consumer/package.json`.
 /external-consumer/package-lock.json
+
+# Captura do mapa de UX (gerada): `screenshot.png` + `regions.json` por tela.
+# São ARTEFATOS de uma execução, não fonte — versionar um PNG binário faria
+# cada rodada virar diff. O que é versionado é o código que os produz
+# (`e2e/support/captureRegions.ts`) e a prova de que ele repete byte a byte
+# (`e2e/capture-regions.spec.ts`). Cópias para consumo humano vão pro
+# media.devfellowship.com e são linkadas na PR.
+/e2e/artifacts/

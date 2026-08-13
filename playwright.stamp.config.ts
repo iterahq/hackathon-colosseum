@@ -1,15 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
+import { CAPTURE_LAUNCH_ARGS } from './e2e/support/captureRegions';
 
 /**
- * Playwright config for the `data-source` STAMP PROOF (P4 of plan
- * `20260812-ux-map-observed-reality-lens`).
+ * Playwright config for the `data-source` STAMP and for the CAPTURE built on it
+ * (P4 of plan `20260812-ux-map-observed-reality-lens`).
  *
  * ## Why a third config
  *
  * There are already two, and each encodes a different substrate:
  * `playwright.config.ts` drives live prod with credentials, and
  * `playwright.baseline.config.ts` drives a hermetic `vite preview` of this tree.
- * This suite needs the hermetic substrate — but built with
+ * These suites need the hermetic substrate — but built with
  * `ITERA_SOURCE_STAMP=1`, which the baseline must NOT have.
  *
  * That is the whole reason for the split, and it is not cosmetic. The
@@ -19,12 +20,33 @@ import { defineConfig, devices } from '@playwright/test';
  * config whose only job is to prove the flag works, and the baseline keeps
  * measuring the default build.
  *
- * ## What it runs
+ * ## Two projects, ONE server
  *
- * One spec: `e2e/source-stamp.spec.ts`. It walks the DOM of the declared
- * screens and resolves every stamp against the real file tree. `testMatch` is
- * pinned to that file, and the other two configs ignore it, so no suite can
- * pick up another's tests.
+ * | project   | spec                       | what it answers                     |
+ * |-----------|----------------------------|-------------------------------------|
+ * | `stamp`   | `source-stamp.spec.ts`     | does every stamp name a real file?  |
+ * | `capture` | `capture-regions.spec.ts`  | does the MAP built from the stamps place a click on the right file, and does the image repeat byte for byte? |
+ *
+ * They are projects rather than a fourth config on purpose: the dominant cost
+ * here is the `vite build` inside `webServer`, and one server serves both. The
+ * cheap-looking alternative — a `playwright.capture.config.ts` on port 4190 —
+ * would build the same tree with the same flag a second time on every PR.
+ *
+ * ⚠️ That saving only exists if BOTH projects run in ONE invocation, which is
+ * why `npm run e2e:stamp` passes no `--project` and CI calls it exactly once.
+ * `reuseExistingServer` is FALSE under `CI`, so two `--project` calls would
+ * start two servers and pay for two builds — the whole reason the split was
+ * avoided. `npm run e2e:capture` narrows to one project for LOCAL iteration,
+ * where the server is reused and the saving does not apply.
+ *
+ * ⚠️ **The determinism settings are NOT in this file.** They live in
+ * `CAPTURE_CONTEXT_OPTIONS` (`e2e/support/captureRegions.ts`) and the capture
+ * spec applies them by opening its own `browser.newContext()`. A real capture
+ * run will be a script rather than a test, and it will make exactly that call —
+ * so the suite exercises the object the tool will use instead of a
+ * config-shaped copy of it. It also keeps `stamp` walking the DOM of an
+ * ORDINARY browser, where an attribute that only survives a frozen one is
+ * caught rather than blessed.
  *
  * Port 4189, one above the baseline's 4188, so the two can run at once on a
  * developer machine and on a shared self-hosted runner.
@@ -35,7 +57,6 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /source-stamp\.spec\.ts$/,
 
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -64,5 +85,28 @@ export default defineConfig({
     timeout: 300_000,
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'stamp',
+      testMatch: /source-stamp\.spec\.ts$/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'capture',
+      testMatch: /capture-regions\.spec\.ts$/,
+      // `launchOptions` is the ONE half of the capture environment that a
+      // context cannot carry: rasterisation is decided when the browser starts,
+      // and every context in it inherits that decision. The rest — viewport,
+      // dpr, reduced motion, time zone — is applied per context by the spec
+      // itself through `CAPTURE_CONTEXT_OPTIONS`.
+      //
+      // The `devices` preset below reaches only the default `page` fixture,
+      // which this spec never asks for. Kept so a future test in this project
+      // that DOES use `page` still gets a sane browser.
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: CAPTURE_LAUNCH_ARGS },
+      },
+    },
+  ],
 });

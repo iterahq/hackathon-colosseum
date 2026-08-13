@@ -68,7 +68,8 @@ export default defineConfig({
    * `baseURL` points at live prod and absent capabilities turn into skips — a
    * gate that can skip is not a gate. Mirror of that config's `testMatch`.
    */
-  testIgnore: /(activity-baseline|terminal-sandbox|feedback-footer-width|source-stamp)\.spec\.ts$/,
+  testIgnore:
+    /(activity-baseline|terminal-sandbox|feedback-footer-width|source-stamp|capture-regions)\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

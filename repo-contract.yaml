@@ -201,9 +201,20 @@ testing:
       - config: playwright.baseline.config.ts
         script: npm run e2e:baseline
         proves: o comportamento das activities não mudou nesta PR
+      # UMA config, DOIS projects, UMA invocação. `npm run e2e:stamp` não passa
+      # `--project` de propósito: o custo dominante é o `vite build` do
+      # `webServer`, `reuseExistingServer` é falso sob CI, e dois comandos
+      # separados buildariam a mesma árvore duas vezes por PR.
       - config: playwright.stamp.config.ts
+        project: stamp
         script: npm run e2e:stamp
         proves: cada carimbo data-source resolve para um arquivo e uma linha reais
+      - config: playwright.stamp.config.ts
+        project: capture
+        script: npm run e2e:stamp  # `npm run e2e:capture` isola este project localmente
+        proves: >
+          o par screenshot.png + regions.json localiza um clique no arquivo certo,
+          e a mesma tela capturada duas vezes sai byte a byte idêntica
 
 observability:
   provider: opentelemetry
