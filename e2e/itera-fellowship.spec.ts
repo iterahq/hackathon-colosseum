@@ -22,6 +22,37 @@
  *   - LEARN_BASE_URL (default https://learn.devfellowship.com)
  *
  * MANUAL / scheduled only (see .github/workflows/e2e.yml + playwright.config.ts).
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS SPEC IS RED, MEASURED 2026-08-13 — AND WHY IT IS NOT "THE EMBED IS
+ * GONE"
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The five required secrets landed on 2026-08-13, so this spec executed for the
+ * first time in its life. It failed on `locator('iframe')`, 30s, no iframe. The
+ * federated embed is NOT gone — the handshake exists on both sides
+ * (`src/auth/embedBridge.ts` here, `ALLOWED_ORIGIN_PATTERNS` + `DflRemote` in
+ * dfl-learn). TWO independent defects sat in front of it, and the opaque
+ * timeout hid both. GATE 1 and GATE 2 below now name them.
+ *
+ * 1. **The identity never reaches the page.** `CommunityMemberProtected` in
+ *    dfl-learn redirects `/itera` to `/projects` for any account with no
+ *    `github_links` row. Reproduced in a browser as `CLAUDE_SMOKE_*`: login
+ *    succeeds, `/itera` lands on `/projects`, iframe count 0, and the header
+ *    shows the "Vincule-se no GitHub" banner. Read-only against DFL prod:
+ *    `public.github_links` holds **0 rows** for that user id. It is a silent
+ *    redirect, never a 403 — the same shape as ITERA's own `RequireRole`.
+ *
+ * 2. **The frame pointed at the marketing site.** dfl-learn framed
+ *    `https://iterahq.dev` (Astro marketing) instead of `https://app.iterahq.dev`
+ *    (the player), from the mini-app's registration in dfl-learn #248
+ *    (2026-06-19). Only the player answers
+ *    `frame-ancestors 'self' https://learn.devfellowship.com`, and only the
+ *    player posts `DFL_READY`. Fixed in devfellowship/dfl-learn#304.
+ *
+ * Defect 2 is fixed. Defect 1 is an identity decision and is still open, so
+ * this spec stays RED — which is the honest report: the federated loop is NOT
+ * being tested. Do not weaken a gate to recover a green.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { ITERA_API_URL, LEARN_BASE_URL } from './support/capabilities';
@@ -79,10 +110,49 @@ test.describe('Itera↔Fellowship federated loop', () => {
     await loginToLearn(page);
     await page.goto(`${LEARN_BASE_URL}/itera`, { waitUntil: 'domcontentloaded' });
 
-    // The itera-player renders inside an iframe (DflRemote host). Assert the
-    // iframe shows the ACTIVITY, not a login form.
+    // ── GATE 1: did we even stay on /itera? ─────────────────────────────────
+    // `CommunityMemberProtected` does not render a 403. It NAVIGATES AWAY, and
+    // the two exits mean different things:
+    //   · `/projects` — the identity has no `github_links` row (the "Vincule-se
+    //     no GitHub" gate). Every route except the /projects landing is closed.
+    //   · `/`         — the identity is below IAM level 50 (not a member).
+    // Without this assertion both land as a bare `locator('iframe')` timeout on
+    // the line below, which reads as "the embed is broken" when the truth is
+    // "this identity never reached the page". Same trap as ITERA's own
+    // `RequireRole`, which also redirects instead of refusing.
+    // The guard resolves three async queries (auth, IAM role, GitHub link)
+    // before it decides, so the redirect lands AFTER first paint. Wait for
+    // whichever settles first — the iframe, or a route that is no longer
+    // /itera — instead of asserting on a URL the guard has not ruled on yet.
+    await Promise.race([
+      page.locator('iframe').first().waitFor({ state: 'attached', timeout: 30_000 }),
+      page.waitForURL((u) => !u.pathname.startsWith('/itera'), { timeout: 30_000 }),
+    ]).catch(() => {
+      /* both timed out — the assertions below report which. */
+    });
+    const landed = new URL(page.url()).pathname;
+    expect(
+      landed,
+      landed.startsWith('/projects')
+        ? 'dfl-learn redirected /itera to /projects: this identity has no github_links row, so CommunityMemberProtected closes every route but the projects landing. Link a GitHub account for the e2e identity, or drive this spec with one that has it.'
+        : `dfl-learn redirected /itera to "${landed}": this identity is below IAM level 50 (not a community member).`
+    ).toBe('/itera');
+
+    // ── GATE 2: is the frame pointed at the PLAYER? ─────────────────────────
+    // `iterahq.dev` is the Astro MARKETING site; `app.iterahq.dev` is the
+    // player. Both are allowlisted origins in `DflRemote`, so the wrong one
+    // fails silently: the marketing page never posts `DFL_READY`, the host
+    // never hands over the session, and the frame renders marketing copy that
+    // looks like "something loaded". That is exactly what shipped from
+    // dfl-learn #248 (2026-06-19) until the fix.
     const frameEl = page.locator('iframe').first();
     await frameEl.waitFor({ state: 'visible', timeout: 30_000 });
+    const frameSrc = (await frameEl.getAttribute('src')) ?? '';
+    expect(
+      new URL(frameSrc).host,
+      `the mini-app frames "${frameSrc}". Only the player implements the DFL_READY handshake; the marketing host can never render an activity.`
+    ).toBe('app.iterahq.dev');
+
     const frame = page.frameLocator('iframe').first();
 
     // Positive assertion: a known Itera activity/lesson DOM node is present.
