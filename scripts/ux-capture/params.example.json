@@ -1,0 +1,10 @@
+{
+  "_comment": "Bindings for the :param segments of the declared routes. Real values are PRODUCTION row ids — supply them at run time with --params and never commit them. A screen whose parameter is missing is reported skipped-no-param, never guessed at.",
+  "slug": "<itera.programs.slug>",
+  "lessonId": "<itera.lessons.id>",
+  "activityId": "<itera.activities.id>",
+  "unitId": "<itera.units.id>",
+  "sessionId": "<itera.class_sessions.id — /live/instructor/:sessionId needs one that is NOT ended>",
+  "traceId": "<itera.activity_traces.id>",
+  "code": "<itera.class_sessions.guest_code>"
+}

@@ -75,3 +75,6 @@ preview.log
 # The pre-pass output is an INPUT to authoring the manifest, never a committed
 # artifact — e2e/support/capture-manifest.json is what survives.
 /prepass.json
+
+# Bundled output of scripts/ux-capture (see its README — tsx cannot run those scripts).
+/.capture-build/

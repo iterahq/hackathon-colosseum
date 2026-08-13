@@ -94,3 +94,150 @@ Measured 2026-08-13, all of it re-derivable with the commands above:
   Chromium bump, an arm64 runner. That is why the record stays keyed and why a
   key mismatch records rather than fails. Each run writes its `host` block into
   `status.json` so a future mismatch is diagnosable from the artifact.
+
+---
+
+## The AUTHENTICATED run — `capture-live.ts` + `emit-observed-flows.ts`
+
+Everything above is **hermetic on purpose**: the substrate is a stub Supabase
+origin that does not resolve, so the job needs no credential and can run
+anywhere. The price is stated in its own numbers — *7 routes render their own
+content with no session · 24 silently redirect to `/login`*. That is an honest
+map of an application nobody is signed in to, and a designer cannot use it,
+because 24 of the 31 screens are the product.
+
+These two scripts are the other half. Same harness, same `captureScreen()`, same
+determinism settings — a real session instead of a stub.
+
+| | |
+|---|---|
+| `capture-live.ts` | signs in, walks the declared screens, writes the pairs and a verdict per screen |
+| `emit-observed-flows.ts` | turns those pairs plus their upload URLs into the **observed** flows document |
+
+Measured 2026-08-13 against the real ITERA project: **26 of 31** declared screens
+as `tenant_admin`, plus **7** signed-out screens in the same run.
+
+### ⚠️ The deployed app still cannot be the target, and the reason is mechanical
+
+`regions.json` is built from the `data-source` attribute that
+`scripts/source-stamp.ts` writes, and that plugin is gated on
+`ITERA_SOURCE_STAMP=1` **precisely so it never reaches a learner**. Pointing a
+capture at `app.iterahq.dev` would produce perfect screenshots and an empty map:
+photographs nobody can click.
+
+So the target stays a `vite preview` of a build of this tree — but built with
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` pointing at the **real** project
+instead of the stub. `VITE_*` is inlined at build time, which is what makes "one
+bundle, repointed at runtime" impossible.
+
+State the consequence wherever a capture is published: the bytes are not the
+deployed bundle's bytes. Same source at a known commit, same data, same session
+— **plus one attribute per element**. What is added is the thing that makes the
+picture clickable.
+
+### Running one
+
+```bash
+export NODE_AUTH_TOKEN=…            # read:packages, for the private @iterahq registry
+export VITE_SUPABASE_URL=…          # Infisical /apps/itera
+export VITE_SUPABASE_ANON_KEY=…
+ITERA_SOURCE_STAMP=1 npm run build
+npx vite preview --port 4189 --strictPort --host 127.0.0.1 &
+
+export ITERA_CAPTURE_USERNAME=…     # /shared ITERA_SMOKE_* or /apps/itera ITERA_E2E_*
+export ITERA_CAPTURE_PASSWORD=…
+node .capture-build/capture-live.mjs \
+  --base http://127.0.0.1:4189 --role tenant_admin --root "$PWD" \
+  --params ./params.json --out e2e/artifacts/live-capture/tenant_admin
+
+# the signed-OUT pass — not optional, see below
+node .capture-build/capture-live.mjs \
+  --base http://127.0.0.1:4189 --role anonymous --anonymous --root "$PWD" \
+  --only login,signup,auth_code,auth_forgot,auth_reset,auth_dfl_callback,not_found,g_code \
+  --out e2e/artifacts/live-capture/anonymous
+```
+
+### 🚨 `tsx` cannot run these — bundle with `esbuild` first
+
+`tsx` compiles with esbuild's `keepNames`, which wraps every function in a
+`__name(…)` helper. `page.evaluate(fn)` ships `fn.toString()` to the browser,
+where that helper does not exist, so **every** capture dies with
+`ReferenceError: __name is not defined` — on all 31 screens, with no hint that
+the cause is the transpiler.
+
+```bash
+./node_modules/esbuild/bin/esbuild scripts/ux-capture/capture-live.ts \
+  --bundle --platform=node --format=esm --packages=external \
+  --outfile=.capture-build/capture-live.mjs
+```
+
+The outfile must stay **inside the repository** so Node resolves `node_modules`,
+and `--packages=external` keeps CommonJS dependencies out of an ESM bundle.
+`--root` is passed explicitly for the same class of reason: a `REPO_ROOT`
+derived from `import.meta.url` would resolve to the bundle's directory and turn
+every stamp into "file does not exist".
+
+### Two passes, because a session redirects away from the signed-out screens
+
+`/login`, `/signup` and `/auth/code` are declared screens, and an authenticated
+session bounces off every one of them. A signed-in run can never photograph
+them; a run that did not check would file the **home page** under `login`.
+`--anonymous` is that second pass, and it is indexed under the role it really
+had.
+
+### Two rules that are the whole point
+
+**A silent redirect is the failure this exists to catch.** `RequireRole` does
+not render a 403; it redirects. Every screen is verified after navigation — the
+landing path must match the requested route segment by segment, with `:param`
+matching anything. A mismatch is recorded as `bounced`, with the landing path,
+and **no artifacts are written**. A map that is merely incomplete is far better
+than one that is confidently wrong.
+
+**Parameters come from a file, never from the source.** Eight declared routes
+carry a `:param`, and those values are production row ids: not the repository's
+to know, and they rot. `--params` supplies them at run time
+(`params.example.json`); a screen with no binding is reported
+`skipped-no-param` rather than guessed at.
+
+### What a run writes, and where it goes
+
+```
+<out>/<screen_id>/screenshot.png
+<out>/<screen_id>/regions.json
+<out>/capture-manifest.json     # EVERY declared screen and its verdict
+```
+
+Every declared screen appears, including the ones not reached, and
+`emit-observed-flows.ts` keeps them in the document with an empty
+`screenshots[]`. Coverage means nothing unless the denominator is **what was
+declared**, not what happened to work.
+
+Then, per the storage rule of the plan — the repository holds what we declare,
+media holds what the machine observed, the DFL database holds the index we ask
+questions of:
+
+```bash
+dfl-ux-paths ux-map-index \
+  --flows itera-player.observed.tenant_admin.flows.json --role tenant_admin \
+  --artifact-url https://media.devfellowship.com/<id> --artifact-media-id <id> \
+  --captures e2e/artifacts/live-capture/tenant_admin --uploads uploads.json \
+  --repo iterahq/itera-player --commit-sha "$(git rev-parse HEAD)" \
+  --url … --key <anon> --jwt "$(dfl-auth token)"
+```
+
+The write goes through `engineering.index_ux_map_capture`, which reads the
+writer from `auth.uid()`. There is no service-role path, and no argument that
+names the writer.
+
+### Known gaps of the authenticated run, as measured
+
+- **`/live/instructor/:sessionId`** cannot be reached: every `class_sessions`
+  row is `ended`, and the page redirects to `/live/instructor`. It needs a live
+  session, which means writing one to production.
+- **`/admin`** redirects to `/admin/roster`, which is captured under its own id.
+  **`/signup`** redirects to `/login` on this deployment.
+- **The clock is frozen** to `FROZEN_EPOCH_MS`, which is what makes two runs
+  comparable — so any UI that prints "now" prints that instant, not today.
+- **Byte-identity remains keyed to the Chromium revision**, exactly as recorded
+  above for the hermetic run. Nothing about a session changes that.

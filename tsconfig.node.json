@@ -18,5 +18,12 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts"]
+  /* `scripts/ux-capture/*.ts` is deliberately NOT here. Those two drive
+     Playwright and import `e2e/support/captureRegions.ts`, whose
+     `page.evaluate` bodies are DOM code — and this project has no DOM lib, by
+     design, because everything else under `scripts/` is a build-time Node
+     tool. They are typechecked by `tsconfig.e2e.json`, which already owns the
+     harness they belong to. */
+  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts"],
+  "exclude": ["scripts/ux-capture/*.ts"]
 }

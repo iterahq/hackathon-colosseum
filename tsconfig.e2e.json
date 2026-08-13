@@ -24,6 +24,7 @@
     "e2e/**/*.ts",
     "playwright.config.ts",
     "playwright.baseline.config.ts",
-    "playwright.stamp.config.ts"
+    "playwright.stamp.config.ts",
+    "scripts/ux-capture/*.ts"
   ]
 }
