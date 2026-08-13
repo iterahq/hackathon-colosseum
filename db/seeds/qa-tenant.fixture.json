@@ -1,0 +1,166 @@
+{
+  "_comment": [
+    "DECLARATIVE FIXTURE for the QA tenant (db/seeds/qa-tenant.ts). This file is",
+    "WHAT THE QA TENANT CONTAINS. It is not a description of the QA tenant and it",
+    "is not a copy of one — the seed makes the database match this file, so a",
+    "reviewer reads the diff and knows exactly what an e2e run drives.",
+    "",
+    "WHY A FIXTURE AND NOT A COPY OF `educar-mais-contexto`: measured 2026-08-13,",
+    "the authoring MCP tool `instantiate_program` deep-copies WITHIN ONE TENANT",
+    "only (it inserts every row with `tenant_id: srcRow.tenant_id`). There is no",
+    "cross-tenant copy primitive, so copying dfl-batch content into `qa-e2e` is",
+    "not merely discouraged — it is not possible. That constraint pushed us to",
+    "the better answer anyway: a copy would couple QA to whatever production",
+    "holds today and would drift the moment an author edits the real cohort's",
+    "lesson, silently and with no diff to review.",
+    "",
+    "NATURAL KEYS. `itera.units`, `itera.lessons` and `itera.activities` have no",
+    "slug and no unique business key. The seed therefore matches on ORDINAL",
+    "within the parent (`units.ordinal` in the program, `lessons.ordinal` in the",
+    "unit, `activities.ordinal` in the lesson). Re-ordering entries in this file",
+    "REWRITES the existing rows in place rather than creating new ones; that is",
+    "deliberate, because the alternative — appending on every run — is exactly",
+    "the non-idempotence this seed exists to avoid."
+  ],
+
+  "tenant": {
+    "slug": "qa-e2e",
+    "name": "QA — automated test identities",
+    "_comment": [
+      "Created 2026-08-13 by `itera.create_test_tenant` (migration 0066), id",
+      "4f7ac88e-cba2-407b-b917-1c5618f1b9b1, `is_test = true`. The seed calls",
+      "the same function, which is idempotent by slug, so it also builds the",
+      "tenant from nothing. The slug must match `^qa-[a-z0-9][a-z0-9-]*$` — the",
+      "function refuses anything else."
+    ]
+  },
+
+  "members": [
+    {
+      "email": "itera-smoke@iterahq.dev",
+      "role": "tenant_admin",
+      "why": "The seed itself authenticates as this identity. Measured 2026-08-13: it holds `tenant_admin` on `qa-e2e`, which puts the tenant inside `itera.current_author_tenant_ids()` (that function accepts author/instructor/tenant_admin/owner), so it may INSERT programs, units, lessons and activities here. Listed for completeness; the seed never has to grant it."
+    },
+    {
+      "email": "claude-e2e-prof@iterahq.dev",
+      "role": "instructor",
+      "why": "`ITERA_E2E_PROF_*`. Starts the live class in e2e/live-instructor-routed.spec.ts."
+    },
+    {
+      "email": "claude-e2e-aluno1@iterahq.dev",
+      "role": "learner",
+      "why": "`ITERA_E2E_ALUNO1_*`. Joins the live class, and writes the reflection in e2e/artifact-persistence.spec.ts."
+    },
+    {
+      "email": "claude-e2e-aluno2@iterahq.dev",
+      "role": "learner",
+      "why": "`ITERA_E2E_ALUNO2_*`. The peer whose blindness to aluno1's work is the isolation assertion. Must share a tenant with aluno1 or that assertion proves nothing."
+    }
+  ],
+
+  "program": {
+    "slug": "qa-e2e-program",
+    "title_i18n": {
+      "pt": "QA — programa de teste automatizado",
+      "en": "QA — automated test program"
+    },
+    "units": [
+      {
+        "ordinal": 0,
+        "title_i18n": {
+          "pt": "Unidade de teste",
+          "en": "Test unit"
+        },
+        "lessons": [
+          {
+            "ordinal": 0,
+            "key": "live",
+            "title_i18n": {
+              "pt": "Aula de teste",
+              "en": "Test lesson"
+            },
+            "_comment": [
+              "ONE lesson serves both specs, because both read the SAME env var",
+              "(`ITERA_E2E_LESSON_ID`). That forces one lesson to satisfy two",
+              "shapes at once:",
+              "  · e2e/artifact-persistence.spec.ts opens /lesson/:id and expects",
+              "    `document-reflection-input` to be VISIBLE, so the reflection",
+              "    must be the FIRST activity — the player opens on ordinal 0;",
+              "  · e2e/live-instructor-routed.spec.ts only needs the lesson to",
+              "    hold at least one activity (InstructorClassPage guards Start on",
+              "    `firstActivityId` being non-null), and something to advance to.",
+              "A reflection first is unusual pedagogy and deliberate here."
+            ],
+            "activities": [
+              {
+                "ordinal": 0,
+                "kind": "document",
+                "status": "published",
+                "spec": {
+                  "prompt": "Escreva, com suas palavras, o que você espera aprender nesta aula de teste.",
+                  "body": "Esta é uma atividade de QA. Nada escrito aqui é conteúdo pedagógico real."
+                },
+                "rubric": {
+                  "min_words": 12
+                },
+                "_comment": [
+                  "`document` + `spec.prompt` + `rubric.min_words` is the REDAÇÃO",
+                  "contract (src/stories/contractFixtures.ts): the renderer swaps",
+                  "'mark as done' for a textarea with a word counter, and",
+                  "`document-reflection-input` appears. Without the prompt/rubric",
+                  "it renders as reading and that test id never exists.",
+                  "",
+                  "`min_words: 12` is measured, not chosen. The text",
+                  "artifact-persistence.spec.ts types is ~17 words. A higher floor",
+                  "would leave 'activity-done' disabled and the spec would fail on",
+                  "a fixture defect that looks like a product bug.",
+                  "",
+                  "`artifact_policy` is left unset ('{}' → mode 'auto'). Under",
+                  "auto, KIND_ARTIFACT_DEFAULTS persists `document`, which is what",
+                  "puts `reflection.md` in 'My repository'. Setting it explicitly",
+                  "would pin behaviour the product owns."
+                ]
+              },
+              {
+                "ordinal": 1,
+                "kind": "single_choice",
+                "status": "published",
+                "spec": {
+                  "instruction": {
+                    "text": "Esta atividade existe só para o teste automatizado. Qual opção é a correta?"
+                  },
+                  "options": [
+                    { "id": "correct", "label": "Esta é a opção correta" },
+                    { "id": "wrong-a", "label": "Esta não é a opção correta" },
+                    { "id": "wrong-b", "label": "Esta também não é a opção correta" }
+                  ],
+                  "correct_option_id": "correct"
+                },
+                "rubric": {},
+                "_comment": [
+                  "The second activity the live class can advance to. Shape copied",
+                  "from a production `single_choice` row read 2026-08-13, so it is",
+                  "the contract the renderer actually consumes, not one invented",
+                  "here.",
+                  "",
+                  "`status: published` on both. An activity defaults to `draft`,",
+                  "and `activities_select_tenant` only lets a non-author read a",
+                  "row that is `published`. A draft fixture would be invisible to",
+                  "aluno1/aluno2 while staying visible to the seed's own identity",
+                  "— a fixture that looks correct from the only place that can see",
+                  "it is the worst kind."
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+
+  "pins": {
+    "program_slug_env": "ITERA_E2E_PROGRAM_SLUG",
+    "lesson_id_env": "ITERA_E2E_LESSON_ID",
+    "lesson_key": "live"
+  }
+}

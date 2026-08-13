@@ -71,7 +71,35 @@ db/
     test-fresh-apply.sh        #   proves fresh-apply.sh both refuses and allows
     ci-wait-for-postgres.sh    #   the service container is not up when
                                #   pg_isready first says so
+  seeds/
+    fellowship-pilot.ts        # federates a DFL pilot cohort into `dfl-batch`
+    fellowship-pilot.fixture.json
+    qa-tenant.ts               # builds the `qa-e2e` TEST tenant's content
+    qa-tenant.fixture.json     #   ← what the QA tenant contains, declaratively
 ```
+
+### `seeds/` is DATA, and it is not a migration
+
+Nothing here runs on merge. `db-apply` watches `db/migrations/**` only, so a
+seed is something a person or a workflow invokes on purpose:
+
+```bash
+npm run seed:qa-tenant             # apply
+npm run seed:qa-tenant -- --dry-run
+```
+
+The split is the CLAUDE.md rule, not a local preference: **schema** goes through
+`db/migrations/` and a human merge, **data** goes through a caller's own user-JWT
+so RLS applies and the write is attributable. `qa-tenant.ts` therefore signs in
+with the Supabase password grant and writes over PostgREST — no `service_role`,
+no database password, no `psql`.
+
+`qa-tenant.ts` also prints the two pins the e2e specs consume
+(`ITERA_E2E_PROGRAM_SLUG`, `ITERA_E2E_LESSON_ID`) and ends with a READINESS block.
+It exits **3** when the tenant cannot yet host the flows — read that block rather
+than re-running. Today one item is expected to be BLOCKED:
+`itera.tenants.live_class_enabled` is false for `qa-e2e`, and no user-JWT can
+change it (`authenticated` holds SELECT and nothing else on `itera.tenants`).
 
 ## Schema shape (v1 — ADR-102)
 

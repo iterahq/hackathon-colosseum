@@ -32,10 +32,46 @@ const PROF_PASSWORD = process.env.ITERA_E2E_PROF_PASSWORD || '';
 const ALUNO_EMAIL = process.env.ITERA_E2E_ALUNO1_USERNAME || '';
 const ALUNO_PASSWORD = process.env.ITERA_E2E_ALUNO1_PASSWORD || '';
 
-// A dfl-batch program+lesson WITH activities (resolved 2026-07-23 from the Itera
-// DB). The program option value is the slug; the lesson option value is the id.
-const PROGRAM_SLUG = process.env.ITERA_E2E_PROGRAM_SLUG || 'educar-mais-contexto';
-const LESSON_ID = process.env.ITERA_E2E_LESSON_ID || 'f2945e79-dc1c-49c7-b6b6-6465ff0774bf';
+/**
+ * WHICH CONTENT THIS SPEC DRIVES — pinned by env, with NO fallback.
+ *
+ * Until 2026-08-13 these two constants defaulted to `educar-mais-contexto` and
+ * one of its lesson ids. That is `dfl-batch` content: the REAL cohort's tenant.
+ * With the env vars unset — which is their state on the daily cron, since
+ * `e2e.yml` declares neither — this spec started a live class on the real
+ * cohort's lesson and a student answered inside it. Every row it produced
+ * landed in the tenant a teacher reads. Removing that contamination is the
+ * whole point of the QA tenant, so the fallback had to go with it.
+ *
+ * A default is worse than a missing value here, because it fails INVISIBLY: the
+ * run stays green and the damage is in another system. So an unset or blank pin
+ * now stops the run, and names the step that produces the right value.
+ *
+ * The override mechanism itself is unchanged — the env vars are still the only
+ * way to point this spec at content, which is what lets `npm run seed:qa-tenant`
+ * hand CI a slug and a lesson id without editing a spec.
+ */
+const PROGRAM_SLUG = (process.env.ITERA_E2E_PROGRAM_SLUG ?? '').trim();
+const LESSON_ID = (process.env.ITERA_E2E_LESSON_ID ?? '').trim();
+
+/**
+ * Fails the run when a pin is absent. Deliberately NOT a capability skip:
+ * `gate.ts` is for substrate this repository does not control, and the check
+ * below runs only AFTER `requireCapabilities` has already established that the
+ * identities and the deployment ARE present. At that point a missing pin is a
+ * configuration mistake in the run, not an absent capability — and a
+ * configuration mistake that used to target production must be loud.
+ */
+function requirePin(name: string, value: string): void {
+  if (value) return;
+  throw new Error(
+    `${name} is unset or blank, and this spec no longer falls back to dfl-batch ` +
+      'production content. Seed the QA tenant and export the pins it prints:\n' +
+      '    npm run seed:qa-tenant\n' +
+      `  It writes ITERA_E2E_PROGRAM_SLUG and ITERA_E2E_LESSON_ID to stdout, and to ` +
+      '$GITHUB_ENV when running in Actions. See db/seeds/qa-tenant.ts.'
+  );
+}
 
 const SESSION_ID_FILE = 'e2e-live-session-id.txt';
 const SESSION_RE = /\/live\/instructor\/([0-9a-fA-F-]{36})(?:$|[?#])/;
@@ -51,7 +87,13 @@ async function login(page: Page, email: string, password: string): Promise<void>
 
 test.describe.serial('Live instructor routed session + index (live deployment)', () => {
   test.beforeAll(async () => {
+    // Order matters. Capabilities first: with no identities this spec cannot
+    // reach production at all, so it skips (loudly, counted by the census) and
+    // never reaches the pin check. Once the identities ARE there, an unpinned
+    // run is a real defect and fails.
     await requireCapabilities('itera-player', 'itera-prof', 'itera-aluno1');
+    requirePin('ITERA_E2E_PROGRAM_SLUG', PROGRAM_SLUG);
+    requirePin('ITERA_E2E_LESSON_ID', LESSON_ID);
   });
 
   test('prof starts a class → routed /live/instructor/:id → reload persists → index lists it → student joins', async ({

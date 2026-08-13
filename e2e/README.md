@@ -13,6 +13,44 @@ that makes a missing secret a **failure** instead of a silent skip.
 
 ---
 
+## Which tenant the live specs write into
+
+Since 2026-08-13 the answer is **`qa-e2e`**, a tenant marked `is_test` that
+exists only to hold the automated identities (migration
+`0066_test_tenant_isolation_primitives.sql`). Before that it was `dfl-batch` —
+the real cohort's tenant — so every run put synthetic attempts, progress and
+class answers inside the numbers a teacher reads.
+
+Its content is a **fixture in this repository**, not a copy of a real program:
+`db/seeds/qa-tenant.fixture.json`. Apply it with
+
+```bash
+npm run seed:qa-tenant
+```
+
+The seed prints the two pins the specs consume, and appends them to `$GITHUB_ENV`
+when it runs in Actions:
+
+```
+ITERA_E2E_PROGRAM_SLUG=qa-e2e-program
+ITERA_E2E_LESSON_ID=<uuid>
+```
+
+**Those pins have no defaults any more.** `live-instructor-routed.spec.ts` used
+to fall back to `educar-mais-contexto` and one of its lesson ids, which meant an
+unset env var quietly drove a live class against the real cohort. It now fails,
+naming the seed. A default that targets production is worse than a missing
+value, because it fails in another system while this one stays green.
+
+⚠️ **The move is half done.** The seed grants the memberships; nothing has
+revoked the `dfl-batch` side yet, so `itera.test_tenant_isolation_violations()`
+returns rows and the test identities still count in the real cohort's figures.
+The seed reports this on every run. `itera.tenants.live_class_enabled` is also
+still `false` for `qa-e2e`, which blocks the live-class spec outright and needs a
+migration — no user-JWT can set it.
+
+---
+
 ## What is NOT covered
 
 A gap that only exists as an absent file is a gap nobody can find. This section

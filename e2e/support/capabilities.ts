@@ -132,7 +132,11 @@ export const CAPABILITIES = {
     tier: 'optional',
     env: ['ITERA_E2E_LESSON_ID'],
     unlocks: 'the reflection-survives-a-fresh-context artifact test',
-    remedy: 'Pin a lesson containing a `document` (reflection) activity via ITERA_E2E_LESSON_ID.',
+    remedy:
+      'Pin a lesson containing a `document` (reflection) activity via ITERA_E2E_LESSON_ID. ' +
+      'Run `npm run seed:qa-tenant`: it builds that lesson in the `qa-e2e` test tenant from ' +
+      'db/seeds/qa-tenant.fixture.json and prints the id. Do NOT pin a dfl-batch lesson — ' +
+      'the specs that consume this pin write learner rows, and dfl-batch is the real cohort.',
   },
   'byoc-activity': {
     tier: 'optional',

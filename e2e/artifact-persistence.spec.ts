@@ -18,6 +18,15 @@
  * makes the negative test strictly stronger: it proves the tenant-admin read
  * policy does not leak to ordinary peers.
  *
+ * ⚠️ That last sentence is a PREMISE, and since 2026-08-13 the isolation test
+ * ASSERTS it instead of trusting it. The test identities are being moved into
+ * the `qa-e2e` test tenant one identity at a time (migration 0066,
+ * `db/seeds/qa-tenant.ts`), so "same tenant" is a fact that can change under
+ * this spec without anyone editing it. If the two learners ever stop sharing a
+ * tenant, aluno2 sees nothing for TENANCY reasons, the two absence assertions
+ * still pass, and the test silently stops covering ADR-9. It now fails instead,
+ * with a message that says which premise broke.
+ *
  * ## Substrate
  *
  * Gated through `e2e/support/gate.ts`. `ITERA_E2E_ALUNO1/2_*` and
@@ -32,9 +41,10 @@
  *   ITERA_E2E_ALUNO2_USERNAME=… ITERA_E2E_ALUNO2_PASSWORD=… \
  *   npx playwright test e2e/artifact-persistence.spec.ts
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Browser, type Page } from '@playwright/test';
 import { ITERA_BASE_URL } from './support/capabilities';
 import { requireCapabilities } from './support/gate';
+import { learnerRest, ownTenantIds, watchForApiKey } from './support/learnerRest';
 
 const BASE = ITERA_BASE_URL;
 const ALUNO1 = {
@@ -115,10 +125,64 @@ test('a reflection survives a reload AND a brand-new browser context (the localS
   await fresh.close();
 });
 
+/**
+ * Sign in as one learner in a throwaway context and return the tenants THAT
+ * learner is a member of, read with that learner's own JWT.
+ *
+ * The context is disposable because the caller only wants the premise, not a
+ * session; leaving a second signed-in context alive would let a later
+ * assertion accidentally read the wrong identity.
+ */
+async function tenantsOf(browser: Browser, creds: { user: string; pass: string }): Promise<string[]> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  try {
+    const apikey = watchForApiKey(page);
+    await login(page, creds);
+    // The dashboard the login lands on issues the REST call the apikey is
+    // lifted from; `/artifacts` is a second chance if that one is cached.
+    await page.goto(`${BASE}/artifacts`);
+    const rest = await learnerRest(page, apikey());
+    return await ownTenantIds(page, rest);
+  } finally {
+    await context.close();
+  }
+}
+
 test('a second learner in the SAME tenant cannot see the first learner\'s work', async ({
   browser,
 }) => {
   await requireCapabilities('itera-aluno2');
+
+  // ── PRECONDITION: the two learners really do share a tenant ──────────────
+  //
+  // Everything below asserts an ABSENCE, and an absence is only evidence when
+  // the premise in this test's own name holds. If aluno1 and aluno2 ever land
+  // in different tenants — which is exactly what the 2026-08-13 move of the
+  // test identities into the `qa-e2e` tenant could do, one identity at a time —
+  // then `programs_select_tenant` and the artifact policies hide aluno1's work
+  // from aluno2 for TENANCY reasons, the two assertions below still pass, and
+  // they no longer say anything about ADR-9. A test that keeps passing after
+  // its subject is gone is worse than a deleted test: it reports coverage that
+  // does not exist.
+  //
+  // Read with each learner's OWN session JWT (`memberships_select_self` returns
+  // the caller's own rows). No `service_role`: an RLS-bypassing read would
+  // answer "do these rows exist" instead of "does this user hold them", and it
+  // would put a bypass key in the harness to check a precondition.
+  const tenants1 = await tenantsOf(browser, ALUNO1);
+  const tenants2 = await tenantsOf(browser, ALUNO2);
+  const shared = tenants1.filter((id) => tenants2.includes(id));
+  expect(
+    shared,
+    'PREMISE BROKEN — aluno1 and aluno2 share no tenant, so this test can no longer ' +
+      'prove that the ADR-9 tenant-admin read policy does not leak to ordinary peers: ' +
+      'aluno2 would see nothing for tenancy reasons alone. Put both learners in the same ' +
+      'tenant (db/seeds/qa-tenant.fixture.json declares both under `qa-e2e`; ' +
+      '`npm run seed:qa-tenant` applies it via itera.grant_membership), or rewrite this ' +
+      `test to assert what it now measures. aluno1 tenants: ${tenants1.length}, ` +
+      `aluno2 tenants: ${tenants2.length}, shared: 0.`
+  ).not.toHaveLength(0);
 
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -126,8 +190,8 @@ test('a second learner in the SAME tenant cannot see the first learner\'s work',
   await page.goto(`${BASE}/artifacts`);
 
   // aluno2 sees their OWN repository (possibly empty) — never aluno1's files.
-  // Both learners are in the same tenant, so this proves the tenant-admin read
-  // policy (ADR-9) does not leak to ordinary peers.
+  // Both learners are in the same tenant (asserted above, not assumed), so this
+  // proves the tenant-admin read policy (ADR-9) does not leak to ordinary peers.
   const bodies = page.getByTestId('artifact-preview-body');
   await expect(bodies).toHaveCount(0);
   await expect(page.locator('text=e2e-reflection-')).toHaveCount(0);

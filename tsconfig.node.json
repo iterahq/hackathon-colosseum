@@ -24,6 +24,12 @@
      design, because everything else under `scripts/` is a build-time Node
      tool. They are typechecked by `tsconfig.e2e.json`, which already owns the
      harness they belong to. */
-  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts"],
+  /* `db/seeds/**` joined this list on 2026-08-13, with `db/seeds/qa-tenant.ts`.
+     It was outside every tsconfig before that, so `db/seeds/fellowship-pilot.ts`
+     had shipped for months with no typechecking at all — a seed that writes to
+     a production database is the last file that should compile only in
+     somebody's head. The seeds are build-time Node tools like everything else
+     under `scripts/`, so they belong here and not in `tsconfig.e2e.json`. */
+  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts", "db/seeds/**/*.ts"],
   "exclude": ["scripts/ux-capture/*.ts"]
 }
