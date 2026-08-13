@@ -23,17 +23,21 @@ cmt   col itera.class_sessions.guest_code a518c300b943
 cmt   col itera.class_sessions.scheduled_at d9d43b8df850
 cmt   col itera.programs.archived_at 6a35b3be8fe7
 cmt   col itera.progress.status 045877055942
+cmt   col itera.tenants.is_test e4effdda4e70
 cmt   col itera.tenants.subscription_exempt d2d0fda9f6ed
 cmt   col itera.users.avatar_url f1ef917bde85
 cmt   col itera.users.dfl_avatar_url 83003b8605bd
 cmt   col itera.users.dfl_subject be81d4b7ba64
 cmt   col itera.users.is_guest b469e2a44c32
 cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
+cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
+cmt   fn  itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) e4a5b7ad2bb4
 cmt   fn  itera.handle_new_federated_user() 78c2f01cc8b9
 cmt   fn  itera.is_action_trace(a jsonb) abb9e8cc400d
 cmt   fn  itera.is_current_user_guest_of(p_session_id uuid) 755664bb2207
 cmt   fn  itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) f0dca134765c
 cmt   fn  itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) 69822a298f18
+cmt   fn  itera.test_tenant_isolation_violations() 71618de32b31
 cmt   rel billing.webhook_events 57d67b2b3281
 cmt   rel itera.activity_defs 0912b393ab3d
 cmt   rel itera.activity_i18n_backup eb7ff5dd9b61
@@ -283,6 +287,7 @@ col   itera.schema_object_census.objects text NOT NULL default=- ident=- gen=-
 col   itera.tenants.branding jsonb NOT NULL default='{}'::jsonb ident=- gen=-
 col   itera.tenants.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
 col   itera.tenants.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   itera.tenants.is_test boolean NOT NULL default=false ident=- gen=-
 col   itera.tenants.live_class_enabled boolean NOT NULL default=false ident=- gen=-
 col   itera.tenants.name text NOT NULL default=- ident=- gen=-
 col   itera.tenants.slug text NOT NULL default=- ident=- gen=-
@@ -444,6 +449,7 @@ fn    itera.award_activity_xp(p_activity_id uuid, p_amount integer) -> integer k
 fn    itera.can_access_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=38f7b8a697e1
 fn    itera.can_control_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=68090bcf41e7
 fn    itera.catalog_programs() -> TABLE(id uuid, tenant_id uuid, tenant_slug text, slug text, title_i18n jsonb, created_at timestamp with time zone, unit_count bigint, lesson_count bigint, activity_count bigint, already_enrolled boolean) kind=f vol=s secdef=t cfg=search_path=itera, public body=d806aea81e8f
+fn    itera.create_test_tenant(p_slug text, p_name text) -> itera.tenants kind=f vol=v secdef=t cfg=search_path=itera, public body=480f3643591d
 fn    itera.current_admin_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=b3d6eca40600
 fn    itera.current_author_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=4e77cb18b8f1
 fn    itera.current_instructor_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=08a9b3b7c3c0
@@ -453,6 +459,7 @@ fn    itera.custom_access_token_hook(event jsonb) -> jsonb kind=f vol=s secdef=t
 fn    itera.enroll_in_program(p_program_id uuid) -> TABLE(out_tenant_id uuid, out_role itera.member_role, out_enrolled boolean) kind=f vol=v secdef=t cfg=search_path=itera, public body=4b91d3fff556
 fn    itera.ensure_current_unit_version(p_unit_id uuid) -> uuid kind=f vol=v secdef=t cfg=search_path=itera, public body=a6eefa3146f9
 fn    itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=3c29b94e3c0e
+fn    itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=330c3f639fc2
 fn    itera.handle_new_federated_user() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public, auth body=4373ad818b87
 fn    itera.is_action_trace(a jsonb) -> boolean kind=f vol=i secdef=f cfg=- body=49d68086a077
 fn    itera.is_current_user_guest_of(p_session_id uuid) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=96c6a0f0a9f5
@@ -460,6 +467,7 @@ fn    itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours i
 fn    itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=2daeccada8fe
 fn    itera.set_updated_at() -> trigger kind=f vol=v secdef=f cfg=- body=301a884953d3
 fn    itera.sync_activity_def_to_instances() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public body=60f7f31b28b0
+fn    itera.test_tenant_isolation_violations() -> TABLE(user_id uuid, email text, test_tenant text, real_tenant text, role_in_real itera.member_role) kind=f vol=s secdef=t cfg=search_path=itera, public body=5e4f8f7f565f
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) anon exec=t
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) authenticated exec=t
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) service_role exec=t
@@ -476,6 +484,10 @@ gfn   itera.catalog_programs() anon exec=t
 gfn   itera.catalog_programs() authenticated exec=t
 gfn   itera.catalog_programs() service_role exec=t
 gfn   itera.catalog_programs() supabase_auth_admin exec=t
+gfn   itera.create_test_tenant(p_slug text, p_name text) anon exec=f
+gfn   itera.create_test_tenant(p_slug text, p_name text) authenticated exec=t
+gfn   itera.create_test_tenant(p_slug text, p_name text) service_role exec=f
+gfn   itera.create_test_tenant(p_slug text, p_name text) supabase_auth_admin exec=f
 gfn   itera.current_admin_tenant_ids() anon exec=t
 gfn   itera.current_admin_tenant_ids() authenticated exec=t
 gfn   itera.current_admin_tenant_ids() service_role exec=t
@@ -512,6 +524,10 @@ gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) an
 gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) authenticated exec=t
 gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) service_role exec=t
 gfn   itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) supabase_auth_admin exec=t
+gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) anon exec=f
+gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) authenticated exec=t
+gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) service_role exec=f
+gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) supabase_auth_admin exec=f
 gfn   itera.handle_new_federated_user() anon exec=t
 gfn   itera.handle_new_federated_user() authenticated exec=t
 gfn   itera.handle_new_federated_user() service_role exec=t
@@ -540,6 +556,10 @@ gfn   itera.sync_activity_def_to_instances() anon exec=t
 gfn   itera.sync_activity_def_to_instances() authenticated exec=t
 gfn   itera.sync_activity_def_to_instances() service_role exec=t
 gfn   itera.sync_activity_def_to_instances() supabase_auth_admin exec=t
+gfn   itera.test_tenant_isolation_violations() anon exec=f
+gfn   itera.test_tenant_isolation_violations() authenticated exec=t
+gfn   itera.test_tenant_isolation_violations() service_role exec=f
+gfn   itera.test_tenant_isolation_violations() supabase_auth_admin exec=f
 gsch  billing anon usage=f create=f
 gsch  billing authenticated usage=f create=f
 gsch  billing service_role usage=f create=f
