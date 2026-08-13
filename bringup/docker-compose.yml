@@ -1,0 +1,164 @@
+# =============================================================================
+# The disposable ITERA stack — Postgres + GoTrue + PostgREST behind one origin.
+#
+# WHY THIS EXISTS
+# ---------------
+# A capture run must authenticate. `playwright.baseline.config.ts` and
+# `playwright.stamp.config.ts` both point the app at `stub.supabase.invalid`,
+# so every screen behind `RequireAuth` is unreachable from them — which is most
+# of the product. `playwright.config.ts` DOES authenticate, but it does so
+# against LIVE PRODUCTION, and a read-only navigation there writes rows (an
+# attempt row per diagram lesson, measured 2026-08-12).
+#
+# So neither existing substrate can answer "screenshot an authenticated screen
+# without touching production". This one can: the schema is built from
+# `db/migrations/` by the repository's own applier, the identities are created
+# through the GoTrue admin API, and everything is thrown away at the end.
+#
+# 🚨 EVERY PORT IS BOUND TO 127.0.0.1, DELIBERATELY.
+# `supabase start` binds 0.0.0.0, and on this fleet's public VPS that left
+# Postgres reachable from the internet with postgres:postgres (2026-08-12;
+# DOCKER-USER rules did not stop it, only a raw-table PREROUTING drop did).
+# Every `ports:` entry below is therefore written host-first as
+# `127.0.0.1:<host>:<container>`. Do not "simplify" one to `"5432"`.
+#
+# WHY NOT `supabase start`
+# -----------------------
+# Besides the binding: the CLI stands up ten containers (realtime, storage,
+# imgproxy, studio, inbucket, kong, analytics…) to give us three we use, and it
+# owns the migration order itself. This file starts what the app actually talks
+# to, in the order the schema needs, and hands the migrations to
+# `db/scripts/fresh-apply.sh` — the applier the repository already trusts.
+#
+# THE SECRETS HERE ARE NOT SECRETS
+# --------------------------------
+# `JWT_SECRET`, the anon key and the service key are the published Supabase
+# local-development demo values. They are in the Supabase docs, they only ever
+# sign tokens for a loopback database that lives for the length of one run, and
+# hard-coding them is what makes the run reproducible on any host with no vault
+# access. Nothing from Infisical belongs in this file.
+# =============================================================================
+name: itera-bringup
+
+services:
+  # ---------------------------------------------------------------------------
+  # The database. Same image and tag as `.github/workflows/db-migration-check.yml`
+  # uses — PostgreSQL 17.6, matching the ITERA project. Change both together.
+  # ---------------------------------------------------------------------------
+  db:
+    image: supabase/postgres:17.6.1.160
+    restart: "no"
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:${ITERA_BRINGUP_DB_PORT:-54329}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # ---------------------------------------------------------------------------
+  # Auth. GoTrue owns the `auth` schema and runs its own migrations at boot, so
+  # it must reach a healthy database first and must finish before
+  # `fresh-apply.sh` runs — `0004_tenant_admin_metrics.sql` grants EXECUTE on
+  # `itera.custom_access_token_hook` to `supabase_auth_admin`, and the hook is
+  # only reachable once GoTrue is configured to call it.
+  # ---------------------------------------------------------------------------
+  auth:
+    image: supabase/gotrue:v2.177.0
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      PORT: "9999"
+      API_EXTERNAL_URL: http://127.0.0.1:${ITERA_BRINGUP_API_PORT:-54330}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:postgres@db:5432/postgres?search_path=auth&sslmode=disable
+      GOTRUE_SITE_URL: http://127.0.0.1:${ITERA_BRINGUP_APP_PORT:-54331}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # No mail server in this stack, so a sign-up that waited for a
+      # confirmation link would wait forever. Autoconfirm is what makes the
+      # admin-API user creation in `up.sh` immediately signable-in.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: ""
+      GOTRUE_LOG_LEVEL: warn
+      # The claim hook. `itera.custom_access_token_hook` writes `user_role` and
+      # `tenant_ids` into the access token, and `RequireRole` reads them — so
+      # WITHOUT this line every identity signs in as a role-less user and every
+      # /admin route silently redirects to `/`. That redirect renders the home
+      # page with HTTP 200, which a naive capture records as if it were the
+      # admin screen. This one setting is the difference between a map and a
+      # confidently wrong map.
+      GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_ENABLED: "true"
+      GOTRUE_HOOK_CUSTOM_ACCESS_TOKEN_URI: pg-functions://postgres/itera/custom_access_token_hook
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:9999/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 45
+
+  # ---------------------------------------------------------------------------
+  # Data. `db-schemas` mirrors what the ITERA project exposes: the app reads
+  # `itera.*` through PostgREST with `Accept-Profile`, and `public` is kept for
+  # the extensions' own relations.
+  # ---------------------------------------------------------------------------
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:postgres@db:5432/postgres
+      PGRST_DB_SCHEMAS: itera,public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+    # No `healthcheck:` — the postgrest image carries no shell utilities (no
+    # wget, no curl), so every in-container probe reports unhealthy on a
+    # service that is in fact serving. Readiness is asserted from OUTSIDE
+    # instead, by `up.sh`, through the gateway. A healthcheck that cannot run
+    # is worse than none: compose refuses to start the dependant.
+
+  # ---------------------------------------------------------------------------
+  # One origin, because `VITE_SUPABASE_URL` is ONE origin. supabase-js appends
+  # `/auth/v1` and `/rest/v1` to it, so something has to put the two services
+  # behind the same host and port. That is this container's entire job.
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: nginx:1.27-alpine
+    restart: "no"
+    # `depends_on: service_healthy`, not the short list form. nginx resolves an
+    # upstream hostname AT STARTUP and exits with "host not found in upstream"
+    # if the container is not there yet — measured on the first run of this
+    # file. Waiting for health is what makes `up.sh` reproducible instead of
+    # racy.
+    depends_on:
+      auth:
+        condition: service_healthy
+      rest:
+        # `service_started`, not `service_healthy` — see the note on `rest`.
+        # This is enough for nginx, whose requirement is only that the name
+        # resolves when it parses the config.
+        condition: service_started
+    ports:
+      - "127.0.0.1:${ITERA_BRINGUP_API_PORT:-54330}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/auth/v1/health || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
