@@ -1,0 +1,51 @@
+# scripts/ux-paths/UPSTREAM.sha256
+#
+# THE digests of the vendored copies. One file, one copy of each number.
+#
+# Until 2026-08-13 the same two digests were written down TWICE — in
+# UPSTREAM.md and again as shell literals inside
+# .github/workflows/ux-paths.yml — and nothing asserted that the two agreed.
+# A re-sync that updated one and forgot the other would have left the workflow
+# checking a stale number, silently, and the error message it prints told the
+# next human to edit both by hand. That is a duplication with no guard, which
+# is the same shape as the vendoring itself, one level down.
+#
+# Now the workflow reads THIS file with `sha256sum -c`. There is one place to
+# update, and it is a machine-checkable format rather than a table in prose.
+#
+# ── the upstream commit these bytes came from ───────────────────────────────
+# Recorded so that a drift report is actionable. "The bytes moved" is not
+# something anybody can act on; "compare ec849d1...main" is.
+#
+#   upstream-repo:   devfellowship/dfl-ci
+#   guard.mjs        from scripts/ux-paths-guard.mjs
+#                    at ec849d10ca1c578aaa1e0c5ff095aa9e87ef7292  (2026-08-13)
+#   schema-v1.json   from schema/ux-paths-v1.json
+#                    at 3afd15ed0d9853205771d6a1696d760bd7213001  (2026-08-12)
+#   dfl-ci HEAD when this file was written:
+#                    f01a50046da58e8498630cffc8530661a1c16bcc
+#
+# ⚠️ THE PIN IS A RECORD, NOT A LOCK. Nothing inside `iterahq` can read
+# `devfellowship/dfl-ci` — it is private, and a private repo is readable only
+# within its own org unless an enterprise widens it. `iterahq` is on the
+# GitHub Free plan, so no such scope exists. The same limit is why the
+# reusable workflow cannot be called and these files are vendored at all.
+# GitHub reports the cross-org miss as 404, not 403, so the failure disguises
+# itself as "repository not found".
+#
+# The check that upstream has not moved therefore runs FROM THE OTHER SIDE:
+# devfellowship/dfl-ci:.github/workflows/ux-paths-vendor-drift.yml reads this
+# file daily and opens an issue here when the digests no longer match its own.
+# That job holds the credential, because devfellowship is the org that has one
+# that reaches both.
+#
+# ── re-syncing ──────────────────────────────────────────────────────────────
+#   gh api repos/devfellowship/dfl-ci/contents/scripts/ux-paths-guard.mjs?ref=<sha> \
+#     --jq .content | base64 -d > scripts/ux-paths/guard.mjs
+#   sha256sum scripts/ux-paths/guard.mjs      # update the line below
+#   # update the pinned sha above, in the same pull request
+#
+# Format below is exactly `sha256sum` output, so `sha256sum -c` reads it.
+
+4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722  scripts/ux-paths/guard.mjs
+80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1  scripts/ux-paths/schema-v1.json

@@ -4,10 +4,17 @@
 of files that live in `devfellowship/dfl-ci`. Nothing in this repo should ever
 edit them. Changes go upstream and come back as a re-copy.
 
-| File here | Upstream | sha256 |
-|---|---|---|
-| `guard.mjs` | `devfellowship/dfl-ci:scripts/ux-paths-guard.mjs` | `4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722` |
-| `schema-v1.json` | `devfellowship/dfl-ci:schema/ux-paths-v1.json`, itself a copy of `devfellowship/dfl-ux-paths:spec/schema/v1.json` | `80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1` |
+**The digests live in `scripts/ux-paths/UPSTREAM.sha256`, not here.** They used
+to be written down twice — in this file and again as shell literals inside
+`.github/workflows/ux-paths.yml` — with nothing asserting that the two agreed.
+One file now, in `sha256sum` format, read by the workflow and by the upstream
+drift job. That file also records the exact `dfl-ci` commit each copy came
+from, so a drift report is a comparable range rather than "the bytes moved".
+
+| File here | Upstream |
+|---|---|
+| `guard.mjs` | `devfellowship/dfl-ci:scripts/ux-paths-guard.mjs` |
+| `schema-v1.json` | `devfellowship/dfl-ci:schema/ux-paths-v1.json`, itself a copy of `devfellowship/dfl-ux-paths:spec/schema/v1.json` |
 
 Introduced by [devfellowship/dfl-ci#76](https://github.com/devfellowship/dfl-ci/pull/76).
 Last re-synced 2026-08-13 from [devfellowship/dfl-ci#77](https://github.com/devfellowship/dfl-ci/pull/77),
@@ -51,16 +58,29 @@ are not:
 1. **`dfl-ci`'s schema copy == `dfl-ux-paths` upstream.** Mechanical —
    `dfl-ci:.github/workflows/ux-paths-schema-drift.yml` compares byte for byte on
    every touching PR, on every push to `main`, and daily.
-2. **This copy == what was recorded above.** Mechanical — the `vendored-copy`
-   job in `.github/workflows/ux-paths.yml` recomputes both digests on every PR
-   and fails when either moves. That catches the realistic accident: someone
-   fixes a bug *here*, the fleet never gets it, and the two implementations
-   quietly diverge.
-3. **What was recorded above == `dfl-ci` at re-sync time.** **Manual.** Whoever
-   re-copies updates the digests in this table. Nothing in this org can read
-   `dfl-ci` to check it, so an upstream change lands here only when a human
-   brings it. That is the real cost of the copy, and it is stated rather than
-   papered over.
+2. **This copy == `UPSTREAM.sha256`.** Mechanical — the `vendored-copy` job in
+   `.github/workflows/ux-paths.yml` verifies every listed file and also asserts
+   that the list and the directory hold the same set, so a re-sync cannot drop
+   a line. That catches the realistic accident: someone fixes a bug *here*, the
+   fleet never gets it, and the two implementations quietly diverge.
+3. **`UPSTREAM.sha256` == `dfl-ci` today.** Mechanical since 2026-08-13, and
+   **it runs from the other side**:
+   `devfellowship/dfl-ci:.github/workflows/ux-paths-vendor-drift.yml` reads this
+   repository's `UPSTREAM.sha256` daily, compares it against its own two files,
+   and opens an issue here when they disagree. It closes that issue when a
+   re-sync lands.
+
+   It lives over there because of where the credential can live. Nothing inside
+   `iterahq` can read `devfellowship/dfl-ci` — the repo is private, a private
+   repo is readable only within its own org unless an enterprise widens the
+   scope, and `iterahq` is on the GitHub **Free** plan, so no such scope exists.
+   That is the same limit that forces the vendoring in the first place, and it
+   is a platform boundary rather than an unflipped switch. `devfellowship`, by
+   contrast, already holds a token that reaches both orgs.
+
+   ⚠️ The direction is load-bearing. A check that cannot look must not pass by
+   being unable to look, so the job over there fails loudly when it cannot read
+   this file, rather than reporting "no drift".
 
 ## How to re-sync
 
@@ -71,6 +91,10 @@ gh api repos/devfellowship/dfl-ci/contents/schema/ux-paths-v1.json \
   --jq .content | base64 -d > scripts/ux-paths/schema-v1.json
 sha256sum scripts/ux-paths/guard.mjs scripts/ux-paths/schema-v1.json
 ```
+
+Put the two lines in `scripts/ux-paths/UPSTREAM.sha256` and update the pinned
+`dfl-ci` commit in its header, in the same pull request. Nothing else records a
+digest any more.
 
 Then paste the two digests into the table above, in the same PR. CI fails
 otherwise, which is the point.

@@ -67,24 +67,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Digests match scripts/ux-paths/UPSTREAM.md
+      - name: The vendored files match scripts/ux-paths/UPSTREAM.sha256
         run: |
           set -euo pipefail
-          EXPECTED_GUARD="4d744547ee5dc100393e73e8a8217aa9fbb15c28b2982c4a266552c2ae490722"
-          EXPECTED_SCHEMA="80d221b21fc60d35ba3d95586f18dcb7060068d6619f1e5b7e1cbabadd547da1"
-          ACTUAL_GUARD="$(sha256sum scripts/ux-paths/guard.mjs   | cut -d' ' -f1)"
-          ACTUAL_SCHEMA="$(sha256sum scripts/ux-paths/schema-v1.json | cut -d' ' -f1)"
-          FAILED=0
-          if [ "$ACTUAL_GUARD" != "$EXPECTED_GUARD" ]; then
-            echo "::error title=vendored guard edited::scripts/ux-paths/guard.mjs is $ACTUAL_GUARD, UPSTREAM.md records $EXPECTED_GUARD. This file is a byte-identical copy of devfellowship/dfl-ci:scripts/ux-paths-guard.mjs. Send the change upstream and re-copy, or — if you DID re-copy — update the digest in scripts/ux-paths/UPSTREAM.md and in this workflow, in the same PR."
-            FAILED=1
+          # ONE copy of the digests, in a machine-checkable format. This step
+          # used to carry its own shell literals, so the same two numbers lived
+          # in two files with nothing asserting they agreed — and the error it
+          # printed asked the next human to keep them in step by hand.
+          # Comments are stripped before sha256sum sees them: `-c --strict`
+          # rejects the header lines outright, and without `--strict` a typo in
+          # a digest line would be skipped as "improperly formatted" instead of
+          # failing. Filter, then be strict about what is left.
+          if ! grep -vE '^[[:space:]]*(#|$)' scripts/ux-paths/UPSTREAM.sha256 | sha256sum -c --strict -; then
+            echo "::error title=vendored copy edited::A file under scripts/ux-paths/ no longer matches the digest recorded in scripts/ux-paths/UPSTREAM.sha256. These are byte-identical copies of devfellowship/dfl-ci (guard.mjs from scripts/ux-paths-guard.mjs, schema-v1.json from schema/ux-paths-v1.json). Send the change UPSTREAM and re-copy. If you DID re-copy, update UPSTREAM.sha256 — including the pinned upstream commit in its header — in this same pull request."
+            exit 1
           fi
-          if [ "$ACTUAL_SCHEMA" != "$EXPECTED_SCHEMA" ]; then
-            echo "::error title=vendored schema edited::scripts/ux-paths/schema-v1.json is $ACTUAL_SCHEMA, UPSTREAM.md records $EXPECTED_SCHEMA. The schema is owned by devfellowship/dfl-ux-paths; a local edit here silently makes this repo validate against a contract the fleet does not use."
-            FAILED=1
+          echo "ok: every vendored file matches UPSTREAM.sha256"
+
+      # A checksum file that names nothing checks nothing. If a re-sync ever
+      # drops a line, this is what notices.
+      - name: UPSTREAM.sha256 covers every vendored file
+        run: |
+          set -euo pipefail
+          LISTED="$(grep -vE '^\s*(#|$)' scripts/ux-paths/UPSTREAM.sha256 | awk '{print $2}' | LC_ALL=C sort)"
+          PRESENT="$(find scripts/ux-paths -type f ! -name 'UPSTREAM.md' ! -name 'UPSTREAM.sha256' | LC_ALL=C sort)"
+          if [ "$LISTED" != "$PRESENT" ]; then
+            echo "::error title=UPSTREAM.sha256 is out of step::The files under scripts/ux-paths/ and the files listed in UPSTREAM.sha256 are not the same set."
+            printf 'listed:\n%s\n\npresent:\n%s\n' "$LISTED" "$PRESENT"
+            exit 1
           fi
-          test "$FAILED" -eq 0
-          echo "ok: both vendored files match the digests recorded in UPSTREAM.md"
+          echo "ok: UPSTREAM.sha256 names every vendored file and no others"
 
   ux-paths:
     name: flows.json is present, valid and current
