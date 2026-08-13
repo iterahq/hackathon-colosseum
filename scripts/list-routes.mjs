@@ -8,6 +8,43 @@
  * the app grew and the map did not; a declared route the code no longer serves
  * means the map describes something that is gone. Both fail the build.
  *
+ * ## ⚠️ THIS FILE IS A STAND-IN. It is kept deliberately, and it is dated.
+ *
+ * The canonical react-router route extractor for the whole fleet is
+ * `devfellowship/dfl-ux-paths:cli/lib/react-router-routes.ts`, reached as
+ * `dfl-ux-paths resolve-routes --convention react-router`. This file is a
+ * SECOND implementation of the same job, and a second implementation is a
+ * liability: a fix lands in one and the other keeps its bug while both stay
+ * green. It exists only because the canonical one cannot be installed here.
+ *
+ * **The two agree exactly.** On 2026-08-13 both were run against this repo at
+ * the same commit. Each printed the SAME 31 routes, in the same order, with
+ * nothing unresolved on either side. The adapter additionally reports the
+ * `/admin` -> `roster` redirect, which this file does not model and the guard
+ * does not read. So the retention below costs no correctness today. It costs
+ * the risk of divergence tomorrow.
+ *
+ * **Why it cannot be deleted yet — distribution, not capability.**
+ * `dfl-ux-paths` is a PRIVATE `devfellowship` repo and this repo is in
+ * `iterahq`, which is on the GitHub Free plan. Nothing in this org holds a
+ * token that can read it. The npm route is not open either: the CLI package
+ * `@devfellowship/dfl-ux-paths-cli` is NOT on the public registry (`npm view`
+ * returned E404 on 2026-08-13), and the package that IS published,
+ * `@devfellowship/ux-paths-spec`, carries the schema and a `validate()` only —
+ * no route adapter. The root package also commits no `dist/` and declares no
+ * `prepare` script, so installing it straight from git yields a `bin` that
+ * cannot load. This is the same cross-org limit that forces the vendored guard
+ * in `scripts/ux-paths/` (see `scripts/ux-paths/UPSTREAM.md`), and
+ * `UPSTREAM.md` already names the fix: *"unless the guard itself ships as a
+ * package too"*.
+ *
+ * **Delete this file when** the adapter publishes to the PUBLIC npm registry.
+ * Then the whole extractor becomes a call in
+ * `.github/workflows/ux-paths.yml` — install the package next to `typescript`
+ * in `/tmp/ux-paths-tools`, run `resolve-routes --convention react-router`,
+ * and take `.[].route`. No token, no vendoring, no second parser. Tracked as
+ * DFL-006AC on plan `20260812-ux-map-observed-reality-lens`.
+ *
  * ## Why an AST walk and not a grep
  *
  * A `grep 'path="'` gets 27 of the 31 routes and is wrong about the other four
