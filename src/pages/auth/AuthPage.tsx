@@ -14,6 +14,7 @@ import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useI18n } from '@/i18n';
 import { safeInternalPath } from '@/lib/safeInternalPath';
+import { isGuestAccessToken } from '@/services/guestSession.service';
 
 export default function AuthPage() {
   const { session, loading, signInWithPassword, configured } = useAuth();
@@ -29,10 +30,14 @@ export default function AuthPage() {
   // as the post-login redirect — only a same-origin in-app path may pass through.
   const from = safeInternalPath((location.state as { from?: { pathname?: string } } | null)?.from?.pathname);
 
-  // Already signed in (e.g. /login opened from the URL-bar autocomplete in a new
-  // tab) → straight to the app. Without this the persisted session LOOKS lost:
-  // the form renders and the user "logs in again".
-  if (!loading && session) return <Navigate to={from} replace />;
+  // Already signed in → straight to the app; without this the persisted session
+  // LOOKS lost and the user "logs in again". A GUEST session must NOT count: it
+  // persists in localStorage and keeps refreshing, so a learner who once joined
+  // by link was bounced off this form forever, and `RequireAuth` then sent them
+  // to the stored (ended) guest class — every route landed on the podium.
+  if (!loading && session && !isGuestAccessToken(session.access_token)) {
+    return <Navigate to={from} replace />;
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

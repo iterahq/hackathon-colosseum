@@ -39,6 +39,17 @@ export function GuestEndCard({ onBack }: { onBack?: () => void }) {
           {t('live.guest.end.cta')}
         </Link>
 
+        {/* A learner who ALREADY has an account can land here by accident: a
+            stale guest token in localStorage routes every page to this card.
+            Without a visible way out, "cache" cleaning does not fix it. */}
+        <Link
+          to="/login"
+          data-testid="guest-end-login"
+          className="mt-3 w-full h-11 inline-flex items-center justify-center rounded-full border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {t('live.guest.end.login')}
+        </Link>
+
         {onBack && (
           <button
             type="button"

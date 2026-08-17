@@ -230,6 +230,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.guest.end.subtitle':
       'Você entrou como convidado. Crie sua conta para ter as aulas, o progresso e as conquistas no seu nome.',
     'live.guest.end.cta': 'Criar minha conta',
+    'live.guest.end.login': 'Já tenho conta — entrar',
     'live.guest.end.back': 'Voltar para a aula',
     'live.guest.expired.title': 'Esta aula já terminou',
     'live.guest.expired.subtitle':
@@ -1121,6 +1122,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'live.guest.end.subtitle':
       'You joined as a guest. Create your account to keep the classes, progress and achievements under your name.',
     'live.guest.end.cta': 'Create my account',
+    'live.guest.end.login': 'I already have an account — sign in',
     'live.guest.end.back': 'Back to the class',
     'live.guest.expired.title': 'This class has ended',
     'live.guest.expired.subtitle':
