@@ -54,7 +54,7 @@ export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind
 /**
  * Per-surface caps for kinds that are NOT in `WIDE_COLUMN_KINDS`.
  *
- * The live surfaces give `sandbox_scenario` a roomier `max-w-4xl` because the
+ * The live surfaces give the sandbox kinds a roomier `max-w-4xl` because the
  * scenario runs on a projector; the solo player does not. That is a legitimate
  * per-surface difference, so it stays at the call site instead of being baked in
  * here (baking it in would silently widen the solo player too).
@@ -87,12 +87,11 @@ export function columnMaxWidthClass(
 
 /**
  * The override map both LIVE surfaces (student + instructor) use — the
- * pre-existing `sandbox_scenario` = `max-w-4xl` rule, preserved verbatim.
+ * pre-existing sandbox = `max-w-4xl` rule, preserved verbatim.
  */
 export const LIVE_COLUMN_OVERRIDES: ColumnMaxWidthOverrides = {
-  // Os três kinds de sandbox: a regra é sobre a LARGURA da janela do sandbox, que
+  // Os dois kinds de sandbox: a regra é sobre a LARGURA da janela do sandbox, que
   // a divisão do 0.11.0 não mudou.
-  sandbox_scenario: 'max-w-4xl',
   chat_sandbox: 'max-w-4xl',
   terminal_sandbox: 'max-w-4xl',
 };

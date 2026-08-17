@@ -26,12 +26,12 @@ export function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: stri
  * The sandbox kinds get tighter padding: their content is a chat window or a
  * terminal, which already carries its own frame.
  *
- * All three are listed because the split of `sandbox_scenario` into
+ * Both are listed because the split of the old single sandbox kind into
  * `chat_sandbox` + `terminal_sandbox` would otherwise have loosened the padding
  * on every migrated row — a layout regression with no failing test to catch it,
  * since `data-activity-kind` and the spacing were reading the same literal.
  */
-const COMPACT_KINDS = new Set(['sandbox_scenario', 'chat_sandbox', 'terminal_sandbox']);
+const COMPACT_KINDS = new Set(['chat_sandbox', 'terminal_sandbox']);
 
 /** The rounded branded card shell every non-hero activity kind lives inside. */
 export function ActivityShell({

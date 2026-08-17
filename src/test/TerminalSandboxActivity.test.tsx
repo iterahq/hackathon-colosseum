@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
-import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
+import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
 import { FAMILY_EMITTED, isActionOfFamily } from '@/utils/activityFamilies';
@@ -89,7 +89,7 @@ function makeActivity(spec: unknown, id = 'a-terminal'): Activity {
     id,
     lessonId: 'l',
     ordinal: 0,
-    kind: 'sandbox_scenario',
+    kind: 'terminal_sandbox',
     spec: spec as Record<string, unknown>,
     rubric: null,
   };
@@ -110,7 +110,7 @@ function captor() {
 function mount(spec: unknown, onComplete: ReturnType<typeof captor>['fn'], id?: string) {
   return render(
     <I18nProvider>
-      <SandboxScenarioActivity activity={makeActivity(spec, id)} onComplete={onComplete} />
+      <TerminalSandboxActivity activity={makeActivity(spec, id)} onComplete={onComplete} />
     </I18nProvider>,
   );
 }
@@ -493,7 +493,7 @@ describe('chips move in both directions', () => {
 });
 
 describe('restart — question Q4 → A', () => {
-  it('clears the world and the transcript but keeps what was already earned', () => {
+  it('recomeçar volta pro primeiro passo, não só o mundo', () => {
     const cap = captor();
     mount(TERMINAL_SPEC, cap.fn);
 
@@ -502,10 +502,12 @@ describe('restart — question Q4 → A', () => {
 
     fireEvent.click(screen.getByTestId('terminal-restart'));
     expect(transcript()).not.toContain('criado: perfil.md');
-    // Progression is monotonic — the step stays earned…
-    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('2/2');
-    // …but the WORLD really is fresh, so the file is gone and committing the
-    // staged-nothing fails again.
+    // Até o 0.15.0 o progresso era monotônico e o aluno voltava para um mundo
+    // zerado ainda no passo 2 — a instrução pedia algo que o mundo já não
+    // sustentava. Desde o 1.0.0 o reset devolve os DOIS ao começo.
+    expect(screen.getByTestId('sandbox-instruction').textContent).toContain('1/2');
+    // E a trilha inteira é refeita para vencer de novo.
+    type('touch perfil.md');
     type('git add .');
     type('git commit -m "depois do reset"');
     expect(cap.fn).toHaveBeenCalledTimes(1);
@@ -618,7 +620,7 @@ describe('the trace — what the screenshot cannot show', () => {
     const cap = captor();
     const { rerender } = render(
       <I18nProvider>
-        <SandboxScenarioActivity activity={makeActivity(TERMINAL_SPEC)} onComplete={cap.fn} />
+        <TerminalSandboxActivity activity={makeActivity(TERMINAL_SPEC)} onComplete={cap.fn} />
       </I18nProvider>,
     );
     type('touch perfil.md');
@@ -626,7 +628,7 @@ describe('the trace — what the screenshot cannot show', () => {
     type('git commit -m "cria perfil"');
     rerender(
       <I18nProvider>
-        <SandboxScenarioActivity activity={makeActivity(TERMINAL_SPEC)} onComplete={cap.fn} />
+        <TerminalSandboxActivity activity={makeActivity(TERMINAL_SPEC)} onComplete={cap.fn} />
       </I18nProvider>,
     );
     expect(cap.fn).toHaveBeenCalledTimes(1);

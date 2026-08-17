@@ -33,8 +33,8 @@
  * WHAT IT SHIPS, AND WHAT IT ASKS THE HOST FOR
  * ─────────────────────────────────────────────────────────────────────────────
  * Built in: `concept`, `concept_reveal`, `video`, `single_choice`,
- * `multi_choice`, `match`, `order`, `chat_sandbox`, `terminal_sandbox` (and the
- * deprecated `sandbox_scenario` they were split out of), `document`, `diagram`,
+ * `multi_choice`, `match`, `order`, `chat_sandbox`, `terminal_sandbox`,
+ * `document`, `diagram`,
  * `quiz`. The sandboxes joined in Fase C step 4 and are the first ones that are
  * not a single-submit question: N turns against a world model, and they still ask
  * the host for nothing but i18n, because all of their judging is
@@ -57,7 +57,6 @@ import { SingleChoiceActivity } from './kinds/SingleChoiceActivity.js';
 import { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 import { MatchActivity } from './kinds/MatchActivity.js';
 import { OrderActivity } from './kinds/OrderActivity.js';
-import { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
 import { ChatSandboxActivity } from './kinds/ChatSandboxActivity.js';
 import { TerminalSandboxActivity } from './kinds/TerminalSandboxActivity.js';
 import { DocumentActivity } from './kinds/DocumentActivity.js';
@@ -79,7 +78,6 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'multi_choice',
   'match',
   'order',
-  'sandbox_scenario',
   'chat_sandbox',
   'terminal_sandbox',
   // Fase D. These three were never files: they were inline functions in the
@@ -110,7 +108,6 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   multi_choice: MultiChoiceActivity as ComponentType<ActivityRendererProps>,
   match: MatchActivity as ComponentType<ActivityRendererProps>,
   order: OrderActivity as ComponentType<ActivityRendererProps>,
-  sandbox_scenario: SandboxScenarioActivity as ComponentType<ActivityRendererProps>,
   chat_sandbox: ChatSandboxActivity as ComponentType<ActivityRendererProps>,
   terminal_sandbox: TerminalSandboxActivity as ComponentType<ActivityRendererProps>,
   document: DocumentActivity as ComponentType<ActivityRendererProps>,

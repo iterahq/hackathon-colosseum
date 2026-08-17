@@ -6,7 +6,7 @@ import { SANDBOX_BYOC_SPEC as BYOC_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * CONTRATO `sandbox_scenario` — variante BYOC AO VIVO (contrato próprio).
+ * CONTRATO `chat_sandbox` — variante BYOC AO VIVO (contrato próprio).
  *
  * Aqui a autoria entrega `openness: 'byoc'` (ou `live: true`) + títulos/prompts,
  * e NÃO entrega `initialState`/`cannedResults`: a resposta vem de um LLM real
@@ -49,13 +49,13 @@ type Story = StoryObj<typeof SandboxScenarioLiveActivity>;
  */
 export const Compose: Story = {
   render: () => (
-    <SandboxScenarioLiveActivity activity={makeActivity('sandbox_scenario', BYOC_SPEC)} onComplete={noop} />
+    <SandboxScenarioLiveActivity activity={makeActivity('chat_sandbox', BYOC_SPEC)} onComplete={noop} />
   ),
 };
 
 /** Live-mode reveal — `reveal` shows Continuar without a run. */
 export const RevealedInLive: Story = {
   render: () => (
-    <SandboxScenarioLiveActivity activity={makeActivity('sandbox_scenario', BYOC_SPEC)} onComplete={noop} reveal />
+    <SandboxScenarioLiveActivity activity={makeActivity('chat_sandbox', BYOC_SPEC)} onComplete={noop} reveal />
   ),
 };

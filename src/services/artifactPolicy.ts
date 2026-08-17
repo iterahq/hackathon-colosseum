@@ -128,7 +128,6 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   match: { persist: false, type: 'text', filename: 'answer.md' },
   order: { persist: false, type: 'text', filename: 'answer.md' },
   video: { persist: false, type: 'text', filename: 'notes.md' },
-  sandbox_scenario: { persist: false, type: 'document', filename: 'transcript.md' },
   chat_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
   terminal_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
 };

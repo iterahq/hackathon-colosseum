@@ -229,13 +229,13 @@ describe('live stage — mirroring a chat_sandbox', () => {
   });
 
   /**
-   * A row LEGADA, ainda com o kind `sandbox_scenario`. Ela renderiza o mesmo
+   * A row LEGADA, ainda com o kind `chat_sandbox`. Ela renderiza o mesmo
    * shell de chat, então tem que espelhar igual — e, principalmente, o palco não
    * pode remontá-la. O discriminador aqui é o KIND DA ROW; o `spec.sandboxKind`
    * deprecado não é consultado em lugar nenhum.
    */
-  it('mirrors a legacy sandbox_scenario row the same way', () => {
-    const legacy: Activity = { ...activity, kind: 'sandbox_scenario' };
+  it('mirrors a legacy chat_sandbox row the same way', () => {
+    const legacy: Activity = { ...activity, kind: 'chat_sandbox' };
     render(
       <I18nProvider>
         <ActivityI18nBridge>

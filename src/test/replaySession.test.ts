@@ -74,7 +74,7 @@ describe('o enunciado é uma união marcada, não um campo opcional', () => {
 
   it('snapshot SEM locale não é captura — o par é um fato só', () => {
     // Um snapshot cuja língua é desconhecida é ambíguo exatamente onde importa:
-    // o spec de `sandbox_scenario` é guardado com as bags `{pt,en}` intactas.
+    // o spec de `chat_sandbox` é guardado com as bags `{pt,en}` intactas.
     expect(readReplaySession({ ...ROW, spec_locale: null })?.enunciado.status).toBe('not_captured');
     expect(readReplaySession({ ...ROW, spec_locale: '' })?.enunciado.status).toBe('not_captured');
   });
@@ -267,16 +267,15 @@ describe('a tela sabe dizer que a família ainda não emite sequência', () => {
     expect(familyEmitsSequence(null)).toBe(false);
   });
 
-  it('scenario depende do sandboxKind — o TERMINAL emite, o chat ainda não', () => {
-    // A família `scenario` passou a emitir em 2026-08, mas só pelo sandbox de
-    // TERMINAL. Responder pela família sozinha viraria toda linha de chat de
-    // "esse kind ainda não emite" (verdade, e explicado) para "o aluno não fez
-    // nada" (mentira, e sem explicação).
-    expect(familyEmitsSequence('sandbox_scenario', { sandboxKind: 'terminal' })).toBe(true);
-    expect(familyEmitsSequence('sandbox_scenario', { sandboxKind: 'cloud-core-chat' })).toBe(false);
-    // Sem snapshot, a resposta conservadora: não promete sequência.
-    expect(familyEmitsSequence('sandbox_scenario')).toBe(false);
-    expect(familyEmitsSequence('sandbox_scenario', null)).toBe(false);
+  it('scenario depende do KIND — o terminal emite, o chat ainda não', () => {
+    // A família `scenario` passou a emitir em 2026-08, mas só pelo terminal.
+    // Responder pela família sozinha viraria toda linha de chat de "esse kind
+    // ainda não emite" (verdade, e explicado) para "o aluno não fez nada"
+    // (mentira, e sem explicação).
+    expect(familyEmitsSequence('terminal_sandbox')).toBe(true);
+    expect(familyEmitsSequence('chat_sandbox')).toBe(false);
+    // Sem kind, a resposta conservadora: não promete sequência.
+    expect(familyEmitsSequence(null)).toBe(false);
   });
 });
 

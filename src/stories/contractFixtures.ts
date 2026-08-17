@@ -189,8 +189,8 @@ export const DEGENERATE_SPECS = {
  * EIXO F′ — spec que o Zod do kind REJEITA e que, mesmo assim, CHEGA no
  * renderer.
  *
- * ⚠️ Não é hipótese: `safeParseActivitySpec` só é chamado em 2 dos 11 kinds
- * (`code` e `sandbox_scenario`) — ADR-5 / ADR-13 / drift signal #3 do plano. Nos
+ * ⚠️ Não é hipótese: `safeParseActivitySpec` só é chamado nos kinds de `code` e
+ * de sandbox — ADR-5 / ADR-13 / drift signal #3 do plano. Nos
  * outros 9 o `spec` entra por cast, então um spec inválido nunca é barrado e vai
  * direto para a árvore de render. As duas entradas abaixo são exatamente isso,
  * verificadas: o schema diz NÃO e o componente monta um fallback amigável.
@@ -212,9 +212,9 @@ export const UNGUARDED_INVALID_SPECS = {
     note: '`instruction` é OBRIGATÓRIA no Zod; o kind não valida → sobra o shell do concept.',
   },
   sandbox_lixo: {
-    kind: 'sandbox_scenario' as ActivityKind,
+    kind: 'chat_sandbox' as ActivityKind,
     spec: { nope: 1 },
-    note: 'ESTE é barrado: sandbox_scenario valida → card `sandbox-invalid` em vez de crash.',
+    note: 'ESTE é barrado: o sandbox valida → card `sandbox-invalid` em vez de crash.',
     guarded: true,
   },
   concept_reveal_sem_card: {
@@ -368,7 +368,7 @@ export const CODE_SPEC = {
 
 /* ------------------------------------------------------------------ *
  * 5b · Código GUIADO — variantes do MESMO kind `code`, reconhecidas pela
- * presença de `blanks` (igual ao `sandbox_scenario`, que despacha por
+ * presença de `blanks` (igual ao sandbox, que despacha por
  * `slots`/`choices`). O editor vem travado e só as lacunas aceitam interação:
  * o exercício deixa de ser "lembre a sintaxe" e passa a ser a UMA decisão que a
  * atividade quer ensinar. As três sobem em dificuldade — colocar uma palavra que
@@ -493,18 +493,17 @@ export const SANDBOX_SLOTS_SPEC = bySlug.c6;
  * `SandboxScenarioSpecSchema` — daí `validated: false` abaixo.
  */
 /**
- * O MESMO cenário de chat, autorado sob o kind novo. O spec é idêntico: a
- * divisão do `sandbox_scenario` trocou o discriminador de campo (`sandboxKind`)
- * por kind da activity, e não mexeu no contrato de dentro.
+ * O MESMO cenário de chat, autorado sob o kind próprio. O spec é idêntico: a
+ * divisão de 2026-08 trocou o discriminador de campo (`sandboxKind`) por kind da
+ * activity, e não mexeu no contrato de dentro.
  */
 export const CHAT_SANDBOX_SPEC = SANDBOX_OPEN_SPEC;
 
 /**
- * Terminal autorado sob o kind novo — sem `sandboxKind`.
+ * Terminal autorado sob o kind próprio — sem `sandboxKind`.
  *
  * As fixtures em `terminal-scenarios.json` ainda carregam o campo porque são o
- * retrato das rows não-migradas do banco, e o schema do `sandbox_scenario`
- * legado continua aceitando-o de propósito. Sob `terminal_sandbox` ele é chave
+ * retrato das rows como foram autoradas. Sob `terminal_sandbox` ele é chave
  * desconhecida: a terminal-idade É o kind agora, então repeti-la no spec seria
  * a mesma informação em dois lugares.
  */
@@ -657,7 +656,7 @@ export const ACTIVITY_CONTRACTS = {
     note: '`blanks[].kind:"text"` → digitação livre na lacuna; sem `options`, correção pelo `answer`.',
   },
   sandbox_open: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     fn: '6 · Cenário com IA',
     label: 'Sandbox · IA aberta',
     spec: SANDBOX_OPEN_SPEC,
@@ -665,7 +664,7 @@ export const ACTIVITY_CONTRACTS = {
     note: 'Scenario sem slots nem choices → o aluno manda o basePrompt como está.',
   },
   sandbox_choices: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     fn: '6 · Cenário com IA',
     label: 'Sandbox · Contexto por opções',
     spec: SANDBOX_CHOICES_SPEC,
@@ -673,7 +672,7 @@ export const ACTIVITY_CONTRACTS = {
     note: 'Scenario com `choices[]` → o aluno acrescenta contexto escolhendo UM chip.',
   },
   sandbox_slots: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     fn: '6 · Cenário com IA',
     label: 'Sandbox · Completar palavras',
     spec: SANDBOX_SLOTS_SPEC,
@@ -681,7 +680,7 @@ export const ACTIVITY_CONTRACTS = {
     note: 'Scenario com `slots[]` → o aluno monta o prompt preenchendo lacunas.',
   },
   sandbox_byoc_live: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     fn: '6 · Cenário com IA',
     label: 'Sandbox · BYOC ao vivo',
     spec: SANDBOX_BYOC_SPEC,
@@ -694,7 +693,7 @@ export const ACTIVITY_CONTRACTS = {
     label: 'Chat sandbox',
     spec: CHAT_SANDBOX_SPEC,
     validated: true,
-    note: 'O kind novo do cenário de chat — mesmo contrato do sandbox_scenario, sem o `sandboxKind`.',
+    note: 'O cenário de chat autorado sob o kind próprio, sem o `sandboxKind` legado.',
   },
   terminal_sandbox: {
     kind: 'terminal_sandbox',

@@ -1,5 +1,5 @@
 /**
- * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 14 kinds, fail-closed.
+ * FRONTEIRA DE VALIDAÇÃO DE SPEC — os 13 kinds, fail-closed.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
  * passar CI se criarmos novo kind que não esteja coberto"*. Isto SUPERSEDE a
@@ -7,7 +7,7 @@
  * (ver ADR-15 do plano `20260728-itera-activity-testing`).
  *
  * Antes disto, `safeParseActivitySpec` era chamado em apenas 2 dos 11 kinds
- * (`code` em `CodeSnackActivity`, `sandbox_scenario` no `SandboxScenarioGuard`);
+ * (`code` em `CodeSnackActivity`, o sandbox no `SandboxScenarioGuard`);
  * os outros 9 faziam cast cru (`activity.spec as unknown as SingleChoiceSpec`) —
  * ou seja, um spec mal-autorado virava crash de runtime em vez do card amigável
  * (estado de borda **F** da matriz do plano).
@@ -25,7 +25,7 @@
  * **REMEDIDO no 0.12.0 (2026-08-09), porque o aperto dos schemas invalida a
  * medição acima:** `itera.activities` = 281 rows, **281 PASSAM**;
  * `itera.activity_defs` = 108 rows, **102 passam e 6 reprovam** — os 6 são
- * `sandbox_scenario` com `initialState.systemPrompt` objeto onde o schema quer
+ * sandboxes com `initialState.systemPrompt` objeto onde o schema quer
  * string, e reprovavam IDÊNTICOS no 0.9.0 (defeito de autoria pré-existente, não
  * do aperto). `video` segue com 0 rows.
  *
@@ -41,11 +41,11 @@
  * não tem `initialState`, e o runtime determinístico quebra sem ele.
  *
  * Os números batem EXATOS no 0.11.0 e no 0.12.0, medidos separadamente: o alias
- * de chat que o 0.12.0 pôs no `sandbox_scenario` não mudou conformance porque
- * todas as rows do kind legado são de chat.
+ * de chat que o 0.12.0 pôs no sandbox não mudou conformance porque todas as rows
+ * do kind legado eram de chat.
  *
  * ────────────────────────────────────────────────────────────────────────────
- * O QUE "VALIDADO" SIGNIFICA — 14 kinds, ZERO stub desde 0.10.0
+ * O QUE "VALIDADO" SIGNIFICA — 13 kinds, ZERO stub desde 0.10.0
  * ────────────────────────────────────────────────────────────────────────────
  * `document`, `diagram` e `quiz` eram `z.record(z.string(), z.unknown())` —
  * stubs LOOSE que faziam `safeParseActivitySpec('quiz', {})` PASSAR, ou seja um
@@ -66,13 +66,12 @@
  *    `ActivityRenderer`: o spec de uma activity BYOC é validado pelo
  *    `ByocSpecSchema`, não pelo schema do kind hospedeiro. A isenção é por
  *    ORDEM (a fronteira só é consultada depois que o ramo BYOC não pegou).
- * 2. **BYOC ao vivo** (`isByocLive`) — o contrato do `sandbox_scenario` ao vivo
+ * 2. **BYOC ao vivo** (`isByocLive`) — o contrato do sandbox ao vivo
  *    é deliberadamente NÃO validado por Zod: a resposta vem de um LLM real,
  *    então ele não carrega `cannedResults` e reprovaria no
  *    `SandboxScenarioSpecSchema`. Ele é reconhecido por `isByocLive()` e o
- *    `contractFixtures.ts` o marca `validated: false`. **Validar
- *    `sandbox_scenario` em bloco quebraria o BYOC ao vivo** — daí a isenção
- *    explícita abaixo.
+ *    `contractFixtures.ts` o marca `validated: false`. **Validar o sandbox em
+ *    bloco quebraria o BYOC ao vivo** — daí a isenção explícita abaixo.
  */
 import {
   ACTIVITY_KINDS,
@@ -92,7 +91,7 @@ import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive'
  * - `boundary` — no `ActivityRenderer`, antes do switch (os 9 kinds que não
  *   validavam nada);
  * - `component` — dentro do próprio componente, do jeito histórico. Vale só
- *   para `code` (`CodeSnackActivity`) e `sandbox_scenario`
+ *   para `code` (`CodeSnackActivity`) e os sandboxes
  *   (`SandboxScenarioGuard`). **Não mover para `boundary` sem antes resolver o
  *   BYOC ao vivo** — esses dois já tinham comportamento e testids que outros
  *   testes (e o e2e) dependem.
@@ -148,15 +147,9 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
   video: { site: 'boundary', invalidTestId: 'video-invalid', messageKey: 'activity.specInvalid' },
   // — já validados dentro do componente, comportamento e testid PRESERVADOS —
   code: { site: 'component', invalidTestId: 'code-invalid', messageKey: 'activity.codeInvalid' },
-  sandbox_scenario: {
-    site: 'component',
-    invalidTestId: 'sandbox-invalid',
-    messageKey: 'activity.sandboxInvalid',
-  },
-  // Os dois kinds em que o `sandbox_scenario` foi partido. Herdam `site` e
-  // testid do kind de origem porque são a MESMA tela: um e2e ou um teste que
-  // procura `sandbox-invalid` não deve passar a depender de qual dos dois kinds
-  // a row carrega.
+  // Os dois kinds de sandbox compartilham `site` e testid porque são a MESMA
+  // tela: um e2e ou um teste que procura `sandbox-invalid` não deve passar a
+  // depender de qual dos dois kinds a row carrega.
   chat_sandbox: {
     site: 'component',
     invalidTestId: 'sandbox-invalid',
@@ -286,7 +279,7 @@ export function specBoundaryFailure(activity: {
   if (!isActivityKind(activity.kind)) return null;
 
   // Isenção de camada #2 (ver cabeçalho): o BYOC ao vivo não tem contrato Zod.
-  // Hoje `sandbox_scenario` já é `site: 'component'`, então esta linha é rede de
+  // Hoje os sandboxes já são `site: 'component'`, então esta linha é rede de
   // segurança — mas é ELA que impede que uma futura promoção do sandbox para
   // `site: 'boundary'` quebre silenciosamente o caminho ao vivo.
   if (isByocLive(activity)) return null;

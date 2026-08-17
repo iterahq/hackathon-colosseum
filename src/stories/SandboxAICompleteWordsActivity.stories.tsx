@@ -5,7 +5,7 @@ import { makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * CONTRATO `sandbox_scenario` — variante com `slots[]`.
+ * CONTRATO `chat_sandbox` — variante com `slots[]`.
  *
  * A autoria entrega lacunas (`select` com opções, ou texto livre) que o aluno
  * preenche para montar o prompt, envia e avalia a resposta. A presença de
@@ -27,22 +27,22 @@ type Story = StoryObj<typeof SandboxAICompleteWordsActivity>;
 
 /** c2 "Who am I" — one persona slot reshapes the same question's answer. */
 export const WhoAmI: Story = {
-  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('sandbox_scenario', bySlug.c2)} onComplete={noop} />,
+  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('chat_sandbox', bySlug.c2)} onComplete={noop} />,
 };
 
 /** c5 "Your case, your question" — two slots (where + situation) personalize it. */
 export const YourCase: Story = {
-  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('sandbox_scenario', bySlug.c5)} onComplete={noop} />,
+  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('chat_sandbox', bySlug.c5)} onComplete={noop} />,
 };
 
 /** c6 "Final mission" — four slots build a full who/what/example prompt. */
 export const FinalMission: Story = {
-  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('sandbox_scenario', bySlug.c6)} onComplete={noop} />,
+  render: () => <SandboxAICompleteWordsActivity activity={makeActivity('chat_sandbox', bySlug.c6)} onComplete={noop} />,
 };
 
 /** Live-mode reveal — `reveal` shows the recap + enables Continuar without a run. */
 export const RevealedInLive: Story = {
   render: () => (
-    <SandboxAICompleteWordsActivity activity={makeActivity('sandbox_scenario', bySlug.c6)} onComplete={noop} reveal />
+    <SandboxAICompleteWordsActivity activity={makeActivity('chat_sandbox', bySlug.c6)} onComplete={noop} reveal />
   ),
 };

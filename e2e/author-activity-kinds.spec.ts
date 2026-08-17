@@ -115,7 +115,7 @@ const MAX_UNITS = Number(process.env.ITERA_SMOKE_MAX_UNITS ?? 8);
  *  - `render`  — assert it mounts and exposes its input affordance, and stop.
  *    Duas razões levam um kind pra cá. Verdict dependente do conteúdo
  *    (`code` precisa dos checks autorais passarem num sandbox Monaco/iframe;
- *    `sandbox_scenario` precisa de uma caminhada multi-passo no ChatModel) —
+ *    `chat_sandbox` precisa de uma caminhada multi-passo no ChatModel) —
  *    dirigir esses até o veredito num smoke genérico embutiria suposição de
  *    conteúdo e flakearia; suas máquinas de estado estão cobertas em T0/T1. E
  *    kinds de CONTEÚDO (`concept`, `diagram`, `video`, e o `document` de corpo
@@ -248,7 +248,7 @@ const CASES: KindCase[] = [
     },
   },
   {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     depth: 'render',
     drive: async (page) => {
       const invalid = page.getByTestId('sandbox-invalid');

@@ -6,7 +6,7 @@
  * reading in.
  *
  * The locale collapse is not redundant with the one in the services layer:
- * `sandbox_scenario` specs deliberately reach the renderer with their bilingual
+ * Sandbox specs deliberately reach the renderer with their bilingual
  * bags intact, so a harness riding on a sandbox would never parse. Resolving here
  * makes BYOC independent of the host kind's collapse decision — and mirrors what
  * itera-api does before it validates the same spec.
@@ -38,7 +38,7 @@ export function resolveByocSpec(activity: Activity, locale?: Locale): ByocSpec |
 /**
  * The host kind's own teaching context, which BYOC carries over because its
  * layer replaces the host's whole render. It lives OUTSIDE the ByocSpec, so it
- * has to be collapsed on its own — on a `sandbox_scenario` host it reaches the
+ * has to be collapsed on its own — on a sandbox host it reaches the
  * renderer bilingual, and `RichText` would call `.replace` on an object.
  */
 export function resolveByocInstruction(

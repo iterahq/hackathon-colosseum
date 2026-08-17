@@ -12,7 +12,8 @@ const ANSWERABLE = [
   'order',
   'quiz',
   'code',
-  'sandbox_scenario',
+  'chat_sandbox',
+  'terminal_sandbox',
 ];
 const CONTENT = ['concept', 'video', 'document', 'diagram'];
 
@@ -40,7 +41,8 @@ describe('hasRevealableAnswer', () => {
     'match',
     'order',
     'quiz',
-    'sandbox_scenario',
+    'chat_sandbox',
+    'terminal_sandbox',
     'concept_reveal',
   ])('true for %s — these kinds have an answer we can put on screen', (kind) => {
     expect(hasRevealableAnswer(kind)).toBe(true);
@@ -74,10 +76,13 @@ describe('canReopenSubmission', () => {
     }
   );
 
-  it('false for sandbox_scenario — it already owns its own critique→retry loop', () => {
-    expect(isAnswerableLiveKind('sandbox_scenario')).toBe(true);
-    expect(canReopenSubmission('sandbox_scenario')).toBe(false);
-  });
+  it.each(['chat_sandbox', 'terminal_sandbox'])(
+    'false for %s — it already owns its own critique→retry loop',
+    (kind) => {
+      expect(isAnswerableLiveKind(kind)).toBe(true);
+      expect(canReopenSubmission(kind)).toBe(false);
+    }
+  );
 
   it.each(CONTENT)('false for content kind %s', (kind) => {
     expect(canReopenSubmission(kind)).toBe(false);

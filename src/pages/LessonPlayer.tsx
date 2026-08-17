@@ -297,7 +297,7 @@ export default function LessonPlayer() {
     : 0;
 
   // The activity emits its graded result UP here. GRADED kinds (MCQ family +
-  // the sandbox_scenario terminal verdict) hold on screen and surface the fixed
+  // the sandbox terminal verdict) hold on screen and surface the fixed
   // footer; the footer's "Continuar" is what actually advances (the Duolingo
   // review-then-continue beat). The optional `detail` lets the activity ride its
   // own settled explanation (the sandbox reveal recap) into the footer without

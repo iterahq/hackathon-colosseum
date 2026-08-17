@@ -11,8 +11,8 @@
  * Null, not a reason: at render time there is no author around to read one. The
  * caller-facing message belongs to the authoring MCP and to the API's 422.
  *
- * This deliberately does NOT look at `spec.openness`, which `sandbox_scenario`
- * already uses for its own, unrelated `'byoc'` live-conversation flow
+ * This deliberately does NOT look at `spec.openness`, which the sandbox kinds
+ * already use for their own, unrelated `'byoc'` live-conversation flow
  * (`sandbox-live/byocLive.ts`). The two must not collide.
  */
 import { resolveByocSpec, type ByocSpec } from '@iterahq/activity-spec';

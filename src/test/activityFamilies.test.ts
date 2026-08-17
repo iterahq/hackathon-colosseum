@@ -59,14 +59,10 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
       'video',
     ]);
     expect(kindsOfFamily('editor')).toEqual(['code']);
-    // Os três kinds de cenário são UMA família: partir o `sandbox_scenario` em
+    // Os dois kinds de cenário são UMA família: partir o antigo kind único em
     // `chat_sandbox` + `terminal_sandbox` foi trocar o discriminador de lugar, e
     // a família descreve a forma do ESTADO — que não mudou.
-    expect(kindsOfFamily('scenario').sort()).toEqual([
-      'chat_sandbox',
-      'sandbox_scenario',
-      'terminal_sandbox',
-    ]);
+    expect(kindsOfFamily('scenario').sort()).toEqual(['chat_sandbox', 'terminal_sandbox']);
   });
 
   it('every family states the shape of its state — the Fase A "signature"', () => {
@@ -131,9 +127,10 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     //
     // `scenario` joined on 2026-08 with the TERMINAL sandbox
     // (plan 20260806-itera-terminal-sandbox-activity, F5). It is the one
-    // PARTIALLY wired family: the terminal emits, the chat sandbox does not,
-    // so a reader must discriminate on `spec.sandboxKind` — which is exactly
-    // what `familyEmitsSequence` was changed to do.
+    // PARTIALLY wired family: `terminal_sandbox` emits, `chat_sandbox` does
+    // not, so a reader must discriminate on the KIND — which is what
+    // `familyEmitsSequence` does now that the two kinds replaced the old
+    // `spec.sandboxKind` discriminator.
     expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'scenario']);
     expect(FAMILY_EMITTED.reading).toEqual([]);
     expect(FAMILY_EMITTED.editor).toEqual([]);

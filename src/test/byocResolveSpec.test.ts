@@ -42,12 +42,12 @@ describe('resolveByocSpec', () => {
     );
   });
 
-  // The services layer hands `sandbox_scenario` specs through UNcollapsed so the
+  // The services layer hands sandbox specs through UNcollapsed so the
   // sandbox runtime can resolve its own bags — a harness riding on that kind used
   // to be invisible for exactly that reason.
-  it('resolves a harness riding on a sandbox_scenario, whose spec arrives uncollapsed', () => {
+  it('resolves a harness riding on a chat_sandbox, whose spec arrives uncollapsed', () => {
     const spec = resolveByocSpec(
-      activity('sandbox_scenario', { openness: 'guided', byoc: bilingualByoc })
+      activity('chat_sandbox', { openness: 'guided', byoc: bilingualByoc })
     );
     expect(spec?.harness.interaction).toBe('pick_best');
   });

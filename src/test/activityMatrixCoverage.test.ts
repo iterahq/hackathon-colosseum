@@ -21,11 +21,6 @@
  *
  *   `{ story }`    a célula está coberta; a story precisa existir de verdade
  *                  (renomeou a story? o guard fica vermelho).
- *   `{ sameScreen }` a célula é a MESMA TELA de outro kind, já coberta pela
- *                  story dele — o caso dos dois kinds em que o
- *                  `sandbox_scenario` foi partido. A story ainda tem que
- *                  existir; ela só não conta como cobertura nova, porque
- *                  duplicá-la não provaria nada além de si mesma.
  *   `{ na }`       o eixo não se aplica a este kind (ex.: correção num kind de
  *                  exposição). Nunca implícito — sempre com o motivo escrito.
  *   `{ deferred }` a célula NÃO está coberta e sabe-se por quê, com o motivo
@@ -38,7 +33,7 @@
  *                    `terminal-input`— o estado do terminal só nasce DEPOIS de
  *                                      um comando, e uma story é estado inicial.
  *                                      Esta dívida não veio da divisão do
- *                                      `sandbox_scenario`: ela sempre existiu
+ *                                      kind único de sandbox: ela sempre existiu
  *                                      escondida na linha dele, que cobria só o
  *                                      caminho de chat. A divisão a EXPÔS.
  *   `{ drift }`    a célula não está coberta porque a PRODUÇÃO não a implementa
@@ -52,7 +47,6 @@ import { indexStories } from './storyIndex';
 /** Um estado da matriz, por kind. */
 type Cell =
   | { story: string }
-  | { sameScreen: string; why: string }
   | { na: string }
   | { deferred: 'fase-3' | 'browser-input' | 'terminal-input'; why: string }
   | { drift: string };
@@ -86,10 +80,6 @@ const CELLS = [
 ] as const;
 type CellKey = (typeof CELLS)[number];
 
-const SAME_AS_CHAT =
-  'mesma tela do `sandbox_scenario` de chat: a divisão trocou o discriminador de campo do spec ' +
-  'para kind da activity, e não tocou no componente. Uma story nova aqui seria a mesma árvore ' +
-  'renderizada por um `kind` diferente.';
 const TERMINAL_NEEDS_TYPING =
   'o terminal não tem "enviar": ele avança quando o comando digitado casa com o `unlock` do ' +
   'passo. Uma story é estado inicial, então alcançar isto exige `play` dirigindo a prompt bar. ' +
@@ -282,53 +272,24 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
   },
 
   /* ── 6 · Cenário com IA ─────────────────────────────────────────────── */
-  sandbox_scenario: {
-    'A.enabled': { story: 'activities-ia-sandbox-aberta--open-chat' },
-    'A.locked': { story: 'activities-gate-locked--locked-sandbox-scenario' },
+  chat_sandbox: {
+    'A.enabled': { story: 'activities-dispatcher--chat-sandbox' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-sandbox' },
     'B.done': { story: 'activities-ia-sandbox-aberta--concluida' },
     'C.blank': { story: 'activities-ia-sandbox-aberta--open-chat' },
     'C.answered': { story: 'activities-ia-sandbox-aberta--prompt-composto' },
     'C.submitted': { story: 'activities-ia-sandbox-aberta--resposta-recebida' },
     'D.correct': { story: 'activities-ia-sandbox-aberta--avaliada-corretamente' },
     'D.incorrect': { story: 'activities-ia-sandbox-aberta--avaliada-incorretamente' },
-    'E.reveal': { story: 'activities-ia-sandbox-aberta--revealed-in-live' },
-    'F.spec_invalido': { story: 'activities-dispatcher--sandbox-espec-invalida' },
+    'E.reveal': { story: 'activities-dispatcher--reveal-chat-sandbox' },
+    'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
     'H.degenerado': { story: 'activities-ia-sandbox-aberta--open-chat' },
   },
 
   /**
-   * As células que dependem do KIND (roteamento, gate e card de inválido) têm
-   * story própria — são exatamente as que a divisão poderia ter quebrado. As
-   * outras são a MESMA tela do `sandbox_scenario`, com o mesmo componente.
-   */
-  chat_sandbox: {
-    'A.enabled': { story: 'activities-dispatcher--chat-sandbox' },
-    'A.locked': { story: 'activities-gate-locked--locked-chat-sandbox' },
-    'E.reveal': { story: 'activities-dispatcher--reveal-chat-sandbox' },
-    'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
-    'B.done': { sameScreen: 'activities-ia-sandbox-aberta--concluida', why: SAME_AS_CHAT },
-    'C.blank': { sameScreen: 'activities-ia-sandbox-aberta--open-chat', why: SAME_AS_CHAT },
-    'C.answered': { sameScreen: 'activities-ia-sandbox-aberta--prompt-composto', why: SAME_AS_CHAT },
-    'C.submitted': {
-      sameScreen: 'activities-ia-sandbox-aberta--resposta-recebida',
-      why: SAME_AS_CHAT,
-    },
-    'D.correct': {
-      sameScreen: 'activities-ia-sandbox-aberta--avaliada-corretamente',
-      why: SAME_AS_CHAT,
-    },
-    'D.incorrect': {
-      sameScreen: 'activities-ia-sandbox-aberta--avaliada-incorretamente',
-      why: SAME_AS_CHAT,
-    },
-    'H.degenerado': { sameScreen: 'activities-ia-sandbox-aberta--open-chat', why: SAME_AS_CHAT },
-  },
-
-  /**
-   * O terminal tem vitrine PRÓPRIA (`activities-sandbox-terminal--*`), então
-   * aqui quase nada é `sameScreen`: a tela é outra. O que falta é o eixo de
-   * interação, e ele falta porque uma story é estado inicial — ver
-   * `terminal-input` no cabeçalho.
+   * O terminal tem vitrine PRÓPRIA (`activities-sandbox-terminal--*`). O que
+   * falta é o eixo de interação, e ele falta porque uma story é estado inicial
+   * — ver `terminal-input` no cabeçalho.
    */
   terminal_sandbox: {
     'A.enabled': { story: 'activities-dispatcher--terminal-sandbox' },
@@ -346,7 +307,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
 };
 
 /**
- * O NÚMERO. Snapshot da distribuição das 154 células (14 kinds × 11 células).
+ * O NÚMERO. Snapshot da distribuição das 143 células (13 kinds × 11 células).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
@@ -358,15 +319,19 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  *   Fase 3 (PR B)→ { covered: 88, na: 24, deferred:  1, drift: 8 }
  *   concept_reveal→{ covered: 93, na: 30, deferred:  1, drift: 8 }  (12º kind)
  *   0.11.0        →{ covered: 104, sameScreen: 7, na: 30, deferred: 5, drift: 8 }
- *                  (o `sandbox_scenario` partido em `chat_sandbox` +
+ *                  (o kind único de sandbox partido em `chat_sandbox` +
  *                  `terminal_sandbox`; +11 cobertas de verdade, +7 declaradas
  *                  como a mesma tela e +4 de dívida do terminal que a linha
  *                  única escondia)
+ *   1.0.0         →{ covered: 100, na: 30, deferred: 5, drift: 8 }
+ *                  (o kind único saiu do enum; as 7 células `sameScreen` do
+ *                  chat viraram cobertura própria, porque as stories que elas
+ *                  apontavam agora SÃO `chat_sandbox`)
  *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
  * C.answered/C.submitted (rascunho abaixo do `min_words` × redação enviada) e
- * `sandbox_scenario` C.answered/C.submitted/D.correct/D.incorrect (o
+ * o sandbox de chat C.answered/C.submitted/D.correct/D.incorrect (o
  * passo-a-passo do `ChatModel`). TODAS produzidas por interação real, nenhuma
  * por prop nova — que era exatamente a condição do ADR-4.
  *
@@ -380,12 +345,12 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 104, sameScreen: 7, na: 30, deferred: 5, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 100, na: 30, deferred: 5, drift: 8 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.
  *
- * O BYOC live não é um kind do enum: é um CONTRATO dentro de `sandbox_scenario`
+ * O BYOC live não é um kind do enum: é um CONTRATO dentro dos kinds de sandbox
  * (`isByocLive()`), com máquina própria — `Phase = compose | responding |
  * evaluate | judging | settled`, cruzada com `responderAvailable`,
  * `judgeAvailable` e `error`.
@@ -462,14 +427,6 @@ describe('guard da matriz de estados das activities (V3)', () => {
       expect(STORY_IDS.has(cell.story), `story inexistente: ${cell.story}`).toBe(true);
       return;
     }
-    // `sameScreen` aponta para a story de OUTRO kind — ela precisa existir do
-    // mesmo jeito, senão a célula estaria apontando para o vazio com um motivo
-    // bonito escrito ao lado.
-    if ('sameScreen' in cell) {
-      expect(STORY_IDS.has(cell.sameScreen), `story inexistente: ${cell.sameScreen}`).toBe(true);
-      expect(cell.why.length).toBeGreaterThan(20);
-      return;
-    }
     // Não-coberta é permitido — mas nunca sem motivo escrito.
     const why = 'na' in cell ? cell.na : 'deferred' in cell ? cell.why : cell.drift;
     expect(why.length).toBeGreaterThan(20);
@@ -479,21 +436,18 @@ describe('guard da matriz de estados das activities (V3)', () => {
   });
 
   it('a distribuição das células bate com o snapshot declarado', () => {
-    const tally = { covered: 0, sameScreen: 0, na: 0, deferred: 0, drift: 0 };
+    const tally = { covered: 0, na: 0, deferred: 0, drift: 0 };
     for (const row of Object.values(MATRIX)) {
       for (const cell of CELLS) {
         const c = row[cell];
         if ('story' in c) tally.covered += 1;
-        else if ('sameScreen' in c) tally.sameScreen += 1;
         else if ('na' in c) tally.na += 1;
         else if ('deferred' in c) tally.deferred += 1;
         else tally.drift += 1;
       }
     }
     const total = Object.keys(MATRIX).length * CELLS.length;
-    expect(
-      tally.covered + tally.sameScreen + tally.na + tally.deferred + tally.drift,
-    ).toBe(total);
+    expect(tally.covered + tally.na + tally.deferred + tally.drift).toBe(total);
     expect(tally).toEqual(COVERAGE_SNAPSHOT);
   });
 

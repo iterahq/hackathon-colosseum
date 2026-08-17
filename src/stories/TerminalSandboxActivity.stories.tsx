@@ -1,15 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
+import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
 import scenarios from '@/test/fixtures/terminal-scenarios.json';
 import { makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * CONTRATO `sandbox_scenario` — `sandboxKind: "terminal"`.
+ * CONTRATO `terminal_sandbox`.
  *
- * O MESMO kind do sandbox de chat, com outro `initialState` e outro modelo de
- * mundo (plano `20260806-itera-terminal-sandbox-activity`, ADR-1). Nada de
- * `activity_kind` novo — logo, nada de migration e nada de human gate.
+ * O irmão do sandbox de chat, com outro `initialState` e outro modelo de mundo
+ * (plano `20260806-itera-terminal-sandbox-activity`, ADR-1).
  *
  * São DUAS activities que diferem só pelo modo de input (`spec.inputMode`), e
  * as duas passam pelo MESMO matcher: o modo de opções apenas fecha o espaço de
@@ -26,15 +25,15 @@ import { withActivityWidth } from './decorators';
  */
 const bySlug = scenarios as unknown as Record<string, Record<string, unknown>>;
 
-const meta: Meta<typeof SandboxScenarioActivity> = {
+const meta: Meta<typeof TerminalSandboxActivity> = {
   title: 'Organisms/Activities/8 · Sandbox de terminal',
   id: 'activities-sandbox-terminal',
-  component: SandboxScenarioActivity,
+  component: TerminalSandboxActivity,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
 };
 export default meta;
-type Story = StoryObj<typeof SandboxScenarioActivity>;
+type Story = StoryObj<typeof TerminalSandboxActivity>;
 
 /**
  * t1 — texto livre, um comando por passo. `git checkout -b feat/perfil` e
@@ -43,8 +42,8 @@ type Story = StoryObj<typeof SandboxScenarioActivity>;
  */
 export const FreeTextSingleCommand: Story = {
   render: () => (
-    <SandboxScenarioActivity
-      activity={makeActivity('sandbox_scenario', bySlug.t1!)}
+    <TerminalSandboxActivity
+      activity={makeActivity('terminal_sandbox', bySlug.t1!)}
       onComplete={noop}
     />
   ),
@@ -57,8 +56,8 @@ export const FreeTextSingleCommand: Story = {
  */
 export const FreeTextOrderedSequence: Story = {
   render: () => (
-    <SandboxScenarioActivity
-      activity={makeActivity('sandbox_scenario', bySlug.t2!)}
+    <TerminalSandboxActivity
+      activity={makeActivity('terminal_sandbox', bySlug.t2!)}
       onComplete={noop}
     />
   ),
@@ -72,8 +71,8 @@ export const FreeTextOrderedSequence: Story = {
  */
 export const OptionsCommandThenTokens: Story = {
   render: () => (
-    <SandboxScenarioActivity
-      activity={makeActivity('sandbox_scenario', bySlug.t3!)}
+    <TerminalSandboxActivity
+      activity={makeActivity('terminal_sandbox', bySlug.t3!)}
       onComplete={noop}
     />
   ),
@@ -87,8 +86,8 @@ export const OptionsCommandThenTokens: Story = {
  */
 export const EnginelessGenericTerminal: Story = {
   render: () => (
-    <SandboxScenarioActivity
-      activity={makeActivity('sandbox_scenario', bySlug.t4!)}
+    <TerminalSandboxActivity
+      activity={makeActivity('terminal_sandbox', bySlug.t4!)}
       onComplete={noop}
     />
   ),
@@ -97,8 +96,8 @@ export const EnginelessGenericTerminal: Story = {
 /** Reveal ao vivo — o recap + a masterLine, sem o aluno ter rodado nada. */
 export const RevealedInLive: Story = {
   render: () => (
-    <SandboxScenarioActivity
-      activity={makeActivity('sandbox_scenario', bySlug.t1!)}
+    <TerminalSandboxActivity
+      activity={makeActivity('terminal_sandbox', bySlug.t1!)}
       onComplete={noop}
       reveal
     />

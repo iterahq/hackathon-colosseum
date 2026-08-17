@@ -1,14 +1,11 @@
 /**
- * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 14 kinds.
+ * TRAP DE EXAUSTIVIDADE DA FRONTEIRA DE VALIDAÇÃO — os 13 kinds.
  *
  * Origem: Tainan, 2026-07-28 — *"é pra cobrir os 11 kinds então. e não deixar
  * passar CI se criarmos novo kind que não esteja coberto"* (ADR-15). Eram 11
- * quando ele escreveu; `concept_reveal` virou o 12º em 2026-07-31 e o
- * `sandbox_scenario` foi partido em `chat_sandbox` + `terminal_sandbox` no
- * 0.11.0 — a trap cobrou cada linha nova.
- *
- * ⚠️ 14 é o número da TRANSIÇÃO: o `sandbox_scenario` só existe no enum enquanto
- * houver row não-migrada no banco. Quando ele sair, isto vira 13.
+ * quando ele escreveu; `concept_reveal` virou o 12º em 2026-07-31 e o sandbox
+ * foi partido em `chat_sandbox` + `terminal_sandbox` — a trap cobrou cada linha
+ * nova, e a retirada do `sandbox_scenario` fechou a conta em 13.
  *
  * Este arquivo é o lado RUNTIME da trap (o lado de TIPO é o
  * `Record<ActivityKind, …>` em `src/utils/activitySpecBoundary.ts`, que já
@@ -35,7 +32,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 /**
- * A itera-api chega DESCONFIGURADA em teste, que é o estado dos 14 kinds abaixo.
+ * A itera-api chega DESCONFIGURADA em teste, que é o estado dos 13 kinds abaixo.
  * O flag existe só para o par de testes de BYOC no fim do arquivo, que precisa
  * ligá-la para que a camada resolva.
  */
@@ -45,7 +42,7 @@ vi.mock('@/api/iteraApi', async (importOriginal) => ({
   iteraApiConfigured: () => apiConfigured(),
 }));
 // `ByocActivity` lê a sessão; este arquivo renderiza sem `AuthProvider` porque os
-// outros 14 kinds não precisam de nenhuma.
+// outros 13 kinds não precisam de nenhuma.
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ session: null, loading: false }) }));
 
 import { ACTIVITY_KINDS, safeParseActivitySpec, type ActivityKind } from '@iterahq/activity-spec';
@@ -104,7 +101,6 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   match: { totalmente: 'inválido' },
   order: { totalmente: 'inválido' },
   video: { totalmente: 'inválido' },
-  sandbox_scenario: { totalmente: 'inválido' },
   chat_sandbox: { totalmente: 'inválido' },
   terminal_sandbox: { totalmente: 'inválido' },
 };
@@ -128,7 +124,7 @@ function validSpecFor(kind: ActivityKind): Record<string, unknown> {
   return hit.spec;
 }
 
-describe('fronteira de validação de spec — cobertura dos 14 kinds', () => {
+describe('fronteira de validação de spec — cobertura dos 13 kinds', () => {
   it('todo kind de ACTIVITY_KINDS está registrado (espelho runtime da trap de tipo)', () => {
     const report = auditKindValidationCoverage();
     expect(report.missing).toEqual([]);
@@ -169,7 +165,7 @@ describe('fronteira de validação de spec — cobertura dos 14 kinds', () => {
 
   it('nenhum kind aceita `{}` — a lacuna dos stubs fechou no 0.10.0', () => {
     // A lista VAZIA é a afirmação, não um detalhe: é ela que faz o laço abaixo
-    // cobrir os 14 kinds. Sem esta linha, reintroduzir um stub tiraria aquele kind
+    // cobrir os 13 kinds. Sem esta linha, reintroduzir um stub tiraria aquele kind
     // do laço em silêncio, e o teste seguiria verde medindo menos.
     expect(KNOWN_STUB_KINDS).toEqual([]);
     for (const kind of KINDS) {
@@ -211,15 +207,15 @@ describe('BYOC — isenções deliberadas (camada, não kind)', () => {
     expect([...EXEMPT_LAYERS]).toEqual(['byoc-harness', 'byoc-live']);
   });
 
-  it('o sandbox_scenario BYOC AO VIVO é isento — validar em bloco quebraria o caminho ao vivo', () => {
+  it('o sandbox BYOC AO VIVO é isento — validar em bloco quebraria o caminho ao vivo', () => {
     // O contrato ao vivo é `validated: false` de propósito: a resposta vem de um
     // LLM real, então ele não carrega `cannedResults` e reprovaria no
-    // SandboxScenarioSpecSchema. Ele é reconhecido por `isByocLive()`.
+    // ChatSandboxSpecSchema. Ele é reconhecido por `isByocLive()`.
     const live = ACTIVITY_CONTRACTS.sandbox_byoc_live as ContractFixture;
     expect(live.validated).toBe(false);
-    expect(safeParseActivitySpec('sandbox_scenario', live.spec).success).toBe(false);
+    expect(safeParseActivitySpec('chat_sandbox', live.spec).success).toBe(false);
     // …e mesmo assim a fronteira NÃO o reprova.
-    expect(specBoundaryFailure(makeActivity('sandbox_scenario', live.spec))).toBeNull();
+    expect(specBoundaryFailure(makeActivity('chat_sandbox', live.spec))).toBeNull();
   });
 
   /**

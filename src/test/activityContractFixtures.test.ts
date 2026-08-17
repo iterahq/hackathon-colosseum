@@ -86,13 +86,13 @@ describe('fixtures de story por contrato de activity', () => {
 
   /**
    * A fronteira de validação, escrita como asserção em vez de comentário —
-   * drift signal #3 / ADR-5 / ADR-13. Hoje só `code` e `sandbox_scenario`
-   * chamam `safeParseActivitySpec`; para os outros 9 kinds um spec inválido
+   * drift signal #3 / ADR-5 / ADR-13. Hoje só `code` e os dois kinds de sandbox
+   * chamam `safeParseActivitySpec`; para os outros kinds um spec inválido
    * atravessa e vai renderizar. Quando o plano irmão
    * `20260728-itera-back-office` fechar essa fronteira, ESTE teste fica
    * vermelho — que é o sinal desejado, não um incômodo.
    */
-  it('a fronteira de validação ainda não existe para os kinds fora de code/sandbox_scenario', () => {
+  it('a fronteira de validação ainda não existe para os kinds fora de code/sandbox', () => {
     const unguarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
       ([, f]) => !('guarded' in f && f.guarded),
     );
@@ -100,7 +100,7 @@ describe('fixtures de story por contrato de activity', () => {
     const guarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
       ([, f]) => 'guarded' in f && f.guarded,
     );
-    expect(guarded.map(([, f]) => f.kind).sort()).toEqual(['concept_reveal', 'sandbox_scenario']);
+    expect(guarded.map(([, f]) => f.kind).sort()).toEqual(['chat_sandbox', 'concept_reveal']);
   });
 
   it('o starter do contrato `code` não usa import (o iframe de preview não tem require)', () => {

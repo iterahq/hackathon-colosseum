@@ -50,9 +50,8 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
   'order',
   'quiz',
   'code',
-  // Os três kinds de sandbox — sem timer, o ao-vivo não tem contagem nem
-  // trava de "canetas no chão" numa row migrada.
-  'sandbox_scenario',
+  // Os dois kinds de sandbox — sem timer, o ao-vivo não tem contagem nem
+  // trava de "canetas no chão".
   'chat_sandbox',
   'terminal_sandbox',
 ]);
@@ -76,7 +75,6 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'match',
   'order',
   'quiz',
-  'sandbox_scenario',
   'chat_sandbox',
   'terminal_sandbox',
   'concept_reveal',
@@ -96,8 +94,8 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
  * solution, so reopening costs real work — and it is the kind a learner actually
  * asked to reopen in the first real class (06/08).
  *
- * `sandbox_scenario` is deliberately OUT even though it is answerable: it already
- * owns an in-window critique→retry loop
+ * The sandbox kinds are deliberately OUT even though they are answerable: they
+ * already own an in-window critique→retry loop
  * (`components/branded/activity/sandbox/useSandboxScenario.ts`), so bolting a
  * second reopen on top would give the same round two different ways back.
  */

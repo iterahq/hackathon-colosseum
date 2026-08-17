@@ -14,8 +14,8 @@ import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
  *
  * Postgres has no `ALTER TYPE … DROP VALUE`. So the enum can only GROW: a kind
  * the product retires stays in the type forever (`sandbox_scenario` is exactly
- * that case today — live value, zero rows since the 2026-08-10 DML, removal at
- * package level pending `iterahq/itera-player#353`).
+ * that case today — live value, zero rows since the 2026-08-10 DML, dropped at
+ * package level by `activity-spec` 1.0.0 / `iterahq/itera-player#353`).
  *
  * Therefore:
  *  - a kind the package exports that the database CANNOT STORE is a real bug —
@@ -80,6 +80,6 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
     const retired = dbEnum.filter((k) => !(ACTIVITY_KINDS as readonly string[]).includes(k));
     // Not an assertion of emptiness: a retirement is legal and expected. This
     // pins the CURRENT set so a NEW, unexplained divergence shows up in a diff.
-    expect(retired).toEqual([]);
+    expect(retired).toEqual(['sandbox_scenario']);
   });
 });

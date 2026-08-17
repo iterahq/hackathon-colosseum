@@ -89,7 +89,7 @@ describe('learnerActivityGate', () => {
     it('aula com trava: o exercício espera a largada', () => {
       expect(compose(true, 'single_choice').awaitingStart).toBe(true);
       expect(compose(true, 'code').awaitingStart).toBe(true);
-      expect(compose(true, 'sandbox_scenario').awaitingStart).toBe(true);
+      expect(compose(true, 'chat_sandbox').awaitingStart).toBe(true);
     });
 
     it('aula com trava: slide/leitura seguem livres (a regressão do build antigo)', () => {
@@ -150,7 +150,7 @@ describe('learnerActivityGate', () => {
     const afterTimerStops = () =>
       learnerActivityGate({ timerRunning: false, expired: true, answered: false });
 
-    it.each(['code', 'single_choice', 'multi_choice', 'match', 'order', 'quiz', 'sandbox_scenario'])(
+    it.each(['code', 'single_choice', 'multi_choice', 'match', 'order', 'quiz', 'chat_sandbox'])(
       '%s: expiring the clock locks the learner read-only (identical across kinds)',
       () => {
         const g = afterTimerStops();

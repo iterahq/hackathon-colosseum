@@ -2,7 +2,7 @@
  * O card amigável de **spec inválido** — estado de borda **F** da matriz do
  * plano `20260728-itera-activity-testing`.
  *
- * UMA convenção só, para os 12 kinds: `code` e `sandbox_scenario` já tinham
+ * UMA convenção só, para os 13 kinds: `code` e os sandboxes já tinham
  * este card (testids `code-invalid` / `sandbox-invalid`, dos quais testes e o
  * e2e dependem), então a fronteira nova ESTENDE o padrão existente em vez de
  * inventar um segundo. Além do testid por kind, todo card carrega

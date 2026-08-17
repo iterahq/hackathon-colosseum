@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider, type Locale } from '@/i18n';
 import { ActivityI18nBridge } from '@/components/branded/activity/IteraActivityHost';
-import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
+import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
 import type { Activity } from '@/types/content';
 
 /**
@@ -69,7 +69,7 @@ const OPTIONS_SPEC = {
 } as const;
 
 function makeActivity(spec: unknown, id = 'a'): Activity {
-  return { id, lessonId: 'l', ordinal: 0, kind: 'sandbox_scenario', spec: spec as Record<string, unknown>, rubric: null };
+  return { id, lessonId: 'l', ordinal: 0, kind: 'terminal_sandbox', spec: spec as Record<string, unknown>, rubric: null };
 }
 
 /**
@@ -90,7 +90,7 @@ function mountAt(locale: Locale, spec: unknown = SPEC) {
   return render(
     <I18nProvider>
       <ActivityI18nBridge>
-        <SandboxScenarioActivity activity={makeActivity(spec, `a-${locale}`)} onComplete={vi.fn()} />
+        <TerminalSandboxActivity activity={makeActivity(spec, `a-${locale}`)} onComplete={vi.fn()} />
       </ActivityI18nBridge>
     </I18nProvider>,
   );

@@ -6,9 +6,9 @@ No bottom bar, no progress bar, no hearts, no routing: those stay in the
 `LessonPlayer`.
 
 > **Fase C landed: the renderers are here.** v0.1.0 shipped types only; the
-> package now has runtime and renders **eight** kinds from its base entrypoint —
-> the seven backend-free question kinds from steps 1–3, plus `sandbox_scenario`
-> from step 4 — and a ninth, `code`, from a **separate entrypoint**
+> package now has runtime and renders **nine** kinds from its base entrypoint —
+> the seven backend-free question kinds from steps 1–3, plus `chat_sandbox` and
+> `terminal_sandbox` from step 4 — and a tenth, `code`, from a **separate entrypoint**
 > (`@iterahq/activities/code`, step 5). What did NOT move — and why each one
 > stayed — is the table below; read it before assuming a kind is available.
 
@@ -26,7 +26,7 @@ renders from fixture specs with no bundler and no Itera anything.
 | Kind | Here? | Why |
 | --- | --- | --- |
 | `concept` · `concept_reveal` · `video` · `single_choice` · `multi_choice` · `match` · `order` | ✅ | Backend-free. Fase C steps 1–3. |
-| `sandbox_scenario` | ✅ | Fase C **step 4**. One kind, five activity types: the chat sandbox (open / choices / slots) and the terminal sandbox (free text / options). **It needs no port** — every reducer is `@iterahq/activity-spec/runtime`'s, so a host gets a multi-turn graded micro-experiment with nothing injected but i18n. |
+| `chat_sandbox` · `terminal_sandbox` | ✅ | Fase C **step 4**. Two kinds, five activity types: the chat sandbox (open / choices / slots) and the terminal sandbox (free text / options). **They need no port** — every reducer is `@iterahq/activity-spec/runtime`'s, so a host gets a multi-turn graded micro-experiment with nothing injected but i18n. |
 | the LIVE sandbox (`sandbox-live`) · BYOC | ❌ | The AI-judged twins. They are the ones that actually consume `api.respond` / `api.judge` / `api.generateByoc`, and BYOC had ~10 of its 12 files open in another PR while this one landed. Extracting under that is conflict, not extraction. |
 | `code` | ⚠️ **other entrypoint** | Fase C **step 5**. It is here, but behind `@iterahq/activities/code` (ADR-5) and deliberately absent from `BUILT_IN_ACTIVITY_KINDS`, so a consumer that never renders a snack pays for none of it. See *Consuming the `/code` entrypoint*. |
 | `document` · `diagram` · `quiz` | ✅ | **Fase D.** They were never files — they were inline functions inside the Player's ~700-line dispatcher, which is why they were last (`CONTRACT.md` finding 4). Together they are **48% of the authored library** (`document` 24 defs, `quiz` 22, `diagram` 13 of 123), so until 0.4.0 a host that was not the Player rendered most of the catalogue as an unsupported-kind placeholder. `document` is ONE kind with THREE renderers: `rubric.mode === 'ai-judge'` **and** `api.judge` → the AI-judged one; a prompt or a `min_words` rubric → the reflection one; otherwise a read-only card. Without `api.judge` it degrades to reflection — a real screen, not a placeholder. |

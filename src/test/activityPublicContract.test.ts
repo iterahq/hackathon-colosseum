@@ -48,7 +48,8 @@ import { SingleChoiceActivity } from '@/components/branded/activity/SingleChoice
 import { MultiChoiceActivity } from '@/components/branded/activity/MultiChoiceActivity';
 import { MatchActivity } from '@/components/branded/activity/MatchActivity';
 import { OrderActivity } from '@/components/branded/activity/OrderActivity';
-import { SandboxScenarioActivity } from '@/components/branded/activity/SandboxScenarioActivity';
+import { ChatSandboxActivity } from '@/components/branded/activity/ChatSandboxActivity';
+import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
 import { DocumentActivity } from '@/components/branded/activity/DocumentActivity';
 import { DiagramActivity } from '@/components/branded/activity/DiagramActivity';
 import { QuizActivity } from '@/components/branded/activity/QuizActivity';
@@ -98,7 +99,8 @@ type _singleChoice = Expect<IsNever<Uncovered<typeof SingleChoiceActivity>>>;
 type _multiChoice = Expect<IsNever<Uncovered<typeof MultiChoiceActivity>>>;
 type _match = Expect<IsNever<Uncovered<typeof MatchActivity>>>;
 type _order = Expect<IsNever<Uncovered<typeof OrderActivity>>>;
-type _sandboxScenario = Expect<IsNever<Uncovered<typeof SandboxScenarioActivity>>>;
+type _chatSandbox = Expect<IsNever<Uncovered<typeof ChatSandboxActivity>>>;
+type _terminalSandbox = Expect<IsNever<Uncovered<typeof TerminalSandboxActivity>>>;
 // Fase D. These three were inline functions in the Player's dispatcher until
 // now, so they were the only kinds in the taxonomy this file could not assert
 // over — a function declared inside another module is not importable, and the
@@ -140,7 +142,8 @@ type _verdictSingle = Expect<Assignable<Verdict<typeof SingleChoiceActivity>, bo
 type _verdictMulti = Expect<Assignable<Verdict<typeof MultiChoiceActivity>, boolean>>;
 type _verdictMatch = Expect<Assignable<Verdict<typeof MatchActivity>, boolean>>;
 type _verdictOrder = Expect<Assignable<Verdict<typeof OrderActivity>, boolean>>;
-type _verdictSandbox = Expect<Assignable<Verdict<typeof SandboxScenarioActivity>, boolean>>;
+type _verdictChatSandbox = Expect<Assignable<Verdict<typeof ChatSandboxActivity>, boolean>>;
+type _verdictTerminalSandbox = Expect<Assignable<Verdict<typeof TerminalSandboxActivity>, boolean>>;
 type _verdictDocument = Expect<Assignable<Verdict<typeof DocumentActivity>, boolean>>;
 type _verdictDiagram = Expect<Assignable<Verdict<typeof DiagramActivity>, boolean>>;
 type _verdictQuiz = Expect<Assignable<Verdict<typeof QuizActivity>, boolean>>;
@@ -262,8 +265,6 @@ const PUBLIC_RUNTIME_SURFACE = [
   // seeds a fresh `initialModel` from the VIEWER's client, so the room sees the
   // authored opener under the learner's name instead of their conversation.
   'ChatScreenMirror',
-  // …and the deprecated kind they were split out of, which now only delegates.
-  'SandboxScenarioActivity',
   // i18n
   'ACTIVITY_DICTIONARY',
   'ACTIVITY_I18N_KEYS',

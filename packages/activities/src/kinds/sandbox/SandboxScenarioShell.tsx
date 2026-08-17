@@ -70,7 +70,7 @@ export function SandboxScenarioShell({
   // bug — `SandboxScenarioLiveActivity` already emits `false` on a judge FAIL.
   //
   // `s.won` IS the criterion: `isSuccess(scenario, model)` evaluates the spec's
-  // own `success` predicate, which in all 24 live `sandbox_scenario` rows is a
+  // own `success` predicate, which in all 24 live sandbox rows is a
   // `stepCompleted` on the last step — and every one of the 25 `evaluate` steps
   // across those rows unlocks on `evaluated: { correct: true }`. So the runtime
   // already grades the learner's judgment; the shell was just discarding the
@@ -131,9 +131,8 @@ export function SandboxScenarioShell({
   useChatScreenMirror(activity.id, screen, s.model.ranPromptCount > 0);
 
   // O kind vem da ROW, não de um literal: telemetria e e2e leem
-  // `data-activity-kind`, e uma tela de `chat_sandbox` que se anuncia como
-  // `sandbox_scenario` atribuiria a atividade ao kind errado exatamente durante
-  // a migração, quando os dois kinds coexistem no banco.
+  // `data-activity-kind`, e uma tela que se anuncia como outro kind atribuiria a
+  // atividade ao kind errado.
   return (
     <ActivityShell kind={activity.kind} icon={MessageSquare} label={tr('activity.sandboxScenario')}>
       <div className="flex flex-col gap-4">

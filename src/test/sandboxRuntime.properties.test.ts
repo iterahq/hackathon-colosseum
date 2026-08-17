@@ -102,7 +102,7 @@ const LOCALES: Locale[] = ['pt', 'en'];
 type NamedScenario = { key: string; scenario: Scenario };
 
 const SANDBOX_SCENARIOS: NamedScenario[] = Object.entries(ACTIVITY_CONTRACTS)
-  .filter(([, c]) => c.kind === 'sandbox_scenario' && c.validated)
+  .filter(([, c]) => c.kind === 'chat_sandbox' && c.validated)
   .map(([key, c]) => ({ key, scenario: c.spec as unknown as Scenario }));
 
 /* ------------------------------------------------------------------ *

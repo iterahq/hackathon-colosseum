@@ -115,7 +115,7 @@ function mockLive(currentActivityId = ACTIVITY_ID) {
     data: {
       id: LESSON_ID,
       title: { pt: 'Componentes' },
-      activities: [activity(ACTIVITY_ID, 'sandbox_scenario'), activity(NEXT_ID, 'sandbox_scenario')],
+      activities: [activity(ACTIVITY_ID, 'chat_sandbox'), activity(NEXT_ID, 'chat_sandbox')],
     },
     isPending: false,
   });

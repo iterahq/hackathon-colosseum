@@ -8,7 +8,7 @@ const activity: Activity = {
   id: 't-sandbox',
   lessonId: 'l',
   ordinal: 0,
-  kind: 'sandbox_scenario',
+  kind: 'chat_sandbox',
   spec: c1,
   rubric: null,
 };

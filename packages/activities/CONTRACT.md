@@ -3,7 +3,7 @@
 **Plan:** [`20260803-itera-player-activities-lib`](https://plans.devfellowship.com/20260803-itera-player-activities-lib)
 · **Parent:** `20260803-itera-learning-control-plane-prototipo`
 **Status:** Fase A done · Fase B done · **Fase C steps 1–3 done**, **step 4
-done for `sandbox_scenario`**, **step 5 done for `code`** — pure logic, the
+done for the two sandbox kinds**, **step 5 done for `code`** — pure logic, the
 shared primitives, the seven backend-free question kinds, the whole sandbox
 (chat + terminal) and the code snack now live here, together with
 `<ActivityProvider>` and the package's own `<ActivityRenderer>`. `code` is the
@@ -202,7 +202,7 @@ per step, not per phase.
    `document`/`diagram`/`quiz`, which had to be **lifted out of
    `ActivityRenderer.tsx` into their own files first** because they were inline
    functions in the 700-line dispatcher. ✅ **Done in Fase D** — see finding 4.
-4. **Backend-backed kinds** — `sandbox_scenario`, BYOC, the AI-judge `document`
+4. **Backend-backed kinds** — the sandboxes, BYOC, the AI-judge `document`
    path, `JudgeHeatmap` → all go through the injected ports.
 5. **Heavy kinds** — `code` / the preview iframe → separate entrypoint
    `@iterahq/activities/code` (ADR-5), never in the base bundle. ✅ **Done.**
@@ -229,8 +229,8 @@ first argument must be `boolean`.
 | `document` | ✅ | `i18n`; optionally `api.listSeeds`/`generateContext`/`judge` + `identity` | **THREE** paths, not two: read-only · reflection · AI-judge. Extracted in Fase D. The AI-judge path is selected by `Boolean(api?.judge)` — absence degrades to reflection, so a judge-less host still shows a working activity. Also mounts `ArtifactVisibilityNotice` → see finding 1, now closed. |
 | `diagram` | ✅ | `i18n` | Extracted in Fase D. ⚠️ Its image field is `imageUrl` (camelCase), unlike the InstructionPanel's `image_url` — both spellings are live in production and neither is a typo. |
 | `quiz` | ✅ | `i18n` | Extracted in Fase D. The one kind whose trace keys on the option INDEX — its options carry no required id, and it is also the one kind that does not shuffle, so the index IS the authored position. A quiz that ever starts shuffling must grow authored ids in the same change. |
-| `sandbox_scenario` (self-paced) | ✅ | `i18n` | Judging is `@iterahq/activity-spec/runtime` — pure, no backend. |
-| `sandbox_scenario` (live/BYOC) | ✅ | `i18n`, `api.respond`/`judge`, `identity` | Reached via `LiveActivityRenderer`, not `ActivityRenderer` → see finding 3. |
+| `chat_sandbox` · `terminal_sandbox` (self-paced) | ✅ | `i18n` | Judging is `@iterahq/activity-spec/runtime` — pure, no backend. |
+| `chat_sandbox` (live/BYOC) | ✅ | `i18n`, `api.respond`/`judge`, `identity` | Reached via `LiveActivityRenderer`, not `ActivityRenderer` → see finding 3. |
 | `code` | ✅ | `i18n`, **`storage`**, optionally `codeEditor` | Behind the `/code` entrypoint (ADR-5). Monaco is NOT in the package — the editor is a port, and without one the kind draws a plain textarea → see findings 2 and 6. |
 | BYOC (a **layer**, not a kind) | ⚠️ one extra prop | `i18n`, `api.generateByoc`/`readByoc`, `identity` | `ByocActivity` takes `spec` in addition. It is a dispatcher-internal handoff (`resolveByocSpec` runs *before* the kind switch), never something a host supplies — so the public surface is unchanged. Asserted explicitly so a *second* extra prop turns the test red. |
 
@@ -279,7 +279,7 @@ plan's coupling table was incomplete, and findings 5–7 arrived with step 5.
 3. **There are two dispatchers, and only one is in scope.**
    `LiveActivityRenderer` wraps `ActivityRenderer` with the same props plus
    `forceLive`, and it — not `ActivityRenderer` — is what routes the live BYOC
-   `sandbox_scenario`. Its live branch is gated on `iteraApiConfigured()`, an
+   sandbox. Its live branch is gated on `iteraApiConfigured()`, an
    env read. Under the contract that gate becomes `Boolean(api?.respond)`. The
    wrapper itself looks like **host routing, not an activity**, so the working
    assumption is that it stays in the Player and the package exports the live
@@ -395,7 +395,7 @@ package, which is what ADR-1 refuses.
 | 1 — pure logic | `answerMachine`, `seededShuffle`, `richText` + `richTextInline`, `localizedText`, the action recorder, the activity spec types | `packages/activities/src/internal/`, `src/specs.ts` |
 | 2 — primitives | `RichSpans`, `RichBlock`, `RichText`, `InstructionImage`, `InstructionPanel`, `AnswerExplanation`, `parts` (`ActivityShell` · `KindBadge` · `DoneButton` · `SubmitButton`) | `packages/activities/src/components/` |
 | 3 — backend-free kinds | `concept`, `concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order` | `packages/activities/src/kinds/` |
-| 4 — the sandbox | `sandbox_scenario` and its five activity types: `sandbox/` and `terminal/` whole | `packages/activities/src/kinds/sandbox/`, `.../kinds/terminal/` |
+| 4 — the sandbox | `chat_sandbox` · `terminal_sandbox` and their five activity types: `sandbox/` and `terminal/` whole | `packages/activities/src/kinds/sandbox/`, `.../kinds/terminal/` |
 | 5 — the heavy kind | `code`: `CodeSnackActivity` → `CodeActivity`, `CodeSnackPane`, `CodeLivePreview`, `CodeChecksFeedback`/`List`, `CodeResetControl`, `useCodeSnack`, `useCodeChecks`, `transpileSnack`, the preview iframe document and its check runtime | `packages/activities/src/code/` — behind `exports["./code"]`, **not** the base barrel |
 | new | `<ActivityProvider>` + the package's own `<ActivityRenderer>` + the activity dictionary | `src/context.tsx`, `src/ActivityRenderer.tsx`, `src/i18n/` |
 
@@ -435,9 +435,9 @@ that breaks the build, but the host read whose absence still renders.
 
 The plan groups step 4 as *"kinds com backend — SandboxScenario, Byoc, Judge\* →
 passam pelas portas injetadas"*. Executing it showed the grouping is wrong for
-one of its three members: the self-paced `sandbox_scenario` **has no backend**.
-Its entire world model — `runCommand`, `sendPrompt`, `evaluate`, `isSuccess` —
-is pure reducers in `@iterahq/activity-spec/runtime`, and the only thing it ever
+one of its three members: the self-paced sandboxes **have no backend**.
+Their entire world model — `runCommand`, `sendPrompt`, `evaluate`, `isSuccess` —
+is pure reducers in `@iterahq/activity-spec/runtime`, and the only thing they ever
 asked the Player for was `useI18n()` and the action recorder.
 
 The audit table in the plan put it in the backend column because its *live twin*
@@ -454,7 +454,7 @@ also one of the ones that needs **nothing injected but i18n**.
 
 | Not moved | Reason |
 | --- | --- |
-| ~~`sandbox_scenario`~~ | ✅ **MOVED** in step 4 (chat + terminal, five activity types, one dispatcher). It turned out to be the half of step 4 that needs **no port at all** — see the note below. |
+| ~~the sandboxes~~ | ✅ **MOVED** in step 4 (`chat_sandbox` + `terminal_sandbox`, five activity types). They turned out to be the half of step 4 that needs **no port at all** — see the note below. |
 | `sandbox-live`, BYOC | The AI-judged surfaces that consume `api.respond` / `api.generateByoc` and read `identity.authenticated`. BYOC had ~10 of its 12 files open in PR #296 while step 4 landed, and `sandbox-live` is in PR #285 — extracting under an open rewrite produces a conflict, not an extraction. |
 | ~~`JudgeHeatmap`~~ | ✅ **MOVED** in Fase D, with the AI-judged `document` — which was its only production caller, so the reason it was waiting ("no reason to move before its callers do") expired the moment `document` crossed. It is the first thing in the package to consume the `api` port for real. |
 | ~~`code` / the preview iframe~~ | ✅ **MOVED** in step 5, into `@iterahq/activities/code` — the second entrypoint, absent from `BUILT_IN_ACTIVITY_KINDS` on purpose. |

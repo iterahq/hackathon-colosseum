@@ -91,10 +91,9 @@ export function LiveStage({
   // de chat com uma saudação dentro parece um chat funcionando. Os três passaram
   // a ter a mesma trava.
   //
-  // `sandbox_scenario` entra pelo KIND DA ROW, não pelo `spec.sandboxKind`
-  // deprecado: as rows que ainda carregam o kind legado são de chat, e mesmo se
-  // uma de terminal sobrasse, as duas semeiam do cliente de quem assiste. O
-  // discriminador de spec não é consultado em lugar nenhum aqui.
+  // O espelho entra pelo KIND DA ROW, não pelo `spec.sandboxKind` deprecado: os
+  // dois sandboxes semeiam do cliente de quem assiste, então o discriminador de
+  // spec não é consultado em lugar nenhum aqui.
   //
   // O enunciado não se perde: ele viaja DENTRO da tela espelhada
   // (`terminal.stepPrompt` / `chat.stepPrompt`), vindo do cliente do aluno, que é
@@ -107,7 +106,6 @@ export function LiveStage({
     activity?.kind === 'code' ||
     activity?.kind === 'terminal_sandbox' ||
     activity?.kind === 'chat_sandbox' ||
-    activity?.kind === 'sandbox_scenario' ||
     (!!activity && isByocActivity(activity));
   const mirrorActivity = activity && !mirrorsFromViewerState ? activity : null;
 

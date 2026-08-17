@@ -1,10 +1,9 @@
 /**
- * OS TRÊS KINDS DE SANDBOX COEXISTEM — E QUEM TESTA O LITERAL PERDE O SANDBOX.
+ * SÃO DOIS KINDS DE SANDBOX — E QUEM TESTA UM LITERAL SÓ PERDE O OUTRO.
  *
- * O 0.11.0 partiu `sandbox_scenario` em `chat_sandbox` + `terminal_sandbox`, e o
- * kind legado só sai do enum quando a última row migrar. Enquanto isso os três
- * existem ao mesmo tempo, e todo site que decidia comportamento comparando com
- * `'sandbox_scenario'` passou a tratar uma row MIGRADA como um kind comum.
+ * `chat_sandbox` e `terminal_sandbox` compartilham comportamento em vários
+ * sites, e todo site que decide comparando com UM literal trata o irmão como um
+ * kind comum.
  *
  * A falha nunca é um crash — é perda silenciosa do comportamento daquele site.
  * O pior caso, medido abaixo, é o `mapActivity` dos dois services: eles colapsam
@@ -24,9 +23,9 @@ import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import { ACTIVITY_CONTRACTS, type ContractFixture } from '@/stories/contractFixtures';
 import terminalScenarios from './fixtures/terminal-scenarios.json';
 
-const SANDBOX_KINDS = ['sandbox_scenario', 'chat_sandbox', 'terminal_sandbox'] as const;
+const SANDBOX_KINDS = ['chat_sandbox', 'terminal_sandbox'] as const;
 
-describe('isScenarioKind cobre os três kinds de sandbox', () => {
+describe('isScenarioKind cobre os dois kinds de sandbox', () => {
   it.each(SANDBOX_KINDS)('%s é sandbox', (kind) => {
     expect(isScenarioKind(kind)).toBe(true);
   });
@@ -39,7 +38,7 @@ describe('isScenarioKind cobre os três kinds de sandbox', () => {
   });
 
   it('a família `scenario` e a lista deste arquivo são a MESMA coisa', () => {
-    // Se um quarto sandbox entrar, a trap de tipo do ACTIVITY_FAMILY obriga a
+    // Se um terceiro sandbox entrar, a trap de tipo do ACTIVITY_FAMILY obriga a
     // classificá-lo — e esta linha obriga a lembrar deste arquivo.
     expect([...kindsOfFamily('scenario')].sort()).toEqual([...SANDBOX_KINDS].sort());
   });
@@ -80,25 +79,14 @@ describe('colapsar o bag bilíngue reprova o spec de qualquer sandbox', () => {
 });
 
 /**
- * O KIND LEGADO É SÓ DE CHAT — UM SPEC DE TERMINAL NÃO TEM ONDE MORAR NELE.
+ * `terminal_sandbox` EXIGE O SPEC LIMPO — a terminal-idade é o KIND agora.
  *
- * No 0.12.0 o `SandboxScenarioSpecSchema` virou **alias fino do
- * `ChatSandboxSpecSchema`**: o dispatcher que lia `spec.sandboxKind` em runtime
- * foi deletado. Então o kind legado deixou de aceitar spec de terminal — e o
- * `terminal_sandbox`, nascido depois do split, é `.strict()` e REPROVA o
- * `sandboxKind` depreciado.
- *
- * O resultado prático, para quem escrever o `UPDATE`: um sandbox de terminal só
- * existe como `terminal_sandbox` E sem `sandboxKind` no spec. Não há caminho de
- * "virar só a coluna `kind`" para terminal, porque o trigger
- * `activity_defs_sync_instances` proíbe tocar em `spec` no mesmo passo.
- *
- * Isso é seguro por MEDIÇÃO, não por sorte: produção tem **0 rows** com
- * `spec.sandboxKind === 'terminal'` (lido em 2026-08-09), e o próprio pacote
- * afirma o mesmo sobre as 48 rows de `sandbox_scenario`, todas `cloud-core-chat`.
- * Se alguma aparecer, é este teste que fica vermelho antes de a tela apagar.
+ * O schema é `.strict()` e REPROVA o `sandboxKind` depreciado: repetir no spec
+ * o que o kind já diz seria a mesma informação em dois lugares, e é ela que
+ * poderia divergir. As fixtures locais ainda o carregam porque são o retrato do
+ * corpus de conformidade do pacote.
  */
-describe('spec de terminal: o kind legado não serve, e `terminal_sandbox` exige o spec limpo', () => {
+describe('`terminal_sandbox` exige o spec sem `sandboxKind`', () => {
   const specs = Object.entries(terminalScenarios as Record<string, Record<string, unknown>>);
 
   it('há fixture de terminal para medir', () => {
@@ -106,13 +94,7 @@ describe('spec de terminal: o kind legado não serve, e `terminal_sandbox` exige
     for (const [, spec] of specs) expect(spec.sandboxKind).toBe('terminal');
   });
 
-  it.each(specs)('%s: legado reprova, e `terminal_sandbox` só passa sem `sandboxKind`', (_slug, spec) => {
-    expect(
-      safeParseActivitySpec('sandbox_scenario', spec).success,
-      'o kind legado voltou a aceitar spec de terminal — o alias de chat do 0.12.0 ' +
-        'foi revertido, e a sequência de migração descrita acima mudou junto.'
-    ).toBe(false);
-
+  it.each(specs)('%s: só passa sem `sandboxKind`', (_slug, spec) => {
     expect(
       safeParseActivitySpec('terminal_sandbox', spec).success,
       'o `terminal_sandbox` passou a tolerar `sandboxKind` — se isso foi de propósito, ' +

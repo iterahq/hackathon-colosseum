@@ -7,7 +7,7 @@ import { withActivityWidth } from './decorators';
 import { composeSandboxPrompt, rateSandbox, sendSandboxPrompt } from './interactions';
 
 /**
- * CONTRATO `sandbox_scenario` — variante SEM construtor de contexto.
+ * CONTRATO `chat_sandbox` — variante SEM construtor de contexto.
  *
  * O `spec` é um `Scenario` do `@iterahq/activity-spec/runtime` (validado no
  * Zod: `initialState` + `cannedResults` + `resultResolver`). Dentro do kind, a
@@ -37,7 +37,7 @@ type Story = StoryObj<typeof SandboxAIActivity>;
 
 /** Open chat — send the base prompt, rate the answer, reach the reveal. */
 export const OpenChat: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC) },
 };
 
 /**
@@ -46,7 +46,7 @@ export const OpenChat: Story = {
  * o preenche, e é isso que destrava o "enviar".
  */
 export const PromptComposto: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('sandbox-send')).toBeDisabled();
@@ -57,7 +57,7 @@ export const PromptComposto: Story = {
 
 /** C.submitted — enviado: a resposta canned chega e o passo vira "avaliar". */
 export const RespostaRecebida: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC) },
   play: async ({ args, canvasElement }) => {
     await composeSandboxPrompt(canvasElement);
     await sendSandboxPrompt(canvasElement);
@@ -69,7 +69,7 @@ export const RespostaRecebida: Story = {
 
 /** D.correct — a resposta canned do cIA é `quality: 'top'`; "forte" é o acerto. */
 export const AvaliadaCorretamente: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC) },
   play: async ({ args, canvasElement }) => {
     await composeSandboxPrompt(canvasElement);
     await sendSandboxPrompt(canvasElement);
@@ -85,7 +85,7 @@ export const AvaliadaCorretamente: Story = {
  * É o exercício.
  */
 export const AvaliadaIncorretamente: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC) },
   play: async ({ args, canvasElement }) => {
     await composeSandboxPrompt(canvasElement);
     await sendSandboxPrompt(canvasElement);
@@ -100,7 +100,7 @@ export const AvaliadaIncorretamente: Story = {
 
 /** Live-mode reveal — `reveal` shows the recap + enables Continuar without a run. */
 export const RevealedInLive: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC), reveal: true },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC), reveal: true },
 };
 
 /**
@@ -109,5 +109,5 @@ export const RevealedInLive: Story = {
  * activity como assentada. Era o último kind sem story de `done`.
  */
 export const Concluida: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_OPEN_SPEC, 'done') },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_OPEN_SPEC, 'done') },
 };

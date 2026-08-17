@@ -25,7 +25,7 @@
  * (`reveal`, `done`), ele também prova as combinações de gate por kind.
  *
  * NÃO PROVA nada sobre `spec` ARBITRÁRIO vindo do banco. `safeParseActivitySpec`
- * só é chamado em 2 dos 11 kinds (`code`, `sandbox_scenario`) — drift signal #3 /
+ * só é chamado nos kinds de `code` e de sandbox — drift signal #3 /
  * ADR-5 / ADR-13. Nos outros 9 o spec entra por cast. Portanto o invariante está
  * provado contra as FIXTURES, e a fronteira de validação que o tornaria
  * universal pertence ao plano irmão `20260728-itera-back-office`.
@@ -260,7 +260,7 @@ const DRIVES: Record<ContractKey, Drive> = {
   },
 
   sandbox_open: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     correct: async (c) => {
       await composeSandboxPrompt(c);
       await sendSandboxPrompt(c);
@@ -269,7 +269,7 @@ const DRIVES: Record<ContractKey, Drive> = {
     why: 'avaliar errado NÃO emite veredito: o sandbox rejeita e pede nova avaliação (ver `sandboxRejeitaAvaliacaoErrada`).',
   },
   sandbox_choices: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     correct: async (c) => {
       await composeSandboxPrompt(c, 'redação de escola');
       await sendSandboxPrompt(c);
@@ -278,14 +278,14 @@ const DRIVES: Record<ContractKey, Drive> = {
     why: 'mesmo motivo do `sandbox_open`: avaliar errado é rejeitado, não vira veredito negativo.',
   },
   sandbox_slots: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     why:
       'a variante de SLOTS monta o prompt preenchendo lacunas com um mecanismo próprio ' +
-      '(`SandboxSlotPanel`), coberto por `SandboxScenarioActivity.test.tsx`. Dirigi-la aqui ' +
+      '(`SandboxSlotPanel`), coberto por `ChatSandboxActivity.test.tsx`. Dirigi-la aqui ' +
       'duplicaria aquele teste sem provar nada novo sobre o INVARIANTE.',
   },
   sandbox_byoc_live: {
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     why:
       'BYOC ao vivo fala com a itera-api de verdade: sem mock de módulo no limite do teste ' +
       'ele não é dirigível, e mockar rede AQUI contaminaria os outros 15 contratos deste ' +
@@ -401,8 +401,8 @@ describe('V4 — invariante: todo contrato monta, é dirigível, e emite o vered
    * EIXO B da matriz, transversal: uma activity `done` não aceita uma segunda
    * submissão. É o `answerMachine.locked` visto de fora, pelo DOM.
    *
-   * ⚠️ ACHADO, registrado em vez de escondido: o `sandbox_scenario` NÃO se
-   * comporta como os outros aqui. `SandboxScenarioShell` trata `done` (e
+   * ⚠️ ACHADO, registrado em vez de escondido: o sandbox NÃO se comporta como
+   * os outros aqui. `SandboxScenarioShell` trata `done` (e
    * `reveal`) como "settled" e RE-ANUNCIA o veredito num `useEffect` de
    * montagem — ou seja, montar um sandbox concluído já chama `onComplete(true)`,
    * sem nenhuma interação. Por isso a asserção é "a interação não acrescenta
@@ -473,30 +473,4 @@ describe('V4 — invariante: todo contrato monta, é dirigível, e emite o vered
     },
     20000,
   );
-
-  /**
-   * A PREMISSA DO `sameScreen` NA MATRIZ, MEDIDA.
-   *
-   * `activityMatrixCoverage.test.ts` marca 7 células de `chat_sandbox` como
-   * `sameScreen` da story do `sandbox_scenario`, afirmando que uma story nova
-   * seria "a mesma árvore renderizada por um `kind` diferente". Isso é o que
-   * autoriza não duplicar as stories — e era a única parte do guard que ninguém
-   * verificava: se `chat_sandbox` ganhar um componente próprio, as 7 células
-   * passariam a apontar para a tela de OUTRO kind e o guard seguiria verde.
-   *
-   * Aqui a afirmação vira medição. O `data-activity-kind` é normalizado de
-   * propósito: ele DEVE diferir (é a row se anunciando pelo seu próprio kind, o
-   * bug que este lote consertou); o resto da árvore é que não pode.
-   */
-  it('chat_sandbox renderiza a MESMA árvore do sandbox_scenario (premissa do `sameScreen`)', () => {
-    const treeOf = (key: ContractKey) => {
-      const canvas = mount(activityFor(key), vi.fn());
-      const html = canvas.innerHTML;
-      expect(html.length, `arvore vazia para ${key}`).toBeGreaterThan(500);
-      cleanup();
-      return html.replace(/data-activity-kind="(chat_sandbox|sandbox_scenario)"/g, 'kind="KIND"');
-    };
-    expect(treeOf('chat_sandbox')).toBe(treeOf('sandbox_open'));
-    expect(consoleErrors).toEqual([]);
-  });
 });

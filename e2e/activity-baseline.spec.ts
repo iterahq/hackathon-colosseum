@@ -51,7 +51,7 @@ import {
   CODE_WITH_CHECKS,
   CODE_WITH_FAILING_CHECKS,
   VIDEO,
-  SANDBOX_SCENARIO,
+  CHAT_SANDBOX,
   CONCEPT_REVEAL,
   INVALID_SINGLE_CHOICE,
   INVALID_CODE,
@@ -666,15 +666,15 @@ test.describe('code', () => {
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
- * 6 · `sandbox_scenario` — a multi-step mastery loop.
+ * 6 · `chat_sandbox` — a multi-step mastery loop.
  *
- * ⚠️ CHANGED 2026-07-31 (fix: sandbox_scenario verdict). The header used to read
+ * ⚠️ CHANGED 2026-07-31 (fix: sandbox verdict). The header used to read
  * "a multi-step run with NO negative verdict", and the FROZEN test below blamed
  * a hard-coded `onComplete(true, …)`. The hard-coded `true` is GONE — the shell
  * now emits `isSuccess(scenario, model)`, so a force-reveal without success
  * emits `false`. That path is prop-driven (`reveal`) and the author harness this
  * suite drives does NOT pass it, so it is locked in Vitest instead
- * (`src/test/SandboxScenarioActivity.test.tsx`, "force-reveal verdict").
+ * (`src/test/ChatSandboxActivity.test.tsx`, "force-reveal verdict").
  *
  * NOT ONE ASSERTION BELOW WAS WEAKENED OR REMOVED — every expect() is
  * byte-identical to PR #238. What changed is the RATIONALE attached to the
@@ -682,10 +682,10 @@ test.describe('code', () => {
  * open and why.
  * ══════════════════════════════════════════════════════════════════════════ */
 
-test.describe('sandbox_scenario', () => {
+test.describe('chat_sandbox', () => {
   test('variante de escolhas: chips e composer começam VAZIOS', async ({ page }) => {
-    await open(page, SANDBOX_SCENARIO);
-    await expectDispatchedTo(page, 'sandbox_scenario');
+    await open(page, CHAT_SANDBOX);
+    await expectDispatchedTo(page, 'chat_sandbox');
     await expect(page.getByTestId('sandbox-window')).toBeVisible();
     await expect(page.getByTestId('sandbox-choices')).toBeVisible();
     // The composer is never pre-filled: sending requires a real learner act.
@@ -693,7 +693,7 @@ test.describe('sandbox_scenario', () => {
   });
 
   test('chip forte → enviar → avaliar "top" → veredito CORRETO', async ({ page }) => {
-    await open(page, SANDBOX_SCENARIO);
+    await open(page, CHAT_SANDBOX);
     // Only `add-especifico` resolves to a `quality: 'top'` canned result.
     await page.getByText(/redação de escola/i).first().click();
     await page.getByTestId('sandbox-send').click();
@@ -706,7 +706,7 @@ test.describe('sandbox_scenario', () => {
   });
 
   test('🧊 FROZEN — avaliação ERRADA não gera veredito incorreto, só um retry', async ({ page }) => {
-    await open(page, SANDBOX_SCENARIO);
+    await open(page, CHAT_SANDBOX);
     await page.getByText(/redação de escola/i).first().click();
     await page.getByTestId('sandbox-send').click();
     await expect(page.getByTestId('sandbox-eval')).toBeVisible({ timeout: 20_000 });
@@ -719,7 +719,7 @@ test.describe('sandbox_scenario', () => {
     // until `isSuccess` — so the wrong judgment never reaches a settle.
     //
     // Whether that fumble SHOULD count against the verdict is a product call —
-    // it flips the pass semantics of the 24 live `sandbox_scenario` rows and
+    // it flips the pass semantics of the live sandbox rows and
     // contradicts the retry-to-mastery intent recorded in `SandboxEvalPanel`
     // ("a wrong one is rejected with the canned critique + a retry, so the
     // student re-judges instead of coasting through"). Open as a blocking
@@ -733,7 +733,7 @@ test.describe('sandbox_scenario', () => {
   });
 
   test('chip fraco → crítica de resposta fraca, sem avançar de passo', async ({ page }) => {
-    await open(page, SANDBOX_SCENARIO);
+    await open(page, CHAT_SANDBOX);
     await page.getByText(/oi, tudo bem/i).first().click();
     await page.getByTestId('sandbox-send').click();
     await expect(page.getByTestId('sandbox-compose-weak')).toBeVisible({ timeout: 20_000 });

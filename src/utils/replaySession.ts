@@ -196,7 +196,7 @@ export function readReplaySession(row: unknown): ReplaySession | null {
  * A snapshot is only `captured` when BOTH halves are present and usable, and
  * that pairing is the same one `buildSpecSnapshot` enforces on the write side:
  * a spec whose language is unknown is ambiguous exactly where it matters, and
- * `sandbox_scenario` snapshots hold UNRESOLVED `{pt,en}` bags on purpose — a
+ * snapshots de sandbox guardam bags `{pt,en}` NÃO resolvidas de propósito — a
  * reader without the locale cannot collapse them the way the learner saw them.
  *
  * An EMPTY object is not a capture, for the reason `buildSpecSnapshot` refuses
@@ -267,29 +267,22 @@ function readKind(r: Record<string, unknown>): ActivityKind | null {
  * nothing". Presenting an unwired kind as if it were broken is the failure mode
  * the plan's risk table names.
  *
- * ⚠️ `sandbox_scenario` NEEDS THE SPEC, not just the kind. Since 2026-08 the
- * `scenario` family is wired for the TERMINAL sandbox
- * (`spec.sandboxKind === 'terminal'`) and still unwired for the chat one — so
- * `FAMILY_EMITTED.scenario` is non-empty while most rows of that kind still
- * carry no sequence. Answering from the family alone would flip every chat
- * sandbox row from "this kind does not emit yet" (true, and explained) to "the
- * learner did nothing" (false, and unexplained), which is precisely the
- * misreading this function exists to prevent. When the spec is unavailable the
- * answer is the conservative one: NO sequence promised.
+ * ⚠️ A FAMÍLIA `scenario` NÃO É UNIFORME. Ela está ligada para o sandbox de
+ * TERMINAL e ainda não para o de chat — `FAMILY_EMITTED.scenario` é não-vazia
+ * enquanto metade das rows daquela família não carrega sequência nenhuma.
+ * Responder só pela família viraria toda row de chat de "esse kind ainda não
+ * emite" (verdade, e explicada na tela) para "o aluno não fez nada" (mentira, e
+ * sem explicação), que é exatamente a leitura errada que esta função existe
+ * para evitar. Desde a retirada do `sandbox_scenario` o kind já basta: não é
+ * mais preciso abrir o spec para achar o `sandboxKind`.
  */
-export function familyEmitsSequence(
-  kind: ActivityKind | null,
-  spec?: Record<string, unknown> | null,
-): boolean {
+export function familyEmitsSequence(kind: ActivityKind | null): boolean {
   if (!kind) return false;
   const family: ActivityFamily = ACTIVITY_FAMILY[kind];
   if (FAMILY_EMITTED[family].length === 0) return false;
-  // Só o sandbox de TERMINAL emite sequência (o de chat ainda não). Desde o
-  // 0.11.0 isso é legível no próprio kind; no kind legado ainda depende do
-  // `sandboxKind` do spec.
+  // Só o sandbox de TERMINAL emite sequência (o de chat ainda não).
   if (kind === 'terminal_sandbox') return true;
   if (kind === 'chat_sandbox') return false;
-  if (kind === 'sandbox_scenario') return spec?.sandboxKind === 'terminal';
   return true;
 }
 

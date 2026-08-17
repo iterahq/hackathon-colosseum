@@ -251,8 +251,8 @@ describe("InstructorSessionPage — the professor's own stage stays usable", () 
     expect(renderInstructor().readOnly).toBe(true);
   });
 
-  it('keeps sandbox_scenario interactive, as it always was', () => {
-    mockLive('sandbox_scenario', { stoppedFor: ACTIVITY_ID });
+  it('keeps chat_sandbox interactive, as it always was', () => {
+    mockLive('chat_sandbox', { stoppedFor: ACTIVITY_ID });
     expect(renderInstructor().readOnly).toBe(false);
   });
 

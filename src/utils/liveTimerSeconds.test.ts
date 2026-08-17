@@ -18,7 +18,7 @@ describe('liveTimerDefaultSeconds', () => {
     expect(liveTimerDefaultSeconds('code')).toBe(300);
   });
 
-  it.each(['single_choice', 'multi_choice', 'match', 'order', 'quiz', 'sandbox_scenario'])(
+  it.each(['single_choice', 'multi_choice', 'match', 'order', 'quiz', 'chat_sandbox'])(
     'keeps the legacy 60s default for %s',
     (kind) => {
       expect(liveTimerDefaultSeconds(kind)).toBe(60);

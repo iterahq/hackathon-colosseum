@@ -523,9 +523,9 @@ check('terminal_sandbox: N turns against a world model, graded by the spec', () 
   // output, the step unlocks and the scenario's own `success` predicate decides
   // the verdict — all of it inside a host that supplies nothing but a locale.
   //
-  // It drove `sandbox_scenario` until activity-spec 0.12.0, where that kind
-  // became an alias of the CHAT schema — so this terminal spec no longer parses
-  // under it, and `terminal_sandbox` is the only kind it can be.
+  // It drove the old single sandbox kind until activity-spec 0.12.0, where that
+  // kind became an alias of the CHAT schema — so this terminal spec no longer
+  // parses under it, and `terminal_sandbox` is the only kind it can be.
   const { view, completions, events } = renderKind('terminal_sandbox');
 
   const input = view.one('[data-testid="terminal-input"]');

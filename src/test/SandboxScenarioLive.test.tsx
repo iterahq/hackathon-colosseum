@@ -42,7 +42,7 @@ const BYOC_SPEC = {
 };
 
 function makeActivity(spec: Record<string, unknown> = BYOC_SPEC): Activity {
-  return { id: '11111111-1111-1111-1111-111111111111', lessonId: 'l', ordinal: 0, kind: 'sandbox_scenario', spec, rubric: null };
+  return { id: '11111111-1111-1111-1111-111111111111', lessonId: 'l', ordinal: 0, kind: 'chat_sandbox', spec, rubric: null };
 }
 
 function renderLive(onComplete = vi.fn(), activity = makeActivity()) {
@@ -102,12 +102,12 @@ beforeEach(() => {
 });
 
 describe('BYOC helpers — the comparison logic', () => {
-  it('isByocLive only matches a byoc/live sandbox_scenario', () => {
-    expect(isByocLive({ kind: 'sandbox_scenario', spec: { openness: 'byoc' } })).toBe(true);
-    expect(isByocLive({ kind: 'sandbox_scenario', spec: { live: true } })).toBe(true);
-    expect(isByocLive({ kind: 'sandbox_scenario', spec: { openness: 'fixed' } })).toBe(false);
+  it('isByocLive only matches a byoc/live chat_sandbox', () => {
+    expect(isByocLive({ kind: 'chat_sandbox', spec: { openness: 'byoc' } })).toBe(true);
+    expect(isByocLive({ kind: 'chat_sandbox', spec: { live: true } })).toBe(true);
+    expect(isByocLive({ kind: 'chat_sandbox', spec: { openness: 'fixed' } })).toBe(false);
     expect(isByocLive({ kind: 'quiz', spec: { openness: 'byoc' } })).toBe(false);
-    expect(isByocLive({ kind: 'sandbox_scenario', spec: null })).toBe(false);
+    expect(isByocLive({ kind: 'chat_sandbox', spec: null })).toBe(false);
   });
 
   it('isRatingCorrect: rating agrees with the judge verdict', () => {
@@ -134,7 +134,7 @@ describe('BYOC helpers — the comparison logic', () => {
 });
 
 describe('LiveActivityRenderer — additive dispatch (delegates non-live to the base renderer)', () => {
-  it('routes a byoc sandbox_scenario to the live component', () => {
+  it('routes a byoc chat_sandbox to the live component', () => {
     render(
       <I18nProvider>
         <LiveActivityRenderer activity={makeActivity()} onComplete={vi.fn()} />
@@ -143,7 +143,7 @@ describe('LiveActivityRenderer — additive dispatch (delegates non-live to the 
     expect(screen.getByTestId('byoc-live')).toBeInTheDocument();
   });
 
-  it('delegates a NON-byoc sandbox_scenario to Samuel\'s ActivityRenderer (no live surface)', () => {
+  it('delegates a NON-byoc chat_sandbox to Samuel\'s ActivityRenderer (no live surface)', () => {
     // openness:'fixed' is not byoc → must NOT render the live surface; it flows
     // through the base renderer (which here shows the invalid-spec fallback for a
     // non-Scenario spec — proving delegation reached the untouched renderer).
@@ -156,7 +156,7 @@ describe('LiveActivityRenderer — additive dispatch (delegates non-live to the 
     expect(screen.getByTestId('sandbox-invalid')).toBeInTheDocument();
   });
 
-  it('forceLive routes a plain sandbox_scenario to the live component (test-route opt-in)', () => {
+  it('forceLive routes a plain chat_sandbox to the live component (test-route opt-in)', () => {
     render(
       <I18nProvider>
         <LiveActivityRenderer activity={makeActivity({})} onComplete={vi.fn()} forceLive />

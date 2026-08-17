@@ -5,7 +5,7 @@
  * Authoring lives in `activities.spec` as a NESTED `spec.byoc` block (or, for a
  * dedicated activity, the spec root) — BYOC is a layer over an existing kind, NOT
  * an `activity_kind` of its own, so it costs no enum value and does not collide
- * with `sandbox_scenario`'s pre-existing `openness: 'byoc'`.
+ * with the sandbox kinds' pre-existing `openness: 'byoc'`.
  */
 import type { GeneratedChoiceTree } from '@iterahq/activity-spec';
 

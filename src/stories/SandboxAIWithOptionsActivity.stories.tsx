@@ -5,7 +5,7 @@ import { makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
- * CONTRATO `sandbox_scenario` — variante com `choices[]`.
+ * CONTRATO `chat_sandbox` — variante com `choices[]`.
  *
  * A autoria entrega chips de contexto: o aluno escolhe UM, envia e avalia a
  * resposta. É a mesma família de contrato do sandbox aberto, mas a presença de
@@ -28,22 +28,22 @@ type Story = StoryObj<typeof SandboxAIWithOptionsActivity>;
 
 /** c1 "The vague ask" — one context chip actually helps; two are distractors. */
 export const VagueAsk: Story = {
-  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('sandbox_scenario', bySlug.c1)} onComplete={noop} />,
+  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('chat_sandbox', bySlug.c1)} onComplete={noop} />,
 };
 
 /** c3 "Show an example" — pasting an example format beats "please" / "short". */
 export const ShowAnExample: Story = {
-  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('sandbox_scenario', bySlug.c3)} onComplete={noop} />,
+  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('chat_sandbox', bySlug.c3)} onComplete={noop} />,
 };
 
 /** c4 "Too much context hurts" — dumping everything makes the answer worse. */
 export const TooMuchContext: Story = {
-  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('sandbox_scenario', bySlug.c4)} onComplete={noop} />,
+  render: () => <SandboxAIWithOptionsActivity activity={makeActivity('chat_sandbox', bySlug.c4)} onComplete={noop} />,
 };
 
 /** Live-mode reveal — `reveal` shows the recap + enables Continuar without a run. */
 export const RevealedInLive: Story = {
   render: () => (
-    <SandboxAIWithOptionsActivity activity={makeActivity('sandbox_scenario', bySlug.c1)} onComplete={noop} reveal />
+    <SandboxAIWithOptionsActivity activity={makeActivity('chat_sandbox', bySlug.c1)} onComplete={noop} reveal />
   ),
 };

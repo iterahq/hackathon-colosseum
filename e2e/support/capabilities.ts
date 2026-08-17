@@ -142,7 +142,7 @@ export const CAPABILITIES = {
     tier: 'optional',
     env: ['ITERA_BYOC_ACTIVITY_ID'],
     unlocks: 'the BYOC live responder+judge comparison spec',
-    remedy: 'Pin the BYOC sandbox_scenario activity id via ITERA_BYOC_ACTIVITY_ID.',
+    remedy: 'Pin the BYOC chat_sandbox activity id via ITERA_BYOC_ACTIVITY_ID.',
   },
   // `dfl-schema-527` used to sit here. It gated ONE test inside
   // `itera-fellowship.spec.ts` (the E3/Gantt join on

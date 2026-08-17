@@ -53,7 +53,7 @@ export interface ByocLiveSpec {
 
 /**
  * Whether an activity should render through the BYOC LIVE path. True only for a
- * `sandbox_scenario` whose spec is marked byoc/live. All other activities (the 6
+ * sandbox whose spec is marked byoc/live. All other activities (the 6
  * existing deterministic sandbox instances, quizzes, docs, …) return false and
  * flow through Samuel's untouched renderer.
  */

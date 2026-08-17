@@ -38,7 +38,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY THERE IS A SECOND PREFIX (`terminal.`) SINCE FASE C STEP 4
  * ─────────────────────────────────────────────────────────────────────────────
- * Until `sandbox_scenario` moved, every key here began with `activity.`, and
+ * Until the sandbox moved, every key here began with `activity.`, and
  * `src/test/activityDefaultI18n.test.tsx` asserted exactly that. The terminal
  * sandbox arrived with its own 15-key namespace, created by the very refinement
  * (`20260807-itera-terminal-sandbox-refinamentos` §3) that pulled its copy OUT

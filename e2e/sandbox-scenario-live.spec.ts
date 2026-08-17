@@ -1,5 +1,5 @@
 /**
- * sandbox_scenario end-to-end — proves the migrated "Contexto muda tudo" activity
+ * chat_sandbox end-to-end — proves the migrated "Contexto muda tudo" activity
  * renders from the REAL Itera DB through the REAL player and plays the full
  * compose → evaluate loop.
  *
@@ -60,7 +60,7 @@ async function evaluate(page: Page, correct: 'ruim' | 'top', wrong: 'ruim' | 'to
   await page.locator(`[data-testid="sandbox-rate-${correct}"]`).click();
 }
 
-test.describe('migrated sandbox_scenario renders from the DB and plays the evaluate loop', () => {
+test.describe('migrated chat_sandbox renders from the DB and plays the evaluate loop', () => {
   test.beforeAll(async () => {
     await requireCapabilities('itera-player', 'itera-smoke');
   });

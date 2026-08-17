@@ -228,7 +228,7 @@ export interface ActivityHostContext {
    * Host-supplied renderers for kinds the package does not ship.
    *
    * This exists because Fase C extracted the six backend-free kinds and
-   * DELIBERATELY left the rest behind (`code`/Monaco, `sandbox_scenario`, BYOC,
+   * DELIBERATELY left the rest behind (`code`/Monaco, the sandboxes, BYOC,
    * the AI-judged `document`) — see README.md for why each one stayed. Without
    * this seam the package's dispatcher would be a dead end for those kinds:
    * a host would have to stop using `<ActivityRenderer>` entirely the moment a

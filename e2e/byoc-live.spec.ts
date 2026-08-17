@@ -31,7 +31,7 @@
  *   - ITERA_AUTHOR_EMAIL + ITERA_AUTHOR_PASSWORD — an Itera author/tenant_admin
  *     that can reach /author/* (CLAUDE_SMOKE_* also accepted)
  *   - ITERA_BYOC_ACTIVITY_ID — the uuid of the 7th (BYOC, openness:'byoc')
- *     sandbox_scenario activity (created via the author path — see the PR body).
+ *     chat_sandbox activity (created via the author path — see the PR body).
  *   - The player must be built with VITE_ITERA_API_BASE set (so the live path
  *     is active); otherwise the harness falls back to the deterministic renderer
  *     and this spec skips.

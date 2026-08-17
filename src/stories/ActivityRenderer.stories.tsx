@@ -129,12 +129,12 @@ export const Code: Story = {
 /* 6 · Cenário com IA ----------------------------------------------- */
 
 /**
- * kind = sandbox_scenario — o dispatcher valida o Scenario no Zod e, dentro do
+ * kind = chat_sandbox — o dispatcher valida o Scenario no Zod e, dentro do
  * kind, escolhe o componente pela forma da autoria (`slots` → completar
  * palavras, `choices` → chips de contexto, nenhum dos dois → compose livre).
  */
 export const SandboxScenario: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC) },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_CHOICES_SPEC) },
 };
 
 /**
@@ -162,7 +162,7 @@ export const TerminalSandbox: Story = {
  * abre o gabarito, sem que o aluno tenha enviado nada.
  *
  * ⚠️ ELE NÃO CHEGA A TODOS OS KINDS. O dispatcher só encaminha `reveal` para
- * `single_choice`, `multi_choice`, `match`, `order` e `sandbox_scenario` (mais a
+ * `single_choice`, `multi_choice`, `match`, `order` e os sandboxes (mais a
  * camada BYOC). Nos demais o parâmetro é descartado no `switch` acima — por isso
  * só existem as cinco stories abaixo, e não onze: uma story `Reveal` de `quiz`
  * ou de `code` renderizaria exatamente o mesmo pixel do estado em branco e
@@ -197,9 +197,9 @@ export const RevealOrder: Story = {
   args: { activity: makeActivity('order', ORDER_SPEC), reveal: true },
 };
 
-/** kind = sandbox_scenario com `reveal` — libera "Continuar" sem rodar o cenário. */
+/** kind = chat_sandbox com `reveal` — libera "Continuar" sem rodar o cenário. */
 export const RevealSandboxScenario: Story = {
-  args: { activity: makeActivity('sandbox_scenario', SANDBOX_CHOICES_SPEC), reveal: true },
+  args: { activity: makeActivity('chat_sandbox', SANDBOX_CHOICES_SPEC), reveal: true },
 };
 
 /** kind = chat_sandbox com `reveal` — o `reveal` atravessa o kind novo igual. */
@@ -260,7 +260,7 @@ export const OrderSemEnunciado: Story = {
 /**
  * ⚠️ As duas primeiras são specs que o Zod do kind REJEITA e que, ainda assim,
  * chegam inteiros no renderer — porque `safeParseActivitySpec` só é chamado em
- * `code` e `sandbox_scenario` (ADR-5 / ADR-13 / drift signal #3). O guard prova
+ * `code` e nos sandboxes (ADR-5 / ADR-13 / drift signal #3). O guard prova
  * a rejeição; a story mostra o fallback que segura o tranco enquanto a fronteira
  * de validação não existe.
  */
@@ -285,12 +285,7 @@ export const ConceptRevealSemCard: Story = {
   },
 };
 
-/** `sandbox_scenario` com lixo — ESTE é barrado: card `sandbox-invalid`, sem crash. */
-export const SandboxEspecInvalida: Story = {
-  args: { activity: makeActivity('sandbox_scenario', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
-};
-
-/** `chat_sandbox` com lixo — o guard valida pelo KIND da row, não pelo literal antigo. */
+/** `chat_sandbox` com lixo — ESTE é barrado: card `sandbox-invalid`, sem crash. */
 export const ChatSandboxEspecInvalida: Story = {
   args: { activity: makeActivity('chat_sandbox', UNGUARDED_INVALID_SPECS.sandbox_lixo.spec) },
 };

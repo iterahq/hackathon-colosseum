@@ -13,7 +13,7 @@ function activity(over: Partial<Activity> = {}): Activity {
 
 describe('isExerciseActivity', () => {
   it('answering kinds are exercises', () => {
-    for (const kind of ['single_choice', 'multi_choice', 'match', 'order', 'quiz', 'code', 'sandbox_scenario'] as const) {
+    for (const kind of ['single_choice', 'multi_choice', 'match', 'order', 'quiz', 'code', 'chat_sandbox', 'terminal_sandbox'] as const) {
       expect(isExerciseActivity(activity({ kind }))).toBe(true);
     }
   });

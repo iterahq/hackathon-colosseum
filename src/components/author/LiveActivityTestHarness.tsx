@@ -2,7 +2,7 @@
  * LIVE "run as student" TEST harness — the BYOC opt-in sibling of
  * `ActivityTestHarness`. ADDITIVE: it is a NEW file (Samuel's / the existing
  * harness is untouched) that mounts `LiveActivityRenderer` with `forceLive`, so a
- * `sandbox_scenario` runs the REAL responder+judge path instead of the canned
+ * `chat_sandbox` runs the REAL responder+judge path instead of the canned
  * deterministic reducer.
  *
  * Same zero-persistence guarantee as the base harness on the PLAYER side: the

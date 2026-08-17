@@ -21,7 +21,7 @@
  *    belongs BEFORE a renderer: `PortableActivity.spec` is documented as
  *    already validated;
  *  · the kinds that have NOT crossed (`code`, the live/AI sandbox half) and the
- *    `sandbox_scenario` guard.
+ *    sandbox guard.
  *
  * ⚠️ THE KIND SWITCH BELOW IS NOT THE PACKAGE'S DISPATCHER, AND MUST NOT BECOME
  * IT BY DRIFT. `@iterahq/activities` exports its own `<ActivityRenderer>` with
@@ -49,11 +49,8 @@ import { SingleChoiceActivity } from './SingleChoiceActivity';
 import { MultiChoiceActivity } from './MultiChoiceActivity';
 import { MatchActivity } from './MatchActivity';
 import { OrderActivity } from './OrderActivity';
-import {
-  ChatSandboxActivity,
-  SandboxScenarioActivity,
-  TerminalSandboxActivity,
-} from './SandboxScenarioActivity';
+import { ChatSandboxActivity } from './ChatSandboxActivity';
+import { TerminalSandboxActivity } from './TerminalSandboxActivity';
 // Fase D — the three that were inline in this file until now. Imported through
 // the app's own paths (one-line re-exports of `@iterahq/activities`) for the
 // same reason every Fase C kind is: the extraction is meant to be invisible
@@ -134,10 +131,10 @@ export function ActivityRenderer({
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
   }
 
-  // FRONTEIRA DE VALIDAÇÃO DE SPEC — fail-closed nos 12 kinds (estado F).
+  // FRONTEIRA DE VALIDAÇÃO DE SPEC — fail-closed nos 13 kinds (estado F).
   // Fica DEPOIS do ramo BYOC de propósito: BYOC é uma CAMADA, não um kind, e o
   // spec dele é validado pelo `ByocSpecSchema`, não pelo schema do kind
-  // hospedeiro. `code` e `sandbox_scenario` continuam validando dentro do
+  // hospedeiro. `code` e os dois sandboxes continuam validando dentro do
   // próprio componente (`site: 'component'`), com os testids históricos
   // intactos. Racional completo + medição (246/246 specs reais passam) em
   // `src/utils/activitySpecBoundary.ts`.
@@ -183,7 +180,6 @@ export function ActivityRenderer({
       return <MatchActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'order':
       return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
-    case 'sandbox_scenario':
     case 'chat_sandbox':
     case 'terminal_sandbox':
       return <SandboxScenarioGuard activity={activity} onComplete={onComplete} reveal={reveal} />;
@@ -206,10 +202,10 @@ function SandboxScenarioGuard({
   onComplete: (c: boolean) => void;
   reveal?: boolean;
 }) {
-  // Valida pelo kind da própria activity, não pelo literal `sandbox_scenario`:
-  // uma row `terminal_sandbox` reprovaria no schema do chat, que é justamente o
-  // que a divisão dos dois kinds existe para separar.
-  const kind = activity.kind as 'sandbox_scenario' | 'chat_sandbox' | 'terminal_sandbox';
+  // Valida pelo kind da própria activity: uma row `terminal_sandbox` reprovaria
+  // no schema do chat, que é justamente o que a divisão dos dois kinds existe
+  // para separar.
+  const kind = activity.kind as 'chat_sandbox' | 'terminal_sandbox';
   // Mesma isenção de camada que `specBoundaryFailure` já aplica: o BYOC ao vivo
   // não tem contrato Zod, e o `system` dele é o bag bilíngue que o schema de chat
   // declara `z.string()`. No 0.9.0 as chaves da camada eram descartadas em
@@ -236,20 +232,10 @@ function SandboxScenarioGuard({
       />
     );
   }
-  // Os kinds novos vão DIRETO ao componente do seu kind, e o delegador legado
-  // atende só as rows que ainda carregam o kind velho — que no 0.12.0 são
-  // necessariamente de CHAT: o `sandbox_scenario` virou alias do schema de chat,
-  // então um spec de terminal reprova no parse acima e nem chega ao delegador.
-  // O ramo de terminal DENTRO do `SandboxScenarioActivity` ficou inalcançável por
-  // aqui; não foi removido neste bump para o diff que apaga caminho de render ser
-  // revisável sozinho.
-  if (kind === 'chat_sandbox') {
-    return <ChatSandboxActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
-  }
   if (kind === 'terminal_sandbox') {
     return <TerminalSandboxActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
   }
-  return <SandboxScenarioActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+  return <ChatSandboxActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
 }
 
 function UnknownActivity({ activity }: { activity: Activity }) {

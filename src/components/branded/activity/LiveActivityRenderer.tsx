@@ -4,7 +4,7 @@
  * anywhere the base renderer is used to light up the BYOC live path without
  * editing the base renderer.
  *
- * It special-cases ONLY the BYOC live `sandbox_scenario` (spec `openness:'byoc'`
+ * It special-cases ONLY the BYOC live sandbox (spec `openness:'byoc'`
  * / `live:true`, or `forceLive` from the live test route) and renders the NEW
  * `SandboxScenarioLiveActivity`; EVERY other activity — including the 6 existing
  * deterministic sandbox instances — is DELEGATED, unchanged, to Samuel's
@@ -34,7 +34,7 @@ export function LiveActivityRenderer({
   activity: Activity;
   onComplete: (correct: boolean) => void;
   reveal?: boolean;
-  /** Force the live path for a `sandbox_scenario` even if the spec isn't marked
+  /** Force the live path for a sandbox even if the spec isn't marked
    *  byoc yet — used by the opt-in live test route so an instance is testable
    *  before its DB spec is flagged. Ignored for non-sandbox kinds. */
   forceLive?: boolean;

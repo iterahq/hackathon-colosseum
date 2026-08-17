@@ -1,6 +1,6 @@
 {
   "name": "@iterahq/activities",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "Portable Itera activity renderers — render an activity outside the Itera Player.",
   "license": "UNLICENSED",
   "type": "module",
@@ -38,7 +38,7 @@
     "prepare": "tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@iterahq/activity-spec": ">=0.8.0",
+    "@iterahq/activity-spec": ">=1.0.0",
     "react": "^18.3.1"
   },
   "devDependencies": {

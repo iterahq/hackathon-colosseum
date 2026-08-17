@@ -207,8 +207,8 @@ export const MAX_TRACE_ACTIONS = 500;
  *
  * ⚠️ `spec` is the spec AS RENDERED — `programs.service` has already collapsed
  * the `{pt,en}` bags for the learner's locale. The one exception is inherited,
- * not introduced here: `sandbox_scenario` specs are deliberately left
- * UNRESOLVED (that runtime resolves its own bags), so for that kind the
+ * not introduced here: sandbox specs are deliberately left
+ * UNRESOLVED (that runtime resolves its own bags), so for those kinds the
  * snapshot holds bags. Either way `locale` is what a reader needs to render it
  * the way the learner saw it.
  *

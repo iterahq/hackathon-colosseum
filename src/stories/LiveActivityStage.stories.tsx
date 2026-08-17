@@ -115,9 +115,6 @@ export const LockedDocumentRedacao: Story = stage('document_writing', EXPIRED);
  */
 export const LockedCode: Story = stage('code', EXPIRED);
 
-/** 6 · Cenário com IA — sandbox_scenario travado. */
-export const LockedSandboxScenario: Story = stage('sandbox_open', EXPIRED);
-
 /** 6 · Cenário com IA — chat_sandbox travado: o lock não depende do kind. */
 export const LockedChatSandbox: Story = stage('chat_sandbox', EXPIRED);
 

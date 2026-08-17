@@ -53,7 +53,7 @@ function makeActivity(): Activity {
     id: '11111111-1111-1111-1111-111111111111',
     lessonId: 'l',
     ordinal: 0,
-    kind: 'sandbox_scenario',
+    kind: 'chat_sandbox',
     spec: BYOC_SPEC,
     rubric: null,
   };

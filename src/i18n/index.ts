@@ -551,7 +551,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'byoc.good': 'Boa',
     'byoc.bad': 'Ruim',
     'byoc.aiResponse': 'Resposta da IA',
-    // sandbox_scenario (plano-sandbox-studio-2026-07-15)
+    // sandbox (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Passo',
     'activity.stepCleared': 'passo concluído',
@@ -1397,7 +1397,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'byoc.good': 'Good',
     'byoc.bad': 'Bad',
     'byoc.aiResponse': 'AI response',
-    // sandbox_scenario (plano-sandbox-studio-2026-07-15)
+    // sandbox (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
     'activity.step': 'Step',
     'activity.stepCleared': 'step cleared',

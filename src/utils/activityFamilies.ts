@@ -11,7 +11,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Tainan, 2026-07-31: *"não um reducer só, mas tipo, padrões de reducer
- * reutilizáveis"*. One universal reducer over 12 kinds is a giant `switch` and
+ * reutilizáveis"*. One universal reducer over 13 kinds is a giant `switch` and
  * a state that is the union of everything — the opposite of a pattern. The
  * property worth having is not "a reducer"; it is **determinism**: state as
  * `(state, action) => state` means THE LIST OF ACTIONS RECONSTRUCTS THE STATE.
@@ -132,7 +132,6 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   // — editor: Monaco + autosave + checks —
   code: 'editor',
   // — scenario: turns against a world model —
-  sandbox_scenario: 'scenario',
   chat_sandbox: 'scenario',
   terminal_sandbox: 'scenario',
 };
@@ -369,14 +368,12 @@ export function familyOf(kind: ActivityKind): ActivityFamily {
 }
 
 /**
- * True for EVERY sandbox kind — `sandbox_scenario`, `chat_sandbox` and
- * `terminal_sandbox`.
+ * True for EVERY sandbox kind — `chat_sandbox` and `terminal_sandbox`.
  *
- * ⚠️ USE ISTO EM VEZ DE COMPARAR COM `'sandbox_scenario'`. A divisão do 0.11.0
- * deixou os três coexistindo (o kind legado sobrevive enquanto houver row não
- * migrada), então um site que testa o literal trata uma row MIGRADA como um kind
- * comum — e a falha nunca é um crash, é o sandbox perdendo em silêncio o
- * comportamento que aquele site controla. O pior caso era o
+ * ⚠️ USE ISTO EM VEZ DE COMPARAR COM UM LITERAL DE KIND. Um site que testa um
+ * kind só trata o OUTRO sandbox como um kind comum — e a falha nunca é um
+ * crash, é o sandbox perdendo em silêncio o comportamento que aquele site
+ * controla. O pior caso era o
  * `src/services/programs.service.ts`: ele colapsa os bags bilíngues de todo kind
  * não-sandbox, e o runtime do sandbox precisa deles NÃO colapsados, então virar
  * a coluna `kind` transformaria os 24 sandboxes vivos em card de spec inválido.

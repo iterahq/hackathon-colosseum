@@ -98,17 +98,12 @@ export { QuizActivity } from './kinds/QuizActivity.js';
 // the choice kinds are: a host that already knows which one it has should not
 // have to go through a switch to mount it.
 //
-// `sandbox_scenario` is the deprecated kind the two were split out of. Since
-// activity-spec 0.12.0 it is an ALIAS of the chat schema, so it delegates to
-// the chat side and nothing else can reach it.
-//
 // It needs NO backend port. That is a property of the kind, not an omission:
 // the whole thing runs on `@iterahq/activity-spec/runtime`'s pure reducers, so
 // a host gets a multi-turn, graded micro-experiment with nothing injected but
 // i18n. The AI-judged live twin (`sandbox-live`) is the one that needs `api`,
 // and it has not moved yet — see README.
 
-export { SandboxScenarioActivity } from './kinds/SandboxScenarioActivity.js';
 export { ChatSandboxActivity } from './kinds/ChatSandboxActivity.js';
 export { TerminalSandboxActivity } from './kinds/TerminalSandboxActivity.js';
 export { SandboxAIActivity } from './kinds/sandbox/SandboxAIActivity.js';

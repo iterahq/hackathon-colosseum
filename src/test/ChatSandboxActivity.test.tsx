@@ -7,9 +7,8 @@ import type { Activity } from '@/types/content';
 import scenarios from './fixtures/sandbox-scenarios.json';
 
 /**
- * sandbox_scenario. `SandboxScenarioActivity` is a thin dispatcher (PR
- * "Split sandbox_scenario into three activity types") that picks the concrete
- * component off the scenario's authoring shape: `slots` → SandboxAICompleteWords
+ * `chat_sandbox`. `ChatSandboxActivity` is a thin dispatcher that picks the
+ * concrete component off the scenario's authoring shape: `slots` → SandboxAICompleteWords
  * (c2/c5/c6), `choices` → SandboxAIWithOptions (c1/c3/c4), neither → SandboxAI
  * (cIA). A sandbox activity is ALWAYS exactly 2 steps (compose, evaluate) — the
  * fixtures were migrated off the old 4-step (two compose→evaluate rounds)
@@ -29,7 +28,7 @@ const c2 = (scenarios as Record<string, unknown>).c2 as Record<string, unknown>;
 const cIA = (scenarios as Record<string, unknown>).cIA as Record<string, unknown>; // ai variant (pure seed)
 
 function makeActivity(spec: Record<string, unknown>): Activity {
-  return { id: 't-sandbox', lessonId: 'l', ordinal: 0, kind: 'sandbox_scenario', spec, rubric: null };
+  return { id: 't-sandbox', lessonId: 'l', ordinal: 0, kind: 'chat_sandbox', spec, rubric: null };
 }
 
 function renderActivity(activity: Activity, onComplete = vi.fn()) {
@@ -56,12 +55,12 @@ async function waitForEvalPanel() {
   await waitFor(() => expect(screen.getByTestId('sandbox-rate-ruim')).toBeInTheDocument(), { timeout: 5000 });
 }
 
-describe('SandboxScenarioActivity dispatcher', () => {
+describe('ChatSandboxActivity dispatcher', () => {
   it('the shared schema accepts valid scenarios (each authoring shape) and rejects a broken one', () => {
-    expect(safeParseActivitySpec('sandbox_scenario', c1).success).toBe(true);
-    expect(safeParseActivitySpec('sandbox_scenario', c2).success).toBe(true);
-    expect(safeParseActivitySpec('sandbox_scenario', cIA).success).toBe(true);
-    expect(safeParseActivitySpec('sandbox_scenario', { id: 'x' }).success).toBe(false);
+    expect(safeParseActivitySpec('chat_sandbox', c1).success).toBe(true);
+    expect(safeParseActivitySpec('chat_sandbox', c2).success).toBe(true);
+    expect(safeParseActivitySpec('chat_sandbox', cIA).success).toBe(true);
+    expect(safeParseActivitySpec('chat_sandbox', { id: 'x' }).success).toBe(false);
   });
 
   it('renders an invalid spec as a friendly fallback (no crash)', () => {
@@ -71,7 +70,7 @@ describe('SandboxScenarioActivity dispatcher', () => {
 
   it('dispatches to the sandbox shell and does NOT emit its verdict until success (options variant, c1)', () => {
     const onComplete = renderActivity(makeActivity(c1));
-    expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('sandbox_scenario');
+    expect(screen.getByTestId('activity-shell').getAttribute('data-activity-kind')).toBe('chat_sandbox');
     // The terminal "Continuar" moved to the shell/harness fixed footer — it is
     // never rendered inside the activity — and the verdict is emitted UP only
     // once the learner has actually succeeded.

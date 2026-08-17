@@ -42,7 +42,7 @@ describe('byocSpecFromRaw', () => {
     expect(byocSpecFromRaw([harness])).toBeNull();
   });
 
-  it('does not mistake sandbox_scenario openness:byoc for the harness layer', () => {
+  it('does not mistake chat_sandbox openness:byoc for the harness layer', () => {
     expect(byocSpecFromRaw({ openness: 'byoc', persona: { name: 'Ana' } })).toBeNull();
   });
 });

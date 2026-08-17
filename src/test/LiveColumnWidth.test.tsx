@@ -41,7 +41,7 @@ describe('columnMaxWidthClass — the shared rule', () => {
       'match',
       'order',
       'video',
-      'sandbox_scenario',
+      'chat_sandbox',
     ];
     for (const kind of narrow) expect(columnMaxWidthClass(kind)).toBe('max-w-2xl');
   });
@@ -52,7 +52,7 @@ describe('columnMaxWidthClass — the shared rule', () => {
   });
 
   it('applies a surface override only to the kind it names', () => {
-    expect(columnMaxWidthClass('sandbox_scenario', LIVE_COLUMN_OVERRIDES)).toBe('max-w-4xl');
+    expect(columnMaxWidthClass('chat_sandbox', LIVE_COLUMN_OVERRIDES)).toBe('max-w-4xl');
     expect(columnMaxWidthClass('quiz', LIVE_COLUMN_OVERRIDES)).toBe('max-w-2xl');
   });
 
@@ -239,8 +239,8 @@ describe('LiveSessionPage — focused column width by activity kind', () => {
     expect(main.className).not.toContain('max-w-2xl');
   });
 
-  it('keeps sandbox_scenario at its live-only max-w-4xl', () => {
-    mockLive('sandbox_scenario');
+  it('keeps chat_sandbox at its live-only max-w-4xl', () => {
+    mockLive('chat_sandbox');
     const main = renderLearner();
     expect(main.className).toContain('max-w-4xl');
     expect(main.className).not.toContain('max-w-7xl');
@@ -275,8 +275,8 @@ describe('InstructorSessionPage — focused column width by activity kind', () =
     expect(main.className).not.toContain('max-w-2xl');
   });
 
-  it('keeps sandbox_scenario at max-w-4xl with its own vertical rhythm', () => {
-    mockLive('sandbox_scenario');
+  it('keeps chat_sandbox at max-w-4xl with its own vertical rhythm', () => {
+    mockLive('chat_sandbox');
     const main = renderInstructor();
     expect(main.className).toContain('max-w-4xl');
     expect(main.className).toContain('py-6');

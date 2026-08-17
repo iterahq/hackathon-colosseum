@@ -27,7 +27,7 @@ export type CommandSource = 'typed' | 'option' | 'tokens';
  * It does NOT use `answerMachine`, and that is ADR-7 rather than an oversight.
  * `answerMachine` models *one answer, one submit, one verdict* over five
  * booleans; a terminal is N turns against a world model with progression
- * derived from predicates. The sibling `sandbox_scenario` chat does not use it
+ * derived from predicates. The sibling `chat_sandbox` does not use it
  * either, for the same reason. What the repo rule actually forbids — derived
  * correction logic inline in the component — still holds: none of it is here,
  * it is in the package's `runtime/`.

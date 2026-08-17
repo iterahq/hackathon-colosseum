@@ -60,7 +60,7 @@ function resolveDeep(value: unknown, locale: Locale): unknown {
  * strings for the active locale. Player activity components render authored spec
  * fields directly (prompts, choice labels, explanations), so a bag reaching the
  * DOM throws React error #31. Only for kinds whose runtime expects strings — the
- * `sandbox_scenario` runtime resolves its own bags and must keep them intact.
+ * sandbox runtime resolves its own bags and must keep them intact.
  *
  * Pass `locale` explicitly wherever one is available (a React tree has
  * `useI18n().locale`); the ambient localStorage read is the fallback for the

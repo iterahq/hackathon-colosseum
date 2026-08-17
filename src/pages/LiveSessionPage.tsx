@@ -590,7 +590,7 @@ export default function LiveSessionPage() {
   // force-advances the cohort), so the footer shows the green/red signal + the
   // "wait for the next one" hint instead of a CTA. Driven off the durable
   // `answered` state (so it survives a reload), gated to the footer-graded kinds
-  // — now including `sandbox_scenario` (Tainan 2026-07-18): the sandbox's
+  // — now including the sandbox kinds (Tainan 2026-07-18): the sandbox's
   // terminal verdict rides the same wait-mode footer as the MCQ family, its
   // in-window reveal recap/outcome panel stays, and the below-stage hint moves
   // into the footer.
@@ -661,8 +661,8 @@ export default function LiveSessionPage() {
         >
           {/* Focused column — width follows the ACTIVITY KIND via the SHARED
               rule, so a `code` snack gets the wide column in the LIVE class too
-              (it used to widen only in the solo player). `sandbox_scenario`
-              keeps its roomier live-only cap through the override map. */}
+              (it used to widen only in the solo player). The sandbox kinds
+              keep their roomier live-only cap through the override map. */}
           {/* Dentro do <main>: fora dele o palco escorregava por baixo do chrome
               (o X caía em cima do avatar) e, por ser irmão da linha flex, cortava
               a sidebar sticky ao meio. */}

@@ -70,9 +70,10 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
-⚠️ **Desde a Fase C (2026-08-07), NOVE kinds NÃO moram mais aqui.** `concept`,
+⚠️ **Desde a Fase C (2026-08-07), DEZ kinds NÃO moram mais aqui.** `concept`,
 `concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order`
-(passos 1–3), **`sandbox_scenario`** (passo 4) e **`code`** (passo 5) foram
+(passos 1–3), **`chat_sandbox` e `terminal_sandbox`** (passo 4) e **`code`**
+(passo 5) foram
 extraídos para `@iterahq/activities`, junto com os primitivos
 (`InstructionPanel`, `RichText*`, `parts`, `AnswerExplanation`,
 `ActivityTextarea`) e a lógica pura (`answerMachine`, shuffle, parser de
@@ -81,7 +82,8 @@ como **re-export de uma linha**, então todo import por
 `@/components/branded/activity/<Kind>` segue valendo — mas **editar o arquivo
 aqui não muda nada**: a implementação está no pacote.
 
-O `sandbox_scenario` levou junto as pastas **`sandbox/` e `terminal/` inteiras**
+Os dois kinds de sandbox levaram junto as pastas **`sandbox/` e `terminal/`
+inteiras**
 — hoje em `packages/activities/src/kinds/sandbox/` e `.../kinds/terminal/`. Só
 ficaram no app os pontos que o app precisa: `sandbox-live/` (o gêmeo julgado por
 IA, que consome `api.respond`/`api.judge`), `byoc/`, `JudgeHeatmap` e
@@ -146,9 +148,10 @@ em 2026-08-13: o valor está vivo no enum e **zero linhas** o carregam — nem e
 relabeladas para `chat_sandbox` por DML em 2026-08-10. O valor **não sai do
 enum**: o Postgres não tem `ALTER TYPE … DROP VALUE`, então removê-lo exigiria
 recriar o tipo e reescrever toda coluna que o usa. A remoção no nível do pacote e
-do app está na PR **`iterahq/itera-player#353`** (`activity-spec` 1.0.0), que
-segue **ABERTA** — ela não contém migration nenhuma. Até lá, todo consumidor
-tolera os três valores de sandbox.
+do app já entrou (`activity-spec` 1.0.0, PR `iterahq/itera-player#353`, **sem
+migration nenhuma**): o app renderiza **13** e o valor sobrevive só no enum. Uma
+linha nova com esse kind — semeada à mão ou por consumidor velho — cai no
+`UnknownActivity` (`data-activity-kind="unknown"`), não numa tela em branco.
 
 Rotas que montam o engine: **`/lesson/:lessonId`** (LessonPlayer),
 **`/programs`/`/catalog`** (navegação), **`/live/*`** (aula ao vivo, aluno e
@@ -166,16 +169,20 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 - **`src/utils/liveActivityGate.ts`** — `learnerActivityGate({timerRunning,
   expired, answered})` → `{started, locked, readOnly, canComplete}`. Única
   fonte de verdade de quando o aluno pode responder ao vivo.
-- **`@iterahq/activity-spec/runtime`** — reducers puros do `sandbox_scenario`,
-  nos **dois** `sandboxKind`. Os hooks (`useSandboxScenario` pro chat,
-  `useTerminalSandbox` pro terminal) só ligam reducer a `useState`; todo
-  julgamento é do runtime.
-  - **`sandbox_scenario` tem DOIS sandboxes**, despachados por
-    `spec.sandboxKind` dentro de `SandboxScenarioActivity.tsx` — não por kind
-    novo, que custaria migration human-gated em `db/migrations/`:
-    - `cloud-core-chat` → `ChatModel`, variantes por forma do spec
+- **`@iterahq/activity-spec/runtime`** — reducers puros dos **dois** kinds de
+  sandbox. Os hooks (`useSandboxScenario` pro chat, `useTerminalSandbox` pro
+  terminal) só ligam reducer a `useState`; todo julgamento é do runtime.
+  - **São DOIS kinds desde 2026-08-12**, `chat_sandbox` e `terminal_sandbox`,
+    despachados pelo `kind` da linha no `ActivityRenderer`. Antes eram um kind
+    só (`sandbox_scenario`) com um discriminador `spec.sandboxKind` dentro do
+    componente. ⚠️ O enum do banco **ainda aceita** `sandbox_scenario`: o
+    passo (3) do plano da migration `0057` — recriar o tipo sem ele — é
+    migration própria e só depois deste app estar no ar. Nenhuma linha o
+    carrega (medido em 2026-08-12, zero em `activities` e `activity_defs`) e
+    este build não renderiza mais o valor.
+    - `chat_sandbox` → `ChatModel`, variantes por forma do spec
       (`slots` / `choices` / nenhum);
-    - `terminal` → `TerminalModel`, variantes por `spec.inputMode`
+    - `terminal_sandbox` → `TerminalModel`, variantes por `spec.inputMode`
       (`freeText` / `options`), em
       `src/components/branded/activity/terminal/`. Engines resolvidos por
       NOME (`initialState.engine`), default `none` = terminal genérico com
@@ -194,12 +201,12 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 `20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
 ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
 `@iterahq/activity-spec`, hoje resolvido do GitHub Packages privado) era
-chamado só em **`code`** e
-**`sandbox_scenario`** e os outros 9 kinds recebiam o `spec` por cast.
+chamado só em **`code`** e nos
+dois sandboxes e os outros 9 kinds recebiam o `spec` por cast.
 
 - **Onde:** `src/utils/activitySpecBoundary.ts` (registro + veredito + auditor) e
-  o `ActivityRenderer`, que valida antes do switch de kind. `code` e
-  `sandbox_scenario` seguem validando dentro do próprio componente
+  o `ActivityRenderer`, que valida antes do switch de kind. `code`,
+  `chat_sandbox` e `terminal_sandbox` seguem validando dentro do próprio componente
   (`site: 'component'`), com os testids históricos `code-invalid` /
   `sandbox-invalid`. Card único: `InvalidSpecCard` (`data-invalid-spec="true"`).
 - **Kind novo sem cobertura = CI vermelho**, por dois caminhos: o
@@ -209,7 +216,7 @@ chamado só em **`code`** e
   pré-compilado (`dist/`), então aquela cláusula nunca recompila nesta CI.
 - **BYOC é camada, não kind** — duas isenções deliberadas: o harness
   (`resolveByocSpec`, roda antes da fronteira) e o BYOC ao vivo (`isByocLive`,
-  contrato sem Zod porque a resposta vem de LLM real). Validar `sandbox_scenario`
+  contrato sem Zod porque a resposta vem de LLM real). Validar os sandboxes
   em bloco quebraria o caminho ao vivo.
 - **Lacuna declarada:** `document`, `diagram` e `quiz` têm schema **stub loose**
   (`z.record`) no pacote — `safeParseActivitySpec('quiz', {})` PASSA. Ali
@@ -255,7 +262,7 @@ Duas coisas que a borda do workspace NÃO prova, e que têm gate próprio na CI:
 
 - **portabilidade real** → `external-consumer/` empacota o pacote com
   `npm pack`, instala o **tarball** num projeto separado (sem bundler, sem TS,
-  sem nada da Itera) e renderiza as sete kinds a partir de specs de fixture,
+  sem nada da Itera) e renderiza toda kind anunciada a partir de specs de fixture,
   com `fetch` armado pra estourar. `npm run external-consumer`;
 - **estilo** → as classes Tailwind dos renderers extraídos vivem fora de
   `./src`, então `tailwind.config.ts` precisa do glob `./packages/*/dist/**/*.js`.
@@ -444,7 +451,7 @@ comparação entre máquinas diferentes exige um container só.
       tocou e QUANDO, nunca o que ele escreveu — duplicar significa dois lugares
       pra manter em dia e dois pra apagar.
       - ⚠️ **UMA exceção, autorizada e escopada: `command_run.command`** (o
-        sandbox de TERMINAL, `spec.sandboxKind === 'terminal'`). Um comando de
+        kind `terminal_sandbox`). Um comando de
         shell é texto livre pela letra da regra, e é gravado assim mesmo —
         **só na forma NORMALIZADA**, nunca a linha crua. Decisão do Tainan
         (question Q3 → B do plano
@@ -469,14 +476,14 @@ comparação entre máquinas diferentes exige um container só.
       sem emitir faz toda query downstream ler trace de duas ações como se fosse
       sequência completa — `src/test/activityFamilies.test.ts` e
       `src/test/activityTraceEmission.test.tsx` travam os dois lados.
-      - ⚠️ **`scenario` é PARCIALMENTE ligada:** o sandbox de **terminal** emite
-        (`command_run`, `sandbox_reset`); o de **chat** ainda não. Quem consulta
-        `activity_traces` da família `scenario` **tem que filtrar por
-        `spec.sandboxKind`**, não supor uniformidade — foi por isso que
-        `familyEmitsSequence()` (`src/utils/replaySession.ts`) passou a receber
-        o spec: responder só pela família viraria toda linha de chat de "esse
-        kind ainda não emite" (verdade, e explicado na tela) para "o aluno não
-        fez nada" (mentira, e sem explicação).
+      - ⚠️ **`scenario` é PARCIALMENTE ligada:** `terminal_sandbox` emite
+        (`command_run`, `sandbox_reset`); `chat_sandbox` ainda não. Quem consulta
+        `activity_traces` da família `scenario` **tem que filtrar por `kind`**,
+        não supor uniformidade — é por isso que `familyEmitsSequence()`
+        (`src/utils/replaySession.ts`) responde por KIND e não por família:
+        responder pela família viraria toda linha de chat de "esse kind ainda
+        não emite" (verdade, e explicado na tela) para "o aluno não fez nada"
+        (mentira, e sem explicação).
   - **O cano já existe — use, não reinvente.** O contrato versionado está em
     `src/utils/learningTrace.ts` e a linha vai pra `itera.activity_traces`
     (migration `db/migrations/0034_activity_traces.sql`), **uma linha por
@@ -590,14 +597,15 @@ comparação entre máquinas diferentes exige um container só.
       descreva em PR como se ela pegasse. (O cano em si — Fases 2-4 — **já
       existe**; era só ele que faltava quando esta linha foi escrita.)
       ⚠️ **A lista canônica de kinds, que esta linha dizia não existir, EXISTE.**
-      Medido em 2026-08-13: enum do banco **14** (derivado de `db/migrations/`,
-      confirmado no `pg_enum` ao vivo e em `db/census/expected-schema.txt`),
-      `ACTIVITY_KINDS` de `@iterahq/activity-spec@0.15.0` **14**, e o `switch` de
-      `src/components/branded/activity/ActivityRenderer.tsx` **14**. Os três
-      **concordam** — o texto antigo dizia 12 x 11 x 11 e estava errado nos três.
-      `BUILT_IN_ACTIVITY_KINDS` do pacote tem **13**, e isso é de propósito:
-      `code` sai pelo segundo entrypoint (ADR-5). Quem for construir a Fase 5
-      parte dessa lista, não de uma nova.
+      Ela é a do PACOTE, e ela é MENOR que o enum: `ACTIVITY_KINDS` de
+      `@iterahq/activity-spec@1.0.0` tem **13**, igual ao `switch` do
+      `ActivityRenderer`, contra os **14** do enum derivado de `db/migrations/`
+      (conferido no `pg_enum` ao vivo e em `db/census/expected-schema.txt`). A
+      diferença é só o `sandbox_scenario` aposentado, e ela é permanente — o
+      Postgres não deixa tirar valor de enum. Quem construir a Fase 5 parte da
+      lista do pacote, não do enum, e não de uma terceira.
+      `BUILT_IN_ACTIVITY_KINDS` tem **12**: `code` sai pelo segundo entrypoint
+      (ADR-5).
 - Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
   mesma feature.
 - Lógica derivada de resposta/correção vai para `answerMachine`, não inline no

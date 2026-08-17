@@ -1,6 +1,6 @@
 /**
  * MOVED — `SandboxAIActivity` now lives in `@iterahq/activities` (Fase C, step 4: the
- * `sandbox_scenario` kind).
+ * sandbox kinds).
  *
  * Kept as the app's import path so `ActivityRenderer.tsx`, the stories and the
  * tests keep resolving it — the extraction is meant to be invisible to the

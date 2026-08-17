@@ -68,7 +68,7 @@ export type ActivityLocale = 'pt' | 'en';
  * app concerns (a locale switcher in the header, a DB write) and stay out.
  */
 export interface ActivityI18n {
-  /** Active locale. `sandbox_scenario`'s runtime reducers take this directly. */
+  /** Active locale. The sandbox runtime reducers take this directly. */
   locale: ActivityLocale;
   /** Translate a key, interpolating `{name}` placeholders. */
   t: (key: string, vars?: Record<string, string | number>) => string;
@@ -119,7 +119,7 @@ export interface ActivityJudgeVerdict {
 }
 
 /**
- * The free-form AI responder result (BYOC step 1 / `sandbox_scenario` live).
+ * The free-form AI responder result (BYOC step 1 / sandbox live).
  * `responder_available: false` means the model degraded server-side and
  * `response` is a graceful fallback — not an error.
  */

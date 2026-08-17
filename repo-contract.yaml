@@ -50,14 +50,17 @@ provides:
       itera.activities para a view do seu `kind`. A lista dos kinds vive UMA vez
       neste arquivo, na chave `activity_kinds` lá embaixo — não a repita aqui.
       Ela é verificada contra db/migrations/*.sql por
-      scripts/verify-activity-kinds.mjs.
+      scripts/verify-activity-kinds.mjs. O app renderiza 13 dos 14:
+      sandbox_scenario segue no enum do banco, sem linha nenhuma, e sem
+      renderer desde activity-spec 1.0.0.
       Lógica derivada de resposta/correção vive na máquina pura
       src/utils/answerMachine.ts; o gate do ao-vivo em
       src/utils/liveActivityGate.ts.
-      Fase C (2026-08-07): as nove kinds sem backend (concept, concept_reveal,
+      Fase C (2026-08-07): as dez kinds sem backend (concept, concept_reveal,
       video, single_choice, multi_choice, match, order — passos 1-3 —,
-      sandbox_scenario, com as pastas sandbox/ e terminal/ inteiras, passo 4, e
-      code, passo 5), os primitivos e a lógica pura foram extraídos para
+      chat_sandbox e terminal_sandbox, com as pastas sandbox/ e terminal/
+      inteiras, passo 4, e code, passo 5), os primitivos e a lógica pura foram
+      extraídos para
       @iterahq/activities em packages/activities/; os caminhos antigos em src/
       viraram re-export de uma linha e src/utils/answerMachine.ts é um desses.
       Editar o pacote, não o shim. O code sai por um SEGUNDO entrypoint
@@ -111,9 +114,9 @@ consumes:
     name: "@iterahq/activity-spec"
     description: >
       Schemas Zod por kind (safeParseActivitySpec) + os reducers puros do
-      runtime do sandbox_scenario — os DOIS sandboxKinds: `cloud-core-chat`
-      (ChatModel) e `terminal` (TerminalModel + engines resolvidos por nome).
-      Resolve do GitHub Packages privado (^0.9.0, registry
+      runtime dos DOIS kinds de sandbox: chat_sandbox (ChatModel) e
+      terminal_sandbox (TerminalModel + engines resolvidos por nome).
+      Resolve do GitHub Packages privado (^1.0.0, registry
       npm.pkg.github.com) desde 2026-08-04 — antes vinha como .tgz
       vendorizado no repo.
 

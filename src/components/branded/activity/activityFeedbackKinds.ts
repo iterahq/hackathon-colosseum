@@ -12,7 +12,7 @@ import type { RecordedAction } from '@/utils/activityFamilies';
 /**
  * The graded activity kinds whose answer feedback surfaces in the fixed footer.
  *
- * `sandbox_scenario` is INCLUDED (Tainan 2026-07-18): its terminal verdict +
+ * The sandbox kinds are INCLUDED (Tainan 2026-07-18): their terminal verdict +
  * "Continuar" now live in the same shell footer as the MCQ family, so
  * feedback-in-footer is consistent for ALL activity types (the Duolingo / chess
  * reference). The sandbox's in-window terminal "Continuar" CTA was removed to
@@ -26,11 +26,9 @@ export const FOOTER_GRADED_KINDS: ReadonlySet<string> = new Set([
   'order',
   'match',
   'quiz',
-  // Os TRÊS kinds de sandbox: o 0.11.0 partiu `sandbox_scenario` e os três
-  // coexistem. Faltar um aqui não deixa o footer feio — deixa a atividade SEM
-  // veredito e SEM "Continuar", porque o CTA in-window foi removido justamente
-  // por confiar neste conjunto.
-  'sandbox_scenario',
+  // Os dois kinds de sandbox. Faltar um aqui não deixa o footer feio — deixa a
+  // atividade SEM veredito e SEM "Continuar", porque o CTA in-window foi
+  // removido justamente por confiar neste conjunto.
   'chat_sandbox',
   'terminal_sandbox',
 ]);

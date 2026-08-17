@@ -285,21 +285,6 @@ export const VIDEO: ActivityFixture = {
   },
 };
 
-/**
- * A REAL `sandbox_scenario` spec, copied verbatim out of `itera.activities`
- * (2026-07-31) and frozen here. Hand-authoring one is not realistic — the
- * schema cross-validates step ids, unlock predicates and `resultResolver` keys
- * against `cannedResults` — and a hand-made minimal one would characterize a
- * shape no author ever produces. Two steps (`compose` then `evaluate`), the
- * smallest `openness: 'fixed'` scenario in the catalogue.
- */
-export const SANDBOX_SCENARIO: ActivityFixture = {
-  id: id(13),
-  kind: 'sandbox_scenario',
-  label: 'sandbox_scenario (spec real, 2 passos)',
-  spec: sandboxScenarioSpec as unknown as Record<string, unknown>,
-};
-
 /* ────────────────────────────────────────────────────────────────────────────
  * TERMINAL SANDBOXES — `kind: 'terminal_sandbox'`, one per input surface. The
  * specs are copied verbatim from the package's own conformance corpus
@@ -309,7 +294,7 @@ export const SANDBOX_SCENARIO: ActivityFixture = {
  * agree with nothing.
  *
  * ── WHY THE KIND, AND WHY `sandboxKind` IS STRIPPED ────────────────────────
- * These three used to be `kind: 'sandbox_scenario'` + `sandboxKind: 'terminal'`,
+ * These three used to be the single sandbox kind + `sandboxKind: 'terminal'`,
  * because that was the only shape the schema had. In activity-spec 0.12.0 the
  * legacy kind became a thin ALIAS of `ChatSandboxSpecSchema` and the runtime
  * `sandboxKind` dispatcher was deleted, so a terminal spec no longer parses
@@ -368,25 +353,23 @@ export const TERMINAL_PLAYER_CHROME: ActivityFixture = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
- * CHAT, MIGRATED — the legacy sandbox row as `chat_sandbox`.
- *
- * `SANDBOX_SCENARIO` above is the UN-migrated shape, which is what all 48 live
- * sandbox rows still are; this is the shape they take after the migration. It
- * exists because the browser is the only place that proves the player dispatches
- * the new kind at all — a kind the DB can hold (migration 0057) but no row uses
- * yet, so a player that only handled the legacy kind would be green everywhere
- * and blank the screen the day the rows move.
+ * CHAT — a REAL sandbox spec, copied verbatim out of `itera.activities`
+ * (2026-07-31) and frozen here. Hand-authoring one is not realistic (the schema
+ * cross-validates step ids, unlock predicates and `resultResolver` keys against
+ * `cannedResults`), and a hand-made minimal one would characterize a shape no
+ * author ever produces. Two steps (`compose` then `evaluate`), the smallest
+ * `openness: 'fixed'` scenario in the catalogue.
  *
  * The spec is passed INTACT on purpose: `chat_sandbox` tolerates the deprecated
- * `spec.sandboxKind`, so a chat row moves with a COLUMN-only UPDATE. The terminal
- * fixtures above cannot — that asymmetry is the migration's own sequencing, and
- * `src/test/sandboxKindCoexistence.test.ts` measures it.
+ * `spec.sandboxKind`, so a chat row moved with a COLUMN-only UPDATE. The terminal
+ * fixtures above could not — that asymmetry is the migration's own sequencing,
+ * and `src/test/sandboxKinds.test.ts` measures it.
  * ──────────────────────────────────────────────────────────────────────────── */
 
-export const CHAT_SANDBOX_MIGRATED: ActivityFixture = {
+export const CHAT_SANDBOX: ActivityFixture = {
   id: id(21),
   kind: 'chat_sandbox',
-  label: 'chat_sandbox (row migrada, spec intocado)',
+  label: 'chat_sandbox (spec real, 2 passos)',
   spec: sandboxScenarioSpec as unknown as Record<string, unknown>,
 };
 
@@ -450,11 +433,10 @@ export const ALL_FIXTURES: readonly ActivityFixture[] = [
   CODE_WITH_CHECKS,
   CODE_WITH_FAILING_CHECKS,
   VIDEO,
-  SANDBOX_SCENARIO,
   TERMINAL_FREE_TEXT,
   TERMINAL_OPTIONS,
   TERMINAL_PLAYER_CHROME,
-  CHAT_SANDBOX_MIGRATED,
+  CHAT_SANDBOX,
   INVALID_SINGLE_CHOICE,
   INVALID_CODE,
   CONCEPT_REVEAL,
