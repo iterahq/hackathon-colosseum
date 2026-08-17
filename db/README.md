@@ -71,6 +71,13 @@ db/
     test-fresh-apply.sh        #   proves fresh-apply.sh both refuses and allows
     ci-wait-for-postgres.sh    #   the service container is not up when
                                #   pg_isready first says so
+    setup-storage-avatars.sql      # the three Storage buckets. NOT migrations, and
+    setup-storage-artifacts.sql    # apply-migrations.sh does not run them: they touch
+    setup-storage-lesson-media.sql # storage.*, which the `postgres` role does not own.
+                               # Apply with elevated privilege (Dashboard SQL editor
+                               # or the Management API). Idempotent. Each header says
+                               # what was MEASURED and when — the truth is the
+                               # project's state, not the file's.
   seeds/
     fellowship-pilot.ts        # federates a DFL pilot cohort into `dfl-batch`
     fellowship-pilot.fixture.json
