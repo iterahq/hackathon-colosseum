@@ -291,7 +291,11 @@ crescer uma prop fora do contrato.
   (Vitest). **`typecheck` faz parte do gate do build** — deletar arquivo sem
   limpar import quebra o CI.
 - `npm run storybook` — vitrine; publicada em `storybook.iterahq.dev` no push
-  para `main` (PR é build-only, sem preview).
+  para `main`. **Toda PR publica um preview próprio** em
+  `https://pr-<n>.itera-storybook.pages.dev` (alias de branch do mesmo projeto
+  Pages). O alias sai do NÚMERO da PR, não do nome da branch, porque o webhook
+  de design monta esse link antes de o build terminar — nome de branch com `/`
+  ou acento tornaria a URL imprevisível.
 - E2E Playwright fica em `e2e/`, **fora do gate por PR** (`workflow_dispatch` +
   cron diário), todos capability-gated. **Duas exceções hermeticas, blocantes
   em toda PR:** `npm run e2e:baseline` (caracterização de activity) e
