@@ -24,10 +24,17 @@ import {
  * "Expected corresponding JSX closing tag") still surfaces.
  */
 
+type ModelChangeEvent = {
+  isUndoing?: boolean;
+  isRedoing?: boolean;
+  changes: { range: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number } }[];
+};
+
 type CapturedProps = {
   path?: string;
   language?: string;
   beforeMount?: (monaco: unknown) => void;
+  onMount?: (editor: unknown, monaco: unknown) => void;
 };
 
 const captured: CapturedProps[] = [];
@@ -76,6 +83,35 @@ function makeFakeMonaco() {
     },
   };
 }
+
+/**
+ * Enough of a Monaco editor for the wall: it holds a value the test can move
+ * under the component's feet, and records the `undo` the wall triggers.
+ */
+function makeFakeEditor(initial: string) {
+  const listeners: ((e: ModelChangeEvent) => void)[] = [];
+  let content = initial;
+  return {
+    trigger: vi.fn(),
+    getValue: () => content,
+    getModel: () => null,
+    onDidChangeModelContent: (fn: (e: ModelChangeEvent) => void) => listeners.push(fn),
+    onDidChangeCursorPosition: () => {},
+    createDecorationsCollection: () => ({ set: vi.fn() }),
+    setPosition: () => {},
+    getVisibleRanges: () => [],
+    revealLineInCenter: () => {},
+    /** Apply an edit the way monaco would, then fire the listener. */
+    apply(next: string, e: ModelChangeEvent) {
+      content = next;
+      listeners.forEach((fn) => fn(e));
+    },
+  };
+}
+
+const WHOLE_FILE = {
+  changes: [{ range: { startLineNumber: 1, startColumn: 1, endLineNumber: 99, endColumn: 1 } }],
+};
 
 beforeEach(() => {
   captured.length = 0;
@@ -176,6 +212,37 @@ describe('CodeEditor', () => {
     expect(
       monaco.languages.typescript.typescriptDefaults.diagnosticsOptions.noSemanticValidation
     ).toBe(false);
+  });
+
+  /**
+   * The wall reverts what lands outside a region. A whole-document replacement
+   * is outside every region BY DEFINITION, so "recomeçar do código inicial" —
+   * measured in the 2026-08-17 class — was undone the instant it applied, and
+   * the learner got back the draft they had just thrown away.
+   */
+  describe('editable-region wall', () => {
+    const regions = [{ startLineNumber: 2, startColumn: 1, endLineNumber: 2, endColumn: 10 }];
+
+    it('reverts a learner edit that lands outside every region', () => {
+      const editor = makeFakeEditor('starter');
+      render(<CodeEditor value="starter" editableRegions={regions} />);
+      captured[0].onMount?.(editor, makeFakeMonaco());
+
+      editor.apply('learner typed on a locked line', WHOLE_FILE);
+
+      expect(editor.trigger).toHaveBeenCalledWith('editableRegions', 'undo', null);
+    });
+
+    it('lets the owner replace the whole document (reset to starter)', () => {
+      const editor = makeFakeEditor('the learner draft');
+      const { rerender } = render(<CodeEditor value="the learner draft" editableRegions={regions} />);
+      captured[0].onMount?.(editor, makeFakeMonaco());
+
+      rerender(<CodeEditor value="starter" editableRegions={regions} />);
+      editor.apply('starter', WHOLE_FILE);
+
+      expect(editor.trigger).not.toHaveBeenCalled();
+    });
   });
 
   it('still registers the iterate-dark theme in beforeMount', () => {

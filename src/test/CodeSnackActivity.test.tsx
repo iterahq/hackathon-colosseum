@@ -256,14 +256,28 @@ describe('CodeSnackActivity — deterministic checks', () => {
     expect(sandbox.runs).toHaveLength(2);
     expect(sandbox.runs[1].token).toBeGreaterThan(sandbox.runs[0].token);
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
-    // Success keeps the way back in: the editor is frozen from the submit
-    // onwards, so this explicit click is the only door.
-    expect(screen.getByTestId('code-checks-retry')).toBeEnabled();
-
-    act(() => {
-      fireEvent.click(screen.getByTestId('code-checks-continue'));
-    });
     expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: expect.any(String) }));
+  });
+
+  /**
+   * Tainan, 17/08/2026: *"tirar esse segundo botão continuar, o primeiro botão
+   * enviar é o suficiente"*. No acerto não há escolha nenhuma para o botão
+   * carregar — quem passou vai seguir — então a tentativa é reportada na hora e
+   * a tela fica só com o veredito.
+   */
+  it('reports a PASS on the submit itself — no second button, and only once', () => {
+    const onComplete = open();
+    submitAndAnswer([
+      { id: 'verde', passed: true },
+      { id: 'texto', passed: true },
+    ]);
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: expect.any(String) }));
+    expect(screen.queryByTestId('code-checks-continue')).toBeNull();
+    const feedback = screen.getByTestId('code-checks-feedback');
+    expect(feedback).toHaveAttribute('data-all-passed', 'true');
+    expect(feedback).toHaveAttribute('data-settled', 'true');
   });
 
   // Call de líderes 2026-07-28: the learner submitted correct code, was marked
@@ -274,7 +288,7 @@ describe('CodeSnackActivity — deterministic checks', () => {
 
     submitAndAnswer([
       { id: 'verde', passed: true },
-      { id: 'texto', passed: true },
+      { id: 'texto', passed: false },
     ]);
     expect(codeEditorEl()).toHaveAttribute('readonly');
 
@@ -286,11 +300,14 @@ describe('CodeSnackActivity — deterministic checks', () => {
 
   it('never reports a verdict that no longer describes the code on screen', () => {
     const onComplete = open();
+    // A PARTIAL verdict on purpose: a full pass now settles on the submit
+    // itself, so the only verdict that can still be on screen while the source
+    // moves is one the learner has not passed.
     submitAndAnswer([
       { id: 'verde', passed: true },
-      { id: 'texto', passed: true },
+      { id: 'texto', passed: false },
     ]);
-    expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'true');
+    expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
 
     // The source moves away from what was graded. The frozen editor is what
     // stops this in the UI; the guard under test covers any other path that

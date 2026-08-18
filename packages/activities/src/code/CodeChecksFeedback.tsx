@@ -91,24 +91,26 @@ export function CodeChecksFeedback({
           <RotateCcw className="h-4 w-4" />
           {allPassed ? t('code.checks.editAgain') : t('code.checks.retry')}
         </button>
-        {/* "Seguir mesmo assim" já foi live-only. Virou universal em 31/07/2026:
+        {/* SÓ no erro. No acerto o botão sumiu (Tainan, 17/08/2026): "enviar" já
+            é o suficiente, e `useCodeSnack` reporta a tentativa na hora — um
+            segundo clique sem escolha nenhuma só atrasava a turma.
+
+            "Seguir mesmo assim" já foi live-only. Virou universal em 31/07/2026:
             no self-paced, um exercício que a pessoa não consegue resolver era um
             beco sem saída — só "tentar de novo", sem caminho para a próxima
             atividade. O que se registra continua sendo o resultado REAL
             (`onComplete(false)`), então seguir não vira acerto. */}
-        <button
-          type="button"
-          onClick={onContinue}
-          disabled={settled}
-          data-testid="code-checks-continue"
-          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-            allPassed
-              ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
-              : 'border border-border text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {allPassed ? t('activity.continue') : t('code.checks.continueAnyway')}
-        </button>
+        {!allPassed && (
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={settled}
+            data-testid="code-checks-continue"
+            className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border px-6 font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {t('code.checks.continueAnyway')}
+          </button>
+        )}
       </div>
     </motion.div>
   );

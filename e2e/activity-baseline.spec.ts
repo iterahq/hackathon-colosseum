@@ -626,13 +626,15 @@ test.describe('code', () => {
     await expect(page.getByTestId('activity-done')).toHaveCount(0);
   });
 
-  test('com `checks` que PASSAM → continuar → veredito CORRETO', async ({ page }) => {
+  // Tainan, 17/08/2026: no acerto o "continuar" saiu — o submit já é o
+  // suficiente, e o veredito sobe sem um segundo clique.
+  test('com `checks` que PASSAM → veredito CORRETO no próprio submit', async ({ page }) => {
     await open(page, CODE_WITH_CHECKS);
     await page.getByTestId('code-submit').click();
     const feedback = page.getByTestId('code-checks-feedback');
     await expect(feedback).toBeVisible({ timeout: 20_000 });
     await expect(feedback).toHaveAttribute('data-all-passed', 'true');
-    await page.getByTestId('code-checks-continue').click();
+    await expect(page.getByTestId('code-checks-continue')).toHaveCount(0);
     await expectVerdict(page, true);
   });
 

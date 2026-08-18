@@ -122,6 +122,22 @@ export function useCodeSnack(
   }, [activityId, spec.starter, reset, storage, liveBuffer]);
 
   /**
+   * Passou tudo ⇒ a tentativa é reportada NA HORA, sem um segundo clique
+   * (Tainan, 2026-08-17: *"tirar esse segundo botão continuar, o primeiro botão
+   * enviar é o suficiente"*). O botão só fazia sentido enquanto ele carregava
+   * uma escolha; no acerto não há escolha nenhuma.
+   *
+   * `settle()` move a fase para `settled`, então o efeito não roda de novo nem
+   * quando o host recria `onComplete` a cada render — é isso que impede o
+   * double-report, e não uma flag à parte.
+   */
+  useEffect(() => {
+    if (phase !== 'submitted' || !allPassed) return;
+    settle();
+    onComplete(true, { response: code });
+  }, [phase, allPassed, settle, onComplete, code]);
+
+  /**
    * Report the REAL outcome upward, WITH the source the learner settled on.
    * With checks the verdict is "did every check pass"; without checks it stays
    * the old unconditional `true` (an ungraded snack has nothing to be wrong

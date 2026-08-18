@@ -89,6 +89,12 @@ export function CodeEditor({
   // coordinate system `change.range` speaks.
   const regionsRef = useRef<readonly EditableRegion[] | undefined>(editableRegions);
   regionsRef.current = editableRegions;
+  // The value the OWNER wants in the model. A learner keystroke reaches the
+  // listener below before `onChange` has told anyone, so the model and this
+  // still disagree there; a change that lands the owner's own text — "recomeçar
+  // do código inicial", the live mirror — arrives with the two already equal.
+  const valueRef = useRef(value);
+  valueRef.current = value;
   const regionDecorationsRef = useRef<DecorationsCollection | null>(null);
   // Monaco mounts ASYNCHRONOUSLY, after the effect below has already run and
   // found no editor. Nothing else re-renders this component, so without a state
@@ -227,6 +233,11 @@ export function CodeEditor({
             const regions = regionsRef.current;
             if (!regions || regions.length === 0) return;
             if (e.isUndoing || e.isRedoing) return;
+            // Reverting THIS is how "recomeçar" died in a real class: the reset
+            // replaces the whole document, which is outside every region by
+            // definition, so the wall undid it and handed the learner back the
+            // draft they had just chosen to throw away.
+            if (editor.getValue() === valueRef.current) return;
             if (e.changes.every((c) => isEditAllowed(regions, c.range))) return;
             editor.trigger('editableRegions', 'undo', null);
           });

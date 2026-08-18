@@ -860,7 +860,8 @@ check('the graded lifecycle runs end to end: submit, fail, retry, pass, settle',
     'a fully passing run was not reported as passing',
   );
 
-  view.click(view.one('[data-testid="code-checks-continue"]'));
+  // No acerto não há segundo clique: o submit já reporta (Tainan, 17/08/2026).
+  assert(!view.one('[data-testid="code-checks-continue"]'), 'a pass still asked for a second click');
   assert(completions.length === 1, `onComplete fired ${completions.length} times, expected 1`);
   assert(completions[0].correct === true, 'the passing run was graded wrong');
   assert(
