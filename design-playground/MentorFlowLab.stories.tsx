@@ -934,7 +934,7 @@ function StageProgress({ index }: { index: number }) {
                 {s + 1}. {meta.name}
               </span>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
               {/* CSS transition (not framer-motion): width animations must survive
                   rapid successive re-renders without an animation loop. */}
               <div
