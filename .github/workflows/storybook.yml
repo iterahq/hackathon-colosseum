@@ -23,6 +23,7 @@ on:
     paths:
       - '.storybook/**'
       - 'src/**'
+      - 'design-playground/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/storybook.yml'

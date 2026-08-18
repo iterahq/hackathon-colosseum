@@ -8,8 +8,12 @@ on:
   push:
     branches: [main]
     # Only rebuild when something that affects Storybook changes.
+    # `design-playground/**` está aqui porque `.storybook/main.ts` monta o site a partir
+    # dela também. Sem essa entrada, PR que mexe SÓ no playground mergeia sem republicar:
+    # o site fica na versão antiga até alguém tocar `src/` por outro motivo.
     paths:
       - 'src/**'
+      - 'design-playground/**'
       - '.storybook/**'
       - 'public/**'
       - 'package.json'
