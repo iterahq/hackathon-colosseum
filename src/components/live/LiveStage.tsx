@@ -1,4 +1,5 @@
-import { Pencil, X } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveStageBody } from '@/components/live/LiveStageBody';
@@ -41,6 +42,13 @@ interface LiveStageProps {
    * budget. Shown, not hidden: silence would read as "the feature is broken".
    */
   cursorOff?: boolean;
+  /**
+   * Superfície do ALUNO: ele tem a própria atividade logo abaixo. Sem teto, um
+   * `code` no palco ocupa a viewport inteira e "Sua atividade" some abaixo da
+   * dobra — na aula de 17/08 a turma parou de responder porque não achava a
+   * própria caixa. Com teto o palco rola por dentro e a fronteira fica visível.
+   */
+  capped?: boolean;
 }
 
 /**
@@ -62,8 +70,10 @@ export function LiveStage({
   cursor = null,
   cursorIntervalMs = 200,
   cursorOff = false,
+  capped = false,
 }: LiveStageProps) {
   const { t } = useI18n();
+  const [collapsed, setCollapsed] = useState(false);
   const isDraft = staged.status === 'in_progress';
   // O aluno abriu o exercício e não tem trabalho nele: o palco projeta o starter
   // (ou o terminal recém-aberto), e sem selo a turma leria aquilo como resposta
@@ -139,30 +149,49 @@ export function LiveStage({
             )}
           </div>
         </div>
-        {onClear && (
-          <button
-            type="button"
-            onClick={onClear}
-            data-testid="live-stage-clear"
-            className="ml-auto inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-streak/50 transition-colors"
-          >
-            <X className="w-3.5 h-3.5" /> {t('live.stage.clear')}
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {capped && (
+            <button
+              type="button"
+              onClick={() => setCollapsed((open) => !open)}
+              data-testid="live-stage-collapse"
+              aria-expanded={!collapsed}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-streak/50 transition-colors"
+            >
+              {collapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+              {t(collapsed ? 'live.stage.expand' : 'live.stage.collapse')}
+            </button>
+          )}
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              data-testid="live-stage-clear"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-sm font-medium text-foreground hover:border-streak/50 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> {t('live.stage.clear')}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div
-        className="px-4 md:px-8 py-6 bg-muted/40 bg-gradient-to-b from-streak/[0.08] to-transparent"
-        data-testid="live-stage-body"
-      >
-        <LiveStageBody
-          staged={staged}
-          mirrorActivity={mirrorActivity}
-          cursor={cursor}
-          cursorIntervalMs={cursorIntervalMs}
-          cursorOff={cursorOff}
-        />
-      </div>
+      {!collapsed && (
+        <div
+          className={`px-4 md:px-8 py-6 bg-muted/40 bg-gradient-to-b from-streak/[0.08] to-transparent ${
+            capped ? 'max-h-[52dvh] overflow-y-auto' : ''
+          }`}
+          data-testid="live-stage-body"
+          data-capped={capped ? 'true' : 'false'}
+        >
+          <LiveStageBody
+            staged={staged}
+            mirrorActivity={mirrorActivity}
+            cursor={cursor}
+            cursorIntervalMs={cursorIntervalMs}
+            cursorOff={cursorOff}
+          />
+        </div>
+      )}
     </div>
   );
 }

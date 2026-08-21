@@ -677,6 +677,7 @@ export default function LiveSessionPage() {
                   cursor={stageCursor}
                   cursorIntervalMs={stageCursorPlan.intervalMs}
                   cursorOff={!stageCursorPlan.enabled}
+                  capped
                 />
               </div>
               {/* P3: as duas caixas renderizam o MESMO kind com a mesma cara, e
@@ -686,11 +687,7 @@ export default function LiveSessionPage() {
                   caixa de baixo é de fato a atividade do aluno: no intervalo, no
                   gate de nome e no skeleton, "Sua atividade" apontaria pra outra
                   coisa. */}
-              {current && !onBreak && !gateNeeded && (
-                <div className="mb-6">
-                  <LiveOwnWorkDivider />
-                </div>
-              )}
+              {current && !onBreak && !gateNeeded && <LiveOwnWorkDivider />}
             </>
           )}
 
