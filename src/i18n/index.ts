@@ -455,7 +455,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.quiz': 'Quiz',
     'activity.code': 'Código',
     'activity.codeSoon': 'O editor de código chega em breve (judge0).',
-    'activity.codeSnackHint': 'Edite o código; o preview atualiza sozinho.',
+    'activity.codeSnackHint': 'Edite o código; a telinha de resultado atualiza sozinha.',
     'activity.instructionZoomOpen': 'Ampliar a imagem',
     'activity.instructionZoomClose': 'Fechar',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',

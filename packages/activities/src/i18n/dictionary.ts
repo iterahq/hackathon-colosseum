@@ -79,7 +79,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
   pt: {
     'activity.concept': 'Conceito',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
-    'activity.codeSnackHint': 'Edite o código; o preview atualiza sozinho.',
+    'activity.codeSnackHint': 'Edite o código; a telinha de resultado atualiza sozinha.',
     'activity.continue': 'Continuar',
     'code.checks.allPassed': 'Tudo certo! Você conseguiu.',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
