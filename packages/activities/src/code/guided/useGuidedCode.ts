@@ -5,7 +5,7 @@ import type { ActivityStoragePort } from '../../ports.js';
 import { codeBlanksDraftKey, codeDraftKey } from '../draftKey.js';
 import type { GuidedPhase, GuidedValues, UseGuidedCodeCallbacks } from './types.js';
 import { allBlanksFilled, gradeGuided, splitGuidedTemplate, substituteBlanks } from './guidedCode.js';
-import { buildWordBank, restoreGuidedValues, spentBankCounts } from './guidedCodeBank.js';
+import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
 
 /**
  * The same debounce as the open editor's, and that is deliberate: the two

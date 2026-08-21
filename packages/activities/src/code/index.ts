@@ -76,7 +76,7 @@ export {
   buildWordBank,
   restoreGuidedValues,
   spentBankCounts,
-} from './guided/guidedCodeBank.js';
+} from './guided/wordBank.js';
 
 export { useCodeSnack } from './useCodeSnack.js';
 export { useCodeChecks } from './useCodeChecks.js';

@@ -318,6 +318,12 @@ jobs:
       - name: Verify the activity-kind lists match the enum
         run: node scripts/verify-activity-kinds.mjs
 
+      # Colisão de caixa em nome de arquivo. Cabe aqui pelo mesmo motivo do step
+      # acima: lê só `git ls-files`, nada de node_modules. A CI roda em ext4, onde
+      # a colisão é INVISÍVEL — quem paga a conta é o macOS/Windows de quem clona.
+      - name: Verify no case-only filename collisions
+        run: node scripts/verify-no-case-collisions.mjs
+
   # ──────────────────────────────────────────────────────────────────────────
   # ACTIVITY CHARACTERIZATION BASELINE — BLOQUEANTE (sub-plano 0 de
   # `20260731-itera-eventos-aprendizagem`, Q4 respondida "entra no gate de PR").

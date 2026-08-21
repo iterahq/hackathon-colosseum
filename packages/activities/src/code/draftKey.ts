@@ -62,7 +62,7 @@ export function codeDraftActivityId(key: string): string {
  * So the second half gets its own key. The value is a JSON object of
  * `{ [blankId]: answer }` — opaque to the host, which stores the string it was
  * handed, and filtered on the way back in by `restoreGuidedValues` (see
- * `guided/guidedCodeBank.ts`) because a draft store is hand-editable.
+ * `guided/wordBank.ts`) because a draft store is hand-editable.
  */
 
 /** Prefix of the guided variants' answers key. */
