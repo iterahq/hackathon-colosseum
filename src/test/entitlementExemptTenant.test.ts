@@ -69,6 +69,8 @@ describe('entitlement com tenant isento', () => {
       active: false,
       status: null,
       currentPeriodEnd: null,
+      seatCount: null,
+      cancelAtPeriodEnd: false,
     });
   });
 });

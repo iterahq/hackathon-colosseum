@@ -13,6 +13,7 @@ import { useProfileForm } from '@/hooks/useProfileForm';
 import { ProfilePreview } from '@/components/profile/ProfilePreview';
 import { ProfileAvatarPicker } from '@/components/profile/ProfileAvatarPicker';
 import { PersonalizationSection } from '@/components/profile/PersonalizationSection';
+import { SubscriptionSection } from '@/components/profile/SubscriptionSection';
 
 export default function ProfilePage() {
   const { t } = useI18n();
@@ -120,6 +121,7 @@ export default function ProfilePage() {
           </motion.form>
         )}
 
+        <SubscriptionSection />
         <PersonalizationSection />
       </main>
     </div>

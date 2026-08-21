@@ -734,6 +734,19 @@ export const resources: Record<Locale, Record<string, string>> = {
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mês',
     'subscribe.priceLoading': 'Carregando o preço…',
+    // Leitura da assinatura no /profile — só leitura: cancelar/trocar cartão é
+    // no portal do Stripe, que ainda não está ligado.
+    'subscription.section': 'Sua assinatura',
+    'subscription.status.active': 'Ativa',
+    'subscription.status.inactive': 'Sem assinatura',
+    'subscription.status.exempt': 'Liberada',
+    'subscription.activeHint': 'Você tem acesso completo aos programas e atividades.',
+    'subscription.inactiveHint': 'Assine para desbloquear os programas e atividades.',
+    'subscription.exemptHint': 'A sua turma libera o acesso — não há nada a pagar.',
+    'subscription.renewsOn': 'Renova em {date}.',
+    'subscription.endsOn': 'Cancelada: o acesso vai até {date}.',
+    'subscription.seats': 'Vagas na assinatura: {count}.',
+    'subscription.loadError': 'Não foi possível carregar a assinatura.',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Idioma',
     'profile.languageSaved': 'Idioma salvo no seu perfil.',
@@ -1565,6 +1578,17 @@ export const resources: Record<Locale, Record<string, string>> = {
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mo',
     'subscribe.priceLoading': 'Loading the price…',
+    'subscription.section': 'Your subscription',
+    'subscription.status.active': 'Active',
+    'subscription.status.inactive': 'No subscription',
+    'subscription.status.exempt': 'Included',
+    'subscription.activeHint': 'You have full access to programs and activities.',
+    'subscription.inactiveHint': 'Subscribe to unlock programs and activities.',
+    'subscription.exemptHint': 'Your class covers the access — there is nothing to pay.',
+    'subscription.renewsOn': 'Renews on {date}.',
+    'subscription.endsOn': 'Canceled: access runs until {date}.',
+    'subscription.seats': 'Seats on this subscription: {count}.',
+    'subscription.loadError': 'Could not load your subscription.',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Language',
     'profile.languageSaved': 'Language saved to your profile.',
