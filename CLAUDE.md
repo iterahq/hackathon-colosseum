@@ -1,26 +1,11 @@
 # CLAUDE.md — itera-player
 
-> **Este arquivo é REPO-OWNED.** Até 2026-07-28 ele carregava um bloco
-> `<!-- BEGIN GENERATED:claude/base -->` herdado do scaffold gerenciado de
-> `devfellowship/dfl-iterate` (o commit de fundação deste repo foi um re-skin
-> daquele projeto). Esse bloco descrevia o **engine gamificado legado**, que
-> foi aposentado neste PR — ou seja, um agente que lesse só o CLAUDE.md ia
-> testar/alterar código que nem existe mais.
->
-> O scaffold foi removido, e não apenas corrigido, porque **este repo nunca foi
-> alvo da distribuição**: o `registry/distribution-manifest.yaml` do `dfl-hq`
-> só conhece `devfellowship/dfl-iterate` (batch-3, `readiness:
-> collect-required`), e o pipeline inteiro está em `execution_mode: stage-only`
-> com `apply_writes_enabled: false` — `dfl-hq:scripts/context/apply.mjs` aborta
-> antes de escrever em qualquer repo filho. `iterahq/itera-player` não aparece em
-> lugar nenhum daquele registry. Nada sincroniza este arquivo; editá-lo aqui
-> não gera conflito em lugar nenhum, e o CLAUDE.md do próprio `dfl-iterate`
-> segue válido lá (o engine gamificado É o engine principal *daquele* repo).
->
-> Se um dia alguém ligar a distribuição para cá, a ausência de marcadores é o
-> comportamento seguro: o merge é `marker-required` com
-> `missing_markers: hard-stop` — ele falha alto em vez de sobrescrever isto em
-> silêncio.
+> **Este arquivo é REPO-OWNED.** Nada sincroniza ele — `iterahq/itera-player` não
+> aparece no registry de distribuição do `dfl-hq`, e o pipeline está em
+> `stage-only` com `apply_writes_enabled: false`. Editar aqui não gera conflito
+> em lugar nenhum. Por que o bloco `BEGIN GENERATED:claude/base` do scaffold foi
+> REMOVIDO e não corrigido (2026-07-28):
+> [`docs/claude-md-scaffold.md`](docs/claude-md-scaffold.md).
 
 ## Quick Context
 
@@ -70,59 +55,34 @@ src/
 engine. Ele despacha uma linha de `itera.activities` para a view certa pelo
 campo `kind`.
 
+
 ⚠️ **Desde a Fase C (2026-08-07), DEZ kinds NÃO moram mais aqui.** `concept`,
-`concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order`
-(passos 1–3), **`chat_sandbox` e `terminal_sandbox`** (passo 4) e **`code`**
-(passo 5) foram
-extraídos para `@iterahq/activities`, junto com os primitivos
-(`InstructionPanel`, `RichText*`, `parts`, `AnswerExplanation`,
-`ActivityTextarea`) e a lógica pura (`answerMachine`, shuffle, parser de
-markdown-leve, `terminalSuccessMarks`). Os arquivos antigos continuam existindo
-como **re-export de uma linha**, então todo import por
-`@/components/branded/activity/<Kind>` segue valendo — mas **editar o arquivo
-aqui não muda nada**: a implementação está no pacote.
+`concept_reveal`, `video`, `single_choice`, `multi_choice`, `match`, `order`,
+`chat_sandbox`, `terminal_sandbox` e `code` foram extraídos para
+**`@iterahq/activities`**, junto com os primitivos e a lógica pura. Os arquivos
+em `src/components/branded/activity/<Kind>` viraram **re-export de uma linha**:
+todo import antigo segue valendo, mas **editar o arquivo aqui não muda nada** — a
+implementação está no pacote.
 
-Os dois kinds de sandbox levaram junto as pastas **`sandbox/` e `terminal/`
-inteiras**
-— hoje em `packages/activities/src/kinds/sandbox/` e `.../kinds/terminal/`. Só
-ficaram no app os pontos que o app precisa: `sandbox-live/` (o gêmeo julgado por
-IA, que consome `api.respond`/`api.judge`), `byoc/`, `JudgeHeatmap` e
-`document`/`diagram`/`quiz` (ainda inline no dispatcher).
+📦 **`code` sai por um SEGUNDO entrypoint, `@iterahq/activities/code`** (ADR-5), e
+de propósito não está em `BUILT_IN_ACTIVITY_KINDS`.
+`scripts/assert-entrypoint-isolation.mjs` falha se o bundle base alcançar
+qualquer coisa de `code/`.
 
-📦 **O `code` mora num SEGUNDO entrypoint: `@iterahq/activities/code`** (ADR-5).
-Ele não está em `BUILT_IN_ACTIVITY_KINDS` de propósito — o bundle base responde
-"não, pergunta ao host" para `code`, e quem quer o kind importa `/code` e o
-registra em `ActivityHostContext.renderers`. Foram junto `useCodeSnack`,
-`useCodeChecks`, `transpileSnack`, o documento do iframe de preview e o runtime
-de correção (`packages/activities/src/code/`); os caminhos antigos em
-`src/hooks/`, `src/utils/`, `src/consts/` e `src/components/branded/activity/code/`
-são re-export de uma linha. `scripts/assert-entrypoint-isolation.mjs` percorre o
-grafo de módulos do `dist/` e falha se o entrypoint base alcançar qualquer coisa
-de `code/` — roda no `npm test` e de novo dentro do `external-consumer/check.sh`.
+🔌 **O que a activity precisa do host entra por PORTA injetada** — `i18n` · `api` ·
+`identity` · `theme` · `storage` · `codeEditor` — nunca por import direto de
+`@/api/*`, `@/auth/*` ou `@/services/*`. O adapter é
+`src/components/branded/activity/IteraActivityHost.tsx`;
+`src/test/activityPublicContract.test.ts` fica vermelho se um renderer crescer
+uma prop fora do contrato.
 
-⌨️ **O Monaco NÃO foi para o pacote, e isso é a decisão do passo 5.**
-`src/components/editor/CodeEditor.tsx` continua no app porque ele carrega duas
-coisas que são da Itera e não de qualquer consumidor: o CustomEvent de caret que
-a aula ao vivo espelha no telão, e a configuração do worker de TypeScript escrita
-contra o Monaco self-hosted deste repo. O pacote recebe o editor pela MESMA porta
-que recebe i18n e auth — `<ActivityProvider codeEditor={…}>` — e, sem injeção,
-desenha um `<textarea>` funcional (sem highlight). `IteraActivityHost` injeta o
-`CodeEditor` do app.
-
-💾 **O rascunho do `code` também virou porta.** `useCodeSnack` não chama mais
-`@/services/codeSnapshot.service`: escreve por `ActivityStoragePort`, e
-`ITERA_ACTIVITY_STORAGE` (em `IteraActivityHost.tsx`) traduz de volta — mesma
-chave por aluno, mesmo envelope `{code, savedAt}`, mesmo `CODE_SNAPSHOT_EVENT`.
-`src/test/codeDraftKeyCompat.test.tsx` trava isso: se a chave mudar, todo
-rascunho no disco de uma sala vira inalcançável **em silêncio**.
-
-🌍 **Uma activity dentro do pacote lê i18n do `<ActivityProvider>`, NÃO do
-`@/i18n`.** Uma árvore com `I18nProvider` e sem `ActivityProvider` cai no
-dicionário do próprio pacote, que é idêntico ao do app mas **fixo em `pt`** —
-então um teste/story sensível a idioma monta `ActivityI18nBridge` (ou
-`IteraActivityHost`). Sem isso ele compara português com português e passa por
-engano; foi exatamente o que aconteceu com `terminalRenderedLocale.test.tsx` no
-passo 4.
+📖 **Antes de mexer no engine, leia
+[`docs/activity-engine.md`](docs/activity-engine.md).** Lá estão, com o porquê de
+cada uma: o que ficou no app e por quê (Monaco, `sandbox-live`, BYOC, os três
+kinds inline), as camadas puras (`answerMachine`, `liveActivityGate`, o runtime
+dos dois sandboxes), a validação **fail-closed** de spec, as fixtures de contrato,
+o monorepo de npm workspaces e os dois gates que a borda do workspace NÃO prova
+(`external-consumer/` e o glob do Tailwind).
 
 <!-- activity-kinds:begin — bloco VERIFICADO por scripts/verify-activity-kinds.mjs.
      A lista e a contagem aqui dentro são comparadas com o enum derivado de
@@ -142,147 +102,18 @@ Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
 
 <!-- activity-kinds:end -->
 
-⚠️ **`sandbox_scenario` está DEPRECADO, não retirado.** Medido no banco da Itera
-em 2026-08-13: o valor está vivo no enum e **zero linhas** o carregam — nem em
-`itera.activities` nem em `itera.activity_defs`. As 48 linhas (29 + 19) foram
-relabeladas para `chat_sandbox` por DML em 2026-08-10. O valor **não sai do
-enum**: o Postgres não tem `ALTER TYPE … DROP VALUE`, então removê-lo exigiria
-recriar o tipo e reescrever toda coluna que o usa. A remoção no nível do pacote e
-do app já entrou (`activity-spec` 1.0.0, PR `iterahq/itera-player#353`, **sem
-migration nenhuma**): o app renderiza **13** e o valor sobrevive só no enum. Uma
-linha nova com esse kind — semeada à mão ou por consumidor velho — cai no
-`UnknownActivity` (`data-activity-kind="unknown"`), não numa tela em branco.
+⚠️ **`sandbox_scenario` está DEPRECADO, não retirado.** Zero linhas o carregam
+(medido no banco em 2026-08-13), mas o Postgres não tem
+`ALTER TYPE … DROP VALUE` — o valor **fica no enum permanentemente**. O app
+renderiza **13**; uma linha com esse kind cai no `UnknownActivity`
+(`data-activity-kind="unknown"`), não numa tela em branco. Detalhe em
+[`docs/activity-engine.md`](docs/activity-engine.md).
 
 Rotas que montam o engine: **`/lesson/:lessonId`** (LessonPlayer),
 **`/programs`/`/catalog`** (navegação), **`/live/*`** (aula ao vivo, aluno e
 instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 (harness isolado — monta UMA activity, `onComplete` cai num sink em memória,
 **zero escrita no DB**).
-
-### Camadas puras (teste barato, sem React)
-
-- **`src/utils/answerMachine.ts`** — `answerMachine(input) → viewState`
-  (`shown`, `locked`, `canSubmit`, `gradeResult`) + `choiceOptionState()`.
-  Consumida por `SingleChoice`, `MultiChoice`, `Match`, `Order`, o `Quiz`
-  inline do `ActivityRenderer` e `byoc/ByocTree`. **Não reintroduza a lógica
-  derivada inline nos componentes** — foi deduplicada de propósito.
-- **`src/utils/liveActivityGate.ts`** — `learnerActivityGate({timerRunning,
-  expired, answered})` → `{started, locked, readOnly, canComplete}`. Única
-  fonte de verdade de quando o aluno pode responder ao vivo.
-- **`@iterahq/activity-spec/runtime`** — reducers puros dos **dois** kinds de
-  sandbox. Os hooks (`useSandboxScenario` pro chat, `useTerminalSandbox` pro
-  terminal) só ligam reducer a `useState`; todo julgamento é do runtime.
-  - **São DOIS kinds desde 2026-08-12**, `chat_sandbox` e `terminal_sandbox`,
-    despachados pelo `kind` da linha no `ActivityRenderer`. Antes eram um kind
-    só (`sandbox_scenario`) com um discriminador `spec.sandboxKind` dentro do
-    componente. ⚠️ O enum do banco **ainda aceita** `sandbox_scenario`: o
-    passo (3) do plano da migration `0057` — recriar o tipo sem ele — é
-    migration própria e só depois deste app estar no ar. Nenhuma linha o
-    carrega (medido em 2026-08-12, zero em `activities` e `activity_defs`) e
-    este build não renderiza mais o valor.
-    - `chat_sandbox` → `ChatModel`, variantes por forma do spec
-      (`slots` / `choices` / nenhum);
-    - `terminal_sandbox` → `TerminalModel`, variantes por `spec.inputMode`
-      (`freeText` / `options`), em
-      `src/components/branded/activity/terminal/`. Engines resolvidos por
-      NOME (`initialState.engine`), default `none` = terminal genérico com
-      saída 100% autorada. Plano
-      [`20260806-itera-terminal-sandbox-activity`](https://plans.devfellowship.com/20260806-itera-terminal-sandbox-activity).
-  - ⚠️ **O terminal NÃO usa `answerMachine`, de propósito** (ADR-7 do mesmo
-    plano) — e o sandbox de chat também não. `answerMachine` modela *uma
-    resposta, um submit, um veredito*; um terminal é N turnos contra um modelo
-    de mundo com progressão derivada de predicado. A regra que continua valendo
-    é a de baixo: nada de lógica derivada de correção **inline no componente** —
-    ela mora no `runtime/` do pacote.
-
-### Validação de spec
-
-**Fail-closed em TODOS os kinds desde 2026-07-28** (ADR-15 do plano
-`20260728-itera-activity-testing`; supersede o ADR-13, que dava essa fronteira
-ao plano irmão de back-office). Antes, `safeParseActivitySpec(kind, spec)` (do
-`@iterahq/activity-spec`, hoje resolvido do GitHub Packages privado) era
-chamado só em **`code`** e nos
-dois sandboxes e os outros 9 kinds recebiam o `spec` por cast.
-
-- **Onde:** `src/utils/activitySpecBoundary.ts` (registro + veredito + auditor) e
-  o `ActivityRenderer`, que valida antes do switch de kind. `code`,
-  `chat_sandbox` e `terminal_sandbox` seguem validando dentro do próprio componente
-  (`site: 'component'`), com os testids históricos `code-invalid` /
-  `sandbox-invalid`. Card único: `InvalidSpecCard` (`data-invalid-spec="true"`).
-- **Kind novo sem cobertura = CI vermelho**, por dois caminhos: o
-  `Record<ActivityKind, …>` do registro (erro de `npm run typecheck`, que é gate
-  de build) e `src/test/activityKindValidationCoverage.test.tsx`. A cláusula
-  `satisfies` interna do pacote NÃO ajuda aqui — o pacote é instalado
-  pré-compilado (`dist/`), então aquela cláusula nunca recompila nesta CI.
-- **BYOC é camada, não kind** — duas isenções deliberadas: o harness
-  (`resolveByocSpec`, roda antes da fronteira) e o BYOC ao vivo (`isByocLive`,
-  contrato sem Zod porque a resposta vem de LLM real). Validar os sandboxes
-  em bloco quebraria o caminho ao vivo.
-- **Lacuna declarada:** `document`, `diagram` e `quiz` têm schema **stub loose**
-  (`z.record`) no pacote — `safeParseActivitySpec('quiz', {})` PASSA. Ali
-  "validado" só quer dizer "é um objeto JSON". Apertar isso é mudança no repo
-  `iterahq/activity-spec` (bump + republish + bump do range aqui), não aqui.
-
-### Fixtures — uma fonte de verdade
-
-`src/stories/contractFixtures.ts` é o registry de contratos por kind, e
-`src/test/activityContractFixtures.test.ts` já é um guard: **todo kind do enum
-precisa de contrato, e todo contrato precisa passar no Zod do seu kind**. Kind
-novo sem fixture = CI vermelho. Use as MESMAS fixtures nas stories e nos
-testes — não crie um segundo conjunto.
-
-### Contrato público do `@iterahq/activities`
-
-As activities são um pacote instalável (plano
-`20260803-itera-player-activities-lib`). **Fases A, B e C (passos 1–5) estão
-feitas** — os renderers sem backend já renderizam fora do Player, e o `code` sai
-por um segundo entrypoint. Falta de C: a metade julgada por IA do passo 4
-(`sandbox-live`, BYOC, `JudgeHeatmap`) e os três kinds ainda inline no
-dispatcher.
-
-Este repo é um **monorepo de npm workspaces** (ADR-2 — workspaces puro, NÃO
-Turborepo). O app fica na raiz; os pacotes publicáveis ficam em `packages/*`:
-
-- `packages/activities/` → **`@iterahq/activities`**, com DOIS entrypoints: o
-  base (API pública + renderers sem backend) e **`@iterahq/activities/code`**
-  (o kind pesado, ADR-5 — nunca no bundle base). O que ficou de fora e por quê
-  está na tabela do [`README`](packages/activities/README.md). Racional, ordem
-  de extração e cobertura por kind:
-  [`packages/activities/CONTRACT.md`](packages/activities/CONTRACT.md). Setup de
-  consumidor (`.npmrc` + token):
-  [`packages/activities/README.md`](packages/activities/README.md).
-
-O app consome o pacote pelo nome — `import { … } from '@iterahq/activities'` —
-e não por caminho relativo, resolvendo pelo **`dist/`** do workspace. É a MESMA
-borda que um host externo usa, então ela fica exercitada em vez de só declarada.
-Editar `packages/activities/src/` só surte efeito depois de rebuild; por isso
-`predev`, `pretest`, `pretypecheck` e `prebuild` rodam `npm run build:packages`.
-
-Duas coisas que a borda do workspace NÃO prova, e que têm gate próprio na CI:
-
-- **portabilidade real** → `external-consumer/` empacota o pacote com
-  `npm pack`, instala o **tarball** num projeto separado (sem bundler, sem TS,
-  sem nada da Itera) e renderiza toda kind anunciada a partir de specs de fixture,
-  com `fetch` armado pra estourar. `npm run external-consumer`;
-- **estilo** → as classes Tailwind dos renderers extraídos vivem fora de
-  `./src`, então `tailwind.config.ts` precisa do glob `./packages/*/dist/**/*.js`.
-  Sem ele o build fica **verde e sem estilo**; o job `build-test` assere no CSS
-  gerado.
-
-O adapter do app é `src/components/branded/activity/IteraActivityHost.tsx`,
-montado no `App.tsx`: ele injeta `i18n` e `identity` (⚠️ `identity.userId` é o
-seed do shuffle por aluno — se sumir, nada quebra e a propriedade pedagógica
-some em silêncio).
-
-**Registry: GitHub Packages, privado** (ADR-6 preservado, registry trocado em
-2026-08-04 — a org npm `iterahq` está no plano free e free só publica pacote
-PÚBLICO, o que o ADR-6 veta). Publicação: `.github/workflows/release-activities.yml`.
-
-Ao mexer em qualquer renderer, respeite a fronteira: o que a activity precisa do
-host entra por PORTA injetada (`i18n` · `api` · `identity` · `theme` ·
-`storage`), não por import direto de `@/api/*`, `@/auth/*` ou `@/services/*`.
-O guard `src/test/activityPublicContract.test.ts` fica vermelho se um renderer
-crescer uma prop fora do contrato.
 
 ## How to Work Here
 
@@ -303,77 +134,29 @@ crescer uma prop fora do contrato.
   dois projects, um servidor, uma invocação só). As duas rodam contra um
   `vite preview` da própria árvore, sem credencial nenhuma.
 
+
 ### 🏷️ `data-source` — carimbo de build, SÓ em build de captura
 
 `scripts/source-stamp.ts` é um plugin do Vite que escreve
 `data-source="src/pages/HomePage.tsx:42"` em cada elemento HOST que os nossos
-`.tsx` renderizam. Ele existe para o mapa de UX: com a caixa de cada elemento na
-tela, clicar numa REGIÃO de um screenshot devolve o arquivo exato — sem modelo,
-sem clonar o repo do outro lado.
+`.tsx` renderizam, para o mapa de UX: clicar numa região de um screenshot devolve
+o arquivo exato, sem modelo e sem clonar o repo.
 
-🚨 **Nunca em produção.** O carimbo é peso morto para o aluno e publica o
-layout de um repositório PRIVADO no DOM de quem abrir o dev tools.
+🚨 **Nunca em produção.** O carimbo é peso morto para o aluno e publica o layout
+de um repositório PRIVADO no DOM de quem abrir o dev tools.
 
 ⚠️ **O portão é `ITERA_SOURCE_STAMP=1` no ambiente do processo, e NÃO o `mode`.**
 Um build de captura *é* um build em modo produção, então `mode !== "development"`
-falharia ABERTO. Não troque por um teste de modo; o `componentTagger()` no
-`vite.config.ts` é gatilhado assim e está certo, porque é ferramenta de dev
-server — o caso aqui é o oposto.
+falharia ABERTO. Não troque por um teste de modo.
 
-Dois guardas, e cada um sozinho seria fraco:
+Dois guardas, e cada um sozinho seria fraco: `npm run assert:no-source-stamp` lê
+o `dist/` e exige **zero** carimbos; `npm run e2e:stamp` builda **com** a flag e
+exige que o **mesmo** detector os ache. Um detector, dois builds, veredictos
+opostos.
 
-- `npm run assert:no-source-stamp` — lê o `dist/` e exige **zero** carimbos.
-  Roda no `build-test`, sobre o artefato que a release produziria.
-- `npm run e2e:stamp` — o job `source-stamp` builda **com** a flag, resolve cada
-  carimbo contra a árvore de arquivos (inclusive: a tag escrita naquela linha é a
-  tag do elemento), e depois roda o **mesmo** detector exigindo que ele ache os
-  carimbos. Um detector, dois builds, veredictos opostos.
-
-Não são atribuídos: `@devfellowship/components`, `@iterahq/activities` e Radix —
-todos compilados antes do Vite. Um elemento desses resolve pelo **ancestral
-carimbado mais próximo**, que é o arquivo que montou o componente.
-
-### 🗺️ A captura — `screenshot.png` + `regions.json`
-
-`e2e/support/captureRegions.ts` é a camada clicável construída em cima do
-carimbo. No momento do screenshot, com o DOM vivo, ela varre os elementos
-carimbados e grava, **ao lado da imagem**, um `regions.json` com
-`{ selector, file, line, componentName, tag, rect, area, depth, index }` por
-elemento. `resolveRegionAt(regions, x, y)` devolve o arquivo exato de um clique.
-Sem chamada de modelo, sem clonar o repo.
-
-Os dois arquivos são um **par**: o JSON descreve a geometria de UMA imagem, no
-espaço de pixels dela. Nenhum dos dois serve sozinho.
-
-- **Região menor ganha.** Todo elemento carimbado está dentro dos ancestrais
-  carimbados dele, então um ponto cai em várias regiões ao mesmo tempo. A menor
-  caixa que contém o ponto é a mais específica. Empate: maior `depth`, depois
-  ordem no documento — nunca aleatório.
-- **`componentName` sai do AST, não do nome do arquivo**
-  (`scripts/component-at-line.ts`). Um `map` minúsculo não rouba o nome do
-  componente que o contém, e um arquivo com dois componentes reporta o certo.
-- **A imagem é recortada no viewport, não `fullPage`.** `getBoundingClientRect()`
-  fala em coordenadas de viewport, então um shot de viewport a `dpr: 1` divide um
-  único espaço de coordenadas com os `rect`. O `fullPage` redimensiona o viewport
-  para tirar a foto, o que move elementos `fixed`/`sticky` — o mapa descreveria
-  um layout que a imagem não mostra.
-
-🧊 **Estabilidade de pixel é contrato, e é testada.** Tudo que vem depois compara
-dois screenshots e pergunta se o diff zerou. `npm run e2e:capture` captura a
-mesma tela **duas vezes, em contextos novos**, e exige PNGs **byte a byte
-iguais** — nas três telas, não só na mais fácil.
-
-⚠️ **A parte que quase passou batido:** com viewport, relógio, `Math.random`,
-fontes e animações já congelados, a captura do harness ainda variava **19 pixels
-em 1.024.000**, em ~1 rodada a cada 3 — sempre ±1 numa borda arredondada, com o
-`regions.json` idêntico. Era **rasterização**, não layout. Quem conserta é
-`CAPTURE_LAUNCH_ARGS` (`--disable-gpu`, `--disable-partial-raster`, …), que só
-funciona no **launch** do browser, nunca no contexto. Uma verificação rodada uma
-vez só teria dado isso por resolvido em 2 de 3 tentativas.
-
-⚠️ **Uma máquina, não duas.** A igualdade byte a byte é entre duas capturas no
-MESMO host. A rasterização de glifo é do FreeType/fontconfig da máquina —
-comparação entre máquinas diferentes exige um container só.
+📖 Como o carimbo vira mapa clicável — `regions.json`, "região menor ganha",
+viewport e não `fullPage`, e a armadilha de rasterização que valia 19 pixels em
+1 rodada a cada 3: [`docs/source-stamp-e-captura.md`](docs/source-stamp-e-captura.md).
 
 ## Contracts
 
@@ -404,212 +187,72 @@ comparação entre máquinas diferentes exige um container só.
 ## Rules
 
 - Não editar `src/components/ui/` — shadcn/ui gerenciado.
-- Kind novo de activity precisa de: entrada em `ActivityKind`
-  (`src/types/content.ts`), view em `src/components/branded/activity/` (ou em
-  `packages/activities/src/kinds/` se não depender de backend — nesse caso
-  também uma fixture em `external-consumer/fixtures.json`, que o harness exige
-  de toda kind anunciada),
-  contrato em `src/stories/contractFixtures.ts` (o guard exige), story **e
-  emissão de evento de tracking de aprendizagem** (plano
+
+- **Kind novo de activity** precisa, no mínimo, de: entrada em `ActivityKind`
+  (`src/types/content.ts`, que **re-exporta** de `@iterahq/activity-spec`), view
+  em `src/components/branded/activity/` (ou em `packages/activities/src/kinds/`
+  se não depender de backend — nesse caso também uma fixture em
+  `external-consumer/fixtures.json`), contrato em
+  `src/stories/contractFixtures.ts`, entrada em `ACTIVITY_FAMILY`
+  (`src/utils/activityFamilies.ts`), story **e emissão de evento de tracking de
+  aprendizagem** (plano
   [`20260731-itera-eventos-aprendizagem`](https://plans.devfellowship.com/20260731-itera-eventos-aprendizagem)).
-  O motivo de a última entrar na lista é o mesmo motivo do plano existir: **não
-  dá pra voltar no tempo e coletar o dado.** Um kind que shipa sem emitir não
-  deixa buraco visível — deixa um período que ninguém consegue analisar depois.
+  O motivo de a última entrar na lista é o motivo do plano existir: **não dá pra
+  voltar no tempo e coletar o dado.**
   - **ONDE emitir: DENTRO de `persistActivityProgress`**
-    (`src/services/progress.service.ts`). É o funil por onde toda tentativa
-    liquidada passa — instrumentar ali cobre os kinds todos de uma vez, em vez
-    de instrumentar atividade por atividade.
-  - **NUNCA dentro do `ActivityRenderer`**, e a razão é de correção, não de
-    gosto: `src/components/author/ActivityTestHarness.tsx` deliberadamente NÃO
-    importa o `progress.service` — é essa fronteira que garante que o autor
-    testando uma atividade não polui dado de aluno. Instrumentar no renderer
-    quebraria a garantia em silêncio, e o harness continuaria "passando".
-  - ⚠️ **Emita dentro da FUNÇÃO, não nos call-sites.** Eles já se moveram uma
-    vez: hoje são `src/hooks/useAnswerOutbox.ts` (todo o ao-vivo mais os erros
-    do self-paced, com fila durável para queda de rede) e
-    `src/pages/LessonPlayer.tsx` (o acerto no self-paced, que bloqueia a UI com
-    `saving`). Quem instrumentar por call-site perde a próxima reorganização.
-  - **Kind novo herda a duração de graça** por estar nesse nível:
-    `elapsed_ms` / `visible_ms` já são gravados em toda tentativa desde a
-    migration `db/migrations/0033_activity_results_duration.sql`. O que os dois
-    números significam (e por que média simples é a leitura errada) está em
-    `src/utils/activityDuration.ts` — leia antes de consultar qualquer um deles.
-  - **A FAMÍLIA vem primeiro — o kind novo escolhe uma, ou cria uma.**
-    `src/utils/activityFamilies.ts` nomeia as cinco famílias de reducer
-    (`selection` · `arrangement` · `reading` · `editor` · `scenario`, plano
-    [`20260731-itera-padroes-reducer-atividades`](https://plans.devfellowship.com/20260731-itera-padroes-reducer-atividades),
-    Fase A) e é **ela** que define o vocabulário de ação, não o
-    `learningTrace.ts`. O `Record<ActivityKind, ActivityFamily>` é trap de
-    exaustividade: kind sem família **não compila**.
-    - **O critério pra saber se a família está certa:** *kind novo dentro de
-      família existente tem que custar DADO + PREDICADO. Se custar máquina de
-      estado nova, a fronteira da família está errada* — aí vale abrir família,
-      não enfiar na que mais parece.
-    - **Gravar ação:** `useActionRecorder(<família>, activity.id)`, e sobe pelo
-      `onComplete(correct, { actions: trace.drain() })`. `record` é tipado por
-      família — uma atividade de `selection` **não compila** emitindo
-      `pair_made`. O buffer é `useRef` (zero re-render) e nada ali pode lançar:
-      ele roda dentro do `onClick` do aluno.
-    - **Nunca ponha texto livre no `payload`.** A resposta do aluno tem UM lugar
-      (`activity_results.feedback.response`, com teto). O trace guarda O QUE ele
-      tocou e QUANDO, nunca o que ele escreveu — duplicar significa dois lugares
-      pra manter em dia e dois pra apagar.
-      - ⚠️ **UMA exceção, autorizada e escopada: `command_run.command`** (o
-        kind `terminal_sandbox`). Um comando de
-        shell é texto livre pela letra da regra, e é gravado assim mesmo —
-        **só na forma NORMALIZADA**, nunca a linha crua. Decisão do Tainan
-        (question Q3 → B do plano
-        [`20260806-itera-terminal-sandbox-activity`](https://plans.devfellowship.com/20260806-itera-terminal-sandbox-activity)),
-        e ela está escrita aqui **porque sem isso o próximo agente lê a regra
-        acima e desfaz achando que é bug.**
-        - **Por quê:** é o único dado que separa erro de verdade de matcher
-          rígido demais. Sem ele, o aluno que digitou uma variante legítima que
-          o autor esqueceu de listar aparece como erro comum, indistinguível de
-          quem não sabe o comando — a atividade fica "quebrada" pra ele e "ok"
-          pra gente.
-        - **A leitura que mantém a regra coerente:** comando de terminal é
-          **vocabulário de ferramenta**, mesma categoria do valor autorado de
-          `slot_set`, e não a prosa do aluno. Um terminal não tem "texto de
-          resposta" — a resposta dele É quais comandos rodou.
-        - Enumerada como dado em `FREE_TEXT_PAYLOAD_CARVE_OUTS`
-          (`src/utils/activityFamilies.ts`), pra auditoria não depender de grep
-          em comentário. `PAYLOADS_CARRY_NO_FREE_TEXT` continua `true`: ele rege
-          todo o resto.
-    - **`FAMILY_EMITTED` é ledger, não meta.** Ele lista o que este build
-      realmente emite (hoje: `selection`, `arrangement` e `scenario`). Declarar
-      sem emitir faz toda query downstream ler trace de duas ações como se fosse
-      sequência completa — `src/test/activityFamilies.test.ts` e
-      `src/test/activityTraceEmission.test.tsx` travam os dois lados.
-      - ⚠️ **`scenario` é PARCIALMENTE ligada:** `terminal_sandbox` emite
-        (`command_run`, `sandbox_reset`); `chat_sandbox` ainda não. Quem consulta
-        `activity_traces` da família `scenario` **tem que filtrar por `kind`**,
-        não supor uniformidade — é por isso que `familyEmitsSequence()`
-        (`src/utils/replaySession.ts`) responde por KIND e não por família:
-        responder pela família viraria toda linha de chat de "esse kind ainda
-        não emite" (verdade, e explicado na tela) para "o aluno não fez nada"
-        (mentira, e sem explicação).
-  - **O cano já existe — use, não reinvente.** O contrato versionado está em
-    `src/utils/learningTrace.ts` e a linha vai pra `itera.activity_traces`
-    (migration `db/migrations/0034_activity_traces.sql`), **uma linha por
-    tentativa** com o array de ações em `jsonb`. Ação nova é acréscimo: novo
-    `type`, nova chave de `payload`, **sem** bump de `schema_version` e **sem**
-    migration. Leia a regra de quando a versão sobe no topo daquele módulo antes
-    de mexer no formato.
-  - **A linha também carrega CONTEXTO PEDAGÓGICO** —
-    `src/utils/pedagogicalContext.ts` → `itera.activity_traces.pedagogical_context`
-    (migration `db/migrations/0038_activity_traces_pedagogical_context.sql`,
-    Fase 1 do plano
-    [`20260803-itera-learning-control-plane-prototipo`](https://plans.devfellowship.com/20260803-itera-learning-control-plane-prototipo)).
-    Guarda o que a atividade EXERCITAVA (`template`, `family`,
-    `mental_structures[]`, `metaphor`, `difficulty`, `objective`) **no instante
-    da tentativa**, não por join na análise — a gramática é viva por decisão
-    (ADR-5), então um join re-etiquetaria a história toda vez que ela mudasse.
-    - **O autor escreve em `itera.activities.spec.pedagogy`.** Toda chave que
-      este build não reconhece sobrevive verbatim em `extra`, de propósito: é o
-      que faz mudança de gramática virar job de reprocessamento em vez de
-      migração de cliente (ADR-2).
-    - **Não filtre vocabulário no cliente nem no banco.** `GRAMMAR_V0_*` e
-      `unknownGrammarTerms()` servem pra SINALIZAR deriva (lint de manifesto),
-      nunca pra descartar termo — descartar tornaria invisível a primeira
-      tentativa de uma estrutura nova.
-    - **Leitura:** `flattenTraceEvents()` (em `learningTrace.ts`) devolve UM
-      registro por evento já com o contexto anexado. O contexto é gravado uma
-      vez por linha; quem denormaliza é o leitor.
-  - **⚠️ A TABELA TEM DUAS ESPÉCIES DE LINHA DESDE A 0040 — leia antes de
-    escrever qualquer query.** Além da tentativa liquidada, ela agora guarda a
-    **TENTATIVA ABANDONADA**: a atividade que o aluno abriu, olhou e largou sem
-    responder (`itera.activity_traces.outcome`, migration
-    `db/migrations/0040_activity_traces_outcome.sql`, Fase 1 do mesmo plano).
-    Antes disso um abandono não produzia linha em lugar NENHUM — nem em
-    `activity_results`, nem em `progress`, nem aqui — e era exatamente o sinal
-    de desistência que a Fase 4 quer.
-    - **Os dois predicados portáteis**, que funcionam em toda linha já escrita:
-      liquidadas → `where outcome is distinct from 'abandoned'`; abandonos →
-      `where outcome = 'abandoned'`. **Nunca** `where outcome = 'settled'` numa
-      população histórica: isso exclui em silêncio tudo o que foi escrito antes
-      da migration, onde a coluna é NULL. NULL aqui é *"não capturado"*, não
-      *"liquidada"*.
-    - **A regra do que conta** está em `src/utils/abandonment.ts` (pura) e o
-      disparo em `src/hooks/useAbandonmentBeacon.ts`: renderizou, ficou pelo
-      menos `MIN_ABANDONMENT_VISIBLE_MS` de tempo VISÍVEL, não liquidou, e a
-      superfície sumiu (desmontou ou `pagehide`). O filtro **subconta de
-      propósito** — abandono não registrado é lacuna; abandono inventado é
-      afirmação falsa sobre um aluno.
-    - **⚠️ Uma linha abandonada NÃO é prova de que o aluno achou difícil.** É
-      prova de que ele saiu. Compare TAXAS entre atividades irmãs; não leia a
-      linha isolada.
-    - **Um abandono NÃO escreve `activity_results` nem `progress`.** Gravar
-      `passed: false` contaria não-tentativa como erro e faria toda métrica de
-      acerto mentir — o defeito D2 pelo avesso. Por isso ele tem função própria
-      (`persistActivityAbandonment`) em vez de uma flag no
-      `persistActivityProgress`: assim a escrita errada é *inalcançável*, não
-      só improvável.
-    - **A escada de degradação (`traceWriteRungs`) tem UM degrau que não
-      existe:** `outcome` pode ser largado numa linha LIQUIDADA (NULL ainda se
-      lê como liquidada) e **nunca** numa ABANDONADA — sem ele a linha se leria
-      como tentativa respondida. Enquanto a coluna não existir no schema no ar,
-      o abandono **não é escrito** e espera na fila durável. Menos dado, nunca
-      dado falso. (Desde 2026-08-04 o merge aplica a migration — `db-apply` —
-      mas deploy e apply correm em paralelo, então a janela é de minutos, não
-      zero.)
-    - **Entrega no teardown = fila durável, não `sendBeacon`.** `sendBeacon` não
-      seta headers e todo write vai pro PostgREST autenticado; um beacon só
-      alcançaria um endpoint anônimo, que este repo não tem. `localStorage` é
-      síncrono e sobrevive ao `pagehide`; o dreno seguinte escreve. O que ainda
-      se perde está listado no cabeçalho de `src/hooks/useAbandonmentBeacon.ts`.
-    - **Superfície: só o `LessonPlayer` (self-paced) hoje.** No ao vivo a
-      ausência de resposta já é recuperável por query (`class_attendance` sem
-      `class_answers`), então não é dado perdido para sempre — que é o critério
-      de ordenação desta fase. E o force-advance do professor tirando a
-      atividade da tela **não é** o aluno saindo; conflatar os dois tornaria a
-      taxa ininterpretável.
-  - **Precisa de coluna/tabela nova para o evento?** Só se o acréscimo acima não
-    resolver. Migration em `db/migrations/`, **idempotente**; o merge para `main`
-    aplica — ver *Contracts → Schema* acima e [`db/README.md`](db/README.md).
-    Nunca `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
-  - **O que já TRAVA hoje, e o que ainda NÃO trava** — esta regra vale pelo que
-    a CI barra, não pela boa intenção:
-    - ✅ **Já trava (typecheck):** `src/types/content.ts` **re-exporta**
-      `ActivityKind` de `@iterahq/activity-spec`, então um kind novo no pacote
-      deixa o `Record<ActivityKind, …>` de `src/utils/activitySpecBoundary.ts`
-      incompleto e quebra `npm run typecheck` — que é passo próprio da CI
-      justamente porque `vite build` transpila sem checar tipos (PR #195).
-    - ✅ **Já trava (testes):** kind sem contrato/cobertura quebra
-      `src/test/activityContractFixtures.test.ts` e
-      `src/test/activityKindValidationCoverage.test.tsx`.
-    - ✅ **Já trava (campo obrigatório):** `passed`, `duration` e `settledAt`
-      NÃO têm default em `persistActivityProgress`, de propósito — um call-site
-      novo tem que declarar o que aconteceu, ou não compila. *"Um flag
-      omitido-por-default é o bug"* já custou caro aqui (o log de tentativas só
-      guardava acerto). **É esse o mecanismo que o checker de tracking vai
-      reusar.**
-    - ✅ **Já trava (fronteira de emissão):** `src/test/traceEmissionBoundary.test.ts`
-      falha se qualquer arquivo da árvore de atividades importar
-      `@/services/progress.service` ou `@/utils/learningTrace`, ou se algum
-      módulo além do `progress.service` escrever em `activity_traces`. **É por
-      isso que `RecordedAction` mora no `activityFamilies.ts` e não no
-      `learningTrace.ts`** — a atividade precisa nomear o tipo que produz sem
-      enxergar o envelope nem o escritor. O mesmo teste também trava o recorder
-      e o registro de famílias como PUROS (sem Supabase, sem outbox, sem React).
-      Ou seja: o **ONDE** das regras acima é gate; o **SE** ainda não é.
-    - ✅ **Já trava (família):** kind sem entrada em `ACTIVITY_FAMILY` não
-      compila, e `src/test/activityFamilies.test.ts` cruza o mapa com o
-      `ACTIVITY_KINDS` do pacote nas DUAS direções (chave órfã também falha).
-    - 🔴 **AINDA NÃO trava:** **não existe** checker que exija que um kind novo
-      EMITA evento de tracking — é a **Fase 5** do plano acima. Até lá, **este**
-      item é regra escrita, não trava: não conte com a CI para pegá-lo, e não
-      descreva em PR como se ela pegasse. (O cano em si — Fases 2-4 — **já
-      existe**; era só ele que faltava quando esta linha foi escrita.)
-      ⚠️ **A lista canônica de kinds, que esta linha dizia não existir, EXISTE.**
-      Ela é a do PACOTE, e ela é MENOR que o enum: `ACTIVITY_KINDS` de
-      `@iterahq/activity-spec@1.0.0` tem **13**, igual ao `switch` do
-      `ActivityRenderer`, contra os **14** do enum derivado de `db/migrations/`
-      (conferido no `pg_enum` ao vivo e em `db/census/expected-schema.txt`). A
-      diferença é só o `sandbox_scenario` aposentado, e ela é permanente — o
-      Postgres não deixa tirar valor de enum. Quem construir a Fase 5 parte da
-      lista do pacote, não do enum, e não de uma terceira.
-      `BUILT_IN_ACTIVITY_KINDS` tem **12**: `code` sai pelo segundo entrypoint
-      (ADR-5).
+    (`src/services/progress.service.ts`), na FUNÇÃO e nunca nos call-sites — eles
+    já se moveram uma vez. **NUNCA dentro do `ActivityRenderer`:**
+    `src/components/author/ActivityTestHarness.tsx` deliberadamente não importa o
+    `progress.service`, e é essa fronteira que impede que um autor testando
+    polua dado de aluno.
+  - **A FAMÍLIA vem primeiro.** `src/utils/activityFamilies.ts` nomeia as cinco
+    (`selection` · `arrangement` · `reading` · `editor` · `scenario`) e é ela que
+    define o vocabulário de ação. Kind sem família **não compila**. Critério pra
+    saber se a família está certa: *kind novo dentro de família existente custa
+    DADO + PREDICADO; se custar máquina de estado nova, a fronteira está errada.*
+  - **Nunca ponha texto livre no `payload`** do trace — a resposta do aluno tem UM
+    lugar (`activity_results.feedback.response`). Exceção única, autorizada e
+    enumerada em `FREE_TEXT_PAYLOAD_CARVE_OUTS`: `command_run.command` do
+    `terminal_sandbox`, **só na forma normalizada**. ⚠️ **Não "conserte" essa
+    exceção achando que é bug** — é decisão do Tainan, e o porquê está no doc.
+  - **`FAMILY_EMITTED` é ledger, não meta** — só liste família que este build
+    realmente emite. `scenario` é **parcial** (`terminal_sandbox` emite,
+    `chat_sandbox` não): quem consulta `activity_traces` filtra por `kind`.
+  - **⚠️ `activity_traces` tem DUAS espécies de linha desde a 0040** — a tentativa
+    liquidada e a **abandonada**. Os dois predicados portáteis: liquidadas →
+    `where outcome is distinct from 'abandoned'`; abandonos →
+    `where outcome = 'abandoned'`. **Nunca `where outcome = 'settled'`** numa
+    população histórica: NULL ali é *"não capturado"*, não *"liquidada"*.
+  - **Um abandono NÃO escreve `activity_results` nem `progress`** — tem função
+    própria (`persistActivityAbandonment`) em vez de uma flag, para que a escrita
+    errada seja *inalcançável*, não só improvável. E abandono **não é prova de
+    dificuldade**: compare taxas entre atividades irmãs, nunca leia a linha
+    isolada.
+  - **O cano já existe — use, não reinvente.** Contrato versionado em
+    `src/utils/learningTrace.ts`; contexto pedagógico em
+    `src/utils/pedagogicalContext.ts`. Ação nova é acréscimo (novo `type`, nova
+    chave de `payload`), **sem** bump de `schema_version` e **sem** migration.
+  - **O que a CI TRAVA:** typecheck do `Record<ActivityKind, …>`, contrato e
+    fixture, cobertura de validação, família (nas duas direções) e a fronteira de
+    emissão (`src/test/traceEmissionBoundary.test.ts`). 🔴 **O que ela NÃO trava:**
+    não existe checker que exija que um kind novo EMITA evento — é a Fase 5, não
+    construída. Não conte com a CI pra isso, e não descreva em PR como se ela
+    pegasse.
+  - **A lista canônica de kinds é a do PACOTE** (`ACTIVITY_KINDS` de
+    `@iterahq/activity-spec`, **13**), não a do enum (**14**, com o
+    `sandbox_scenario` aposentado que não sai). Quem construir a Fase 5 parte
+    dela, não do enum e não de uma terceira.
+  - 📖 **O racional inteiro está em
+    [`docs/learning-trace.md`](docs/learning-trace.md)** — por que cada regra
+    acima existe, o que já custou caro, a escada de degradação (`traceWriteRungs`),
+    por que a entrega no teardown é fila durável e não `sendBeacon`, e por que
+    hoje só o `LessonPlayer` é superfície de abandono. **Leia antes de mexer em
+    trace, família, contexto pedagógico ou abandono.**
+  - Precisa de coluna/tabela nova? Só se o acréscimo acima não resolver.
+    Migration **idempotente** em `db/migrations/`; o merge para `main` aplica —
+    ver *Contracts → Schema* e [`db/README.md`](db/README.md). Nunca
+    `devfellowship/dfl-schema`: aquele é o banco da DFL, outro projeto.
+
 - Imports absolutos (`@/components`, `@/hooks`, …); relativos só dentro da
   mesma feature.
 - Lógica derivada de resposta/correção vai para `answerMachine`, não inline no
@@ -658,87 +301,22 @@ O que já é servido do nosso domínio, a partir de `public/vendor/`:
 | **Monaco Editor** (`vendor/monaco/vs`, ~16 MB) | editor de código | **gerado no build** (`.gitignore`) |
 | **Efeitos sonoros** (`vendor/sfx/*.mp3`, ~250 KB) | acerto/erro/avanço na lição e na aula | **commitado** |
 
-### Monaco — por que existe `scripts/vendor-monaco.ts`
+Os três vendorings existem porque cada um **já falhou em produção** com a CDN
+bloqueada: o Monaco não montava (aluno sem editor nenhum), as fontes caíam em
+fallback silencioso (a aula fica com cara de página quebrada) e o clipe de
+comemoração respondia **403**. Monaco é **gerado no build** (16 MB, copiáveis
+offline do `node_modules`); fontes e SFX são **commitados**, porque não há pacote
+npm de origem e buscá-los no `prebuild` só moveria a dependência externa de
+runtime para a CI.
 
-`@monaco-editor/react` delega o carregamento ao `@monaco-editor/loader`, que
-por padrão injeta em RUNTIME um `<script src="https://cdn.jsdelivr.net/npm/monaco-editor@X/min/vs/loader.js">`.
-Medido em produção (2026-07-23) com a jsDelivr bloqueada: **o editor não montava
-— 0 linhas, aluno sem editor nenhum.**
+`src/test/monacoSelfHost.test.ts`, `src/test/fontsSelfHost.test.ts` e
+`src/test/sfxSelfHost.test.ts` trancam as três pernas. **Se um deles quebrar, o
+asset voltou a depender de CDN — não silencie o teste.**
 
-O fix tem três peças, e as três precisam continuar existindo:
-
-1. **`monaco-editor` é dependência DIRETA e com pin exato** (`package.json`) —
-   a versão acompanha o default do `@monaco-editor/loader`. Ao bumpar
-   `@monaco-editor/react`, confira `node_modules/@monaco-editor/loader/lib/es/config/index.js`
-   e realinhe o pin.
-2. **`scripts/vendor-monaco.ts`** copia `monaco-editor/min/vs` (build AMD) para
-   `public/vendor/monaco/vs`. Roda pelo plugin `monacoSelfHost` do Vite
-   (`buildStart` → cobre `vite dev`, `vite build` e o Storybook) e pelos hooks
-   `prebuild`/`prebuild-storybook`. É idempotente (carimbo `.monaco-version`).
-   Os arquivos **não são commitados** — são gerados no build.
-3. **`src/lib/monaco-loader.ts`** roda `loader.config({ paths: { vs: '/vendor/monaco/vs' } })`
-   **uma vez no bootstrap** — importado por `src/main.tsx` e `.storybook/preview.tsx`.
-   ⚠️ Não mova essa chamada para dentro do `CodeEditor`: ela precisa acontecer
-   antes do primeiro mount do editor.
-
-`src/test/monacoSelfHost.test.ts` tranca as três pernas. Se ele quebrar, o
-editor voltou a depender de CDN — não silencie o teste.
-
-### Fontes — por que existe `scripts/vendor-fonts.ts`
-
-O `index.html` carregava um `<link>` pro CSS do Google Fonts, que puxa os
-`.woff2` do gstatic. Medido em produção (2026-07-23) com tudo bloqueado exceto
-o app e o Supabase: **zero faces carregadas** — a Barlow Condensed dos títulos
-renderizava com a MESMA largura do `sans-serif` do sistema (1027.97px vs 760px
-da fonte real). Fallback silencioso: nada quebra, mas a aula fica com cara de
-página quebrada.
-
-Diferente do Monaco, os `.woff2` **são commitados**. Motivo: não existe pacote
-npm dessas fontes no projeto. Um script no `prebuild` teria que buscá-las do
-gstatic NA HORA DO BUILD — só moveria a dependência externa de runtime pra CI, e
-quebraria qualquer build atrás da mesma rede restrita que estamos endurecendo.
-São 12 arquivos / ~313 KB, imutáveis (as URLs do gstatic são versionadas por
-revisão da família). O Monaco é o oposto: 16 MB copiáveis offline do
-`node_modules`, então gerar no build é melhor.
-
-- **`scripts/vendor-fonts.ts`** (`npm run vendor:fonts`) rebaixa os `.woff2` +
-  gera `public/vendor/fonts/fonts.css`. **NÃO** roda no `prebuild` — build não
-  pode depender de rede. Rodar à mão e commitar o diff.
-- **Escopo**: a const `FAMILIES` espelha EXATAMENTE o que o `<link>` do Google
-  servia (Barlow Condensed 400/500/600/700, Inter 400/500/600/700, JetBrains
-  Mono 400/500) → renderização idêntica por construção. Subsets `latin` +
-  `latin-ext`. ⚠️ Os acentos do PT (ç, õ, ã) moram em U+00C0–U+00FF, ou seja no
-  subset **`latin`** — não no `latin-ext`.
-- **Dois `<link>`**: `index.html` (app) **e** `.storybook/preview-head.html` — o
-  Storybook tem `iframe.html` próprio e não herda o do app.
-- Comentários evitam os hostnames literais de propósito, pra um grep de
-  auditoria por CDN externa no `dist/`/`storybook-static/` dar zero.
-
-`src/test/fontsSelfHost.test.ts` tranca tudo isso (sem rede). Se ele quebrar, a
-tipografia voltou a depender de CDN — não silencie o teste.
-
-### Efeitos sonoros — por que existe `scripts/vendor-sfx.ts`
-
-`useSoundEffects` apontava pros `.mp3` de um CDN público de SFX. Na rede do
-piloto (só o app + o Supabase liberados) o aluno passa o exercício e não ouve
-nada. E a origem nem é estável: em 2026-07-30 o clipe de comemoração respondia
-**403** — ou seja, aquele som já estava morto em produção para todo mundo.
-
-Seguem o caminho das FONTES, não o do Monaco: **commitados** (6 arquivos,
-~250 KB), porque não há pacote npm de origem e um fetch no `prebuild` só moveria
-a dependência externa pra CI.
-
-- **`scripts/vendor-sfx.ts`** (`npm run vendor:sfx`) baixa os clipes e grava em
-  `public/vendor/sfx/`. **NÃO** roda no `prebuild`. Rodar à mão e commitar.
-- O mapa `CLIPS` (id na origem → nome do arquivo) é a documentação de qual
-  clipe é qual. Trocou um? Registre o porquê ali.
-- O script rejeita resposta cujo `content-type` não comece com `audio/`:
-  portal cativo de rede responde 200 com HTML, que viraria um `.mp3` quebrado.
-
-`src/test/sfxSelfHost.test.ts` tranca isso (sem rede): nenhuma URL absoluta no
-hook, todo som apontando pra `/vendor/sfx`, e cada arquivo com cabeçalho de MP3
-de verdade. Se ele quebrar, o som voltou a depender de CDN — não silencie o
-teste.
+📖 As três peças do fix do Monaco (pin exato, `vendor-monaco.ts`, o
+`loader.config` no bootstrap), o escopo exato das famílias de fonte — e por que os
+acentos do PT moram no subset `latin` e não no `latin-ext` — e o mapa `CLIPS` dos
+SFX: [`docs/vendoring-sem-cdn.md`](docs/vendoring-sem-cdn.md).
 
 ## Edge Functions
 
