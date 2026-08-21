@@ -65,10 +65,21 @@ build, so `dist/` exists before typecheck/test.
 
 ```sh
 export NODE_AUTH_TOKEN=ghp_...   # classic PAT com read:packages — ver abaixo
-npm i
+npm run setup                    # valida o token e instala
 cp .env.example .env   # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 npm run dev
 ```
+
+**Use `npm run setup`, não `npm i` direto, na primeira vez.** Ele checa o
+`NODE_AUTH_TOKEN` contra o registry ANTES de instalar e traduz a resposta. O erro
+que o npm dá sozinho manda pro caminho errado: um token fine-grained volta
+`403 does not match expected scopes`, que todo mundo lê como "faltou marcar um
+escopo" quando o problema é o TIPO do token. Isso custou a primeira story do
+designer. Depois do primeiro setup, `npm i` normal.
+
+**Só quer VER uma story, não editar?** Não precisa instalar nada: toda PR publica
+um Storybook próprio em `https://pr-<n>.itera-storybook.pages.dev`, e a `main` fica
+em `storybook.iterahq.dev`.
 
 **Use `npm` — não `pnpm` nem `yarn`.** O lockfile é `package-lock.json`, e com
 `pnpm` o install para pedindo token de auth: o `.npmrc` declara

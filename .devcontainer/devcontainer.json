@@ -1,9 +1,15 @@
 {
-  "name": "dfl-iterate",
+  "name": "itera-player",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
-  "forwardPorts": [8080],
-  "postCreateCommand": "npm install",
-  "postStartCommand": "npm run dev",
+  "forwardPorts": [8080, 6006],
+  "portsAttributes": {
+    "8080": { "label": "app (vite)" },
+    "6006": { "label": "storybook" }
+  },
+  "remoteEnv": {
+    "NODE_AUTH_TOKEN": "${localEnv:NODE_AUTH_TOKEN}"
+  },
+  "postCreateCommand": "npm run setup",
   "customizations": {
     "vscode": {
       "extensions": [
