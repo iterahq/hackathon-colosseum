@@ -19,6 +19,7 @@ export function GuidedCodeWorkspace({
   values,
   activeBlankId,
   byBlank,
+  revealed,
   wordBank,
   spentChips,
   hasTarget,
@@ -35,6 +36,8 @@ export function GuidedCodeWorkspace({
   values: GuidedValues;
   activeBlankId: string | null;
   byBlank: Record<string, boolean> | null;
+  /** The holes are showing the AUTHORED answer, not the learner's. */
+  revealed: boolean;
   wordBank: string[];
   spentChips: Record<string, number>;
   /** False when every hole is full: a chip has nowhere to land. */
@@ -61,6 +64,7 @@ export function GuidedCodeWorkspace({
         values={values}
         activeBlankId={activeBlankId}
         byBlank={byBlank}
+        revealed={revealed}
         readOnly={disabled}
         onActivate={(blank) => onAim(blank.id)}
         onChange={(blank, value) => onSet(blank.id, value)}

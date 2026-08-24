@@ -18,6 +18,7 @@ export function GuidedCodeTemplate({
   values,
   activeBlankId,
   byBlank,
+  revealed,
   readOnly,
   onActivate,
   onChange,
@@ -27,6 +28,8 @@ export function GuidedCodeTemplate({
   activeBlankId: string | null;
   /** Per-blank verdicts, or `null` while the learner is still editing. */
   byBlank: Record<string, boolean> | null;
+  /** The holes are showing the AUTHORED answer, not the learner's. */
+  revealed: boolean;
   readOnly: boolean;
   onActivate: (blank: CodeBlank) => void;
   onChange: (blank: CodeBlank, value: string) => void;
@@ -58,6 +61,7 @@ export function GuidedCodeTemplate({
                   value={values[segment.blank.id] ?? ''}
                   active={activeBlankId === segment.blank.id}
                   verdict={byBlank ? (byBlank[segment.blank.id] ?? null) : null}
+                  revealed={revealed}
                   readOnly={readOnly}
                   onActivate={() => onActivate(segment.blank)}
                   onChange={(next) => onChange(segment.blank, next)}

@@ -116,3 +116,34 @@ export const CodeWithTextInput: Story = {
 export const Concluida: Story = {
   args: { activity: makeActivity('code', CODE_OPTIONS_SPEC, 'done') },
 };
+
+/**
+ * `reveal` — o professor parou o relógio e pôs o gabarito na tela. É o único
+ * `code` que revela: `blanks[].answer` é solução escrita pelo autor, e o editor
+ * aberto só tem `checks`.
+ *
+ * ESTADO DE APRESENTAÇÃO: não sobrescreve o rascunho, não chama `onComplete`,
+ * não vira acerto no pódio — religar o relógio devolve o que o aluno tinha,
+ * porque nada passou por cima. Tom próprio e não o verde de acerto, que diria
+ * "você acertou" sobre uma resposta que ele não deu; e não só cor, o nome
+ * acessível da lacuna diz de quem é a resposta.
+ */
+export const RevealGuiado: Story = {
+  args: { activity: makeActivity('code', CODE_OPTIONS_SPEC), onComplete: fn(), reveal: true },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const shell = canvasElement.querySelector('[data-activity-kind="code"]') as HTMLElement;
+    await expect(shell).toHaveAttribute('data-revealed', 'true');
+    await expect(canvas.getByTestId('guided-code-revealed')).toBeInTheDocument();
+
+    const hook = canvas.getByTestId('guided-blank-hook');
+    await expect(hook).toHaveTextContent('useState');
+    await expect(hook).toHaveAttribute('data-revealed', 'true');
+    await expect(hook).toBeDisabled();
+
+    // Sem enviar e sem recomeçar: revelar não é uma tentativa do aluno.
+    await expect(canvas.queryByTestId('guided-submit')).toBeNull();
+    await expect(canvas.getByTestId('code-reset')).toBeDisabled();
+    await expect(args.onComplete).not.toHaveBeenCalled();
+  },
+};

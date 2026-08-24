@@ -157,7 +157,12 @@ export function ActivityRenderer({
     case 'quiz':
       return <QuizActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     case 'code':
-      return <CodeSnackActivity activity={activity} onComplete={onComplete} />;
+      // O `reveal` só tem efeito no `code` GUIADO, onde `blanks[].answer` é um
+      // gabarito escrito pelo autor; no editor aberto ele morre dentro do
+      // componente, porque não existe solução a mostrar. Passar sempre mantém a
+      // decisão num lugar só (`CodeActivity`) em vez de espalhar a mesma
+      // pergunta pelo dispatcher.
+      return <CodeSnackActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
     // v1 general learning-activity taxonomy:
     case 'concept':
       return <ConceptActivity activity={activity} onComplete={onComplete} />;

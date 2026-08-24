@@ -1,9 +1,34 @@
 import { describe, it, expect } from 'vitest';
+import type { Activity } from '@/types/content';
 import {
   isAnswerableLiveKind,
   hasRevealableAnswer,
   canReopenSubmission,
+  isGuidedCodeActivity,
+  activityHasRevealableAnswer,
 } from './isAnswerableLiveKind';
+
+function activity(kind: string, spec: unknown): Activity {
+  return {
+    id: 'a',
+    lessonId: 'l',
+    ordinal: 0,
+    kind: kind as Activity['kind'],
+    spec: spec as Activity['spec'],
+    rubric: null,
+  };
+}
+
+const GUIDED_CODE = activity('code', {
+  prompt: 'p',
+  starter: 'const [n, setN] = {{blank:hook}}(0);',
+  blanks: [{ id: 'hook', kind: 'bank', answer: 'useState' }],
+});
+const OPEN_CODE = activity('code', {
+  prompt: 'p',
+  starter: 'const a = 1;',
+  checks: [{ id: 'c', description: 'roda', assert: 'true' }],
+});
 
 const ANSWERABLE = [
   'single_choice',
@@ -103,8 +128,62 @@ describe('canReopenSubmission', () => {
   });
 });
 
+describe('isGuidedCodeActivity', () => {
+  it('true only when the row carries authored holes', () => {
+    expect(isGuidedCodeActivity(GUIDED_CODE)).toBe(true);
+    expect(isGuidedCodeActivity(OPEN_CODE)).toBe(false);
+  });
+
+  it('false for a `blanks` that is empty, absent or not an array', () => {
+    expect(isGuidedCodeActivity(activity('code', { starter: 's', blanks: [] }))).toBe(false);
+    expect(isGuidedCodeActivity(activity('code', { starter: 's' }))).toBe(false);
+    expect(isGuidedCodeActivity(activity('code', { starter: 's', blanks: 'useState' }))).toBe(false);
+  });
+
+  it('false for a non-object spec, and for null / undefined', () => {
+    expect(isGuidedCodeActivity(activity('code', null))).toBe(false);
+    expect(isGuidedCodeActivity(activity('code', []))).toBe(false);
+    expect(isGuidedCodeActivity(null)).toBe(false);
+    expect(isGuidedCodeActivity(undefined)).toBe(false);
+  });
+
+  it('never claims another kind, even one whose spec happens to have `blanks`', () => {
+    expect(isGuidedCodeActivity(activity('quiz', { blanks: [{ id: 'x' }] }))).toBe(false);
+  });
+});
+
+describe('activityHasRevealableAnswer', () => {
+  it('reveals guided code — `blanks[].answer` IS the gabarito the author wrote', () => {
+    expect(activityHasRevealableAnswer(GUIDED_CODE)).toBe(true);
+  });
+
+  it('does NOT reveal the open editor — `checks` is not a solution', () => {
+    // A regressão que este teste tranca: um botão de revelar no editor aberto
+    // para o cronômetro e não mostra nada, que é a armadilha original.
+    expect(activityHasRevealableAnswer(OPEN_CODE)).toBe(false);
+  });
+
+  it('keeps agreeing with the kind-level predicate everywhere else', () => {
+    for (const kind of ANSWERABLE.concat(CONTENT, ['concept_reveal'])) {
+      if (kind === 'code') continue;
+      expect(activityHasRevealableAnswer(activity(kind, {}))).toBe(hasRevealableAnswer(kind));
+    }
+  });
+
+  it('false for null / undefined', () => {
+    expect(activityHasRevealableAnswer(null)).toBe(false);
+    expect(activityHasRevealableAnswer(undefined)).toBe(false);
+  });
+
+  it('leaves the KIND-level answer for code untouched', () => {
+    // `hasRevealableAnswer('code')` continua falso de propósito: a pergunta não
+    // tem resposta no nível do kind, e quem chamar assim tem que ser corrigido.
+    expect(hasRevealableAnswer('code')).toBe(false);
+  });
+});
+
 describe('the two predicates answer DIFFERENT questions', () => {
-  it('code diverges one way: timed, but nothing to reveal', () => {
+  it('code diverges one way: timed, but the kind alone has nothing to reveal', () => {
     expect(isAnswerableLiveKind('code')).toBe(true);
     expect(hasRevealableAnswer('code')).toBe(false);
   });

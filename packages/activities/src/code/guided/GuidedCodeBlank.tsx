@@ -19,6 +19,7 @@ export function GuidedCodeBlank({
   value,
   active,
   verdict,
+  revealed,
   readOnly,
   onActivate,
   onChange,
@@ -29,6 +30,13 @@ export function GuidedCodeBlank({
   active: boolean;
   /** `null` while editing — right/wrong only exists after a submit. */
   verdict: boolean | null;
+  /**
+   * The value shown is the AUTHORED answer, put there by the professor.
+   *
+   * A third tone rather than reusing the green one: green says "you got it", and
+   * on a revealed hole that sentence is false about the only person reading it.
+   */
+  revealed: boolean;
   readOnly: boolean;
   onActivate: () => void;
   onChange: (value: string) => void;
@@ -36,13 +44,16 @@ export function GuidedCodeBlank({
   const { t } = useActivityI18n();
   const width = `${blankWidthCh(blank)}ch`;
   const testId = `guided-blank-${blank.id}`;
-  const label = blank.placeholder ?? t('code.guided.blankLabel');
+  const base = blank.placeholder ?? t('code.guided.blankLabel');
   // The verdict is a colour, and colour alone is not a verdict for anyone using a
-  // screen reader (or unable to tell green from red).
+  // screen reader (or unable to tell green from red). Same for the reveal: it
+  // says so in the accessible name, not only in the border.
+  const label = revealed ? `${base} — ${t('code.guided.revealedBlank')}` : base;
   const invalid = verdict === false || undefined;
 
-  const tone =
-    verdict === true
+  const tone = revealed
+    ? 'border-streak bg-streak/15 text-streak'
+    : verdict === true
       ? 'border-evergreen bg-evergreen/15 text-evergreen-hi'
       : verdict === false
         ? 'border-destructive bg-destructive/15 text-destructive'
@@ -51,11 +62,12 @@ export function GuidedCodeBlank({
           : 'border-border bg-white/5 text-neutral-100 hover:border-evergreen/60';
 
   const shared = `mx-0.5 inline-flex h-6 items-center rounded-md border px-1.5 align-middle font-mono text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-evergreen/60 disabled:cursor-not-allowed ${tone}`;
+  const marks = { 'data-testid': testId, 'data-revealed': revealed ? 'true' : 'false' };
 
   if (blank.kind === 'select') {
     return (
       <select
-        data-testid={testId}
+        {...marks}
         data-blank-kind="select"
         aria-label={label}
         aria-invalid={invalid}
@@ -78,7 +90,7 @@ export function GuidedCodeBlank({
   if (blank.kind === 'text') {
     return (
       <input
-        data-testid={testId}
+        {...marks}
         data-blank-kind="text"
         aria-label={label}
         aria-invalid={invalid}
@@ -100,7 +112,7 @@ export function GuidedCodeBlank({
   return (
     <button
       type="button"
-      data-testid={testId}
+      {...marks}
       data-blank-kind="bank"
       data-active={active ? 'true' : 'false'}
       aria-label={value ? `${label}: ${value}` : label}

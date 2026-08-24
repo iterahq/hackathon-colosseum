@@ -37,7 +37,7 @@ import { GuidedCodePane } from './guided/GuidedCodePane.js';
  * a host uses for any kind the package does not ship; there is no second
  * registry.
  */
-export function CodeActivity({ activity, onComplete }: ActivityRendererProps) {
+export function CodeActivity({ activity, onComplete, reveal }: ActivityRendererProps) {
   const { t } = useActivityI18n();
   // `site: 'component'` in the Player's boundary registry: the `code` kind
   // validates HERE, the historical way, because this component is also rendered
@@ -67,7 +67,19 @@ export function CodeActivity({ activity, onComplete }: ActivityRendererProps) {
    * two surfaces cannot both claim one activity.
    */
   if (isGuidedCodeSpec(parsed.data)) {
-    return <GuidedCodePane activity={activity} spec={parsed.data} onComplete={onComplete} />;
+    return (
+      <GuidedCodePane
+        activity={activity}
+        spec={parsed.data}
+        onComplete={onComplete}
+        reveal={reveal}
+      />
+    );
   }
+  // `reveal` STOPS HERE for the open editor, and that is the honest answer rather
+  // than an oversight: a spec with `checks` and no `blanks` carries no authored
+  // solution, so there is nothing to put on the projector. See
+  // `activityHasRevealableAnswer` in the Player — the button is hidden for the
+  // same reason, and the two must agree.
   return <CodeSnackPane activity={activity} spec={parsed.data} onComplete={onComplete} />;
 }

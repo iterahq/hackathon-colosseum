@@ -1,3 +1,5 @@
+import type { Activity } from '@/types/content';
+
 /**
  * THREE different questions about an activity kind in a live class —
  * deliberately THREE predicates. Do NOT collapse them into one.
@@ -21,10 +23,9 @@
  *
  * The first two diverge on two kinds, in OPPOSITE directions — which is the whole reason
  * neither one can be derived from the other:
- *   - `code` IS answerable but has NOTHING to reveal → it gets a countdown
- *     (5 min, see `liveTimerSeconds`) and locks on expiry like everything else,
- *     but the spec carries no solution field and `ActivityRenderer` does not even
- *     pass `reveal` down to `CodeSnackActivity`. No Reveal button.
+ *   - `code` IS answerable, and whether it has anything to reveal is a question
+ *     about the ROW, not the kind — see `activityHasRevealableAnswer` below. The
+ *     kind-level `hasRevealableAnswer('code')` stays FALSE.
  *   - `concept_reveal` is the MIRROR IMAGE: nothing to answer, but an answer to
  *     show. It produces nothing, so no countdown and nothing to lock — and yet
  *     the whole point of the kind is that the professor decides WHEN the answer
@@ -124,4 +125,37 @@ export function hasRevealableAnswer(kind: string | null | undefined): boolean {
  */
 export function canReopenSubmission(kind: string | null | undefined): boolean {
   return !!kind && REOPENABLE_KINDS.has(kind);
+}
+
+/**
+ * Guided `code`: a locked template whose holes carry an AUTHORED answer.
+ *
+ * Read as plain data (`spec.blanks`), never through `@iterahq/activities/code`.
+ * That entrypoint is off-limits to anything the base bundle can reach
+ * (`scripts/assert-entrypoint-isolation.mjs`), and this predicate is called from
+ * the instructor page, which is base. The shape check is the same one the package
+ * makes — a non-empty `blanks` array — and the Zod schema forbids `blanks`
+ * together with `checks`, so the two code surfaces cannot both claim one row.
+ */
+export function isGuidedCodeActivity(activity: Activity | null | undefined): boolean {
+  if (!activity || activity.kind !== 'code') return false;
+  const spec = activity.spec;
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return false;
+  const blanks = (spec as { blanks?: unknown }).blanks;
+  return Array.isArray(blanks) && blanks.length > 0;
+}
+
+/**
+ * The ROW-level reveal question, and the one the instructor's button asks.
+ *
+ * `code` is why this exists on top of `hasRevealableAnswer`: the two code
+ * surfaces answer differently and the kind alone cannot tell them apart. The
+ * guided variants carry `blanks[].answer` — a gabarito the author already wrote —
+ * so revealing shows something. The open editor carries only `checks`, so a
+ * button there would stop the clock and reveal nothing, which is the exact trap
+ * that split these predicates in the first place.
+ */
+export function activityHasRevealableAnswer(activity: Activity | null | undefined): boolean {
+  if (!activity) return false;
+  return hasRevealableAnswer(activity.kind) || isGuidedCodeActivity(activity);
 }

@@ -264,9 +264,10 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'C.submitted': { story: 'activities-producao-code--browser-checks-passam' },
     'D.correct': { story: 'activities-producao-code--browser-checks-passam' },
     'D.incorrect': { story: 'activities-producao-code--browser-checks-falham' },
-    'E.reveal': {
-      na: '`hasRevealableAnswer("code")` é FALSE por decisão explícita e documentada em `isAnswerableLiveKind.ts`: o spec de code não carrega solução, então não há gabarito a expor (e é por isso que o botão "Revelar resposta" não aparece).',
-    },
+    // A pergunta é pela LINHA, não pelo kind (`activityHasRevealableAnswer`): o
+    // guiado tem `blanks[].answer` e revela; o editor aberto só tem `checks` e
+    // segue sem botão. A story cobre a metade que existe.
+    'E.reveal': { story: 'activities-producao-code-guiado--reveal-guiado' },
     'F.spec_invalido': { story: 'activities-producao-code--espec-invalida' },
     'H.degenerado': { story: 'activities-producao-code--sem-starter' },
   },
@@ -345,7 +346,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 100, na: 30, deferred: 5, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 101, na: 29, deferred: 5, drift: 8 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

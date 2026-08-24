@@ -133,7 +133,7 @@ export type {
   GuidedSegment,
   GuidedValues,
   GuidedVariant,
-  UseGuidedCodeCallbacks,
+  UseGuidedCodeOptions,
 } from './guided/types.js';
 export {
   parseEditableRegions,

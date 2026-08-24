@@ -88,6 +88,21 @@ export function allBlanksFilled(blanks: readonly CodeBlank[], values: GuidedValu
 }
 
 /**
+ * Every hole filled with its authored `answer` — the gabarito, as values.
+ *
+ * This is the whole reason the guided variants CAN be revealed while the open
+ * editor cannot: `blanks[].answer` is a solution the author already wrote down,
+ * so nothing has to be invented (and no field has to be added to `CodeSpec`) to
+ * put it on the projector.
+ *
+ * Trimmed like `substituteBlanks` does, so what is shown and what would grade as
+ * correct are the same characters.
+ */
+export function revealedValues(blanks: readonly CodeBlank[]): GuidedValues {
+  return Object.fromEntries(blanks.map((b) => [b.id, b.answer.trim()]));
+}
+
+/**
  * Grade one blank. Whitespace around the answer is forgiven (an inline input
  * invites a stray space); everything else is exact, because in code `useState`
  * and `usestate` are not the same word and pretending otherwise teaches the

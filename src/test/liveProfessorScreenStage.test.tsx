@@ -12,10 +12,11 @@ import type { StagedAnswer } from '@/types/liveClass';
  *
  *  1. GRAVE — the professor could no longer touch the exercise. The freeze was
  *     `revealCurrent` (clock stopped or expired) turning their OWN stage `inert`
- *     on a `code` activity, which has NOTHING to reveal (`hasRevealableAnswer`
- *     excludes it, which is why it has no Reveal button either). So the freeze
- *     bought nothing and never lifted — `stoppedFor`/`expiredFor` only clear on
- *     an activity change or a fresh future-deadline timer.
+ *     on an OPEN `code` activity, which has nothing to reveal (only `checks`, no
+ *     authored solution — which is why it has no Reveal button either). So the
+ *     freeze bought nothing and never lifted — `stoppedFor`/`expiredFor` only
+ *     clear on an activity change or a fresh future-deadline timer. Guided `code`
+ *     is the opposite case and freezes: see `activityHasRevealableAnswer`.
  *  2. The class saw "Nada para projetar desta atividade ainda." The learner
  *     surface was the only one not passing `activity` to `LiveStage`, so an
  *     `empty` pull (every kind `gatherStageContent` has no signal for) had
@@ -38,6 +39,14 @@ const BYOC_SPEC = {
     seed: { prompt: 'Conte um hobby seu.' },
     harness: { interaction: 'pick_best', generation_prompt: 'Monte sobre {seed}' },
   },
+};
+
+// O `code` guiado é o espelho do BYOC dentro de um kind só: mesma `kind`, e o
+// que decide é a LINHA. Com `blanks` existe gabarito na tela pra proteger.
+const GUIDED_CODE_SPEC = {
+  prompt: 'Complete',
+  starter: 'const [n, setN] = {{blank:hook}}(0);',
+  blanks: [{ id: 'hook', kind: 'bank', answer: 'useState' }],
 };
 
 const useLessonContent = vi.fn();
@@ -236,9 +245,14 @@ beforeEach(() => {
 });
 
 describe("InstructorSessionPage — the professor's own stage stays usable", () => {
-  it('does NOT freeze a code exercise when the clock stops — there is no answer to protect', () => {
+  it('does NOT freeze an OPEN code exercise when the clock stops — no answer to protect', () => {
     mockLive('code', { stoppedFor: ACTIVITY_ID });
     expect(renderInstructor().readOnly).toBe(false);
+  });
+
+  it('DOES freeze a guided code exercise — the authored answer is on screen', () => {
+    mockLive('code', { stoppedFor: ACTIVITY_ID, spec: GUIDED_CODE_SPEC });
+    expect(renderInstructor().readOnly).toBe(true);
   });
 
   it('does NOT freeze while the professor is the one being projected', () => {

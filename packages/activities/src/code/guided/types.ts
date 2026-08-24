@@ -34,7 +34,16 @@ export interface GuidedGrade {
  */
 export type GuidedPhase = 'editing' | 'submitted' | 'settled';
 
-export interface UseGuidedCodeCallbacks {
+export interface UseGuidedCodeOptions {
   /** Carries the SUBSTITUTED source up as `detail.response`, like the open editor. */
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  /**
+   * The host is showing the gabarito (the professor stopped the clock).
+   *
+   * PRESENTATION ONLY, and the hook is where that is enforced: it never writes a
+   * draft, never grades, never settles. A revealed answer that reached the draft
+   * store or `onComplete` would turn a teaching move into learner data — the
+   * class would rank by who was on screen when the professor clicked.
+   */
+  reveal?: boolean;
 }

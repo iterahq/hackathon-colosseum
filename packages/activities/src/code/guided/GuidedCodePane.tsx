@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { PanelsTopLeft } from 'lucide-react';
+import { Eye, PanelsTopLeft } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
 import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
@@ -36,17 +36,23 @@ export function GuidedCodePane({
   activity,
   spec,
   onComplete,
+  reveal = false,
 }: {
   activity: PortableActivity;
   spec: CodeSpec;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  /** The host put the gabarito on screen. See `UseGuidedCodeOptions.reveal`. */
+  reveal?: boolean;
 }) {
   const { t } = useActivityI18n();
   const blanks = spec.blanks ?? [];
   const variant = guidedVariant(blanks);
-  const guided = useGuidedCode(activity.id, spec, { onComplete });
+  const guided = useGuidedCode(activity.id, spec, { onComplete, reveal });
   const isDone = activity.status === 'done';
-  const showFeedback = guided.phase !== 'editing';
+  // O veredito do ALUNO sai da tela enquanto o gabarito está nela: verde de
+  // "você acertou" em cima de uma resposta que o professor colocou é a única
+  // leitura que esta tela não pode permitir.
+  const showFeedback = !guided.revealed && guided.phase !== 'editing';
 
   /**
    * Which hole the next chip lands in. `null` means "wherever is next": the bank
@@ -66,15 +72,27 @@ export function GuidedCodePane({
       data-activity-kind="code"
       data-guided-variant={variant}
       data-phase={guided.phase}
+      data-revealed={guided.revealed ? 'true' : 'false'}
     >
       <RichText text={spec.prompt ?? ''} />
 
-      <div
-        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"
-        data-testid="guided-code-hint"
-      >
-        <PanelsTopLeft className="h-4 w-4 shrink-0 text-menta" /> {t(GUIDED_VARIANT_HINT[variant])}
-      </div>
+      {/* A tarja troca de texto, não acumula: "toque numa palavra" em cima de um
+          template que já está travado manda o aluno tentar o que não dá. */}
+      {guided.revealed ? (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl border border-streak/40 bg-streak/10 px-3.5 py-2.5 text-sm text-streak"
+          data-testid="guided-code-revealed"
+        >
+          <Eye className="h-4 w-4 shrink-0" /> {t('code.guided.revealedNotice')}
+        </div>
+      ) : (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"
+          data-testid="guided-code-hint"
+        >
+          <PanelsTopLeft className="h-4 w-4 shrink-0 text-menta" /> {t(GUIDED_VARIANT_HINT[variant])}
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <GuidedCodeWorkspace
@@ -83,12 +101,13 @@ export function GuidedCodePane({
           values={guided.values}
           activeBlankId={activeBlankId}
           byBlank={showFeedback ? guided.grade.byBlank : null}
+          revealed={guided.revealed}
           wordBank={guided.wordBank}
           spentChips={guided.spentChips}
           hasTarget={activeBlankId !== null}
           help={spec.help}
           disabled={guided.readOnly || isDone}
-          resetDisabled={isDone || guided.phase === 'settled'}
+          resetDisabled={isDone || guided.revealed || guided.phase === 'settled'}
           onAim={setAimed}
           onSet={(blankId, value) => {
             guided.setValue(blankId, value);
@@ -105,7 +124,7 @@ export function GuidedCodePane({
         <GuidedCodePreview source={guided.source} ready={guided.filled} />
       </div>
 
-      {!showFeedback && (
+      {!showFeedback && !guided.revealed && (
         <button
           type="button"
           onClick={guided.submit}

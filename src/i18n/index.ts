@@ -488,6 +488,11 @@ export const resources: Record<Locale, Record<string, string>> = {
     // A posição é o que liga a linha do veredito à lacuna na tela: sem ela,
     // "essa lacuna" com três erros na lista não diz qual.
     'code.guided.blankPosition': 'Lacuna {position}',
+    // "Resposta do professor", não "resposta certa": o aluno precisa saber que o
+    // que está na tela não é o que ELE respondeu, senão o gabarito revelado ao
+    // vivo vira uma lembrança falsa de acerto.
+    'code.guided.revealedNotice': 'Resposta do professor na tela. Seu preenchimento foi guardado.',
+    'code.guided.revealedBlank': 'resposta do professor',
     // Recomeçar ≠ tentar de novo: "Tentar de novo" volta a editar SEM perder
     // nada; este aqui joga fora o que a pessoa escreveu e traz o código inicial
     // de volta — por isso pergunta antes.
@@ -1352,6 +1357,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.guided.previewWaiting': 'Fill in the blanks to see it running.',
     'code.guided.wrongBlank': 'This blank is not right yet.',
     'code.guided.blankPosition': 'Blank {position}',
+    'code.guided.revealedNotice': "The instructor's answer is on screen. Your own work is saved.",
+    'code.guided.revealedBlank': "instructor's answer",
     'code.reset.action': 'Start over from the first code',
     'code.reset.confirmPrompt': 'This erases what you wrote and brings the first code back. Start over?',
     'code.reset.confirm': 'Yes, start over',

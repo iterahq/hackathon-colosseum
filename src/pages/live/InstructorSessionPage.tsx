@@ -40,7 +40,7 @@ import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
-import { hasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
+import { activityHasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
 import { remainingSeconds, adjustedTimerSeconds, clampTimerSeconds } from '@/utils/addLiveTime';
 import { buildLiveRoomRows } from '@/utils/liveRoomRows';
@@ -441,21 +441,21 @@ function ClassControl({
   );
   // Congelar o palco do professor serve pra solução exibida não ser mexida —
   // então só vale onde existe solução a exibir, e nunca enquanto a tela dele é a
-  // que está projetada (a mesma razão do bloco acima). Um `code` não revela nada
-  // (`hasRevealableAnswer`), e mesmo assim o fim do cronômetro deixava o editor
-  // do professor `inert` PERMANENTEMENTE: `stoppedFor`/`expiredFor` só caem ao
+  // que está projetada (a mesma razão do bloco acima). Um `code` de editor aberto
+  // não revela nada, e mesmo assim o fim do cronômetro deixava o editor do
+  // professor `inert` PERMANENTEMENTE: `stoppedFor`/`expiredFor` só caem ao
   // trocar de atividade ou ao religar o relógio.
   //
-  // O BYOC entra pelo MESMO par que decide o botão de revelar (`canReveal`
-  // abaixo): ele é camada, não kind, e roda quase sempre sobre um `concept` —
-  // perguntar só ao kind o descongelaria junto com o `code`, e ali existe
-  // gabarito na tela pra proteger.
+  // Pergunta pela LINHA, não pelo kind, e pelo mesmo par que decide o botão de
+  // revelar (`canReveal` abaixo) — as duas respostas têm que bater. O `code`
+  // guiado tem gabarito (`blanks[].answer`) e congela; o aberto não tem e não
+  // congela. O BYOC é camada, não kind, e roda quase sempre sobre um `concept`.
   const ownStageFrozen = Boolean(
     current &&
       revealCurrent &&
       !selfStaged &&
       !isScenarioKind(current.kind) &&
-      (hasRevealableAnswer(current.kind) || isByocActivity(current))
+      (activityHasRevealableAnswer(current) || isByocActivity(current))
   );
   const stageHint = selfStaged
     ? t('live.instructor.selfStagedHint')
@@ -650,14 +650,13 @@ function ClassControl({
                 canNext={canNext}
                 timerRunning={timerActive}
                 revealed={revealCurrent}
-                // NOT `isAnswerableLiveKind`: a `code` round is answerable (it
-                // gets a 5-min countdown) but has NO answer to put on screen, so
-                // "Revelar resposta" must not appear there. The professor keeps
-                // full control of the clock through the timer's own "Parar"
-                // button below. See `hasRevealableAnswer`. A BYOC round is the
-                // opposite case — its kind may be `concept`, but the generated
-                // tree carries a gabarito, so it DOES have an answer to reveal.
-                canReveal={hasRevealableAnswer(current?.kind) || (!!current && isByocActivity(current))}
+                // NOT `isAnswerableLiveKind`: um round é "respondível" (ganha
+                // cronômetro) sem ter resposta pra pôr na tela, e um botão que
+                // revela nada só para o relógio. A pergunta certa é pela LINHA:
+                // `code` guiado tem `blanks[].answer` e revela; `code` de editor
+                // aberto só tem `checks` e não revela. O BYOC é o caso espelhado
+                // — o kind pode ser `concept`, mas a árvore gerada tem gabarito.
+                canReveal={activityHasRevealableAnswer(current) || (!!current && isByocActivity(current))}
                 // Base per-activity duration PLUS any seconds the professor
                 // pre-added while stopped — the start button label reflects the
                 // real launch duration (the "obvious in UI" part).

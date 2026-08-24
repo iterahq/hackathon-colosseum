@@ -3,8 +3,14 @@ import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityStorage } from '../../context.js';
 import type { ActivityStoragePort } from '../../ports.js';
 import { codeBlanksDraftKey, codeDraftKey } from '../draftKey.js';
-import type { GuidedPhase, GuidedValues, UseGuidedCodeCallbacks } from './types.js';
-import { allBlanksFilled, gradeGuided, splitGuidedTemplate, substituteBlanks } from './guidedCode.js';
+import type { GuidedPhase, GuidedValues, UseGuidedCodeOptions } from './types.js';
+import {
+  allBlanksFilled,
+  gradeGuided,
+  revealedValues,
+  splitGuidedTemplate,
+  substituteBlanks,
+} from './guidedCode.js';
 import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
 
 /**
@@ -55,7 +61,7 @@ function seedValues(
 export function useGuidedCode(
   activityId: string,
   spec: CodeSpec,
-  { onComplete }: UseGuidedCodeCallbacks,
+  { onComplete, reveal = false }: UseGuidedCodeOptions,
 ) {
   const storage = useActivityStorage();
   const blanks = spec.blanks ?? [];
@@ -83,15 +89,34 @@ export function useGuidedCode(
    */
   const touchedRef = useRef(false);
 
+  /**
+   * The gabarito is on screen. Only the guided variants can be in this state —
+   * `blanks` empty means there is no authored answer, and the open editor is a
+   * different surface entirely.
+   */
+  const revealed = reveal && blanks.length > 0;
+
   // Derived every render on purpose: `blanks` has a fresh identity each time the
   // parent re-parses, so a `useMemo` keyed on it would recompute anyway while
   // reading as if it cached. Templates are a screenful of code, not a workload.
   const lines = splitGuidedTemplate(starter, blanks);
   const wordBank = buildWordBank(spec);
+  /**
+   * TWO reads of the same holes, and keeping them apart is the point.
+   *
+   * `values` is the learner's work: it is what the autosave effect below writes,
+   * what `gradeGuided` judges and what rides up as `response`. `shownValues` is
+   * what the screen displays. Revealing swaps only the second one, so the draft
+   * survives untouched and coming back out of the reveal puts the learner's own
+   * answers back with no restore step — there is nothing to restore, because
+   * nothing was overwritten.
+   */
+  const shownValues = revealed ? revealedValues(blanks) : values;
   const source = substituteBlanks(starter, blanks, values);
+  const shownSource = revealed ? substituteBlanks(starter, blanks, shownValues) : source;
   const filled = allBlanksFilled(blanks, values);
   const grade = gradeGuided(blanks, values);
-  const spentChips = spentBankCounts(blanks, values);
+  const spentChips = spentBankCounts(blanks, shownValues);
 
   const setValue = useCallback((blankId: string, value: string) => {
     touchedRef.current = true;
@@ -115,6 +140,12 @@ export function useGuidedCode(
     // editor already uses (the professor's stage reads that one and must not
     // learn about guided), the answers under their own key so the widgets can be
     // put back. See `../draftKey.ts` for why it is two keys and not one field.
+    //
+    // `revealed` is deliberately absent from this effect, guard and deps alike:
+    // both `source` and `values` are read off the LEARNER, so a reveal changes
+    // neither and the effect never re-runs. An early return keyed on `revealed`
+    // would look safer and be worse — it would drop the debounced write of the
+    // keystrokes typed in the second before the professor clicked.
     timerRef.current = setTimeout(() => {
       storageRef.current.write(codeDraftKey(activityId), source);
       storageRef.current.write(codeBlanksDraftKey(activityId), JSON.stringify(values));
@@ -124,38 +155,50 @@ export function useGuidedCode(
     };
   }, [activityId, source, values]);
 
+  /*
+   * The three transitions refuse to run while the gabarito is up.
+   *
+   * The UI already hides the buttons, and that is not enough: a refusal in the
+   * hook is what makes "revelar não vira acerto" unreachable rather than merely
+   * unclicked. Whoever wires a new affordance later inherits the rule for free.
+   */
   const submit = useCallback(() => {
-    if (!filled) return;
+    if (revealed || !filled) return;
     setPhase('submitted');
-  }, [filled]);
+  }, [revealed, filled]);
 
   const retry = useCallback(() => setPhase('editing'), []);
 
   const resetAll = useCallback(() => {
+    if (revealed) return;
     touchedRef.current = false;
     storageRef.current.clear(codeDraftKey(activityId));
     storageRef.current.clear(codeBlanksDraftKey(activityId));
     setValues({});
     setPhase('editing');
-  }, [activityId]);
+  }, [activityId, revealed]);
 
   const complete = useCallback(() => {
-    if (!filled) return;
+    if (revealed || !filled) return;
     setPhase('settled');
     onComplete(grade.allCorrect, { response: source });
-  }, [filled, grade.allCorrect, onComplete, source]);
+  }, [revealed, filled, grade.allCorrect, onComplete, source]);
 
   return {
-    values,
+    values: shownValues,
     setValue,
     lines,
     wordBank,
     spentChips,
-    source,
-    filled,
+    source: shownSource,
+    // Revelado, o preview roda o gabarito: as lacunas estão todas "cheias" na
+    // tela, e segurar o resultado justamente na hora de mostrar a resposta
+    // esconderia a metade que responde "e daí?".
+    filled: revealed || filled,
     grade,
     phase,
-    readOnly: phase !== 'editing',
+    revealed,
+    readOnly: revealed || phase !== 'editing',
     submit,
     retry,
     resetAll,
