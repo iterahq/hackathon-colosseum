@@ -1,9 +1,11 @@
 name: Storybook
 
-# Builds the Storybook static site and deploys it to the existing Cloudflare
-# Pages project `itera-storybook` (custom domain: storybook.iterahq.dev). The
-# Pages project has NO git integration (direct/wrangler upload), so this
-# workflow is the deploy mechanism on push to `main`.
+# Publica o PREVIEW de cada PR no projeto Cloudflare Pages `itera-storybook`.
+# A publicação da `main` (custom domain storybook.iterahq.dev) é do
+# `deploy-storybook.yml` — este workflow tinha um segundo deploy de `main`, e os
+# dois rodavam no mesmo commit com grupos de concorrência diferentes: dois
+# uploads do mesmo projeto disputando quem escreve por último, em runner
+# self-hosted que a iterahq paga em tempo de VPS.
 #
 # PR publica um PREVIEW no alias de branch `pr-<n>` do MESMO projeto Pages.
 # Sem isso o designer só enxergava o ANTES: o único link que existia apontava
@@ -33,8 +35,6 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/storybook.yml'
-  push:
-    branches: [main]
 
 permissions:
   contents: read
@@ -42,11 +42,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: storybook-${{ github.event.pull_request.number || github.ref }}
+  group: storybook-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  build-deploy:
+  build-preview:
     # See the runner note at the top of this file.
     runs-on: [self-hosted, dfl-runner]
     steps:
@@ -68,21 +68,11 @@ jobs:
       - name: Build Storybook
         run: npm run build-storybook
 
-      - name: Deploy to Cloudflare Pages
-        # Only publish from main; PRs get the preview step below.
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy storybook-static --project-name=itera-storybook --branch=main
-
       - name: Deploy PR preview to Cloudflare Pages
         # `--branch=pr-<n>` em vez do nome real da branch: o alias entra no
         # hostname, então um nome com `/` ou acento viraria URL que o webhook
         # não consegue prever. O número da PR é estável e já é o que o Discord
         # tem em mãos.
-        if: github.event_name == 'pull_request'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,7 +80,6 @@ jobs:
           command: pages deploy storybook-static --project-name=itera-storybook --branch=pr-${{ github.event.pull_request.number }}
 
       - name: Comment preview link on the PR
-        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
