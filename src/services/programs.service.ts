@@ -97,6 +97,13 @@ const bag = (v: unknown) => (v && typeof v === 'object' ? (v as Record<string, s
  * List all programs the current user/tenant can see, with derived counts.
  * RLS scopes the rows to the user's tenant; anonymous sessions see public rows
  * only (per the schema's policies).
+ *
+ * `archived_at` has existed on the table since the first migration and NOTHING
+ * read it — so retiring a program was impossible and the tenant accumulated
+ * duplicates, dead pilots and a literal `[TESTE] … apagar` sitting in front of
+ * 37 Educar+ learners. Filtering here (and not on the detail read below) is the
+ * whole point: an archived program stops being OFFERED, while a bookmark, a
+ * running class and the learner's own history keep resolving.
  */
 export async function getPrograms(): Promise<Program[]> {
   const sb = client();
@@ -106,6 +113,7 @@ export async function getPrograms(): Promise<Program[]> {
       `id, tenant_id, slug, title_i18n, created_at,
        units:units ( id, lessons:lessons ( id, activities:activities ( id ) ) )`
     )
+    .is('archived_at', null)
     .order('created_at', { ascending: true });
 
   if (error) throw new Error(error.message);
