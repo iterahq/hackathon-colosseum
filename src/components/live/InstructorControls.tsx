@@ -41,6 +41,8 @@ interface InstructorControlsProps {
   /** The class is paused for questions. */
   onBreak: boolean;
   onToggleBreak: () => void;
+  /** Abre a confirmação de "resetar a lição para todos". */
+  onResetLesson: () => void;
 }
 
 /**
@@ -71,6 +73,7 @@ export function InstructorControls({
   onToggleSelfStage,
   onBreak,
   onToggleBreak,
+  onResetLesson,
 }: InstructorControlsProps) {
   const { t } = useI18n();
   // The professor has full authority to advance whenever they want — the "Next"
@@ -116,7 +119,12 @@ export function InstructorControls({
           )}
         </div>
 
-        <InstructorOverflowMenu busy={busy} onBreak={onBreak} onToggleBreak={onToggleBreak} />
+        <InstructorOverflowMenu
+          busy={busy}
+          onBreak={onBreak}
+          onToggleBreak={onToggleBreak}
+          onResetLesson={onResetLesson}
+        />
 
         <button
           onClick={onNext}

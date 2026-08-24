@@ -43,3 +43,22 @@ export function storeAnswer(
     // Storage unavailable (private mode/quota) — refresh protection degrades only.
   }
 }
+
+/**
+ * Esquece as respostas destas atividades — "resetar a lição para todos". A
+ * proteção contra refresh acima é EXATAMENTE o que impede a turma de refazer o
+ * exercício, então repetir a lição passa por aqui. Por ATIVIDADE, e não apagando
+ * a chave da sessão inteira, porque o corte é da LIÇÃO: o que não está na lista
+ * continua valendo.
+ */
+export function clearStoredAnswers(sessionId: string, activityIds: string[]): void {
+  const key = keyFor(sessionId);
+  if (!key || activityIds.length === 0) return;
+  try {
+    const all = readAll(sessionId);
+    for (const activityId of activityIds) delete all[activityId];
+    localStorage.setItem(key, JSON.stringify(all));
+  } catch {
+    // Storage unavailable — não havia nada persistido pra limpar também.
+  }
+}

@@ -39,6 +39,7 @@ import { columnMaxWidthClass, LIVE_COLUMN_OVERRIDES } from '@/utils/activityColu
 import { mergeLiveAnswers } from '@/utils/mergeLiveAnswers';
 import { rankByScore } from '@/utils/rankByScore';
 import { mergeSeenLearners } from '@/utils/liveRoster';
+import { readLessonResetAt, storeLessonResetAt } from '@/utils/liveLessonReset';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { activityHasRevealableAnswer } from '@/utils/isAnswerableLiveKind';
 import { liveTimerSeconds } from '@/utils/liveTimerSeconds';
@@ -59,6 +60,7 @@ import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
 import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { InstructorControls } from '@/components/live/InstructorControls';
+import { ResetLessonDialog } from '@/components/live/ResetLessonDialog';
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { LiveReconnectBanner } from '@/components/live/LiveReconnectBanner';
 import { useLiveSound } from '@/hooks/useLiveSound';
@@ -146,12 +148,16 @@ function ClassControl({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  // Semeado do disco porque o corte é do PROFESSOR: um refresh no meio da aula
+  // não pode ressuscitar as respostas que ele acabou de descartar.
+  const [initialResetAt] = useState(() => readLessonResetAt(session.id));
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, lessonResetAt, resetLesson, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
         ? { userId: instructorId, name: instructorName, avatarUrl: instructorAvatarUrl, isInstructor: true }
-        : undefined
+        : undefined,
+      initialResetAt
     );
   // The professor can project their OWN screen (`toggleSelfStage` below), which
   // makes them the stage's cursor source exactly like a pulled learner — the
@@ -203,11 +209,13 @@ function ClassControl({
   // room) — the denominator is present-first, not the whole tenant cohort, and
   // absent learners' names never leak into the live view. (loop-1 fix #2.)
   const presentUserIds = useMemo(() => roster.map((m) => m.userId), [roster]);
+  // O `since` passa a ser o corte quando há um: sem isso o polled continuaria
+  // devolvendo `done` de quem respondeu antes do reset, e o contador nunca cairia.
   const { data: polled = [] } = useClassCompleters(
     tenantId,
     currentActivityId,
     presentUserIds,
-    session.startedAt
+    lessonResetAt ?? session.startedAt
   );
   // Presence-first: everyone in the room appears (as pending / 0 answers) even
   // before they answer the first activity; the polled DB read only UPGRADES
@@ -520,6 +528,15 @@ function ClassControl({
   const answeredCount = answerers.filter((a) => a.state !== 'pending').length;
   const presentCount = answerers.length;
 
+  const [resetOpen, setResetOpen] = useState(false);
+  const handleResetLesson = useCallback(() => {
+    const at = new Date().toISOString();
+    storeLessonResetAt(session.id, at);
+    resetLesson(at);
+    setResetOpen(false);
+    toast.success(t('live.instructor.reset.done'));
+  }, [session.id, resetLesson, t]);
+
   return (
     // Full-screen immersive surface — the SAME chrome + stage the learners see
     // (Tainan: "igual à do aluno, só que com mais controles"). The only extra is
@@ -677,11 +694,20 @@ function ClassControl({
                 onToggleSelfStage={toggleSelfStage}
                 onBreak={onBreak}
                 onToggleBreak={() => setBreak(!onBreak)}
+                onResetLesson={() => setResetOpen(true)}
               />
             </>
           }
         />
       </div>
+
+      <ResetLessonDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        answeredCount={answeredCount}
+        presentCount={presentCount}
+        onConfirm={handleResetLesson}
+      />
 
       <LiveSoundDock />
     </div>

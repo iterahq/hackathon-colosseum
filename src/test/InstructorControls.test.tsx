@@ -31,6 +31,7 @@ const base = {
   onToggleSelfStage: vi.fn(),
   onBreak: false,
   onToggleBreak: vi.fn(),
+  onResetLesson: vi.fn(),
 };
 
 function controls(over: Partial<typeof base> = {}) {

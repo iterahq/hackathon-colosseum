@@ -33,8 +33,13 @@ export const Aluno: Story = {
 export const ControleDoProfessor: Story = {
   render: () => (
     <div style={{ display: 'flex', gap: 12 }}>
-      <InstructorOverflowMenu busy={false} onBreak={false} onToggleBreak={() => {}} />
-      <InstructorOverflowMenu busy={false} onBreak onToggleBreak={() => {}} />
+      <InstructorOverflowMenu
+        busy={false}
+        onBreak={false}
+        onToggleBreak={() => {}}
+        onResetLesson={() => {}}
+      />
+      <InstructorOverflowMenu busy={false} onBreak onToggleBreak={() => {}} onResetLesson={() => {}} />
     </div>
   ),
 };

@@ -78,6 +78,13 @@ export {
   spentBankCounts,
 } from './guided/wordBank.js';
 
+/**
+ * A regra de SEMEADURA do editor, pura. Pública porque ela é a resposta a "esta
+ * atividade abre no starter ou no trabalho do aluno?", e é essa resposta que um
+ * host precisa poder afirmar sem montar um editor — ver `./codeSource.ts`.
+ */
+export { seedCodeSource } from './codeSource.js';
+
 export { useCodeSnack } from './useCodeSnack.js';
 export { useCodeChecks } from './useCodeChecks.js';
 export { useGuidedCode } from './guided/useGuidedCode.js';
@@ -123,6 +130,7 @@ export type {
   CodeCheckResult,
   CodeChecksRequest,
   CodeSnackPhase,
+  CodeSource,
   TranspileResult,
   UseCodeSnackCallbacks,
 } from './types.js';

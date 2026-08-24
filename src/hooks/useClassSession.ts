@@ -118,11 +118,24 @@ const STAGE_CURSOR_EVENT = 'stage-cursor';
 // `stage-cursor`, porque os dois ponteiros coexistem na tela — um `payload` só
 // faria o cursor do professor sobrescrever o do aluno a cada frame.
 const INSTRUCTOR_CURSOR_EVENT = 'instructor-cursor';
+// "Resetar a lição para todos": a turma refaz o mesmo exercício. Vai no tópico de
+// staff porque um aluno não pode apagar a rodada dos colegas. O payload é só o
+// INSTANTE DE CORTE — quem recebe limpa o próprio estado local, e o professor
+// para de contar resposta anterior a ele. Ver `utils/liveLessonReset.ts` pra por
+// que isso não é um DELETE em `class_answers`.
+const LESSON_RESET_EVENT = 'lesson-reset';
 const cursorTopic = (sessionId: string) => `class:${sessionId}:cursor`;
 
 export function useClassSession(
   sessionId: string | undefined,
-  identity?: Identity
+  identity?: Identity,
+  /**
+   * Corte já conhecido ao montar — só o professor passa, do localStorage dele,
+   * pra que um refresh no meio da aula não ressuscite as respostas que ele
+   * acabou de resetar. Semente, não estado controlado: depois disso quem manda é
+   * o broadcast.
+   */
+  initialLessonResetAt?: string | null
 ): UseClassSession {
   const [session, setSession] = useState<ClassSession | null>(null);
   const [currentActivityId, setCurrentActivityId] = useState<string | null>(null);
@@ -143,6 +156,15 @@ export function useClassSession(
   // estado porque ninguém renderiza a marca — ela só decide se o próximo tempo
   // entra (ver `recordAnswer`).
   const settledTimeRef = useRef<Set<string>>(new Set());
+  // O último "resetar a lição para todos" desta aula. Duas leituras: a memória
+  // acima é zerada quando ele anda (efeito abaixo) e o placar durável é relido
+  // com ele (`getSessionScoreboard`). O ref é pra segunda — ela roda dentro do
+  // efeito do canal, que só pode depender de `sessionId`.
+  const [lessonResetAt, setLessonResetAt] = useState<string | null>(
+    initialLessonResetAt ?? null
+  );
+  const lessonResetAtRef = useRef<string | null>(lessonResetAt);
+  lessonResetAtRef.current = lessonResetAt;
   const [timer, setTimer] = useState<ClassTimer | null>(null);
   // O cronômetro só existe em broadcast, e broadcast não se repete. Numa aula
   // `timer_gated` isso trava de verdade: quem reconecta ou chega atrasado fica
@@ -280,6 +302,17 @@ export function useClassSession(
     []
   );
 
+  // Resetar a lição ESQUECE a rodada: sem isto o professor continuaria vendo
+  // "✓ 8/10" de respostas que a turma vai refazer, e o pódio seguiria premiando o
+  // tempo da tentativa anterior. É o par em memória do corte que
+  // `getSessionScoreboard` aplica no durável — o mesmo instante, os dois feeds.
+  useEffect(() => {
+    if (!lessonResetAt) return;
+    settledTimeRef.current.clear();
+    setAnswers({});
+    setElapsed({});
+  }, [lessonResetAt]);
+
   // Clears the "waiting for the peer's reply" timer without touching the nonce
   // gate — used by every path that ends a pull (reply, clear, advance, unmount).
   const clearStageTimeout = useCallback(() => {
@@ -400,7 +433,7 @@ export function useClassSession(
         scoreboardReplyTimer = null;
         if (disposed || currentCtrl !== ctrl) return;
         const armed = timerRef.current;
-        void getSessionScoreboard(sessionId)
+        void getSessionScoreboard(sessionId, lessonResetAtRef.current)
           .then((entries) => {
             if (disposed || currentCtrl !== ctrl) return;
             // Placar vazio + cronômetro armado é EXATAMENTE o começo de uma
@@ -650,6 +683,12 @@ export function useClassSession(
           setHandRaisedState(false);
           trackPresence();
         })
+        // O corte de "resetar a lição". Chega pelo tópico de controle, que só a
+        // equipe escreve — um aluno não pode zerar a aula dos colegas.
+        .on('broadcast', { event: LESSON_RESET_EVENT }, ({ payload }) => {
+          const at = (payload as { at?: unknown } | null)?.at;
+          if (typeof at === 'string' && at) setLessonResetAt(at);
+        })
         .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
           setStagedAnswer(null);
           pendingStageRef.current = null;
@@ -823,7 +862,7 @@ export function useClassSession(
             // `class_answers` devolveria a ele só a própria linha, e é ele que sabe
             // que acabou de conectar sem o placar dos colegas (defeito B1).
             if (identityRef.current?.isInstructor === true) {
-              void getSessionScoreboard(sessionId)
+              void getSessionScoreboard(sessionId, lessonResetAtRef.current)
                 .then((entries) => {
                   if (disposed || current !== channel) return;
                   for (const e of entries) {
@@ -1331,6 +1370,13 @@ export function useClassSession(
     void ctrl.send({ type: 'broadcast', event: BREAK_EVENT, payload: { on } });
   }, []);
 
+  const resetLesson = useCallback((at: string) => {
+    const ctrl = ctrlRef.current;
+    setLessonResetAt(at);
+    if (!ctrl) return;
+    void ctrl.send({ type: 'broadcast', event: LESSON_RESET_EVENT, payload: { at } });
+  }, []);
+
   const broadcastAnswer = useCallback(
     (activityId: string, correct: boolean, elapsedMs?: number) => {
       const channel = channelRef.current;
@@ -1365,6 +1411,8 @@ export function useClassSession(
     handRaised,
     onBreak,
     setBreak,
+    lessonResetAt,
+    resetLesson,
     broadcast,
     broadcastAnswer,
     broadcastTimer,

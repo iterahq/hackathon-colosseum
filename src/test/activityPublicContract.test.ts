@@ -361,6 +361,10 @@ const CODE_ENTRYPOINT_SURFACE = [
   'codeBlanksDraftKey',
   'codeDraftActivityId',
   'codeDraftKey',
+  // A regra de semeadura do editor: responde "esta atividade abre no starter ou
+  // no trabalho do aluno?" sem montar editor nenhum, que é o que deixa um teste
+  // provar o isolamento por ID de atividade.
+  'seedCodeSource',
   // The split geometry, and the promise is narrower than it looks: a host that
   // MIRRORS a learner's pane needs the same classes rather than similar ones,
   // because the live cursor is normalized against the box and two shapes make

@@ -479,6 +479,15 @@ export interface UseClassSession {
   onBreak: boolean;
   /** Instructor: abre/fecha a pausa para dúvidas para a sala inteira. */
   setBreak: (on: boolean) => void;
+  /**
+   * O instante de corte de "resetar a lição para todos", ou `null` se esta aula
+   * nunca foi resetada. Resposta anterior a ele não conta mais na agregação do
+   * professor; no aluno, uma mudança aqui é o sinal para limpar o estado local.
+   * Ver `utils/liveLessonReset.ts`.
+   */
+  lessonResetAt: string | null;
+  /** Instructor: anuncia o corte para a sala inteira. */
+  resetLesson: (at: string) => void;
   /** Instructor: ask a learner's own client to lower its hand (presence is owner-write). */
   lowerHand: (userId: string) => void;
   /** Instructor: remove a learner from the room. Resolves false if the write failed. */

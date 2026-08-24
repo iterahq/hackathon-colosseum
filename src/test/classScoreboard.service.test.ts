@@ -95,4 +95,39 @@ describe('getSessionScoreboard', () => {
     expect(await getSessionScoreboard('')).toEqual([]);
     expect(ranges).toHaveLength(0);
   });
+
+  describe('corte de "resetar a lição"', () => {
+    const CUT = '2026-08-24T12:00:00.000Z';
+
+    it('sem corte, tudo conta — a aula que nunca foi resetada', async () => {
+      pages = [[row('ana', { created_at: '2020-01-01T00:00:00.000Z' })]];
+      expect(await getSessionScoreboard('s1')).toHaveLength(1);
+    });
+
+    it('descarta quem respondeu ANTES do corte e mantém quem respondeu depois', async () => {
+      pages = [
+        [
+          row('ana', { created_at: '2026-08-24T11:59:59.000Z' }),
+          row('bruno', { created_at: '2026-08-24T12:00:01.000Z' }),
+        ],
+      ];
+      const entries = await getSessionScoreboard('s1', CUT);
+      expect(entries.map((e) => e.userId)).toEqual(['bruno']);
+    });
+
+    it('linha sem created_at não conta com corte — não dá pra provar que é nova', async () => {
+      pages = [[row('ana')]];
+      expect(await getSessionScoreboard('s1', CUT)).toEqual([]);
+    });
+
+    it('pagina normalmente com o corte — filtrar não pode encurtar a varredura', async () => {
+      pages = [
+        Array.from({ length: 500 }, (_, i) => row(`u${i}`, { created_at: '2020-01-01T00:00:00.000Z' })),
+        [row('ultimo', { created_at: '2026-08-24T12:00:01.000Z' })],
+      ];
+      const entries = await getSessionScoreboard('s1', CUT);
+      expect(entries.map((e) => e.userId)).toEqual(['ultimo']);
+      expect(ranges).toHaveLength(2);
+    });
+  });
 });

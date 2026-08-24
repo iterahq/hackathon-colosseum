@@ -9,6 +9,7 @@
  * Padrão do projeto: componente/hook → service → fetch. No React.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { answerCountsAfterReset } from '@/utils/liveLessonReset';
 import type { ScoreboardEntry } from '@/types/liveClass';
 
 /**
@@ -30,15 +31,24 @@ const PAGE = 500;
  * linha dele —, mas seria uma query por aluno pra reaprender o que ele já sabe;
  * quem entrega o placar dos colegas a ele é a resposta do professor.
  * Ver `utils/liveScoreboard.ts`.
+ *
+ * `resetAt` é o instante de corte de "resetar a lição para todos": linha
+ * anterior a ele é HISTÓRICO, não placar desta rodada. Este é o ÚNICO lugar onde
+ * o corte encontra `class_answers` — o resto da agregação do professor (`answers`
+ * em `useClassSession`) é memória, e é zerada junto quando o corte se move. Ver
+ * `utils/liveLessonReset.ts` pra por que o reset não apaga linha.
  */
-export async function getSessionScoreboard(sessionId: string): Promise<ScoreboardEntry[]> {
+export async function getSessionScoreboard(
+  sessionId: string,
+  resetAt: string | null = null
+): Promise<ScoreboardEntry[]> {
   if (!isSupabaseConfigured || !sessionId) return [];
   const sb = getSupabase();
   const out: ScoreboardEntry[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await sb
       .from('class_answers')
-      .select('activity_id, user_id, correct, elapsed_ms')
+      .select('activity_id, user_id, correct, elapsed_ms, created_at')
       .eq('session_id', sessionId)
       .order('activity_id', { ascending: true })
       .order('user_id', { ascending: true })
@@ -49,6 +59,8 @@ export async function getSessionScoreboard(sessionId: string): Promise<Scoreboar
       const activityId = typeof r.activity_id === 'string' ? r.activity_id : '';
       const userId = typeof r.user_id === 'string' ? r.user_id : '';
       if (!activityId || !userId) continue;
+      const createdAt = typeof r.created_at === 'string' ? r.created_at : null;
+      if (!answerCountsAfterReset(createdAt, resetAt)) continue;
       const ms = r.elapsed_ms;
       out.push({
         activityId,

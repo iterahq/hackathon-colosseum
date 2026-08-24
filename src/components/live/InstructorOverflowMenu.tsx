@@ -1,4 +1,4 @@
-import { Coffee, MoreHorizontal } from 'lucide-react';
+import { Coffee, MoreHorizontal, RotateCcw } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { useI18n } from '@/i18n';
 
@@ -7,6 +7,8 @@ interface InstructorOverflowMenuProps {
   /** The class is paused for questions. */
   onBreak: boolean;
   onToggleBreak: () => void;
+  /** Abre a confirmação de "resetar a lição para todos" — nunca reseta direto. */
+  onResetLesson: () => void;
 }
 
 /**
@@ -15,7 +17,12 @@ interface InstructorOverflowMenuProps {
  * it owns is active — a menu that hides an ON switch is a menu the professor
  * forgets to turn off.
  */
-export function InstructorOverflowMenu({ busy, onBreak, onToggleBreak }: InstructorOverflowMenuProps) {
+export function InstructorOverflowMenu({
+  busy,
+  onBreak,
+  onToggleBreak,
+  onResetLesson,
+}: InstructorOverflowMenuProps) {
   const { t } = useI18n();
 
   return (
@@ -50,6 +57,16 @@ export function InstructorOverflowMenu({ busy, onBreak, onToggleBreak }: Instruc
         >
           <Coffee className="w-3.5 h-3.5 shrink-0" />
           {onBreak ? t('live.instructor.control.breakOff') : t('live.instructor.control.break')}
+        </button>
+        <button
+          type="button"
+          onClick={onResetLesson}
+          disabled={busy}
+          data-testid="instructor-reset-lesson"
+          className="w-full inline-flex items-center gap-2 h-9 px-2.5 rounded-lg text-sm text-left text-foreground transition-colors hover:bg-muted disabled:opacity-40"
+        >
+          <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+          {t('live.instructor.control.resetLesson')}
         </button>
       </PopoverContent>
     </Popover>

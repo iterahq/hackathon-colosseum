@@ -40,6 +40,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Loader2, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
 import { LiveReception } from '@/components/live/LiveReception';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
@@ -92,6 +93,7 @@ import { wantsLearnerView } from '@/utils/liveLearnerView';
 import { readLiveEntryRole } from '@/utils/liveEntryRole';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
+import { clearLearnerLessonState } from '@/utils/liveLessonReset';
 import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
 import { isGenericName } from '@/utils/isGenericName';
@@ -135,7 +137,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, instructorCursor, instructorClick, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, instructorCursor, instructorClick, lessonResetAt, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -261,6 +263,29 @@ export default function LiveSessionPage() {
     setHandRaised(false);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
   }, [sessionId, currentActivityId, setHandRaised]);
+
+  // O professor resetou a lição. O aluno esquece o que tinha feito e a activity
+  // volta ao estado inicial pelo `attempt`, que já remonta o renderer — sem
+  // recarregar a página, porque recarregar no meio da aula perde a conexão e o
+  // lugar da turma.
+  const appliedResetRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!lessonResetAt || !sessionId) return;
+    if (appliedResetRef.current === lessonResetAt) return;
+    appliedResetRef.current = lessonResetAt;
+    clearLearnerLessonState(
+      sessionId,
+      activities.map((a) => a.id)
+    );
+    setAnswered(null);
+    setSaving(false);
+    setAttempt((n) => n + 1);
+    setReopened(false);
+    setTimeUpFor(null);
+    setClosedByInstructor(null);
+    setActivityStartedAt(currentActivityId ? Date.now() : null);
+    toast.info(t('live.reset.notice'));
+  }, [lessonResetAt, sessionId, activities, currentActivityId, t]);
 
   // Tell the room (via presence) whether this learner already has local work for
   // the current activity, so the professor's stage picker can show "em andamento"
