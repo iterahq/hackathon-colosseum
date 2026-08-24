@@ -58,6 +58,7 @@ import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveSoundDock } from '@/components/live/LiveSoundDock';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
+import { LiveStagePrompt } from '@/components/live/LiveStagePrompt';
 import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { ResetLessonDialog } from '@/components/live/ResetLessonDialog';
@@ -587,21 +588,26 @@ function ClassControl({
             ) : stagedAnswer && !selfStaged ? (
               // B9: pulling a learner REPLACES the professor's own screen with
               // theirs (no more two-screen split) — centered, with a "você está
-              // visualizando a tela de ___" indicator in the identity bar.
-              <div
-                className="mt-7 rounded-3xl border border-clay/40 overflow-hidden"
-                data-testid="instructor-viewing-stage"
-              >
-                <LiveStage
-                  staged={stagedAnswer}
-                  activity={current}
-                  onClear={clearStage}
-                  viewingName={stagedAnswer.author.name}
-                  cursor={stageCursor}
-                  cursorIntervalMs={stageCursorPlan.intervalMs}
-                  cursorOff={!stageCursorPlan.enabled}
-                />
-              </div>
+              // visualizando a tela de ___" indicator in the identity bar. The
+              // statement rides along separately, because it lived inside the
+              // activity that just got replaced.
+              <>
+                {current && <LiveStagePrompt activity={current} />}
+                <div
+                  className="mt-4 rounded-3xl border border-clay/40 overflow-hidden"
+                  data-testid="instructor-viewing-stage"
+                >
+                  <LiveStage
+                    staged={stagedAnswer}
+                    activity={current}
+                    onClear={clearStage}
+                    viewingName={stagedAnswer.author.name}
+                    cursor={stageCursor}
+                    cursorIntervalMs={stageCursorPlan.intervalMs}
+                    cursorOff={!stageCursorPlan.enabled}
+                  />
+                </div>
+              </>
             ) : current ? (
               // The professor's own stage is INTERACTIVE — they can work the
               // activity live on the projector (type in the code snack, click a
