@@ -6,38 +6,15 @@
  * Mapping to our real data:
  *   Program → Units (= "feature branch" sections) → Lessons (= path nodes).
  *   A lesson node is `done` when all its activities are done, `current` when it
- *   is the first not-yet-complete node, otherwise `locked`. Clicking an unlocked
- *   node opens the lesson player. Locked nodes are non-interactive.
+ *   is the first not-yet-complete node of ITS UNIT, otherwise `locked`. Clicking
+ *   an unlocked node opens the lesson player. Locked nodes are non-interactive.
  */
 import { motion } from 'framer-motion';
 import { BookOpen, Check, Lock, Flag, GitBranch, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import type { ProgramDetail, Lesson, Unit, ActivityKind } from '@/types/content';
-
-type NodeState = 'done' | 'current' | 'locked';
-
-interface TreeNode {
-  lesson: Lesson;
-  state: NodeState;
-  unitIndex: number;
-}
-
-interface TreeSection {
-  unit: Unit;
-  index: number;
-  nodes: TreeNode[];
-  doneCount: number;
-  total: number;
-}
-
-function lessonDone(lesson: Lesson): boolean {
-  const acts = lesson.activities ?? [];
-  // Activity status arrives normalized to the canonical UI value ('done') by the
-  // data layer (getProgramBySlug → getLessonProgress → normalizeProgressStatus).
-  // We also accept the raw DB value 'completed' defensively so a missed
-  // normalization upstream can never silently re-lock a finished lesson.
-  return acts.length > 0 && acts.every((a) => a.status === 'done' || (a.status as string) === 'completed');
-}
+import { buildSections } from '@/utils/buildSections';
+import type { ProgramDetail, Lesson, ActivityKind } from '@/types/content';
+import type { NodeState, TreeNode } from '@/types/skillTree';
 
 /**
  * Representative activity kind for the eyebrow shown under a node. There is no
@@ -48,32 +25,6 @@ function lessonKind(lesson: Lesson): ActivityKind {
   return lesson.activities?.[0]?.kind ?? 'document';
 }
 
-function buildSections(program: ProgramDetail): { sections: TreeSection[]; firstCurrent: string | null } {
-  let currentAssigned = false;
-  let firstCurrent: string | null = null;
-  const sections: TreeSection[] = program.units.map((unit, index) => {
-    const lessons = unit.lessons ?? [];
-    let doneCount = 0;
-    const nodes: TreeNode[] = lessons.map((lesson) => {
-      const done = lessonDone(lesson);
-      if (done) doneCount++;
-      let state: NodeState;
-      if (done) {
-        state = 'done';
-      } else if (!currentAssigned) {
-        state = 'current';
-        currentAssigned = true;
-        firstCurrent = lesson.id;
-      } else {
-        state = 'locked';
-      }
-      return { lesson, state, unitIndex: index };
-    });
-    return { unit, index, nodes, doneCount, total: lessons.length };
-  });
-  return { sections, firstCurrent };
-}
-
 export function SkillTree({
   program,
   onOpenLesson,
@@ -82,7 +33,7 @@ export function SkillTree({
   onOpenLesson: (lessonId: string) => void;
 }) {
   const { t, tText } = useI18n();
-  const { sections } = buildSections(program);
+  const sections = buildSections(program);
 
   const totalLessons = sections.reduce((n, s) => n + s.total, 0);
 
