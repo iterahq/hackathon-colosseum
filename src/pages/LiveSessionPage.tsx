@@ -67,7 +67,7 @@ import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { useLiveSound } from '@/hooks/useLiveSound';
 import { useI18n } from '@/i18n';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
-import { persistGuestActivityTrace } from '@/services/progress.service';
+import { persistGuestActivityTrace, reopenLessonProgress } from '@/services/progress.service';
 import { buildSpecSnapshot } from '@/utils/learningTrace';
 import { buildPedagogicalContext } from '@/utils/pedagogicalContext';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
@@ -273,10 +273,16 @@ export default function LiveSessionPage() {
     if (!lessonResetAt || !sessionId) return;
     if (appliedResetRef.current === lessonResetAt) return;
     appliedResetRef.current = lessonResetAt;
-    clearLearnerLessonState(
-      sessionId,
-      activities.map((a) => a.id)
-    );
+    const activityIds = activities.map((a) => a.id);
+    clearLearnerLessonState(sessionId, activityIds);
+    // O localStorage não é o único depósito. Os kinds que só se "marca como
+    // concluído" (concept, concept_reveal, diagram, video, document de leitura)
+    // não guardam nada aqui — o concluído deles vai direto pra itera.progress,
+    // e sem esta linha eles reabriam já feitos. Só o ALUNO pode rebaixar as
+    // próprias linhas (RLS `progress_rw_self`; o professor tem SELECT e nada
+    // mais), então é aqui que o reset alcança o banco. ADR-6: um convidado nunca
+    // escreveu progress, então não há o que reabrir.
+    if (!guest) void reopenLessonProgress(activityIds);
     setAnswered(null);
     setSaving(false);
     setAttempt((n) => n + 1);
@@ -285,7 +291,7 @@ export default function LiveSessionPage() {
     setClosedByInstructor(null);
     setActivityStartedAt(currentActivityId ? Date.now() : null);
     toast.info(t('live.reset.notice'));
-  }, [lessonResetAt, sessionId, activities, currentActivityId, t]);
+  }, [lessonResetAt, sessionId, activities, currentActivityId, guest, t]);
 
   // Tell the room (via presence) whether this learner already has local work for
   // the current activity, so the professor's stage picker can show "em andamento"

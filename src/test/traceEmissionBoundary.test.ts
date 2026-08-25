@@ -216,6 +216,10 @@ describe('a emissão do trace mora no serviço, não nos call-sites', () => {
         // leitura + função pura de retomada — não escrevem nada
         'fetchActivityProgress',
         'resumeIndexFor',
+        // rebaixa `progress` de 'completed' pra 'in_progress' no reset da aula
+        // ao vivo. NÃO escreve activity_results, NÃO escreve trace, NÃO mexe em
+        // XP: a tentativa antiga aconteceu e o relatório do professor a lê.
+        'reopenLessonProgress',
         // helper puro do payload de `feedback`
         'buildAttemptFeedback',
       ].sort()

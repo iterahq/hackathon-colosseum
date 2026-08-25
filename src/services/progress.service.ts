@@ -50,6 +50,7 @@ import {
 } from '@/utils/learningTrace';
 import type { AbandonmentReason } from '@/utils/abandonment';
 import type { PedagogicalContext } from '@/utils/pedagogicalContext';
+import { activitiesToReopen, REOPENED_PROGRESS_STATUS } from '@/utils/lessonProgressReset';
 
 /** Mirrors the `itera.progress_status` enum. */
 export type ProgressStatus = 'not_started' | 'in_progress' | 'completed';
@@ -842,6 +843,60 @@ export async function fetchActivityProgress(
     return map;
   } catch {
     return {};
+  }
+}
+
+/**
+ * Reopen the learner's OWN completed activities for a lesson — the database half
+ * of "resetar a lição para todos".
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * WHY THIS RUNS ON THE LEARNER'S CLIENT AND NOT THE INSTRUCTOR'S
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `itera.progress` carries exactly one write policy, `progress_rw_self`
+ * (`FOR ALL USING user_id = itera.current_itera_user_id()`). The instructor's
+ * two policies are `progress_select_instructor` / `progress_select_admin` —
+ * SELECT only. So the professor can SEE that a learner completed an activity and
+ * has no statement that can change it: reverting from his own client is not
+ * merely unimplemented, it is rejected by RLS.
+ *
+ * The reset broadcast already reaches every connected learner
+ * (`LESSON_RESET_EVENT` → `LiveSessionPage`), and each learner IS allowed to
+ * update their own rows. So the revert rides that broadcast and each client
+ * reverts itself. ⚠️ COROLLARY: a learner who is offline when the professor
+ * resets never runs it — the cut lives in a broadcast, not in a durable column,
+ * so there is nothing for a late joiner to catch up on.
+ *
+ * WHAT IT WRITES: `itera.progress`, and only rows that are currently
+ * `completed`, and only to `in_progress` with `completed_at` cleared. It does
+ * NOT write `activity_results`, `activity_traces` or XP, and has no code path
+ * that could: the previous attempt really happened, the professor's post-class
+ * report reads it, and the reset was never about erasing history — see
+ * `src/utils/lessonProgressReset.ts` for why reopening beats deleting.
+ *
+ * Best-effort by design: it is invoked from an effect on the learner's screen
+ * mid-class, and a failed revert must not take the class down. Returns the ids
+ * actually reopened so a caller can tell "nothing to do" from "it did not land".
+ */
+export async function reopenLessonProgress(activityIds: string[]): Promise<string[]> {
+  if (!isSupabaseConfigured || activityIds.length === 0) return [];
+  try {
+    const sb = getSupabase();
+    const userId = await getIteraUserId();
+    if (!userId) return [];
+
+    const reopen = activitiesToReopen(activityIds, await fetchActivityProgress(activityIds));
+    if (reopen.length === 0) return [];
+
+    const { error } = await sb
+      .from('progress')
+      .update({ status: REOPENED_PROGRESS_STATUS, completed_at: null })
+      .eq('user_id', userId)
+      .in('activity_id', reopen);
+    return error ? [] : reopen;
+  } catch {
+    return [];
   }
 }
 
