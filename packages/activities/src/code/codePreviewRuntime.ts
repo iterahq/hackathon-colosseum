@@ -148,9 +148,26 @@ export function runCodeChecks(options: {
 
   function evaluate(check: CodeCheck): boolean {
     // Judge text like a human reader (both operands): collapse whitespace, trim,
-    // NFC-normalize accents — composed vs decomposed "á" render alike but differ in bytes.
+    // then drop accents and case.
+    //
+    // The checks only see the DOM, so an exercise that asks the learner to TYPE
+    // a title — "Matemática", "Clean Code" — used to grade that title character
+    // for character. In a real class that failed people who HAD solved it:
+    // `matematica` without the accent, `clean code` without the capitals. What
+    // the exercise measures is the JSX around the string, never the spelling of
+    // the string. A different WORD still fails: this folds how a word is
+    // written, never which word it is.
+    //
+    // ⚠️ `text` only. `class` and `attr` below keep comparing byte for byte —
+    // `flex` and `Flex` are different CSS classes, and folding there would pass
+    // code that does not work.
     function normalizeText(value: string): string {
-      return (value || '').replace(/\s+/g, ' ').trim().normalize('NFC');
+      return (value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
     }
     const nodes = root.querySelectorAll(check.selector);
     const assert = check.assert;

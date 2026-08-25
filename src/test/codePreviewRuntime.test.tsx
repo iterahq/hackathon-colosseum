@@ -83,16 +83,53 @@ describe('runCodeChecks — assert evaluation', () => {
     ).toEqual([{ id: 'c1', passed: true }]);
   });
 
-  it('text — equals compares the TRIMMED textContent, case-sensitively', async () => {
+  it('text — equals compares the TRIMMED textContent', async () => {
     const html = '<p>  Bem-vinda  </p>';
     expect(
       await runAgainstHtml(html, [
         check({ selector: 'p', assert: { type: 'text', equals: 'Bem-vinda' } }),
       ]),
     ).toEqual([{ id: 'c1', passed: true }]);
+  });
+
+  /**
+   * Reported from a real class: learners who had SOLVED the exercise failed it
+   * for typing `matematica` or `clean code`. A `text` check reads rendered
+   * prose the learner had to type by hand, and what the exercise measures is
+   * the JSX around that string — never the accent or the capital.
+   */
+  it('text — the learner may skip the capitals and the accent', async () => {
     expect(
-      await runAgainstHtml(html, [
-        check({ selector: 'p', assert: { type: 'text', equals: 'bem-vinda' } }),
+      await runAgainstHtml('<p>matematica</p>', [
+        check({ selector: 'p', assert: { type: 'text', equals: 'Matemática' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+    expect(
+      await runAgainstHtml('<h2>clean code</h2>', [
+        check({ selector: 'h2', assert: { type: 'text', equals: 'Clean Code' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+    expect(
+      await runAgainstHtml('<p>Ola, Jose!</p>', [
+        check({ selector: 'p', assert: { type: 'text', contains: 'Olá, José' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: true }]);
+  });
+
+  it('text — a DIFFERENT word is still wrong (it folds spelling, not meaning)', async () => {
+    expect(
+      await runAgainstHtml('<p>Historia</p>', [
+        check({ selector: 'p', assert: { type: 'text', equals: 'Matemática' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: false }]);
+    expect(
+      await runAgainstHtml('<span>Disponível</span>', [
+        check({ selector: 'span', assert: { type: 'text', equals: 'Esgotado' } }),
+      ]),
+    ).toEqual([{ id: 'c1', passed: false }]);
+    expect(
+      await runAgainstHtml('<p>clean coder</p>', [
+        check({ selector: 'p', assert: { type: 'text', equals: 'Clean Code' } }),
       ]),
     ).toEqual([{ id: 'c1', passed: false }]);
   });
