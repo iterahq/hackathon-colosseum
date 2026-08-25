@@ -125,7 +125,14 @@ export default function SubscribePage() {
             </p>
           )}
 
-          <p className="text-xs text-muted-foreground mt-6">{t('subscribe.sandbox')}</p>
+          {/* Só quando o servidor AFIRMA test. Se o modo não chegou, calamos:
+              prometer "nenhuma cobrança real" sobre uma cobrança real é o erro
+              mais caro possível aqui. */}
+          {pricing?.mode === 'test' && (
+            <p className="text-xs text-muted-foreground mt-6" data-testid="subscribe-sandbox-notice">
+              {t('subscribe.sandbox')}
+            </p>
+          )}
         </motion.div>
       </main>
     </div>

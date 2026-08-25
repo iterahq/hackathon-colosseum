@@ -55,6 +55,13 @@ export interface SeatPricing {
   unitAmount: number;
   /** Billing interval (always 'month' here). */
   interval: string;
+  /**
+   * Which Stripe account this price was read from: 'test' (sandbox, no real
+   * charge) or 'live' (real money). Comes from the server, never from a build
+   * flag — a bundle built before the cutover would otherwise keep promising
+   * "no real charge" while the API charges for real.
+   */
+  mode: 'test' | 'live' | 'unknown';
 }
 
 export interface CheckoutResponse {
@@ -171,6 +178,7 @@ export async function getPricing(locale: string): Promise<SeatPricing | null> {
       currency?: string;
       unit_amount?: number;
       interval?: string;
+      mode?: string;
     };
     if (typeof j.unit_amount !== 'number' || !j.currency) return null;
     return {
@@ -178,6 +186,7 @@ export async function getPricing(locale: string): Promise<SeatPricing | null> {
       currency: j.currency,
       unitAmount: j.unit_amount,
       interval: j.interval ?? 'month',
+      mode: j.mode === 'test' || j.mode === 'live' ? j.mode : 'unknown',
     };
   } catch {
     return null;

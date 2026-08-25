@@ -54,6 +54,7 @@ describe('SubscribePage (self-serve subscribe)', () => {
       currency: 'brl',
       unitAmount: 10000,
       interval: 'month',
+      mode: 'test',
     });
     // jsdom: window.location.assign is not implemented — stub it.
     Object.defineProperty(window, 'location', {
@@ -105,5 +106,32 @@ describe('SubscribePage (self-serve subscribe)', () => {
     const err = await screen.findByTestId('subscribe-error');
     expect(err).toHaveTextContent('Checkout could not be created (HTTP 401).');
     expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it('shows the sandbox notice only while the server reports test mode', async () => {
+    renderPage();
+    expect(await screen.findByTestId('subscribe-sandbox-notice')).toBeInTheDocument();
+  });
+
+  it('hides the sandbox notice when the server reports live mode', async () => {
+    getPricing.mockResolvedValue({
+      locale: 'pt',
+      currency: 'brl',
+      unitAmount: 10000,
+      interval: 'month',
+      mode: 'live',
+    });
+
+    renderPage();
+    await screen.findByTestId('subscribe-price-amount');
+    expect(screen.queryByTestId('subscribe-sandbox-notice')).not.toBeInTheDocument();
+  });
+
+  it('hides the sandbox notice when the mode is unknown', async () => {
+    getPricing.mockResolvedValue(null);
+
+    renderPage();
+    await waitFor(() => expect(getPricing).toHaveBeenCalled());
+    expect(screen.queryByTestId('subscribe-sandbox-notice')).not.toBeInTheDocument();
   });
 });
