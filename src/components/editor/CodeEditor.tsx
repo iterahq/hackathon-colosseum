@@ -193,6 +193,10 @@ export function CodeEditor({
             horizontal: 'hidden',
             useShadows: false,
             verticalScrollbarSize: 8,
+            // Monaco's default swallows the wheel even with nothing left to
+            // scroll, and the pane is 55vh: a learner whose pointer sat over the
+            // editor could not scroll the page back up to the statement.
+            alwaysConsumeMouseWheel: false,
           },
         }}
         beforeMount={(monaco) => {

@@ -33,6 +33,7 @@ type ModelChangeEvent = {
 type CapturedProps = {
   path?: string;
   language?: string;
+  options?: { scrollbar?: { alwaysConsumeMouseWheel?: boolean } };
   beforeMount?: (monaco: unknown) => void;
   onMount?: (editor: unknown, monaco: unknown) => void;
 };
@@ -243,6 +244,18 @@ describe('CodeEditor', () => {
 
       expect(editor.trigger).not.toHaveBeenCalled();
     });
+  });
+
+  /**
+   * Reported from the 2026-08-24 class: after finishing an exercise the learner
+   * could not scroll back up to the statement. Monaco's stock
+   * `alwaysConsumeMouseWheel: true` eats the wheel event even when the editor is
+   * already at its top, and `CODE_PANE_BOX` gives the editor 55vh — so the
+   * pointer is over it by default and the page never moves.
+   */
+  it('lets the wheel reach the page once the editor has nothing left to scroll', () => {
+    render(<CodeEditor value="x" />);
+    expect(captured[0].options?.scrollbar?.alwaysConsumeMouseWheel).toBe(false);
   });
 
   it('still registers the iterate-dark theme in beforeMount', () => {
