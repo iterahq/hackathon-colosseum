@@ -1,4 +1,5 @@
 import { CODE_BLANK_TOKEN_RE, type CodeBlank, type CodeSpec } from '@iterahq/activity-spec';
+import { matchesAnswer } from './answerMatch.js';
 import type {
   GuidedGrade,
   GuidedLine,
@@ -103,13 +104,17 @@ export function revealedValues(blanks: readonly CodeBlank[]): GuidedValues {
 }
 
 /**
- * Grade one blank. Whitespace around the answer is forgiven (an inline input
- * invites a stray space); everything else is exact, because in code `useState`
- * and `usestate` are not the same word and pretending otherwise teaches the
- * wrong thing.
+ * Grade one blank — the rule itself lives in `answerMatch.ts`.
+ *
+ * The DEFAULT is still exact, and stays exact: a blank that carries no `match`
+ * is an identifier blank, where `useState` and `usestate` are not the same word
+ * and pretending otherwise teaches the wrong thing. Tolerance is the author's
+ * opt-in, per blank (`match: 'loose'`, plus `accept` for a second correct
+ * wording) — because only the author knows whether a hole is asking for code or
+ * for prose.
  */
 export function isBlankCorrect(blank: CodeBlank, value: string | undefined): boolean {
-  return (value ?? '').trim() === blank.answer.trim();
+  return matchesAnswer(blank, value);
 }
 
 export function gradeGuided(blanks: readonly CodeBlank[], values: GuidedValues): GuidedGrade {

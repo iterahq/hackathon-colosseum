@@ -27,5 +27,10 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  // The co-located tests of the workspace packages are here because nothing
+  // else would typecheck them: each package's `tsconfig.build.json` EXCLUDES
+  // its tests (so they never reach `dist`), and vitest does not typecheck. A
+  // test file outside every tsconfig compiles only in somebody's head — the
+  // same hole `db/seeds/**` sat in for months, see `tsconfig.node.json`.
+  "include": ["src", "packages/*/src/**/*.test.ts"]
 }

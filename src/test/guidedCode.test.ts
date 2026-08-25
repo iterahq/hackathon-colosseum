@@ -120,6 +120,25 @@ describe('isBlankCorrect', () => {
     expect(isBlankCorrect(blank, 'setcurtidas')).toBe(false);
     expect(isBlankCorrect(blank, undefined)).toBe(false);
   });
+
+  /**
+   * A tolerância é opt-in do autor, e o `as CodeBlank` mede exatamente o que
+   * falta: `match`/`accept` só entram no TIPO quando o `@iterahq/activity-spec`
+   * que os declara for publicado. O cast some junto com o bump — a regra em si
+   * está provada em `packages/activities/src/code/guided/answerMatch.test.ts`.
+   */
+  it('honra match: loose e accept quando o autor pede', () => {
+    const prosa = {
+      id: 'titulo',
+      kind: 'text',
+      answer: 'Clean Code',
+      match: 'loose',
+      accept: ['Código Limpo'],
+    } as CodeBlank;
+    expect(isBlankCorrect(prosa, 'clean  code')).toBe(true);
+    expect(isBlankCorrect(prosa, 'codigo limpo')).toBe(true);
+    expect(isBlankCorrect(prosa, 'clean coder')).toBe(false);
+  });
 });
 
 describe('gradeGuided', () => {

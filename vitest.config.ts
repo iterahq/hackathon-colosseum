@@ -19,10 +19,19 @@ export default defineConfig({
     // belongs in the fast unit run, not only in the browser suite.
     // ⚠️ `.test.ts` ONLY under `e2e/`. Playwright globs `*.spec.ts` there;
     // widening this to `spec` would make both runners claim the same files.
+    // `packages/*/src/**` joined them so a pure rule inside a workspace package
+    // can be proven from the file NEXT to it. The tests in `src/test/` stay what
+    // they are — the PUBLIC door, what a host may import — while a co-located
+    // test may reach a module the package deliberately does not export, which is
+    // what `code/guided/answerMatch.ts` is.
+    // ⚠️ `packages/*/tsconfig.build.json` EXCLUDES `*.test.ts`. Without that,
+    // `build:packages` would emit these into `dist/` and ship an import of
+    // `vitest` — not a dependency of the published package — to every consumer.
     include: [
       "src/**/*.{test,spec}.{ts,tsx}",
       "scripts/**/*.{test,spec}.ts",
       "e2e/support/**/*.test.ts",
+      "packages/*/src/**/*.{test,spec}.{ts,tsx}",
     ],
   },
   resolve: {
