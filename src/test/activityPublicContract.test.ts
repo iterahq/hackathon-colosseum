@@ -361,6 +361,20 @@ const CODE_ENTRYPOINT_SURFACE = [
   'codeBlanksDraftKey',
   'codeDraftActivityId',
   'codeDraftKey',
+  // O teto de envios errados: terceira chave do mesmo depósito. A metade pura
+  // sai inteira porque é ela que responde "esta tentativa foi a última?" sem
+  // montar editor nenhum, e o host precisa do prefixo para rotear a chave.
+  'CODE_ATTEMPT_BUDGET',
+  'CODE_ATTEMPTS_KEY_PREFIX',
+  'CodeAttemptsNotice',
+  'attemptBudget',
+  'attemptNotice',
+  'codeAttemptsActivityId',
+  'codeAttemptsKey',
+  'parseSpentAttempts',
+  'serializeSpentAttempts',
+  'spendAttempt',
+  'useCodeAttempts',
   // A regra de semeadura do editor: responde "esta atividade abre no starter ou
   // no trabalho do aluno?" sem montar editor nenhum, que é o que deixa um teste
   // provar o isolamento por ID de atividade.

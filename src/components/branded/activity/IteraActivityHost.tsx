@@ -94,8 +94,10 @@ import type {
   ActivityStoragePort,
 } from '@iterahq/activities';
 import {
+  CODE_ATTEMPTS_KEY_PREFIX,
   CODE_BLANKS_DRAFT_KEY_PREFIX,
   CODE_DRAFT_KEY_PREFIX,
+  codeAttemptsActivityId,
   codeBlanksDraftActivityId,
   codeDraftActivityId,
 } from '@iterahq/activities/code';
@@ -128,6 +130,11 @@ import {
   saveCodeSnapshot,
   saveGuidedBlanks,
 } from '@/services/codeSnapshot.service';
+import {
+  clearCodeAttempts,
+  readCodeAttempts,
+  saveCodeAttempts,
+} from '@/services/codeAttempts.service';
 import { hasTenantAudience } from '@/services/artifact.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
 
@@ -158,27 +165,34 @@ import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope
  * render would only churn the provider's memo.
  */
 export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
-  read: (key) =>
-    isBlanksKey(key)
-      ? readGuidedBlanks(codeBlanksDraftActivityId(key))
-      : (readCodeSnapshot(codeDraftActivityId(key))?.code ?? null),
-  write: (key, value) =>
-    isBlanksKey(key)
-      ? saveGuidedBlanks(codeBlanksDraftActivityId(key), value)
-      : saveCodeSnapshot(codeDraftActivityId(key), value),
-  clear: (key) =>
-    isBlanksKey(key)
-      ? clearGuidedBlanks(codeBlanksDraftActivityId(key))
-      : clearCodeSnapshot(codeDraftActivityId(key)),
+  read: (key) => {
+    if (isBlanksKey(key)) return readGuidedBlanks(codeBlanksDraftActivityId(key));
+    if (isAttemptsKey(key)) return readCodeAttempts(codeAttemptsActivityId(key));
+    return readCodeSnapshot(codeDraftActivityId(key))?.code ?? null;
+  },
+  write: (key, value) => {
+    if (isBlanksKey(key)) return saveGuidedBlanks(codeBlanksDraftActivityId(key), value);
+    if (isAttemptsKey(key)) return saveCodeAttempts(codeAttemptsActivityId(key), value);
+    return saveCodeSnapshot(codeDraftActivityId(key), value);
+  },
+  clear: (key) => {
+    if (isBlanksKey(key)) return clearGuidedBlanks(codeBlanksDraftActivityId(key));
+    if (isAttemptsKey(key)) return clearCodeAttempts(codeAttemptsActivityId(key));
+    return clearCodeSnapshot(codeDraftActivityId(key));
+  },
 };
 
 /**
- * Which of the two draft slots a key names. Routed on the PREFIX and not on the
- * value's shape: both slots hold a string, and guessing from the content would
+ * Which of the three slots a key names. Routed on the PREFIX and not on the
+ * value's shape: all of them hold a string, and guessing from the content would
  * make a learner whose source happens to be JSON land in the wrong slot.
  */
 function isBlanksKey(key: string): boolean {
   return key.startsWith(CODE_BLANKS_DRAFT_KEY_PREFIX);
+}
+
+function isAttemptsKey(key: string): boolean {
+  return key.startsWith(CODE_ATTEMPTS_KEY_PREFIX);
 }
 
 /**

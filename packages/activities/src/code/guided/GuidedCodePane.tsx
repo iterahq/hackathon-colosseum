@@ -73,6 +73,7 @@ export function GuidedCodePane({
       data-guided-variant={variant}
       data-phase={guided.phase}
       data-revealed={guided.revealed ? 'true' : 'false'}
+      data-out-of-lives={guided.outOfLives ? 'true' : 'false'}
     >
       <RichText text={spec.prompt ?? ''} />
 
@@ -84,6 +85,13 @@ export function GuidedCodePane({
           data-testid="guided-code-revealed"
         >
           <Eye className="h-4 w-4 shrink-0" /> {t('code.guided.revealedNotice')}
+        </div>
+      ) : guided.outOfLives ? (
+        <div
+          className="mt-3 flex items-center gap-2 rounded-xl border border-clay/40 bg-clay/10 px-3.5 py-2.5 text-sm text-clay"
+          data-testid="guided-code-answer-shown"
+        >
+          <Eye className="h-4 w-4 shrink-0" /> {t('code.lives.answerShown')}
         </div>
       ) : (
         <div
@@ -100,14 +108,19 @@ export function GuidedCodePane({
           lines={guided.lines}
           values={guided.values}
           activeBlankId={activeBlankId}
-          byBlank={showFeedback ? guided.grade.byBlank : null}
-          revealed={guided.revealed}
+          // Sem vidas o template mostra o GABARITO, então marcar lacuna por
+          // lacuna pintaria de vermelho uma resposta certa que o aluno não
+          // escreveu. O veredito dele continua embaixo, no painel de feedback.
+          byBlank={showFeedback && !guided.showsAnswer ? guided.grade.byBlank : null}
+          revealed={guided.showsAnswer}
           wordBank={guided.wordBank}
           spentChips={guided.spentChips}
           hasTarget={activeBlankId !== null}
           help={spec.help}
           disabled={guided.readOnly || isDone}
-          resetDisabled={isDone || guided.revealed || guided.phase === 'settled'}
+          resetDisabled={
+            isDone || guided.showsAnswer || guided.phase === 'settled'
+          }
           onAim={setAimed}
           onSet={(blankId, value) => {
             guided.setValue(blankId, value);
@@ -124,11 +137,11 @@ export function GuidedCodePane({
         <GuidedCodePreview source={guided.source} ready={guided.filled} />
       </div>
 
-      {!showFeedback && !guided.revealed && (
+      {!showFeedback && !guided.showsAnswer && (
         <button
           type="button"
           onClick={guided.submit}
-          disabled={!guided.filled || isDone}
+          disabled={!guided.filled || isDone || guided.outOfLives}
           data-testid="guided-submit"
           className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -141,6 +154,8 @@ export function GuidedCodePane({
           blanks={blanks}
           grade={guided.grade}
           settled={guided.phase === 'settled'}
+          attemptsSpent={guided.attemptsSpent}
+          outOfLives={guided.outOfLives}
           onRetry={guided.retry}
           onContinue={guided.complete}
         />

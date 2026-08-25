@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import type { CodeBlank } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
+import { CodeAttemptsNotice } from '../CodeAttemptsNotice.js';
 import type { GuidedGrade } from './types.js';
 
 /**
@@ -17,6 +18,8 @@ export function GuidedCodeFeedback({
   blanks,
   grade,
   settled = false,
+  attemptsSpent = 0,
+  outOfLives = false,
   onRetry,
   onContinue,
 }: {
@@ -24,6 +27,10 @@ export function GuidedCodeFeedback({
   grade: GuidedGrade;
   /** The result was already reported upward — the actions are spent. */
   settled?: boolean;
+  /** Envios errados já gastos, para o saldo de vidas. */
+  attemptsSpent?: number;
+  /** O orçamento acabou: este veredito é final e não há "tentar de novo". */
+  outOfLives?: boolean;
   onRetry: () => void;
   onContinue: () => void;
 }) {
@@ -46,6 +53,7 @@ export function GuidedCodeFeedback({
       data-testid="guided-feedback"
       data-all-correct={grade.allCorrect ? 'true' : 'false'}
       data-settled={settled ? 'true' : undefined}
+      data-out-of-lives={outOfLives ? 'true' : undefined}
     >
       <div className="flex items-center gap-2">
         {grade.allCorrect ? (
@@ -57,7 +65,11 @@ export function GuidedCodeFeedback({
           className={`font-display font-semibold ${grade.allCorrect ? 'text-menta' : 'text-clay'}`}
           data-testid="guided-feedback-title"
         >
-          {grade.allCorrect ? t('code.checks.allPassed') : t('code.checks.someFailed')}
+          {grade.allCorrect
+            ? t('code.checks.allPassed')
+            : outOfLives
+              ? t('code.lives.finalTitle')
+              : t('code.checks.someFailed')}
         </p>
         <span
           className="ml-auto font-mono text-xs text-muted-foreground"
@@ -90,7 +102,12 @@ export function GuidedCodeFeedback({
         </ul>
       )}
 
+      {!grade.allCorrect && <CodeAttemptsNotice spent={attemptsSpent} />}
+
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        {/* Sem vidas o "tentar de novo" SOME em vez de ficar desabilitado: um
+            botão cinza convida a clicar e a única resposta possível é o nada. */}
+        {!outOfLives && (
         <button
           type="button"
           onClick={onRetry}
@@ -105,6 +122,7 @@ export function GuidedCodeFeedback({
           <RotateCcw className="h-4 w-4" />
           {grade.allCorrect ? t('code.checks.editAgain') : t('code.checks.retry')}
         </button>
+        )}
         <button
           type="button"
           onClick={onContinue}
@@ -113,10 +131,14 @@ export function GuidedCodeFeedback({
           className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
             grade.allCorrect
               ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
-              : 'border border-border text-muted-foreground hover:text-foreground'
+              : outOfLives
+                ? 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
+                : 'border border-border text-muted-foreground hover:text-foreground'
           }`}
         >
-          {grade.allCorrect ? t('activity.continue') : t('code.checks.continueAnyway')}
+          {grade.allCorrect || outOfLives
+            ? t('activity.continue')
+            : t('code.checks.continueAnyway')}
         </button>
       </div>
     </motion.div>

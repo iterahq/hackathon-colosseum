@@ -29,6 +29,15 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
    * code marked as correct (Arthur, call de líderes 2026-07-28).
    */
   const [gradedCode, setGradedCode] = useState<string | null>(null);
+  /**
+   * Este veredito veio do preview ou do cronômetro?
+   *
+   * A diferença passou a valer dinheiro quando o envio ficou limitado: um
+   * preview que não bootou reprova TUDO, e cobrar uma vida por isso tira do
+   * aluno uma tentativa que ele nunca teve. Quem lê é `useCodeSnack`, que só
+   * debita quando a reprovação veio de código de verdade.
+   */
+  const [timedOut, setTimedOut] = useState(false);
   const tokenRef = useRef(0);
 
   // Leaving the window where a verdict is welcome invalidates the run in flight.
@@ -40,6 +49,7 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
     setResults(null);
     setChecksRequest(null);
     setGradedCode(null);
+    setTimedOut(false);
   }, []);
 
   const settle = useCallback(() => {
@@ -60,6 +70,7 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
     if (phase !== 'submitting') return;
     const id = setTimeout(() => {
       setResults(checks.map((c) => ({ id: c.id, passed: false })));
+      setTimedOut(true);
       setPhase('submitted');
     }, CHECKS_TIMEOUT_MS);
     return () => clearTimeout(id);
@@ -71,6 +82,7 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
     tokenRef.current += 1;
     setResults(null);
     setGradedCode(code);
+    setTimedOut(false);
     setPhase('submitting');
     setChecksRequest({ token: tokenRef.current, code, checks });
   }, [phase, code, checks]);
@@ -99,5 +111,15 @@ export function useCodeChecks(code: string, checks: CodeCheck[]) {
     [results],
   );
 
-  return { phase, results, allPassed, checksRequest, submit, receiveResults, reset, settle };
+  return {
+    phase,
+    results,
+    allPassed,
+    timedOut,
+    checksRequest,
+    submit,
+    receiveResults,
+    reset,
+    settle,
+  };
 }

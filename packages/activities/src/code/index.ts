@@ -126,6 +126,28 @@ export {
   codeDraftKey,
 } from './draftKey.js';
 
+/**
+ * O ORÇAMENTO DE TENTATIVAS. Público pelos mesmos dois motivos das chaves de
+ * rascunho: o host precisa reconhecer a chave para escopar o placar por aluno
+ * (e para o "resetar a lição" do ao vivo devolver as vidas), e as regras — o
+ * teto, o clamp e o fail-open de valor corrompido — são afirmáveis sem montar
+ * um editor.
+ */
+export {
+  CODE_ATTEMPT_BUDGET,
+  CODE_ATTEMPTS_KEY_PREFIX,
+  attemptBudget,
+  attemptNotice,
+  codeAttemptsActivityId,
+  codeAttemptsKey,
+  parseSpentAttempts,
+  serializeSpentAttempts,
+  spendAttempt,
+} from './attemptBudget.js';
+export type { AttemptBudget } from './attemptBudget.js';
+export { useCodeAttempts } from './useCodeAttempts.js';
+export { CodeAttemptsNotice } from './CodeAttemptsNotice.js';
+
 export type {
   CodeCheckResult,
   CodeChecksRequest,

@@ -4,6 +4,7 @@ import { useActivityStorage } from '../context.js';
 import { seedCodeSource } from './codeSource.js';
 import { codeDraftKey } from './draftKey.js';
 import type { UseCodeSnackCallbacks } from './types.js';
+import { useCodeAttempts } from './useCodeAttempts.js';
 import { useCodeChecks } from './useCodeChecks.js';
 import { useCodeLiveBuffer } from './useCodeLiveBuffer.js';
 
@@ -52,8 +53,24 @@ export function useCodeSnack(
 
   const checks = useMemo(() => spec.checks ?? [], [spec.checks]);
   const hasChecks = checks.length > 0;
-  const { phase, results, allPassed, checksRequest, submit, receiveResults, reset, settle } =
-    useCodeChecks(code, checks);
+  const {
+    phase,
+    results,
+    allPassed,
+    timedOut,
+    checksRequest,
+    submit: runChecks,
+    receiveResults,
+    reset,
+    settle,
+  } = useCodeChecks(code, checks);
+  /**
+   * O orçamento de envios errados. Vale SÓ para o snack corrigido: sem `checks`
+   * não existe "errar" — a atividade se encerra num "marcar como concluída" — e
+   * gastar vida ali seria cobrar por uma pergunta que ninguém fez.
+   */
+  const attempts = useCodeAttempts(activityId);
+  const outOfLives = hasChecks && attempts.exhausted;
 
   /** The editor's onChange — every learner-originated edit comes through here. */
   const setCode = useCallback((next: string) => {
@@ -108,6 +125,7 @@ export function useCodeSnack(
    * professor's stage projecting a draft the learner has abandoned.
    */
   const resetToStarter = useCallback(() => {
+    if (outOfLives) return;
     touchedRef.current = false;
     const starter = spec.starter ?? '';
     // BEFORE the clear, and the order is the whole point: a host's `clear` may
@@ -119,7 +137,47 @@ export function useCodeSnack(
     storage.clear(codeDraftKey(activityId));
     setSource({ code: starter, hasWork: false });
     reset();
-  }, [activityId, spec.starter, reset, storage, liveBuffer]);
+  }, [activityId, spec.starter, reset, storage, liveBuffer, outOfLives]);
+
+  /**
+   * A vida sai quando o VEREDITO chega, não quando o botão é clicado.
+   *
+   * Aqui a correção é assíncrona — roda dentro do iframe do preview — então
+   * debitar no clique cobraria de um envio que ainda pode voltar verde. O ref é
+   * o que garante UM débito por envio: o efeito re-roda quando o host recria
+   * qualquer dependência, e sem ele o mesmo erro custaria as três vidas de uma
+   * vez. Ele volta a zero quando a tela volta a aceitar edição, que é a
+   * definição de "próxima tentativa".
+   */
+  const chargedRef = useRef(false);
+  useEffect(() => {
+    if (phase === 'editing' || phase === 'submitting') {
+      chargedRef.current = false;
+      return;
+    }
+    if (phase !== 'submitted' || results === null || allPassed || timedOut) return;
+    if (chargedRef.current) return;
+    chargedRef.current = true;
+    attempts.spend();
+  }, [phase, results, allPassed, timedOut, attempts]);
+
+  /** Envio bloqueado no orçamento zerado, e não só escondido no componente. */
+  const submit = useCallback(() => {
+    if (outOfLives) return;
+    runChecks();
+  }, [outOfLives, runChecks]);
+
+  /**
+   * "Tentar de novo" / "Editar de novo" — de volta à edição SEM tocar no código
+   * do aluno. Explicitamente NÃO é um reset: re-semear do `spec.starter` jogaria
+   * fora o trabalho que ele acabou de fazer, que é o oposto de tentar de novo.
+   * Largar o veredito é o que torna reabrir seguro — e sem vidas não há o que
+   * reabrir.
+   */
+  const retry = useCallback(() => {
+    if (outOfLives) return;
+    reset();
+  }, [outOfLives, reset]);
 
   /**
    * Passou tudo ⇒ a tentativa é reportada NA HORA, sem um segundo clique
@@ -192,18 +250,16 @@ export function useCodeSnack(
     results,
     allPassed,
     hasChecks,
+    /** Sem vidas: o veredito na tela é o final desta atividade. */
+    outOfLives,
+    attemptsSpent: attempts.spent,
+    attemptsRemaining: attempts.remaining,
     /** The source is frozen while a verdict is on screen. */
-    readOnly: hasChecks && phase !== 'editing',
+    readOnly: hasChecks && (phase !== 'editing' || outOfLives),
     checksRequest,
     submit,
     receiveResults,
-    /**
-     * "Tentar de novo" / "Editar de novo" — back to editing WITHOUT touching the
-     * learner's code. Explicitly NOT a reset: re-seeding from `spec.starter`
-     * would throw away the work they just did, which is the opposite of what a
-     * retry means. Dropping the verdict is what makes reopening safe.
-     */
-    retry: reset,
+    retry,
     resetToStarter,
     complete,
   };

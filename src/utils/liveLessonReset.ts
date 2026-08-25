@@ -26,6 +26,7 @@
  */
 import { scopedKey } from '@/utils/storageScope';
 import { clearCodeSnapshot, clearGuidedBlanks } from '@/services/codeSnapshot.service';
+import { clearCodeAttempts } from '@/services/codeAttempts.service';
 import { clearStoredAnswers } from '@/utils/liveAnswerStorage';
 
 const keyFor = (sessionId: string) => scopedKey('itera.live.reset', sessionId);
@@ -57,16 +58,19 @@ export function storeLessonResetAt(sessionId: string, at: string): void {
 /**
  * O lado do ALUNO do reset: esquecer tudo que faria a lição reabrir já feita.
  *
- * São três depósitos porque o aluno tem três: o rascunho do editor, os blanks
- * guiados e a resposta ao vivo. Deixar qualquer um deles de fora devolve o aluno
- * à atividade com o trabalho antigo na tela — que é exatamente o "não dá pra
- * refazer" que o reset existe pra resolver.
+ * São quatro depósitos porque o aluno tem quatro: o rascunho do editor, os
+ * blanks guiados, o placar de tentativas do `code` e a resposta ao vivo. Deixar
+ * qualquer um deles de fora devolve o aluno à atividade com o trabalho antigo na
+ * tela — que é exatamente o "não dá pra refazer" que o reset existe pra
+ * resolver. As tentativas são o caso mais duro: sem limpá-las o aluno reabre o
+ * exercício resetado já sem vidas, ou seja, impossível de refazer.
  */
 export function clearLearnerLessonState(sessionId: string, activityIds: string[]): void {
   if (activityIds.length === 0) return;
   for (const activityId of activityIds) {
     clearCodeSnapshot(activityId);
     clearGuidedBlanks(activityId);
+    clearCodeAttempts(activityId);
   }
   clearStoredAnswers(sessionId, activityIds);
 }

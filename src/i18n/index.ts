@@ -483,6 +483,16 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.editAgain': 'Editar de novo',
     'code.checks.frozen': 'O editor fica travado enquanto o resultado está na tela.',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
+    // VIDAS: o teto de envios errados por exercício de código. Duas chaves para
+    // o plural porque em português ele não é um "s" no fim de uma string
+    // interpolada — "1 tentativa restante" e "2 tentativas restantes" mudam duas
+    // palavras.
+    'code.lives.remaining': '{count} tentativas restantes',
+    'code.lives.remainingOne': '1 tentativa restante',
+    'code.lives.exhausted': 'Suas tentativas acabaram.',
+    'code.lives.finalTitle': 'Fim das tentativas',
+    'code.lives.answerShown': 'Suas tentativas acabaram — esta é a resposta certa.',
+    'code.lives.noAnswer': 'Suas tentativas acabaram. Leia as dicas e siga para a próxima.',
     // Variantes GUIADAS: o código vem escrito e travado, e só as lacunas
     // autoradas aceitam interação. A instrução é por variante porque colocar
     // uma palavra, escolher numa lista e digitar de cabeça não são a mesma tarefa.
@@ -1366,6 +1376,12 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.editAgain': 'Edit again',
     'code.checks.frozen': 'The editor stays locked while the result is on screen.',
     'code.checks.continueAnyway': 'Continue anyway',
+    'code.lives.remaining': '{count} attempts left',
+    'code.lives.remainingOne': '1 attempt left',
+    'code.lives.exhausted': 'You are out of attempts.',
+    'code.lives.finalTitle': 'Out of attempts',
+    'code.lives.answerShown': 'You are out of attempts — this is the right answer.',
+    'code.lives.noAnswer': 'You are out of attempts. Read the hints and move on.',
     'code.guided.blankLabel': 'code blank',
     'code.guided.bankLabel': 'available words',
     'code.guided.hint.options': 'The code is already written. Tap a word and it drops into the blank.',

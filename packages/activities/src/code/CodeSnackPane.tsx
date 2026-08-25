@@ -54,6 +54,8 @@ export function CodeSnackPane({
     results,
     allPassed,
     hasChecks,
+    outOfLives,
+    attemptsSpent,
     readOnly,
     checksRequest,
     submit,
@@ -82,6 +84,7 @@ export function CodeSnackPane({
       data-testid="activity-shell"
       data-activity-kind="code"
       data-phase={phase}
+      data-out-of-lives={outOfLives ? 'true' : 'false'}
     >
       <RichText text={spec.prompt ?? ''} />
 
@@ -133,7 +136,7 @@ export function CodeSnackPane({
               where the learner who broke everything asks to start over. */}
           <CodeResetControl
             onReset={resetToStarter}
-            disabled={isDone || phase === 'submitting' || phase === 'settled'}
+            disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
             className="mt-2"
           />
         </div>
@@ -153,7 +156,7 @@ export function CodeSnackPane({
         <button
           type="button"
           onClick={submit}
-          disabled={phase !== 'editing' || isDone}
+          disabled={phase !== 'editing' || isDone || outOfLives}
           data-testid="code-submit"
           className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -168,6 +171,8 @@ export function CodeSnackPane({
           results={results}
           allPassed={allPassed}
           settled={phase === 'settled'}
+          attemptsSpent={attemptsSpent}
+          outOfLives={outOfLives}
           onRetry={retry}
           onContinue={complete}
         />

@@ -12,6 +12,7 @@ import {
   substituteBlanks,
 } from './guidedCode.js';
 import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
+import { useCodeAttempts } from '../useCodeAttempts.js';
 
 /**
  * The same debounce as the open editor's, and that is deliberate: the two
@@ -96,6 +97,18 @@ export function useGuidedCode(
    */
   const revealed = reveal && blanks.length > 0;
 
+  /**
+   * O orçamento de envios errados. Esgotado, o gabarito SOBE À TELA, e essa é a
+   * decisão desenhada e não um efeito colateral: sem saída, o aluno numa aula ao
+   * vivo fica olhando um botão morto enquanto a turma anda, e o guiado é
+   * exatamente a superfície onde revelar não custa nada inventar —
+   * `blanks[].answer` é uma solução que o autor já escreveu (ver
+   * `revealedValues`). O veredito reportado continua sendo o do ALUNO.
+   */
+  const attempts = useCodeAttempts(activityId);
+  const outOfLives = attempts.exhausted;
+  const showsAnswer = revealed || (outOfLives && blanks.length > 0);
+
   // Derived every render on purpose: `blanks` has a fresh identity each time the
   // parent re-parses, so a `useMemo` keyed on it would recompute anyway while
   // reading as if it cached. Templates are a screenful of code, not a workload.
@@ -111,9 +124,9 @@ export function useGuidedCode(
    * answers back with no restore step — there is nothing to restore, because
    * nothing was overwritten.
    */
-  const shownValues = revealed ? revealedValues(blanks) : values;
+  const shownValues = showsAnswer ? revealedValues(blanks) : values;
   const source = substituteBlanks(starter, blanks, values);
-  const shownSource = revealed ? substituteBlanks(starter, blanks, shownValues) : source;
+  const shownSource = showsAnswer ? substituteBlanks(starter, blanks, shownValues) : source;
   const filled = allBlanksFilled(blanks, values);
   const grade = gradeGuided(blanks, values);
   const spentChips = spentBankCounts(blanks, shownValues);
@@ -163,20 +176,27 @@ export function useGuidedCode(
    * unclicked. Whoever wires a new affordance later inherits the rule for free.
    */
   const submit = useCallback(() => {
-    if (revealed || !filled) return;
+    if (revealed || outOfLives || !filled) return;
+    // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
+    // fase: o guiado corrige localmente e sem round trip, então um efeito só
+    // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
+    if (!grade.allCorrect) attempts.spend();
     setPhase('submitted');
-  }, [revealed, filled]);
+  }, [revealed, outOfLives, filled, grade.allCorrect, attempts]);
 
-  const retry = useCallback(() => setPhase('editing'), []);
+  const retry = useCallback(() => {
+    if (outOfLives) return;
+    setPhase('editing');
+  }, [outOfLives]);
 
   const resetAll = useCallback(() => {
-    if (revealed) return;
+    if (revealed || outOfLives) return;
     touchedRef.current = false;
     storageRef.current.clear(codeDraftKey(activityId));
     storageRef.current.clear(codeBlanksDraftKey(activityId));
     setValues({});
     setPhase('editing');
-  }, [activityId, revealed]);
+  }, [activityId, revealed, outOfLives]);
 
   const complete = useCallback(() => {
     if (revealed || !filled) return;
@@ -194,11 +214,17 @@ export function useGuidedCode(
     // Revelado, o preview roda o gabarito: as lacunas estão todas "cheias" na
     // tela, e segurar o resultado justamente na hora de mostrar a resposta
     // esconderia a metade que responde "e daí?".
-    filled: revealed || filled,
+    filled: showsAnswer || filled,
     grade,
     phase,
     revealed,
-    readOnly: revealed || phase !== 'editing',
+    /** Sem vidas: o veredito do aluno é final e o gabarito está na tela. */
+    outOfLives,
+    /** As lacunas mostram a resposta autorada — por reveal do professor OU por fim das vidas. */
+    showsAnswer,
+    attemptsSpent: attempts.spent,
+    attemptsRemaining: attempts.remaining,
+    readOnly: showsAnswer || phase !== 'editing',
     submit,
     retry,
     resetAll,

@@ -1,0 +1,70 @@
+/**
+ * O TERCEIRO SLOT do `code`: quantos envios errados o aluno já gastou.
+ *
+ * O orçamento em si é do pacote (`@iterahq/activities/code` →
+ * `attemptBudget.ts`); daqui sai só onde ele mora no disco desta máquina. Slot
+ * próprio, e não mais um campo no envelope do rascunho, porque
+ * `ActivityStoragePort` é `(key, value: string)` de propósito — o pacote nomeia
+ * a chave, o host decide o depósito (ver `code/draftKey.ts`).
+ *
+ * ESCOPADO POR ALUNO (`scopedKey`) pelo motivo de sempre: as máquinas do
+ * Educar+ são compartilhadas, e um placar sem escopo trancaria o exercício do
+ * próximo aluno com as tentativas do anterior.
+ *
+ * ⚠️ ETIQUETADO POR EXECUÇÃO, como as duas metades do rascunho. É isso que
+ * separa "não dá pra recuperar vida com F5" de "a lição nunca mais abre": dentro
+ * da mesma aula o contador sobrevive à recarga; uma aula NOVA nasce com as três
+ * vidas, senão repetir a lição na turma seguinte entregaria o exercício já
+ * perdido.
+ *
+ * SEM `CODE_SNAPSHOT_EVENT`: gastar tentativa não é "trabalho em andamento", e
+ * disparar aqui faria o seletor do professor piscar a cada envio.
+ */
+import { scopedKey } from '@/utils/storageScope';
+import { belongsToExecution, currentExecutionId } from '@/utils/activityExecution';
+
+const keyFor = (activityId: string) => scopedKey('itera.code.attempts', activityId);
+
+/** A contagem crua que o pacote gravou — a leitura dele é fail-open. */
+export function readCodeAttempts(activityId: string): string | null {
+  if (!activityId) return null;
+  const key = keyFor(activityId);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const envelope = parsed as { spent?: string; execution?: string | null };
+    if (typeof envelope.spent !== 'string') return null;
+    if (!belongsToExecution(envelope.execution, currentExecutionId())) return null;
+    return envelope.spent;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCodeAttempts(activityId: string, spent: string): void {
+  if (!activityId) return;
+  const key = keyFor(activityId);
+  if (!key) return;
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify({ spent, savedAt: new Date().toISOString(), execution: currentExecutionId() }),
+    );
+  } catch {
+    // Storage indisponível — o teto passa a valer só nesta aba, que é a
+    // degradação certa: o exercício continua jogável.
+  }
+}
+
+export function clearCodeAttempts(activityId: string): void {
+  if (!activityId) return;
+  const key = keyFor(activityId);
+  if (!key) return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Storage indisponível — não há o que limpar.
+  }
+}
