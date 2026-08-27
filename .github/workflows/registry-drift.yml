@@ -1,0 +1,312 @@
+name: Registry Drift
+
+# ──────────────────────────────────────────────────────────────────────────────
+# THE ALARM FOR `@iterahq/activities`, WHICH IS A SEPARATE THING FROM THE
+# AUTOMATION THAT PUBLISHES IT.
+#
+# WHAT WENT WRONG, AND WHY THIS FILE EXISTS
+#
+# PR #353 bumped `packages/activities/package.json` to `1.0.0` on 2026-08-17.
+# The publish workflow was `workflow_dispatch`-only and nobody dispatched it.
+# The registry kept serving `0.4.0` (2026-08-08) as `latest` for 17 DAYS while
+# `main` was far ahead. Every consumer who installed the package in that window
+# got a version nobody intended to be current. NOTHING ALERTED. The gap closed
+# on 2026-08-27 only because somebody went looking for it.
+#
+# PR #432 made the publish automatic on merge. That removes THAT failure. It
+# does NOT remove the CLASS. The same silence returns if the push trigger is
+# reverted, if the path filter drifts, if a bump merges while the runner is
+# down, or if a publish fails and nobody reads the run. Staleness is only noisy
+# when somebody instruments it. This file is the instrument.
+#
+# It asks one question, daily: DOES THE REGISTRY STILL SERVE WHAT MAIN SAYS?
+#
+# ── THE RULE THAT MATTERS MOST: IT MUST FAIL WHEN IT CANNOT TELL ─────────────
+#
+# A monitor that goes green while blind is worse than no monitor at all: it
+# converts an outage into a false all-clear, and the person who reads the green
+# tick stops looking. So an unreadable packument, an empty token, a refused
+# token, a manifest it cannot parse, or a packument with no `dist-tags.latest`
+# are all HARD FAILURES here, reported as `VERDICT: BLIND`. There is exactly
+# one path to a green run: the check read both numbers and they matched.
+#
+# ── HOW IT READS THE REGISTRY (do not "simplify" this) ───────────────────────
+#
+# It reads the PACKUMENT ROOT — `https://npm.pkg.github.com/@iterahq%2factivities`
+# — and looks at `dist-tags.latest`.
+#
+# 🐞 DO NOT change this to a per-version URL. GitHub Packages has NO per-version
+# GET route: `.../@iterahq/activities/<version>` answers **405 whether or not
+# the version exists**. That exact mistake is what made the old publish guard in
+# `release-activities.yml` useless — it compared the status to 200, so it could
+# never fire once. Reintroducing it here would make this alarm useless in the
+# same way, and it would look like it was working.
+#
+# Measured against the live registry on 2026-08-27, which is where the HTTP
+# handling below comes from:
+#
+#   | request                                    | answer                        |
+#   |--------------------------------------------|-------------------------------|
+#   | packument, token with `read:packages`       | 200 + the JSON                |
+#   | packument, NO token                         | 401 `authentication token ...`|
+#   | packument, token WITHOUT `read:packages`    | 403 `... expected scopes`     |
+#   | packument of a package that does not exist  | 404 `... does not exist ...`  |
+#
+# So 401 and 403 mean "I cannot see", which is BLIND. 404 with a working token
+# means "the registry genuinely has nothing under this name", which is DRIFT of
+# the worst kind, not blindness.
+#
+# ── WHY IT OPENS AN ISSUE ────────────────────────────────────────────────────
+#
+# A red scheduled run in a repo nobody watches is the same silence in a
+# different colour — it is precisely the weakness that let 17 days pass. The job
+# opens (or updates) ONE GitHub issue, deduped on an exact title, and closes it
+# when the drift clears. It ALSO fails, so the Actions view stays honest.
+#
+# ── WHICH REF IT READS ───────────────────────────────────────────────────────
+#
+# The plain `actions/checkout@v4` below reads the ref the run was started on. On
+# the `schedule` trigger GitHub always starts the run on the DEFAULT BRANCH, so
+# the daily question is always "main versus the registry" — which is the
+# question this file is for. On `workflow_dispatch` a human can point it at a
+# branch, which is how you exercise a change to this file without publishing
+# anything. Issues are written ONLY from the default branch, so a branch
+# dispatch goes red without opening or closing anything.
+#
+# RUNNER: `[self-hosted, dfl-runner]` — same iterahq-scoped registrations as
+# every other workflow here. See the long rationale at the top of `ci.yml`.
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # 09:25 UTC ~= 06:25 BRT — before the working day, after any overnight
+    # merge, and a quarter hour clear of `db-drift` so the two alarms do not
+    # contend for the same runner.
+    - cron: '25 9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: registry-drift
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+  issues: write
+
+jobs:
+  drift:
+    name: does the registry still serve what main says?
+    runs-on: [self-hosted, dfl-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The runner has no guaranteed ambient Node, and this check parses JSON.
+      # A hand-rolled `grep` over a packument is exactly the kind of parse that
+      # fails quietly and reports the wrong number.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Compare the manifest against the registry
+        id: check
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPORT_FILE: ${{ runner.temp }}/registry-drift-report.txt
+        run: |
+          set -u
+
+          MANIFEST='packages/activities/package.json'
+          PKG='@iterahq/activities'
+          URL='https://npm.pkg.github.com/@iterahq%2factivities'
+          PACKUMENT="$RUNNER_TEMP/activities-packument.json"
+          PARSE_ERR="$RUNNER_TEMP/activities-packument.err"
+
+          : > "$REPORT_FILE"
+          log() { printf '%s\n' "$*" | tee -a "$REPORT_FILE"; }
+
+          # $1 = clean | drift | blind, then a one-line reason.
+          finish() {
+            v="$1"; shift
+            echo "verdict=$v" >> "$GITHUB_OUTPUT"
+            log ""
+            case "$v" in
+              clean)
+                log "VERDICT: CLEAN — main and the registry agree."
+                exit 0
+                ;;
+              drift)
+                log "VERDICT: DRIFT — $*"
+                echo "::error::registry-drift: $*"
+                exit 1
+                ;;
+              *)
+                log "VERDICT: BLIND — $*"
+                log "A monitor that cannot tell must go RED. Green here would be a false all-clear."
+                echo "::error::registry-drift is BLIND, which is a FAILURE and not an all-clear: $*"
+                exit 1
+                ;;
+            esac
+          }
+
+          log "package:          $PKG"
+          log "ref read:         $GITHUB_REF_NAME ($GITHUB_SHA)"
+          log "packument:        $URL"
+          log ""
+
+          # ── 1. what the repository says ──────────────────────────────────
+          if [ ! -f "$MANIFEST" ]; then
+            finish blind "$MANIFEST does not exist on this ref — the package moved, or the checkout is not what this check assumes."
+          fi
+
+          VERSION="$(node -p "require('./$MANIFEST').version || ''" 2>/dev/null || true)"
+          case "$VERSION" in
+            ''|undefined|null)
+              finish blind "could not read a version out of $MANIFEST."
+              ;;
+          esac
+          log "main declares:    $VERSION"
+
+          # ── 2. can we even ask? ──────────────────────────────────────────
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            finish blind "secrets.GITHUB_TOKEN is empty, so the registry cannot be read at all."
+          fi
+
+          # ── 3. what the registry says ────────────────────────────────────
+          if ! CODE="$(curl -sS --max-time 60 -o "$PACKUMENT" -w '%{http_code}' \
+                 -H "Authorization: Bearer $NODE_AUTH_TOKEN" "$URL")"; then
+            finish blind "the request to $URL did not complete — curl reported a transport failure."
+          fi
+          log "packument http:   $CODE"
+
+          case "$CODE" in
+            200)
+              :
+              ;;
+            404)
+              finish drift "the registry holds NO package named $PKG, while main declares $VERSION. Nothing was ever published under this name, or the package was deleted."
+              ;;
+            401|403)
+              finish blind "the registry refused the token (http $CODE). GITHUB_TOKEN needs 'packages: read'. Body: $(head -c 200 "$PACKUMENT" 2>/dev/null)"
+              ;;
+            *)
+              finish blind "the registry answered http $CODE. An unreadable registry must not be read as agreement. Body: $(head -c 200 "$PACKUMENT" 2>/dev/null)"
+              ;;
+          esac
+
+          # ── 4. parse it, and refuse to guess ─────────────────────────────
+          # Line 1 = dist-tags.latest. Line 2 = every published version.
+          if ! OUT="$(node -e '
+            const fs = require("fs");
+            let m;
+            try { m = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); }
+            catch (e) { process.stderr.write("the body is not JSON: " + e.message); process.exit(2); }
+            if (!m || typeof m !== "object") { process.stderr.write("the body is not an object"); process.exit(2); }
+            const tags = m["dist-tags"];
+            if (!tags || typeof tags.latest !== "string" || tags.latest === "") {
+              process.stderr.write("the packument has no dist-tags.latest"); process.exit(3);
+            }
+            const versions = Object.keys(m.versions || {});
+            if (versions.length === 0) {
+              process.stderr.write("the packument has an empty versions map"); process.exit(4);
+            }
+            process.stdout.write(tags.latest + "\n" + versions.join(","));
+          ' "$PACKUMENT" 2>"$PARSE_ERR")"; then
+            finish blind "the packument did not parse into an answer: $(cat "$PARSE_ERR" 2>/dev/null)"
+          fi
+
+          LATEST="$(printf '%s' "$OUT" | sed -n '1p')"
+          PUBLISHED="$(printf '%s' "$OUT" | sed -n '2p')"
+          log "registry latest:  $LATEST"
+          log "registry has:     $PUBLISHED"
+          log ""
+
+          if [ -z "$LATEST" ]; then
+            finish blind "read an empty 'latest' out of the packument."
+          fi
+
+          # ── 5. the verdict ───────────────────────────────────────────────
+          if [ "$LATEST" = "$VERSION" ]; then
+            log "The registry serves exactly the version main declares."
+            finish clean
+          fi
+
+          case ",$PUBLISHED," in
+            *",$VERSION,"*)
+              finish drift "main declares $VERSION and $VERSION IS published, but the registry still tags $LATEST as 'latest' for $PKG. A dist-tag is pointing at the wrong version — someone published out of order, or moved the tag by hand."
+              ;;
+            *)
+              finish drift "main declares $VERSION but the registry serves $LATEST as 'latest' for $PKG, and $VERSION was never published. A version bump merged and no publish ran: check the 'release-activities' workflow — a reverted push trigger, a drifted path filter, a runner outage, or a failed run nobody read."
+              ;;
+          esac
+
+      - name: Open, update or close the drift issue
+        if: always()
+        env:
+          VERDICT: ${{ steps.check.outputs.verdict }}
+          REPORT_FILE: ${{ runner.temp }}/registry-drift-report.txt
+          GH_TOKEN: ${{ github.token }}
+          TITLE: '[registry-drift] @iterahq/activities: main and the registry disagree'
+          IS_CANONICAL: ${{ github.ref_name == github.event.repository.default_branch }}
+        run: |
+          set -u
+
+          REPORT="$(cat "$REPORT_FILE" 2>/dev/null || echo '(no report — the check died before it wrote one)')"
+          # An absent verdict means the check step never reached a conclusion.
+          # The safe reading of "no answer" is BLIND, never CLEAN.
+          VERDICT="${VERDICT:-blind}"
+          echo "verdict=$VERDICT canonical=$IS_CANONICAL"
+
+          if [ "$IS_CANONICAL" != "true" ]; then
+            {
+              echo "### registry-drift: $VERDICT (ref \`$GITHUB_REF_NAME\`)"
+              echo ""
+              echo "Not the default branch, so no issue was opened, updated or closed."
+              echo ""
+              printf '```\n%s\n```\n' "$REPORT"
+            } >> "$GITHUB_STEP_SUMMARY"
+            [ "$VERDICT" = "clean" ] && exit 0
+            exit 1
+          fi
+
+          EXISTING="$(gh issue list --state open --limit 100 --json number,title \
+            --jq '.[] | select(.title == env.TITLE) | .number' | head -n 1 || true)"
+
+          if [ "$VERDICT" = "clean" ]; then
+            printf ':white_check_mark: no drift.\n\n```\n%s\n```\n' "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "Drift cleared — \`main\` and the registry agree again as of run ${GITHUB_RUN_ID}."
+              gh issue close "$EXISTING"
+            fi
+            exit 0
+          fi
+
+          if [ "$VERDICT" = "blind" ]; then
+            HEADLINE='The daily registry check could NOT TELL whether `main` and the registry agree. That is a failure, not an all-clear — treat this repo as unmonitored until it is fixed.'
+            GUIDANCE='- **http 401 / 403** — the run token cannot read the package. Check `permissions.packages: read` in `.github/workflows/registry-drift.yml`, and that `@iterahq/activities` still grants this repository read access.
+          - **http 5xx / transport** — GitHub Packages was unreachable. If it clears on the next run, nothing else is needed.
+          - **manifest / packument did not parse** — the shape this check assumes changed. Fix the check; do not silence it.'
+          else
+            HEADLINE='The daily registry check found that `main` and the registry DISAGREE about `@iterahq/activities`.'
+            GUIDANCE='- **the version on `main` was never published** — a bump merged and no publish ran. Look at the `release-activities` workflow: a reverted `push` trigger, a drifted `paths:` filter, a runner outage, or a red run nobody read. Re-run it with `workflow_dispatch` once the cause is understood.
+          - **the version IS published but is not `latest`** — a dist-tag points at the wrong version. Someone published out of order or moved the tag by hand.
+          - **the registry has no such package** — nothing was ever published under this name, or it was deleted.
+
+          This is the 17-day failure of 2026-08-17 happening again. It is silent for consumers: `npm install` keeps working and hands them the wrong version.'
+          fi
+
+          BODY="$(printf '%s\n\n```\n%s\n```\n\nWhat to do:\n\n%s\n\n_run: %s/%s/actions/runs/%s_\n' \
+            "$HEADLINE" "$REPORT" "$GUIDANCE" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")"
+
+          printf '%s\n' "$BODY" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label bug
+          fi
+
+          # Loud in both places: an open issue AND a red run.
+          exit 1
