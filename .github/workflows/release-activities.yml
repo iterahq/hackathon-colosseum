@@ -13,15 +13,43 @@ name: release-activities
 # scope is the org name). ADR-6 is preserved; only the registry moved — which
 # ADR-6 itself already named as its mitigation 2.
 #
-# MANUAL ON PURPOSE. `workflow_dispatch`, not `push: main`. Fase C moves real
-# renderers in here one PR at a time; auto-publishing every merge would mint a
-# version for each intermediate state. Bump `version` in
-# packages/activities/package.json in the PR, then dispatch this once.
+# AUTOMATIC ON MERGE SINCE 2026-08-27. READ THIS BEFORE YOU MAKE IT MANUAL AGAIN.
+#
+# THE OLD RULE: this workflow was `workflow_dispatch` only, and the header said
+# "MANUAL ON PURPOSE". The reason was real at the time. Fase C moved renderers
+# into the package one PR at a time. An automatic publish on every merge would
+# mint a version for each intermediate state of a half-migrated library.
+#
+# WHY THE RULE EXPIRED: Fase C is over and the library is complete. There are no
+# more intermediate states to protect a consumer from.
+#
+# WHAT THE RULE COST: PR #353 bumped the version to 1.0.0 on 2026-08-17. Nobody
+# dispatched this workflow. The registry kept serving 0.4.0 (2026-08-08) as
+# `latest` for 17 DAYS while `main` was far ahead. Every consumer who installed
+# the package in that window got a version nobody intended to be current. The
+# gap closed on 2026-08-27 only because somebody went looking for it. A manual
+# release step does not fail loudly — it fails silently, and it stays failed.
+#
+# HOW IT WORKS NOW: a push to `main` that touches `packages/activities/**` (or
+# this file) runs the workflow. `workflow_dispatch` stays, so a human can still
+# force a run. Most merges do NOT bump the version, so the guard step below
+# treats an already-published version as a CLEAN SKIP on the push path — those
+# merges must not go red. On the dispatch path the same condition stays a HARD
+# ERROR, because a human who asked to publish an existing version made a mistake
+# and needs to be told.
+#
+# If you are about to restore the manual trigger: the 17-day gap is what you are
+# choosing. Say so in your PR body.
 #
 # RUNNER: self-hosted iterahq `dfl-runner` — see the long rationale in ci.yml.
 # ──────────────────────────────────────────────────────────────────────────────
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/activities/**'
+      - '.github/workflows/release-activities.yml'
 
 permissions:
   contents: read
@@ -52,24 +80,79 @@ jobs:
         run: npm run build -w @iterahq/activities
 
       # Republishing an existing version is a hard error on the registry side,
-      # but it fails deep inside `npm publish` with a generic 409. Checking here
-      # turns "forgot to bump" into a one-line message.
-      - name: Refuse to republish an existing version
+      # but it fails deep inside `npm publish` with a generic 409. This step
+      # turns "forgot to bump" into a one-line message — and, since the push
+      # trigger, decides whether there is anything to release at all.
+      #
+      # 🐞 THE PROBE THIS STEP USED TO RUN NEVER WORKED. It asked for
+      # `GET https://npm.pkg.github.com/@iterahq/activities/<version>` and
+      # compared the status to 200. GitHub Packages has NO per-version GET
+      # route: that URL answers 405 whether the version exists or not, so the
+      # `= 200` test could never be true and the guard never fired once. Proof,
+      # measured on run 33077545095 (workflow_dispatch on `main`, 2026-08-27,
+      # version 1.0.0 already in the registry): this step passed, and `Publish`
+      # then died with `npm error 409 Conflict — Cannot publish over existing
+      # version`. That is exactly the generic failure the step exists to
+      # prevent. The fix reads the PACKUMENT ROOT instead — the same route the
+      # "published AND private" step below already proves returns 200 — and
+      # looks the version up in its `versions` map.
+      - name: Decide whether this version needs a publish
+        id: guard
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           VERSION=$(node -p "require('./packages/activities/package.json').version")
           echo "version=$VERSION"
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          PACKUMENT="$RUNNER_TEMP/packument.json"
+          CODE=$(curl -s -o "$PACKUMENT" -w '%{http_code}' \
             -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
-            "https://npm.pkg.github.com/@iterahq/activities/$VERSION")
+            "https://npm.pkg.github.com/@iterahq/activities")
+          echo "packument http=$CODE"
+
           if [ "$CODE" = "200" ]; then
+            EXISTS=$(node -e "const m=require(process.argv[1]);process.stdout.write(m.versions&&m.versions[process.argv[2]]?'yes':'no')" "$PACKUMENT" "$VERSION")
+          elif [ "$CODE" = "404" ]; then
+            # Nothing published under this name yet. The first release.
+            EXISTS=no
+          else
+            # Do NOT guess. An unreadable registry must not be read as "free to
+            # publish" on the push path, nor as "already there" on dispatch.
+            echo "::error::could not read the @iterahq/activities packument (http=$CODE). Refusing to guess whether $VERSION exists."
+            exit 1
+          fi
+          echo "already published: $EXISTS"
+
+          if [ "$EXISTS" = "no" ]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # From here on, the version is already in the registry. What that
+          # MEANS depends on who asked for the run.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            # A human asked to publish, on purpose, a version that is already
+            # there. That is a mistake. Say so and go red.
             echo "::error::@iterahq/activities@$VERSION is already published. Bump the version in packages/activities/package.json."
             exit 1
           fi
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          # A merge to main. Most merges touch the package without bumping the
+          # version, so this is the NORMAL case — it must not go red.
+          echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::@iterahq/activities@$VERSION is already published. Nothing to release for this merge — skipping the publish."
+          {
+            echo "### release-activities: skipped"
+            echo ""
+            echo "\`@iterahq/activities@$VERSION\` is already in the registry."
+            echo "This merge did not bump the version, so there is nothing to publish."
+            echo "Bump \`version\` in \`packages/activities/package.json\` to cut a release."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish
+        if: steps.guard.outputs.should_publish == 'true'
         run: npm publish -w @iterahq/activities
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -78,6 +161,7 @@ jobs:
       # only the authenticated read does not prove privacy — an anonymous read
       # has to be shown to FAIL. Run them together or the claim is half-made.
       - name: Verify the package is published AND private
+        if: steps.guard.outputs.should_publish == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
