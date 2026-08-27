@@ -17,17 +17,30 @@
 # exactly once per release, on the one branch that a release exercises, with no
 # way to know it was broken until somebody tried to ship.
 #
-# So the logic moved here, and it is now called from TWO places in the workflow:
+# So the logic moved here, and it is now called from THREE places:
 #
-#   1. `self-check` — runs on EVERY trigger, before the real guard, against a
-#      sentinel version that cannot exist and against the registry's own
-#      `dist-tags.latest`. Both directions get proven on every run. A detection
-#      that always says "absent" (the 2026-08 bug) and a detection that always
-#      says "published" both go red immediately.
+#   1. `self-check` — runs on EVERY trigger of `release-activities.yml`, before
+#      the real guard, against a sentinel version that cannot exist and against
+#      the registry's own `dist-tags.latest`. Both directions get proven on every
+#      run. A detection that always says "absent" (the 2026-08 bug) and a
+#      detection that always says "published" both go red immediately.
 #   2. `decide` — the real guard. Same code path, real version, real event.
+#   3. `inspect` — the raw observation, for a caller that has its OWN policy.
+#      `.github/workflows/registry-drift.yml` is that caller: it asks "is what
+#      the registry TAGS AS LATEST the same string main declares?", which is a
+#      different question from "may I publish?". It used to answer that question
+#      with a second, hand-rolled fetch-and-parse of the same packument. Two
+#      copies of this logic is exactly how the 2026-08 bug stayed invisible for
+#      months, so the second copy is gone and the monitor reads through here.
 #
 # A self-check that tested a COPY of the logic would prove nothing. That is the
 # load-bearing property of this file: there is one copy.
+#
+# The split is deliberate: `probe` is the shared OBSERVATION (fetch, parse,
+# refuse to guess). `decide` and the drift monitor are two separate POLICIES
+# over it. A 404, for one example, means "first release, go ahead" to the guard
+# and "the worst kind of drift" to the monitor. Sharing the observation is the
+# point; sharing the policy would be wrong.
 #
 # The stubbed-curl matrix that proves the branches lives next to it, in
 # `release-guard.test.ts`, and runs in the normal `npm test` unit job.
@@ -36,6 +49,7 @@
 # USAGE
 #
 #   release-guard.sh decide <version> <event-name>
+#   release-guard.sh inspect <version>
 #   release-guard.sh self-check
 #
 # `decide` writes key=value lines to stdout:
@@ -47,14 +61,29 @@
 #   should_publish=true|false   (only on exit 0)
 #   reason=<slug>               (only on a non-zero exit)
 #
-# EXIT CODES — three outcomes, deliberately distinct:
+# `inspect` writes the same observation WITHOUT the publish policy, plus the
+# full version list, and never has an opinion about what to do next:
 #
-#   0  decided. Read `should_publish`.
+#   version=<v>
+#   packument_http=<code>
+#   latest=<v>             dist-tags.latest, or empty when there is none
+#   already_published=yes|no
+#   versions=<a,b,c>       every published version, comma-joined; empty on 404
+#   reason=<slug>          (only on a non-zero exit)
+#
+# The human-readable cause of an exit 2 goes to STDERR on both paths, so a
+# caller can quote it in an alert.
+#
+# EXIT CODES — deliberately distinct:
+#
+#   0  decided (`decide`), or the registry was read and can be trusted
+#      (`inspect`).
 #   2  INDETERMINATE. The packument could not be read or could not be trusted.
-#      This is a HARD ERROR on BOTH paths. An unreadable registry must never be
-#      read as "free to publish" (push) nor as "already there" (dispatch).
+#      This is a HARD ERROR on EVERY path. An unreadable registry must never be
+#      read as "free to publish" (push), nor as "already there" (dispatch), nor
+#      as "main and the registry agree" (the drift monitor).
 #   3  The version is already published AND a human asked for this run
-#      (`workflow_dispatch`). That is a mistake and it must be said out loud.
+#      (`workflow_dispatch`). `decide` only.
 #   64 usage error.
 #
 # GitHub-specific output (::error::, ::notice::, the step summary) stays in the
@@ -75,7 +104,7 @@ log() { printf '%s\n' "$*" >&2; }
 # Echoes the HTTP status. `000` when curl itself failed (DNS, TLS, refused).
 fetch_packument() {
   local out="$1" code
-  code=$(curl -s -o "$out" -w '%{http_code}' \
+  code=$(curl -sS --max-time "${PACKUMENT_TIMEOUT:-60}" -o "$out" -w '%{http_code}' \
     -H "Authorization: Bearer ${NODE_AUTH_TOKEN:-}" \
     "$REGISTRY/$PACKAGE") || code="000"
   [ -n "$code" ] || code="000"
@@ -83,12 +112,13 @@ fetch_packument() {
 }
 
 # ── read_packument <file> <version> ──────────────────────────────────────────
-# Prints two lines, `exists=yes|no` and `latest=<v>`. Exits non-zero when the
-# document cannot be
-# trusted: not JSON, or no `versions` object. A 200 response without a
-# `versions` map is not an empty package — it is a document we do not
-# understand, and guessing either way is the failure mode this whole file is
-# about.
+# Prints three lines: `exists=yes|no`, `latest=<v>` and `versions=<a,b,c>`.
+# Exits non-zero when the document cannot be trusted: not JSON, or no `versions`
+# OBJECT. A 200 response without a `versions` map is not an empty package — it
+# is a document we do not understand, and guessing either way is the failure
+# mode this whole file is about. `versions` that is an ARRAY or a STRING is
+# rejected for the same reason: `Object.keys` answers happily for both and hands
+# back list indices as if they were version numbers.
 read_packument() {
   node -e '
     const fs = require("fs");
@@ -113,52 +143,88 @@ read_packument() {
     const latest = (doc["dist-tags"] && typeof doc["dist-tags"].latest === "string")
       ? doc["dist-tags"].latest
       : "";
-    process.stdout.write("exists=" + (exists ? "yes" : "no") + "\nlatest=" + latest + "\n");
+    const all = Object.keys(versions).join(",");
+    process.stdout.write(
+      "exists=" + (exists ? "yes" : "no") +
+      "\nlatest=" + latest +
+      "\nversions=" + all + "\n"
+    );
   ' "$1" "$2"
 }
 
-# ── decide <version> <event-name> ────────────────────────────────────────────
-decide() {
-  local version="$1" event="$2"
-  local tmp code parsed exists latest
-
-  printf 'version=%s\n' "$version"
+# ── probe <version> ──────────────────────────────────────────────────────────
+# THE ONE REGISTRY READ. Everything else in this file, and the drift monitor,
+# goes through here. It fetches the packument root, parses it, and sets:
+#
+#   PROBE_HTTP      the status code; `000` when curl itself failed
+#   PROBE_EXISTS    yes|no — is <version> in the `versions` map?
+#   PROBE_LATEST    dist-tags.latest, or empty when there is none
+#   PROBE_VERSIONS  every published version, comma-joined; empty on 404
+#   PROBE_ERROR     why the read cannot be trusted (only when it returns 2)
+#
+# Returns 0 when the registry ANSWERED and the answer can be trusted, 2 when it
+# cannot. It never decides what the caller should do about it.
+probe() {
+  local version="$1" tmp errfile parsed
+  PROBE_HTTP=""; PROBE_EXISTS=""; PROBE_LATEST=""; PROBE_VERSIONS=""; PROBE_ERROR=""
 
   tmp="$(mktemp)"
+  errfile="$(mktemp)"
   # shellcheck disable=SC2064
-  trap "rm -f '$tmp'" RETURN
+  trap "rm -f '$tmp' '$errfile'" RETURN
 
-  code="$(fetch_packument "$tmp")"
-  printf 'packument_http=%s\n' "$code"
+  PROBE_HTTP="$(fetch_packument "$tmp")"
 
-  case "$code" in
+  case "$PROBE_HTTP" in
     200)
-      if ! parsed="$(read_packument "$tmp" "$version")"; then
-        printf 'reason=unreadable-packument\n'
-        log "the packument came back 200 but could not be trusted — refusing to guess whether $version exists"
+      if ! parsed="$(read_packument "$tmp" "$version" 2>"$errfile")"; then
+        PROBE_ERROR="the registry answered 200 but the body could not be trusted: $(cat "$errfile" 2>/dev/null)"
         return 2
       fi
-      exists="$(printf '%s\n' "$parsed" | sed -n 's/^exists=//p')"
-      latest="$(printf '%s\n' "$parsed" | sed -n 's/^latest=//p')"
+      PROBE_EXISTS="$(printf '%s\n' "$parsed" | sed -n 's/^exists=//p')"
+      PROBE_LATEST="$(printf '%s\n' "$parsed" | sed -n 's/^latest=//p')"
+      PROBE_VERSIONS="$(printf '%s\n' "$parsed" | sed -n 's/^versions=//p')"
       ;;
     404)
-      # Nothing is published under this name yet. The first release. This is the
-      # ONE status that is safe to read as "absent", because the registry
-      # answered and said the package is not there.
-      exists="no"
-      latest=""
+      # Nothing is published under this name. The registry ANSWERED, so this is
+      # a trustworthy observation — it is the one status that is safe to read as
+      # "absent". What it MEANS is the caller's business: a first release to
+      # `decide`, and the worst kind of drift to the monitor.
+      PROBE_EXISTS="no"
+      PROBE_LATEST=""
+      PROBE_VERSIONS=""
       ;;
     *)
-      printf 'reason=unreadable-packument\n'
-      log "could not read the $PACKAGE packument (http=$code) — refusing to guess whether $version exists"
+      PROBE_ERROR="could not read the $PACKAGE packument (http=$PROBE_HTTP)"
       return 2
       ;;
   esac
 
-  printf 'latest=%s\n' "$latest"
-  printf 'already_published=%s\n' "$exists"
+  return 0
+}
 
-  if [ "$exists" = "no" ]; then
+# ── decide <version> <event-name> ────────────────────────────────────────────
+# The PUBLISH policy over `probe`.
+decide() {
+  local version="$1" event="$2"
+
+  printf 'version=%s\n' "$version"
+
+  probe "$version"
+  local rc=$?
+
+  printf 'packument_http=%s\n' "$PROBE_HTTP"
+
+  if [ "$rc" -ne 0 ]; then
+    printf 'reason=unreadable-packument\n'
+    log "$PROBE_ERROR — refusing to guess whether $version exists"
+    return 2
+  fi
+
+  printf 'latest=%s\n' "$PROBE_LATEST"
+  printf 'already_published=%s\n' "$PROBE_EXISTS"
+
+  if [ "$PROBE_EXISTS" = "no" ]; then
     printf 'should_publish=true\n'
     return 0
   fi
@@ -174,6 +240,32 @@ decide() {
   # A merge to main. Most merges touch the package without bumping the version,
   # so this is the NORMAL case and it must not go red.
   printf 'should_publish=false\n'
+  return 0
+}
+
+# ── inspect <version> ────────────────────────────────────────────────────────
+# `probe` with no policy at all, for a caller that has its own. Same read, same
+# refusal to guess, same exit 2 — and the full version list, which `decide` has
+# no use for but the drift monitor prints in its alert.
+inspect() {
+  local version="$1"
+
+  printf 'version=%s\n' "$version"
+
+  probe "$version"
+  local rc=$?
+
+  printf 'packument_http=%s\n' "$PROBE_HTTP"
+
+  if [ "$rc" -ne 0 ]; then
+    printf 'reason=unreadable-packument\n'
+    log "$PROBE_ERROR"
+    return 2
+  fi
+
+  printf 'latest=%s\n' "$PROBE_LATEST"
+  printf 'already_published=%s\n' "$PROBE_EXISTS"
+  printf 'versions=%s\n' "$PROBE_VERSIONS"
   return 0
 }
 
@@ -258,11 +350,18 @@ main() {
       fi
       decide "$2" "$3"
       ;;
+    inspect)
+      if [ "$#" -ne 2 ]; then
+        log "usage: $0 inspect <version>"
+        return 64
+      fi
+      inspect "$2"
+      ;;
     self-check)
       self_check
       ;;
     *)
-      log "usage: $0 {decide <version> <event-name>|self-check}"
+      log "usage: $0 {decide <version> <event-name>|inspect <version>|self-check}"
       return 64
       ;;
   esac

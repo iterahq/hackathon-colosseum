@@ -17,8 +17,14 @@
  * real registry returns.
  *
  * THE INVARIANT THAT MATTERS MOST: an unreadable packument is a HARD ERROR on
- * both paths. It must never read as "free to publish", and it must never read
- * as "already there". Two of the cases below exist only to hold that line.
+ * EVERY path. It must never read as "free to publish", never as "already
+ * there", and never as "main and the registry agree". Most of the cases below
+ * exist only to hold that line.
+ *
+ * Since 2026-08-27 this matrix covers a third caller. `registry-drift.yml`, the
+ * daily alarm, used to fetch and parse the packument itself; it now reads
+ * through `inspect`, so the same 405 case that pins the publish guard pins the
+ * alarm too.
  */
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -176,6 +182,13 @@ describe("decide — an unreadable packument is a HARD ERROR on both paths", () 
     ["200 but the body is not JSON", { http: "200", body: "<html>502 Bad Gateway</html>" }],
     ["200 but there is no versions map", { http: "200", body: '{"name":"@iterahq/activities"}' }],
     ["200 but versions is an array, not an object", { http: "200", body: '{"versions":[]}' }],
+    // The two shapes below are why `registry-drift.yml` stopped parsing the
+    // packument itself. Its own reader called `Object.keys(m.versions || {})`,
+    // which answers for an array and for a string, hands back list indices as
+    // if they were version numbers, and — when `dist-tags.latest` happened to
+    // match the manifest — reported CLEAN. A malformed body read as AGREEMENT.
+    ["200, versions is a NON-EMPTY array", { http: "200", body: '{"dist-tags":{"latest":"1.0.0"},"versions":["1.0.0"]}' }],
+    ["200, versions is a string", { http: "200", body: '{"dist-tags":{"latest":"1.0.0"},"versions":"garbage"}' }],
   ];
 
   for (const [name, stub] of unreadable) {
@@ -188,7 +201,87 @@ describe("decide — an unreadable packument is a HARD ERROR on both paths", () 
         expect(r.kv.already_published).toBeUndefined();
       }
     });
+
+    it(`${name} -> inspect also exits 2, and says nothing about the registry`, () => {
+      // `inspect` is the drift monitor's only reader. If it ever answered here,
+      // the monitor would compare against a number nobody can vouch for.
+      const r = run(["inspect", "1.0.0"], stub);
+      expect(r.code, name).toBe(2);
+      expect(r.kv.reason).toBe("unreadable-packument");
+      expect(r.kv.latest).toBeUndefined();
+      expect(r.kv.already_published).toBeUndefined();
+      expect(r.kv.versions).toBeUndefined();
+      // The cause has to reach the caller, because the monitor quotes it in the
+      // issue it opens.
+      expect(r.err.trim().length).toBeGreaterThan(0);
+    });
   }
+});
+
+/**
+ * `inspect` — the observation with no policy attached.
+ *
+ * `.github/workflows/registry-drift.yml` used to fetch and parse the packument
+ * itself, 25 minutes after this script was extracted to stop exactly that. The
+ * monitor asks a different QUESTION ("is what the registry tags as latest the
+ * string main declares?") but it must not own a second ANSWER to "what does the
+ * registry hold". These cases pin the contract it now depends on.
+ *
+ * The monitor's own policy is deliberately NOT here: `inspect` reports a 404
+ * and an absent `dist-tags.latest` without an opinion, and the workflow turns
+ * the first into DRIFT and the second into BLIND.
+ */
+describe("inspect — the shared observation the drift monitor reads", () => {
+  it("reports latest, the full version list, and an exact existence answer", () => {
+    const r = run(["inspect", "1.0.0"], { http: "200", body: PUBLISHED });
+    expect(r.code).toBe(0);
+    expect(r.kv.packument_http).toBe("200");
+    expect(r.kv.latest).toBe("1.0.0");
+    expect(r.kv.already_published).toBe("yes");
+    expect(r.kv.versions).toBe("0.4.0,1.0.0");
+  });
+
+  it("still lists every version when the asked-about one is absent", () => {
+    const r = run(["inspect", "1.1.0"], { http: "200", body: PUBLISHED });
+    expect(r.code).toBe(0);
+    expect(r.kv.already_published).toBe("no");
+    expect(r.kv.versions).toBe("0.4.0,1.0.0");
+  });
+
+  it("matches EXACTLY — a prefix is not a published version", () => {
+    const r = run(["inspect", "1.0.0-rc.1"], { http: "200", body: PUBLISHED });
+    expect(r.kv.already_published).toBe("no");
+  });
+
+  it("reports a 404 as an answer, with no latest and no versions", () => {
+    // Trustworthy, and NOT the monitor's CLEAN: the workflow reads http=404 as
+    // the worst kind of drift, while the publish guard reads it as a first
+    // release. One observation, two policies.
+    const r = run(["inspect", "0.1.0"], { http: "404", body: '{"error":"Not found"}' });
+    expect(r.code).toBe(0);
+    expect(r.kv.packument_http).toBe("404");
+    expect(r.kv.latest).toBe("");
+    expect(r.kv.versions).toBe("");
+    expect(r.kv.already_published).toBe("no");
+  });
+
+  it("reports an absent dist-tags.latest as empty rather than inventing one", () => {
+    const r = run(["inspect", "1.0.0"], { http: "200", body: packument(["1.0.0"]) });
+    expect(r.code).toBe(0);
+    expect(r.kv.latest).toBe("");
+    expect(r.kv.already_published).toBe("yes");
+  });
+
+  it("reports an empty versions map as empty, which the monitor calls BLIND", () => {
+    // A packument that names a `latest` it does not list contradicts itself.
+    // The probe can READ it, so it returns 0; refusing to compare against it is
+    // the workflow's call, and the workflow makes it.
+    const r = run(["inspect", "1.0.0"], { http: "200", body: packument([], "1.0.0") });
+    expect(r.code).toBe(0);
+    expect(r.kv.latest).toBe("1.0.0");
+    expect(r.kv.versions).toBe("");
+    expect(r.kv.already_published).toBe("no");
+  });
 });
 
 describe("self-check — the step that runs live on every trigger", () => {
@@ -235,6 +328,8 @@ describe("self-check — the step that runs live on every trigger", () => {
 describe("usage", () => {
   it("refuses a call with the wrong number of arguments", () => {
     expect(run(["decide", "1.0.0"], { http: "200", body: PUBLISHED }).code).toBe(64);
+    expect(run(["inspect"], { http: "200", body: PUBLISHED }).code).toBe(64);
+    expect(run(["inspect", "1.0.0", "push"], { http: "200", body: PUBLISHED }).code).toBe(64);
     expect(run([], { http: "200", body: PUBLISHED }).code).toBe(64);
   });
 });
