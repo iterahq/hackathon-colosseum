@@ -246,13 +246,61 @@ export interface ActivityIdentity {
  * Tailwind build and the token values — this port only lets it scope and tune
  * them. A host with no Tailwind pipeline renders unstyled; that is the known
  * risk in the plan, and Fase D is where it gets tested rather than asserted.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHERE IT LANDS — `<ActivityRenderer>`, and only there
+ * ─────────────────────────────────────────────────────────────────────────────
+ * The three members below are read by `<ActivityRenderer>`, which puts them on
+ * ONE element it renders around the kind — the activity root, marked
+ * `data-activity-theme="true"`.
+ *
+ * ⚠️ Until 2026-08-27 this interface was DECLARED AND DEAD. It was documented
+ * here and in `CONTRACT.md`, `<ActivityProvider>` memoised it into the context,
+ * and no component read it — a host that passed one got silence rather than an
+ * error. If you are extending this type, add the reader in the same PR.
+ *
+ * THE ROOT EXISTS ONLY WHEN A THEME IS SUPPLIED. An unthemed render returns the
+ * kind untouched, with no extra element, so every host that passes no `theme`
+ * keeps byte-identical DOM. A themed host gains exactly one `<div>`.
+ *
+ * ⚠️ IT DOES NOT REACH A KIND MOUNTED DIRECTLY. The package also exports each
+ * kind (`<ConceptActivity>`, `<QuizActivity>`, …) for a host that lays out its
+ * own screen. Those are mounted BELOW the theme root only if the host goes
+ * through `<ActivityRenderer>`; a host that mounts a kind on its own scopes the
+ * theme itself. Applying it in every kind as well would put the same class and
+ * the same custom properties on the DOM twice for the common path, which is a
+ * worse trade than one documented limit.
+ *
+ * The package still ships NO CSS and NO Tailwind plugin. Wiring these three
+ * members changed where a value LANDS; it did not make this package own a
+ * design system. The token names are the host's, and so are their meanings.
  */
 export interface ActivityTheme {
-  /** Light/dark intent when the host is not already driving it via a class. */
+  /**
+   * Light/dark intent when the host is not already driving it via a class.
+   * Written as `data-appearance` on the activity root, and `'dark'` also adds
+   * the `dark` class (every known host runs Tailwind's class strategy).
+   *
+   * ⚠️ `'light'` CANNOT FORCE LIGHT. Tailwind's class strategy is additive: a
+   * package can add `dark` to a subtree, it cannot remove a `dark` an ancestor
+   * put on `<html>`. So `'light'` writes the attribute and adds no class — a
+   * host inside a dark document stays dark and now has an attribute to write
+   * its own rule against.
+   */
   appearance?: 'light' | 'dark';
   /** Extra class names on the activity root — the scoping seam. */
   className?: string;
-  /** CSS custom properties set on the activity root (token overrides). */
+  /**
+   * CSS custom properties set INLINE on the activity root, so they cascade to
+   * every descendant, beat a stylesheet declaration, and stay scoped to this
+   * activity instead of leaking to `:root`.
+   *
+   * A key that already starts with `--` is used verbatim; one that does not
+   * gets the prefix. That forgiveness is deliberate rather than clever: React
+   * reads a `style` key without `--` as a CSS PROPERTY name and drops an
+   * unknown one without a word, which is the same silent no-op this port spent
+   * its first year being.
+   */
   tokens?: Record<string, string>;
 }
 

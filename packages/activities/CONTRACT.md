@@ -65,7 +65,55 @@ is what replaces today's `iteraApiConfigured()` env read.
 | `identity` | `@/auth/AuthContext` | 3 | `authenticated` + `loading`. All three call sites read exactly `session?.access_token` and `loading`; nothing reads email, id, roles or tenant. |
 | `identity.artifactAudience` | `@/services/artifact.service#hasTenantAudience` | 1 | **Not in the plan's coupling table.** See findings. |
 | `storage` | `@/services/codeSnapshot.service` | 1 (via `useCodeSnack`) | **Not in the plan's coupling table.** See findings. |
-| `theme` | Tailwind + `@devfellowship/components` tokens | — | Scoping seam only. The package does not ship a theming engine; the design system is a **peerDependency**. |
+| `theme` | Tailwind + `@devfellowship/components` tokens | — | Scoping seam. `<ActivityRenderer>` applies all three members to the activity root — see *The `theme` port*. The package still ships **no CSS and no Tailwind plugin**; the design system is a **peerDependency**. |
+
+### The `theme` port
+
+`<ActivityRenderer>` reads `theme` off the host context and puts it on ONE
+element it renders around the kind — the **activity root**, marked
+`data-activity-theme="true"`:
+
+| Member | Where it lands |
+| --- | --- |
+| `className` | verbatim on the root, merged through `tailwind-merge` |
+| `tokens` | inline CSS custom properties on that same root |
+| `appearance` | `data-appearance`, plus the `dark` class when it is `'dark'` |
+
+```tsx
+<ActivityProvider i18n={i18n} theme={{ className: 'acme-activities', tokens: { '--radius': '2rem' } }}>
+  <ActivityRenderer activity={row} onComplete={save} />
+</ActivityProvider>
+```
+
+**The root exists only when a theme is supplied.** With no `theme`, the renderer
+returns the kind untouched and there is no extra element — so every host that
+does not use this keeps byte-identical DOM. A themed host gains exactly one
+`<div>`.
+
+⚠️ **This was declared and DEAD until 2026-08-27.** The interface was documented
+here and in `ports.ts`, `<ActivityProvider>` memoised it into the context value,
+and no component read it. A host that passed `theme={{ tokens: { … } }}` got
+silence — not an error, not a warning, not a changed pixel. It is wired now; the
+history is here because the failure mode (a documented port with no reader) is
+one this contract can grow again.
+
+Three honest limits, none of them accidental:
+
+1. **`appearance: 'light'` cannot force light.** Tailwind's class strategy is
+   additive — the package can add `dark` to a subtree, it cannot remove a `dark`
+   an ancestor put on `<html>`. `'light'` writes the attribute and adds no class.
+2. **It does not reach a kind mounted directly.** `<ConceptActivity>` and friends
+   are exported for a host that lays out its own screen; those get the theme only
+   when they are rendered through `<ActivityRenderer>`.
+3. **A token is a value, not a meaning.** The package emits nothing that reads an
+   `--ia-*` name yet, so today `tokens` reaches whatever the HOST's CSS already
+   consumes. Teaching the components to read tokens of their own is the next
+   step of `20260827-itera-activities-theming`, not this one.
+
+**Guard:** `src/test/activityThemePort.test.tsx` — each member reaches the DOM,
+and a **negative control** asserts that with no `theme` the class is absent, no
+custom property is set and no `data-appearance` exists. Without that control the
+suite would pass against a component that applies nothing at all.
 
 ### Why the ports take no token
 

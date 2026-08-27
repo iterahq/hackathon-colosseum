@@ -45,10 +45,12 @@
  * neither renders a visible, inert placeholder and emits `port.unavailable`
  * rather than throwing (ADR-3: degrade explicitly).
  */
-import { useEffect, useRef } from 'react';
-import type { ComponentType } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import type { ActivityKind } from '@iterahq/activity-spec';
 import { useActivityEmitter, useActivityHost } from './context.js';
+import { cn } from './internal/cn.js';
+import type { ActivityTheme } from './ports.js';
 import type { ActivityRendererProps } from './renderer.js';
 import { ConceptActivity } from './kinds/ConceptActivity.js';
 import { ConceptRevealActivity } from './kinds/ConceptRevealActivity.js';
@@ -122,7 +124,7 @@ export function isBuiltInActivityKind(kind: string): kind is BuiltInActivityKind
 
 export function ActivityRenderer(props: ActivityRendererProps) {
   const { activity, onComplete, onEvent } = props;
-  const { renderers } = useActivityHost();
+  const { renderers, theme } = useActivityHost();
   const emit = useActivityEmitter(activity.id, activity.kind, onEvent);
 
   // `activity.viewed` fires once per activity id, not once per render. The ref
@@ -141,17 +143,125 @@ export function ActivityRenderer(props: ActivityRendererProps) {
     (isBuiltInActivityKind(activity.kind) ? BUILT_INS[activity.kind] : undefined);
 
   if (!Kind) {
-    return <UnsupportedKind kind={activity.kind} activityId={activity.id} onEvent={onEvent} />;
+    return (
+      <ActivityThemeScope theme={theme}>
+        <UnsupportedKind kind={activity.kind} activityId={activity.id} onEvent={onEvent} />
+      </ActivityThemeScope>
+    );
   }
 
   return (
-    <Kind
-      {...props}
-      onComplete={(correct, detail) => {
-        emit('activity.completed', { correct, ...(detail?.response ? { response: true } : {}) });
-        onComplete(correct, detail);
-      }}
-    />
+    <ActivityThemeScope theme={theme}>
+      <Kind
+        {...props}
+        onComplete={(correct, detail) => {
+          emit('activity.completed', { correct, ...(detail?.response ? { response: true } : {}) });
+          onComplete(correct, detail);
+        }}
+      />
+    </ActivityThemeScope>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * THE THEME PORT, APPLIED
+ *
+ * `ActivityTheme` was declared in `ports.ts` and documented in `CONTRACT.md`
+ * from Fase A onwards, and until now NOTHING READ IT. `<ActivityProvider>`
+ * memoised `host.theme` into the context value and the value died there: a
+ * grep for `theme.tokens` / `theme.className` / `theme.appearance` reached no
+ * DOM node. A host that passed `theme={{ tokens: { … } }}` got silence — not an
+ * error, not a warning, not a changed pixel. This is where the declaration
+ * becomes true.
+ *
+ * ── WHY HERE, AND NOT IN `<ActivityProvider>` ──────────────────────────────
+ * The provider renders no DOM at all today, and it is mounted at the ROOT of a
+ * host's tree — `IteraActivityHost` wraps the whole Itera Player, `.storybook/
+ * preview.tsx` wraps every story. Putting a box there would wrap the host's
+ * entire application in an element it did not ask for, and `className` would
+ * then scope the app rather than the activity. `<ActivityRenderer>` is the one
+ * place that is per-activity and is DOM, so "the activity root" is a thing that
+ * exists here and nowhere else.
+ *
+ * ── WHY THERE IS NO ELEMENT WHEN THERE IS NO THEME ─────────────────────────
+ * An unthemed render returns the kind untouched, with no wrapper. That is not a
+ * micro-optimisation, it is the compatibility guarantee: every host that exists
+ * today passes no `theme`, so every host that exists today gets byte-identical
+ * DOM. An unconditional wrapper would insert a block-level box between the
+ * host's layout container and the activity, and in a flex or grid parent that
+ * changes the render for people who never asked for theming.
+ *
+ * The cost is honest and small: a themed host gains one element. It is stated
+ * in `CONTRACT.md` rather than hidden.
+ *
+ * ── THE THREE MEMBERS, AND WHAT EACH ONE HONESTLY DOES ─────────────────────
+ *  · `className` — put verbatim on the root, merged through `cn`. The scoping
+ *    seam: `.acme-activities .rounded-3xl { … }` now has something to bind to.
+ *  · `tokens`    — written as INLINE CSS custom properties, so they cascade to
+ *    every descendant, beat a stylesheet declaration, and stay scoped to this
+ *    activity instead of leaking to `:root`.
+ *  · `appearance`— `data-appearance`, plus the `dark` class when it is `'dark'`,
+ *    because the app and every known host run Tailwind with
+ *    `darkMode: ["class"]`.
+ *
+ * ⚠️ `appearance: 'light'` CANNOT FORCE LIGHT, and saying so is the point.
+ * Tailwind's class strategy is additive: a package can add `dark` to a subtree,
+ * it cannot remove a `dark` that an ancestor put on `<html>`. So `'light'`
+ * writes `data-appearance="light"` and adds no class — a host inside a dark
+ * document stays dark, and it now has an attribute to write its own rule
+ * against. Claiming more would be a lie a host only discovers on screen.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Normalise a token key to a CSS custom-property name.
+ *
+ * A key that already starts with `--` is passed through untouched. One that
+ * does not gets the prefix, and that forgiveness is deliberate: React treats a
+ * `style` key without `--` as a CSS PROPERTY name, so `{ radius: '2rem' }`
+ * would be dropped without a word — the exact silent-no-op failure this whole
+ * change exists to remove. Forgiving in one direction only; a correct key is
+ * never rewritten.
+ */
+function tokenPropertyName(key: string): string {
+  return key.startsWith('--') ? key : `--${key}`;
+}
+
+/** `true` when the host asked for anything at all. Decides whether a box exists. */
+function themeIsActive(theme?: ActivityTheme): boolean {
+  if (!theme) return false;
+  return Boolean(
+    theme.className || theme.appearance || (theme.tokens && Object.keys(theme.tokens).length > 0),
+  );
+}
+
+/**
+ * The activity root — present only when the host supplied a theme.
+ *
+ * `data-activity-theme` is here so a host's own e2e can address the box it
+ * asked for, the same way `UnsupportedKind` carries `data-unsupported-kind`.
+ */
+function ActivityThemeScope({ theme, children }: { theme?: ActivityTheme; children: ReactNode }) {
+  const style = useMemo<CSSProperties | undefined>(() => {
+    const tokens = theme?.tokens;
+    if (!tokens) return undefined;
+    const entries = Object.entries(tokens);
+    if (entries.length === 0) return undefined;
+    return Object.fromEntries(
+      entries.map(([key, value]) => [tokenPropertyName(key), value]),
+    ) as CSSProperties;
+  }, [theme?.tokens]);
+
+  if (!themeIsActive(theme)) return <>{children}</>;
+
+  return (
+    <div
+      className={cn(theme?.appearance === 'dark' && 'dark', theme?.className) || undefined}
+      style={style}
+      data-activity-theme="true"
+      data-appearance={theme?.appearance}
+    >
+      {children}
+    </div>
   );
 }
 

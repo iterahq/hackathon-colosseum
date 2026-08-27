@@ -78,9 +78,23 @@ describe('interação real — todo `play` de story roda no CI (T1)', () => {
 
   it('as stories `browser-mode` existem e ficam de fora daqui, não silenciosamente perdidas', () => {
     expect(BROWSER_ONLY.length).toBeGreaterThan(0);
-    // Só os dois kinds que o ADR-8 nomeia podem carregar a tag.
+    // A tag é CARA: cada arquivo aqui sobe um Chromium no `browser-mode`, que é
+    // o job cujo orçamento o ADR-9 mede. Por isso a lista é fechada e explícita.
+    //
+    // Os dois primeiros são os kinds que o ADR-8 nomeia. O terceiro,
+    // `ActivityStyleFreeze`, entrou em 2026-08-27 e NÃO é um kind — é o
+    // congelamento de estilo da Fase 0 do plano
+    // `20260827-itera-activities-theming`. Ele carrega a tag pelo mesmo motivo
+    // que o ADR-8 dá, e não por um novo: jsdom não tem cascata nem layout, então
+    // `getComputedStyle(el).borderRadius` lá responde string vazia para uma
+    // classe do Tailwind. Rodá-lo aqui não seria uma cobertura mais fraca — seria
+    // um teste verde que não mede nada, que é pior do que não tê-lo.
     const files = new Set(BROWSER_ONLY.map((s) => s.file));
-    expect([...files].filter((f) => !/MatchActivity|CodeSnackActivity/.test(f))).toEqual([]);
+    expect(
+      [...files].filter(
+        (f) => !/MatchActivity|CodeSnackActivity|ActivityStyleFreeze/.test(f),
+      ),
+    ).toEqual([]);
   });
 
   it.each(WITH_PLAY.map((s) => [s.id, s] as const))(
