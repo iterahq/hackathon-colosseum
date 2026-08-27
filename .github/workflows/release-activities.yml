@@ -72,6 +72,11 @@ on:
     paths:
       - 'packages/activities/**'
       - '.github/workflows/release-activities.yml'
+      # The guard's own code. A change here must run the `self-check` below on
+      # the merge that made it, or the self-check proves nothing about the
+      # version it just changed. PR #436 edited the script and this workflow
+      # never fired.
+      - 'scripts/release-activities/**'
 
 permissions:
   contents: read
