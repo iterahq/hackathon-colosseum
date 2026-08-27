@@ -1,6 +1,6 @@
 {
   "name": "@iterahq/activities",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Portable Itera activity renderers — render an activity outside the Itera Player.",
   "license": "UNLICENSED",
   "type": "module",

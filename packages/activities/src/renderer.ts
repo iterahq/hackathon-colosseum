@@ -15,6 +15,7 @@
  *       onComplete={(correct, detail) => …}
  *       onEvent={(event) => …}
  *       reveal={false}
+ *       priorAnswer={savedDetail}
  *     />
  *   </ActivityProvider>
  */
@@ -162,6 +163,45 @@ export interface ActivityRendererProps {
    * decides what "revealed" looks like for its kind.
    */
   reveal?: boolean;
+  /**
+   * The learner's OWN PRIOR ANSWER, replayed — the completion this very
+   * activity handed up in an earlier session, handed back down.
+   *
+   * ── What problem it solves ────────────────────────────────────────────────
+   * `activity.status === 'done'` says the learner finished. It never said WHAT
+   * they answered, so a `done` render drew a FRESH activity that was merely
+   * greyed out: no option marked, no verdict, "Enviar" still sitting there. The
+   * learner saw no trace of their own work, and the pedagogically valuable half
+   * — WHICH answer they got wrong — was lost. Pass `priorAnswer` and the render
+   * settles into the state it reached right after they submitted.
+   *
+   * ── Why it is not a state override, and not a test seam ───────────────────
+   * The type is `ActivityCompletion`: literally the `detail` argument of
+   * `onComplete(correct, detail)`. The contract is symmetric — the answer goes
+   * UP through `onComplete`, and the host hands that same value back DOWN.
+   *
+   * The VERDICT is deliberately absent from that type and stays absent. A host
+   * replays WHAT THE LEARNER PICKED (the `actions` trace's terminal
+   * `answer_submitted`, which carries the authored ids); the kind re-grades it
+   * with the identical expression a live submit uses. "Pretend it is correct"
+   * cannot be expressed, and an id the spec does not declare restores nothing.
+   * Plan `20260728-itera-activity-testing`, ADR-4 — the reasoning in full lives
+   * in `./internal/priorAnswer.ts`.
+   *
+   * ── What it does NOT do ───────────────────────────────────────────────────
+   * It never grades an unfinished activity. The verdict is gated on
+   * `status === 'done'`, so replaying onto a `todo` row seeds the inputs and
+   * nothing more — the learner can still answer. It never emits: a restored
+   * render calls no `onComplete` and records no action, because nobody did
+   * anything.
+   *
+   * ── Which kinds read it ───────────────────────────────────────────────────
+   * `single_choice`, `multi_choice`, `order`, `match`. The kinds that never
+   * grade (`concept`, `concept_reveal`, `video`, `diagram`) have no answer
+   * state to seed and ignore it. `quiz` ignores it too, on purpose — see
+   * CONTRACT.md.
+   */
+  priorAnswer?: ActivityCompletion;
   /**
    * Live class vs. self-paced. Read today by `concept` (stepped instruction
    * panel) and `code` (the "seguir mesmo assim" skip after a failed practical).

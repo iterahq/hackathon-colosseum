@@ -19,6 +19,11 @@
  *
  * NO story-only seams (ADR-4): the paired/correct/incorrect states are reached
  * by tapping left card then right card, from the story's own `play`.
+ * `priorAnswer` replays the PAIRING this activity handed up earlier — each side
+ * checked against its own column, each card used at most once, so only a
+ * pairing the tap interaction can produce is accepted — and every badge is then
+ * re-derived by the same `isPairCorrect` a live submit runs
+ * (see `../internal/priorAnswer.ts`).
  */
 import { useState } from 'react';
 import { Check, Link2, X } from 'lucide-react';
@@ -31,6 +36,7 @@ import {
   type ArrangementAction,
 } from '../internal/actionRecorder.js';
 import { answerMachine } from '../internal/answerMachine.js';
+import { priorPairs } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
@@ -98,10 +104,12 @@ export function MatchActivity({
   activity,
   onComplete,
   reveal = false,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
@@ -116,7 +124,18 @@ export function MatchActivity({
   const [right] = useState(() => learnerShuffle(spec?.right ?? [], scope, activity.id, 'right'));
   const pairs = spec?.pairs ?? [];
 
-  const [made, setMade] = useState<MadePair[]>([]);
+  // The learner's own earlier pairing, replayed — in CREATION order, because
+  // that is what numbers the badges, and the trace stored it that way.
+  // Validated against the two authored columns (../internal/priorAnswer.ts).
+  const [restoredPairs] = useState<MadePair[] | null>(
+    () =>
+      priorPairs(
+        priorAnswer,
+        (spec?.left ?? []).map((o) => o.id),
+        (spec?.right ?? []).map((o) => o.id),
+      ) ?? null,
+  );
+  const [made, setMade] = useState<MadePair[]>(restoredPairs ?? []);
   const [armedLeft, setArmedLeft] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
@@ -131,6 +150,7 @@ export function MatchActivity({
     done: activity.status === 'done',
     submitted,
     reveal,
+    restored: restoredPairs !== null,
     correct: isMatchCorrect,
     hasAnswer: canSubmit,
   });

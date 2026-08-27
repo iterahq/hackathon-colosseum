@@ -5,7 +5,11 @@
  * InstructionPanel + `onComplete(correct)`.
  *
  * NO story-only seams (ADR-4): answered/correct/incorrect are reached by moving
- * items with the up/down controls, from the story's own `play`.
+ * items with the up/down controls, from the story's own `play`. `priorAnswer`
+ * replays the SEQUENCE this activity handed up earlier — only ever a real
+ * permutation of the authored items — and the position colors are re-derived
+ * from it exactly as they are after a live submit
+ * (see `../internal/priorAnswer.ts`).
  *
  * Three properties this kind is easy to get wrong, all fixed together:
  *   • the initial arrangement is per-learner but NEVER the solution — otherwise
@@ -26,6 +30,7 @@ import {
   type ArrangementAction,
 } from '../internal/actionRecorder.js';
 import { answerMachine } from '../internal/answerMachine.js';
+import { priorOrder } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
@@ -35,10 +40,12 @@ export function OrderActivity({
   activity,
   onComplete,
   reveal = false,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
@@ -53,15 +60,27 @@ export function OrderActivity({
   // between learners) that is GUARANTEED not to already be `correct_order` —
   // otherwise the shuffle can hand out a free acerto. See
   // ../internal/shuffle.ts.
-  const [order, setOrder] = useState<string[]>(() =>
-    learnerShuffleAvoidingSolution(items.map((i) => i.id), scope, activity.id, correctOrder),
+  // The learner's own earlier arrangement, replayed. Accepted only as a real
+  // PERMUTATION of the authored items (../internal/priorAnswer.ts): a sequence
+  // missing an item is not a screen this kind can draw.
+  const [restoredOrder] = useState<string[] | null>(
+    () => priorOrder(priorAnswer, items.map((i) => i.id)) ?? null,
+  );
+  const [order, setOrder] = useState<string[]>(
+    () =>
+      restoredOrder ??
+      learnerShuffleAvoidingSolution(items.map((i) => i.id), scope, activity.id, correctOrder),
   );
   const [submitted, setSubmitted] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   // The list is pre-populated by the shuffle, so "there is a sequence on screen"
   // is NOT evidence the learner composed one. Submitting requires having moved
   // at least one item — the same bar every other graded kind already sets.
-  const [touched, setTouched] = useState(false);
+  //
+  // A REPLAYED sequence starts `touched`, and that is not a shortcut past the
+  // bar: it is the record that the learner already cleared it, in the session
+  // where they moved the items and pressed Enviar.
+  const [touched, setTouched] = useState(restoredOrder !== null);
 
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
@@ -70,6 +89,7 @@ export function OrderActivity({
     done: activity.status === 'done',
     submitted,
     reveal,
+    restored: restoredOrder !== null,
     correct: isOrderCorrect,
     hasAnswer: touched,
   });

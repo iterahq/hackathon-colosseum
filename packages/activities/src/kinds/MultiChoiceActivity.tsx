@@ -5,7 +5,9 @@
  * `onComplete(correct)` contract.
  *
  * NO story-only seams (ADR-4): answered/correct/incorrect are reached by
- * clicking, from the story's own `play`.
+ * clicking, from the story's own `play`. `priorAnswer` replays the SET this
+ * activity handed up earlier and re-grades it with the same `sameSet` below —
+ * see `../internal/priorAnswer.ts` for why that is not a seam.
  */
 import { useState } from 'react';
 import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
@@ -18,6 +20,7 @@ import {
   type SelectionAction,
 } from '../internal/actionRecorder.js';
 import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
+import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
@@ -47,10 +50,12 @@ export function MultiChoiceActivity({
   activity,
   onComplete,
   reveal = false,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
@@ -61,7 +66,14 @@ export function MultiChoiceActivity({
   // different between learners (../internal/shuffle.ts).
   const [options] = useState(() => learnerShuffle(spec?.options ?? [], scope, activity.id));
   const correctIds = spec?.correct_option_ids ?? [];
-  const [selected, setSelected] = useState<string[]>([]);
+  // The learner's own earlier set, replayed — in the order they clicked it,
+  // which is the order `answer_submitted` recorded and the order the artifact
+  // is built from. Validated against the AUTHORED ids
+  // (../internal/priorAnswer.ts); `null` when there is nothing to replay.
+  const [restoredSelection] = useState<string[] | null>(
+    () => priorOptionIds(priorAnswer, (spec?.options ?? []).map((o) => o.id)) ?? null,
+  );
+  const [selected, setSelected] = useState<string[]>(restoredSelection ?? []);
   const [submitted, setSubmitted] = useState(false);
   // Grading is the KIND's job; when the verdict may reach the screen is the
   // machine's (../internal/answerMachine.ts — one definition, six call sites).
@@ -70,6 +82,7 @@ export function MultiChoiceActivity({
     done: activity.status === 'done',
     submitted,
     reveal,
+    restored: restoredSelection !== null,
     correct: isCorrect,
     hasAnswer: selected.length > 0,
   });

@@ -8,6 +8,12 @@
  * CLICKING — in Storybook (`play`) and in Vitest (portable stories), from the
  * same story definition. Plan `20260728-itera-activity-testing`, ADR-4: a state
  * reachable by a prop but not by a real user is a false green.
+ *
+ * `priorAnswer` does not break that rule and is not an exception to it. It
+ * replays the option THIS activity handed up in an earlier session, and the
+ * verdict is then re-derived by the same `selected === correct_option_id` below
+ * that a live click produces — so every state it can reach is a state a learner
+ * really produced. The full argument is in `../internal/priorAnswer.ts`.
  */
 import { useState } from 'react';
 import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
@@ -20,6 +26,7 @@ import {
   type SelectionAction,
 } from '../internal/actionRecorder.js';
 import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
+import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
@@ -48,10 +55,12 @@ export function SingleChoiceActivity({
   activity,
   onComplete,
   reveal = false,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
@@ -61,7 +70,18 @@ export function SingleChoiceActivity({
   // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
   // different between learners (../internal/shuffle.ts).
   const [options] = useState(() => learnerShuffle(spec?.options ?? [], scope, activity.id));
-  const [selected, setSelected] = useState<string | null>(null);
+  // The learner's own earlier pick, replayed. Read ONCE, against the AUTHORED
+  // ids — an option the spec does not declare restores nothing
+  // (../internal/priorAnswer.ts). `null` when there is nothing to replay, which
+  // is the exact state a fresh mount had before this existed.
+  const [restoredSelection] = useState<string | null>(() => {
+    const ids = priorOptionIds(priorAnswer, (spec?.options ?? []).map((o) => o.id));
+    // EXACTLY one. This kind submits exactly one id, so a payload with two is
+    // some other kind's trace — and quietly taking the first would show a pick
+    // the learner never made on this screen.
+    return ids && ids.length === 1 ? ids[0] : null;
+  });
+  const [selected, setSelected] = useState<string | null>(restoredSelection);
   const [submitted, setSubmitted] = useState(false);
   // The `selection` family's action sequence (sub-plan 1, Fase A). Ref-backed:
   // recording an option change must not re-render the option grid.
@@ -73,6 +93,10 @@ export function SingleChoiceActivity({
     done: activity.status === 'done',
     submitted,
     reveal,
+    // A replayed pick makes the earlier answer KNOWN, which is the one thing a
+    // `done` render was missing. The machine still refuses to grade unless the
+    // activity is `done`, so this cannot settle a fresh one.
+    restored: restoredSelection !== null,
     correct: isCorrect,
     hasAnswer: selected !== null,
   });

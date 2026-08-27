@@ -137,6 +137,7 @@ The whole of it:
     onComplete={(correct) => …}
     onEvent={(event) => …}         // telemetry (ADR-4)
     reveal={false}
+    priorAnswer={savedDetail}      // replay a completed activity — see below
   />
 </ActivityProvider>
 ```
@@ -164,6 +165,42 @@ cannot copy *"it's the third one"*. Omit `userId` and every learner in your app
 falls back to one per-browser anonymous scope: each still sees a stable order,
 nothing errors, and the pedagogical property is simply gone. Pass an opaque,
 stable per-learner id.
+
+### Showing a COMPLETED activity as the learner left it
+
+Pass `activity.status = 'done'` on its own and the activity renders fresh and
+merely greyed: no option marked, no verdict, "Enviar" still on screen. That is
+deliberate — the render does not know which answer the learner gave, and
+guessing would colour the button at random.
+
+Give it that answer and it settles into the state the learner left it in:
+
+```tsx
+// 1. When the learner answers, keep the DETAIL — not just `correct`.
+<ActivityRenderer activity={row} onComplete={(correct, detail) => save(row.id, detail)} />
+
+// 2. On any later render of that same row, hand it back.
+<ActivityRenderer activity={{ ...row, status: 'done' }} priorAnswer={load(row.id)} … />
+```
+
+`priorAnswer` is typed as `ActivityCompletion` — literally the `detail` your
+`onComplete` received. Persist the whole object: `response` is a human-readable
+summary built from labels and cannot be keyed back to an option, so a host that
+saves only `response` cannot replay. The machine-readable answer lives in
+`actions`.
+
+Supported by `single_choice`, `multi_choice`, `order` and `match`. Kinds that
+never grade ignore it. `quiz`, `code`, the sandboxes and BYOC do not restore
+yet — see `CONTRACT.md` for the reason in each case.
+
+Three things it deliberately will not do:
+
+- **It carries no verdict.** You replay what the learner PICKED; the kind
+  re-grades it. There is no field to assert "this was correct" in.
+- **It never settles an unfinished activity.** Replay onto a `todo` or
+  `in_progress` row and the inputs are seeded, but nothing is graded or locked —
+  the learner can still answer.
+- **It never fires `onComplete`.** A replay is a render, not an event.
 
 ## Consuming the `/code` entrypoint
 

@@ -47,6 +47,7 @@ module and adds nothing to any bundle. That is asserted, not promised:
     onEvent={(event) => …}                 // NEW — telemetry (ADR-4)
     reveal={false}
     live={false}
+    priorAnswer={savedDetail}              // 1.1.0 — the INVERSE of onComplete
   />
 </ActivityProvider>
 ```
@@ -112,6 +113,68 @@ Three rules keep the hardening additive:
 
 Anything that cannot be done that way is a MAJOR of the package, and it trades
 away the ADR-4 promise — say so explicitly in that PR.
+
+## Replaying a learner's prior answer (`priorAnswer`, 1.1.0)
+
+`activity.status === 'done'` says the learner finished. Until 1.1.0 it never
+said WHAT they answered, so a `done` render drew a FRESH activity that was
+merely greyed out: no option marked, no verdict, "Enviar" still on screen. A
+host that lists past activities in a transcript showed no trace of the learner's
+own work — and lost the half that teaches most, which answer they got wrong.
+
+`answerMachine` was right to refuse that render a verdict. Its own comment named
+the missing input: *"on a merely-`done` render the learner's real answer is
+unknown, and coloring the button green would be a lie."* `priorAnswer` supplies
+it.
+
+```tsx
+// UP, at the end of the session the learner answered in:
+onComplete={(correct, detail) => persist(activity.id, detail)}
+
+// DOWN, on every later render of that same row:
+<ActivityRenderer activity={doneRow} priorAnswer={loadPersisted(doneRow.id)} … />
+```
+
+### Why this is not the story seam ADR-4 forbids
+
+Plan `20260728-itera-activity-testing`, ADR-4 says *a state reachable by a prop
+but not by a real user is a false green*. That rule is intact, and the reasons
+are structural rather than a matter of naming:
+
+| The rule asks | The answer |
+| --- | --- |
+| Is this a new state descriptor? | No. The prop's type **is** `ActivityCompletion` — the second argument of `onComplete`. The contract became symmetric; no new vocabulary was invented. |
+| Can a host assert a VERDICT? | No. `ActivityCompletion` has no `correct` field and does not gain one. A host replays the SELECTION; the kind re-grades it with the identical expression a live submit uses. "Pretend this is correct" is not expressible. |
+| Can it conjure a state nobody produced? | No. Each kind validates the replayed ids against its own authored spec, and rejects shapes the interaction cannot make — a duplicate pick, a partial `order`, a card paired twice. An unknown id drops the whole payload. |
+| Can it settle a fresh activity? | No. `answerMachine` gates the verdict on `done && restored`. Replaying onto a `todo` row seeds the inputs and stops — the learner can still answer. |
+| Did the old states get easier to reach? | No. Every interaction test still CLICKS. `src/test/activityPriorAnswerRestore.test.tsx` reaches each state **both** ways in the same file and asserts the two DOMs are equal, which is ADR-4's own test performed rather than argued. |
+
+The honest limit, written down: a host CAN replay a selection that happens to be
+correct and get the green render. That is not a false green — it is exactly the
+screen a learner who picked that option produces. What ADR-4 forbids is a state
+with no such learner, and no payload can express one.
+
+### Per-kind support
+
+| Kind | Restores | Payload it reads (from `actions`' terminal `answer_submitted`) |
+| --- | --- | --- |
+| `single_choice` | ✅ | `option_ids: [id]` |
+| `multi_choice` | ✅ | `option_ids: [id, …]`, in click order |
+| `order` | ✅ | `order: [id, …]` — accepted only as a full permutation of the items |
+| `match` | ✅ | `pairs: [[left, right], …]` — creation order, which is what numbers the badges |
+| `concept` · `concept_reveal` · `video` · `diagram` | n/a | They never grade. There is no answer state to seed, and the prop reaches them harmlessly — asserted, not assumed. |
+| `quiz` | ❌ **on purpose** | Its options stay CLICKABLE on a `done` render (`disabled={submitted \|\| reveal}`, deliberately without `done` — see the component). A verdict on a screen the learner can still re-pick would recolour under them, which is a worse render than the one this change fixes. Restoring `quiz` needs that interaction decision revisited first; it is a follow-up, not an oversight. |
+| `code` · the sandboxes · BYOC | ❌ not yet | Multi-turn or draft-backed. They do not settle on one `answer_submitted`, so the same seam does not fit them unchanged. |
+
+⚠️ **The trace, not `response`.** `ActivityCompletion.response` is a
+human-readable summary built from authored LABELS — localized and editable, so
+it can never be keyed back to an option. The `actions` trace carries the
+AUTHORED IDS the kind grades on, which is why the readers in
+`src/internal/priorAnswer.ts` go through it. A host that persists only
+`response` cannot replay; persist the whole `detail`.
+
+⚠️ **A replay is not an event.** A restored render calls no `onComplete` and
+records no action. Nobody did anything.
 
 ## Registry
 
@@ -222,13 +285,13 @@ first argument must be `boolean`.
 | --- | --- | --- | --- |
 | `concept` | ✅ | `i18n` | Reads `live` (stepped instruction panel). |
 | `video` | ✅ | `i18n` | — |
-| `single_choice` | ✅ | `i18n` | — |
-| `multi_choice` | ✅ | `i18n` | — |
-| `match` | ✅ | `i18n` | — |
-| `order` | ✅ | `i18n` | — |
+| `single_choice` | ✅ | `i18n` | Restores a prior answer (1.1.0). |
+| `multi_choice` | ✅ | `i18n` | Restores a prior answer (1.1.0). |
+| `match` | ✅ | `i18n` | Restores a prior answer (1.1.0). |
+| `order` | ✅ | `i18n` | Restores a prior answer (1.1.0). |
 | `document` | ✅ | `i18n`; optionally `api.listSeeds`/`generateContext`/`judge` + `identity` | **THREE** paths, not two: read-only · reflection · AI-judge. Extracted in Fase D. The AI-judge path is selected by `Boolean(api?.judge)` — absence degrades to reflection, so a judge-less host still shows a working activity. Also mounts `ArtifactVisibilityNotice` → see finding 1, now closed. |
 | `diagram` | ✅ | `i18n` | Extracted in Fase D. ⚠️ Its image field is `imageUrl` (camelCase), unlike the InstructionPanel's `image_url` — both spellings are live in production and neither is a typo. |
-| `quiz` | ✅ | `i18n` | Extracted in Fase D. The one kind whose trace keys on the option INDEX — its options carry no required id, and it is also the one kind that does not shuffle, so the index IS the authored position. A quiz that ever starts shuffling must grow authored ids in the same change. |
+| `quiz` | ✅ | `i18n` | Extracted in Fase D. **Does NOT restore a prior answer** — its options stay clickable on a `done` render, so a replayed verdict would recolour under the learner. See the `priorAnswer` section. The one kind whose trace keys on the option INDEX — its options carry no required id, and it is also the one kind that does not shuffle, so the index IS the authored position. A quiz that ever starts shuffling must grow authored ids in the same change. |
 | `chat_sandbox` · `terminal_sandbox` (self-paced) | ✅ | `i18n` | Judging is `@iterahq/activity-spec/runtime` — pure, no backend. |
 | `chat_sandbox` (live/BYOC) | ✅ | `i18n`, `api.respond`/`judge`, `identity` | Reached via `LiveActivityRenderer`, not `ActivityRenderer` → see finding 3. |
 | `code` | ✅ | `i18n`, **`storage`**, optionally `codeEditor` | Behind the `/code` entrypoint (ADR-5). Monaco is NOT in the package — the editor is a port, and without one the kind draws a plain textarea → see findings 2 and 6. |

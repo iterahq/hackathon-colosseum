@@ -26,6 +26,27 @@
  * only kind that does not shuffle: the index IS the authored position. A quiz
  * that ever starts shuffling must grow authored ids in the same change, or
  * every recorded action silently starts pointing at a different option.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * WHY IT DOES NOT RESTORE A PRIOR ANSWER
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `single_choice`, `multi_choice`, `order` and `match` read
+ * `ActivityRendererProps.priorAnswer` and render a `done` activity as the
+ * learner left it. This kind grades too, so it looks like the fifth. It is
+ * excluded ON PURPOSE, for a reason that lives four lines below: its option
+ * buttons are `disabled={submitted || reveal}` — deliberately WITHOUT `done`,
+ * because the quiz has always left them clickable on a completed render.
+ *
+ * Restore a verdict onto a screen the learner can still re-pick and the colours
+ * move under them as they click: they would be able to "fix" a wrong past
+ * answer and watch it turn green. That is a worse render than the greyed-fresh
+ * one the replay exists to fix.
+ *
+ * So the order of operations is: decide whether a `done` quiz should lock its
+ * options FIRST — that is a behaviour change with its own consumers — and only
+ * then wire the replay. Asserted meanwhile in
+ * `src/test/activityPriorAnswerRestore.test.tsx`, so this stays a decision
+ * rather than decaying into an oversight.
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';

@@ -5,7 +5,22 @@
  * what does the submit affordance look like.
  *
  * Pure, so the whole state matrix can be unit-tested without rendering — and
- * exhaustively, since the input space is five booleans (32 combinations).
+ * exhaustively, since the input space is six booleans (64 combinations).
+ *
+ * ── The sixth input: `restored` ─────────────────────────────────────────────
+ * `done` alone says "the learner finished this in an EARLIER session". It never
+ * said WHAT they answered, so the machine refused to grade that render — see
+ * `gradeResult`. A host that persists the learner's answer can now hand it back
+ * (`<ActivityRenderer priorAnswer={…}>`), the kind seeds its own inputs from it,
+ * and the kind reports `restored: true`. Only then does a `done` render carry a
+ * verdict.
+ *
+ * ⚠️ `restored` is NOT a licence to grade. It is gated on `done` INSIDE the
+ * machine, so a fresh (`todo`) activity cannot be jumped to the answered state
+ * by handing it a payload — plan `20260728-itera-activity-testing`, ADR-4.
+ * With `restored` omitted every output is bit-identical to what it was before
+ * this input existed, which `answerMachine.test.ts` asserts over the whole
+ * matrix.
  *
  * ── Why this exists ──────────────────────────────────────────────────────────
  * This tuple used to be hand-copied in SIX places, character for character:
@@ -48,6 +63,19 @@ export interface AnswerMachineInput {
    */
   correct: boolean;
   /**
+   * The learner's PRIOR answer was replayed into this render's inputs.
+   *
+   * The kind sets this to `true` only when it actually seeded its own answer
+   * state from `ActivityRendererProps.priorAnswer` — that is, when the payload
+   * carried a real `answer_submitted` action whose selection the kind could
+   * resolve against its own spec. A payload with no selection, or with ids the
+   * spec does not know, leaves this `false` and the render stays exactly what
+   * it is today.
+   *
+   * Kinds that cannot restore simply omit it.
+   */
+  restored?: boolean;
+  /**
    * The kind-specific "there is an answer worth submitting" precondition:
    * `selected !== null` (single/quiz), `selected.length > 0` (multi),
    * `touched` (order — the list arrives pre-populated by the shuffle, so
@@ -86,40 +114,57 @@ export interface AnswerMachineState {
   submitDisabled: boolean;
   /**
    * The `correct` prop of `<SubmitButton>` — the graded color. `undefined`
-   * until ACTUALLY submitted this session: on a merely-`done` or merely-
-   * `reveal`ed render the learner's real answer is unknown, and coloring the
-   * button green would be a lie.
+   * until the learner's real answer is KNOWN to this render, which happens in
+   * exactly two ways: they submitted it in THIS session (`submitted`), or the
+   * host replayed the one they submitted in an earlier one (`done && restored`).
+   *
+   * On a merely-`done` or a merely-`reveal`ed render the answer is still
+   * unknown, and coloring the button green would still be a lie.
    */
   gradeResult: boolean | undefined;
   /**
    * Render the ANSWER KEY instead of the learner's own answer — reveal without
-   * a submission shows the correct sequence / the spec's pairs, not the
+   * a known answer shows the correct sequence / the spec's pairs, not the
    * learner's untouched shuffle graded red. (Used by `order` and `match`.)
+   *
+   * A RESTORED answer is a known answer, so it wins over the key: the whole
+   * point of the replay is to show what the learner arranged, and painting the
+   * solution over it would hide the one thing the render exists to say.
    */
   showKey: boolean;
 }
 
 /**
- * Derive the answer view-state. Total function: every one of the 32 boolean
+ * Derive the answer view-state. Total function: every one of the 64 boolean
  * combinations is defined and enumerated in `answerMachine.test.ts`.
  */
 export function answerMachine({
   done,
   submitted,
   reveal = false,
+  restored = false,
   correct,
   hasAnswer,
 }: AnswerMachineInput): AnswerMachineState {
-  const shown = submitted || reveal;
+  // THE one new term. Everything that used to read `submitted` and meant "the
+  // learner's answer is known" now reads `graded`; everything that read
+  // `submitted` and meant "they pressed the button in THIS session" still does.
+  // Separating the two is the whole change — they were the same boolean only
+  // because a replayed answer had no way in.
+  const graded = submitted || (done && restored);
+  const shown = graded || reveal;
   const locked = submitted || done || reveal;
   return {
     shown,
     locked,
     acceptsSubmit: !locked,
+    // NOT `graded`: a `done` render already said "Enviado" before any replay
+    // existed, and a restore must not change WHETHER the learner submitted —
+    // only WHAT they submitted.
     submitLocked: submitted || done,
     submitDisabled: !hasAnswer || reveal,
-    gradeResult: submitted ? correct : undefined,
-    showKey: reveal && !submitted,
+    gradeResult: graded ? correct : undefined,
+    showKey: reveal && !graded,
   };
 }
 
