@@ -41,6 +41,28 @@ name: release-activities
 # If you are about to restore the manual trigger: the 17-day gap is what you are
 # choosing. Say so in your PR body.
 #
+# THE GUARD PROVES ITSELF NOW (2026-08-27, the same day). The version-existence
+# detection no longer lives in this file. It lives in
+# `scripts/release-activities/release-guard.sh`, and this workflow calls it
+# TWICE: once as `self-check`, before anything else, and once as `decide`, as
+# the real guard. One copy, two callers.
+#
+# The reason is the bug below. A probe that ran once per release, on the one
+# branch a release happens to take, was wrong for months and nothing could say
+# so. The `self-check` step asks the SAME code about a sentinel version that
+# cannot exist and about the registry's own `dist-tags.latest`, so both answers
+# — absent and published — get proven on EVERY trigger. A detection that has
+# rotted goes red on the next merge, not at release time in front of whoever is
+# shipping. Two copies of the logic would defeat this entirely: a self-check
+# that tests a copy proves nothing about the guard.
+#
+# The decision table (push/dispatch x exists/absent, 404 first release, 403/500
+# unreadable) is pinned by a stubbed-curl matrix in
+# `scripts/release-activities/release-guard.test.ts`, which runs in the ordinary
+# `npm test` unit job. The registry is unreachable from a pull-request job, so
+# the two halves are complementary: the unit test pins the DECISIONS, the live
+# self-check pins the SHAPE of what GitHub Packages really returns.
+#
 # RUNNER: self-hosted iterahq `dfl-runner` — see the long rationale in ci.yml.
 # ──────────────────────────────────────────────────────────────────────────────
 on:
@@ -71,6 +93,17 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: '@iterahq'
 
+      # FIRST, before the install and the build, because a broken detection
+      # makes everything after it meaningless. This runs the exact code the
+      # guard runs, against the real registry, on two versions whose answer is
+      # known in advance: a sentinel that cannot exist must read as ABSENT, and
+      # `dist-tags.latest` must read as PUBLISHED. The old probe would have
+      # failed the second assertion on its very first run.
+      - name: Self-check the version-existence detection
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/release-activities/release-guard.sh self-check
+
       - name: Install dependencies
         run: npm install
         env:
@@ -96,6 +129,10 @@ jobs:
       # prevent. The fix reads the PACKUMENT ROOT instead — the same route the
       # "published AND private" step below already proves returns 200 — and
       # looks the version up in its `versions` map.
+      #
+      # The detection itself now lives in `scripts/release-activities/`, shared
+      # with the self-check step above. This step only translates its verdict
+      # into GitHub annotations, a step output, and a job summary.
       - name: Decide whether this version needs a publish
         id: guard
         env:
@@ -106,42 +143,44 @@ jobs:
           echo "version=$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          PACKUMENT="$RUNNER_TEMP/packument.json"
-          CODE=$(curl -s -o "$PACKUMENT" -w '%{http_code}' \
-            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
-            "https://npm.pkg.github.com/@iterahq/activities")
-          echo "packument http=$CODE"
+          # `bash -e` is the default shell here, so the non-zero exits the
+          # script uses to MEAN something have to be caught, not inherited.
+          set +e
+          VERDICT=$(bash scripts/release-activities/release-guard.sh decide "$VERSION" "$EVENT_NAME")
+          RC=$?
+          set -e
+          printf '%s\n' "$VERDICT"
 
-          if [ "$CODE" = "200" ]; then
-            EXISTS=$(node -e "const m=require(process.argv[1]);process.stdout.write(m.versions&&m.versions[process.argv[2]]?'yes':'no')" "$PACKUMENT" "$VERSION")
-          elif [ "$CODE" = "404" ]; then
-            # Nothing published under this name yet. The first release.
-            EXISTS=no
-          else
-            # Do NOT guess. An unreadable registry must not be read as "free to
-            # publish" on the push path, nor as "already there" on dispatch.
-            echo "::error::could not read the @iterahq/activities packument (http=$CODE). Refusing to guess whether $VERSION exists."
-            exit 1
-          fi
-          echo "already published: $EXISTS"
+          field() { printf '%s\n' "$VERDICT" | sed -n "s/^$1=//p"; }
 
-          if [ "$EXISTS" = "no" ]; then
-            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          case "$RC" in
+            0) : ;;
+            2)
+              # An unreadable registry is NOT permission to publish and NOT
+              # evidence the version is there. Both readings are wrong; stop.
+              echo "::error::could not read the @iterahq/activities packument (http=$(field packument_http)). Refusing to guess whether $VERSION exists."
+              exit 1
+              ;;
+            3)
+              # A human dispatched a run for a version that is already there.
+              echo "::error::@iterahq/activities@$VERSION is already published. Bump the version in packages/activities/package.json."
+              exit 1
+              ;;
+            *)
+              echo "::error::release-guard.sh exited $RC, which this step does not know how to read."
+              exit 1
+              ;;
+          esac
+
+          SHOULD_PUBLISH=$(field should_publish)
+          echo "should_publish=$SHOULD_PUBLISH" >> "$GITHUB_OUTPUT"
+
+          if [ "$SHOULD_PUBLISH" = "true" ]; then
+            echo "::notice::@iterahq/activities@$VERSION is not in the registry. Publishing it."
             exit 0
           fi
 
-          # From here on, the version is already in the registry. What that
-          # MEANS depends on who asked for the run.
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            # A human asked to publish, on purpose, a version that is already
-            # there. That is a mistake. Say so and go red.
-            echo "::error::@iterahq/activities@$VERSION is already published. Bump the version in packages/activities/package.json."
-            exit 1
-          fi
-
-          # A merge to main. Most merges touch the package without bumping the
-          # version, so this is the NORMAL case — it must not go red.
-          echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          # A merge to main that did not bump the version. The NORMAL case.
           echo "::notice::@iterahq/activities@$VERSION is already published. Nothing to release for this merge — skipping the publish."
           {
             echo "### release-activities: skipped"
