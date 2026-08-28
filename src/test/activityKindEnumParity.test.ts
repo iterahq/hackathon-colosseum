@@ -19,9 +19,30 @@ import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
  *
  * Therefore:
  *  - a kind the package exports that the database CANNOT STORE is a real bug —
- *    the app would write a value the column rejects. That is asserted.
+ *    the app would write a value the column rejects — UNLESS nothing ever
+ *    writes it. See the carve-out below. That is asserted.
  *  - a value in the enum that the package no longer exports is legal, and is
  *    reported (not failed) so a retirement stays visible instead of silent.
+ *
+ * ── THE CARVE-OUT: a kind that is NEVER STORED (2026-08-28) ────────────────
+ *
+ * `question` is exported by `@iterahq/activity-spec` and is deliberately absent
+ * from the enum. It is not an oversight and it must not be "fixed" by adding
+ * the label.
+ *
+ * The subset rule above rests on an unstated premise: *every kind the package
+ * exports is a kind this app WRITES to `itera.activities`.* That was true of
+ * all 13, so the premise never had to be named. `question` (ADR-6 of plan
+ * `20260828-itera-learning-engine-v1`) is the first kind where it is false —
+ * the plans-app asks the question and the DFL `plans` schema stores the answer,
+ * so no `itera.activities` row ever carries the value. An enum label would be a
+ * promise no writer keeps, and `ALTER TYPE … ADD VALUE` is irreversible.
+ *
+ * So the assertion becomes: **every exported kind is either storable, or on the
+ * short list below.** That keeps the original guard at full strength for the
+ * next kind — a new kind that IS written and IS missing a migration still turns
+ * this red — while recording the one deliberate exception as data instead of as
+ * a comment somebody can quietly widen.
  *
  * The prose side of the same fact — the counts and lists in `CLAUDE.md`,
  * `repo-contract.yaml` and `db/README.md` — is checked by
@@ -71,9 +92,37 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
     expect(census).toEqual(dbEnum);
   });
 
-  it('every kind the package exports can be STORED — ACTIVITY_KINDS ⊆ the enum', () => {
-    const unstorable = [...ACTIVITY_KINDS].filter((k) => !dbEnum.includes(k));
+  /**
+   * The kinds this app NEVER writes to `itera.activities`, and which therefore
+   * need no enum label. Exactly one, and adding a second is a decision.
+   *
+   * ⚠️ Membership is not "we have not got round to the migration yet". It is
+   * "no writer exists, by design". If anything ever writes a `question` row,
+   * this list is wrong before the migration is missing.
+   */
+  const NEVER_STORED: readonly string[] = ['question'];
+
+  it('every kind the package exports can be STORED, or is on the never-stored list', () => {
+    const unstorable = [...ACTIVITY_KINDS].filter(
+      (k) => !dbEnum.includes(k) && !NEVER_STORED.includes(k),
+    );
     expect(unstorable).toEqual([]);
+  });
+
+  /**
+   * The carve-out has to stay honest in BOTH directions, the same way
+   * `production-conformance.test.ts` keeps its known-bad list honest.
+   *
+   * An entry that IS in the enum is a stale exemption: either somebody migrated
+   * the kind (so it is storable and the exemption is a lie) or the list outlived
+   * its reason. Either way the line comes out.
+   */
+  it('every never-stored kind is really absent from the enum — no stale exemption', () => {
+    expect(NEVER_STORED.filter((k) => dbEnum.includes(k))).toEqual([]);
+    // …and is really a kind, not a typo that exempts nothing.
+    expect(NEVER_STORED.filter((k) => !(ACTIVITY_KINDS as readonly string[]).includes(k))).toEqual(
+      [],
+    );
   });
 
   it('reports enum values the package no longer exports (legal — the enum cannot shrink)', () => {

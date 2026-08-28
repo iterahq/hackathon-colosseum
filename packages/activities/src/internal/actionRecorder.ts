@@ -142,8 +142,32 @@ export const ACTIVITY_TRACE_ACTIONS = {
   // on `FAMILY_EMITTED.scenario` in the Player's `activityFamilies.ts`). The
   // asymmetry travels with the code rather than being re-discovered here.
   scenario: ['command_run', 'sandbox_reset'],
+  // `inquiry` — the NON-GRADING ask (`question`, 2026-08-28).
+  //
+  // ⚠️ IT DOES NOT REUSE `option_selected` / `option_deselected`, AND THAT IS
+  // ENFORCED RATHER THAN PREFERRED. The Player's `activityFamilies.test.ts`
+  // asserts that `answer_submitted` is the ONLY action name shared between two
+  // families, on the grounds that a second shared name means the two families
+  // are one machine wearing two labels.
+  //
+  // These genuinely are two machines. In `selection` the person marks the
+  // option they believe is CORRECT and the reducer holds a verdict. Here they
+  // state a position: there is nothing to be right about, the answer may be
+  // prose instead of an option, and no verdict is ever computed. `marked` says
+  // *this is part of my answer*; `selected` says *I think this is the one*.
+  //
+  // `note_edited` carries `{ length }` and NEVER the text — the same shape
+  // `code_edited` uses, under the same `PAYLOADS_CARRY_NO_FREE_TEXT` rule.
+  inquiry: [
+    'option_marked',
+    'option_unmarked',
+    'other_toggled',
+    'note_edited',
+    'answer_submitted',
+  ],
 } as const;
 
 export type SelectionAction = (typeof ACTIVITY_TRACE_ACTIONS)['selection'][number];
 export type ArrangementAction = (typeof ACTIVITY_TRACE_ACTIONS)['arrangement'][number];
 export type ScenarioAction = (typeof ACTIVITY_TRACE_ACTIONS)['scenario'][number];
+export type InquiryAction = (typeof ACTIVITY_TRACE_ACTIONS)['inquiry'][number];

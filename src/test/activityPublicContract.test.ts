@@ -244,6 +244,12 @@ const PUBLIC_RUNTIME_SURFACE = [
   // Fase D — the three that had no file to move
   'DocumentActivity',
   'DiagramActivity',
+  // `question` (1.2.0) — o kind NÃO-AVALIATIVO. O sentinela do "Outro" é
+  // exportado junto de propósito: o adaptador do plans-app tem que escrever
+  // exatamente a mesma string que o renderer grava, e sentinela redigitada num
+  // call site é sentinela que pode ser redigitada errado.
+  'QUESTION_OTHER_ID',
+  'QuestionActivity',
   'QuizActivity',
   // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
   // dispatchers are public because the app switches on KIND; the five leaves are

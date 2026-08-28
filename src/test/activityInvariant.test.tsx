@@ -47,6 +47,7 @@ import {
   composeSandboxPrompt,
   connectPairs,
   markDone,
+  markQuestionOptions,
   pickMultiChoice,
   pickQuizOption,
   pickSingleChoice,
@@ -309,6 +310,38 @@ const DRIVES: Record<ContractKey, Drive> = {
       'o terminal avança por COMANDO reconhecido, não por submissão — o veredito sai de ' +
       '`useTerminalSandbox` casando o comando digitado com o `unlock` do passo. Está coberto ' +
       'em `TerminalSandboxActivity.test.tsx` e `terminalSuccessMarks.test.ts`.',
+  },
+
+  /*
+   * `question` é o primeiro contrato com `correct` e SEM `incorrect`, e a
+   * assimetria não é dívida — é o kind.
+   *
+   * Ler `correct` aqui como "acertou" seria ler errado: neste arquivo `correct`
+   * quer dizer *"o caminho que faz o kind emitir `onComplete(true)`"*. Para uma
+   * `question` isso é simplesmente RESPONDER, e o `true` que ela passa é
+   * "concluída", não "certa" — o mesmo valor que a reflexão do `document` passa.
+   * Não existe interação que produza `false`, porque não existe resposta errada.
+   */
+  question: {
+    kind: 'question',
+    correct: async (c) => {
+      await markQuestionOptions(c, ['Manter o adaptador']);
+      await submitAnswer(c, 'question-submit');
+    },
+    why:
+      'não há caminho de ERRO: a `question` não corrige nada, então nenhuma interação pode ' +
+      'produzir `onComplete(false)`. O booleano que ela emite é "concluída", não "certa" — o ' +
+      'kind inteiro existe para não desenhar veredito nenhum.',
+  },
+  question_multi: {
+    kind: 'question',
+    correct: async (c) => {
+      await markQuestionOptions(c, ['Inbox global', 'Dashboard']);
+      await submitAnswer(c, 'question-submit');
+    },
+    why:
+      'mesma razão do `question`: sem resposta certa não existe caminho de erro. Esta variante ' +
+      'prova que `mode: multi` ACUMULA as marcas em vez de substituir, com o mesmo veredito.',
   },
 };
 

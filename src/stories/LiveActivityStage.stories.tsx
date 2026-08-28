@@ -120,3 +120,15 @@ export const LockedChatSandbox: Story = stage('chat_sandbox', EXPIRED);
 
 /** 6 · Cenário com IA — terminal_sandbox travado: o prompt não aceita comando. */
 export const LockedTerminalSandbox: Story = stage('terminal_sandbox', EXPIRED);
+
+/**
+ * 7 · Consulta — question travada: nem as opções nem o texto livre aceitam
+ * entrada.
+ *
+ * `question` É answerable (produz resposta), então ela entra no "canetas no
+ * chão" como qualquer outra — o `ANSWERABLE_KINDS` em
+ * `src/utils/isAnswerableLiveKind.ts` diz isso, e aquele Set é SILENCIOSO: um
+ * kind esquecido lá não quebra nada, só nunca trava. Esta story é o lado
+ * visível dessa entrada.
+ */
+export const LockedQuestion: Story = stage('question', EXPIRED);

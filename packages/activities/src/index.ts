@@ -90,6 +90,16 @@ export { DocumentActivity } from './kinds/DocumentActivity.js';
 export { DiagramActivity } from './kinds/DiagramActivity.js';
 export { QuizActivity } from './kinds/QuizActivity.js';
 
+/* ───────────── question — the non-grading ask (2026-08-28, ADR-6) ────────── */
+// It looks like a member of the choice family and is deliberately NOT one: no
+// correct answer, no verdict UI, no shuffle (the asker's order is content), and
+// free text always available beside the options. `QUESTION_OTHER_ID` is
+// exported because an adapter that round-trips answers through another store
+// has to spell the "Outro" sentinel the same way this renderer does, and a
+// sentinel re-typed at a call site is a sentinel that can be re-typed wrongly.
+
+export { QuestionActivity, QUESTION_OTHER_ID } from './kinds/QuestionActivity.js';
+
 /* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
 // Fase C step 4. TWO kinds with five activity types behind them: each
 // dispatcher picks off the AUTHORED SHAPE, never off a second enum —
@@ -137,6 +147,7 @@ export type {
   ActivityActionRecorder,
   ActivityRecordedAction,
   ArrangementAction,
+  InquiryAction,
   ScenarioAction,
   SelectionAction,
 } from './internal/actionRecorder.js';
@@ -264,6 +275,9 @@ export type {
   MatchSpec,
   MultiChoiceSpec,
   OrderSpec,
+  QuestionFreeTextSpec,
+  QuestionOptionSpec,
+  QuestionSpec,
   QuizOption,
   QuizSpec,
   SingleChoiceSpec,

@@ -103,6 +103,7 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   video: { totalmente: 'inválido' },
   chat_sandbox: { totalmente: 'inválido' },
   terminal_sandbox: { totalmente: 'inválido' },
+  question: { totalmente: 'inválido' },
 };
 
 /** Harness mínimo que o `ByocSpecSchema` ACEITA — o `{seed}` é obrigatório. */

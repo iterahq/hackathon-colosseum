@@ -64,6 +64,7 @@ import { TerminalSandboxActivity } from './kinds/TerminalSandboxActivity.js';
 import { DocumentActivity } from './kinds/DocumentActivity.js';
 import { DiagramActivity } from './kinds/DiagramActivity.js';
 import { QuizActivity } from './kinds/QuizActivity.js';
+import { QuestionActivity } from './kinds/QuestionActivity.js';
 
 /**
  * The kinds this package renders on its own.
@@ -98,6 +99,11 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'document',
   'diagram',
   'quiz',
+  // `question` (2026-08-28, ADR-6 of `20260828-itera-learning-engine-v1`) — the
+  // first BUILT-IN that never grades anything. It asks for nothing from the
+  // host but i18n, and it is also the first kind here with NO row in
+  // `itera.activities`: the plans-app is what mounts it.
+  'question',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -115,6 +121,7 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   document: DocumentActivity as ComponentType<ActivityRendererProps>,
   diagram: DiagramActivity as ComponentType<ActivityRendererProps>,
   quiz: QuizActivity as ComponentType<ActivityRendererProps>,
+  question: QuestionActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */

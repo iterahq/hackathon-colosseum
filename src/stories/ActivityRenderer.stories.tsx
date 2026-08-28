@@ -301,6 +301,30 @@ export const TerminalSandboxEspecInvalida: Story = {
 
 /* EIXO G — kind desconhecido --------------------------------------- */
 
+/**
+ * `question` sem `mode` — barrado na fronteira.
+ *
+ * `mode` decide se a tela marca UMA opção ou VÁRIAS. Sem ele não existe render
+ * correto a escolher, então o card amigável é a resposta certa em vez de um
+ * palpite.
+ */
+export const QuestionSemModo: Story = {
+  args: { activity: makeActivity('question', UNGUARDED_INVALID_SPECS.question_sem_modo.spec) },
+};
+
+/**
+ * `question` mínima — VÁLIDA, e no extremo.
+ *
+ * Só título, duas opções sem rationale, nenhuma recomendação. O que vale ver:
+ * o "Outro" continua na tela sem ninguém ter escrito `allow_other`, porque o
+ * default do Zod é `true`. Uma pergunta que proíbe "Outro" está dizendo que a
+ * resposta real de quem responde não conta, então a permissiva é a que se
+ * ganha sem falar nada.
+ */
+export const QuestionMinima: Story = {
+  args: { activity: makeActivity('question', DEGENERATE_SPECS.question_minima.spec) },
+};
+
 /** kind desconhecido — o fallback explícito do dispatcher. */
 export const KindDesconhecido: Story = {
   args: {

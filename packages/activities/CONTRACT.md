@@ -212,6 +212,7 @@ with no such learner, and no payload can express one.
 | `match` | ✅ | `pairs: [[left, right], …]` — creation order, which is what numbers the badges |
 | `concept` · `concept_reveal` · `video` · `diagram` | n/a | They never grade. There is no answer state to seed, and the prop reaches them harmlessly — asserted, not assumed. |
 | `quiz` | ❌ **on purpose** | Its options stay CLICKABLE on a `done` render (`disabled={submitted \|\| reveal}`, deliberately without `done` — see the component). A verdict on a screen the learner can still re-pick would recolour under them, which is a worse render than the one this change fixes. Restoring `quiz` needs that interaction decision revisited first; it is a follow-up, not an oversight. |
+| `question` | ✅ | `option_ids: [id, …]` (including the reserved `OTHER` sentinel) + `other: boolean`, **plus the free text from `response`** — the one exception to the rule below, explained under it. |
 | `code` · the sandboxes · BYOC | ❌ not yet | Multi-turn or draft-backed. They do not settle on one `answer_submitted`, so the same seam does not fit them unchanged. |
 
 ⚠️ **The trace, not `response`.** `ActivityCompletion.response` is a
@@ -221,8 +222,79 @@ AUTHORED IDS the kind grades on, which is why the readers in
 `src/internal/priorAnswer.ts` go through it. A host that persists only
 `response` cannot replay; persist the whole `detail`.
 
+⚠️ **`question` reads `response` too, and only `question`.** The objection above
+is that `response` is a summary built from localized authored LABELS, so it can
+never be keyed back to an option. That is exactly right for the graded kinds and
+false for this one: a question's `response` is the person's OWN PROSE, verbatim.
+Nothing was summarised, no label is involved, and free text has no id to key back
+to. It is also the only place the text exists — the trace deliberately carries
+`has_text`, never the words (see the privacy rule under *Non-grading kinds*
+below). Persist the whole `detail` and both halves come back.
+
 ⚠️ **A replay is not an event.** A restored render calls no `onComplete` and
 records no action. Nobody did anything.
+
+## Non-grading kinds — `question` (1.2.0)
+
+`question` is the first kind in this package that **never grades**. Everything
+below is a property of the kind, not a configuration of it.
+
+| It has no | Because |
+| --- | --- |
+| `answerMachine` | That machine decides WHEN a verdict may reach the screen. There is no verdict. |
+| green / red option state | `recommended_option_id` renders as a muted `★ recomendado` **before and after** the submit. It is what the ASKER leans toward, never a mark against what the person chose. |
+| `explanation` | The schema rejects the field. "Why the answer is the answer" presumes an answer. |
+| a shuffle | Every other option-bearing kind calls `learnerShuffle`. Here the ORDER IS AUTHORED CONTENT — an asker puts the leading option first, and the plans-app addresses the same options by LETTER. Shuffling would make "option B" mean a different thing per reader. |
+| a `reveal` prop | There is no gabarito to expose, so the host's Reveal control would stop a clock and change nothing. |
+
+**The answer is options AND/OR text**, either alone complete. Free text is always
+available — `spec.free_text` only relabels the field, and there is deliberately
+no way to switch it off. "Outro" is available unless `allow_other === false`.
+
+### What `onComplete` hands up
+
+```
+onComplete(true, {
+  response: '<the free text, verbatim>',
+  actions: [ …, { type: 'answer_submitted',
+                  payload: { option_ids, other, has_text } } ],
+})
+```
+
+`true` is **not a verdict** — `ActivityCompleteHandler` requires a boolean and a
+settled non-grading activity is a completed one, the same value the reflection
+`document` passes. No screen in the kind reads it.
+
+🚨 **The free text is in `response` and NOT in the trace payload, by rule.** The
+host's `PAYLOADS_CARRY_NO_FREE_TEXT` states it: *a trace payload carries WHICH
+thing the learner touched and WHEN, never WHAT they wrote* — the answer text has
+one home, and a second copy is two places to keep in step and two places to
+purge. A question's prose is exactly that category. The terminal sandbox's
+`command_run.command` carve-out does not extend to it: that one rests on a shell
+command being TOOL VOCABULARY, and its own note says *"a terminal has no answer
+text."*
+
+The two halves map 1:1 onto the plans-app persistence contract, which is what
+makes the adapter a rename rather than a translation:
+
+| `question` | plans-app |
+| --- | --- |
+| `option_ids` | `selected_option_letters[]` |
+| the `OTHER` sentinel inside it | the reserved `OTHER` sentinel |
+| `response` | `freeform_notes` |
+
+### Its own family: `inquiry`
+
+The host files it under a NEW reducer family (`src/utils/activityFamilies.ts`)
+rather than under `selection`, and the file's own falsifiable criterion is what
+decides it: *adding a kind inside an existing family must cost data plus
+predicates; if it costs a new state machine, the boundary is wrong.* It costs
+one — no verdict, plus two axes (`other`, the text draft) no selection kind has.
+
+The action names are deliberately distinct (`option_marked` / `option_unmarked`,
+not `option_selected` / `option_deselected`): in `selection` a learner marks the
+option they believe is CORRECT, here a person states a position on something
+that has no correct answer.
 
 ## Registry
 

@@ -34,6 +34,10 @@ const FUNCTIONS = new Set([
   '4 · Ordenação',
   '5 · Produção',
   '6 · Cenário com IA',
+  // O grupo não-pedagógico — `question` (2026-08-28). Ver o comentário em
+  // `ActivityFunction`: agrupar uma pergunta sem resposta certa em
+  // "2 · Escolha" convidaria a leitura que o kind existe pra impedir.
+  '7 · Consulta',
 ]);
 
 describe('fixtures de story por contrato de activity', () => {
@@ -100,7 +104,15 @@ describe('fixtures de story por contrato de activity', () => {
     const guarded = Object.entries(UNGUARDED_INVALID_SPECS).filter(
       ([, f]) => 'guarded' in f && f.guarded,
     );
-    expect(guarded.map(([, f]) => f.kind).sort()).toEqual(['chat_sandbox', 'concept_reveal']);
+    expect(guarded.map(([, f]) => f.kind).sort()).toEqual([
+      'chat_sandbox',
+      'concept_reveal',
+      // `question` nasceu (2026-08-28) com `site: 'boundary'`, então já entra do
+      // lado guardado — o kind não tem runtime próprio pra validar por dentro, e
+      // um spec sem `mode` renderizaria uma lista de radio buttons que não sabe
+      // se aceita uma ou várias marcas.
+      'question',
+    ]);
   });
 
   it('o starter do contrato `code` não usa import (o iframe de preview não tem require)', () => {

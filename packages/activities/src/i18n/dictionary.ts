@@ -124,6 +124,17 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
       'O que você escrever aqui fica salvo na sua conta e pode ser lido pelo administrador da sua organização.',
     'activity.minWords': 'mínimo',
     'activity.quizPrompt': 'Selecione a resposta correta',
+    // ── `question` — a pergunta NÃO-AVALIATIVA (2026-08-28, ADR-6) ─────────
+    // pt-BR é a língua de primeira classe aqui: o plans-app pergunta em
+    // português, e "recomendado" é um MARCADOR do lado de quem pergunta —
+    // nunca um "correto".
+    'activity.question': 'Pergunta',
+    'activity.question.pickOne': 'Escolha uma opção, ou escreva a sua',
+    'activity.question.pickAny': 'Escolha quantas opções quiser, ou escreva a sua',
+    'activity.question.recommended': 'recomendado',
+    'activity.question.other': 'Outro',
+    'activity.question.notesLabel': 'Notas (opcional)',
+    'activity.question.notesPlaceholder': 'Escreva aqui o que você pensa…',
     'activity.reflectionPlaceholder': 'Escreva aqui o que você aprendeu…',
     'activity.words': 'palavras',
     'quiz.trueOrFalse': 'Verdadeiro ou falso?',
@@ -215,6 +226,13 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
       'What you write here is saved to your account and can be read by your organization\'s administrator.',
     'activity.minWords': 'minimum',
     'activity.quizPrompt': 'Select the correct answer',
+    'activity.question': 'Question',
+    'activity.question.pickOne': 'Pick one option, or write your own',
+    'activity.question.pickAny': 'Pick as many options as you want, or write your own',
+    'activity.question.recommended': 'recommended',
+    'activity.question.other': 'Other',
+    'activity.question.notesLabel': 'Notes (optional)',
+    'activity.question.notesPlaceholder': 'Write what you think…',
     'activity.reflectionPlaceholder': 'Write what you learned here…',
     'activity.words': 'words',
     'quiz.trueOrFalse': 'True or false?',

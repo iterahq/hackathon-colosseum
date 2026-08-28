@@ -130,6 +130,20 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   video: { persist: false, type: 'text', filename: 'notes.md' },
   chat_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
   terminal_sandbox: { persist: false, type: 'document', filename: 'transcript.md' },
+  // `question` — `false`, and NOT for the reason `single_choice` is false.
+  //
+  // A question DOES produce free-form content the person wrote, which is the
+  // criterion above for `persist: true`. It is still `false` because the answer
+  // is not a DELIVERABLE — it is a position recorded so that somebody can act
+  // on it, and it is already persisted as the answer itself (in the plans-app,
+  // `freeform_notes`). Writing a second copy into "My repository" would put a
+  // one-line opinion in the folder where a learner keeps their work.
+  //
+  // The filename is ready anyway, so an author who genuinely wants the
+  // deliverable — "decide and keep the decision" — gets a working artifact from
+  // `mode: 'always'` without filling in every field. That is exactly the
+  // "pré-engenharia do nosso usuário" case at the top of this file.
+  question: { persist: false, type: 'text', filename: 'answer.md' },
 };
 
 const MODES: ReadonlySet<string> = new Set<ArtifactMode>(['auto', 'always', 'never']);

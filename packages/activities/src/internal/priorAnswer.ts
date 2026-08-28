@@ -167,3 +167,48 @@ export function priorPairs(
   }
   return made;
 }
+
+/* ───────────── `question` — the non-grading kind's two extra readers ─────── */
+
+/**
+ * Whether the person used the "Outro" escape hatch.
+ *
+ * Read off the boolean the kind records, with the SENTINEL inside `option_ids`
+ * as the fallback. Both are written on every submit, so either alone restores
+ * the flag — which matters because an adapter round-tripping through the
+ * plans-app carries the sentinel (`selected_option_letters` holds `OTHER`) and
+ * may not carry the boolean.
+ */
+export function priorOther(prior?: ActivityCompletion): boolean {
+  const payload = settledAction(prior)?.payload;
+  if (payload?.other === true) return true;
+  const ids = stringList(payload?.option_ids);
+  return ids ? ids.includes('OTHER') : false;
+}
+
+/**
+ * The free text the person wrote, from `ActivityCompletion.response`.
+ *
+ * ⚠️ **This is the ONE reader in this module that goes to `response` instead of
+ * the trace, and the header above says why the others must not.** There the
+ * objection is real: `response` is a summary built from localized authored
+ * LABELS ("Paris", a numbered list), so it cannot be keyed back to an option id
+ * and a label edit would silently change what "restores".
+ *
+ * None of that holds for `question`. Its `response` is the person's OWN PROSE,
+ * verbatim — nothing was summarised, no authored label is involved, and there is
+ * no id to key back to because free text has none. It is also the only place the
+ * text exists: the trace payload deliberately carries `has_text`, never the
+ * words, under the host's `PAYLOADS_CARRY_NO_FREE_TEXT` rule.
+ *
+ * And the hazard the trace-only rule protects against cannot arise here at all:
+ * a `question` has no verdict, so no restore of it can paint a mark nobody
+ * earned. Returns `undefined` for a missing or blank response, so "wrote
+ * nothing" and "wrote whitespace" both restore an empty field rather than one
+ * holding invisible characters.
+ */
+export function priorText(prior?: ActivityCompletion): string | undefined {
+  const value = prior?.response;
+  if (typeof value !== 'string') return undefined;
+  return value.trim().length > 0 ? value : undefined;
+}

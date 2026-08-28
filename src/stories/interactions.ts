@@ -69,6 +69,32 @@ export async function pickQuizOption(canvasElement: Canvas, label: string) {
   await userEvent.click(byLabel(all(canvasElement, 'quiz-option'), label, 'quiz'));
 }
 
+/* ── 7 · Consulta ─────────────────────────────────────────────────────────── */
+
+/**
+ * Marca (ou desmarca) as opções de uma `question` pelos rótulos.
+ *
+ * Separado do `pickMultiChoice` de propósito, e não é só o testid: a `question`
+ * NÃO embaralha (a ordem é conteúdo autorado, porque o plans-app endereça as
+ * opções por letra), então aqui a busca por rótulo é uma conveniência e não uma
+ * necessidade — enquanto nos kinds de escolha ela é a única forma estável.
+ */
+export async function markQuestionOptions(canvasElement: Canvas, labels: string[]) {
+  for (const label of labels) {
+    await userEvent.click(byLabel(all(canvasElement, 'question-option'), label, 'question'));
+  }
+}
+
+/** Liga (ou desliga) o "Outro" — a saída de emergência, ligada por default. */
+export async function toggleQuestionOther(canvasElement: Canvas) {
+  await userEvent.click(within(canvasElement).getByTestId('question-other'));
+}
+
+/** Escreve no texto livre, que existe em TODA `question` e não pode ser desligado. */
+export async function writeQuestionNote(canvasElement: Canvas, text: string) {
+  await userEvent.type(within(canvasElement).getByTestId('question-text'), text);
+}
+
 /* ── 3 · Associação ───────────────────────────────────────────────────────── */
 
 /**

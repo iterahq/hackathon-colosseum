@@ -63,6 +63,11 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
     // `chat_sandbox` + `terminal_sandbox` foi trocar o discriminador de lugar, e
     // a família descreve a forma do ESTADO — que não mudou.
     expect(kindsOfFamily('scenario').sort()).toEqual(['chat_sandbox', 'terminal_sandbox']);
+    // `inquiry` (2026-08-28) — a família NÃO-AVALIATIVA, com um membro só.
+    // Ela existe porque `question` custaria uma máquina de estado nova dentro
+    // de `selection` (sem veredito, mais dois eixos), que é exatamente o que o
+    // critério falsificável no topo de `activityFamilies.ts` manda separar.
+    expect(kindsOfFamily('inquiry')).toEqual(['question']);
   });
 
   it('every family states the shape of its state — the Fase A "signature"', () => {
@@ -131,10 +136,27 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     // not, so a reader must discriminate on the KIND — which is what
     // `familyEmitsSequence` does now that the two kinds replaced the old
     // `spec.sandboxKind` discriminator.
-    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'scenario']);
+    // `inquiry` entrou JÁ LIGADA (2026-08-28): o kind e a instrumentação dele
+    // chegaram na mesma mudança, então não há histórico a perder por
+    // instrumentar depois. A ordem sai de `ACTIVITY_FAMILIES`, não da data.
+    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'scenario', 'inquiry']);
     expect(FAMILY_EMITTED.reading).toEqual([]);
     expect(FAMILY_EMITTED.editor).toEqual([]);
     expect(FAMILY_EMITTED.scenario).toEqual(['command_run', 'sandbox_reset']);
+    expect(FAMILY_EMITTED.inquiry).toEqual(FAMILY_ACTIONS.inquiry);
+  });
+
+  /**
+   * A regra que separa `inquiry` de `selection`, escrita como asserção.
+   *
+   * Se alguém "simplificar" reaproveitando `option_selected` aqui, o teste de
+   * nome-compartilhado acima já fica vermelho — mas a mensagem dele fala de
+   * famílias em geral. Esta fala do caso concreto e diz por quê.
+   */
+  it('`inquiry` não reaproveita o vocabulário de `selection` — são duas máquinas', () => {
+    const selection = new Set<string>(FAMILY_ACTIONS.selection);
+    const shared = (FAMILY_ACTIONS.inquiry as readonly string[]).filter((a) => selection.has(a));
+    expect(shared).toEqual(['answer_submitted']);
   });
 
   it('an unwired family declares MORE than it emits — the gap is the remaining work', () => {

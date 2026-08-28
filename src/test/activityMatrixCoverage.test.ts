@@ -88,6 +88,8 @@ const TERMINAL_NEEDS_TYPING =
 const EXPOSITION_NO_ANSWER =
   'kind de exposição: o aluno consome e segue — não existe resposta a produzir.';
 const EXPOSITION_NO_GRADE = 'kind de exposição: não há o que corrigir (eixo D não existe aqui).';
+const QUESTION_NO_GRADE =
+  'kind NÃO-AVALIATIVO: existe resposta, e mesmo assim não existe resposta certa — logo não há veredito a desenhar. Verde ou vermelho aqui diria que uma opinião foi acertada.';
 const NO_REVEAL_PROP =
   'o dispatcher não propaga `reveal` para este kind e `hasRevealableAnswer` é false — não há gabarito a expor.';
 const LOOSE_ZOD =
@@ -305,10 +307,34 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'F.spec_invalido': { story: 'activities-dispatcher--terminal-sandbox-espec-invalida' },
     'H.degenerado': { story: 'activities-sandbox-terminal--engineless-generic-terminal' },
   },
+  /* ── 7 · Consulta ───────────────────────────────────────────────────── */
+  /*
+   * `question` é o primeiro kind cuja linha tem `D` inteiro em `na` POR
+   * DEFINIÇÃO e não por falta de tela: ele não corrige nada. Os kinds de
+   * exposição também têm, mas por não terem resposta — aqui existe resposta, e
+   * mesmo assim não existe veredito. É a única linha da matriz onde `C.submitted`
+   * está coberta e `D` não, e essa assimetria é o kind inteiro.
+   */
+  question: {
+    'A.enabled': { story: 'activities-consulta-question--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-question' },
+    'B.done': { story: 'activities-consulta-question--disabled' },
+    'C.blank': { story: 'activities-consulta-question--default' },
+    'C.answered': { story: 'activities-consulta-question--answered' },
+    'C.submitted': { story: 'activities-consulta-question--submitted' },
+    'D.correct': { na: QUESTION_NO_GRADE },
+    'D.incorrect': { na: QUESTION_NO_GRADE },
+    'E.reveal': {
+      na:
+        'não há gabarito a revelar: `recommended_option_id` é a preferência de QUEM PERGUNTA, e pô-la no projetor como "a resposta" é exatamente a mentira que o kind existe pra evitar. `hasRevealableAnswer` devolve false e o componente nem aceita a prop `reveal`.',
+    },
+    'F.spec_invalido': { story: 'activities-dispatcher--question-sem-modo' },
+    'H.degenerado': { story: 'activities-dispatcher--question-minima' },
+  },
 };
 
 /**
- * O NÚMERO. Snapshot da distribuição das 143 células (13 kinds × 11 células).
+ * O NÚMERO. Snapshot da distribuição das 154 células (14 kinds × 11 células).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
@@ -329,6 +355,12 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  *                  chat viraram cobertura própria, porque as stories que elas
  *                  apontavam agora SÃO `chat_sandbox`)
  *
+ *   question      →{ covered: 109, na: 32, deferred: 5, drift: 8 }  (14º kind,
+ *                  2026-08-28). +8 cobertas e +3 `na`. As três `na` NÃO são
+ *                  dívida: `D.correct`, `D.incorrect` e `E.reveal` não existem
+ *                  num kind sem resposta certa, e declará-las cobertas exigiria
+ *                  inventar um veredito.
+ *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
  * C.answered/C.submitted (rascunho abaixo do `min_words` × redação enviada) e
@@ -346,7 +378,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 101, na: 29, deferred: 5, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 109, na: 32, deferred: 5, drift: 8 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

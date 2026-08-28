@@ -501,3 +501,110 @@ describe('kinds with no answer state are untouched', () => {
     expect(verdict('quiz-submit')).toBeNull();
   });
 });
+
+/* ═════════ 6. `question` — the kind whose restore carries NO verdict ═══════ */
+
+/**
+ * The other four kinds restore an answer AND the grade derived from it. This
+ * one has no grade, which changes what the restore has to be checked for.
+ *
+ * Two things are asserted that the graded kinds cannot assert, because they are
+ * the whole point of the kind:
+ *
+ *   1. a restored, `done` question is still NEUTRAL — `data-correct` never
+ *      appears, so nothing on the screen says the person was right or wrong;
+ *   2. the FREE TEXT comes back, and it comes back from `response` rather than
+ *      from the trace, because the trace deliberately carries `has_text` and
+ *      never the words (`PAYLOADS_CARRY_NO_FREE_TEXT`).
+ */
+describe('question — the answer comes back, and no verdict comes with it', () => {
+  const QUESTION_SPEC = {
+    title: 'Qual caminho?',
+    mode: 'single' as const,
+    options: [
+      { id: 'a', label: 'Manter' },
+      { id: 'b', label: 'Trocar' },
+      { id: 'c', label: 'Flag' },
+    ],
+    recommended_option_id: 'a',
+  };
+
+  /** The completion `QuestionActivity.handleSubmit` really builds. */
+  function answered(
+    optionIds: string[],
+    other: boolean,
+    text: string,
+  ): ActivityCompletion {
+    return {
+      response: text,
+      actions: [
+        {
+          type: 'answer_submitted',
+          at: 1_700_000_000_000,
+          payload: {
+            option_ids: other ? [...optionIds, 'OTHER'] : optionIds,
+            other,
+            has_text: text.trim().length > 0,
+          },
+        },
+      ],
+    };
+  }
+
+  it('restores the marked option and stays neutral — no verdict anywhere', () => {
+    mount(activity('question', QUESTION_SPEC, 'done'), answered(['b'], false, ''));
+    const marked = optionsSnapshot('question-option').filter((o) => o.selected === 'true');
+    expect(marked.map((o) => o.id)).toEqual(['b']);
+    // The assertion that matters: settled, and NOT graded.
+    expect(verdict('question-submit')).toBeNull();
+    expect(screen.getByTestId('question-submit')).toHaveAttribute('data-submitted', 'true');
+  });
+
+  it('restores the FREE TEXT, which lives in `response` and not in the trace', () => {
+    mount(
+      activity('question', QUESTION_SPEC, 'done'),
+      answered([], false, 'Nenhuma das três, na verdade.'),
+    );
+    expect((screen.getByTestId('question-text') as HTMLTextAreaElement).value).toBe(
+      'Nenhuma das três, na verdade.',
+    );
+    expect(verdict('question-submit')).toBeNull();
+  });
+
+  it('restores the OTHER sentinel without dropping the rest of the payload', () => {
+    // `priorOptionIds` drops the WHOLE payload on an id the spec does not
+    // declare, and `OTHER` is by definition not an authored option. The kind
+    // passes the sentinel through as a known id for exactly this reason — the
+    // regression this guards is a silent one: the answer would simply not come
+    // back, with no error anywhere.
+    mount(activity('question', QUESTION_SPEC, 'done'), answered(['a'], true, ''));
+    expect(screen.getByTestId('question-other')).toHaveAttribute('data-selected', 'true');
+    const marked = optionsSnapshot('question-option').filter((o) => o.selected === 'true');
+    expect(marked.map((o) => o.id)).toEqual(['a']);
+  });
+
+  it('an option the spec does not declare restores nothing — same rule as the graded kinds', () => {
+    mount(activity('question', QUESTION_SPEC, 'done'), answered(['zzz'], false, ''));
+    expect(optionsSnapshot('question-option').filter((o) => o.selected === 'true')).toEqual([]);
+  });
+
+  it('the recommendation is a marker, not a restored verdict', () => {
+    // Present before any answer, present after one, and never on the option the
+    // person actually chose unless the asker had recommended it.
+    mount(activity('question', QUESTION_SPEC, 'done'), answered(['b'], false, ''));
+    const recommended = screen
+      .getAllByTestId('question-option')
+      .filter((el) => el.getAttribute('data-recommended') === 'true');
+    expect(recommended.map((el) => el.getAttribute('data-option-id'))).toEqual(['a']);
+  });
+
+  it('a replay onto a NOT-done question seeds the inputs and leaves it answerable', () => {
+    mount(activity('question', QUESTION_SPEC), answered(['b'], false, 'meio a meio'));
+    const marked = optionsSnapshot('question-option').filter((o) => o.selected === 'true');
+    expect(marked.map((o) => o.id)).toEqual(['b']);
+    // Still open: the submit is live, and nothing is stamped as sent.
+    const submit = screen.getByTestId('question-submit') as HTMLButtonElement;
+    expect(submit.disabled).toBe(false);
+    expect(submit.getAttribute('data-submitted')).toBeNull();
+  });
+});

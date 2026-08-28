@@ -59,6 +59,7 @@ import { TerminalSandboxActivity } from './TerminalSandboxActivity';
 import { DocumentActivity } from './DocumentActivity';
 import { DiagramActivity } from './DiagramActivity';
 import { QuizActivity } from './QuizActivity';
+import { QuestionActivity } from './QuestionActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { PersonalizationGate } from './PersonalizationGate';
@@ -188,6 +189,11 @@ export function ActivityRenderer({
     case 'chat_sandbox':
     case 'terminal_sandbox':
       return <SandboxScenarioGuard activity={activity} onComplete={onComplete} reveal={reveal} />;
+    // `reveal` NÃO é passado, e a omissão é o contrato: uma pergunta não tem
+    // resposta certa, então não há gabarito a expor. `hasRevealableAnswer`
+    // devolve false pro kind, logo o botão do professor nem aparece.
+    case 'question':
+      return <QuestionActivity activity={activity} onComplete={onComplete} />;
     default:
       return <UnknownActivity activity={activity} />;
   }

@@ -160,6 +160,15 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
     invalidTestId: 'sandbox-invalid',
     messageKey: 'activity.sandboxInvalid',
   },
+  // `question` (2026-08-28) valida na FRONTEIRA como os outros kinds sem
+  // runtime próprio. O schema dele é `.strict()` e exige `mode`, ≥2 opções e um
+  // enunciado, então um spec meio-autorado vira card amigável em vez de uma
+  // lista de radio buttons sem pergunta.
+  question: {
+    site: 'boundary',
+    invalidTestId: 'question-invalid',
+    messageKey: 'activity.specInvalid',
+  },
 };
 
 /** As camadas deliberadamente isentas da fronteira (ver cabeçalho). */

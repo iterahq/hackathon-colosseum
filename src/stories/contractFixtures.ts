@@ -28,7 +28,15 @@ export type ActivityFunction =
   | '3 · Associação'
   | '4 · Ordenação'
   | '5 · Produção'
-  | '6 · Cenário com IA';
+  | '6 · Cenário com IA'
+  /**
+   * O grupo NÃO-PEDAGÓGICO. Uma `question` não ensina nem corrige: ela colhe
+   * uma posição de quem responde. Ganhou grupo próprio em vez de entrar em
+   * "2 · Escolha" porque a sidebar agrupa por FUNÇÃO, e pôr uma pergunta sem
+   * resposta certa ao lado das escolhas corrigidas convida exatamente a leitura
+   * que o kind existe pra impedir.
+   */
+  | '7 · Consulta';
 
 export interface ContractFixture {
   /** O `kind` do enum `itera.activity_kind` que a autoria grava na row. */
@@ -140,6 +148,18 @@ export const DEGENERATE_SPECS = {
     spec: { prompt: 'Diagrama ainda não anexado pela autoria.' },
     note: 'sem `mermaid` e sem `imageUrl` → só o enunciado.',
   },
+  question_minima: {
+    kind: 'question' as ActivityKind,
+    spec: {
+      title: 'Seguimos?',
+      mode: 'single',
+      options: [
+        { id: 'sim', label: 'Sim' },
+        { id: 'nao', label: 'Não' },
+      ],
+    },
+    note: 'o mínimo legal: só título, duas opções sem `description` e nenhuma recomendação. `allow_other` ausente ⇒ o "Outro" APARECE, porque o default do Zod é `true` — é essa a parte que vale ver na tela.',
+  },
   single_choice_sem_enunciado: {
     kind: 'single_choice' as ActivityKind,
     spec: {
@@ -221,6 +241,18 @@ export const UNGUARDED_INVALID_SPECS = {
     kind: 'concept_reveal' as ActivityKind,
     spec: { instruction: { text: 'Texto publicado sem o card pense-antes.' } },
     note: 'o card `reveal` É o kind: sem ele o spec é um `concept` disfarçado → card de spec inválido.',
+    guarded: true,
+  },
+  question_sem_modo: {
+    kind: 'question' as ActivityKind,
+    spec: {
+      title: 'Pergunta publicada sem dizer se aceita uma ou várias respostas.',
+      options: [
+        { id: 'a', label: 'Uma coisa' },
+        { id: 'b', label: 'Outra coisa' },
+      ],
+    },
+    note: '`mode` é OBRIGATÓRIO no Zod, e sem ele a tela não sabe se marca uma opção ou várias → barrado na fronteira.',
     guarded: true,
   },
 } as const;
@@ -522,6 +554,56 @@ export const SANDBOX_BYOC_SPEC = {
 };
 
 /* ------------------------------------------------------------------ *
+ * 7 · Consulta — a pergunta NÃO-AVALIATIVA (2026-08-28, ADR-6).
+ * ------------------------------------------------------------------ */
+
+/**
+ * O contrato canônico de `question`: modo `single`, uma opção recomendada, uma
+ * `description` por opção, e o texto livre com rótulos autorados.
+ *
+ * `allow_other` está AUSENTE de propósito — o default do Zod é `true`, e a
+ * fixture existe também pra provar que o caminho permissivo é o que se obtém
+ * sem escrever nada.
+ */
+export const QUESTION_SPEC = {
+  title: 'Mantemos o adaptador do plans-app?',
+  description:
+    'O adaptador preserva o contrato de persistência hoje, mas custa um release a mais em cada mudança.',
+  mode: 'single',
+  options: [
+    {
+      id: 'keep',
+      label: 'Manter o adaptador',
+      description: 'Zero regressão no inbox do Tainan; um release a mais por mudança.',
+    },
+    {
+      id: 'swap',
+      label: 'Trocar direto pelo renderer',
+      description: 'Menos código, mas o contrato de persistência passa a ser testado em produção.',
+    },
+    {
+      id: 'flag',
+      label: 'Trocar atrás de uma flag',
+      description: 'Rollback em um clique; duas telas vivas ao mesmo tempo enquanto durar.',
+    },
+  ],
+  recommended_option_id: 'keep',
+  free_text: { label: 'Notas (opcional)', placeholder: 'O que muda a sua escolha?' },
+};
+
+/** Variante `multi` sem recomendação — o outro modo, mesmo contrato. */
+export const QUESTION_MULTI_SPEC = {
+  title: 'Quais superfícies entram no piloto?',
+  mode: 'multi',
+  options: [
+    { id: 'inbox', label: 'Inbox global' },
+    { id: 'plan_tab', label: 'Aba por plano' },
+    { id: 'dashboard', label: 'Dashboard' },
+  ],
+  allow_other: false,
+};
+
+/* ------------------------------------------------------------------ *
  * O registro — uma entrada por CONTRATO.
  * ------------------------------------------------------------------ */
 
@@ -613,6 +695,22 @@ export const ACTIVITY_CONTRACTS = {
     spec: ORDER_SPEC,
     validated: true,
     note: '{ instruction?, items[], correct_order[] } — correct_order é permutação de items[].id.',
+  },
+  question: {
+    kind: 'question',
+    fn: '7 · Consulta',
+    label: 'Question',
+    spec: QUESTION_SPEC,
+    validated: true,
+    note: '{ title?/description?/instruction?, mode, options[{ id, label, description? }], recommended_option_id?, allow_other (default true), free_text? } — NÃO corrige: sem resposta certa e sem veredito.',
+  },
+  question_multi: {
+    kind: 'question',
+    fn: '7 · Consulta',
+    label: 'Question (multi, sem Outro)',
+    spec: QUESTION_MULTI_SPEC,
+    validated: true,
+    note: 'MESMO contrato — `mode: multi` e `allow_other: false` são variação, não activity nova. O texto livre continua lá: só o "Outro" some.',
   },
   document_writing: {
     kind: 'document',

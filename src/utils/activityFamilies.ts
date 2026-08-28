@@ -90,7 +90,13 @@ export type ActivityFamily =
   /** 14 instances — text + autosave + submit against checks. */
   | 'editor'
   /** 24 instances — turns against a world model. Already reducer-shaped. */
-  | 'scenario';
+  | 'scenario'
+  /**
+   * 0 instances in `itera.activities`, and there never will be any — see the
+   * note under `ACTIVITY_FAMILY.question`. A set of positions plus prose, one
+   * submit, and NO VERDICT.
+   */
+  | 'inquiry';
 
 export const ACTIVITY_FAMILIES = [
   'selection',
@@ -98,6 +104,7 @@ export const ACTIVITY_FAMILIES = [
   'reading',
   'editor',
   'scenario',
+  'inquiry',
 ] as const satisfies readonly ActivityFamily[];
 
 /**
@@ -134,6 +141,31 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   // — scenario: turns against a world model —
   chat_sandbox: 'scenario',
   terminal_sandbox: 'scenario',
+  // — inquiry: a position plus prose, one submit, NO verdict —
+  //
+  // ⚠️ `question` is NOT in `selection`, and the falsifiable criterion at the
+  // top of this file is what decides it: *adding a kind inside an existing
+  // family must cost data plus predicates; if it costs a new state machine, the
+  // family boundary is wrong.* It costs a new state machine. `selection` holds
+  // `chosen + submitted` and runs `answerMachine` to decide when a VERDICT may
+  // reach the screen; a question has no correct answer for that machine to
+  // gate, and it holds two more axes (the "Outro" flag and a free-text draft)
+  // that no selection kind has.
+  //
+  // There is also a consequence that would have been a silent bug. Filing
+  // `question` under `selection` makes `stageResponseText` project its free
+  // text onto the live-class PROJECTOR — that function admits `selection` and
+  // `arrangement`, and its own docblock excludes the `document` reflection for
+  // exactly this reason ("um texto pessoal endereçado ao professor"). A
+  // question's prose is the same category. `inquiry` gets the right answer by
+  // FALLING THROUGH, rather than by someone remembering to add a case.
+  //
+  // 🔎 This is the FIRST family added since Fase A named the original five.
+  // That does NOT discharge the caveat in the header — a family is only
+  // demonstrated generic when a NEW kind enters it WITHOUT the family being
+  // edited, and `inquiry` has exactly one member. It is a hypothesis like the
+  // other five, with one fewer year of evidence.
+  question: 'inquiry',
 };
 
 /**
@@ -157,6 +189,8 @@ export const FAMILY_STATE: Record<ActivityFamily, string> = {
     'source: string + phase: editing|checking|settled + checkResults — useCodeSnack.ts / useCodeChecks.ts',
   scenario:
     'ChatModel { runs, slots, choicesMade } — sandbox/useSandboxScenario.ts, already `(state, action) => state`',
+  inquiry:
+    'marked: optionId[] + other: boolean + text: string + submitted — QuestionActivity.tsx. There is no verdict field, and that absence IS the family.',
 };
 
 /**
@@ -262,6 +296,39 @@ export const FAMILY_ACTIONS = {
     /** "Recomeçar" — the world was reset to `initialState`; the trace was NOT. `{ step_id, resets }`. */
     'sandbox_reset',
   ],
+  inquiry: [
+    /**
+     * An option became part of the answer. `{ option_id }` — the AUTHORED id.
+     *
+     * ⚠️ NOT `option_selected`, and the verbs carry the difference: in
+     * `selection` a learner marks the option they believe is CORRECT; here a
+     * person states a position on something that has no correct answer. Sharing
+     * the name would also break the "`answer_submitted` is the ONLY shared
+     * action" invariant asserted in `activityFamilies.test.ts` — which exists to
+     * catch precisely the case of two families being one machine under two
+     * labels.
+     */
+    'option_marked',
+    /** …and stopped being part of it. `{ option_id }`. Both modes toggle. */
+    'option_unmarked',
+    /** The "Outro" escape hatch went on or off. `{ on: boolean }`. */
+    'other_toggled',
+    /**
+     * The free-text field changed. `{ length }` — NEVER the text, under the
+     * privacy rule below. The same shape `code_edited` carries.
+     */
+    'note_edited',
+    /**
+     * "Enviar" accepted. `{ option_ids: string[], other: boolean, has_text:
+     * boolean }`. `option_ids` includes the reserved `OTHER` sentinel when the
+     * escape hatch was used, so the payload round-trips through the plans-app's
+     * `selected_option_letters[]` with no translation step.
+     *
+     * ⚠️ The TEXT ITSELF is deliberately absent. It rides in
+     * `ActivityCompletion.response`, its one home, per the privacy rule below.
+     */
+    'answer_submitted',
+  ],
 } as const satisfies Record<ActivityFamily, readonly string[]>;
 
 /** Every action name this codebase knows, lifecycle included. */
@@ -301,6 +368,16 @@ export const FAMILY_EMITTED = {
   // `activity_traces` for the scenario family must therefore filter on
   // `spec.sandboxKind`, not assume the family is uniform.
   scenario: ['command_run', 'sandbox_reset'],
+  // `inquiry` ships FULLY wired: the kind and its instrumentation arrived in the
+  // same change, so there is no history to lose by instrumenting it late, and
+  // nothing is declared here that does not emit.
+  inquiry: [
+    'option_marked',
+    'option_unmarked',
+    'other_toggled',
+    'note_edited',
+    'answer_submitted',
+  ],
 } as const satisfies Record<ActivityFamily, readonly LearnerActionType[]>;
 
 /** Families whose activities hand a rich sequence up through `onComplete`. */

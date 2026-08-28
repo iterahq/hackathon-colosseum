@@ -418,6 +418,37 @@
       "explanation": "`commit` grava localmente; quem envia é o `push`."
     }
   },
+  "question": {
+    "id": "fixture-question",
+    "kind": "question",
+    "spec": {
+      "title": "Mantemos o adaptador do plans-app?",
+      "description": "O adaptador preserva o contrato de persistência, mas custa um release a mais por mudança.",
+      "mode": "single",
+      "options": [
+        {
+          "id": "keep",
+          "label": "Manter o adaptador",
+          "description": "Zero regressão; um release a mais por mudança."
+        },
+        {
+          "id": "swap",
+          "label": "Trocar direto pelo renderer",
+          "description": "Menos código; o contrato passa a ser testado em produção."
+        },
+        {
+          "id": "flag",
+          "label": "Trocar atrás de uma flag",
+          "description": "Rollback num clique; duas telas vivas enquanto durar."
+        }
+      ],
+      "recommended_option_id": "keep",
+      "free_text": {
+        "label": "Notas (opcional)",
+        "placeholder": "O que muda a sua escolha?"
+      }
+    }
+  },
   "code": {
     "id": "fixture-code",
     "kind": "code",

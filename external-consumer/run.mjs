@@ -450,6 +450,112 @@ check('quiz: a wrong pick grades false AND shows the authored explanation', () =
   view.unmount();
 });
 
+/*
+ * `question` (1.2.0) — the first kind here that NEVER GRADES.
+ *
+ * It gets assertions of its own for the same reason Fase D's three did, but the
+ * property under test is different: every other kind is checked for what it
+ * DRAWS, and this one has to be checked for what it MUST NOT — a verdict.
+ */
+
+check('question: no verdict, before or after answering', () => {
+  const { view, completions } = renderKind('question');
+
+  // Before: the recommendation is a MARKER and it is already there.
+  const marker = view.one('[data-testid="question-recommended"]');
+  assert(marker, 'the ★ recomendado marker is missing');
+  assert(
+    view.one('[data-recommended="true"]')?.getAttribute('data-option-id') === 'keep',
+    'the marker is on the wrong option',
+  );
+
+  const swap = view
+    .all('[data-testid="question-option"]')
+    .find((el) => el.getAttribute('data-option-id') === 'swap');
+  view.click(swap);
+  view.click(view.one('[data-testid="question-submit"]'));
+
+  // After: settled, and STILL no verdict. `data-correct` is what `SubmitButton`
+  // stamps when it is told a grade; this kind never tells it one, so a green or
+  // red button here would mean an opinion had been marked right or wrong.
+  const submit = view.one('[data-testid="question-submit"]');
+  assert(submit.getAttribute('data-submitted') === 'true', 'the submit did not settle');
+  assert(submit.getAttribute('data-correct') === null, 'a verdict was drawn on a question');
+  assert(completions.length === 1, `onComplete fired ${completions.length} times, expected 1`);
+  view.unmount();
+});
+
+/** The terminal `answer_submitted` of the last completion — the machine-readable half. */
+function settledPayload(completions) {
+  const settled = completions[0].detail.actions.find((a) => a.type === 'answer_submitted');
+  assert(settled, 'no answer_submitted in the trace');
+  return settled.payload;
+}
+
+check('question: the marked option travels as an AUTHORED id in the trace', () => {
+  const { view, completions } = renderKind('question');
+  view.click(
+    view.all('[data-testid="question-option"]').find(
+      (el) => el.getAttribute('data-option-id') === 'flag',
+    ),
+  );
+  view.click(view.one('[data-testid="question-submit"]'));
+
+  const payload = settledPayload(completions);
+  assert(payload.option_ids.includes('flag'), 'the marked option is not in the payload');
+  assert(payload.other === false, 'the `other` flag was set without anyone touching it');
+
+  // 🚨 THE PRIVACY INVARIANT. `PAYLOADS_CARRY_NO_FREE_TEXT`: a trace payload
+  // says WHICH thing was touched and WHEN, never WHAT was written. If a `text`
+  // key ever appears here, the answer text has two homes and two purge paths.
+  assert(!('text' in payload), 'the free text leaked into the trace payload');
+  assert(payload.has_text === false, 'has_text claims text nobody typed');
+  view.unmount();
+});
+
+check('question: in `single` mode, "Outro" REPLACES the option — it is the choice', () => {
+  // Not a quirk of the toggle: a single-mode answer names ONE thing, so leaving
+  // an authored option marked beside "Outro" would submit two. The free text
+  // and the other axes are untouched, because they are a different axis of the
+  // same answer — clearing them would silently delete what someone wrote.
+  const { view, completions } = renderKind('question');
+  view.click(
+    view.all('[data-testid="question-option"]').find(
+      (el) => el.getAttribute('data-option-id') === 'flag',
+    ),
+  );
+  view.click(view.one('[data-testid="question-other"]'));
+  assert(
+    !view.one('[data-testid="question-option"][data-selected="true"]'),
+    'an authored option stayed marked beside "Outro" in single mode',
+  );
+  view.click(view.one('[data-testid="question-submit"]'));
+
+  const payload = settledPayload(completions);
+  assert(payload.other === true, 'the `other` flag did not travel');
+  // The sentinel rides INSIDE `option_ids` so the payload round-trips through
+  // the plans-app `selected_option_letters[]` with no translation step.
+  assert(payload.option_ids.includes('OTHER'), 'the OTHER sentinel is missing');
+  assert(!payload.option_ids.includes('flag'), 'the replaced option came back in the payload');
+  view.unmount();
+});
+
+check('question: the free-text field is always there, and its labels come from the spec', () => {
+  // There is deliberately NO spec field that hides it — an author who turns text
+  // off does not stop people having something to say, only recording it.
+  const { view } = renderKind('question');
+  const box = view.one('[data-testid="question-text"]');
+  assert(box, 'the free-text field is missing');
+  assert(box.getAttribute('placeholder') === 'O que muda a sua escolha?', 'the authored placeholder is missing');
+  assert(view.text().includes('Notas (opcional)'), 'the authored label is not on screen');
+  // The rationale under each option — the field no choice kind has.
+  assert(
+    view.text().includes('Zero regressão'),
+    'an option description did not reach the DOM',
+  );
+  view.unmount();
+});
+
 check('the instruction text of the spec actually reaches the DOM', () => {
   const { view } = renderKind('concept');
   assert(

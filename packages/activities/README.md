@@ -29,6 +29,7 @@ renders from fixture specs with no bundler and no Itera anything.
 | `chat_sandbox` · `terminal_sandbox` | ✅ | Fase C **step 4**. Two kinds, five activity types: the chat sandbox (open / choices / slots) and the terminal sandbox (free text / options). **They need no port** — every reducer is `@iterahq/activity-spec/runtime`'s, so a host gets a multi-turn graded micro-experiment with nothing injected but i18n. |
 | the LIVE sandbox (`sandbox-live`) · BYOC | ❌ | The AI-judged twins. They are the ones that actually consume `api.respond` / `api.judge` / `api.generateByoc`, and BYOC had ~10 of its 12 files open in another PR while this one landed. Extracting under that is conflict, not extraction. |
 | `code` | ⚠️ **other entrypoint** | Fase C **step 5**. It is here, but behind `@iterahq/activities/code` (ADR-5) and deliberately absent from `BUILT_IN_ACTIVITY_KINDS`, so a consumer that never renders a snack pays for none of it. See *Consuming the `/code` entrypoint*. |
+| `question` | ✅ | **1.2.0.** The first built-in that **never grades**: no correct answer, no verdict UI, no shuffle (the asker's order is content), and free text always available beside the options. It is also the first kind here with **no row in `itera.activities` and no label in the `itera.activity_kind` enum** — the plans-app is what mounts it. Needs no port but i18n. See *Non-grading kinds* in `CONTRACT.md`. |
 | `document` · `diagram` · `quiz` | ✅ | **Fase D.** They were never files — they were inline functions inside the Player's ~700-line dispatcher, which is why they were last (`CONTRACT.md` finding 4). Together they are **48% of the authored library** (`document` 24 defs, `quiz` 22, `diagram` 13 of 123), so until 0.4.0 a host that was not the Player rendered most of the catalogue as an unsupported-kind placeholder. `document` is ONE kind with THREE renderers: `rubric.mode === 'ai-judge'` **and** `api.judge` → the AI-judged one; a prompt or a `min_words` rubric → the reflection one; otherwise a read-only card. Without `api.judge` it degrades to reflection — a real screen, not a placeholder. |
 
 A kind that is not here is **not a dead end**: pass your own component through
@@ -189,9 +190,15 @@ summary built from labels and cannot be keyed back to an option, so a host that
 saves only `response` cannot replay. The machine-readable answer lives in
 `actions`.
 
-Supported by `single_choice`, `multi_choice`, `order` and `match`. Kinds that
-never grade ignore it. `quiz`, `code`, the sandboxes and BYOC do not restore
-yet — see `CONTRACT.md` for the reason in each case.
+Supported by `single_choice`, `multi_choice`, `order`, `match` and `question`.
+Kinds that never grade ignore it. `quiz`, `code`, the sandboxes and BYOC do not
+restore yet — see `CONTRACT.md` for the reason in each case.
+
+⚠️ **`question` is the one exception to "the machine-readable answer lives in
+`actions`".** Its free text lives in `response`, because there it is not a
+summary built from labels — it is the person's own prose, verbatim, and free
+text has no id to key back to. The trace carries `has_text`, never the words.
+Persisting the whole `detail`, as above, already gets both halves.
 
 Three things it deliberately will not do:
 

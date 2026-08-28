@@ -55,6 +55,16 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
   // trava de "canetas no chão".
   'chat_sandbox',
   'terminal_sandbox',
+  // `question` (2026-08-28) — ANSWERABLE: the person produces something (an
+  // option set, prose, or both), so it earns a countdown and it must go
+  // read-only on expiry like every other answerable kind ("pens down").
+  //
+  // ⚠️ THIS SET IS SILENT. A kind left out of it is not a compile error and not
+  // a failing test — it simply never gets a timer and never locks, and the only
+  // way anyone finds out is a live class where the clock runs out and one
+  // activity stays editable. That is why the entry carries a reason instead of
+  // being one more line.
+  'question',
 ]);
 
 /**
@@ -79,6 +89,17 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'chat_sandbox',
   'terminal_sandbox',
   'concept_reveal',
+  // `question` is DELIBERATELY ABSENT — and this is the third question the
+  // header tells you to ask separately, answered.
+  //
+  // There is nothing to reveal. A question has no correct answer; its
+  // `recommended_option_id` is what the ASKER leans toward, and putting that on
+  // the projector as "the answer" is the precise lie the whole kind exists to
+  // avoid. The invariant this set is held to — *every kind here RENDERS
+  // something when it gets `reveal`* — would also be false: `QuestionActivity`
+  // takes no `reveal` prop at all, so the button would stop the clock and
+  // change nothing, which is the exact `code` trap that split these predicates
+  // in the first place.
 ]);
 
 /**

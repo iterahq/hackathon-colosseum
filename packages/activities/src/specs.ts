@@ -173,3 +173,50 @@ export interface QuizSpec {
   options?: QuizOption[];
   explanation?: string;
 }
+
+/* ─────────── `question` — the non-grading ask (2026-08-28, ADR-6) ────────── */
+/*
+ * The read view of the kind that has no correct answer. It is NOT a variation
+ * of `SingleChoiceSpec`: `QuestionOptionSpec` carries a `description` (what
+ * choosing this option MEANS), `label` is required rather than optional, and
+ * there is no `correct_option_id` for a renderer to grade against.
+ *
+ * Kept as loose as its neighbours — every field a renderer tolerates being
+ * absent is optional — so a half-authored question degrades into a panel with
+ * no options instead of throwing. `@iterahq/activity-spec` remains the
+ * authority on what a VALID question is.
+ */
+
+/** One answerable option. `label` is required — a question is read, not looked at. */
+export interface QuestionOptionSpec {
+  id: string;
+  label?: string;
+  /** What choosing this option means — the trade-off, in a sentence or two. */
+  description?: string;
+  image_url?: string;
+}
+
+/** Wording overrides for the free-text field. Its PRESENCE is not optional. */
+export interface QuestionFreeTextSpec {
+  label?: string;
+  placeholder?: string;
+}
+
+/**
+ * `question` — options and/or free text, no correct answer, no verdict.
+ *
+ * ⚠️ `allow_other` is optional HERE and defaults to `true` in the Zod schema.
+ * The renderer therefore tests `allow_other !== false`, never `=== true`: a
+ * spec that arrived without passing through the schema must still get the
+ * permissive reading.
+ */
+export interface QuestionSpec {
+  title?: string;
+  description?: string;
+  instruction?: InstructionPanelSpec;
+  mode?: 'single' | 'multi';
+  options: QuestionOptionSpec[];
+  recommended_option_id?: string;
+  allow_other?: boolean;
+  free_text?: QuestionFreeTextSpec;
+}
