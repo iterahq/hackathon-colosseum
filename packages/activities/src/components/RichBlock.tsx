@@ -3,8 +3,23 @@
  *
  * `muted` existe porque o mesmo desenho serve o texto principal da instrução e
  * a descrição secundária embaixo dela, que precisa continuar sendo secundária.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * A CERCA ```mermaid VIRA DESENHO — EM QUALQUER KIND
+ * ─────────────────────────────────────────────────────────────────────────────
+ * O `diagram` é uma TELA inteira, e tela separada chega tarde: o aluno vê o
+ * desenho, avança, e quando enfim está escrevendo o código o desenho já saiu
+ * da vista. Reconhecendo a cerca aqui, o mesmo desenho passa a caber DENTRO do
+ * enunciado do exercício — e de tabela, e de conceito — sem campo novo no spec
+ * e sem release do `@iterahq/activity-spec`: `prompt` já é texto rico.
+ *
+ * A degradação é a MESMA do `DiagramActivity`, e não é cortesia: fonte que o
+ * `parseMermaidLite` recusa continua caindo no `<pre>` de sempre. Nenhuma cerca
+ * que já está no banco pode piorar por causa desta mudança.
  */
 import { RichSpans } from './RichSpans.js';
+import { MermaidLite } from './MermaidLite.js';
+import { parseMermaidLite } from '../internal/mermaidLite.js';
 import type { Block } from '../internal/richText.js';
 
 export function RichBlock({
@@ -41,6 +56,19 @@ export function RichBlock({
         <RichSpans spans={block.spans} />
       </blockquote>
     );
+
+  if (block.type === 'code' && block.language === 'mermaid') {
+    const graph = parseMermaidLite(block.value);
+    if (graph)
+      return (
+        <div
+          className="rounded-2xl border border-border bg-obsidiana/60 p-4 grid-pattern"
+          data-rich-block="mermaid"
+        >
+          <MermaidLite graph={graph} />
+        </div>
+      );
+  }
 
   if (block.type === 'code')
     return (
