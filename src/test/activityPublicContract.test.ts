@@ -378,13 +378,18 @@ const CODE_ENTRYPOINT_SURFACE = [
   // O teto de envios errados: terceira chave do mesmo depósito. A metade pura
   // sai inteira porque é ela que responde "esta tentativa foi a última?" sem
   // montar editor nenhum, e o host precisa do prefixo para rotear a chave.
+  // `grantAttempt` + o evento de refresh saem juntos porque a concessão vem de
+  // FORA da aba do aluno: sem o aviso, o saldo semeado no `useState` fica na
+  // tela até um F5.
   'CODE_ATTEMPT_BUDGET',
   'CODE_ATTEMPTS_KEY_PREFIX',
+  'CODE_ATTEMPTS_REFRESH_EVENT',
   'CodeAttemptsNotice',
   'attemptBudget',
   'attemptNotice',
   'codeAttemptsActivityId',
   'codeAttemptsKey',
+  'grantAttempt',
   'parseSpentAttempts',
   'serializeSpentAttempts',
   'spendAttempt',

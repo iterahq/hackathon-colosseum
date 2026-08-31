@@ -152,7 +152,7 @@ function ClassControl({
   // Semeado do disco porque o corte é do PROFESSOR: um refresh no meio da aula
   // não pode ressuscitar as respostas que ele acabou de descartar.
   const [initialResetAt] = useState(() => readLessonResetAt(session.id));
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, removeLearner, onBreak, setBreak, lessonResetAt, resetLesson, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, grantLife, removeLearner, onBreak, setBreak, lessonResetAt, resetLesson, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -477,10 +477,11 @@ function ClassControl({
   const moderation = useMemo(
     () => ({
       onLowerHand: lowerHand,
+      onGrantLife: grantLife,
       onRemove: (userId: string) =>
         void removeLearner(userId).then((ok) => ok || toast.error(t('live.room.action.failed'))),
     }),
-    [lowerHand, removeLearner, t]
+    [lowerHand, grantLife, removeLearner, t]
   );
 
   // The single sidebar list: podium order + this activity's state per row.

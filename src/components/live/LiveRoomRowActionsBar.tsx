@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Hand, Loader2, MonitorPlay, UserMinus } from 'lucide-react';
+import { ChevronDown, Hand, Heart, Loader2, MonitorPlay, UserMinus } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRoomActionButton } from '@/components/live/LiveRoomActionButton';
@@ -11,8 +11,8 @@ import type { LiveRoomRow, LiveRoomRowActions } from '@/types/liveClass';
  * coisa posicionada por cima.
  *
  * A divisão em faixas não é estética: o nome fica no cabeçalho, no meio o que se
- * usa várias vezes por aula (abaixar a mão, palco), e embaixo o que encerra a
- * participação.
+ * usa várias vezes por aula (abaixar a mão, devolver vida, palco), e embaixo o
+ * que encerra a participação.
  *
  * As ações moram numa faixa própria com `flex-wrap` porque a barra vive numa
  * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura.
@@ -57,6 +57,12 @@ export function LiveRoomRowActionsBar({
           onClick={() => actions.onLowerHand(row.userId)}
           disabled={!row.raised}
           testId="live-room-lower-hand"
+        />
+        <LiveRoomActionButton
+          icon={Heart}
+          label={t('live.room.action.grantLife')}
+          onClick={() => actions.onGrantLife(row.userId)}
+          testId="live-room-grant-life"
         />
         <button
           type="button"

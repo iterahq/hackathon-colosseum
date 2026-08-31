@@ -5,6 +5,7 @@ import { CODE_DROPDOWN_SPEC } from '@/stories/contractFixtures';
 import { CODE_ATTEMPT_BUDGET } from '@iterahq/activities/code';
 import { rememberStorageScope } from '@/utils/storageScope';
 import { clearLearnerLessonState } from '@/utils/liveLessonReset';
+import { grantCodeAttempt } from '@/services/codeAttempts.service';
 import { CodeActivityHost, previewIframe, typeCode } from './support/codeActivityHost';
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 
@@ -179,6 +180,25 @@ describe('code guiado — as três vidas', () => {
     // Sem isto o aluno reabriria o exercício "resetado" já sem vidas, ou seja,
     // impossível de refazer — o oposto do que o reset existe pra resolver.
     expect(remaining()).toBe('2');
+  });
+
+  it('a vida do professor destrava a tela SEM recarregar', () => {
+    // O aluno não desmonta nada quando a vida chega: sem o aviso do serviço, o
+    // `useCodeAttempts` continuaria no saldo que semeou e a tela ficaria travada
+    // até um F5 que ninguém tem motivo pra dar.
+    open(CODE_DROPDOWN_SPEC);
+    submitWrong();
+    click(screen.getByTestId('guided-retry'));
+    submitWrong();
+    click(screen.getByTestId('guided-retry'));
+    submitWrong();
+    expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
+
+    act(() => grantCodeAttempt(ACTIVITY_ID));
+
+    expect(remaining()).toBe('1');
+    expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'false');
+    expect(screen.getByTestId('guided-retry')).toBeInTheDocument();
   });
 });
 

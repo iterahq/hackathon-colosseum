@@ -136,10 +136,12 @@ export {
 export {
   CODE_ATTEMPT_BUDGET,
   CODE_ATTEMPTS_KEY_PREFIX,
+  CODE_ATTEMPTS_REFRESH_EVENT,
   attemptBudget,
   attemptNotice,
   codeAttemptsActivityId,
   codeAttemptsKey,
+  grantAttempt,
   parseSpentAttempts,
   serializeSpentAttempts,
   spendAttempt,

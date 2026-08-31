@@ -90,6 +90,30 @@ export function spendAttempt(spent: number): number {
 }
 
 /**
+ * Devolve UMA vida. O teto continua sendo o orçamento: quem nunca errou não
+ * acumula crédito, então o piso é zero e conceder vira no-op.
+ *
+ * Existe porque `parseSpentAttempts` é fail-open só contra depósito ILEGÍVEL —
+ * contra um depósito legível e esgotado não há saída de dentro da sala, e a aula
+ * ao vivo tem o caso em que isso é errado: o exercício mudou no meio da aula, a
+ * turma inteira gastou as três num enunciado velho, e o instrutor precisa
+ * liberar sem mandar todo mundo limpar localStorage.
+ */
+export function grantAttempt(spent: number): number {
+  return Math.max(parseSpentAttempts(String(spent)) - 1, 0);
+}
+
+/**
+ * O sinal de "o depósito de vidas mudou POR FORA desta aba".
+ *
+ * `useCodeAttempts` semeia no `useState` e só relê quando a activity troca — o
+ * que é certo enquanto quem escreve é o próprio aluno. Quando a vida chega pelo
+ * instrutor, ninguém desmonta o componente, e sem este aviso o número na tela
+ * continuaria em zero até um F5 que o aluno não tem motivo para dar.
+ */
+export const CODE_ATTEMPTS_REFRESH_EVENT = 'itera:code-attempts-refresh';
+
+/**
  * Qual frase o aluno lê sobre o próprio saldo.
  *
  * A escolha é pura porque é ela que erra: plural em português não é `s` no fim

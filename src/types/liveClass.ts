@@ -177,6 +177,8 @@ export interface LiveRoomRow {
 export interface LiveRoomModeration {
   /** Ask the learner's own client to lower the hand (presence is owner-write). */
   onLowerHand: (userId: string) => void;
+  /** Give back one `code` attempt on the current activity — lives are owner-write too. */
+  onGrantLife: (userId: string) => void;
   /** Remove from the room — durable, so a refresh does not bring them back. */
   onRemove: (userId: string) => void;
 }
@@ -490,6 +492,8 @@ export interface UseClassSession {
   resetLesson: (at: string) => void;
   /** Instructor: ask a learner's own client to lower its hand (presence is owner-write). */
   lowerHand: (userId: string) => void;
+  /** Instructor: give a learner one more `code` attempt on the current activity. */
+  grantLife: (userId: string) => void;
   /** Instructor: remove a learner from the room. Resolves false if the write failed. */
   removeLearner: (userId: string) => Promise<boolean>;
   /** Re-track presence with the activity the learner has local work for (learner side). */

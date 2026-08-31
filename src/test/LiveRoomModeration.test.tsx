@@ -27,6 +27,7 @@ const answerers: ClassAnswerer[] = [
 
 const actionHandlers = () => ({
   onLowerHand: vi.fn(),
+  onGrantLife: vi.fn(),
   onRemove: vi.fn(),
   onToggleStage: vi.fn(),
 });
@@ -55,6 +56,17 @@ describe('per-student actions', () => {
     openRow(0);
     expect(screen.getByTestId('live-room-lower-hand')).toBeTruthy();
     expect(screen.getByTestId('live-room-stage')).toBeTruthy();
+  });
+
+  // Devolver vida não depende do estado da linha: quem está sem vidas não fica
+  // marcado no roster, e a única leitura desse saldo é o localStorage do aluno.
+  it('devolve uma vida para a linha, sempre habilitado', () => {
+    const { onGrantLife } = renderRoom();
+    openRow(1);
+    const button = screen.getByTestId('live-room-grant-life');
+    expect(button).not.toBeDisabled();
+    fireEvent.click(button);
+    expect(onGrantLife).toHaveBeenCalledWith('b');
   });
 
   it('fecha as ações no segundo clique do mesmo botão', () => {

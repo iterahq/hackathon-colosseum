@@ -22,6 +22,12 @@
  */
 import { scopedKey } from '@/utils/storageScope';
 import { belongsToExecution, currentExecutionId } from '@/utils/activityExecution';
+import {
+  CODE_ATTEMPTS_REFRESH_EVENT,
+  grantAttempt,
+  parseSpentAttempts,
+  serializeSpentAttempts,
+} from '@iterahq/activities/code';
 
 const keyFor = (activityId: string) => scopedKey('itera.code.attempts', activityId);
 
@@ -55,6 +61,24 @@ export function saveCodeAttempts(activityId: string, spent: string): void {
   } catch {
     // Storage indisponível — o teto passa a valer só nesta aba, que é a
     // degradação certa: o exercício continua jogável.
+  }
+}
+
+/**
+ * Devolve UMA vida e avisa a tela na mesma hora.
+ *
+ * Grava pelo `saveCodeAttempts` para reetiquetar a execução: uma vida concedida
+ * hoje não pode ressuscitar um placar de uma aula anterior que o
+ * `belongsToExecution` já estava descartando.
+ */
+export function grantCodeAttempt(activityId: string): void {
+  if (!activityId) return;
+  const next = grantAttempt(parseSpentAttempts(readCodeAttempts(activityId)));
+  saveCodeAttempts(activityId, serializeSpentAttempts(next));
+  try {
+    window.dispatchEvent(new CustomEvent(CODE_ATTEMPTS_REFRESH_EVENT, { detail: { activityId } }));
+  } catch {
+    // Sem window (SSR/teste) — o próximo mount relê o depósito de qualquer jeito.
   }
 }
 

@@ -176,6 +176,7 @@ describe('room row — pull to stage', () => {
             pending: over.pending === row.userId,
             unreachable: over.unreachable === row.userId,
             onLowerHand: vi.fn(),
+            onGrantLife: vi.fn(),
             onRemove: vi.fn(),
           })}
         />

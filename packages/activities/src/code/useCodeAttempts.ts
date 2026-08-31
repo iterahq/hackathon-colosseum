@@ -6,6 +6,7 @@ import {
   parseSpentAttempts,
   serializeSpentAttempts,
   spendAttempt,
+  CODE_ATTEMPTS_REFRESH_EVENT,
   type AttemptBudget,
 } from './attemptBudget.js';
 
@@ -41,9 +42,15 @@ export function useCodeAttempts(activityId: string): CodeAttempts {
   spentRef.current = spent;
 
   useEffect(() => {
-    const next = parseSpentAttempts(storageRef.current.read(codeAttemptsKey(activityId)));
-    spentRef.current = next;
-    setSpent(next);
+    const reread = () => {
+      const next = parseSpentAttempts(storageRef.current.read(codeAttemptsKey(activityId)));
+      spentRef.current = next;
+      setSpent(next);
+    };
+    reread();
+    if (typeof window === 'undefined') return;
+    window.addEventListener(CODE_ATTEMPTS_REFRESH_EVENT, reread);
+    return () => window.removeEventListener(CODE_ATTEMPTS_REFRESH_EVENT, reread);
   }, [activityId]);
 
   const spend = useCallback(() => {

@@ -12,6 +12,7 @@ import {
   attemptNotice,
   codeAttemptsActivityId,
   codeAttemptsKey,
+  grantAttempt,
   parseSpentAttempts,
   serializeSpentAttempts,
   spendAttempt,
@@ -63,6 +64,22 @@ describe('spendAttempt', () => {
 
   it('para no teto — gastar além do orçamento não é estado que exista', () => {
     expect(spendAttempt(3)).toBe(CODE_ATTEMPT_BUDGET);
+  });
+});
+
+describe('grantAttempt', () => {
+  it('devolve UMA vida, inclusive para quem já estava trancado', () => {
+    expect(grantAttempt(3)).toBe(2);
+    expect(grantAttempt(2)).toBe(1);
+    expect(attemptBudget(grantAttempt(3)).exhausted).toBe(false);
+  });
+
+  it('não vira crédito acumulado em quem nunca errou', () => {
+    expect(grantAttempt(0)).toBe(0);
+  });
+
+  it('conceder num depósito adulterado não escapa do teto', () => {
+    expect(grantAttempt(99)).toBe(CODE_ATTEMPT_BUDGET - 1);
   });
 });
 
