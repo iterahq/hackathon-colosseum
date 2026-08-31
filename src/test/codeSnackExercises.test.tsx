@@ -9,7 +9,19 @@ import {
   installPreviewDialogShims,
   runCodeChecks,
 } from '@/utils/codePreviewRuntime';
-import { CODE_SNACK_EXERCISES } from './fixtures/codeSnackExercises';
+import { personalizeSpec } from '@/utils/personalization';
+import { CODE_SNACK_EXERCISES, type CodeExerciseFixture } from './fixtures/codeSnackExercises';
+
+/**
+ * O elenco VAZIO de propósito: `personalizeSpec` cai no fallback de cada campo,
+ * que é o aluno que pulou o formulário. É a única variante em que o exercício
+ * PRECISA fechar — quem preencheu só troca o nome dentro da mesma estrutura.
+ *
+ * Sem esta passagem os fixtures com token julgariam a si mesmos: um check
+ * `contains: "{{amigo.nome}}"` casa com o token literal que o starter não
+ * preenchido ainda imprime, e o starter passaria por não ter sido resolvido.
+ */
+const EXERCISES: CodeExerciseFixture[] = CODE_SNACK_EXERCISES.map((e) => personalizeSpec(e, {}));
 
 /**
  * The authored exercises, driven through the REAL pipeline the learner hits:
@@ -137,7 +149,7 @@ async function gradeSource(source: string, checks: CodeCheck[]) {
   return runCodeChecks({ root: preview, checks, remount, nextTick, win: window });
 }
 
-describe.each(CODE_SNACK_EXERCISES)('exercício $slug', (exercise) => {
+describe.each(EXERCISES)('exercício $slug', (exercise) => {
   const checks = exercise.spec.checks ?? [];
 
   it('has a spec the shared schema accepts, checks included', () => {

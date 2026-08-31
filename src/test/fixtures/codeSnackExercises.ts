@@ -1,14 +1,21 @@
 import type { CodeSpec } from '@iterahq/activity-spec';
 
 /**
- * The four authored `kind=code` exercises for the Educar+ live class, kept here
- * as fixtures so `codeSnackExercises.test.tsx` can prove — every CI run — that
- * each STARTER fails its checks and each expected SOLUTION passes them.
+ * The authored `kind=code` exercises for the Educar+ live classes, kept here as
+ * fixtures so `codeSnackExercises.test.tsx` can prove — every CI run — that each
+ * STARTER fails its checks and each expected SOLUTION passes them.
  *
  * That property is the whole contract of a graded snack: a starter that already
  * passes is not an exercise, and a solution that cannot pass is a trap in front
  * of a classroom. Both are easy to break by editing a selector or a label, and
  * impossible to notice by reading.
+ *
+ * ⚠️ The `lista-*` exercises carry `{{eu.nome}}`-style tokens, exactly as they
+ * are authored in the database. The test fills them through the REAL
+ * `personalizeSpec` with an EMPTY cast, so what runs is the fallback path — the
+ * learner who skipped the personalization form. Grading tokens verbatim would
+ * pass for the wrong reason: `contains: "{{amigo.nome}}"` matches the literal
+ * token that an unfilled starter still prints.
  *
  * `solution` is NOT shipped to the learner — it exists only for this test.
  */
@@ -597,6 +604,238 @@ export const CODE_SNACK_EXERCISES: CodeExerciseFixture[] = [
       '      <h1 className="text-2xl font-bold text-gray-900">Estante</h1>',
       '      <BookCard title="Clean Code" author="Robert C. Martin" inStock={true} />',
       '      <BookCard title="O Programador Pragmático" author="Andy Hunt" inStock={false} />',
+      '    </main>',
+      '  );',
+      '}',
+    ].join('\n'),
+  },
+  {
+    slug: 'lista-1-array',
+    spec: {
+      prompt: [
+        'A lista `pessoas` já começou com dois nomes.',
+        '',
+        '1. Acrescente mais **três** nomes, um por linha.',
+        '2. Cada nome entre aspas e com vírgula no fim, assim: `"Rafa",`',
+        '3. Um dos três precisa ser **{{amigo.nome}}**.',
+        '',
+        '> Só a faixa destacada aceita digitação — o resto do arquivo está travado de propósito. O `.join(", ")` que está lá embaixo só cola os nomes numa frase só, separados por vírgula.',
+      ].join('\n'),
+      language: 'tsx',
+      starter: [
+        'export default function App() {',
+        '  const pessoas = [',
+        '    // >>> acrescente os nomes aqui, um por linha',
+        '    "{{eu.nome}}",',
+        '    "{{familiar.nome}}",',
+        '    // <<<',
+        '  ];',
+        '',
+        '  return (',
+        '    <main className="mx-auto max-w-md space-y-4 p-6">',
+        '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+        '      <p className="text-sm text-gray-500">São {pessoas.length} pessoas: {pessoas.join(", ")}.</p>',
+        '    </main>',
+        '  );',
+        '}',
+      ].join('\n'),
+      checks: [
+        {
+          id: 'cinco',
+          label: 'A tela diz que são 5 pessoas',
+          hint: 'Faltam nomes para chegar a cinco. Cada um é uma linha nova, entre aspas e com vírgula no fim.',
+          selector: 'p',
+          assert: { type: 'text', contains: 'São 5 pessoas' },
+        },
+        {
+          id: 'amigo',
+          label: 'O nome de {{amigo.nome}} está na lista',
+          hint: 'Escreva "{{amigo.nome}}" como um dos itens novos, com as aspas.',
+          selector: 'p',
+          assert: { type: 'text', contains: '{{amigo.nome}}' },
+        },
+        {
+          id: 'eu',
+          label: 'O seu nome continua na lista',
+          hint: 'Acrescente nomes sem apagar os dois que já vieram.',
+          selector: 'p',
+          assert: { type: 'text', contains: '{{eu.nome}}' },
+        },
+      ],
+    },
+    solution: [
+      'export default function App() {',
+      '  const pessoas = [',
+      '    // >>> acrescente os nomes aqui, um por linha',
+      '    "{{eu.nome}}",',
+      '    "{{familiar.nome}}",',
+      '    "{{amigo.nome}}",',
+      '    "Rafa",',
+      '    "Nina",',
+      '    // <<<',
+      '  ];',
+      '',
+      '  return (',
+      '    <main className="mx-auto max-w-md space-y-4 p-6">',
+      '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+      '      <p className="text-sm text-gray-500">São {pessoas.length} pessoas: {pessoas.join(", ")}.</p>',
+      '    </main>',
+      '  );',
+      '}',
+    ].join('\n'),
+  },
+  {
+    slug: 'lista-2-map',
+    spec: {
+      prompt: [
+        'O card que está na tela é **fixo**: mostra só `pessoas[0]`, o primeiro nome.',
+        '',
+        '1. **Envolva** o `<article>` com `{pessoas.map((nome) => ( ... ))}` — não apague o card, ele vira o molde.',
+        '2. No `<h2>`, troque `{pessoas[0]}` por `{nome}`.',
+        '3. Acrescente `key={nome}` no `<article>`.',
+        '',
+        '> Repare nas chaves: `{` abre o código dentro do JSX, e o `}` fecha lá no fim do `.map`. O modelo pronto está na tela anterior.',
+      ].join('\n'),
+      language: 'tsx',
+      starter: [
+        'const pessoas = ["{{eu.nome}}", "{{familiar.nome}}", "{{amigo.nome}}", "Rafa", "Nina"];',
+        '',
+        'export default function App() {',
+        '  return (',
+        '    <main className="mx-auto max-w-md space-y-4 p-6">',
+        '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+        '      {/* >>> troque este card fixo pelo .map, para sair um <article> por pessoa */}',
+        '      <article className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">',
+        '        <h2 className="text-lg font-bold text-gray-900">{pessoas[0]}</h2>',
+        '      </article>',
+        '      {/* <<< */}',
+        '    </main>',
+        '  );',
+        '}',
+      ].join('\n'),
+      checks: [
+        {
+          id: 'cinco',
+          label: 'Aparecem 5 cards na tela',
+          hint: 'O molde é escrito UMA vez: {pessoas.map((nome) => ( <article> ... </article> ))}. Se sobraram 6 cards, o card fixo antigo ainda está lá.',
+          selector: 'article',
+          assert: { type: 'count', equals: 5 },
+        },
+        {
+          id: 'primeiro',
+          label: 'O primeiro card mostra {{eu.nome}}',
+          hint: 'Dentro do <h2>, o nome vem do apelido do .map: escreva {nome} no lugar de {pessoas[0]}.',
+          selector: 'article:nth-of-type(1) h2',
+          assert: { type: 'text', contains: '{{eu.nome}}' },
+        },
+        {
+          id: 'terceiro',
+          label: 'O terceiro card mostra {{amigo.nome}}',
+          hint: 'Dentro do <h2>, troque {pessoas[0]} por {nome}: assim cada card mostra o nome da vez, na ordem da lista.',
+          selector: 'article:nth-of-type(3) h2',
+          assert: { type: 'text', contains: '{{amigo.nome}}' },
+        },
+      ],
+    },
+    solution: [
+      'const pessoas = ["{{eu.nome}}", "{{familiar.nome}}", "{{amigo.nome}}", "Rafa", "Nina"];',
+      '',
+      'export default function App() {',
+      '  return (',
+      '    <main className="mx-auto max-w-md space-y-4 p-6">',
+      '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+      '      {/* >>> troque este card fixo pelo .map, para sair um <article> por pessoa */}',
+      '      {pessoas.map((nome) => (',
+      '        <article key={nome} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">',
+      '          <h2 className="text-lg font-bold text-gray-900">{nome}</h2>',
+      '        </article>',
+      '      ))}',
+      '      {/* <<< */}',
+      '    </main>',
+      '  );',
+      '}',
+    ].join('\n'),
+  },
+  {
+    slug: 'lista-3-objeto',
+    spec: {
+      prompt: [
+        'Agora cada item da lista é um **objeto**, com `nome` e `profissao`.',
+        '',
+        'O `.map` já está pronto e o card já tem os dois lugares — falta o conteúdo.',
+        '',
+        '1. No `<h2>`, troque `nome aqui` por `{pessoa.nome}`.',
+        '2. No `<p>`, troque `profissão aqui` por `{pessoa.profissao}`.',
+        '',
+        '> No código, `profissao` é sem cedilha e sem acento. O rótulo tem que bater exatamente com o que está na lista.',
+      ].join('\n'),
+      language: 'tsx',
+      starter: [
+        'const pessoas = [',
+        '  { nome: "{{eu.nome}}", profissao: "{{eu.profissao}}" },',
+        '  { nome: "{{familiar.nome}}", profissao: "{{familiar.profissao}}" },',
+        '  { nome: "{{amigo.nome}}", profissao: "{{amigo.profissao}}" },',
+        '];',
+        '',
+        'export default function App() {',
+        '  return (',
+        '    <main className="mx-auto max-w-md space-y-4 p-6">',
+        '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+        '      {pessoas.map((pessoa) => (',
+        '        <article key={pessoa.nome} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">',
+        '          {/* >>> mostre o nome e a profissão desta pessoa */}',
+        '          <h2 className="text-lg font-bold text-gray-900">nome aqui</h2>',
+        '          <p className="text-sm text-gray-500">profissão aqui</p>',
+        '          {/* <<< */}',
+        '        </article>',
+        '      ))}',
+        '    </main>',
+        '  );',
+        '}',
+      ].join('\n'),
+      checks: [
+        {
+          id: 'nome1',
+          label: 'O primeiro card mostra {{eu.nome}}',
+          hint: 'Dentro do <h2>, escreva {pessoa.nome} no lugar do texto fixo — com as chaves.',
+          selector: 'article:nth-of-type(1) h2',
+          assert: { type: 'text', contains: '{{eu.nome}}' },
+        },
+        {
+          id: 'prof1',
+          label: 'O primeiro card mostra {{eu.profissao}}',
+          hint: 'Dentro do <p>, escreva {pessoa.profissao} — sem cedilha e sem acento, igual ao rótulo da lista.',
+          selector: 'article:nth-of-type(1) p',
+          assert: { type: 'text', contains: '{{eu.profissao}}' },
+        },
+        {
+          id: 'nome3',
+          label: 'O terceiro card mostra {{amigo.nome}}',
+          hint: 'Escrevendo {pessoa.nome} uma vez, os três cards se resolvem: o .map repete o molde para cada pessoa.',
+          selector: 'article:nth-of-type(3) h2',
+          assert: { type: 'text', contains: '{{amigo.nome}}' },
+        },
+      ],
+    },
+    solution: [
+      'const pessoas = [',
+      '  { nome: "{{eu.nome}}", profissao: "{{eu.profissao}}" },',
+      '  { nome: "{{familiar.nome}}", profissao: "{{familiar.profissao}}" },',
+      '  { nome: "{{amigo.nome}}", profissao: "{{amigo.profissao}}" },',
+      '];',
+      '',
+      'export default function App() {',
+      '  return (',
+      '    <main className="mx-auto max-w-md space-y-4 p-6">',
+      '      <h1 className="text-2xl font-bold text-gray-900">Minha turma</h1>',
+      '      {pessoas.map((pessoa) => (',
+      '        <article key={pessoa.nome} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">',
+      '          {/* >>> mostre o nome e a profissão desta pessoa */}',
+      '          <h2 className="text-lg font-bold text-gray-900">{pessoa.nome}</h2>',
+      '          <p className="text-sm text-gray-500">{pessoa.profissao}</p>',
+      '          {/* <<< */}',
+      '        </article>',
+      '      ))}',
       '    </main>',
       '  );',
       '}',
