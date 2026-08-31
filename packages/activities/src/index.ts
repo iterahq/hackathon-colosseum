@@ -194,6 +194,20 @@ export { RichText } from './components/RichText.js';
 export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components/parts.js';
 export { parseInline, parseRichText } from './internal/richText.js';
 export type { Block, Inline } from './internal/richText.js';
+// O desenho do `diagram` e o parser que o alimenta saem juntos, e por um motivo
+// só: `parseMermaidLite` devolve `null` fora do subconjunto, então quem monta o
+// `<MermaidLite>` PRECISA do parser para saber quando cair no texto cru. Exportar
+// o componente sem o parser entregaria metade de uma decisão.
+export { MermaidLite } from './components/MermaidLite.js';
+export type { MermaidLiteProps } from './components/MermaidLite.js';
+export { normalizeMermaidLabel, parseMermaidLite, wrapLabel } from './internal/mermaidLite.js';
+export type {
+  MermaidDirection,
+  MermaidEdge,
+  MermaidGraph,
+  MermaidNode,
+  MermaidNodeShape,
+} from './internal/mermaidLite.js';
 export { answerMachine, choiceOptionState } from './internal/answerMachine.js';
 export type {
   AnswerMachineInput,

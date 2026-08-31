@@ -223,12 +223,21 @@ test.describe('exposição — kinds sem caminho de erro', () => {
     await expect(page.getByTestId('activity-done')).toHaveCount(0);
   });
 
-  test('diagram: 🧊 FROZEN — `mermaid` é exibido como TEXTO, não como diagrama', async ({ page }) => {
+  test('diagram: 🧊 FROZEN — fonte FORA do subconjunto continua saindo como TEXTO', async ({
+    page,
+  }) => {
     await open(page, DIAGRAM);
-    // There is no mermaid dependency in package.json; the spec's `mermaid`
-    // source is dumped into a <pre>. Freezing it so a future renderer change is
-    // a deliberate, visible diff rather than a surprise.
+    // O congelamento pedia que uma mudança de renderer fosse um diff deliberado,
+    // e esta é a mudança: existe renderer agora (`MermaidLite`, SVG próprio, sem
+    // dependência nova), mas ele cobre um SUBCONJUNTO da sintaxe. Este fixture
+    // usa `graph TD;` com `;` e nós sem rótulo (`main-->feature`), que estão
+    // fora dele — então `parseMermaidLite` devolve `null` e o `<pre>` de sempre
+    // continua sendo o que a tela mostra. A asserção antiga segue intacta de
+    // propósito: é ela que prova que ligar o desenho não piorou nenhuma linha
+    // que já existe no banco.
     await expect(page.getByTestId('activity-shell')).toContainText('graph TD');
+    await expect(page.getByTestId('diagram-mermaid-source')).toBeVisible();
+    await expect(page.getByTestId('mermaid-lite')).toHaveCount(0);
   });
 });
 

@@ -312,6 +312,14 @@ const PUBLIC_RUNTIME_SURFACE = [
   'parseRichText',
   'resolveLearnerScope',
   'seededShuffle',
+  // O desenho de `diagram` e as três funções puras que o alimentam. São PROMESSA
+  // e não vazamento: `parseMermaidLite` devolve `null` fora do subconjunto que
+  // ele aceita, então um host que monte o `<MermaidLite>` sem o parser não tem
+  // como saber quando cair no texto cru — as quatro só fazem sentido juntas.
+  'MermaidLite',
+  'normalizeMermaidLabel',
+  'parseMermaidLite',
+  'wrapLabel',
 ].sort();
 
 /**

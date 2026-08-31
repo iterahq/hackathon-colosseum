@@ -84,7 +84,14 @@ export const VIDEO_SPEC = {
   instruction: { text: 'Assista à introdução ao modelo relacional.' },
 };
 
-/** `diagram` é stub loose no Zod — o contrato real é o que o renderer lê. */
+/**
+ * `diagram` é stub loose no Zod — o contrato real é o que o renderer lê.
+ *
+ * ⚠️ `erDiagram` está FORA do subconjunto que o `parseMermaidLite` desenha, e
+ * este fixture segue com ele de propósito: é a prova, no contrato, de que uma
+ * fonte que o parser recusa continua caindo no `<pre>` de sempre. O fixture do
+ * caminho desenhado é o `DIAGRAM_FLOWCHART_SPEC`, logo abaixo.
+ */
 export const DIAGRAM_MERMAID_SPEC = {
   prompt: 'Leia o diagrama do clube de leitura da escola.',
   mermaid: [
@@ -100,6 +107,28 @@ export const DIAGRAM_MERMAID_SPEC = {
     '    text titulo',
     '  }',
   ].join('\n'),
+};
+
+/**
+ * `diagram` DENTRO do subconjunto — o caminho que de fato vira desenho.
+ *
+ * Os três `term` casam com o rótulo de um nó, então chip e nó acendem juntos:
+ * é isso que dá ao professor o "explicar apontando" no projetor. A aula é a do
+ * `.map`, que foi o pedido original.
+ */
+export const DIAGRAM_FLOWCHART_SPEC = {
+  prompt: 'Siga o caminho de uma lista quando ela passa pelo `.map`.',
+  mermaid: [
+    'graph TD',
+    '  A[Lista original] --> B(.map)',
+    '  B -->|um item por vez| C[Função de transformação]',
+    '  C --> D[Lista nova]',
+  ].join('\n'),
+  highlights: [
+    { term: '.map', caption: 'percorre a lista inteira e devolve OUTRA lista' },
+    { term: 'Lista original', caption: 'continua intacta — o .map nunca mexe nela' },
+    { term: 'Lista nova', caption: 'mesmo tamanho da original, com cada item já transformado' },
+  ],
 };
 
 /**
