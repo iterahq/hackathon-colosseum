@@ -35,6 +35,7 @@ cmt   fn  itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_u
 cmt   fn  itera.handle_new_federated_user() 78c2f01cc8b9
 cmt   fn  itera.is_action_trace(a jsonb) abb9e8cc400d
 cmt   fn  itera.is_current_user_guest_of(p_session_id uuid) 755664bb2207
+cmt   fn  itera.is_learning_operator() 92395512bab0
 cmt   fn  itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) f0dca134765c
 cmt   fn  itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) 69822a298f18
 cmt   fn  itera.test_tenant_isolation_violations() 71618de32b31
@@ -463,6 +464,7 @@ fn    itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_
 fn    itera.handle_new_federated_user() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public, auth body=4373ad818b87
 fn    itera.is_action_trace(a jsonb) -> boolean kind=f vol=i secdef=f cfg=- body=49d68086a077
 fn    itera.is_current_user_guest_of(p_session_id uuid) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=96c6a0f0a9f5
+fn    itera.is_learning_operator() -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=1f881433bcf6
 fn    itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) -> TABLE(id uuid, tenant_id uuid, instructor_id uuid, started_at timestamp with time zone, last_activity_at timestamp with time zone, reason text) kind=f vol=v secdef=t cfg=search_path=itera, pg_catalog, public body=11d2151f264d
 fn    itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=2daeccada8fe
 fn    itera.set_updated_at() -> trigger kind=f vol=v secdef=f cfg=- body=301a884953d3
@@ -540,6 +542,10 @@ gfn   itera.is_current_user_guest_of(p_session_id uuid) anon exec=t
 gfn   itera.is_current_user_guest_of(p_session_id uuid) authenticated exec=t
 gfn   itera.is_current_user_guest_of(p_session_id uuid) service_role exec=t
 gfn   itera.is_current_user_guest_of(p_session_id uuid) supabase_auth_admin exec=t
+gfn   itera.is_learning_operator() anon exec=t
+gfn   itera.is_learning_operator() authenticated exec=t
+gfn   itera.is_learning_operator() service_role exec=t
+gfn   itera.is_learning_operator() supabase_auth_admin exec=t
 gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) anon exec=f
 gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) authenticated exec=f
 gfn   itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) service_role exec=f
