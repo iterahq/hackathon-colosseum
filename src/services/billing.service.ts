@@ -71,6 +71,13 @@ export interface CheckoutResponse {
   sessionId: string;
 }
 
+/** Outcome of scheduling/undoing a cancellation, as reported by the server. */
+export interface SubscriptionCancelResponse {
+  cancelAtPeriodEnd: boolean;
+  status: string | null;
+  currentPeriodEnd: string | null;
+}
+
 /** Build the default post-checkout return URLs from the current app origin. */
 export function defaultReturnUrls(origin: string): { successUrl: string; cancelUrl: string } {
   const base = origin.replace(/\/+$/, '');
@@ -148,6 +155,74 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
     throw new Error('Checkout response did not include a redirect URL.');
   }
   return { checkoutUrl: parsed.checkout_url, sessionId: parsed.session_id ?? '' };
+}
+
+/**
+ * Schedule (or undo) the cancellation of the caller's subscription via itera-api
+ * `POST /plg/subscription/cancel`. The tenant comes from the JWT server-side —
+ * the body carries only the intent.
+ *
+ * Cancelling takes effect at the END of the paid period, never immediately: the
+ * learner keeps the access already paid for. `cancel: false` undoes a scheduled
+ * cancellation while the period is still running.
+ */
+export async function setCancelAtPeriodEnd(cancel: boolean): Promise<SubscriptionCancelResponse> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Billing is not available (Supabase not configured).');
+  }
+
+  const { data: sessionData } = await getSupabase().auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error('You must be signed in to change your subscription.');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${ITERA_API_URL}/plg/subscription/cancel`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ cancel }),
+    });
+  } catch (err) {
+    throw new Error(`Could not reach the billing service: ${(err as Error).message}`);
+  }
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const j = (await res.json()) as { error?: { message?: string } };
+      if (j?.error?.message) detail = j.error.message;
+    } catch {
+      /* non-JSON body — keep the status line */
+    }
+    throw new Error(`Subscription could not be updated (${detail}).`);
+  }
+
+  let parsed: {
+    cancel_at_period_end?: unknown;
+    status?: unknown;
+    current_period_end?: unknown;
+  };
+  try {
+    parsed = await res.json();
+  } catch {
+    throw new Error('Subscription response could not be parsed.');
+  }
+  // The server owns the outcome: a 200 that does not carry the flag back is a
+  // response we cannot confirm, so it is not reported as success.
+  if (typeof parsed.cancel_at_period_end !== 'boolean') {
+    throw new Error('Subscription response did not include the cancellation state.');
+  }
+  return {
+    cancelAtPeriodEnd: parsed.cancel_at_period_end,
+    status: typeof parsed.status === 'string' ? parsed.status : null,
+    currentPeriodEnd:
+      typeof parsed.current_period_end === 'string' ? parsed.current_period_end : null,
+  };
 }
 
 /**

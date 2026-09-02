@@ -1,15 +1,25 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { formatBillingDate } from '@/utils/formatBillingDate';
+import { CancelSubscriptionDialog } from './CancelSubscriptionDialog';
 
 export function SubscriptionSection() {
   const { t, locale } = useI18n();
   const { data, isPending, isError, refetch } = useEntitlement();
+  const cancelMutation = useCancelSubscription();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const exempt = data?.status === 'exempt';
   const endsAt = formatBillingDate(data?.currentPeriodEnd, locale);
+
+  // Isenção não é assinatura: a turma liberada não tem o que cancelar, e o botão
+  // ali sugeriria que ela perde o acesso ao clicar.
+  const billable = Boolean(data?.active) && !exempt;
+  const scheduledToCancel = billable && Boolean(data?.cancelAtPeriodEnd);
 
   return (
     <section
@@ -85,6 +95,47 @@ export function SubscriptionSection() {
               {t('subscribe.cta')}
             </Link>
           )}
+
+          {scheduledToCancel && (
+            <button
+              type="button"
+              data-testid="subscription-resume"
+              disabled={cancelMutation.isPending}
+              onClick={() => cancelMutation.mutate(false)}
+              className="mt-5 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-60"
+            >
+              <CreditCard className="h-4 w-4" />
+              {t('subscription.resume.action')}
+            </button>
+          )}
+
+          {billable && !scheduledToCancel && (
+            <button
+              type="button"
+              data-testid="subscription-cancel"
+              disabled={cancelMutation.isPending}
+              onClick={() => setConfirmOpen(true)}
+              className="mt-5 inline-flex h-10 items-center justify-center rounded-full border border-border px-4 text-sm text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive disabled:opacity-60"
+            >
+              {t('subscription.cancel.action')}
+            </button>
+          )}
+
+          {cancelMutation.isError && (
+            <p className="mt-3 text-sm text-destructive" data-testid="subscription-cancel-error">
+              {t('subscription.cancel.error')}
+            </p>
+          )}
+
+          <CancelSubscriptionDialog
+            open={confirmOpen}
+            onOpenChange={setConfirmOpen}
+            endsOn={endsAt}
+            onConfirm={() => {
+              setConfirmOpen(false);
+              cancelMutation.mutate(true);
+            }}
+          />
         </div>
       )}
     </section>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider, resources } from '@/i18n';
 import type { Entitlement } from '@/types/entitlement';
@@ -13,7 +14,16 @@ const state = {
   refetch: vi.fn(),
 };
 
+const cancelState = {
+  mutate: vi.fn(),
+  isPending: false,
+  isError: false,
+};
+
 vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => state }));
+vi.mock('@/hooks/useCancelSubscription', () => ({
+  useCancelSubscription: () => cancelState,
+}));
 
 function renderSection() {
   return render(
@@ -35,7 +45,18 @@ beforeEach(() => {
   };
   state.isPending = false;
   state.isError = false;
+  cancelState.mutate = vi.fn();
+  cancelState.isPending = false;
+  cancelState.isError = false;
 });
+
+const activeSubscription: Entitlement = {
+  active: true,
+  status: 'active',
+  currentPeriodEnd: '2026-09-15T00:00:00.000Z',
+  seatCount: 1,
+  cancelAtPeriodEnd: false,
+};
 
 describe('SubscriptionSection', () => {
   it('sem assinatura, oferece o caminho de assinar', () => {
@@ -101,6 +122,79 @@ describe('SubscriptionSection', () => {
     expect(screen.queryByTestId('subscription-status')).toBeNull();
   });
 
+  it('cancelar só acontece depois da confirmação', async () => {
+    state.data = { ...activeSubscription };
+    renderSection();
+
+    expect(screen.queryByTestId('subscription-resume')).toBeNull();
+    await userEvent.click(screen.getByTestId('subscription-cancel'));
+
+    // Abrir o diálogo não é cancelar — o pedido só sai no confirm.
+    expect(cancelState.mutate).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByTestId('cancel-subscription-confirm'));
+    expect(cancelState.mutate).toHaveBeenCalledWith(true);
+  });
+
+  it('desistir no diálogo não manda nada', async () => {
+    state.data = { ...activeSubscription };
+    renderSection();
+
+    await userEvent.click(screen.getByTestId('subscription-cancel'));
+    await userEvent.click(screen.getByTestId('cancel-subscription-keep'));
+    expect(cancelState.mutate).not.toHaveBeenCalled();
+  });
+
+  it('a confirmação diz até quando o acesso pago vale', async () => {
+    state.data = { ...activeSubscription };
+    renderSection();
+
+    await userEvent.click(screen.getByTestId('subscription-cancel'));
+    const expected = resources.pt['subscription.cancel.bodyUntil'].replace(
+      '{date}',
+      formatBillingDate('2026-09-15T00:00:00.000Z', 'pt')
+    );
+    expect(screen.getByTestId('cancel-subscription-dialog').textContent).toContain(expected);
+  });
+
+  it('já agendada para cancelar oferece reativar, e reativar não pede confirmação', async () => {
+    state.data = { ...activeSubscription, cancelAtPeriodEnd: true };
+    renderSection();
+
+    expect(screen.queryByTestId('subscription-cancel')).toBeNull();
+    await userEvent.click(screen.getByTestId('subscription-resume'));
+    expect(cancelState.mutate).toHaveBeenCalledWith(false);
+  });
+
+  it('turma isenta não tem o que cancelar', () => {
+    state.data = {
+      active: true,
+      status: 'exempt',
+      currentPeriodEnd: null,
+      seatCount: null,
+      cancelAtPeriodEnd: false,
+    };
+    renderSection();
+    expect(screen.queryByTestId('subscription-cancel')).toBeNull();
+    expect(screen.queryByTestId('subscription-resume')).toBeNull();
+  });
+
+  it('sem assinatura oferece assinar, nunca cancelar', () => {
+    renderSection();
+    expect(screen.getByTestId('subscription-cta')).toBeTruthy();
+    expect(screen.queryByTestId('subscription-cancel')).toBeNull();
+    expect(screen.queryByTestId('subscription-resume')).toBeNull();
+  });
+
+  it('falha na troca aparece na tela em vez de sumir', () => {
+    state.data = { ...activeSubscription };
+    cancelState.isError = true;
+    renderSection();
+    expect(screen.getByTestId('subscription-cancel-error').textContent).toBe(
+      resources.pt['subscription.cancel.error']
+    );
+  });
+
   it('as chaves existem nos dois idiomas', () => {
     const keys = [
       'subscription.section',
@@ -114,6 +208,14 @@ describe('SubscriptionSection', () => {
       'subscription.endsOn',
       'subscription.seats',
       'subscription.loadError',
+      'subscription.cancel.action',
+      'subscription.cancel.title',
+      'subscription.cancel.body',
+      'subscription.cancel.bodyUntil',
+      'subscription.cancel.keep',
+      'subscription.cancel.confirm',
+      'subscription.cancel.error',
+      'subscription.resume.action',
     ] as const;
     for (const locale of ['pt', 'en'] as const) {
       for (const key of keys) expect(resources[locale][key]).toBeTruthy();

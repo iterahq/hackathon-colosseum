@@ -779,8 +779,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mês',
     'subscribe.priceLoading': 'Carregando o preço…',
-    // Leitura da assinatura no /profile — só leitura: cancelar/trocar cartão é
-    // no portal do Stripe, que ainda não está ligado.
+    // Assinatura no /profile. Cancelar/reativar são self-serve daqui
+    // (`/plg/subscription/cancel`); trocar cartão ainda é no portal do Stripe,
+    // que não está ligado.
     'subscription.section': 'Sua assinatura',
     'subscription.status.active': 'Ativa',
     'subscription.status.inactive': 'Sem assinatura',
@@ -792,6 +793,16 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscription.endsOn': 'Cancelada: o acesso vai até {date}.',
     'subscription.seats': 'Vagas na assinatura: {count}.',
     'subscription.loadError': 'Não foi possível carregar a assinatura.',
+    'subscription.cancel.action': 'Cancelar assinatura',
+    'subscription.cancel.title': 'Cancelar a assinatura?',
+    'subscription.cancel.bodyUntil':
+      'Você continua com acesso até {date} — nada é cobrado depois disso. Dá para reativar a qualquer momento até lá.',
+    'subscription.cancel.body':
+      'Você continua com acesso até o fim do período já pago. Dá para reativar a qualquer momento até lá.',
+    'subscription.cancel.keep': 'Manter assinatura',
+    'subscription.cancel.confirm': 'Cancelar assinatura',
+    'subscription.cancel.error': 'Não foi possível atualizar a assinatura. Tente de novo.',
+    'subscription.resume.action': 'Reativar assinatura',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Idioma',
     'profile.languageSaved': 'Idioma salvo no seu perfil.',
@@ -1669,6 +1680,16 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscription.endsOn': 'Canceled: access runs until {date}.',
     'subscription.seats': 'Seats on this subscription: {count}.',
     'subscription.loadError': 'Could not load your subscription.',
+    'subscription.cancel.action': 'Cancel subscription',
+    'subscription.cancel.title': 'Cancel your subscription?',
+    'subscription.cancel.bodyUntil':
+      'You keep access until {date} — nothing is charged after that. You can resume any time until then.',
+    'subscription.cancel.body':
+      'You keep access until the end of the period you already paid for. You can resume any time until then.',
+    'subscription.cancel.keep': 'Keep subscription',
+    'subscription.cancel.confirm': 'Cancel subscription',
+    'subscription.cancel.error': 'Could not update your subscription. Please try again.',
+    'subscription.resume.action': 'Resume subscription',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Language',
     'profile.languageSaved': 'Language saved to your profile.',
