@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
-import { CAPTURE_LAUNCH_ARGS } from './e2e/support/captureRegions';
+import {
+  CAPTURE_LAUNCH_ARGS,
+  type CaptureViewportOptions,
+} from './e2e/support/captureRegions';
 
 /**
  * Playwright config for the `data-source` STAMP and for the CAPTURE built on it
@@ -22,22 +25,30 @@ import { CAPTURE_LAUNCH_ARGS } from './e2e/support/captureRegions';
  *
  * ## Two projects, ONE server
  *
- * | project   | spec                       | what it answers                     |
- * |-----------|----------------------------|-------------------------------------|
- * | `stamp`   | `source-stamp.spec.ts`     | does every stamp name a real file?  |
- * | `capture` | `capture-regions.spec.ts`  | does the MAP built from the stamps place a click on the right file, and does the image repeat byte for byte? |
+ * | project           | spec                       | what it answers             |
+ * |-------------------|----------------------------|-----------------------------|
+ * | `stamp`           | `source-stamp.spec.ts`     | does every stamp name a real file? |
+ * | `capture`         | `capture-regions.spec.ts`  | does the MAP built from the stamps place a click on the right file, and does the image repeat byte for byte? |
+ * | `manifest`        | `capture-manifest.spec.ts` | does the app still match the map we froze, at 1280x800? |
+ * | `manifest-mobile` | `capture-manifest.spec.ts` | …and at 390x844, replaying the SAME frozen data? |
  *
  * They are projects rather than a fourth config on purpose: the dominant cost
- * here is the `vite build` inside `webServer`, and one server serves both. The
- * cheap-looking alternative — a `playwright.capture.config.ts` on port 4190 —
- * would build the same tree with the same flag a second time on every PR.
+ * here is the `vite build` inside `webServer`, and one server serves all four.
+ * The cheap-looking alternative — a `playwright.capture.config.ts` on port
+ * 4190 — would build the same tree with the same flag a second time on every
+ * PR.
  *
- * ⚠️ That saving only exists if BOTH projects run in ONE invocation, which is
+ * ⚠️ That saving only exists if the projects run in ONE invocation, which is
  * why `npm run e2e:stamp` passes no `--project` and CI calls it exactly once.
  * `reuseExistingServer` is FALSE under `CI`, so two `--project` calls would
  * start two servers and pay for two builds — the whole reason the split was
  * avoided. `npm run e2e:capture` narrows to one project for LOCAL iteration,
  * where the server is reused and the saving does not apply.
+ *
+ * ⚠️ And it is why the VIEWPORT is a project `use` option and not an env var.
+ * `CAPTURE_VIEWPORT=mobile` would be process-wide, so `manifest` and
+ * `manifest-mobile` could not run together and the build would be paid twice —
+ * silently undoing the reason this file has projects at all.
  *
  * ⚠️ **The determinism settings are NOT in this file.** They live in
  * `CAPTURE_CONTEXT_OPTIONS` (`e2e/support/captureRegions.ts`) and the capture
@@ -55,7 +66,7 @@ import { CAPTURE_LAUNCH_ARGS } from './e2e/support/captureRegions';
  * which on a public VPS publishes the preview — and this particular preview
  * contains the private repository layout. Loopback only.
  */
-export default defineConfig({
+export default defineConfig<CaptureViewportOptions>({
   testDir: './e2e',
 
   fullyParallel: true,
@@ -143,6 +154,41 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: [...CAPTURE_LAUNCH_ARGS] },
+        // Explicit, though it is also the default. The desktop pass is the one
+        // every committed digest and every existing index row was taken at, so
+        // it should be readable here rather than inferred.
+        captureViewport: 'desktop',
+      },
+    },
+    {
+      // ═════════════════════════════════════════════════════════════════════
+      // 📱 THE SAME FROZEN EXPLORATION, AT 390x844
+      // ═════════════════════════════════════════════════════════════════════
+      // Same spec file, same manifest, same markers, same states — replayed in
+      // the mobile capture context (`isMobile`, `hasTouch`, DPR 1; ADR-6 of
+      // plan `20260902-ux-paths-responsive-mobile-capture`). No model runs, and
+      // nothing is re-explored: every route entry has a concrete `target` and a
+      // selector `marker`, every state has selector `steps[]` and a selector
+      // `proof`, so none of them depends on the width.
+      //
+      // ⚠️ A PROJECT and not a second spec file. A copy of the spec would be a
+      // second determinism harness, and the fleet has already learned what
+      // those do: `lenses.ts` in `dfl-ux-paths` records that a duplicated
+      // harness "stays green" while diverging from the original. One file
+      // replayed twice cannot drift from itself.
+      //
+      // ⚠️ Its own `timeout` because its per-test cost is not the desktop
+      // pass's cost: two of its route tests also WRITE a capture pair (see
+      // `capture_routes` in the manifest), where the desktop pass only proves a
+      // marker. The number is the measured p90 plus headroom, not a guess —
+      // the figures are in the PR that added this project.
+      name: 'manifest-mobile',
+      testMatch: /capture-manifest\.spec\.ts$/,
+      timeout: 60_000,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: [...CAPTURE_LAUNCH_ARGS] },
+        captureViewport: 'mobile',
       },
     },
   ],

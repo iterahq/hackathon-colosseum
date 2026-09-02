@@ -6,12 +6,36 @@
       "width": 1280,
       "height": 800
     },
+    "viewport_name": "desktop",
     "supabase": "http://stub.supabase.invalid (unresolvable by design)",
     "session": "none"
   },
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800,
+      "capture_routes": [],
+      "why_capture_routes_is_empty": "The desktop photographs of `login` and `not_found` are taken by `capture-regions.spec.ts` (artifacts under `regions/`), and they are what `published-screens.json` publishes. This project proves the other five reachable routes by marker instead. Unchanged from before the mobile pass."
+    },
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "capture_routes": [
+        "login",
+        "not_found"
+      ],
+      "why_capture_routes_is_these_two": "EXACTLY the two declared screens the desktop pass publishes, so mobile and desktop coverage stay 2 of 31 each. A wider mobile set would give screens a mobile image with no desktop sibling — an asymmetry the viewer switcher (T3) was built for the OTHER direction and would render as a dead desktop button. Widening it is a change to THIS array, not to the suite."
+    }
+  ],
+  "marker_by_viewport": {},
+  "min_regions_by_viewport": {},
   "provenance": {
     "routes": "measured — scripts/ux-capture/prepass.mjs, no model in the loop",
-    "states": "opencode-go/qwen3.7-max + @playwright/mcp, ONE bounded session, 2026-08-13, 55 browser tool calls, ~5.5 min wall clock. Every entry below was re-verified deterministically before it was written here; the ones that did not survive are in e2e/support/capture-manifest.REJECTED.md."
+    "states": "opencode-go/qwen3.7-max + @playwright/mcp, ONE bounded session, 2026-08-13, 55 browser tool calls, ~5.5 min wall clock. Every entry below was re-verified deterministically before it was written here; the ones that did not survive are in e2e/support/capture-manifest.REJECTED.md.",
+    "viewports": "measured — `node scripts/ux-capture/prepass.mjs --viewport mobile`, 2026-09-02, no model in the loop. The 390x844 prepass FLAGGED ZERO of the 31 routes: same reachability, same landing path, same visible stamped-region count, same `data-testid` set and the same `h1` on every single route. That is why `marker_by_viewport` and `min_regions_by_viewport` are EMPTY — there is nothing to override, not \"we did not look\". The fields exist so that the first route which does need an override is a DATA change and not a code change, and so that the override is a value a human chose rather than a number a script wrote. A marker is an anti-impersonation proof; the prepass may PROPOSE one, it may never COMMIT one.",
+    "viewport_overrides_are_vacuous_today": "⚠️ Read the emptiness honestly: \"every flagged route has a committed override\" is TRUE BY CONSTRUCTION while the flagged set is empty. The assertion that is NOT vacuous is the marker-uniqueness one in `capture-manifest.spec.ts`, which runs at every viewport in `viewports` and checks each reachable route against the marker of every OTHER reachable route."
   },
   "routes": [
     {

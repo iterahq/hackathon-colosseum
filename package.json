@@ -34,6 +34,7 @@
     "bringup:down": "bash bringup/down.sh",
     "e2e:bringup": "bash -c '. bringup/env.sh && exec npx playwright test --config playwright.bringup.config.ts'",
     "e2e:manifest": "playwright test --config playwright.stamp.config.ts --project manifest",
+    "e2e:manifest:mobile": "playwright test --config playwright.stamp.config.ts --project manifest-mobile",
     "ux-capture": "bash scripts/ux-capture/run-capture.sh",
     "ux-capture:prepass": "node scripts/ux-capture/prepass.mjs",
     "ux-capture:verify": "node scripts/ux-capture/verify-states.mjs",

@@ -32,16 +32,42 @@
  * `/login` would otherwise "pass" on any proof string the login page happens to
  * contain.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📱 AND IT IS THE GATE AT THE SECOND VIEWPORT TOO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `--viewport mobile` replays every candidate in the mobile capture context
+ * (390x844, `isMobile`, `hasTouch`; ADR-6 of plan
+ * `20260902-ux-paths-responsive-mobile-capture`). That matters because the
+ * states a mobile round is looking for are the ones a replay CANNOT find — an
+ * open drawer, a bottom sheet, an overflow menu — so they come from a bounded
+ * model session and arrive here as claims, exactly like the first five did.
+ * A claim that reproduces at 390 is written with `viewport: "mobile"` on it, so
+ * the suite replays it only where it exists.
+ *
+ * ⚠️ The context and the launch flags are no longer restated in this file. They
+ * come from `@devfellowship/ux-paths-capture`, which is the same source
+ * `e2e/support/captureRegions.ts` and the capture suites read. The literals
+ * that used to be here were a second copy of a determinism contract, and this
+ * script's whole value is that it replays under the SAME conditions the capture
+ * will — a copy that drifts makes the gate weaker while it stays green.
+ *
  * Usage:
  *   node scripts/ux-capture/verify-states.mjs \
  *     --candidates <model-output.json> \
  *     --manifest   e2e/support/capture-manifest.json \
- *     [--base http://127.0.0.1:4189] [--write]
+ *     [--base http://127.0.0.1:4189] [--viewport desktop|mobile] [--write]
  *
  * Without `--write` it only reports. Exit 0 = every candidate reproduced.
  */
 import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
+import {
+  CAPTURE_LAUNCH_ARGS,
+  DEFAULT_VIEWPORT_PRESET,
+  captureContextOptions,
+  resolveViewportSpec,
+  viewportLabel,
+} from '@devfellowship/ux-paths-capture/playwright';
 
 const argv = process.argv.slice(2);
 const arg = (name, fallback = null) => {
@@ -60,35 +86,43 @@ if (!CANDIDATES) {
 
 const LOGIN_MARKER = '[data-testid="login-page"]';
 
-/** The launch flags the capture uses. Same browser, or the check means less. */
-const LAUNCH_ARGS = [
-  '--disable-gpu',
-  '--disable-partial-raster',
-  '--disable-skia-runtime-opts',
-  '--force-color-profile=srgb',
-  '--disable-lcd-text',
-  '--disable-font-subpixel-positioning',
-  '--font-render-hinting=none',
-];
-
-const CONTEXT = {
-  viewport: { width: 1280, height: 800 },
-  deviceScaleFactor: 1,
-  colorScheme: 'dark',
-  reducedMotion: 'reduce',
-  timezoneId: 'UTC',
-  locale: 'pt-BR',
-};
+/**
+ * The viewport to replay at. A candidate may name its own — a state harvested
+ * at 390 is verified at 390 even in a mixed candidate file — and `--viewport`
+ * is the default for the ones that do not.
+ */
+const { name: defaultViewport, preset: defaultPreset, custom } = resolveViewportSpec(
+  arg('viewport', DEFAULT_VIEWPORT_PRESET)
+);
+if (custom) {
+  console.warn(
+    `⚠️  ${viewportLabel(defaultPreset)} matches no preset, so it takes the DEFAULT ` +
+      `input modality at a new size — a "narrow desktop" and not a phone. See ADR-6.`
+  );
+}
 
 const candidates = JSON.parse(readFileSync(CANDIDATES, 'utf8')).states ?? [];
 const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
 
-const browser = await chromium.launch({ args: LAUNCH_ARGS });
+// Same browser as the capture, or the check means less.
+const browser = await chromium.launch({ args: [...CAPTURE_LAUNCH_ARGS] });
 const accepted = [];
 const rejected = [];
 
+console.log(
+  `replaying ${candidates.length} candidate(s) at ${defaultViewport} ` +
+    `(${viewportLabel(defaultPreset)}) against ${BASE}`
+);
+
 for (const candidate of candidates) {
-  const context = await browser.newContext(CONTEXT);
+  // 🚨 The viewport is resolved PER CANDIDATE and the context is opened with
+  // it, so a candidate that claims `viewport: "mobile"` is never blessed by a
+  // desktop replay. That is the same class of mistake the fresh context exists
+  // to stop: a claim proved under conditions it did not claim.
+  const { name: viewportName, preset } = resolveViewportSpec(
+    candidate.viewport ?? defaultViewport
+  );
+  const context = await browser.newContext(captureContextOptions(preset));
   const page = await context.newPage();
   let verdict = { id: candidate.id, ok: false, reason: '' };
   try {
@@ -124,11 +158,20 @@ for (const candidate of candidates) {
       steps: candidate.steps,
       proof: candidate.proof_selector,
       why: candidate.why_it_matters ?? '',
+      // Written ONLY for a non-default viewport. A state that exists
+      // everywhere carries no `viewport` key, so the manifest of the five
+      // states frozen in 2026-08 is byte-unchanged by this script.
+      ...(viewportName === DEFAULT_VIEWPORT_PRESET ? {} : { viewport: viewportName }),
     });
-    console.log(`  ✅ ${candidate.id}`);
+    console.log(`  ✅ ${candidate.id} @${viewportName}`);
   } else {
-    rejected.push({ id: candidate.id, url: candidate.url, reason: verdict.reason });
-    console.log(`  ❌ ${candidate.id} — ${verdict.reason}`);
+    rejected.push({
+      id: candidate.id,
+      url: candidate.url,
+      viewport: viewportName,
+      reason: verdict.reason,
+    });
+    console.log(`  ❌ ${candidate.id} @${viewportName} — ${verdict.reason}`);
   }
 }
 
@@ -137,6 +180,35 @@ await browser.close();
 console.log(`\n${accepted.length} reproduced, ${rejected.length} did not.`);
 
 if (has('write')) {
+  /**
+   * 🚨 `--write` REPLACES `states`, and a partial candidate file is now the
+   * normal case.
+   *
+   * This script has always written `manifest.states = accepted`, and that was
+   * safe while there was exactly one exploration session covering every state.
+   * The mobile round breaks that assumption: a candidate file from a bounded
+   * 390 session holds only the mobile-only states, so a plain `--write` would
+   * DELETE the five states frozen in 2026-08 and the suite would go green with
+   * five fewer assertions — the quietest possible regression.
+   *
+   * So a write that would drop an existing id STOPS, and says which. Passing
+   * `--replace-all` is how a caller says the candidate file really is the whole
+   * set, which is what the original 2026-08 run was.
+   */
+  const before = (manifest.states ?? []).map((s) => s.id);
+  const after = new Set(accepted.map((s) => s.id));
+  const dropped = before.filter((id) => !after.has(id));
+  if (dropped.length && !has('replace-all')) {
+    console.error(
+      `refusing to write: ${dropped.length} state(s) already in ${MANIFEST} are absent ` +
+        `from the candidate file and would be DELETED — ${dropped.join(', ')}.\n` +
+        `A partial candidate file (one viewport, one session) is normal; deleting the ` +
+        `rest of the map is not. Add them to the candidate file, or pass --replace-all ` +
+        `if this file really is the whole set.`
+    );
+    process.exit(2);
+  }
+
   manifest.states = accepted;
   writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
   console.log(`wrote ${accepted.length} state(s) into ${MANIFEST}`);

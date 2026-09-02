@@ -32,8 +32,42 @@
     "`role` is free text by the RPC's own contract (roles are per-application), so the",
     "substrate travels in the role name and again in the coverage note."
   ],
+  "why_the_viewport_is_a_column_and_not_part_of_the_role": [
+    "ADR-8 of plan `20260902-ux-paths-responsive-mobile-capture`, after Tainan answered",
+    "Q3 = B: the viewport is a COLUMN on `engineering.ux_map_captures`",
+    "(`viewport text NOT NULL DEFAULT 'desktop'`, unique key `(app_uuid, role, viewport,",
+    "digest)`). It is NOT a `<role>@mobile` suffix — that earlier design doubled the human",
+    "validation work and leaked a pseudo-role into every reader of `role`.",
+    "So the role below stays `anonymous-hermetic` for BOTH passes, and the two captures of",
+    "one build are distinguished by the `viewport` argument alone. `publish-capture.mjs",
+    "--viewport mobile` writes the mobile row; the default writes the desktop one."
+  ],
   "screens": {
     "login": "regions/login",
     "not_found": "regions/not-found"
-  }
+  },
+  "why_screens_is_the_desktop_map": [
+    "`screens` is the map for the DEFAULT viewport (`desktop`), and it keeps that name",
+    "because every publish before the mobile pass read it. A non-default viewport gets its",
+    "own map under `screens_by_viewport`, so the desktop publish is byte-unchanged."
+  ],
+  "screens_by_viewport": {
+    "mobile": {
+      "login": "manifest/login@390x844",
+      "not_found": "manifest/not_found@390x844"
+    }
+  },
+  "why_the_mobile_map_is_the_same_two_screens": [
+    "EXACTLY the two the desktop map publishes, so both viewports report 2 of 31 and the",
+    "viewer's switcher always has both siblings or neither. A wider mobile set would give",
+    "five screens a mobile image with NO desktop sibling — and the switcher (T3) was built",
+    "for the opposite case, `mobile absent`, so it would render a dead desktop button.",
+    "The directories differ from the desktop ones and that is not an oversight: the desktop",
+    "photographs of `login` and `not_found` are taken by `capture-regions.spec.ts` (under",
+    "`regions/`), while the mobile ones are taken by the `manifest-mobile` project (under",
+    "`manifest/`, suffixed `@390x844` per ADR-3). The map is DATA precisely so that this",
+    "kind of asymmetry is stated once instead of being guessed by a script.",
+    "Widening the mobile set means adding a screen id HERE and to `viewports[].capture_routes`",
+    "in `e2e/support/capture-manifest.json` — two data edits, no code."
+  ]
 }

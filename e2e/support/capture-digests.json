@@ -4,39 +4,113 @@
     "chromium": "1228",
     "arch": "x64"
   },
-  "note": "Digests of the capture pairs. `regions` is layout and travels between hosts; `screenshot` is pixels and is comparable only under the same `recorded_for` key. Refresh with: npm run ux-capture:digests -- --write",
+  "note": "Digests of the capture pairs. `regions` is layout and travels between hosts; `screenshot` is pixels and is comparable only under the same top-level `recorded_for` key. Each screen also carries its own `recorded_for.viewport`, read from the directory suffix (ADR-3): a pixel difference at a NON-DEFAULT viewport is RECORDED and does not fail the check (ADR-7), while a LAYOUT difference counts at every viewport. Refresh with: npm run ux-capture:digests -- --write",
+  "why_the_desktop_hashes_are_not_refreshed_here": "The DESKTOP hashes below are the ones committed on 2026-08-13, byte for byte. Five of them (`manifest/login_auth_error`, `manifest/login_locale_en`, `manifest/otp_invalid_code_error`, `manifest/otp_step2_code_input`, `regions/login`) already differed from a fresh run BEFORE the mobile pass existed — the login card changed between 2026-08-13 and 2026-09-02. That difference is the PRODUCT of plan 20260812-ux-map-observed-reality-lens (\"what changed since this was validated\"), and the weekly cron opens \"[ux-capture] the observed UI changed\" for it. Refreshing them inside the mobile-pass PR would have closed that issue by writing the new hashes, which is blessing a UI change nobody reviewed. So only the SEVEN new `@390x844` rows are added here. Whoever reviews that desktop change runs `npm run ux-capture:digests -- --write`.",
   "screens": {
     "manifest/forgot_locale_en": {
       "regions": "32e155c458f2318809e1f3034b99a77df1b4eaa804561a1198d747b8f652aeec",
-      "screenshot": "19a1a31cdbf4ae8f744ea3e189540f879f6a3dfd2cbac37ebae3ff5c5fcaa777"
+      "screenshot": "19a1a31cdbf4ae8f744ea3e189540f879f6a3dfd2cbac37ebae3ff5c5fcaa777",
+      "recorded_for": {
+        "viewport": "default"
+      }
+    },
+    "manifest/forgot_locale_en@390x844": {
+      "regions": "cea804f300f36cf8e2c07f058154b0c7a18bea20064a5e82451024c97936186b",
+      "screenshot": "5ff10ff73a0c68b19771fbe252fe32fe3623747b95bae80a1bc667ec2ab1a55e",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
+    },
+    "manifest/login@390x844": {
+      "regions": "a77fbf204354294c6728906c45d97bd30a6a62b49dcfb174bbf732f0871345ff",
+      "screenshot": "789db8653c7a84db151afb4870667cacf2d7d901fea7ae88df641139ad1e03ab",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
     },
     "manifest/login_auth_error": {
       "regions": "ef7b1b764ef4092ff2cbb8eb7232a962e6b5033b5366c6ca2ca0ac32343fcde4",
-      "screenshot": "57bd9d25b3b7d34e57ac4217d0be7fc465b1b9b6f2b231520b8eee0d8bd36f68"
+      "screenshot": "57bd9d25b3b7d34e57ac4217d0be7fc465b1b9b6f2b231520b8eee0d8bd36f68",
+      "recorded_for": {
+        "viewport": "default"
+      }
+    },
+    "manifest/login_auth_error@390x844": {
+      "regions": "b10e6ff8f81528a30a64338e279cdc2ea4a414255e0d98b3d35647158db9ca67",
+      "screenshot": "fbc1d1d0a26c926b323c6ac981cd23ee29e6f9fe44e293c277284c31a9e2b63d",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
     },
     "manifest/login_locale_en": {
       "regions": "2aeef492195735413b6b20c8d1ca3adee5ee7d6a92f92a38afef2cb6e52bf6a3",
-      "screenshot": "8b10a9e63844b96e99ef73809b1c1a35a38d4407833451fdbb75d71ef8330a4f"
+      "screenshot": "8b10a9e63844b96e99ef73809b1c1a35a38d4407833451fdbb75d71ef8330a4f",
+      "recorded_for": {
+        "viewport": "default"
+      }
+    },
+    "manifest/login_locale_en@390x844": {
+      "regions": "44aaa082e6df4acef319a58b2512fb3ef75ac34957c43e1b05928e7f7459cb6e",
+      "screenshot": "e5f0713383e6eadb9fabdb07d7f0dcb2f286f7064f609ff164a8cf6d6012b16a",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
+    },
+    "manifest/not_found@390x844": {
+      "regions": "f20b298209c400598d2cb9f9b0576a903ed4e8d1ce7b69f6e2bbc1edbdd4b2f8",
+      "screenshot": "010c1008df7918bdaa833459e33c56aed324611e36d6aa08cc6aeefe2cbe4e41",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
     },
     "manifest/otp_invalid_code_error": {
       "regions": "8c3df5fac9f028ed7b09dc18eeb20d346c4771f99bc5185c0a37e35b5859bc35",
-      "screenshot": "302df65cd0ab14d81d7455aed8d330bd05701a6f254e6839d01760100195b850"
+      "screenshot": "302df65cd0ab14d81d7455aed8d330bd05701a6f254e6839d01760100195b850",
+      "recorded_for": {
+        "viewport": "default"
+      }
+    },
+    "manifest/otp_invalid_code_error@390x844": {
+      "regions": "9ac029e38306456e3f74ee92fbfd1aeab1a02728765033ef245c4c203f63a82a",
+      "screenshot": "7ac8fe4f6815c291592d9ef724ec061defaa53bdd53130f75a748775ae2ee337",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
     },
     "manifest/otp_step2_code_input": {
       "regions": "dff1f65f65ea70da6ba3b7fa9c1c0232a64af8410e0a6905ccd6077186795b29",
-      "screenshot": "d5697bd4352466f1ff462450f823e22b3d865347d2f323535681cd5e6717fbc1"
+      "screenshot": "d5697bd4352466f1ff462450f823e22b3d865347d2f323535681cd5e6717fbc1",
+      "recorded_for": {
+        "viewport": "default"
+      }
+    },
+    "manifest/otp_step2_code_input@390x844": {
+      "regions": "bf752d6c255664b8f82d4a06cd6ef892373956239b3c43758e16ee83f8fd6759",
+      "screenshot": "3eef854b089b03af5a517ae87813f353d97ac08e09ef8d536d7b70f8cbdf2935",
+      "recorded_for": {
+        "viewport": "390x844"
+      }
     },
     "regions/harness-single-choice": {
       "regions": "44d3ab7744a5d5d3cf52e615a8c5ab79bd714c8fa4dcf9ee92d1326ec59f9203",
-      "screenshot": "08e3253a38fddade15c760e7e705f182bb6cbe5b49ba247a01de0fd3311edfb5"
+      "screenshot": "08e3253a38fddade15c760e7e705f182bb6cbe5b49ba247a01de0fd3311edfb5",
+      "recorded_for": {
+        "viewport": "default"
+      }
     },
     "regions/login": {
       "regions": "878f42120793dd8af5cd01f32241aec6805abe9e1be83d1938b37e32c709a3b5",
-      "screenshot": "51c0d68ad471dc7d474aab23398ad8f8f3a9b27533d9394e981b845cac378005"
+      "screenshot": "51c0d68ad471dc7d474aab23398ad8f8f3a9b27533d9394e981b845cac378005",
+      "recorded_for": {
+        "viewport": "default"
+      }
     },
     "regions/not-found": {
       "regions": "29b90666ec48814c58f3a909b0226f5ca6ac40ee9c821bcecb4901f7d858da89",
-      "screenshot": "1045cb099927b3199119f97c2e96d102e99fbf0c2cd758e62c78a44bf7b16058"
+      "screenshot": "1045cb099927b3199119f97c2e96d102e99fbf0c2cd758e62c78a44bf7b16058",
+      "recorded_for": {
+        "viewport": "default"
+      }
     }
   }
 }

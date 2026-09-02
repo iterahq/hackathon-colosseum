@@ -28,11 +28,63 @@ missing a field. Add the field.
 
 | file | what it does | needs a model? |
 |---|---|---|
-| `prepass.mjs` | visits all 31 declared routes, records render-vs-redirect, testids, region counts | **no** |
-| `verify-states.mjs` | replays each claimed state from a FRESH context, promotes only what reproduces | **no** |
-| `digests.mjs` | records / compares `regions.json` + `screenshot.png` digests, keyed by Chromium revision | **no** |
+| `prepass.mjs` | visits all 31 declared routes, records render-vs-redirect, testids, region counts. `--viewport` | **no** |
+| `verify-states.mjs` | replays each claimed state from a FRESH context, promotes only what reproduces. `--viewport` | **no** |
+| `digests.mjs` | records / compares `regions.json` + `screenshot.png` digests, keyed by Chromium revision and by viewport | **no** |
 | `run-capture.sh` | the whole capture as one command, for the container | **no** |
-| `publish-capture.mjs` | uploads the pairs to media and writes `engineering.ux_map_*` | **no** |
+| `publish-capture.mjs` | uploads the pairs to media and writes `engineering.ux_map_*`. `--viewport` | **no** |
+| `emit-observed-flows.ts` | the observed flows document, with the `screenshots[]` entry for one viewport | **no** |
+| `viewports.ts` | the viewport vocabulary for the two scripts that run with NO `node_modules` | **no** |
+
+## 📱 The second viewport
+
+Plan
+[`20260902-ux-paths-responsive-mobile-capture`](https://plans.devfellowship.com/20260902-ux-paths-responsive-mobile-capture),
+task T2.
+
+Every screen is captured twice: at `1280x800` and at `390x844`. The mobile pass
+is a **replay**, not a second exploration. It reads the same
+`capture-manifest.json`, uses the same markers and the same states, and runs
+them in the mobile capture context — `isMobile: true`, `hasTouch: true`,
+`deviceScaleFactor: 1` (ADR-6). Nothing in the frozen map is coordinate-based,
+so nothing in it depends on the width.
+
+That is a claim, and it was measured before it was believed. The 390 prepass on
+2026-09-02 flagged **zero of the 31 routes**: same reachability, same landing
+path, same visible stamped-region count, same `data-testid` set, same `h1`. So
+`marker_by_viewport` and `min_regions_by_viewport` exist in the manifest and are
+**empty**.
+
+⚠️ Read that emptiness honestly. *"Every flagged route has a committed
+override"* is true **by construction** while the flagged set is empty. The
+assertion that is not vacuous is the marker **uniqueness** one in
+`e2e/capture-manifest.spec.ts`: at every viewport, each reachable route's marker
+must match its own route and **no other** reachable route.
+
+| thing | where it is decided |
+|---|---|
+| the sizes, `isMobile`, `hasTouch`, the launch flags | `@devfellowship/ux-paths-capture` ≥ 0.3.0 — one place, fleet-wide |
+| which viewports this app replays | `viewports[]` in `e2e/support/capture-manifest.json` |
+| which screens each viewport photographs | `viewports[].capture_routes` (same file) |
+| which directory each published screen comes from | `published-screens.json` (`screens`, `screens_by_viewport`) |
+| where the row lands | the `viewport` COLUMN on `engineering.ux_map_captures` (ADR-8), never a `<role>@mobile` suffix |
+
+Output directories are **flat and suffixed** (ADR-3): `manifest/<id>` for the
+default viewport, `manifest/<id>@390x844` for the rest. The file names inside
+stay `screenshot.png` and `regions.json`, always, and `regions.json` records the
+true viewport — so a pair is self-describing even if it is moved.
+
+**A pixel difference at 390 is RECORDED and does not fail `digests.mjs
+--check`** (ADR-7). The 7 launch flags were tuned at 1280 and rasterisation at
+another width has not yet crossed a host boundary the way the desktop key has. A
+**layout** difference at 390 still counts: `regions.json` carries no
+rasterisation, so it is the half that can answer *did the mobile layout move*.
+
+⚠️ Two scripts — `publish-capture.mjs` and `emit-observed-flows.ts` — run on the
+CI runner with **no `node_modules`**, so they cannot import the package. They
+read `viewports.ts` instead, which restates only the sizes and the two derived
+strings. `viewports.test.ts` asserts every value in it against the package, in
+`npm test`, where the package IS installed.
 
 The model appears exactly once, and not in this directory: it is invoked by hand
 through the `ux-capture-explore` skill in `devfellowship/dfl-harness`.
@@ -45,14 +97,28 @@ ITERA_SOURCE_STAMP=1 VITE_SUPABASE_URL=http://stub.supabase.invalid \
   VITE_SUPABASE_ANON_KEY=stub-anon-key npm run build
 npx vite preview --port 4189 --strictPort --host 127.0.0.1 &
 
-# 2. reachability, no model
-npm run ux-capture:prepass -- prepass.json
+# 2. reachability, no model — once per viewport, then DIFF the two files
+npm run ux-capture:prepass -- prepass.desktop.json
+npm run ux-capture:prepass -- --viewport mobile prepass.mobile.json
 
-# 3. the frozen map, asserted
+# 3. the frozen map, asserted — at both viewports
 npm run e2e:manifest
+npm run e2e:manifest:mobile
 
 # 4. digests
 npm run ux-capture:digests -- --check     # or --write to refresh the record
+```
+
+⚠️ In CI, `npm run e2e:stamp` runs every project in ONE invocation and that is
+deliberate: `webServer` does a full `vite build` and `reuseExistingServer` is
+false under `CI`, so two `--project` calls would build this tree twice. The two
+narrowed scripts above are for LOCAL iteration, where the server is reused.
+
+Publishing is also once per viewport:
+
+```bash
+node scripts/ux-capture/publish-capture.mjs --out capture-out --dry-run
+node scripts/ux-capture/publish-capture.mjs --out capture-out --viewport mobile --dry-run
 ```
 
 Or the whole thing at once, the way the container runs it:

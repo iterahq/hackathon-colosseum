@@ -15,11 +15,72 @@
  * run that follows it, and the model is then asked only what this cannot
  * answer: which STATES exist behind an interaction.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📱 AND IT IS THE SAME TOOL AT A SECOND VIEWPORT
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `--viewport mobile` runs the identical walk in the mobile capture context
+ * (390x844, `isMobile`, `hasTouch` — see ADR-6 of plan
+ * `20260902-ux-paths-responsive-mobile-capture`). That is what BOUNDS the
+ * mobile round the same way the first run bounded the desktop one: diffing the
+ * two outputs says which routes changed their marker, their region count or
+ * their testids at 390, and only those need a human decision. Everything else
+ * replays unchanged.
+ *
+ * ⚠️ The context is NOT restated here any more. It comes from
+ * `captureContextOptions(preset)` in `@devfellowship/ux-paths-capture`, which
+ * is the same object `e2e/support/captureRegions.ts` and the capture suites
+ * use. The literal that used to live in this file was a third copy of the
+ * determinism settings, and a determinism setting that exists twice diverges
+ * silently — both copies stay green while the images stop being comparable.
+ *
  * Usage (with the stamped preview already up on :4189):
  *   node scripts/ux-capture/prepass.mjs prepass.json
+ *   node scripts/ux-capture/prepass.mjs --viewport mobile prepass.mobile.json
  */
 import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
+import {
+  CAPTURE_LAUNCH_ARGS,
+  captureContextOptions,
+  resolveViewportSpec,
+  viewportLabel,
+} from '@devfellowship/ux-paths-capture/playwright';
+
+const argv = process.argv.slice(2);
+const arg = (name, fallback = null) => {
+  const i = argv.indexOf(`--${name}`);
+  return i === -1 ? fallback : argv[i + 1];
+};
+
+/**
+ * The output path is POSITIONAL and has been since this script was written, so
+ * a flag cannot be allowed to eat it. `--viewport mobile out.json` used to
+ * resolve to `argv[2] === 'mobile'` and write the report over the word the flag
+ * was carrying — a silent wrong answer, and the classic cost of bolting a flag
+ * onto a positional interface.
+ */
+const positional = (() => {
+  const out = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i].startsWith('--')) {
+      i += 1; // every flag here takes a value
+      continue;
+    }
+    out.push(argv[i]);
+  }
+  return out;
+})();
+
+const { name: viewportName, preset, custom } = resolveViewportSpec(
+  arg('viewport', 'desktop')
+);
+if (custom) {
+  console.warn(
+    `⚠️  ${viewportLabel(preset)} matches no preset, so it takes the DEFAULT input ` +
+      `modality at a new size. At a narrow width that is a "narrow desktop" and not ` +
+      `a phone — see ADR-6. Give the size a preset if it is worth capturing twice.`
+  );
+}
 
 const BASE = process.env.STAMP_BASE_URL || 'http://127.0.0.1:4189';
 const flows = JSON.parse(readFileSync('.dfl-ux-paths/flows.json', 'utf8'));
@@ -45,28 +106,17 @@ function concreteRoute(route) {
 }
 
 const results = [];
-const browser = await chromium.launch({
-  args: [
-    '--disable-gpu',
-    '--disable-partial-raster',
-    '--disable-skia-runtime-opts',
-    '--force-color-profile=srgb',
-    '--disable-lcd-text',
-    '--disable-font-subpixel-positioning',
-    '--font-render-hinting=none',
-  ],
-});
+const browser = await chromium.launch({ args: [...CAPTURE_LAUNCH_ARGS] });
+const contextOptions = captureContextOptions(preset);
+
+console.log(
+  `prepass at ${viewportName} (${viewportLabel(preset)}) against ${BASE} — ` +
+    `${flows.screens.length} declared routes`
+);
 
 for (const screen of flows.screens) {
   const target = concreteRoute(screen.route);
-  const context = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 1,
-    colorScheme: 'dark',
-    reducedMotion: 'reduce',
-    timezoneId: 'UTC',
-    locale: 'pt-BR',
-  });
+  const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   const consoleErrors = [];
   const failedRequests = [];
@@ -75,7 +125,7 @@ for (const screen of flows.screens) {
   });
   page.on('requestfailed', (r) => failedRequests.push(`${r.method()} ${r.url().slice(0, 120)}`));
 
-  let record = { id: screen.id, route: screen.route, target };
+  let record = { id: screen.id, route: screen.route, target, viewport: viewportName };
   try {
     await page.goto(BASE + target, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForTimeout(2500);
@@ -117,4 +167,20 @@ for (const screen of flows.screens) {
 }
 
 await browser.close();
-writeFileSync(process.argv[2] || 'prepass.json', JSON.stringify(results, null, 2));
+
+// The viewport travels WITH the report. Two prepass files are meant to be
+// diffed against each other, and a report that does not say which viewport
+// produced it is a report that can be diffed the wrong way round.
+writeFileSync(
+  positional[0] || `prepass.${viewportName}.json`,
+  JSON.stringify(
+    {
+      viewport: viewportName,
+      viewport_size: viewportLabel(preset),
+      base_url: BASE,
+      routes: results,
+    },
+    null,
+    2
+  )
+);

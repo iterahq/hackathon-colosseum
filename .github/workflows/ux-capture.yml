@@ -80,6 +80,19 @@ name: UX Capture (portable)
 # capture that reaches 26 of 31 is a different run with a different credential
 # and is NOT what this workflow does.
 #
+# 📱 It is now 2 of 31 TWICE — once at 1280x800 and once at 390x844. The mobile
+# pass photographs EXACTLY the same two declared screens, so the two viewports
+# report the same coverage and the viewer's switcher always has both siblings or
+# neither. Which screens each viewport publishes is data, in
+# `scripts/ux-capture/published-screens.json`.
+#
+# ⚠️ A PIXEL difference at 390 is RECORDED and does not fail the digest check
+# (ADR-7): the 7 launch flags were tuned at 1280, and rasterisation at another
+# width has not yet crossed a host boundary the way the desktop key has. A
+# LAYOUT difference at 390 still counts — `regions.json` carries no
+# rasterisation, so it is the half that can answer "did the mobile layout
+# move".
+#
 # ═══════════════════════════════════════════════════════════════════════════
 # WHERE A FAILURE GOES — it is routed, not left to email
 # ═══════════════════════════════════════════════════════════════════════════
@@ -227,7 +240,28 @@ jobs:
 
       # Skipped when the suite failed — see the header. A known-wrong map must
       # not be written to the index as the newest capture.
-      - name: Publish to media and write the index
+      # ────────────────────────────────────────────────────────────────────
+      # 📱 TWO PASSES, ONE STEP — desktop then mobile.
+      #
+      # Each invocation writes ONE row in `engineering.ux_map_captures`, under
+      # the SAME `role`, distinguished by the `viewport` COLUMN (ADR-8 of plan
+      # `20260902-ux-paths-responsive-mobile-capture`, after Tainan answered
+      # Q3 = B). It is deliberately not `--role anonymous-hermetic@mobile`: that
+      # earlier encoding doubled the human validation work and leaked a
+      # pseudo-role into every reader of `role` in the viewer.
+      #
+      # ⚠️ ONE step and not two jobs, because the second pass must publish even
+      # though the first already succeeded — and `if: success()` on a second
+      # step would be satisfied by the first, which says nothing about it.
+      # `set -e` here means the DESKTOP failing stops the mobile pass, which is
+      # the right order: they read the same artifact directory, and if the
+      # desktop half cannot reach the index the run has a delivery fault the
+      # PUBLISH issue must open for.
+      #
+      # ⚠️ The desktop pass keeps writing `index-result.json` under that exact
+      # name — the "Report what moved" step below reads it — and the mobile pass
+      # writes `index-result.mobile.json` beside it.
+      - name: Publish to media and write the index (desktop and mobile)
         id: publish
         if: always() && steps.run.outputs.suite_exit == '0'
         env:
@@ -244,6 +278,10 @@ jobs:
           node scripts/ux-capture/publish-capture.mjs \
             --out capture-out \
             --commit-sha "$GITHUB_SHA"
+          node scripts/ux-capture/publish-capture.mjs \
+            --out capture-out \
+            --viewport mobile \
+            --commit-sha "$GITHUB_SHA"
 
       - name: Report what moved
         id: report
@@ -259,9 +297,16 @@ jobs:
             echo
             echo "### Where this capture went"
             if [ -f capture-out/index-result.json ]; then
+              echo "#### desktop"
               echo '```json'; cat capture-out/index-result.json; echo '```'
             else
-              echo "It did not reach the index. A run whose only output is this page feeds nothing."
+              echo "The DESKTOP pass did not reach the index. A run whose only output is this page feeds nothing."
+            fi
+            if [ -f capture-out/index-result.mobile.json ]; then
+              echo "#### mobile (390x844)"
+              echo '```json'; cat capture-out/index-result.mobile.json; echo '```'
+            else
+              echo "The MOBILE pass did not reach the index."
             fi
             if [ -f capture-out/digest-drift.json ]; then
               echo

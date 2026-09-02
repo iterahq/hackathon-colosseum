@@ -61,6 +61,39 @@
  * because a check that fails for the wrong reason forever teaches everyone to
  * ignore it.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📱 AND THE VIEWPORT IS A THIRD KIND OF KEY — ADR-7
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Every screen recorded here now carries `recorded_for.viewport`, and a screen
+ * whose viewport is NOT the default is treated exactly like a screen under a
+ * different `chromium`/`arch` key: a PIXEL difference is RECORDED and does not
+ * fail the check; a LAYOUT difference still counts.
+ *
+ * That split is ADR-7 of plan `20260902-ux-paths-responsive-mobile-capture`,
+ * and it is narrower than "mobile never fails", deliberately:
+ *
+ *  - The 7 launch flags in `CAPTURE_LAUNCH_ARGS` were TUNED AT 1280. Nothing
+ *    about rasterisation at 390 had been measured when the mobile pass was
+ *    designed, so the honest default for pixels was "we do not know".
+ *  - `regions.json` is LAYOUT — boxes from `getBoundingClientRect()` over
+ *    page-loaded fonts, with nothing rasterised. It is the portable half at any
+ *    width, and it is the half that answers "did the mobile layout move". Making
+ *    THAT recording-only would have left the mobile pass with no assertion at
+ *    all, which is the blind spot this file exists to avoid.
+ *
+ * ✅ MEASURED 2026-09-02, and the news is good: two fresh 390x844 captures of
+ * `otp_invalid_code_error` from two clean contexts were BYTE-IDENTICAL, and so
+ * were ten consecutive runs of the whole `manifest-mobile` project. So the
+ * pixel tolerance below has not yet been NEEDED. It stays because one host and
+ * one Chromium revision is not the same evidence the desktop key has (which
+ * crossed a rootfs boundary AND a machine boundary before it was trusted), and
+ * because a tolerance that is never exercised costs nothing while an assertion
+ * that fails for an unmeasured reason costs the whole check's credibility.
+ *
+ * ⚠️ A screen record written before this change has no `recorded_for`, and it
+ * is read as the DEFAULT viewport — which is what it was. Nothing in the
+ * existing record moves.
+ *
  * Usage:
  *   node scripts/ux-capture/digests.mjs --artifacts e2e/artifacts --write
  *   node scripts/ux-capture/digests.mjs --artifacts e2e/artifacts --check
@@ -137,6 +170,20 @@ async function chromiumRevision() {
  */
 const DUPLICATE = /(^|\/)(stability)(\/|$)|(^|\/)proof-/;
 
+/**
+ * The viewport a capture directory belongs to, read from its own name.
+ *
+ * `manifest/login@390x844` → `390x844`; `manifest/login` → the default. The
+ * label is used rather than a preset NAME on purpose: this script has no
+ * `node_modules` in the publish job and must not need the preset table to read
+ * its own record.
+ */
+const DEFAULT_VIEWPORT_LABEL = 'default';
+function viewportOf(key) {
+  const match = /@(\d+x\d+)$/.exec(path.basename(key));
+  return match ? match[1] : DEFAULT_VIEWPORT_LABEL;
+}
+
 /** Walk the artifact tree and digest every pair it holds. */
 function collect(root) {
   const screens = {};
@@ -154,6 +201,11 @@ function collect(root) {
       screens[key] = {
         regions: sha256(full),
         screenshot: existsSync(png) ? sha256(png) : null,
+        // ADR-3 puts the viewport in the directory NAME, so the key already
+        // carries it and this is a read rather than a second source of truth.
+        // An unsuffixed directory is the default viewport, which is what every
+        // record written before the mobile pass is.
+        recorded_for: { viewport: viewportOf(key) },
       };
     }
   };
@@ -178,11 +230,27 @@ if (has('write')) {
     note:
       'Digests of the capture pairs. `regions` is layout and travels between ' +
       'hosts; `screenshot` is pixels and is comparable only under the same ' +
-      '`recorded_for` key. Refresh with: npm run ux-capture:digests -- --write',
+      'top-level `recorded_for` key. Each screen also carries its own ' +
+      '`recorded_for.viewport`, read from the directory suffix (ADR-3): a pixel ' +
+      'difference at a NON-DEFAULT viewport is RECORDED and does not fail the ' +
+      'check (ADR-7), while a LAYOUT difference counts at every viewport. ' +
+      'Refresh with: npm run ux-capture:digests -- --write',
     screens,
   };
   writeFileSync(RECORD_PATH, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
-  console.log(`recorded ${Object.keys(screens).length} screen(s) for chromium ${key.chromium}/${key.arch}`);
+  const spread = {};
+  for (const cur of Object.values(screens)) {
+    const v = cur.recorded_for?.viewport ?? DEFAULT_VIEWPORT_LABEL;
+    spread[v] = (spread[v] ?? 0) + 1;
+  }
+  console.log(
+    `recorded ${Object.keys(screens).length} screen(s) for chromium ` +
+      `${key.chromium}/${key.arch} — ` +
+      Object.entries(spread)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([v, n]) => `${v}=${n}`)
+        .join(' ')
+  );
   process.exit(0);
 }
 
@@ -204,6 +272,16 @@ const added = [];
 const removed = [];
 const layoutMoved = [];
 const pixelsMoved = [];
+/**
+ * Pixel differences on a NON-DEFAULT viewport. ADR-7: recorded, never fatal.
+ * Kept in its own bucket rather than merged into `pixelsMoved`, so the report
+ * says which differences were counted and which were only noted — a single
+ * list with a footnote is how a tolerance becomes invisible.
+ */
+const pixelsMovedUnmeasuredViewport = [];
+
+/** A record written before the mobile pass has no `recorded_for`. It was default. */
+const viewportOfRecord = (entry) => entry?.recorded_for?.viewport ?? DEFAULT_VIEWPORT_LABEL;
 
 for (const [name, current] of Object.entries(screens)) {
   const before = record.screens?.[name];
@@ -211,11 +289,35 @@ for (const [name, current] of Object.entries(screens)) {
     added.push(name);
     continue;
   }
-  if (before.regions !== current.regions) layoutMoved.push(name);
-  else if (before.screenshot !== current.screenshot) pixelsMoved.push(name);
+  if (before.regions !== current.regions) {
+    // LAYOUT counts at every viewport. It is the portable half — no
+    // rasterisation in it — and at 390 it is the only thing that can answer
+    // "did the mobile layout move".
+    layoutMoved.push(name);
+    continue;
+  }
+  if (before.screenshot === current.screenshot) continue;
+  const viewport = viewportOfRecord(current);
+  const wasViewport = viewportOfRecord(before);
+  if (viewport !== wasViewport) {
+    // The pair was re-recorded at another viewport under the same directory
+    // name. That is a rename, not a drift, and comparing the pixels of two
+    // different viewports would report a difference that means nothing.
+    layoutMoved.push(`${name} (viewport changed ${wasViewport} -> ${viewport})`);
+    continue;
+  }
+  if (viewport === DEFAULT_VIEWPORT_LABEL) pixelsMoved.push(name);
+  else pixelsMovedUnmeasuredViewport.push(`${name} @${viewport}`);
 }
 for (const name of Object.keys(record.screens ?? {})) {
   if (!screens[name]) removed.push(name);
+}
+
+const byViewport = {};
+for (const [name, cur] of Object.entries(screens)) {
+  const v = viewportOfRecord(cur);
+  byViewport[v] = (byViewport[v] ?? 0) + 1;
+  void name;
 }
 
 console.log(`capture digest check — chromium ${key.chromium}/${key.arch}`);
@@ -224,18 +326,51 @@ console.log(
     `${sameKey ? '' : '  ⚠️ DIFFERENT KEY — pixel differences below are expected, not regressions'}`
 );
 console.log(`  screens compared : ${Object.keys(screens).length}`);
+console.log(
+  `  by viewport      : ` +
+    Object.entries(byViewport)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([v, n]) => `${v}=${n}`)
+      .join(' ')
+);
 console.log(`  layout moved     : ${layoutMoved.length}${layoutMoved.length ? ' -> ' + layoutMoved.join(', ') : ''}`);
 console.log(`  pixels moved     : ${pixelsMoved.length}${pixelsMoved.length ? ' -> ' + pixelsMoved.join(', ') : ''}`);
+console.log(
+  `  pixels moved (non-default viewport, RECORDED not counted — ADR-7) : ` +
+    `${pixelsMovedUnmeasuredViewport.length}` +
+    `${pixelsMovedUnmeasuredViewport.length ? ' -> ' + pixelsMovedUnmeasuredViewport.join(', ') : ''}`
+);
 console.log(`  new screens      : ${added.length}${added.length ? ' -> ' + added.join(', ') : ''}`);
 console.log(`  gone screens     : ${removed.length}${removed.length ? ' -> ' + removed.join(', ') : ''}`);
 
 // A layout change, a new screen and a disappeared screen all count under any
-// key. A pixel change counts only under the SAME key.
+// key and at any viewport. A pixel change counts only under the SAME
+// chromium/arch key AND at the default viewport (ADR-7).
 const drifted =
   layoutMoved.length + added.length + removed.length + (sameKey ? pixelsMoved.length : 0);
 
 if (drifted === 0) {
   console.log('\nnothing moved.');
+  if (pixelsMovedUnmeasuredViewport.length) {
+    // Not a failure, and not silence either. A tolerance nobody is told about
+    // is the same as no check.
+    console.log(
+      `⚠️  ${pixelsMovedUnmeasuredViewport.length} screen(s) at a non-default viewport ` +
+        `changed PIXELS with their layout unchanged. Recorded, not counted (ADR-7): the ` +
+        `launch flags were tuned at 1280 and rasterisation at another width is not yet ` +
+        `evidenced across hosts. If this keeps happening, that is the pixel diff ADR-7 ` +
+        `asks a human to look at.`
+    );
+    writeFileSync(
+      path.join(ARTIFACTS, 'digest-drift.json'),
+      `${JSON.stringify(
+        { key, sameKey, layoutMoved, pixelsMoved, pixelsMovedUnmeasuredViewport, added, removed },
+        null,
+        2
+      )}\n`,
+      'utf8'
+    );
+  }
   process.exit(0);
 }
 
@@ -247,7 +382,11 @@ console.log(
 // Machine-readable, for the workflow that turns this into an issue body.
 writeFileSync(
   path.join(ARTIFACTS, 'digest-drift.json'),
-  `${JSON.stringify({ key, sameKey, layoutMoved, pixelsMoved, added, removed }, null, 2)}\n`,
+  `${JSON.stringify(
+    { key, sameKey, layoutMoved, pixelsMoved, pixelsMovedUnmeasuredViewport, added, removed },
+    null,
+    2
+  )}\n`,
   'utf8'
 );
 process.exit(1);

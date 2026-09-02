@@ -36,18 +36,45 @@
  * unchanged application therefore produce one version, not two — which is what
  * makes "what changed since I validated this" answerable at all.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 📱 `platform` AND `orientation` ARE DERIVED, NOT HARD-TYPED
+ * ═══════════════════════════════════════════════════════════════════════════
+ * They used to be the literals `"web"` and `"landscape"`, which was true of
+ * every capture this emitter had ever seen and false the moment a second
+ * viewport existed. They now come from `screenshotMetaForViewport(--viewport)`.
+ *
+ * ⚠️ `platform` follows the viewport's `isMobile`, NOT its width. A 390-wide
+ * DESKTOP context is honestly `web`; calling it `mobile` would file a desktop
+ * layout under a mobile key where no reader downstream could tell. Both fields
+ * are enum-constrained in `schema/v1.json`, so a wrong value does not degrade
+ * quietly — the document stops validating and the viewer refuses to load it.
+ *
+ * ⚠️ The viewport table comes from `./viewports.ts` and NOT from
+ * `@devfellowship/ux-paths-capture`, even though the package owns it. This
+ * emitter is spawned by `publish-capture.mjs` on a runner with **no
+ * `node_modules`** — read the header of `viewports.ts` for the full reason, and
+ * `scripts/ux-capture/viewports.test.ts` for the test that keeps the two
+ * copies equal.
+ *
  * Usage:
  *   npx tsx scripts/ux-capture/emit-observed-flows.ts \
  *     --captures e2e/artifacts/live-capture/tenant_admin \
  *     --uploads /run/uploads.json --role tenant_admin \
+ *     [--viewport desktop|mobile] \
  *     --out /run/itera-player.observed.tenant_admin.flows.json
  */
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  DEFAULT_VIEWPORT,
+  resolveViewportName,
+  screenshotMetaForViewport,
+  viewportLabelFor,
+} from "./viewports.ts";
 
 interface Screenshot {
-  platform: "web";
-  orientation: "landscape";
+  platform: "web" | "mobile";
+  orientation: "portrait" | "landscape";
   viewport: string;
   url: string;
   captured_at?: string;
@@ -92,6 +119,8 @@ async function main(): Promise<void> {
   const capturesDir = path.resolve(arg("captures"));
   const uploadsPath = path.resolve(arg("uploads"));
   const role = arg("role");
+  const viewport = resolveViewportName(arg("viewport", DEFAULT_VIEWPORT));
+  const meta = screenshotMetaForViewport(viewport);
   const outPath = path.resolve(arg("out"));
   const flowsPath = path.resolve(
     arg("flows", path.join(process.cwd(), ".dfl-ux-paths", "flows.json"))
@@ -134,11 +163,25 @@ async function main(): Promise<void> {
       await readFile(path.join(capturesDir, screen.id, "regions.json"), "utf8")
     ) as { viewport: { width: number; height: number }; capturedAt: string };
 
+    // 🚨 The size comes from `regions.json`, which the harness wrote from the
+    // real browser — never from the `--viewport` argument. If the two disagree
+    // the pair was taken at a viewport this run is not publishing, and a
+    // screenshot labelled with a size it does not have would put a phone-shaped
+    // region map beside a desktop image. That is a stop, not a warning.
+    const measured = `${regions.viewport.width}x${regions.viewport.height}`;
+    if (measured !== meta.viewport) {
+      throw new Error(
+        `${screen.id}: regions.json was captured at ${measured} but this run publishes ` +
+          `--viewport ${viewport} (${meta.viewport}). The capture directory and the ` +
+          `viewport argument disagree — check published-screens.json.`
+      );
+    }
+
     screen.screenshots = [
       {
-        platform: "web",
-        orientation: "landscape",
-        viewport: `${regions.viewport.width}x${regions.viewport.height}`,
+        platform: meta.platform,
+        orientation: meta.orientation,
+        viewport: measured,
         url: up.url,
         captured_at: regions.capturedAt,
       },
@@ -155,10 +198,16 @@ async function main(): Promise<void> {
   // fail validation, and an observed document that does not validate cannot be
   // loaded by the viewer at all — the external transport admits a document only
   // if it validates in full.
+  //
+  // ⚠️ `test_metadata.default_viewport` is NOT touched. It names the DEFAULT
+  // pass of this application, which is still `desktop`, and it would be wrong
+  // for the mobile document to claim the app's default is a phone. Which
+  // viewport THIS document holds is stated in the note below and, per
+  // screenshot, in `screenshots[].platform` / `.viewport`.
   doc.test_metadata = {
     ...(doc.test_metadata ?? {}),
     notes:
-      `OBSERVED CAPTURE — role=${role}; ` +
+      `OBSERVED CAPTURE — role=${role}; viewport=${viewport} (${viewportLabelFor(viewport)}); ` +
       `${withShot}/${doc.screens.length} declared screens carry a screenshot. ` +
       (missing.length ? `Not photographed: ${missing.join("; ")}. ` : "") +
       `Screens with an empty screenshots[] were DECLARED and NOT reached by this run — ` +
@@ -168,7 +217,8 @@ async function main(): Promise<void> {
 
   await writeFile(outPath, `${JSON.stringify(doc, null, 2)}\n`, "utf8");
   console.log(
-    `${outPath}\n  role=${role}  ${withShot}/${doc.screens.length} screens carry a screenshot`
+    `${outPath}\n  role=${role}  viewport=${viewport}  ` +
+      `${withShot}/${doc.screens.length} screens carry a screenshot`
   );
   if (missing.length) console.log(`  not photographed: ${missing.join(", ")}`);
 }

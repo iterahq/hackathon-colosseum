@@ -85,6 +85,51 @@ export {
 export { parseStamp, resolveRegionAt, type Region } from "@devfellowship/ux-paths-capture";
 
 /**
+ * 📱 THE SECOND VIEWPORT, forwarded from the same one place.
+ *
+ * `captureContextOptions(preset)` is the FACTORY that replaced the frozen
+ * `CAPTURE_CONTEXT_OPTIONS` literal, and the package asserts that
+ * `captureContextOptions("desktop")` is deep-equal to it — so nothing about the
+ * existing captures moves. `captureDirName` decides `<id>` vs `<id>@<WxH>`
+ * (ADR-3) and `screenshotMetaFor` decides `platform` / `orientation` from the
+ * preset rather than from the width (ADR-6).
+ *
+ * They are re-exported here for the same reason the three above are: this file
+ * is the ONE import surface the suites use for the capture contract, so a
+ * package bump reaches every consumer without 6 import lines being edited.
+ */
+export {
+  DEFAULT_VIEWPORT_PRESET,
+  VIEWPORT_PRESETS,
+  captureContextOptions,
+  captureDirName,
+  screenshotMetaFor,
+  viewportLabel,
+  type ViewportPreset,
+  type ViewportPresetName,
+} from "@devfellowship/ux-paths-capture/playwright";
+
+import type { ViewportPresetName as PresetName } from "@devfellowship/ux-paths-capture/playwright";
+
+/**
+ * The Playwright test OPTION that tells a capture suite which viewport it is
+ * running at.
+ *
+ * ⚠️ An option and not an env var. A `process.env.CAPTURE_VIEWPORT` would be
+ * process-wide, so the `manifest` and `manifest-mobile` projects could not run
+ * in ONE `playwright test` invocation — and running them in one invocation is
+ * what makes them share the single `webServer` and pay for the `vite build`
+ * once. That saving is the stated reason `playwright.stamp.config.ts` uses
+ * projects instead of a fourth config file; an env var would quietly undo it.
+ *
+ * Declared here rather than in the spec so that `playwright.stamp.config.ts`
+ * can type its `use` block with it (`defineConfig<CaptureViewportOptions>`).
+ */
+export interface CaptureViewportOptions {
+  captureViewport: PresetName;
+}
+
+/**
  * Install the deterministic environment. Must be called BEFORE the first
  * navigation: the init script runs on every document in the context, but only
  * for documents created after it is added.

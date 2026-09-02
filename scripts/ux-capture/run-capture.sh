@@ -2,9 +2,14 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # THE WHOLE CAPTURE, AS ONE COMMAND, WITH NO HOST INPUTS.
 #
-# Builds the stamped bundle, serves it on loopback, runs the two deterministic
-# Playwright projects against it, and copies the artifacts plus a digest report
-# into $OUT_DIR.
+# Builds the stamped bundle, serves it on loopback, runs the three deterministic
+# Playwright projects against it — `capture`, `manifest` and `manifest-mobile` —
+# and copies the artifacts plus a digest report into $OUT_DIR.
+#
+# 📱 The mobile pass is a REPLAY, not a second exploration: the same
+# `e2e/support/capture-manifest.json`, the same markers, the same states, in a
+# 390x844 `isMobile` context. No model runs here and none is needed — the
+# 2026-09-02 prepass at 390 flagged zero of the 31 routes.
 #
 # 🚫 WHAT IT DELIBERATELY DOES NOT NEED
 # There is no credential here, and that is the design rather than an omission.
@@ -85,12 +90,19 @@ fi
 # under CI, which would make Playwright start a second one and pay for a second
 # `vite build`. `STAMP_BASE_URL` points both projects at the running preview and
 # `CI=` unsets the CI flag for this one invocation only.
-echo "── capture + manifest ─────────────────────────────────────────────────"
+# 📱 THREE projects, ONE invocation. `manifest-mobile` replays the SAME frozen
+# manifest at 390x844 (ADR-6 / plan
+# `20260902-ux-paths-responsive-mobile-capture`), and it must run in this call
+# and not a second one: `webServer` is bypassed here (the preview is already
+# up), but a separate `playwright test` would still re-launch Chromium and
+# re-walk the tree for no reason. The pairs it writes are suffixed `@390x844`
+# per ADR-3, so the two viewports cannot overwrite each other.
+echo "── capture + manifest (desktop and mobile) ────────────────────────────"
 rm -rf "$REPO_ROOT/e2e/artifacts"
 set +e
 CI='' STAMP_BASE_URL="http://127.0.0.1:$PORT" \
   npx playwright test --config playwright.stamp.config.ts \
-    --project capture --project manifest --reporter=list
+    --project capture --project manifest --project manifest-mobile --reporter=list
 SUITE_STATUS=$?
 set -e
 

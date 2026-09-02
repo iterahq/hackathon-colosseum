@@ -66,10 +66,32 @@
  * **Coverage is 2 of 31, and it is published as 2 of 31.** See
  * `published-screens.json`.
  *
+ * ## 📱 ONE PASS PER VIEWPORT, and the viewport is a COLUMN
+ *
+ * `--viewport mobile` publishes the 390x844 pass. Run it once per viewport:
+ * the desktop invocation and the mobile invocation write TWO capture rows of
+ * the same build, under the SAME `role`, distinguished by
+ * `engineering.ux_map_captures.viewport` (ADR-8 of plan
+ * `20260902-ux-paths-responsive-mobile-capture`, after Tainan answered Q3 = B).
+ *
+ * ⚠️ It is deliberately NOT `--role anonymous-hermetic@mobile`. That earlier
+ * design encoded the viewport in the role, which doubled the human validation
+ * work — a desktop validation never covers the mobile capture — and leaked a
+ * pseudo-role into every reader of `role` in the viewer. The column exists
+ * precisely so this script does not have to lie about the role.
+ *
+ * ⚠️ Which directories hold which viewport's pair is DATA, in
+ * `published-screens.json` (`screens` for the default viewport,
+ * `screens_by_viewport.<name>` for the rest). This script refuses to guess it,
+ * and it now also refuses the INVERSE mistake: a pair that the capture
+ * produced for a DECLARED screen at this viewport and that the map does not
+ * mention. See `unmapped` below.
+ *
  * ## Usage
  *
  *   node scripts/ux-capture/publish-capture.mjs \
- *     --out capture-out --commit-sha "$GITHUB_SHA" [--dry-run]
+ *     --out capture-out --commit-sha "$GITHUB_SHA" \
+ *     [--viewport desktop|mobile] [--dry-run]
  *
  * Environment:
  *   DFL_SUPABASE_URL        (default: the DFL production project)
@@ -83,9 +105,14 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_VIEWPORT,
+  resolveViewportName,
+  viewportLabelFor,
+} from './viewports.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -206,7 +233,7 @@ async function upload(url, anonKey, jwt, filePath, uploadName, contentType) {
  * function exists, and comes back as a 404 about a missing function instead of
  * as the schema mistake it is.
  */
-async function indexCapture(url, anonKey, jwt, payload) {
+async function indexCapture(url, anonKey, jwt, payload, { allowRetryWithoutViewport = true } = {}) {
   const res = await fetch(`${url}/rest/v1/rpc/index_ux_map_capture`, {
     method: 'POST',
     headers: {
@@ -237,6 +264,35 @@ async function indexCapture(url, anonKey, jwt, payload) {
         text.slice(0, 400)
       );
     }
+    /**
+     * TOLERANCE FOR ONE THING ONLY: a project where `p_viewport` is not yet a
+     * parameter of the function.
+     *
+     * The dfl-schema migration that adds the column and the parameter is behind
+     * the human merge gate (T0), so this script can reach a project that has
+     * the RPC but not the argument. PostgREST reports that as `PGRST202` —
+     * "could not find the function with these arguments" — which is
+     * indistinguishable from "the function does not exist" unless the argument
+     * names are read.
+     *
+     * ⚠️ It retries WITHOUT the parameter and says so LOUDLY, because the row
+     * it then writes lands on the column default (`desktop`). A mobile capture
+     * silently filed as desktop is worse than no row: it reads as a desktop
+     * capture whose layout changed a lot. So the retry is refused outright for
+     * a non-default viewport — see the caller.
+     */
+    if (code === 'PGRST202' && allowRetryWithoutViewport && 'p_viewport' in payload) {
+      const { p_viewport: wanted, ...withoutViewport } = payload;
+      console.warn(
+        `::warning title=ux-capture publish::engineering.index_ux_map_capture has no ` +
+          `p_viewport parameter on this project — the dfl-schema migration for the ` +
+          `viewport column is not applied yet. Retrying without it; the row will take ` +
+          `the column default. Wanted viewport=${wanted}.`
+      );
+      return indexCapture(url, anonKey, jwt, withoutViewport, {
+        allowRetryWithoutViewport: false,
+      });
+    }
     if (code === '42501') {
       fail(
         `refused by the database: the account this job signed in as is not a DFL member ` +
@@ -260,6 +316,13 @@ async function main() {
   const flowsPath = path.resolve(arg('flows', path.join(REPO_ROOT, '.dfl-ux-paths', 'flows.json')));
   const commitSha = arg('commit-sha', '').toLowerCase();
   const dryRun = flag('dry-run');
+  let viewport;
+  try {
+    viewport = resolveViewportName(arg('viewport', DEFAULT_VIEWPORT));
+  } catch (e) {
+    fail(e.message);
+  }
+  const viewportLabel = viewportLabelFor(viewport);
 
   if (!existsSync(outDir)) fail(`no capture output at ${outDir}`);
 
@@ -269,12 +332,33 @@ async function main() {
   const flows = JSON.parse(await readFile(flowsPath, 'utf8'));
   const declared = new Map(flows.screens.map((s) => [s.id, s]));
 
+  /**
+   * The map for THIS viewport. `screens` is the default viewport's map and
+   * keeps that name because every publish before the mobile pass read it.
+   *
+   * A viewport with no map is a STOP and not an empty publish: an empty screens
+   * map would write a capture row in which all 31 screens carry a null digest,
+   * and that row would then be the NEWEST capture for this (app, role,
+   * viewport) — so the lens would answer "nothing is photographed" for a pass
+   * that simply had no map.
+   */
+  const screensMap =
+    viewport === DEFAULT_VIEWPORT ? map.screens : map.screens_by_viewport?.[viewport];
+  if (!screensMap || Object.keys(screensMap).length === 0) {
+    fail(
+      `scripts/ux-capture/published-screens.json has no screens map for viewport ` +
+        `"${viewport}". Add one under screens_by_viewport.${viewport}. Publishing an ` +
+        `empty map would write a capture whose every screen has a null digest and make ` +
+        `it the newest one for this app, role and viewport.`
+    );
+  }
+
   // ── The map is proved, not trusted ───────────────────────────────────────
   // Both directions. An id that stopped being declared, and a directory that
   // stopped being produced, are the two ways this silently degrades into
   // "published a row with no pictures in it".
   const problems = [];
-  for (const [screenId, relDir] of Object.entries(map.screens)) {
+  for (const [screenId, relDir] of Object.entries(screensMap)) {
     if (!declared.has(screenId)) {
       problems.push(
         `${screenId} is mapped from ${relDir} but is NOT declared in ${path.relative(REPO_ROOT, flowsPath)}`
@@ -288,11 +372,58 @@ async function main() {
       }
     }
   }
+  /**
+   * ── AND THE THIRD DIRECTION, which nothing checked before ───────────────
+   *
+   * A pair the capture PRODUCED, for a DECLARED screen, at THIS viewport, that
+   * the map does not mention. The two checks above catch a map entry that lost
+   * its directory or its declaration; this catches the opposite — a photograph
+   * that exists and is never published. That failure is silent by nature: the
+   * run is green, the image is in the artifact, and the index says the screen
+   * has no picture. It is exactly how a viewport pass would appear to "work"
+   * while publishing nothing.
+   *
+   * ⚠️ Scoped to DECLARED ids on purpose. The interaction states
+   * (`login_locale_en`, `otp_step2_code_input`, …) are real capture pairs and
+   * are NOT declared screens in `flows.json`, so they cannot be published by
+   * this index and must not be demanded here. Duplicates (`stability/`,
+   * `proof-`) are skipped for the same reason `digests.mjs` skips them.
+   */
+  const mapped = new Set(Object.values(screensMap).map((d) => d.replace(/\/+$/, '')));
+  const unmapped = [];
+  const suffix = viewport === DEFAULT_VIEWPORT ? '' : `@${viewportLabel}`;
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const full = path.join(dir, name);
+      if (!statSync(full).isDirectory()) continue;
+      const rel = path.relative(outDir, full).split(path.sep).join('/');
+      if (/(^|\/)(stability|\.publish)(\/|$)|(^|\/)proof-/.test(rel)) continue;
+      const pair =
+        existsSync(path.join(full, 'screenshot.png')) &&
+        existsSync(path.join(full, 'regions.json'));
+      if (pair) {
+        const base = path.basename(rel);
+        // A directory belongs to this viewport when its suffix matches. An
+        // UNSUFFIXED directory is the default viewport's, per ADR-3.
+        const belongs = suffix
+          ? base.endsWith(suffix)
+          : !/@\d+x\d+$/.test(base);
+        const screenId = suffix ? base.slice(0, -suffix.length) : base;
+        if (belongs && declared.has(screenId) && !mapped.has(rel)) {
+          unmapped.push(`${screenId}: the capture produced ${rel}, which the map does not publish`);
+        }
+      }
+      walk(full);
+    }
+  };
+  walk(outDir);
+  problems.push(...unmapped);
+
   if (problems.length) {
     fail(
       `${problems.length} entr${problems.length === 1 ? 'y' : 'ies'} in ` +
-        `scripts/ux-capture/published-screens.json no longer describe the capture. ` +
-        `Fix the DATA — do not widen the check.`,
+        `scripts/ux-capture/published-screens.json no longer describe the capture at ` +
+        `viewport "${viewport}". Fix the DATA — do not widen the check.`,
       problems.map((p) => `  · ${p}`).join('\n')
     );
   }
@@ -302,12 +433,19 @@ async function main() {
   // keyed by DECLARED id. The hermetic harness names its directories after its
   // own screens (`regions/not-found`, not `not_found`). Copying is cheaper than
   // teaching a second layout to the emitter that the authenticated run shares.
-  const stageDir = path.join(outDir, '.publish');
+  // One staging directory PER VIEWPORT. The two passes run against the SAME
+  // `--out`, so a shared `.publish` would have the second pass `rm -rf` the
+  // first one's staged pairs — and the first pass has already uploaded them, so
+  // nothing would go red.
+  const stageDir = path.join(
+    outDir,
+    viewport === DEFAULT_VIEWPORT ? '.publish' : `.publish-${viewport}`
+  );
   await rm(stageDir, { recursive: true, force: true });
   await mkdir(stageDir, { recursive: true });
 
   const staged = [];
-  for (const [screenId, relDir] of Object.entries(map.screens)) {
+  for (const [screenId, relDir] of Object.entries(screensMap)) {
     const dst = path.join(stageDir, screenId);
     await mkdir(dst, { recursive: true });
     const png = path.join(dst, 'screenshot.png');
@@ -353,20 +491,21 @@ async function main() {
       perScreen.set(screenId, { digest, shot: null, regions: null });
       continue;
     }
-    const shot = await upload(
-      supabaseUrl,
-      anonKey,
-      jwt,
-      png,
-      `itera-player.${role}.${screenId}.png`,
-      'image/png'
-    );
+    // The viewport is in the FILE NAME for a non-default pass. The media id is
+    // what addresses the object, so this is only for a human reading a media
+    // listing — but that human is a designer deciding which image to open, and
+    // two files called `itera-player.anonymous-hermetic.login.png` are
+    // indistinguishable there.
+    const stem = `itera-player.${role}.${screenId}${
+      viewport === DEFAULT_VIEWPORT ? '' : `.${viewport}`
+    }`;
+    const shot = await upload(supabaseUrl, anonKey, jwt, png, `${stem}.png`, 'image/png');
     const reg = await upload(
       supabaseUrl,
       anonKey,
       jwt,
       regions,
-      `itera-player.${role}.${screenId}.regions.json`,
+      `${stem}.regions.json`,
       'application/json'
     );
     // The emitter looks the PNG up by its ABSOLUTE staged path.
@@ -388,12 +527,13 @@ async function main() {
         role,
         declared: flows.screens.length,
         captured: staged.length,
+        viewport,
         screens: flows.screens.map((s) => ({
           screen_id: s.id,
-          verdict: map.screens[s.id] ? 'captured' : 'not-attempted',
+          verdict: screensMap[s.id] ? 'captured' : 'not-attempted',
           landed: null,
           regions: null,
-          note: map.screens[s.id]
+          note: screensMap[s.id]
             ? null
             : 'behind a session, a :param, or proved by marker rather than photographed',
         })),
@@ -405,7 +545,16 @@ async function main() {
   );
 
   // ── The observed document, from the shared emitter ───────────────────────
-  const docPath = path.join(outDir, `itera-player.observed.${role}.flows.json`);
+  // ONE document per viewport, and the file name says which. Both passes write
+  // into the same `--out`, and the digest of these bytes IS the version key
+  // (ADR-3) — a shared file name would have the mobile pass overwrite the
+  // desktop document the desktop pass has already uploaded and indexed.
+  const docPath = path.join(
+    outDir,
+    `itera-player.observed.${role}${
+      viewport === DEFAULT_VIEWPORT ? '' : `.${viewport}`
+    }.flows.json`
+  );
   const emit = spawnSync(
     process.execPath,
     [
@@ -416,6 +565,8 @@ async function main() {
       uploadsPath,
       '--role',
       role,
+      '--viewport',
+      viewport,
       '--out',
       docPath,
       '--flows',
@@ -453,17 +604,21 @@ async function main() {
   });
 
   const coverageNote =
-    `${map.substrate} substrate, session=none, published by the ux-capture workflow ` +
-    `(.github/workflows/ux-capture.yml). ${withShot} of ${flows.screens.length} declared ` +
+    `${map.substrate} substrate, viewport=${viewport} (${viewportLabel}), session=none, ` +
+    `published by the ux-capture workflow (.github/workflows/ux-capture.yml). ` +
+    `${withShot} of ${flows.screens.length} declared ` +
     `screens carry a screenshot: 24 redirect to /login without a session, and 5 of the 7 ` +
     `that render are proved by marker and settle measurement rather than photographed. ` +
     `The role is "${role}" and not "anonymous" on purpose — a signed-out capture of the ` +
     `LIVE substrate exists under "anonymous" with wider coverage, and the lens reads the ` +
-    `newest capture per app and role.`;
+    `newest capture per app, role and viewport. The viewport is a COLUMN and not a role ` +
+    `suffix (ADR-8 of plan 20260902-ux-paths-responsive-mobile-capture), so the desktop ` +
+    `and mobile captures of one build are siblings under this same role.`;
 
   const payload = {
     p_app_id: flows.app_id,
     p_role: role,
+    p_viewport: viewport,
     p_digest: digest,
     p_artifact_url: null,
     p_screens: screens,
@@ -478,7 +633,15 @@ async function main() {
   if (dryRun) {
     console.log(
       JSON.stringify(
-        { dry_run: true, digest, role, screens_total: screens.length, screens_with_shot: withShot },
+        {
+          dry_run: true,
+          digest,
+          role,
+          viewport,
+          viewport_size: viewportLabel,
+          screens_total: screens.length,
+          screens_with_shot: withShot,
+        },
         null,
         2
       )
@@ -498,7 +661,22 @@ async function main() {
   payload.p_artifact_media_id = artifact.media_id;
   console.log(`uploaded the observed document  ${artifact.url}`);
 
-  const result = await indexCapture(supabaseUrl, anonKey, jwt, payload);
+  /**
+   * 🚨 A NON-DEFAULT viewport must NOT fall back.
+   *
+   * The retry inside `indexCapture` drops `p_viewport` when the project's
+   * function does not accept it, and the row then takes the column default —
+   * `desktop`. For the desktop pass that is harmless, and it is the whole point
+   * of the tolerance. For the mobile pass it would file a phone-shaped capture
+   * as a desktop one, under the same (app, role, viewport) as the real desktop
+   * row, where the newest row wins. The lens would then show a 390x844 image
+   * as the desktop capture and report that the layout changed enormously.
+   *
+   * So the tolerance is allowed only for the default viewport.
+   */
+  const result = await indexCapture(supabaseUrl, anonKey, jwt, payload, {
+    allowRetryWithoutViewport: viewport === DEFAULT_VIEWPORT,
+  });
   if (!result?.capture_id) {
     fail('index_ux_map_capture returned no capture', JSON.stringify(result).slice(0, 400));
   }
@@ -516,6 +694,11 @@ async function main() {
     app_uuid: result.app_uuid,
     digest,
     role,
+    viewport,
+    // What the DATABASE stored, not what was sent. The two differ exactly when
+    // the `p_viewport` tolerance above fired, and that is the one case a reader
+    // of this artifact most needs to see.
+    viewport_indexed: result.viewport ?? null,
     run_id: result.run_id ?? null,
     already_indexed: result.already_indexed === true,
     indexed_by: result.indexed_by ?? null,
@@ -526,8 +709,17 @@ async function main() {
       [...perScreen.entries()].map(([id, v]) => [id, v.shot?.url ?? null])
     ),
   };
+  // ONE result file per viewport. The workflow reads `index-result.json` into
+  // the run summary, so the default viewport keeps that name and a second pass
+  // writes its own — otherwise the mobile pass would erase the evidence that
+  // the desktop pass reached the index.
   await writeFile(
-    path.join(outDir, 'index-result.json'),
+    path.join(
+      outDir,
+      viewport === DEFAULT_VIEWPORT
+        ? 'index-result.json'
+        : `index-result.${viewport}.json`
+    ),
     `${JSON.stringify(record, null, 2)}\n`,
     'utf8'
   );
