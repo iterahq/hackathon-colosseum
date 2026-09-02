@@ -9,8 +9,9 @@ import { RequireSubscription } from '@/auth/RequireSubscription';
  *   - active subscription -> renders the player,
  *   - no active subscription -> redirected to /subscribe,
  *   - tenant-admin -> exempt (renders even without a subscription),
- *   - DFL-federated user -> entitled (D2 — DFL membership = subscription),
- *   - grandfathered user (created_at before gate date) -> entitled (D3),
+ *   - isenção do servidor (status 'exempt'/'grandfathered') -> entitled,
+ *   - dado que o cliente controla (localStorage, created_at do JWT) -> NÃO
+ *     entitula: db/migrations/0075 tirou os dois ramos daqui,
  *   - unconfigured -> pass-through (mock/dev).
  */
 
@@ -18,7 +19,6 @@ const authState = {
   session: null as unknown,
   loading: false,
   configured: true,
-  isDflFederated: false,
 };
 const entitlementState = {
   data: { active: false, status: null, currentPeriodEnd: null } as {
@@ -62,7 +62,6 @@ describe('RequireSubscription (PLG gate)', () => {
     authState.session = { user: { id: 'u1', created_at: '2027-01-01T00:00:00Z' } };
     authState.loading = false;
     authState.configured = true;
-    authState.isDflFederated = false;
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     entitlementState.isPending = false;
     entitlementState.isError = false;
@@ -116,17 +115,22 @@ describe('RequireSubscription (PLG gate)', () => {
     expect(screen.getByTestId('player')).toBeInTheDocument();
   });
 
-  it('a DFL-federated user is entitled (isDflFederated=true bypasses paywall)', () => {
-    // D2: DFL membership IS the subscription — no itera payment needed.
-    authState.isDflFederated = true;
+  it('o flag itera_dfl_session no localStorage NÃO entitula mais ninguém', () => {
+    // Era o bypass mais barato que existia: uma linha no devtools. O fellow
+    // federado de verdade continua entrando, mas por `status='exempt'` —
+    // POST /v1/embed/session só matricula em tenant da allowlist, e dfl-batch
+    // é isento (db/migrations/0055 + 0075).
+    localStorage.setItem('itera_dfl_session', '1');
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     renderGuard();
-    expect(screen.getByTestId('player')).toBeInTheDocument();
+    expect(screen.queryByTestId('player')).not.toBeInTheDocument();
+    expect(screen.getByTestId('subscribe')).toBeInTheDocument();
+    localStorage.removeItem('itera_dfl_session');
   });
 
   it('a member of an exempt tenant is entitled (the free cohort walks in)', () => {
-    // itera-api 0014: `itera.my_subscription` emits status='exempt'/is_active for
-    // a tenant that gives its classes away. Same authority, no second bypass.
+    // `itera.my_subscription` emits status='exempt'/is_active for a tenant that
+    // gives its classes away. Same authority, no second bypass.
     entitlementState.data = { active: true, status: 'exempt', currentPeriodEnd: null };
     renderGuard();
     expect(screen.getByTestId('player')).toBeInTheDocument();
@@ -150,13 +154,20 @@ describe('RequireSubscription (PLG gate)', () => {
     expect(screen.getByTestId('subscribe')).toBeInTheDocument();
   });
 
-  it('a grandfathered user (created_at before gate date) is entitled', () => {
-    // D3: accounts created before 2026-07-06 bypass the paywall.
-    // Gate date = '2026-07-06' (default, VITE_SUBSCRIPTION_GATE_DATE not set in tests).
-    authState.isDflFederated = false;
+  it('grandfather vem do servidor (status grandfathered), não do created_at do JWT', () => {
+    // D3 continua valendo — mas quem decide é o WHERE da view (0075). O
+    // supabase-js persiste o objeto `user` inteiro em localStorage, então ler
+    // created_at aqui era deixar o aluno editar o próprio veredito.
+    entitlementState.data = { active: true, status: 'grandfathered', currentPeriodEnd: null };
+    renderGuard();
+    expect(screen.getByTestId('player')).toBeInTheDocument();
+  });
+
+  it('um created_at antigo no JWT sozinho NÃO entitula (o ramo saiu do cliente)', () => {
     authState.session = { user: { id: 'u1', created_at: '2020-01-01T00:00:00Z' } };
     entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
     renderGuard();
-    expect(screen.getByTestId('player')).toBeInTheDocument();
+    expect(screen.queryByTestId('player')).not.toBeInTheDocument();
+    expect(screen.getByTestId('subscribe')).toBeInTheDocument();
   });
 });

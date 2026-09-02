@@ -48,7 +48,7 @@ cmt   rel itera.api_keys e77a2c34a427
 cmt   rel itera.byoc_generations 68d118ede09a
 cmt   rel itera.class_removals 4c1d828f5273
 cmt   rel itera.class_stars 1072f9c8bdb8
-cmt   rel itera.my_subscription 544f0daaa76f
+cmt   rel itera.my_subscription 6269041800af
 cmt   rel itera.schema_migrations 54b440c540af
 cmt   rel itera.schema_object_census 5d63d5c0db10
 col   billing.customers.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
@@ -956,4 +956,4 @@ type  itera.identity_provider e [dfl,google,oidc,password]
 type  itera.media_kind e [audio,image,video]
 type  itera.member_role e [learner,instructor,tenant_admin,owner,author]
 type  itera.progress_status e [not_started,in_progress,completed]
-view  itera.my_subscription daa750eb7bbb
+view  itera.my_subscription 796c21bfa148

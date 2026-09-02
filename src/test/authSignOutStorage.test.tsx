@@ -53,7 +53,6 @@ function seedLearnerWork() {
   localStorage.setItem('itera.scope.user', 'aluno-a');
   localStorage.setItem('itera.code.snapshot:aluno-a:act-1', 'trabalho da A');
   localStorage.setItem('itera.live.answers:aluno-a:sess-1', '{}');
-  localStorage.setItem('itera_dfl_session', '1');
   localStorage.setItem('sb-projeto-auth-token', 'keep-me');
 }
 
@@ -64,7 +63,7 @@ beforeEach(() => {
 });
 
 describe('sign-out on a shared machine', () => {
-  it('wipes every itera. key, not just the DFL flag', async () => {
+  it('wipes every itera. key, leaving only the Supabase token', async () => {
     mount();
     await waitFor(() => expect(listeners).toHaveLength(1));
     seedLearnerWork();
@@ -77,7 +76,6 @@ describe('sign-out on a shared machine', () => {
     expect(localStorage.getItem('itera.scope.user')).toBeNull();
     expect(localStorage.getItem('itera.code.snapshot:aluno-a:act-1')).toBeNull();
     expect(localStorage.getItem('itera.live.answers:aluno-a:sess-1')).toBeNull();
-    expect(localStorage.getItem('itera_dfl_session')).toBeNull();
     expect(localStorage.getItem('sb-projeto-auth-token')).toBe('keep-me');
   });
 

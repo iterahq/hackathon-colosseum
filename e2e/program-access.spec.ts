@@ -44,6 +44,8 @@ import { seedSession, STUB_SUPABASE_URL } from './support/harnessStub';
 
 const SLUG = 'fundamentos-web';
 
+const LEARNER_TENANT_ID = '00000000-0000-4000-8000-000000000003';
+
 /**
  * The stub origin for a learner who can reach the app but cannot see this
  * program.
@@ -53,13 +55,19 @@ const SLUG = 'fundamentos-web';
  * gives when RLS filters every row. That is the whole point: the client cannot
  * distinguish "hidden" from "absent", and the fix must not pretend it can.
  *
- * Everything else answers `[]`:
- *  - `my_subscription` → no row → entitlement inactive. The seeded session's
- *    `created_at` (2026-01-01) predates the subscription gate date, so
- *    `<RequireSubscription>` grandfathers the user through instead of bouncing
- *    to `/subscribe`. That keeps this suite about the program route.
- *  - `memberships` → `[]` → a learner with no staff role, which is exactly the
- *    persona that hits this bug.
+ * `my_subscription` answers the `grandfathered` row that `db/migrations/0075`
+ * emits for this persona: a non-guest account created before 2026-07-06, with a
+ * membership to hang the row on. Until that migration the grandfather lived in
+ * the client, which read `session.user.created_at` — so `[]` here was enough and
+ * `<RequireSubscription>` let the seeded 2026-01-01 session through on its own.
+ * Now entitlement is a fact of the view, and a stub that answers `[]` is stating
+ * "this learner has no entitlement at all": the suite would characterize the
+ * PAYWALL instead of the program route.
+ *
+ * `memberships` answers one `learner` row — the persona that hits this bug, and
+ * the row the grandfather branch of the view joins against. Still no staff role.
+ *
+ * Everything else answers `[]`.
  */
 async function installNotEnrolledStub(page: Page): Promise<void> {
   await page.route(`${STUB_SUPABASE_URL}/**`, async (route) => {
@@ -71,6 +79,39 @@ async function installNotEnrolledStub(page: Page): Promise<void> {
         contentType: 'application/json',
         headers: { 'access-control-allow-origin': '*' },
         body: '{}',
+      });
+    }
+
+    if (path.endsWith('/my_subscription')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify([
+          {
+            tenant_id: LEARNER_TENANT_ID,
+            status: 'grandfathered',
+            seat_count: null,
+            current_period_end: null,
+            cancel_at_period_end: false,
+            is_active: true,
+          },
+        ]),
+      });
+    }
+
+    if (path.endsWith('/memberships')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify([
+          {
+            tenant_id: LEARNER_TENANT_ID,
+            role: 'learner',
+            tenants: { slug: 'e2e-learner', name: 'E2E Learner', live_class_enabled: false },
+          },
+        ]),
       });
     }
 

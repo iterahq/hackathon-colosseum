@@ -29,7 +29,6 @@ vi.mock('@/auth/AuthContext', () => ({
     signInWithPassword,
     signInWithOAuth,
     configured: true,
-    isDflFederated: false,
   }),
 }));
 

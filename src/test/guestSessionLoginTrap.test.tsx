@@ -23,7 +23,6 @@ vi.mock('@/auth/AuthContext', () => ({
     signInWithPassword: vi.fn(),
     signInWithOAuth: vi.fn(),
     configured: true,
-    isDflFederated: false,
   }),
 }));
 vi.mock('@/auth/dflFederation', () => ({ loginWithDfl: vi.fn() }));
