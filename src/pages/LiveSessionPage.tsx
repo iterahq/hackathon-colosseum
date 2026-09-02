@@ -42,6 +42,10 @@ import { motion } from 'framer-motion';
 import { Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { LiveReception } from '@/components/live/LiveReception';
+import {
+  LiveContentDiagnostic,
+  type LiveContentFault,
+} from '@/components/live/LiveContentDiagnostic';
 import { LiveNameGate } from '@/components/live/LiveNameGate';
 import { LiveSessionChrome } from '@/components/live/LiveSessionChrome';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
@@ -105,6 +109,14 @@ import type { Activity } from '@/types/content';
 import type { ClassCompleter, ClassPresenceMember, StoredLiveAnswer } from '@/types/liveClass';
 import { isScenarioKind } from '@/utils/activityFamilies';
 
+/**
+ * Quanto tempo o skeleton do conteúdo pode girar antes de virar diagnóstico.
+ *
+ * Generoso de propósito: a aula roda em rede de escola, e trocar um carregamento
+ * lento por um painel de erro seria pior do que esperar. O que ele existe para
+ * cortar é a espera SEM FIM, não a espera lenta.
+ */
+const CONTENT_STALL_MS = 12_000;
 
 export default function LiveSessionPage() {
   const params = useParams<{ sessionId: string }>();
@@ -171,12 +183,29 @@ export default function LiveSessionPage() {
 
   // Guest content is served by itera-api, scoped to the invited session — the
   // ONE read a membership-less JWT cannot do for itself.
-  const { data: lesson, isPending: lessonPending } = useLessonContent(
-    session?.lessonId,
-    guest?.code
-  );
+  const lessonQuery = useLessonContent(session?.lessonId, guest?.code);
+  const lesson = lessonQuery.data;
+  // ⚠️ `isPending` do TanStack v5 é TRUE para query DESLIGADA também, e ela
+  // desliga quando a sessão chega sem `lessonId`. Ler isso como "carregando" foi
+  // o que prendeu parte da turma no skeleton para sempre: sem busca em voo não
+  // existe nada que possa terminar, então sair e entrar de novo não muda nada.
+  // `isLoading` é pendente E buscando — o único estado que de fato passa.
+  const lessonFetching = lessonQuery.isLoading;
   const lessonLoaded = Boolean(lesson);
   const activities = useMemo<Activity[]>(() => lesson?.activities ?? [], [lesson]);
+
+  // Nem toda causa de espera infinita é conhecida — esta só apareceu com a turma
+  // parada na aula. O orçamento fecha a categoria inteira: passou disso, a tela
+  // explica em vez de continuar girando.
+  const [contentStalled, setContentStalled] = useState(false);
+  useEffect(() => {
+    if (!lessonFetching) {
+      setContentStalled(false);
+      return;
+    }
+    const id = window.setTimeout(() => setContentStalled(true), CONTENT_STALL_MS);
+    return () => window.clearTimeout(id);
+  }, [lessonFetching]);
 
   // Peers' live progress on the current activity — sourced from the broadcast
   // answers (learners can't read others' rows under RLS), mapped over the present
@@ -192,6 +221,53 @@ export default function LiveSessionPage() {
     () => activities.find((a) => a.id === currentActivityId) ?? null,
     [activities, currentActivityId]
   );
+
+  // Por que a atividade apontada não está na tela. `null` = ainda é cedo demais
+  // para acusar qualquer coisa, e só nesse caso o skeleton continua valendo.
+  const contentFault = useMemo<LiveContentFault | null>(() => {
+    if (current || !currentActivityId) return null;
+    if (lessonQuery.isError) return 'load-failed';
+    if (!session?.lessonId && !guest?.code) return 'no-lesson';
+    if (lessonFetching) return contentStalled ? 'stalled' : null;
+    if (!lessonLoaded) return 'load-failed';
+    if (activities.length === 0) return 'empty-lesson';
+    return 'activity-missing';
+  }, [
+    current,
+    currentActivityId,
+    lessonQuery.isError,
+    session?.lessonId,
+    guest?.code,
+    lessonFetching,
+    contentStalled,
+    lessonLoaded,
+    activities.length,
+  ]);
+
+  // O "console log" que o aluno cola no chat da aula. Rótulos em inglês de
+  // propósito: quem lê isso é quem vai depurar, e o texto não pode mudar com o
+  // idioma da interface.
+  const contentFaultDetail = useMemo(() => {
+    const rows: Array<[string, string]> = [
+      ['session', session?.id ?? '—'],
+      ['lesson', session?.lessonId ?? '—'],
+      ['guest', guest?.code ?? '—'],
+      ['pointer', currentActivityId ?? '—'],
+      ['activities', String(activities.length)],
+      ['query', `${lessonQuery.status}/${lessonQuery.fetchStatus}`],
+    ];
+    if (lessonQuery.error) rows.push(['error', (lessonQuery.error as Error).message]);
+    return rows.map(([key, value]) => `${key.padEnd(11)}${value}`);
+  }, [
+    session?.id,
+    session?.lessonId,
+    guest?.code,
+    currentActivityId,
+    activities.length,
+    lessonQuery.status,
+    lessonQuery.fetchStatus,
+    lessonQuery.error,
+  ]);
 
   // Redirect instructor to the instructor control surface for THIS session.
   // Handles "re-entry" after accidentally navigating here directly (deep-links
@@ -683,8 +759,13 @@ export default function LiveSessionPage() {
       />
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* `min-w-0`: item de flex tem `min-width: auto`, ou seja, se recusa a
+            encolher abaixo do conteúdo. Um diagrama de 1176px fazia esta coluna
+            crescer junto em vez de deixar o trilho de rolagem do `MermaidLite`
+            aparecer — o desenho saía cortado, e sem rolagem nenhuma para chegar
+            no resto. */}
         <main
-          className={`flex-1 min-h-0 px-4 md:px-8 ${
+          className={`flex-1 min-h-0 min-w-0 px-4 md:px-8 ${
             onSandbox
               ? `overflow-y-auto pb-6 ${stagedAnswer && !ended ? 'pt-14' : 'pt-6'}`
               : 'lg:overflow-y-auto pt-14 md:pt-20'
@@ -781,28 +862,20 @@ export default function LiveSessionPage() {
               // an activity skeleton (which would wrongly signal "an activity is
               // coming").
               <LiveReception roster={roster} />
-            ) : lessonPending ? (
+            ) : contentFault ? (
+              // Toda espera que não anda mais termina AQUI, nomeada. O skeleton
+              // eterno era a mesma tela para "chegando", "lição inacessível" e
+              // "ponteiro de outra lição" — indistinguíveis para quem espera, e
+              // sem nenhuma saída de dentro da sala.
+              <LiveContentDiagnostic
+                fault={contentFault}
+                detail={contentFaultDetail}
+                onRetry={() => void lessonQuery.refetch()}
+              />
+            ) : (
               // Pointer set and the lesson content is still resolving (late-join /
               // reconnect) — activity SKELETON so a joiner with a live pointer goes
               // straight to the activity once it lands. (loop-1 fix #3.)
-              <div className="mt-7">
-                <ActivitySkeleton />
-              </div>
-            ) : !lessonLoaded || activities.length === 0 ? (
-              // The lesson read SETTLED with no readable content — the class was
-              // started on content this learner can't access (e.g. another tenant's
-              // program, RLS-blocked). Show a clear message instead of an endless
-              // skeleton (which reads as a black screen).
-              <div
-                className="mt-8 rounded-3xl border border-dashed border-clay/40 bg-clay/5 p-12 text-center"
-                data-testid="live-unavailable"
-              >
-                <p className="font-display text-lg text-foreground">{t('live.unavailable.title')}</p>
-                <p className="text-sm text-muted-foreground mt-1">{t('live.unavailable.subtitle')}</p>
-              </div>
-            ) : (
-              // Lesson loaded with activities, pointer set, but this activity isn't
-              // in the list yet (transient pointer/lesson mismatch) — brief skeleton.
               <div className="mt-7">
                 <ActivitySkeleton />
               </div>

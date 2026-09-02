@@ -565,7 +565,9 @@ function ClassControl({
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* The activity stays CENTERED in the space left of the sidebar —
             learner-identical stage, just centered rather than in a fixed grid. */}
-        <main className="flex-1 lg:overflow-y-auto px-4 md:px-8 pb-8 flex flex-col">
+        {/* `min-w-0` pelo mesmo motivo do lado do aluno: sem ele um diagrama
+            largo estica a coluna em vez de rolar dentro dela. */}
+        <main className="flex-1 min-w-0 lg:overflow-y-auto px-4 md:px-8 pb-8 flex flex-col">
           {/* Same SHARED kind→width rule as the learner surface — the professor
               projects the very same snack, so a `code` activity was equally
               squeezed here. Only the WIDTH token comes from the rule; the
