@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # test-rls-activity-visibility.sh — assert, BEHAVIOURALLY, that a learner
-# cannot read a draft activity and an author can.
+# cannot read a draft activity, that a learner who has paid for nothing cannot
+# read ANY activity, and that an author can read both.
 #
 # WHY A BEHAVIOURAL TEST AND NOT ANOTHER SHAPE CHECK
 # --------------------------------------------------
@@ -94,8 +95,12 @@ S_OUTSIDER='eeeeeeee-0000-4000-8000-000000000009'
 # `kind` is picked from the live enum rather than hardcoded, so a future rename
 # of an activity kind cannot silently break this test into a false green.
 read -r -d '' FIXTURE <<SQL
-INSERT INTO itera.tenants (id, slug, name)
-  VALUES ('${T_TENANT}', 'rls-selftest-tenant', 'RLS selftest');
+-- subscription_exempt is set so that phases 1 and 2 keep testing exactly what
+-- they always tested — draft vs published — with the 0076 entitlement gate
+-- satisfied and therefore out of the way. Phases 3 and 4 clear the flag and
+-- test the gate itself.
+INSERT INTO itera.tenants (id, slug, name, subscription_exempt)
+  VALUES ('${T_TENANT}', 'rls-selftest-tenant', 'RLS selftest', true);
 INSERT INTO itera.programs (id, tenant_id, slug)
   VALUES ('${T_PROGRAM}', '${T_TENANT}', 'rls-selftest-program');
 INSERT INTO itera.units (id, program_id, ordinal)
@@ -226,6 +231,40 @@ CREATE POLICY activities_select_tenant ON itera.activities
   );
 SQL
 
+# Clears the entitlement the fixture was born with: no exemption, no test
+# flag, no subscription row. A learner in this tenant has paid for nothing.
+read -r -d '' UNENTITLE <<SQL
+UPDATE itera.tenants SET subscription_exempt = false WHERE id = '${T_TENANT}';
+SQL
+
+# The pre-0076 shape: right on draft/published, blind to entitlement. This is
+# the policy this repo shipped between 0064 and 0076, so a revert lands here
+# and not somewhere invented.
+read -r -d '' PAYWALL_MUTATION <<'SQL'
+DROP POLICY IF EXISTS activities_select_tenant ON itera.activities;
+CREATE POLICY activities_select_tenant ON itera.activities
+  FOR SELECT
+  USING (
+    lesson_id IN (
+      SELECT l.id
+      FROM itera.lessons l
+      JOIN itera.units u ON u.id = l.unit_id
+      JOIN itera.programs p ON p.id = u.program_id
+      WHERE p.tenant_id IN (SELECT itera.current_tenant_ids())
+    )
+    AND (
+      status = 'published'
+      OR lesson_id IN (
+        SELECT l.id
+        FROM itera.lessons l
+        JOIN itera.units u ON u.id = l.unit_id
+        JOIN itera.programs p ON p.id = u.program_id
+        WHERE p.tenant_id IN (SELECT itera.current_author_tenant_ids())
+      )
+    )
+  );
+SQL
+
 # run_phase <mutate:0|1>  -> exit status of psql
 run_phase() {
   local mutate="$1" sql
@@ -243,7 +282,26 @@ ROLLBACK;"
   printf '%s\n' "$sql" | psql -v ON_ERROR_STOP=1 -qX 2>&1
 }
 
-echo "RLS behaviour: draft activities are invisible to learners"
+# run_paywall_phase <strip:0|1> -> exit status of psql
+# Same fixture, entitlement removed. The learner has a membership and the
+# activity is published, so ONLY the 0076 clause can be what stops them.
+run_paywall_phase() {
+  local strip="$1" sql
+  sql="BEGIN;
+${FIXTURE}
+${UNENTITLE}
+"
+  [[ "$strip" == "1" ]] && sql="${sql}
+${PAYWALL_MUTATION}
+"
+  sql="${sql}
+$(assert_as "${S_LEARNER}" 'unentitled learner reads nothing' 0 0)
+$(assert_as "${S_AUTHOR}"  'author is never paywalled'        2 1)
+ROLLBACK;"
+  printf '%s\n' "$sql" | psql -v ON_ERROR_STOP=1 -qX 2>&1
+}
+
+echo "RLS behaviour: drafts are invisible to learners, content is invisible to non-payers"
 echo
 
 # ── phase 1: the real policy must be correct ────────────────────────────────
@@ -283,4 +341,44 @@ else
 fi
 
 echo
-echo "passed: the learner is blocked, the author is not, and the test has teeth."
+
+# ── phase 3: the 0076 entitlement gate must hold ────────────────────────────
+echo "phase 3 — the same learner, with nothing paid for"
+if OUT="$(run_paywall_phase 0)"; then
+  printf '%s\n' "$OUT" | command grep -E '^(NOTICE:)?\s*ok ' | sed 's/^NOTICE:  //'
+  echo "  -> GREEN"
+else
+  printf '%s\n' "$OUT" | sed 's/^/  /'
+  echo
+  echo "FAIL: an unentitled learner can read published activities." >&2
+  echo "      itera.current_user_is_entitled() is missing from activities_select_tenant," >&2
+  echo "      or the predicate itself admits somebody who has paid nothing." >&2
+  exit 1
+fi
+
+echo
+
+# ── phase 4: strip the entitlement clause; phase 3 must go red ──────────────
+echo "phase 4 — mutation: the entitlement clause removed (the pre-0076 shape)"
+if OUT="$(run_paywall_phase 1)"; then
+  echo "  -> GREEN, and that is the failure." >&2
+  echo >&2
+  echo "FAIL: the entitlement clause was stripped and the learner still read nothing." >&2
+  echo "      Phase 3 is passing for some other reason and proves nothing." >&2
+  exit 1
+fi
+if printf '%s\n' "$OUT" | command grep -q 'unentitled learner reads nothing'; then
+  echo "  ok    stripping the entitlement clause turns the learner assertion RED"
+  printf '%s\n' "$OUT" | command grep -o 'ERROR:.*' | head -1 | sed 's/^/        /'
+  echo "  -> RED, as required"
+else
+  printf '%s\n' "$OUT" | sed 's/^/  /'
+  echo
+  echo "FAIL: the mutated run failed, but NOT on the learner assertion." >&2
+  echo "      The failure above is something else and the mutation proves nothing." >&2
+  exit 1
+fi
+
+echo
+echo "passed: drafts are hidden from learners, content is hidden from non-payers,"
+echo "        authors keep both, and both mutations turn the test red."

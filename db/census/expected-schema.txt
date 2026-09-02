@@ -31,6 +31,7 @@ cmt   col itera.users.dfl_subject be81d4b7ba64
 cmt   col itera.users.is_guest b469e2a44c32
 cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
 cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
+cmt   fn  itera.current_user_is_entitled() 89b6ec8674eb
 cmt   fn  itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) e4a5b7ad2bb4
 cmt   fn  itera.handle_new_federated_user() 78c2f01cc8b9
 cmt   fn  itera.is_action_trace(a jsonb) abb9e8cc400d
@@ -456,8 +457,9 @@ fn    itera.current_author_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=
 fn    itera.current_instructor_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=08a9b3b7c3c0
 fn    itera.current_itera_user_id() -> uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=51907c5533de
 fn    itera.current_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=d06b680bc884
+fn    itera.current_user_is_entitled() -> boolean kind=f vol=s secdef=t cfg=search_path=itera, billing, public body=4455ca9609dc
 fn    itera.custom_access_token_hook(event jsonb) -> jsonb kind=f vol=s secdef=t cfg=search_path=itera, public body=4049100b48ef
-fn    itera.enroll_in_program(p_program_id uuid) -> TABLE(out_tenant_id uuid, out_role itera.member_role, out_enrolled boolean) kind=f vol=v secdef=t cfg=search_path=itera, public body=4b91d3fff556
+fn    itera.enroll_in_program(p_program_id uuid) -> TABLE(out_tenant_id uuid, out_role itera.member_role, out_enrolled boolean) kind=f vol=v secdef=t cfg=search_path=itera, public body=182a51c9efdb
 fn    itera.ensure_current_unit_version(p_unit_id uuid) -> uuid kind=f vol=v secdef=t cfg=search_path=itera, public body=a6eefa3146f9
 fn    itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=3c29b94e3c0e
 fn    itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=330c3f639fc2
@@ -510,6 +512,10 @@ gfn   itera.current_tenant_ids() anon exec=t
 gfn   itera.current_tenant_ids() authenticated exec=t
 gfn   itera.current_tenant_ids() service_role exec=t
 gfn   itera.current_tenant_ids() supabase_auth_admin exec=t
+gfn   itera.current_user_is_entitled() anon exec=t
+gfn   itera.current_user_is_entitled() authenticated exec=t
+gfn   itera.current_user_is_entitled() service_role exec=f
+gfn   itera.current_user_is_entitled() supabase_auth_admin exec=f
 gfn   itera.custom_access_token_hook(event jsonb) anon exec=t
 gfn   itera.custom_access_token_hook(event jsonb) authenticated exec=t
 gfn   itera.custom_access_token_hook(event jsonb) service_role exec=t
@@ -827,7 +833,7 @@ idx   CREATE UNIQUE INDEX xp_events_pkey ON itera.xp_events USING btree (id)
 pol   itera.activities activities_author_delete cmd=d perm=t roles=authenticated using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
 pol   itera.activities activities_author_insert cmd=a perm=t roles=authenticated using=- check=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
 pol   itera.activities activities_author_update cmd=w perm=t roles=authenticated using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
-pol   itera.activities activities_select_tenant cmd=r perm=t roles=PUBLIC using=((lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) AND ((status = 'published'::itera.activity_status) OR (lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))))) check=-
+pol   itera.activities activities_select_tenant cmd=r perm=t roles=PUBLIC using=((lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) AND ((status = 'published'::itera.activity_status) OR (lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))) AND itera.current_user_is_entitled()) check=-
 pol   itera.activity_comments activity_comments_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
 pol   itera.activity_comments activity_comments_owner_delete cmd=d perm=t roles=authenticated using=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid())) check=-
 pol   itera.activity_comments activity_comments_owner_update cmd=w perm=t roles=authenticated using=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid())) check=((tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) AND (author_id = auth.uid()))
@@ -835,7 +841,7 @@ pol   itera.activity_comments activity_comments_select_tenant cmd=r perm=t roles
 pol   itera.activity_defs activity_defs_author_delete cmd=d perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=-
 pol   itera.activity_defs activity_defs_author_insert cmd=a perm=t roles=PUBLIC using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
 pol   itera.activity_defs activity_defs_author_update cmd=w perm=t roles=PUBLIC using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
-pol   itera.activity_defs activity_defs_select_tenant cmd=r perm=t roles=PUBLIC using=((tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) AND ((status = 'published'::itera.activity_status) OR (tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
+pol   itera.activity_defs activity_defs_select_tenant cmd=r perm=t roles=PUBLIC using=((tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) AND ((status = 'published'::itera.activity_status) OR (tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))) AND itera.current_user_is_entitled()) check=-
 pol   itera.activity_results results_rw_self cmd=* perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=(user_id = itera.current_itera_user_id())
 pol   itera.activity_results results_select_admin cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_admin_tenant_ids() AS current_admin_tenant_ids)))) check=-
 pol   itera.activity_results results_select_instructor cmd=r perm=t roles=PUBLIC using=(user_id IN ( SELECT m.user_id FROM itera.memberships m WHERE (m.tenant_id IN ( SELECT itera.current_instructor_tenant_ids() AS current_instructor_tenant_ids)))) check=-
