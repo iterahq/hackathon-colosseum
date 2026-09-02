@@ -21,13 +21,18 @@
 
 /**
  * Quantos envios ERRADOS o aluno pode gastar antes de a atividade fechar como
- * errada. Três, e não um: o `code` erra por vírgula tanto quanto por conceito, e
- * uma tentativa só transformaria digitação em veredito. Constante, e não campo
- * de `CodeSpec` — o schema é validado fail-closed e um campo novo obriga toda
- * activity já autorada a ganhar valor; quando houver evidência de que 3 é pouco
- * ou muito, o número muda aqui, num lugar só.
+ * errada. Não é um: o `code` erra por vírgula tanto quanto por conceito, e uma
+ * tentativa só transformaria digitação em veredito. Constante, e não campo de
+ * `CodeSpec` — o schema é validado fail-closed e um campo novo obriga toda
+ * activity já autorada a ganhar valor; o número muda aqui, num lugar só.
+ *
+ * Foi 3 até a evidência aparecer: na primeira aula ao vivo com o teto ligado, a
+ * turma esgotou as três antes de entender o enunciado, e a tela terminal chegou
+ * como punição por digitação, não por conceito. Cinco dá margem para errar
+ * sintaxe duas vezes e ainda pensar — sem devolver o "chuta até ficar verde",
+ * que é o que o teto existe para impedir.
  */
-export const CODE_ATTEMPT_BUDGET = 3;
+export const CODE_ATTEMPT_BUDGET = 5;
 
 /** Prefixo da chave que o `code` entrega ao `ActivityStoragePort` para o placar. */
 export const CODE_ATTEMPTS_KEY_PREFIX = 'itera.code.attempts:';
@@ -59,7 +64,7 @@ export interface AttemptBudget {
  * Quantas tentativas o depósito diz que já foram gastas.
  *
  * FAIL-OPEN, e é decisão de produto: um depósito ausente, ilegível, negativo ou
- * editado à mão vira `0`, ou seja, o aluno reabre com as três vidas. O erro caro
+ * editado à mão vira `0`, ou seja, o aluno reabre com o orçamento cheio. O erro caro
  * aqui é o simétrico — um `NaN` virar "sem vidas" tranca numa aula ao vivo um
  * exercício que a pessoa nem tentou, e ninguém consegue destravar de dentro da
  * sala. Já o teto é rígido: um valor acima do orçamento é grampeado, senão
@@ -84,7 +89,13 @@ export function attemptBudget(spent: number): AttemptBudget {
   };
 }
 
-/** Grampeado no teto: gastar além do orçamento não é estado que exista. */
+/**
+ * Grampeado no teto: gastar além do orçamento não é estado que exista.
+ *
+ * É a mesma conta de TIRAR uma vida pelo painel do instrutor, e de propósito
+ * não ganhou um irmão `revokeAttempt` — duas funções idênticas divergem no
+ * primeiro ajuste de teto, e aí uma das duas passa a mentir.
+ */
 export function spendAttempt(spent: number): number {
   return Math.min(parseSpentAttempts(String(spent)) + 1, CODE_ATTEMPT_BUDGET);
 }
@@ -96,7 +107,7 @@ export function spendAttempt(spent: number): number {
  * Existe porque `parseSpentAttempts` é fail-open só contra depósito ILEGÍVEL —
  * contra um depósito legível e esgotado não há saída de dentro da sala, e a aula
  * ao vivo tem o caso em que isso é errado: o exercício mudou no meio da aula, a
- * turma inteira gastou as três num enunciado velho, e o instrutor precisa
+ * turma inteira gastou as vidas num enunciado velho, e o instrutor precisa
  * liberar sem mandar todo mundo limpar localStorage.
  */
 export function grantAttempt(spent: number): number {

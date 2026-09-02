@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { ChevronDown, Hand, Heart, Loader2, MonitorPlay, UserMinus } from 'lucide-react';
+import {
+  ChevronDown,
+  Hand,
+  Heart,
+  HeartCrack,
+  Loader2,
+  MonitorPlay,
+  UserMinus,
+} from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveRoomActionButton } from '@/components/live/LiveRoomActionButton';
@@ -11,23 +19,17 @@ import type { LiveRoomRow, LiveRoomRowActions } from '@/types/liveClass';
  * coisa posicionada por cima.
  *
  * A divisão em faixas não é estética: o nome fica no cabeçalho, no meio o que se
- * usa várias vezes por aula (abaixar a mão, devolver vida, palco), e embaixo o
- * que encerra a participação.
+ * usa várias vezes por aula (mão, vidas, palco), e embaixo o que encerra a
+ * participação. A faixa do meio tem `flex-wrap` porque a barra vive numa sidebar
+ * de 320px; fechar é o ⋯ da própria linha.
  *
- * As ações moram numa faixa própria com `flex-wrap` porque a barra vive numa
- * sidebar de 320px: enfileiradas junto do nome elas estouravam a largura.
- * Fechar é o `LiveRoomActionsToggle` da linha, no mesmo canto do ⋯ que abriu.
- *
- * **Tirar da sala fica atrás de um "Mais" fechado por padrão.** Ele estava
- * visível ao lado do botão de palco e na primeira aula com alunos reais o
- * professor confundiu os dois — "tirar da sala" e "tirar do palco" são a mesma
- * frase até a última palavra, e uma delas expulsa um adolescente da aula. O
- * palco é o que se usa toda hora; a remoção é o que se usa quase nunca, então
- * ela custa um toque extra de propósito.
- *
- * Tirar da sala confirma na própria linha — nunca em modal. A turma está vendo a
- * tela projetada, e um diálogo no centro transforma disciplina em julgamento
- * público.
+ * As duas vidas ficam VIZINHAS porque errar entre elas custa um toque no outro
+ * botão. **Tirar da sala, não:** ficava ao lado do palco e na primeira aula com
+ * alunos reais o professor confundiu os dois — "tirar da sala" e "tirar do
+ * palco" são a mesma frase até a última palavra, e uma delas expulsa um
+ * adolescente. Por isso mora atrás de um "Mais" fechado, e confirma na própria
+ * linha: a turma está vendo a tela projetada, e um diálogo no centro transforma
+ * disciplina em julgamento público.
  */
 export function LiveRoomRowActionsBar({
   row,
@@ -61,8 +63,14 @@ export function LiveRoomRowActionsBar({
         <LiveRoomActionButton
           icon={Heart}
           label={t('live.room.action.grantLife')}
-          onClick={() => actions.onGrantLife(row.userId)}
+          onClick={() => actions.onAdjustLife(row.userId, 1)}
           testId="live-room-grant-life"
+        />
+        <LiveRoomActionButton
+          icon={HeartCrack}
+          label={t('live.room.action.revokeLife')}
+          onClick={() => actions.onAdjustLife(row.userId, -1)}
+          testId="live-room-revoke-life"
         />
         <button
           type="button"

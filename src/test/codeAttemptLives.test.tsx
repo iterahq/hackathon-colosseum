@@ -5,12 +5,16 @@ import { CODE_DROPDOWN_SPEC } from '@/stories/contractFixtures';
 import { CODE_ATTEMPT_BUDGET } from '@iterahq/activities/code';
 import { rememberStorageScope } from '@/utils/storageScope';
 import { clearLearnerLessonState } from '@/utils/liveLessonReset';
-import { grantCodeAttempt } from '@/services/codeAttempts.service';
+import { grantCodeAttempt, revokeCodeAttempt } from '@/services/codeAttempts.service';
 import { CodeActivityHost, previewIframe, typeCode } from './support/codeActivityHost';
 import { CodeSnackActivity } from '@/components/branded/activity/code/CodeSnackActivity';
 
 /**
- * O teto de 3 envios errados, ponta a ponta e contra o localStorage DE VERDADE.
+ * O teto de envios errados, ponta a ponta e contra o localStorage DE VERDADE.
+ *
+ * Os números saem todos de `CODE_ATTEMPT_BUDGET`: o teto já mudou uma vez (3 → 5)
+ * e um `'2'` cravado aqui teria virado uma falha que não descreve regressão
+ * nenhuma.
  *
  * Nada de `vi.mock` no depósito aqui, ao contrário de `CodeSnackActivity.test.tsx`:
  * o que estas regressões precisam provar é que a vida gasta SOBREVIVE a um F5, e
@@ -57,7 +61,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-describe('code guiado — as três vidas', () => {
+describe('code guiado — as vidas', () => {
   const blank = (id: string) => screen.getByTestId(`guided-blank-${id}`) as HTMLSelectElement;
   const choose = (id: string, value: string) =>
     act(() => void fireEvent.change(blank(id), { target: { value } }));
@@ -71,13 +75,21 @@ describe('code guiado — as três vidas', () => {
     choose('evento', 'onClick');
     click(screen.getByTestId('guided-submit'));
   };
+  /** Erra N vezes seguidas, voltando ao editor entre uma e outra. */
+  const failTimes = (n: number) => {
+    for (let i = 0; i < n; i += 1) {
+      if (i > 0) click(screen.getByTestId('guided-retry'));
+      submitWrong();
+    }
+  };
+  const exhaust = () => failTimes(CODE_ATTEMPT_BUDGET);
 
   it('o primeiro erro custa uma vida e diz quantas sobram', () => {
     open(CODE_DROPDOWN_SPEC);
     submitWrong();
 
     expect(screen.getByTestId('guided-feedback')).toHaveAttribute('data-all-correct', 'false');
-    expect(remaining()).toBe('2');
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 1));
     expect(attemptsLine()).toHaveAttribute('data-budget', String(CODE_ATTEMPT_BUDGET));
     // Nada terminal ainda: o caminho de volta ao editor continua na tela.
     expect(screen.getByTestId('guided-retry')).toBeInTheDocument();
@@ -97,13 +109,9 @@ describe('code guiado — as três vidas', () => {
     expect(attemptsInStorage()).toContain('"spent":"1"');
   });
 
-  it('a TERCEIRA errada é terminal — sem enviar de novo, sem tentar de novo', () => {
+  it('a ÚLTIMA errada é terminal — sem enviar de novo, sem tentar de novo', () => {
     open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    exhaust();
 
     expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
     expect(remaining()).toBe('0');
@@ -116,11 +124,7 @@ describe('code guiado — as três vidas', () => {
     // e deixar o aluno preso numa tela travada no meio da aula é pior do que
     // entregar a resposta com o resultado registrado como errado.
     open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    exhaust();
 
     expect(screen.getByTestId('guided-code-answer-shown')).toBeInTheDocument();
     expect(blank('hook')).toHaveValue('useState');
@@ -129,11 +133,7 @@ describe('code guiado — as três vidas', () => {
 
   it('seguir sem vidas registra o resultado REAL, não o gabarito na tela', () => {
     const onComplete = open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    exhaust();
     click(screen.getByTestId('guided-continue'));
 
     expect(onComplete).toHaveBeenCalledWith(false, expect.objectContaining({ response: expect.any(String) }));
@@ -141,35 +141,31 @@ describe('code guiado — as três vidas', () => {
 
   it('o placar sobrevive ao F5 — recarregar não devolve vida', () => {
     open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    failTimes(CODE_ATTEMPT_BUDGET - 1);
     expect(remaining()).toBe('1');
 
     cleanup();
     open(CODE_DROPDOWN_SPEC);
     submitWrong();
 
-    // A terceira depois da remontagem, e não a primeira de um placar zerado.
+    // A última depois da remontagem, e não a primeira de um placar zerado.
     expect(remaining()).toBe('0');
     expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
   });
 
-  it('depósito ilegível devolve as três vidas, não zero', () => {
+  it('depósito ilegível devolve o orçamento cheio, não zero', () => {
     // Falha ABERTO de propósito: um `NaN` virando "sem vidas" trancaria numa aula
     // ao vivo um exercício que a pessoa nem abriu, e ninguém destrava de dentro.
     localStorage.setItem(`itera.code.attempts:${LEARNER}:${ACTIVITY_ID}`, '{lixo');
     open(CODE_DROPDOWN_SPEC);
     submitWrong();
 
-    expect(remaining()).toBe('2');
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 1));
   });
 
   it('o reset da lição ao vivo devolve as vidas', () => {
     open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    failTimes(2);
     cleanup();
 
     clearLearnerLessonState('sess-1', [ACTIVITY_ID]);
@@ -179,7 +175,7 @@ describe('code guiado — as três vidas', () => {
     submitWrong();
     // Sem isto o aluno reabriria o exercício "resetado" já sem vidas, ou seja,
     // impossível de refazer — o oposto do que o reset existe pra resolver.
-    expect(remaining()).toBe('2');
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 1));
   });
 
   it('a vida do professor destrava a tela SEM recarregar', () => {
@@ -187,11 +183,7 @@ describe('code guiado — as três vidas', () => {
     // `useCodeAttempts` continuaria no saldo que semeou e a tela ficaria travada
     // até um F5 que ninguém tem motivo pra dar.
     open(CODE_DROPDOWN_SPEC);
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
-    click(screen.getByTestId('guided-retry'));
-    submitWrong();
+    exhaust();
     expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
 
     act(() => grantCodeAttempt(ACTIVITY_ID));
@@ -200,9 +192,26 @@ describe('code guiado — as três vidas', () => {
     expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'false');
     expect(screen.getByTestId('guided-retry')).toBeInTheDocument();
   });
+
+  it('o professor também TIRA vida, e o botão para de contar no zero', () => {
+    // O sentido de volta existe para o aluno que resolveu no quadro e mesmo assim
+    // ainda tem o exercício aberto. O piso é o mesmo teto do envio errado: sem
+    // isso, o dedo preso no botão cavaria um saldo negativo e a tela terminal
+    // deixaria de chegar quando devesse.
+    open(CODE_DROPDOWN_SPEC);
+    submitWrong();
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 1));
+
+    act(() => revokeCodeAttempt(ACTIVITY_ID));
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 2));
+
+    for (let i = 0; i < CODE_ATTEMPT_BUDGET; i += 1) act(() => revokeCodeAttempt(ACTIVITY_ID));
+    expect(remaining()).toBe('0');
+    expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
+  });
 });
 
-describe('code com checks — as três vidas', () => {
+describe('code com checks — as vidas', () => {
   const CHECKS = [
     { id: 'verde', label: 'o botão está verde', hint: 'Use bg-emerald-500.', selector: 'button', assert: { type: 'class', contains: 'bg-emerald-500' } },
   ];
@@ -228,16 +237,15 @@ describe('code com checks — as três vidas', () => {
     openChecks();
     failOnce('const a = 1;');
     expect(screen.getByTestId('code-checks-feedback')).toHaveAttribute('data-all-passed', 'false');
-    expect(remaining()).toBe('2');
+    expect(remaining()).toBe(String(CODE_ATTEMPT_BUDGET - 1));
   });
 
-  it('a terceira reprovação tranca o editor aberto e abre a saída', () => {
+  it('a última reprovação tranca o editor aberto e abre a saída', () => {
     const onComplete = openChecks();
-    failOnce('const a = 1;');
-    click(screen.getByTestId('code-checks-retry'));
-    failOnce('const a = 2;');
-    click(screen.getByTestId('code-checks-retry'));
-    failOnce('const a = 3;');
+    for (let i = 0; i < CODE_ATTEMPT_BUDGET; i += 1) {
+      if (i > 0) click(screen.getByTestId('code-checks-retry'));
+      failOnce(`const a = ${i};`);
+    }
 
     expect(screen.getByTestId('activity-shell')).toHaveAttribute('data-out-of-lives', 'true');
     expect(remaining()).toBe('0');

@@ -52,7 +52,7 @@ import {
   SCOREBOARD_REPLY_MIN_GAP_MS,
 } from '@/utils/liveScoreboard';
 import { CODE_SNAPSHOT_EVENT } from '@/services/codeSnapshot.service';
-import { grantCodeAttempt } from '@/services/codeAttempts.service';
+import { grantCodeAttempt, revokeCodeAttempt } from '@/services/codeAttempts.service';
 import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
 import { amIRemovedFrom, removeFromClass } from '@/services/classModeration.service';
@@ -125,14 +125,14 @@ const INSTRUCTOR_CURSOR_EVENT = 'instructor-cursor';
 // para de contar resposta anterior a ele. Ver `utils/liveLessonReset.ts` pra por
 // que isso não é um DELETE em `class_answers`.
 const LESSON_RESET_EVENT = 'lesson-reset';
-// "Mais uma vida" para UM aluno. Tópico de staff pelo motivo óbvio: vida que o
-// próprio aluno se dá não é vida, é o teto do `code` desligado. Devolve UMA, e
-// não zera o placar, porque o caso real é o exercício que mudou no meio da aula
-// — quem gastou as três merece voltar a poder enviar, não recomeçar com crédito
-// infinito. O `activity_id` viaja no payload em vez de ser lido do estado de
-// quem recebe: o aluno pode ter avançado sozinho, e a vida tem que cair no
-// exercício em que o professor a concedeu.
-const GRANT_LIFE_EVENT = 'grant-life';
+// Vida a MAIS ou a MENOS para UM aluno. Tópico de staff pelo motivo óbvio: vida
+// que o próprio aluno se dá não é vida, é o teto do `code` desligado. Anda de UMA
+// em UMA e nunca zera o placar, porque os dois casos reais são pontuais — o
+// exercício mudou no meio da aula, ou o aluno resolveu no quadro e o professor
+// cobra a tentativa. O `activity_id` viaja no payload em vez de ser lido do
+// estado de quem recebe: o aluno pode ter avançado sozinho, e o ajuste tem que
+// cair no exercício em que o professor apertou o botão.
+const LIFE_ADJUST_EVENT = 'life-adjust';
 const cursorTopic = (sessionId: string) => `class:${sessionId}:cursor`;
 
 export function useClassSession(
@@ -698,11 +698,13 @@ export function useClassSession(
           const at = (payload as { at?: unknown } | null)?.at;
           if (typeof at === 'string' && at) setLessonResetAt(at);
         })
-        .on('broadcast', { event: GRANT_LIFE_EVENT }, ({ payload }) => {
-          const p = payload as { user_id?: string; activity_id?: string } | null;
+        .on('broadcast', { event: LIFE_ADJUST_EVENT }, ({ payload }) => {
+          const p = payload as { user_id?: string; activity_id?: string; delta?: number } | null;
           if (!p?.user_id || p.user_id !== identityRef.current?.userId) return;
           const target = p.activity_id || currentActivityIdRef.current;
-          if (target) grantCodeAttempt(target);
+          if (!target) return;
+          if (p.delta === -1) revokeCodeAttempt(target);
+          else grantCodeAttempt(target);
         })
         .on('broadcast', { event: STAGE_CLEAR_EVENT }, () => {
           setStagedAnswer(null);
@@ -1180,17 +1182,20 @@ export function useClassSession(
     });
   }, []);
 
-  // Concede local E anuncia. O local não é redundância: o broadcast do Supabase
+  // Aplica local E anuncia. O local não é redundância: o broadcast do Supabase
   // não ecoa para quem enviou, então sem ele o professor — que também resolve o
-  // exercício — seria o único da sala que o botão não destrava.
-  const grantLife = useCallback((userId: string) => {
+  // exercício — seria o único da sala em quem o botão não pega.
+  const adjustLife = useCallback((userId: string, delta: 1 | -1) => {
     const activityId = currentActivityIdRef.current;
     if (!userId || !activityId) return;
-    if (userId === identityRef.current?.userId) grantCodeAttempt(activityId);
+    if (userId === identityRef.current?.userId) {
+      if (delta === -1) revokeCodeAttempt(activityId);
+      else grantCodeAttempt(activityId);
+    }
     void ctrlRef.current?.send({
       type: 'broadcast',
-      event: GRANT_LIFE_EVENT,
-      payload: { user_id: userId, activity_id: activityId },
+      event: LIFE_ADJUST_EVENT,
+      payload: { user_id: userId, activity_id: activityId, delta },
     });
   }, []);
 
@@ -1448,7 +1453,7 @@ export function useClassSession(
     clearTimer,
     setHandRaised,
     lowerHand,
-    grantLife,
+    adjustLife,
     removeLearner,
     setWorkingOn,
     requestStage,

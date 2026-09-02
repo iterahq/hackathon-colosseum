@@ -13,9 +13,9 @@
  *
  * ⚠️ ETIQUETADO POR EXECUÇÃO, como as duas metades do rascunho. É isso que
  * separa "não dá pra recuperar vida com F5" de "a lição nunca mais abre": dentro
- * da mesma aula o contador sobrevive à recarga; uma aula NOVA nasce com as três
- * vidas, senão repetir a lição na turma seguinte entregaria o exercício já
- * perdido.
+ * da mesma aula o contador sobrevive à recarga; uma aula NOVA nasce com o
+ * orçamento cheio, senão repetir a lição na turma seguinte entregaria o
+ * exercício já perdido.
  *
  * SEM `CODE_SNAPSHOT_EVENT`: gastar tentativa não é "trabalho em andamento", e
  * disparar aqui faria o seletor do professor piscar a cada envio.
@@ -27,6 +27,7 @@ import {
   grantAttempt,
   parseSpentAttempts,
   serializeSpentAttempts,
+  spendAttempt,
 } from '@iterahq/activities/code';
 
 const keyFor = (activityId: string) => scopedKey('itera.code.attempts', activityId);
@@ -65,21 +66,41 @@ export function saveCodeAttempts(activityId: string, spent: string): void {
 }
 
 /**
- * Devolve UMA vida e avisa a tela na mesma hora.
+ * Move o saldo em UMA vida e avisa a tela na mesma hora.
  *
- * Grava pelo `saveCodeAttempts` para reetiquetar a execução: uma vida concedida
+ * Grava pelo `saveCodeAttempts` para reetiquetar a execução: uma vida mexida
  * hoje não pode ressuscitar um placar de uma aula anterior que o
  * `belongsToExecution` já estava descartando.
+ *
+ * As duas pontas são grampeadas pelo pacote — conceder não passa de zero gasto,
+ * tirar não passa do orçamento —, então o instrutor não consegue nem criar
+ * crédito infinito nem cavar um saldo negativo com o dedo preso no botão.
  */
-export function grantCodeAttempt(activityId: string): void {
+function moveCodeAttempt(activityId: string, next: (spent: number) => number): void {
   if (!activityId) return;
-  const next = grantAttempt(parseSpentAttempts(readCodeAttempts(activityId)));
-  saveCodeAttempts(activityId, serializeSpentAttempts(next));
+  saveCodeAttempts(
+    activityId,
+    serializeSpentAttempts(next(parseSpentAttempts(readCodeAttempts(activityId)))),
+  );
   try {
     window.dispatchEvent(new CustomEvent(CODE_ATTEMPTS_REFRESH_EVENT, { detail: { activityId } }));
   } catch {
     // Sem window (SSR/teste) — o próximo mount relê o depósito de qualquer jeito.
   }
+}
+
+/** +1 vida. */
+export function grantCodeAttempt(activityId: string): void {
+  moveCodeAttempt(activityId, grantAttempt);
+}
+
+/**
+ * −1 vida. É literalmente um envio errado debitado pelo instrutor, então usa a
+ * MESMA conta do `spendAttempt`: um `revokeAttempt` gêmeo divergiria no
+ * primeiro ajuste de teto.
+ */
+export function revokeCodeAttempt(activityId: string): void {
+  moveCodeAttempt(activityId, spendAttempt);
 }
 
 export function clearCodeAttempts(activityId: string): void {

@@ -27,7 +27,7 @@ const answerers: ClassAnswerer[] = [
 
 const actionHandlers = () => ({
   onLowerHand: vi.fn(),
-  onGrantLife: vi.fn(),
+  onAdjustLife: vi.fn(),
   onRemove: vi.fn(),
   onToggleStage: vi.fn(),
 });
@@ -58,15 +58,21 @@ describe('per-student actions', () => {
     expect(screen.getByTestId('live-room-stage')).toBeTruthy();
   });
 
-  // Devolver vida não depende do estado da linha: quem está sem vidas não fica
+  // Mexer em vida não depende do estado da linha: quem está sem vidas não fica
   // marcado no roster, e a única leitura desse saldo é o localStorage do aluno.
-  it('devolve uma vida para a linha, sempre habilitado', () => {
-    const { onGrantLife } = renderRoom();
+  // Os dois sentidos saem pelo MESMO handler — é o sinal que separa "+1" de "−1",
+  // e um handler por botão deixaria os dois divergirem no primeiro ajuste.
+  it('move a vida da linha nos dois sentidos, sempre habilitado', () => {
+    const { onAdjustLife } = renderRoom();
     openRow(1);
-    const button = screen.getByTestId('live-room-grant-life');
-    expect(button).not.toBeDisabled();
-    fireEvent.click(button);
-    expect(onGrantLife).toHaveBeenCalledWith('b');
+    const grant = screen.getByTestId('live-room-grant-life');
+    const revoke = screen.getByTestId('live-room-revoke-life');
+    expect(grant).not.toBeDisabled();
+    expect(revoke).not.toBeDisabled();
+    fireEvent.click(grant);
+    expect(onAdjustLife).toHaveBeenCalledWith('b', 1);
+    fireEvent.click(revoke);
+    expect(onAdjustLife).toHaveBeenCalledWith('b', -1);
   });
 
   it('fecha as ações no segundo clique do mesmo botão', () => {

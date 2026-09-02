@@ -81,7 +81,7 @@ export const sampleRoomRows: LiveRoomRow[] = [
 /** Moderation wired to no-ops: the stories exercise the UI, never the DB. */
 export const noopModeration: LiveRoomModeration = {
   onLowerHand: () => {},
-  onGrantLife: () => {},
+  onAdjustLife: () => {},
   onRemove: () => {},
 };
 

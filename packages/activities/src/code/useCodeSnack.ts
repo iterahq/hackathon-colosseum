@@ -145,7 +145,7 @@ export function useCodeSnack(
    * Aqui a correção é assíncrona — roda dentro do iframe do preview — então
    * debitar no clique cobraria de um envio que ainda pode voltar verde. O ref é
    * o que garante UM débito por envio: o efeito re-roda quando o host recria
-   * qualquer dependência, e sem ele o mesmo erro custaria as três vidas de uma
+   * qualquer dependência, e sem ele o mesmo erro custaria todas as vidas de uma
    * vez. Ele volta a zero quando a tela volta a aceitar edição, que é a
    * definição de "próxima tentativa".
    */
