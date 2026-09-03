@@ -73,6 +73,7 @@ on:
       - 'db/scripts/tx-mode.sh'
       - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
+      - 'db/scripts/test-rls-learner-state-history.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -91,6 +92,7 @@ on:
       - 'db/scripts/tx-mode.sh'
       - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
+      - 'db/scripts/test-rls-learner-state-history.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -284,6 +286,21 @@ jobs:
       - name: A learner cannot read a draft activity, and an author can
         run: bash db/scripts/test-rls-activity-visibility.sh
 
+      # ────────────────────────────────────────────────────────────────────────
+      # The same question, asked of migration 0077's transition history: a
+      # learner reads only their own rows, `anon` reads none, UPDATE and DELETE
+      # are refused, and a row that records NO change is refused.
+      #
+      # The fourth one is why this step is not optional. `learner_state_history`
+      # is what three redesign surfaces read to say "this rose" / "this is how it
+      # got here". A table that accepts a no-op row still LOOKS correct in every
+      # census and every shape check — it just fills with lines where nothing
+      # happened, and the surfaces built on it become noise. Four mutations, one
+      # per claim, each watched going red.
+      # ────────────────────────────────────────────────────────────────────────
+      - name: The state history is per-learner, append-only, and transitions-only
+        run: bash db/scripts/test-rls-learner-state-history.sh
+
       - name: Summary
         if: always()
         run: |
@@ -301,4 +318,8 @@ jobs:
             echo "RLS behaviour was then asserted on the result: a learner reads only"
             echo "published activities, an author of the tenant also reads drafts, and"
             echo "removing the predicate turns that assertion red."
+            echo
+            echo "\`learning.learner_state_history\` was asserted the same way: per-learner,"
+            echo "invisible to \`anon\`, append-only, and refusing a row that records no"
+            echo "change — each of the four turned red by its own mutation."
           } >> "$GITHUB_STEP_SUMMARY"
