@@ -4,8 +4,11 @@ import { createRoot } from "react-dom/client";
 // runtime e o editor não abre em rede com CDN bloqueada. Ver src/lib/monaco-loader.ts.
 import "./lib/monaco-loader";
 import App from "./App.tsx";
+import { mountUmami } from "./lib/analytics";
 import "./index.css";
 
 document.documentElement.classList.add('dark');
+
+mountUmami();
 
 createRoot(document.getElementById("root")!).render(<App />);
