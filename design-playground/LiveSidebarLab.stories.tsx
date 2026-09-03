@@ -54,6 +54,7 @@ import {
 import { LiveSidebar } from '@/components/live/LiveSidebar';
 import { InstructorControls } from '@/components/live/InstructorControls';
 import { LiveAvatar } from '@/components/live/LiveAvatar';
+import { buildLiveRoomRows } from '@/utils/liveRoomRows';
 import { formatMmss } from '@/utils/formatMmss';
 import type { ClassPresenceMember, ClassAnswerer, ClassRanking } from '@/types/liveClass';
 
@@ -826,6 +827,21 @@ function CompareLab() {
   // estado (e sem os callbacks abaixo) o painel "Atual" renderizava o recurso
   // pela metade e o "+tempo" chamava um handler undefined.
   const [revealed, setRevealed] = useState(false);
+  const [selfStaged, setSelfStaged] = useState(false);
+  const [onBreak, setOnBreak] = useState(false);
+  // O painel "Atual" tem que ser o componente de produção de VERDADE, senão a
+  // comparação mente. Então as linhas saem do mesmo `buildLiveRoomRows` que a
+  // aula usa, e não de um fixture paralelo que envelheceria sozinho.
+  const rows = useMemo(
+    () =>
+      buildLiveRoomRows({
+        ranking: sim.ranking,
+        answerers: sim.answerers,
+        roster: sim.roster,
+        selfUserId: 'prof',
+      }),
+    [sim.ranking, sim.answerers, sim.roster],
+  );
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -848,12 +864,10 @@ function CompareLab() {
                 role="instructor"
                 roster={sim.roster}
                 answerers={sim.answerers}
-                selfUserId="prof"
+                rows={rows}
                 hasActivity={!sim.inReception}
                 activityIndex={sim.activityIndex}
                 activityCount={ACTIVITY_COUNT}
-                kind="multi_choice"
-                ranking={sim.ranking}
                 onCopyLink={() => {}}
                 onEnd={() => {}}
                 controls={
@@ -873,8 +887,14 @@ function CompareLab() {
                     onNext={() => room.goTo(1)}
                     onStartTimer={() => room.toggleTimer()}
                     onStopTimer={() => room.toggleTimer()}
-                    onAddTime={room.addTime}
+                    onAdjustTime={room.addTime}
+                    onSetTime={() => {}}
                     onReveal={() => setRevealed(true)}
+                    selfStaged={selfStaged}
+                    onToggleSelfStage={() => setSelfStaged((v) => !v)}
+                    onBreak={onBreak}
+                    onToggleBreak={() => setOnBreak((v) => !v)}
+                    onResetLesson={() => {}}
                   />
                 }
               />
