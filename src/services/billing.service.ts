@@ -8,7 +8,7 @@
  *
  *     POST ${VITE_ITERA_API_URL}/plg/checkout
  *       headers: Authorization: Bearer <Itera user access_token>
- *       body:    { success_url?, cancel_url? }
+ *       body:    { success_url?, cancel_url?, attribution? }
  *       resp:    { checkout_url, session_id, tenant_id }
  *
  * The Stripe Checkout Session is created SERVER-SIDE by itera-api against the
@@ -25,6 +25,7 @@
  * 20260624-itera-plg-subscribe-flow.)
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { readAttribution, attributionMetadata } from '@/lib/attribution';
 
 /** itera-api base URL — overridable at build time; defaults to prod. */
 const ITERA_API_URL =
@@ -118,6 +119,12 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
     cancel_url: req.cancelUrl ?? fallback.cancelUrl,
   };
   if (req.locale) body.locale = req.locale;
+
+  // A origem viaja pra Stripe como metadata do Checkout e volta pelo webhook —
+  // é o que permite responder "de onde veio quem pagou" sem guardar domínio de
+  // marketing no schema da Itera. Omitido quando não há nada atribuído.
+  const attribution = attributionMetadata(readAttribution());
+  if (Object.keys(attribution).length > 0) body.attribution = attribution;
 
   let res: Response;
   try {
