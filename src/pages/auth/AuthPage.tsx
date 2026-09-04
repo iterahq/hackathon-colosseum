@@ -1,8 +1,9 @@
 /**
  * Itera auth — sign-in surface.
  *
- * Sign-up (self-serve registration) has been removed. Access requires a DFL
- * membership or an active Itera subscription. DFL is the primary federated IdP.
+ * Self-serve sign-up lives at /signup (passwordless); access still requires a
+ * DFL membership or an active subscription — creating an account only gets you
+ * to the paywall. DFL is the primary federated IdP.
  * Google login has been removed. Per-tenant white-label branding via ?tenant=.
  * On success navigates to the `from` location (default '/').
  */
@@ -130,18 +131,17 @@ export default function AuthPage() {
         </Link>
       </div>
 
-      {/* Subscription CTA — access requires an active subscription or DFL membership. */}
+      {/* Sign-up CTA — the self-serve door. Access still requires a subscription
+          or DFL membership; /signup only mints the account that can pay. */}
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        Acesso ao Itera requer assinatura.{' '}
-        <a
-          href="https://iterahq.dev"
-          target="_blank"
-          rel="noopener noreferrer"
+        {t('auth.noAccount')}{' '}
+        <Link
+          to="/signup"
           className="font-medium text-foreground underline-offset-2 hover:underline"
-          data-testid="subscribe-cta"
+          data-testid="goto-signup"
         >
-          Saiba mais
-        </a>
+          {t('auth.signUp')}
+        </Link>
       </p>
     </AuthShell>
   );

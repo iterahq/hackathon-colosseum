@@ -10,8 +10,13 @@ import SignupPage from '@/pages/auth/SignupPage';
  * Auth page tests — subscription-gated login (plan 20260706-iterahq-subscription-gated-login):
  *
  * FIX A: the home hero subtitle (pt+en) no longer forces "desenvolvedor"/"developer" copy.
- * Auth gate: Google login removed, signup removed, DFL is primary CTA, subscribe-cta present.
- * Sign-in still works for existing subscribers.
+ * Auth gate: Google login removed, DFL is primary CTA. Sign-in still works for
+ * existing subscribers.
+ *
+ * Self-serve sign-up REOPENED (PLG front door): /signup renders a passwordless
+ * form instead of redirecting to /login, and the login page links to it. The
+ * paywall is unchanged — a fresh account lands on /subscribe, which is what the
+ * assertions below pin.
  */
 
 const navigate = vi.fn();
@@ -29,7 +34,19 @@ vi.mock('@/auth/AuthContext', () => ({
     signInWithPassword,
     signInWithOAuth,
     configured: true,
+    session: null,
+    loading: false,
   }),
+}));
+
+// Passwordless sign-up talks to Supabase through this service — stub it.
+const sendSignupCode = vi.fn();
+const verifySignupCode = vi.fn();
+vi.mock('@/services/otpAuth.service', () => ({
+  sendSignupCode: (...args: unknown[]) => sendSignupCode(...args),
+  verifySignupCode: (...args: unknown[]) => verifySignupCode(...args),
+  sendLoginCode: vi.fn(),
+  verifyLoginCode: vi.fn(),
 }));
 
 // DFL federation redirect — stub so the IdP button is inert in tests.
@@ -52,6 +69,8 @@ beforeEach(() => {
   navigate.mockReset();
   signInWithPassword.mockReset();
   signInWithOAuth.mockReset();
+  sendSignupCode.mockReset();
+  verifySignupCode.mockReset();
 });
 
 describe('FIX A — audience-neutral hero copy', () => {
@@ -73,9 +92,9 @@ describe('subscription-gated auth — login page', () => {
     expect(screen.queryByTestId('oauth-google')).not.toBeInTheDocument();
   });
 
-  it('does NOT have a link to /signup (goto-signup testId absent)', () => {
+  it('DOES link to /signup — the self-serve door the funnel needs', () => {
     renderAt('/login');
-    expect(screen.queryByTestId('goto-signup')).not.toBeInTheDocument();
+    expect(screen.getByTestId('goto-signup')).toBeInTheDocument();
   });
 
   it('DOES have a DFL login button (oauth-dfl testId present)', () => {
@@ -83,12 +102,6 @@ describe('subscription-gated auth — login page', () => {
     expect(screen.getByTestId('oauth-dfl')).toBeInTheDocument();
   });
 
-  it('DOES have a subscribe CTA linking to iterahq.dev', () => {
-    renderAt('/login');
-    const cta = screen.getByTestId('subscribe-cta');
-    expect(cta).toBeInTheDocument();
-    expect(cta).toHaveAttribute('href', 'https://iterahq.dev');
-  });
 
   it('signs in via signInWithPassword and navigates on success (no regression)', async () => {
     signInWithPassword.mockResolvedValue({ error: null });
@@ -109,11 +122,61 @@ describe('subscription-gated auth — login page', () => {
   });
 });
 
-describe('subscription-gated auth — /signup route', () => {
-  it('redirects /signup to /login', () => {
+describe('self-serve sign-up — /signup route', () => {
+  it('renders the sign-up form instead of redirecting to /login', () => {
     renderAt('/signup');
-    // After redirect, the login page should be rendered (SignupPage is <Navigate to="/login">)
-    expect(screen.getByTestId('login-page')).toBeInTheDocument();
-    expect(screen.queryByTestId('signup-page')).not.toBeInTheDocument();
+    expect(screen.getByTestId('signup-page')).toBeInTheDocument();
+    expect(screen.getByTestId('signup-send-form')).toBeInTheDocument();
+  });
+
+  it('asks for the code after sending, and creates the account on verify', async () => {
+    sendSignupCode.mockResolvedValue({ error: null });
+    verifySignupCode.mockResolvedValue({ error: null });
+    renderAt('/signup');
+
+    fireEvent.change(screen.getByTestId('signup-email-input'), {
+      target: { value: 'new@learner.dev' },
+    });
+    fireEvent.click(screen.getByTestId('submit-signup-send'));
+    await waitFor(() => expect(sendSignupCode).toHaveBeenCalledWith('new@learner.dev'));
+
+    const code = await screen.findByTestId('signup-code-input');
+    fireEvent.change(code, { target: { value: '123456' } });
+    fireEvent.click(screen.getByTestId('submit-signup-verify'));
+
+    await waitFor(() =>
+      expect(verifySignupCode).toHaveBeenCalledWith('new@learner.dev', '123456')
+    );
+    // A fresh account has no entitlement: it must land on the paywall, never on
+    // a learner surface. This is the assertion that keeps sign-up from becoming
+    // free access.
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/subscribe', { replace: true }));
+  });
+
+  it('never reveals that an email already has an account', async () => {
+    sendSignupCode.mockResolvedValue({ error: null });
+    renderAt('/signup');
+
+    fireEvent.change(screen.getByTestId('signup-email-input'), {
+      target: { value: 'existing@learner.dev' },
+    });
+    fireEvent.click(screen.getByTestId('submit-signup-send'));
+
+    // Same neutral confirmation an unknown address gets — no "already taken".
+    const sent = await screen.findByTestId('signup-sent');
+    expect(sent.textContent ?? '').not.toMatch(/já|exist|taken|cadastrad/i);
+  });
+
+  it('surfaces the rate-limit message instead of a silent success', async () => {
+    sendSignupCode.mockResolvedValue({ error: 'Email rate limit exceeded' });
+    renderAt('/signup');
+
+    fireEvent.change(screen.getByTestId('signup-email-input'), {
+      target: { value: 'flood@learner.dev' },
+    });
+    fireEvent.click(screen.getByTestId('submit-signup-send'));
+
+    expect(await screen.findByTestId('signup-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('signup-verify-form')).not.toBeInTheDocument();
   });
 });

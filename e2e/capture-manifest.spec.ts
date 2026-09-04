@@ -657,24 +657,34 @@ test.describe('capture manifest', () => {
    * as `renders` and then has to prove it shows its own marker.
    */
   for (const entry of redirects) {
-    test(`gated route ${entry.id} still redirects to the login page`, async ({
+    /*
+     * The gate's destination is per-route, not always /login: /subscribe sends
+     * a signed-out visitor to /signup, because every landing CTA points there
+     * and the person arriving has no account to sign in with. So the marker
+     * comes from the MANIFEST row — a hardcoded LOGIN_MARKER would have made
+     * "still gated" and "still lands on the login page" the same assertion, and
+     * only one of those is the property this test is for.
+     */
+    const landsOn = entry.lands_on ?? '/login';
+    test(`gated route ${entry.id} still redirects to ${landsOn}`, async ({
       browser,
       captureViewport,
     }) => {
+      const marker = markerFor(entry, captureViewport);
       const context = await browser.newContext(captureContextOptions(captureViewport));
       const page = await context.newPage();
       const ungated: string[] = [];
       try {
         await freezeForCapture(page);
         await page.goto(entry.target, { waitUntil: 'domcontentloaded' });
-        await page.locator(LOGIN_MARKER).first().waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator(marker).first().waitFor({ state: 'visible', timeout: 15000 });
         const landed = new URL(page.url()).pathname;
-        if (landed !== (entry.lands_on ?? '/login')) {
-          ungated.push(`${entry.id} landed on ${landed}, manifest says ${entry.lands_on}`);
+        if (landed !== landsOn) {
+          ungated.push(`${entry.id} landed on ${landed}, manifest says ${landsOn}`);
         }
       } catch {
         ungated.push(
-          `${entry.id} (${entry.target}) did NOT redirect to the login page — a gate may have been removed`
+          `${entry.id} (${entry.target}) did NOT redirect to ${landsOn} — a gate may have been removed`
         );
       }
       await context.close();

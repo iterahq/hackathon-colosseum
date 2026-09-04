@@ -38,6 +38,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'auth.signUpTitle': 'Crie sua conta',
     'auth.signUpSubtitle': 'Comece a aprender em poucos minutos.',
     'auth.signUpError': 'Não foi possível criar a conta. Tente novamente.',
+    'auth.signUpSent':
+      'Enviamos um código de 6 dígitos para o seu e-mail. Confira a caixa de entrada (e o spam).',
     'auth.haveAccount': 'Já tem conta?',
     'auth.noAccount': 'Não tem conta?',
     'auth.toLogin': 'Entrar',
@@ -973,6 +975,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'auth.signUpTitle': 'Create your account',
     'auth.signUpSubtitle': 'Start learning in just a few minutes.',
     'auth.signUpError': 'Could not create your account. Please try again.',
+    'auth.signUpSent': 'We sent a 6-digit code to your email. Check your inbox (and spam).',
     'auth.haveAccount': 'Already have an account?',
     'auth.noAccount': "Don't have an account?",
     'auth.toLogin': 'Sign in',

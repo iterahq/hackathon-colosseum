@@ -288,9 +288,8 @@
       "route": "/signup",
       "target": "/signup",
       "min_regions": 13,
-      "reachability": "redirects",
-      "lands_on": "/login",
-      "marker": "[data-testid=\"login-page\"]"
+      "reachability": "renders",
+      "marker": "[data-testid=\"signup-page\"]"
     },
     {
       "id": "subscribe",
@@ -298,8 +297,8 @@
       "target": "/subscribe",
       "min_regions": 13,
       "reachability": "redirects",
-      "lands_on": "/login",
-      "marker": "[data-testid=\"login-page\"]"
+      "lands_on": "/signup",
+      "marker": "[data-testid=\"signup-page\"]"
     },
     {
       "id": "subscribe_return",

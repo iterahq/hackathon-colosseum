@@ -125,9 +125,9 @@ const App = () => (
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as
-                    /login. The landing site points "Criar conta" here; a new
-                    visitor signs up then lands on `from` (default "/"), the gate
-                    routing them to /subscribe (FIX B, round-3 focus group). */}
+                    /login. The landing site points "Criar conta" here; the page
+                    creates the account passwordlessly and lands on /subscribe,
+                    because a fresh account is entitled to nothing. */}
                 <Route path="/signup" element={<SignupPage />} />
                 {/* Password recovery — /auth/forgot requests the email link
                     (public); /auth/reset is where the link lands (the recovery
@@ -216,11 +216,14 @@ const App = () => (
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see
                     services/billing.service.ts. Public-after-auth (NOT
-                    subscription-gated, else it'd be a redirect loop). */}
+                    subscription-gated, else it'd be a redirect loop).
+                    `signedOutTo="/signup"`: this is where every landing CTA
+                    points, so the signed-out visitor here is a prospect without
+                    an account, not a learner who forgot to sign in. */}
                 <Route
                   path="/subscribe"
                   element={
-                    <RequireAuth>
+                    <RequireAuth signedOutTo="/signup">
                       <SubscribePage />
                     </RequireAuth>
                   }

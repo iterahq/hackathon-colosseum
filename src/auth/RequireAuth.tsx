@@ -2,6 +2,13 @@
  * Route guard — redirects unauthenticated users to /login.
  * When Supabase is not configured (e.g. local mock mode), it lets through so
  * the mock lesson path still renders.
+ *
+ * `signedOutTo` overrides that destination for the ONE route where /login is
+ * the wrong answer: /subscribe. Every "Assinar" button on the landing points
+ * there, and a visitor arriving from a campaign has no account yet — sending
+ * them to a sign-in form asks them to remember a password they never set. They
+ * go to /signup instead. Authenticated routes keep the default: a returning
+ * learner belongs at the login form.
  */
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
@@ -9,7 +16,13 @@ import { useAuth } from './AuthContext';
 import { findStoredGuestCode, isGuestAccessToken } from '@/services/guestSession.service';
 import { GUEST_ROUTE_PREFIX } from '@/guest/guestRoute';
 
-export function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({
+  children,
+  signedOutTo = '/login',
+}: {
+  children: ReactNode;
+  signedOutTo?: '/login' | '/signup';
+}) {
   const { session, loading, configured } = useAuth();
   const location = useLocation();
 
@@ -23,7 +36,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
   if (!session) {
     const tenant = new URLSearchParams(location.search).get('tenant');
-    const to = tenant ? `/login?tenant=${encodeURIComponent(tenant)}` : '/login';
+    const to = tenant ? `${signedOutTo}?tenant=${encodeURIComponent(tenant)}` : signedOutTo;
     return <Navigate to={to} replace state={{ from: location }} />;
   }
 
