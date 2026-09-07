@@ -466,3 +466,110 @@ The `itera` schema is exposed to PostgREST via
 `alter role authenticator set pgrst.db_schemas = 'public, graphql_public, itera'`
 + `notify pgrst, 'reload config'/'reload schema'`. The browser client sets
 `db.schema = 'itera'` so `.from('tenants')` resolves to `itera.tenants`.
+
+## Learning schema — naming map (v0.4 diagram → physical tables)
+
+`0067_learning_schema.sql` created the schema `learning` and its first 9 tables;
+`0068_expose_learning_postgrest.sql` put it on the authenticator's schema list so
+PostgREST can reach it. Plan
+[`20260903-itera-learning-schema-v04-remodel`](https://plans.devfellowship.com/20260903-itera-learning-schema-v04-remodel)
+grows that schema from 15 tables to 26, in five merges (**A**, **A2**, **B**,
+**C**, **D**).
+
+The v0.4 diagram speaks **PascalCase singular**. Postgres speaks **snake_case
+plural**. Seven of the nine apparent "renames" are only that convention. **ADR-1
+renames nothing physically**: 148 measured call sites read these tables through
+PostgREST under the learner JWT, where a rename breaks the SPA on merge. So the
+diagram vocabulary is a *map*, and this is the map. Every table below is in
+schema `learning` unless it is written `itera.`.
+
+| Node | Physical table | Status | Note |
+|---|---|---|---|
+| Learner | `learners` | exists | C adds `role`, `constraints` |
+| LearningObjective | `learning_objectives` | exists | C adds `target_autonomy` |
+| Claim | `claims` | exists | B adds `claim_template_id`; C adds `valued_work_id` |
+| AbstractClaim | `claim_templates` | new in B | the name is Tainan's, not the diagram's (ADR-18); a claim reaches its capability through its template |
+| Capability | `capabilities` | new in B | lifted from `concepts.kind='capability'` (15 rows); `learner_id NULL` means shared vocabulary |
+| CapabilityState | `capability_states` | new in B | |
+| LearnerState | `learner_state` | exists | `learner_state_history` stays a real table, not a view (ADR-9) |
+| LearnerModel | `learner_models` | new in C | columns wait for a round-2 answer |
+| Map | **no table, no view** | derived | `map.ts` computes it from PostgREST reads (ADR-7); it reads `ontology_versions` for the version |
+| Episode | `work_episodes` | exists | every row is a **turn** today; A adds `work_context_id`, `grain`, `agent_version`, `session_episode_id`, `session_refs`; A2 inserts the **session** rows and fills `session_episode_id`; `ingest_batch_id` is a dead column D drops |
+| WorkContext | `work_contexts` | new in A | extracted from `project_ref` / `machine` / `machine_class`, keyed on the normalised `project_root` (ADR-26) |
+| EpisodeMoment | `episode_moments` | new in A | `kind text` — `turn`, `decision`, … |
+| Artifact | `learning.artifacts` | new in C | the work product of a session. **Not** `itera.artifacts` (learner uploads); the name clash is accepted, and this row is the record of it |
+| Activity | `activities` | exists | |
+| ActivityResponse | `activity_responses` | exists | |
+| Evidence | `evidence` | exists | `misconception_id` is `text` **on purpose** — it matches `concepts.id`. A adds `status`, `moment_id`, `turn_episode_id` and 11 provenance columns; C adds `artifact_id` |
+| Concept | `concepts` | exists | the capability rows stay until D |
+| TaskModel | `task_models` | new in C | the **expectation** (ADR-20) |
+| PresentationModel | `presentation_models` | new in C | columns wait for a round-2 answer |
+| EvidenceModel | `evidence_models` | new in A | split out of `generation_config` (calibration knobs) |
+| AssemblyModel | `assembly_models` | new in A | split out of `generation_config`; `scope` ∈ `global` · `module` · `form` |
+| ValuedWork | `valued_work` | new in C | sibling of LearningObjective, never its parent or child (ADR-19) |
+
+22 nodes, 21 tables: Map is derived.
+
+**The source digits 1–5 on the diagram are dropped.** No table carries a source
+note, and none should gain one.
+
+### Tables the diagram does not draw
+
+They are real tables with no node. Five of them, and the plan needs all five.
+
+| Physical table | Status | Note |
+|---|---|---|
+| `residue` | new in B | evidence's twin: the moment that matched no claim, one sentence per row. `quality` ∈ `transcript` · `digest` |
+| `ontology_versions` | new in B | one row per editorial change of the vocabulary (ADR-14); row 1 is the capability lift |
+| `capability_proposals` | new in B | the human gate between the top-down and the bottom-up corpus (ADR-22). A proposal writes zero capabilities; only an operator decision does |
+| `evidence_model_objectives` | new in A | link table, PK `(evidence_model_id, objective_id)` (ADR-21) |
+| `assembly_model_objectives` | new in A | link table, PK `(assembly_model_id, objective_id)` (ADR-21) |
+
+### Tables that lose their place
+
+- `checkpoints` (0 rows) is **retired in D**. What it meant now lives in three
+  places: the expectation in `task_models`, the product in `learning.artifacts`,
+  the judgment in an `evidence` row (ADR-20). There is no `artifact_evaluations`
+  table, now or later.
+- `generation_config` (1 row) is **retired in D**, after its 3 dashboard and
+  backoffice readers move to `evidence_models` / `assembly_models`.
+- `misconceptions`, `concept_relations` and `claim_concepts` have no node and
+  **stay**. A diagram of nodes omits edge tables; they are not deleted by
+  silence.
+
+### Conventions for every new table here
+
+1. **snake_case plural.** The node name is documentation; the table name is the
+   contract PostgREST publishes.
+2. **`kind text`, never an enum.** Same for `status`, `scope`, `quality`,
+   `grain`, `proposed_by_kind`. Postgres has no `ALTER TYPE … DROP VALUE`, and
+   this schema's vocabulary is still moving. A closed set is checked in code
+   and in a verification block, not by the type system.
+3. **Three things in the same migration file as the `create table`:** the RLS
+   policy pair (learner ALL on own rows + operator SELECT through
+   `itera.is_learning_operator()`), the explicit grant line for `authenticated`
+   in the **`0068` pattern**, and the `comment on table`. `grant … on all tables`
+   does not reach a table created later, and migrations `0063` / `0065` are the
+   record of what a copied grant block costs — so write every grant out, and
+   every `anon` revoke with it.
+4. **A nullable owner column is one shape for two answers.** `learner_id NULL`
+   on `capabilities` and on `task_models` means shared vocabulary; a value means
+   learner-owned. Today every such row is NULL. The model tables do **not** use
+   this shape — they scope through link tables (ADR-21).
+5. **Expand → verify → contract.** A, A2, B and C only add: every new column is
+   nullable or defaulted, and every old column stays. D only removes, and only
+   what a read-back proved unused.
+
+### The instrument that checks readers against this schema
+
+[`iterahq/itera-learning-monorepo:scripts/learning-callsite-check.mjs`](https://github.com/iterahq/itera-learning-monorepo)
+(PR #94, with `iterahq/itera-learning-monorepo:scripts/learning-schema.snapshot.json`
+and the npm script `learning:callsite-check`) resolves every dashboard, backoffice and engine call
+site against this schema — 148 of them over 16 tables — and is in CI with its
+own selftest.
+
+⚠️ **CI runs it in *snapshot* mode**, so a merged migration makes the snapshot
+stale without turning CI red. Every engine / dashboard / backoffice PR that
+follows a merge refreshes the snapshot with `--write-snapshot` as its **first
+commit**, and asserts the check green in *live* mode. It does not cover insert
+payload keys, column types or RLS — those need the as-user probes.
