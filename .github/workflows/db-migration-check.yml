@@ -77,6 +77,7 @@ on:
       - 'db/scripts/test-learning-context-model-integrity.sh'
 
       - 'db/scripts/test-rls-capability-family.sh'
+      - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -99,6 +100,7 @@ on:
       - 'db/scripts/test-learning-context-model-integrity.sh'
 
       - 'db/scripts/test-rls-capability-family.sh'
+      - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -309,6 +311,13 @@ jobs:
 
       - name: Learning contexts preserve repository boundaries and model domains
         run: bash db/scripts/test-learning-context-model-integrity.sh
+      - name: Node for the evidence transaction check
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Evidence status matches the reader under concurrent writes
+        run: node db/scripts/test-evidence-status.mjs
 
       - name: Capability decisions and references obey learner boundaries
         run: bash db/scripts/test-rls-capability-family.sh

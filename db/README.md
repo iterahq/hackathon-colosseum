@@ -609,3 +609,33 @@ proposals require shared vocabulary. Capability ownership is immutable.
 `bash db/scripts/test-rls-capability-family.sh` verifies these rules with learner
 and operator identities against the local database built by `fresh-apply.sh`.
 The DB Migration Check workflow runs this test. All fixtures roll back.
+### Evidence status transaction contract (0083)
+
+`evidence.status` is a stored projection of the existing supersede-at-read rule.
+Each `(claim_id, episode_id)` group retains every row of the newest pass.
+Response evidence and evidence without an episode remain active. Equal pass
+orders use the JavaScript UTF-16 pass-key tie rule. Missing pass markers use
+PostgreSQL JSON timestamps, including microseconds and the `+00:00` UTC suffix.
+A read-only production PostgREST probe confirmed that timestamp representation.
+
+Authenticated inserts, deletes, and updates take the caller's advisory lock
+before row locks. Statement triggers refresh the projection inside the write
+transaction. A command after the lock sees the preceding writer's commit.
+Direct `UPDATE(status)` also restores the derived value. Refresh updates only
+mismatched rows; empty transition tables end nested trigger execution.
+`learning.refresh_evidence_status(uuid[] default null)` refreshes the caller's
+claims through RLS. The new grant covers only `status`; it does not grant other
+column updates. READ COMMITTED is required; other isolation levels fail clearly.
+
+A2 and any schema migration that regroups multiple learners must use one
+transaction and first run `LOCK TABLE learning.evidence IN SHARE ROW EXCLUSIVE
+MODE`. Refresh the affected learners before and after the regroup. The table
+lock excludes concurrent writers and avoids inconsistent learner lock order.
+The migration takes this lock before its initial projection refresh. This
+contract does not certify arbitrary administrative writes that bypass it.
+
+The local-only `node db/scripts/test-evidence-status.mjs` checks permissions,
+same-pass collisions, deletion, direct status updates, UTF-16 ties, legacy
+rows, a multi-learner regroup with the table lock, and two real concurrent
+sessions. It also compares all fixture statuses with the JavaScript read rule.
+CI runs this check after the fresh schema, replay, and real applier checks.
