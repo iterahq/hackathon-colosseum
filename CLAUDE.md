@@ -348,3 +348,8 @@ The generic artifact delete tool uses `learning.delete_artifact(uuid)` from
 `db/migrations/0086_learning_artifact_cleanup.sql`. It accepts only the caller's
 unreferenced artifact. It takes the 0083 learner lock before the artifact row
 lock. See `db/README.md` for the refusal and concurrency contract.
+
+The closed-set extractor commits through `learning.record_extraction_pass(jsonb)` in
+`db/migrations/0085_learning_extraction_pass_atomic.sql`. Its caller-owned
+`learning.extraction_passes` table is internal retry storage, not a capture-moment table.
+See `db/README.md` for lock order, atomicity, and the local concurrency test.

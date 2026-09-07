@@ -43,6 +43,13 @@ provides:
       SECURITY INVOKER and READ COMMITTED; learner lock precedes artifact row lock.
     entry: db/migrations/0086_learning_artifact_cleanup.sql
 
+
+  - type: database
+    name: learning-extraction-pass-rpc
+    description: >
+      Atomic caller-JWT evidence or residue passes through learning.record_extraction_pass(jsonb).
+      SECURITY INVOKER, current vocabulary validation, and immutable learning.extraction_passes retry receipts.
+    entry: db/migrations/0085_learning_extraction_pass_atomic.sql
   - type: database
     name: learning-dml-rpc
     description: >

@@ -694,3 +694,24 @@ before the C1 `ON DELETE SET NULL` action can remove their evidence links.
 write orders, FK-style row locks, ownership, grants, rollback, and repeated calls
 in an isolated PostgreSQL 17 container. `--before` proves the missing RPC fails.
 No production fixture is written until both record and cleanup MCP tools deploy.
+
+### Atomic extraction receipts (0085)
+
+`learning.record_extraction_pass(jsonb)` commits one caller-owned episode pass.
+Each logical observation writes evidence or residue. Captured moment IDs remain unchanged.
+Legacy episodes use null moment IDs and explicit per-pass observation IDs; the RPC creates no capture moments.
+The additional internal table `learning.extraction_passes` stores immutable retry receipts.
+Each receipt contains the exact JSONB request and result, bounded to 512 KiB and 100 observations.
+Array order is part of the retry identity. JSON object key order is not.
+A trigger validates direct receipt inserts against their actual persisted rows.
+
+The function uses SECURITY INVOKER and caller RLS. It requires READ COMMITTED.
+Lock order is the evidence learner lock, then exclusive editorial advisory lock `(20260903,82)`.
+Catalog writer triggers use the same editorial namespace as `learning.apply_dml`.
+A stale ontology version is an explicit retry error. Existing identical receipts survive later ontology growth.
+The request permits transcript quality only. Digest backfill remains T22.
+A2/admin regroup retains 0083's evidence table lock and before/after status refresh contract.
+Atomic pass guarantees apply to this RPC; separate direct evidence/residue writes do not become transactions.
+
+Run `node db/scripts/test-extraction-pass.mjs` against a local throwaway database after the migration series.
+It tests null-moment exclusivity, row ownership, same-pass status parity, rollback, exact retries, and concurrent writers.
