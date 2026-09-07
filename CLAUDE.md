@@ -355,3 +355,9 @@ The closed-set extractor commits through `learning.record_extraction_pass(jsonb)
 `db/migrations/0085_learning_extraction_pass_atomic.sql`. Its caller-owned
 `learning.extraction_passes` table is internal retry storage, not a capture-moment table.
 See `db/README.md` for lock order, atomicity, and the local concurrency test.
+
+## Learning C2 decisions
+
+Q17–Q19 (2026-09-07) defer learner role/constraints and PresentationModel.
+LearnerModel maps to the existing `learning.learner_state`; no C2 migration is required.
+The naming map and read-only catalog proof are in `db/README.md`.

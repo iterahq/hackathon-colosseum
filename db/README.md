@@ -473,8 +473,8 @@ The `itera` schema is exposed to PostgREST via
 `0068_expose_learning_postgrest.sql` put it on the authenticator's schema list so
 PostgREST can reach it. Plan
 [`20260903-itera-learning-schema-v04-remodel`](https://plans.devfellowship.com/20260903-itera-learning-schema-v04-remodel)
-grows that schema from 15 tables to 26, in five merges (**A**, **A2**, **B**,
-**C**, **D**).
+remodels that schema through **A**, **A2**, **B**, **C**, and **D**.
+The Q17–Q19 answers on 2026-09-07 remove the proposed C2 migration from this scope.
 
 The v0.4 diagram speaks **PascalCase singular**. Postgres speaks **snake_case
 plural**. Seven of the nine apparent "renames" are only that convention. **ADR-1
@@ -485,14 +485,14 @@ schema `learning` unless it is written `itera.`.
 
 | Node | Physical table | Status | Note |
 |---|---|---|---|
-| Learner | `learners` | exists | C adds `role`, `constraints` |
+| Learner | `learners` | exists | `role` and `constraints` are deferred by Q17 |
 | LearningObjective | `learning_objectives` | exists | C adds `target_autonomy` |
 | Claim | `claims` | exists | B adds `claim_template_id`; C adds `valued_work_id` |
 | AbstractClaim | `claim_templates` | new in B | the name is Tainan's, not the diagram's (ADR-18); a claim reaches its capability through its template |
 | Capability | `capabilities` | new in B | lifted from `concepts.kind='capability'` (15 rows); `learner_id NULL` means shared vocabulary |
 | CapabilityState | `capability_states` | new in B | |
 | LearnerState | `learner_state` | exists | `learner_state_history` stays a real table, not a view (ADR-9) |
-| LearnerModel | `learner_models` | new in C | columns wait for a round-2 answer |
+| LearnerModel | `learner_state` | exists; same table as LearnerState | Q19 identifies the model with the existing state; no `learner_models` table |
 | Map | **no table, no view** | derived | `map.ts` computes it from PostgREST reads (ADR-7); it reads `ontology_versions` for the version |
 | Episode | `work_episodes` | exists | every row is a **turn** today; A adds `work_context_id`, `grain`, `agent_version`, `session_episode_id`, `session_refs`; A2 inserts the **session** rows and fills `session_episode_id`; `ingest_batch_id` is a dead column D drops |
 | WorkContext | `work_contexts` | new in A | extracted from `project_ref` / `machine` / `machine_class`, keyed on the normalised `project_root` (ADR-26) |
@@ -503,12 +503,41 @@ schema `learning` unless it is written `itera.`.
 | Evidence | `evidence` | exists | `misconception_id` is `text` **on purpose** — it matches `concepts.id`. A adds `status`, `moment_id`, `turn_episode_id` and 11 provenance columns; C adds `artifact_id` |
 | Concept | `concepts` | exists | the capability rows stay until D |
 | TaskModel | `task_models` | new in C | the **expectation** (ADR-20) |
-| PresentationModel | `presentation_models` | new in C | columns wait for a round-2 answer |
+| PresentationModel | **no table in this scope** | deferred | Q18 defers `presentation_models` |
 | EvidenceModel | `evidence_models` | new in A | split out of `generation_config` (calibration knobs) |
 | AssemblyModel | `assembly_models` | new in A | split out of `generation_config`; `scope` ∈ `global` · `module` · `form` |
 | ValuedWork | `valued_work` | new in C | sibling of LearningObjective, never its parent or child (ADR-19) |
 
-22 nodes, 21 tables: Map is derived.
+22 diagram nodes map to 19 distinct physical tables in this scope.
+Map is derived, PresentationModel is deferred, and LearnerModel shares `learner_state` with LearnerState.
+These counts cover the diagram map, not all tables in the schema.
+
+### C2 decisions — Q17–Q19, 2026-09-07
+
+Q17 defers `learners.role` and `learners.constraints`. Q18 defers `presentation_models`.
+Q19 identifies LearnerModel with the existing `learning.learner_state` table.
+There is no separate model table, compatibility view, or physical rename.
+`learning.learner_state_history` remains a real history table under ADR-9.
+These decisions need only this naming correction; no C2 migration is required.
+
+Read-only catalog verification on 2026-09-07 confirmed both state tables exist.
+It found neither proposed model table and zero deferred learner columns.
+Repeat this query against the learning database to check that boundary:
+
+```sql
+SELECT
+  to_regclass('learning.learner_state') IS NOT NULL AS learner_model_exists,
+  to_regclass('learning.learner_state_history') IS NOT NULL AS history_exists,
+  to_regclass('learning.learner_models') IS NULL AS separate_model_absent,
+  to_regclass('learning.presentation_models') IS NULL AS presentation_deferred,
+  NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'learning' AND table_name = 'learners'
+      AND column_name IN ('role', 'constraints')
+  ) AS learner_columns_deferred;
+```
+
+All five results are `true` for the accepted scope. This catalog query checks schema presence, not RLS behavior.
 
 **The source digits 1–5 on the diagram are dropped.** No table carries a source
 note, and none should gain one.
