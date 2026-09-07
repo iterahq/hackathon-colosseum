@@ -80,6 +80,7 @@ on:
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-extraction-pass.mjs'
       - 'db/scripts/test-learning-dml-rpc.py'
+      - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
@@ -107,6 +108,7 @@ on:
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-extraction-pass.mjs'
       - 'db/scripts/test-learning-dml-rpc.py'
+      - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
@@ -333,7 +335,9 @@ jobs:
       - name: Capability decisions and references obey learner boundaries
         run: bash db/scripts/test-rls-capability-family.sh
       - name: Learning DML preserves caller scope and atomic transactions
-        run: python3 db/scripts/test-learning-dml-rpc.py
+        run: python3 db/scripts/test-learning-dml-rpc.py --extension db/migrations/0087_learning_proposal_decisions.sql
+      - name: Proposal decisions preserve caller scope and atomicity
+        run: python3 db/scripts/test-learning-proposal-decisions.py
       - name: C1 preserves learner scope and existing measurements
         run: python3 db/scripts/test-learning-c1.py
 

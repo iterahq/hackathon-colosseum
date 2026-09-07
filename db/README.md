@@ -715,3 +715,13 @@ Atomic pass guarantees apply to this RPC; separate direct evidence/residue write
 
 Run `node db/scripts/test-extraction-pass.mjs` against a local throwaway database after the migration series.
 It tests null-moment exclusivity, row ownership, same-pass status parity, rollback, exact retries, and concurrent writers.
+
+### Proposal decisions (0087)
+
+`learning.apply_dml` also accepts `approve_proposal`, `merge_proposal`, `reject_proposal`, `promote_residue`, and `dismiss_residue`. Every decision requires an authenticated learning operator. The same `(20260903,82)` ontology lock protects the proposal, its full residue cluster, and its current shared capability target.
+
+Approval creates one shared capability with `source.kind=promoted` and the proposal ID, then one new ontology version. It requires an explicit capability ID when the proposal has no suggestion. Merge creates no capability or version. Rejection stores the reason on `capability_proposals.decision_note`. Every operation updates the proposal and cluster in one transaction and writes zero evidence. Completed or overlapping decisions return conflicts.
+
+The residue aliases require `proposal_id` and the exact `residue_ids` cluster. `promote_residue` delegates to merge into an existing capability; `dismiss_residue` delegates to rejection. They cannot bypass proposal history. Human editorial intent remains required; an operator JWT proves access, not human intent.
+
+`python3 db/scripts/test-learning-proposal-decisions.py` runs P.1–P.7 against real learning migrations in an isolated PostgreSQL17 container. It checks rollback, operator/learner boundaries, aliases, duplicate and overlapping decisions, shared version concurrency, and a trigger that refuses every evidence write. `--before` omits0087 and must fail. `--dependency` can apply reviewed0085/0086 files before0087 for integration tests.

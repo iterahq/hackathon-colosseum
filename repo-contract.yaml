@@ -55,8 +55,9 @@ provides:
     description: >
       Atomic caller-JWT learning mutations through learning.apply_dml(text,jsonb).
       SECURITY INVOKER; editorial writes require a learning operator.
+      Proposal decisions are atomic, proposal-bound, and write zero evidence.
       The migration requires all CI green under the ITERA PR467+ authorization.
-    entry: db/migrations/0082_learning_dml_rpc.sql
+    entry: db/migrations/0087_learning_proposal_decisions.sql
 
   - type: database
     name: learning-delivery-products

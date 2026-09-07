@@ -20,6 +20,7 @@ OA, OA2, OB = ['10000000-0000-4000-8000-00000000000' + str(i) for i in range(1, 
 checks = 0
 parser = argparse.ArgumentParser()
 parser.add_argument('--dependency', action='append', type=Path, default=[])
+parser.add_argument('--extension', action='append', type=Path, default=[])
 args = parser.parse_args()
 
 
@@ -78,6 +79,8 @@ try:
         for migration in matches:
             sql(migration.read_text())
     sql(next(migrations.glob('0082_*.sql')).read_text())  # idempotent DDL
+    for extension in args.extension:
+        sql(extension.read_text())  # Run the original contract against a newer dispatcher.
     sql(f"""
       INSERT INTO itera.users VALUES ('{OP}'),('{A}'),('{B}');
       INSERT INTO itera.tenants VALUES ('{OP}','itera');

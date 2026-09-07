@@ -331,7 +331,9 @@ da Itera; decida e documente antes, não replique o fluxo da DFL por reflexo.
 ## Learning DML boundary
 
 The Learning Engine mutation boundary is `learning.apply_dml(text,jsonb)` in
-`db/migrations/0082_learning_dml_rpc.sql`. It uses the caller JWT and SECURITY INVOKER.
+`db/migrations/0082_learning_dml_rpc.sql`, extended by
+`db/migrations/0087_learning_proposal_decisions.sql`. It uses the caller JWT and SECURITY INVOKER.
+Proposal decisions require a learning operator, the complete proposal cluster, and human editorial instructions. They write zero evidence.
 See `db/README.md` for its transaction, ownership, and duplicate-claim guarantees.
 Migration PRs from #467 require full green CI under the 2026-09-07 authorization.
 
