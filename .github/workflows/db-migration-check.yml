@@ -74,6 +74,7 @@ on:
       - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/test-rls-learner-state-history.sh'
+      - 'db/scripts/test-learning-context-model-integrity.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -93,6 +94,7 @@ on:
       - 'db/scripts/test-tx-mode.sh'
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/test-rls-learner-state-history.sh'
+      - 'db/scripts/test-learning-context-model-integrity.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -300,6 +302,9 @@ jobs:
       # ────────────────────────────────────────────────────────────────────────
       - name: The state history is per-learner, append-only, and transitions-only
         run: bash db/scripts/test-rls-learner-state-history.sh
+
+      - name: Learning contexts preserve repository boundaries and model domains
+        run: bash db/scripts/test-learning-context-model-integrity.sh
 
       - name: Summary
         if: always()

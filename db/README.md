@@ -573,3 +573,21 @@ stale without turning CI red. Every engine / dashboard / backoffice PR that
 follows a merge refreshes the snapshot with `--write-snapshot` as its **first
 commit**, and asserts the check green in *live* mode. It does not cover insert
 payload keys, column types or RLS — those need the as-user probes.
+
+### Legacy Learning project roots (0080 correction)
+
+The first backfill in 0078 chose any known ancestor. Home directories absorbed
+unrelated repositories. Migration 0080 repairs that derivation. A descendant
+can use a known ancestor only through `apps/`, `src/`, `packages/`, `tests/`, or
+`docs/`. Home paths and repository containers cannot absorb descendants.
+Uncertain boundaries retain their raw cwd. This rule does not certify Mac Git
+roots. New clients must send their explicit Git root.
+
+Existing contexts stay. Only legacy turn/unknown rows assigned by 0078, or rows
+without a context, receive the corrected context. Session rows, protocol v2
+rows and explicit assignments stay unchanged. This correction also restores
+the model constraints from `generation_config`: zero contribution cap is
+valid; zero distinctness floors and zero cadence ceiling are invalid.
+
+`db/scripts/test-learning-context-model-integrity.sh` runs in DB Migration
+Check. It replays the real migration against populated fixtures twice.
