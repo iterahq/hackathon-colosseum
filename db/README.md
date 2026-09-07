@@ -793,3 +793,43 @@ A session uses its first turn source; each original turn preserves its own sourc
 `db/scripts/reverse-learning-session-regroup.sql` is the reviewed reverse reference.
 Production reversal requires a new reviewed migration. The reverse refuses new dependents or
 changed manifest rows and removes only the generated sessions and moments.
+
+### V2 session capture RPC (0089)
+
+`learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text)`
+records one session under the caller JWT. It uses SECURITY INVOKER, a pinned
+search path, and READ COMMITTED. The caller must be a registered learner.
+The engine keeps the existing learner registration step before capture.
+
+The RPC creates or resolves an owned work context from the explicit canonical
+project root, including Unix `/`. It inserts one `schema_version=2`, `grain=session` episode and all
+1–10000 captured moments in the same transaction. A late failure rolls back all
+three. It validates direct callers, including unknown owner/id/grain fields,
+closed timestamps, ordered moments, and supported capture metadata.
+
+The client owns the session boundary. The server checks nondecreasing moment
+times within the session interval; it does not infer turns or apply a new gap
+rule. V1 ingestion remains supported with `grain=turn` and zero new moments.
+This migration does not publish a protocol/client package or update any host.
+
+Raw episode JSON remains in `payload`. The session's legacy `session_ref` column
+is NULL so its first old turn cannot collide with it. Distinct moment references
+fill `session_refs`; each moment stores the reference in its column and payload.
+A conflicting reference in the supplied moment payload is rejected.
+Stable moment UUIDs use a learner/protocol-episode-derived prefix and ordinal
+suffix. Thus `ORDER BY at,id` preserves capture order even when times tie.
+
+A learner/protocol-ID advisory lock and a v2 protocol-ID unique index serialize
+retries. Equal payload, client version, and machine class return the original
+episode/moment IDs with `status=duplicate`. A changed request, altered session/context projection, or altered stored
+moment set conflicts, with no overwrite. The engine maps these conflicts to its
+existing per-episode rejected array. Unavailable schema or transient failures
+remain retryable. Every read and write uses RLS; no service-role request path exists.
+
+Run `python3 db/scripts/test-learning-v2-ingest.py` for isolated PostgreSQL17
+proofs of ownership, exact retry receipts, concurrent retries, and late rollback.
+`--before` omits0089 and must fail. Deploy0089 before the engine accepts v2;
+release the client only after the engine deployment proof.
+
+Authenticated callers have no UPDATE grant on capture episodes, contexts, or moments.
+The retry checks also detect projection damage from privileged maintenance.

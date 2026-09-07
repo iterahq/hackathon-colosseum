@@ -351,6 +351,9 @@ jobs:
       - name: Historical session regroup preserves rows and refuses conflicts
         run: node db/scripts/test-session-regroup.mjs
 
+      - name: V2 capture preserves caller scope and atomic retries
+        run: python3 db/scripts/test-learning-v2-ingest.py
+
       - name: Summary
         if: always()
         run: |

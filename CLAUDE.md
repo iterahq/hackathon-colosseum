@@ -356,6 +356,12 @@ The closed-set extractor commits through `learning.record_extraction_pass(jsonb)
 `learning.extraction_passes` table is internal retry storage, not a capture-moment table.
 See `db/README.md` for lock order, atomicity, and the local concurrency test.
 
+## V2 session capture
+
+`learning.ingest_episode_v2(jsonb,text,text)` in `db/migrations/0089_learning_v2_episode_ingest.sql`
+commits the caller's explicit-root context, session, and captured moments together.
+Exact retries return the original receipt; changed captures conflict. See `db/README.md`.
+
 ## Learning C2 decisions
 
 Q17–Q19 (2026-09-07) defer learner role/constraints and PresentationModel.

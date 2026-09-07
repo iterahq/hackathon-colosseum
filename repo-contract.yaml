@@ -75,6 +75,14 @@ provides:
       The autonomy target is optional authored text without an invented scale.
     entry: db/migrations/0084_learning_valued_work_artifacts.sql
 
+  - type: database
+    name: learning-v2-capture
+    description: >
+      Atomic caller-JWT session capture through learning.ingest_episode_v2(jsonb,text,text).
+      SECURITY INVOKER, explicit-root owned context, ordered captured moments, and exact retry receipts.
+      V1 capture remains supported; this schema does not publish a client.
+    entry: db/migrations/0089_learning_v2_episode_ingest.sql
+
   - type: ui
     name: lesson-player
     description: >
