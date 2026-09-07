@@ -591,3 +591,21 @@ valid; zero distinctness floors and zero cadence ceiling are invalid.
 
 `db/scripts/test-learning-context-model-integrity.sh` runs in DB Migration
 Check. It replays the real migration against populated fixtures twice.
+
+## Capability decision guards
+
+Migration `0081_learning_capability_write_guards.sql` closes the decision-write
+gaps in gate B (`0079`). Learners can advance `residue.ontology_version` during
+a re-pass. Only an operator can change residue decision fields. A learner
+proposal starts in `proposed` status with empty decision fields.
+
+Only operators write capabilities, including learner-specific overrides. Learners
+read shared capabilities and their own overrides.
+
+The residue moment FK includes the episode and learner. Capability references
+require shared vocabulary or the row's own learner. Shared templates and
+proposals require shared vocabulary. Capability ownership is immutable.
+
+`bash db/scripts/test-rls-capability-family.sh` verifies these rules with learner
+and operator identities against the local database built by `fresh-apply.sh`.
+The DB Migration Check workflow runs this test. All fixtures roll back.

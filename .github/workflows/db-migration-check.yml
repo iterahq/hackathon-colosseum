@@ -75,6 +75,8 @@ on:
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/test-rls-learner-state-history.sh'
       - 'db/scripts/test-learning-context-model-integrity.sh'
+
+      - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -95,6 +97,8 @@ on:
       - 'db/scripts/test-rls-activity-visibility.sh'
       - 'db/scripts/test-rls-learner-state-history.sh'
       - 'db/scripts/test-learning-context-model-integrity.sh'
+
+      - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -305,6 +309,9 @@ jobs:
 
       - name: Learning contexts preserve repository boundaries and model domains
         run: bash db/scripts/test-learning-context-model-integrity.sh
+
+      - name: Capability decisions and references obey learner boundaries
+        run: bash db/scripts/test-rls-capability-family.sh
 
       - name: Summary
         if: always()

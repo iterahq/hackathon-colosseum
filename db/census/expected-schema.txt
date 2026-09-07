@@ -33,6 +33,8 @@ cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
 cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
 cmt   fn  itera.current_user_is_entitled() 89b6ec8674eb
 cmt   fn  itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) e4a5b7ad2bb4
+cmt   fn  itera.guard_learning_capability_reference() d55132e2f5b2
+cmt   fn  itera.guard_residue_decision() caa785c6e8ec
 cmt   fn  itera.handle_new_federated_user() 78c2f01cc8b9
 cmt   fn  itera.is_action_trace(a jsonb) abb9e8cc400d
 cmt   fn  itera.is_current_user_guest_of(p_session_id uuid) 755664bb2207
@@ -463,6 +465,9 @@ fn    itera.enroll_in_program(p_program_id uuid) -> TABLE(out_tenant_id uuid, ou
 fn    itera.ensure_current_unit_version(p_unit_id uuid) -> uuid kind=f vol=v secdef=t cfg=search_path=itera, public body=a6eefa3146f9
 fn    itera.grant_author(p_tenant_id uuid, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=3c29b94e3c0e
 fn    itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) -> itera.memberships kind=f vol=v secdef=t cfg=search_path=itera, public body=330c3f639fc2
+fn    itera.guard_capability_owner() -> trigger kind=f vol=v secdef=f cfg=search_path="" body=ea5d8cfd5aa9
+fn    itera.guard_learning_capability_reference() -> trigger kind=f vol=v secdef=f cfg=search_path="" body=d2c9f13452d0
+fn    itera.guard_residue_decision() -> trigger kind=f vol=v secdef=f cfg=search_path="" body=98ac4f602bac
 fn    itera.handle_new_federated_user() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public, auth body=4373ad818b87
 fn    itera.is_action_trace(a jsonb) -> boolean kind=f vol=i secdef=f cfg=- body=49d68086a077
 fn    itera.is_current_user_guest_of(p_session_id uuid) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=96c6a0f0a9f5
@@ -536,6 +541,18 @@ gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_
 gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) authenticated exec=t
 gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) service_role exec=f
 gfn   itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) supabase_auth_admin exec=f
+gfn   itera.guard_capability_owner() anon exec=f
+gfn   itera.guard_capability_owner() authenticated exec=f
+gfn   itera.guard_capability_owner() service_role exec=f
+gfn   itera.guard_capability_owner() supabase_auth_admin exec=f
+gfn   itera.guard_learning_capability_reference() anon exec=f
+gfn   itera.guard_learning_capability_reference() authenticated exec=f
+gfn   itera.guard_learning_capability_reference() service_role exec=f
+gfn   itera.guard_learning_capability_reference() supabase_auth_admin exec=f
+gfn   itera.guard_residue_decision() anon exec=f
+gfn   itera.guard_residue_decision() authenticated exec=f
+gfn   itera.guard_residue_decision() service_role exec=f
+gfn   itera.guard_residue_decision() supabase_auth_admin exec=f
 gfn   itera.handle_new_federated_user() anon exec=t
 gfn   itera.handle_new_federated_user() authenticated exec=t
 gfn   itera.handle_new_federated_user() service_role exec=t
