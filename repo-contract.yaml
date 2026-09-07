@@ -36,6 +36,14 @@ stack:
   observability: opentelemetry
 
 provides:
+  - type: database
+    name: learning-dml-rpc
+    description: >
+      Atomic caller-JWT learning mutations through learning.apply_dml(text,jsonb).
+      SECURITY INVOKER; editorial writes require a learning operator.
+      The migration requires all CI green under the ITERA PR467+ authorization.
+    entry: db/migrations/0082_learning_dml_rpc.sql
+
   - type: ui
     name: lesson-player
     description: >

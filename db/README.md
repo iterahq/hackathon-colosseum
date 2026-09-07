@@ -639,3 +639,19 @@ same-pass collisions, deletion, direct status updates, UTF-16 ties, legacy
 rows, a multi-learner regroup with the table lock, and two real concurrent
 sessions. It also compares all fixture statuses with the JavaScript read rule.
 CI runs this check after the fresh schema, replay, and real applier checks.
+
+### Learning mutation RPC
+
+`0082_learning_dml_rpc.sql` adds `learning.apply_dml(p_operation text, p_payload jsonb)`.
+The Learning Engine forwards seven `/v1/learning/` operations under the unchanged caller JWT.
+The function is `SECURITY INVOKER`; direct RPC callers receive the same validation and ownership checks.
+Editorial writes require `itera.is_learning_operator()`. Learner operations resolve their identity from the JWT.
+Each call is one transaction. Ontology changes use `pg_advisory_xact_lock(20260903,82)`; future proposal decision verbs must use the same lock.
+The function never moves measurement rows. It refuses to reparent a claim that carries evidence, state, history, or an activity.
+A partial unique index permits one template instance per objective. Duplicate and concurrent retries fail with `23505` (HTTP 409).
+
+Run `python3 db/scripts/test-learning-dml-rpc.py` to verify the seven verbs, direct RPC validation, RLS, rollback, and concurrency.
+The test creates a PostgreSQL 17 container with no network or published ports. It removes that container when it exits.
+It applies the real learning migrations and uses a test identity-provider shim.
+Before corrections 0080/0081 merge, pass each reviewed file with `--dependency /path/to/migration.sql`.
+The RPC and its engine routes remain held until both corrections are deployed.

@@ -326,3 +326,11 @@ do `dfl-iterate`) mandava abrir PR de edge function no `dfl-schema` — as edge
 functions da DFL vivem lá, mas **não têm nada a ver com a Itera**, que roda em
 projeto Supabase próprio. Se a Itera vier a precisar de uma, ela vai no projeto
 da Itera; decida e documente antes, não replique o fluxo da DFL por reflexo.
+
+
+## Learning DML boundary
+
+The Learning Engine mutation boundary is `learning.apply_dml(text,jsonb)` in
+`db/migrations/0082_learning_dml_rpc.sql`. It uses the caller JWT and SECURITY INVOKER.
+See `db/README.md` for its transaction, ownership, and duplicate-claim guarantees.
+Migration PRs from #467 require full green CI under the 2026-09-07 authorization.

@@ -78,6 +78,7 @@ on:
 
       - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/test-evidence-status.mjs'
+      - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -101,6 +102,7 @@ on:
 
       - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/test-evidence-status.mjs'
+      - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -321,6 +323,8 @@ jobs:
 
       - name: Capability decisions and references obey learner boundaries
         run: bash db/scripts/test-rls-capability-family.sh
+      - name: Learning DML preserves caller scope and atomic transactions
+        run: python3 db/scripts/test-learning-dml-rpc.py
 
       - name: Summary
         if: always()
