@@ -672,3 +672,25 @@ Run `python3 db/scripts/test-learning-c1.py` for isolated PostgreSQL 17 checks.
 `--before` omits C1 and must fail, which proves that the assertions detect the missing schema.
 The tests use the real learning table definitions with a fixture identity provider.
 The engine artifact route remains a separate change after the schema deploy.
+
+### Artifact cleanup RPC (0086)
+
+`learning.delete_artifact(p_artifact_id uuid)` deletes one caller-owned artifact
+only when no evidence refers to it. It returns `{artifact_id, deleted: true}`.
+It uses SECURITY INVOKER and requires a regular `authenticated` user session.
+An operator cannot delete another learner's artifact. Missing and foreign IDs
+return `P0002`; an existing reference returns `23503`; NULL IDs return `22023`.
+A repeated successful deletion returns `P0002`, which means the artifact is absent.
+
+READ COMMITTED is required. The RPC takes the 0083 learner advisory lock first.
+It then locks the artifact row `FOR UPDATE`, checks references in a separate
+command, and deletes the row. This order preserves concurrent evidence references
+and avoids an inverted lock order with the evidence status triggers. Every read
+and write uses the caller's RLS. The C1 composite FK makes every reference to an
+owned artifact belong to that same learner. The RPC refuses referenced artifacts
+before the C1 `ON DELETE SET NULL` action can remove their evidence links.
+
+`python3 db/scripts/test-learning-artifact-cleanup.py` checks both concurrent
+write orders, FK-style row locks, ownership, grants, rollback, and repeated calls
+in an isolated PostgreSQL 17 container. `--before` proves the missing RPC fails.
+No production fixture is written until both record and cleanup MCP tools deploy.

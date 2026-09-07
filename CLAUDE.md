@@ -341,3 +341,10 @@ C1 adds delivery, task expectation, and product tables through
 `db/migrations/0084_learning_valued_work_artifacts.sql`. See `db/README.md` for the
 shared-versus-owned reference rules and the proposed nullable-text autonomy target.
 This schema change requires full green CI under the ITERA PR467+ authorization.
+
+## Learning artifact cleanup
+
+The generic artifact delete tool uses `learning.delete_artifact(uuid)` from
+`db/migrations/0086_learning_artifact_cleanup.sql`. It accepts only the caller's
+unreferenced artifact. It takes the 0083 learner lock before the artifact row
+lock. See `db/README.md` for the refusal and concurrency contract.

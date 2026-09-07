@@ -37,6 +37,13 @@ stack:
 
 provides:
   - type: database
+    name: learning-artifact-cleanup
+    description: >
+      Caller-JWT deletion of an owned artifact with no evidence references.
+      SECURITY INVOKER and READ COMMITTED; learner lock precedes artifact row lock.
+    entry: db/migrations/0086_learning_artifact_cleanup.sql
+
+  - type: database
     name: learning-dml-rpc
     description: >
       Atomic caller-JWT learning mutations through learning.apply_dml(text,jsonb).

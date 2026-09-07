@@ -80,6 +80,7 @@ on:
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-c1.py'
+      - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -105,6 +106,7 @@ on:
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-c1.py'
+      - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
@@ -329,6 +331,9 @@ jobs:
         run: python3 db/scripts/test-learning-dml-rpc.py
       - name: C1 preserves learner scope and existing measurements
         run: python3 db/scripts/test-learning-c1.py
+
+      - name: Artifact cleanup preserves references under concurrent writes
+        run: python3 db/scripts/test-learning-artifact-cleanup.py
 
       - name: Summary
         if: always()
