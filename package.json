@@ -21,7 +21,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser": "tsx scripts/run-browser-tier.ts",
     "test:watch": "vitest",
     "seed:fellowship-pilot": "tsx db/seeds/fellowship-pilot.ts",
     "seed:qa-tenant": "tsx db/seeds/qa-tenant.ts",

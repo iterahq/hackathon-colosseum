@@ -68,16 +68,17 @@ export const CODE_PREVIEW_IFRAME_HTML = [
   '  return C;',
   '}',
   // Fresh mount from the initial state — used both for a normal render and to
-  // isolate every check that simulates an interaction.
+  // isolate every check that simulates an interaction. A scheduler callback can
+  // be delayed beyond rAF + setTimeout, so mount must be a real commit barrier.
   'function mount(){',
   '  if(root){root.unmount();root=null;}',
   '  dialogs.reset();mountEl.innerHTML="";',
   '  root=ReactDOM.createRoot(mountEl);',
-  '  root.render(React.createElement(Comp));',
+  '  ReactDOM.flushSync(function(){root.render(React.createElement(Comp));});',
   '}',
   'function render(code){errEl.textContent="";Comp=evalCode(code);mount();}',
-  // React 18 commits asynchronously: rAF + a macrotask is the cheapest way to be
-  // sure we read the NEW DOM rather than the previous one.
+  // Mount commits synchronously, including each interaction-check remount.
+  // The tick still lets browser events and their effects settle between steps.
   'function nextTick(){return new Promise(function(res){',
   '  var raf=window.requestAnimationFrame||function(cb){return setTimeout(cb,16);};',
   '  raf(function(){setTimeout(res,0);});});}',

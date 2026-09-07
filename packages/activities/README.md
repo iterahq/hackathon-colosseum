@@ -358,3 +358,11 @@ GitHub Packages with the repo's own `GITHUB_TOKEN` and then verifies both sides
 of the privacy claim (anonymous read must fail, authenticated read must return
 the manifest). Bump `version` in this `package.json` in the PR; the workflow
 refuses to republish an existing version.
+
+
+The code preview commits each fresh React root with `ReactDOM.flushSync` before
+it grades the DOM. This includes the remount before each interaction check.
+A frame plus a timer does not guarantee that React committed when its scheduler
+callback is delayed. `scripts/test-code-preview-commit.mjs` exercises the real
+vendored runtime with a delayed host callback, two isolated click checks, and a
+negative selector. The browser CI job runs this regression.

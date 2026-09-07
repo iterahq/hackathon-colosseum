@@ -609,6 +609,11 @@ jobs:
 
       # `npm run test:browser` usa `vitest.browser.config.ts`, que seleciona
       # SOMENTE as stories com a tag `browser-mode` (hoje: match e code).
+      - name: React preview commit barrier regression
+        run: |
+          npm run build:packages
+          node scripts/test-code-preview-commit.mjs
+
       - name: Storybook browser-mode tests
         run: npm run test:browser
 

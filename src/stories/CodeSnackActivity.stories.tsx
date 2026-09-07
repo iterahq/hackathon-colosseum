@@ -176,9 +176,11 @@ export const BrowserChecksPassam: Story = {
 
     await userEvent.click(await canvas.findByTestId('code-submit'));
 
-    // O veredito volta do iframe: `submitting` → `submitted`, com todos verdes.
-    await waitFor(() => expect(shell).toHaveAttribute('data-phase', 'submitted'), { timeout: 15000 });
+    // A successful result may already advance from submitted to settled before polling.
+    // Both phases must retain every exact positive check verdict.
+    await waitFor(() => expect(['submitted', 'settled']).toContain(shell.getAttribute('data-phase')), { timeout: 15000 });
     const verdicts = canvas.getAllByTestId('code-check-item');
+    await expect(verdicts).toHaveLength(CHECKS_QUE_PASSAM.length);
     await expect(verdicts.every((v) => v.getAttribute('data-passed') === 'true')).toBe(true);
 
     // O editor que esta story montou ainda está subindo — ver `./monacoSettle`.
