@@ -754,3 +754,42 @@ Approval creates one shared capability with `source.kind=promoted` and the propo
 The residue aliases require `proposal_id` and the exact `residue_ids` cluster. `promote_residue` delegates to merge into an existing capability; `dismiss_residue` delegates to rejection. They cannot bypass proposal history. Human editorial intent remains required; an operator JWT proves access, not human intent.
 
 `python3 db/scripts/test-learning-proposal-decisions.py` runs P.1–P.7 against real learning migrations in an isolated PostgreSQL17 container. It checks rollback, operator/learner boundaries, aliases, duplicate and overlapping decisions, shared version concurrency, and a trigger that refuses every evidence write. `--before` omits0087 and must fail. `--dependency` can apply reviewed0085/0086 files before0087 for integration tests.
+
+## Historical session regroup (0088)
+
+ADR-24 authorizes this historical data migration. It adds no schema object.
+The frozen scope is `grain='turn'` with server `created_at <= 2026-09-07T18:30:00Z`.
+Later captures remain separate. Replays validate the existing manifest and do not enlarge it.
+
+Order turns by `(started_at,id)` within each learner. Start a session on a project root,
+or work context change, or when the gap from the prior effective end exceeds 30 minutes.
+A missing end uses that turn's start. Exactly 30 minutes stays in the session.
+A changed CLI `session_ref` does not split a session. Preserve all references in `session_refs`.
+Current capture has no reliable explicit session-end marker; this migration does not infer one.
+
+Session IDs use `md5(learner_id|project_root|per-root-session-ordinal)::uuid`.
+Each original turn retains its ID and payload. It gains `session_episode_id`.
+One `kind='turn'` moment links its original row through `payload.turn_episode_id` and `digest_ref`.
+Each session payload records the migration tag, cutoff, gap, and ordered turn/evidence manifests.
+The manifest and static session fields have separate fingerprints. Fingerprint columns are pinned
+to the 0088 schema, so later nullable or defaulted columns preserve replay compatibility.
+Turn entries contain `id`, `moment_id`, and a SHA-256 fingerprint excluding only the parent link
+and relevance markers. Evidence entries contain `id`, `turn_id`, and a fingerprint excluding
+only the new episode links and the derived status. No transcript copy is stored in the manifest.
+
+The migration refuses existing moments, residue, receipts, or prior links on frozen turns.
+It preserves all evidence IDs and content. Episode-linked evidence moves to its session and
+retains `turn_episode_id`. Episode-less activity-response evidence remains byte-for-byte unchanged.
+The 0083 trigger recomputes status with the existing newest-pass rule; no evidence row is deleted.
+
+Table locks use `NOWAIT`, followed by sorted learner advisory try-locks. A busy writer aborts
+before any data changes. This prevents a lock-order wait against learner-first application RPCs.
+Retry the migration after that writer commits. Keep the closed-set engine release after this regroup.
+
+Run `node db/scripts/test-session-regroup.mjs` against a local throwaway PostgreSQL instance.
+The suite covers cutoff equality, project/context changes, CLI references, supersede collisions,
+replay, reverse, dependent artifacts, receipt conflicts, and concurrent writer locks.
+A session uses its first turn source; each original turn preserves its own source.
+`db/scripts/reverse-learning-session-regroup.sql` is the reviewed reverse reference.
+Production reversal requires a new reviewed migration. The reverse refuses new dependents or
+changed manifest rows and removes only the generated sessions and moments.

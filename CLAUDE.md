@@ -361,3 +361,5 @@ See `db/README.md` for lock order, atomicity, and the local concurrency test.
 Q17–Q19 (2026-09-07) defer learner role/constraints and PresentationModel.
 LearnerModel maps to the existing `learning.learner_state`; no C2 migration is required.
 The naming map and read-only catalog proof are in `db/README.md`.
+Historical session regroup: see `db/README.md` and migration 0088 for the fixed cutoff,
+manifest replay rules, and fail-fast writer lock protocol. Production reversal requires a new PR.

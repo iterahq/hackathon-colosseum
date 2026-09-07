@@ -37,6 +37,14 @@ stack:
 
 provides:
   - type: database
+    name: historical-session-regroup
+    description: >
+      Frozen pre-cutoff turns become linked sessions without deleting evidence.
+      Project, context and thirty-minute gap boundaries preserve capture provenance.
+      Explicit ADR-24 historical data migration; later captures remain outside its manifest.
+    entry: db/migrations/0088_learning_session_regroup.sql
+
+  - type: database
     name: learning-artifact-cleanup
     description: >
       Caller-JWT deletion of an owned artifact with no evidence references.

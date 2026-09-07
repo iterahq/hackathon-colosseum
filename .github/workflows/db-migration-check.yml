@@ -79,6 +79,8 @@ on:
       - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-extraction-pass.mjs'
+      - 'db/scripts/test-session-regroup.mjs'
+      - 'db/scripts/reverse-learning-session-regroup.sql'
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-c1.py'
@@ -107,6 +109,8 @@ on:
       - 'db/scripts/test-rls-capability-family.sh'
       - 'db/scripts/test-evidence-status.mjs'
       - 'db/scripts/test-extraction-pass.mjs'
+      - 'db/scripts/test-session-regroup.mjs'
+      - 'db/scripts/reverse-learning-session-regroup.sql'
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-c1.py'
@@ -343,6 +347,9 @@ jobs:
 
       - name: Artifact cleanup preserves references under concurrent writes
         run: python3 db/scripts/test-learning-artifact-cleanup.py
+
+      - name: Historical session regroup preserves rows and refuses conflicts
+        run: node db/scripts/test-session-regroup.mjs
 
       - name: Summary
         if: always()
