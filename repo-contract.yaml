@@ -44,6 +44,14 @@ provides:
       The migration requires all CI green under the ITERA PR467+ authorization.
     entry: db/migrations/0082_learning_dml_rpc.sql
 
+  - type: database
+    name: learning-delivery-products
+    description: >
+      Learner-owned deliveries and artifacts, with shared or owned task models.
+      Nullable claim and evidence links preserve existing measurements.
+      The autonomy target is optional authored text without an invented scale.
+    entry: db/migrations/0084_learning_valued_work_artifacts.sql
+
   - type: ui
     name: lesson-player
     description: >

@@ -655,3 +655,20 @@ The test creates a PostgreSQL 17 container with no network or published ports. I
 It applies the real learning migrations and uses a test identity-provider shim.
 Before corrections 0080/0081 merge, pass each reviewed file with `--dependency /path/to/migration.sql`.
 The RPC and its engine routes remain held until both corrections are deployed.
+### C1 delivery and product tables
+
+`0084_learning_valued_work_artifacts.sql` adds `valued_work`, `task_models`, and
+`artifacts` to `learning`. It adds nullable claim-to-delivery and evidence-to-artifact links.
+Each learner-owned reference uses a composite foreign key or an invoker ownership guard.
+A shared task model has no learner-owned parent links. Only an operator can change a shared task model.
+An artifact can use a shared task model or its learner's own model. Model ownership is immutable.
+
+`claims.objective_id` becomes nullable, as C.1 requires. Existing claim parents remain unchanged.
+There is no new requirement to fill either claim parent, and no link between objectives and valued work.
+The `target_autonomy` representation is nullable text. No scale or enum is assumed.
+This migration creates no `artifact_evaluations` table and no C2 model tables.
+
+Run `python3 db/scripts/test-learning-c1.py` for isolated PostgreSQL 17 checks.
+`--before` omits C1 and must fail, which proves that the assertions detect the missing schema.
+The tests use the real learning table definitions with a fixture identity provider.
+The engine artifact route remains a separate change after the schema deploy.

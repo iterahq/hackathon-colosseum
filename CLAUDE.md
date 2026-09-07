@@ -334,3 +334,10 @@ The Learning Engine mutation boundary is `learning.apply_dml(text,jsonb)` in
 `db/migrations/0082_learning_dml_rpc.sql`. It uses the caller JWT and SECURITY INVOKER.
 See `db/README.md` for its transaction, ownership, and duplicate-claim guarantees.
 Migration PRs from #467 require full green CI under the 2026-09-07 authorization.
+
+## Learning C1 schema
+
+C1 adds delivery, task expectation, and product tables through
+`db/migrations/0084_learning_valued_work_artifacts.sql`. See `db/README.md` for the
+shared-versus-owned reference rules and the proposed nullable-text autonomy target.
+This schema change requires full green CI under the ITERA PR467+ authorization.
