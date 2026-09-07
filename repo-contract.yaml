@@ -37,6 +37,10 @@ stack:
 
 provides:
   - type: database
+    name: historical-digest-extraction
+    description: Caller-scoped atomic digest passes with a fixed reviewed T14 release boundary.
+    entry: db/migrations/0090_learning_digest_extraction.sql
+  - type: database
     name: historical-session-regroup
     description: >
       Frozen pre-cutoff turns become linked sessions without deleting evidence.

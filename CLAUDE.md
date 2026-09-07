@@ -369,3 +369,5 @@ LearnerModel maps to the existing `learning.learner_state`; no C2 migration is r
 The naming map and read-only catalog proof are in `db/README.md`.
 Historical session regroup: see `db/README.md` and migration 0088 for the fixed cutoff,
 manifest replay rules, and fail-fast writer lock protocol. Production reversal requires a new PR.
+
+Historical digest extraction extends the receipt RPC through migration0090. It remains disabled until the reviewed T14 merge boundary is finalized. See `db/README.md`.

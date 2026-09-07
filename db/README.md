@@ -833,3 +833,46 @@ release the client only after the engine deployment proof.
 
 Authenticated callers have no UPDATE grant on capture episodes, contexts, or moments.
 The retry checks also detect projection damage from privileged maintenance.
+
+### Historical digest extraction (0090)
+
+T22 uses the existing atomic `record_extraction_pass` receipt path. It adds no table.
+A fixed timestamp literal must equal PR109's actual GitHub `mergedAt` before release.
+The immutable literal is `2026-09-07T21:01:16Z`, the verified GitHub mergedAt of PR109. There is no runtime setter.
+
+Digest eligibility requires an owned A2 session, the fixed A2 cutoff, preserved source references,
+and at least one complete captured agent half. The new pass rejects existing extraction receipts,
+residue, or evidence whose effective pass timestamp is at or after the T14 boundary.
+The request provenance records the boundary and the exact sorted baseline evidence, turn, and moment IDs.
+The database checks this baseline under the same learner lock used by evidence writers.
+The receipt trigger repeats the check for direct receipt inserts, excluding only validated rows of this pass.
+`assert_digest_backfill_eligible` is a read-only SECURITY INVOKER assertion, not a configuration setter.
+It takes the learner lock and rejects other roles, other learners, and unsupported isolation.
+
+All digest observations have `moment_id=NULL`, even though A2 preserved turn-reference moments.
+Source moment IDs describe the input provenance; they are not observation capture IDs.
+One logical observation writes evidence or residue, with its own explicit observation ID.
+Several evidence rows in one observation remain legal. An empty output still has an immutable receipt.
+Exact retries return the original result before evaluating eligibility again.
+
+R.11 means **already had** post-T14 evidence before the atomic digest write.
+For example, an eligible session can emit evidence for observation o1 and residue for o2.
+A static query that counts o1 against o2 is incorrect: both rows belong to this same valid digest pass.
+A later legitimate evidence pass does not invalidate the earlier eligibility receipt either.
+Audit the saved baseline and boundary, not all current evidence rows without a pass boundary.
+The 0085 atomicity, closed vocabulary, status projection, and learner/editorial lock order remain.
+No scheduler, production backfill, or paid request starts from this schema change.
+
+Run `node db/scripts/test-digest-extraction.mjs` on a local throwaway database.
+It temporarily installs a fixed fixture boundary, verifies quality, retries, baseline drift,
+late rollback, direct receipt gates, and concurrent newer evidence, then restores the exact production boundary definition.
+Finalize the real timestamp and rerun the full migration applier and CI before release.
+
+The T14 boundary is inclusive: evidence at the exact merge timestamp is post-release.
+T15 must use a separate atomic residue re-pass contract, not this initial digest-backfill path.
+Its input is residue only; it never reopens episode payloads. It must cover older open residue
+and approved/merged promoted residue still awaiting evidence, including unchanged ontology versions.
+Dismissed residue stays excluded. The new receipt must preserve source quality and observation identity,
+serialize concurrent attempts, and leave editorial decisions unchanged. That contract is a later append-only migration.
+
+`learning.export_inventory()` is a generic read-only caller RPC added by0090. It returns sorted learning table names only. It has no schema or identity parameter. Complete export validates explicit before/after0091 inventories through this RPC and fails closed on unknown or missing required tables.

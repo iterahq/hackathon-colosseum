@@ -354,6 +354,9 @@ jobs:
       - name: V2 capture preserves caller scope and atomic retries
         run: python3 db/scripts/test-learning-v2-ingest.py
 
+      - name: Historical digest extraction preserves quality and caller scope
+        run: node db/scripts/test-digest-extraction.mjs
+
       - name: Summary
         if: always()
         run: |
