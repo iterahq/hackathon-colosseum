@@ -876,3 +876,18 @@ Dismissed residue stays excluded. The new receipt must preserve source quality a
 serialize concurrent attempts, and leave editorial decisions unchanged. That contract is a later append-only migration.
 
 `learning.export_inventory()` is a generic read-only caller RPC added by0090. It returns sorted learning table names only. It has no schema or identity parameter. Complete export validates explicit before/after0091 inventories through this RPC and fails closed on unknown or missing required tables.
+
+
+### Residue re-pass (0091, T15)
+
+`learning.residue_repass_context(episode_id)` freezes the current vocabulary, active owned claims and eligible source rows. It reads no source episode. Older open residue and promoted residue without evidence qualify. Dismissed residue does not qualify. A promoted unmatched source can qualify after a claim or editorial target changes, including without an ontology increment.
+
+`learning.record_residue_repass(request)` commits one episode-wide pass. Every eligible source receives exactly one matched or unmatched outcome. Multiple evidence rows for one claim share the pass. The evidence inherits the source moment and quality; NULL stays NULL. No source moment is invented. The source residue status, promotion fields and version remain unchanged. The immutable receipt carries the latest classification version instead of a separate mutable processing field.
+
+The additional internal physical table `learning.residue_repasses` stores a bounded exact request and computed result. Matched sources are consumed. Unmatched sources skip only while their full source snapshot, ontology version and active claim-set fingerprint remain identical. Exact retries return the previous result before eligibility. A changed payload under the same pass key conflicts. The receipt INSERT trigger performs the validated evidence writes itself; direct INSERT cannot assert a false successful result. Receipt UPDATE/DELETE and service-role execution are unavailable. Caller export must include this new table before release.
+
+The short READ COMMITTED transaction takes claims/objectives SHARE NOWAIT locks, then learner and ontology advisory try-locks, then ordered source row locks NOWAIT. A busy writer causes a retryable refusal. The common ontology lock remains `(20260903,82)`. These locks prevent claim-set phantoms and stale editorial inputs without a new global writer trigger. Controlled schema/admin regroup still follows the0083 table-lock protocol.
+
+`episodes_read=0` describes zero source episode reads by the re-pass input pipeline. It does not claim zero implicit database FK/index/RLS work. The response returns affected claim IDs. A distinct caller-JWT state refresh may read episode metadata; it reports those queries and rows separately. Neither operation reads episode payload for classification.
+
+Run `node db/scripts/test-residue-repass.mjs` against local PostgreSQL to verify atomic rollback, ownership, direct INSERT, immutable retries, source quality, editorial preservation and real writer conflicts.

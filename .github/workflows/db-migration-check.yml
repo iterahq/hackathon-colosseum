@@ -357,6 +357,9 @@ jobs:
       - name: Historical digest extraction preserves quality and caller scope
         run: node db/scripts/test-digest-extraction.mjs
 
+      - name: Residue re-pass preserves editorial decisions and atomic receipts
+        run: node db/scripts/test-residue-repass.mjs
+
       - name: Summary
         if: always()
         run: |

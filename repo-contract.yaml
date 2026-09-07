@@ -40,6 +40,14 @@ provides:
     name: historical-digest-extraction
     description: Caller-scoped atomic digest passes with a fixed reviewed T14 release boundary.
     entry: db/migrations/0090_learning_digest_extraction.sql
+
+  - type: database
+    name: learning-residue-repass
+    description: >
+      Caller-JWT atomic residue-only evidence writes with immutable matched/unmatched receipts.
+      Editorial decisions stay unchanged and state refresh is a separate operation.
+    entry: db/migrations/0091_learning_residue_repass.sql
+
   - type: database
     name: historical-session-regroup
     description: >
