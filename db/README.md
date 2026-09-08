@@ -934,3 +934,28 @@ Legacy JSON-only INSERT derives every native field. Native INSERT omits provenan
 UPDATE detects JSON and native changes independently. A single changed representation updates the other; dual changes must agree exactly. Status-only and relationship updates leave metadata untouched. Authenticated callers receive no metadata UPDATE privilege. Existing activity/extraction/digest/re-pass writers continue to send JSON through the same entry points. Native engine/RPC reader conversion and final JSON removal remain separate stages.
 
 `test-evidence-metadata-transition.sh` creates its own isolated PostgreSQL17 container. It verifies the historical prefix through0093 with its original generated-column/unknown-key contract, then applies0094 to populated legacy rows and tests the strict bridge suffix. The main database still runs the full migration series twice, the real ledger applier, and every existing receipt/status suite. The test changes no production data or migration files.
+
+### Native SQL metadata consumers —0095
+
+Migration0095 follows the0094 writer bridge. It converts both atomic evidence
+writers to explicit native columns. The immutable request property `provenance`
+stays unchanged. A pure `evidence_metadata_from_json(jsonb)` constructor rejects
+unknown keys, incompatible types, and any loss of exact JSONB text. Key presence,
+explicit nulls, nested numeric spelling and source timestamp spelling survive.
+
+The extraction receipt validator reconstructs native metadata before its existing
+complete request comparison. Digest eligibility reads the native pass timestamp
+as an instant. Status selection reads native pass strings with the original
+created_at fallback and JavaScript string ordering. It retains every row in the
+selected pass. Existing caller checks, function grants, RLS, transaction isolation
+and lock order remain unchanged. The new constructor is an authenticated,
+SECURITY INVOKER pure function with no table access.
+
+The isolated metadata transition suite creates legacy extraction and re-pass
+receipts before0095. It proves exact populated migration, replay, native writes,
+status-only updates and key-presence refusal after0095. The full schema suite
+continues to test extraction, digest and re-pass concurrency and forged receipts.
+Only the compatibility bridge and lossless audit retain physical evidence JSON
+references. Request JSON is an immutable wire contract, not a physical column
+reference. Historical0088 projections, the bridge and audit still require a later
+reviewed transition before any JSON removal. This migration removes no data.

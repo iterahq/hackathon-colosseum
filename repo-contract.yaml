@@ -322,3 +322,7 @@ observability:
 # Native metadata bridge0094: provenance remains; explicit source_metadata_keys
 # selects native INSERT. Conflicting dual metadata fails. Caller grants, RLS,
 # immutable receipt validation and status lock order remain unchanged.
+
+# Native SQL consumers0095: record_extraction_pass and write_residue_repass insert
+# explicit native metadata. Receipt validation reconstructs the unchanged wire
+# request. Status and digest eligibility read native pass fields. No JSON drop.

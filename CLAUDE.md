@@ -380,3 +380,7 @@ Historical digest extraction extends the receipt RPC through migration0090. Its 
 Native evidence metadata expansion uses migration0093 after0091/0092. It retains JSON and existing writers, with exact key-presence reconstruction and a strict lossless audit. See `db/README.md` before any native writer conversion or JSON removal.
 
 Native evidence writer bridge0094 follows0093. Its key-presence marker permits exact old/new INSERT compatibility while provenance stays present. See `db/README.md`; no metadata UPDATE grant or legacy drop is included.
+
+Native SQL consumers0095 follow the0094 bridge. Atomic writers use native columns;
+immutable request JSON and exact receipt validation remain. See `db/README.md` for
+the populated legacy/native replay proof and the remaining D dependencies.

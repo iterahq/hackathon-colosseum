@@ -26,3 +26,4 @@ export ITERA_DB_URL="postgresql://supabase_admin@127.0.0.1:${PGPORT}/postgres"
 bash "$scratch/db/scripts/fresh-apply.sh" --parity --new 0093_learning_evidence_metadata_expand.sql
 node "$root/db/scripts/test-evidence-metadata-expand.mjs"
 node "$root/db/scripts/test-evidence-metadata-bridge.mjs"
+node "$root/db/scripts/test-native-evidence-consumers.mjs"

@@ -365,7 +365,7 @@ jobs:
       - name: Caller authorization probe rolls back every candidate write
         run: python3 db/scripts/test-learning-authorization-probe.py
 
-      - name: Native metadata preserves the historical prefix and writer bridge
+      - name: Native metadata preserves the historical prefix, writers and receipts
         run: bash db/scripts/test-evidence-metadata-transition.sh
 
       - name: Summary
