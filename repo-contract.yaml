@@ -329,3 +329,9 @@ observability:
 # Native SQL consumers0095: record_extraction_pass and write_residue_repass insert
 # explicit native metadata. Receipt validation reconstructs the unchanged wire
 # request. Status and digest eligibility read native pass fields. No JSON drop.
+
+# Canonical census version3 includes learning and preserves itera/billing facts.
+# Enabled trigger state and explicit column ACLs protect the metadata bridge and
+# status-only UPDATE contract. Actual merged migrations determine the snapshot.
+# The immutable0093 metadata prefix has a separate version3 expectation generated
+# by the same census. Final-main parity and the full transition remain required.

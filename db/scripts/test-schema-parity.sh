@@ -34,7 +34,9 @@ run_case() {
   local out rc ok=1
   out="$("$PARITY" "$@" 2>&1)"; rc=$?
   [[ "$rc" -eq "$want" ]] || ok=0
-  [[ -z "$needle" ]] || printf '%s' "$out" | command grep -qF "$needle" || ok=0
+  # A matching grep -q can close a pipe before printf finishes. Under pipefail,
+  # SIGPIPE then changes a correct exit/text verdict into a false test failure.
+  [[ -z "$needle" ]] || command grep -qF "$needle" <<< "$out" || ok=0
   if [[ "$ok" -eq 1 ]]; then
     printf '  ok    %-58s exit %s\n' "$name" "$rc"; PASS=$((PASS + 1))
   else
@@ -109,3 +111,6 @@ run_case "production refuses a stale allowance" 3 "STALE ALLOWANCE" \
 echo
 echo "passed ${PASS}, failed ${FAIL}"
 [[ "$FAIL" -eq 0 ]] || exit 1
+
+# The full-main learning mutation checks run from the metadata transition wrapper,
+# after the workflow's existing Node setup. This early shell suite needs no Node.

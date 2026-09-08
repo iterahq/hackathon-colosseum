@@ -398,3 +398,9 @@ Hard process/host loss relies on normal OS socket cleanup.
 
 `node --test scripts/tests/stamp-preview.test.mjs` tests concurrent real Vite
 previews, positive fixture isolation, failed children, and owned cleanup.
+
+Schema census version3 includes learning, enabled trigger state and column ACLs.
+Use the actual merged migration series for its snapshot. The existing parity
+suite includes real local drift mutations; see `db/README.md`.
+The isolated0093 metadata prefix has its own named census expectation. Final-main
+parity keeps its current-schema expectation; neither stage excludes learning.

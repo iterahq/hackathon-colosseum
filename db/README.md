@@ -970,3 +970,31 @@ The exporter checks both inventories before and after its two complete raw scans
 Its reviewed column contract accepts the current42 columns or the same41 columns without physical provenance.
 The native export compatibility release waits for this RPC to deploy. The migration does not remove provenance.
 `node db/scripts/test-export-evidence-columns.mjs` proves the actual identity boundary, role/grant refusals, and column transitions on the local full schema.
+
+### Learning schema drift coverage — census version3
+
+The canonical census includes `learning` alongside `itera` and `billing`.
+It records native columns/defaults, function bodies/security/settings, constraints,
+RLS, trigger definitions and enabled state, and effective table/function grants.
+Explicit column ACLs expose the status-only evidence grant and unauthorized
+metadata grants. Existing schema coverage remains present.
+
+The committed snapshot comes from the actual merged migration series. Update it
+when a migration changes those facts; future-schema allowances are not permitted.
+The same census serves the existing applier, parity checker and scheduled drift
+workflow. The version bump makes the changed measurement explicit.
+
+The seven `test-schema-parity.sh` cases retain their exit and text assertions.
+The metadata transition wrapper runs real local learning catalog mutations after
+the existing Node setup, before it creates its isolated historical prefix. Each
+mutation must make the canonical parity checker fail. Restoring it must return
+every fact to the baseline. Tests cover native columns/defaults, function body
+and SECURITY DEFINER changes, a disabled bridge trigger and unauthorized column
+UPDATE. These mutations run only against an isolated local fixture.
+
+The isolated metadata transition uses
+`db/census/expected-metadata-prefix-schema.txt` for its immutable0093 prefix.
+The same version3 census generates this named expectation. The wrapper copies it
+only into the disposable prefix directory. Final-main parity continues to use
+`expected-schema.txt`. Both complete catalogs must match their declared schema
+stage; no learning facts or drift checks are excluded.

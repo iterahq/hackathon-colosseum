@@ -1,6 +1,8 @@
 -- ============================================================================
 -- census.sql — ONE definition of "what this schema is", used by three callers.
 --
+-- Version3 includes learning, trigger enabled state and explicit column ACLs.
+--
 --   1. db/scripts/apply-migrations.sh   — records a row in
 --      itera.schema_object_census after every apply, and `drift` compares the
 --      live database against the last recorded row (out-of-band DDL alarm).
@@ -63,13 +65,13 @@
 set search_path = pg_catalog;
 
 select line from (
-  select '#cens version=2' as line
+  select '#cens version=3' as line
   union all
   -- ── relations, including sequences, with the RLS flags ─────────────────────
   select format('rel   %s.%s %s rls=%s force=%s', n.nspname, c.relname, c.relkind,
                 c.relrowsecurity, c.relforcerowsecurity)
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing') and c.relkind in ('r','v','m','p','f','S')
+   where n.nspname in ('itera','billing','learning') and c.relkind in ('r','v','m','p','f','S')
   union all
   -- ── columns: type, NOT NULL, DEFAULT, identity, generated ─────────────────
   select format('col   %s.%s.%s %s%s default=%s ident=%s gen=%s',
@@ -83,7 +85,7 @@ select line from (
     join pg_class c on c.oid = a.attrelid
     join pg_namespace n on n.oid = c.relnamespace
     left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
-   where n.nspname in ('itera','billing') and c.relkind in ('r','v','m','p','f')
+   where n.nspname in ('itera','billing','learning') and c.relkind in ('r','v','m','p','f')
      and a.attnum > 0 and not a.attisdropped
   union all
   -- ── constraints: PK / FK / UNIQUE / CHECK / EXCLUDE, by full definition ────
@@ -92,14 +94,14 @@ select line from (
     from pg_constraint con
     join pg_class c on c.oid = con.conrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
   union all
   -- ── indexes, by DEFINITION rather than by name ────────────────────────────
   select format('idx   %s', regexp_replace(pg_get_indexdef(i.indexrelid), '\s+', ' ', 'g'))
     from pg_index i
     join pg_class c on c.oid = i.indrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
   union all
   -- ── functions: identity args, result, kind, volatility, security, body hash ─
   select format('fn    %s.%s(%s) -> %s kind=%s vol=%s secdef=%s cfg=%s body=%s',
@@ -108,14 +110,14 @@ select line from (
                 coalesce(array_to_string(p.proconfig, ','), '-'),
                 substr(md5(coalesce(p.prosrc, '')), 1, 12))
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
   union all
   -- ── enum / domain types with their labels, in sort order ──────────────────
   select format('type  %s.%s %s [%s]', n.nspname, t.typname, t.typtype,
                 coalesce((select string_agg(e.enumlabel, ',' order by e.enumsortorder)
                             from pg_enum e where e.enumtypid = t.oid), ''))
     from pg_type t join pg_namespace n on n.oid = t.typnamespace
-   where n.nspname in ('itera','billing') and t.typtype in ('e','d')
+   where n.nspname in ('itera','billing','learning') and t.typtype in ('e','d')
   union all
   -- ── RLS policies WITH their predicates, roles and command ─────────────────
   -- The realtime.messages clause is scoped by policy name: this project owns
@@ -130,32 +132,32 @@ select line from (
     from pg_policy pol
     join pg_class c on c.oid = pol.polrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
       or (n.nspname = 'realtime' and pol.polname like 'itera%')
   union all
   -- ── triggers on this project's own tables, by definition ──────────────────
-  select format('trg   %s', regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'))
+  select format('trg   %s enabled=%s', regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'), t.tgenabled)
     from pg_trigger t
     join pg_class c on c.oid = t.tgrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing') and not t.tgisinternal
+   where n.nspname in ('itera','billing','learning') and not t.tgisinternal
   union all
   -- ── and the ones this project puts on SOMEBODY ELSE'S table ───────────────
   -- 0009 / 0015 attach `on_auth_user_created_provision_itera` to auth.users.
   -- The old census could not see it, so the federation trigger could vanish
   -- without a single check noticing.
-  select format('trg   %s', regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'))
+  select format('trg   %s enabled=%s', regexp_replace(pg_get_triggerdef(t.oid), '\s+', ' ', 'g'), t.tgenabled)
     from pg_trigger t
     join pg_class c on c.oid = t.tgrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname not in ('itera','billing') and not t.tgisinternal
+   where n.nspname not in ('itera','billing','learning') and not t.tgisinternal
      and t.tgname like '%itera%'
   union all
   -- ── view / materialised-view definitions, hashed ──────────────────────────
   select format('view  %s.%s %s', n.nspname, c.relname,
                 substr(md5(regexp_replace(pg_get_viewdef(c.oid), '\s+', ' ', 'g')), 1, 12))
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing') and c.relkind in ('v','m')
+   where n.nspname in ('itera','billing','learning') and c.relkind in ('v','m')
   union all
   -- ── schema privileges for the client roles ────────────────────────────────
   select format('gsch  %s %s usage=%s create=%s', n.nspname, r.rolname,
@@ -163,7 +165,7 @@ select line from (
                 has_schema_privilege(r.oid, n.oid, 'CREATE'))
     from pg_namespace n
     cross join pg_roles r
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
      and r.rolname in ('anon','authenticated','service_role','supabase_auth_admin')
   union all
   -- ── table privileges for the client roles ─────────────────────────────────
@@ -174,8 +176,22 @@ select line from (
                            where has_table_privilege(r.oid, c.oid, p)), '-'))
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
     cross join pg_roles r
-   where n.nspname in ('itera','billing') and c.relkind in ('r','v','m','p','f','S')
+   where n.nspname in ('itera','billing','learning') and c.relkind in ('r','v','m','p','f','S')
      and r.rolname in ('anon','authenticated','service_role','supabase_auth_admin')
+  union all
+  -- Explicit column ACLs matter independently of table privileges. In learning,
+  -- authenticated UPDATE(status) must not conceal an added metadata UPDATE grant.
+  select format('gcol  %s.%s.%s %s %s grantable=%s', n.nspname, c.relname, a.attname,
+                case when acl.grantee=0 then 'PUBLIC' else r.rolname end,
+                acl.privilege_type, acl.is_grantable)
+    from pg_attribute a
+    join pg_class c on c.oid=a.attrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(a.attacl) acl
+    left join pg_roles r on r.oid=acl.grantee
+   where n.nspname in ('itera','billing','learning')
+     and a.attnum>0 and not a.attisdropped
+     and (acl.grantee=0 or r.rolname in ('anon','authenticated','service_role','supabase_auth_admin'))
   union all
   -- ── function EXECUTE privileges for the client roles ──────────────────────
   select format('gfn   %s.%s(%s) %s exec=%s', n.nspname, p.proname,
@@ -183,7 +199,7 @@ select line from (
                 has_function_privilege(r.oid, p.oid, 'EXECUTE'))
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     cross join pg_roles r
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
      and r.rolname in ('anon','authenticated','service_role','supabase_auth_admin')
   union all
   -- ── realtime publication membership ───────────────────────────────────────
@@ -192,7 +208,7 @@ select line from (
     join pg_publication pb on pb.oid = pr.prpubid
     join pg_class c on c.oid = pr.prrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
   union all
   -- ── sequence parameters ───────────────────────────────────────────────────
   select format('seq   %s.%s start=%s inc=%s min=%s max=%s cycle=%s',
@@ -201,7 +217,7 @@ select line from (
     from pg_sequence s
     join pg_class c on c.oid = s.seqrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
   union all
   -- ── COMMENTs on relations, columns and functions ──────────────────────────
   -- 0028_activity_results_truth_boundary.sql adds NO object at all: its entire
@@ -212,7 +228,7 @@ select line from (
   select format('cmt   rel %s.%s %s', n.nspname, c.relname,
                 substr(md5(obj_description(c.oid, 'pg_class')), 1, 12))
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing') and c.relkind in ('r','v','m','p','f','S')
+   where n.nspname in ('itera','billing','learning') and c.relkind in ('r','v','m','p','f','S')
      and obj_description(c.oid, 'pg_class') is not null
   union all
   select format('cmt   col %s.%s.%s %s', n.nspname, c.relname, a.attname,
@@ -220,14 +236,14 @@ select line from (
     from pg_attribute a
     join pg_class c on c.oid = a.attrelid
     join pg_namespace n on n.oid = c.relnamespace
-   where n.nspname in ('itera','billing') and a.attnum > 0 and not a.attisdropped
+   where n.nspname in ('itera','billing','learning') and a.attnum > 0 and not a.attisdropped
      and col_description(c.oid, a.attnum) is not null
   union all
   select format('cmt   fn  %s.%s(%s) %s', n.nspname, p.proname,
                 pg_get_function_identity_arguments(p.oid),
                 substr(md5(obj_description(p.oid, 'pg_proc')), 1, 12))
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname in ('itera','billing')
+   where n.nspname in ('itera','billing','learning')
      and obj_description(p.oid, 'pg_proc') is not null
   union all
   -- ── the cron jobs this schema schedules (0053) ────────────────────────────

@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
 # Origin: agent. Isolated historical prefix plus populated native bridge suffix.
-# Never connects to the job's database or any configured production target.
+# First test reversible census mutations on the job's full-main local fixture.
+# The historical metadata transition then uses its own isolated local database.
+# Both phases reject production targets before any catalog mutation.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# This existing workflow step runs after setup-node. Keep it before PGHOST/PGPORT
+# are replaced below, so the census proof covers the job's complete main schema.
+node "$root/db/scripts/test-learning-census.mjs"
 scratch="$(mktemp -d)"
 container="itera-metadata-prefix-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-$$"
 cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$scratch"; }
 trap cleanup EXIT
 mkdir -p "$scratch/db/migrations"
 cp -a "$root/db/scripts" "$root/db/census" "$scratch/db/"
+# The historical prefix has generated metadata; final main has the native bridge.
+# Both expectations use the same canonical census, without excluded facts.
+cp "$root/db/census/expected-metadata-prefix-schema.txt" "$scratch/db/census/expected-schema.txt"
 for file in "$root"/db/migrations/*.sql; do
   name="$(basename "$file")"
   if [[ "$name" < '0094_' ]]; then cp "$file" "$scratch/db/migrations/"; fi

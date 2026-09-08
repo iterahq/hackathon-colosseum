@@ -1,4 +1,4 @@
-#cens version=2
+#cens version=3
 cmt   col itera.activities.artifact_policy 13503dcad2f9
 cmt   col itera.activities.def_id af4931b3ca64
 cmt   col itera.activity_defs.artifact_policy 51da8aff244e
@@ -29,6 +29,45 @@ cmt   col itera.users.avatar_url f1ef917bde85
 cmt   col itera.users.dfl_avatar_url 83003b8605bd
 cmt   col itera.users.dfl_subject be81d4b7ba64
 cmt   col itera.users.is_guest b469e2a44c32
+cmt   col learning.activities.targets_concept_id 2c77f8e66314
+cmt   col learning.activities.targets_misconception_id dab6af024b02
+cmt   col learning.capabilities.concept_id 97c4252ce3c5
+cmt   col learning.capabilities.learner_id 76254b650879
+cmt   col learning.claims.claim_template_id a31a5a4eec56
+cmt   col learning.claims.valued_work_id 7400ef388538
+cmt   col learning.evidence.artifact_id 4b9ae8dd732a
+cmt   col learning.evidence.digest_backfill 330b35ca736f
+cmt   col learning.evidence.misconception_id 25f1e26eeb35
+cmt   col learning.evidence.pass_at 0b9bc5a3861a
+cmt   col learning.evidence.provenance f63c6ab1c426
+cmt   col learning.evidence.source_episode_ref 6747cca52a6d
+cmt   col learning.evidence.source_metadata_keys bbc8f10e8ab8
+cmt   col learning.evidence.status 15d375ecbbec
+cmt   col learning.evidence.turn_episode_id 3c6d814741c4
+cmt   col learning.generation_config.cadence_max_per_hour 4d66579a9139
+cmt   col learning.generation_config.cadence_min_per_hour 0c1d4da87b8b
+cmt   col learning.generation_config.daily_cap 23d04466df50
+cmt   col learning.generation_config.decay_half_life_days 711788a8131a
+cmt   col learning.generation_config.per_episode_cap 8b054842764c
+cmt   col learning.generation_config.ranking_mode e83dede2b3d8
+cmt   col learning.generation_config.strong_min_distinct_episodes c07d100bc282
+cmt   col learning.generation_config.strong_min_distinct_projects 5e7c5a251536
+cmt   col learning.generation_config.ttl_hours a448de1353c9
+cmt   col learning.learner_state_history.computed_at 34d92ae50d3e
+cmt   col learning.learner_state_history.episode_id f44dd26bda86
+cmt   col learning.learner_state_history.gate d4549c9a6873
+cmt   col learning.learner_state_history.previous_level 363e9ab638cb
+cmt   col learning.learning_objectives.target_autonomy 1b61eef56e5c
+cmt   col learning.residue.quality 7b52117a96f7
+cmt   col learning.residue.suggested_label 9936f8ab9cce
+cmt   col learning.work_contexts.project_root 04195aab0c93
+cmt   col learning.work_episodes.agent_version 1f402f8d9d6d
+cmt   col learning.work_episodes.grain 9b7383f37406
+cmt   col learning.work_episodes.machine_class 59985dc36e8c
+cmt   col learning.work_episodes.relevance_checked_at efcd46f3326d
+cmt   col learning.work_episodes.relevance_status 162ef797c28f
+cmt   col learning.work_episodes.session_episode_id 604d4d3c43d5
+cmt   col learning.work_episodes.session_refs 4c38bc3f6f07
 cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
 cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
 cmt   fn  itera.current_user_is_entitled() 89b6ec8674eb
@@ -42,6 +81,12 @@ cmt   fn  itera.is_learning_operator() 92395512bab0
 cmt   fn  itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hours integer) f0dca134765c
 cmt   fn  itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) 69822a298f18
 cmt   fn  itera.test_tenant_isolation_violations() 71618de32b31
+cmt   fn  learning.apply_dml(p_operation text, p_payload jsonb) 6383045946f2
+cmt   fn  learning.delete_artifact(p_artifact_id uuid) 5bff09dfbf41
+cmt   fn  learning.export_evidence_columns() a051f5ee0e2f
+cmt   fn  learning.export_inventory() 50589a1c640b
+cmt   fn  learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) 8047cc152848
+cmt   fn  learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) 37fdadcce15a
 cmt   rel billing.webhook_events 57d67b2b3281
 cmt   rel itera.activity_defs 0912b393ab3d
 cmt   rel itera.activity_i18n_backup eb7ff5dd9b61
@@ -54,6 +99,38 @@ cmt   rel itera.class_stars 1072f9c8bdb8
 cmt   rel itera.my_subscription 6269041800af
 cmt   rel itera.schema_migrations 54b440c540af
 cmt   rel itera.schema_object_census 5d63d5c0db10
+cmt   rel learning.activities ebd9fa2b6c67
+cmt   rel learning.activity_responses c7f5bde3c174
+cmt   rel learning.artifacts f283581d6521
+cmt   rel learning.assembly_model_objectives 373d797da6bf
+cmt   rel learning.assembly_models 55696e31da9b
+cmt   rel learning.capabilities 32a2c337a7f0
+cmt   rel learning.capability_proposals b486e8833ac3
+cmt   rel learning.capability_states 26e71a2c92e1
+cmt   rel learning.checkpoints 3696bedeeccc
+cmt   rel learning.claim_concepts 8e6af762c973
+cmt   rel learning.claim_templates 274787557b96
+cmt   rel learning.claims 440ef16ca850
+cmt   rel learning.concept_relations 403c7abf9d52
+cmt   rel learning.concepts d31b34f00fa3
+cmt   rel learning.episode_moments 2fb7dd181357
+cmt   rel learning.evidence c98c1bd5f4da
+cmt   rel learning.evidence_model_objectives 77812f7ed539
+cmt   rel learning.evidence_models a5e2d73826a4
+cmt   rel learning.extraction_passes 2a92910001ff
+cmt   rel learning.generation_config 6d6eb15eac09
+cmt   rel learning.learner_state 435459760aa7
+cmt   rel learning.learner_state_history 0c774adf89e1
+cmt   rel learning.learners fdba6f296b9d
+cmt   rel learning.learning_objectives f72ceb45268e
+cmt   rel learning.misconceptions 2cc6faaa712c
+cmt   rel learning.ontology_versions 156a1a2f12b9
+cmt   rel learning.residue 1b3df8612d08
+cmt   rel learning.residue_repasses 9acc1eb08e1d
+cmt   rel learning.task_models a10f0b213a0a
+cmt   rel learning.valued_work 45a47ca15401
+cmt   rel learning.work_contexts eba1ad64961e
+cmt   rel learning.work_episodes fb2dec5b713f
 col   billing.customers.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
 col   billing.customers.email text default=- ident=- gen=-
 col   billing.customers.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
@@ -325,6 +402,322 @@ col   itera.xp_events.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
 col   itera.xp_events.reason text default=- ident=- gen=-
 col   itera.xp_events.tenant_id uuid NOT NULL default=- ident=- gen=-
 col   itera.xp_events.user_id uuid NOT NULL default=- ident=- gen=-
+col   learning.activities.claim_id uuid default=- ident=- gen=-
+col   learning.activities.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.activities.episode_id uuid default=- ident=- gen=-
+col   learning.activities.generated_by jsonb default=- ident=- gen=-
+col   learning.activities.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.activities.intent text NOT NULL default='pedagogical'::text ident=- gen=-
+col   learning.activities.kind text NOT NULL default=- ident=- gen=-
+col   learning.activities.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.activities.spec jsonb NOT NULL default=- ident=- gen=-
+col   learning.activities.status text NOT NULL default='pending'::text ident=- gen=-
+col   learning.activities.targets_concept_id text default=- ident=- gen=-
+col   learning.activities.targets_misconception_id text default=- ident=- gen=-
+col   learning.activities.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.activity_responses.activity_id uuid NOT NULL default=- ident=- gen=-
+col   learning.activity_responses.correct boolean default=- ident=- gen=-
+col   learning.activity_responses.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.activity_responses.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.activity_responses.responded_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.activity_responses.response jsonb NOT NULL default=- ident=- gen=-
+col   learning.activity_responses.surface text default=- ident=- gen=-
+col   learning.artifacts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.artifacts.episode_id uuid default=- ident=- gen=-
+col   learning.artifacts.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.artifacts.kind text NOT NULL default=- ident=- gen=-
+col   learning.artifacts.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.artifacts.payload jsonb default=- ident=- gen=-
+col   learning.artifacts.task_model_id uuid default=- ident=- gen=-
+col   learning.artifacts.title text default=- ident=- gen=-
+col   learning.artifacts.uri text default=- ident=- gen=-
+col   learning.assembly_model_objectives.assembly_model_id uuid NOT NULL default=- ident=- gen=-
+col   learning.assembly_model_objectives.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.assembly_model_objectives.objective_id uuid NOT NULL default=- ident=- gen=-
+col   learning.assembly_models.cadence_max_per_hour integer NOT NULL default=5 ident=- gen=-
+col   learning.assembly_models.cadence_min_per_hour integer NOT NULL default=1 ident=- gen=-
+col   learning.assembly_models.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.assembly_models.daily_cap integer NOT NULL default=5 ident=- gen=-
+col   learning.assembly_models.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.assembly_models.ranking_mode text NOT NULL default='info_gain'::text ident=- gen=-
+col   learning.assembly_models.scope text NOT NULL default='global'::text ident=- gen=-
+col   learning.assembly_models.title text default=- ident=- gen=-
+col   learning.assembly_models.ttl_hours integer NOT NULL default=48 ident=- gen=-
+col   learning.assembly_models.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.assembly_models.updated_by uuid default=- ident=- gen=-
+col   learning.capabilities.concept_id text default=- ident=- gen=-
+col   learning.capabilities.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.capabilities.description text default=- ident=- gen=-
+col   learning.capabilities.id text NOT NULL default=- ident=- gen=-
+col   learning.capabilities.introduced_in integer NOT NULL default=- ident=- gen=-
+col   learning.capabilities.learner_id uuid default=- ident=- gen=-
+col   learning.capabilities.retired_in integer default=- ident=- gen=-
+col   learning.capabilities.source jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.capabilities.title text NOT NULL default=- ident=- gen=-
+col   learning.capabilities.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.capability_proposals.capability_id text default=- ident=- gen=-
+col   learning.capability_proposals.decided_at timestamp with time zone default=- ident=- gen=-
+col   learning.capability_proposals.decided_by uuid default=- ident=- gen=-
+col   learning.capability_proposals.decision_note text default=- ident=- gen=-
+col   learning.capability_proposals.description text default=- ident=- gen=-
+col   learning.capability_proposals.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.capability_proposals.nearest_capability_id text default=- ident=- gen=-
+col   learning.capability_proposals.nearest_score numeric default=- ident=- gen=-
+col   learning.capability_proposals.ontology_version integer default=- ident=- gen=-
+col   learning.capability_proposals.proposed_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.capability_proposals.proposed_by text NOT NULL default=- ident=- gen=-
+col   learning.capability_proposals.proposed_by_kind text NOT NULL default=- ident=- gen=-
+col   learning.capability_proposals.proposed_id text default=- ident=- gen=-
+col   learning.capability_proposals.residue_ids uuid[] NOT NULL default=- ident=- gen=-
+col   learning.capability_proposals.status text NOT NULL default='proposed'::text ident=- gen=-
+col   learning.capability_proposals.title text NOT NULL default=- ident=- gen=-
+col   learning.capability_states.capability_id text NOT NULL default=- ident=- gen=-
+col   learning.capability_states.computed_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.capability_states.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.capability_states.inputs jsonb NOT NULL default=- ident=- gen=-
+col   learning.capability_states.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.capability_states.reducer_version text NOT NULL default=- ident=- gen=-
+col   learning.capability_states.state text NOT NULL default=- ident=- gen=-
+col   learning.checkpoints.chosen_option_id text default=- ident=- gen=-
+col   learning.checkpoints.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.checkpoints.decided_at timestamp with time zone default=- ident=- gen=-
+col   learning.checkpoints.episode_id uuid NOT NULL default=- ident=- gen=-
+col   learning.checkpoints.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.checkpoints.options jsonb NOT NULL default='[]'::jsonb ident=- gen=-
+col   learning.checkpoints.question text NOT NULL default=- ident=- gen=-
+col   learning.claim_concepts.claim_id uuid NOT NULL default=- ident=- gen=-
+col   learning.claim_concepts.concept_id text NOT NULL default=- ident=- gen=-
+col   learning.claim_concepts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.claim_concepts.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.claim_concepts.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.claim_concepts.relation text NOT NULL default='targets'::text ident=- gen=-
+col   learning.claim_templates.capability_id text default=- ident=- gen=-
+col   learning.claim_templates.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.claim_templates.created_by uuid default=- ident=- gen=-
+col   learning.claim_templates.description text default=- ident=- gen=-
+col   learning.claim_templates.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.claim_templates.introduced_in integer NOT NULL default=- ident=- gen=-
+col   learning.claim_templates.retired_in integer default=- ident=- gen=-
+col   learning.claim_templates.statement text NOT NULL default=- ident=- gen=-
+col   learning.claims.claim_template_id uuid default=- ident=- gen=-
+col   learning.claims.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.claims.description text default=- ident=- gen=-
+col   learning.claims.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.claims.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.claims.objective_id uuid default=- ident=- gen=-
+col   learning.claims.sort_order integer NOT NULL default=0 ident=- gen=-
+col   learning.claims.title text NOT NULL default=- ident=- gen=-
+col   learning.claims.valued_work_id uuid default=- ident=- gen=-
+col   learning.concept_relations.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.concept_relations.from_concept_id text NOT NULL default=- ident=- gen=-
+col   learning.concept_relations.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.concept_relations.relation_type text NOT NULL default=- ident=- gen=-
+col   learning.concept_relations.source jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.concept_relations.to_concept_id text NOT NULL default=- ident=- gen=-
+col   learning.concept_relations.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.concepts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.concepts.description text default=- ident=- gen=-
+col   learning.concepts.id text NOT NULL default=- ident=- gen=-
+col   learning.concepts.kind text NOT NULL default=- ident=- gen=-
+col   learning.concepts.label text NOT NULL default=- ident=- gen=-
+col   learning.concepts.source jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.concepts.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.episode_moments.at timestamp with time zone NOT NULL default=- ident=- gen=-
+col   learning.episode_moments.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.episode_moments.episode_id uuid NOT NULL default=- ident=- gen=-
+col   learning.episode_moments.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.episode_moments.kind text NOT NULL default=- ident=- gen=-
+col   learning.episode_moments.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.episode_moments.payload jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.episode_moments.session_ref text default=- ident=- gen=-
+col   learning.evidence.activity_id text default=- ident=- gen=-
+col   learning.evidence.activity_kind text default=- ident=- gen=-
+col   learning.evidence.activity_response_id uuid default=- ident=- gen=-
+col   learning.evidence.actor text NOT NULL default=- ident=- gen=-
+col   learning.evidence.artifact_id uuid default=- ident=- gen=-
+col   learning.evidence.assessment_method text default=- ident=- gen=-
+col   learning.evidence.capability_id text default=- ident=- gen=-
+col   learning.evidence.claim_id uuid NOT NULL default=- ident=- gen=-
+col   learning.evidence.confidence numeric default=- ident=- gen=-
+col   learning.evidence.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.evidence.digest_backfill jsonb default=- ident=- gen=-
+col   learning.evidence.digest_dropped_chars integer default=- ident=- gen=-
+col   learning.evidence.direction text NOT NULL default=- ident=- gen=-
+col   learning.evidence.episode_id uuid default=- ident=- gen=-
+col   learning.evidence.extractor text default=- ident=- gen=-
+col   learning.evidence.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.evidence.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.evidence.misconception_id text default=- ident=- gen=-
+col   learning.evidence.model text default=- ident=- gen=-
+col   learning.evidence.model_version text default=- ident=- gen=-
+col   learning.evidence.moment_id uuid default=- ident=- gen=-
+col   learning.evidence.observation_id text default=- ident=- gen=-
+col   learning.evidence.observed text NOT NULL default=- ident=- gen=-
+col   learning.evidence.ontology_version integer default=- ident=- gen=-
+col   learning.evidence.pass_at text default=- ident=- gen=-
+col   learning.evidence.pass_id text default=- ident=- gen=-
+col   learning.evidence.prompt_version text default=- ident=- gen=-
+col   learning.evidence.provenance jsonb NOT NULL default=- ident=- gen=-
+col   learning.evidence.provider text default=- ident=- gen=-
+col   learning.evidence.quality text default=- ident=- gen=-
+col   learning.evidence.relevance_extractor text default=- ident=- gen=-
+col   learning.evidence.relevance_model text default=- ident=- gen=-
+col   learning.evidence.source text default=- ident=- gen=-
+col   learning.evidence.source_activity_response_ref text default=- ident=- gen=-
+col   learning.evidence.source_episode_ref text default=- ident=- gen=-
+col   learning.evidence.source_metadata_keys text[] default=- ident=- gen=-
+col   learning.evidence.source_pass_id text default=- ident=- gen=-
+col   learning.evidence.source_residue_id text default=- ident=- gen=-
+col   learning.evidence.status text NOT NULL default='active'::text ident=- gen=-
+col   learning.evidence.strength text NOT NULL default=- ident=- gen=-
+col   learning.evidence.surface text default=- ident=- gen=-
+col   learning.evidence.turn_episode_id uuid default=- ident=- gen=-
+col   learning.evidence_model_objectives.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.evidence_model_objectives.evidence_model_id uuid NOT NULL default=- ident=- gen=-
+col   learning.evidence_model_objectives.objective_id uuid NOT NULL default=- ident=- gen=-
+col   learning.evidence_models.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.evidence_models.decay_half_life_days numeric NOT NULL default=30 ident=- gen=-
+col   learning.evidence_models.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.evidence_models.per_episode_cap numeric NOT NULL default=3 ident=- gen=-
+col   learning.evidence_models.strong_min_distinct_episodes integer NOT NULL default=3 ident=- gen=-
+col   learning.evidence_models.strong_min_distinct_projects integer NOT NULL default=2 ident=- gen=-
+col   learning.evidence_models.title text default=- ident=- gen=-
+col   learning.evidence_models.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.evidence_models.updated_by uuid default=- ident=- gen=-
+col   learning.extraction_passes.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.extraction_passes.episode_id uuid NOT NULL default=- ident=- gen=-
+col   learning.extraction_passes.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.extraction_passes.pass_id text NOT NULL default=- ident=- gen=-
+col   learning.extraction_passes.request jsonb NOT NULL default=- ident=- gen=-
+col   learning.extraction_passes.result jsonb NOT NULL default=- ident=- gen=-
+col   learning.generation_config.cadence_max_per_hour integer NOT NULL default=5 ident=- gen=-
+col   learning.generation_config.cadence_min_per_hour integer NOT NULL default=1 ident=- gen=-
+col   learning.generation_config.daily_cap integer NOT NULL default=5 ident=- gen=-
+col   learning.generation_config.decay_half_life_days numeric NOT NULL default=30 ident=- gen=-
+col   learning.generation_config.id smallint NOT NULL default=1 ident=- gen=-
+col   learning.generation_config.per_episode_cap numeric NOT NULL default=3 ident=- gen=-
+col   learning.generation_config.ranking_mode text NOT NULL default='info_gain'::text ident=- gen=-
+col   learning.generation_config.strong_min_distinct_episodes integer NOT NULL default=3 ident=- gen=-
+col   learning.generation_config.strong_min_distinct_projects integer NOT NULL default=2 ident=- gen=-
+col   learning.generation_config.ttl_hours integer NOT NULL default=48 ident=- gen=-
+col   learning.generation_config.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.generation_config.updated_by uuid default=- ident=- gen=-
+col   learning.learner_state.claim_id uuid NOT NULL default=- ident=- gen=-
+col   learning.learner_state.computed_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.learner_state.evidence_count integer NOT NULL default=0 ident=- gen=-
+col   learning.learner_state.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.learner_state.inputs jsonb NOT NULL default=- ident=- gen=-
+col   learning.learner_state.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.learner_state.level text NOT NULL default='unknown'::text ident=- gen=-
+col   learning.learner_state.reducer_version text NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.activity_response_id uuid default=- ident=- gen=-
+col   learning.learner_state_history.claim_id uuid NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.computed_at timestamp with time zone NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.learner_state_history.episode_id uuid default=- ident=- gen=-
+col   learning.learner_state_history.evidence_count integer NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.gate text NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.learner_state_history.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.level text NOT NULL default=- ident=- gen=-
+col   learning.learner_state_history.previous_evidence_count integer default=- ident=- gen=-
+col   learning.learner_state_history.previous_gate text default=- ident=- gen=-
+col   learning.learner_state_history.previous_level text default=- ident=- gen=-
+col   learning.learner_state_history.reducer_version text NOT NULL default=- ident=- gen=-
+col   learning.learners.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.learners.display_name text default=- ident=- gen=-
+col   learning.learners.id uuid NOT NULL default=- ident=- gen=-
+col   learning.learning_objectives.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.learning_objectives.description text default=- ident=- gen=-
+col   learning.learning_objectives.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.learning_objectives.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.learning_objectives.scope_kind text NOT NULL default='global'::text ident=- gen=-
+col   learning.learning_objectives.scope_value jsonb default=- ident=- gen=-
+col   learning.learning_objectives.status text NOT NULL default='active'::text ident=- gen=-
+col   learning.learning_objectives.target_autonomy text default=- ident=- gen=-
+col   learning.learning_objectives.title text NOT NULL default=- ident=- gen=-
+col   learning.learning_objectives.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.misconceptions.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.misconceptions.description text default=- ident=- gen=-
+col   learning.misconceptions.id text NOT NULL default=- ident=- gen=-
+col   learning.misconceptions.label text NOT NULL default=- ident=- gen=-
+col   learning.misconceptions.source jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.misconceptions.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.ontology_versions.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.ontology_versions.created_by uuid default=- ident=- gen=-
+col   learning.ontology_versions.note text default=- ident=- gen=-
+col   learning.ontology_versions.reason text default=- ident=- gen=-
+col   learning.ontology_versions.version integer NOT NULL default=- ident=- gen=-
+col   learning.residue.candidate text NOT NULL default=- ident=- gen=-
+col   learning.residue.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.residue.episode_id uuid NOT NULL default=- ident=- gen=-
+col   learning.residue.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.residue.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.residue.moment_id uuid default=- ident=- gen=-
+col   learning.residue.nearest_capability_id text default=- ident=- gen=-
+col   learning.residue.nearest_score numeric default=- ident=- gen=-
+col   learning.residue.ontology_version integer NOT NULL default=- ident=- gen=-
+col   learning.residue.pass_at timestamp with time zone NOT NULL default=- ident=- gen=-
+col   learning.residue.pass_id text NOT NULL default=- ident=- gen=-
+col   learning.residue.promoted_at timestamp with time zone default=- ident=- gen=-
+col   learning.residue.promoted_by uuid default=- ident=- gen=-
+col   learning.residue.promoted_to_capability_id text default=- ident=- gen=-
+col   learning.residue.quality text NOT NULL default='transcript'::text ident=- gen=-
+col   learning.residue.status text NOT NULL default='open'::text ident=- gen=-
+col   learning.residue.suggested_label text default=- ident=- gen=-
+col   learning.residue_repasses.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.residue_repasses.episode_id uuid NOT NULL default=- ident=- gen=-
+col   learning.residue_repasses.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.residue_repasses.pass_id text NOT NULL default=- ident=- gen=-
+col   learning.residue_repasses.request jsonb NOT NULL default=- ident=- gen=-
+col   learning.residue_repasses.result jsonb NOT NULL default=- ident=- gen=-
+col   learning.task_models.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.task_models.expectation text NOT NULL default=- ident=- gen=-
+col   learning.task_models.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.task_models.kind text default=- ident=- gen=-
+col   learning.task_models.learner_id uuid default=- ident=- gen=-
+col   learning.task_models.objective_id uuid default=- ident=- gen=-
+col   learning.task_models.rubric jsonb default=- ident=- gen=-
+col   learning.task_models.scaffold jsonb default=- ident=- gen=-
+col   learning.task_models.title text NOT NULL default=- ident=- gen=-
+col   learning.task_models.valued_work_id uuid default=- ident=- gen=-
+col   learning.valued_work.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.valued_work.description text default=- ident=- gen=-
+col   learning.valued_work.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.valued_work.kind text default=- ident=- gen=-
+col   learning.valued_work.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.valued_work.status text NOT NULL default='active'::text ident=- gen=-
+col   learning.valued_work.title text NOT NULL default=- ident=- gen=-
+col   learning.valued_work.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.work_contexts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.work_contexts.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.work_contexts.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.work_contexts.machine text default=- ident=- gen=-
+col   learning.work_contexts.machine_class text NOT NULL default='human'::text ident=- gen=-
+col   learning.work_contexts.project_ref text default=- ident=- gen=-
+col   learning.work_contexts.project_root text NOT NULL default=- ident=- gen=-
+col   learning.work_episodes.agent_summary text default=- ident=- gen=-
+col   learning.work_episodes.agent_version text default=- ident=- gen=-
+col   learning.work_episodes.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   learning.work_episodes.ended_at timestamp with time zone default=- ident=- gen=-
+col   learning.work_episodes.grain text NOT NULL default='unknown'::text ident=- gen=-
+col   learning.work_episodes.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
+col   learning.work_episodes.ingest_batch_id uuid default=- ident=- gen=-
+col   learning.work_episodes.learner_id uuid NOT NULL default=- ident=- gen=-
+col   learning.work_episodes.machine text default=- ident=- gen=-
+col   learning.work_episodes.machine_class text NOT NULL default='human'::text ident=- gen=-
+col   learning.work_episodes.payload jsonb NOT NULL default='{}'::jsonb ident=- gen=-
+col   learning.work_episodes.project_ref text default=- ident=- gen=-
+col   learning.work_episodes.relevance_checked_at timestamp with time zone default=- ident=- gen=-
+col   learning.work_episodes.relevance_status text default=- ident=- gen=-
+col   learning.work_episodes.schema_version smallint NOT NULL default=1 ident=- gen=-
+col   learning.work_episodes.session_episode_id uuid default=- ident=- gen=-
+col   learning.work_episodes.session_ref text default=- ident=- gen=-
+col   learning.work_episodes.session_refs text[] default=- ident=- gen=-
+col   learning.work_episodes.source text NOT NULL default=- ident=- gen=-
+col   learning.work_episodes.started_at timestamp with time zone default=- ident=- gen=-
+col   learning.work_episodes.user_prompt text default=- ident=- gen=-
+col   learning.work_episodes.work_context_id uuid default=- ident=- gen=-
 con   billing.customers customers_pkey PRIMARY KEY (id)
 con   billing.customers customers_stripe_customer_id_key UNIQUE (stripe_customer_id)
 con   billing.customers customers_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
@@ -448,6 +841,209 @@ con   itera.users users_pkey PRIMARY KEY (id)
 con   itera.xp_events xp_events_pkey PRIMARY KEY (id)
 con   itera.xp_events xp_events_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
 con   itera.xp_events xp_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   learning.activities activities_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE SET NULL (claim_id)
+con   learning.activities activities_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (episode_id)
+con   learning.activities activities_intent_known CHECK ((intent = ANY (ARRAY['pedagogical'::text, 'operational'::text, 'decision'::text])))
+con   learning.activities activities_kind_shape CHECK (((kind ~ '^[a-z][a-z0-9_]*$'::text) AND (length(kind) <= 64)))
+con   learning.activities activities_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.activities activities_pkey PRIMARY KEY (id)
+con   learning.activities activities_spec_object CHECK ((jsonb_typeof(spec) = 'object'::text))
+con   learning.activities activities_status_known CHECK ((status = ANY (ARRAY['pending'::text, 'shown'::text, 'answered'::text, 'skipped'::text, 'deferred'::text, 'expired'::text])))
+con   learning.activities activities_targets_concept_fk FOREIGN KEY (targets_concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.activities activities_targets_misconception_fk FOREIGN KEY (targets_misconception_id) REFERENCES learning.misconceptions(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.activity_responses activity_responses_activity_same_learner FOREIGN KEY (activity_id, learner_id) REFERENCES learning.activities(id, learner_id) ON DELETE CASCADE
+con   learning.activity_responses activity_responses_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.activity_responses activity_responses_pkey PRIMARY KEY (id)
+con   learning.activity_responses activity_responses_response_object CHECK ((jsonb_typeof(response) = 'object'::text))
+con   learning.artifacts artifacts_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (episode_id)
+con   learning.artifacts artifacts_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.artifacts artifacts_pkey PRIMARY KEY (id)
+con   learning.artifacts artifacts_presence CHECK (((length(btrim(kind)) > 0) AND ((title IS NULL) OR (length(btrim(title)) > 0))))
+con   learning.artifacts artifacts_task_model_id_fkey FOREIGN KEY (task_model_id) REFERENCES learning.task_models(id) ON DELETE SET NULL
+con   learning.assembly_model_objectives assembly_model_objectives_assembly_model_id_fkey FOREIGN KEY (assembly_model_id) REFERENCES learning.assembly_models(id) ON DELETE CASCADE
+con   learning.assembly_model_objectives assembly_model_objectives_objective_id_fkey FOREIGN KEY (objective_id) REFERENCES learning.learning_objectives(id) ON DELETE CASCADE
+con   learning.assembly_model_objectives assembly_model_objectives_pkey PRIMARY KEY (assembly_model_id, objective_id)
+con   learning.assembly_models assembly_models_cadence_sane CHECK (((cadence_min_per_hour >= 0) AND (cadence_max_per_hour >= 1) AND (cadence_max_per_hour >= cadence_min_per_hour) AND (daily_cap >= 0) AND (ttl_hours > 0)))
+con   learning.assembly_models assembly_models_pkey PRIMARY KEY (id)
+con   learning.assembly_models assembly_models_ranking_mode_present CHECK ((length(btrim(ranking_mode)) > 0))
+con   learning.assembly_models assembly_models_scope_known CHECK ((scope = ANY (ARRAY['global'::text, 'module'::text, 'form'::text])))
+con   learning.capabilities capabilities_concept_fk FOREIGN KEY (concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.capabilities capabilities_id_present CHECK ((length(btrim(id)) > 0))
+con   learning.capabilities capabilities_introduced_in_fkey FOREIGN KEY (introduced_in) REFERENCES learning.ontology_versions(version)
+con   learning.capabilities capabilities_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.capabilities capabilities_pkey PRIMARY KEY (id)
+con   learning.capabilities capabilities_retired_after_introduced CHECK (((retired_in IS NULL) OR (retired_in >= introduced_in)))
+con   learning.capabilities capabilities_retired_in_fkey FOREIGN KEY (retired_in) REFERENCES learning.ontology_versions(version)
+con   learning.capabilities capabilities_source_names_kind CHECK (COALESCE(((jsonb_typeof((source -> 'kind'::text)) = 'string'::text) AND (length(btrim((source ->> 'kind'::text))) > 0)), false))
+con   learning.capabilities capabilities_source_object CHECK ((jsonb_typeof(source) = 'object'::text))
+con   learning.capabilities capabilities_title_present CHECK ((length(btrim(title)) > 0))
+con   learning.capability_proposals capability_proposals_capability_id_fkey FOREIGN KEY (capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.capability_proposals capability_proposals_cluster_present CHECK (((cardinality(residue_ids) >= 1) AND (array_position(residue_ids, NULL::uuid) IS NULL)))
+con   learning.capability_proposals capability_proposals_decision_pair CHECK (((decided_by IS NULL) = (decided_at IS NULL)))
+con   learning.capability_proposals capability_proposals_nearest_capability_id_fkey FOREIGN KEY (nearest_capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.capability_proposals capability_proposals_ontology_version_fkey FOREIGN KEY (ontology_version) REFERENCES learning.ontology_versions(version)
+con   learning.capability_proposals capability_proposals_pkey PRIMARY KEY (id)
+con   learning.capability_proposals capability_proposals_proposer_present CHECK (((length(btrim(proposed_by_kind)) > 0) AND (length(btrim(proposed_by)) > 0)))
+con   learning.capability_proposals capability_proposals_status_present CHECK ((length(btrim(status)) > 0))
+con   learning.capability_proposals capability_proposals_title_present CHECK ((length(btrim(title)) > 0))
+con   learning.capability_states capability_states_capability_id_fkey FOREIGN KEY (capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE CASCADE
+con   learning.capability_states capability_states_inputs_object CHECK (((jsonb_typeof(inputs) = 'object'::text) AND (inputs <> '{}'::jsonb)))
+con   learning.capability_states capability_states_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.capability_states capability_states_pkey PRIMARY KEY (id)
+con   learning.capability_states capability_states_reducer_version_present CHECK ((length(btrim(reducer_version)) > 0))
+con   learning.capability_states capability_states_state_present CHECK ((length(btrim(state)) > 0))
+con   learning.checkpoints checkpoints_decision_complete CHECK (((chosen_option_id IS NULL) = (decided_at IS NULL)))
+con   learning.checkpoints checkpoints_episode_id_fkey FOREIGN KEY (episode_id) REFERENCES learning.work_episodes(id) ON DELETE CASCADE
+con   learning.checkpoints checkpoints_options_array CHECK ((jsonb_typeof(options) = 'array'::text))
+con   learning.checkpoints checkpoints_pkey PRIMARY KEY (id)
+con   learning.checkpoints checkpoints_question_present CHECK ((length(btrim(question)) > 0))
+con   learning.claim_concepts claim_concepts_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
+con   learning.claim_concepts claim_concepts_concept_fk FOREIGN KEY (concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE CASCADE
+con   learning.claim_concepts claim_concepts_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.claim_concepts claim_concepts_pkey PRIMARY KEY (id)
+con   learning.claim_concepts claim_concepts_relation_present CHECK ((length(btrim(relation)) > 0))
+con   learning.claim_templates claim_templates_capability_id_fkey FOREIGN KEY (capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.claim_templates claim_templates_introduced_in_fkey FOREIGN KEY (introduced_in) REFERENCES learning.ontology_versions(version)
+con   learning.claim_templates claim_templates_pkey PRIMARY KEY (id)
+con   learning.claim_templates claim_templates_retired_after_introduced CHECK (((retired_in IS NULL) OR (retired_in >= introduced_in)))
+con   learning.claim_templates claim_templates_retired_in_fkey FOREIGN KEY (retired_in) REFERENCES learning.ontology_versions(version)
+con   learning.claim_templates claim_templates_statement_present CHECK ((length(btrim(statement)) > 0))
+con   learning.claims claims_claim_template_fk FOREIGN KEY (claim_template_id) REFERENCES learning.claim_templates(id) ON DELETE SET NULL
+con   learning.claims claims_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.claims claims_objective_same_learner FOREIGN KEY (objective_id, learner_id) REFERENCES learning.learning_objectives(id, learner_id) ON DELETE CASCADE
+con   learning.claims claims_pkey PRIMARY KEY (id)
+con   learning.claims claims_title_present CHECK ((length(btrim(title)) > 0))
+con   learning.claims claims_work_same_learner FOREIGN KEY (valued_work_id, learner_id) REFERENCES learning.valued_work(id, learner_id) ON DELETE SET NULL (valued_work_id)
+con   learning.concept_relations concept_relations_from_fk FOREIGN KEY (from_concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE CASCADE
+con   learning.concept_relations concept_relations_no_self_loop CHECK ((from_concept_id <> to_concept_id))
+con   learning.concept_relations concept_relations_pkey PRIMARY KEY (id)
+con   learning.concept_relations concept_relations_source_object CHECK ((jsonb_typeof(source) = 'object'::text))
+con   learning.concept_relations concept_relations_to_fk FOREIGN KEY (to_concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE CASCADE
+con   learning.concept_relations concept_relations_type_present CHECK ((length(btrim(relation_type)) > 0))
+con   learning.concepts concepts_id_present CHECK ((length(btrim(id)) > 0))
+con   learning.concepts concepts_kind_present CHECK ((length(btrim(kind)) > 0))
+con   learning.concepts concepts_label_present CHECK ((length(btrim(label)) > 0))
+con   learning.concepts concepts_pkey PRIMARY KEY (id)
+con   learning.concepts concepts_source_object CHECK ((jsonb_typeof(source) = 'object'::text))
+con   learning.episode_moments episode_moments_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE CASCADE
+con   learning.episode_moments episode_moments_kind_present CHECK (((length(btrim(kind)) > 0) AND (length(kind) <= 64)))
+con   learning.episode_moments episode_moments_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.episode_moments episode_moments_payload_object CHECK ((jsonb_typeof(payload) = 'object'::text))
+con   learning.episode_moments episode_moments_pkey PRIMARY KEY (id)
+con   learning.evidence evidence_actor_known CHECK ((actor = ANY (ARRAY['learner'::text, 'agent'::text, 'mixed'::text, 'unknown'::text])))
+con   learning.evidence evidence_artifact_same_learner FOREIGN KEY (artifact_id, learner_id) REFERENCES learning.artifacts(id, learner_id) ON DELETE SET NULL (artifact_id)
+con   learning.evidence evidence_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
+con   learning.evidence evidence_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (1)::numeric))))
+con   learning.evidence evidence_direction_known CHECK ((direction = ANY (ARRAY['supports'::text, 'weakens'::text, 'neutral'::text])))
+con   learning.evidence evidence_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (episode_id)
+con   learning.evidence evidence_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.evidence evidence_misconception_fk FOREIGN KEY (misconception_id) REFERENCES learning.misconceptions(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.evidence evidence_moment_same_learner FOREIGN KEY (moment_id, learner_id) REFERENCES learning.episode_moments(id, learner_id) ON DELETE SET NULL (moment_id)
+con   learning.evidence evidence_observed_present CHECK ((length(btrim(observed)) > 0))
+con   learning.evidence evidence_pkey PRIMARY KEY (id)
+con   learning.evidence evidence_provenance_object CHECK (((jsonb_typeof(provenance) = 'object'::text) AND (provenance <> '{}'::jsonb)))
+con   learning.evidence evidence_response_same_learner FOREIGN KEY (activity_response_id, learner_id) REFERENCES learning.activity_responses(id, learner_id) ON DELETE SET NULL (activity_response_id)
+con   learning.evidence evidence_status_known CHECK ((status = ANY (ARRAY['active'::text, 'superseded'::text])))
+con   learning.evidence evidence_strength_known CHECK ((strength = ANY (ARRAY['weak'::text, 'medium'::text, 'strong'::text])))
+con   learning.evidence evidence_turn_episode_same_learner FOREIGN KEY (turn_episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (turn_episode_id)
+con   learning.evidence_model_objectives evidence_model_objectives_evidence_model_id_fkey FOREIGN KEY (evidence_model_id) REFERENCES learning.evidence_models(id) ON DELETE CASCADE
+con   learning.evidence_model_objectives evidence_model_objectives_objective_id_fkey FOREIGN KEY (objective_id) REFERENCES learning.learning_objectives(id) ON DELETE CASCADE
+con   learning.evidence_model_objectives evidence_model_objectives_pkey PRIMARY KEY (evidence_model_id, objective_id)
+con   learning.evidence_models evidence_models_calibration_sane CHECK (((decay_half_life_days > (0)::numeric) AND (strong_min_distinct_episodes >= 1) AND (strong_min_distinct_projects >= 1) AND (per_episode_cap >= (0)::numeric)))
+con   learning.evidence_models evidence_models_pkey PRIMARY KEY (id)
+con   learning.extraction_passes extraction_passes_episode_id_learner_id_fkey FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE CASCADE
+con   learning.extraction_passes extraction_passes_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.extraction_passes extraction_passes_pass_id_check CHECK (((length(pass_id) >= 1) AND (length(pass_id) <= 200)))
+con   learning.extraction_passes extraction_passes_pkey PRIMARY KEY (learner_id, episode_id, pass_id)
+con   learning.extraction_passes extraction_passes_request_check CHECK (((jsonb_typeof(request) = 'object'::text) AND (octet_length((request)::text) <= 524288)))
+con   learning.extraction_passes extraction_passes_result_check CHECK ((jsonb_typeof(result) = 'object'::text))
+con   learning.generation_config generation_config_cadence_sane CHECK (((cadence_min_per_hour >= 0) AND (cadence_max_per_hour >= 1) AND (cadence_min_per_hour <= cadence_max_per_hour)))
+con   learning.generation_config generation_config_daily_cap_sane CHECK ((daily_cap >= 0))
+con   learning.generation_config generation_config_decay_half_life_sane CHECK ((decay_half_life_days > (0)::numeric))
+con   learning.generation_config generation_config_per_episode_cap_sane CHECK ((per_episode_cap >= (0)::numeric))
+con   learning.generation_config generation_config_pkey PRIMARY KEY (id)
+con   learning.generation_config generation_config_ranking_mode_known CHECK ((ranking_mode = ANY (ARRAY['info_gain'::text, 'recency'::text])))
+con   learning.generation_config generation_config_singleton CHECK ((id = 1))
+con   learning.generation_config generation_config_strong_episodes_sane CHECK ((strong_min_distinct_episodes >= 1))
+con   learning.generation_config generation_config_strong_projects_sane CHECK ((strong_min_distinct_projects >= 1))
+con   learning.generation_config generation_config_ttl_sane CHECK ((ttl_hours >= 1))
+con   learning.learner_state learner_state_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
+con   learning.learner_state learner_state_evidence_count_sane CHECK ((evidence_count >= 0))
+con   learning.learner_state learner_state_inputs_object CHECK (((jsonb_typeof(inputs) = 'object'::text) AND (inputs <> '{}'::jsonb)))
+con   learning.learner_state learner_state_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.learner_state learner_state_level_known CHECK ((level = ANY (ARRAY['unknown'::text, 'weak'::text, 'intermediate'::text, 'strong'::text])))
+con   learning.learner_state learner_state_pkey PRIMARY KEY (id)
+con   learning.learner_state learner_state_reducer_version_present CHECK ((length(btrim(reducer_version)) > 0))
+con   learning.learner_state_history learner_state_history_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
+con   learning.learner_state_history learner_state_history_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (episode_id)
+con   learning.learner_state_history learner_state_history_evidence_count_sane CHECK (((evidence_count >= 0) AND ((previous_evidence_count IS NULL) OR (previous_evidence_count >= 0))))
+con   learning.learner_state_history learner_state_history_gate_present CHECK (((length(btrim(gate)) > 0) AND (length(gate) <= 64)))
+con   learning.learner_state_history learner_state_history_is_a_change CHECK (((previous_level IS DISTINCT FROM level) OR (previous_evidence_count IS DISTINCT FROM evidence_count) OR ((previous_gate IS NOT NULL) AND (previous_gate <> gate))))
+con   learning.learner_state_history learner_state_history_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.learner_state_history learner_state_history_level_known CHECK ((level = ANY (ARRAY['unknown'::text, 'weak'::text, 'intermediate'::text, 'strong'::text])))
+con   learning.learner_state_history learner_state_history_one_trigger CHECK (((episode_id IS NULL) OR (activity_response_id IS NULL)))
+con   learning.learner_state_history learner_state_history_pkey PRIMARY KEY (id)
+con   learning.learner_state_history learner_state_history_previous_gate_shape CHECK (((previous_gate IS NULL) OR ((length(btrim(previous_gate)) > 0) AND (length(previous_gate) <= 64))))
+con   learning.learner_state_history learner_state_history_previous_level_known CHECK (((previous_level IS NULL) OR (previous_level = ANY (ARRAY['unknown'::text, 'weak'::text, 'intermediate'::text, 'strong'::text]))))
+con   learning.learner_state_history learner_state_history_reducer_version_present CHECK ((length(btrim(reducer_version)) > 0))
+con   learning.learner_state_history learner_state_history_response_same_learner FOREIGN KEY (activity_response_id, learner_id) REFERENCES learning.activity_responses(id, learner_id) ON DELETE SET NULL (activity_response_id)
+con   learning.learners learners_id_fkey FOREIGN KEY (id) REFERENCES itera.users(id) ON DELETE CASCADE
+con   learning.learners learners_pkey PRIMARY KEY (id)
+con   learning.learning_objectives learning_objectives_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.learning_objectives learning_objectives_pkey PRIMARY KEY (id)
+con   learning.learning_objectives learning_objectives_scope_kind_known CHECK ((scope_kind = ANY (ARRAY['global'::text, 'project'::text, 'domain'::text, 'time_range'::text])))
+con   learning.learning_objectives learning_objectives_scope_value_object CHECK (((scope_value IS NULL) OR (jsonb_typeof(scope_value) = 'object'::text)))
+con   learning.learning_objectives learning_objectives_status_known CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'achieved'::text, 'archived'::text])))
+con   learning.learning_objectives learning_objectives_title_present CHECK ((length(btrim(title)) > 0))
+con   learning.learning_objectives objectives_autonomy_present CHECK (((target_autonomy IS NULL) OR (length(btrim(target_autonomy)) > 0)))
+con   learning.misconceptions misconceptions_id_present CHECK ((length(btrim(id)) > 0))
+con   learning.misconceptions misconceptions_label_present CHECK ((length(btrim(label)) > 0))
+con   learning.misconceptions misconceptions_pkey PRIMARY KEY (id)
+con   learning.misconceptions misconceptions_source_object CHECK ((jsonb_typeof(source) = 'object'::text))
+con   learning.ontology_versions ontology_versions_pkey PRIMARY KEY (version)
+con   learning.ontology_versions ontology_versions_version_positive CHECK ((version >= 1))
+con   learning.residue residue_candidate_present CHECK ((length(btrim(candidate)) > 0))
+con   learning.residue residue_episode_same_learner FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE CASCADE
+con   learning.residue residue_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.residue residue_moment_fk FOREIGN KEY (moment_id, episode_id, learner_id) REFERENCES learning.episode_moments(id, episode_id, learner_id) ON DELETE SET NULL (moment_id)
+con   learning.residue residue_nearest_capability_id_fkey FOREIGN KEY (nearest_capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.residue residue_ontology_version_fkey FOREIGN KEY (ontology_version) REFERENCES learning.ontology_versions(version)
+con   learning.residue residue_pass_id_present CHECK ((length(btrim(pass_id)) > 0))
+con   learning.residue residue_pkey PRIMARY KEY (id)
+con   learning.residue residue_promoted_names_capability CHECK (((status <> 'promoted'::text) OR (promoted_to_capability_id IS NOT NULL)))
+con   learning.residue residue_promoted_to_capability_id_fkey FOREIGN KEY (promoted_to_capability_id) REFERENCES learning.capabilities(id) ON UPDATE CASCADE ON DELETE SET NULL
+con   learning.residue residue_quality_present CHECK ((length(btrim(quality)) > 0))
+con   learning.residue residue_status_present CHECK ((length(btrim(status)) > 0))
+con   learning.residue_repasses residue_repasses_episode_id_learner_id_fkey FOREIGN KEY (episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE CASCADE
+con   learning.residue_repasses residue_repasses_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.residue_repasses residue_repasses_pass_id_check CHECK ((((length(pass_id) >= 4) AND (length(pass_id) <= 200)) AND (pass_id ~~ 'rr:%'::text)))
+con   learning.residue_repasses residue_repasses_pkey PRIMARY KEY (learner_id, episode_id, pass_id)
+con   learning.residue_repasses residue_repasses_request_check CHECK (((jsonb_typeof(request) = 'object'::text) AND (octet_length((request)::text) <= 524288)))
+con   learning.task_models task_models_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.task_models task_models_objective_same_learner FOREIGN KEY (objective_id, learner_id) REFERENCES learning.learning_objectives(id, learner_id) ON DELETE SET NULL (objective_id)
+con   learning.task_models task_models_pkey PRIMARY KEY (id)
+con   learning.task_models task_models_presence CHECK (((length(btrim(title)) > 0) AND (length(btrim(expectation)) > 0) AND ((kind IS NULL) OR (length(btrim(kind)) > 0))))
+con   learning.task_models task_models_shared_has_no_private_parent CHECK (((learner_id IS NOT NULL) OR ((objective_id IS NULL) AND (valued_work_id IS NULL))))
+con   learning.task_models task_models_work_same_learner FOREIGN KEY (valued_work_id, learner_id) REFERENCES learning.valued_work(id, learner_id) ON DELETE SET NULL (valued_work_id)
+con   learning.valued_work valued_work_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.valued_work valued_work_pkey PRIMARY KEY (id)
+con   learning.valued_work valued_work_presence CHECK (((length(btrim(title)) > 0) AND (length(btrim(status)) > 0) AND ((kind IS NULL) OR (length(btrim(kind)) > 0))))
+con   learning.work_contexts work_contexts_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.work_contexts work_contexts_machine_class_present CHECK ((length(btrim(machine_class)) > 0))
+con   learning.work_contexts work_contexts_pkey PRIMARY KEY (id)
+con   learning.work_contexts work_contexts_project_root_present CHECK ((length(btrim(project_root)) > 0))
+con   learning.work_episodes work_episodes_context_same_learner FOREIGN KEY (work_context_id, learner_id) REFERENCES learning.work_contexts(id, learner_id) ON DELETE SET NULL (work_context_id)
+con   learning.work_episodes work_episodes_grain_known CHECK ((grain = ANY (ARRAY['session'::text, 'turn'::text, 'unknown'::text])))
+con   learning.work_episodes work_episodes_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
+con   learning.work_episodes work_episodes_machine_class_known CHECK ((machine_class = ANY (ARRAY['human'::text, 'agent'::text])))
+con   learning.work_episodes work_episodes_payload_object CHECK ((jsonb_typeof(payload) = 'object'::text))
+con   learning.work_episodes work_episodes_pkey PRIMARY KEY (id)
+con   learning.work_episodes work_episodes_relevance_marker_paired CHECK ((((relevance_status IS NULL) AND (relevance_checked_at IS NULL)) OR ((relevance_status IS NOT NULL) AND (relevance_checked_at IS NOT NULL))))
+con   learning.work_episodes work_episodes_relevance_status_known CHECK (((relevance_status IS NULL) OR (relevance_status = ANY (ARRAY['relevant'::text, 'not_relevant'::text]))))
+con   learning.work_episodes work_episodes_schema_version_known CHECK ((schema_version >= 1))
+con   learning.work_episodes work_episodes_session_not_self CHECK (((session_episode_id IS NULL) OR (session_episode_id <> id)))
+con   learning.work_episodes work_episodes_session_same_learner FOREIGN KEY (session_episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (session_episode_id)
+con   learning.work_episodes work_episodes_source_present CHECK ((length(btrim(source)) > 0))
 cron  itera-reap-stale-live-class-sessions */5 * * * *
 fn    itera.award_activity_xp(p_activity_id uuid, p_amount integer) -> integer kind=f vol=v secdef=t cfg=search_path=itera, public body=f0c61d278cd7
 fn    itera.can_access_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=38f7b8a697e1
@@ -477,6 +1073,44 @@ fn    itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email tex
 fn    itera.set_updated_at() -> trigger kind=f vol=v secdef=f cfg=- body=301a884953d3
 fn    itera.sync_activity_def_to_instances() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public body=60f7f31b28b0
 fn    itera.test_tenant_isolation_violations() -> TABLE(user_id uuid, email text, test_tenant text, real_tenant text, role_in_real itera.member_role) kind=f vol=s secdef=t cfg=search_path=itera, public body=5e4f8f7f565f
+fn    learning.apply_dml(p_operation text, p_payload jsonb) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=5f6e69fee0f1
+fn    learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) -> void kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=2f14854097a3
+fn    learning.assert_evidence_metadata_lossless(value learning.evidence) -> void kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=6857865e753e
+fn    learning.bridge_evidence_metadata() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning body=c76759eff48d
+fn    learning.delete_artifact(p_artifact_id uuid) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=664bb877f7bd
+fn    learning.evidence_js_sort_key(value text) -> integer[] kind=f vol=i secdef=f cfg=- body=05ed1dfa142c
+fn    learning.evidence_metadata_from_json(value jsonb) -> learning.evidence kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=f3eb3ac7c248
+fn    learning.evidence_metadata_integer(value jsonb) -> integer kind=f vol=i secdef=f cfg=search_path=pg_catalog body=e114625dc16b
+fn    learning.evidence_metadata_keys(value jsonb) -> text[] kind=f vol=i secdef=f cfg=search_path=pg_catalog body=5762f34fc16b
+fn    learning.evidence_status_after_delete() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=45958c712de3
+fn    learning.evidence_status_after_insert() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=e65426661c39
+fn    learning.evidence_status_after_update() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=3e87ab0bc968
+fn    learning.evidence_status_lock_caller() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=11c34aa0145a
+fn    learning.export_evidence_columns() -> text[] kind=f vol=s secdef=f cfg=search_path="" body=2493576f52cf
+fn    learning.export_inventory() -> jsonb kind=f vol=s secdef=f cfg=search_path=pg_catalog body=efb7c6410e22
+fn    learning.guard_c1_links() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=d654c7cf0212
+fn    learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=f29742bb642a
+fn    learning.lock_ontology_writer() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog body=deba806b4686
+fn    learning.lock_residue_repass() -> void kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=85aa2a847a5a
+fn    learning.native_evidence_metadata(value learning.evidence) -> jsonb kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=8f01c52a6a6f
+fn    learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) -> jsonb kind=f vol=v secdef=f cfg=search_path="" body=9e40fbca4ac5
+fn    learning.record_extraction_pass(p_request jsonb) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=c039770b9d45
+fn    learning.record_residue_repass(p_request jsonb) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=d08728d6b4f7
+fn    learning.refresh_evidence_status(p_claim_ids uuid[]) -> integer kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=02d1f596c9dc
+fn    learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) -> integer kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=3fae05378727
+fn    learning.residue_repass_context(p_episode_id uuid) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=085b0718ff59
+fn    learning.validate_extraction_receipt() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=68715bb0916d
+fn    learning.write_residue_repass() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=e6de4e48469d
+gcol  learning.checkpoints.chosen_option_id authenticated UPDATE grantable=f
+gcol  learning.checkpoints.decided_at authenticated UPDATE grantable=f
+gcol  learning.evidence.status authenticated UPDATE grantable=f
+gcol  learning.residue.ontology_version authenticated UPDATE grantable=f
+gcol  learning.residue.promoted_at authenticated UPDATE grantable=f
+gcol  learning.residue.promoted_by authenticated UPDATE grantable=f
+gcol  learning.residue.promoted_to_capability_id authenticated UPDATE grantable=f
+gcol  learning.residue.status authenticated UPDATE grantable=f
+gcol  learning.work_episodes.relevance_checked_at authenticated UPDATE grantable=f
+gcol  learning.work_episodes.relevance_status authenticated UPDATE grantable=f
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) anon exec=t
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) authenticated exec=t
 gfn   itera.award_activity_xp(p_activity_id uuid, p_amount integer) service_role exec=t
@@ -589,6 +1223,118 @@ gfn   itera.test_tenant_isolation_violations() anon exec=f
 gfn   itera.test_tenant_isolation_violations() authenticated exec=t
 gfn   itera.test_tenant_isolation_violations() service_role exec=f
 gfn   itera.test_tenant_isolation_violations() supabase_auth_admin exec=f
+gfn   learning.apply_dml(p_operation text, p_payload jsonb) anon exec=f
+gfn   learning.apply_dml(p_operation text, p_payload jsonb) authenticated exec=t
+gfn   learning.apply_dml(p_operation text, p_payload jsonb) service_role exec=f
+gfn   learning.apply_dml(p_operation text, p_payload jsonb) supabase_auth_admin exec=f
+gfn   learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) anon exec=f
+gfn   learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) authenticated exec=t
+gfn   learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) service_role exec=f
+gfn   learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) supabase_auth_admin exec=f
+gfn   learning.assert_evidence_metadata_lossless(value learning.evidence) anon exec=f
+gfn   learning.assert_evidence_metadata_lossless(value learning.evidence) authenticated exec=t
+gfn   learning.assert_evidence_metadata_lossless(value learning.evidence) service_role exec=f
+gfn   learning.assert_evidence_metadata_lossless(value learning.evidence) supabase_auth_admin exec=f
+gfn   learning.bridge_evidence_metadata() anon exec=f
+gfn   learning.bridge_evidence_metadata() authenticated exec=t
+gfn   learning.bridge_evidence_metadata() service_role exec=f
+gfn   learning.bridge_evidence_metadata() supabase_auth_admin exec=f
+gfn   learning.delete_artifact(p_artifact_id uuid) anon exec=f
+gfn   learning.delete_artifact(p_artifact_id uuid) authenticated exec=t
+gfn   learning.delete_artifact(p_artifact_id uuid) service_role exec=f
+gfn   learning.delete_artifact(p_artifact_id uuid) supabase_auth_admin exec=f
+gfn   learning.evidence_js_sort_key(value text) anon exec=f
+gfn   learning.evidence_js_sort_key(value text) authenticated exec=t
+gfn   learning.evidence_js_sort_key(value text) service_role exec=f
+gfn   learning.evidence_js_sort_key(value text) supabase_auth_admin exec=f
+gfn   learning.evidence_metadata_from_json(value jsonb) anon exec=f
+gfn   learning.evidence_metadata_from_json(value jsonb) authenticated exec=t
+gfn   learning.evidence_metadata_from_json(value jsonb) service_role exec=f
+gfn   learning.evidence_metadata_from_json(value jsonb) supabase_auth_admin exec=f
+gfn   learning.evidence_metadata_integer(value jsonb) anon exec=f
+gfn   learning.evidence_metadata_integer(value jsonb) authenticated exec=t
+gfn   learning.evidence_metadata_integer(value jsonb) service_role exec=f
+gfn   learning.evidence_metadata_integer(value jsonb) supabase_auth_admin exec=f
+gfn   learning.evidence_metadata_keys(value jsonb) anon exec=f
+gfn   learning.evidence_metadata_keys(value jsonb) authenticated exec=t
+gfn   learning.evidence_metadata_keys(value jsonb) service_role exec=f
+gfn   learning.evidence_metadata_keys(value jsonb) supabase_auth_admin exec=f
+gfn   learning.evidence_status_after_delete() anon exec=t
+gfn   learning.evidence_status_after_delete() authenticated exec=t
+gfn   learning.evidence_status_after_delete() service_role exec=t
+gfn   learning.evidence_status_after_delete() supabase_auth_admin exec=t
+gfn   learning.evidence_status_after_insert() anon exec=t
+gfn   learning.evidence_status_after_insert() authenticated exec=t
+gfn   learning.evidence_status_after_insert() service_role exec=t
+gfn   learning.evidence_status_after_insert() supabase_auth_admin exec=t
+gfn   learning.evidence_status_after_update() anon exec=t
+gfn   learning.evidence_status_after_update() authenticated exec=t
+gfn   learning.evidence_status_after_update() service_role exec=t
+gfn   learning.evidence_status_after_update() supabase_auth_admin exec=t
+gfn   learning.evidence_status_lock_caller() anon exec=t
+gfn   learning.evidence_status_lock_caller() authenticated exec=t
+gfn   learning.evidence_status_lock_caller() service_role exec=t
+gfn   learning.evidence_status_lock_caller() supabase_auth_admin exec=t
+gfn   learning.export_evidence_columns() anon exec=f
+gfn   learning.export_evidence_columns() authenticated exec=t
+gfn   learning.export_evidence_columns() service_role exec=f
+gfn   learning.export_evidence_columns() supabase_auth_admin exec=f
+gfn   learning.export_inventory() anon exec=f
+gfn   learning.export_inventory() authenticated exec=t
+gfn   learning.export_inventory() service_role exec=f
+gfn   learning.export_inventory() supabase_auth_admin exec=f
+gfn   learning.guard_c1_links() anon exec=f
+gfn   learning.guard_c1_links() authenticated exec=t
+gfn   learning.guard_c1_links() service_role exec=f
+gfn   learning.guard_c1_links() supabase_auth_admin exec=f
+gfn   learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) anon exec=f
+gfn   learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) authenticated exec=t
+gfn   learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) service_role exec=f
+gfn   learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) supabase_auth_admin exec=f
+gfn   learning.lock_ontology_writer() anon exec=t
+gfn   learning.lock_ontology_writer() authenticated exec=t
+gfn   learning.lock_ontology_writer() service_role exec=t
+gfn   learning.lock_ontology_writer() supabase_auth_admin exec=t
+gfn   learning.lock_residue_repass() anon exec=f
+gfn   learning.lock_residue_repass() authenticated exec=t
+gfn   learning.lock_residue_repass() service_role exec=f
+gfn   learning.lock_residue_repass() supabase_auth_admin exec=f
+gfn   learning.native_evidence_metadata(value learning.evidence) anon exec=f
+gfn   learning.native_evidence_metadata(value learning.evidence) authenticated exec=t
+gfn   learning.native_evidence_metadata(value learning.evidence) service_role exec=f
+gfn   learning.native_evidence_metadata(value learning.evidence) supabase_auth_admin exec=f
+gfn   learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) anon exec=f
+gfn   learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) authenticated exec=t
+gfn   learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) service_role exec=f
+gfn   learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) supabase_auth_admin exec=f
+gfn   learning.record_extraction_pass(p_request jsonb) anon exec=f
+gfn   learning.record_extraction_pass(p_request jsonb) authenticated exec=t
+gfn   learning.record_extraction_pass(p_request jsonb) service_role exec=f
+gfn   learning.record_extraction_pass(p_request jsonb) supabase_auth_admin exec=f
+gfn   learning.record_residue_repass(p_request jsonb) anon exec=f
+gfn   learning.record_residue_repass(p_request jsonb) authenticated exec=t
+gfn   learning.record_residue_repass(p_request jsonb) service_role exec=f
+gfn   learning.record_residue_repass(p_request jsonb) supabase_auth_admin exec=f
+gfn   learning.refresh_evidence_status(p_claim_ids uuid[]) anon exec=f
+gfn   learning.refresh_evidence_status(p_claim_ids uuid[]) authenticated exec=t
+gfn   learning.refresh_evidence_status(p_claim_ids uuid[]) service_role exec=f
+gfn   learning.refresh_evidence_status(p_claim_ids uuid[]) supabase_auth_admin exec=f
+gfn   learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) anon exec=f
+gfn   learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) authenticated exec=t
+gfn   learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) service_role exec=f
+gfn   learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) supabase_auth_admin exec=f
+gfn   learning.residue_repass_context(p_episode_id uuid) anon exec=f
+gfn   learning.residue_repass_context(p_episode_id uuid) authenticated exec=t
+gfn   learning.residue_repass_context(p_episode_id uuid) service_role exec=f
+gfn   learning.residue_repass_context(p_episode_id uuid) supabase_auth_admin exec=f
+gfn   learning.validate_extraction_receipt() anon exec=t
+gfn   learning.validate_extraction_receipt() authenticated exec=t
+gfn   learning.validate_extraction_receipt() service_role exec=t
+gfn   learning.validate_extraction_receipt() supabase_auth_admin exec=t
+gfn   learning.write_residue_repass() anon exec=f
+gfn   learning.write_residue_repass() authenticated exec=f
+gfn   learning.write_residue_repass() service_role exec=f
+gfn   learning.write_residue_repass() supabase_auth_admin exec=f
 gsch  billing anon usage=f create=f
 gsch  billing authenticated usage=f create=f
 gsch  billing service_role usage=f create=f
@@ -597,6 +1343,10 @@ gsch  itera anon usage=t create=f
 gsch  itera authenticated usage=t create=f
 gsch  itera service_role usage=t create=f
 gsch  itera supabase_auth_admin usage=t create=f
+gsch  learning anon usage=f create=f
+gsch  learning authenticated usage=t create=f
+gsch  learning service_role usage=f create=f
+gsch  learning supabase_auth_admin usage=f create=f
 gtbl  billing.customers anon -
 gtbl  billing.customers authenticated -
 gtbl  billing.customers service_role -
@@ -749,6 +1499,134 @@ gtbl  itera.xp_events anon SELECT
 gtbl  itera.xp_events authenticated SELECT
 gtbl  itera.xp_events service_role -
 gtbl  itera.xp_events supabase_auth_admin -
+gtbl  learning.activities anon -
+gtbl  learning.activities authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.activities service_role -
+gtbl  learning.activities supabase_auth_admin -
+gtbl  learning.activity_responses anon -
+gtbl  learning.activity_responses authenticated DELETE,INSERT,SELECT
+gtbl  learning.activity_responses service_role -
+gtbl  learning.activity_responses supabase_auth_admin -
+gtbl  learning.artifacts anon -
+gtbl  learning.artifacts authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.artifacts service_role -
+gtbl  learning.artifacts supabase_auth_admin -
+gtbl  learning.assembly_model_objectives anon -
+gtbl  learning.assembly_model_objectives authenticated DELETE,INSERT,SELECT
+gtbl  learning.assembly_model_objectives service_role -
+gtbl  learning.assembly_model_objectives supabase_auth_admin -
+gtbl  learning.assembly_models anon -
+gtbl  learning.assembly_models authenticated INSERT,SELECT,UPDATE
+gtbl  learning.assembly_models service_role -
+gtbl  learning.assembly_models supabase_auth_admin -
+gtbl  learning.capabilities anon -
+gtbl  learning.capabilities authenticated INSERT,SELECT,UPDATE
+gtbl  learning.capabilities service_role -
+gtbl  learning.capabilities supabase_auth_admin -
+gtbl  learning.capability_proposals anon -
+gtbl  learning.capability_proposals authenticated INSERT,SELECT,UPDATE
+gtbl  learning.capability_proposals service_role -
+gtbl  learning.capability_proposals supabase_auth_admin -
+gtbl  learning.capability_states anon -
+gtbl  learning.capability_states authenticated INSERT,SELECT,UPDATE
+gtbl  learning.capability_states service_role -
+gtbl  learning.capability_states supabase_auth_admin -
+gtbl  learning.checkpoints anon -
+gtbl  learning.checkpoints authenticated INSERT,SELECT
+gtbl  learning.checkpoints service_role -
+gtbl  learning.checkpoints supabase_auth_admin -
+gtbl  learning.claim_concepts anon -
+gtbl  learning.claim_concepts authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.claim_concepts service_role -
+gtbl  learning.claim_concepts supabase_auth_admin -
+gtbl  learning.claim_templates anon -
+gtbl  learning.claim_templates authenticated INSERT,SELECT,UPDATE
+gtbl  learning.claim_templates service_role -
+gtbl  learning.claim_templates supabase_auth_admin -
+gtbl  learning.claims anon -
+gtbl  learning.claims authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.claims service_role -
+gtbl  learning.claims supabase_auth_admin -
+gtbl  learning.concept_relations anon -
+gtbl  learning.concept_relations authenticated INSERT,SELECT,UPDATE
+gtbl  learning.concept_relations service_role -
+gtbl  learning.concept_relations supabase_auth_admin -
+gtbl  learning.concepts anon -
+gtbl  learning.concepts authenticated INSERT,SELECT,UPDATE
+gtbl  learning.concepts service_role -
+gtbl  learning.concepts supabase_auth_admin -
+gtbl  learning.episode_moments anon -
+gtbl  learning.episode_moments authenticated INSERT,SELECT
+gtbl  learning.episode_moments service_role -
+gtbl  learning.episode_moments supabase_auth_admin -
+gtbl  learning.evidence anon -
+gtbl  learning.evidence authenticated DELETE,INSERT,SELECT
+gtbl  learning.evidence service_role -
+gtbl  learning.evidence supabase_auth_admin -
+gtbl  learning.evidence_model_objectives anon -
+gtbl  learning.evidence_model_objectives authenticated DELETE,INSERT,SELECT
+gtbl  learning.evidence_model_objectives service_role -
+gtbl  learning.evidence_model_objectives supabase_auth_admin -
+gtbl  learning.evidence_models anon -
+gtbl  learning.evidence_models authenticated INSERT,SELECT,UPDATE
+gtbl  learning.evidence_models service_role -
+gtbl  learning.evidence_models supabase_auth_admin -
+gtbl  learning.extraction_passes anon -
+gtbl  learning.extraction_passes authenticated INSERT,SELECT
+gtbl  learning.extraction_passes service_role -
+gtbl  learning.extraction_passes supabase_auth_admin -
+gtbl  learning.generation_config anon -
+gtbl  learning.generation_config authenticated SELECT
+gtbl  learning.generation_config service_role -
+gtbl  learning.generation_config supabase_auth_admin -
+gtbl  learning.learner_state anon -
+gtbl  learning.learner_state authenticated INSERT,SELECT,UPDATE
+gtbl  learning.learner_state service_role -
+gtbl  learning.learner_state supabase_auth_admin -
+gtbl  learning.learner_state_history anon -
+gtbl  learning.learner_state_history authenticated INSERT,SELECT
+gtbl  learning.learner_state_history service_role -
+gtbl  learning.learner_state_history supabase_auth_admin -
+gtbl  learning.learners anon -
+gtbl  learning.learners authenticated INSERT,SELECT,UPDATE
+gtbl  learning.learners service_role -
+gtbl  learning.learners supabase_auth_admin -
+gtbl  learning.learning_objectives anon -
+gtbl  learning.learning_objectives authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.learning_objectives service_role -
+gtbl  learning.learning_objectives supabase_auth_admin -
+gtbl  learning.misconceptions anon -
+gtbl  learning.misconceptions authenticated INSERT,SELECT,UPDATE
+gtbl  learning.misconceptions service_role -
+gtbl  learning.misconceptions supabase_auth_admin -
+gtbl  learning.ontology_versions anon -
+gtbl  learning.ontology_versions authenticated INSERT,SELECT
+gtbl  learning.ontology_versions service_role -
+gtbl  learning.ontology_versions supabase_auth_admin -
+gtbl  learning.residue anon -
+gtbl  learning.residue authenticated INSERT,SELECT
+gtbl  learning.residue service_role -
+gtbl  learning.residue supabase_auth_admin -
+gtbl  learning.residue_repasses anon -
+gtbl  learning.residue_repasses authenticated INSERT,SELECT
+gtbl  learning.residue_repasses service_role -
+gtbl  learning.residue_repasses supabase_auth_admin -
+gtbl  learning.task_models anon -
+gtbl  learning.task_models authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.task_models service_role -
+gtbl  learning.task_models supabase_auth_admin -
+gtbl  learning.valued_work anon -
+gtbl  learning.valued_work authenticated DELETE,INSERT,SELECT,UPDATE
+gtbl  learning.valued_work service_role -
+gtbl  learning.valued_work supabase_auth_admin -
+gtbl  learning.work_contexts anon -
+gtbl  learning.work_contexts authenticated INSERT,SELECT
+gtbl  learning.work_contexts service_role -
+gtbl  learning.work_contexts supabase_auth_admin -
+gtbl  learning.work_episodes anon -
+gtbl  learning.work_episodes authenticated INSERT,SELECT
+gtbl  learning.work_episodes service_role -
+gtbl  learning.work_episodes supabase_auth_admin -
 idx   CREATE INDEX activities_def_id_idx ON itera.activities USING btree (def_id)
 idx   CREATE INDEX activities_status_idx ON itera.activities USING btree (status)
 idx   CREATE INDEX activity_comments_activity_idx ON itera.activity_comments USING btree (activity_id)
@@ -760,17 +1638,27 @@ idx   CREATE INDEX activity_defs_tenant_idx ON itera.activity_defs USING btree (
 idx   CREATE INDEX activity_i18n_backup_row_idx ON itera.activity_i18n_backup USING btree (source_table, row_id)
 idx   CREATE INDEX class_stars_session_idx ON itera.class_stars USING btree (session_id)
 idx   CREATE INDEX idx_activities_artifact_policy ON itera.activities USING gin (artifact_policy) WHERE (artifact_policy <> '{}'::jsonb)
+idx   CREATE INDEX idx_activities_claim ON learning.activities USING btree (claim_id)
+idx   CREATE INDEX idx_activities_learner_status ON learning.activities USING btree (learner_id, status, created_at DESC)
 idx   CREATE INDEX idx_activities_lesson ON itera.activities USING btree (lesson_id)
+idx   CREATE INDEX idx_activities_targets_concept ON learning.activities USING btree (targets_concept_id)
+idx   CREATE INDEX idx_activities_targets_misconception ON learning.activities USING btree (targets_misconception_id)
+idx   CREATE INDEX idx_activity_responses_activity ON learning.activity_responses USING btree (activity_id)
+idx   CREATE INDEX idx_activity_responses_learner_time ON learning.activity_responses USING btree (learner_id, responded_at DESC)
 idx   CREATE INDEX idx_activity_traces_abandoned ON itera.activity_traces USING btree (activity_id) WHERE (outcome = 'abandoned'::text)
 idx   CREATE INDEX idx_activity_traces_activity ON itera.activity_traces USING btree (activity_id)
 idx   CREATE INDEX idx_activity_traces_user ON itera.activity_traces USING btree (user_id)
 idx   CREATE INDEX idx_api_keys_tenant ON itera.api_keys USING btree (tenant_id)
+idx   CREATE INDEX idx_artifacts_episode ON learning.artifacts USING btree (episode_id)
+idx   CREATE INDEX idx_artifacts_learner ON learning.artifacts USING btree (learner_id)
 idx   CREATE INDEX idx_artifacts_sha ON itera.artifacts USING btree (content_sha256)
+idx   CREATE INDEX idx_artifacts_task_model ON learning.artifacts USING btree (task_model_id)
 idx   CREATE INDEX idx_artifacts_tenant ON itera.artifacts USING btree (tenant_id)
 idx   CREATE INDEX idx_artifacts_tenant_repo_path ON itera.artifacts USING btree (tenant_id, repo_path) WHERE (tenant_id IS NOT NULL)
 idx   CREATE INDEX idx_artifacts_user ON itera.artifacts USING btree (user_id)
 idx   CREATE INDEX idx_artifacts_user_activity_version ON itera.artifacts USING btree (user_id, activity_id, version DESC)
 idx   CREATE INDEX idx_artifacts_user_repo_path ON itera.artifacts USING btree (user_id, repo_path)
+idx   CREATE INDEX idx_assembly_model_objectives_objective ON learning.assembly_model_objectives USING btree (objective_id)
 idx   CREATE INDEX idx_billing_invoices_subscription ON billing.invoices USING btree (subscription_id)
 idx   CREATE INDEX idx_billing_invoices_tenant ON billing.invoices USING btree (tenant_id)
 idx   CREATE INDEX idx_billing_subscriptions_customer ON billing.subscriptions USING btree (customer_id)
@@ -778,33 +1666,88 @@ idx   CREATE INDEX idx_billing_subscriptions_tenant ON billing.subscriptions USI
 idx   CREATE INDEX idx_billing_webhook_events_type ON billing.webhook_events USING btree (type)
 idx   CREATE INDEX idx_byoc_generations_activity ON itera.byoc_generations USING btree (activity_id, created_at DESC)
 idx   CREATE INDEX idx_byoc_generations_latest ON itera.byoc_generations USING btree (user_id, activity_id, created_at DESC)
+idx   CREATE INDEX idx_capabilities_current ON learning.capabilities USING btree (retired_in)
+idx   CREATE INDEX idx_capabilities_learner ON learning.capabilities USING btree (learner_id) WHERE (learner_id IS NOT NULL)
+idx   CREATE INDEX idx_capability_proposals_capability ON learning.capability_proposals USING btree (capability_id) WHERE (capability_id IS NOT NULL)
+idx   CREATE INDEX idx_capability_proposals_residue ON learning.capability_proposals USING gin (residue_ids)
+idx   CREATE INDEX idx_capability_proposals_status ON learning.capability_proposals USING btree (status, proposed_at DESC)
+idx   CREATE INDEX idx_checkpoints_episode ON learning.checkpoints USING btree (episode_id, created_at DESC)
+idx   CREATE INDEX idx_claim_concepts_concept ON learning.claim_concepts USING btree (concept_id)
+idx   CREATE INDEX idx_claim_concepts_learner ON learning.claim_concepts USING btree (learner_id)
+idx   CREATE INDEX idx_claim_templates_capability ON learning.claim_templates USING btree (capability_id)
+idx   CREATE INDEX idx_claim_templates_current ON learning.claim_templates USING btree (retired_in)
+idx   CREATE INDEX idx_claims_claim_template ON learning.claims USING btree (claim_template_id) WHERE (claim_template_id IS NOT NULL)
+idx   CREATE INDEX idx_claims_objective ON learning.claims USING btree (objective_id, sort_order)
+idx   CREATE INDEX idx_claims_valued_work ON learning.claims USING btree (valued_work_id)
 idx   CREATE INDEX idx_class_sessions_live ON itera.class_sessions USING btree (scope, status) WHERE (status = 'live'::itera.class_session_status)
 idx   CREATE INDEX idx_class_sessions_status ON itera.class_sessions USING btree (status)
 idx   CREATE INDEX idx_class_sessions_tenant ON itera.class_sessions USING btree (tenant_id)
+idx   CREATE INDEX idx_concept_relations_from ON learning.concept_relations USING btree (from_concept_id)
+idx   CREATE INDEX idx_concept_relations_to ON learning.concept_relations USING btree (to_concept_id)
+idx   CREATE INDEX idx_concepts_kind ON learning.concepts USING btree (kind)
+idx   CREATE INDEX idx_episode_moments_episode ON learning.episode_moments USING btree (episode_id, at)
+idx   CREATE INDEX idx_evidence_artifact ON learning.evidence USING btree (artifact_id)
+idx   CREATE INDEX idx_evidence_claim ON learning.evidence USING btree (claim_id, created_at DESC)
+idx   CREATE INDEX idx_evidence_episode ON learning.evidence USING btree (episode_id)
+idx   CREATE INDEX idx_evidence_learner_time ON learning.evidence USING btree (learner_id, created_at DESC)
+idx   CREATE INDEX idx_evidence_misconception ON learning.evidence USING btree (misconception_id)
+idx   CREATE INDEX idx_evidence_model_objectives_objective ON learning.evidence_model_objectives USING btree (objective_id)
+idx   CREATE INDEX idx_evidence_moment ON learning.evidence USING btree (moment_id) WHERE (moment_id IS NOT NULL)
+idx   CREATE INDEX idx_evidence_turn_episode ON learning.evidence USING btree (turn_episode_id) WHERE (turn_episode_id IS NOT NULL)
+idx   CREATE INDEX idx_learner_state_history_claim ON learning.learner_state_history USING btree (claim_id, computed_at DESC, created_at DESC)
+idx   CREATE INDEX idx_learner_state_history_episode ON learning.learner_state_history USING btree (episode_id) WHERE (episode_id IS NOT NULL)
+idx   CREATE INDEX idx_learner_state_history_learner_time ON learning.learner_state_history USING btree (learner_id, computed_at DESC)
+idx   CREATE INDEX idx_learning_objectives_learner_status ON learning.learning_objectives USING btree (learner_id, status)
 idx   CREATE INDEX idx_lessons_unit ON itera.lessons USING btree (unit_id)
 idx   CREATE INDEX idx_memberships_tenant ON itera.memberships USING btree (tenant_id)
 idx   CREATE INDEX idx_programs_live ON itera.programs USING btree (tenant_id) WHERE (archived_at IS NULL)
 idx   CREATE INDEX idx_programs_tenant ON itera.programs USING btree (tenant_id)
+idx   CREATE INDEX idx_residue_episode ON learning.residue USING btree (episode_id)
+idx   CREATE INDEX idx_residue_learner ON learning.residue USING btree (learner_id, status)
+idx   CREATE INDEX idx_residue_nearest ON learning.residue USING btree (nearest_capability_id) WHERE (nearest_capability_id IS NOT NULL)
+idx   CREATE INDEX idx_residue_open ON learning.residue USING btree (status, ontology_version, pass_at DESC)
 idx   CREATE INDEX idx_results_user ON itera.activity_results USING btree (user_id)
+idx   CREATE INDEX idx_task_models_learner ON learning.task_models USING btree (learner_id)
+idx   CREATE INDEX idx_task_models_objective ON learning.task_models USING btree (objective_id)
+idx   CREATE INDEX idx_task_models_work ON learning.task_models USING btree (valued_work_id)
 idx   CREATE INDEX idx_units_program ON itera.units USING btree (program_id)
+idx   CREATE INDEX idx_valued_work_learner ON learning.valued_work USING btree (learner_id)
+idx   CREATE INDEX idx_work_episodes_context ON learning.work_episodes USING btree (work_context_id) WHERE (work_context_id IS NOT NULL)
+idx   CREATE INDEX idx_work_episodes_learner_session ON learning.work_episodes USING btree (learner_id, session_ref, started_at) WHERE (session_ref IS NOT NULL)
+idx   CREATE INDEX idx_work_episodes_learner_started ON learning.work_episodes USING btree (learner_id, started_at DESC)
+idx   CREATE INDEX idx_work_episodes_relevance_pending ON learning.work_episodes USING btree (learner_id) WHERE (relevance_status IS NULL)
+idx   CREATE INDEX idx_work_episodes_session_parent ON learning.work_episodes USING btree (session_episode_id, started_at) WHERE (session_episode_id IS NOT NULL)
 idx   CREATE INDEX media_kind_idx ON itera.media USING btree (kind)
 idx   CREATE INDEX media_tenant_id_idx ON itera.media USING btree (tenant_id)
+idx   CREATE INDEX residue_repasses_source_lookup ON learning.residue_repasses USING gin (request jsonb_path_ops)
 idx   CREATE INDEX schema_object_census_captured_at_idx ON itera.schema_object_census USING btree (captured_at DESC)
 idx   CREATE INDEX unit_versions_unit_id_idx ON itera.unit_versions USING btree (unit_id)
 idx   CREATE INDEX users_is_guest_idx ON itera.users USING btree (is_guest) WHERE is_guest
 idx   CREATE UNIQUE INDEX activities_pkey ON itera.activities USING btree (id)
+idx   CREATE UNIQUE INDEX activities_pkey ON learning.activities USING btree (id)
 idx   CREATE UNIQUE INDEX activity_comments_pkey ON itera.activity_comments USING btree (id)
 idx   CREATE UNIQUE INDEX activity_defs_pkey ON itera.activity_defs USING btree (id)
 idx   CREATE UNIQUE INDEX activity_i18n_backup_batch_row_uidx ON itera.activity_i18n_backup USING btree (batch_id, source_table, row_id)
 idx   CREATE UNIQUE INDEX activity_i18n_backup_pkey ON itera.activity_i18n_backup USING btree (id)
+idx   CREATE UNIQUE INDEX activity_responses_pkey ON learning.activity_responses USING btree (id)
 idx   CREATE UNIQUE INDEX activity_results_pkey ON itera.activity_results USING btree (id)
 idx   CREATE UNIQUE INDEX activity_traces_pkey ON itera.activity_traces USING btree (id)
 idx   CREATE UNIQUE INDEX api_keys_key_hash_key ON itera.api_keys USING btree (key_hash)
 idx   CREATE UNIQUE INDEX api_keys_pkey ON itera.api_keys USING btree (id)
 idx   CREATE UNIQUE INDEX artifacts_pkey ON itera.artifacts USING btree (id)
+idx   CREATE UNIQUE INDEX artifacts_pkey ON learning.artifacts USING btree (id)
+idx   CREATE UNIQUE INDEX assembly_model_objectives_pkey ON learning.assembly_model_objectives USING btree (assembly_model_id, objective_id)
+idx   CREATE UNIQUE INDEX assembly_models_pkey ON learning.assembly_models USING btree (id)
 idx   CREATE UNIQUE INDEX badges_pkey ON itera.badges USING btree (id)
 idx   CREATE UNIQUE INDEX badges_tenant_id_slug_key ON itera.badges USING btree (tenant_id, slug)
 idx   CREATE UNIQUE INDEX byoc_generations_pkey ON itera.byoc_generations USING btree (id)
+idx   CREATE UNIQUE INDEX capabilities_pkey ON learning.capabilities USING btree (id)
+idx   CREATE UNIQUE INDEX capability_proposals_pkey ON learning.capability_proposals USING btree (id)
+idx   CREATE UNIQUE INDEX capability_states_pkey ON learning.capability_states USING btree (id)
+idx   CREATE UNIQUE INDEX checkpoints_pkey ON learning.checkpoints USING btree (id)
+idx   CREATE UNIQUE INDEX claim_concepts_pkey ON learning.claim_concepts USING btree (id)
+idx   CREATE UNIQUE INDEX claim_templates_pkey ON learning.claim_templates USING btree (id)
+idx   CREATE UNIQUE INDEX claims_pkey ON learning.claims USING btree (id)
 idx   CREATE UNIQUE INDEX class_answers_pkey ON itera.class_answers USING btree (session_id, activity_id, user_id)
 idx   CREATE UNIQUE INDEX class_attendance_pkey ON itera.class_attendance USING btree (session_id, user_id)
 idx   CREATE UNIQUE INDEX class_guests_pkey ON itera.class_guests USING btree (session_id, user_id)
@@ -812,39 +1755,79 @@ idx   CREATE UNIQUE INDEX class_removals_pkey ON itera.class_removals USING btre
 idx   CREATE UNIQUE INDEX class_sessions_guest_code_key ON itera.class_sessions USING btree (guest_code) WHERE (guest_code IS NOT NULL)
 idx   CREATE UNIQUE INDEX class_sessions_pkey ON itera.class_sessions USING btree (id)
 idx   CREATE UNIQUE INDEX class_stars_pkey ON itera.class_stars USING btree (id)
+idx   CREATE UNIQUE INDEX concept_relations_pkey ON learning.concept_relations USING btree (id)
+idx   CREATE UNIQUE INDEX concepts_pkey ON learning.concepts USING btree (id)
 idx   CREATE UNIQUE INDEX customers_pkey ON billing.customers USING btree (id)
 idx   CREATE UNIQUE INDEX customers_stripe_customer_id_key ON billing.customers USING btree (stripe_customer_id)
+idx   CREATE UNIQUE INDEX episode_moments_pkey ON learning.episode_moments USING btree (id)
+idx   CREATE UNIQUE INDEX evidence_model_objectives_pkey ON learning.evidence_model_objectives USING btree (evidence_model_id, objective_id)
+idx   CREATE UNIQUE INDEX evidence_models_pkey ON learning.evidence_models USING btree (id)
+idx   CREATE UNIQUE INDEX evidence_pkey ON learning.evidence USING btree (id)
+idx   CREATE UNIQUE INDEX extraction_passes_pkey ON learning.extraction_passes USING btree (learner_id, episode_id, pass_id)
+idx   CREATE UNIQUE INDEX generation_config_pkey ON learning.generation_config USING btree (id)
 idx   CREATE UNIQUE INDEX identities_pkey ON itera.identities USING btree (id)
 idx   CREATE UNIQUE INDEX identities_provider_provider_subject_key ON itera.identities USING btree (provider, provider_subject)
 idx   CREATE UNIQUE INDEX invoices_pkey ON billing.invoices USING btree (id)
 idx   CREATE UNIQUE INDEX invoices_stripe_invoice_id_key ON billing.invoices USING btree (stripe_invoice_id)
 idx   CREATE UNIQUE INDEX learner_personalization_pkey ON itera.learner_personalization USING btree (user_id)
+idx   CREATE UNIQUE INDEX learner_state_history_pkey ON learning.learner_state_history USING btree (id)
+idx   CREATE UNIQUE INDEX learner_state_pkey ON learning.learner_state USING btree (id)
+idx   CREATE UNIQUE INDEX learners_pkey ON learning.learners USING btree (id)
+idx   CREATE UNIQUE INDEX learning_objectives_pkey ON learning.learning_objectives USING btree (id)
 idx   CREATE UNIQUE INDEX lessons_pkey ON itera.lessons USING btree (id)
 idx   CREATE UNIQUE INDEX media_pkey ON itera.media USING btree (id)
 idx   CREATE UNIQUE INDEX media_tenant_id_checksum_key ON itera.media USING btree (tenant_id, checksum)
 idx   CREATE UNIQUE INDEX memberships_pkey ON itera.memberships USING btree (user_id, tenant_id)
+idx   CREATE UNIQUE INDEX misconceptions_pkey ON learning.misconceptions USING btree (id)
+idx   CREATE UNIQUE INDEX ontology_versions_pkey ON learning.ontology_versions USING btree (version)
 idx   CREATE UNIQUE INDEX programs_pkey ON itera.programs USING btree (id)
 idx   CREATE UNIQUE INDEX programs_tenant_id_slug_key ON itera.programs USING btree (tenant_id, slug)
 idx   CREATE UNIQUE INDEX progress_pkey ON itera.progress USING btree (user_id, activity_id)
+idx   CREATE UNIQUE INDEX residue_pkey ON learning.residue USING btree (id)
+idx   CREATE UNIQUE INDEX residue_repasses_pkey ON learning.residue_repasses USING btree (learner_id, episode_id, pass_id)
 idx   CREATE UNIQUE INDEX schema_migrations_pkey ON itera.schema_migrations USING btree (id)
 idx   CREATE UNIQUE INDEX schema_migrations_repo_filename_idx ON itera.schema_migrations USING btree (repo, filename)
 idx   CREATE UNIQUE INDEX schema_object_census_pkey ON itera.schema_object_census USING btree (id)
 idx   CREATE UNIQUE INDEX subscriptions_pkey ON billing.subscriptions USING btree (id)
 idx   CREATE UNIQUE INDEX subscriptions_stripe_subscription_id_key ON billing.subscriptions USING btree (stripe_subscription_id)
+idx   CREATE UNIQUE INDEX task_models_pkey ON learning.task_models USING btree (id)
 idx   CREATE UNIQUE INDEX tenants_pkey ON itera.tenants USING btree (id)
 idx   CREATE UNIQUE INDEX tenants_slug_key ON itera.tenants USING btree (slug)
 idx   CREATE UNIQUE INDEX unit_versions_pkey ON itera.unit_versions USING btree (id)
 idx   CREATE UNIQUE INDEX unit_versions_unit_id_version_number_key ON itera.unit_versions USING btree (unit_id, version_number)
 idx   CREATE UNIQUE INDEX units_pkey ON itera.units USING btree (id)
+idx   CREATE UNIQUE INDEX uq_activities_id_learner ON learning.activities USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_activity_responses_id_learner ON learning.activity_responses USING btree (id, learner_id)
 idx   CREATE UNIQUE INDEX uq_activity_traces_attempt ON itera.activity_traces USING btree (user_id, activity_id, started_at)
+idx   CREATE UNIQUE INDEX uq_artifacts_id_learner ON learning.artifacts USING btree (id, learner_id)
 idx   CREATE UNIQUE INDEX uq_billing_customers_tenant ON billing.customers USING btree (tenant_id)
 idx   CREATE UNIQUE INDEX uq_byoc_generations_user_activity_attempt ON itera.byoc_generations USING btree (user_id, activity_id, attempt)
+idx   CREATE UNIQUE INDEX uq_capabilities_concept ON learning.capabilities USING btree (concept_id) WHERE (concept_id IS NOT NULL)
+idx   CREATE UNIQUE INDEX uq_capability_states_learner_capability ON learning.capability_states USING btree (learner_id, capability_id)
+idx   CREATE UNIQUE INDEX uq_claim_concepts_claim_concept ON learning.claim_concepts USING btree (claim_id, concept_id)
+idx   CREATE UNIQUE INDEX uq_claims_id_learner ON learning.claims USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_claims_objective_template ON learning.claims USING btree (objective_id, claim_template_id) WHERE (claim_template_id IS NOT NULL)
+idx   CREATE UNIQUE INDEX uq_concept_relations_edge ON learning.concept_relations USING btree (from_concept_id, to_concept_id, relation_type)
+idx   CREATE UNIQUE INDEX uq_episode_moments_id_episode_learner ON learning.episode_moments USING btree (id, episode_id, learner_id)
+idx   CREATE UNIQUE INDEX uq_episode_moments_id_learner ON learning.episode_moments USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_learner_state_learner_claim ON learning.learner_state USING btree (learner_id, claim_id)
+idx   CREATE UNIQUE INDEX uq_learning_objectives_id_learner ON learning.learning_objectives USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_residue_moment_pass ON learning.residue USING btree (moment_id, pass_id) WHERE (moment_id IS NOT NULL)
 idx   CREATE UNIQUE INDEX uq_users_dfl_subject ON itera.users USING btree (dfl_subject) WHERE (dfl_subject IS NOT NULL)
+idx   CREATE UNIQUE INDEX uq_valued_work_id_learner ON learning.valued_work USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_work_contexts_id_learner ON learning.work_contexts USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_work_contexts_identity ON learning.work_contexts USING btree (learner_id, project_root, machine, machine_class) NULLS NOT DISTINCT
+idx   CREATE UNIQUE INDEX uq_work_episodes_id_learner ON learning.work_episodes USING btree (id, learner_id)
+idx   CREATE UNIQUE INDEX uq_work_episodes_ingest ON learning.work_episodes USING btree (learner_id, source, session_ref, started_at) WHERE ((session_ref IS NOT NULL) AND (started_at IS NOT NULL))
+idx   CREATE UNIQUE INDEX uq_work_episodes_v2_protocol_id ON learning.work_episodes USING btree (learner_id, ((payload ->> 'id'::text))) WHERE (schema_version = 2)
 idx   CREATE UNIQUE INDEX user_badges_pkey ON itera.user_badges USING btree (user_id, badge_id)
 idx   CREATE UNIQUE INDEX users_email_key ON itera.users USING btree (email)
 idx   CREATE UNIQUE INDEX users_pkey ON itera.users USING btree (id)
+idx   CREATE UNIQUE INDEX valued_work_pkey ON learning.valued_work USING btree (id)
 idx   CREATE UNIQUE INDEX webhook_events_pkey ON billing.webhook_events USING btree (id)
 idx   CREATE UNIQUE INDEX webhook_events_stripe_event_id_key ON billing.webhook_events USING btree (stripe_event_id)
+idx   CREATE UNIQUE INDEX work_contexts_pkey ON learning.work_contexts USING btree (id)
+idx   CREATE UNIQUE INDEX work_episodes_pkey ON learning.work_episodes USING btree (id)
 idx   CREATE UNIQUE INDEX xp_events_activity_complete_uniq ON itera.xp_events USING btree (user_id, reason) WHERE (reason ~~ 'activity_complete:%'::text)
 idx   CREATE UNIQUE INDEX xp_events_pkey ON itera.xp_events USING btree (id)
 pol   itera.activities activities_author_delete cmd=d perm=t roles=authenticated using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=-
@@ -921,6 +1904,66 @@ pol   itera.users users_select_instructor cmd=r perm=t roles=PUBLIC using=(id IN
 pol   itera.users users_select_self cmd=r perm=t roles=PUBLIC using=(id = itera.current_itera_user_id()) check=-
 pol   itera.users users_update_self cmd=w perm=t roles=PUBLIC using=(id = itera.current_itera_user_id()) check=(id = itera.current_itera_user_id())
 pol   itera.xp_events xp_select_self cmd=r perm=t roles=PUBLIC using=(user_id = itera.current_itera_user_id()) check=-
+pol   learning.activities activities_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.activities activities_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.activity_responses activity_responses_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.activity_responses activity_responses_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.artifacts artifacts_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.artifacts artifacts_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.assembly_model_objectives assembly_model_objectives_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.assembly_model_objectives assembly_model_objectives_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.assembly_models assembly_models_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.assembly_models assembly_models_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.capabilities capabilities_read_all cmd=r perm=t roles=PUBLIC using=((learner_id IS NULL) OR (learner_id = itera.current_itera_user_id()) OR itera.is_learning_operator()) check=-
+pol   learning.capabilities capabilities_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.capability_proposals capability_proposals_insert_own_residue cmd=a perm=t roles=PUBLIC using=- check=((status = 'proposed'::text) AND (decided_by IS NULL) AND (decided_at IS NULL) AND (decision_note IS NULL) AND (capability_id IS NULL) AND (ontology_version IS NULL) AND (NOT (EXISTS ( SELECT 1 FROM unnest(capability_proposals.residue_ids) t(rid) WHERE (NOT (EXISTS ( SELECT 1 FROM learning.residue r WHERE ((r.id = t.rid) AND (r.learner_id = itera.current_itera_user_id())))))))))
+pol   learning.capability_proposals capability_proposals_read_own_residue cmd=r perm=t roles=PUBLIC using=(NOT (EXISTS ( SELECT 1 FROM unnest(capability_proposals.residue_ids) t(rid) WHERE (NOT (EXISTS ( SELECT 1 FROM learning.residue r WHERE ((r.id = t.rid) AND (r.learner_id = itera.current_itera_user_id())))))))) check=-
+pol   learning.capability_proposals capability_proposals_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.capability_states capability_states_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.capability_states capability_states_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.checkpoints checkpoints_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.checkpoints checkpoints_rw_own_episode cmd=* perm=t roles=PUBLIC using=(EXISTS ( SELECT 1 FROM learning.work_episodes e WHERE ((e.id = checkpoints.episode_id) AND (e.learner_id = itera.current_itera_user_id())))) check=(EXISTS ( SELECT 1 FROM learning.work_episodes e WHERE ((e.id = checkpoints.episode_id) AND (e.learner_id = itera.current_itera_user_id()))))
+pol   learning.claim_concepts claim_concepts_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.claim_templates claim_templates_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.claim_templates claim_templates_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.claims claims_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.claims claims_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.concept_relations concept_relations_rw_shared cmd=* perm=t roles=PUBLIC using=true check=true
+pol   learning.concepts concepts_rw_shared cmd=* perm=t roles=PUBLIC using=true check=true
+pol   learning.episode_moments episode_moments_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.episode_moments episode_moments_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.evidence evidence_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.evidence evidence_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.evidence_model_objectives evidence_model_objectives_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.evidence_model_objectives evidence_model_objectives_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.evidence_models evidence_models_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.evidence_models evidence_models_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.extraction_passes extraction_passes_own cmd=* perm=t roles=authenticated using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.generation_config generation_config_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.learner_state learner_state_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.learner_state learner_state_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.learner_state_history learner_state_history_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.learner_state_history learner_state_history_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.learners learners_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.learners learners_rw_self cmd=* perm=t roles=PUBLIC using=(id = itera.current_itera_user_id()) check=(id = itera.current_itera_user_id())
+pol   learning.learning_objectives objectives_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.learning_objectives objectives_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.misconceptions misconceptions_rw_shared cmd=* perm=t roles=PUBLIC using=true check=true
+pol   learning.ontology_versions ontology_versions_read_all cmd=r perm=t roles=PUBLIC using=true check=-
+pol   learning.ontology_versions ontology_versions_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.residue residue_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.residue residue_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.residue residue_update_operator cmd=w perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
+pol   learning.residue_repasses residue_repasses_own cmd=* perm=t roles=authenticated using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.task_models task_models_read_shared_operator cmd=r perm=t roles=PUBLIC using=((learner_id IS NULL) OR itera.is_learning_operator()) check=-
+pol   learning.task_models task_models_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.task_models task_models_rw_shared_operator cmd=* perm=t roles=PUBLIC using=((learner_id IS NULL) AND itera.is_learning_operator()) check=((learner_id IS NULL) AND itera.is_learning_operator())
+pol   learning.valued_work valued_work_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.valued_work valued_work_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.work_contexts work_contexts_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.work_contexts work_contexts_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
+pol   learning.work_episodes episodes_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
+pol   learning.work_episodes episodes_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
 pol   realtime.messages itera_class_control_send cmd=a perm=t roles=authenticated using=- check=((realtime.topic() ~~ 'class:%:ctrl'::text) AND itera.can_control_class_topic(realtime.topic()))
 pol   realtime.messages itera_class_cursor_send cmd=a perm=t roles=authenticated using=- check=((realtime.topic() ~~ 'class:%:cursor'::text) AND itera.can_access_class_topic(realtime.topic()))
 pol   realtime.messages itera_class_members_read cmd=r perm=t roles=authenticated using=((realtime.topic() ~~ 'class:%'::text) AND itera.can_access_class_topic(realtime.topic())) check=-
@@ -964,12 +2007,65 @@ rel   itera.units r rls=t force=f
 rel   itera.user_badges r rls=t force=f
 rel   itera.users r rls=t force=f
 rel   itera.xp_events r rls=t force=f
+rel   learning.activities r rls=t force=f
+rel   learning.activity_responses r rls=t force=f
+rel   learning.artifacts r rls=t force=f
+rel   learning.assembly_model_objectives r rls=t force=f
+rel   learning.assembly_models r rls=t force=f
+rel   learning.capabilities r rls=t force=f
+rel   learning.capability_proposals r rls=t force=f
+rel   learning.capability_states r rls=t force=f
+rel   learning.checkpoints r rls=t force=f
+rel   learning.claim_concepts r rls=t force=f
+rel   learning.claim_templates r rls=t force=f
+rel   learning.claims r rls=t force=f
+rel   learning.concept_relations r rls=t force=f
+rel   learning.concepts r rls=t force=f
+rel   learning.episode_moments r rls=t force=f
+rel   learning.evidence r rls=t force=f
+rel   learning.evidence_model_objectives r rls=t force=f
+rel   learning.evidence_models r rls=t force=f
+rel   learning.extraction_passes r rls=t force=f
+rel   learning.generation_config r rls=t force=f
+rel   learning.learner_state r rls=t force=f
+rel   learning.learner_state_history r rls=t force=f
+rel   learning.learners r rls=t force=f
+rel   learning.learning_objectives r rls=t force=f
+rel   learning.misconceptions r rls=t force=f
+rel   learning.ontology_versions r rls=t force=f
+rel   learning.residue r rls=t force=f
+rel   learning.residue_repasses r rls=t force=f
+rel   learning.task_models r rls=t force=f
+rel   learning.valued_work r rls=t force=f
+rel   learning.work_contexts r rls=t force=f
+rel   learning.work_episodes r rls=t force=f
 seq   itera.activity_i18n_backup_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
 seq   itera.schema_object_census_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
-trg   CREATE TRIGGER activity_comments_set_updated_at BEFORE UPDATE ON itera.activity_comments FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at()
-trg   CREATE TRIGGER activity_defs_set_updated_at BEFORE UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at()
-trg   CREATE TRIGGER activity_defs_sync_instances AFTER UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.sync_activity_def_to_instances()
-trg   CREATE TRIGGER on_auth_user_created_provision_itera AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION itera.handle_new_federated_user()
+trg   CREATE TRIGGER activity_comments_set_updated_at BEFORE UPDATE ON itera.activity_comments FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at() enabled=O
+trg   CREATE TRIGGER activity_defs_set_updated_at BEFORE UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at() enabled=O
+trg   CREATE TRIGGER activity_defs_sync_instances AFTER UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.sync_activity_def_to_instances() enabled=O
+trg   CREATE TRIGGER artifacts_task_model_owner BEFORE INSERT OR UPDATE OF task_model_id, learner_id ON learning.artifacts FOR EACH ROW EXECUTE FUNCTION learning.guard_c1_links() enabled=O
+trg   CREATE TRIGGER capabilities_write_lock BEFORE INSERT OR DELETE OR UPDATE ON learning.capabilities FOR EACH STATEMENT EXECUTE FUNCTION learning.lock_ontology_writer() enabled=O
+trg   CREATE TRIGGER claim_templates_write_lock BEFORE INSERT OR DELETE OR UPDATE ON learning.claim_templates FOR EACH STATEMENT EXECUTE FUNCTION learning.lock_ontology_writer() enabled=O
+trg   CREATE TRIGGER evidence_metadata_bridge BEFORE INSERT OR UPDATE ON learning.evidence FOR EACH ROW EXECUTE FUNCTION learning.bridge_evidence_metadata() enabled=O
+trg   CREATE TRIGGER evidence_status_delete AFTER DELETE ON learning.evidence REFERENCING OLD TABLE AS deleted_evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_after_delete() enabled=O
+trg   CREATE TRIGGER evidence_status_insert AFTER INSERT ON learning.evidence REFERENCING NEW TABLE AS inserted_evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_after_insert() enabled=O
+trg   CREATE TRIGGER evidence_status_lock_delete BEFORE DELETE ON learning.evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_lock_caller() enabled=O
+trg   CREATE TRIGGER evidence_status_lock_insert BEFORE INSERT ON learning.evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_lock_caller() enabled=O
+trg   CREATE TRIGGER evidence_status_lock_update BEFORE UPDATE ON learning.evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_lock_caller() enabled=O
+trg   CREATE TRIGGER evidence_status_update AFTER UPDATE ON learning.evidence REFERENCING OLD TABLE AS previous_evidence NEW TABLE AS updated_evidence FOR EACH STATEMENT EXECUTE FUNCTION learning.evidence_status_after_update() enabled=O
+trg   CREATE TRIGGER extraction_receipt_valid BEFORE INSERT ON learning.extraction_passes FOR EACH ROW EXECUTE FUNCTION learning.validate_extraction_receipt() enabled=O
+trg   CREATE TRIGGER guard_capability_owner BEFORE UPDATE OF learner_id ON learning.capabilities FOR EACH ROW WHEN ((new.learner_id IS DISTINCT FROM old.learner_id)) EXECUTE FUNCTION itera.guard_capability_owner() enabled=O
+trg   CREATE TRIGGER guard_capability_reference BEFORE INSERT OR UPDATE ON learning.capability_proposals FOR EACH ROW EXECUTE FUNCTION itera.guard_learning_capability_reference('nearest_capability_id', 'capability_id') enabled=O
+trg   CREATE TRIGGER guard_capability_reference BEFORE INSERT OR UPDATE ON learning.capability_states FOR EACH ROW EXECUTE FUNCTION itera.guard_learning_capability_reference('capability_id') enabled=O
+trg   CREATE TRIGGER guard_capability_reference BEFORE INSERT OR UPDATE ON learning.claim_templates FOR EACH ROW EXECUTE FUNCTION itera.guard_learning_capability_reference('capability_id') enabled=O
+trg   CREATE TRIGGER guard_capability_reference BEFORE INSERT OR UPDATE ON learning.residue FOR EACH ROW EXECUTE FUNCTION itera.guard_learning_capability_reference('nearest_capability_id', 'promoted_to_capability_id') enabled=O
+trg   CREATE TRIGGER guard_residue_decision BEFORE INSERT OR UPDATE ON learning.residue FOR EACH ROW EXECUTE FUNCTION itera.guard_residue_decision() enabled=O
+trg   CREATE TRIGGER on_auth_user_created_provision_itera AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION itera.handle_new_federated_user() enabled=O
+trg   CREATE TRIGGER ontology_versions_write_lock BEFORE INSERT OR DELETE OR UPDATE ON learning.ontology_versions FOR EACH STATEMENT EXECUTE FUNCTION learning.lock_ontology_writer() enabled=O
+trg   CREATE TRIGGER residue_repass_write BEFORE INSERT ON learning.residue_repasses FOR EACH ROW EXECUTE FUNCTION learning.write_residue_repass() enabled=O
+trg   CREATE TRIGGER task_models_owner_immutable BEFORE UPDATE OF learner_id ON learning.task_models FOR EACH ROW EXECUTE FUNCTION learning.guard_c1_links() enabled=O
+trg   CREATE TRIGGER valued_work_updated_at BEFORE UPDATE ON learning.valued_work FOR EACH ROW EXECUTE FUNCTION learning.guard_c1_links() enabled=O
 type  itera.activity_kind e [diagram,document,quiz,code,concept,single_choice,multi_choice,match,order,video,sandbox_scenario,concept_reveal,chat_sandbox,terminal_sandbox]
 type  itera.activity_status e [draft,published]
 type  itera.artifact_type e [diagram,document,site,code,text]
