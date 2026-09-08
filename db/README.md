@@ -959,3 +959,14 @@ Only the compatibility bridge and lossless audit retain physical evidence JSON
 references. Request JSON is an immutable wire contract, not a physical column
 reference. Historical0088 projections, the bridge and audit still require a later
 reviewed transition before any JSON removal. This migration removes no data.
+
+### Evidence export column metadata (0096)
+
+`learning.export_evidence_columns()` returns the sorted physical evidence column names.
+The stable INVOKER function requires the authenticated database role, a resolved Itera identity, and evidence SELECT privilege.
+It takes no arguments and writes no learner row. Only authenticated callers can execute it.
+The existing `export_inventory()` table contract stays unchanged.
+The exporter checks both inventories before and after its two complete raw scans, including empty evidence collections.
+Its reviewed column contract accepts the current42 columns or the same41 columns without physical provenance.
+The native export compatibility release waits for this RPC to deploy. The migration does not remove provenance.
+`node db/scripts/test-export-evidence-columns.mjs` proves the actual identity boundary, role/grant refusals, and column transitions on the local full schema.

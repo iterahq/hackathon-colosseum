@@ -84,6 +84,7 @@ on:
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-authorization-probe.py'
+      - 'db/scripts/test-export-evidence-columns.mjs'
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
@@ -115,6 +116,7 @@ on:
       - 'db/scripts/test-learning-dml-rpc.py'
       - 'db/scripts/test-learning-proposal-decisions.py'
       - 'db/scripts/test-learning-authorization-probe.py'
+      - 'db/scripts/test-export-evidence-columns.mjs'
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
@@ -367,6 +369,9 @@ jobs:
 
       - name: Native metadata preserves the historical prefix, writers and receipts
         run: bash db/scripts/test-evidence-metadata-transition.sh
+
+      - name: Export metadata preserves caller identity and exact columns
+        run: node db/scripts/test-export-evidence-columns.mjs
 
       - name: Summary
         if: always()
