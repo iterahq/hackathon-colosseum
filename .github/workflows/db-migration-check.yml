@@ -365,6 +365,9 @@ jobs:
       - name: Caller authorization probe rolls back every candidate write
         run: python3 db/scripts/test-learning-authorization-probe.py
 
+      - name: Native evidence metadata preserves every original value
+        run: node db/scripts/test-evidence-metadata-expand.mjs
+
       - name: Summary
         if: always()
         run: |

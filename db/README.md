@@ -910,3 +910,17 @@ and engine route; direct production SQL writes remain prohibited.
 `python3 db/scripts/test-learning-authorization-probe.py` executes real policies
 on isolated PostgreSQL 17. It proves both allowed and refused writes leave exact
 capability/version fingerprints unchanged, including deliberately weakened RLS.
+
+### Native evidence metadata expansion (0093, P4)
+
+Migration0093 requires0091 and0092. It adds14 generated fields to `learning.evidence` while preserving the original JSON and eleven generated fields. Existing activity, transcript, digest and residue re-pass writers remain valid. Complete export v1/v2 retains additive fields through `select('*')`.
+
+The new fields expose pass identity/time, ontology version, quality, observation/capability/provider identity, residue source identity, digest truncation and its structured baseline. `source_episode_ref` and `source_activity_response_ref` preserve the exact optional JSON text. They remain separate from operational UUID relationships. Historical evidence can name an original turn in its metadata while `episode_id` names the regrouped session. `pass_at` remains text because the current supersede reader compares its original lexical representation.
+
+`source_metadata_keys` records exact key presence. `learning.native_evidence_metadata(evidence)` reconstructs only those keys, including explicit JSON null. `learning.assert_evidence_metadata_lossless(evidence)` refuses unknown keys, incompatible JSON types and nonrepresentable integer values. It compares the exact JSONB text, including preserved numeric and timestamp spelling. The migration holds an ACCESS EXCLUSIVE NOWAIT table lock and audits every existing row. Any mismatch rolls back the complete expansion.
+
+The original JSON stays authoritative during this stage. A later legacy writer can preserve an additional unknown key in JSON; the strict audit will refuse conversion until a matching field and regression exist. The audit does not silently discard that key. No trigger, receipt body, evidence status algorithm, existing writer grant or source relationship changes here. New fields remain generated and cannot be independently assigned.
+
+The next stages need a bidirectional compatibility bridge, native RPC/engine writes, native readers and an exact historical reconstruction path. The0088 manifest fingerprints still require their original field projection. Final JSON removal also needs a reviewed historical-prefix/native-suffix replay protocol. This expansion does not drop JSON, legacy concept rows or any applied migration.
+
+Run `node db/scripts/test-evidence-metadata-expand.mjs` against local PostgreSQL. It reconstructs a populated pre-expansion fixture, proves rollback and exact row preservation, and tests absence/null, source spelling, writer compatibility, caller isolation and strict refusal. Existing evidence-status, extraction, digest and residue re-pass suites also run after expansion. The general census currently covers `itera` and `billing`; the explicit populated learning-schema assertions provide the metadata proof.
