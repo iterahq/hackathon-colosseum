@@ -891,3 +891,22 @@ The short READ COMMITTED transaction takes claims/objectives SHARE NOWAIT locks,
 `episodes_read=0` describes zero source episode reads by the re-pass input pipeline. It does not claim zero implicit database FK/index/RLS work. The response returns affected claim IDs. A distinct caller-JWT state refresh may read episode metadata; it reports those queries and rows separately. Neither operation reads episode payload for classification.
 
 Run `node db/scripts/test-residue-repass.mjs` against local PostgreSQL to verify atomic rollback, ownership, direct INSERT, immutable retries, source quality, editorial preservation and real writer conflicts.
+
+### Caller authorization probe (0092)
+
+`learning.probe_authorization('capabilities','insert_shared',reference_id)` is a
+SECURITY INVOKER diagnostic for a caller-visible shared capability. It copies valid
+required fields, generates a new candidate ID, and attempts the INSERT under the
+caller's existing grants and RLS. A nested exception block always rolls back the
+candidate and transactional trigger effects, including an unexpectedly allowed
+INSERT. It never creates an ontology version or changes an existing policy.
+
+The response separates `rls_denied`, `permission_denied`, `constraint_failed`,
+`allowed_rolled_back`, and `database_error`. Only `rls_denied` under a verified
+nonoperator identity certifies the INSERT policy. No arbitrary SQL or caller
+identity fields are accepted. Production access goes through the caller-JWT MCP
+and engine route; direct production SQL writes remain prohibited.
+
+`python3 db/scripts/test-learning-authorization-probe.py` executes real policies
+on isolated PostgreSQL 17. It proves both allowed and refused writes leave exact
+capability/version fingerprints unchanged, including deliberately weakened RLS.

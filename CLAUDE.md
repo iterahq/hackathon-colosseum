@@ -373,3 +373,5 @@ manifest replay rules, and fail-fast writer lock protocol. Production reversal r
 Historical digest extraction extends the receipt RPC through migration0090. It remains disabled until the reviewed T14 merge boundary is finalized. See `db/README.md`.
 
 Residue re-pass uses `db/migrations/0091_learning_residue_repass.sql`. Its caller-owned immutable receipts derive matched/unmatched retry state. The operation reads residue sources; state refresh is separate.
+
+<!-- Authorization probe: see db/README.md, Caller authorization probe (0092). -->
