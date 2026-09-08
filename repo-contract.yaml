@@ -335,3 +335,7 @@ observability:
 # status-only UPDATE contract. Actual merged migrations determine the snapshot.
 # The immutable0093 metadata prefix has a separate version3 expectation generated
 # by the same census. Final-main parity and the full transition remain required.
+
+# A2 native projection0097: exact immutable0088 key arrays and PostgreSQL JSONB
+# hashes. Caller-scoped read-only verifier; no automatic reverse, row repair,
+# physical provenance drop, or ingest_batch_id removal.

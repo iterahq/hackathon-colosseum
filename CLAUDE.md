@@ -404,3 +404,8 @@ Use the actual merged migration series for its snapshot. The existing parity
 suite includes real local drift mutations; see `db/README.md`.
 The isolated0093 metadata prefix has its own named census expectation. Final-main
 parity keeps its current-schema expectation; neither stage excludes learning.
+
+A2 compatibility0097 reconstructs the exact0088 evidence projection from native
+metadata. The read-only caller manifest verifier preserves original fingerprints.
+The separate native reverse artifact retains all lock and dependency guards.
+Physical provenance and ingest_batch_id remain. See `db/README.md`.

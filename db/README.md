@@ -1008,3 +1008,39 @@ independent parity because the resolved 0063/0064 allowances remained. That run
 is an overall failure. After allowance retirement, require two fully successful
 existing DB Drift runs at the recorded unchanged version 3 fingerprint. No
 applier override, allowance override or direct census write is part of this flow.
+
+### Native A2 manifest compatibility —0097
+
+`learning.a2_legacy_evidence_row(evidence)` reconstructs the exact evidence
+projection frozen by0088. Its pure `a2_frozen_row(jsonb,text)` helper pins all
+three original key arrays. Missing original columns fail instead of becoming
+implicit null. Only provenance is reconstructed from native metadata. The source
+episode reference remains distinct from the current session relationship.
+Key presence, explicit null, nested numeric spelling and text timestamp spelling
+remain exact. Hashes use PostgreSQL JSONB text, UTF8 and SHA256, as0088 did.
+
+`learning.verify_a2_manifest()` reads the current caller's complete frozen
+population under RLS. It has no identity argument. A null caller, anonymous role,
+or service role cannot execute it. The existing migration authority can perform
+a read-only whole-population audit. The STABLE function uses one statement
+snapshot and writes no rows, temporary tables or fingerprints. It checks the
+cutoff, gap, session/manifest hashes, exact turn membership, context tuples,
+moment payloads/timestamps, evidence relationships and all original field hashes.
+Normal relevance and evidence-status changes remain outside the frozen keys.
+
+Later legitimate evidence, captured moments and extraction/re-pass receipts do
+not invalidate preserved history. The response reports known dependent counts
+and explicitly sets `reverse_checked=false`. It does not authorize reversal.
+`db/scripts/reverse-learning-session-regroup-native.sql` is a separate local or
+review artifact. It calls the verifier after the existing table/learner locks,
+uses the native evidence projection, and preserves the parent/moment locks plus
+dynamic current-FK dependency refusals. Production reversal still requires a new
+reviewed migration. The old reverse artifact and applied0088 stay unchanged.
+
+The metadata transition suite constructs real0088 manifests on the0095 prefix,
+then applies0097 to populated rows. It tests exact preservation, source changes,
+missing/duplicate entries, caller isolation, concurrent statement snapshots,
+later real digest receipt/retry, and reverse refusal before writes. The complete
+main series separately runs through the real applier and canonical census.
+This migration keeps both physical provenance and ingest_batch_id. It does not
+make arbitrary historical SQL replay safe after a future physical contraction.

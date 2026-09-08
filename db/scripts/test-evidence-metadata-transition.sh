@@ -35,3 +35,6 @@ bash "$scratch/db/scripts/fresh-apply.sh" --parity --new 0093_learning_evidence_
 node "$root/db/scripts/test-evidence-metadata-expand.mjs"
 node "$root/db/scripts/test-evidence-metadata-bridge.mjs"
 node "$root/db/scripts/test-native-evidence-consumers.mjs"
+# The fixture creates real 0088 manifests on the populated 0095 prefix before
+# applying 0097. The independent main job still checks the complete series.
+node "$root/db/scripts/test-a2-native-projection.mjs"
