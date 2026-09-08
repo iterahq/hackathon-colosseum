@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Origin: agent. Isolated historical prefix plus populated native bridge suffix.
+# Never connects to the job's database or any configured production target.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+scratch="$(mktemp -d)"
+container="itera-metadata-prefix-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-$$"
+cleanup() { docker rm -f "$container" >/dev/null 2>&1 || true; rm -rf "$scratch"; }
+trap cleanup EXIT
+mkdir -p "$scratch/db/migrations"
+cp -a "$root/db/scripts" "$root/db/census" "$scratch/db/"
+for file in "$root"/db/migrations/*.sql; do
+  name="$(basename "$file")"
+  if [[ "$name" < '0094_' ]]; then cp "$file" "$scratch/db/migrations/"; fi
+done
+docker run -d --name "$container" -e POSTGRES_PASSWORD=local_metadata_fixture \
+  -p 127.0.0.1::5432 supabase/postgres:17.6.1.160 >/dev/null
+export PGHOST=127.0.0.1 PGUSER=supabase_admin PGDATABASE=postgres PGPASSWORD=local_metadata_fixture
+PGPORT="$(docker port "$container" 5432/tcp | sed 's/.*://')"; export PGPORT
+for attempt in $(seq 1 60); do
+  if pg_isready -q; then break; fi
+  if [[ "$attempt" == 60 ]]; then echo 'Local prefix database did not start' >&2; exit 1; fi
+  sleep 1
+done
+export ITERA_DB_URL="postgresql://supabase_admin@127.0.0.1:${PGPORT}/postgres"
+bash "$scratch/db/scripts/fresh-apply.sh" --parity --new 0093_learning_evidence_metadata_expand.sql
+node "$root/db/scripts/test-evidence-metadata-expand.mjs"
+node "$root/db/scripts/test-evidence-metadata-bridge.mjs"

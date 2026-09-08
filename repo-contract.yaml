@@ -318,3 +318,7 @@ observability:
   # @devfellowship/observability é importado (src/App.tsx). Remover as deps
   # diretas versus finalmente ligar a instrumentação é decisão pendente do
   # Tainan (question aberta no plans-app); NÃO mexa nelas por conta própria.
+
+# Native metadata bridge0094: provenance remains; explicit source_metadata_keys
+# selects native INSERT. Conflicting dual metadata fails. Caller grants, RLS,
+# immutable receipt validation and status lock order remain unchanged.
