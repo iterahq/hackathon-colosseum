@@ -37,6 +37,13 @@ stack:
 
 provides:
   - type: database
+    name: learning-source-ingest-preservation
+    description: >
+      Exact nullable original batch UUID with strict paired-value coexistence.
+      Caller-only typed episode column metadata and immutable A2 hash projection.
+    entry: db/migrations/0098_learning_source_ingest_preservation.sql
+
+  - type: database
     name: learning-evidence-metadata-expand
     description: >
       Additive generated evidence metadata with exact key-presence reconstruction and strict lossless audit.

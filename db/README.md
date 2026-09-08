@@ -1044,3 +1044,46 @@ later real digest receipt/retry, and reverse refusal before writes. The complete
 main series separately runs through the real applier and canonical census.
 This migration keeps both physical provenance and ingest_batch_id. It does not
 make arbitrary historical SQL replay safe after a future physical contraction.
+
+
+### Original ingest source preservation —0098
+
+This additive prerequisite stores the exact original nullable UUID in
+`work_episodes.source_ingest_batch_id`. An ACCESS EXCLUSIVE NOWAIT lock protects
+initial copy and constraint installation. The CHECK constraint requires both
+physical fields to be equal, including NULL/NULL. Migration replay first requires an existing source column to be nullable UUID,
+without a default, identity or generation. It audits equality and never silently repairs a mismatch. No field, graph row or historical hash is deleted.
+
+Omitted nullable inputs and explicit NULL produce the same final row. The guard
+makes no distinction between them. The current engine v1 writer at64b9c41 omits
+both fields. The actual0089 `ingest_episode_v2` INSERT also omits both fields and
+passes the populated PostgreSQL test unchanged. A future adapter with a non-null
+original UUID must supply both equal fields. One-sided non-null INSERT/UPDATE
+fails, including privileged maintenance. Existing caller grants remain unchanged;
+authenticated callers still have no episode UPDATE privilege.
+
+`export_work_episode_columns()` returns all physical descriptors sorted by name:
+`{name, udt_schema, udt_name, nullable}`. It is stable, argument-free, SECURITY
+INVOKER, with empty search_path. It requires actual role authenticated, the resolved
+Itera identity and episode SELECT privilege. PUBLIC, anon and service_role cannot
+execute it. It reads only catalogs, including with no episode rows. Unknown columns
+remain visible to the export client's exact-inventory refusal. Table/evidence RPCs
+are unchanged. The engine companion recognizes exact22/23/22 descriptor sets.
+
+`a2_legacy_episode_row(work_episodes,text)` uses the typed source UUID to reconstruct
+the literal historical `ingest_batch_id` fingerprint key. It checks the physical
+pair while both exist. The0097 verifier calls this projection; all original arrays,
+manifest values, hashes, caller scope and dependency diagnostics stay unchanged.
+The new `reverse-learning-session-regroup-source.sql` review artifact preserves
+all existing table/advisory locks, complete manifest checks and dynamic current-FK
+refusals. Applied0088/0097 files and both earlier reverse artifacts remain unchanged.
+A production reversal still requires its own reviewed migration.
+
+The existing isolated metadata transition also runs
+`test-source-ingest-preservation.mjs`: non-null/null originals, old hashes, missing
+keys, real0089 writer, role/identity/grant refusals, exact typed catalogs and reverse
+dependency refusal. Future physical-column absence is simulated only in rolled-back
+local transactions. The full series and real migration applier remain separate CI
+gates.0098 was reserved for this additive prerequisite before publication; the
+previous unpublished core contraction candidate must take a later number. Releases
+remain held during T22 source-hash checkpoints. This does not pass final Block D.

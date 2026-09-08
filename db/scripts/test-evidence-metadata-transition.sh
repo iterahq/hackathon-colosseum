@@ -38,3 +38,6 @@ node "$root/db/scripts/test-native-evidence-consumers.mjs"
 # The fixture creates real 0088 manifests on the populated 0095 prefix before
 # applying 0097. The independent main job still checks the complete series.
 node "$root/db/scripts/test-a2-native-projection.mjs"
+
+# Populated original batch UUIDs and immutable A2 hashes cross the0098 expansion.
+node "$root/db/scripts/test-source-ingest-preservation.mjs"

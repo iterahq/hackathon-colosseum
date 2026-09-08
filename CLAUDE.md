@@ -409,3 +409,12 @@ A2 compatibility0097 reconstructs the exact0088 evidence projection from native
 metadata. The read-only caller manifest verifier preserves original fingerprints.
 The separate native reverse artifact retains all lock and dependency guards.
 Physical provenance and ingest_batch_id remain. See `db/README.md`.
+
+
+## Original ingest source compatibility
+
+Migration0098 preserves the original nullable batch UUID in a typed source column.
+Both fields must agree during coexistence. Current capture writers omit both.
+The caller-only `export_work_episode_columns()` RPC returns exact typed metadata.
+A2 projections preserve old fingerprint keys and hashes. No physical field is dropped.
+See `db/README.md` for writer rules, local transition tests and the held release boundary.

@@ -68,6 +68,7 @@ cmt   col learning.work_episodes.relevance_checked_at efcd46f3326d
 cmt   col learning.work_episodes.relevance_status 162ef797c28f
 cmt   col learning.work_episodes.session_episode_id 604d4d3c43d5
 cmt   col learning.work_episodes.session_refs 4c38bc3f6f07
+cmt   col learning.work_episodes.source_ingest_batch_id 66cab5f79a04
 cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
 cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
 cmt   fn  itera.current_user_is_entitled() 89b6ec8674eb
@@ -85,6 +86,7 @@ cmt   fn  learning.apply_dml(p_operation text, p_payload jsonb) 6383045946f2
 cmt   fn  learning.delete_artifact(p_artifact_id uuid) 5bff09dfbf41
 cmt   fn  learning.export_evidence_columns() a051f5ee0e2f
 cmt   fn  learning.export_inventory() 50589a1c640b
+cmt   fn  learning.export_work_episode_columns() e87fdc7256b7
 cmt   fn  learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) 8047cc152848
 cmt   fn  learning.probe_authorization(p_resource text, p_operation text, p_reference_id text) 37fdadcce15a
 cmt   rel billing.webhook_events 57d67b2b3281
@@ -715,6 +717,7 @@ col   learning.work_episodes.session_episode_id uuid default=- ident=- gen=-
 col   learning.work_episodes.session_ref text default=- ident=- gen=-
 col   learning.work_episodes.session_refs text[] default=- ident=- gen=-
 col   learning.work_episodes.source text NOT NULL default=- ident=- gen=-
+col   learning.work_episodes.source_ingest_batch_id uuid default=- ident=- gen=-
 col   learning.work_episodes.started_at timestamp with time zone default=- ident=- gen=-
 col   learning.work_episodes.user_prompt text default=- ident=- gen=-
 col   learning.work_episodes.work_context_id uuid default=- ident=- gen=-
@@ -1043,6 +1046,7 @@ con   learning.work_episodes work_episodes_relevance_status_known CHECK (((relev
 con   learning.work_episodes work_episodes_schema_version_known CHECK ((schema_version >= 1))
 con   learning.work_episodes work_episodes_session_not_self CHECK (((session_episode_id IS NULL) OR (session_episode_id <> id)))
 con   learning.work_episodes work_episodes_session_same_learner FOREIGN KEY (session_episode_id, learner_id) REFERENCES learning.work_episodes(id, learner_id) ON DELETE SET NULL (session_episode_id)
+con   learning.work_episodes work_episodes_source_ingest_equal CHECK ((NOT (source_ingest_batch_id IS DISTINCT FROM ingest_batch_id)))
 con   learning.work_episodes work_episodes_source_present CHECK ((length(btrim(source)) > 0))
 cron  itera-reap-stale-live-class-sessions */5 * * * *
 fn    itera.award_activity_xp(p_activity_id uuid, p_amount integer) -> integer kind=f vol=v secdef=t cfg=search_path=itera, public body=f0c61d278cd7
@@ -1074,6 +1078,7 @@ fn    itera.set_updated_at() -> trigger kind=f vol=v secdef=f cfg=- body=301a884
 fn    itera.sync_activity_def_to_instances() -> trigger kind=f vol=v secdef=t cfg=search_path=itera, public body=60f7f31b28b0
 fn    itera.test_tenant_isolation_violations() -> TABLE(user_id uuid, email text, test_tenant text, real_tenant text, role_in_real itera.member_role) kind=f vol=s secdef=t cfg=search_path=itera, public body=5e4f8f7f565f
 fn    learning.a2_frozen_row(p_row jsonb, p_kind text) -> jsonb kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=a6fb7039f5af
+fn    learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) -> jsonb kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning,TimeZone=UTC body=cfc2fdb6ccc9
 fn    learning.a2_legacy_evidence_row(p_row learning.evidence) -> jsonb kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning,TimeZone=UTC body=fae5afc2ab3b
 fn    learning.apply_dml(p_operation text, p_payload jsonb) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=5f6e69fee0f1
 fn    learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) -> void kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=2f14854097a3
@@ -1090,6 +1095,7 @@ fn    learning.evidence_status_after_update() -> trigger kind=f vol=v secdef=f c
 fn    learning.evidence_status_lock_caller() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=11c34aa0145a
 fn    learning.export_evidence_columns() -> text[] kind=f vol=s secdef=f cfg=search_path="" body=2493576f52cf
 fn    learning.export_inventory() -> jsonb kind=f vol=s secdef=f cfg=search_path=pg_catalog body=efb7c6410e22
+fn    learning.export_work_episode_columns() -> jsonb kind=f vol=s secdef=f cfg=search_path="" body=aa6fa2289427
 fn    learning.guard_c1_links() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=d654c7cf0212
 fn    learning.ingest_episode_v2(p_episode jsonb, p_agent_version text, p_machine_class text) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=f29742bb642a
 fn    learning.lock_ontology_writer() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog body=deba806b4686
@@ -1102,7 +1108,7 @@ fn    learning.refresh_evidence_status(p_claim_ids uuid[]) -> integer kind=f vol
 fn    learning.refresh_evidence_status_for_learner(target uuid, claim_ids uuid[]) -> integer kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=3fae05378727
 fn    learning.residue_repass_context(p_episode_id uuid) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=085b0718ff59
 fn    learning.validate_extraction_receipt() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=68715bb0916d
-fn    learning.verify_a2_manifest() -> jsonb kind=f vol=s secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=4fd5143a45ee
+fn    learning.verify_a2_manifest() -> jsonb kind=f vol=s secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=ef378e8cfbf9
 fn    learning.write_residue_repass() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=e6de4e48469d
 gcol  learning.checkpoints.chosen_option_id authenticated UPDATE grantable=f
 gcol  learning.checkpoints.decided_at authenticated UPDATE grantable=f
@@ -1230,6 +1236,10 @@ gfn   learning.a2_frozen_row(p_row jsonb, p_kind text) anon exec=f
 gfn   learning.a2_frozen_row(p_row jsonb, p_kind text) authenticated exec=t
 gfn   learning.a2_frozen_row(p_row jsonb, p_kind text) service_role exec=f
 gfn   learning.a2_frozen_row(p_row jsonb, p_kind text) supabase_auth_admin exec=f
+gfn   learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) anon exec=f
+gfn   learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) authenticated exec=t
+gfn   learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) service_role exec=f
+gfn   learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) supabase_auth_admin exec=f
 gfn   learning.a2_legacy_evidence_row(p_row learning.evidence) anon exec=f
 gfn   learning.a2_legacy_evidence_row(p_row learning.evidence) authenticated exec=t
 gfn   learning.a2_legacy_evidence_row(p_row learning.evidence) service_role exec=f
@@ -1294,6 +1304,10 @@ gfn   learning.export_inventory() anon exec=f
 gfn   learning.export_inventory() authenticated exec=t
 gfn   learning.export_inventory() service_role exec=f
 gfn   learning.export_inventory() supabase_auth_admin exec=f
+gfn   learning.export_work_episode_columns() anon exec=f
+gfn   learning.export_work_episode_columns() authenticated exec=t
+gfn   learning.export_work_episode_columns() service_role exec=f
+gfn   learning.export_work_episode_columns() supabase_auth_admin exec=f
 gfn   learning.guard_c1_links() anon exec=f
 gfn   learning.guard_c1_links() authenticated exec=t
 gfn   learning.guard_c1_links() service_role exec=f
