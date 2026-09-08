@@ -4,6 +4,18 @@ import {
   type CaptureViewportOptions,
 } from './e2e/support/captureRegions';
 
+// The CI launcher owns an already-bound OS-assigned preview socket. Local
+// commands keep their existing server/reuse behavior.
+const managedPreview = process.env.STAMP_MANAGED_PREVIEW_URL;
+if (managedPreview) {
+  const url = new URL(managedPreview);
+  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' ||
+      !url.port || url.port === '0' || url.username || url.password ||
+      url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('STAMP_MANAGED_PREVIEW_URL must be an owned loopback preview URL');
+  }
+}
+
 /**
  * Playwright config for the `data-source` STAMP and for the CAPTURE built on it
  * (P4 of plan `20260812-ux-map-observed-reality-lens`).
@@ -59,8 +71,8 @@ import {
  * ORDINARY browser, where an attribute that only survives a frozen one is
  * caught rather than blessed.
  *
- * Port 4189, one above the baseline's 4188, so the two can run at once on a
- * developer machine and on a shared self-hosted runner.
+ * Local commands retain port 4189. The CI launcher uses an OS-assigned port
+ * with its socket held through all tests, so host-network jobs cannot collide.
  *
  * `--host 127.0.0.1` is deliberate: `vite preview` binds `0.0.0.0` by default,
  * which on a public VPS publishes the preview — and this particular preview
@@ -99,13 +111,13 @@ export default defineConfig<CaptureViewportOptions>({
   expect: { timeout: 10_000 },
 
   use: {
-    baseURL: process.env.STAMP_BASE_URL || 'http://127.0.0.1:4189',
+    baseURL: managedPreview || process.env.STAMP_BASE_URL || 'http://127.0.0.1:4189',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
   },
 
-  webServer: {
+  webServer: managedPreview ? undefined : {
     command:
       'ITERA_SOURCE_STAMP=1 ' +
       'VITE_SUPABASE_URL=http://stub.supabase.invalid VITE_SUPABASE_ANON_KEY=stub-anon-key ' +

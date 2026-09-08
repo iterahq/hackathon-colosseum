@@ -205,6 +205,9 @@ environment:
     - name: VITE_SUPABASE_ANON_KEY
       description: Anon key do Supabase (RLS aplica; sessão do usuário)
   optional:
+    - name: STAMP_MANAGED_PREVIEW_URL
+      description: Internal CI launcher handoff to its already-bound loopback preview socket; unset outside the launcher.
+      default: unset
     - name: VITE_ITERA_API_URL
       description: Base da itera-api (responder/judge do BYOC ao vivo)
     - name: VITE_ITERA_API_BASE

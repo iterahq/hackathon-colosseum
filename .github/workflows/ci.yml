@@ -482,8 +482,8 @@ jobs:
           node node_modules/playwright/cli.js install --with-deps chromium ||
             node node_modules/playwright/cli.js install chromium
 
-      # The config's `webServer` builds with `ITERA_SOURCE_STAMP=1` and the stub
-      # Supabase origin, then previews it on loopback only.
+      # The launcher builds once with the same stamp/stub flags, binds the real
+      # preview to an OS-assigned loopback port, and holds it through all tests.
       #
       # ⚠️ ONE invocation, no `--project`. It runs ALL THREE projects — `stamp`,
       # `capture` and `manifest` — against ONE server, and that is the point:
@@ -500,8 +500,11 @@ jobs:
       # declared routes are gated, `RequireAuth` redirects SILENTLY rather than
       # rendering a 403, and nothing else in this repository would notice a gate
       # going missing. See the header of `e2e/capture-manifest.spec.ts`.
+      - name: Preview port isolation and owned cleanup
+        run: node --test scripts/tests/stamp-preview.test.mjs
+
       - name: Every stamp resolves to a file, the capture repeats, the map still holds
-        run: npm run e2e:stamp
+        run: node scripts/run-source-stamp.mjs
 
       # `dist/` is the build the step above just used. The detector that
       # requires ZERO stamps in `build-test` must find them here, or it is not

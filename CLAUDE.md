@@ -384,3 +384,17 @@ Native evidence writer bridge0094 follows0093. Its key-presence marker permits e
 Native SQL consumers0095 follow the0094 bridge. Atomic writers use native columns;
 immutable request JSON and exact receipt validation remain. See `db/README.md` for
 the populated legacy/native replay proof and the remaining D dependencies.
+
+## Source-stamp CI preview ownership
+
+The source-stamp CI job uses `scripts/run-source-stamp.mjs`. It builds once with
+the existing stamp and stub flags. Vite binds an OS-assigned loopback port.
+The launcher holds that server through all existing Playwright projects.
+`STAMP_MANAGED_PREVIEW_URL` passes the actual bound URL to the config, which
+skips its duplicate server startup. Local `npm run e2e:stamp` behavior stays
+unchanged. The launcher closes the preview after success, failure, or handled
+cancellation. Only its own child process group receives cancellation signals.
+Hard process/host loss relies on normal OS socket cleanup.
+
+`node --test scripts/tests/stamp-preview.test.mjs` tests concurrent real Vite
+previews, positive fixture isolation, failed children, and owned cleanup.
