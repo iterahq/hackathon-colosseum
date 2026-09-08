@@ -998,3 +998,13 @@ The same version3 census generates this named expectation. The wrapper copies it
 only into the disposable prefix directory. Final-main parity continues to use
 `expected-schema.txt`. Both complete catalogs must match their declared schema
 stage; no learning facts or drift checks are excluded.
+
+Before a census-definition transition, verify the complete actual-main migration
+ledger and exact live/expected catalog. Also run the real
+`schema-parity.sh production` check with the committed `known-differences.txt`.
+Exact catalog equality alone does not prove this check passes: stale allowances
+are a separate failure. Run 34181328581 stored version 3 successfully, then failed
+independent parity because the resolved 0063/0064 allowances remained. That run
+is an overall failure. After allowance retirement, require two fully successful
+existing DB Drift runs at the recorded unchanged version 3 fingerprint. No
+applier override, allowance override or direct census write is part of this flow.

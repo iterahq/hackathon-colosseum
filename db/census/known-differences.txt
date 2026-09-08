@@ -1,114 +1,14 @@
 # db/census/known-differences.txt
 #
-# The differences between the LIVE ITERA database (kjefmwlopzeaqgqtlbdn) and the
-# schema this repository builds from zero, measured 2026-08-12 by a read-only
-# census of production and a from-zero build on a throwaway Postgres 17.6.
+# No active production/rebuild differences remain as of 2026-09-08.
+# The canonical version 3 census matches all 2078 facts on actual main/live.
 #
-# Read by db/scripts/schema-parity.sh in `production` mode ONLY. It never
-# relaxes the from-zero check: a PR still has to produce
-# db/census/expected-schema.txt exactly.
+# Retired D1: migration 0063 revoked the unaccounted table grants.
+# Retired D2: migration 0064 restored the published-or-author activity policy.
+# Their 22 old +/- entries were still present after those fixes. The production
+# parity check correctly refused them as STALE ALLOWANCE in run 34181328581.
+# Remove resolved allowances, not the stale/undeclared-difference checks.
 #
-# ⚠️ CLOSED. schema-parity.sh treats a difference that is NOT declared here as a
-# failure, and a declared difference that has GONE AWAY as a failure too (exit
-# 3) — a stale allowance is how an exception list turns into a permanent
-# blindfold. When a line below is resolved, DELETE it.
-#
-# ⚠️ EACH ENTRY IS A QUESTION, NOT A DECISION. Every line here says production
-# and the repository disagree and NOBODY HAS CHOSEN A SIDE YET. Both are live
-# behaviour changes, so neither is made in the pull request that discovered
-# them.
-#
-# FORMAT — `-` is the line production has, `+` is the line a from-zero build
-# produces. Blank lines and `#` are ignored. The text must match the census
-# line byte for byte.
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# D1 — `anon` holds SELECT on ten relations that no migration grants it.
-# ─────────────────────────────────────────────────────────────────────────────
-# CAUSE, measured: 0002_itera_rls.sql line 152 is
-#
-#     grant select on all tables in schema itera to anon, authenticated;
-#
-# `ON ALL TABLES` is a SNAPSHOT, not a rule. It grants to the tables that exist
-# at the moment it runs, and Postgres has no memory of the intent afterwards.
-#
-# Before the ledger (2026-08-04) the applier RE-RAN EVERY MIGRATION FROM 0001 ON
-# EVERY INVOCATION — apply-migrations.sh says so in its own header. So each run
-# re-executed line 152 against a schema that had grown, and production kept
-# collecting the grant for tables created long after 0002. The ledger stopped
-# that: 0002 now runs exactly once, at position 2, when only 0001's tables
-# exist.
-#
-# So production's privilege set is not a decision anybody made. It is a
-# fossil of how many times a script happened to run. That is the reason it
-# cannot be reproduced from the repository, and the reason it must not simply
-# be copied into a new migration: `anon` holding SELECT on `itera.api_keys` is
-# not an intention worth preserving in SQL.
-#
-# NOT A DOOR BY ITSELF: `anon` is not BYPASSRLS, so every one of these tables
-# still answers through its RLS policies. The grant is the layer BEFORE the
-# policy, and it is wider than anyone wrote.
-#
-# RESOLUTION — needs Tainan. Either (a) REVOKE in production so it matches the
-# repository, which is a live privilege change, or (b) write the grants the
-# tables should actually have. Not decided here.
-- gtbl  itera.activity_comments anon SELECT
-- gtbl  itera.api_keys anon SELECT
-- gtbl  itera.api_keys authenticated SELECT
-- gtbl  itera.byoc_generations anon SELECT
-- gtbl  itera.class_answers anon SELECT
-- gtbl  itera.class_attendance anon SELECT
-- gtbl  itera.class_guests anon SELECT
-- gtbl  itera.media anon SELECT
-- gtbl  itera.my_subscription anon SELECT
-- gtbl  itera.unit_versions anon SELECT
-+ gtbl  itera.activity_comments anon -
-+ gtbl  itera.api_keys anon -
-+ gtbl  itera.api_keys authenticated -
-+ gtbl  itera.byoc_generations anon -
-+ gtbl  itera.class_answers anon -
-+ gtbl  itera.class_attendance anon -
-+ gtbl  itera.class_guests anon -
-+ gtbl  itera.media anon -
-+ gtbl  itera.my_subscription anon -
-+ gtbl  itera.unit_versions anon -
-
-# ─────────────────────────────────────────────────────────────────────────────
-# D2 — production reads DRAFT activities to learners. The repository does not.
-# ─────────────────────────────────────────────────────────────────────────────
-# `itera.activities` has ONE select policy, `activities_select_tenant`. Two
-# migrations create it:
-#
-#   0002_itera_rls.sql  — tenant membership only.
-#   0047_mcp0003_activity_status_draft_published.sql — tenant membership AND
-#       (status = 'published' OR the caller is an author of that tenant).
-#
-# 0047 is the later of the two, so a from-zero build ends with the gated
-# version. PRODUCTION HAS 0002's VERSION. The gate is not there.
-#
-# The rest of 0047 IS in production: the `itera.activity_status` enum, the
-# `activities.status` column and `activities_status_idx` all match. Only the
-# policy is missing, which is why no object-presence check ever saw it.
-#
-# HOW IT GOT THERE. 0047 was consolidated from `itera-mcp` on 2026-08-04 and
-# registered in itera.schema_migrations with
-# `applied_by = baseline-add:152c31a: … all objects verified present by
-# read-only SELECT before registration`. It was marked applied WITHOUT being
-# run, on evidence that could only see OBJECTS. A policy predicate is not an
-# object. The SQL of the two files is byte-identical once comments are
-# stripped, so the file is not the difference — the application is.
-#
-# MEASURED CONSEQUENCE, 2026-08-12, read-only:
-#   * 33 activities in production carry status = 'draft'.
-#   * 14 of those 33 already have rows in itera.activity_results.
-#   * 11 of those 33 already have rows in itera.activity_traces.
-# So learners are not merely ABLE to read drafts; they have been working on
-# them.
-#
-# RESOLUTION — needs Tainan, and it is NOT a small merge. Applying 0047's
-# policy hides 33 activities from learners, 14 of which hold learner work.
-# Reverting 0047 in the repository instead makes the repository agree with a
-# state nobody chose. Either way it is a product decision about live content,
-# so this pull request only reports it.
-- pol   itera.activities activities_select_tenant cmd=r perm=t roles=PUBLIC using=(lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) check=-
-+ pol   itera.activities activities_select_tenant cmd=r perm=t roles=PUBLIC using=((lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) AND ((status = 'published'::itera.activity_status) OR (lesson_id IN ( SELECT l.id FROM ((itera.lessons l JOIN itera.units u ON ((u.id = l.unit_id))) JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))))) check=-
+# schema-parity.sh production remains exact and fail-closed. Any future active
+# entry needs a measured live/rebuild difference and its explicit review.
+# Format: - is a production fact; + is a from-zero fact. Comments are ignored.
