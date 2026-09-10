@@ -1087,3 +1087,61 @@ local transactions. The full series and real migration applier remain separate C
 gates.0098 was reserved for this additive prerequisite before publication; the
 previous unpublished core contraction candidate must take a later number. Releases
 remain held during T22 source-hash checkpoints. This does not pass final Block D.
+
+### Core contraction — 0099 (held release)
+
+The version-1 contract is `db/census/learning-core-d-contract.json`. Its
+executable check requires migration 0099 to remove only the physical
+`evidence.provenance` column, `checkpoints` and `generation_config`. Every native
+field stays. The physical `ingest_batch_id`, legacy concept rows/links and
+`capabilities.concept_id` stay.
+Immutable extraction and re-pass request JSON remains the wire contract.
+
+The migration locks evidence and retired tables with `ACCESS EXCLUSIVE NOWAIT`.
+It locks model and objective-link tables with `SHARE NOWAIT`. The same transaction
+requires zero checkpoints and the unchanged approved singleton configuration.
+All nine values must match exactly one zero-link default in each model family.
+An edit after the replacements were created, a changed editor/value, an unknown
+config field, or a missing/ambiguous/non-global replacement refuses. The migration
+never repairs model data. Full original config and model metadata belongs in the
+premerge preservation proof; old config authoring metadata retires explicitly.
+
+Every evidence row must pass exact native/physical reconstruction before the
+column retires. The existing bridge trigger becomes a native-only validator.
+Its name, order and grants stay. Nonempty sorted/unique/known key markers remain
+mandatory. Explicit null and absent values remain distinct. A non-null field
+without its source key refuses, including JSON null in `digest_backfill`.
+`pass_at` and source references stay text. The old audit signature now checks
+native validity; immutable wire constructors retain their separate lossless check.
+All existing status, caller scope, receipt and manifest functions stay unchanged.
+Drops omit `CASCADE`, so an unaccounted dependency refuses the whole transaction.
+
+`test-core-contraction.sh` declares the immutable through-0098 prefix and the
+0099 suffix. It preserves the canonical historical exceptions without adding one.
+Every prefix migration in that resolved series runs twice. Every existing
+historical suite runs before contraction. The populated fixture then restores
+the canonical prefix order because historical suites exercise older function
+definitions. All 32 learning-table row hashes must stay exact through that
+restoration, and the complete 2,107-fact prefix must match before the suffix.
+The suffix executes through the actual
+unchanged applier on populated rows, then replays without row or catalog changes.
+Named prefix and final expectations use the same census. Unknown migration files
+refuse before SQL. `fresh-apply.sh`, the production applier and `db-apply.yml`
+stay unchanged; a blind replay of old physical-column SQL after D is unsupported.
+
+The populated suffix covers native activity/extraction/digest/re-pass writes,
+exact saved receipt retries, same-pass status semantics, original A2 hashes,
+source moment identity, absent/null/numeric/timestamp preservation, RLS and
+seven real concurrent writer locks. Contraction and receipt/replay checks compare
+all 30 surviving tables, with only the removed evidence JSON normalized through
+its exact native projection. Refusal checks hash every current table as raw rows,
+including both retired tables and renamed partial fixtures, plus all catalog facts. The final inventory is 30 tables and 41 evidence columns.
+The reviewed export contract reconstructs legacy wire metadata after raw scans.
+
+This local preparation preserves the deployed 0098 paired source UUID contract,
+its 23-column export inventory and its source-aware A2 reverse guards. The current
+three-drop scope matches the revised round-6 D.1 contract. The retained manifest
+records the operational capability pointer and source-ingest export column.
+The separate graph transition keeps every referenced concept node. The prior-day
+drift check, fresh preservation baseline and full current-head CI remain release
+gates. No production contraction occurred.

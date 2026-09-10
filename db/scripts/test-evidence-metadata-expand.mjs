@@ -105,7 +105,8 @@ const clean = () =>
 const insert = (n, metadata) =>
   sql(
     auth(
-      `insert into learning.evidence(id,claim_id,learner_id,episode_id,observed,actor,direction,strength,confidence,provenance)values('${id(n)}','${id(11)}','${id(1)}','${id(21)}','Preserved fixture observation','learner','supports','medium',0.8,${q(JSON.stringify(metadata))}::jsonb)`,
+      // Keep fallback created_at before the explicit September 7 and 9 pass times.
+      `insert into learning.evidence(id,claim_id,learner_id,episode_id,observed,actor,direction,strength,confidence,created_at,provenance)values('${id(n)}','${id(11)}','${id(1)}','${id(21)}','Preserved fixture observation','learner','supports','medium',0.8,'2026-09-06T00:00:00Z',${q(JSON.stringify(metadata))}::jsonb)`,
     ),
   );
 const baseline = () =>

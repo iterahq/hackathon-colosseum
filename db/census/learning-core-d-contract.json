@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "plan": "20260903-itera-learning-schema-v04-remodel",
+  "retiredPhysicalObjects": [
+    {
+      "schema": "learning",
+      "table": "evidence",
+      "column": "provenance"
+    },
+    {
+      "schema": "learning",
+      "table": "checkpoints"
+    },
+    {
+      "schema": "learning",
+      "table": "generation_config"
+    }
+  ],
+  "retainedPhysicalObjects": [
+    {
+      "schema": "learning",
+      "table": "capabilities",
+      "column": "concept_id",
+      "reason": "Round-6 operational capability pointer"
+    },
+    {
+      "schema": "learning",
+      "table": "work_episodes",
+      "column": "ingest_batch_id",
+      "reason": "PR490 and PR168 source-ingest export contract"
+    }
+  ]
+}

@@ -418,3 +418,7 @@ Both fields must agree during coexistence. Current capture writers omit both.
 The caller-only `export_work_episode_columns()` RPC returns exact typed metadata.
 A2 projections preserve old fingerprint keys and hashes. No physical field is dropped.
 See `db/README.md` for writer rules, local transition tests and the held release boundary.
+Core contraction 0099 removes only physical evidence JSON and the two retired
+checkpoint/config tables. Native fields, ingest_batch_id and legacy concepts stay.
+The declared historical prefix and populated suffix each retain exact census and
+replay checks. Production applier/db-apply stay unchanged. See `db/README.md`.

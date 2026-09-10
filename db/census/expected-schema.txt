@@ -39,20 +39,10 @@ cmt   col learning.evidence.artifact_id 4b9ae8dd732a
 cmt   col learning.evidence.digest_backfill 330b35ca736f
 cmt   col learning.evidence.misconception_id 25f1e26eeb35
 cmt   col learning.evidence.pass_at 0b9bc5a3861a
-cmt   col learning.evidence.provenance f63c6ab1c426
 cmt   col learning.evidence.source_episode_ref 6747cca52a6d
 cmt   col learning.evidence.source_metadata_keys bbc8f10e8ab8
 cmt   col learning.evidence.status 15d375ecbbec
 cmt   col learning.evidence.turn_episode_id 3c6d814741c4
-cmt   col learning.generation_config.cadence_max_per_hour 4d66579a9139
-cmt   col learning.generation_config.cadence_min_per_hour 0c1d4da87b8b
-cmt   col learning.generation_config.daily_cap 23d04466df50
-cmt   col learning.generation_config.decay_half_life_days 711788a8131a
-cmt   col learning.generation_config.per_episode_cap 8b054842764c
-cmt   col learning.generation_config.ranking_mode e83dede2b3d8
-cmt   col learning.generation_config.strong_min_distinct_episodes c07d100bc282
-cmt   col learning.generation_config.strong_min_distinct_projects 5e7c5a251536
-cmt   col learning.generation_config.ttl_hours a448de1353c9
 cmt   col learning.learner_state_history.computed_at 34d92ae50d3e
 cmt   col learning.learner_state_history.episode_id f44dd26bda86
 cmt   col learning.learner_state_history.gate d4549c9a6873
@@ -83,6 +73,8 @@ cmt   fn  itera.reap_stale_class_sessions(p_idle_minutes integer, p_absolute_hou
 cmt   fn  itera.revoke_membership(p_tenant_id uuid, p_user_id uuid, p_user_email text) 69822a298f18
 cmt   fn  itera.test_tenant_isolation_violations() 71618de32b31
 cmt   fn  learning.apply_dml(p_operation text, p_payload jsonb) 6383045946f2
+cmt   fn  learning.assert_evidence_metadata_lossless(value learning.evidence) 34c4524100e3
+cmt   fn  learning.bridge_evidence_metadata() 9d7936040b4e
 cmt   fn  learning.delete_artifact(p_artifact_id uuid) 5bff09dfbf41
 cmt   fn  learning.export_evidence_columns() a051f5ee0e2f
 cmt   fn  learning.export_inventory() 50589a1c640b
@@ -109,7 +101,6 @@ cmt   rel learning.assembly_models 55696e31da9b
 cmt   rel learning.capabilities 32a2c337a7f0
 cmt   rel learning.capability_proposals b486e8833ac3
 cmt   rel learning.capability_states 26e71a2c92e1
-cmt   rel learning.checkpoints 3696bedeeccc
 cmt   rel learning.claim_concepts 8e6af762c973
 cmt   rel learning.claim_templates 274787557b96
 cmt   rel learning.claims 440ef16ca850
@@ -120,7 +111,6 @@ cmt   rel learning.evidence c98c1bd5f4da
 cmt   rel learning.evidence_model_objectives 77812f7ed539
 cmt   rel learning.evidence_models a5e2d73826a4
 cmt   rel learning.extraction_passes 2a92910001ff
-cmt   rel learning.generation_config 6d6eb15eac09
 cmt   rel learning.learner_state 435459760aa7
 cmt   rel learning.learner_state_history 0c774adf89e1
 cmt   rel learning.learners fdba6f296b9d
@@ -480,13 +470,6 @@ col   learning.capability_states.inputs jsonb NOT NULL default=- ident=- gen=-
 col   learning.capability_states.learner_id uuid NOT NULL default=- ident=- gen=-
 col   learning.capability_states.reducer_version text NOT NULL default=- ident=- gen=-
 col   learning.capability_states.state text NOT NULL default=- ident=- gen=-
-col   learning.checkpoints.chosen_option_id text default=- ident=- gen=-
-col   learning.checkpoints.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
-col   learning.checkpoints.decided_at timestamp with time zone default=- ident=- gen=-
-col   learning.checkpoints.episode_id uuid NOT NULL default=- ident=- gen=-
-col   learning.checkpoints.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
-col   learning.checkpoints.options jsonb NOT NULL default='[]'::jsonb ident=- gen=-
-col   learning.checkpoints.question text NOT NULL default=- ident=- gen=-
 col   learning.claim_concepts.claim_id uuid NOT NULL default=- ident=- gen=-
 col   learning.claim_concepts.concept_id text NOT NULL default=- ident=- gen=-
 col   learning.claim_concepts.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
@@ -559,7 +542,6 @@ col   learning.evidence.ontology_version integer default=- ident=- gen=-
 col   learning.evidence.pass_at text default=- ident=- gen=-
 col   learning.evidence.pass_id text default=- ident=- gen=-
 col   learning.evidence.prompt_version text default=- ident=- gen=-
-col   learning.evidence.provenance jsonb NOT NULL default=- ident=- gen=-
 col   learning.evidence.provider text default=- ident=- gen=-
 col   learning.evidence.quality text default=- ident=- gen=-
 col   learning.evidence.relevance_extractor text default=- ident=- gen=-
@@ -592,18 +574,6 @@ col   learning.extraction_passes.learner_id uuid NOT NULL default=- ident=- gen=
 col   learning.extraction_passes.pass_id text NOT NULL default=- ident=- gen=-
 col   learning.extraction_passes.request jsonb NOT NULL default=- ident=- gen=-
 col   learning.extraction_passes.result jsonb NOT NULL default=- ident=- gen=-
-col   learning.generation_config.cadence_max_per_hour integer NOT NULL default=5 ident=- gen=-
-col   learning.generation_config.cadence_min_per_hour integer NOT NULL default=1 ident=- gen=-
-col   learning.generation_config.daily_cap integer NOT NULL default=5 ident=- gen=-
-col   learning.generation_config.decay_half_life_days numeric NOT NULL default=30 ident=- gen=-
-col   learning.generation_config.id smallint NOT NULL default=1 ident=- gen=-
-col   learning.generation_config.per_episode_cap numeric NOT NULL default=3 ident=- gen=-
-col   learning.generation_config.ranking_mode text NOT NULL default='info_gain'::text ident=- gen=-
-col   learning.generation_config.strong_min_distinct_episodes integer NOT NULL default=3 ident=- gen=-
-col   learning.generation_config.strong_min_distinct_projects integer NOT NULL default=2 ident=- gen=-
-col   learning.generation_config.ttl_hours integer NOT NULL default=48 ident=- gen=-
-col   learning.generation_config.updated_at timestamp with time zone NOT NULL default=now() ident=- gen=-
-col   learning.generation_config.updated_by uuid default=- ident=- gen=-
 col   learning.learner_state.claim_id uuid NOT NULL default=- ident=- gen=-
 col   learning.learner_state.computed_at timestamp with time zone NOT NULL default=now() ident=- gen=-
 col   learning.learner_state.evidence_count integer NOT NULL default=0 ident=- gen=-
@@ -895,11 +865,6 @@ con   learning.capability_states capability_states_learner_id_fkey FOREIGN KEY (
 con   learning.capability_states capability_states_pkey PRIMARY KEY (id)
 con   learning.capability_states capability_states_reducer_version_present CHECK ((length(btrim(reducer_version)) > 0))
 con   learning.capability_states capability_states_state_present CHECK ((length(btrim(state)) > 0))
-con   learning.checkpoints checkpoints_decision_complete CHECK (((chosen_option_id IS NULL) = (decided_at IS NULL)))
-con   learning.checkpoints checkpoints_episode_id_fkey FOREIGN KEY (episode_id) REFERENCES learning.work_episodes(id) ON DELETE CASCADE
-con   learning.checkpoints checkpoints_options_array CHECK ((jsonb_typeof(options) = 'array'::text))
-con   learning.checkpoints checkpoints_pkey PRIMARY KEY (id)
-con   learning.checkpoints checkpoints_question_present CHECK ((length(btrim(question)) > 0))
 con   learning.claim_concepts claim_concepts_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
 con   learning.claim_concepts claim_concepts_concept_fk FOREIGN KEY (concept_id) REFERENCES learning.concepts(id) ON UPDATE CASCADE ON DELETE CASCADE
 con   learning.claim_concepts claim_concepts_learner_id_fkey FOREIGN KEY (learner_id) REFERENCES learning.learners(id) ON DELETE CASCADE
@@ -944,7 +909,6 @@ con   learning.evidence evidence_misconception_fk FOREIGN KEY (misconception_id)
 con   learning.evidence evidence_moment_same_learner FOREIGN KEY (moment_id, learner_id) REFERENCES learning.episode_moments(id, learner_id) ON DELETE SET NULL (moment_id)
 con   learning.evidence evidence_observed_present CHECK ((length(btrim(observed)) > 0))
 con   learning.evidence evidence_pkey PRIMARY KEY (id)
-con   learning.evidence evidence_provenance_object CHECK (((jsonb_typeof(provenance) = 'object'::text) AND (provenance <> '{}'::jsonb)))
 con   learning.evidence evidence_response_same_learner FOREIGN KEY (activity_response_id, learner_id) REFERENCES learning.activity_responses(id, learner_id) ON DELETE SET NULL (activity_response_id)
 con   learning.evidence evidence_status_known CHECK ((status = ANY (ARRAY['active'::text, 'superseded'::text])))
 con   learning.evidence evidence_strength_known CHECK ((strength = ANY (ARRAY['weak'::text, 'medium'::text, 'strong'::text])))
@@ -960,16 +924,6 @@ con   learning.extraction_passes extraction_passes_pass_id_check CHECK (((length
 con   learning.extraction_passes extraction_passes_pkey PRIMARY KEY (learner_id, episode_id, pass_id)
 con   learning.extraction_passes extraction_passes_request_check CHECK (((jsonb_typeof(request) = 'object'::text) AND (octet_length((request)::text) <= 524288)))
 con   learning.extraction_passes extraction_passes_result_check CHECK ((jsonb_typeof(result) = 'object'::text))
-con   learning.generation_config generation_config_cadence_sane CHECK (((cadence_min_per_hour >= 0) AND (cadence_max_per_hour >= 1) AND (cadence_min_per_hour <= cadence_max_per_hour)))
-con   learning.generation_config generation_config_daily_cap_sane CHECK ((daily_cap >= 0))
-con   learning.generation_config generation_config_decay_half_life_sane CHECK ((decay_half_life_days > (0)::numeric))
-con   learning.generation_config generation_config_per_episode_cap_sane CHECK ((per_episode_cap >= (0)::numeric))
-con   learning.generation_config generation_config_pkey PRIMARY KEY (id)
-con   learning.generation_config generation_config_ranking_mode_known CHECK ((ranking_mode = ANY (ARRAY['info_gain'::text, 'recency'::text])))
-con   learning.generation_config generation_config_singleton CHECK ((id = 1))
-con   learning.generation_config generation_config_strong_episodes_sane CHECK ((strong_min_distinct_episodes >= 1))
-con   learning.generation_config generation_config_strong_projects_sane CHECK ((strong_min_distinct_projects >= 1))
-con   learning.generation_config generation_config_ttl_sane CHECK ((ttl_hours >= 1))
 con   learning.learner_state learner_state_claim_same_learner FOREIGN KEY (claim_id, learner_id) REFERENCES learning.claims(id, learner_id) ON DELETE CASCADE
 con   learning.learner_state learner_state_evidence_count_sane CHECK ((evidence_count >= 0))
 con   learning.learner_state learner_state_inputs_object CHECK (((jsonb_typeof(inputs) = 'object'::text) AND (inputs <> '{}'::jsonb)))
@@ -1082,8 +1036,8 @@ fn    learning.a2_legacy_episode_row(p_row learning.work_episodes, p_kind text) 
 fn    learning.a2_legacy_evidence_row(p_row learning.evidence) -> jsonb kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning,TimeZone=UTC body=fae5afc2ab3b
 fn    learning.apply_dml(p_operation text, p_payload jsonb) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=5f6e69fee0f1
 fn    learning.assert_digest_backfill_eligible(p_request jsonb, p_evidence_ids uuid[], p_residue_ids uuid[]) -> void kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=2f14854097a3
-fn    learning.assert_evidence_metadata_lossless(value learning.evidence) -> void kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=6857865e753e
-fn    learning.bridge_evidence_metadata() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning body=c76759eff48d
+fn    learning.assert_evidence_metadata_lossless(value learning.evidence) -> void kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=12b7b6777657
+fn    learning.bridge_evidence_metadata() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning body=e524ce15e399
 fn    learning.delete_artifact(p_artifact_id uuid) -> jsonb kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=664bb877f7bd
 fn    learning.evidence_js_sort_key(value text) -> integer[] kind=f vol=i secdef=f cfg=- body=05ed1dfa142c
 fn    learning.evidence_metadata_from_json(value jsonb) -> learning.evidence kind=f vol=i secdef=f cfg=search_path=pg_catalog, learning body=f3eb3ac7c248
@@ -1110,8 +1064,6 @@ fn    learning.residue_repass_context(p_episode_id uuid) -> jsonb kind=f vol=v s
 fn    learning.validate_extraction_receipt() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera body=68715bb0916d
 fn    learning.verify_a2_manifest() -> jsonb kind=f vol=s secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=ef378e8cfbf9
 fn    learning.write_residue_repass() -> trigger kind=f vol=v secdef=f cfg=search_path=pg_catalog, learning, itera,TimeZone=UTC body=e6de4e48469d
-gcol  learning.checkpoints.chosen_option_id authenticated UPDATE grantable=f
-gcol  learning.checkpoints.decided_at authenticated UPDATE grantable=f
 gcol  learning.evidence.status authenticated UPDATE grantable=f
 gcol  learning.residue.ontology_version authenticated UPDATE grantable=f
 gcol  learning.residue.promoted_at authenticated UPDATE grantable=f
@@ -1560,10 +1512,6 @@ gtbl  learning.capability_states anon -
 gtbl  learning.capability_states authenticated INSERT,SELECT,UPDATE
 gtbl  learning.capability_states service_role -
 gtbl  learning.capability_states supabase_auth_admin -
-gtbl  learning.checkpoints anon -
-gtbl  learning.checkpoints authenticated INSERT,SELECT
-gtbl  learning.checkpoints service_role -
-gtbl  learning.checkpoints supabase_auth_admin -
 gtbl  learning.claim_concepts anon -
 gtbl  learning.claim_concepts authenticated DELETE,INSERT,SELECT,UPDATE
 gtbl  learning.claim_concepts service_role -
@@ -1604,10 +1552,6 @@ gtbl  learning.extraction_passes anon -
 gtbl  learning.extraction_passes authenticated INSERT,SELECT
 gtbl  learning.extraction_passes service_role -
 gtbl  learning.extraction_passes supabase_auth_admin -
-gtbl  learning.generation_config anon -
-gtbl  learning.generation_config authenticated SELECT
-gtbl  learning.generation_config service_role -
-gtbl  learning.generation_config supabase_auth_admin -
 gtbl  learning.learner_state anon -
 gtbl  learning.learner_state authenticated INSERT,SELECT,UPDATE
 gtbl  learning.learner_state service_role -
@@ -1700,7 +1644,6 @@ idx   CREATE INDEX idx_capabilities_learner ON learning.capabilities USING btree
 idx   CREATE INDEX idx_capability_proposals_capability ON learning.capability_proposals USING btree (capability_id) WHERE (capability_id IS NOT NULL)
 idx   CREATE INDEX idx_capability_proposals_residue ON learning.capability_proposals USING gin (residue_ids)
 idx   CREATE INDEX idx_capability_proposals_status ON learning.capability_proposals USING btree (status, proposed_at DESC)
-idx   CREATE INDEX idx_checkpoints_episode ON learning.checkpoints USING btree (episode_id, created_at DESC)
 idx   CREATE INDEX idx_claim_concepts_concept ON learning.claim_concepts USING btree (concept_id)
 idx   CREATE INDEX idx_claim_concepts_learner ON learning.claim_concepts USING btree (learner_id)
 idx   CREATE INDEX idx_claim_templates_capability ON learning.claim_templates USING btree (capability_id)
@@ -1773,7 +1716,6 @@ idx   CREATE UNIQUE INDEX byoc_generations_pkey ON itera.byoc_generations USING 
 idx   CREATE UNIQUE INDEX capabilities_pkey ON learning.capabilities USING btree (id)
 idx   CREATE UNIQUE INDEX capability_proposals_pkey ON learning.capability_proposals USING btree (id)
 idx   CREATE UNIQUE INDEX capability_states_pkey ON learning.capability_states USING btree (id)
-idx   CREATE UNIQUE INDEX checkpoints_pkey ON learning.checkpoints USING btree (id)
 idx   CREATE UNIQUE INDEX claim_concepts_pkey ON learning.claim_concepts USING btree (id)
 idx   CREATE UNIQUE INDEX claim_templates_pkey ON learning.claim_templates USING btree (id)
 idx   CREATE UNIQUE INDEX claims_pkey ON learning.claims USING btree (id)
@@ -1793,7 +1735,6 @@ idx   CREATE UNIQUE INDEX evidence_model_objectives_pkey ON learning.evidence_mo
 idx   CREATE UNIQUE INDEX evidence_models_pkey ON learning.evidence_models USING btree (id)
 idx   CREATE UNIQUE INDEX evidence_pkey ON learning.evidence USING btree (id)
 idx   CREATE UNIQUE INDEX extraction_passes_pkey ON learning.extraction_passes USING btree (learner_id, episode_id, pass_id)
-idx   CREATE UNIQUE INDEX generation_config_pkey ON learning.generation_config USING btree (id)
 idx   CREATE UNIQUE INDEX identities_pkey ON itera.identities USING btree (id)
 idx   CREATE UNIQUE INDEX identities_provider_provider_subject_key ON itera.identities USING btree (provider, provider_subject)
 idx   CREATE UNIQUE INDEX invoices_pkey ON billing.invoices USING btree (id)
@@ -1950,8 +1891,6 @@ pol   learning.capability_proposals capability_proposals_read_own_residue cmd=r 
 pol   learning.capability_proposals capability_proposals_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
 pol   learning.capability_states capability_states_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
 pol   learning.capability_states capability_states_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
-pol   learning.checkpoints checkpoints_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
-pol   learning.checkpoints checkpoints_rw_own_episode cmd=* perm=t roles=PUBLIC using=(EXISTS ( SELECT 1 FROM learning.work_episodes e WHERE ((e.id = checkpoints.episode_id) AND (e.learner_id = itera.current_itera_user_id())))) check=(EXISTS ( SELECT 1 FROM learning.work_episodes e WHERE ((e.id = checkpoints.episode_id) AND (e.learner_id = itera.current_itera_user_id()))))
 pol   learning.claim_concepts claim_concepts_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
 pol   learning.claim_templates claim_templates_read_all cmd=r perm=t roles=PUBLIC using=true check=-
 pol   learning.claim_templates claim_templates_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
@@ -1968,7 +1907,6 @@ pol   learning.evidence_model_objectives evidence_model_objectives_rw_operator c
 pol   learning.evidence_models evidence_models_read_all cmd=r perm=t roles=PUBLIC using=true check=-
 pol   learning.evidence_models evidence_models_rw_operator cmd=* perm=t roles=PUBLIC using=itera.is_learning_operator() check=itera.is_learning_operator()
 pol   learning.extraction_passes extraction_passes_own cmd=* perm=t roles=authenticated using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
-pol   learning.generation_config generation_config_read_all cmd=r perm=t roles=PUBLIC using=true check=-
 pol   learning.learner_state learner_state_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
 pol   learning.learner_state learner_state_rw_self cmd=* perm=t roles=PUBLIC using=(learner_id = itera.current_itera_user_id()) check=(learner_id = itera.current_itera_user_id())
 pol   learning.learner_state_history learner_state_history_read_operator cmd=r perm=t roles=PUBLIC using=itera.is_learning_operator() check=-
@@ -2044,7 +1982,6 @@ rel   learning.assembly_models r rls=t force=f
 rel   learning.capabilities r rls=t force=f
 rel   learning.capability_proposals r rls=t force=f
 rel   learning.capability_states r rls=t force=f
-rel   learning.checkpoints r rls=t force=f
 rel   learning.claim_concepts r rls=t force=f
 rel   learning.claim_templates r rls=t force=f
 rel   learning.claims r rls=t force=f
@@ -2055,7 +1992,6 @@ rel   learning.evidence r rls=t force=f
 rel   learning.evidence_model_objectives r rls=t force=f
 rel   learning.evidence_models r rls=t force=f
 rel   learning.extraction_passes r rls=t force=f
-rel   learning.generation_config r rls=t force=f
 rel   learning.learner_state r rls=t force=f
 rel   learning.learner_state_history r rls=t force=f
 rel   learning.learners r rls=t force=f

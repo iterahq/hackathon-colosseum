@@ -31,7 +31,11 @@ name: DB Migration Check
 #     so this pins 17.6.1.160. Checking a 17 database against a 15 container is
 #     how a check tells you the opposite of the truth.
 #
-#  2. IT RUNS THE SERIES TWICE. Every migration in this repo is REQUIRED to be
+#  2. IT RUNS THE HISTORICAL PREFIX TWICE. Since 0099, contraction is a
+#     separately replayed populated suffix. The old files remain immutable;
+#     they cannot reference physical columns after those columns retire.
+#     Every file is accounted for by the explicit prefix/suffix wrapper.
+#     Before contraction, it ran the complete series twice. Every migration in this repo is REQUIRED to be
 #     re-runnable — apply-migrations.sh says so in its header and the ledger's
 #     safety rests on it. Nothing enforced it. The second pass does.
 #
@@ -93,6 +97,10 @@ on:
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
+      - 'db/scripts/test-core-contraction.sh'
+      - 'db/scripts/test-core-contraction.mjs'
+      - 'db/scripts/test-core-contraction-wrapper.mjs'
+      - 'db/scripts/test-core-contraction-contract.mjs'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
       - 'db/scripts/test-schema-parity.sh'
@@ -130,6 +138,10 @@ on:
       - 'db/scripts/test-learning-c1.py'
       - 'db/scripts/test-learning-artifact-cleanup.py'
       - 'db/scripts/apply-migrations.sh'
+      - 'db/scripts/test-core-contraction.sh'
+      - 'db/scripts/test-core-contraction.mjs'
+      - 'db/scripts/test-core-contraction-wrapper.mjs'
+      - 'db/scripts/test-core-contraction-contract.mjs'
       - 'db/scripts/census.sql'
       - 'db/scripts/schema-parity.sh'
       - 'db/census/**'
@@ -224,7 +236,7 @@ jobs:
 
   # ────────────────────────────────────────────────────────────────────────────
   check:
-    name: the schema builds from zero, twice
+    name: the schema prefix and contracted suffix both replay
     runs-on: [self-hosted, dfl-runner]
     needs: selftest
     timeout-minutes: 15
@@ -257,6 +269,9 @@ jobs:
         with:
           # The added-files diff below needs both sides of the PR.
           fetch-depth: 0
+
+      - name: Set the isolated core prefix path
+        run: echo "CORE_PREFIX_ROOT=$RUNNER_TEMP/itera-core-prefix-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
 
       - name: Resolve DB host port
         run: echo "PGPORT=${{ job.services.db.ports['5432'] }}" >> "$GITHUB_ENV"
@@ -296,8 +311,11 @@ jobs:
         if: steps.added.outputs.files != ''
         run: bash db/scripts/check-no-invented-ids.sh ${{ steps.added.outputs.files }}
 
-      - name: Build the schema from an empty database, and run this PR's migrations
-        run: bash db/scripts/fresh-apply.sh --parity --new "${{ steps.added.outputs.files }}"
+      # Through 0098 is the immutable historical prefix. 0099 drops physical
+      # objects older files require. Every prefix file still runs twice; the
+      # populated suffix runs through the unchanged real applier below.
+      - name: Build and replay the complete historical schema prefix
+        run: bash db/scripts/test-core-contraction.sh prefix "${{ steps.added.outputs.files }}"
 
       # "It builds" and "it builds the same thing" are different claims, and
       # only the second one is disaster recovery. `--parity` above asserts it
@@ -305,7 +323,7 @@ jobs:
       # proves the assertion itself can fail — a check nobody has watched go red
       # is not evidence that it can.
       - name: Prove every verdict — schema parity
-        run: bash db/scripts/test-schema-parity.sh
+        run: bash db/scripts/test-core-contraction.sh parity
 
       # ────────────────────────────────────────────────────────────────────────
       # Everything above asks "did the SQL run?". This asks "does the policy DO
@@ -343,6 +361,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Core D manifest matches the exact 0099 drop set
+        run: node db/scripts/test-core-contraction-contract.mjs
 
       - name: Evidence status matches the reader under concurrent writes
         run: node db/scripts/test-evidence-status.mjs
@@ -383,6 +404,12 @@ jobs:
       - name: Export metadata preserves caller identity and exact columns
         run: node db/scripts/test-export-evidence-columns.mjs
 
+      - name: Contraction accounts for every migration before SQL
+        run: node db/scripts/test-core-contraction-wrapper.mjs
+
+      - name: Native contraction preserves populated rows and exact replay
+        run: bash db/scripts/test-core-contraction.sh suffix
+
       - name: Summary
         if: always()
         run: |
@@ -392,10 +419,10 @@ jobs:
             echo "- server: \`$(psql -qtAX -c 'show server_version' 2>/dev/null || echo unknown)\` (ITERA production is PostgreSQL 17.6)"
             echo "- migrations added by this PR: \`${{ steps.added.outputs.files }}\`"
             echo
-            echo "Every migration was applied to a throwaway Postgres from zero, then a"
-            echo "second time to prove it is re-runnable, then this PR's own migrations were"
-            echo "applied through \`db/scripts/apply-migrations.sh\` — the same script"
-            echo "\`db-apply\` runs against ITERA production on merge."
+            echo "The workflow checks the immutable historical series through 0098 twice on its declared prefix."
+            echo "Every existing historical suite must pass before contraction. The populated"
+            echo "0099 suffix must pass the unchanged production applier and then replay exactly."
+            echo "Both prefix and final census checks require exact agreement without excluded facts."
             echo
             echo "RLS behaviour was then asserted on the result: a learner reads only"
             echo "published activities, an author of the tenant also reads drafts, and"

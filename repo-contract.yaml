@@ -346,3 +346,8 @@ observability:
 # A2 native projection0097: exact immutable0088 key arrays and PostgreSQL JSONB
 # hashes. Caller-scoped read-only verifier; no automatic reverse, row repair,
 # physical provenance drop, or ingest_batch_id removal.
+
+# Core contraction 0099: physical evidence.provenance, checkpoints and
+# generation_config retire only after the locked preservation checks and runtime
+# release gates. Native fields, ingest_batch_id and legacy capability links stay.
+# Historical prefix and populated suffix have exact separate census expectations.
