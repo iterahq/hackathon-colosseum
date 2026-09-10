@@ -684,6 +684,53 @@ The test creates a PostgreSQL 17 container with no network or published ports. I
 It applies the real learning migrations and uses a test identity-provider shim.
 Before corrections 0080/0081 merge, pass each reviewed file with `--dependency /path/to/migration.sql`.
 The RPC and its engine routes remain held until both corrections are deployed.
+
+### Capability graph endpoint transition (0100)
+
+Migration `0100_learning_capability_graph_endpoints.sql` adds typed capability
+endpoints to `concept_relations` and `claim_concepts`. It keeps every existing
+concept endpoint valid. The migration moves no graph row.
+
+`learning.migrate_capability_relation_endpoints(p_expected_rows jsonb)` moves
+reviewed shared relations. It requires an authenticated learning operator.
+Each array item contains the complete original relation preimage. Its exact keys
+are `id`, `from_concept_id`, `to_concept_id`, `relation_type`, `source`,
+`created_at`, and `updated_at`.
+
+`learning.migrate_claim_concept_capability_links(p_expected_rows jsonb)` moves
+reviewed owner links. Owner RLS applies to the complete requested set. Each item
+uses the exact keys `id`, `claim_id`, `learner_id`, `concept_id`, `relation`, and
+`created_at`.
+
+The legacy full unique indexes stay in place. Existing concept-only imports can
+continue to use their named `ON CONFLICT` column sets. Typed rows use separate
+partial indexes, while PostgreSQL keeps NULL legacy endpoints distinct.
+
+`learning.upsert_capability_graph_relations(p_rows jsonb)` is the atomic import
+path after 0100. Each row contains exactly `from_concept_id`, `to_concept_id`,
+`relation_type`, `source`, and `updated_at`. The function locks the shared table
+and physical pointer map. It keeps an existing legacy edge in its current shape.
+It updates an exact typed edge in place. It derives new typed endpoints through
+the physical pointer map. Ambiguous mixed shapes reject the complete batch. The
+function returns the stable `id` and stored `source` for each input, in order.
+It preserves the existing authenticated shared-edge authorization and RLS.
+
+Both functions lock the physical capability pointer map and the requested graph
+rows. They derive targets through `capabilities.concept_id`. The caller never
+supplies a capability target. A row must match its original preimage or its exact
+derived typed state. Mixed old and typed batches are valid. An exact replay
+returns zero. A wrong target, partial state, duplicate ID, or logical duplicate
+rejects the complete transaction.
+
+Deploy dual-shape readers and exports before the first transition call. Verify
+positive old-shape controls first. Then move data through caller-JWT MCP tools.
+Keep `capabilities.concept_id` and every legacy concept row until a later,
+separately verified retirement operation permits removal.
+
+Run `python3 db/scripts/test-learning-graph-transition.py`. The test uses an
+isolated PostgreSQL 17 container. It proves RLS, exact replay, rollback, mixed
+states, wrong-target refusal, and logical duplicate refusal.
+
 ### C1 delivery and product tables
 
 `0084_learning_valued_work_artifacts.sql` adds `valued_work`, `task_models`, and

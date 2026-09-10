@@ -337,6 +337,22 @@ Proposal decisions require a learning operator, the complete proposal cluster, a
 See `db/README.md` for its transaction, ownership, and duplicate-claim guarantees.
 Migration PRs from #467 require full green CI under the 2026-09-07 authorization.
 
+## Learning capability graph transition
+
+Migration `0100_learning_capability_graph_endpoints.sql` adds nullable capability
+endpoints beside the current concept endpoints. Endpoint XOR constraints keep
+one physical target per side. The migration moves no graph row.
+
+The two transition functions are SECURITY INVOKER. They require the complete
+original row preimage. They derive all capability targets through the locked
+`capabilities.concept_id` pointer. A caller must not supply a capability target.
+Deploy dual-shape readers before any transition call. See `db/README.md` for the
+exact JSON shapes, RLS rules, replay contract, and integration test.
+
+The dual-shape relation import function also runs as SECURITY INVOKER. It keeps
+legacy matches in place and derives only new physical targets. It serializes the
+shared-edge batch and preserves the existing authenticated shared-edge policy.
+
 ## Learning C1 schema
 
 C1 adds delivery, task expectation, and product tables through

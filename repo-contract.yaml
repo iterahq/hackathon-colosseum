@@ -101,6 +101,15 @@ provides:
     entry: db/migrations/0087_learning_proposal_decisions.sql
 
   - type: database
+    name: learning-capability-graph-transition
+    description: >
+      Additive typed capability endpoints for shared relations and owner claim links.
+      Caller-JWT SECURITY INVOKER functions require complete original row preimages.
+      Targets derive only through locked capabilities.concept_id pointers.
+      The atomic relation import preserves authenticated shared-edge access and stable row IDs.
+    entry: db/migrations/0100_learning_capability_graph_endpoints.sql
+
+  - type: database
     name: learning-delivery-products
     description: >
       Learner-owned deliveries and artifacts, with shared or owned task models.

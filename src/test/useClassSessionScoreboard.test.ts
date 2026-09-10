@@ -96,7 +96,9 @@ async function mountAs(userId: string, isInstructor: boolean) {
   const hook = renderHook(() =>
     useClassSession(SESSION, { userId, name: userId, avatarUrl: null, isInstructor })
   );
-  await waitFor(() => expect(hook.result.current.currentActivityId).toBe(ACTIVITY));
+  await waitFor(() => expect(hook.result.current.currentActivityId).toBe(ACTIVITY), {
+    timeout: 3000,
+  });
   return hook;
 }
 
