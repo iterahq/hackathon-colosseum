@@ -52,6 +52,7 @@ import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStage } from '@/components/live/LiveStage';
 import { LiveOwnWorkDivider } from '@/components/live/LiveOwnWorkDivider';
 import { InstructorCursorLayer } from '@/components/live/InstructorCursorLayer';
+import { LiveAnnotationLayer } from '@/components/live/LiveAnnotationLayer';
 import { ActivitySkeleton } from '@/components/branded/activity/ActivitySkeleton';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
@@ -149,7 +150,7 @@ export default function LiveSessionPage() {
   // the shared identity.
   const presenceName = guest?.displayName || identity.name;
   const presenceAvatar = guest ? guest.avatarUrl ?? identity.avatarUrl : identity.avatarUrl;
-  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, instructorCursor, instructorClick, lessonResetAt, broadcastAnswer, setHandRaised, setWorkingOn } =
+  const { session, currentActivityId, status, roster, connected, reconnecting, loading, timer, stoppedFor, answers, elapsed, removed, handRaised, onBreak, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, instructorCursor, instructorClick, annotations, lessonResetAt, broadcastAnswer, setHandRaised, setWorkingOn } =
     useClassSession(
       sessionId,
       identity.userId
@@ -811,6 +812,13 @@ export default function LiveSessionPage() {
               instructorName={instructorPointerName}
               intervalMs={stageCursorPlan.intervalMs}
             />
+          )}
+
+          {/* Sem `capture`: o aluno VÊ o traço e continua trabalhando por baixo
+              dele. Quem desenha é só o professor, e o receptor já descarta
+              qualquer traço que não venha do `instructor_id` da aula. */}
+          {stagedAnswer && !ended && (
+            <LiveAnnotationLayer strokes={annotations} onStage={isStageCursorSource} />
           )}
 
           <div

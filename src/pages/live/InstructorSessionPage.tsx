@@ -28,6 +28,11 @@ import { useClassCompleters, useClassSessionById } from '@/hooks/useLiveClass';
 import { useClassSession } from '@/hooks/useClassSession';
 import { useClassHeartbeat } from '@/hooks/useClassHeartbeat';
 import { useStageCursorCapture } from '@/hooks/useStageCursorCapture';
+import { useAnnotationCapture } from '@/hooks/useAnnotationCapture';
+import { useAnnotationEraser } from '@/hooks/useAnnotationEraser';
+import { LiveAnnotationLayer } from '@/components/live/LiveAnnotationLayer';
+import { LiveAnnotationToolbar } from '@/components/live/LiveAnnotationToolbar';
+import type { AnnotationColor, AnnotationTool } from '@/types/liveAnnotation';
 import { STAGE_CURSOR_MIRROR_SELECTOR } from '@/utils/stageCursorDom';
 import { queryKeys } from '@/lib/queryKeys';
 import {
@@ -152,7 +157,7 @@ function ClassControl({
   // Semeado do disco porque o corte é do PROFESSOR: um refresh no meio da aula
   // não pode ressuscitar as respostas que ele acabou de descartar.
   const [initialResetAt] = useState(() => readLessonResetAt(session.id));
-  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, stagePendingUserId, stageUnreachableUserId, lowerHand, adjustLife, removeLearner, onBreak, setBreak, lessonResetAt, resetLesson, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
+  const { currentActivityId, status, roster, connected, reconnecting, answers, elapsed, timer, stoppedFor, stagedAnswer, stageCursor, stageCursorPlan, isStageCursorSource, sendStageCursor, isInstructorCursorSource, sendInstructorCursor, annotations, canAnnotate, sendAnnotation, eraseAnnotations, clearAnnotations, stagePendingUserId, stageUnreachableUserId, lowerHand, adjustLife, removeLearner, onBreak, setBreak, lessonResetAt, resetLesson, broadcast, broadcastTimer, clearTimer, requestStage, clearStage, refetch } =
     useClassSession(
       session.id,
       instructorId
@@ -160,6 +165,16 @@ function ClassControl({
         : undefined,
       initialResetAt
     );
+  // Ferramenta na mão. Local e não compartilhada: o que a turma recebe é o traço
+  // já com a cor dentro, e o apagar já resolvido em ids.
+  const [tool, setTool] = useState<AnnotationTool | null>(null);
+  const [penColor, setPenColor] = useState<AnnotationColor>('menta');
+  // Sem palco não há o que anotar, e uma ferramenta que continua na mão depois
+  // que o palco cai reapareceria armada no próximo aluno, sem ninguém ter pedido.
+  useEffect(() => {
+    if (!canAnnotate) setTool(null);
+  }, [canAnnotate]);
+
   // The professor can project their OWN screen (`toggleSelfStage` below), which
   // makes them the stage's cursor source exactly like a pulled learner — the
   // most obvious teaching case: demonstrate, and let the class see where the
@@ -176,12 +191,29 @@ function ClassControl({
   //
   // Clique LIGADO só aqui: o do aluno já viaja como caret (o espelho desenha o
   // caret), o do professor não tem substituto — ele não digita no editor do aluno.
+  //
+  // ⚠️ `!tool`: com caneta ou borracha na mão a PONTA dela é o ponteiro, então
+  // manter os dois no ar dobraria a taxa de mensagem sobre um teto (100 msgs/s)
+  // cujo estouro DESCONECTA a turma inteira. Anotar não soma no orçamento — ele
+  // substitui.
   useStageCursorCapture({
-    active: isInstructorCursorSource && stageCursorPlan.enabled,
+    active: isInstructorCursorSource && stageCursorPlan.enabled && !tool,
     intervalMs: stageCursorPlan.intervalMs,
     selector: STAGE_CURSOR_MIRROR_SELECTOR,
     clicks: true,
     send: sendInstructorCursor,
+  });
+  const annotationCapture = useAnnotationCapture({
+    active: tool === 'pen' && canAnnotate && stageCursorPlan.enabled,
+    intervalMs: stageCursorPlan.intervalMs,
+    color: penColor,
+    send: sendAnnotation,
+  });
+  const annotationEraser = useAnnotationEraser({
+    active: tool === 'eraser' && canAnnotate && stageCursorPlan.enabled,
+    intervalMs: stageCursorPlan.intervalMs,
+    strokes: annotations,
+    erase: eraseAnnotations,
   });
   // O console aberto é a prova de que a aula não foi abandonada — sem ela o
   // reaper de ociosidade encerra uma turma que está só ouvindo explicação.
@@ -596,6 +628,17 @@ function ClassControl({
               // activity that just got replaced.
               <>
                 {current && <LiveStagePrompt activity={current} />}
+                {canAnnotate && (
+                  <div className="mt-4 flex justify-end">
+                    <LiveAnnotationToolbar
+                      tool={tool}
+                      color={penColor}
+                      onTool={setTool}
+                      onColor={setPenColor}
+                      onClear={clearAnnotations}
+                    />
+                  </div>
+                )}
                 <div
                   className="mt-4 rounded-3xl border border-clay/40 overflow-hidden"
                   data-testid="instructor-viewing-stage"
@@ -610,6 +653,16 @@ function ClassControl({
                     cursorOff={!stageCursorPlan.enabled}
                   />
                 </div>
+                {/* `onStage={false}`: o professor está olhando o ESPELHO, e é nele
+                    que a caneta mede — a superfície de origem do traço. */}
+                <LiveAnnotationLayer
+                  strokes={annotations}
+                  onStage={false}
+                  capture={
+                    tool === 'pen' ? annotationCapture : tool === 'eraser' ? annotationEraser : undefined
+                  }
+                  erasing={tool === 'eraser'}
+                />
               </>
             ) : current ? (
               // The professor's own stage is INTERACTIVE — they can work the

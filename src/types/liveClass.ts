@@ -1,5 +1,6 @@
 import type { ActivityChatScreen, ActivityTerminalScreen } from '@iterahq/activities';
 import type { StageCursorPlan } from '@/utils/stageCursorRate';
+import type { AnnotationFrame, AnnotationStroke } from '@/types/liveAnnotation';
 
 export type ClassSessionStatus = 'pending' | 'live' | 'ended';
 export type ClassScope = 'global' | 'tenant';
@@ -532,5 +533,15 @@ export interface UseClassSession {
   isInstructorCursorSource: boolean;
   /** Emite um frame do cursor do professor. No-op em qualquer outro cliente. */
   sendInstructorCursor: (frame: StageCursorFrame) => void;
+  /** Os traços vivos agora, do mais antigo ao mais novo. Some sozinho. */
+  annotations: readonly AnnotationStroke[];
+  /** True só no cliente do professor, e só com palco: é ele quem desenha. */
+  canAnnotate: boolean;
+  /** Manda um lote de pontos. No-op em qualquer outro cliente. */
+  sendAnnotation: (frame: Omit<AnnotationFrame, 'userId'>) => void;
+  /** Apaga um lote de traços inteiros — a borracha. */
+  eraseAnnotations: (strokeIds: string[]) => void;
+  /** Apaga tudo, para todo mundo. */
+  clearAnnotations: () => void;
   refetch: () => void;
 }

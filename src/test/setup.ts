@@ -26,4 +26,19 @@ if (typeof window !== "undefined") {
       dispatchEvent: () => {},
     }),
   });
+
+  // O jsdom não implementa `ResizeObserver`, e o `useSurfaceSize` da camada de
+  // anotação depende dele. Stub inerte de propósito: um observer que "funcionasse"
+  // aqui provaria só o mock — quem quiser provar que a superfície REMEDE tem que
+  // disparar a mudança na mão.
+  if (!("ResizeObserver" in window)) {
+    Object.defineProperty(window, "ResizeObserver", {
+      writable: true,
+      value: class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    });
+  }
 }

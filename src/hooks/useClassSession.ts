@@ -45,6 +45,13 @@ import { clampStageResponse } from '@/utils/stageResponseText';
 import { parseStageTerminal } from '@/utils/stageTerminalScreen';
 import { parseStageChat } from '@/utils/stageChatScreen';
 import { acceptPanePx } from '@/utils/stageCursorPlacement';
+import type { AnnotationFrame, AnnotationStroke } from '@/types/liveAnnotation';
+import {
+  applyAnnotationFrame,
+  eraseStrokes,
+  isAnnotationColor,
+  pruneAnnotations,
+} from '@/utils/liveAnnotationStrokes';
 import {
   parseScoreboard,
   SCOREBOARD_MAX_ENTRIES,
@@ -133,6 +140,22 @@ const LESSON_RESET_EVENT = 'lesson-reset';
 // estado de quem recebe: o aluno pode ter avançado sozinho, e o ajuste tem que
 // cair no exercício em que o professor apertou o botão.
 const LIFE_ADJUST_EVENT = 'life-adjust';
+// Desenho por cima do palco. Anda no tópico do CURSOR, não no de staff: staff é
+// feito para controle esparso (`advance`, `timer`), e um lote de pontos a cada
+// ~200ms ali afogaria os eventos que a aula não pode perder. Aqui já existe o
+// orçamento de mensagem alto e o mesmo ciclo de vida — o tópico sobe quando algo
+// entra no palco e cai quando sai, que é exatamente quando faz sentido desenhar.
+//
+// Quem valida é QUEM RECEBE, comparando com `class_sessions.instructor_id`. A RLS
+// autoriza o tópico por participação na aula, então um aluno consegue pôr bytes
+// aqui; o que ele não consegue é desenhar na tela da turma.
+const ANNOTATION_EVENT = 'instructor-annotation';
+// Tirar traço da tela — a borracha (com `strokeIds`) e o "limpar tudo" (sem).
+// Evento próprio em vez de uma flag no lote porque ele precisa chegar mesmo
+// quando não há traço em curso, e um só para as duas formas porque as duas são
+// idempotentes: perder um custa no máximo os segundos que faltavam para o sumiço
+// automático.
+const ANNOTATION_CLEAR_EVENT = 'instructor-annotation-clear';
 const cursorTopic = (sessionId: string) => `class:${sessionId}:cursor`;
 
 export function useClassSession(
@@ -195,6 +218,8 @@ export function useClassSession(
   // tela de quem assiste — inclusive na do aluno que está no palco.
   const [instructorCursor, setInstructorCursor] = useState<StageCursor | null>(null);
   const [instructorClick, setInstructorClick] = useState<StageClick | null>(null);
+  // Os traços vivos agora. Nunca persistidos: ver `types/liveAnnotation`.
+  const [annotations, setAnnotations] = useState<readonly AnnotationStroke[]>([]);
   const [onBreak, setOnBreak] = useState(false);
   // Lido na sincronização de presença: quem entra no meio da pausa não ouviu o
   // broadcast que a abriu, então o professor a reanuncia quando alguém chega.
@@ -976,6 +1001,7 @@ export function useClassSession(
       setInstructorCursor(null);
       setInstructorClick(null);
       instructorCursorTsRef.current = 0;
+      setAnnotations([]);
       return;
     }
     const sb = getSupabase();
@@ -1062,6 +1088,40 @@ export function useClassSession(
         });
         if (p.click === true) setInstructorClick({ x, y, t });
       })
+      .on('broadcast', { event: ANNOTATION_EVENT }, ({ payload }) => {
+        const p = payload as Partial<AnnotationFrame> | null;
+        if (!p || typeof p.userId !== 'string' || typeof p.strokeId !== 'string') return;
+        // Mesmo estreitamento do ponteiro do professor, e pelo mesmo motivo: a
+        // RLS libera o TÓPICO por participação na aula, então a linha do banco é
+        // o que separa "o professor desenhou" de "um aluno mandou bytes".
+        if (p.userId !== instructorIdRef.current) return;
+        if (!Array.isArray(p.points)) return;
+        if (!isAnnotationColor(p.color)) return;
+        if (typeof p.seq !== 'number' || !Number.isFinite(p.seq)) return;
+        const frame: AnnotationFrame = {
+          userId: p.userId,
+          strokeId: p.strokeId,
+          color: p.color,
+          points: p.points,
+          fromW: acceptPanePx(p.fromW) ?? 0,
+          fromH: acceptPanePx(p.fromH) ?? 0,
+          seq: p.seq,
+          done: p.done === true,
+        };
+        setAnnotations((prev) => applyAnnotationFrame(prev, frame, Date.now()));
+      })
+      .on('broadcast', { event: ANNOTATION_CLEAR_EVENT }, ({ payload }) => {
+        const p = payload as { userId?: string; strokeIds?: unknown } | null;
+        if (!p || p.userId !== instructorIdRef.current) return;
+        // Lote de borracha. Lista vazia apaga NADA, não tudo: é o "limpar" que
+        // varre a tela, e ele se declara pela ausência do campo.
+        if (Array.isArray(p.strokeIds)) {
+          const ids = p.strokeIds.filter((v): v is string => typeof v === 'string');
+          setAnnotations((prev) => eraseStrokes(prev, ids));
+          return;
+        }
+        setAnnotations([]);
+      })
       .subscribe();
     return () => {
       if (cursorRef.current === channel) cursorRef.current = null;
@@ -1071,6 +1131,7 @@ export function useClassSession(
       setInstructorCursor(null);
       setInstructorClick(null);
       instructorCursorTsRef.current = 0;
+      setAnnotations([]);
     };
   }, [sessionId, stageOn]);
 
@@ -1084,6 +1145,7 @@ export function useClassSession(
     setInstructorCursor(null);
     setInstructorClick(null);
     instructorCursorTsRef.current = 0;
+    setAnnotations([]);
   }, [stageAuthorId]);
 
   // The single emitter in the room (ADR-2): the client whose own work is staged.
@@ -1158,6 +1220,56 @@ export function useClassSession(
       })
       .catch(() => undefined);
   }, []);
+
+  // Quem desenha é o professor, e no mesmo palco em que ele já aponta. Não há
+  // caso "desenhar sem palco": o traço explica alguma coisa que está na tela.
+  const canAnnotate = Boolean(
+    identity?.userId && session && identity.userId === session.instructorId && stagedAnswer
+  );
+  const canAnnotateRef = useRef(false);
+  canAnnotateRef.current = canAnnotate;
+
+  const sendAnnotation = useCallback((frame: Omit<AnnotationFrame, 'userId'>) => {
+    const channel = cursorRef.current;
+    const userId = identityRef.current?.userId;
+    if (!channel || !userId || !canAnnotateRef.current) return;
+    // O emissor também aplica localmente: `broadcast.self` é `false` no tópico,
+    // então sem isto o professor desenharia no vazio.
+    setAnnotations((prev) => applyAnnotationFrame(prev, { ...frame, userId }, Date.now()));
+    void channel
+      .send({ type: 'broadcast', event: ANNOTATION_EVENT, payload: { ...frame, userId } })
+      .catch(() => undefined);
+  }, []);
+
+  const eraseAnnotations = useCallback((strokeIds: string[]) => {
+    const userId = identityRef.current?.userId;
+    if (!userId || strokeIds.length === 0 || !canAnnotateRef.current) return;
+    setAnnotations((prev) => eraseStrokes(prev, strokeIds));
+    void cursorRef.current
+      ?.send({ type: 'broadcast', event: ANNOTATION_CLEAR_EVENT, payload: { userId, strokeIds } })
+      .catch(() => undefined);
+  }, []);
+
+  const clearAnnotations = useCallback(() => {
+    const userId = identityRef.current?.userId;
+    if (!userId || !canAnnotateRef.current) return;
+    setAnnotations([]);
+    void cursorRef.current
+      ?.send({ type: 'broadcast', event: ANNOTATION_CLEAR_EVENT, payload: { userId } })
+      .catch(() => undefined);
+  }, []);
+
+  // O relógio do sumiço. Roda só enquanto há traço na tela — uma aula sem desenho
+  // não paga timer nenhum. A opacidade quem anima é a camada de render; aqui só
+  // se joga fora o que já chegou a zero, para a lista não crescer a aula inteira.
+  const hasAnnotations = annotations.length > 0;
+  useEffect(() => {
+    if (!hasAnnotations) return;
+    const id = window.setInterval(() => {
+      setAnnotations((prev) => pruneAnnotations(prev, Date.now()));
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [hasAnnotations]);
 
   // How fast that emitter may go, given how many people would be billed for each
   // frame. Recomputed as the roster changes, so a room that grows mid-class slows
@@ -1466,6 +1578,11 @@ export function useClassSession(
     instructorClick,
     isInstructorCursorSource,
     sendInstructorCursor,
+    annotations,
+    canAnnotate,
+    sendAnnotation,
+    eraseAnnotations,
+    clearAnnotations,
     refetch,
   };
 }
