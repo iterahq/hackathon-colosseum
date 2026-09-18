@@ -163,7 +163,10 @@ describe('self-serve sign-up — /signup route', () => {
     fireEvent.click(screen.getByTestId('submit-signup-send'));
 
     // Same neutral confirmation an unknown address gets — no "already taken".
-    const sent = await screen.findByTestId('signup-sent');
+    // Scoped to the message node, not the whole block: the block also echoes
+    // the email back (new UX), and "existing@learner.dev" itself contains
+    // "exist" — that would be a false positive against the whole block's text.
+    const sent = await screen.findByTestId('signup-sent-message');
     expect(sent.textContent ?? '').not.toMatch(/já|exist|taken|cadastrad/i);
   });
 
@@ -178,5 +181,79 @@ describe('self-serve sign-up — /signup route', () => {
 
     expect(await screen.findByTestId('signup-error')).toBeInTheDocument();
     expect(screen.queryByTestId('signup-verify-form')).not.toBeInTheDocument();
+  });
+
+  it('echoes the address the code was sent to, on the code step', async () => {
+    sendSignupCode.mockResolvedValue({ error: null });
+    renderAt('/signup');
+
+    fireEvent.change(screen.getByTestId('signup-email-input'), {
+      target: { value: 'new@learner.dev' },
+    });
+    fireEvent.click(screen.getByTestId('submit-signup-send'));
+
+    expect(await screen.findByTestId('signup-sent-email')).toHaveTextContent('new@learner.dev');
+  });
+
+  it('"change email" goes back to the email step, keeping it editable', async () => {
+    sendSignupCode.mockResolvedValue({ error: null });
+    renderAt('/signup');
+
+    fireEvent.change(screen.getByTestId('signup-email-input'), {
+      target: { value: 'new@learner.dev' },
+    });
+    fireEvent.click(screen.getByTestId('submit-signup-send'));
+    await screen.findByTestId('signup-verify-form');
+
+    fireEvent.click(screen.getByTestId('signup-change-email'));
+
+    expect(await screen.findByTestId('signup-send-form')).toBeInTheDocument();
+  });
+
+  it('resend is held for the cooldown after the first send, then calls sendSignupCode again', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      sendSignupCode.mockResolvedValue({ error: null });
+      renderAt('/signup');
+
+      fireEvent.change(screen.getByTestId('signup-email-input'), {
+        target: { value: 'new@learner.dev' },
+      });
+      fireEvent.click(screen.getByTestId('submit-signup-send'));
+      await screen.findByTestId('signup-verify-form');
+      expect(sendSignupCode).toHaveBeenCalledTimes(1);
+
+      const resend = screen.getByTestId('signup-resend');
+      expect(resend).toBeDisabled();
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(resend).not.toBeDisabled();
+      fireEvent.click(resend);
+      expect(sendSignupCode).toHaveBeenCalledTimes(2);
+      expect(resend).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a failed resend is shown instead of pretending a code went out', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      sendSignupCode.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: 'Email rate limit exceeded' });
+      renderAt('/signup');
+
+      fireEvent.change(screen.getByTestId('signup-email-input'), {
+        target: { value: 'new@learner.dev' },
+      });
+      fireEvent.click(screen.getByTestId('submit-signup-send'));
+      await screen.findByTestId('signup-verify-form');
+
+      await vi.advanceTimersByTimeAsync(60_000);
+      fireEvent.click(screen.getByTestId('signup-resend'));
+
+      expect(await screen.findByTestId('signup-error')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

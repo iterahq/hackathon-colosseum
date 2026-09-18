@@ -1,8 +1,8 @@
-/** Step 1 of self-serve sign-up: ask for the email that will receive the code. */
 import type { FormEvent } from 'react';
-import { Button } from '@devfellowship/components';
+import { Button, Input, Label } from '@devfellowship/components';
 import { useI18n } from '@/i18n';
 
+/** Step 1 of self-serve sign-up: ask for the email that will receive the code. */
 export function SignupEmailForm({
   email,
   onEmailChange,
@@ -20,21 +20,21 @@ export function SignupEmailForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="signup-send-form">
-      <label className="text-sm font-medium text-foreground" htmlFor="signup-email">
-        {t('auth.email')}
-      </label>
-      <input
+      <Label htmlFor="signup-email">{t('auth.email')}</Label>
+      <Input
         id="signup-email"
         type="email"
         autoComplete="email"
+        autoFocus
         required
         value={email}
         onChange={(e) => onEmailChange(e.target.value)}
-        className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? 'signup-email-error' : undefined}
         data-testid="signup-email-input"
       />
       {error && (
-        <p className="text-sm text-destructive" data-testid="signup-error">
+        <p id="signup-email-error" role="alert" className="text-sm text-destructive" data-testid="signup-error">
           {error}
         </p>
       )}

@@ -15,8 +15,11 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
+import { AuthProgressSteps } from '@/components/auth/AuthProgressSteps';
+import { SubscriptionIncludesPanel } from '@/components/auth/SubscriptionIncludesPanel';
 import { SignupEmailForm } from '@/components/auth/SignupEmailForm';
 import { SignupCodeForm } from '@/components/auth/SignupCodeForm';
+import { SubscribeTrustLine } from '@/components/subscribe/SubscribeTrustLine';
 import { useI18n } from '@/i18n';
 import { sendSignupCode, verifySignupCode } from '@/services/otpAuth.service';
 import { isGuestAccessToken } from '@/services/guestSession.service';
@@ -38,6 +41,10 @@ export default function SignupPage() {
     return <Navigate to="/subscribe" replace />;
   }
 
+  function sendErrorMessage(err: string): string {
+    return err.toLowerCase().includes('rate limit') ? t('auth.otp.rateLimited') : t('auth.signUpError');
+  }
+
   async function onSend(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -50,7 +57,7 @@ export default function SignupPage() {
       // returns success, so an error means the send genuinely failed (signups
       // disabled, SMTP down, rate limit). Swallowing it would leave the person
       // waiting for an email that was never sent.
-      setError(err.toLowerCase().includes('rate limit') ? t('auth.otp.rateLimited') : t('auth.signUpError'));
+      setError(sendErrorMessage(err));
       return;
     }
     // The confirmation copy stays neutral: it must read the same whether or not
@@ -61,6 +68,9 @@ export default function SignupPage() {
 
   async function onVerify(e: FormEvent) {
     e.preventDefault();
+    // Auto-submit fires requestSubmit(), which ignores the disabled button; the
+    // code is single-use, so a second verify would paint an error over success.
+    if (busy) return;
     setBusy(true);
     setError(null);
     const { error: err } = await verifySignupCode(email.trim(), code.trim());
@@ -73,8 +83,27 @@ export default function SignupPage() {
     navigate('/subscribe', { replace: true });
   }
 
+  async function onResend() {
+    setError(null);
+    const { error: err } = await sendSignupCode(email.trim());
+    if (err) setError(sendErrorMessage(err));
+  }
+
   return (
-    <AuthShell title={t('auth.signUpTitle')} subtitle={t('auth.signUpSubtitle')} testId="signup-page">
+    <AuthShell
+      title={t('auth.signUpTitle')}
+      subtitle={t('auth.signUpSubtitle')}
+      testId="signup-page"
+      sidePanel={
+        <div className="flex h-full flex-col">
+          <SubscriptionIncludesPanel />
+          <div className="mt-auto">
+            <SubscribeTrustLine />
+          </div>
+        </div>
+      }
+    >
+      <AuthProgressSteps current={sent ? 2 : 1} />
       {!sent ? (
         <SignupEmailForm
           email={email}
@@ -85,18 +114,23 @@ export default function SignupPage() {
         />
       ) : (
         <SignupCodeForm
+          email={email}
           code={code}
           onCodeChange={setCode}
           onSubmit={onVerify}
-          onRestart={() => {
+          onChangeEmail={() => {
             setSent(false);
             setCode('');
             setError(null);
           }}
+          onResend={onResend}
           busy={busy}
           error={error}
         />
       )}
+      <div className="mt-4 lg:hidden">
+        <SubscriptionIncludesPanel compact />
+      </div>
       <p className="mt-6 text-center text-xs text-muted-foreground">
         <Link
           to="/login"

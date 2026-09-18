@@ -6,7 +6,7 @@
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
-import { Button } from '@devfellowship/components';
+import { Button, Input, Label } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useI18n } from '@/i18n';
@@ -63,21 +63,21 @@ export default function OtpLoginPage() {
     <AuthShell title={t('auth.otp.title')} subtitle={t('auth.otp.subtitle')} testId="otp-page">
       {!sent ? (
         <form onSubmit={onSend} className="flex flex-col gap-3" data-testid="otp-send-form">
-          <label className="text-sm font-medium text-foreground" htmlFor="otp-email">
-            {t('auth.email')}
-          </label>
-          <input
+          <Label htmlFor="otp-email">{t('auth.email')}</Label>
+          <Input
             id="otp-email"
             type="email"
             autoComplete="email"
+            autoFocus
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'otp-error' : undefined}
             data-testid="otp-email-input"
           />
           {error && (
-            <p className="text-sm text-destructive" data-testid="otp-error">
+            <p id="otp-error" role="alert" className="text-sm text-destructive" data-testid="otp-error">
               {error}
             </p>
           )}
@@ -109,7 +109,7 @@ export default function OtpLoginPage() {
             data-testid="otp-code-input"
           />
           {error && (
-            <p className="text-sm text-destructive" data-testid="otp-error">
+            <p role="alert" className="text-sm text-destructive" data-testid="otp-error">
               {error}
             </p>
           )}

@@ -9,7 +9,7 @@
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
-import { Button } from '@devfellowship/components';
+import { Button, Input, Label, PasswordInput } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
@@ -62,30 +62,28 @@ export default function AuthPage() {
       )}
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3" data-testid="login-form">
-        <label className="text-sm font-medium text-foreground" htmlFor="email">
-          {t('auth.email')}
-        </label>
-        <input
+        <Label htmlFor="email">{t('auth.email')}</Label>
+        <Input
           id="email"
           type="email"
           autoComplete="email"
+          autoFocus
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'login-error' : undefined}
           data-testid="email-input"
         />
-        <label className="text-sm font-medium text-foreground" htmlFor="password">
-          {t('auth.password')}
-        </label>
-        <input
+        <Label htmlFor="password">{t('auth.password')}</Label>
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           required
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
+          onValueChange={setPassword}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? 'login-error' : undefined}
           data-testid="password-input"
         />
         <Link
@@ -96,7 +94,7 @@ export default function AuthPage() {
           {t('auth.forgot.link')}
         </Link>
         {error && (
-          <p className="text-sm text-destructive" data-testid="login-error">
+          <p id="login-error" role="alert" className="text-sm text-destructive" data-testid="login-error">
             {error}
           </p>
         )}
@@ -107,7 +105,7 @@ export default function AuthPage() {
 
       <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
-        <span>or</span>
+        <span>{t('auth.or')}</span>
         <span className="h-px flex-1 bg-border" />
       </div>
 

@@ -1,18 +1,8 @@
 /**
  * Self-serve subscribe surface (PLG) — the learner-facing "Assinar / Subscribe"
- * flow. Previously subscribe was ABM/API-key/admin-only; this is the first
- * self-serve entry point in the player.
- *
- * Flow:
- *   1. Learner clicks "Subscribe now".
- *   2. We call the EXISTING itera-api endpoint `POST /billing/checkout`
- *      (reused via billing.service — we do NOT reinvent billing) which creates
- *      a Stripe Checkout Session in the SANDBOX (TEST mode) server-side.
- *   3. We redirect the browser to the returned hosted Checkout URL.
- *   4. Stripe returns the learner to `/subscribe/return` (success or cancel),
- *      which routes them back into the player.
- *
- * No Stripe key ever touches the frontend — the session is created server-side.
+ * flow. Calls the EXISTING itera-api `POST /billing/checkout` (billing.service)
+ * to create a Stripe Checkout Session in SANDBOX (TEST) mode server-side, then
+ * redirects the browser there. No Stripe key ever touches the frontend.
  */
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
@@ -28,6 +18,9 @@ import {
 import { useSeatPricing } from '@/hooks/useSeatPricing';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { PlanSummary } from '@/components/subscribe/PlanSummary';
+import { SubscribeAccountBar } from '@/components/subscribe/SubscribeAccountBar';
+import { SubscribeTrustLine } from '@/components/subscribe/SubscribeTrustLine';
+import { AuthProgressSteps } from '@/components/auth/AuthProgressSteps';
 
 export default function SubscribePage() {
   const { t, locale } = useI18n();
@@ -43,7 +36,6 @@ export default function SubscribePage() {
     try {
       // The active language picks the price, so Checkout charges what was quoted.
       const { checkoutUrl } = await createCheckout({ seats: 1, locale });
-      // Full-page navigation to the hosted Stripe Checkout (SANDBOX).
       window.location.assign(checkoutUrl);
     } catch (err) {
       setAlreadySubscribed(err instanceof AlreadySubscribedError);
@@ -52,10 +44,9 @@ export default function SubscribePage() {
     }
   }
 
-  // Anyone the paywall already lets through — paid, exempt tenant, pre-paywall
-  // account — has nothing to buy here. /signup with an existing email lands on
-  // this page too, so without this a paying learner is one click from a
-  // second subscription.
+  // Anyone the paywall already lets through has nothing to buy here — without
+  // this a paying learner (or /signup with an existing email) is one click
+  // from a second subscription.
   if (entitlement?.active) return <Navigate to="/" replace />;
 
   return (
@@ -69,6 +60,8 @@ export default function SubscribePage() {
           className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center"
           data-testid="subscribe-card"
         >
+          <AuthProgressSteps current={3} />
+
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-evergreen-soft text-evergreen-hi border border-evergreen/30">
             <Sparkles className="w-3 h-3" /> Itera
           </span>
@@ -77,6 +70,7 @@ export default function SubscribePage() {
             {t('subscribe.title')}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">{t('subscribe.subtitle')}</p>
+          <SubscribeAccountBar />
 
           {/* Language-aware price (pt → BRL R$100/mo, en → USD $20/mo). */}
           <div className="mt-5" data-testid="subscribe-price">
@@ -97,8 +91,6 @@ export default function SubscribePage() {
             ) : null}
           </div>
 
-          {/* O que vem junto e em que termos — antes do botão, porque é o que
-              torna o preço interpretável. */}
           <PlanSummary />
 
           <button
@@ -120,6 +112,7 @@ export default function SubscribePage() {
               </>
             )}
           </button>
+          <SubscribeTrustLine />
 
           {error && (
             <p className="text-sm text-destructive mt-4" data-testid="subscribe-error" role="alert">
@@ -132,9 +125,8 @@ export default function SubscribePage() {
             </p>
           )}
 
-          {/* Só quando o servidor AFIRMA test. Se o modo não chegou, calamos:
-              prometer "nenhuma cobrança real" sobre uma cobrança real é o erro
-              mais caro possível aqui. */}
+          {/* Só quando o servidor AFIRMA test — prometer "sem cobrança real" sem
+              confirmação seria o erro mais caro possível aqui. */}
           {pricing?.mode === 'test' && (
             <p className="text-xs text-muted-foreground mt-6" data-testid="subscribe-sandbox-notice">
               {t('subscribe.sandbox')}

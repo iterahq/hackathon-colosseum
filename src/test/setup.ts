@@ -41,4 +41,11 @@ if (typeof window !== "undefined") {
       },
     });
   }
+
+  // jsdom does not implement `elementFromPoint`; the DS `InputOTP` (input-otp)
+  // polls it internally for focus/paste tracking. Without a stub it throws
+  // from a detached setTimeout after the test has already finished.
+  if (typeof document.elementFromPoint !== "function") {
+    document.elementFromPoint = () => null;
+  }
 }

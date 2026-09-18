@@ -41,6 +41,11 @@ vi.mock('@/components/branded', () => ({
 const entitlement = vi.hoisted(() => ({ data: null as { active: boolean } | null }));
 vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => entitlement }));
 
+const signOut = vi.fn();
+vi.mock('@/auth/AuthContext', () => ({
+  useAuth: () => ({ user: { email: 'learner@itera.dev' }, signOut }),
+}));
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -50,6 +55,7 @@ function renderPage() {
           <Routes>
             <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="/" element={<div data-testid="home" />} />
+            <Route path="/login" element={<div data-testid="login" />} />
           </Routes>
         </I18nProvider>
       </MemoryRouter>
@@ -126,6 +132,17 @@ describe('SubscribePage (self-serve subscribe)', () => {
   it('shows the sandbox notice only while the server reports test mode', async () => {
     renderPage();
     expect(await screen.findByTestId('subscribe-sandbox-notice')).toBeInTheDocument();
+  });
+
+  it('shows who is signed in and signs out + goes to /login on "use another account"', async () => {
+    signOut.mockReset().mockResolvedValue(undefined);
+    renderPage();
+
+    expect(screen.getByTestId('subscribe-account-bar')).toHaveTextContent('learner@itera.dev');
+    fireEvent.click(screen.getByTestId('subscribe-use-another-account'));
+
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('login')).toBeInTheDocument();
   });
 
   it('hides the sandbox notice when the server reports live mode', async () => {
