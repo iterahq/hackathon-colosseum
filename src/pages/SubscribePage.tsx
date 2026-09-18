@@ -14,52 +14,49 @@
  *
  * No Stripe key ever touches the frontend — the session is created server-side.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Loader2, CreditCard } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
-import { createCheckout, getPricing, formatPrice, type SeatPricing } from '@/services/billing.service';
+import {
+  AlreadySubscribedError,
+  createCheckout,
+  formatPrice,
+} from '@/services/billing.service';
+import { useSeatPricing } from '@/hooks/useSeatPricing';
+import { useEntitlement } from '@/hooks/useEntitlement';
 import { PlanSummary } from '@/components/subscribe/PlanSummary';
 
 export default function SubscribePage() {
   const { t, locale } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pricing, setPricing] = useState<SeatPricing | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(true);
-
-  // Language-aware price display: re-fetch whenever the active language changes
-  // (pt → BRL R$100, en → USD $20). Degrades silently — the button still works.
-  useEffect(() => {
-    let alive = true;
-    setPricingLoading(true);
-    getPricing(locale)
-      .then((p) => {
-        if (alive) setPricing(p);
-      })
-      .finally(() => {
-        if (alive) setPricingLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [locale]);
+  const { data: pricing, isPending: pricingLoading } = useSeatPricing(locale);
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false);
+  const { data: entitlement } = useEntitlement();
 
   async function handleSubscribe() {
     setError(null);
     setLoading(true);
     try {
-      // Send the active language as a price-selection FALLBACK (the user's stored
-      // profile locale is the server-side source of truth).
+      // The active language picks the price, so Checkout charges what was quoted.
       const { checkoutUrl } = await createCheckout({ seats: 1, locale });
       // Full-page navigation to the hosted Stripe Checkout (SANDBOX).
       window.location.assign(checkoutUrl);
     } catch (err) {
-      setError((err as Error).message || t('subscribe.error'));
+      setAlreadySubscribed(err instanceof AlreadySubscribedError);
+      setError(t(err instanceof AlreadySubscribedError ? 'subscribe.alreadySubscribed' : 'subscribe.error'));
       setLoading(false);
     }
   }
+
+  // Anyone the paywall already lets through — paid, exempt tenant, pre-paywall
+  // account — has nothing to buy here. /signup with an existing email lands on
+  // this page too, so without this a paying learner is one click from a
+  // second subscription.
+  if (entitlement?.active) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -126,7 +123,12 @@ export default function SubscribePage() {
 
           {error && (
             <p className="text-sm text-destructive mt-4" data-testid="subscribe-error" role="alert">
-              {error}
+              {error}{' '}
+              {alreadySubscribed && (
+                <Link to="/profile" className="underline" data-testid="subscribe-go-profile">
+                  {t('subscribe.goToProfile')}
+                </Link>
+              )}
             </p>
           )}
 

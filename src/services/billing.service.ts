@@ -79,6 +79,14 @@ export interface SubscriptionCancelResponse {
   currentPeriodEnd: string | null;
 }
 
+/** Checkout refused because this account already has a live subscription. */
+export class AlreadySubscribedError extends Error {
+  constructor() {
+    super('This account already has a subscription.');
+    this.name = 'AlreadySubscribedError';
+  }
+}
+
 /** Build the default post-checkout return URLs from the current app origin. */
 export function defaultReturnUrls(origin: string): { successUrl: string; cancelUrl: string } {
   const base = origin.replace(/\/+$/, '');
@@ -139,6 +147,11 @@ export async function createCheckout(req: CheckoutRequest = {}): Promise<Checkou
   } catch (err) {
     throw new Error(`Could not reach the billing service: ${(err as Error).message}`);
   }
+
+  // The account is already being billed (itera-api answers 409 after asking
+  // Stripe). Its own error type so the page can send the learner to their
+  // profile instead of offering a second purchase.
+  if (res.status === 409) throw new AlreadySubscribedError();
 
   if (!res.ok) {
     // Surface the server's structured error message when present.

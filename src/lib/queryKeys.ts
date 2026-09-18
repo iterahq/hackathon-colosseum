@@ -79,6 +79,8 @@ export const queryKeys = {
   entitlement: {
     mine: (userId: string) => ['entitlement', userId] as const,
   },
+  // Seat price quoted on /subscribe, per UI language (pt → BRL, en → USD).
+  seatPricing: (locale: string) => ['seat-pricing', locale] as const,
   // Live-class / real-time cohort mode (plan 20260702-…).
   liveClass: {
     active: ['live-class', 'active'] as const,

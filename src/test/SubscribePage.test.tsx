@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import SubscribePage from '@/pages/SubscribePage';
 
@@ -13,7 +14,11 @@ import SubscribePage from '@/pages/SubscribePage';
 // Mock the billing service — we do NOT hit itera-api in unit tests.
 const createCheckout = vi.fn();
 const getPricing = vi.fn();
+const { AlreadySubscribedError } = vi.hoisted(() => ({
+  AlreadySubscribedError: class AlreadySubscribedError extends Error {},
+}));
 vi.mock('@/services/billing.service', () => ({
+  AlreadySubscribedError,
   createCheckout: (...args: unknown[]) => createCheckout(...args),
   getPricing: (...args: unknown[]) => getPricing(...args),
   // Keep the real formatter (pure Intl) so we can assert displayed currency.
@@ -33,13 +38,22 @@ vi.mock('@/components/branded', () => ({
   AppHeader: () => <div data-testid="app-header" />,
 }));
 
+const entitlement = vi.hoisted(() => ({ data: null as { active: boolean } | null }));
+vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => entitlement }));
+
 function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={['/subscribe']}>
-      <I18nProvider>
-        <SubscribePage />
-      </I18nProvider>
-    </MemoryRouter>
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/subscribe']}>
+        <I18nProvider>
+          <Routes>
+            <Route path="/subscribe" element={<SubscribePage />} />
+            <Route path="/" element={<div data-testid="home" />} />
+          </Routes>
+        </I18nProvider>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -104,7 +118,8 @@ describe('SubscribePage (self-serve subscribe)', () => {
     fireEvent.click(screen.getByTestId('subscribe-button'));
 
     const err = await screen.findByTestId('subscribe-error');
-    expect(err).toHaveTextContent('Checkout could not be created (HTTP 401).');
+    // The learner reads their own language, not the API's English diagnostics.
+    expect(err).toHaveTextContent('Não foi possível iniciar a assinatura. Tente novamente.');
     expect(window.location.assign).not.toHaveBeenCalled();
   });
 
@@ -133,5 +148,31 @@ describe('SubscribePage (self-serve subscribe)', () => {
     renderPage();
     await waitFor(() => expect(getPricing).toHaveBeenCalled());
     expect(screen.queryByTestId('subscribe-sandbox-notice')).not.toBeInTheDocument();
+  });
+});
+
+describe('SubscribePage — never a second purchase', () => {
+  beforeEach(() => {
+    createCheckout.mockReset();
+    getPricing.mockReset();
+    getPricing.mockResolvedValue({
+      locale: 'pt', currency: 'brl', unitAmount: 10000, interval: 'month', mode: 'live',
+    });
+    entitlement.data = null;
+  });
+
+  it('sends anyone the paywall already lets through back inside', () => {
+    // /signup with an email that already has an account lands here too.
+    entitlement.data = { active: true };
+    renderPage();
+    expect(screen.getByTestId('home')).toBeTruthy();
+    expect(screen.queryByTestId('subscribe-button')).toBeNull();
+  });
+
+  it('turns a 409 from the API into a pointer to the profile, not a generic failure', async () => {
+    createCheckout.mockRejectedValue(new AlreadySubscribedError());
+    renderPage();
+    fireEvent.click(screen.getByTestId('subscribe-button'));
+    await waitFor(() => expect(screen.getByTestId('subscribe-go-profile')).toBeTruthy());
   });
 });
