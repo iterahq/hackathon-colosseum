@@ -22,7 +22,10 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-const ICON_MAP: Record<string, LucideIcon> = {
+/** Icon per category key. Exported so other card variants (e.g. the v3
+ *  catalog card's flat icon tile) reuse the same icon set instead of
+ *  duplicating the literal map. */
+export const ICON_MAP: Record<string, LucideIcon> = {
   code: Code,
   layers: Layers,
   rocket: Rocket,

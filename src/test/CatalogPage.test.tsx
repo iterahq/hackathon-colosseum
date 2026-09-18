@@ -28,25 +28,27 @@ vi.mock('@/hooks/useCatalog', () => ({
 const useAccessLevel = vi.fn();
 vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
 
-// AppHeader pulls auth/membership/branding hooks; stub it. ProgramCard is the
-// shared rich card — stub it to a thin shell that renders its title + footer
-// slot so the enroll/open CTAs (in the footer) stay assertable here. (The rich
-// card itself is covered by ProgramCard.test.tsx + the catalog e2e.)
+// AppHeader pulls auth/membership/branding hooks; stub it. CatalogProgramCard
+// is the shared v3 rich card — stub it to a thin shell that renders its title
+// + `action` slot so the enroll/open CTAs stay assertable here. (The rich
+// card itself is covered by CatalogProgramCard.test.tsx + the catalog e2e.)
 // LockedCatalogCard (visitor mode) is stubbed the same way, minus useEnroll —
 // its own CTA is `catalog-locked-cta`.
 vi.mock('@/components/branded', () => ({
   AppHeader: () => <div data-testid="app-header" />,
   ProgramIcon: () => <div data-testid="program-icon" />,
-  ProgramCard: ({
+  PageTitleAccent: ({ title }: { title: string }) => <>{title}</>,
+  SlashBar: () => <span aria-hidden />,
+  CatalogProgramCard: ({
     program,
-    footer,
+    action,
   }: {
     program: { title: { pt?: string; en?: string } };
-    footer?: ReactNode;
+    action?: ReactNode;
   }) => (
     <div data-testid="program-card">
       <span>{program.title.pt ?? program.title.en}</span>
-      {footer}
+      {action}
     </div>
   ),
   LockedCatalogCard: ({ program }: { program: { title: { pt?: string; en?: string } } }) => (

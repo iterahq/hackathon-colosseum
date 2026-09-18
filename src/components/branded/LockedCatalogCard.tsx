@@ -9,7 +9,7 @@
  */
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, ArrowRight } from 'lucide-react';
-import { ProgramCard } from './ProgramCard';
+import { CatalogProgramCard } from './CatalogProgramCard';
 import { useI18n } from '@/i18n';
 import type { CatalogProgram } from '@/types/catalog';
 
@@ -17,7 +17,7 @@ export function LockedCatalogCard({ program }: { program: CatalogProgram }) {
   const { t } = useI18n();
   const navigate = useNavigate();
 
-  const footer = (
+  const action = (
     <div className="space-y-2" data-testid="locked-catalog-card">
       <Link
         to="/subscribe"
@@ -30,11 +30,11 @@ export function LockedCatalogCard({ program }: { program: CatalogProgram }) {
   );
 
   return (
-    <ProgramCard
+    <CatalogProgramCard
       program={program}
       locked
-      onClick={() => navigate(`/program/${program.slug}`)}
-      footer={footer}
+      onOpenThumbnail={() => navigate(`/program/${program.slug}`)}
+      action={action}
     />
   );
 }

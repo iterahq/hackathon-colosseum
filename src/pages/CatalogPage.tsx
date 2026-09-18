@@ -9,8 +9,7 @@
  * the course's tenant). After enroll the course opens normally (tenant RLS lets
  * the user read + play it). Subscription-gated like the other learner surfaces.
  */
-import { GraduationCap } from 'lucide-react';
-import { AppHeader, LockedCatalogCard } from '@/components/branded';
+import { AppHeader, LockedCatalogCard, PageTitleAccent, SlashBar } from '@/components/branded';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useI18n } from '@/i18n';
@@ -34,13 +33,16 @@ export default function CatalogPage() {
       <main className="flex-1">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-5 md:py-8 space-y-8">
           <header>
-            <div className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi flex items-center gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5" /> {t('nav.catalog')}
-            </div>
-            <h1 className="font-display font-bold text-2xl md:text-3xl text-foreground mt-1">
-              {t('catalog.title')}
+            <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-foreground/60">
+              <SlashBar className="h-3" />
+              {t('nav.catalog')}
+            </p>
+            <h1 className="font-display font-bold text-4xl md:text-5xl leading-[1.05] tracking-[-0.5px] text-foreground mt-3">
+              <PageTitleAccent title={t('catalog.title')} />
             </h1>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">{t('catalog.subtitle')}</p>
+            <p className="text-[17px] leading-[1.45] text-foreground/60 mt-3 max-w-xl">
+              {t('catalog.subtitle')}
+            </p>
           </header>
 
           {isPending ? (

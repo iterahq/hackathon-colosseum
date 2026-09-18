@@ -10,7 +10,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
-import { ProgramCard } from '@/components/branded';
+import { CatalogProgramCard } from '@/components/branded';
 import { useEnroll } from '@/hooks/useCatalog';
 import { useI18n } from '@/i18n';
 import type { CatalogProgram } from '@/types/catalog';
@@ -32,7 +32,7 @@ export function CatalogCard({ program }: { program: CatalogProgram }) {
     }
   };
 
-  const footer = (
+  const action = (
     <div data-program-slug={program.slug} data-testid="catalog-card" className="space-y-3">
       {program.alreadyEnrolled ? (
         <button
@@ -70,10 +70,10 @@ export function CatalogCard({ program }: { program: CatalogProgram }) {
   );
 
   return (
-    <ProgramCard
+    <CatalogProgramCard
       program={program}
-      onClick={program.alreadyEnrolled ? goToCourse : undefined}
-      footer={footer}
+      onOpenThumbnail={program.alreadyEnrolled ? goToCourse : undefined}
+      action={action}
     />
   );
 }
