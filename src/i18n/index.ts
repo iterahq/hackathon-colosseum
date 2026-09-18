@@ -811,6 +811,14 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscription.cancel.keep': 'Manter assinatura',
     'subscription.cancel.confirm': 'Cancelar assinatura',
     'subscription.cancel.error': 'Não foi possível atualizar a assinatura. Tente de novo.',
+    'subscription.manage.action': 'Gerenciar pagamento',
+    'subscription.manage.error': 'Não foi possível abrir a página de pagamento. Tente de novo.',
+    'subscribe.includes.catalog': 'Catálogo completo de programas e atividades',
+    'subscribe.includes.live': 'Aulas ao vivo com o instrutor',
+    'subscribe.includes.aiReview': 'Exercícios revisados pelo Instrutor IA',
+    'subscribe.includes.badges': 'Badges verificáveis do que você concluiu',
+    'subscribe.terms':
+      'Assinatura mensal, renovada automaticamente até você cancelar. O cancelamento vale no fim do período já pago — você não perde o que pagou. Cobrança pela Stripe; o cartão não passa pela Itera.',
     'subscription.resume.action': 'Reativar assinatura',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Idioma',
@@ -1706,6 +1714,14 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscription.cancel.keep': 'Keep subscription',
     'subscription.cancel.confirm': 'Cancel subscription',
     'subscription.cancel.error': 'Could not update your subscription. Please try again.',
+    'subscription.manage.action': 'Manage payment',
+    'subscription.manage.error': 'Could not open the billing page. Please try again.',
+    'subscribe.includes.catalog': 'Full catalog of programs and activities',
+    'subscribe.includes.live': 'Live classes with the instructor',
+    'subscribe.includes.aiReview': 'Exercises reviewed by the AI Instructor',
+    'subscribe.includes.badges': 'Verifiable badges for what you complete',
+    'subscribe.terms':
+      'Monthly subscription, renewed automatically until you cancel. Cancelling takes effect at the end of the period you already paid for — you keep what you paid. Billing runs on Stripe; your card never touches Itera.',
     'subscription.resume.action': 'Resume subscription',
     // Profile / language preference (saved to the user profile, DB-backed).
     'profile.language': 'Language',

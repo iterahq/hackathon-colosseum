@@ -24,6 +24,10 @@ vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => state }));
 vi.mock('@/hooks/useCancelSubscription', () => ({
   useCancelSubscription: () => cancelState,
 }));
+// O botão do portal tem teste próprio; aqui só não queremos o React Query real.
+vi.mock('@/hooks/useBillingPortal', () => ({
+  useBillingPortal: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
+}));
 
 function renderSection() {
   return render(

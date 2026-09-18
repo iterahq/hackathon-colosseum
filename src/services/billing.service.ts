@@ -291,3 +291,53 @@ export function formatPrice(pricing: SeatPricing, displayLocale: string): string
     return `${(pricing.unitAmount / 100).toFixed(2)} ${pricing.currency.toUpperCase()}`;
   }
 }
+
+/**
+ * Abre o Stripe Customer Portal do assinante — trocar cartão, ver faturas,
+ * baixar recibo. Chama `POST /plg/portal` (user-JWT) e devolve a URL hospedada.
+ *
+ * O `return_url` NÃO é enviado daqui: quem decide pra onde a Stripe devolve é o
+ * servidor. Um return_url vindo do cliente faria da rota um redirect aberto a
+ * partir de uma superfície autenticada de cobrança.
+ */
+export async function createBillingPortalSession(locale: string): Promise<string> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Billing is not available (Supabase not configured).');
+  }
+  const { data: sessionData } = await getSupabase().auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error('You must be signed in to manage your subscription.');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${ITERA_API_URL}/plg/portal`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ locale }),
+    });
+  } catch (err) {
+    throw new Error(`Could not reach the billing service: ${(err as Error).message}`);
+  }
+
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`;
+    try {
+      const j = (await res.json()) as { error?: { message?: string } };
+      if (j?.error?.message) detail = j.error.message;
+    } catch {
+      /* non-JSON body — keep the status line */
+    }
+    throw new Error(`Billing portal could not be opened (${detail}).`);
+  }
+
+  const parsed = (await res.json().catch(() => ({}))) as { portal_url?: string };
+  if (!parsed.portal_url) {
+    throw new Error('Billing portal response did not include a URL.');
+  }
+  return parsed.portal_url;
+}

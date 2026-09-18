@@ -20,6 +20,7 @@ import { Sparkles, Loader2, CreditCard } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { createCheckout, getPricing, formatPrice, type SeatPricing } from '@/services/billing.service';
+import { PlanSummary } from '@/components/subscribe/PlanSummary';
 
 export default function SubscribePage() {
   const { t, locale } = useI18n();
@@ -98,6 +99,10 @@ export default function SubscribePage() {
               </span>
             ) : null}
           </div>
+
+          {/* O que vem junto e em que termos — antes do botão, porque é o que
+              torna o preço interpretável. */}
+          <PlanSummary />
 
           <button
             type="button"

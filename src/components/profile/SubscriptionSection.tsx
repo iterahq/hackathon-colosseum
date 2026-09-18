@@ -6,6 +6,7 @@ import { useEntitlement } from '@/hooks/useEntitlement';
 import { useCancelSubscription } from '@/hooks/useCancelSubscription';
 import { formatBillingDate } from '@/utils/formatBillingDate';
 import { CancelSubscriptionDialog } from './CancelSubscriptionDialog';
+import { ManageBillingButton } from './ManageBillingButton';
 
 export function SubscriptionSection() {
   const { t, locale } = useI18n();
@@ -108,6 +109,10 @@ export function SubscriptionSection() {
               {t('subscription.resume.action')}
             </button>
           )}
+
+          {/* Vale também com cancelamento agendado: até o fim do período ainda
+              existe fatura pra ler e cartão pra corrigir. */}
+          {billable && <ManageBillingButton />}
 
           {billable && !scheduledToCancel && (
             <button
