@@ -151,6 +151,13 @@ export const resources: Record<Locale, Record<string, string>> = {
     'role.admin': 'Admin',
     'role.instructor': 'Instrutor',
     'role.author': 'Autor',
+    // Sem assinatura ativa (visitor mode, 2026-09-18) — pode navegar o
+    // conteúdo travado, mas ainda não é aluno matriculado.
+    'role.visitor': 'Visitante',
+    'catalog.locked.cta': 'Assine para desbloquear',
+    'home.visitor.title': 'Você está navegando como visitante',
+    'home.visitor.body': 'Assine para desbloquear as lições, os exercícios e as aulas ao vivo.',
+    'program.locked.hint': 'Assine para desbloquear as lições e os exercícios deste programa.',
     // Live-class / real-time cohort mode (plan 20260702-…).
     'live.badge.label': 'AO VIVO',
     'live.status.ended': 'Encerrada',
@@ -428,6 +435,7 @@ export const resources: Record<Locale, Record<string, string>> = {
       'Microatividades que elevam suas habilidades — uma decisão de cada vez. Cada escolha importa.',
     'home.pickUp': 'Escolha um programa para começar',
     'home.yourPrograms': 'Seus programas',
+    'home.visitor.programsTitle': 'Programas disponíveis',
     'home.programsSubtitle': 'Trilhas de aprendizado da sua organização',
     'home.empty': 'Nenhum programa disponível ainda.',
     'home.emptyHint': 'Volte em breve — novos programas estão a caminho.',
@@ -1110,6 +1118,13 @@ export const resources: Record<Locale, Record<string, string>> = {
     'role.admin': 'Admin',
     'role.instructor': 'Instructor',
     'role.author': 'Author',
+    // No active subscription (visitor mode, 2026-09-18) — can browse locked
+    // content, but is not an enrolled learner yet.
+    'role.visitor': 'Visitor',
+    'catalog.locked.cta': 'Subscribe to unlock',
+    'home.visitor.title': 'You are browsing as a visitor',
+    'home.visitor.body': 'Subscribe to unlock lessons, exercises and live classes.',
+    'program.locked.hint': 'Subscribe to unlock this program’s lessons and exercises.',
     // Live-class / real-time cohort mode (plan 20260702-…).
     'live.badge.label': 'LIVE',
     'live.status.ended': 'Ended',
@@ -1378,6 +1393,7 @@ export const resources: Record<Locale, Record<string, string>> = {
       'Microactivities that level up your skills — one decision at a time. Every choice matters.',
     'home.pickUp': 'Choose a program to start',
     'home.yourPrograms': 'Your programs',
+    'home.visitor.programsTitle': 'Available programs',
     'home.programsSubtitle': "Your organization's learning tracks",
     'home.empty': 'No programs available yet.',
     'home.emptyHint': 'Check back soon — new programs are on the way.',

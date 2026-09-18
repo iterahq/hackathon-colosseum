@@ -28,6 +28,9 @@ vi.mock('@/hooks/useProfile', () => ({
 vi.mock('@/hooks/useLiveClass', () => ({
   useEnabledTenantIds: () => ({ data: [] }),
 }));
+vi.mock('@/hooks/useAccessLevel', () => ({
+  useAccessLevel: () => ({ level: 'member', entitlementError: false }),
+}));
 
 const ADMIN: Membership[] = [{ tenantId: 'dfl', role: 'tenant_admin', tenantSlug: 'dfl-batch' }];
 const AUTHOR: Membership[] = [{ tenantId: 'dfl', role: 'author', tenantSlug: 'dfl-batch' }];

@@ -143,26 +143,35 @@ const App = () => (
                 {/* Learner surfaces — RequireAuth → RequireSubscription. A
                     signed-in user with no active subscription is redirected to
                     /subscribe (tenant-admins/owners are exempt). PLG gate:
-                    plan 20260624-itera-plg-subscribe-flow. */}
+                    plan 20260624-itera-plg-subscribe-flow.
+                    VISITOR MODE (2026-09-18, plan 20260918-visitor-mode):
+                    `mode="preview"` on "/", "/catalog" and "/program/:slug"
+                    lets a signed-in user with no subscription THROUGH instead
+                    of redirecting — the page itself renders a locked "subscribe
+                    to unlock" experience (see useAccessLevel). "/lesson/:lessonId"
+                    and "/artifacts" below keep the default mode="block": real
+                    activity content is RLS-gated anyway
+                    (itera.current_user_is_entitled()). */}
                 <Route
                   path="/"
                   element={
                     <RequireAuth>
-                      <RequireSubscription>
+                      <RequireSubscription mode="preview">
                         <HomePage />
                       </RequireSubscription>
                     </RequireAuth>
                   }
                 />
                 {/* Self-serve catalog — browse + enroll into catalog courses
-                    (round-1 finding #1). Subscription-gated like the other
-                    learner surfaces: a paying user reaches the catalog and can
-                    discover/enroll the flagship (itera-tenant) courses. */}
+                    (round-1 finding #1). A visitor (no subscription) can still
+                    browse it (mode="preview"); the enroll CTA is replaced by a
+                    "subscribe to unlock" CTA for them (CatalogPage), so enroll
+                    is never called without an active seat. */}
                 <Route
                   path="/catalog"
                   element={
                     <RequireAuth>
-                      <RequireSubscription>
+                      <RequireSubscription mode="preview">
                         <CatalogPage />
                       </RequireSubscription>
                     </RequireAuth>
@@ -172,7 +181,7 @@ const App = () => (
                   path="/program/:slug"
                   element={
                     <RequireAuth>
-                      <RequireSubscription>
+                      <RequireSubscription mode="preview">
                         <ProgramPage />
                       </RequireSubscription>
                     </RequireAuth>

@@ -25,10 +25,15 @@ vi.mock('@/hooks/useCatalog', () => ({
   useEnroll: () => useEnroll(),
 }));
 
+const useAccessLevel = vi.fn();
+vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
+
 // AppHeader pulls auth/membership/branding hooks; stub it. ProgramCard is the
 // shared rich card — stub it to a thin shell that renders its title + footer
 // slot so the enroll/open CTAs (in the footer) stay assertable here. (The rich
 // card itself is covered by ProgramCard.test.tsx + the catalog e2e.)
+// LockedCatalogCard (visitor mode) is stubbed the same way, minus useEnroll —
+// its own CTA is `catalog-locked-cta`.
 vi.mock('@/components/branded', () => ({
   AppHeader: () => <div data-testid="app-header" />,
   ProgramIcon: () => <div data-testid="program-icon" />,
@@ -42,6 +47,14 @@ vi.mock('@/components/branded', () => ({
     <div data-testid="program-card">
       <span>{program.title.pt ?? program.title.en}</span>
       {footer}
+    </div>
+  ),
+  LockedCatalogCard: ({ program }: { program: { title: { pt?: string; en?: string } } }) => (
+    <div data-testid="program-card">
+      <span>{program.title.pt ?? program.title.en}</span>
+      <button type="button" data-testid="catalog-locked-cta">
+        Subscribe
+      </button>
     </div>
   ),
 }));
@@ -60,6 +73,7 @@ beforeEach(() => {
   navigate.mockReset();
   mutateAsync.mockReset();
   useEnroll.mockReturnValue({ mutateAsync, isPending: false, isError: false });
+  useAccessLevel.mockReturnValue({ level: 'member', entitlementError: false });
 });
 
 describe('CatalogPage', () => {
@@ -141,5 +155,37 @@ describe('CatalogPage', () => {
     useCatalog.mockReturnValue({ data: [], isPending: false, isError: false });
     renderPage();
     expect(screen.getByTestId('catalog-empty')).toBeInTheDocument();
+  });
+
+  describe('visitor mode (no active subscription)', () => {
+    beforeEach(() => {
+      useAccessLevel.mockReturnValue({ level: 'visitor', entitlementError: false });
+    });
+
+    it('shows the locked CTA instead of Enroll, and never calls useEnroll', () => {
+      useCatalog.mockReturnValue({
+        data: [
+          {
+            id: 'p1',
+            tenantId: 't',
+            tenantSlug: 'itera',
+            slug: 'modele-dados-com-ia',
+            title: { pt: 'Modele seus dados com IA' },
+            createdAt: '',
+            unitCount: 1,
+            lessonCount: 2,
+            activityCount: 8,
+            alreadyEnrolled: false,
+          },
+        ],
+        isPending: false,
+        isError: false,
+      });
+      renderPage();
+      expect(screen.getByText(/Modele seus dados com IA/i)).toBeInTheDocument();
+      expect(screen.getByTestId('catalog-locked-cta')).toBeInTheDocument();
+      expect(screen.queryByTestId('catalog-enroll')).not.toBeInTheDocument();
+      expect(mutateAsync).not.toHaveBeenCalled();
+    });
   });
 });

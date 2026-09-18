@@ -9,16 +9,23 @@
  * the course's tenant). After enroll the course opens normally (tenant RLS lets
  * the user read + play it). Subscription-gated like the other learner surfaces.
  */
-import { useNavigate } from 'react-router-dom';
-import { GraduationCap, CheckCircle2, ArrowRight } from 'lucide-react';
-import { AppHeader, ProgramCard } from '@/components/branded';
-import { useCatalog, useEnroll } from '@/hooks/useCatalog';
+import { GraduationCap } from 'lucide-react';
+import { AppHeader, LockedCatalogCard } from '@/components/branded';
+import { useCatalog } from '@/hooks/useCatalog';
+import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useI18n } from '@/i18n';
-import type { CatalogProgram } from '@/types/catalog';
+import { CatalogCard } from './CatalogCard';
 
 export default function CatalogPage() {
   const { t } = useI18n();
   const { data: programs = [], isPending, isError, refetch } = useCatalog();
+  // Visitor mode (2026-09-18): a signed-in user with no active subscription
+  // still reaches this page (RequireSubscription mode="preview") and browses
+  // the SAME cards, but locked — the enroll button never renders and
+  // `useEnroll` is never even mounted for them (LockedCatalogCard doesn't call
+  // it), so a visitor can never trigger enrollment from here.
+  const { level: accessLevel } = useAccessLevel();
+  const isVisitor = accessLevel === 'visitor';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -62,83 +69,17 @@ export default function CatalogPage() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="catalog-grid">
-              {programs.map((p) => (
-                <CatalogCard key={p.id} program={p} />
-              ))}
+              {programs.map((p) =>
+                isVisitor ? (
+                  <LockedCatalogCard key={p.id} program={p} />
+                ) : (
+                  <CatalogCard key={p.id} program={p} />
+                )
+              )}
             </div>
           )}
         </div>
       </main>
     </div>
-  );
-}
-
-/**
- * One catalog course rendered with the shared rich {@link ProgramCard}. Catalog
- * programs are not-yet-enrolled → no per-user progress (ProgramCard shows the
- * not-started look: level tag, no progress bar). The Enroll / Open CTA + inline
- * error live in the card's `footer` slot. An already-enrolled card also makes
- * the hero clickable so it opens the course directly (parity with HomePage).
- */
-function CatalogCard({ program }: { program: CatalogProgram }) {
-  const { t } = useI18n();
-  const navigate = useNavigate();
-  const enroll = useEnroll();
-
-  const goToCourse = () => navigate(`/program/${program.slug}`);
-
-  const onEnroll = async () => {
-    try {
-      await enroll.mutateAsync(program.id);
-      // On success the user holds a membership; open the course straight away.
-      goToCourse();
-    } catch {
-      /* error surfaced inline below via enroll.isError */
-    }
-  };
-
-  const footer = (
-    <div data-program-slug={program.slug} data-testid="catalog-card" className="space-y-3">
-      {program.alreadyEnrolled ? (
-        <button
-          type="button"
-          onClick={goToCourse}
-          data-testid="catalog-open"
-          className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi font-medium hover:bg-evergreen-soft/70 transition-colors"
-        >
-          <CheckCircle2 className="w-4 h-4" /> {t('catalog.open')}
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={onEnroll}
-          disabled={enroll.isPending}
-          data-testid="catalog-enroll"
-          className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-50"
-        >
-          {enroll.isPending ? (
-            t('catalog.enrolling')
-          ) : (
-            <>
-              {t('catalog.enroll')} <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
-      )}
-
-      {enroll.isError && (
-        <p className="text-sm text-clay" data-testid="catalog-enroll-error">
-          {t('catalog.enrollError')}
-        </p>
-      )}
-    </div>
-  );
-
-  return (
-    <ProgramCard
-      program={program}
-      onClick={program.alreadyEnrolled ? goToCourse : undefined}
-      footer={footer}
-    />
   );
 }

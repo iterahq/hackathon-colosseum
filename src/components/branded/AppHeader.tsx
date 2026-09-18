@@ -34,6 +34,7 @@ import { useMembership } from '@/hooks/useMembership';
 import { useProfile } from '@/hooks/useProfile';
 import { isTenantAdmin, highestRole, instructorTenantId } from '@/services/membership.service';
 import { useEnabledTenantIds } from '@/hooks/useLiveClass';
+import { useAccessLevel } from '@/hooks/useAccessLevel';
 
 export function AppHeader({
   active = 'discover',
@@ -53,7 +54,14 @@ export function AppHeader({
   // instructor must read as "Instrutor", not "Aluno". `showAdmin` still gates the
   // /admin nav on tenant_admin/owner only (an instructor doesn't see /admin).
   const role = highestRole(memberships ?? []);
-  const roleIsPrivileged = role !== 'learner';
+  // Visitor mode (2026-09-18): a signed-in `learner`-role user with NO active
+  // subscription reads as "Visitante", not "Aluno" — a privileged role
+  // (admin/instructor/author) is unaffected: `hasPaidAccess` already treats a
+  // real tenant_admin/owner as a member, so those roles never land here as
+  // 'visitor' anyway; this only relabels the plain-learner case.
+  const { level: accessLevel } = useAccessLevel();
+  const isVisitor = accessLevel === 'visitor' && role === 'learner';
+  const roleIsPrivileged = role !== 'learner' && !isVisitor;
   const roleKey =
     role === 'owner' || role === 'tenant_admin'
       ? 'role.admin'
@@ -61,7 +69,9 @@ export function AppHeader({
         ? 'role.instructor'
         : role === 'author'
           ? 'role.author'
-          : 'role.learner';
+          : isVisitor
+            ? 'role.visitor'
+            : 'role.learner';
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -170,6 +180,18 @@ export function AppHeader({
             <span className={`w-1.5 h-1.5 rounded-full ${roleIsPrivileged ? 'bg-evergreen' : 'bg-menta'}`} />
             {t(roleKey)}
           </span>
+
+          {/* Visitor mode: subtle subscribe CTA next to the role pill — the
+              exit from "browsing locked" back to the paid checkout. */}
+          {isVisitor && (
+            <Link
+              to="/subscribe"
+              data-testid="nav-subscribe-cta"
+              className="hidden sm:inline-flex items-center px-3 h-9 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi text-xs font-medium hover:bg-evergreen-soft/70 transition-colors"
+            >
+              {t('subscribe.cta')}
+            </Link>
+          )}
 
           {/* Notifications bell */}
           <button

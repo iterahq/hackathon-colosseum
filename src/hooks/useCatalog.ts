@@ -9,8 +9,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { enrollInProgram, getCatalogPrograms } from '@/services/catalog.service';
 
-export function useCatalog() {
-  return useQuery({ queryKey: queryKeys.catalog.all, queryFn: getCatalogPrograms });
+export function useCatalog({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.catalog.all, queryFn: getCatalogPrograms, enabled });
 }
 
 export function useEnroll() {

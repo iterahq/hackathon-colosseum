@@ -18,7 +18,7 @@
  */
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Layers, ListChecks, Play } from 'lucide-react';
+import { BookOpen, Layers, ListChecks, Lock, Play } from 'lucide-react';
 import { ProgramIcon, categoryFor } from './ProgramIcon';
 import { levelFor } from '@/utils/levelFor';
 import { useI18n } from '@/i18n';
@@ -44,6 +44,7 @@ export function ProgramCard({
   program,
   onClick,
   footer,
+  locked = false,
 }: {
   program: ProgramCardData;
   /** Whole-card click (enrolled surface). Ignored when `footer` is provided. */
@@ -51,6 +52,10 @@ export function ProgramCard({
   /** Custom footer slot (e.g. catalog Enroll/Open CTA). Replaces the default
    *  level · %-complete line and makes the card a non-button container. */
   footer?: ReactNode;
+  /** Visitor mode (2026-09-18): shows a lock badge over the cover image. Counts
+   *  and title stay visible — only the CTA (via `footer`) changes what unlocking
+   *  means. Purely visual; access is still enforced by the route/RLS. */
+  locked?: boolean;
 }) {
   const { t, tText } = useI18n();
   const total = program.activityCount ?? 0;
@@ -82,6 +87,17 @@ export function ProgramCard({
           {category}
         </span>
       </div>
+      {/* Lock badge (top-right) — visitor mode. */}
+      {locked && (
+        <div className="absolute top-3 right-3">
+          <span
+            data-testid="program-card-lock"
+            className="w-7 h-7 rounded-full bg-obsidiana/80 border border-border flex items-center justify-center text-menta"
+          >
+            <Lock className="w-3.5 h-3.5" />
+          </span>
+        </div>
+      )}
       {/* Hover play affordance — only meaningful when the card itself is clickable */}
       {onClick && !footer && (
         <div className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-evergreen text-obsidiana flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

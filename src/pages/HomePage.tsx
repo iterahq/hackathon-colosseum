@@ -6,8 +6,17 @@
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Sparkles, GraduationCap, Radio } from 'lucide-react';
-import { AppHeader, ProgramCard, StatsCard, BadgeGrid } from '@/components/branded';
+import {
+  AppHeader,
+  ProgramCard,
+  StatsCard,
+  BadgeGrid,
+  LockedCatalogCard,
+  VisitorBanner,
+} from '@/components/branded';
 import { usePrograms, useUserStats, useBadges } from '@/hooks';
+import { useCatalog } from '@/hooks/useCatalog';
+import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useI18n } from '@/i18n';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -19,11 +28,28 @@ export default function HomePage() {
   const { t, tText } = useI18n();
   const [searchParams] = useSearchParams();
   const q = (searchParams.get('q') ?? '').trim().toLowerCase();
-  const { data: allPrograms = [], isPending, isError, refetch } = usePrograms();
-  const { data: stats, isPending: statsLoading } = useUserStats();
-  const { data: badges, isPending: badgesLoading } = useBadges();
+  // Visitor mode (2026-09-18): a signed-in user with no active subscription
+  // browses this page instead of being redirected (RequireSubscription
+  // mode="preview"). Their dashboard has zero enrolled programs by
+  // construction (RLS), so the usual "empty" state is replaced with a
+  // locked catalog — and the queries that would just come back empty/error
+  // for them (enrolled programs, stats, badges) are not fired at all.
+  const { level: accessLevel } = useAccessLevel();
+  const isVisitor = accessLevel === 'visitor';
 
-  // Navbar search filters the program grid (real feature behind ?q=).
+  const { data: allPrograms = [], isPending, isError, refetch } = usePrograms({
+    enabled: !isVisitor,
+  });
+  const { data: stats, isPending: statsLoading } = useUserStats({ enabled: !isVisitor });
+  const { data: badges, isPending: badgesLoading } = useBadges({ enabled: !isVisitor });
+  const {
+    data: catalogPrograms = [],
+    isPending: catalogPending,
+    isError: catalogError,
+    refetch: refetchCatalog,
+  } = useCatalog({ enabled: isVisitor });
+
+  // Navbar search filters the program grid (real feature behind ?q=) — member only.
   const programs = q
     ? allPrograms.filter((p) => tText(p.title).toLowerCase().includes(q))
     : allPrograms;
@@ -69,95 +95,154 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            <StatsCard stats={stats} loading={statsLoading} />
+            {/* A visitor has no stats to show (zero completed activities by
+                construction) — the StatsCard query is skipped above, so don't
+                render its shell here either. */}
+            {isVisitor ? <VisitorBanner /> : <StatsCard stats={stats} loading={statsLoading} />}
           </section>
 
           {/* Live-class block — appears between hero and programs when a class is active.
               Instructor re-entry → /live/instructor; student join → /live/:id. */}
-          <LiveClassBlock />
+          {/* Hidden for visitors: joining is paywalled, so "Join" would be a dead end. */}
+          {!isVisitor && <LiveClassBlock />}
 
           {/* Scheduled-class notice — only when nothing is live yet. */}
-          <NextScheduledClassBlock />
+          {!isVisitor && <NextScheduledClassBlock />}
 
-          {/* Programs */}
-          <Section
-            title={t("home.yourPrograms")}
-            subtitle={t("home.programsSubtitle")}
-          >
-            {isPending ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {[0, 1, 2].map((i) => (
+          {isVisitor ? (
+            /* Visitor mode: the catalog, rendered LOCKED, replaces the (always
+               empty) enrolled-programs dashboard. */
+            <Section
+              title={t("home.visitor.programsTitle")}
+              subtitle={t("subscription.inactiveHint")}
+            >
+              {catalogPending ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
+                    />
+                  ))}
+                </div>
+              ) : catalogError ? (
+                <div
+                  className="flex flex-col items-center gap-4 py-12"
+                  data-testid="programs-error"
+                >
+                  <p className="text-muted-foreground text-center max-w-md">
+                    {t("catalog.error")}
+                  </p>
+                  <button
+                    onClick={() => refetchCatalog()}
+                    className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                  >
+                    {t("common.retry")}
+                  </button>
+                </div>
+              ) : catalogPrograms.length === 0 ? (
+                <div
+                  className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center"
+                  data-testid="programs-empty"
+                >
+                  <p className="font-display text-lg text-foreground">{t("catalog.empty")}</p>
+                  <p className="text-sm text-muted-foreground mt-2">{t("catalog.emptyHint")}</p>
+                </div>
+              ) : (
+                <div
+                  className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
+                  data-testid="programs-grid-locked"
+                >
+                  {catalogPrograms.map((p) => (
+                    <LockedCatalogCard key={p.id} program={p} />
+                  ))}
+                </div>
+              )}
+            </Section>
+          ) : (
+            <>
+              {/* Programs */}
+              <Section
+                title={t("home.yourPrograms")}
+                subtitle={t("home.programsSubtitle")}
+              >
+                {isPending ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
+                      />
+                    ))}
+                  </div>
+                ) : isError ? (
                   <div
-                    key={i}
-                    className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
-                  />
-                ))}
-              </div>
-            ) : isError ? (
-              <div
-                className="flex flex-col items-center gap-4 py-12"
-                data-testid="programs-error"
-              >
-                <p className="text-muted-foreground text-center max-w-md">
-                  {t("home.error")}
-                </p>
-                <button
-                  onClick={() => refetch()}
-                  className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                >
-                  {t("common.retry")}
-                </button>
-              </div>
-            ) : programs.length === 0 ? (
-              <div
-                className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center"
-                data-testid="programs-empty"
-              >
-                <p className="font-display text-lg text-foreground">
-                  {t("home.empty")}
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t("home.emptyHint")}
-                </p>
-                {/* Empty dashboard → send the user to the catalog to discover +
-                    enroll (round-1 finding #1: the flagship lives in another
-                    tenant and was otherwise undiscoverable). */}
-                <button
-                  type="button"
-                  onClick={() => navigate("/catalog")}
-                  data-testid="programs-empty-browse"
-                  className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  {t("nav.catalog")}
-                </button>
-              </div>
-            ) : (
-              <div
-                className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
-                data-testid="programs-grid"
-              >
-                {programs.map((p) => (
-                  <ProgramCard
-                    key={p.id}
-                    program={p}
-                    onClick={() => navigate(`/program/${p.slug}`)}
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
+                    className="flex flex-col items-center gap-4 py-12"
+                    data-testid="programs-error"
+                  >
+                    <p className="text-muted-foreground text-center max-w-md">
+                      {t("home.error")}
+                    </p>
+                    <button
+                      onClick={() => refetch()}
+                      className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                    >
+                      {t("common.retry")}
+                    </button>
+                  </div>
+                ) : programs.length === 0 ? (
+                  <div
+                    className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center"
+                    data-testid="programs-empty"
+                  >
+                    <p className="font-display text-lg text-foreground">
+                      {t("home.empty")}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {t("home.emptyHint")}
+                    </p>
+                    {/* Empty dashboard → send the user to the catalog to discover +
+                        enroll (round-1 finding #1: the flagship lives in another
+                        tenant and was otherwise undiscoverable). */}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/catalog")}
+                      data-testid="programs-empty-browse"
+                      className="mt-5 inline-flex items-center gap-2 h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+                    >
+                      <GraduationCap className="w-4 h-4" />
+                      {t("nav.catalog")}
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
+                    data-testid="programs-grid"
+                  >
+                    {programs.map((p) => (
+                      <ProgramCard
+                        key={p.id}
+                        program={p}
+                        onClick={() => navigate(`/program/${p.slug}`)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Section>
 
-          {/* Badges */}
-          <Section
-            title={t("badges.title")}
-            subtitle={t("badges.subtitle")}
-            seeAllLabel={t("badges.seeAll")}
-          >
-            <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
-              <BadgeGrid badges={badges} loading={badgesLoading} />
-            </div>
-          </Section>
+              {/* Badges — visitor has none (query skipped), so the section is
+                  simply not rendered for them rather than showing an empty grid. */}
+              <Section
+                title={t("badges.title")}
+                subtitle={t("badges.subtitle")}
+                seeAllLabel={t("badges.seeAll")}
+              >
+                <div className="rounded-3xl border border-border bg-card p-6 md:p-8">
+                  <BadgeGrid badges={badges} loading={badgesLoading} />
+                </div>
+              </Section>
+            </>
+          )}
         </div>
       </main>
 

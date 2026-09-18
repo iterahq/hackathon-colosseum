@@ -38,14 +38,14 @@ vi.mock('@/auth/AuthContext', () => ({ useAuth: () => authState }));
 vi.mock('@/hooks/useEntitlement', () => ({ useEntitlement: () => entitlementState }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => membershipState }));
 
-function renderGuard(graceOnError = false) {
+function renderGuard(graceOnError = false, mode: 'block' | 'preview' = 'block') {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <Routes>
         <Route
           path="/"
           element={
-            <RequireSubscription graceOnError={graceOnError}>
+            <RequireSubscription graceOnError={graceOnError} mode={mode}>
               <div data-testid="player">PLAYER OK</div>
             </RequireSubscription>
           }
@@ -169,5 +169,35 @@ describe('RequireSubscription (PLG gate)', () => {
     renderGuard();
     expect(screen.queryByTestId('player')).not.toBeInTheDocument();
     expect(screen.getByTestId('subscribe')).toBeInTheDocument();
+  });
+
+  describe('mode="preview" (visitor mode)', () => {
+    it('renders children instead of redirecting when there is no active subscription', () => {
+      entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+      renderGuard(false, 'preview');
+      expect(screen.getByTestId('player')).toBeInTheDocument();
+      expect(screen.queryByTestId('subscribe')).not.toBeInTheDocument();
+    });
+
+    it('still renders children (unlocked) for a member with an active subscription', () => {
+      entitlementState.data = { active: true, status: 'active', currentPeriodEnd: null };
+      renderGuard(false, 'preview');
+      expect(screen.getByTestId('player')).toBeInTheDocument();
+    });
+
+    it('still redirects an unauthenticated user to /login (preview never bypasses auth)', () => {
+      authState.session = null;
+      renderGuard(false, 'preview');
+      expect(screen.queryByTestId('player')).not.toBeInTheDocument();
+      expect(screen.getByTestId('login')).toBeInTheDocument();
+    });
+
+    it('renders children (as visitor) instead of redirecting when the entitlement read fails', () => {
+      entitlementState.isError = true;
+      entitlementState.data = { active: false, status: null, currentPeriodEnd: null };
+      renderGuard(false, 'preview');
+      expect(screen.getByTestId('player')).toBeInTheDocument();
+      expect(screen.queryByTestId('subscribe')).not.toBeInTheDocument();
+    });
   });
 });

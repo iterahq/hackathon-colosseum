@@ -10,8 +10,10 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, GitBranch, SearchX } from 'lucide-react';
-import { AppHeader, ProgramIcon, SkillTree } from '@/components/branded';
+import { AppHeader, ProgramIcon, SkillTree, LockedProgramView } from '@/components/branded';
 import { useProgram } from '@/hooks';
+import { useCatalog } from '@/hooks/useCatalog';
+import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { isProgramNotFoundError } from '@/services/programs.service';
 import { useI18n } from '@/i18n';
 
@@ -25,7 +27,15 @@ import { useI18n } from '@/i18n';
  * fallback for "the query settled with nothing and no error" — the branch that
  * used to render `null` and left `<main>` empty (DFL-006A7).
  */
-function ProgramUnavailable() {
+function ProgramUnavailable({
+  visitor = false,
+  onRetry,
+}: {
+  /** A visitor gets the subscribe CTA first — the program may exist behind the paywall. */
+  visitor?: boolean;
+  /** Shown when the lookup itself failed, so "unavailable" is not the last word. */
+  onRetry?: () => void;
+}) {
   const { t } = useI18n();
   return (
     <div
@@ -38,6 +48,25 @@ function ProgramUnavailable() {
       <h2 className="text-base font-semibold text-foreground">{t('program.noAccess.title')}</h2>
       <p className="text-sm text-muted-foreground max-w-[46ch]">{t('program.noAccess.body')}</p>
       <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+        {visitor && (
+          <Link
+            to="/subscribe"
+            className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+            data-testid="program-unavailable-subscribe"
+          >
+            {t('catalog.locked.cta')}
+          </Link>
+        )}
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="h-10 px-5 inline-flex items-center rounded-full border border-border text-foreground hover:bg-card transition-colors"
+            data-testid="program-unavailable-retry"
+          >
+            {t('common.retry')}
+          </button>
+        )}
         <Link
           to="/catalog"
           className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
@@ -61,14 +90,35 @@ export default function ProgramPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { t, tText } = useI18n();
-  const { data: program, isPending, isError, error, refetch } = useProgram(slug);
+
+  // Visitor mode (2026-09-18): a signed-in user with no active subscription
+  // reaches this route too (RequireSubscription mode="preview"). They hold no
+  // REAL tenant membership, so `useProgram` would always resolve "not found"
+  // via RLS — skip that query entirely for them (`enabled: false` below) and
+  // instead look the slug up in the membership-independent catalog: if it
+  // matches, render a LOCKED preview instead of "no access".
+  const { level: accessLevel } = useAccessLevel();
+  const isVisitor = accessLevel === 'visitor';
+  const { data: program, isPending, isError, error, refetch } = useProgram(
+    isVisitor ? undefined : slug
+  );
+  const {
+    data: catalogPrograms = [],
+    isPending: catalogPending,
+    isError: catalogError,
+    refetch: refetchCatalog,
+  } = useCatalog({
+    enabled: isVisitor,
+  });
+  const catalogMatch = isVisitor ? catalogPrograms.find((p) => p.slug === slug) : undefined;
 
   // A missing route param can never resolve either (the query stays disabled and
   // therefore permanently `isPending`) — treat it exactly like a hidden/absent
   // program so this route never renders an eternal skeleton. Same shape as
   // `ActivityTestPage`.
-  const unavailable = !slug || (isError && isProgramNotFoundError(error));
-  const loading = Boolean(slug) && isPending && !unavailable;
+  const memberUnavailable = !isVisitor && isError && isProgramNotFoundError(error);
+  const unavailable = !slug || memberUnavailable;
+  const loading = Boolean(slug) && !unavailable && (isVisitor ? catalogPending : isPending);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -105,6 +155,12 @@ export default function ProgramPage() {
               <div key={i} className="h-16 rounded-2xl ds-shimmer" />
             ))}
           </div>
+        ) : isVisitor ? (
+          catalogMatch ? (
+            <LockedProgramView program={catalogMatch} />
+          ) : (
+            <ProgramUnavailable visitor onRetry={catalogError ? () => void refetchCatalog() : undefined} />
+          )
         ) : unavailable ? (
           <ProgramUnavailable />
         ) : isError ? (

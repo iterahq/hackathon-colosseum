@@ -19,8 +19,8 @@ import {
 } from '@/services/programs.service';
 import { getGuestLessonContent } from '@/services/guestSession.service';
 
-export function usePrograms() {
-  return useQuery({ queryKey: queryKeys.programs.all, queryFn: getPrograms });
+export function usePrograms({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.programs.all, queryFn: getPrograms, enabled });
 }
 
 export function useProgram(slug: string | undefined) {
@@ -90,10 +90,10 @@ export function useNextLesson(lessonId: string | undefined) {
   });
 }
 
-export function useUserStats() {
-  return useQuery({ queryKey: queryKeys.user.stats, queryFn: getUserStats });
+export function useUserStats({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.user.stats, queryFn: getUserStats, enabled });
 }
 
-export function useBadges() {
-  return useQuery({ queryKey: queryKeys.user.badges, queryFn: getBadges });
+export function useBadges({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: queryKeys.user.badges, queryFn: getBadges, enabled });
 }
