@@ -49,8 +49,16 @@ try {
     join(root, "db/migrations/0100_learning_capability_graph_endpoints.sql"),
     "-- declared graph suffix\n",
   );
+  result = spawnSync("bash", [script, "prefix"], { env, encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /0101_mcp_tool_calls/);
+  assert.equal(existsSync(trace), false);
   writeFileSync(
-    join(root, "db/migrations/0101_unaccounted.sql"),
+    join(root, "db/migrations/0101_mcp_tool_calls.sql"),
+    "-- declared usage-log suffix\n",
+  );
+  writeFileSync(
+    join(root, "db/migrations/0102_unaccounted.sql"),
     "-- future migration must not disappear\n",
   );
   for (const mode of ["prefix", "parity", "restore", "suffix"]) {

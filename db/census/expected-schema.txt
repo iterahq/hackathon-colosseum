@@ -21,6 +21,12 @@ cmt   col itera.artifacts.version 8a455d69d065
 cmt   col itera.byoc_generations.attempt_notes c4d01a54626f
 cmt   col itera.class_sessions.guest_code a518c300b943
 cmt   col itera.class_sessions.scheduled_at d9d43b8df850
+cmt   col itera.mcp_tool_calls.error_code 3b99bb0779ec
+cmt   col itera.mcp_tool_calls.ok 6270da4f0d14
+cmt   col itera.mcp_tool_calls.server 3e383ff0c12d
+cmt   col itera.mcp_tool_calls.tool ab82479f7e77
+cmt   col itera.mcp_tool_calls.user_agent 22c0ba8031f4
+cmt   col itera.mcp_tool_calls.user_id 32c2835ce751
 cmt   col itera.programs.archived_at 6a35b3be8fe7
 cmt   col itera.progress.status 045877055942
 cmt   col itera.tenants.is_test e4effdda4e70
@@ -96,6 +102,7 @@ cmt   rel itera.api_keys e77a2c34a427
 cmt   rel itera.byoc_generations 68d118ede09a
 cmt   rel itera.class_removals 4c1d828f5273
 cmt   rel itera.class_stars 1072f9c8bdb8
+cmt   rel itera.mcp_tool_calls 10b3175094db
 cmt   rel itera.my_subscription 6269041800af
 cmt   rel itera.schema_migrations 54b440c540af
 cmt   rel itera.schema_object_census 5d63d5c0db10
@@ -320,6 +327,18 @@ col   itera.lessons.id uuid NOT NULL default=gen_random_uuid() ident=- gen=-
 col   itera.lessons.ordinal integer NOT NULL default=0 ident=- gen=-
 col   itera.lessons.title_i18n jsonb NOT NULL default='{}'::jsonb ident=- gen=-
 col   itera.lessons.unit_id uuid NOT NULL default=- ident=- gen=-
+col   itera.mcp_tool_calls.client_name text default=- ident=- gen=-
+col   itera.mcp_tool_calls.client_version text default=- ident=- gen=-
+col   itera.mcp_tool_calls.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
+col   itera.mcp_tool_calls.duration_ms integer default=- ident=- gen=-
+col   itera.mcp_tool_calls.error_code text default=- ident=- gen=-
+col   itera.mcp_tool_calls.id bigint NOT NULL default=- ident=a gen=-
+col   itera.mcp_tool_calls.ok boolean NOT NULL default=- ident=- gen=-
+col   itera.mcp_tool_calls.server text NOT NULL default=- ident=- gen=-
+col   itera.mcp_tool_calls.session_id text default=- ident=- gen=-
+col   itera.mcp_tool_calls.tool text NOT NULL default=- ident=- gen=-
+col   itera.mcp_tool_calls.user_agent text default=- ident=- gen=-
+col   itera.mcp_tool_calls.user_id uuid NOT NULL default=auth.uid() ident=- gen=-
 col   itera.media.checksum text default=- ident=- gen=-
 col   itera.media.created_at timestamp with time zone NOT NULL default=now() ident=- gen=-
 col   itera.media.created_by uuid NOT NULL default=auth.uid() ident=- gen=-
@@ -793,6 +812,13 @@ con   itera.learner_personalization learner_personalization_user_id_fkey FOREIGN
 con   itera.learner_personalization learner_personalization_values_object CHECK (((jsonb_typeof("values") = 'object'::text) AND (pg_column_size("values") <= 4096)))
 con   itera.lessons lessons_pkey PRIMARY KEY (id)
 con   itera.lessons lessons_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES itera.units(id) ON DELETE CASCADE
+con   itera.mcp_tool_calls mcp_tool_calls_duration_chk CHECK (((duration_ms IS NULL) OR (duration_ms >= 0)))
+con   itera.mcp_tool_calls mcp_tool_calls_error_code_chk CHECK (((error_code IS NULL) OR (char_length(error_code) <= 100)))
+con   itera.mcp_tool_calls mcp_tool_calls_pkey PRIMARY KEY (id)
+con   itera.mcp_tool_calls mcp_tool_calls_server_chk CHECK ((length(btrim(server)) > 0))
+con   itera.mcp_tool_calls mcp_tool_calls_tool_chk CHECK ((length(btrim(tool)) > 0))
+con   itera.mcp_tool_calls mcp_tool_calls_user_agent_chk CHECK (((user_agent IS NULL) OR (char_length(user_agent) <= 200)))
+con   itera.mcp_tool_calls mcp_tool_calls_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
 con   itera.media media_pkey PRIMARY KEY (id)
 con   itera.media media_tenant_id_checksum_key UNIQUE (tenant_id, checksum)
 con   itera.media media_tenant_id_fkey FOREIGN KEY (tenant_id) REFERENCES itera.tenants(id) ON DELETE CASCADE
@@ -1454,6 +1480,14 @@ gtbl  itera.lessons anon SELECT
 gtbl  itera.lessons authenticated DELETE,INSERT,SELECT,UPDATE
 gtbl  itera.lessons service_role -
 gtbl  itera.lessons supabase_auth_admin -
+gtbl  itera.mcp_tool_calls anon -
+gtbl  itera.mcp_tool_calls authenticated INSERT,SELECT
+gtbl  itera.mcp_tool_calls service_role DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+gtbl  itera.mcp_tool_calls supabase_auth_admin -
+gtbl  itera.mcp_tool_calls_id_seq anon -
+gtbl  itera.mcp_tool_calls_id_seq authenticated -
+gtbl  itera.mcp_tool_calls_id_seq service_role -
+gtbl  itera.mcp_tool_calls_id_seq supabase_auth_admin -
 gtbl  itera.media anon -
 gtbl  itera.media authenticated INSERT,SELECT,UPDATE
 gtbl  itera.media service_role -
@@ -1704,6 +1738,9 @@ idx   CREATE INDEX idx_learner_state_history_episode ON learning.learner_state_h
 idx   CREATE INDEX idx_learner_state_history_learner_time ON learning.learner_state_history USING btree (learner_id, computed_at DESC)
 idx   CREATE INDEX idx_learning_objectives_learner_status ON learning.learning_objectives USING btree (learner_id, status)
 idx   CREATE INDEX idx_lessons_unit ON itera.lessons USING btree (unit_id)
+idx   CREATE INDEX idx_mcp_tool_calls_created_at ON itera.mcp_tool_calls USING btree (created_at)
+idx   CREATE INDEX idx_mcp_tool_calls_server_tool_created_at ON itera.mcp_tool_calls USING btree (server, tool, created_at)
+idx   CREATE INDEX idx_mcp_tool_calls_user_created_at ON itera.mcp_tool_calls USING btree (user_id, created_at)
 idx   CREATE INDEX idx_memberships_tenant ON itera.memberships USING btree (tenant_id)
 idx   CREATE INDEX idx_programs_live ON itera.programs USING btree (tenant_id) WHERE (archived_at IS NULL)
 idx   CREATE INDEX idx_programs_tenant ON itera.programs USING btree (tenant_id)
@@ -1778,6 +1815,7 @@ idx   CREATE UNIQUE INDEX learner_state_pkey ON learning.learner_state USING btr
 idx   CREATE UNIQUE INDEX learners_pkey ON learning.learners USING btree (id)
 idx   CREATE UNIQUE INDEX learning_objectives_pkey ON learning.learning_objectives USING btree (id)
 idx   CREATE UNIQUE INDEX lessons_pkey ON itera.lessons USING btree (id)
+idx   CREATE UNIQUE INDEX mcp_tool_calls_pkey ON itera.mcp_tool_calls USING btree (id)
 idx   CREATE UNIQUE INDEX media_pkey ON itera.media USING btree (id)
 idx   CREATE UNIQUE INDEX media_tenant_id_checksum_key ON itera.media USING btree (tenant_id, checksum)
 idx   CREATE UNIQUE INDEX memberships_pkey ON itera.memberships USING btree (user_id, tenant_id)
@@ -1884,6 +1922,9 @@ pol   itera.lessons lessons_author_delete cmd=d perm=t roles=authenticated using
 pol   itera.lessons lessons_author_insert cmd=a perm=t roles=authenticated using=- check=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
 pol   itera.lessons lessons_author_update cmd=w perm=t roles=authenticated using=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)))) check=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))))
 pol   itera.lessons lessons_select_tenant cmd=r perm=t roles=PUBLIC using=(unit_id IN ( SELECT u.id FROM (itera.units u JOIN itera.programs p ON ((p.id = u.program_id))) WHERE (p.tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)))) check=-
+pol   itera.mcp_tool_calls mcp_tool_calls_insert_self cmd=a perm=t roles=authenticated using=- check=(user_id = auth.uid())
+pol   itera.mcp_tool_calls mcp_tool_calls_read_operator cmd=r perm=t roles=authenticated using=itera.is_learning_operator() check=-
+pol   itera.mcp_tool_calls mcp_tool_calls_read_self cmd=r perm=t roles=authenticated using=(user_id = auth.uid()) check=-
 pol   itera.media media_author_insert cmd=a perm=t roles=authenticated using=- check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
 pol   itera.media media_author_update cmd=w perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids)) check=(tenant_id IN ( SELECT itera.current_author_tenant_ids() AS current_author_tenant_ids))
 pol   itera.media media_select_tenant cmd=r perm=t roles=authenticated using=(tenant_id IN ( SELECT itera.current_tenant_ids() AS current_tenant_ids)) check=-
@@ -1997,6 +2038,8 @@ rel   itera.class_stars r rls=t force=f
 rel   itera.identities r rls=t force=f
 rel   itera.learner_personalization r rls=t force=f
 rel   itera.lessons r rls=t force=f
+rel   itera.mcp_tool_calls r rls=t force=f
+rel   itera.mcp_tool_calls_id_seq S rls=f force=f
 rel   itera.media r rls=t force=f
 rel   itera.memberships r rls=t force=f
 rel   itera.my_subscription v rls=f force=f
@@ -2042,6 +2085,7 @@ rel   learning.valued_work r rls=t force=f
 rel   learning.work_contexts r rls=t force=f
 rel   learning.work_episodes r rls=t force=f
 seq   itera.activity_i18n_backup_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
+seq   itera.mcp_tool_calls_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
 seq   itera.schema_object_census_id_seq start=1 inc=1 min=1 max=9223372036854775807 cycle=f
 trg   CREATE TRIGGER activity_comments_set_updated_at BEFORE UPDATE ON itera.activity_comments FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at() enabled=O
 trg   CREATE TRIGGER activity_defs_set_updated_at BEFORE UPDATE ON itera.activity_defs FOR EACH ROW EXECUTE FUNCTION itera.set_updated_at() enabled=O

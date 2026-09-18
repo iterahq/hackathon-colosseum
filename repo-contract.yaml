@@ -110,6 +110,15 @@ provides:
     entry: db/migrations/0100_learning_capability_graph_endpoints.sql
 
   - type: database
+    name: mcp-tool-call-usage-log
+    description: >
+      Append-only usage log with one row per itera-mcp tool call.
+      The MCP server inserts each row with the caller's user-JWT, never service_role.
+      RLS allows an insert only for the caller's own user_id.
+      A user reads own rows. The platform operator reads all rows.
+    entry: db/migrations/0101_mcp_tool_calls.sql
+
+  - type: database
     name: learning-delivery-products
     description: >
       Learner-owned deliveries and artifacts, with shared or owned task models.

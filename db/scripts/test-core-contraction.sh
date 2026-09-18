@@ -8,6 +8,7 @@ prefix="${CORE_PREFIX_ROOT:?Set an isolated CORE_PREFIX_ROOT}"
 suffixes=(
  '0099_learning_core_contraction.sql'
  '0100_learning_capability_graph_endpoints.sql'
+ '0101_mcp_tool_calls.sql'
 )
 for suffix in "${suffixes[@]}"; do
  [[ -f "$root/db/migrations/$suffix" ]] || { echo "Required suffix is missing: $suffix" >&2; exit 2; }
@@ -85,12 +86,15 @@ case "$mode" in
   ITERA_MIGRATIONS_DIR="$core_suffix_dir" \
     node "$root/db/scripts/test-core-contraction.mjs"
 
-  # The normal migration directory now has only 0100 pending in the ledger.
-  # Apply it through the real applier before the graph fixture runs.
+  # The normal migration directory now has 0100 and 0101 pending in the
+  # ledger. Apply them through the real applier before their fixtures run.
   graph_log="$(bash "$root/db/scripts/apply-migrations.sh" apply)"
   [[ "$graph_log" == *'0100_learning_capability_graph_endpoints.sql'* ]] \
     || { echo 'The real applier did not execute 0100' >&2; exit 1; }
+  [[ "$graph_log" == *'0101_mcp_tool_calls.sql'* ]] \
+    || { echo 'The real applier did not execute 0101' >&2; exit 1; }
   python3 "$root/db/scripts/test-learning-graph-transition.py"
+  bash "$root/db/scripts/test-rls-mcp-tool-calls.sh"
   bash "$root/db/scripts/schema-parity.sh" check
   node "$root/db/scripts/test-learning-census.mjs"
   ;;
