@@ -24,6 +24,31 @@ export interface CatalogProgram {
   icon?: string;
 }
 
+/**
+ * Syllabus of ONE catalog program, readable before enrollment, returned by
+ * itera.catalog_program_outline(p_slug) (migration 0102). Titles and counts
+ * only — never activity content.
+ */
+export interface CatalogOutlineLesson {
+  id: string;
+  ordinal: number;
+  title: I18nText;
+  /** Published activities only. */
+  activityCount: number;
+}
+
+export interface CatalogOutlineUnit {
+  id: string;
+  ordinal: number;
+  title: I18nText;
+  lessons: CatalogOutlineLesson[];
+}
+
+export interface CatalogProgramOutline {
+  program: { id: string; slug: string; title: I18nText };
+  units: CatalogOutlineUnit[];
+}
+
 export interface EnrollResult {
   tenantId: string;
   role: string;

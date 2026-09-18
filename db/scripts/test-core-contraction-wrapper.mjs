@@ -57,8 +57,16 @@ try {
     join(root, "db/migrations/0101_mcp_tool_calls.sql"),
     "-- declared usage-log suffix\n",
   );
+  result = spawnSync("bash", [script, "prefix"], { env, encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /0102_catalog_program_outline/);
+  assert.equal(existsSync(trace), false);
   writeFileSync(
-    join(root, "db/migrations/0102_unaccounted.sql"),
+    join(root, "db/migrations/0102_catalog_program_outline.sql"),
+    "-- declared catalog outline suffix\n",
+  );
+  writeFileSync(
+    join(root, "db/migrations/0103_unaccounted.sql"),
     "-- future migration must not disappear\n",
   );
   for (const mode of ["prefix", "parity", "restore", "suffix"]) {

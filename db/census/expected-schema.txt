@@ -69,6 +69,7 @@ cmt   col learning.work_episodes.session_episode_id 604d4d3c43d5
 cmt   col learning.work_episodes.session_refs 4c38bc3f6f07
 cmt   col learning.work_episodes.source_ingest_batch_id 66cab5f79a04
 cmt   fn  itera.can_access_class_topic(topic_name text) 4c105ff49984
+cmt   fn  itera.catalog_program_outline(p_slug text) f938ef393279
 cmt   fn  itera.create_test_tenant(p_slug text, p_name text) 32a6ed52bc36
 cmt   fn  itera.current_user_is_entitled() 89b6ec8674eb
 cmt   fn  itera.grant_membership(p_tenant_id uuid, p_role itera.member_role, p_user_id uuid, p_user_email text) e4a5b7ad2bb4
@@ -1047,6 +1048,7 @@ cron  itera-reap-stale-live-class-sessions */5 * * * *
 fn    itera.award_activity_xp(p_activity_id uuid, p_amount integer) -> integer kind=f vol=v secdef=t cfg=search_path=itera, public body=f0c61d278cd7
 fn    itera.can_access_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=38f7b8a697e1
 fn    itera.can_control_class_topic(topic_name text) -> boolean kind=f vol=s secdef=t cfg=search_path=itera, public body=68090bcf41e7
+fn    itera.catalog_program_outline(p_slug text) -> TABLE(program_id uuid, program_slug text, program_title_i18n jsonb, unit_id uuid, unit_ordinal integer, unit_title_i18n jsonb, lesson_id uuid, lesson_ordinal integer, lesson_title_i18n jsonb, lesson_activity_count bigint) kind=f vol=s secdef=t cfg=search_path=itera, public body=bd81407fda36
 fn    itera.catalog_programs() -> TABLE(id uuid, tenant_id uuid, tenant_slug text, slug text, title_i18n jsonb, created_at timestamp with time zone, unit_count bigint, lesson_count bigint, activity_count bigint, already_enrolled boolean) kind=f vol=s secdef=t cfg=search_path=itera, public body=d806aea81e8f
 fn    itera.create_test_tenant(p_slug text, p_name text) -> itera.tenants kind=f vol=v secdef=t cfg=search_path=itera, public body=480f3643591d
 fn    itera.current_admin_tenant_ids() -> SETOF uuid kind=f vol=s secdef=t cfg=search_path=itera, public body=b3d6eca40600
@@ -1128,6 +1130,10 @@ gfn   itera.can_control_class_topic(topic_name text) anon exec=t
 gfn   itera.can_control_class_topic(topic_name text) authenticated exec=t
 gfn   itera.can_control_class_topic(topic_name text) service_role exec=t
 gfn   itera.can_control_class_topic(topic_name text) supabase_auth_admin exec=t
+gfn   itera.catalog_program_outline(p_slug text) anon exec=f
+gfn   itera.catalog_program_outline(p_slug text) authenticated exec=t
+gfn   itera.catalog_program_outline(p_slug text) service_role exec=f
+gfn   itera.catalog_program_outline(p_slug text) supabase_auth_admin exec=f
 gfn   itera.catalog_programs() anon exec=t
 gfn   itera.catalog_programs() authenticated exec=t
 gfn   itera.catalog_programs() service_role exec=t

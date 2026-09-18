@@ -47,6 +47,9 @@ export const queryKeys = {
   // Self-serve catalog (membership-independent, via SECURITY DEFINER RPC).
   catalog: {
     all: ['catalog'] as const,
+    // Syllabus of one catalog program. No locale: the service keeps the raw
+    // `{ pt, en }` title bags, so the cached value is language-neutral.
+    outline: (slug: string) => ['catalog', 'outline', slug] as const,
   },
   lesson: {
     byId: (id: string, locale: string) => ['lesson', id, { locale }] as const,

@@ -119,6 +119,14 @@ provides:
     entry: db/migrations/0101_mcp_tool_calls.sql
 
   - type: database
+    name: catalog-program-outline
+    description: >
+      Read-only syllabus of one live self-serve catalog program, by slug.
+      Unit and lesson titles plus published activity counts; no activity content, no tenant id.
+      Zero rows for a non-catalog, archived or unknown slug. EXECUTE to authenticated only.
+    entry: db/migrations/0102_catalog_program_outline.sql
+
+  - type: database
     name: learning-delivery-products
     description: >
       Learner-owned deliveries and artifacts, with shared or owned task models.
