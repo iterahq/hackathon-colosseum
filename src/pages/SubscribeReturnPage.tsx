@@ -1,19 +1,24 @@
 /**
  * Post-checkout landing — where Stripe returns the learner after the hosted
- * Checkout (SANDBOX). Reads `?status=success|cancel` (set in the success/cancel
- * URLs we pass to itera-api in billing.service) and routes the learner back
- * into the player.
+ * Checkout. Reads `?status=success|cancel` (set in the success/cancel URLs we
+ * pass to itera-api in billing.service) and routes the learner back into the
+ * player.
  *
- * We intentionally do NOT confirm the subscription from here — billing TRUTH is
- * fed by Stripe webhooks into itera-api's `billing.*` tables (ADR-3). This page
- * is a friendly bounce, not the source of subscription state.
+ * Billing TRUTH is still fed by Stripe webhooks into itera-api's `billing.*`
+ * tables (ADR-3) — this page confirms nothing on its own. What it DOES do is
+ * wait for that truth to arrive (`useCheckoutActivation`): the webhook lands
+ * seconds after the browser comes back, and `itera.my_subscription` says "no
+ * subscription" until it does. Sending the learner straight to `/` in that
+ * window meant `RequireSubscription` bounced the person who had just paid back
+ * to the price tag — the worst possible moment in the funnel to look broken.
  */
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
+import { useCheckoutActivation } from '@/hooks/useCheckoutActivation';
 
 export default function SubscribeReturnPage() {
   const { t } = useI18n();
@@ -21,6 +26,28 @@ export default function SubscribeReturnPage() {
   const [params] = useSearchParams();
 
   const success = useMemo(() => params.get('status') !== 'cancel', [params]);
+  const { waiting, active, timedOut } = useCheckoutActivation(success);
+
+  const icon = !success ? (
+    <XCircle className="w-12 h-12 text-muted-foreground mx-auto" data-testid="return-cancel" />
+  ) : waiting ? (
+    <Loader2
+      className="w-12 h-12 text-evergreen mx-auto animate-spin"
+      data-testid="return-waiting"
+    />
+  ) : active ? (
+    <CheckCircle2 className="w-12 h-12 text-evergreen mx-auto" data-testid="return-success" />
+  ) : (
+    <Clock className="w-12 h-12 text-muted-foreground mx-auto" data-testid="return-timeout" />
+  );
+
+  const state = !success ? 'cancel' : waiting ? 'waiting' : active ? 'success' : 'slow';
+  const copy = {
+    cancel: { title: 'cancelTitle', body: 'cancelBody' },
+    waiting: { title: 'waitingTitle', body: 'waitingBody' },
+    success: { title: 'successTitle', body: 'successBody' },
+    slow: { title: 'slowTitle', body: 'slowBody' },
+  }[state];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -32,29 +59,40 @@ export default function SubscribeReturnPage() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center"
           data-testid="subscribe-return-card"
+          data-activation={state}
         >
-          {success ? (
-            <CheckCircle2 className="w-12 h-12 text-evergreen mx-auto" data-testid="return-success" />
-          ) : (
-            <XCircle className="w-12 h-12 text-muted-foreground mx-auto" data-testid="return-cancel" />
-          )}
+          {icon}
 
           <h1 className="font-display font-bold text-2xl text-foreground mt-4">
-            {success ? t('subscribe.return.successTitle') : t('subscribe.return.cancelTitle')}
+            {t(`subscribe.return.${copy.title}`)}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            {success ? t('subscribe.return.successBody') : t('subscribe.return.cancelBody')}
+            {t(`subscribe.return.${copy.body}`)}
           </p>
 
           <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              data-testid="return-home-button"
-              className="w-full h-11 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-            >
-              {t('subscribe.return.backHome')}
-            </button>
+            {/* O caminho pra dentro só aparece quando o gate já deixa passar —
+                oferecê-lo antes é oferecer o próprio paywall de volta. */}
+            {(!success || active) && (
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                data-testid="return-home-button"
+                className="w-full h-11 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              >
+                {t('subscribe.return.backHome')}
+              </button>
+            )}
+            {timedOut && !active && (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                data-testid="return-recheck-button"
+                className="w-full h-11 rounded-full border border-border text-foreground font-medium hover:bg-muted transition-colors"
+              >
+                {t('subscribe.return.recheck')}
+              </button>
+            )}
             {!success && (
               <button
                 type="button"

@@ -777,6 +777,13 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.cancelTitle': 'Pagamento cancelado',
     'subscribe.return.cancelBody': 'Você cancelou o pagamento. Pode tentar novamente quando quiser.',
     'subscribe.return.backHome': 'Voltar ao início',
+    'subscribe.return.waitingTitle': 'Confirmando o pagamento…',
+    'subscribe.return.waitingBody':
+      'Recebemos seu pagamento e estamos liberando o acesso. Isso leva alguns segundos — pode deixar esta tela aberta.',
+    'subscribe.return.slowTitle': 'Pagamento recebido',
+    'subscribe.return.slowBody':
+      'A liberação do acesso está demorando mais que o normal. Seu pagamento está registrado; tente de novo em alguns minutos e, se continuar assim, fale com a gente.',
+    'subscribe.return.recheck': 'Verificar de novo',
     'subscribe.return.tryAgain': 'Tentar de novo',
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mês',
@@ -1668,6 +1675,13 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.cancelTitle': 'Payment canceled',
     'subscribe.return.cancelBody': 'You canceled the payment. You can try again whenever you like.',
     'subscribe.return.backHome': 'Back to home',
+    'subscribe.return.waitingTitle': 'Confirming your payment…',
+    'subscribe.return.waitingBody':
+      'We got your payment and we are unlocking your access. This takes a few seconds — you can leave this screen open.',
+    'subscribe.return.slowTitle': 'Payment received',
+    'subscribe.return.slowBody':
+      'Unlocking your access is taking longer than usual. Your payment is on record; try again in a few minutes and reach out if it persists.',
+    'subscribe.return.recheck': 'Check again',
     'subscribe.return.tryAgain': 'Try again',
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mo',
