@@ -1,0 +1,65 @@
+{
+  "viewport": "mobile",
+  "provenance": {
+    "sidebar_contract_toggles": "Harvested from every `expectSidebarBreakpointContract(page, { toggle })` call in e2e/*.spec.ts. `capture-manifest.spec.ts` re-harvests them on every run and fails if a toggle has no candidate here.",
+    "prepass_delta": "`prepass.mjs` desktop vs `--viewport mobile`, 2026-09-22: 2 of 31 routes flagged, `signup` and `subscribe` (which redirects to /signup), both on `stampedVisible` only (44 -> 37). A visible-testid diff of those two routes at 1280 vs 390 (8 browser calls, no model) found exactly one mobile-only element, `subscription-includes-compact`, and three desktop-only ones (`auth-side-panel`, `subscription-includes-panel`, `subscribe-trust-line`). The delta is a layout swap with no interaction behind it, so the bounded model session had nothing to explore: 0 model calls of the 60 allowed.",
+    "responsive_branches": "Every `lg:hidden` / `sm:hidden` branch outside src/components/ui that is interactive, read from the source."
+  },
+  "states": [
+    {
+      "id": "live_learner_sidebar_open",
+      "source": "sidebar_contract_toggle",
+      "screen": "live_sessionid",
+      "url": "/live/00000000-0000-4000-8000-000000000000",
+      "title_pt": "Aula ao vivo no celular: lista da turma aberta",
+      "steps": [{ "action": "click", "selector": "[data-testid=\"live-sidebar-toggle\"]" }],
+      "proof_selector": "[data-testid=\"live-sidebar-toggle\"][aria-expanded=\"true\"]",
+      "why_it_matters": "Below lg the class roster is a drawer that starts collapsed; the open drawer exists only on a phone or tablet.",
+      "viewport": "mobile"
+    },
+    {
+      "id": "live_instructor_sidebar_open",
+      "source": "sidebar_contract_toggle",
+      "screen": "live_instructor_sessionid",
+      "url": "/live/instructor/00000000-0000-4000-8000-000000000000",
+      "title_pt": "Professor no celular: lista da turma aberta",
+      "steps": [{ "action": "click", "selector": "[data-testid=\"live-sidebar-toggle\"]" }],
+      "proof_selector": "[data-testid=\"live-sidebar-toggle\"][aria-expanded=\"true\"]",
+      "why_it_matters": "The instructor roster is the same drawer below lg; at lg+ it is an always-open 340px rail.",
+      "viewport": "mobile"
+    },
+    {
+      "id": "live_learner_hand_in_header",
+      "source": "responsive_branch",
+      "screen": "live_sessionid",
+      "url": "/live/00000000-0000-4000-8000-000000000000",
+      "title_pt": "Aula ao vivo no celular: mão levantada no topo",
+      "steps": [{ "action": "click", "selector": "span.lg\\:hidden [data-testid=\"live-hand-btn\"]" }],
+      "proof_selector": "span.lg\\:hidden [data-testid=\"live-hand-btn\"][aria-pressed=\"true\"]",
+      "why_it_matters": "Below lg the raise-hand button moves next to the timer because the sidebar falls behind the fixed footer.",
+      "viewport": "mobile"
+    },
+    {
+      "id": "app_header_locale_mobile",
+      "source": "responsive_branch",
+      "screen": "catalog",
+      "url": "/catalog",
+      "title_pt": "Cabeçalho no celular: idioma trocado pelo botão compacto",
+      "steps": [{ "action": "click", "selector": "[data-testid=\"locale-toggle-mobile\"]" }],
+      "proof_selector": "[data-testid=\"locale-toggle-mobile\"]:has-text(\"EN\")",
+      "why_it_matters": "Below sm the settings gear is hidden and a compact PT/EN toggle takes its place in the header.",
+      "viewport": "mobile"
+    },
+    {
+      "id": "signup_includes_compact",
+      "source": "prepass_delta",
+      "screen": "signup",
+      "url": "/signup",
+      "title_pt": "Cadastro no celular: o que a assinatura inclui, abaixo do formulário",
+      "steps": [],
+      "proof_selector": "[data-testid=\"subscription-includes-compact\"]",
+      "why_it_matters": "The only element the 390 prepass delta found; it replaces the desktop side panel.",
+      "viewport": "mobile"
+    }
+  ]
+}

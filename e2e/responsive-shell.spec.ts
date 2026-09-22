@@ -191,6 +191,7 @@ test.describe('responsive shell', { tag: '@responsive' }, () => {
       // ── The assertion this whole spec exists for ────────────────────────────
       await expectSidebarBreakpointContract(page, {
         sidebar: 'instructor-sidebar',
+        toggle: 'live-sidebar-toggle',
         main: 'main',
       });
 

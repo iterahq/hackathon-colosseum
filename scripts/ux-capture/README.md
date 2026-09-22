@@ -61,6 +61,23 @@ assertion that is not vacuous is the marker **uniqueness** one in
 `e2e/capture-manifest.spec.ts`: at every viewport, each reachable route's marker
 must match its own route and **no other** reachable route.
 
+Re-measured 2026-09-22 (T5): **2 of 31** flagged, `signup` and `subscribe`
+(which lands on `/signup`), on visible region count only. Cause:
+`SubscriptionIncludesPanel` swaps the desktop side panel for a compact list
+below `lg`. Marker and `min_regions` still hold, so no override is committed.
+
+### Mobile-only states (T5)
+
+`e2e/support/capture-candidates.mobile.json` holds every candidate state that
+exists only at 390: each `SidebarContract.toggle` passed in `e2e/*.spec.ts`,
+the prepass delta, and each interactive `lg:hidden` / `sm:hidden` branch. They
+were replayed with `verify-states.mjs --viewport mobile`; the model session
+was not needed (0 of 60 calls). None is promoted today, because every
+mobile-only interaction sits behind a session and the substrate is signed
+out. The reasons are in `capture-manifest.REJECTED.md`, and
+`capture-manifest.spec.ts` fails if a candidate is in neither `states[]` nor
+that file, or if a new `SidebarContract.toggle` has no candidate.
+
 | thing | where it is decided |
 |---|---|
 | the sizes, `isMobile`, `hasTouch`, the launch flags | `@devfellowship/ux-paths-capture` ≥ 0.3.0 — one place, fleet-wide |

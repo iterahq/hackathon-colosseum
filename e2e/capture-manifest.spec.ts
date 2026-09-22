@@ -111,7 +111,7 @@
  */
 import { expect, test as base, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -207,6 +207,33 @@ interface Manifest {
   routes: RouteEntry[];
   states: StateEntry[];
 }
+
+const MOBILE_CANDIDATES_PATH = path.join(
+  REPO_ROOT,
+  'e2e',
+  'support',
+  'capture-candidates.mobile.json'
+);
+const REJECTED_PATH = path.join(REPO_ROOT, 'e2e', 'support', 'capture-manifest.REJECTED.md');
+
+interface MobileCandidate {
+  id: string;
+  viewport: string;
+  steps: Step[];
+}
+
+const harvestSidebarToggles = (): string[] => {
+  const e2eDir = path.join(REPO_ROOT, 'e2e');
+  const found = new Set<string>();
+  for (const file of readdirSync(e2eDir).filter((f) => f.endsWith('.spec.ts'))) {
+    const source = readFileSync(path.join(e2eDir, file), 'utf8');
+    for (const call of source.matchAll(/expectSidebarBreakpointContract\(page,\s*\{([^}]*)\}/g)) {
+      const toggle = call[1].match(/toggle:\s*'([^']+)'/);
+      if (toggle) found.add(toggle[1]);
+    }
+  }
+  return [...found];
+};
 
 const manifest: Manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
 const renders = manifest.routes.filter((r) => r.reachability === 'renders');
@@ -367,6 +394,35 @@ test.describe('capture manifest', () => {
           state.viewport
         );
       }
+    }
+  });
+
+  test('every mobile-only candidate is accounted for', () => {
+    const candidates = (
+      JSON.parse(readFileSync(MOBILE_CANDIDATES_PATH, 'utf8')) as { states: MobileCandidate[] }
+    ).states;
+    expect(candidates.length, 'the mobile candidate set is non-empty').toBeGreaterThan(0);
+
+    const rejected = readFileSync(REJECTED_PATH, 'utf8');
+    const stateIds = new Set(manifest.states.map((s) => s.id));
+    for (const candidate of candidates) {
+      expect(candidate.viewport, `${candidate.id} is pinned to mobile`).toBe('mobile');
+      const accepted = stateIds.has(candidate.id);
+      const dropped = rejected.includes(`\`${candidate.id}\``);
+      expect(
+        accepted !== dropped,
+        `${candidate.id} must be in exactly one place: states[] (${accepted}) or REJECTED.md (${dropped})`
+      ).toBe(true);
+    }
+
+    const toggles = harvestSidebarToggles();
+    expect(toggles.length, 'at least one SidebarContract.toggle is harvested').toBeGreaterThan(0);
+    const selectors = candidates.flatMap((c) => c.steps.map((s) => s.selector));
+    for (const toggle of toggles) {
+      expect(
+        selectors.some((s) => s.includes(`"${toggle}"`)),
+        `SidebarContract.toggle ${toggle} has a mobile candidate`
+      ).toBe(true);
     }
   });
 

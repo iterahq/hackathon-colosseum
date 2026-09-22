@@ -64,3 +64,30 @@ These are the honest edge of `substrate: hermetic-stub`. Reaching them needs a
 substrate that can answer, which is a different task from this one — and until
 then, **coverage is reportable and completeness is not provable**, exactly as
 criterion 9 of the plan says.
+
+---
+
+## Mobile round (T5 of `20260902-ux-paths-responsive-mobile-capture`) — 5 of 5 rejected
+
+Candidates: `e2e/support/capture-candidates.mobile.json`, replayed with
+`verify-states.mjs --viewport mobile` on 2026-09-22 against the hermetic
+preview. Model session: **0 of the 60 calls allowed** — the prepass delta was
+fully explained by a deterministic visible-testid diff (8 browser calls), so
+there was nothing left for a model to explore.
+
+| candidate | source | what happened |
+|---|---|---|
+| `live_learner_sidebar_open` | `SidebarContract.toggle` | `/live/:sessionId` redirects to `/login` on `hermetic-stub`; the toggle never renders |
+| `live_instructor_sidebar_open` | `SidebarContract.toggle` | `/live/instructor/:sessionId` redirects to `/login`; same |
+| `live_learner_hand_in_header` | `lg:hidden` branch in `LiveSessionPage` | gated, same redirect |
+| `app_header_locale_mobile` | `sm:hidden` branch in `AppHeader` | `/catalog` is gated, same redirect |
+| `signup_includes_compact` | prepass delta (`signup`, `subscribe`) | **reproduced**, with zero steps — it is a LAYOUT the route shows on load at 390, not a state behind an interaction. It belongs to the route (`viewports[].capture_routes`), not to `states[]`, and adding `signup` there would break the 2-of-31 symmetry T2 chose |
+
+**The generalisable finding: every mobile-only INTERACTION in this app lives
+behind a session.** The four gated candidates are real — they are read from
+the source, and `responsive-shell.spec.ts` asserts the sidebar drawer against
+a signed-in instructor — but the hermetic substrate cannot reach them. Promoting
+them needs the authenticated capture (`capture-live.ts`) to replay states, which
+is a different task. Until then they stay here, and the well-formedness test in
+`capture-manifest.spec.ts` fails if a new `SidebarContract.toggle` appears
+without a candidate.
