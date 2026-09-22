@@ -127,6 +127,11 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
   Pages). O alias sai do NÚMERO da PR, não do nome da branch, porque o webhook
   de design monta esse link antes de o build terminar — nome de branch com `/`
   ou acento tornaria a URL imprevisível.
+- **Esteira de design — este repo TEM rota** (`work.design_task_routes`). PR do
+  próprio repo que toca `design-playground/` **cria o card sozinha** (etapa
+  `decision`, epic "Design ↔ implementation flow"). Não crie o card à mão antes;
+  se o card já existe, ponha o `DFL-xxx` dele na PR — o webhook liga a PR a ele
+  e não abre um segundo. Método: skill `storybook-design-pr`.
 - E2E Playwright fica em `e2e/`, **fora do gate por PR** (`workflow_dispatch` +
   cron diário), todos capability-gated. **Duas exceções hermeticas, blocantes
   em toda PR:** `npm run e2e:baseline` (caracterização de activity) e
