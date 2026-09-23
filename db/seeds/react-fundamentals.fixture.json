@@ -1,0 +1,875 @@
+{
+  "_comment": [
+    "DECLARATIVE CONTENT FIXTURE — a React fundamentals unit that mirrors the Educar+",
+    "ToDo List lessons 1–5 (github.com/SamuelStefano/educar-plus: AULA-2..5.md).",
+    "",
+    "Nothing seeds this file today, and nothing here writes to the Itera database.",
+    "It is authored content, validated on every CI run by",
+    "`src/test/reactFundamentalsFixture.test.ts`: every activity spec goes through",
+    "the shared `@iterahq/activity-spec` parser, every code snack's STARTER must",
+    "fail its checks and its `_solution` must pass them, and the authoring rules",
+    "(context + metaphor with an image before any exercise, no retired kinds, no",
+    "`---` in concept text) are asserted.",
+    "",
+    "Same shape as `qa-tenant.fixture.json`'s `program` block: units → lessons →",
+    "activities, ordered by `ordinal`. `_solution` and `_comment` are fixture-only",
+    "keys; a seed must drop every `_`-prefixed key before it writes a row.",
+    "",
+    "Images: `image_url` points at screenshots of the REAL ToDo app at the end of",
+    "each lesson, committed under `public/lesson-media/react-fundamentals/` and",
+    "served by the player itself. A seed that targets another origin must upload",
+    "them to the lesson-media bucket and rewrite the URLs."
+  ],
+  "program": {
+    "slug": "react-fundamentos-todo",
+    "title_i18n": {
+      "pt": "React do zero: a lista de tarefas",
+      "en": "React from scratch: the to-do list"
+    },
+    "units": [
+      {
+        "ordinal": 0,
+        "title_i18n": {
+          "pt": "Fundamentos de React",
+          "en": "React fundamentals"
+        },
+        "lessons": [
+          {
+            "ordinal": 0,
+            "key": "a-lista-na-tela",
+            "title_i18n": {
+              "pt": "Aula 1 — A lista na tela: JSX e .map",
+              "en": "Lesson 1 — The list on screen: JSX and .map"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## A lista na tela\n\nPense no **cardápio de uma lanchonete**. Ninguém desenha cada prato à mão: existe uma **lista de pratos**, e o cardápio é impresso a partir dela. Entrou um prato novo na lista? O cardápio sai com ele.\n\nNo React é igual. Você guarda uma **lista** (um array) e a tela é montada a partir dela.\n\n> A imagem é o app que vamos construir nestas 5 aulas, no ponto em que ele termina hoje: só a aparência, com os botões ainda sem fazer nada.",
+                    "image_url": "/lesson-media/react-fundamentals/aula-1-lista.png",
+                    "description": "O app de tarefas no fim da aula 1: título, campo, botão Adicionar e três tarefas com Remover."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## JSX: HTML dentro do JavaScript\n\nUm componente devolve **JSX**, que parece HTML mas mora dentro do JavaScript:\n\n```tsx\nconst tasks = [\"Estudar React\", \"Fazer exercício\", \"Beber água\"];\n\nexport default function App() {\n  return (\n    <ul>\n      {tasks.map((task) => (\n        <li key={task}>{task}</li>\n      ))}\n    </ul>\n  );\n}\n```\n\n- `{ }` abre uma janela pro JavaScript dentro do JSX\n- `.map` transforma **cada item** do array num `<li>`\n- `key` é o **crachá** de cada item: o React usa pra saber quem é quem\n- em JSX a classe CSS se escreve `className`, não `class`"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Você quer deixar um título em negrito com Tailwind. Qual linha funciona em JSX?"
+                  },
+                  "options": [
+                    {
+                      "id": "classname",
+                      "label": "<h1 className=\"font-bold\">Minhas tarefas</h1>"
+                    },
+                    {
+                      "id": "class",
+                      "label": "<h1 class=\"font-bold\">Minhas tarefas</h1>"
+                    },
+                    {
+                      "id": "style",
+                      "label": "<h1 style=\"font-bold\">Minhas tarefas</h1>"
+                    }
+                  ],
+                  "correct_option_id": "classname",
+                  "explanation": "Em JSX a palavra `class` é reservada do JavaScript, então o atributo se chama `className`."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "order",
+                "spec": {
+                  "instruction": {
+                    "text": "Coloque as linhas na ordem para mostrar uma lista de tarefas:"
+                  },
+                  "items": [
+                    {
+                      "id": "a",
+                      "label": "const tasks = [\"Estudar React\", \"Beber água\"];"
+                    },
+                    {
+                      "id": "b",
+                      "label": "export default function App() {"
+                    },
+                    {
+                      "id": "c",
+                      "label": "  return <ul>{tasks.map((task) => <li key={task}>{task}</li>)}</ul>;"
+                    },
+                    {
+                      "id": "d",
+                      "label": "}"
+                    }
+                  ],
+                  "correct_order": [
+                    "a",
+                    "b",
+                    "c",
+                    "d"
+                  ],
+                  "explanation": "A lista existe antes, o componente abre, devolve o JSX com o `.map` e fecha."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "Complete o código para cada tarefa virar um item da lista, com o crachá certo.",
+                  "language": "tsx",
+                  "starter": "const tasks = [\"Estudar React\", \"Fazer exercício\", \"Beber água\"];\n\nexport default function App() {\n  return (\n    <ul>\n      {tasks.{{blank:loop}}((task) => (\n        <li {{blank:badge}}={task}>{task}</li>\n      ))}\n    </ul>\n  );\n}\n",
+                  "blanks": [
+                    {
+                      "id": "loop",
+                      "kind": "bank",
+                      "answer": "map",
+                      "hint": "É o método que transforma cada item do array em outra coisa."
+                    },
+                    {
+                      "id": "badge",
+                      "kind": "bank",
+                      "answer": "key",
+                      "hint": "O crachá de cada item de uma lista."
+                    }
+                  ],
+                  "word_bank": [
+                    "map",
+                    "key",
+                    "filter",
+                    "id",
+                    "forEach"
+                  ]
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 5,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "A tela mostra só o título. Use o array `tasks` e um `.map` para mostrar as três tarefas numa lista `<ul>`, uma em cada `<li>`. Não esqueça o `key`.",
+                  "language": "tsx",
+                  "starter": "const tasks = [\"Estudar React\", \"Fazer exercício\", \"Beber água\"];\n\nexport default function App() {\n  return (\n    <div className=\"p-4\">\n      <h1 className=\"text-xl font-bold\">Minhas tarefas</h1>\n      {/* a lista entra aqui */}\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "tres-itens",
+                      "label": "Aparecem 3 tarefas",
+                      "hint": "Dentro de um <ul>, use {tasks.map((task) => <li key={task}>{task}</li>)}.",
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 3
+                      }
+                    },
+                    {
+                      "id": "segunda",
+                      "label": "A segunda tarefa é \"Fazer exercício\"",
+                      "hint": "O texto do <li> vem do item do array: {task}.",
+                      "selector": "li:nth-child(2)",
+                      "assert": {
+                        "type": "text",
+                        "equals": "Fazer exercício"
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "const tasks = [\"Estudar React\", \"Fazer exercício\", \"Beber água\"];\n\nexport default function App() {\n  return (\n    <div className=\"p-4\">\n      <h1 className=\"text-xl font-bold\">Minhas tarefas</h1>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "key": "usestate",
+            "title_i18n": {
+              "pt": "Aula 2 — Fazendo a lista funcionar: useState",
+              "en": "Lesson 2 — Making the list work: useState"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## A tela é uma foto da lista\n\nPense no **placar de um jogo de futebol**. O gol acontece em campo, mas o placar só muda quando **alguém avisa** o operador do placar. Sem aviso, o placar fica parado, mesmo com o gol feito.\n\nNo React, a tela é uma **foto da lista**. Pra tela mudar, você não mexe no HTML: você troca a lista e **avisa** o React. Quem avisa é o `set` do `useState`.\n\n> Na imagem, a tarefa \"Ler um capítulo\" acabou de entrar: alguém digitou, clicou em Adicionar e o React desenhou a lista nova.",
+                    "image_url": "/lesson-media/react-fundamentals/aula-2-adicionar.png",
+                    "description": "O app depois de adicionar uma quarta tarefa, \"Ler um capítulo\"."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## useState: a lista de agora e o jeito de trocar\n\n```tsx\nconst [tasks, setTasks] = useState([\"Estudar React\", \"Beber água\"]);\n```\n\n- `tasks` é a lista **de agora**\n- `setTasks` é o **único** jeito de trocar a lista (e avisar o React)\n\nNunca mexa na lista velha. Monte uma **nova** e entregue ao `set`:\n\n```tsx\nsetTasks([...tasks, text]);                          // adicionar\nsetTasks(tasks.filter((_, i) => i !== index));      // remover\n```\n\n> `tasks.push(\"nova\")` **não funciona**: a lista muda, mas ninguém avisou o React. O placar continua parado."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Um colega escreveu `tasks.push(text)` no botão Adicionar. Ele clica e a tarefa não aparece. Por quê?"
+                  },
+                  "options": [
+                    {
+                      "id": "sem-aviso",
+                      "label": "Porque a lista mudou sem o setTasks, então o React não foi avisado e não desenhou de novo"
+                    },
+                    {
+                      "id": "push-quebrado",
+                      "label": "Porque o push não funciona com textos"
+                    },
+                    {
+                      "id": "precisa-reload",
+                      "label": "Porque precisa apertar F5 pra ver a tarefa nova"
+                    }
+                  ],
+                  "correct_option_id": "sem-aviso",
+                  "explanation": "Só o `set` avisa o React. Use `setTasks([...tasks, text])`: uma lista nova com a tarefa no fim."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "match",
+                "spec": {
+                  "instruction": {
+                    "text": "Ligue cada ação ao código que faz ela:"
+                  },
+                  "left": [
+                    {
+                      "id": "l0",
+                      "label": "Adicionar uma tarefa"
+                    },
+                    {
+                      "id": "l1",
+                      "label": "Remover a tarefa clicada"
+                    },
+                    {
+                      "id": "l2",
+                      "label": "Mostrar todas na tela"
+                    },
+                    {
+                      "id": "l3",
+                      "label": "Guardar o que está sendo digitado"
+                    }
+                  ],
+                  "right": [
+                    {
+                      "id": "r0",
+                      "label": "setTasks([...tasks, text])"
+                    },
+                    {
+                      "id": "r1",
+                      "label": "setTasks(tasks.filter((_, i) => i !== index))"
+                    },
+                    {
+                      "id": "r2",
+                      "label": "tasks.map((task) => <li>{task}</li>)"
+                    },
+                    {
+                      "id": "r3",
+                      "label": "const [text, setText] = useState(\"\")"
+                    }
+                  ],
+                  "pairs": [
+                    {
+                      "left_id": "l0",
+                      "right_id": "r0"
+                    },
+                    {
+                      "left_id": "l1",
+                      "right_id": "r1"
+                    },
+                    {
+                      "left_id": "l2",
+                      "right_id": "r2"
+                    },
+                    {
+                      "left_id": "l3",
+                      "right_id": "r3"
+                    }
+                  ],
+                  "explanation": "Mostrar é `map`, adicionar é `...` + o novo item, remover é `filter`, e o texto do campo tem o seu próprio `useState`."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "O campo e o botão já aparecem, mas **Adicionar** não faz nada. Faça o botão colocar o texto digitado no fim da lista e limpar o campo.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nexport default function App() {\n  const [tasks, setTasks] = useState([\"Estudar React\", \"Beber água\"]);\n  const [text, setText] = useState(\"\");\n\n  function addTask() {\n    // complete aqui\n  }\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" value={text} onChange={(e) => setText(e.target.value)} />\n      <button onClick={addTask}>Adicionar</button>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "adiciona",
+                      "label": "Digitar e clicar em Adicionar coloca a tarefa na lista",
+                      "hint": "Dentro do addTask: setTasks([...tasks, text]).",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Ler um capítulo"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "button"
+                        }
+                      ],
+                      "selector": "li:nth-child(3)",
+                      "assert": {
+                        "type": "text",
+                        "equals": "Ler um capítulo"
+                      }
+                    },
+                    {
+                      "id": "limpa",
+                      "label": "O campo fica vazio depois de adicionar",
+                      "hint": "Depois do setTasks, chame setText(\"\").",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Ler um capítulo"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "button"
+                        }
+                      ],
+                      "selector": "#nova",
+                      "assert": {
+                        "type": "attr",
+                        "name": "value",
+                        "equals": ""
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nexport default function App() {\n  const [tasks, setTasks] = useState([\"Estudar React\", \"Beber água\"]);\n  const [text, setText] = useState(\"\");\n\n  function addTask() {\n    if (text.trim() === \"\") return;\n    setTasks([...tasks, text]);\n    setText(\"\");\n  }\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" value={text} onChange={(e) => setText(e.target.value)} />\n      <button onClick={addTask}>Adicionar</button>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "key": "objetos-e-salvar",
+            "title_i18n": {
+              "pt": "Aula 3 — A tarefa vira ficha: marcar e salvar",
+              "en": "Lesson 3 — Tasks become records: toggle and save"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## A tarefa vira uma ficha\n\nAté agora cada tarefa era **só um texto**. Texto não tem onde guardar \"já fiz\". Pense numa **ficha de personagem de game**: ela tem vários campos, não só o nome.\n\n```tsx\n{ id: 1, text: \"Estudar React\", done: true }\n```\n\nE pra lista sobreviver ao **F5**, é como o **save do jogo**: o `useState` guarda na memória, que some ao recarregar; o `localStorage` é uma gaveta do navegador que fica.\n\n> Na imagem, a primeira ficha está marcada como feita, e o quadro embaixo é o conteúdo real da gaveta `localStorage[\"tasks\"]` naquele momento.",
+                    "image_url": "/lesson-media/react-fundamentals/aula-3-feita-e-salva.png",
+                    "description": "Uma tarefa riscada e o JSON que o app gravou no localStorage."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Marcar é inverter um campo\n\nO `!` inverte: `!false` é `true`. Pra marcar, monte uma lista nova com **só uma ficha trocada**:\n\n```tsx\nfunction toggleTask(id: number) {\n  setTasks(\n    tasks.map((task) => (task.id === id ? { ...task, done: !task.done } : task))\n  );\n}\n```\n\n- `{ ...task, done: ... }` copia a ficha e troca só o `done`\n- a gaveta só guarda **texto**: a lista entra com `JSON.stringify` e sai com `JSON.parse`\n\n```tsx\nuseEffect(() => {\n  localStorage.setItem(\"tasks\", JSON.stringify(tasks));\n}, [tasks]);\n```"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "multi_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Quais frases sobre o `localStorage` são verdadeiras?"
+                  },
+                  "options": [
+                    {
+                      "id": "fica-f5",
+                      "label": "O que está lá continua depois do F5"
+                    },
+                    {
+                      "id": "so-texto",
+                      "label": "Ele só guarda texto, por isso usamos JSON.stringify"
+                    },
+                    {
+                      "id": "avisa-react",
+                      "label": "Gravar no localStorage faz o React desenhar a tela de novo"
+                    },
+                    {
+                      "id": "memoria",
+                      "label": "Ele some quando o componente é desenhado de novo"
+                    }
+                  ],
+                  "correct_option_ids": [
+                    "fica-f5",
+                    "so-texto"
+                  ],
+                  "explanation": "A gaveta fica depois do F5 e só guarda texto. Quem avisa o React continua sendo o `set` do `useState`."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "Complete a função que marca e desmarca uma tarefa.",
+                  "language": "tsx",
+                  "starter": "function toggleTask(id: number) {\n  setTasks(\n    tasks.map((task) =>\n      task.id {{blank:eq}} id ? { ...task, done: {{blank:not}}task.done } : task\n    )\n  );\n}\n",
+                  "blanks": [
+                    {
+                      "id": "eq",
+                      "kind": "select",
+                      "answer": "===",
+                      "options": [
+                        "===",
+                        "!==",
+                        "="
+                      ],
+                      "hint": "Queremos achar a ficha clicada."
+                    },
+                    {
+                      "id": "not",
+                      "kind": "select",
+                      "answer": "!",
+                      "options": [
+                        "!",
+                        "-",
+                        "?"
+                      ],
+                      "hint": "O operador que inverte true e false."
+                    }
+                  ]
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "Cada tarefa já é uma ficha e tem uma caixinha, mas marcar não faz nada. Complete o `toggleTask` e deixe o texto riscado (`line-through`) quando a tarefa estiver feita.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nexport default function App() {\n  const [tasks, setTasks] = useState([\n    { id: 1, text: \"Estudar React\", done: false },\n    { id: 2, text: \"Beber água\", done: false },\n  ]);\n\n  function toggleTask(id: number) {\n    // complete aqui\n  }\n\n  return (\n    <ul className=\"p-4\">\n      {tasks.map((task) => (\n        <li key={task.id}>\n          <input type=\"checkbox\" checked={task.done} onChange={() => toggleTask(task.id)} />\n          <span>{task.text}</span>\n        </li>\n      ))}\n    </ul>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "risca",
+                      "label": "Marcar a primeira tarefa risca o texto dela",
+                      "hint": "No <span>: className={task.done ? \"line-through\" : \"\"}.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "li:nth-child(1) input[type=\"checkbox\"]"
+                        }
+                      ],
+                      "selector": "li:nth-child(1) span",
+                      "assert": {
+                        "type": "class",
+                        "contains": "line-through"
+                      }
+                    },
+                    {
+                      "id": "so-uma",
+                      "label": "Marcar a primeira não risca a segunda",
+                      "hint": "No map, troque só a ficha com task.id === id.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "li:nth-child(1) input[type=\"checkbox\"]"
+                        }
+                      ],
+                      "selector": "li:nth-child(2) span",
+                      "assert": {
+                        "type": "attr",
+                        "name": "class",
+                        "equals": ""
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nexport default function App() {\n  const [tasks, setTasks] = useState([\n    { id: 1, text: \"Estudar React\", done: false },\n    { id: 2, text: \"Beber água\", done: false },\n  ]);\n\n  function toggleTask(id: number) {\n    setTasks(tasks.map((task) => (task.id === id ? { ...task, done: !task.done } : task)));\n  }\n\n  return (\n    <ul className=\"p-4\">\n      {tasks.map((task) => (\n        <li key={task.id}>\n          <input type=\"checkbox\" checked={task.done} onChange={() => toggleTask(task.id)} />\n          <span className={task.done ? \"line-through\" : \"\"}>{task.text}</span>\n        </li>\n      ))}\n    </ul>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "key": "editar-e-filtrar",
+            "title_i18n": {
+              "pt": "Aula 4 — Editar e filtrar: estado calculado",
+              "en": "Lesson 4 — Edit and filter: derived state"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Filtrar não é jogar fora\n\nPense no **inventário de um game**, com abas \"Tudo\", \"Roupas\", \"Poções\". Quando você abre a aba \"Poções\", as roupas **não somem do inventário**: elas só não aparecem nesta aba.\n\nO filtro da lista é igual: a lista de verdade continua inteira; a tela mostra só um recorte dela.\n\n> Na imagem, a aba **Ativas** está escolhida (a tarefa feita não aparece), o contador diz 2 restantes, e a primeira tarefa está aberta pra edição depois de dois cliques.",
+                    "image_url": "/lesson-media/react-fundamentals/aula-4-editar-e-filtrar.png",
+                    "description": "A aba Ativas selecionada, o contador e uma tarefa em modo de edição."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## O que dá pra calcular não vai pro useState\n\n```tsx\nconst visibleTasks = tasks.filter((task) => {\n  if (filter === \"ativas\") return !task.done;\n  if (filter === \"feitas\") return task.done;\n  return true;\n});\n\nconst remaining = tasks.filter((task) => !task.done).length;\n```\n\n- `visibleTasks` e `remaining` são **calculados** a cada desenho, a partir de `tasks` e do filtro\n- guardar o recorte num `useState` separado é pedir pra ele ficar **desatualizado**\n- pra editar, um `useState` guarda **qual** tarefa está aberta: `editingId`; `onDoubleClick` abre, `Enter` salva, `Escape` desiste"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Você precisa mostrar só as tarefas feitas. Onde a lista de feitas deve ficar?"
+                  },
+                  "options": [
+                    {
+                      "id": "calcula",
+                      "label": "Calculada a cada desenho: tasks.filter((task) => task.done)"
+                    },
+                    {
+                      "id": "state",
+                      "label": "Num segundo useState, atualizado sempre que alguém marcar uma tarefa"
+                    },
+                    {
+                      "id": "storage",
+                      "label": "No localStorage, numa chave separada"
+                    }
+                  ],
+                  "correct_option_id": "calcula",
+                  "explanation": "O que dá pra calcular a partir do estado não vira estado. Assim o recorte nunca fica diferente da lista de verdade."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "order",
+                "spec": {
+                  "instruction": {
+                    "text": "Coloque na ordem o que acontece quando alguém edita uma tarefa:"
+                  },
+                  "items": [
+                    {
+                      "id": "a",
+                      "label": "Dois cliques no texto chamam startEdit(task)"
+                    },
+                    {
+                      "id": "b",
+                      "label": "editingId recebe o id e o texto vira um campo"
+                    },
+                    {
+                      "id": "c",
+                      "label": "A pessoa corrige o texto e aperta Enter"
+                    },
+                    {
+                      "id": "d",
+                      "label": "saveEdit troca o texto com um map e volta editingId para null"
+                    },
+                    {
+                      "id": "e",
+                      "label": "O campo some e a tarefa aparece com o texto novo"
+                    }
+                  ],
+                  "correct_order": [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e"
+                  ],
+                  "explanation": "Abrir, digitar, confirmar, trocar numa lista nova e fechar: o mesmo caminho de sempre, com um estado a mais dizendo quem está aberto."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "Os botões de filtro já trocam o `filter`, mas a lista mostra sempre tudo e o contador está parado. Calcule `visibleTasks` e `remaining` e use os dois na tela.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\ntype Filter = \"todas\" | \"ativas\" | \"feitas\";\n\nexport default function App() {\n  const [tasks] = useState([\n    { id: 1, text: \"Estudar React\", done: true },\n    { id: 2, text: \"Beber água\", done: false },\n    { id: 3, text: \"Revisar a aula 3\", done: false },\n  ]);\n  const [filter, setFilter] = useState<Filter>(\"todas\");\n\n  const visibleTasks = tasks; // troque por um filter\n  const remaining = 0; // conte as que faltam\n\n  return (\n    <div className=\"p-4\">\n      <ul>\n        {visibleTasks.map((task) => (\n          <li key={task.id}>{task.text}</li>\n        ))}\n      </ul>\n      <p data-restantes>{remaining} restantes</p>\n      <button onClick={() => setFilter(\"todas\")}>Todas</button>\n      <button onClick={() => setFilter(\"ativas\")}>Ativas</button>\n      <button onClick={() => setFilter(\"feitas\")}>Feitas</button>\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "contador",
+                      "label": "O contador mostra 2 restantes",
+                      "hint": "remaining = tasks.filter((task) => !task.done).length.",
+                      "selector": "[data-restantes]",
+                      "assert": {
+                        "type": "text",
+                        "equals": "2 restantes"
+                      }
+                    },
+                    {
+                      "id": "ativas",
+                      "label": "Em Ativas aparecem só as 2 que faltam",
+                      "hint": "Se filter === \"ativas\", devolva !task.done.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "button:nth-of-type(2)"
+                        }
+                      ],
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 2
+                      }
+                    },
+                    {
+                      "id": "feitas",
+                      "label": "Em Feitas aparece só \"Estudar React\"",
+                      "hint": "Se filter === \"feitas\", devolva task.done.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "button:nth-of-type(3)"
+                        }
+                      ],
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 1
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\ntype Filter = \"todas\" | \"ativas\" | \"feitas\";\n\nexport default function App() {\n  const [tasks] = useState([\n    { id: 1, text: \"Estudar React\", done: true },\n    { id: 2, text: \"Beber água\", done: false },\n    { id: 3, text: \"Revisar a aula 3\", done: false },\n  ]);\n  const [filter, setFilter] = useState<Filter>(\"todas\");\n\n  const visibleTasks = tasks.filter((task) => {\n    if (filter === \"ativas\") return !task.done;\n    if (filter === \"feitas\") return task.done;\n    return true;\n  });\n  const remaining = tasks.filter((task) => !task.done).length;\n\n  return (\n    <div className=\"p-4\">\n      <ul>\n        {visibleTasks.map((task) => (\n          <li key={task.id}>{task.text}</li>\n        ))}\n      </ul>\n      <p data-restantes>{remaining} restantes</p>\n      <button onClick={() => setFilter(\"todas\")}>Todas</button>\n      <button onClick={() => setFilter(\"ativas\")}>Ativas</button>\n      <button onClick={() => setFilter(\"feitas\")}>Feitas</button>\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 4,
+            "key": "componentes",
+            "title_i18n": {
+              "pt": "Aula 5 — Peças: componentes e props",
+              "en": "Lesson 5 — Pieces: components and props"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Peças de LEGO e controle remoto\n\nUm castelo de **LEGO** não é esculpido num bloco só: ele é montado com **peças**. A mesma peça serve em vários lugares, e se uma quebra você troca só ela. No React cada peça é um **componente**, e os encaixes de cada peça são as **props**.\n\nE quando a peça precisa avisar o pai? Pense num **controle remoto**: o botão fica no controle, mas quem muda o canal é a TV. A peça recebe uma função (`onAdd`, `onToggle`) e só **aperta**.\n\n> Na imagem, o mesmo app da aula 4 com as peças marcadas: um `TaskForm`, um `TaskItem` por tarefa e um `FilterBar`.",
+                    "image_url": "/lesson-media/react-fundamentals/aula-5-componentes.png",
+                    "description": "O app com as bordas de cada componente destacadas: TaskForm, TaskItem (três vezes) e FilterBar."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Componente, props e callback prop\n\n```tsx\ntype TaskItemProps = {\n  task: Task;\n  onRemove: (id: number) => void;\n};\n\nfunction TaskItem({ task, onRemove }: TaskItemProps) {\n  return (\n    <li>\n      {task.text}\n      <button onClick={() => onRemove(task.id)}>Remover</button>\n    </li>\n  );\n}\n```\n\n- `type TaskItemProps` é a **lista de encaixes** da peça\n- o pai usa a peça como uma tag: `<TaskItem key={task.id} task={task} onRemove={removeTask} />`\n- prop que é função de aviso começa com **`on`**\n- o dado mora na peça **mais alta** que precisa dele: `tasks` fica no `App`, porque a lista e o contador usam"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "match",
+                "spec": {
+                  "instruction": {
+                    "text": "Ligue cada peça ao que ela faz:"
+                  },
+                  "left": [
+                    {
+                      "id": "l0",
+                      "label": "TaskForm"
+                    },
+                    {
+                      "id": "l1",
+                      "label": "TaskItem"
+                    },
+                    {
+                      "id": "l2",
+                      "label": "FilterBar"
+                    },
+                    {
+                      "id": "l3",
+                      "label": "App"
+                    }
+                  ],
+                  "right": [
+                    {
+                      "id": "r0",
+                      "label": "Guarda o texto digitado e chama onAdd"
+                    },
+                    {
+                      "id": "r1",
+                      "label": "Mostra uma tarefa e avisa marcar, remover e renomear"
+                    },
+                    {
+                      "id": "r2",
+                      "label": "Mostra o contador e chama onChange com o filtro"
+                    },
+                    {
+                      "id": "r3",
+                      "label": "Guarda a lista e o filtro e entrega tudo às peças"
+                    }
+                  ],
+                  "pairs": [
+                    {
+                      "left_id": "l0",
+                      "right_id": "r0"
+                    },
+                    {
+                      "left_id": "l1",
+                      "right_id": "r1"
+                    },
+                    {
+                      "left_id": "l2",
+                      "right_id": "r2"
+                    },
+                    {
+                      "left_id": "l3",
+                      "right_id": "r3"
+                    }
+                  ],
+                  "explanation": "Cada peça cuida só do que é dela. A lista mora no App porque várias peças precisam dela."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "O `TaskForm` tem o botão Adicionar, mas a lista `tasks` mora no `App`. Como o formulário adiciona uma tarefa?"
+                  },
+                  "options": [
+                    {
+                      "id": "callback",
+                      "label": "Chamando a função onAdd(text) que o App passou como prop"
+                    },
+                    {
+                      "id": "importa",
+                      "label": "Importando a variável tasks do App e dando push"
+                    },
+                    {
+                      "id": "proprio-state",
+                      "label": "Criando o próprio useState de tasks dentro do TaskForm"
+                    }
+                  ],
+                  "correct_option_id": "callback",
+                  "explanation": "O filho só aperta o botão do controle: `onAdd(text)`. Quem troca a lista é o `App`, dono dela."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "A lista funciona, mas está toda dentro do `App`. Crie o componente `TaskItem` com as props `task` e `onRemove` e use no `.map`. Coloque `data-task-item` no `<li>` do `TaskItem`, pra gente saber que a peça existe.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\ntype Task = { id: number; text: string };\n\n// crie o TaskItem aqui\n\nexport default function App() {\n  const [tasks, setTasks] = useState<Task[]>([\n    { id: 1, text: \"Estudar React\" },\n    { id: 2, text: \"Beber água\" },\n    { id: 3, text: \"Revisar a aula 4\" },\n  ]);\n\n  function removeTask(id: number) {\n    setTasks(tasks.filter((task) => task.id !== id));\n  }\n\n  return (\n    <ul className=\"p-4\">\n      {tasks.map((task) => (\n        <li key={task.id}>\n          {task.text} <button onClick={() => removeTask(task.id)}>Remover</button>\n        </li>\n      ))}\n    </ul>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "peca",
+                      "label": "Cada tarefa é desenhada pelo TaskItem",
+                      "hint": "function TaskItem({ task, onRemove }) { return <li data-task-item>...</li>; } e no map: <TaskItem key={task.id} task={task} onRemove={removeTask} />.",
+                      "selector": "[data-task-item]",
+                      "assert": {
+                        "type": "count",
+                        "equals": 3
+                      }
+                    },
+                    {
+                      "id": "avisa",
+                      "label": "O Remover do TaskItem avisa o App",
+                      "hint": "No botão do TaskItem: onClick={() => onRemove(task.id)}.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "[data-task-item] button"
+                        }
+                      ],
+                      "selector": "[data-task-item]",
+                      "assert": {
+                        "type": "count",
+                        "equals": 2
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\ntype Task = { id: number; text: string };\n\nfunction TaskItem({ task, onRemove }: { task: Task; onRemove: (id: number) => void }) {\n  return (\n    <li data-task-item>\n      {task.text} <button onClick={() => onRemove(task.id)}>Remover</button>\n    </li>\n  );\n}\n\nexport default function App() {\n  const [tasks, setTasks] = useState<Task[]>([\n    { id: 1, text: \"Estudar React\" },\n    { id: 2, text: \"Beber água\" },\n    { id: 3, text: \"Revisar a aula 4\" },\n  ]);\n\n  function removeTask(id: number) {\n    setTasks(tasks.filter((task) => task.id !== id));\n  }\n\n  return (\n    <ul className=\"p-4\">\n      {tasks.map((task) => (\n        <TaskItem key={task.id} task={task} onRemove={removeTask} />\n      ))}\n    </ul>\n  );\n}\n"
+              },
+              {
+                "ordinal": 5,
+                "status": "published",
+                "kind": "document",
+                "spec": {
+                  "prompt": "Explique, com as suas palavras, por que a lista de tarefas mora no App e não dentro do TaskItem. Use a ideia do controle remoto na sua resposta.",
+                  "body": "Escreva como se estivesse explicando para um colega que faltou na aula."
+                },
+                "rubric": {
+                  "min_words": 30
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

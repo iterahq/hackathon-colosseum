@@ -83,6 +83,9 @@ db/
     fellowship-pilot.fixture.json
     qa-tenant.ts               # builds the `qa-e2e` TEST tenant's content
     qa-tenant.fixture.json     #   ← what the QA tenant contains, declaratively
+    react-fundamentals.fixture.json  # authored content: React unit mirroring the
+                               #   Educar+ ToDo lessons 1–5. Not seeded; validated
+                               #   by src/test/reactFundamentalsFixture.test.ts
 ```
 
 ### `seeds/` is DATA, and it is not a migration
