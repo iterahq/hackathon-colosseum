@@ -1,0 +1,8 @@
+{
+  "tarefas": [
+    { "id": 1, "text": "Estudar React", "done": false },
+    { "id": 2, "text": "Beber água", "done": true },
+    { "id": 3, "text": "Revisar a aula de efeitos", "done": false },
+    { "id": 4, "text": "Ler um capítulo", "done": false }
+  ]
+}

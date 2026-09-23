@@ -86,6 +86,8 @@ db/
     react-fundamentals.fixture.json  # authored content: React unit mirroring the
                                #   Educar+ ToDo lessons 1–5. Not seeded; validated
                                #   by src/test/reactFundamentalsFixture.test.ts
+    react-effects.fixture.json # second React unit (effects and data), same rules
+                               #   and the same test
 ```
 
 ### `seeds/` is DATA, and it is not a migration

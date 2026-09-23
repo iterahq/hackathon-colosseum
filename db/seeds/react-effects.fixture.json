@@ -1,0 +1,730 @@
+{
+  "_comment": [
+    "DECLARATIVE CONTENT FIXTURE — second React unit, continuing",
+    "`react-fundamentals.fixture.json`: effects and data (useEffect and its",
+    "dependency array, fetching with loading/error states, controlled vs",
+    "uncontrolled forms, lifting state and a `useLocalStorage` hook).",
+    "",
+    "Nothing seeds this file and nothing here writes to the Itera database. It is",
+    "validated by `src/test/reactFundamentalsFixture.test.ts` with the same rules",
+    "as the first unit: the shared activity-spec parser, context + metaphor with a",
+    "real-artifact image first, and every graded snack's STARTER failing while its",
+    "`_solution` passes through the real grading pipeline.",
+    "",
+    "Graded snacks never touch the network or `localStorage`: the code preview is",
+    "an `allow-scripts` sandbox with an opaque origin, where both are unavailable.",
+    "They use an in-memory `gaveta` and a `buscarTarefas` that resolves in memory;",
+    "the concept screens show the real `localStorage` and the real `fetch` of",
+    "`/lesson-media/react-effects/tarefas.json`, which the player serves.",
+    "",
+    "`_solution` and `_comment` are fixture-only keys; a seed must drop every",
+    "`_`-prefixed key before it writes a row."
+  ],
+  "program": {
+    "slug": "react-efeitos-e-dados",
+    "title_i18n": {
+      "pt": "React: efeitos e dados",
+      "en": "React: effects and data"
+    },
+    "units": [
+      {
+        "ordinal": 0,
+        "title_i18n": {
+          "pt": "Efeitos e dados",
+          "en": "Effects and data"
+        },
+        "lessons": [
+          {
+            "ordinal": 0,
+            "key": "useeffect",
+            "title_i18n": {
+              "pt": "Aula 1 — Efeitos: useEffect e o que ele vigia",
+              "en": "Lesson 1 — Effects: useEffect and its dependencies"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Um efeito roda depois do desenho\n\nPense no **sensor de presença da luz do corredor**. Ele não acende sozinho: acende **depois** que alguém passa, e só quando o que ele vigia muda.\n\nNo React, um **efeito** é o código que roda **depois** que a tela foi desenhada, pra falar com algo de fora do React: o `localStorage`, o título da aba, a internet. E você diz o que ele vigia.\n\n> A imagem é o app de tarefas de verdade com o efeito que salva no `localStorage`. Adicionar 2 tarefas fez o efeito rodar 2 vezes; digitar no campo não fez ele rodar nenhuma, porque o texto do campo não está na lista que ele vigia.",
+                    "image_url": "/lesson-media/react-effects/aula-1-efeito-salva.png",
+                    "description": "O app com três tarefas e um quadro mostrando quantas vezes o efeito rodou e o que ficou no localStorage."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## useEffect e o array de dependências\n\n```tsx\nuseEffect(() => {\n  localStorage.setItem(\"tasks\", JSON.stringify(tasks));\n}, [tasks]);\n```\n\nO segundo argumento é **o que o sensor vigia**:\n\n- `[tasks]` → roda no primeiro desenho e **de novo sempre que `tasks` mudar**\n- `[]` → roda **uma vez só**, depois do primeiro desenho\n- sem array → roda depois de **todo** desenho (quase nunca é o que você quer)\n\n> Esqueceu uma variável que o efeito usa? Ele roda com o valor velho. Colocou coisa demais? Roda à toa."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "match",
+                "spec": {
+                  "instruction": {
+                    "text": "Ligue cada efeito a quando ele roda:"
+                  },
+                  "left": [
+                    {
+                      "id": "l0",
+                      "label": "useEffect(fn, [tasks])"
+                    },
+                    {
+                      "id": "l1",
+                      "label": "useEffect(fn, [])"
+                    },
+                    {
+                      "id": "l2",
+                      "label": "useEffect(fn)"
+                    }
+                  ],
+                  "right": [
+                    {
+                      "id": "r0",
+                      "label": "No primeiro desenho e sempre que tasks mudar"
+                    },
+                    {
+                      "id": "r1",
+                      "label": "Uma vez só, depois do primeiro desenho"
+                    },
+                    {
+                      "id": "r2",
+                      "label": "Depois de todo desenho"
+                    }
+                  ],
+                  "pairs": [
+                    {
+                      "left_id": "l0",
+                      "right_id": "r0"
+                    },
+                    {
+                      "left_id": "l1",
+                      "right_id": "r1"
+                    },
+                    {
+                      "left_id": "l2",
+                      "right_id": "r2"
+                    }
+                  ],
+                  "explanation": "O array é a lista do que o efeito vigia. Vazio = não vigia nada, então roda só na primeira vez."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "O efeito que salva as tarefas usa `[tasks]`. Você digita no campo de nova tarefa, sem clicar em Adicionar. O efeito roda?"
+                  },
+                  "options": [
+                    {
+                      "id": "nao",
+                      "label": "Não: o texto do campo não está no array, e tasks não mudou"
+                    },
+                    {
+                      "id": "sim",
+                      "label": "Sim: todo desenho da tela roda todos os efeitos"
+                    },
+                    {
+                      "id": "depende",
+                      "label": "Só se o campo tiver mais de 10 letras"
+                    }
+                  ],
+                  "correct_option_id": "nao",
+                  "explanation": "Digitar muda `text`, não `tasks`. O efeito só roda de novo quando algo do array muda."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "O app já **lê** a gaveta quando abre (`carregar`), mas nunca **grava** nela: adicione uma tarefa, e ela some quando a tela recarrega. Escreva o `useEffect` que grava `tasks` na gaveta sempre que a lista mudar.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n// O preview não tem localStorage: esta gaveta de mentira faz o papel dele.\nconst gaveta: Record<string, string> = {};\n\nfunction carregar(): string[] {\n  const salvo = gaveta[\"tasks\"];\n  return salvo ? JSON.parse(salvo) : [\"Estudar React\", \"Beber água\"];\n}\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>(carregar);\n  const [text, setText] = useState(\"\");\n\n  // o efeito que salva entra aqui\n\n  function addTask() {\n    if (text.trim() === \"\") return;\n    setTasks([...tasks, text]);\n    setText(\"\");\n  }\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" value={text} onChange={(e) => setText(e.target.value)} />\n      <button onClick={addTask}>Adicionar</button>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "adiciona",
+                      "label": "Adicionar coloca a tarefa na lista",
+                      "hint": "Isso já funciona: digite e clique em Adicionar.",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Ler um capítulo"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "button"
+                        }
+                      ],
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 3
+                      }
+                    },
+                    {
+                      "id": "sobrevive",
+                      "label": "A tarefa adicionada continua lá quando a tela recarrega",
+                      "hint": "useEffect(() => { gaveta[\"tasks\"] = JSON.stringify(tasks); }, [tasks]);",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "ul"
+                        }
+                      ],
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 3
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n// O preview não tem localStorage: esta gaveta de mentira faz o papel dele.\nconst gaveta: Record<string, string> = {};\n\nfunction carregar(): string[] {\n  const salvo = gaveta[\"tasks\"];\n  return salvo ? JSON.parse(salvo) : [\"Estudar React\", \"Beber água\"];\n}\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>(carregar);\n  const [text, setText] = useState(\"\");\n\n  useEffect(() => {\n    gaveta[\"tasks\"] = JSON.stringify(tasks);\n  }, [tasks]);\n\n  function addTask() {\n    if (text.trim() === \"\") return;\n    setTasks([...tasks, text]);\n    setText(\"\");\n  }\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" value={text} onChange={(e) => setText(e.target.value)} />\n      <button onClick={addTask}>Adicionar</button>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 1,
+            "key": "buscar-dados",
+            "title_i18n": {
+              "pt": "Aula 2 — Buscando dados: carregando, pronto e erro",
+              "en": "Lesson 2 — Fetching data: loading, ready and error"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Pedir dados é como pedir um lanche\n\nVocê faz o **pedido no balcão** e ele não chega na hora. Enquanto espera, a tela mostra a senha: **carregando**. Quando chega, você come: **pronto**. E às vezes a cozinha avisa que acabou: **erro**. Uma tela que busca dados sempre tem esses três momentos.\n\nBuscar a lista é um **efeito**: fala com algo de fora (a rede) e roda depois do primeiro desenho.\n\n> A imagem é o app de verdade buscando o arquivo `tarefas.json`: à esquerda, a espera; à direita, a lista que chegou.",
+                    "image_url": "/lesson-media/react-effects/aula-2-carregando-e-pronto.png",
+                    "description": "Duas telas do app: 'Carregando tarefas…' e, depois, a lista com quatro tarefas vinda do tarefas.json."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## fetch dentro do useEffect\n\n```tsx\nuseEffect(() => {\n  fetch(\"/lesson-media/react-effects/tarefas.json\")\n    .then((response) => {\n      if (!response.ok) throw new Error(`HTTP ${response.status}`);\n      return response.json();\n    })\n    .then((data) => {\n      setTasks(data.tarefas);\n      setStatus(\"pronto\");\n    })\n    .catch(() => setStatus(\"erro\"));\n}, []);\n```\n\n- `[]` → busca **uma vez**, quando a tela abre\n- `status` guarda em qual dos três momentos a tela está\n- `response.ok` falso **não** cai no `catch` sozinho: por isso o `throw`\n- o `tarefas.json` é um arquivo de verdade, servido pelo próprio Itera"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "multi_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Quais estados uma tela que busca dados precisa mostrar?"
+                  },
+                  "options": [
+                    {
+                      "id": "carregando",
+                      "label": "Carregando, enquanto a resposta não chega"
+                    },
+                    {
+                      "id": "pronto",
+                      "label": "Pronto, com os dados"
+                    },
+                    {
+                      "id": "erro",
+                      "label": "Erro, quando a busca falha"
+                    },
+                    {
+                      "id": "digitando",
+                      "label": "Digitando, enquanto a pessoa escreve no campo"
+                    }
+                  ],
+                  "correct_option_ids": [
+                    "carregando",
+                    "pronto",
+                    "erro"
+                  ],
+                  "explanation": "Buscar tem três momentos: esperando, chegou, deu errado. Digitar é outro assunto."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "order",
+                "spec": {
+                  "instruction": {
+                    "text": "Coloque na ordem o que acontece quando a tela abre:"
+                  },
+                  "items": [
+                    {
+                      "id": "a",
+                      "label": "O React desenha a tela com status \"carregando\""
+                    },
+                    {
+                      "id": "b",
+                      "label": "O useEffect roda e chama o fetch"
+                    },
+                    {
+                      "id": "c",
+                      "label": "A resposta chega e vira dados com response.json()"
+                    },
+                    {
+                      "id": "d",
+                      "label": "setTasks e setStatus(\"pronto\") avisam o React"
+                    },
+                    {
+                      "id": "e",
+                      "label": "O React desenha a lista"
+                    }
+                  ],
+                  "correct_order": [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e"
+                  ],
+                  "explanation": "Primeiro o desenho, depois o efeito: é por isso que a tela sempre passa pelo \"carregando\"."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "A tela está presa em **Carregando tarefas…**: ninguém busca a lista. Escreva o `useEffect` que chama `buscarTarefas(falhar)`, guarda a lista e troca o `status`. Ele tem que rodar de novo quando `falhar` mudar, pra o botão **Simular erro** funcionar.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nconst TAREFAS = [\"Estudar React\", \"Beber água\", \"Ler um capítulo\"];\n\n// O preview não acessa a internet: esta função finge o fetch do tarefas.json.\nfunction buscarTarefas(falhar: boolean): Promise<string[]> {\n  return falhar ? Promise.reject(new Error(\"HTTP 500\")) : Promise.resolve(TAREFAS);\n}\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>([]);\n  const [status, setStatus] = useState<\"carregando\" | \"pronto\" | \"erro\">(\"carregando\");\n  const [falhar, setFalhar] = useState(false);\n\n  // o efeito que busca entra aqui\n\n  return (\n    <div className=\"p-4\">\n      <button onClick={() => { setStatus(\"carregando\"); setFalhar(true); }}>Simular erro</button>\n      {status === \"carregando\" && <p data-carregando>Carregando tarefas…</p>}\n      {status === \"erro\" && <p data-erro>Não deu pra carregar. Tente de novo.</p>}\n      {status === \"pronto\" && (\n        <ul>\n          {tasks.map((task) => (\n            <li key={task}>{task}</li>\n          ))}\n        </ul>\n      )}\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "lista",
+                      "label": "A lista chega com 3 tarefas",
+                      "hint": "buscarTarefas(falhar).then((lista) => { setTasks(lista); setStatus(\"pronto\"); })",
+                      "selector": "li",
+                      "assert": {
+                        "type": "count",
+                        "equals": 3
+                      }
+                    },
+                    {
+                      "id": "sem-espera",
+                      "label": "O Carregando some quando a lista chega",
+                      "hint": "Depois do setTasks, chame setStatus(\"pronto\").",
+                      "selector": "[data-carregando]",
+                      "assert": {
+                        "type": "count",
+                        "equals": 0
+                      }
+                    },
+                    {
+                      "id": "erro",
+                      "label": "Simular erro mostra a mensagem de erro",
+                      "hint": "Termine com .catch(() => setStatus(\"erro\")) e coloque falhar no array do efeito.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "button"
+                        }
+                      ],
+                      "selector": "[data-erro]",
+                      "assert": {
+                        "type": "exists"
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nconst TAREFAS = [\"Estudar React\", \"Beber água\", \"Ler um capítulo\"];\n\n// O preview não acessa a internet: esta função finge o fetch do tarefas.json.\nfunction buscarTarefas(falhar: boolean): Promise<string[]> {\n  return falhar ? Promise.reject(new Error(\"HTTP 500\")) : Promise.resolve(TAREFAS);\n}\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>([]);\n  const [status, setStatus] = useState<\"carregando\" | \"pronto\" | \"erro\">(\"carregando\");\n  const [falhar, setFalhar] = useState(false);\n\n  useEffect(() => {\n    buscarTarefas(falhar)\n      .then((lista) => {\n        setTasks(lista);\n        setStatus(\"pronto\");\n      })\n      .catch(() => setStatus(\"erro\"));\n  }, [falhar]);\n\n  return (\n    <div className=\"p-4\">\n      <button onClick={() => { setStatus(\"carregando\"); setFalhar(true); }}>Simular erro</button>\n      {status === \"carregando\" && <p data-carregando>Carregando tarefas…</p>}\n      {status === \"erro\" && <p data-erro>Não deu pra carregar. Tente de novo.</p>}\n      {status === \"pronto\" && (\n        <ul>\n          {tasks.map((task) => (\n            <li key={task}>{task}</li>\n          ))}\n        </ul>\n      )}\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 2,
+            "key": "formularios",
+            "title_i18n": {
+              "pt": "Aula 3 — Formulários: controlado e não controlado",
+              "en": "Lesson 3 — Forms: controlled and uncontrolled"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Quem segura o campo?\n\nPense numa **marionete**: quem segura os fios decide cada movimento. Um campo **controlado** é assim: toda letra passa pelo React, que guarda o texto num `useState` e devolve pro campo.\n\nO campo **não controlado** é um **formulário de papel**: a pessoa escreve à vontade e você só lê quando ela entrega. Mais simples, mas o React não sabe o que está escrito **enquanto** a pessoa digita.\n\n> A imagem é o formulário de verdade, controlado: vazio, o botão fica apagado e o contador marca 0/40; com \"Beber água\" escrito, o botão acende e o contador marca 10/40, letra por letra.",
+                    "image_url": "/lesson-media/react-effects/aula-3-campo-controlado.png",
+                    "description": "O mesmo formulário duas vezes: vazio com o botão desligado, e com texto, botão ligado e contador 10/40."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## value + onChange\n\n```tsx\nconst [text, setText] = useState(\"\");\n\n<input value={text} onChange={(e) => setText(e.target.value)} />\n<button disabled={text.trim() === \"\"}>Adicionar</button>\n<span>{text.length}/40</span>\n```\n\n- `value={text}` → o campo mostra **o que o React guarda**\n- `onChange` → cada letra atualiza o `useState`\n- como o React sabe o texto a cada letra, dá pra **desligar o botão** e **contar** ao vivo\n- não controlado é `defaultValue` sem `onChange`: bom pra formulário simples que só é lido no envio"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "Você quer que o botão Adicionar fique desligado enquanto o campo estiver vazio. O que você precisa?"
+                  },
+                  "options": [
+                    {
+                      "id": "controlado",
+                      "label": "Um campo controlado: value + onChange guardando o texto num useState"
+                    },
+                    {
+                      "id": "default",
+                      "label": "Só o defaultValue no campo"
+                    },
+                    {
+                      "id": "id",
+                      "label": "Um id no campo pra ler no clique"
+                    }
+                  ],
+                  "correct_option_id": "controlado",
+                  "explanation": "Pra reagir a cada letra, o React precisa saber o texto o tempo todo, e isso é o campo controlado."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "match",
+                "spec": {
+                  "instruction": {
+                    "text": "Ligue cada pedaço ao que ele faz:"
+                  },
+                  "left": [
+                    {
+                      "id": "l0",
+                      "label": "value={text}"
+                    },
+                    {
+                      "id": "l1",
+                      "label": "onChange={(e) => setText(e.target.value)}"
+                    },
+                    {
+                      "id": "l2",
+                      "label": "defaultValue=\"\""
+                    },
+                    {
+                      "id": "l3",
+                      "label": "disabled={text.trim() === \"\"}"
+                    }
+                  ],
+                  "right": [
+                    {
+                      "id": "r0",
+                      "label": "O campo mostra o que está no useState"
+                    },
+                    {
+                      "id": "r1",
+                      "label": "Cada letra digitada atualiza o useState"
+                    },
+                    {
+                      "id": "r2",
+                      "label": "Só o valor inicial, depois o campo se vira sozinho"
+                    },
+                    {
+                      "id": "r3",
+                      "label": "Desliga o botão enquanto não tem texto"
+                    }
+                  ],
+                  "pairs": [
+                    {
+                      "left_id": "l0",
+                      "right_id": "r0"
+                    },
+                    {
+                      "left_id": "l1",
+                      "right_id": "r1"
+                    },
+                    {
+                      "left_id": "l2",
+                      "right_id": "r2"
+                    },
+                    {
+                      "left_id": "l3",
+                      "right_id": "r3"
+                    }
+                  ],
+                  "explanation": "Controlado = `value` + `onChange`. `defaultValue` é o jeito não controlado."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "O campo hoje é **não controlado**: o contador fica parado em 0/40, o botão nunca desliga e **Adicionar** não faz nada. Transforme o campo em controlado, conte as letras, desligue o botão com o campo vazio e faça Adicionar colocar a tarefa na lista e limpar o campo.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nconst LIMITE = 40;\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>([]);\n\n  // o campo ainda não é controlado: o React não sabe o que está escrito nele\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" defaultValue=\"\" maxLength={LIMITE} />\n      <button id=\"adicionar\" onClick={() => {}}>Adicionar</button>\n      <span data-contador>0/{LIMITE}</span>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "desligado",
+                      "label": "Com o campo vazio, o botão fica desligado",
+                      "hint": "No botão: disabled={text.trim() === \"\"}.",
+                      "selector": "#adicionar",
+                      "assert": {
+                        "type": "attr",
+                        "name": "disabled",
+                        "equals": ""
+                      }
+                    },
+                    {
+                      "id": "contador",
+                      "label": "O contador mostra 10/40 com \"Beber água\" escrito",
+                      "hint": "Guarde o texto num useState e mostre {text.length}/{LIMITE}.",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Beber água"
+                        }
+                      ],
+                      "selector": "[data-contador]",
+                      "assert": {
+                        "type": "text",
+                        "equals": "10/40"
+                      }
+                    },
+                    {
+                      "id": "adiciona",
+                      "label": "Adicionar coloca a tarefa na lista",
+                      "hint": "No clique: setTasks([...tasks, text]).",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Beber água"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "#adicionar"
+                        }
+                      ],
+                      "selector": "li",
+                      "assert": {
+                        "type": "text",
+                        "equals": "Beber água"
+                      }
+                    },
+                    {
+                      "id": "limpa",
+                      "label": "O campo fica vazio depois de adicionar",
+                      "hint": "Depois do setTasks, chame setText(\"\") e use value={text} no campo.",
+                      "steps": [
+                        {
+                          "do": "fill",
+                          "selector": "#nova",
+                          "value": "Beber água"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "#adicionar"
+                        }
+                      ],
+                      "selector": "#nova",
+                      "assert": {
+                        "type": "attr",
+                        "name": "value",
+                        "equals": ""
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n\nconst LIMITE = 40;\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>([]);\n  const [text, setText] = useState(\"\");\n\n  function addTask() {\n    setTasks([...tasks, text.trim()]);\n    setText(\"\");\n  }\n\n  return (\n    <div className=\"p-4\">\n      <input id=\"nova\" className=\"border px-2\" value={text} maxLength={LIMITE} onChange={(e) => setText(e.target.value)} />\n      <button id=\"adicionar\" disabled={text.trim() === \"\"} onClick={addTask}>Adicionar</button>\n      <span data-contador>{text.length}/{LIMITE}</span>\n      <ul>\n        {tasks.map((task) => (\n          <li key={task}>{task}</li>\n        ))}\n      </ul>\n    </div>\n  );\n}\n"
+              }
+            ]
+          },
+          {
+            "ordinal": 3,
+            "key": "estado-no-pai",
+            "title_i18n": {
+              "pt": "Aula 4 — Subir o estado e criar um hook: useLocalStorage",
+              "en": "Lesson 4 — Lifting state and a custom hook: useLocalStorage"
+            },
+            "activities": [
+              {
+                "ordinal": 0,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## A caixa d'água do prédio\n\nNum prédio, cada apartamento não tem o próprio poço: a água fica numa **caixa d'água lá em cima**, e desce pros apartamentos. Quando duas peças do app precisam do **mesmo dado**, ele sobe pro pai delas, e desce como prop. Isso é **subir o estado**.\n\nE quando a mesma lógica aparece em vários lugares (ler da gaveta, guardar na gaveta), você escreve uma **receita** uma vez e usa em qualquer peça: um **hook seu**, que começa com `use`.\n\n> A imagem é o app de verdade: a lista mora no `App`, vem de um hook `useLocalStorage(\"tasks\")`, e desce para o `TaskForm`, os `TaskItem` e o `FilterBar`.",
+                    "image_url": "/lesson-media/react-effects/aula-4-estado-no-pai.png",
+                    "description": "O app com as peças marcadas e o App no topo, dono da lista, guardada pelo useLocalStorage."
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 1,
+                "status": "published",
+                "kind": "concept",
+                "spec": {
+                  "instruction": {
+                    "text": "## Um hook seu: useLocalStorage\n\n```tsx\nfunction useLocalStorage<T>(key: string, initial: T) {\n  const [value, setValue] = useState<T>(() => {\n    const saved = localStorage.getItem(key);\n    return saved === null ? initial : JSON.parse(saved);\n  });\n\n  useEffect(() => {\n    localStorage.setItem(key, JSON.stringify(value));\n  }, [key, value]);\n\n  return [value, setValue] as const;\n}\n```\n\n- um hook é **uma função que usa outros hooks**, e o nome começa com `use`\n- ele devolve o mesmo par do `useState`, então quem usa nem percebe a gaveta\n- no `App`: `const [tasks, setTasks] = useLocalStorage(\"tasks\", []);`\n- o estado mora no **pai comum** das peças que precisam dele"
+                  }
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 2,
+                "status": "published",
+                "kind": "single_choice",
+                "spec": {
+                  "instruction": {
+                    "text": "O `Contador` aumenta um número e o `Painel` mostra esse número. Hoje cada um tem o próprio `useState`, e o Painel não muda. O que fazer?"
+                  },
+                  "options": [
+                    {
+                      "id": "subir",
+                      "label": "Subir o estado pro pai dos dois e passar o valor e a função como props"
+                    },
+                    {
+                      "id": "copiar",
+                      "label": "Copiar o useState do Contador pro Painel"
+                    },
+                    {
+                      "id": "global",
+                      "label": "Criar uma variável fora dos componentes e mudar ela no clique"
+                    }
+                  ],
+                  "correct_option_id": "subir",
+                  "explanation": "Dois useState são duas caixas d'água separadas. O dado compartilhado sobe pro pai comum e desce como prop."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 3,
+                "status": "published",
+                "kind": "order",
+                "spec": {
+                  "instruction": {
+                    "text": "Coloque na ordem os passos para criar o useLocalStorage:"
+                  },
+                  "items": [
+                    {
+                      "id": "a",
+                      "label": "Escrever function useLocalStorage(key, initial)"
+                    },
+                    {
+                      "id": "b",
+                      "label": "Dentro dele, um useState que começa com o valor salvo ou o initial"
+                    },
+                    {
+                      "id": "c",
+                      "label": "Um useEffect que grava o valor quando ele muda"
+                    },
+                    {
+                      "id": "d",
+                      "label": "Devolver [value, setValue]"
+                    },
+                    {
+                      "id": "e",
+                      "label": "No App, trocar o useState por useLocalStorage(\"tasks\", [])"
+                    }
+                  ],
+                  "correct_order": [
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "e"
+                  ],
+                  "explanation": "Primeiro a receita (o hook), depois quem usa troca uma linha só."
+                },
+                "rubric": {}
+              },
+              {
+                "ordinal": 4,
+                "status": "published",
+                "kind": "code",
+                "spec": {
+                  "prompt": "O `Contador` e o `Painel` têm cada um o **próprio** `useState`, então clicar em **+1** não muda o Painel. Suba o total pro `App`, passe como props e guarde com um hook `useLocalStorage(\"feitas\", 0)` que você escreve usando a `gaveta`.\n\n// useState e useEffect já estão disponíveis — não precisa importar.",
+                  "language": "tsx",
+                  "starter": "// useState e useEffect já estão disponíveis — não precisa importar.\n// O preview não tem localStorage: esta gaveta de mentira faz o papel dele.\nconst gaveta: Record<string, string> = {};\n\n// crie o useLocalStorage aqui\n\nfunction Contador() {\n  const [total, setTotal] = useState(0);\n  return <button data-mais onClick={() => setTotal(total + 1)}>+1 tarefa feita</button>;\n}\n\nfunction Painel() {\n  const [total] = useState(0);\n  return <p data-painel>{total}</p>;\n}\n\nexport default function App() {\n  return (\n    <div className=\"p-4\">\n      <Contador />\n      <Painel />\n    </div>\n  );\n}\n",
+                  "checks": [
+                    {
+                      "id": "compartilha",
+                      "label": "Clicar duas vezes em +1 faz o Painel mostrar 2",
+                      "hint": "O total mora no App: <Contador onMais={() => setTotal(total + 1)} /> e <Painel total={total} />.",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "[data-mais]"
+                        },
+                        {
+                          "do": "click",
+                          "selector": "[data-mais]"
+                        }
+                      ],
+                      "selector": "[data-painel]",
+                      "assert": {
+                        "type": "text",
+                        "equals": "2"
+                      }
+                    },
+                    {
+                      "id": "guarda",
+                      "label": "O total continua 2 quando a tela recarrega",
+                      "hint": "No useLocalStorage: comece com gaveta[chave] (se existir) e grave com um useEffect([chave, valor]).",
+                      "steps": [
+                        {
+                          "do": "click",
+                          "selector": "[data-painel]"
+                        }
+                      ],
+                      "selector": "[data-painel]",
+                      "assert": {
+                        "type": "text",
+                        "equals": "2"
+                      }
+                    }
+                  ]
+                },
+                "rubric": {},
+                "_solution": "// useState e useEffect já estão disponíveis — não precisa importar.\n// O preview não tem localStorage: esta gaveta de mentira faz o papel dele.\nconst gaveta: Record<string, string> = {};\n\nfunction useLocalStorage(chave: string, inicial: number) {\n  const [valor, setValor] = useState<number>(() => {\n    const salvo = gaveta[chave];\n    return salvo === undefined ? inicial : JSON.parse(salvo);\n  });\n\n  useEffect(() => {\n    gaveta[chave] = JSON.stringify(valor);\n  }, [chave, valor]);\n\n  return [valor, setValor] as const;\n}\n\nfunction Contador({ onMais }: { onMais: () => void }) {\n  return <button data-mais onClick={onMais}>+1 tarefa feita</button>;\n}\n\nfunction Painel({ total }: { total: number }) {\n  return <p data-painel>{total}</p>;\n}\n\nexport default function App() {\n  const [total, setTotal] = useLocalStorage(\"feitas\", 0);\n  return (\n    <div className=\"p-4\">\n      <Contador onMais={() => setTotal(total + 1)} />\n      <Painel total={total} />\n    </div>\n  );\n}\n"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
