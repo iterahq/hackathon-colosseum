@@ -310,6 +310,14 @@
       "reachability": "redirects",
       "lands_on": "/login",
       "marker": "[data-testid=\"login-page\"]"
+    },
+    {
+      "id": "prototype_scene",
+      "route": "/prototipo/cena",
+      "target": "/prototipo/cena",
+      "min_regions": 1,
+      "reachability": "renders",
+      "marker": "text=Dia 1 · A tag"
     }
   ],
   "states": [

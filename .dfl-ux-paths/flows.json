@@ -424,6 +424,18 @@
       "prerequisites": {
         "auth_required": true
       }
+    },
+    {
+      "id": "prototype_scene",
+      "name": "Protótipo de cena (xray · live type · inspect)",
+      "route": "/prototipo/cena",
+      "source_ref": {
+        "component_file": "src/pages/prototype/ScenePrototypePage.tsx"
+      },
+      "screenshots": [],
+      "prerequisites": {
+        "auth_required": false
+      }
     }
   ],
   "flows": [

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { SCENE_BEATS } from "./scene/sceneBeats";
 import { BeatStage } from "./scene/BeatStage";
 import { DudaBubble } from "./scene/DudaBubble";
@@ -38,7 +38,11 @@ export default function ScenePrototypePage() {
     setRun((r) => r + 1);
   };
 
+  // `reducedMotion="user"`: the looping hints (Duda's bob, the x-ray lens)
+  // stop when the reader asks the OS for less motion. The source-stamp capture
+  // runs with reduced motion, so the screen can settle and be captured.
   return (
+    <MotionConfig reducedMotion="user">
     <div className="min-h-screen text-white" style={{ background: `${GRAIN}, radial-gradient(90% 60% at 50% -10%, #12301F 0%, #0A0908 60%)` }}>
       <div className="mx-auto max-w-5xl px-5 py-8 flex flex-col gap-7">
         <header className="flex items-center justify-between">
@@ -82,5 +86,6 @@ export default function ScenePrototypePage() {
         )}
       </div>
     </div>
+    </MotionConfig>
   );
 }
