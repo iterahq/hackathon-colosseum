@@ -97,6 +97,11 @@ db/
     react-effects.fixture.json # second React unit (effects and data), same rules
                                #   and the same test; also seeded by
                                #   `npm run seed:program`.
+    react-4-weeks.fixture.json # the first Itera course: one program, 4 weekly
+                               #   units, stringing the two React units above
+                               #   plus a newly authored week 4. Validated by
+                               #   src/test/react4WeeksFixture.test.ts; seeded
+                               #   by `npm run seed:program`.
 ```
 
 ### `seeds/` is DATA, and it is not a migration
