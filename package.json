@@ -25,6 +25,7 @@
     "test:watch": "vitest",
     "seed:fellowship-pilot": "tsx db/seeds/fellowship-pilot.ts",
     "seed:qa-tenant": "tsx db/seeds/qa-tenant.ts",
+    "seed:program": "tsx db/seeds/program-fixture.ts",
     "e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:baseline": "playwright test --config playwright.baseline.config.ts",

@@ -83,11 +83,20 @@ db/
     fellowship-pilot.fixture.json
     qa-tenant.ts               # builds the `qa-e2e` TEST tenant's content
     qa-tenant.fixture.json     #   ← what the QA tenant contains, declaratively
+    program-fixture.ts         # GENERIC: publishes any `{ program: {...} }`
+                               #   fixture into a tenant. `npm run seed:program
+                               #   -- <fixture> --tenant <slug> [--dry-run]
+                               #   [--catalog]`
+    program-fixture.test.ts    #   ← unit tests for its pure parts (key
+                               #   stripping, URL rewriting, plan building,
+                               #   idempotency keys)
     react-fundamentals.fixture.json  # authored content: React unit mirroring the
-                               #   Educar+ ToDo lessons 1–5. Not seeded; validated
-                               #   by src/test/reactFundamentalsFixture.test.ts
+                               #   Educar+ ToDo lessons 1–5. Validated by
+                               #   src/test/reactFundamentalsFixture.test.ts;
+                               #   seeded by `npm run seed:program`.
     react-effects.fixture.json # second React unit (effects and data), same rules
-                               #   and the same test
+                               #   and the same test; also seeded by
+                               #   `npm run seed:program`.
 ```
 
 ### `seeds/` is DATA, and it is not a migration
@@ -99,6 +108,36 @@ seed is something a person or a workflow invokes on purpose:
 npm run seed:qa-tenant             # apply
 npm run seed:qa-tenant -- --dry-run
 ```
+
+`program-fixture.ts` is the generic sibling: it does not own a tenant or a
+membership lifecycle the way `qa-tenant.ts` does (no `create_test_tenant`, no
+`grant_membership`, no readiness report) — it only does the program → unit →
+lesson → activity upsert, generalized to any `{ program: { slug, title_i18n,
+units: [...] } }` fixture and any EXISTING tenant. It publishes
+`react-fundamentals.fixture.json` / `react-effects.fixture.json` (and any
+future fixture of the same shape) the same way `qa-tenant.ts` publishes its
+own:
+
+```bash
+npm run seed:program -- db/seeds/react-fundamentals.fixture.json --tenant dfl-batch
+npm run seed:program -- <fixture> --tenant <slug> --dry-run   # no network at all — no env needed
+npm run seed:program -- <fixture> --tenant <slug> --catalog   # also sets programs.is_catalog = true
+```
+
+Same posture: it strips every `_`-prefixed fixture-only key (`_comment`,
+`_solution`), validates EVERY activity spec against the shared
+`@iterahq/activity-spec` parser before writing anything (one invalid activity
+fails the whole run, nothing partially lands), uploads every
+`public/lesson-media/...` file the fixture references to the `lesson-media`
+Storage bucket and rewrites the URL before the row is written, and is
+idempotent on the same natural keys as `qa-tenant.ts` (program by
+`(tenant_id, slug)`, unit/lesson/activity by ordinal within their parent) — a
+second run updates drifted rows in place and never duplicates one. `--dry-run`
+touches no network at all (not just no writes), so it needs no credentials.
+Applying for real needs the same env as `qa-tenant.ts`
+(`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `ITERA_SMOKE_USERNAME`/`PASSWORD` or
+another author/tenant_admin/owner identity's own credentials) — the target
+tenant must already exist; this seed never creates one.
 
 The split is the CLAUDE.md rule, not a local preference: **schema** goes through
 `db/migrations/` and a human merge, **data** goes through a caller's own user-JWT

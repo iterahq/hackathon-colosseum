@@ -27,11 +27,17 @@ export default defineConfig({
     // ⚠️ `packages/*/tsconfig.build.json` EXCLUDES `*.test.ts`. Without that,
     // `build:packages` would emit these into `dist/` and ship an import of
     // `vitest` — not a dependency of the published package — to every consumer.
+    // `db/seeds/**` joined them with `program-fixture.test.ts`, co-located with
+    // the seed it tests (test sits next to the file, never under a separate
+    // `__tests__/`) — the pure parts of a seed (key stripping, URL rewriting,
+    // plan building, idempotency keys) deserve the same fast unit run as
+    // everything else here.
     include: [
       "src/**/*.{test,spec}.{ts,tsx}",
       "scripts/**/*.{test,spec}.ts",
       "e2e/support/**/*.test.ts",
       "packages/*/src/**/*.{test,spec}.{ts,tsx}",
+      "db/seeds/**/*.{test,spec}.ts",
     ],
   },
   resolve: {
