@@ -16,6 +16,23 @@
 /src/components/ @taigfs @SamuelStefano
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Activity renderer registry — Tainan ONLY (plan
+# 20260924-activity-type-one-behavior-rule, ADR-5, task T8).
+#
+# These two files map an activity KIND to its component. A new kind is a new
+# behaviour, and Tainan reviews every new kind. The lines come AFTER
+# `/src/components/` on purpose: in CODEOWNERS the LAST matching pattern wins,
+# so the Tainan-only owner replaces the developers' entry for this one file.
+#
+# ⚠️ NOT ENFORCED BY GITHUB TODAY, for the same reason as the migrations entry
+# below: `iterahq` is on the FREE plan and this repo is PRIVATE. The real
+# enforcement is a `safe-admin-merge` protected-path rule (human-only) on the
+# same paths, plus the blocking behaviour-audit CI job of `iterahq/activity-spec`.
+# ─────────────────────────────────────────────────────────────────────────────
+/packages/activities/src/ActivityRenderer.tsx @taigfs
+/src/components/branded/activity/ActivityRenderer.tsx @taigfs
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Migrations — merging one APPLIES it to the ITERA production database.
 #
 # `db-apply.yml` runs on every push to `main` touching db/migrations/**, so the
