@@ -61,6 +61,12 @@ db/
   scripts/
     apply-migrations.sh        # ledger-backed apply / status / drift / census
     seed-smoke-user.sh         # create + link the ITERA_SMOKE_* auth user
+    audit-activity-behaviours.sql
+                               # READ-ONLY: counts each kind × behaviour shape
+                               # (plan 20260924-activity-type-one-behavior-rule,
+                               # T6). Run: bash /root/.claude/skills/
+                               # itera-supabase-helpers/run.sh query
+                               # "$(cat db/scripts/audit-activity-behaviours.sql)"
     fresh-apply.sh             # CI: build the schema from ZERO on a throwaway
                                # Postgres, twice, then run the PR's migrations
                                # through apply-migrations.sh. See below.
