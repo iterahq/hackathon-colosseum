@@ -127,7 +127,14 @@ own:
 npm run seed:program -- db/seeds/react-fundamentals.fixture.json --tenant dfl-batch
 npm run seed:program -- <fixture> --tenant <slug> --dry-run   # no network at all — no env needed
 npm run seed:program -- <fixture> --tenant <slug> --catalog   # also sets programs.is_catalog = true
+npm run seed:program -- <fixture> --tenant <slug> --player-media  # skip the upload, keep /lesson-media/ paths
 ```
+
+`--player-media` exists because an author's user-JWT cannot write to the
+`lesson-media` bucket (storage RLS answers 403). The player already serves
+`public/lesson-media/` from its own origin, so the flag keeps the relative
+paths and instead HEAD-checks every file on `PLAYER_ORIGIN` (default
+`https://app.iterahq.dev`), failing before any write if one is not deployed.
 
 Same posture: it strips every `_`-prefixed fixture-only key (`_comment`,
 `_solution`), validates EVERY activity spec against the shared

@@ -25,6 +25,7 @@
  *   npm run seed:program -- db/seeds/react-fundamentals.fixture.json --tenant dfl-batch
  *   npm run seed:program -- <fixture> --tenant <slug> --dry-run
  *   npm run seed:program -- <fixture> --tenant <slug> --catalog   # sets programs.is_catalog = true
+ *   npm run seed:program -- <fixture> --tenant <slug> --player-media  # keep /lesson-media/ paths served by the player
  *
  * `--dry-run` touches NO network at all (not just no writes): it loads the
  * fixture, validates it, and prints the plan from the fixture alone, so it
@@ -275,19 +276,26 @@ const same = (a: unknown, b: unknown) => canonical(a) === canonical(b);
 /* ─── everything below this line touches the filesystem or the network ──── */
 /* istanbul ignore next -- exercised by manual --dry-run runs, not vitest */
 
-function parseArgs(argv: string[]): { fixturePath: string; tenant: string; dryRun: boolean; catalog: boolean } {
+function parseArgs(argv: string[]): {
+  fixturePath: string;
+  tenant: string;
+  dryRun: boolean;
+  catalog: boolean;
+  playerMedia: boolean;
+} {
   const positional = argv.filter((a) => !a.startsWith('--'));
   const dryRun = argv.includes('--dry-run');
   const catalog = argv.includes('--catalog');
+  const playerMedia = argv.includes('--player-media');
   const tenantIdx = argv.indexOf('--tenant');
   const tenant = tenantIdx !== -1 ? argv[tenantIdx + 1] : undefined;
   if (!positional[0] || !tenant) {
     console.error(
-      'Usage: npm run seed:program -- <fixture path> --tenant <slug> [--dry-run] [--catalog]'
+      'Usage: npm run seed:program -- <fixture path> --tenant <slug> [--dry-run] [--catalog] [--player-media]'
     );
     process.exit(2);
   }
-  return { fixturePath: positional[0], tenant, dryRun, catalog };
+  return { fixturePath: positional[0], tenant, dryRun, catalog, playerMedia };
 }
 
 function loadFixture(fixturePath: string): Fixture {
@@ -362,7 +370,7 @@ function req(name: string): string {
 const log = (line: string) => console.log(`[program-seed] ${line}`);
 
 async function main(): Promise<void> {
-  const { fixturePath, tenant, dryRun, catalog } = parseArgs(process.argv.slice(2));
+  const { fixturePath, tenant, dryRun, catalog, playerMedia } = parseArgs(process.argv.slice(2));
   const fixture = loadFixture(fixturePath);
 
   const activityIssues = validateActivities(fixture);
@@ -500,12 +508,23 @@ async function main(): Promise<void> {
   }
   const tenantRow = tenants[0];
 
-  log(`uploading ${media.length} media file(s)`);
   const urlMap = new Map<string, string>();
-  for (const m of media) {
-    const url = await uploadMedia(m);
-    urlMap.set(m.localPath, url);
-    log(`  ${m.localPath} → ${url}`);
+  if (playerMedia) {
+    // The player serves `public/lesson-media/` itself, so relative paths stay as
+    // they are — but only once the deployed player actually has every file.
+    const origin = process.env.PLAYER_ORIGIN ?? 'https://app.iterahq.dev';
+    log(`checking ${media.length} media file(s) on ${origin}`);
+    for (const m of media) {
+      const res = await fetch(`${origin}${m.localPath}`, { method: 'HEAD' });
+      if (!res.ok) throw new Error(`player does not serve ${m.localPath} (HTTP ${res.status}); deploy it first`);
+    }
+  } else {
+    log(`uploading ${media.length} media file(s)`);
+    for (const m of media) {
+      const url = await uploadMedia(m);
+      urlMap.set(m.localPath, url);
+      log(`  ${m.localPath} → ${url}`);
+    }
   }
 
   const program = rewriteLessonMediaUrls(fixture.program, urlMap);
