@@ -45,6 +45,16 @@ const program: ProgramDetail = {
         { id: 'l5', unitId: 'u2', ordinal: 1, title: { en: 'CI / CD basics' }, activities: [act('a5', 'todo', 'document')] },
       ],
     },
+    {
+      id: 'u3',
+      programId: 'p1',
+      ordinal: 2,
+      title: { en: '03 · Ship It Together' },
+      lessons: [
+        { id: 'l6', unitId: 'u3', ordinal: 0, title: { en: 'Code review basics' }, activities: [act('a6', 'todo', 'quiz')] },
+        { id: 'l7', unitId: 'u3', ordinal: 1, title: { en: 'Your first PR' }, activities: [act('a7', 'todo', 'document')] },
+      ],
+    },
   ],
 };
 
