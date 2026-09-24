@@ -552,6 +552,94 @@ for those five. The Player passes its existing rows unchanged (the guard asserts
 false, because making it true would drag the Itera content model into the
 package, which is what ADR-1 refuses.
 
+## One activity type = one behaviour (fleet rule, 2026-09-24)
+
+**Plan:** [`20260924-activity-type-one-behavior-rule`](https://plans.devfellowship.com/20260924-activity-type-one-behavior-rule)
+(v3, ADR-1…ADR-5, task T2). **Source:** Tainan, TG 2026-09-24 msg 19287:
+*"dentro do repo é OK/ESPERADO reusar os componentes / mas daí deixar um
+activitytype diferente SEMPRE q comportamento for diferente / tipo drag and drop
+VS type / e o resto tudo igual / tem q ser 2 Activity Type"*.
+
+**One activity type = one behaviour. The TYPE is the contract. Components are
+shared freely.** Two kinds can render with the same component. One kind cannot
+hold two behaviours. The same rule is in `iterahq/activity-spec` (`README.md` +
+`src/kinds.ts`), which is the registry.
+
+### What a behaviour is
+
+A behaviour is a tuple of four axes. If an author-controlled field changes ANY
+axis, the result is a different type:
+
+| Axis | The question | Examples of a DIFFERENT behaviour |
+| --- | --- | --- |
+| B1 — input method | What does the learner physically do? | type vs drag a chip vs pick from a dropdown vs tap pairs vs converse vs a gesture |
+| B2 — grading | Who or what decides correct? | none vs answer-key lookup vs text match vs DOM checks vs word count vs AI judge |
+| B3 — completion | What event finishes it? | view vs submit vs gesture gate vs all steps unlocked |
+| B4 — step pattern | In a multi-step kind, does the type fix the step sequence? | a step whose input method the author picks per step |
+
+A **presentation variant** can stay a prop: copy, i18n, theme, layout, size,
+media (image vs mermaid), number of options, shuffle, the timer layer, the code
+language or runtime when B1–B3 do not change, and an accessibility alternative
+input that is ALWAYS present (like the drag AND up/down buttons of `order`).
+
+Two more rules close the loopholes:
+
+- **No shape-sniffing.** A renderer must not pick a sub-renderer from the
+  presence of a field (`slots?.length`, `blanks?.length`). That is a hidden
+  discriminator. Put the difference in the kind.
+- **No host-dependent behaviour.** A kind must not become a different behaviour
+  when a host port is absent (today: `document` with an AI-judge rubric becomes
+  a reflection when `api.judge` is absent). A missing port shows the kind's
+  explicit "unavailable" state (ADR-3 above: degrade explicitly).
+
+**The one-line test:** *"If an author flips this field, does the learner do
+something different with their hands, does a different judge decide, or does a
+different event finish it?"* Yes → a new type.
+
+Multi-step kinds use ONE input for every step (plan ADR-3). A ramp such as pick
+a command → build a command → type a command is a SEQUENCE of activities in the
+lesson, not one activity. This reverses the per-step ramp of `terminal_sandbox`
+(answer tsq2 = C of 2026-08-06).
+
+### Components are shared freely
+
+This rule is about the TYPE, not about the code. Reuse the same React component
+under two or more kinds (for example, the guided-code view in
+`src/code/guided/` under `code_fill_bank`, `code_fill_select` and
+`code_fill_type`). The new kind maps to
+the component that already renders it, with a fixed prop. It does not read the
+spec to choose. Do not copy a component to make a kind look separate.
+
+### The transition list
+
+These ids break the rule today. They stay VALID on read and on write during the
+transition, and they are DEPRECATED. A kind leaves the write path only after
+`db/scripts/audit-activity-behaviours.sql` shows 0 rows on it (plan T20). Do not
+add a row to a kind on this list. Do not add a new kind that holds more than one
+behaviour.
+
+| Old id (deprecated) | Behaviours inside it today | New kinds (plan ADR-1) |
+| --- | --- | --- |
+| `code` | open editor graded by DOM `checks` · open editor with no grading · guided blanks by bank / select / text | `code_editor_checks` · `code_editor_ungraded` · `code_fill_bank` · `code_fill_select` · `code_fill_type` |
+| `chat_sandbox` | open chat · fill slots (select or text) · pick a context chip · per-step `mode: compose \| evaluate` | `chat_compose` · `chat_fill_select` · `chat_fill_type` · `chat_pick_context` · `chat_rate_reply` |
+| `terminal_sandbox` | type a command (`freeText`) · pick from a palette (`options`), per step whole command vs tokens | `terminal_type_command` · `terminal_pick_command` · `terminal_build_command` |
+| `document` | read · reflection with a word count · AI-judged writing | `document_read` · `document_reflect` · `document_ai_judge` |
+| `question` (not stored) | `mode: single \| multi` · 'Outro' free typing next to the options | `question_pick_one` · `question_pick_many` · `question_write` |
+| `spec.byoc` on a host kind (a layer, not a kind) | `pick_best` · `judge_each` · `build_context` | `byoc_pick_best` · `byoc_judge_each` · `byoc_build_context` (plan ADR-4) |
+
+`sandbox_scenario` is already retired to 0 rows (see the repository
+`CLAUDE.md`). During the transition, an old kind keeps its shape-sniffing branch
+in the renderer. No NEW branch of that type is allowed. The three `question_*`
+kinds get no database label: nothing stores `question`.
+
+### What a new kind costs
+
+A new kind is one behaviour. It gets one `*.stories.tsx` file (title
+`Activities/<family>/<kind>`), one row in `src/test/activityMatrixCoverage.test.ts`,
+and a registry entry in `@iterahq/activity-spec`. Stories inside the file are
+STATES and presentation variants only. The PR template carries the checklist
+(plan T7). `@taigfs` reviews every new kind (plan ADR-5, T8).
+
 ## Decisions already locked — do not relitigate
 
 | ADR | Decision |
