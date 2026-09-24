@@ -5,6 +5,8 @@ import type { ActivityKind } from '@/types/content';
 import { makeActivity, noop } from './activityFixtures';
 import { ACTIVITY_CONTRACTS, type ContractKey } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import scenarios from '@/test/fixtures/sandbox-scenarios.json';
+import { TERMINAL_BUILD_COMMAND_SPEC, TERMINAL_PICK_COMMAND_SPEC } from './behaviourFixtures';
 
 /**
  * EIXO A da matriz de estados — o GATE AO VIVO (`enabled` · `locked`).
@@ -132,3 +134,35 @@ export const LockedTerminalSandbox: Story = stage('terminal_sandbox', EXPIRED);
  * visível dessa entrada.
  */
 export const LockedQuestion: Story = stage('question', EXPIRED);
+
+/* --- `locked` por COMPORTAMENTO (plano 20260924-activity-type-one-behavior-rule, T4) ---
+ * Os kinds `chat_sandbox` e `terminal_sandbox` guardam mais de um comportamento.
+ * O `Locked*` do kind mostra só um deles (o chat aberto, o terminal de texto
+ * livre). Estes mostram os comportamentos que a produção usa, com a fixture de
+ * cada linha de comportamento da matriz. */
+const bySlug = scenarios as Record<string, Record<string, unknown>>;
+
+function stageSpec(kind: ActivityKind, spec: Record<string, unknown>, gate: { readOnly: boolean }): Story {
+  return {
+    render: () => (
+      <LiveActivityStage
+        activity={makeActivity(kind, spec)}
+        readOnly={gate.readOnly}
+        onComplete={noop}
+        testid="live-activity"
+      />
+    ),
+  };
+}
+
+/** `chat_pick_context` travado: os chips de contexto não recebem clique. */
+export const LockedChatPickContext: Story = stageSpec('chat_sandbox', bySlug.c1!, EXPIRED);
+
+/** `chat_fill_select` travado: as opções dos slots não recebem clique. */
+export const LockedChatFillSelect: Story = stageSpec('chat_sandbox', bySlug.c2!, EXPIRED);
+
+/** `terminal_pick_command` travado: a paleta de comandos não roda nada. */
+export const LockedTerminalPickCommand: Story = stageSpec('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC, EXPIRED);
+
+/** `terminal_build_command` travado: os tokens não sobem para a linha. */
+export const LockedTerminalBuildCommand: Story = stageSpec('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC, EXPIRED);

@@ -334,7 +334,129 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
 };
 
 /**
- * O NÚMERO. Snapshot da distribuição das 154 células (14 kinds × 11 células).
+ * LINHAS POR COMPORTAMENTO — os comportamentos de produção que NÃO tinham linha.
+ *
+ * Plano `20260924-activity-type-one-behavior-rule` (v3), task T4. Regra: um
+ * activity type = um comportamento. Quatro kinds de hoje guardam mais de um
+ * (`chat_sandbox`, `terminal_sandbox`, `document`, `code`), e a linha do kind
+ * acima cobre só UM deles:
+ *   - `chat_sandbox` aponta o chat ABERTO, que tem 0 linhas em produção;
+ *   - `terminal_sandbox` aponta o texto livre; o modo de opções não tinha linha;
+ *   - `document` cobre leitura + reflexão; o caminho `ai-judge` (10 act / 10
+ *     def) tinha `D` inteiro em `na`.
+ *
+ * Cada linha aqui tem o NOME DO KIND FUTURO (ADR-1 do plano) e o kind de hoje
+ * em `from`. Quando o kind nascer em `@iterahq/activity-spec`, o teste
+ * "ainda não é kind do enum" fica vermelho de propósito: a linha MUDA para a
+ * `MATRIX` acima, sem reescrever célula nenhuma.
+ *
+ * Fixtures: linhas reais de produção (`src/stories/behaviourFixtures.ts`) e os
+ * cenários c1/c2 de `src/test/fixtures/sandbox-scenarios.json`.
+ */
+const TERMINAL_TAP_RUNS =
+  'tocar um comando da paleta JÁ o executa: não existe rascunho entre escolher e enviar, então "respondido e não enviado" não é um estado deste comportamento.';
+const SANDBOX_SPEC_INVALID_BY_KIND =
+  'a validação é do kind de HOJE (o schema do sandbox), antes de qualquer renderer: o card de spec inválido é o mesmo para todo comportamento do kind.';
+const NO_DEGENERATE_SHAPE =
+  'o menor spec que o Zod aceita para este comportamento é o próprio `Default` (um passo, uma entrada); sem a entrada, ele deixa de ser ESTE comportamento — vira outro kind, não um extremo deste.';
+
+const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell> }> = {
+  /** `chat_sandbox` com `choices[]` — 10 act / 10 def em produção. */
+  chat_pick_context: {
+    from: 'chat_sandbox',
+    row: {
+      'A.enabled': { story: 'activities-ia-sandbox-opcoes--vague-ask' },
+      'A.locked': { story: 'activities-gate-locked--locked-chat-pick-context' },
+      'B.done': { story: 'activities-ia-sandbox-opcoes--concluida' },
+      'C.blank': { story: 'activities-ia-sandbox-opcoes--vague-ask' },
+      'C.answered': { story: 'activities-ia-sandbox-opcoes--contexto-escolhido' },
+      'C.submitted': { story: 'activities-ia-sandbox-opcoes--resposta-recebida' },
+      'D.correct': { story: 'activities-ia-sandbox-opcoes--avaliada-corretamente' },
+      'D.incorrect': { story: 'activities-ia-sandbox-opcoes--avaliada-incorretamente' },
+      'E.reveal': { story: 'activities-ia-sandbox-opcoes--revealed-in-live' },
+      'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
+      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+    },
+  },
+  /** `chat_sandbox` com `slots[]` de kind `select` — 18 act / 9 def em produção. */
+  chat_fill_select: {
+    from: 'chat_sandbox',
+    row: {
+      'A.enabled': { story: 'activities-ia-sandbox-slots--who-am-i' },
+      'A.locked': { story: 'activities-gate-locked--locked-chat-fill-select' },
+      'B.done': { story: 'activities-ia-sandbox-slots--concluida' },
+      'C.blank': { story: 'activities-ia-sandbox-slots--who-am-i' },
+      'C.answered': { story: 'activities-ia-sandbox-slots--opcao-escolhida' },
+      'C.submitted': { story: 'activities-ia-sandbox-slots--resposta-recebida' },
+      'D.correct': { story: 'activities-ia-sandbox-slots--avaliada-corretamente' },
+      'D.incorrect': { story: 'activities-ia-sandbox-slots--avaliada-incorretamente' },
+      'E.reveal': { story: 'activities-ia-sandbox-slots--revealed-in-live' },
+      'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
+      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+    },
+  },
+  /** `terminal_sandbox`, `inputMode: options`, granularidade `command` — 3 act / 1 def. */
+  terminal_pick_command: {
+    from: 'terminal_sandbox',
+    row: {
+      'A.enabled': { story: 'activities-terminal-pick-command--default' },
+      'A.locked': { story: 'activities-gate-locked--locked-terminal-pick-command' },
+      'B.done': { story: 'activities-terminal-pick-command--concluida' },
+      'C.blank': { story: 'activities-terminal-pick-command--default' },
+      'C.answered': { na: TERMINAL_TAP_RUNS },
+      'C.submitted': { story: 'activities-terminal-pick-command--comando-certo' },
+      'D.correct': { story: 'activities-terminal-pick-command--comando-certo' },
+      'D.incorrect': { story: 'activities-terminal-pick-command--comando-errado' },
+      'E.reveal': { story: 'activities-terminal-pick-command--revealed-in-live' },
+      'F.spec_invalido': { story: 'activities-dispatcher--terminal-sandbox-espec-invalida' },
+      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+    },
+  },
+  /** `terminal_sandbox`, `inputMode: options`, granularidade `token` — 2 act / 1 def. */
+  terminal_build_command: {
+    from: 'terminal_sandbox',
+    row: {
+      'A.enabled': { story: 'activities-terminal-build-command--default' },
+      'A.locked': { story: 'activities-gate-locked--locked-terminal-build-command' },
+      'B.done': { story: 'activities-terminal-build-command--concluida' },
+      'C.blank': { story: 'activities-terminal-build-command--default' },
+      'C.answered': { story: 'activities-terminal-build-command--linha-montada' },
+      'C.submitted': { story: 'activities-terminal-build-command--linha-certa' },
+      'D.correct': { story: 'activities-terminal-build-command--linha-certa' },
+      'D.incorrect': { story: 'activities-terminal-build-command--linha-errada' },
+      'E.reveal': { story: 'activities-terminal-build-command--revealed-in-live' },
+      'F.spec_invalido': { story: 'activities-dispatcher--terminal-sandbox-espec-invalida' },
+      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+    },
+  },
+  /** `document` com `rubric.mode: "ai-judge"` — 10 act / 10 def em produção. */
+  document_ai_judge: {
+    from: 'document',
+    row: {
+      'A.enabled': { story: 'activities-producao-document-ai-judge--default' },
+      'A.locked': { story: 'activities-producao-document-ai-judge--travada' },
+      'B.done': {
+        drift:
+          '`AiJudgeDocumentActivity` não lê `activity.status`: uma redação já aprovada reabre vazia, com o botão de enviar. É achado de produção (o aluno refaz o trabalho), não falta de story.',
+      },
+      'C.blank': { story: 'activities-producao-document-ai-judge--default' },
+      'C.answered': { story: 'activities-producao-document-ai-judge--resposta-escrita' },
+      'C.submitted': { story: 'activities-producao-document-ai-judge--aprovada' },
+      'D.correct': { story: 'activities-producao-document-ai-judge--aprovada' },
+      'D.incorrect': { story: 'activities-producao-document-ai-judge--reprovada' },
+      'E.reveal': { na: NO_REVEAL_PROP },
+      'F.spec_invalido': { drift: LOOSE_ZOD },
+      'H.degenerado': {
+        drift:
+          'sem a porta `api.judge` o MESMO spec vira a reflexão por contagem de palavras (`DocumentActivity`): o host escolhe o comportamento. A regra do plano proíbe isso ("no host-dependent behaviour"); a story `--sem-porta-de-juiz` mostra a troca.',
+      },
+    },
+  },
+};
+
+/**
+ * O NÚMERO. Snapshot da distribuição das 209 células ((14 kinds + 5 linhas de
+ * comportamento) × 11 células).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
@@ -361,6 +483,14 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  *                  num kind sem resposta certa, e declará-las cobertas exigiria
  *                  inventar um veredito.
  *
+ *   comportamentos→{ covered: 155, na: 38, deferred: 5, drift: 11 }  (2026-09-24,
+ *                  plano `20260924-activity-type-one-behavior-rule`, T4). +5
+ *                  linhas de COMPORTAMENTO (`BEHAVIOUR_MATRIX`), 55 células:
+ *                  +46 cobertas, +6 `na`, +3 `drift` — as três do
+ *                  `document_ai_judge` (não lê `status`, schema LOOSE, e o host
+ *                  troca de comportamento sem a porta de juiz). O total passa a
+ *                  ser (kinds + comportamentos) × 11.
+ *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
  * C.answered/C.submitted (rascunho abaixo do `min_words` × redação enviada) e
@@ -378,7 +508,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 109, na: 32, deferred: 5, drift: 8 };
+const COVERAGE_SNAPSHOT = { covered: 155, na: 38, deferred: 5, drift: 11 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.
@@ -452,8 +582,8 @@ describe('guard da matriz de estados das activities (V3)', () => {
   });
 
   it.each(
-    Object.entries(MATRIX).flatMap(([kind, row]) =>
-      CELLS.map((cell) => [`${kind} · ${cell}`, row[cell]] as const),
+    [...Object.entries(MATRIX), ...Object.entries(BEHAVIOUR_MATRIX).map(([k, b]) => [k, b.row] as const)].flatMap(
+      ([kind, row]) => CELLS.map((cell) => [`${kind} · ${cell}`, row[cell]] as const),
     ),
   )('%s aponta para uma story que existe (ou está declarada n/a · deferred · drift)', (_label, cell) => {
     if ('story' in cell) {
@@ -470,7 +600,8 @@ describe('guard da matriz de estados das activities (V3)', () => {
 
   it('a distribuição das células bate com o snapshot declarado', () => {
     const tally = { covered: 0, na: 0, deferred: 0, drift: 0 };
-    for (const row of Object.values(MATRIX)) {
+    const rows = [...Object.values(MATRIX), ...Object.values(BEHAVIOUR_MATRIX).map((b) => b.row)];
+    for (const row of rows) {
       for (const cell of CELLS) {
         const c = row[cell];
         if ('story' in c) tally.covered += 1;
@@ -479,9 +610,28 @@ describe('guard da matriz de estados das activities (V3)', () => {
         else tally.drift += 1;
       }
     }
-    const total = Object.keys(MATRIX).length * CELLS.length;
+    const total = rows.length * CELLS.length;
     expect(tally.covered + tally.na + tally.deferred + tally.drift).toBe(total);
     expect(tally).toEqual(COVERAGE_SNAPSHOT);
+  });
+
+  it.each(Object.keys(BEHAVIOUR_MATRIX))(
+    'o comportamento %s declara TODAS as células — nenhuma omissão silenciosa',
+    (behaviour) => {
+      expect(CELLS.filter((c) => !(c in BEHAVIOUR_MATRIX[behaviour].row))).toEqual([]);
+    },
+  );
+
+  it('toda linha de comportamento vem de um kind da matriz (o kind de HOJE)', () => {
+    const orphans = Object.entries(BEHAVIOUR_MATRIX)
+      .filter(([, b]) => !(b.from in MATRIX))
+      .map(([k]) => k);
+    expect(orphans).toEqual([]);
+  });
+
+  it('linha de comportamento que virou kind do enum MUDA para a MATRIX (não fica duplicada)', () => {
+    const known = new Set<string>(ACTIVITY_KINDS);
+    expect(Object.keys(BEHAVIOUR_MATRIX).filter((k) => known.has(k)).sort()).toEqual([]);
   });
 
   it('o eixo G (kind desconhecido) tem story — ele não é por kind', () => {
