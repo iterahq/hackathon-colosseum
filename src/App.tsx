@@ -55,6 +55,8 @@ const ActivityTestPage = lazy(() => import("./pages/author/ActivityTestPage"));
 // ADDITIVE (BYOC live wiring): opt-in sibling of the /test route that exercises
 // the REAL responder+judge live path. Does not replace or alter /test.
 const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestPage"));
+// Public prototype of the future `scene` kind: static, no data, no auth.
+const ScenePrototypePage = lazy(() => import("./pages/prototype/ScenePrototypePage"));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
@@ -467,6 +469,7 @@ const App = () => (
                   }
                 />
 
+                <Route path="/prototipo/cena" element={<LazyRoute><ScenePrototypePage /></LazyRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
