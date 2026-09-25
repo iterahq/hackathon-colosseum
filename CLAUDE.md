@@ -89,7 +89,7 @@ o monorepo de npm workspaces e os dois gates que a borda do workspace NÃO prova
      db/migrations/*.sql. Editar um nome ou um número sem editar o enum = CI
      vermelha. Não remova os marcadores para calar o check. -->
 
-Os **14 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
+Os **33 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
 literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
 Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
@@ -99,6 +99,15 @@ Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
 `quiz` (o *hero*) ·
 `single_choice` · `multi_choice` · `match` · `order` · `code` ·
 `chat_sandbox` · `terminal_sandbox` · `sandbox_scenario`
+
+Os dezenove kinds de COMPORTAMENTO (migration `0104`, plano
+`20260924-activity-type-one-behavior-rule`: um activity type = um
+comportamento; os kinds antigos ficam na lista de transição):
+`code_editor_checks` · `code_editor_ungraded` · `code_fill_bank` · `code_fill_select` · `code_fill_type` ·
+`chat_compose` · `chat_fill_select` · `chat_fill_type` · `chat_pick_context` · `chat_rate_reply` ·
+`terminal_type_command` · `terminal_pick_command` · `terminal_build_command` ·
+`document_read` · `document_reflect` · `document_ai_judge` ·
+`byoc_pick_best` · `byoc_judge_each` · `byoc_build_context`
 
 <!-- activity-kinds:end -->
 

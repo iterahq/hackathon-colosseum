@@ -50,6 +50,29 @@ import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
  */
 
 const MIGRATIONS_DIR = 'db/migrations';
+
+/** 0104 — enum labels added ahead of the `@iterahq/activity-spec` release. */
+const BEHAVIOUR_KINDS_AWAITING_SPEC: readonly string[] = [
+  'code_editor_checks',
+  'code_editor_ungraded',
+  'code_fill_bank',
+  'code_fill_select',
+  'code_fill_type',
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
+  'document_read',
+  'document_reflect',
+  'document_ai_judge',
+  'byoc_pick_best',
+  'byoc_judge_each',
+  'byoc_build_context',
+];
 const ENUM = 'itera.activity_kind';
 
 /** Same derivation as `scripts/verify-activity-kinds.mjs`, kept tiny on purpose. */
@@ -129,6 +152,15 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
     const retired = dbEnum.filter((k) => !(ACTIVITY_KINDS as readonly string[]).includes(k));
     // Not an assertion of emptiness: a retirement is legal and expected. This
     // pins the CURRENT set so a NEW, unexplained divergence shows up in a diff.
-    expect(retired).toEqual(['sandbox_scenario']);
+    //
+    // The 19 behaviour kinds of 0104 (plan 20260924-activity-type-one-behavior-rule,
+    // T15) are in the enum BEFORE the package exports them: the labels are
+    // permanent and land first; the `@iterahq/activity-spec` release that
+    // exports them waits for Tainan's review. When that release lands here,
+    // this list shrinks back to `['sandbox_scenario']` — and it must, because
+    // a kind the enum holds and the package does not know renders nothing.
+    expect(retired).toEqual(['sandbox_scenario', ...BEHAVIOUR_KINDS_AWAITING_SPEC].filter(
+      (k) => !(ACTIVITY_KINDS as readonly string[]).includes(k),
+    ));
   });
 });

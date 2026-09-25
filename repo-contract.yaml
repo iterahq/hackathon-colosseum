@@ -307,6 +307,30 @@ activity_kinds:
   - chat_sandbox
   - terminal_sandbox
   - sandbox_scenario
+  # Os 19 kinds de COMPORTAMENTO (0104, plano
+  # 20260924-activity-type-one-behavior-rule, ADR-1/ADR-4): um activity type =
+  # um comportamento. Os kinds antigos acima (code, chat_sandbox,
+  # terminal_sandbox, document) seguem válidos na lista de TRANSIÇÃO até a
+  # query de auditoria da T6 (audit-activity-behaviours.sql) mostrar 0 linhas.
+  - code_editor_checks
+  - code_editor_ungraded
+  - code_fill_bank
+  - code_fill_select
+  - code_fill_type
+  - chat_compose
+  - chat_fill_select
+  - chat_fill_type
+  - chat_pick_context
+  - chat_rate_reply
+  - terminal_type_command
+  - terminal_pick_command
+  - terminal_build_command
+  - document_read
+  - document_reflect
+  - document_ai_judge
+  - byoc_pick_best
+  - byoc_judge_each
+  - byoc_build_context
 
 testing:
   framework: vitest

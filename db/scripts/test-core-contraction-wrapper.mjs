@@ -65,6 +65,14 @@ try {
     join(root, "db/migrations/0102_catalog_program_outline.sql"),
     "-- declared catalog outline suffix\n",
   );
+  result = spawnSync("bash", [script, "prefix"], { env, encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /0104_activity_kind_behaviour_kinds/);
+  assert.equal(existsSync(trace), false);
+  writeFileSync(
+    join(root, "db/migrations/0104_activity_kind_behaviour_kinds.sql"),
+    "-- declared activity-kind labels suffix\n",
+  );
   writeFileSync(
     join(root, "db/migrations/0103_unaccounted.sql"),
     "-- future migration must not disappear\n",
