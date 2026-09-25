@@ -98,7 +98,21 @@ export { QuizActivity } from './kinds/QuizActivity.js';
 // has to spell the "Outro" sentinel the same way this renderer does, and a
 // sentinel re-typed at a call site is a sentinel that can be re-typed wrongly.
 
-export { QuestionActivity, QUESTION_OTHER_ID } from './kinds/QuestionActivity.js';
+// 1.3.0 (plan `20260924-activity-type-one-behavior-rule`, T23, Q-R2-4): the
+// CALLER decides "Outro" and the notes box (`callerOptions`), and
+// `QuestionActivityBody` is the same body as a controlled component, for a host
+// whose chrome owns the state and the save (the plans-app).
+export {
+  QuestionActivity,
+  QuestionActivityBody,
+  QUESTION_OTHER_ID,
+  resolveQuestionInputs,
+} from './kinds/QuestionActivity.js';
+export type {
+  QuestionActivityBodyProps,
+  QuestionBodyOption,
+  QuestionCallerOptions,
+} from './kinds/QuestionActivity.js';
 
 /* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
 // Fase C step 4. TWO kinds with five activity types behind them: each

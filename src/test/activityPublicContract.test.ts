@@ -250,6 +250,11 @@ const PUBLIC_RUNTIME_SURFACE = [
   // call site é sentinela que pode ser redigitada errado.
   'QUESTION_OTHER_ID',
   'QuestionActivity',
+  // 1.3.0 — the controlled body and the caller-precedence rule (T23, Q-R2-4).
+  // Public because the plans-app draws the body inside its own chrome and must
+  // resolve "Outro" / notes with the SAME rule as the kind.
+  'QuestionActivityBody',
+  'resolveQuestionInputs',
   'QuizActivity',
   // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
   // dispatchers are public because the app switches on KIND; the five leaves are

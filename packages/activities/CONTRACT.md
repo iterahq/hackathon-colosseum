@@ -247,9 +247,62 @@ below is a property of the kind, not a configuration of it.
 | a shuffle | Every other option-bearing kind calls `learnerShuffle`. Here the ORDER IS AUTHORED CONTENT — an asker puts the leading option first, and the plans-app addresses the same options by LETTER. Shuffling would make "option B" mean a different thing per reader. |
 | a `reveal` prop | There is no gabarito to expose, so the host's Reveal control would stop a clock and change nothing. |
 
-**The answer is options AND/OR text**, either alone complete. Free text is always
-available — `spec.free_text` only relabels the field, and there is deliberately
-no way to switch it off. "Outro" is available unless `allow_other === false`.
+**The answer is options AND/OR text**, either alone complete. Free text is
+available unless the CALLER turns it off — `spec.free_text` only relabels the
+field, and no SPEC field switches it off. "Outro" is available unless the caller
+turns it off or `allow_other === false`.
+
+### `callerOptions` — the host decides "Outro" and the notes box (1.3.0)
+
+Plan `20260924-activity-type-one-behavior-rule`, T23, Tainan's answer to Q-R2-4
+(2026-09-25): *"deixa customizavel pelo caller (ou seja itera-player nunca usaria
+isso, mas plans-app consegue 'solicitar' componente dessa forma, com o other)"*.
+Free typing beside the options is a second input. An authored spec of a
+one-behaviour kind may not ask for it (`question_pick_one` / `_many` refuse
+`allow_other` and `free_text` in `@iterahq/activity-spec`). A HOST may ask for
+it, because it is a property of the surface, not of the content.
+
+```ts
+interface QuestionCallerOptions {
+  allowOther?: boolean; // show the "Outro" card
+  allowNotes?: boolean; // show the free-text notes box
+}
+<QuestionActivity activity={…} onComplete={…} callerOptions={{ allowOther: true }} />
+```
+
+| Field | Prop given | Prop absent |
+| --- | --- | --- |
+| `allowOther` | the prop wins, in BOTH directions (it overrides `spec.allow_other`) | `spec.allow_other !== false` — the schema default is `true` |
+| `allowNotes` | the prop wins | `true` — the box is shown |
+
+- With `allowNotes: false`, text is no longer a way to answer: the submit needs
+  a selection or "Outro", and `response` is `''`.
+- A hidden input cannot carry a restored value into the submit: a restored
+  "Outro" with `allowOther: false` is not submitted.
+- `resolveQuestionInputs(spec, callerOptions)` is the rule as a pure function,
+  exported so an adapter resolves it the same way.
+- **The Itera Player never passes the prop.** `ActivityRenderer` does not
+  forward it, so every learner surface keeps the spec behaviour.
+
+### `QuestionActivityBody` — the same body, controlled (1.3.0)
+
+`QuestionActivity` is uncontrolled and submit-driven. A host whose chrome owns
+the state and the save (the plans-app: live `Salvar`, quick-answer chips,
+`[]`-deselect) draws `QuestionActivityBody` instead. It renders the pick hint,
+the option cards, the `★ recomendado` marker, "Outro" and the notes box, owns
+NO state, and never submits. `QuestionActivity` renders through it, so the two
+cannot drift.
+
+| Prop | Meaning |
+| --- | --- |
+| `options: { id, label?, description? }[]` | authored order; `id` is what `onToggle` reports (a plans-app letter works) |
+| `multi` | pick any number vs pick one (drawing only — the caller applies the toggle rule) |
+| `recommendedIds?` | ids with the `★ recomendado` marker |
+| `selected` | selected ids, INCLUDING `QUESTION_OTHER_ID` when "Outro" is on |
+| `notes`, `onNotesChange` | the notes text |
+| `onToggle(id)` | a tap on an option or on "Outro" (`QUESTION_OTHER_ID`) |
+| `callerOptions?`, `specAllowOther?` | the precedence rule above |
+| `disabled?`, `notesLabel?`, `notesPlaceholder?`, `notesRows?`, `otherLabel?`, `fieldId?` | presentation |
 
 ### What `onComplete` hands up
 
