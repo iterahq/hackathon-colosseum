@@ -100,8 +100,25 @@ function LazyPanel({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hard OFF switch for telemetry export, for hermetic builds only.
+ *
+ * `@devfellowship/observability` turns itself ON whenever
+ * `import.meta.env.PROD` is true, and `VITE_OTEL_ENABLED=false` does NOT turn
+ * it off (the package reads `VITE_OTEL_ENABLED === "true" || PROD`). So every
+ * `vite build` — including the stub-origin build of the `activity-baseline`
+ * gate — sends spans to https://otel.devfellowship.com. That request broke the
+ * gate's "nothing leaves the stub origin" test at random, depending on whether
+ * the span batch flushed before the test ended.
+ *
+ * `VITE_OTEL_DISABLED=true` forces `enabled={false}`. Any other value (or no
+ * value) passes `undefined`, so the package default stays in force and real
+ * production keeps its traces. Only `playwright.baseline.config.ts` sets it.
+ */
+const otelEnabled = import.meta.env.VITE_OTEL_DISABLED === "true" ? false : undefined;
+
 const App = () => (
-  <ObservabilityProvider>
+  <ObservabilityProvider enabled={otelEnabled}>
     <I18nProvider>
       <AuthProvider>
         <QueryClientProvider client={queryClient}>

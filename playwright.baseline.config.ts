@@ -69,8 +69,16 @@ export default defineConfig({
   // Builds with the STUB Supabase origin baked in (see `harnessStub.ts`). The
   // build is part of the suite deliberately: the thing under test is the code in
   // the working tree, not a deployment.
+  //
+  // `VITE_OTEL_DISABLED=true`: a production build turns the observability
+  // provider ON and exports spans to https://otel.devfellowship.com. That is a
+  // request out of the hermetic substrate, and the "nenhuma requisição sai"
+  // test failed whenever a span batch flushed during the run. A route-block
+  // cannot fix it: Playwright's `request` event fires for routed requests too.
+  // So the export is switched off at build time, here only (see `src/App.tsx`).
   webServer: {
     command:
+      'VITE_OTEL_DISABLED=true ' +
       'VITE_SUPABASE_URL=http://stub.supabase.invalid VITE_SUPABASE_ANON_KEY=stub-anon-key ' +
       'npm run build && npx vite preview --port 4188 --strictPort',
     url: 'http://127.0.0.1:4188',

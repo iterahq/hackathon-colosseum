@@ -252,6 +252,8 @@ environment:
     - name: VITE_OTEL_ENABLED
       description: Liga/desliga a instrumentação de observabilidade (true/false)
       default: "true"
+    - name: VITE_OTEL_DISABLED
+      description: 'Kill-switch: "true" desliga o export OTEL mesmo em build de produção (VITE_OTEL_ENABLED=false não desliga). Só para build hermético de e2e (playwright.baseline.config.ts); nunca em produção.'
     - name: VITE_SENTRY_DSN
       description: DSN do Sentry
     # ⚠️ NÃO é VITE_*: é lido pelo vite.config.ts no processo de build, nunca
