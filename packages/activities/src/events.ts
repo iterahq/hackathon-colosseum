@@ -25,7 +25,7 @@
  * ADR-4 promise ("aceitável: é aditivo, não breaking") is the thing being
  * traded away — say so out loud in that PR.
  */
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { KnownActivityKind } from './oneBehaviourKinds.js';
 
 /**
  * Any string that is not one of the known literals.
@@ -77,7 +77,7 @@ export interface ActivityEvent {
   /** `activity.id` of the activity that emitted. */
   activityId: string;
   /** The activity's kind, so a host can route without re-looking-up the row. */
-  kind: ActivityKind;
+  kind: KnownActivityKind;
   /** `Date.now()` at emission. Milliseconds since epoch, host clock. */
   at: number;
   /**

@@ -44,7 +44,13 @@ import { ACTIVITY_CONTRACTS, type ContractKey } from '@/stories/contractFixtures
 import { fillGuidedBlanks, settleGuided } from '@/stories/guidedInteractions';
 import {
   arrangeOrder,
+  buildTerminalLine,
   composeSandboxPrompt,
+  fillSandboxSlot,
+  rateSeededReply,
+  sendSandboxAndSettle,
+  tapTerminalCommand,
+  writeQuestionNote,
   connectPairs,
   markDone,
   markQuestionOptions,
@@ -342,6 +348,175 @@ const DRIVES: Record<ContractKey, Drive> = {
     why:
       'mesma razão do `question`: sem resposta certa não existe caminho de erro. Esta variante ' +
       'prova que `mode: multi` ACUMULA as marcas em vez de substituir, com o mesmo veredito.',
+  },
+
+  /*
+   * ── Os kinds de UM COMPORTAMENTO (plano 20260924-activity-type-one-behavior-rule,
+   * T9–T14). Cada um é dirigido pela interação do SEU comportamento, e só dela:
+   * é isto que prova que o kind não escolhe outra tela pelo formato do spec.
+   */
+  code_editor_checks: {
+    kind: 'code_editor_checks',
+    why:
+      'o juiz são os `checks` de DOM, que rodam DENTRO do iframe de preview — em jsdom o ' +
+      '`submit` esperaria para sempre. Os caminhos de acerto e erro vivem no browser mode ' +
+      '(ADR-8), como os do `code` com checks (`CodeSnackActivity.stories.tsx`).',
+  },
+  code_editor_ungraded: {
+    kind: 'code_editor_ungraded',
+    correct: markDone,
+    why: 'sem juiz não existe caminho de ERRO: o aluno clica "Concluir" e a activity conclui.',
+  },
+  code_fill_bank: {
+    kind: 'code_fill_bank',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onClick' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useEffect', evento: 'onClick' });
+      await settleGuided(c);
+    },
+  },
+  code_fill_select: {
+    kind: 'code_fill_select',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onClick' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { hook: 'useState', evento: 'onChange' });
+      await settleGuided(c);
+    },
+  },
+  code_fill_type: {
+    kind: 'code_fill_type',
+    correct: async (c) => {
+      await fillGuidedBlanks(c, { setter: 'setCurtidas', inicial: '0' });
+      await settleGuided(c);
+    },
+    incorrect: async (c) => {
+      await fillGuidedBlanks(c, { setter: 'setLikes', inicial: '0' });
+      await settleGuided(c);
+    },
+  },
+  chat_compose: {
+    kind: 'chat_compose',
+    correct: async (c) => {
+      await composeSandboxPrompt(c);
+      await sendSandboxAndSettle(c);
+    },
+    why: 'um pedido livre não tem envio ERRADO: o passo pede um envio, e o envio conclui.',
+  },
+  chat_fill_select: {
+    kind: 'chat_fill_select',
+    correct: async (c) => {
+      await fillSandboxSlot(c, { option: 'meu irmão pequeno' });
+      await sendSandboxAndSettle(c);
+    },
+    why:
+      'uma lacuna sem contexto não vira veredito negativo: o envio fraco mostra a crítica e ' +
+      'o passo continua aberto (`sandbox-compose-weak`), como no `chat_sandbox`.',
+  },
+  chat_fill_type: {
+    kind: 'chat_fill_type',
+    correct: async (c) => {
+      await fillSandboxSlot(c, { placeholder: 'ex.: meu irmão pequeno', text: 'meu irmão de 8 anos' });
+      await sendSandboxAndSettle(c);
+    },
+    why: 'mesmo motivo do `chat_fill_select`: o envio fraco pede outra tentativa, não emite `false`.',
+  },
+  chat_pick_context: {
+    kind: 'chat_pick_context',
+    correct: async (c) => {
+      await composeSandboxPrompt(c, 'redação de escola');
+      await sendSandboxAndSettle(c);
+    },
+    why: 'o chip distrator manda um pedido fraco e o passo continua aberto — não há `false`.',
+  },
+  chat_rate_reply: {
+    kind: 'chat_rate_reply',
+    correct: async (c) => {
+      // A resposta semeada é a `vago` (qualidade `ruim`): avaliar "fraca" acerta.
+      await rateSeededReply(c, 'ruim');
+    },
+    why:
+      'avaliar errado NÃO emite veredito: o painel rejeita com crítica e pede nova avaliação, ' +
+      'como no `chat_sandbox` (ver `oneBehaviourKinds.test.tsx`).',
+  },
+  terminal_type_command: {
+    kind: 'terminal_type_command',
+    why:
+      'o terminal avança por comando DIGITADO que casa com o `unlock` do passo; a digitação e o ' +
+      'casamento estão em `TerminalSandboxActivity.test.tsx`. O que este kind acrescenta — a ' +
+      'entrada fixada em texto livre — está em `oneBehaviourKinds.test.tsx`.',
+  },
+  terminal_pick_command: {
+    kind: 'terminal_pick_command',
+    correct: async (c) => {
+      await tapTerminalCommand(c, 'git status');
+    },
+    why: 'um comando errado RODA, imprime a saída e o passo fica travado — não há `false`.',
+  },
+  terminal_build_command: {
+    kind: 'terminal_build_command',
+    correct: async (c) => {
+      await buildTerminalLine(c, ['git', 'add', 'notas.md']);
+    },
+    why: 'mesmo motivo do `terminal_pick_command`: a linha errada roda e o passo fica travado.',
+  },
+  document_read: { kind: 'document_read', why: EXPOSITION },
+  document_reflect: {
+    kind: 'document_reflect',
+    correct: async (c) => {
+      await writeReflection(c, LONG_REFLECTION);
+      await markDone(c);
+    },
+    why: 'o juiz é a CONTAGEM de palavras: abaixo do mínimo o envio fica travado, não emite `false`.',
+  },
+  document_ai_judge: {
+    kind: 'document_ai_judge',
+    why:
+      'o juiz é a IA, e em jsdom não há a porta `api.judge`: o kind mostra o estado explícito ' +
+      '"indisponível" (testado em `oneBehaviourKinds.test.tsx`) — nunca a reflexão.',
+  },
+  byoc_pick_best: {
+    kind: 'byoc_pick_best',
+    why:
+      'o BYOC gera a árvore na itera-api; sem ela o kind mostra `byoc-unavailable`, nunca o card ' +
+      'do `concept`. O fluxo de duas etapas vive nas stories do BYOC (`ByocFlow`).',
+  },
+  byoc_judge_each: {
+    kind: 'byoc_judge_each',
+    why: 'mesmo motivo do `byoc_pick_best`: sem itera-api o kind mostra `byoc-unavailable`.',
+  },
+  byoc_build_context: {
+    kind: 'byoc_build_context',
+    why: 'mesmo motivo do `byoc_pick_best`: sem itera-api o kind mostra `byoc-unavailable`.',
+  },
+  question_pick_one: {
+    kind: 'question_pick_one',
+    correct: async (c) => {
+      await markQuestionOptions(c, ['Manter o adaptador']);
+      await submitAnswer(c, 'question-submit');
+    },
+    why: 'como a `question`: sem resposta certa, nenhuma interação produz `false`.',
+  },
+  question_pick_many: {
+    kind: 'question_pick_many',
+    correct: async (c) => {
+      await markQuestionOptions(c, ['Inbox global', 'Dashboard']);
+      await submitAnswer(c, 'question-submit');
+    },
+    why: 'como a `question`: sem resposta certa, nenhuma interação produz `false`.',
+  },
+  question_write: {
+    kind: 'question_write',
+    correct: async (c) => {
+      await writeQuestionNote(c, 'Eu testaria o contrato de persistência primeiro.');
+      await submitAnswer(c, 'question-submit');
+    },
+    why: 'como a `question`: sem resposta certa, nenhuma interação produz `false`.',
   },
 };
 

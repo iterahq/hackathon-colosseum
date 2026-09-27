@@ -1,0 +1,593 @@
+{
+  "CHAT_COMPOSE_SPEC": {
+    "id": "c1-livre",
+    "openness": "fixed",
+    "title": {
+      "pt": "O pedido vago",
+      "en": "The vague ask"
+    },
+    "initialState": {
+      "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Oi! Manda um pedido pra eu responder.",
+            "en": "Hi! Send me a request."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "me ajuda",
+        "en": "help me"
+      },
+      "cannedResults": {
+        "vago": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder.",
+            "en": "Help with what? I need to know what you want help with."
+          },
+          "critique": {
+            "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca.",
+            "en": "It bounced a question back instead of helping. That's a weak answer."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [],
+        "fallback": "vago"
+      }
+    },
+    "steps": [
+      {
+        "id": "mandar-pedido",
+        "mode": "compose",
+        "prompt": {
+          "pt": "Manda o pedido do jeito que tá: 'me ajuda'.",
+          "en": "Send the prompt as-is: 'help me'."
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": false
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "mandar-pedido"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Uma palavra a mais mudou a resposta inteira. Isso é contexto.",
+        "en": "One extra word changed the whole answer. That's context."
+      }
+    }
+  },
+  "CHAT_FILL_SELECT_SPEC": {
+    "id": "c2",
+    "openness": "parametrized",
+    "title": {
+      "pt": "Quem sou eu",
+      "en": "Who am I"
+    },
+    "initialState": {
+      "systemPrompt": "Responda a mesma pergunta adaptando o tom e o exemplo para a pessoa que perguntou.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Escolhe quem tá perguntando e manda a pergunta.",
+            "en": "Pick who's asking and send the question."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Como eu explico o que é juros?",
+        "en": "How do I explain interest?"
+      },
+      "cannedResults": {
+        "sem-persona": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Juros é a porcentagem cobrada sobre um valor emprestado, calculada de forma simples ou composta ao longo do tempo.",
+            "en": "Interest is the percentage charged on a loaned amount, computed simple or compound over time."
+          },
+          "critique": {
+            "pt": "Genérica: serve pra qualquer um e pra ninguém. Sem saber pra quem é, ela chuta.",
+            "en": "Generic: fits anyone and no one. Without knowing who it's for, it guesses."
+          }
+        },
+        "irmao-pequeno": {
+          "quality": "top",
+          "text": {
+            "pt": "Imagina que você emprestou 10 figurinhas pro seu amigo. Ele te devolve 10 e mais 1 de 'agradecimento' por ter esperado. Essa 1 a mais é o juro. Quanto mais tempo ele demora, mais figurinhas de agradecimento você pede.",
+            "en": "Imagine you lent 10 stickers to a friend. He gives back 10 plus 1 extra as a thank-you. That extra one is interest."
+          },
+          "critique": {
+            "pt": "Ela usou um exemplo que uma criança entende. Isso é resposta forte pra esse contexto.",
+            "en": "It used an example a kid gets. That's a strong answer for this context."
+          }
+        },
+        "cliente-loja": {
+          "quality": "top",
+          "text": {
+            "pt": "Quando você parcela em 3x sem juros, você paga o mesmo preço da vista. Se for 3x COM juros de 5% ao mês, um produto de R$100 vira R$115,76 no final. Vale a pena se você não tem o valor à vista agora, mas custa mais.",
+            "en": "When you split in 3x with no interest, you pay the cash price. With 5%/month interest, R$100 becomes R$115.76."
+          },
+          "critique": {
+            "pt": "Ela falou a língua de quem tá numa loja. Isso é resposta forte pra esse contexto.",
+            "en": "It spoke the language of someone in a store. Strong answer for this context."
+          }
+        },
+        "prova-escola": {
+          "quality": "top",
+          "text": {
+            "pt": "Juros simples: J = C × i × t (capital × taxa × tempo). Ex: R$200 a 2% ao mês por 3 meses = R$12 de juros. Juros compostos rendem sobre os juros anteriores, por isso crescem mais rápido.",
+            "en": "Simple interest: J = C × i × t. Ex: R$200 at 2%/month for 3 months = R$12. Compound interest grows on prior interest."
+          },
+          "critique": {
+            "pt": "Ela deu a fórmula que cai na prova. Isso é resposta forte pra esse contexto.",
+            "en": "It gave the formula that shows up on a test. Strong answer for this context."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "irmao-pequeno"
+              }
+            },
+            "use": "irmao-pequeno"
+          },
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "cliente-loja"
+              }
+            },
+            "use": "cliente-loja"
+          },
+          {
+            "when": {
+              "slotEquals": {
+                "slot": "persona",
+                "value": "prova-escola"
+              }
+            },
+            "use": "prova-escola"
+          }
+        ],
+        "fallback": "sem-persona"
+      }
+    },
+    "steps": [
+      {
+        "id": "escolher-persona",
+        "prompt": {
+          "pt": "Agora escolhe quem tá perguntando e manda de novo.",
+          "en": "Now pick who's asking and send again."
+        },
+        "hint": {
+          "pt": "Cada pessoa precisa de uma explicação diferente.",
+          "en": "Each person needs a different explanation."
+        },
+        "mode": "compose",
+        "expose": {
+          "slots": [
+            "persona"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "escolher-persona"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "A pergunta era a MESMA. Quem pergunta mudou tudo.",
+        "en": "Same question. Who asks changed everything."
+      }
+    },
+    "slots": [
+      {
+        "id": "persona",
+        "label": {
+          "pt": "Quem tá perguntando?",
+          "en": "Who's asking?"
+        },
+        "kind": "select",
+        "options": [
+          "irmao-pequeno",
+          "cliente-loja",
+          "prova-escola"
+        ],
+        "optionLabels": {
+          "irmao-pequeno": {
+            "pt": "meu irmão pequeno",
+            "en": "my little brother"
+          },
+          "cliente-loja": {
+            "pt": "um cliente na loja",
+            "en": "a customer at the store"
+          },
+          "prova-escola": {
+            "pt": "prova de escola",
+            "en": "school test"
+          }
+        },
+        "required": true
+      }
+    ]
+  },
+  "CHAT_FILL_TYPE_SPEC": {
+    "id": "c2-texto",
+    "openness": "parametrized",
+    "title": {
+      "pt": "Quem sou eu",
+      "en": "Who am I"
+    },
+    "initialState": {
+      "systemPrompt": "Responda a mesma pergunta adaptando o tom e o exemplo para a pessoa que perguntou.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Escolhe quem tá perguntando e manda a pergunta.",
+            "en": "Pick who's asking and send the question."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "Como eu explico o que é juros?",
+        "en": "How do I explain interest?"
+      },
+      "cannedResults": {
+        "sem-persona": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Juros é a porcentagem cobrada sobre um valor emprestado, calculada de forma simples ou composta ao longo do tempo.",
+            "en": "Interest is the percentage charged on a loaned amount, computed simple or compound over time."
+          },
+          "critique": {
+            "pt": "Genérica: serve pra qualquer um e pra ninguém. Sem saber pra quem é, ela chuta.",
+            "en": "Generic: fits anyone and no one. Without knowing who it's for, it guesses."
+          }
+        },
+        "irmao-pequeno": {
+          "quality": "top",
+          "text": {
+            "pt": "Imagina que você emprestou 10 figurinhas pro seu amigo. Ele te devolve 10 e mais 1 de 'agradecimento' por ter esperado. Essa 1 a mais é o juro. Quanto mais tempo ele demora, mais figurinhas de agradecimento você pede.",
+            "en": "Imagine you lent 10 stickers to a friend. He gives back 10 plus 1 extra as a thank-you. That extra one is interest."
+          },
+          "critique": {
+            "pt": "Ela usou um exemplo que uma criança entende. Isso é resposta forte pra esse contexto.",
+            "en": "It used an example a kid gets. That's a strong answer for this context."
+          }
+        },
+        "cliente-loja": {
+          "quality": "top",
+          "text": {
+            "pt": "Quando você parcela em 3x sem juros, você paga o mesmo preço da vista. Se for 3x COM juros de 5% ao mês, um produto de R$100 vira R$115,76 no final. Vale a pena se você não tem o valor à vista agora, mas custa mais.",
+            "en": "When you split in 3x with no interest, you pay the cash price. With 5%/month interest, R$100 becomes R$115.76."
+          },
+          "critique": {
+            "pt": "Ela falou a língua de quem tá numa loja. Isso é resposta forte pra esse contexto.",
+            "en": "It spoke the language of someone in a store. Strong answer for this context."
+          }
+        },
+        "prova-escola": {
+          "quality": "top",
+          "text": {
+            "pt": "Juros simples: J = C × i × t (capital × taxa × tempo). Ex: R$200 a 2% ao mês por 3 meses = R$12 de juros. Juros compostos rendem sobre os juros anteriores, por isso crescem mais rápido.",
+            "en": "Simple interest: J = C × i × t. Ex: R$200 at 2%/month for 3 months = R$12. Compound interest grows on prior interest."
+          },
+          "critique": {
+            "pt": "Ela deu a fórmula que cai na prova. Isso é resposta forte pra esse contexto.",
+            "en": "It gave the formula that shows up on a test. Strong answer for this context."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "slotFilled": {
+                "slot": "persona",
+                "minChars": 3
+              }
+            },
+            "use": "irmao-pequeno"
+          }
+        ],
+        "fallback": "sem-persona"
+      }
+    },
+    "steps": [
+      {
+        "id": "escolher-persona",
+        "prompt": {
+          "pt": "Agora escolhe quem tá perguntando e manda de novo.",
+          "en": "Now pick who's asking and send again."
+        },
+        "hint": {
+          "pt": "Cada pessoa precisa de uma explicação diferente.",
+          "en": "Each person needs a different explanation."
+        },
+        "mode": "compose",
+        "expose": {
+          "slots": [
+            "persona"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "escolher-persona"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "A pergunta era a MESMA. Quem pergunta mudou tudo.",
+        "en": "Same question. Who asks changed everything."
+      }
+    },
+    "slots": [
+      {
+        "id": "persona",
+        "kind": "text",
+        "label": {
+          "pt": "Quem tá perguntando?",
+          "en": "Who's asking?"
+        },
+        "placeholder": {
+          "pt": "ex.: meu irmão pequeno",
+          "en": "e.g. my little brother"
+        },
+        "required": true
+      }
+    ]
+  },
+  "CHAT_PICK_CONTEXT_SPEC": {
+    "id": "c1",
+    "openness": "fixed",
+    "title": {
+      "pt": "O pedido vago",
+      "en": "The vague ask"
+    },
+    "initialState": {
+      "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "pt": "Oi! Manda um pedido pra eu responder.",
+            "en": "Hi! Send me a request."
+          }
+        }
+      ],
+      "basePrompt": {
+        "pt": "me ajuda",
+        "en": "help me"
+      },
+      "cannedResults": {
+        "vago": {
+          "quality": "ruim",
+          "text": {
+            "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder.",
+            "en": "Help with what? I need to know what you want help with."
+          },
+          "critique": {
+            "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca.",
+            "en": "It bounced a question back instead of helping. That's a weak answer."
+          }
+        },
+        "especifico": {
+          "quality": "top",
+          "text": {
+            "pt": "Boa! Pra uma redação de escola sobre meio ambiente, começa com uma pergunta que faça o leitor pensar: 'E se amanhã acabasse a água?'. Depois traz um dado real, uma história curta e fecha com o que dá pra fazer no bairro. Quer que eu escreva um parágrafo de exemplo?",
+            "en": "Nice! For a school essay on the environment, start with a question that makes the reader think: 'What if the water ran out tomorrow?'. Then bring a real fact, a short story, and close with what can be done in your neighborhood."
+          },
+          "critique": {
+            "pt": "Ela te deu um caminho pronto pro teu pedido. Isso é resposta forte.",
+            "en": "It handed you a ready path for your ask. That's a strong answer."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [
+          {
+            "when": {
+              "choseOption": {
+                "id": "add-especifico"
+              }
+            },
+            "use": "especifico"
+          }
+        ],
+        "fallback": "vago"
+      }
+    },
+    "choices": [
+      {
+        "id": "add-especifico",
+        "label": {
+          "pt": "pra uma redação de escola sobre meio ambiente",
+          "en": "for a school essay about the environment"
+        },
+        "appends": {
+          "pt": "É pra uma redação de escola sobre meio ambiente.",
+          "en": "It's for a school essay about the environment."
+        }
+      },
+      {
+        "id": "add-oi",
+        "label": {
+          "pt": "oi, tudo bem?",
+          "en": "hi, how are you?"
+        },
+        "appends": {
+          "pt": "Oi, tudo bem?",
+          "en": "Hi, how are you?"
+        }
+      },
+      {
+        "id": "add-agora",
+        "label": {
+          "pt": "me ajuda agora",
+          "en": "help me now"
+        },
+        "appends": {
+          "pt": "Preciso agora.",
+          "en": "I need it now."
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "montar-especifico",
+        "prompt": {
+          "pt": "Agora escolhe UMA coisa pra adicionar no pedido e manda de novo.",
+          "en": "Now pick ONE thing to add and send again."
+        },
+        "hint": {
+          "pt": "Só uma delas ajuda de verdade. Qual?",
+          "en": "Only one actually helps. Which?"
+        },
+        "mode": "compose",
+        "expose": {
+          "choices": [
+            "add-especifico",
+            "add-oi",
+            "add-agora"
+          ]
+        },
+        "unlock": {
+          "ranPrompt": {
+            "withContext": true
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "montar-especifico"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "pt": "Uma palavra a mais mudou a resposta inteira. Isso é contexto.",
+        "en": "One extra word changed the whole answer. That's context."
+      }
+    }
+  },
+  "CHAT_RATE_REPLY_SPEC": {
+    "id": "c1-avaliar",
+    "openness": "fixed",
+    "title": {
+      "pt": "O pedido vago — avalie a resposta",
+      "en": "The vague ask — rate the reply"
+    },
+    "steps": [
+      {
+        "id": "avaliar-resposta",
+        "mode": "evaluate",
+        "prompt": {
+          "pt": "Esta é a resposta da IA ao pedido acima. Ela ficou boa ou ruim?",
+          "en": "This is the AI's reply to the request above. Is it good or bad?"
+        },
+        "hint": {
+          "pt": "Pense: a resposta serve para o caso real de quem pediu?",
+          "en": "Think: does the reply fit the real case of the person who asked?"
+        },
+        "unlock": {
+          "evaluated": {
+            "correct": true
+          }
+        }
+      }
+    ],
+    "success": {
+      "stepCompleted": {
+        "id": "avaliar-resposta"
+      }
+    },
+    "reveal": {
+      "recap": {
+        "en": "It bounced a question back instead of helping. That's a weak answer.",
+        "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca."
+      }
+    },
+    "initialState": {
+      "systemPrompt": "Você é um assistente que responde exatamente o que foi pedido, sem inventar contexto.",
+      "seedMessages": [
+        {
+          "role": "assistant",
+          "text": {
+            "en": "Hi! Send me a request.",
+            "pt": "Oi! Manda um pedido pra eu responder."
+          }
+        },
+        {
+          "role": "user",
+          "text": {
+            "en": "help me",
+            "pt": "me ajuda"
+          }
+        },
+        {
+          "role": "assistant",
+          "text": {
+            "en": "Help with what? I need to know what you want help with.",
+            "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder."
+          }
+        }
+      ],
+      "basePrompt": {
+        "en": "help me",
+        "pt": "me ajuda"
+      },
+      "cannedResults": {
+        "vago": {
+          "text": {
+            "en": "Help with what? I need to know what you want help with.",
+            "pt": "Te ajudar com o quê? Preciso saber sobre o quê você quer ajuda pra poder responder."
+          },
+          "quality": "ruim",
+          "critique": {
+            "en": "It bounced a question back instead of helping. That's a weak answer.",
+            "pt": "Ela te devolveu uma pergunta em vez de ajudar. Isso é resposta fraca."
+          }
+        }
+      },
+      "resultResolver": {
+        "kind": "match-first",
+        "rules": [],
+        "fallback": "vago"
+      }
+    }
+  }
+}

@@ -19,6 +19,19 @@ import { terminalSuccessMarks } from '../../internal/terminalSuccessMarks.js';
 export type CommandSource = 'typed' | 'option' | 'tokens';
 
 /**
+ * The input a one-behaviour terminal KIND pins (plan
+ * `20260924-activity-type-one-behavior-rule`, T11). `terminal_pick_command`
+ * pins `options` + `command`, `terminal_build_command` pins `options` +
+ * `token`, `terminal_type_command` pins `freeText`. The kind decides; the spec
+ * cannot switch it per step. Absent for the transition kind `terminal_sandbox`,
+ * which keeps reading `inputMode` and `optionGranularity` off the spec.
+ */
+export interface TerminalPinnedInput {
+  inputMode: 'freeText' | 'options';
+  granularity?: 'command' | 'token';
+}
+
+/**
  * Owns the terminal's local `TerminalModel` and derives everything the view
  * needs. Deliberately the same shape as `useSandboxScenario`: all the judging
  * belongs to `@iterahq/activity-spec/runtime`, and this hook only wires the
@@ -38,6 +51,7 @@ export function useTerminalSandbox(
   reveal: boolean,
   isDone: boolean,
   recorder: ActivityActionRecorder<ScenarioAction>,
+  pinned?: TerminalPinnedInput,
 ) {
   const [model, setModel] = useState<TerminalModel>(() => initialTerminalModel(scenario));
   /** The line being TYPED. Only the free-text surface uses it. */
@@ -70,12 +84,12 @@ export function useTerminalSandbox(
     [currentStep],
   );
 
-  const inputMode = scenario.inputMode ?? 'freeText';
+  const inputMode = pinned?.inputMode ?? scenario.inputMode ?? 'freeText';
   const expose = currentStep?.expose;
   // A step that offers whole commands sends on tap; a step that offers tokens
   // makes the learner assemble the line and press Run. Authorable PER STEP, so
   // one scenario can ramp from recognition to production (question tsq2 → C).
-  const granularity = expose?.optionGranularity ?? 'command';
+  const granularity = pinned?.granularity ?? expose?.optionGranularity ?? 'command';
   const optionCommands = useMemo(() => expose?.commands ?? [], [expose]);
   const optionTokens = useMemo(() => expose?.tokens ?? [], [expose]);
 

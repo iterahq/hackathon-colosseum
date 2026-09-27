@@ -19,7 +19,15 @@
 import type { ActivityKind } from '@/types/content';
 import scenarios from '@/test/fixtures/sandbox-scenarios.json';
 import terminalScenarios from '@/test/fixtures/terminal-scenarios.json';
+import oneBehaviourChat from '@/test/fixtures/one-behaviour-chat-scenarios.json';
 import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_IMAGE_A, SAMPLE_IMAGE_B, SAMPLE_IMAGE_C, SAMPLE_VIDEO } from './activityFixtures';
+import {
+  DOCUMENT_AI_JUDGE_RUBRIC,
+  DOCUMENT_AI_JUDGE_SPEC,
+  TERMINAL_BUILD_COMMAND_SPEC,
+  TERMINAL_PICK_COMMAND_SPEC,
+} from './behaviourFixtures';
+import { BYOC_BUILD_CONTEXT_SPEC, BYOC_JUDGE_EACH_SPEC, BYOC_PICK_BEST_SPEC } from './byocFixtures';
 
 /** As funções pedagógicas — a camada de agrupamento da sidebar do Storybook. */
 export type ActivityFunction =
@@ -633,6 +641,100 @@ export const QUESTION_MULTI_SPEC = {
 };
 
 /* ------------------------------------------------------------------ *
+ * 8 · Os kinds de UM COMPORTAMENTO (plano
+ * `20260924-activity-type-one-behavior-rule`, T9–T14).
+ *
+ * Um kind = um comportamento: o KIND diz o que o aluno faz com as mãos, qual
+ * juiz decide e que evento conclui. Os specs abaixo são os MESMOS contratos
+ * dos kinds antigos, estreitados ao único comportamento do kind novo — é o que
+ * torna o remap só-de-kind possível (o spec da row não muda).
+ * ------------------------------------------------------------------ */
+
+/** Os `checks` que o `CODE_STARTER` satisfaz — o juiz do `code_editor_checks`. */
+export const CODE_EDITOR_CHECKS = [
+  { id: 'titulo', label: 'A tela tem um título', selector: 'h1', assert: { type: 'exists' } },
+  {
+    id: 'botao',
+    label: 'Existe um botão de curtir',
+    selector: 'button',
+    assert: { type: 'text', contains: 'Gostei' },
+  },
+];
+
+/** `code_editor_checks` — editor aberto; os checks de DOM corrigem o preview. */
+export const CODE_EDITOR_CHECKS_SPEC = { ...CODE_SPEC, checks: CODE_EDITOR_CHECKS };
+/** `code_editor_ungraded` — editor aberto, sem juiz: o aluno marca "Concluir". */
+export const CODE_EDITOR_UNGRADED_SPEC = CODE_SPEC;
+/** `code_fill_bank` — toda lacuna é um chip do banco. */
+export const CODE_FILL_BANK_SPEC = CODE_OPTIONS_SPEC;
+/** `code_fill_select` — toda lacuna é um dropdown. */
+export const CODE_FILL_SELECT_SPEC = CODE_DROPDOWN_SPEC;
+/** `code_fill_type` — toda lacuna é digitada. */
+export const CODE_FILL_TYPE_SPEC = CODE_TEXT_SPEC;
+
+const chat = oneBehaviourChat as Record<string, Record<string, unknown>>;
+/**
+ * Os cinco specs de chat — só-compose (ou só-avaliação, no `chat_rate_reply`),
+ * porque o ADR-3 proíbe misturar compose e evaluate numa activity. Os quatro de
+ * compose são o c1/c2 de `sandbox-scenarios.json` sem o passo de avaliação; o
+ * `chat_rate_reply` é a metade de avaliação preparada no activity-spec #57
+ * (`chat-rate-reply-prepared.json`, c1-avaliar).
+ */
+export const CHAT_COMPOSE_SPEC = chat.CHAT_COMPOSE_SPEC;
+export const CHAT_FILL_SELECT_SPEC = chat.CHAT_FILL_SELECT_SPEC;
+export const CHAT_FILL_TYPE_SPEC = chat.CHAT_FILL_TYPE_SPEC;
+export const CHAT_PICK_CONTEXT_SPEC = chat.CHAT_PICK_CONTEXT_SPEC;
+export const CHAT_RATE_REPLY_SPEC = chat.CHAT_RATE_REPLY_SPEC;
+
+/** `terminal_type_command` — o `t1` digitado (`inputMode: freeText`, sem paleta). */
+export const TERMINAL_TYPE_COMMAND_SPEC = TERMINAL_SANDBOX_SPEC;
+export { TERMINAL_BUILD_COMMAND_SPEC, TERMINAL_PICK_COMMAND_SPEC };
+
+/** `document_reflect` — o juiz é a contagem de palavras, escrita no spec. */
+export const DOCUMENT_REFLECT_SPEC = {
+  ...DOCUMENT_WRITING_SPEC,
+  evaluation: { mode: 'word-count', minWords: 30 },
+};
+export { DOCUMENT_AI_JUDGE_RUBRIC, DOCUMENT_AI_JUDGE_SPEC };
+/**
+ * `document_ai_judge` — a row de produção `eb426dc5` já com o idioma resolvido
+ * (o loader colapsa os bags `{ pt, en }` antes do renderer para todo kind que
+ * não é sandbox; `programs.service`).
+ */
+export const DOCUMENT_AI_JUDGE_KIND_SPEC = {
+  prompt: (DOCUMENT_AI_JUDGE_SPEC.prompt as { pt: string }).pt,
+  body: (DOCUMENT_AI_JUDGE_SPEC.body as { pt: string }).pt,
+};
+
+/** O `instruction` que as 7 rows BYOC de produção carregam ao lado de `byoc`. */
+const BYOC_INSTRUCTION = {
+  text: 'Conte do que você gosta. A atividade é montada em cima do que você escrever.',
+};
+export const BYOC_PICK_BEST_KIND_SPEC = { instruction: BYOC_INSTRUCTION, byoc: BYOC_PICK_BEST_SPEC };
+export const BYOC_JUDGE_EACH_KIND_SPEC = { instruction: BYOC_INSTRUCTION, byoc: BYOC_JUDGE_EACH_SPEC };
+export const BYOC_BUILD_CONTEXT_KIND_SPEC = {
+  instruction: BYOC_INSTRUCTION,
+  byoc: BYOC_BUILD_CONTEXT_SPEC,
+};
+
+/** `question_pick_one` — o `QUESTION_SPEC` sem `mode` e sem texto livre. */
+export const QUESTION_PICK_ONE_SPEC = (() => {
+  const { mode: _mode, free_text: _freeText, ...rest } = QUESTION_SPEC;
+  return rest;
+})();
+/** `question_pick_many` — o `QUESTION_MULTI_SPEC` sem `mode` e sem `allow_other`. */
+export const QUESTION_PICK_MANY_SPEC = (() => {
+  const { mode: _mode, allow_other: _allowOther, ...rest } = QUESTION_MULTI_SPEC;
+  return rest;
+})();
+/** `question_write` — só o texto livre; o "Outro" antigo virou este kind. */
+export const QUESTION_WRITE_SPEC = {
+  title: 'O que falta no adaptador do plans-app?',
+  description: 'Escreva com as suas palavras. Não há resposta certa.',
+  free_text: { label: 'Sua resposta', placeholder: 'O que você mudaria primeiro?' },
+};
+
+/* ------------------------------------------------------------------ *
  * O registro — uma entrada por CONTRATO.
  * ------------------------------------------------------------------ */
 
@@ -829,6 +931,184 @@ export const ACTIVITY_CONTRACTS = {
     spec: TERMINAL_SANDBOX_SPEC,
     validated: true,
     note: '{ initialState.engine, steps[], success } — terminal-idade é o KIND, então NÃO leva `sandboxKind`.',
+  },
+  /* ── 8 · Um comportamento por kind (plano 20260924-activity-type-one-behavior-rule) ── */
+  code_editor_checks: {
+    kind: 'code_editor_checks',
+    fn: '5 · Produção',
+    label: 'Code · editor com checks',
+    spec: CODE_EDITOR_CHECKS_SPEC,
+    validated: true,
+    note: '{ prompt, starter, language, checks[≥1] } — sem `blanks`: digitar no editor, os checks de DOM corrigem.',
+  },
+  code_editor_ungraded: {
+    kind: 'code_editor_ungraded',
+    fn: '5 · Produção',
+    label: 'Code · editor sem correção',
+    spec: CODE_EDITOR_UNGRADED_SPEC,
+    validated: true,
+    note: '{ prompt, starter, language } — sem `checks` e sem `blanks`: o aluno clica "Concluir".',
+  },
+  code_fill_bank: {
+    kind: 'code_fill_bank',
+    fn: '5 · Produção',
+    label: 'Code · lacunas por chip',
+    spec: CODE_FILL_BANK_SPEC,
+    validated: true,
+    note: 'template travado + `word_bank`; TODA lacuna é `kind: "bank"`.',
+  },
+  code_fill_select: {
+    kind: 'code_fill_select',
+    fn: '5 · Produção',
+    label: 'Code · lacunas por dropdown',
+    spec: CODE_FILL_SELECT_SPEC,
+    validated: true,
+    note: 'template travado; TODA lacuna é `kind: "select"` com as próprias `options`.',
+  },
+  code_fill_type: {
+    kind: 'code_fill_type',
+    fn: '5 · Produção',
+    label: 'Code · lacunas digitadas',
+    spec: CODE_FILL_TYPE_SPEC,
+    validated: true,
+    note: 'template travado; TODA lacuna é `kind: "text"`, corrigida pelo `answer`.',
+  },
+  chat_compose: {
+    kind: 'chat_compose',
+    fn: '6 · Cenário com IA',
+    label: 'Chat · pedido livre',
+    spec: CHAT_COMPOSE_SPEC,
+    validated: true,
+    note: 'sem `slots`, sem `choices`, todo passo `compose`: o aluno insere o pedido e envia.',
+  },
+  chat_fill_select: {
+    kind: 'chat_fill_select',
+    fn: '6 · Cenário com IA',
+    label: 'Chat · lacunas por lista',
+    spec: CHAT_FILL_SELECT_SPEC,
+    validated: true,
+    note: '`slots[]` todos `select`; todo passo `compose`.',
+  },
+  chat_fill_type: {
+    kind: 'chat_fill_type',
+    fn: '6 · Cenário com IA',
+    label: 'Chat · lacunas digitadas',
+    spec: CHAT_FILL_TYPE_SPEC,
+    validated: true,
+    note: '`slots[]` todos `text`; todo passo `compose`.',
+  },
+  chat_pick_context: {
+    kind: 'chat_pick_context',
+    fn: '6 · Cenário com IA',
+    label: 'Chat · chip de contexto',
+    spec: CHAT_PICK_CONTEXT_SPEC,
+    validated: true,
+    note: '`choices[]`; todo passo `compose` expõe só `choices`.',
+  },
+  chat_rate_reply: {
+    kind: 'chat_rate_reply',
+    fn: '6 · Cenário com IA',
+    label: 'Chat · avaliar a resposta',
+    spec: CHAT_RATE_REPLY_SPEC,
+    validated: true,
+    note: 'todo passo `evaluate`, sem compose: a resposta reserva do autor já abre na tela (T25) e o aluno avalia.',
+  },
+  terminal_type_command: {
+    kind: 'terminal_type_command',
+    fn: '6 · Cenário com IA',
+    label: 'Terminal · digitar o comando',
+    spec: TERMINAL_TYPE_COMMAND_SPEC,
+    validated: true,
+    note: '`inputMode` ausente ou `freeText`; nenhum passo expõe paleta.',
+  },
+  terminal_pick_command: {
+    kind: 'terminal_pick_command',
+    fn: '6 · Cenário com IA',
+    label: 'Terminal · escolher o comando',
+    spec: TERMINAL_PICK_COMMAND_SPEC,
+    validated: true,
+    note: 'paleta de comandos INTEIROS em todo passo; um toque roda.',
+  },
+  terminal_build_command: {
+    kind: 'terminal_build_command',
+    fn: '6 · Cenário com IA',
+    label: 'Terminal · montar o comando',
+    spec: TERMINAL_BUILD_COMMAND_SPEC,
+    validated: true,
+    note: 'paleta de TOKENS em todo passo; o aluno monta a linha e roda.',
+  },
+  document_read: {
+    kind: 'document_read',
+    fn: '1 · Exposição',
+    label: 'Document · leitura',
+    spec: DOCUMENT_READING_SPEC,
+    validated: true,
+    note: '{ prompt?, title?, body? } sem `evaluation`: ler e seguir.',
+  },
+  document_reflect: {
+    kind: 'document_reflect',
+    fn: '5 · Produção',
+    label: 'Document · reflexão',
+    spec: DOCUMENT_REFLECT_SPEC,
+    validated: true,
+    note: '`evaluation: { mode: "word-count", minWords }` (ou `rubric.min_words` na transição): o mínimo trava o envio.',
+  },
+  document_ai_judge: {
+    kind: 'document_ai_judge',
+    fn: '5 · Produção',
+    label: 'Document · IA avalia',
+    spec: DOCUMENT_AI_JUDGE_KIND_SPEC,
+    rubric: DOCUMENT_AI_JUDGE_RUBRIC,
+    validated: true,
+    note: 'o juiz é a IA. Sem a porta `api.judge` o kind mostra "indisponível" — nunca vira reflexão.',
+  },
+  byoc_pick_best: {
+    kind: 'byoc_pick_best',
+    fn: '6 · Cenário com IA',
+    label: 'BYOC · escolher a melhor',
+    spec: BYOC_PICK_BEST_KIND_SPEC,
+    validated: true,
+    note: '{ instruction, byoc } com `harness.interaction: "pick_best"` e nenhuma outra.',
+  },
+  byoc_judge_each: {
+    kind: 'byoc_judge_each',
+    fn: '6 · Cenário com IA',
+    label: 'BYOC · julgar cada uma',
+    spec: BYOC_JUDGE_EACH_KIND_SPEC,
+    validated: true,
+    note: '{ instruction, byoc } com `harness.interaction: "judge_each"` e nenhuma outra.',
+  },
+  byoc_build_context: {
+    kind: 'byoc_build_context',
+    fn: '6 · Cenário com IA',
+    label: 'BYOC · montar o contexto',
+    spec: BYOC_BUILD_CONTEXT_KIND_SPEC,
+    validated: true,
+    note: '{ instruction, byoc } com `harness.interaction: "build_context"` e nenhuma outra.',
+  },
+  question_pick_one: {
+    kind: 'question_pick_one',
+    fn: '7 · Consulta',
+    label: 'Question · uma opção',
+    spec: QUESTION_PICK_ONE_SPEC,
+    validated: true,
+    note: 'sem `mode`, sem `allow_other`, sem `free_text`: escolher UMA opção, e só isso.',
+  },
+  question_pick_many: {
+    kind: 'question_pick_many',
+    fn: '7 · Consulta',
+    label: 'Question · várias opções',
+    spec: QUESTION_PICK_MANY_SPEC,
+    validated: true,
+    note: 'sem `mode`, sem `allow_other`, sem `free_text`: marcar quantas quiser, e só isso.',
+  },
+  question_write: {
+    kind: 'question_write',
+    fn: '7 · Consulta',
+    label: 'Question · resposta escrita',
+    spec: QUESTION_WRITE_SPEC,
+    validated: true,
+    note: 'sem `options`: o texto livre é a resposta inteira.',
   },
 } as const satisfies Record<string, ContractFixture>;
 

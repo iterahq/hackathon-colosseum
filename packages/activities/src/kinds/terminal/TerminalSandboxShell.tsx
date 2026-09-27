@@ -67,11 +67,22 @@ export function TerminalSandboxShell({
   activity,
   onComplete,
   variant,
+  granularity,
+  pinned = false,
   reveal = false,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   variant: TerminalVariant;
+  /**
+   * Set ONLY by a one-behaviour kind (`terminal_pick_command` → `command`,
+   * `terminal_build_command` → `token`). With it, the kind pins the input and
+   * the spec's `inputMode` / per-step `optionGranularity` cannot switch it.
+   * `terminal_type_command` pins through `pinned` with no granularity.
+   */
+  granularity?: 'command' | 'token';
+  /** Pin `variant` as the input mode (the one-behaviour kinds). */
+  pinned?: boolean;
   /** Reveal the settled state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
 }) {
@@ -79,7 +90,14 @@ export function TerminalSandboxShell({
   const scenario = activity.spec as unknown as TerminalScenario;
   const isDone = activity.status === 'done';
   const trace = useActivityActionRecorder<ScenarioAction>(activity.id);
-  const s = useTerminalSandbox(scenario, locale, reveal, isDone, trace);
+  const s = useTerminalSandbox(
+    scenario,
+    locale,
+    reveal,
+    isDone,
+    trace,
+    pinned || granularity ? { inputMode: variant, granularity } : undefined,
+  );
 
   const showControls = !s.done;
 

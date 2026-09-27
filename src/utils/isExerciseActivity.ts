@@ -22,6 +22,15 @@ export function isExerciseActivity(activity: Activity | null | undefined): boole
   if (!activity) return false;
   if (isByocActivity(activity)) return true;
   if (activity.kind === 'document') return isWrittenDocument(activity);
+  // The document kinds SAY it (plan `20260924-activity-type-one-behavior-rule`,
+  // T12): reflect is writing, read is reading — no rubric probe.
+  if (activity.kind === 'document_reflect') return true;
+  if (activity.kind === 'document_read') return false;
+  // `document_ai_judge` is writing only where a judge exists. Without the
+  // itera-api the KIND does not change behaviour — it shows its explicit
+  // "unavailable" card — but the SHELL must still offer "Continuar", or the
+  // learner is trapped on a screen that cannot complete.
+  if (activity.kind === 'document_ai_judge') return iteraApiConfigured();
   return isAnswerableLiveKind(activity.kind);
 }
 

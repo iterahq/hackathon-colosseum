@@ -199,6 +199,69 @@ export async function rateSandbox(canvasElement: Canvas, quality: 'top' | 'ruim'
   await userEvent.click(within(canvasElement).getByTestId(`sandbox-rate-${quality}`));
 }
 
+/* ── 6b · Os kinds de chat de UM comportamento (T10) ───────────────────────── */
+
+/**
+ * `chat_fill_select`: toca a opção de uma lacuna pelo RÓTULO que o aluno lê.
+ * `chat_fill_type`: digita na lacuna, achada pelo placeholder autorado.
+ */
+export async function fillSandboxSlot(
+  canvasElement: Canvas,
+  slot: { option: string } | { placeholder: string; text: string },
+) {
+  const canvas = within(canvasElement);
+  if ('option' in slot) {
+    await userEvent.click(byLabel(canvas.getAllByRole('button'), slot.option, 'sandbox (opção da lacuna)'));
+    return;
+  }
+  const input = canvas.getByPlaceholderText(slot.placeholder);
+  await userEvent.click(input);
+  await userEvent.paste(slot.text);
+}
+
+/**
+ * Envia num kind SÓ-COMPOSE e espera o assentamento. Não existe passo de
+ * avaliação nesses kinds (ADR-3), então não há painel a esperar — o que
+ * aparece é o recap (`sandbox-reveal`).
+ */
+export async function sendSandboxAndSettle(canvasElement: Canvas) {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByTestId('sandbox-send'));
+  await canvas.findByTestId('sandbox-reveal', undefined, { timeout: 8000 });
+}
+
+/**
+ * `chat_rate_reply`: a resposta reserva do autor já está na tela (a execução
+ * semeada, T25). Espera o typewriter terminar e o painel de avaliação montar,
+ * e avalia.
+ */
+export async function rateSeededReply(canvasElement: Canvas, quality: 'top' | 'ruim') {
+  const canvas = within(canvasElement);
+  await canvas.findByTestId('sandbox-eval', undefined, { timeout: 8000 });
+  await userEvent.click(canvas.getByTestId(`sandbox-rate-${quality}`));
+}
+
+/* ── 6c · Os kinds de terminal de UM comportamento (T11) ───────────────────── */
+
+/** `terminal_pick_command`: um toque num comando INTEIRO roda a linha. */
+export async function tapTerminalCommand(canvasElement: Canvas, command: string) {
+  const buttons = within(canvasElement).getAllByTestId('terminal-option-command');
+  const target = buttons.find((b) => b.getAttribute('data-option') === command);
+  if (!target) throw new Error(`terminal: a paleta não tem o comando "${command}"`);
+  await userEvent.click(target);
+}
+
+/** `terminal_build_command`: sobe os tokens na ordem e roda a linha montada. */
+export async function buildTerminalLine(canvasElement: Canvas, tokens: string[]) {
+  for (const token of tokens) {
+    const chips = within(canvasElement).getAllByTestId('terminal-option-token');
+    const target = chips.find((c) => c.getAttribute('data-option') === token);
+    if (!target) throw new Error(`terminal: a bandeja não tem o token "${token}"`);
+    await userEvent.click(target);
+  }
+  await userEvent.click(within(canvasElement).getByTestId('terminal-run'));
+}
+
 /* ── Transversal ──────────────────────────────────────────────────────────── */
 
 /** Clica o "Enviar" de um kind graduado (`<testId>-submit`). */

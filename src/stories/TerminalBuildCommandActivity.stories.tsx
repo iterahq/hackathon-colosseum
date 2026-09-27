@@ -1,74 +1,62 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { makeActivity } from './activityFixtures';
-import { TERMINAL_BUILD_COMMAND_SPEC } from './behaviourFixtures';
+import { TERMINAL_BUILD_COMMAND_SPEC, TERMINAL_PICK_COMMAND_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import { buildTerminalLine } from './interactions';
 
 /**
- * BEHAVIOUR `terminal_build_command` — assemble ONE command from loose tokens,
- * then run it.
+ * KIND `terminal_build_command` — plan `20260924-activity-type-one-behavior-rule` (one activity
+ * type = one behaviour). Assemble the command from TOKENS and run it. Fixture: production row `22646523`. The kind pins the token tray: a step with no `optionGranularity` still shows tokens.
  *
- * Today it is `terminal_sandbox` with `inputMode: "options"` and every step
- * `expose.optionGranularity: "token"` (2 activities + 1 def in production).
- * Plan `20260924-activity-type-one-behavior-rule` (v3, ADR-1) makes it its own
- * kind. Fixture: production row `22646523` (see `behaviourFixtures.ts`).
- *
- * Unlike `terminal_pick_command`, a tap does NOT run: the tokens build a line
- * in the prompt bar, and the learner runs it. So this behaviour HAS a
- * "answered, not sent" state.
+ * The stories here are STATES of this one behaviour, nothing else. The matrix
+ * row lives in `src/test/activityMatrixCoverage.test.ts`.
  */
-const meta: Meta<typeof TerminalSandboxActivity> = {
-  title: 'Organisms/Activities/8 · Sandbox de terminal/Montar comando',
+const meta: Meta<typeof ActivityRenderer> = {
+  title: 'Activities/Terminal/terminal_build_command',
   id: 'activities-terminal-build-command',
-  component: TerminalSandboxActivity,
+  component: ActivityRenderer,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
   args: { onComplete: fn() },
 };
 export default meta;
-type Story = StoryObj<typeof TerminalSandboxActivity>;
+type Story = StoryObj<typeof ActivityRenderer>;
 
-async function tapTokens(canvasElement: HTMLElement, tokens: string[]) {
-  for (const token of tokens) {
-    const chips = within(canvasElement).getAllByTestId('terminal-option-token');
-    const target = chips.find((c) => c.getAttribute('data-option') === token);
-    if (!target) throw new Error(`tray has no token "${token}"`);
-    await userEvent.click(target);
-  }
-}
+const activity = (spec: Record<string, unknown> = SPEC, status?: 'done') =>
+  makeActivity('terminal_build_command', spec, status);
 
-async function runLine(canvasElement: HTMLElement) {
-  await userEvent.click(within(canvasElement).getByTestId('terminal-run'));
-}
+const SPEC = TERMINAL_BUILD_COMMAND_SPEC;
 
-/** The token tray is up; the prompt bar is empty. */
+/** A.enabled + C.blank — the token tray is up; the prompt bar is empty. */
 export const Default: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getAllByTestId('terminal-option-token')).toHaveLength(5);
+    await expect(within(canvasElement).getAllByTestId('terminal-option-token')).toHaveLength(5);
   },
 };
 
-/** C.answered — the line `git add notas.md` is built and NOT run yet. */
+/** C.answered — `git add notas.md` assembled in the prompt, NOT run. */
 export const LinhaMontada: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ args, canvasElement }) => {
-    await tapTokens(canvasElement, ['git', 'add', 'notas.md']);
-    const canvas = within(canvasElement);
-    await expect(canvas.getAllByTestId('terminal-option-token')).toHaveLength(2);
-    await expect(canvas.queryByTestId('sandbox-reveal')).not.toBeInTheDocument();
+    for (const token of ['git', 'add', 'notas.md']) {
+      const chip = within(canvasElement)
+        .getAllByTestId('terminal-option-token')
+        .find((c) => c.getAttribute('data-option') === token);
+      if (!chip) throw new Error(`tray has no token "${token}"`);
+      await userEvent.click(chip);
+    }
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
 
-/** C.submitted + D.correct — build `git add notas.md` and run it: the step unlocks. */
+/** C.submitted + D.correct — build `git add notas.md` and run it: a pass. */
 export const LinhaCerta: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ args, canvasElement }) => {
-    await tapTokens(canvasElement, ['git', 'add', 'notas.md']);
-    await runLine(canvasElement);
+    await buildTerminalLine(canvasElement, ['git', 'add', 'notas.md']);
     await within(canvasElement).findByTestId('sandbox-reveal');
     await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
   },
@@ -76,10 +64,9 @@ export const LinhaCerta: Story = {
 
 /** D.incorrect — build `git add .` and run it: both files go in, the step stays locked. */
 export const LinhaErrada: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ args, canvasElement }) => {
-    await tapTokens(canvasElement, ['git', 'add', '.']);
-    await runLine(canvasElement);
+    await buildTerminalLine(canvasElement, ['git', 'add', '.']);
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/adicionado ao stage: rascunho.md/)).toBeInTheDocument();
     await expect(canvas.queryByTestId('sandbox-reveal')).not.toBeInTheDocument();
@@ -88,11 +75,15 @@ export const LinhaErrada: Story = {
 };
 
 /** B.done — concluded in an earlier session. */
-export const Concluida: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC, 'done') },
-};
+export const Concluida: Story = { args: { activity: activity(SPEC, 'done') } };
 
 /** E.reveal — live reveal: recap + master line, nothing ran. */
-export const RevealedInLive: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC), reveal: true },
+export const RevealedInLive: Story = { args: { activity: activity(), reveal: true } };
+
+/** F.spec_invalido — Whole-command steps belong to `terminal_pick_command`. The kind shows the card; it never draws another behaviour. */
+export const EspecInvalida: Story = {
+  args: { activity: activity(TERMINAL_PICK_COMMAND_SPEC) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('terminal-build-command-invalid')).toBeInTheDocument();
+  },
 };

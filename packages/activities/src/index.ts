@@ -73,6 +73,49 @@ export { MultiChoiceActivity } from './kinds/MultiChoiceActivity.js';
 export { MatchActivity } from './kinds/MatchActivity.js';
 export { OrderActivity } from './kinds/OrderActivity.js';
 
+/* ─────── the ONE-BEHAVIOUR kinds (plan 20260924-activity-type-one-behavior-rule) ─────── */
+// One activity type = one behaviour. Each kind below is ONE behaviour of an old
+// kind (`chat_sandbox`, `terminal_sandbox`, `document`, `question`) on the same
+// shared components. The five `code_*` kinds are on the `/code` entrypoint.
+
+export {
+  ONE_BEHAVIOUR_KINDS,
+  ONE_BEHAVIOUR_PARENT,
+  isOneBehaviourKind,
+  kindInvalidTestId,
+  safeParseKindSpec,
+  specPackageKnowsKind,
+  transitionKindOf,
+} from './oneBehaviourKinds.js';
+export type {
+  KindSpecParse,
+  KnownActivityKind,
+  OneBehaviourKind,
+  TransitionParentKind,
+} from './oneBehaviourKinds.js';
+export {
+  ChatComposeActivity,
+  ChatFillSelectActivity,
+  ChatFillTypeActivity,
+  ChatPickContextActivity,
+  ChatRateReplyActivity,
+} from './kinds/oneBehaviour/ChatKindActivities.js';
+export {
+  TerminalBuildCommandActivity,
+  TerminalPickCommandActivity,
+  TerminalTypeCommandActivity,
+} from './kinds/oneBehaviour/TerminalKindActivities.js';
+export {
+  DocumentAiJudgeActivity,
+  DocumentReadActivity,
+  DocumentReflectActivity,
+} from './kinds/oneBehaviour/DocumentKindActivities.js';
+export {
+  QuestionPickManyActivity,
+  QuestionPickOneActivity,
+  QuestionWriteActivity,
+} from './kinds/oneBehaviour/QuestionKindActivities.js';
+
 /* ───────── document · diagram · quiz — Fase D, the last three inline ─────── */
 // They had no file to move: they were functions inside the Player's dispatcher,
 // which is why Fase C stopped short of them. Together they are 48% of the

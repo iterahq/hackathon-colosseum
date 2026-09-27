@@ -49,7 +49,15 @@ export const WIDE_COLUMN_MAX_WIDTH = 'max-w-7xl';
  * Kept as a set (not a lone `=== 'code'`) so adding a future split-pane kind is
  * a one-line change that lands on all three surfaces at once.
  */
-export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['code']);
+export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
+  'code',
+  // Every one-behaviour code kind is the same split pane (plan T9).
+  'code_editor_checks',
+  'code_editor_ungraded',
+  'code_fill_bank',
+  'code_fill_select',
+  'code_fill_type',
+]);
 
 /**
  * Per-surface caps for kinds that are NOT in `WIDE_COLUMN_KINDS`.

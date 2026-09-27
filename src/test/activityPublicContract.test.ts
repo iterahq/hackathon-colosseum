@@ -256,6 +256,31 @@ const PUBLIC_RUNTIME_SURFACE = [
   'QuestionActivityBody',
   'resolveQuestionInputs',
   'QuizActivity',
+  // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
+  // T10–T12, T14): one component per kind, the kind list, and the validation
+  // seam that makes the switch to activity-spec ^1.4.0 a no-op
+  // (`safeParseKindSpec` asks the installed spec first).
+  'ONE_BEHAVIOUR_KINDS',
+  'ONE_BEHAVIOUR_PARENT',
+  'isOneBehaviourKind',
+  'kindInvalidTestId',
+  'safeParseKindSpec',
+  'specPackageKnowsKind',
+  'transitionKindOf',
+  'ChatComposeActivity',
+  'ChatFillSelectActivity',
+  'ChatFillTypeActivity',
+  'ChatPickContextActivity',
+  'ChatRateReplyActivity',
+  'TerminalTypeCommandActivity',
+  'TerminalPickCommandActivity',
+  'TerminalBuildCommandActivity',
+  'DocumentReadActivity',
+  'DocumentReflectActivity',
+  'DocumentAiJudgeActivity',
+  'QuestionPickOneActivity',
+  'QuestionPickManyActivity',
+  'QuestionWriteActivity',
   // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
   // dispatchers are public because the app switches on KIND; the five leaves are
   // public because the stories drive them directly.
@@ -342,6 +367,12 @@ const PUBLIC_RUNTIME_SURFACE = [
  */
 const CODE_ENTRYPOINT_SURFACE = [
   'CodeActivity',
+  // The five one-behaviour code kinds (plan T9) — behind `/code` like `code`.
+  'CodeEditorChecksActivity',
+  'CodeEditorUngradedActivity',
+  'CodeFillBankActivity',
+  'CodeFillSelectActivity',
+  'CodeFillTypeActivity',
   'CodeSnackPane',
   'CodeLivePreview',
   'CodeChecksFeedback',
@@ -432,6 +463,10 @@ describe('activities public contract', () => {
     // Fase C step 5 gives it its own entrypoint (ADR-5, Monaco is heavy), so
     // the BASE bundle must keep answering "no, ask the host" for it.
     expect(contract.isBuiltInActivityKind('code')).toBe(false);
+    // The five one-behaviour code kinds answer the same "ask the host" as `code`.
+    for (const kind of ['code_editor_checks', 'code_editor_ungraded', 'code_fill_bank', 'code_fill_select', 'code_fill_type']) {
+      expect(contract.isBuiltInActivityKind(kind)).toBe(false);
+    }
   });
 
   it('exposes the `code` kind through its own entrypoint, exactly', () => {

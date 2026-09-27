@@ -20,7 +20,7 @@
  *   </ActivityProvider>
  */
 import type { ComponentType, ReactNode } from 'react';
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { KnownActivityKind } from './oneBehaviourKinds.js';
 import type { ActivityEventHandler } from './events.js';
 import type { ActivityRecordedAction } from './internal/actionRecorder.js';
 import type {
@@ -55,7 +55,7 @@ export type PortableActivityStatus = 'todo' | 'in_progress' | 'done';
  */
 export interface PortableActivity {
   id: string;
-  kind: ActivityKind;
+  kind: KnownActivityKind;
   /** Validated against the kind's Zod schema by `@iterahq/activity-spec`. */
   spec: Record<string, unknown>;
   /** Authored grading configuration. `null` when the kind grades itself. */
@@ -277,7 +277,7 @@ export interface ActivityHostContext {
    * A registered renderer WINS over a built-in of the same kind, which is what
    * lets a host try a replacement without forking the package.
    */
-  renderers?: Partial<Record<ActivityKind, ComponentType<ActivityRendererProps>>>;
+  renderers?: Partial<Record<KnownActivityKind, ComponentType<ActivityRendererProps>>>;
 }
 
 /** Props of `<ActivityProvider>` — the host context plus children. */

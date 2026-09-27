@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { transitionKindOf } from '../oneBehaviourKinds.js';
 
 export { AnswerExplanation } from './AnswerExplanation.js';
 
@@ -32,6 +33,8 @@ export function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: stri
  * since `data-activity-kind` and the spacing were reading the same literal.
  */
 const COMPACT_KINDS = new Set(['chat_sandbox', 'terminal_sandbox']);
+// The one-behaviour chat and terminal kinds are the same windows (T10, T11).
+const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind));
 
 /** The rounded branded card shell every non-hero activity kind lives inside. */
 export function ActivityShell({
@@ -45,7 +48,7 @@ export function ActivityShell({
   label: string;
   children: React.ReactNode;
 }) {
-  const compact = COMPACT_KINDS.has(kind);
+  const compact = isCompactKind(kind);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}

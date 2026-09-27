@@ -135,7 +135,7 @@ export function AiJudgeDocumentActivity({
   }
 
   return (
-    <ActivityShell kind="document" icon={FileText} label={t('activity.document')}>
+    <ActivityShell kind={activity.kind} icon={FileText} label={t('activity.document')}>
       <RichText text={spec?.prompt ?? t('activity.document')} data-testid="document-prompt" />
       {spec?.body && (
         <RichText text={spec.body} muted className="mt-4" data-testid="document-body" />

@@ -47,7 +47,6 @@
  */
 import { useEffect, useMemo, useRef } from 'react';
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
-import type { ActivityKind } from '@iterahq/activity-spec';
 import { useActivityEmitter, useActivityHost } from './context.js';
 import { cn } from './internal/cn.js';
 import type { ActivityTheme } from './ports.js';
@@ -65,6 +64,29 @@ import { DocumentActivity } from './kinds/DocumentActivity.js';
 import { DiagramActivity } from './kinds/DiagramActivity.js';
 import { QuizActivity } from './kinds/QuizActivity.js';
 import { QuestionActivity } from './kinds/QuestionActivity.js';
+import {
+  ChatComposeActivity,
+  ChatFillSelectActivity,
+  ChatFillTypeActivity,
+  ChatPickContextActivity,
+  ChatRateReplyActivity,
+} from './kinds/oneBehaviour/ChatKindActivities.js';
+import {
+  TerminalBuildCommandActivity,
+  TerminalPickCommandActivity,
+  TerminalTypeCommandActivity,
+} from './kinds/oneBehaviour/TerminalKindActivities.js';
+import {
+  DocumentAiJudgeActivity,
+  DocumentReadActivity,
+  DocumentReflectActivity,
+} from './kinds/oneBehaviour/DocumentKindActivities.js';
+import {
+  QuestionPickManyActivity,
+  QuestionPickOneActivity,
+  QuestionWriteActivity,
+} from './kinds/oneBehaviour/QuestionKindActivities.js';
+import type { KnownActivityKind } from './oneBehaviourKinds.js';
 
 /**
  * The kinds this package renders on its own.
@@ -104,6 +126,29 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   // host but i18n, and it is also the first kind here with NO row in
   // `itera.activities`: the plans-app is what mounts it.
   'question',
+  // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
+  // T10–T12, T14). Each one is ONE behaviour of a kind above, on the SAME
+  // shared components; the kind picks the surface, the spec shape does not.
+  // Not here: the five `code_*` kinds (host-registered through the `/code`
+  // entrypoint, like `code`) and the three `byoc_*` kinds (the Player's own
+  // BYOC runtime, like the `spec.byoc` layer they replace).
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
+  'document_read',
+  'document_reflect',
+  // ⚠️ Without `api.judge` this kind renders an explicit "unavailable" card,
+  // NOT the reflection (the `document` fallback). It is built in because the
+  // package can render it; the missing port is a visible state, not a swap.
+  'document_ai_judge',
+  'question_pick_one',
+  'question_pick_many',
+  'question_write',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -122,6 +167,20 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   diagram: DiagramActivity as ComponentType<ActivityRendererProps>,
   quiz: QuizActivity as ComponentType<ActivityRendererProps>,
   question: QuestionActivity as ComponentType<ActivityRendererProps>,
+  chat_compose: ChatComposeActivity as ComponentType<ActivityRendererProps>,
+  chat_fill_select: ChatFillSelectActivity as ComponentType<ActivityRendererProps>,
+  chat_fill_type: ChatFillTypeActivity as ComponentType<ActivityRendererProps>,
+  chat_pick_context: ChatPickContextActivity as ComponentType<ActivityRendererProps>,
+  chat_rate_reply: ChatRateReplyActivity as ComponentType<ActivityRendererProps>,
+  terminal_type_command: TerminalTypeCommandActivity as ComponentType<ActivityRendererProps>,
+  terminal_pick_command: TerminalPickCommandActivity as ComponentType<ActivityRendererProps>,
+  terminal_build_command: TerminalBuildCommandActivity as ComponentType<ActivityRendererProps>,
+  document_read: DocumentReadActivity as ComponentType<ActivityRendererProps>,
+  document_reflect: DocumentReflectActivity as ComponentType<ActivityRendererProps>,
+  document_ai_judge: DocumentAiJudgeActivity as ComponentType<ActivityRendererProps>,
+  question_pick_one: QuestionPickOneActivity as ComponentType<ActivityRendererProps>,
+  question_pick_many: QuestionPickManyActivity as ComponentType<ActivityRendererProps>,
+  question_write: QuestionWriteActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */
@@ -146,7 +205,7 @@ export function ActivityRenderer(props: ActivityRendererProps) {
   }, [activity.id, activity.kind, emit]);
 
   const Kind =
-    renderers?.[activity.kind as ActivityKind] ??
+    renderers?.[activity.kind as KnownActivityKind] ??
     (isBuiltInActivityKind(activity.kind) ? BUILT_INS[activity.kind] : undefined);
 
   if (!Kind) {

@@ -641,8 +641,9 @@ Two more rules close the loopholes:
   presence of a field (`slots?.length`, `blanks?.length`). That is a hidden
   discriminator. Put the difference in the kind.
 - **No host-dependent behaviour.** A kind must not become a different behaviour
-  when a host port is absent (today: `document` with an AI-judge rubric becomes
-  a reflection when `api.judge` is absent). A missing port shows the kind's
+  when a host port is absent (the transition kind `document` with an AI-judge
+  rubric still becomes a reflection when `api.judge` is absent; the new kind
+  `document_ai_judge` does not). A missing port shows the kind's
   explicit "unavailable" state (ADR-3 above: degrade explicitly).
 
 **The one-line test:** *"If an author flips this field, does the learner do
@@ -684,6 +685,46 @@ behaviour.
 `CLAUDE.md`). During the transition, an old kind keeps its shape-sniffing branch
 in the renderer. No NEW branch of that type is allowed. The three `question_*`
 kinds get no database label: nothing stores `question`.
+
+### The renderers of the new kinds (1.4.0, plan T9–T14)
+
+Every new kind maps to the component that already rendered its behaviour, with
+the input PINNED by the kind. No new kind reads the spec to choose a screen.
+
+| Kind | Component (shared) | What the kind pins |
+| --- | --- | --- |
+| `code_editor_checks` · `code_editor_ungraded` | `CodeSnackPane` (`/code` entrypoint) | the open editor; `checks` required / refused |
+| `code_fill_bank` · `code_fill_select` · `code_fill_type` | `GuidedCodePane` (`/code` entrypoint) | every blank is `bank` / `select` / `text` |
+| `chat_compose` · `chat_fill_select` · `chat_fill_type` · `chat_pick_context` | `SandboxScenarioShell` | the compose panel (`ai` / `words` / `words` / `options`); every step `compose` |
+| `chat_rate_reply` | `SandboxScenarioShell` + ONE seeded run | every step `evaluate`; the author's fallback reply is on screen before any send (`seedFallbackRun`, activity-spec #57, T25) |
+| `terminal_type_command` · `terminal_pick_command` · `terminal_build_command` | `TerminalSandboxShell` | `freeText` / `options` + `command` / `options` + `token`, for EVERY step |
+| `document_read` · `document_reflect` · `document_ai_judge` | the read card / `ReflectionDocumentActivity` / `AiJudgeDocumentActivity` | the judge: none / word count (`evaluation.minWords`, else `rubric.min_words`) / the AI |
+| `question_pick_one` · `question_pick_many` · `question_write` | `QuestionView` (the body of `question`) | one pick / many picks / free text; no "Outro", no `callerOptions` |
+| `byoc_pick_best` · `byoc_judge_each` · `byoc_build_context` | the Player's BYOC runtime (not in this package) | ONE `harness.interaction` |
+
+**No host-dependent behaviour, enforced:** `document_ai_judge` without
+`api.judge` renders `document-ai-judge-unavailable` and emits
+`port.unavailable` (`reason: 'no-judge-port'`). It never falls back to the
+reflection. The Player's `byoc_*` kinds render `byoc-unavailable` without the
+itera-api, never the host `concept` card.
+
+**Validation.** Each kind component renders through `KindSpecGate`: a spec that
+does not fit the kind is an inert card with testid `<kind-with-dashes>-invalid`
+(`kindInvalidTestId`). The Player validates the same kinds at its boundary
+first, with the same testid.
+
+**Before `@iterahq/activity-spec` 1.4.0 is published.** The 22 names are
+mirrored in `src/oneBehaviourKinds.ts` (`ONE_BEHAVIOUR_KINDS`, byte-identical to
+activity-spec #55). `safeParseKindSpec(kind, spec)` asks the INSTALLED spec
+first; for a new kind the installed spec does not know, it parses under the
+transition parent and applies the kind's one narrowing
+(`ONE_BEHAVIOUR_FALLBACK`). On spec `^1.4.0` the real Zod schemas answer and the
+fallback is dead code; `KnownActivityKind` (`ActivityKind | OneBehaviourKind`)
+collapses into `ActivityKind`. `oneBehaviourKinds.test.ts` runs the fallback and
+the installed spec on the same positives and mutations, so the bump cannot
+change which rows render without a red test. `seedFallbackRun` has the same
+seam: the runtime's own function when it exports it, an exact equivalent
+before.
 
 ### What a new kind costs
 

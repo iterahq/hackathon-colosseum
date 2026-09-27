@@ -73,14 +73,16 @@
  *    `contractFixtures.ts` o marca `validated: false`. **Validar o sandbox em
  *    bloco quebraria o BYOC ao vivo** — daí a isenção explícita abaixo.
  */
+import { ACTIVITY_KINDS, isActivityKind, isImplementedKind } from '@iterahq/activity-spec';
 import {
-  ACTIVITY_KINDS,
-  SPEC_SCHEMAS,
-  isActivityKind,
-  isImplementedKind,
-  safeParseActivitySpec,
-  type ActivityKind,
-} from '@iterahq/activity-spec';
+  ONE_BEHAVIOUR_KINDS,
+  isOneBehaviourKind,
+  kindInvalidTestId,
+  safeParseKindSpec,
+  specPackageKnowsKind,
+  type OneBehaviourKind,
+} from '@iterahq/activities';
+import type { ActivityKind } from '@/types/content';
 // Módulo PURO, React-free (o próprio arquivo se documenta assim) — importável
 // de `src/utils` sem arrastar componente nenhum junto.
 import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive';
@@ -97,6 +99,37 @@ import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive'
  *   testes (e o e2e) dependem.
  */
 export type ValidationSite = 'boundary' | 'component';
+
+/**
+ * Every kind the Player renders: the installed spec's `ACTIVITY_KINDS` plus the
+ * 22 one-behaviour kinds (plan `20260924-activity-type-one-behavior-rule`).
+ * On spec `^1.4.0` the second half is already in the first, and the `Set`
+ * removes the duplicates — the list is the same either way.
+ */
+export const KNOWN_ACTIVITY_KINDS: readonly ActivityKind[] = [
+  ...new Set<ActivityKind>([...ACTIVITY_KINDS, ...ONE_BEHAVIOUR_KINDS]),
+];
+
+/** `isActivityKind`, widened to the one-behaviour kinds. */
+export function isKnownActivityKind(kind: unknown): kind is ActivityKind {
+  return isActivityKind(kind) || isOneBehaviourKind(kind);
+}
+
+/**
+ * The one-behaviour kinds validate at the BOUNDARY, all 22 the same way: the
+ * friendly card, testid `<kind-with-dashes>-invalid`. Their components keep a
+ * gate of their own (`KindSpecGate`) for hosts with no boundary; it shows the
+ * same testid, so the two layers are indistinguishable from a test.
+ */
+const oneBehaviourEntry = (kind: OneBehaviourKind): KindValidation => ({
+  site: 'boundary',
+  invalidTestId: kindInvalidTestId(kind),
+  messageKey: 'activity.specInvalid',
+});
+
+const ONE_BEHAVIOUR_VALIDATION = Object.fromEntries(
+  ONE_BEHAVIOUR_KINDS.map((kind) => [kind, oneBehaviourEntry(kind)]),
+) as Record<OneBehaviourKind, KindValidation>;
 
 export interface KindValidation {
   site: ValidationSite;
@@ -169,6 +202,8 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
     invalidTestId: 'question-invalid',
     messageKey: 'activity.specInvalid',
   },
+  // The 22 one-behaviour kinds (T9–T14) — see `ONE_BEHAVIOUR_VALIDATION`.
+  ...ONE_BEHAVIOUR_VALIDATION,
 };
 
 /** As camadas deliberadamente isentas da fronteira (ver cabeçalho). */
@@ -185,10 +220,10 @@ export function specSchemaClass(kind: ActivityKind): SpecSchemaClass {
   // Mensagem explícita em vez do `TypeError` críptico de dentro do Zod quando um
   // kind do enum não tem schema no pacote — é o cenário exato que a trap existe
   // pra denunciar, e ele merece falhar legível.
-  if (!(kind in SPEC_SCHEMAS)) {
+  if (!specPackageKnowsKind(kind) && !isOneBehaviourKind(kind)) {
     throw new Error(`kind "${kind}" está no enum mas não tem schema em SPEC_SCHEMAS`);
   }
-  return safeParseActivitySpec(kind, {}).success ? 'stub' : 'schema';
+  return safeParseKindSpec(kind, {}).success ? 'stub' : 'schema';
 }
 
 /**
@@ -235,10 +270,10 @@ export interface CoverageReport {
  * alimentando um kind sintético sem quebrar a CI.
  */
 export function auditKindValidationCoverage(
-  kinds: readonly string[] = ACTIVITY_KINDS,
+  kinds: readonly string[] = KNOWN_ACTIVITY_KINDS,
 ): CoverageReport {
   const byKind: KindCoverage[] = kinds.map((kind) => {
-    if (!isActivityKind(kind) || !(kind in KIND_VALIDATION)) {
+    if (!isKnownActivityKind(kind) || !(kind in KIND_VALIDATION)) {
       return {
         kind,
         registered: false,
@@ -285,7 +320,7 @@ export function specBoundaryFailure(activity: {
   spec: Record<string, unknown>;
 }): SpecBoundaryFailure | null {
   // Estado G: kind fora do enum é do `UnknownActivity`, não desta fronteira.
-  if (!isActivityKind(activity.kind)) return null;
+  if (!isKnownActivityKind(activity.kind)) return null;
 
   // Isenção de camada #2 (ver cabeçalho): o BYOC ao vivo não tem contrato Zod.
   // Hoje os sandboxes já são `site: 'component'`, então esta linha é rede de
@@ -300,7 +335,7 @@ export function specBoundaryFailure(activity: {
   const entry = KIND_VALIDATION[activity.kind] as KindValidation | undefined;
   if (!entry || entry.site !== 'boundary') return null;
 
-  const parsed = safeParseActivitySpec(activity.kind, activity.spec);
+  const parsed = safeParseKindSpec(activity.kind, activity.spec);
   if (parsed.success) return null;
 
   return {
@@ -317,5 +352,8 @@ export function specBoundaryFailure(activity: {
  * classificação daqui precisa ser revista.
  */
 export function packageSaysImplemented(kind: ActivityKind): boolean {
-  return isImplementedKind(kind);
+  // A one-behaviour kind the installed spec does not know yet (spec < 1.4.0) is
+  // implemented by the fallback of `safeParseKindSpec`, not by the spec.
+  if (!specPackageKnowsKind(kind)) return isOneBehaviourKind(kind);
+  return isImplementedKind(kind as Parameters<typeof isImplementedKind>[0]);
 }

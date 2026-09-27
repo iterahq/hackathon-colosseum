@@ -83,7 +83,7 @@
  * too; this version deliberately does not, and the surface says so rather than
  * implying the layout is faithful.
  */
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { ActivityKind } from '@/types/content';
 import {
   ACTIVITY_FAMILY,
   FAMILY_EMITTED,
@@ -283,6 +283,10 @@ export function familyEmitsSequence(kind: ActivityKind | null): boolean {
   // Só o sandbox de TERMINAL emite sequência (o de chat ainda não).
   if (kind === 'terminal_sandbox') return true;
   if (kind === 'chat_sandbox') return false;
+  // The one-behaviour sandbox kinds share the shells, so they share the answer:
+  // the terminal shell emits `command_run`, the chat shell does not yet.
+  if (kind.startsWith('terminal_')) return true;
+  if (kind.startsWith('chat_')) return false;
   return true;
 }
 

@@ -1,4 +1,4 @@
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { ActivityKind } from '@/types/content';
 import { ACTIVITY_FAMILY } from './activityFamilies';
 
 /**

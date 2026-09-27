@@ -17,13 +17,28 @@
  * REAL sobre o spec — não.
  */
 import { describe, expect, it } from 'vitest';
-import { ACTIVITY_KINDS, safeParseActivitySpec, type ActivityKind } from '@iterahq/activity-spec';
+import { safeParseActivitySpec } from '@iterahq/activity-spec';
+import { safeParseKindSpec } from '@iterahq/activities';
+import type { ActivityKind } from '@/types/content';
+import { KNOWN_ACTIVITY_KINDS as ACTIVITY_KINDS } from '@/utils/activitySpecBoundary';
 import { isScenarioKind, kindsOfFamily } from '@/utils/activityFamilies';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
 import { ACTIVITY_CONTRACTS, type ContractFixture } from '@/stories/contractFixtures';
 import terminalScenarios from './fixtures/terminal-scenarios.json';
 
-const SANDBOX_KINDS = ['chat_sandbox', 'terminal_sandbox'] as const;
+const SANDBOX_KINDS = [
+  'chat_sandbox',
+  'terminal_sandbox',
+  // The eight one-behaviour sandbox kinds (plan `20260924-activity-type-one-behavior-rule`).
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
+] as const;
 
 describe('isScenarioKind cobre os dois kinds de sandbox', () => {
   it.each(SANDBOX_KINDS)('%s é sandbox', (kind) => {
@@ -64,13 +79,13 @@ describe('colapsar o bag bilíngue reprova o spec de qualquer sandbox', () => {
 
   it.each(fixtures)('%s: cru passa, colapsado reprova', (_name, contract) => {
     const kind = contract.kind as ActivityKind;
-    expect(safeParseActivitySpec(kind, contract.spec).success).toBe(true);
+    expect(safeParseKindSpec(kind, contract.spec).success).toBe(true);
 
     const collapsed = resolveLocalizedSpec(
       contract.spec as Record<string, unknown>
     ) as Record<string, unknown>;
     expect(
-      safeParseActivitySpec(kind, collapsed).success,
+      safeParseKindSpec(kind, collapsed).success,
       `o spec de "${kind}" sobreviveu ao colapso — se o runtime do sandbox passou a ` +
         'aceitar bag colapsado, o `isScenarioKind` nos dois mapActivity deixou de ser ' +
         'necessário e este arquivo é que precisa mudar.'

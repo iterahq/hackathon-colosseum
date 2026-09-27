@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { ACTIVITY_KINDS, type ActivityKind } from '@iterahq/activity-spec';
+import type { ActivityKind } from '@/types/content';
+// Every kind the Player renders: the spec's `ACTIVITY_KINDS` plus the 22
+// one-behaviour kinds (plan `20260924-activity-type-one-behavior-rule`).
+import { KNOWN_ACTIVITY_KINDS as ACTIVITY_KINDS } from '@/utils/activitySpecBoundary';
 import {
   ACTIVITY_FAMILIES,
   ACTIVITY_FAMILY,
@@ -52,22 +55,54 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
     expect(kindsOfFamily('selection').sort()).toEqual(['multi_choice', 'quiz', 'single_choice']);
     expect(kindsOfFamily('arrangement').sort()).toEqual(['match', 'order']);
     expect(kindsOfFamily('reading').sort()).toEqual([
+      'byoc_build_context',
+      'byoc_judge_each',
+      'byoc_pick_best',
       'concept',
       'concept_reveal',
       'diagram',
       'document',
+      'document_ai_judge',
+      'document_read',
+      'document_reflect',
       'video',
     ]);
-    expect(kindsOfFamily('editor')).toEqual(['code']);
+    // One-behaviour kinds sit in the family of the old kind they came from
+    // (plan `20260924-activity-type-one-behavior-rule`): a split changes the
+    // input INSIDE the family's machine, never the machine.
+    expect(kindsOfFamily('editor').sort()).toEqual([
+      'code',
+      'code_editor_checks',
+      'code_editor_ungraded',
+      'code_fill_bank',
+      'code_fill_select',
+      'code_fill_type',
+    ]);
     // Os dois kinds de cenário são UMA família: partir o antigo kind único em
     // `chat_sandbox` + `terminal_sandbox` foi trocar o discriminador de lugar, e
     // a família descreve a forma do ESTADO — que não mudou.
-    expect(kindsOfFamily('scenario').sort()).toEqual(['chat_sandbox', 'terminal_sandbox']);
+    expect(kindsOfFamily('scenario').sort()).toEqual([
+      'chat_compose',
+      'chat_fill_select',
+      'chat_fill_type',
+      'chat_pick_context',
+      'chat_rate_reply',
+      'chat_sandbox',
+      'terminal_build_command',
+      'terminal_pick_command',
+      'terminal_sandbox',
+      'terminal_type_command',
+    ]);
     // `inquiry` (2026-08-28) — a família NÃO-AVALIATIVA, com um membro só.
     // Ela existe porque `question` custaria uma máquina de estado nova dentro
     // de `selection` (sem veredito, mais dois eixos), que é exatamente o que o
     // critério falsificável no topo de `activityFamilies.ts` manda separar.
-    expect(kindsOfFamily('inquiry')).toEqual(['question']);
+    expect(kindsOfFamily('inquiry').sort()).toEqual([
+      'question',
+      'question_pick_many',
+      'question_pick_one',
+      'question_write',
+    ]);
   });
 
   it('every family states the shape of its state — the Fase A "signature"', () => {

@@ -144,6 +144,34 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   // `mode: 'always'` without filling in every field. That is exactly the
   // "pré-engenharia do nosso usuário" case at the top of this file.
   question: { persist: false, type: 'text', filename: 'answer.md' },
+  // ── The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`).
+  // Each one keeps the default of the old kind it came from, so a kind-only
+  // remap changes nothing in "My repository". One exception, and it is not a
+  // behaviour change: `document_read` produces nothing to keep. Under
+  // `document` its `persist: true` never fired, because the read-only card
+  // hands up no content.
+  code_editor_checks: { persist: true, type: 'code', filename: 'solution.txt' },
+  code_editor_ungraded: { persist: true, type: 'code', filename: 'solution.txt' },
+  code_fill_bank: { persist: true, type: 'code', filename: 'solution.txt' },
+  code_fill_select: { persist: true, type: 'code', filename: 'solution.txt' },
+  code_fill_type: { persist: true, type: 'code', filename: 'solution.txt' },
+  chat_compose: { persist: false, type: 'document', filename: 'transcript.md' },
+  chat_fill_select: { persist: false, type: 'document', filename: 'transcript.md' },
+  chat_fill_type: { persist: false, type: 'document', filename: 'transcript.md' },
+  chat_pick_context: { persist: false, type: 'document', filename: 'transcript.md' },
+  chat_rate_reply: { persist: false, type: 'document', filename: 'transcript.md' },
+  terminal_type_command: { persist: false, type: 'document', filename: 'transcript.md' },
+  terminal_pick_command: { persist: false, type: 'document', filename: 'transcript.md' },
+  terminal_build_command: { persist: false, type: 'document', filename: 'transcript.md' },
+  document_read: { persist: false, type: 'text', filename: 'notes.md' },
+  document_reflect: { persist: true, type: 'text', filename: 'reflection.md' },
+  document_ai_judge: { persist: true, type: 'text', filename: 'reflection.md' },
+  byoc_pick_best: { persist: false, type: 'text', filename: 'notes.md' },
+  byoc_judge_each: { persist: false, type: 'text', filename: 'notes.md' },
+  byoc_build_context: { persist: false, type: 'text', filename: 'notes.md' },
+  question_pick_one: { persist: false, type: 'text', filename: 'answer.md' },
+  question_pick_many: { persist: false, type: 'text', filename: 'answer.md' },
+  question_write: { persist: false, type: 'text', filename: 'answer.md' },
 };
 
 const MODES: ReadonlySet<string> = new Set<ArtifactMode>(['auto', 'always', 'never']);

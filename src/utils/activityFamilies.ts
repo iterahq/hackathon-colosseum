@@ -70,7 +70,7 @@
  * Layering: this module depends on `@iterahq/activity-spec` only. It is PURE —
  * no React, no DOM, no Supabase — so every rule here is unit-testable.
  */
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { ActivityKind } from '@/types/content';
 
 /**
  * The five families, named from the code as it exists at `main`.
@@ -166,6 +166,37 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   // edited, and `inquiry` has exactly one member. It is a hypothesis like the
   // other five, with one fewer year of evidence.
   question: 'inquiry',
+  // — the ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
+  // T9–T14). Each one sits in the family of the old kind it came from: a split
+  // changes what the learner does INSIDE the family's machine, never the
+  // machine. That is the criterion at the top of this file, applied — and it is
+  // why `isScenarioKind` below covers the eight new sandbox kinds for free.
+  code_editor_checks: 'editor',
+  code_editor_ungraded: 'editor',
+  code_fill_bank: 'editor',
+  code_fill_select: 'editor',
+  code_fill_type: 'editor',
+  chat_compose: 'scenario',
+  chat_fill_select: 'scenario',
+  chat_fill_type: 'scenario',
+  chat_pick_context: 'scenario',
+  chat_rate_reply: 'scenario',
+  terminal_type_command: 'scenario',
+  terminal_pick_command: 'scenario',
+  terminal_build_command: 'scenario',
+  document_read: 'reading',
+  document_reflect: 'reading',
+  document_ai_judge: 'reading',
+  // The BYOC kinds keep the family of the `concept` rows they move from
+  // (`reading`): the pedagogical context of the 7 production rows says
+  // `reading` today, and the BYOC runtime records no family actions, so a
+  // different family would change stored data and gain nothing.
+  byoc_pick_best: 'reading',
+  byoc_judge_each: 'reading',
+  byoc_build_context: 'reading',
+  question_pick_one: 'inquiry',
+  question_pick_many: 'inquiry',
+  question_write: 'inquiry',
 };
 
 /**

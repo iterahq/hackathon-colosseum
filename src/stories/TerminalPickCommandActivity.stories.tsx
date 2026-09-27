@@ -1,68 +1,57 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import { TerminalSandboxActivity } from '@/components/branded/activity/TerminalSandboxActivity';
+import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { makeActivity } from './activityFixtures';
-import { TERMINAL_PICK_COMMAND_SPEC } from './behaviourFixtures';
+import { TERMINAL_PICK_COMMAND_SPEC, TERMINAL_BUILD_COMMAND_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
+import { tapTerminalCommand } from './interactions';
 
 /**
- * BEHAVIOUR `terminal_pick_command` — tap a WHOLE command from a palette.
+ * KIND `terminal_pick_command` — plan `20260924-activity-type-one-behavior-rule` (one activity
+ * type = one behaviour). Tap a WHOLE command from the palette; one tap runs it. Fixture: production row `f353da62`.
  *
- * Today it is `terminal_sandbox` with `inputMode: "options"` and every step
- * `expose.optionGranularity: "command"` (3 activities + 1 def in production).
- * Plan `20260924-activity-type-one-behavior-rule` (v3, ADR-1) makes it its own
- * kind. This file shows ONLY that behaviour, so its matrix row stops pointing
- * at the free-text terminal.
- *
- * Fixture: production row `f353da62` (see `behaviourFixtures.ts`).
- *
- * A tap RUNS the command — there is no draft between "pick" and "send". A
- * wrong command runs too: the engine prints its output and the step does not
- * unlock.
+ * The stories here are STATES of this one behaviour, nothing else. The matrix
+ * row lives in `src/test/activityMatrixCoverage.test.ts`.
  */
-const meta: Meta<typeof TerminalSandboxActivity> = {
-  title: 'Organisms/Activities/8 · Sandbox de terminal/Escolher comando',
+const meta: Meta<typeof ActivityRenderer> = {
+  title: 'Activities/Terminal/terminal_pick_command',
   id: 'activities-terminal-pick-command',
-  component: TerminalSandboxActivity,
+  component: ActivityRenderer,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
   args: { onComplete: fn() },
 };
 export default meta;
-type Story = StoryObj<typeof TerminalSandboxActivity>;
+type Story = StoryObj<typeof ActivityRenderer>;
 
-async function tapCommand(canvasElement: HTMLElement, command: string) {
-  const buttons = within(canvasElement).getAllByTestId('terminal-option-command');
-  const target = buttons.find((b) => b.getAttribute('data-option') === command);
-  if (!target) throw new Error(`palette has no command "${command}"`);
-  await userEvent.click(target);
-}
+const activity = (spec: Record<string, unknown> = SPEC, status?: 'done') =>
+  makeActivity('terminal_pick_command', spec, status);
 
-/** The palette is up; nothing ran yet. */
+const SPEC = TERMINAL_PICK_COMMAND_SPEC;
+
+/** A.enabled + C.blank — the palette is up; nothing ran yet. */
 export const Default: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.getAllByTestId('terminal-option-command')).toHaveLength(3);
+    await expect(within(canvasElement).getAllByTestId('terminal-option-command')).toHaveLength(3);
   },
 };
 
-/** D.correct — tap `git status`: the step unlocks and the activity settles as a pass. */
+/** C.submitted + D.correct — tap `git status`: the step unlocks and the activity settles as a pass. */
 export const ComandoCerto: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ args, canvasElement }) => {
-    await tapCommand(canvasElement, 'git status');
-    const canvas = within(canvasElement);
-    await canvas.findByTestId('sandbox-reveal');
+    await tapTerminalCommand(canvasElement, 'git status');
+    await within(canvasElement).findByTestId('sandbox-reveal');
     await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
   },
 };
 
 /** D.incorrect — tap `git log`: it RUNS, prints its output, and the step stays locked. */
 export const ComandoErrado: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC) },
+  args: { activity: activity() },
   play: async ({ args, canvasElement }) => {
-    await tapCommand(canvasElement, 'git log');
+    await tapTerminalCommand(canvasElement, 'git log');
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/primeiro commit/)).toBeInTheDocument();
     await expect(canvas.queryByTestId('sandbox-reveal')).not.toBeInTheDocument();
@@ -71,11 +60,15 @@ export const ComandoErrado: Story = {
 };
 
 /** B.done — concluded in an earlier session: settled, palette gone. */
-export const Concluida: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC, 'done') },
-};
+export const Concluida: Story = { args: { activity: activity(SPEC, 'done') } };
 
 /** E.reveal — live reveal: recap + master line, nothing ran. */
-export const RevealedInLive: Story = {
-  args: { activity: makeActivity('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC), reveal: true },
+export const RevealedInLive: Story = { args: { activity: activity(), reveal: true } };
+
+/** F.spec_invalido — Token steps belong to `terminal_build_command`. The kind shows the card; it never draws another behaviour. */
+export const EspecInvalida: Story = {
+  args: { activity: activity(TERMINAL_BUILD_COMMAND_SPEC) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('terminal-pick-command-invalid')).toBeInTheDocument();
+  },
 };

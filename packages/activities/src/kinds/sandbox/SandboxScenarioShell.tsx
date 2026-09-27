@@ -36,18 +36,21 @@ export function SandboxScenarioShell({
   activity,
   onComplete,
   variant,
+  seedRun = false,
   reveal = false,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   variant: SandboxVariant;
+  /** `chat_rate_reply` only: seed the fallback reply before any send (T25). */
+  seedRun?: boolean;
   /** Reveal the success state (timer stopped/expired) even without a submission. */
   reveal?: boolean;
 }) {
   const { t: tr, locale } = useActivityI18n();
   const scenario = activity.spec as unknown as Scenario;
   const isDone = activity.status === 'done';
-  const s = useSandboxScenario(scenario, locale, reveal, isDone);
+  const s = useSandboxScenario(scenario, locale, reveal, isDone, seedRun);
   const stream = useAssistantStream(s.model.messages);
 
   const showControls = !s.done && !stream.active;

@@ -47,6 +47,14 @@
  */
 
 export { CodeActivity } from './CodeActivity.js';
+// The five one-behaviour code kinds (plan 20260924-activity-type-one-behavior-rule, T9).
+export {
+  CodeEditorChecksActivity,
+  CodeEditorUngradedActivity,
+  CodeFillBankActivity,
+  CodeFillSelectActivity,
+  CodeFillTypeActivity,
+} from './CodeKindActivities.js';
 export { CodeSnackPane } from './CodeSnackPane.js';
 export { CodeLivePreview } from './CodeLivePreview.js';
 export { CodeChecksFeedback } from './CodeChecksFeedback.js';

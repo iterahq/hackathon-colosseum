@@ -5,8 +5,6 @@ import type { ActivityKind } from '@/types/content';
 import { makeActivity, noop } from './activityFixtures';
 import { ACTIVITY_CONTRACTS, type ContractKey } from './contractFixtures';
 import { withActivityWidth } from './decorators';
-import scenarios from '@/test/fixtures/sandbox-scenarios.json';
-import { TERMINAL_BUILD_COMMAND_SPEC, TERMINAL_PICK_COMMAND_SPEC } from './behaviourFixtures';
 
 /**
  * EIXO A da matriz de estados — o GATE AO VIVO (`enabled` · `locked`).
@@ -135,34 +133,47 @@ export const LockedTerminalSandbox: Story = stage('terminal_sandbox', EXPIRED);
  */
 export const LockedQuestion: Story = stage('question', EXPIRED);
 
-/* --- `locked` por COMPORTAMENTO (plano 20260924-activity-type-one-behavior-rule, T4) ---
- * Os kinds `chat_sandbox` e `terminal_sandbox` guardam mais de um comportamento.
- * O `Locked*` do kind mostra só um deles (o chat aberto, o terminal de texto
- * livre). Estes mostram os comportamentos que a produção usa, com a fixture de
- * cada linha de comportamento da matriz. */
-const bySlug = scenarios as Record<string, Record<string, unknown>>;
+/* --- `locked` por KIND de um comportamento (plano 20260924-activity-type-one-behavior-rule) ---
+ * Um por kind novo que ao vivo tem gate (`isAnswerableLiveKind`), com o contrato
+ * do próprio kind. O `document_ai_judge` travado vive no próprio arquivo
+ * (`--travada`, que precisa da porta de juiz falsa). Os `byoc_*` não entram:
+ * como o `concept` hospedeiro das rows BYOC, não são respondíveis ao vivo, e o
+ * palco não os monta sem a itera-api. */
 
-function stageSpec(kind: ActivityKind, spec: Record<string, unknown>, gate: { readOnly: boolean }): Story {
-  return {
-    render: () => (
-      <LiveActivityStage
-        activity={makeActivity(kind, spec)}
-        readOnly={gate.readOnly}
-        onComplete={noop}
-        testid="live-activity"
-      />
-    ),
-  };
-}
+/** `document_read` travado: nada a travar — o card é leitura. */
+export const LockedDocumentRead: Story = stage('document_read', EXPIRED);
+/** `document_reflect` travado: o textarea não aceita foco. */
+export const LockedDocumentReflect: Story = stage('document_reflect', EXPIRED);
 
+/** `code_editor_checks` travado: o editor não aceita digitação. */
+export const LockedCodeEditorChecks: Story = stage('code_editor_checks', EXPIRED);
+/** `code_editor_ungraded` travado. */
+export const LockedCodeEditorUngraded: Story = stage('code_editor_ungraded', EXPIRED);
+/** `code_fill_bank` travado: os chips não descem para as lacunas. */
+export const LockedCodeFillBank: Story = stage('code_fill_bank', EXPIRED);
+/** `code_fill_select` travado: os dropdowns não abrem. */
+export const LockedCodeFillSelect: Story = stage('code_fill_select', EXPIRED);
+/** `code_fill_type` travado: as lacunas não aceitam foco. */
+export const LockedCodeFillType: Story = stage('code_fill_type', EXPIRED);
+/** `chat_compose` travado: o chip do pedido não insere nada. */
+export const LockedChatCompose: Story = stage('chat_compose', EXPIRED);
 /** `chat_pick_context` travado: os chips de contexto não recebem clique. */
-export const LockedChatPickContext: Story = stageSpec('chat_sandbox', bySlug.c1!, EXPIRED);
-
+export const LockedChatPickContext: Story = stage('chat_pick_context', EXPIRED);
 /** `chat_fill_select` travado: as opções dos slots não recebem clique. */
-export const LockedChatFillSelect: Story = stageSpec('chat_sandbox', bySlug.c2!, EXPIRED);
-
+export const LockedChatFillSelect: Story = stage('chat_fill_select', EXPIRED);
+/** `chat_fill_type` travado: o slot não aceita digitação. */
+export const LockedChatFillType: Story = stage('chat_fill_type', EXPIRED);
+/** `chat_rate_reply` travado: a resposta semeada fica na tela, a avaliação não. */
+export const LockedChatRateReply: Story = stage('chat_rate_reply', EXPIRED);
+/** `terminal_type_command` travado: o prompt não aceita comando. */
+export const LockedTerminalTypeCommand: Story = stage('terminal_type_command', EXPIRED);
 /** `terminal_pick_command` travado: a paleta de comandos não roda nada. */
-export const LockedTerminalPickCommand: Story = stageSpec('terminal_sandbox', TERMINAL_PICK_COMMAND_SPEC, EXPIRED);
-
+export const LockedTerminalPickCommand: Story = stage('terminal_pick_command', EXPIRED);
 /** `terminal_build_command` travado: os tokens não sobem para a linha. */
-export const LockedTerminalBuildCommand: Story = stageSpec('terminal_sandbox', TERMINAL_BUILD_COMMAND_SPEC, EXPIRED);
+export const LockedTerminalBuildCommand: Story = stage('terminal_build_command', EXPIRED);
+/** `question_pick_one` travado. */
+export const LockedQuestionPickOne: Story = stage('question_pick_one', EXPIRED);
+/** `question_pick_many` travado. */
+export const LockedQuestionPickMany: Story = stage('question_pick_many', EXPIRED);
+/** `question_write` travado: o texto livre não aceita foco. */
+export const LockedQuestionWrite: Story = stage('question_write', EXPIRED);

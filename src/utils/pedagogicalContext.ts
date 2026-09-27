@@ -87,7 +87,7 @@
  * PURE — no React, no DOM, no Supabase. Every rule above is unit-testable with
  * fixed inputs.
  */
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { ActivityKind } from '@/types/content';
 import { ACTIVITY_FAMILY, type ActivityFamily } from '@/utils/activityFamilies';
 
 /**

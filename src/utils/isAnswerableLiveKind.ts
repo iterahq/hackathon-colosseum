@@ -65,6 +65,25 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
   // activity stays editable. That is why the entry carries a reason instead of
   // being one more line.
   'question',
+  // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`):
+  // each one answers exactly like the old kind it came from. The `document_*`
+  // and `byoc_*` kinds stay OUT, like `document` and the BYOC `concept` rows.
+  'code_editor_checks',
+  'code_editor_ungraded',
+  'code_fill_bank',
+  'code_fill_select',
+  'code_fill_type',
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
+  'question_pick_one',
+  'question_pick_many',
+  'question_write',
 ]);
 
 /**
@@ -89,7 +108,22 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
   'chat_sandbox',
   'terminal_sandbox',
   'concept_reveal',
-  // `question` is DELIBERATELY ABSENT — and this is the third question the
+  // The one-behaviour sandbox kinds reveal like the sandboxes they came from.
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
+  // The guided code kinds carry `blanks[].answer` — the KIND says so now, so
+  // they need no spec probe (`isGuidedCodeActivity`). The two editor kinds
+  // carry no authored solution and stay out.
+  'code_fill_bank',
+  'code_fill_select',
+  'code_fill_type',
+  // `question` (and its three one-behaviour kinds) is DELIBERATELY ABSENT — and this is the third question the
   // header tells you to ask separately, answered.
   //
   // There is nothing to reveal. A question has no correct answer; its
@@ -121,7 +155,15 @@ const REVEALABLE_ANSWER_KINDS: ReadonlySet<string> = new Set([
  * (`components/branded/activity/sandbox/useSandboxScenario.ts`), so bolting a
  * second reopen on top would give the same round two different ways back.
  */
-const REOPENABLE_KINDS: ReadonlySet<string> = new Set(['code']);
+const REOPENABLE_KINDS: ReadonlySet<string> = new Set([
+  'code',
+  // Every one-behaviour code kind reopens like `code` did (plan T9).
+  'code_editor_checks',
+  'code_editor_ungraded',
+  'code_fill_bank',
+  'code_fill_select',
+  'code_fill_type',
+]);
 
 /**
  * Does this kind have an answer flow? Use for TIMER decisions only.
@@ -159,7 +201,17 @@ export function canReopenSubmission(kind: string | null | undefined): boolean {
  * together with `checks`, so the two code surfaces cannot both claim one row.
  */
 export function isGuidedCodeActivity(activity: Activity | null | undefined): boolean {
-  if (!activity || activity.kind !== 'code') return false;
+  if (!activity) return false;
+  // The one-behaviour kinds SAY it (T9): no spec probe for them.
+  if (
+    activity.kind === 'code_fill_bank' ||
+    activity.kind === 'code_fill_select' ||
+    activity.kind === 'code_fill_type'
+  ) {
+    return true;
+  }
+  // The transition kind `code` keeps the shape probe until its rows move.
+  if (activity.kind !== 'code') return false;
   const spec = activity.spec;
   if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return false;
   const blanks = (spec as { blanks?: unknown }).blanks;

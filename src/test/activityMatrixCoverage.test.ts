@@ -41,7 +41,10 @@
  *                  de teste — precisa de decisão, não de mais story.
  */
 import { describe, expect, it } from 'vitest';
-import { ACTIVITY_KINDS, type GeneratedChoiceTree } from '@iterahq/activity-spec';
+import type { GeneratedChoiceTree } from '@iterahq/activity-spec';
+// Every kind the Player renders: the spec's `ACTIVITY_KINDS` plus the 22
+// one-behaviour kinds (plan `20260924-activity-type-one-behavior-rule`).
+import { KNOWN_ACTIVITY_KINDS as ACTIVITY_KINDS } from '@/utils/activitySpecBoundary';
 import { indexStories } from './storyIndex';
 
 /** Um estado da matriz, por kind. */
@@ -90,6 +93,33 @@ const EXPOSITION_NO_ANSWER =
 const EXPOSITION_NO_GRADE = 'kind de exposição: não há o que corrigir (eixo D não existe aqui).';
 const QUESTION_NO_GRADE =
   'kind NÃO-AVALIATIVO: existe resposta, e mesmo assim não existe resposta certa — logo não há veredito a desenhar. Verde ou vermelho aqui diria que uma opinião foi acertada.';
+/* ── the ONE-BEHAVIOUR rows (plan `20260924-activity-type-one-behavior-rule`) ── */
+const TERMINAL_TAP_RUNS =
+  'tocar um comando da paleta JÁ o executa: não existe rascunho entre escolher e enviar, então "respondido e não enviado" não é um estado deste comportamento.';
+const NO_DEGENERATE_SHAPE =
+  'o menor spec que o Zod aceita para este comportamento é o próprio `Default` (um passo, uma entrada); sem a entrada, ele deixa de ser ESTE comportamento — vira outro kind, não um extremo deste.';
+const COMPOSE_NO_WRONG_SEND =
+  'um kind SÓ-COMPOSE não tem envio errado que vire veredito: o passo pede um envio com contexto, e um envio fraco mostra a crítica e mantém o passo aberto (ADR-3: a avaliação é o `chat_rate_reply`).';
+const MONACO_INPUT =
+  'digitar DENTRO do Monaco — o mesmo motivo da linha `code`: o editor lê do seu modelo interno, não do `<textarea>` do DOM, então teclado sintético não altera nada.';
+const CHECKS_IN_IFRAME =
+  'os `checks` rodam DENTRO do iframe de preview, contra o DOM que o código do aluno produz — impossível em jsdom. É o MESMO painel da linha `code` (`activities-producao-code--browser-checks-*`, browser mode); o kind só fixa que o juiz são os checks.';
+const EDITOR_NO_SOLUTION =
+  'o editor aberto não tem gabarito autorado (só `checks` ou nada): `activityHasRevealableAnswer` é false e o botão do professor nem aparece.';
+const UNGRADED_NO_VERDICT =
+  'sem juiz: o aluno clica "Concluir" e a activity conclui. Não existe certo nem errado a desenhar.';
+const READ_NO_ANSWER = 'leitura: o aluno lê e segue — não existe resposta a produzir.';
+const REFLECT_NO_GRADE =
+  'o juiz é a CONTAGEM de palavras: abaixo do mínimo o envio fica travado, acima dele conclui. Não existe veredito de certo/errado.';
+const QUESTION_KIND_NO_REVEAL =
+  'não há gabarito: o kind não corrige, e o componente não recebe `reveal` (como a `question`).';
+const BYOC_NOT_LIVE =
+  'como o `concept` hospedeiro das rows BYOC, o kind não é respondível ao vivo (`isAnswerableLiveKind` false): sem timer, nada a travar.';
+const BYOC_STATES_IN_TREE =
+  'o estado intermediário vive na ÁRVORE gerada (`ByocTree`), coberto no fluxo de duas etapas (`--default`); uma story isolada dele seria a árvore sem a geração.';
+const BYOC_VERDICT_IN_FLOW =
+  'o veredito sai da árvore gerada, conferida contra o gabarito que a geração embute (ADR-13); o fluxo `--default` leva até ele com a geração mockada. Não há story que chegue ao veredito sem clicar a árvore inteira.';
+
 const NO_REVEAL_PROP =
   'o dispatcher não propaga `reveal` para este kind e `hasRevealableAnswer` é false — não há gabarito a expor.';
 const LOOSE_ZOD =
@@ -331,132 +361,326 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'F.spec_invalido': { story: 'activities-dispatcher--question-sem-modo' },
     'H.degenerado': { story: 'activities-dispatcher--question-minima' },
   },
-};
 
-/**
- * LINHAS POR COMPORTAMENTO — os comportamentos de produção que NÃO tinham linha.
- *
- * Plano `20260924-activity-type-one-behavior-rule` (v3), task T4. Regra: um
- * activity type = um comportamento. Quatro kinds de hoje guardam mais de um
- * (`chat_sandbox`, `terminal_sandbox`, `document`, `code`), e a linha do kind
- * acima cobre só UM deles:
- *   - `chat_sandbox` aponta o chat ABERTO, que tem 0 linhas em produção;
- *   - `terminal_sandbox` aponta o texto livre; o modo de opções não tinha linha;
- *   - `document` cobre leitura + reflexão; o caminho `ai-judge` (10 act / 10
- *     def) tinha `D` inteiro em `na`.
- *
- * Cada linha aqui tem o NOME DO KIND FUTURO (ADR-1 do plano) e o kind de hoje
- * em `from`. Quando o kind nascer em `@iterahq/activity-spec`, o teste
- * "ainda não é kind do enum" fica vermelho de propósito: a linha MUDA para a
- * `MATRIX` acima, sem reescrever célula nenhuma.
- *
- * Fixtures: linhas reais de produção (`src/stories/behaviourFixtures.ts`) e os
- * cenários c1/c2 de `src/test/fixtures/sandbox-scenarios.json`.
- */
-const TERMINAL_TAP_RUNS =
-  'tocar um comando da paleta JÁ o executa: não existe rascunho entre escolher e enviar, então "respondido e não enviado" não é um estado deste comportamento.';
-const SANDBOX_SPEC_INVALID_BY_KIND =
-  'a validação é do kind de HOJE (o schema do sandbox), antes de qualquer renderer: o card de spec inválido é o mesmo para todo comportamento do kind.';
-const NO_DEGENERATE_SHAPE =
-  'o menor spec que o Zod aceita para este comportamento é o próprio `Default` (um passo, uma entrada); sem a entrada, ele deixa de ser ESTE comportamento — vira outro kind, não um extremo deste.';
-
-const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell> }> = {
-  /** `chat_sandbox` com `choices[]` — 10 act / 10 def em produção. */
-  chat_pick_context: {
-    from: 'chat_sandbox',
-    row: {
-      'A.enabled': { story: 'activities-ia-sandbox-opcoes--vague-ask' },
-      'A.locked': { story: 'activities-gate-locked--locked-chat-pick-context' },
-      'B.done': { story: 'activities-ia-sandbox-opcoes--concluida' },
-      'C.blank': { story: 'activities-ia-sandbox-opcoes--vague-ask' },
-      'C.answered': { story: 'activities-ia-sandbox-opcoes--contexto-escolhido' },
-      'C.submitted': { story: 'activities-ia-sandbox-opcoes--resposta-recebida' },
-      'D.correct': { story: 'activities-ia-sandbox-opcoes--avaliada-corretamente' },
-      'D.incorrect': { story: 'activities-ia-sandbox-opcoes--avaliada-incorretamente' },
-      'E.reveal': { story: 'activities-ia-sandbox-opcoes--revealed-in-live' },
-      'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
-      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
-    },
+  /* ── 8 · Um comportamento por kind (plano 20260924-activity-type-one-behavior-rule) ──
+   * Cada kind novo é UM comportamento de um kind acima. As linhas de
+   * comportamento do T4 (`BEHAVIOUR_MATRIX`) MUDARAM para cá quando o kind
+   * nasceu, apontando agora para o arquivo de stories DO KIND. */
+  code_editor_checks: {
+    'A.enabled': { story: 'activities-code-editor-checks--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-code-editor-checks' },
+    'B.done': { story: 'activities-code-editor-checks--concluida' },
+    'C.blank': { story: 'activities-code-editor-checks--default' },
+    'C.answered': { deferred: 'browser-input', why: MONACO_INPUT },
+    'C.submitted': { deferred: 'browser-input', why: CHECKS_IN_IFRAME },
+    'D.correct': { deferred: 'browser-input', why: CHECKS_IN_IFRAME },
+    'D.incorrect': { deferred: 'browser-input', why: CHECKS_IN_IFRAME },
+    'E.reveal': { na: EDITOR_NO_SOLUTION },
+    'F.spec_invalido': { story: 'activities-code-editor-checks--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
-  /** `chat_sandbox` com `slots[]` de kind `select` — 18 act / 9 def em produção. */
+  code_editor_ungraded: {
+    'A.enabled': { story: 'activities-code-editor-ungraded--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-code-editor-ungraded' },
+    'B.done': { story: 'activities-code-editor-ungraded--concluida' },
+    'C.blank': { story: 'activities-code-editor-ungraded--default' },
+    'C.answered': { deferred: 'browser-input', why: MONACO_INPUT },
+    'C.submitted': { story: 'activities-code-editor-ungraded--marcada-concluida' },
+    'D.correct': { na: UNGRADED_NO_VERDICT },
+    'D.incorrect': { na: UNGRADED_NO_VERDICT },
+    'E.reveal': { na: EDITOR_NO_SOLUTION },
+    'F.spec_invalido': { story: 'activities-code-editor-ungraded--espec-invalida' },
+    'H.degenerado': { story: 'activities-code-editor-ungraded--sem-starter' },
+  },
+  code_fill_bank: {
+    'A.enabled': { story: 'activities-code-fill-bank--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-code-fill-bank' },
+    'B.done': { story: 'activities-code-fill-bank--concluida' },
+    'C.blank': { story: 'activities-code-fill-bank--default' },
+    'C.answered': { story: 'activities-code-fill-bank--preenchida' },
+    'C.submitted': { story: 'activities-code-fill-bank--certa' },
+    'D.correct': { story: 'activities-code-fill-bank--certa' },
+    'D.incorrect': { story: 'activities-code-fill-bank--errada' },
+    'E.reveal': { story: 'activities-code-fill-bank--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-code-fill-bank--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  code_fill_select: {
+    'A.enabled': { story: 'activities-code-fill-select--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-code-fill-select' },
+    'B.done': { story: 'activities-code-fill-select--concluida' },
+    'C.blank': { story: 'activities-code-fill-select--default' },
+    'C.answered': { story: 'activities-code-fill-select--preenchida' },
+    'C.submitted': { story: 'activities-code-fill-select--certa' },
+    'D.correct': { story: 'activities-code-fill-select--certa' },
+    'D.incorrect': { story: 'activities-code-fill-select--errada' },
+    'E.reveal': { story: 'activities-code-fill-select--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-code-fill-select--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  code_fill_type: {
+    'A.enabled': { story: 'activities-code-fill-type--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-code-fill-type' },
+    'B.done': { story: 'activities-code-fill-type--concluida' },
+    'C.blank': { story: 'activities-code-fill-type--default' },
+    'C.answered': { story: 'activities-code-fill-type--preenchida' },
+    'C.submitted': { story: 'activities-code-fill-type--certa' },
+    'D.correct': { story: 'activities-code-fill-type--certa' },
+    'D.incorrect': { story: 'activities-code-fill-type--errada' },
+    'E.reveal': { story: 'activities-code-fill-type--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-code-fill-type--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  chat_compose: {
+    'A.enabled': { story: 'activities-chat-compose--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-compose' },
+    'B.done': { story: 'activities-chat-compose--concluida' },
+    'C.blank': { story: 'activities-chat-compose--default' },
+    'C.answered': { story: 'activities-chat-compose--composto' },
+    'C.submitted': { story: 'activities-chat-compose--enviado' },
+    'D.correct': { story: 'activities-chat-compose--enviado' },
+    'D.incorrect': { na: COMPOSE_NO_WRONG_SEND },
+    'E.reveal': { story: 'activities-chat-compose--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-chat-compose--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
   chat_fill_select: {
-    from: 'chat_sandbox',
-    row: {
-      'A.enabled': { story: 'activities-ia-sandbox-slots--who-am-i' },
-      'A.locked': { story: 'activities-gate-locked--locked-chat-fill-select' },
-      'B.done': { story: 'activities-ia-sandbox-slots--concluida' },
-      'C.blank': { story: 'activities-ia-sandbox-slots--who-am-i' },
-      'C.answered': { story: 'activities-ia-sandbox-slots--opcao-escolhida' },
-      'C.submitted': { story: 'activities-ia-sandbox-slots--resposta-recebida' },
-      'D.correct': { story: 'activities-ia-sandbox-slots--avaliada-corretamente' },
-      'D.incorrect': { story: 'activities-ia-sandbox-slots--avaliada-incorretamente' },
-      'E.reveal': { story: 'activities-ia-sandbox-slots--revealed-in-live' },
-      'F.spec_invalido': { story: 'activities-dispatcher--chat-sandbox-espec-invalida' },
-      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
-    },
+    'A.enabled': { story: 'activities-chat-fill-select--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-fill-select' },
+    'B.done': { story: 'activities-chat-fill-select--concluida' },
+    'C.blank': { story: 'activities-chat-fill-select--default' },
+    'C.answered': { story: 'activities-chat-fill-select--composto' },
+    'C.submitted': { story: 'activities-chat-fill-select--enviado' },
+    'D.correct': { story: 'activities-chat-fill-select--enviado' },
+    'D.incorrect': { na: COMPOSE_NO_WRONG_SEND },
+    'E.reveal': { story: 'activities-chat-fill-select--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-chat-fill-select--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
-  /** `terminal_sandbox`, `inputMode: options`, granularidade `command` — 3 act / 1 def. */
+  chat_fill_type: {
+    'A.enabled': { story: 'activities-chat-fill-type--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-fill-type' },
+    'B.done': { story: 'activities-chat-fill-type--concluida' },
+    'C.blank': { story: 'activities-chat-fill-type--default' },
+    'C.answered': { story: 'activities-chat-fill-type--composto' },
+    'C.submitted': { story: 'activities-chat-fill-type--enviado' },
+    'D.correct': { story: 'activities-chat-fill-type--enviado' },
+    'D.incorrect': { na: COMPOSE_NO_WRONG_SEND },
+    'E.reveal': { story: 'activities-chat-fill-type--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-chat-fill-type--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  chat_pick_context: {
+    'A.enabled': { story: 'activities-chat-pick-context--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-pick-context' },
+    'B.done': { story: 'activities-chat-pick-context--concluida' },
+    'C.blank': { story: 'activities-chat-pick-context--default' },
+    'C.answered': { story: 'activities-chat-pick-context--composto' },
+    'C.submitted': { story: 'activities-chat-pick-context--enviado' },
+    'D.correct': { story: 'activities-chat-pick-context--enviado' },
+    'D.incorrect': { story: 'activities-chat-pick-context--envio-fraco' },
+    'E.reveal': { story: 'activities-chat-pick-context--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-chat-pick-context--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  chat_rate_reply: {
+    'A.enabled': { story: 'activities-chat-rate-reply--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-chat-rate-reply' },
+    'B.done': { story: 'activities-chat-rate-reply--concluida' },
+    'C.blank': { story: 'activities-chat-rate-reply--default' },
+    'C.answered': {
+      na: 'avaliar é UM toque, e o toque já envia: não existe "avaliou e não enviou". A resposta a avaliar já está na tela desde a montagem (a execução semeada, T25).',
+    },
+    'C.submitted': { story: 'activities-chat-rate-reply--avaliada-corretamente' },
+    'D.correct': { story: 'activities-chat-rate-reply--avaliada-corretamente' },
+    'D.incorrect': { story: 'activities-chat-rate-reply--avaliada-incorretamente' },
+    'E.reveal': { story: 'activities-chat-rate-reply--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-chat-rate-reply--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  terminal_type_command: {
+    'A.enabled': { story: 'activities-terminal-type-command--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-terminal-type-command' },
+    'B.done': { story: 'activities-terminal-type-command--concluida' },
+    'C.blank': { story: 'activities-terminal-type-command--default' },
+    'C.answered': { deferred: 'terminal-input', why: TERMINAL_NEEDS_TYPING },
+    'C.submitted': { deferred: 'terminal-input', why: TERMINAL_NEEDS_TYPING },
+    'D.correct': { deferred: 'terminal-input', why: TERMINAL_NEEDS_TYPING },
+    'D.incorrect': { deferred: 'terminal-input', why: TERMINAL_NEEDS_TYPING },
+    'E.reveal': { story: 'activities-terminal-type-command--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-terminal-type-command--espec-invalida' },
+    'H.degenerado': { story: 'activities-terminal-type-command--sem-motor' },
+  },
   terminal_pick_command: {
-    from: 'terminal_sandbox',
-    row: {
-      'A.enabled': { story: 'activities-terminal-pick-command--default' },
-      'A.locked': { story: 'activities-gate-locked--locked-terminal-pick-command' },
-      'B.done': { story: 'activities-terminal-pick-command--concluida' },
-      'C.blank': { story: 'activities-terminal-pick-command--default' },
-      'C.answered': { na: TERMINAL_TAP_RUNS },
-      'C.submitted': { story: 'activities-terminal-pick-command--comando-certo' },
-      'D.correct': { story: 'activities-terminal-pick-command--comando-certo' },
-      'D.incorrect': { story: 'activities-terminal-pick-command--comando-errado' },
-      'E.reveal': { story: 'activities-terminal-pick-command--revealed-in-live' },
-      'F.spec_invalido': { story: 'activities-dispatcher--terminal-sandbox-espec-invalida' },
-      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
-    },
+    'A.enabled': { story: 'activities-terminal-pick-command--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-terminal-pick-command' },
+    'B.done': { story: 'activities-terminal-pick-command--concluida' },
+    'C.blank': { story: 'activities-terminal-pick-command--default' },
+    'C.answered': { na: TERMINAL_TAP_RUNS },
+    'C.submitted': { story: 'activities-terminal-pick-command--comando-certo' },
+    'D.correct': { story: 'activities-terminal-pick-command--comando-certo' },
+    'D.incorrect': { story: 'activities-terminal-pick-command--comando-errado' },
+    'E.reveal': { story: 'activities-terminal-pick-command--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-terminal-pick-command--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
-  /** `terminal_sandbox`, `inputMode: options`, granularidade `token` — 2 act / 1 def. */
   terminal_build_command: {
-    from: 'terminal_sandbox',
-    row: {
-      'A.enabled': { story: 'activities-terminal-build-command--default' },
-      'A.locked': { story: 'activities-gate-locked--locked-terminal-build-command' },
-      'B.done': { story: 'activities-terminal-build-command--concluida' },
-      'C.blank': { story: 'activities-terminal-build-command--default' },
-      'C.answered': { story: 'activities-terminal-build-command--linha-montada' },
-      'C.submitted': { story: 'activities-terminal-build-command--linha-certa' },
-      'D.correct': { story: 'activities-terminal-build-command--linha-certa' },
-      'D.incorrect': { story: 'activities-terminal-build-command--linha-errada' },
-      'E.reveal': { story: 'activities-terminal-build-command--revealed-in-live' },
-      'F.spec_invalido': { story: 'activities-dispatcher--terminal-sandbox-espec-invalida' },
-      'H.degenerado': { na: NO_DEGENERATE_SHAPE },
-    },
+    'A.enabled': { story: 'activities-terminal-build-command--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-terminal-build-command' },
+    'B.done': { story: 'activities-terminal-build-command--concluida' },
+    'C.blank': { story: 'activities-terminal-build-command--default' },
+    'C.answered': { story: 'activities-terminal-build-command--linha-montada' },
+    'C.submitted': { story: 'activities-terminal-build-command--linha-certa' },
+    'D.correct': { story: 'activities-terminal-build-command--linha-certa' },
+    'D.incorrect': { story: 'activities-terminal-build-command--linha-errada' },
+    'E.reveal': { story: 'activities-terminal-build-command--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-terminal-build-command--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
-  /** `document` com `rubric.mode: "ai-judge"` — 10 act / 10 def em produção. */
-  document_ai_judge: {
-    from: 'document',
-    row: {
-      'A.enabled': { story: 'activities-producao-document-ai-judge--default' },
-      'A.locked': { story: 'activities-producao-document-ai-judge--travada' },
-      'B.done': {
-        drift:
-          '`AiJudgeDocumentActivity` não lê `activity.status`: uma redação já aprovada reabre vazia, com o botão de enviar. É achado de produção (o aluno refaz o trabalho), não falta de story.',
-      },
-      'C.blank': { story: 'activities-producao-document-ai-judge--default' },
-      'C.answered': { story: 'activities-producao-document-ai-judge--resposta-escrita' },
-      'C.submitted': { story: 'activities-producao-document-ai-judge--aprovada' },
-      'D.correct': { story: 'activities-producao-document-ai-judge--aprovada' },
-      'D.incorrect': { story: 'activities-producao-document-ai-judge--reprovada' },
-      'E.reveal': { na: NO_REVEAL_PROP },
-      'F.spec_invalido': { drift: LOOSE_ZOD },
-      'H.degenerado': {
-        drift:
-          'sem a porta `api.judge` o MESMO spec vira a reflexão por contagem de palavras (`DocumentActivity`): o host escolhe o comportamento. A regra do plano proíbe isso ("no host-dependent behaviour"); a story `--sem-porta-de-juiz` mostra a troca.',
-      },
+  document_read: {
+    'A.enabled': { story: 'activities-document-read--leitura' },
+    'A.locked': { story: 'activities-gate-locked--locked-document-read' },
+    'B.done': {
+      na: 'como o `concept`, não há botão de concluir — o avanço é do shell, então `status:"done"` não muda um pixel.',
     },
+    'C.blank': { na: READ_NO_ANSWER },
+    'C.answered': { na: READ_NO_ANSWER },
+    'C.submitted': { na: READ_NO_ANSWER },
+    'D.correct': { na: EXPOSITION_NO_GRADE },
+    'D.incorrect': { na: EXPOSITION_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-document-read--espec-invalida' },
+    'H.degenerado': { story: 'activities-document-read--sem-corpo' },
+  },
+  document_reflect: {
+    'A.enabled': { story: 'activities-document-reflect--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-document-reflect' },
+    'B.done': { story: 'activities-document-reflect--concluida' },
+    'C.blank': { story: 'activities-document-reflect--default' },
+    'C.answered': { story: 'activities-document-reflect--rascunho-curto' },
+    'C.submitted': { story: 'activities-document-reflect--enviada' },
+    'D.correct': { na: REFLECT_NO_GRADE },
+    'D.incorrect': { na: REFLECT_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-document-reflect--espec-invalida' },
+    'H.degenerado': { story: 'activities-document-reflect--sem-minimo' },
+  },
+  /** Era a linha de comportamento `document_ai_judge` do T4, `from: document`. */
+  document_ai_judge: {
+    'A.enabled': { story: 'activities-document-ai-judge--default' },
+    'A.locked': { story: 'activities-document-ai-judge--travada' },
+    'B.done': {
+      drift:
+        '`AiJudgeDocumentActivity` não lê `activity.status`: uma redação já aprovada reabre vazia, com o botão de enviar. É achado de produção (o aluno refaz o trabalho), não falta de story. O kind novo herda o componente; o conserto é do componente, não da divisão.',
+    },
+    'C.blank': { story: 'activities-document-ai-judge--default' },
+    'C.answered': { story: 'activities-document-ai-judge--resposta-escrita' },
+    'C.submitted': { story: 'activities-document-ai-judge--aprovada' },
+    'D.correct': { story: 'activities-document-ai-judge--aprovada' },
+    'D.incorrect': { story: 'activities-document-ai-judge--reprovada' },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    // Fechou (T12): o kind valida na fronteira e recusa uma avaliação por
+    // contagem de palavras — era `drift: LOOSE_ZOD` na linha de comportamento.
+    'F.spec_invalido': { story: 'activities-document-ai-judge--espec-invalida' },
+    // Fechou (T12): sem a porta de juiz o kind mostra "indisponível", não a
+    // reflexão — era o `drift` "o host escolhe o comportamento".
+    'H.degenerado': { story: 'activities-document-ai-judge--sem-porta-de-juiz' },
+  },
+  byoc_pick_best: {
+    'A.enabled': { story: 'activities-byoc-pick-best--default' },
+    'A.locked': { na: BYOC_NOT_LIVE },
+    'B.done': { story: 'activities-byoc-pick-best--concluida' },
+    'C.blank': { story: 'activities-byoc-pick-best--default' },
+    'C.answered': { na: BYOC_STATES_IN_TREE },
+    'C.submitted': { story: 'activities-byoc-pick-best--retornando' },
+    'D.correct': { deferred: 'fase-3', why: BYOC_VERDICT_IN_FLOW },
+    'D.incorrect': { deferred: 'fase-3', why: BYOC_VERDICT_IN_FLOW },
+    'E.reveal': { story: 'activities-byoc-pick-best--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-byoc-pick-best--espec-invalida' },
+    'H.degenerado': { story: 'activities-byoc-pick-best--sem-itera' },
+  },
+  byoc_judge_each: {
+    'A.enabled': { story: 'activities-byoc-judge-each--default' },
+    'A.locked': { na: BYOC_NOT_LIVE },
+    'B.done': { story: 'activities-byoc-judge-each--concluida' },
+    'C.blank': { story: 'activities-byoc-judge-each--default' },
+    'C.answered': { na: BYOC_STATES_IN_TREE },
+    'C.submitted': { story: 'activities-byoc-judge-each--retornando' },
+    'D.correct': { deferred: 'fase-3', why: BYOC_VERDICT_IN_FLOW },
+    'D.incorrect': { deferred: 'fase-3', why: BYOC_VERDICT_IN_FLOW },
+    'E.reveal': { story: 'activities-byoc-judge-each--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-byoc-judge-each--espec-invalida' },
+    'H.degenerado': { story: 'activities-byoc-judge-each--sem-itera' },
+  },
+  byoc_build_context: {
+    'A.enabled': { story: 'activities-byoc-build-context--default' },
+    'A.locked': { na: BYOC_NOT_LIVE },
+    'B.done': { story: 'activities-byoc-build-context--concluida' },
+    'C.blank': { story: 'activities-byoc-build-context--default' },
+    'C.answered': { na: BYOC_STATES_IN_TREE },
+    'C.submitted': { story: 'activities-byoc-build-context--retornando' },
+    'D.correct': { na: 'não há certo nem errado: chegar ao fim da construção É o acerto (como na árvore `build_context`).' },
+    'D.incorrect': { na: 'não há certo nem errado: chegar ao fim da construção É o acerto (como na árvore `build_context`).' },
+    'E.reveal': { story: 'activities-byoc-build-context--revealed-in-live' },
+    'F.spec_invalido': { story: 'activities-byoc-build-context--espec-invalida' },
+    'H.degenerado': { story: 'activities-byoc-build-context--sem-itera' },
+  },
+  question_pick_one: {
+    'A.enabled': { story: 'activities-question-pick-one--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-question-pick-one' },
+    'B.done': { story: 'activities-question-pick-one--concluida' },
+    'C.blank': { story: 'activities-question-pick-one--default' },
+    'C.answered': { story: 'activities-question-pick-one--respondida' },
+    'C.submitted': { story: 'activities-question-pick-one--enviada' },
+    'D.correct': { na: QUESTION_NO_GRADE },
+    'D.incorrect': { na: QUESTION_NO_GRADE },
+    'E.reveal': { na: QUESTION_KIND_NO_REVEAL },
+    'F.spec_invalido': { story: 'activities-question-pick-one--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  question_pick_many: {
+    'A.enabled': { story: 'activities-question-pick-many--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-question-pick-many' },
+    'B.done': { story: 'activities-question-pick-many--concluida' },
+    'C.blank': { story: 'activities-question-pick-many--default' },
+    'C.answered': { story: 'activities-question-pick-many--respondida' },
+    'C.submitted': { story: 'activities-question-pick-many--enviada' },
+    'D.correct': { na: QUESTION_NO_GRADE },
+    'D.incorrect': { na: QUESTION_NO_GRADE },
+    'E.reveal': { na: QUESTION_KIND_NO_REVEAL },
+    'F.spec_invalido': { story: 'activities-question-pick-many--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
+  },
+  question_write: {
+    'A.enabled': { story: 'activities-question-write--default' },
+    'A.locked': { story: 'activities-gate-locked--locked-question-write' },
+    'B.done': { story: 'activities-question-write--concluida' },
+    'C.blank': { story: 'activities-question-write--default' },
+    'C.answered': { story: 'activities-question-write--respondida' },
+    'C.submitted': { story: 'activities-question-write--enviada' },
+    'D.correct': { na: QUESTION_NO_GRADE },
+    'D.incorrect': { na: QUESTION_NO_GRADE },
+    'E.reveal': { na: QUESTION_KIND_NO_REVEAL },
+    'F.spec_invalido': { story: 'activities-question-write--espec-invalida' },
+    'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
 };
 
 /**
- * O NÚMERO. Snapshot da distribuição das 209 células ((14 kinds + 5 linhas de
- * comportamento) × 11 células).
+ * LINHAS POR COMPORTAMENTO — VAZIA desde que os kinds nasceram.
+ *
+ * Plano `20260924-activity-type-one-behavior-rule`, T4 abriu aqui cinco linhas
+ * com o NOME DO KIND FUTURO (`chat_pick_context`, `chat_fill_select`,
+ * `terminal_pick_command`, `terminal_build_command`, `document_ai_judge`) e o
+ * kind de hoje em `from`. T9–T14 fizeram os kinds nascer, e as cinco MUDARAM
+ * para a `MATRIX` acima, como o teste abaixo exige. O registro fica, vazio, para
+ * a próxima vez que um kind esconder um comportamento que a produção usa.
+ */
+const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell> }> = {};
+
+/**
+ * O NÚMERO. Snapshot da distribuição das 396 células (36 kinds × 11 células; a
+ * `BEHAVIOUR_MATRIX` está vazia desde T9–T14).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
  * consciente, com o novo número escrito à mão aqui. Subir `covered` (ou baixar
@@ -491,6 +715,22 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  *                  troca de comportamento sem a porta de juiz). O total passa a
  *                  ser (kinds + comportamentos) × 11.
  *
+ *   um comportamento por kind →{ covered: 286, na: 83, deferred: 18, drift: 9 }
+ *                  (2026-09-27, plano `20260924-activity-type-one-behavior-rule`,
+ *                  T9–T14). 36 kinds × 11 = 396 células: os 22 kinds novos
+ *                  entraram na `MATRIX` com um arquivo de stories cada, e as 5
+ *                  linhas de comportamento do T4 mudaram para as linhas dos
+ *                  kinds (a `BEHAVIOUR_MATRIX` ficou vazia). `drift` CAIU de 11
+ *                  para 9: dois dos três achados do `document_ai_judge` fecharam
+ *                  no kind — o spec agora é validado (F) e sem a porta de juiz o
+ *                  kind mostra "indisponível" em vez de virar reflexão (H). O
+ *                  terceiro (B.done: o componente não lê `status`) é do
+ *                  componente e continua `drift`. `deferred` subiu 13, todos com
+ *                  o motivo técnico da linha de origem: Monaco/iframe no editor
+ *                  (5, `browser-input`), digitação no terminal (4,
+ *                  `terminal-input`) e o veredito BYOC que só existe no fim da
+ *                  árvore gerada (4, `fase-3`).
+ *
  * As 10 células que viraram: `quiz` C.answered/C.submitted/D.correct/D.incorrect
  * (a activity herói, que não tinha NENHUM estado de resposta), `document`
  * C.answered/C.submitted (rascunho abaixo do `min_words` × redação enviada) e
@@ -508,7 +748,7 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 155, na: 38, deferred: 5, drift: 11 };
+const COVERAGE_SNAPSHOT = { covered: 286, na: 83, deferred: 18, drift: 9 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

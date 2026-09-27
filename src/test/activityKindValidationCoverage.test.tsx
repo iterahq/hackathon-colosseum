@@ -45,7 +45,9 @@ vi.mock('@/api/iteraApi', async (importOriginal) => ({
 // outros 13 kinds não precisam de nenhuma.
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ session: null, loading: false }) }));
 
-import { ACTIVITY_KINDS, safeParseActivitySpec, type ActivityKind } from '@iterahq/activity-spec';
+import { safeParseActivitySpec } from '@iterahq/activity-spec';
+import { safeParseKindSpec } from '@iterahq/activities';
+import type { ActivityKind } from '@/types/content';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { ACTIVITY_CONTRACTS, type ContractFixture } from '@/stories/contractFixtures';
@@ -57,6 +59,8 @@ import {
   packageSaysImplemented,
   specBoundaryFailure,
   specSchemaClass,
+  // The spec's kinds plus the 22 one-behaviour kinds — every kind the Player renders.
+  KNOWN_ACTIVITY_KINDS as ACTIVITY_KINDS,
 } from '@/utils/activitySpecBoundary';
 import type { Activity } from '@/types/content';
 
@@ -104,6 +108,29 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   chat_sandbox: { totalmente: 'inválido' },
   terminal_sandbox: { totalmente: 'inválido' },
   question: { totalmente: 'inválido' },
+  // The one-behaviour kinds (plan `20260924-activity-type-one-behavior-rule`).
+  code_editor_checks: { totalmente: 'inválido' },
+  code_editor_ungraded: { totalmente: 'inválido' },
+  code_fill_bank: { totalmente: 'inválido' },
+  code_fill_select: { totalmente: 'inválido' },
+  code_fill_type: { totalmente: 'inválido' },
+  chat_compose: { totalmente: 'inválido' },
+  chat_fill_select: { totalmente: 'inválido' },
+  chat_fill_type: { totalmente: 'inválido' },
+  chat_pick_context: { totalmente: 'inválido' },
+  chat_rate_reply: { totalmente: 'inválido' },
+  terminal_type_command: { totalmente: 'inválido' },
+  terminal_pick_command: { totalmente: 'inválido' },
+  terminal_build_command: { totalmente: 'inválido' },
+  document_read: 'isto não é um objeto',
+  document_reflect: 'isto não é um objeto',
+  document_ai_judge: 'isto não é um objeto',
+  byoc_pick_best: { totalmente: 'inválido' },
+  byoc_judge_each: { totalmente: 'inválido' },
+  byoc_build_context: { totalmente: 'inválido' },
+  question_pick_one: { totalmente: 'inválido' },
+  question_pick_many: { totalmente: 'inválido' },
+  question_write: { totalmente: 'inválido' },
 };
 
 /** Harness mínimo que o `ByocSpecSchema` ACEITA — o `{seed}` é obrigatório. */
@@ -170,7 +197,7 @@ describe('fronteira de validação de spec — cobertura dos 13 kinds', () => {
     // do laço em silêncio, e o teste seguiria verde medindo menos.
     expect(KNOWN_STUB_KINDS).toEqual([]);
     for (const kind of KINDS) {
-      expect(safeParseActivitySpec(kind, {}).success).toBe(false);
+      expect(safeParseKindSpec(kind, {}).success).toBe(false);
     }
   });
 

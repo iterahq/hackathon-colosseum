@@ -69,7 +69,7 @@ export function GuidedCodePane({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-3xl border border-border bg-card p-4 md:p-6"
       data-testid="activity-shell"
-      data-activity-kind="code"
+      data-activity-kind={activity.kind}
       data-guided-variant={variant}
       data-phase={guided.phase}
       data-revealed={guided.revealed ? 'true' : 'false'}

@@ -52,7 +52,7 @@ export function ReflectionDocumentActivity({
   const meetsMin = words >= Math.max(minWords, 1);
 
   return (
-    <ActivityShell kind="document" icon={FileText} label={t('activity.document')}>
+    <ActivityShell kind={activity.kind} icon={FileText} label={t('activity.document')}>
       <RichText
         text={spec?.prompt ?? spec?.title ?? t('activity.document')}
         data-testid="document-prompt"

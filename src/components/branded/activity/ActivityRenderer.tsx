@@ -61,6 +61,28 @@ import { DiagramActivity } from './DiagramActivity';
 import { QuizActivity } from './QuizActivity';
 import { QuestionActivity } from './QuestionActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
+import {
+  ChatComposeActivity,
+  ChatFillSelectActivity,
+  ChatFillTypeActivity,
+  ChatPickContextActivity,
+  ChatRateReplyActivity,
+  CodeEditorChecksActivity,
+  CodeEditorUngradedActivity,
+  CodeFillBankActivity,
+  CodeFillSelectActivity,
+  CodeFillTypeActivity,
+  DocumentAiJudgeActivity,
+  DocumentReadActivity,
+  DocumentReflectActivity,
+  QuestionPickManyActivity,
+  QuestionPickOneActivity,
+  QuestionWriteActivity,
+  TerminalBuildCommandActivity,
+  TerminalPickCommandActivity,
+  TerminalTypeCommandActivity,
+} from './OneBehaviourKindActivities';
+import { ByocKindActivity, isByocKind } from './byoc/ByocKindActivity';
 import { ByocActivity } from './byoc/ByocActivity';
 import { PersonalizationGate } from './PersonalizationGate';
 import { usePersonalization } from '@/personalization/personalizationPort';
@@ -125,8 +147,18 @@ export function ActivityRenderer({
     return <PersonalizationGate fields={missing} />;
   }
 
+  // The three BYOC KINDS (T13) come BEFORE the layer: their spec carries
+  // `byoc` too, and the layer below would otherwise take them — and, with the
+  // itera-api unconfigured, hand them to the host kind's card. The kind renders
+  // its own interaction or an explicit state, never another kind.
+  if (isByocKind(activity.kind)) {
+    return <ByocKindActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+  }
+
   // BYOC is a LAYER, not a kind: an activity of ANY kind whose spec carries an
   // authored harness is generated from the learner's own context first.
+  // ⚠️ DEPRECATED (plan `20260924-activity-type-one-behavior-rule`, ADR-4): the
+  // layer stays for the transition window only; new content uses `byoc_*`.
   const byoc = resolveByocSpec(activity, locale);
   if (byoc) {
     return <ByocActivity activity={activity} spec={byoc} onComplete={onComplete} reveal={reveal} />;
@@ -194,6 +226,55 @@ export function ActivityRenderer({
     // devolve false pro kind, logo o botão do professor nem aparece.
     case 'question':
       return <QuestionActivity activity={activity} onComplete={onComplete} />;
+    // ── The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
+    // T9–T14). The KIND names the surface; nothing below sniffs the spec. All
+    // of them passed the boundary above (`site: 'boundary'`).
+    // code (T9) — `reveal` reaches the fill kinds (an authored answer exists)
+    // and stops at the open editor, exactly as in `CodeActivity`.
+    case 'code_editor_checks':
+      return <CodeEditorChecksActivity activity={activity} onComplete={onComplete} />;
+    case 'code_editor_ungraded':
+      return <CodeEditorUngradedActivity activity={activity} onComplete={onComplete} />;
+    case 'code_fill_bank':
+      return <CodeFillBankActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'code_fill_select':
+      return <CodeFillSelectActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'code_fill_type':
+      return <CodeFillTypeActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    // chat (T10) — the deterministic runtime only: these kinds refuse the
+    // live-model layer, so the live branch of `SandboxScenarioGuard` is not here.
+    case 'chat_compose':
+      return <ChatComposeActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'chat_fill_select':
+      return <ChatFillSelectActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'chat_fill_type':
+      return <ChatFillTypeActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'chat_pick_context':
+      return <ChatPickContextActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'chat_rate_reply':
+      return <ChatRateReplyActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    // terminal (T11)
+    case 'terminal_type_command':
+      return <TerminalTypeCommandActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'terminal_pick_command':
+      return <TerminalPickCommandActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    case 'terminal_build_command':
+      return <TerminalBuildCommandActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+    // document (T12) — `document_ai_judge` with no judge port is an explicit
+    // "unavailable" card, never the reflection.
+    case 'document_read':
+      return <DocumentReadActivity activity={activity} onComplete={onComplete} />;
+    case 'document_reflect':
+      return <DocumentReflectActivity activity={activity} onComplete={onComplete} />;
+    case 'document_ai_judge':
+      return <DocumentAiJudgeActivity activity={activity} onComplete={onComplete} />;
+    // question (T14) — no `reveal`: no correct answer to expose.
+    case 'question_pick_one':
+      return <QuestionPickOneActivity activity={activity} onComplete={onComplete} />;
+    case 'question_pick_many':
+      return <QuestionPickManyActivity activity={activity} onComplete={onComplete} />;
+    case 'question_write':
+      return <QuestionWriteActivity activity={activity} onComplete={onComplete} />;
     default:
       return <UnknownActivity activity={activity} />;
   }

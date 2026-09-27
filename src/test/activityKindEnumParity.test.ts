@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
+import { ONE_BEHAVIOUR_KINDS } from '@iterahq/activities';
 
 /**
  * The TypeScript kind union and the DATABASE enum, cross-checked.
@@ -123,7 +124,16 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
    * "no writer exists, by design". If anything ever writes a `question` row,
    * this list is wrong before the migration is missing.
    */
-  const NEVER_STORED: readonly string[] = ['question'];
+  const NEVER_STORED: readonly string[] = [
+    'question',
+    // The three one-behaviour question kinds (plan
+    // `20260924-activity-type-one-behavior-rule`, T14): the plans-app asks them,
+    // and nothing writes them to `itera.activities` — the same reason as
+    // `question`. The spec lists them in `ENUM_ABSENT_KINDS`.
+    'question_pick_one',
+    'question_pick_many',
+    'question_write',
+  ];
 
   it('every kind the package exports can be STORED, or is on the never-stored list', () => {
     const unstorable = [...ACTIVITY_KINDS].filter(
@@ -143,9 +153,10 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
   it('every never-stored kind is really absent from the enum — no stale exemption', () => {
     expect(NEVER_STORED.filter((k) => dbEnum.includes(k))).toEqual([]);
     // …and is really a kind, not a typo that exempts nothing.
-    expect(NEVER_STORED.filter((k) => !(ACTIVITY_KINDS as readonly string[]).includes(k))).toEqual(
-      [],
-    );
+    // A one-behaviour kind counts as a kind before the spec release that
+    // exports it (the renderer mirrors the list; see `oneBehaviourKinds.ts`).
+    const known = [...ACTIVITY_KINDS, ...ONE_BEHAVIOUR_KINDS] as readonly string[];
+    expect(NEVER_STORED.filter((k) => !known.includes(k))).toEqual([]);
   });
 
   it('reports enum values the package no longer exports (legal — the enum cannot shrink)', () => {

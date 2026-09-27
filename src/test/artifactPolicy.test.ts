@@ -10,7 +10,7 @@
  * ever breaks, shipping the change would silently alter live lessons.
  */
 import { describe, it, expect } from 'vitest';
-import { ACTIVITY_KINDS } from '@iterahq/activity-spec';
+import { KNOWN_ACTIVITY_KINDS as ACTIVITY_KINDS } from '@/utils/activitySpecBoundary';
 import type { ActivityKind } from '@/types/content';
 import {
   KIND_ARTIFACT_DEFAULTS,
@@ -50,7 +50,19 @@ describe('non-regression: an unconfigured activity behaves exactly as before 002
    * título ("`document` e nada mais") descrevia errado a tabela: `code` também
    * persiste, com `solution.txt`, e persistia antes desta suíte existir.
    */
-  const PERSISTEM: readonly ActivityKind[] = ['document', 'code'];
+  const PERSISTEM: readonly ActivityKind[] = [
+    'document',
+    'code',
+    // The one-behaviour kinds keep the default of the old kind they came from,
+    // except `document_read`, which hands up no content (plan T12).
+    'code_editor_checks',
+    'code_editor_ungraded',
+    'code_fill_bank',
+    'code_fill_select',
+    'code_fill_type',
+    'document_reflect',
+    'document_ai_judge',
+  ];
 
   it('persiste só `document` e `code`', () => {
     for (const kind of ACTIVITY_KINDS) {

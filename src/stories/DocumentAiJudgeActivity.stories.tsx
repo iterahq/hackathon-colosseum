@@ -15,23 +15,20 @@ import { DOCUMENT_AI_JUDGE_RUBRIC, DOCUMENT_AI_JUDGE_SPEC } from './behaviourFix
 import { withActivityWidth } from './decorators';
 
 /**
- * BEHAVIOUR `document_ai_judge` — write, then an AI judge decides.
- *
- * Today it is `document` with `rubric.mode: "ai-judge"` (10 activities + 10
- * defs in production). Until this file, the `document` matrix row showed only
- * the reading card and the word-count reflection, and declared `D` as `na`.
- * Plan `20260924-activity-type-one-behavior-rule` (v3, ADR-1) makes it its own
- * kind. Fixture: production row `eb426dc5` (see `behaviourFixtures.ts`).
+ * KIND `document_ai_judge` — plan `20260924-activity-type-one-behavior-rule`
+ * (one activity type = one behaviour, T12). Write, then an AI judge decides.
+ * Fixture: production row `eb426dc5` (see `behaviourFixtures.ts`).
  *
  * ── WHY A NESTED PROVIDER ──────────────────────────────────────────────────
- * `DocumentActivity` shows this renderer only when the host supplies
- * `api.judge`. The Storybook host (`IteraActivityHost`) supplies no `api`,
- * because `VITE_ITERA_API_BASE` is not set here. The decorator below keeps
- * every port of the outer host and adds a FAKE `api` with a local verdict. No
- * network, no model: the value here is the screen and its states.
+ * The judge is a HOST port (`api.judge`). The Storybook host
+ * (`IteraActivityHost`) supplies no `api`, because `VITE_ITERA_API_BASE` is not
+ * set here. The decorator below keeps every port of the outer host and adds a
+ * FAKE `api` with a local verdict. No network, no model: the value here is the
+ * screen and its states.
  *
- * `SemPortaDeJuiz` shows the violation the plan names ("no host-dependent
- * behaviour"): with no judge port the SAME row becomes a reflection.
+ * `SemPortaDeJuiz` is the rule, on screen: with no judge port the kind shows an
+ * explicit "unavailable" state. Under the old `document` kind the SAME row
+ * became a word-count reflection — a behaviour chosen by the host.
  */
 const verdict = (passed: boolean): ActivityJudgeVerdict => ({
   result_id: 'storybook-judge',
@@ -84,8 +81,8 @@ const ANSWER =
   'limite de exposição, o caso vai para um humano. VERIFICAÇÃO: comparar a classificação com a decisão final.';
 
 const meta: Meta<typeof ActivityRenderer> = {
-  title: 'Organisms/Activities/5 · Produção/Document (IA avalia)',
-  id: 'activities-producao-document-ai-judge',
+  title: 'Activities/Document/document_ai_judge',
+  id: 'activities-document-ai-judge',
   component: ActivityRenderer,
   decorators: [withActivityWidth],
   parameters: { layout: 'centered', backgrounds: { default: 'dark' } },
@@ -102,7 +99,7 @@ type Story = StoryObj<typeof ActivityRenderer>;
  */
 const activity = () =>
   makeActivity(
-    'document',
+    'document_ai_judge',
     resolveLocalizedSpec(DOCUMENT_AI_JUDGE_SPEC, 'pt'),
     undefined,
     resolveLocalizedSpec(DOCUMENT_AI_JUDGE_RUBRIC, 'pt'),
@@ -173,14 +170,29 @@ export const Travada: Story = {
 };
 
 /**
- * The drift, on screen: NO judge port. The same production row renders the
- * word-count REFLECTION instead — a different behaviour chosen by the host.
+ * H.degenerado — NO judge port. The kind shows the explicit "unavailable" state
+ * and never the word-count reflection: the host does not choose the behaviour.
  */
 export const SemPortaDeJuiz: Story = {
   args: { activity: activity() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('document-ai-judge-unavailable')).toBeInTheDocument();
     await expect(canvas.queryByTestId('judge-submit')).not.toBeInTheDocument();
-    await expect(canvas.getByTestId('document-reflection-input')).toBeInTheDocument();
+    await expect(canvas.queryByTestId('document-reflection-input')).not.toBeInTheDocument();
+  },
+};
+
+/** F.spec_invalido — a word-count evaluation belongs to `document_reflect`. */
+export const EspecInvalida: Story = {
+  decorators: [withJudge(true)],
+  args: {
+    activity: makeActivity('document_ai_judge', {
+      prompt: 'Escreva o brief.',
+      evaluation: { mode: 'word-count', minWords: 30 },
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('document-ai-judge-invalid')).toBeInTheDocument();
   },
 };

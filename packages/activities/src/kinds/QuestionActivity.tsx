@@ -196,6 +196,13 @@ export interface QuestionActivityBodyProps {
   otherLabel?: ReactNode;
   /** Makes the notes `<label htmlFor>` unique per mount. */
   fieldId?: string;
+  /**
+   * The eyebrow above the options. `with-free-text` (default) keeps the
+   * historical "…, or write your own"; `options-only` is for the one-behaviour
+   * pick kinds, which carry no free text (T14); `none` hides it
+   * (`question_write` has no options to pick).
+   */
+  pickHint?: 'with-free-text' | 'options-only' | 'none';
 }
 
 function OptionBody({ option }: { option: QuestionBodyOption }) {
@@ -232,6 +239,7 @@ export function QuestionActivityBody({
   notesRows = 3,
   otherLabel,
   fieldId = 'question-text',
+  pickHint = 'with-free-text',
 }: QuestionActivityBodyProps) {
   const { t } = useActivityI18n();
   const { allowOther, allowNotes } = resolveQuestionInputs(
@@ -243,9 +251,17 @@ export function QuestionActivityBody({
 
   return (
     <>
-      <p className="mt-5 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-        {multi ? t('activity.question.pickAny') : t('activity.question.pickOne')}
-      </p>
+      {pickHint !== 'none' && (
+        <p className="mt-5 text-xs font-mono uppercase tracking-wider text-muted-foreground">
+          {pickHint === 'options-only'
+            ? multi
+              ? t('activity.question.pickAnyOnly')
+              : t('activity.question.pickOneOnly')
+            : multi
+              ? t('activity.question.pickAny')
+              : t('activity.question.pickOne')}
+        </p>
+      )}
 
       <div className="mt-3 grid gap-2.5" data-testid="question-options">
         {options.map((o) => {
@@ -360,12 +376,50 @@ export function QuestionActivity({
    */
   callerOptions?: QuestionCallerOptions;
 }) {
+  const spec = activity.spec as unknown as QuestionSpec;
+  const { allowOther, allowNotes } = resolveQuestionInputs(spec, callerOptions);
+  return (
+    <QuestionView
+      activity={activity}
+      onComplete={onComplete}
+      priorAnswer={priorAnswer}
+      multi={spec?.mode === 'multi'}
+      withOptions
+      allowOther={allowOther}
+      allowNotes={allowNotes}
+    />
+  );
+}
+
+/**
+ * The one screen behind `question` and the three one-behaviour question kinds
+ * (T14). Every input is decided by the CALLER of this view — the transition
+ * kind reads `mode` / `allow_other` off the spec, the new kinds pin them.
+ */
+export function QuestionView({
+  activity,
+  onComplete,
+  priorAnswer,
+  multi,
+  withOptions,
+  allowOther,
+  allowNotes,
+  pickHint = 'with-free-text',
+}: {
+  activity: PortableActivity;
+  onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  priorAnswer?: ActivityCompletion;
+  pickHint?: QuestionActivityBodyProps['pickHint'];
+  multi: boolean;
+  /** `false` only for `question_write`: the free answer is the whole input. */
+  withOptions: boolean;
+  allowOther: boolean;
+  allowNotes: boolean;
+}) {
   const { t } = useActivityI18n();
   const spec = activity.spec as unknown as QuestionSpec;
   // AUTHORED ORDER — see (4) in the header. No `learnerShuffle` here.
-  const options = spec?.options ?? [];
-  const multi = spec?.mode === 'multi';
-  const { allowOther, allowNotes } = resolveQuestionInputs(spec, callerOptions);
+  const options = withOptions ? (spec?.options ?? []) : [];
 
   const authoredIds = options.map((o) => o.id);
   // Ids the trace may legitimately name: the authored ones plus the sentinel.
@@ -452,7 +506,7 @@ export function QuestionActivity({
   }
 
   return (
-    <ActivityShell kind="question" icon={MessageCircleQuestion} label={t('activity.question')}>
+    <ActivityShell kind={activity.kind} icon={MessageCircleQuestion} label={t('activity.question')}>
       {spec?.title && (
         <RichText text={spec.title} className="text-lg font-medium" data-testid="question-title" />
       )}
@@ -483,6 +537,7 @@ export function QuestionActivity({
         notesLabel={spec?.free_text?.label}
         notesPlaceholder={spec?.free_text?.placeholder}
         fieldId={`question-text-${activity.id}`}
+        pickHint={pickHint}
       />
 
       {/*

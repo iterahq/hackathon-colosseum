@@ -6,6 +6,7 @@ import { LiveStageBody } from '@/components/live/LiveStageBody';
 import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import type { Activity } from '@/types/content';
 import type { StageCursor, StagedAnswer } from '@/types/liveClass';
+import { transitionKindOf } from '@iterahq/activities';
 
 interface LiveStageProps {
   staged: StagedAnswer;
@@ -112,10 +113,13 @@ export function LiveStage({
   // O BYOC não é kind, é camada, e cai na mesma regra por um caminho próprio:
   // `useByoc` BUSCA a árvore na montagem, então cada espectador geraria a dele e
   // veria uma atividade diferente com o nome do mesmo aluno em cima.
+  // `transitionKindOf` folds the one-behaviour kinds (`code_fill_bank`,
+  // `terminal_pick_command`, …) onto the old kind whose screen they reuse.
+  const viewerStateKind = activity ? transitionKindOf(activity.kind) : null;
   const mirrorsFromViewerState =
-    activity?.kind === 'code' ||
-    activity?.kind === 'terminal_sandbox' ||
-    activity?.kind === 'chat_sandbox' ||
+    viewerStateKind === 'code' ||
+    viewerStateKind === 'terminal_sandbox' ||
+    viewerStateKind === 'chat_sandbox' ||
     (!!activity && isByocActivity(activity));
   const mirrorActivity = activity && !mirrorsFromViewerState ? activity : null;
 

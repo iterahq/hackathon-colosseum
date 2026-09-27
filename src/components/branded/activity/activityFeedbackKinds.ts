@@ -31,6 +31,17 @@ export const FOOTER_GRADED_KINDS: ReadonlySet<string> = new Set([
   // removido justamente por confiar neste conjunto.
   'chat_sandbox',
   'terminal_sandbox',
+  // The eight one-behaviour sandbox kinds (plan `20260924-activity-type-one-behavior-rule`):
+  // the same shells, so the same footer — missing one here would leave it with
+  // no verdict and no "Continuar".
+  'chat_compose',
+  'chat_fill_select',
+  'chat_fill_type',
+  'chat_pick_context',
+  'chat_rate_reply',
+  'terminal_type_command',
+  'terminal_pick_command',
+  'terminal_build_command',
 ]);
 
 /** Whether an activity kind's feedback should surface in the fixed footer. */

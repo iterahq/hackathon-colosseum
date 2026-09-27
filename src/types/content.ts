@@ -5,7 +5,7 @@
  * We keep João Oak's visual gamified design, but drop the git-metaphor naming
  * (Feature/Pull/Commit). These shapes map 1:1 to the `itera.*` Supabase schema.
  */
-import type { ActivityKind } from '@iterahq/activity-spec';
+import type { KnownActivityKind as ActivityKind } from '@iterahq/activities';
 
 /**
  * Canonical `itera.activity_kind` enum values.
@@ -27,7 +27,19 @@ import type { ActivityKind } from '@iterahq/activity-spec';
  * e o `ACTIVITY_KINDS` do `iterahq/itera-mcp` continuam sendo os outros dois
  * pontos da mudança coordenada.
  */
-export type { ActivityKind } from '@iterahq/activity-spec';
+export type { ActivityKind };
+
+/*
+ * ⚠️ WIDENED (2026-09-27, plan `20260924-activity-type-one-behavior-rule`, T9–T14):
+ * `ActivityKind` here is `@iterahq/activity-spec`'s `ActivityKind` PLUS the 22
+ * one-behaviour kinds (`KnownActivityKind` of `@iterahq/activities`). The spec
+ * release that exports them (1.4.0) is not published yet, and the Player must
+ * render them before the data remap moves rows onto them. On spec `^1.4.0` the
+ * union collapses into the spec's own `ActivityKind`, so this line can go back
+ * to a plain re-export with no other change. The exhaustiveness traps below
+ * (`KIND_VALIDATION`, `ACTIVITY_FAMILY`, `KIND_ARTIFACT_DEFAULTS`) already
+ * cover the 22 kinds, which is what makes that bump a no-op.
+ */
 
 /**
  * The AUTHORED SPEC SHAPES MOVED to `@iterahq/activities` (Fase C, step 1 of

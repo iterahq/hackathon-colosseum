@@ -16,7 +16,8 @@
  * resposta vem de um LLM real, então ele não carrega `cannedResults`).
  */
 import { describe, expect, it } from 'vitest';
-import { ACTIVITY_KINDS, safeParseActivitySpec } from '@iterahq/activity-spec';
+import { safeParseKindSpec } from '@iterahq/activities';
+import { KNOWN_ACTIVITY_KINDS } from '@/utils/activitySpecBoundary';
 import { isByocLive } from '@/components/branded/activity/sandbox-live/byocLive';
 import {
   ACTIVITY_CONTRACTS,
@@ -43,7 +44,7 @@ const FUNCTIONS = new Set([
 describe('fixtures de story por contrato de activity', () => {
   it('registra pelo menos um contrato para CADA kind do enum', () => {
     const covered = new Set(entries.map(([, c]) => c.kind));
-    expect([...ACTIVITY_KINDS].filter((k) => !covered.has(k))).toEqual([]);
+    expect([...KNOWN_ACTIVITY_KINDS].filter((k) => !covered.has(k))).toEqual([]);
   });
 
   it.each(entries)('%s declara uma função pedagógica conhecida', (_key, contract) => {
@@ -55,8 +56,8 @@ describe('fixtures de story por contrato de activity', () => {
   it.each(entries.filter(([, c]) => c.validated))(
     '%s passa no safeParseActivitySpec do seu kind',
     (_key, contract) => {
-      const parsed = safeParseActivitySpec(contract.kind, contract.spec);
-      expect(parsed.success, JSON.stringify(parsed.success ? {} : parsed.error.issues)).toBe(true);
+      const parsed = safeParseKindSpec(contract.kind, contract.spec);
+      expect(parsed.success, 'error' in parsed ? parsed.error : '').toBe(true);
     },
   );
 
@@ -76,15 +77,15 @@ describe('fixtures de story por contrato de activity', () => {
   it.each(Object.entries(DEGENERATE_SPECS))(
     'DEGENERATE_SPECS.%s é VÁLIDO no Zod (eixo H: degenerado, não inválido)',
     (_key, fixture) => {
-      const parsed = safeParseActivitySpec(fixture.kind, fixture.spec);
-      expect(parsed.success, JSON.stringify(parsed.success ? {} : parsed.error.issues)).toBe(true);
+      const parsed = safeParseKindSpec(fixture.kind, fixture.spec);
+      expect(parsed.success, 'error' in parsed ? parsed.error : '').toBe(true);
     },
   );
 
   it.each(Object.entries(UNGUARDED_INVALID_SPECS))(
     'UNGUARDED_INVALID_SPECS.%s é REJEITADO pelo Zod do seu kind',
     (_key, fixture) => {
-      expect(safeParseActivitySpec(fixture.kind, fixture.spec).success).toBe(false);
+      expect(safeParseKindSpec(fixture.kind, fixture.spec).success).toBe(false);
     },
   );
 

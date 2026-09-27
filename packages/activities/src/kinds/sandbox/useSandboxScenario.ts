@@ -16,6 +16,7 @@ import {
   type Scenario,
   type StepNeeds,
 } from '@iterahq/activity-spec/runtime';
+import { seedFallbackRun } from './seedFallbackRun.js';
 
 const NO_NEEDS: StepNeeds = {
   send: false,
@@ -32,8 +33,21 @@ const NO_NEEDS: StepNeeds = {
  * only wires reducers to React state and is a no-op once `readOnly` (success
  * reached, revealed, or already completed).
  */
-export function useSandboxScenario(scenario: Scenario, locale: Locale, reveal: boolean, isDone: boolean) {
-  const [model, setModel] = useState<ChatModel>(() => initialModel(scenario, locale));
+export function useSandboxScenario(
+  scenario: Scenario,
+  locale: Locale,
+  reveal: boolean,
+  isDone: boolean,
+  /**
+   * `chat_rate_reply` (T25): start from ONE seeded run — the author's fallback
+   * reply is on screen and the rate panel is up before any send.
+   */
+  seedRun = false,
+) {
+  const [model, setModel] = useState<ChatModel>(() => {
+    const initial = initialModel(scenario, locale);
+    return seedRun ? seedFallbackRun(scenario, initial, locale) : initial;
+  });
   // Which compose steps the learner has explicitly clicked the seed chip for —
   // "sempre o usuário tem que inserir" (Tainan): the composer NEVER starts
   // pre-filled with the step's fixed basePrompt. The base prompt only shows up
