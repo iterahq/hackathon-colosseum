@@ -1,87 +1,93 @@
 import { describe, expect, it } from 'vitest';
 import { buildPrCommentBlock, truncateLines } from './storybook-pr-comment';
+import type { NestaPrManifest } from './generate-nesta-pr-stories';
 
 const PREVIEW = 'https://pr-517.itera-storybook.pages.dev';
 
+function manifest(overrides: Partial<NestaPrManifest> = {}): NestaPrManifest {
+  return {
+    prNumber: '517',
+    generatedAt: '2026-09-28T00:00:00.000Z',
+    generated: [],
+    skipped: [],
+    maybeAffected: [],
+    orphanVisualFiles: [],
+    removed: [],
+    ...overrides,
+  };
+}
+
 describe('buildPrCommentBlock', () => {
-  it('links each affected story to its real built id, split by verdict label', () => {
-    const manifest = {
-      prNumber: '517',
-      affected: [
+  it('links each generated story to its real built id, split by verdict label, and opens the first new one', () => {
+    const m = manifest({
+      generated: [
         {
           path: 'src/stories/Xray.stories.tsx',
-          verdict: 'new' as const,
-          live: true,
+          verdict: 'new',
           title: 'Organisms/Activities/8 · Cena/Xray',
           exportNames: ['Default'],
+          generatedPath: '.storybook/generated/pr-517-0-xray.stories.tsx',
+          generatedTitle: 'Design Playground/🆕 PR #517/Organisms/Activities/8 · Cena/Xray',
         },
       ],
-      maybeAffected: [],
-      orphanVisualFiles: [],
-      removed: [],
-    };
+    });
     const index = {
       entries: {
-        'organisms-activities-8-·-cena-xray--default': {
-          id: 'organisms-activities-8-·-cena-xray--default',
-          title: 'Organisms/Activities/8 · Cena/Xray',
+        'design-playground-🆕-pr-517-organisms-activities-8-cena-xray--default': {
+          id: 'design-playground-🆕-pr-517-organisms-activities-8-cena-xray--default',
+          title: 'Design Playground/🆕 PR #517/Organisms/Activities/8 · Cena/Xray',
           name: 'Default',
-          importPath: './src/stories/Xray.stories.tsx',
+          importPath: './.storybook/generated/pr-517-0-xray.stories.tsx',
           type: 'story',
-        },
-        'nesta-pr-517--docs': {
-          id: 'nesta-pr-517--docs',
-          title: '🆕 Nesta PR #517',
-          name: 'Docs',
-          importPath: './.storybook/generated/nesta-pr.mdx',
-          type: 'docs',
         },
       },
     };
 
-    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section).toContain(
-      `[Organisms/Activities/8 · Cena/Xray — Default](${PREVIEW}/?path=/story/organisms-activities-8-·-cena-xray--default) (nova)`,
+      `[Organisms/Activities/8 · Cena/Xray — Default](${PREVIEW}/?path=/story/design-playground-🆕-pr-517-organisms-activities-8-cena-xray--default) (nova)`,
     );
-    expect(depoisUrl).toBe(`${PREVIEW}/?path=/docs/nesta-pr-517--docs`);
+    expect(depoisUrl).toBe(
+      `${PREVIEW}/?path=/story/design-playground-🆕-pr-517-organisms-activities-8-cena-xray--default`,
+    );
   });
 
   it('falls back to a plain file reference when the index has no matching story entry', () => {
-    const manifest = {
-      prNumber: '9',
-      affected: [
+    const m = manifest({
+      generated: [
         {
-          path: 'src/stories/Untracked.stories.mdx',
-          verdict: 'changed' as const,
-          live: true,
-          title: null,
-          exportNames: [],
+          path: 'src/stories/Untracked.stories.tsx',
+          verdict: 'changed',
+          title: 'Group/Untracked',
+          exportNames: ['Default'],
+          generatedPath: '.storybook/generated/pr-9-0-untracked.stories.tsx',
+          generatedTitle: 'Design Playground/🆕 PR #9/Group/Untracked',
         },
       ],
-      maybeAffected: [],
-      orphanVisualFiles: [],
-      removed: [],
-    };
+    });
     const index = { entries: {} };
 
-    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, m, index);
 
-    expect(section).toContain('- `src/stories/Untracked.stories.mdx` (alterada)');
-    expect(depoisUrl).toBe(PREVIEW); // no docs entry in the index — falls back to the preview root
+    expect(section).toContain('- `src/stories/Untracked.stories.tsx` (alterada)');
+    expect(depoisUrl).toBe(PREVIEW); // no matching id in the index — falls back to the preview root
+  });
+
+  it('falls back to the preview root when nothing was generated', () => {
+    const m = manifest();
+    const index = { entries: {} };
+
+    const { depoisUrl } = buildPrCommentBlock(PREVIEW, m, index);
+
+    expect(depoisUrl).toBe(PREVIEW);
   });
 
   it('lists removed stories in their own block', () => {
-    const manifest = {
-      prNumber: '9',
-      affected: [],
-      maybeAffected: [],
-      orphanVisualFiles: [],
-      removed: ['src/stories/Gone.stories.tsx'],
-    };
+    const m = manifest({ removed: ['src/stories/Gone.stories.tsx'] });
     const index = { entries: {} };
 
-    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section).toContain('_Nenhuma story nova ou alterada detectada._');
     expect(section).toContain('**Removidas:**');
@@ -89,74 +95,75 @@ describe('buildPrCommentBlock', () => {
   });
 
   it('renders one bullet per exported story when a file has more than one', () => {
-    const manifest = {
-      prNumber: '9',
-      affected: [
+    const m = manifest({
+      generated: [
         {
           path: 'src/stories/Multi.stories.tsx',
-          verdict: 'new' as const,
-          live: true,
+          verdict: 'new',
           title: 'Group/Multi',
           exportNames: ['A', 'B'],
+          generatedPath: '.storybook/generated/pr-9-0-multi.stories.tsx',
+          generatedTitle: 'Design Playground/🆕 PR #9/Group/Multi',
         },
       ],
-      maybeAffected: [],
-      orphanVisualFiles: [],
-      removed: [],
-    };
+    });
     const index = {
       entries: {
-        'group-multi--a': {
-          id: 'group-multi--a',
-          title: 'Group/Multi',
+        'design-playground-pr-9-group-multi--a': {
+          id: 'design-playground-pr-9-group-multi--a',
+          title: 'Design Playground/🆕 PR #9/Group/Multi',
           name: 'A',
-          importPath: './src/stories/Multi.stories.tsx',
+          importPath: './.storybook/generated/pr-9-0-multi.stories.tsx',
           type: 'story',
         },
-        'group-multi--b': {
-          id: 'group-multi--b',
-          title: 'Group/Multi',
+        'design-playground-pr-9-group-multi--b': {
+          id: 'design-playground-pr-9-group-multi--b',
+          title: 'Design Playground/🆕 PR #9/Group/Multi',
           name: 'B',
-          importPath: './src/stories/Multi.stories.tsx',
+          importPath: './.storybook/generated/pr-9-0-multi.stories.tsx',
           type: 'story',
         },
       },
     };
 
-    const { changedSection: section, depoisUrl } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section).toContain('Group/Multi — A');
     expect(section).toContain('Group/Multi — B');
   });
 
   it('lists orphan visual files (changed .tsx with no story) up front', () => {
-    const manifest = {
-      prNumber: '532',
-      affected: [],
-      maybeAffected: [],
-      orphanVisualFiles: ['src/components/live/LessonCompleteCard.tsx'],
-      removed: [],
-    };
+    const m = manifest({ orphanVisualFiles: ['src/components/live/LessonCompleteCard.tsx'] });
     const index = { entries: {} };
 
-    const { changedSection: section } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section).toContain('**⚠️ Mudou mas não tem story:**');
     expect(section).toContain('- `src/components/live/LessonCompleteCard.tsx`');
   });
 
-  it('folds maybeAffected into a collapsed details block, capped, with a +N note', () => {
-    const maybeAffected = Array.from({ length: 40 }, (_, i) => `src/stories/Maybe${i}.stories.tsx`);
-    const manifest = {
-      prNumber: '517',
-      affected: [],
-      maybeAffected,
-      orphanVisualFiles: [],
-      removed: [],
-    };
+  it('lists skipped (non-reexportable) stories with their reason', () => {
+    const m = manifest({
+      skipped: [
+        { path: 'src/stories/Weird.stories.mdx', verdict: 'changed', reason: 'mdx' },
+        { path: 'src/stories/NoTitle.stories.tsx', verdict: 'new', reason: 'no-default-export' },
+      ],
+    });
     const index = { entries: {} };
 
-    const { changedSection: section } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
+
+    expect(section).toContain('**⚠️ Não deu pra gerar preview ao vivo:**');
+    expect(section).toContain('- `src/stories/Weird.stories.mdx`');
+    expect(section).toContain('- `src/stories/NoTitle.stories.tsx`');
+  });
+
+  it('folds maybeAffected into a collapsed details block, capped, with a +N note', () => {
+    const maybeAffected = Array.from({ length: 40 }, (_, i) => `src/stories/Maybe${i}.stories.tsx`);
+    const m = manifest({ maybeAffected });
+    const index = { entries: {} };
+
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section).toContain('<details>');
     expect(section).toContain('Talvez afetadas');
@@ -167,23 +174,18 @@ describe('buildPrCommentBlock', () => {
   });
 
   it('truncates a comment body that would exceed the safe char cap, keeping whole lines', () => {
-    const affected = Array.from({ length: 5000 }, (_, i) => ({
+    const generated = Array.from({ length: 5000 }, (_, i) => ({
       path: `src/stories/Huge${i}.stories.tsx`,
       verdict: 'changed' as const,
-      live: i < 20,
-      title: null,
+      title: `Group/Huge${i}`,
       exportNames: [],
+      generatedPath: `.storybook/generated/pr-517-${i}-huge.stories.tsx`,
+      generatedTitle: `Design Playground/🆕 PR #517/Group/Huge${i}`,
     }));
-    const manifest = {
-      prNumber: '517',
-      affected,
-      maybeAffected: [],
-      orphanVisualFiles: [],
-      removed: [],
-    };
+    const m = manifest({ generated });
     const index = { entries: {} };
 
-    const { changedSection: section } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     expect(section.length).toBeLessThan(65536);
     expect(section).toMatch(/linha(s)? a mais no preview completo/);
@@ -232,24 +234,19 @@ describe('buildPrCommentBlock', () => {
     // Enough "changed" entries to blow the char cap on their own, followed
     // by a `maybeAffected` block that opens `<details>` — the truncation
     // point lands inside it, before the matching `</details>`.
-    const affected = Array.from({ length: 5000 }, (_, i) => ({
+    const generated = Array.from({ length: 5000 }, (_, i) => ({
       path: `src/stories/Huge${i}.stories.tsx`,
       verdict: 'changed' as const,
-      live: i < 20,
-      title: null,
+      title: `Group/Huge${i}`,
       exportNames: [],
+      generatedPath: `.storybook/generated/pr-517-${i}-huge.stories.tsx`,
+      generatedTitle: `Design Playground/🆕 PR #517/Group/Huge${i}`,
     }));
     const maybeAffected = Array.from({ length: 40 }, (_, i) => `src/stories/Maybe${i}.stories.tsx`);
-    const manifest = {
-      prNumber: '517',
-      affected,
-      maybeAffected,
-      orphanVisualFiles: [],
-      removed: [],
-    };
+    const m = manifest({ generated, maybeAffected });
     const index = { entries: {} };
 
-    const { changedSection: section } = buildPrCommentBlock(PREVIEW, manifest, index);
+    const { changedSection: section } = buildPrCommentBlock(PREVIEW, m, index);
 
     const opens = (section.match(/<details>/g) ?? []).length;
     const closes = (section.match(/<\/details>/g) ?? []).length;

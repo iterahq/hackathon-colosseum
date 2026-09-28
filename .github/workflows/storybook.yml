@@ -54,36 +54,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Shallow on purpose — `generate-nesta-pr-mdx.ts` only needs
-          # `origin/<base>` reachable with a real merge-base against HEAD, not
-          # the whole repo history. The next step fetches just enough of the
-          # base branch to find it; `fetch-depth: 0` here would pull full
-          # history on every PR push, on a self-hosted runner with a shared
-          # disk (see the runner note at the top of this file).
-          fetch-depth: 1
+          # Full history on purpose (changed from `fetch-depth: 1`) — the
+          # Design Playground "send order" (`scripts/storybook-playground-order.ts`,
+          # read by `scripts/storybook-playground-indexer.ts` at index time)
+          # runs `git log --diff-filter=A -1` per `design-playground/**`
+          # story file to find the commit that ADDED it, which needs the
+          # file's full history reachable, not just a recent slice. The next
+          # step still deepens `origin/<base>` separately for the PR diff
+          # itself.
+          fetch-depth: 0
 
-      - name: Fetch just enough base-branch history for the diff
-        # Deepens origin/<base> (and HEAD, in case the checkout ref itself is
-        # far from origin/<base>) until `git merge-base` succeeds, instead of
-        # always fetching full history. Falls back to a full unshallow fetch
-        # only if the staged search comes up empty — same end state as
-        # `fetch-depth: 0`, just not paid for on every run.
+      - name: Fetch the base branch for the diff
+        # The checkout above is already full history (`fetch-depth: 0`); a
+        # `--depth` fetch here would re-shallow the repo and collapse every
+        # Design Playground send date onto the same grafted commit.
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "$BASE_REF"
-          depth=50
-          while ! git merge-base "origin/${BASE_REF}" HEAD >/dev/null 2>&1 && [ "$depth" -le 8000 ]; do
-            git fetch --no-tags --deepen="$depth" origin "$BASE_REF" || true
-            git fetch --no-tags --deepen="$depth" origin HEAD || true
-            depth=$((depth * 4))
-          done
-          if ! git merge-base "origin/${BASE_REF}" HEAD >/dev/null 2>&1; then
-            echo "::warning::merge-base still not found after staged fetch — falling back to full history"
-            git fetch --no-tags --unshallow origin "$BASE_REF" || git fetch --no-tags --depth=100000 origin "$BASE_REF"
-            git fetch --no-tags --unshallow origin HEAD || git fetch --no-tags --depth=100000 origin HEAD || true
-          fi
+          git fetch --no-tags origin "$BASE_REF"
           git merge-base "origin/${BASE_REF}" HEAD
 
       - name: Setup Node
@@ -98,11 +87,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate "🆕 Nesta PR" page
-        # Runs BEFORE the build on purpose — it writes
-        # `.storybook/generated/nesta-pr.mdx`, which `.storybook/main.ts`
-        # already globs in. See scripts/generate-nesta-pr-mdx.ts.
-        run: npx tsx scripts/generate-nesta-pr-mdx.ts
+      - name: Generate "🆕 PR #N" stories inside Design Playground
+        # Runs BEFORE the build on purpose — it writes CSF re-exports under
+        # `.storybook/generated/`, which `.storybook/main.ts` already globs
+        # in. See scripts/generate-nesta-pr-stories.ts.
+        run: npx tsx scripts/generate-nesta-pr-stories.ts
         env:
           STORYBOOK_PR_NUMBER: ${{ github.event.pull_request.number }}
           STORYBOOK_BASE_REF: origin/${{ github.event.pull_request.base.ref }}

@@ -50,6 +50,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history — the Design Playground "send order"
+          # (`scripts/storybook-playground-order.ts`, read by
+          # `scripts/storybook-playground-indexer.ts` at index time) runs
+          # `git log --diff-filter=A -1` per `design-playground/**` story
+          # file to find the commit that ADDED it. The default shallow
+          # checkout (`fetch-depth: 1`) would leave that lookup with no
+          # record for anything but the very last commit.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -1,0 +1,260 @@
+#!/usr/bin/env tsx
+/**
+ * generate-nesta-pr-stories.ts — CLI entry point for surfacing "what this PR
+ * changed" as REAL Storybook stories inside the Design Playground section,
+ * rather than a separate text/MDX page.
+ *
+ * Runs BEFORE `npm run build-storybook`, ONLY on a PR build
+ * (`.github/workflows/storybook.yml`, gated on `STORYBOOK_PR_NUMBER`). It:
+ *
+ *   1. diffs the working tree against the PR's base branch;
+ *   2. asks `detectChangedStories` (storybook-changed-stories.ts) which
+ *      stories are new/changed (the "maybe affected" transitive closure is
+ *      NEVER turned into a live story — only genuinely new/changed ones);
+ *   3. for every affected story that CAN be re-exported (a non-`.mdx` CSF
+ *      file with a parseable `title` on its default export), writes a small
+ *      CSF file under `.storybook/generated/` that re-exports the ORIGINAL
+ *      module's stories verbatim (`export * from '<original>'`) under a new
+ *      title, `Design Playground/🆕 PR #<n>/<story name>` — a REAL,
+ *      running story, not a rendered copy, so args/decorators/parameters/play
+ *      all keep working exactly as in the original file;
+ *   4. writes `.storybook/generated/nesta-pr.manifest.json` — what got
+ *      generated, what got skipped (and why), plus the maybe-affected /
+ *      orphan / removed lists — consumed after the build by
+ *      `storybook-pr-comment.ts` (which needs the REAL story ids from
+ *      `storybook-static/index.json`, not available yet at this point).
+ *
+ * `.storybook/generated/` is gitignored and MUST NOT exist outside a PR
+ * build — `deploy-storybook.yml` (the `main` branch build) never runs this
+ * script, so nothing in that glob exists there, and the Design Playground
+ * section shows only the designer's own stories, ordered by send date
+ * (`storybook-playground-order.ts` + `storybook-playground-indexer.ts`).
+ *
+ * Usage: STORYBOOK_PR_NUMBER=123 tsx scripts/generate-nesta-pr-stories.ts
+ * Env:
+ *   STORYBOOK_PR_NUMBER  required — if unset/empty, exits 0 and writes nothing.
+ *   STORYBOOK_BASE_REF   optional — defaults to "origin/main".
+ */
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { detectChangedStories, parseGitDiffNameStatus, type AffectedStory } from './storybook-changed-stories';
+import { parseStoryFileMeta } from './storybook-story-meta';
+import { createRepoFs } from './repo-fs';
+import { loadCsf } from 'storybook/internal/csf-tools';
+
+const REPO_ROOT = join(import.meta.dirname, '..');
+const OUTPUT_DIR = join(REPO_ROOT, '.storybook', 'generated');
+const MANIFEST_PATH = join(OUTPUT_DIR, 'nesta-pr.manifest.json');
+
+export const PLAYGROUND_GROUP_PREFIX = 'Design Playground/🆕 PR #';
+
+interface AffectedStoryWithMeta extends AffectedStory {
+  title: string | undefined;
+  exportNames: string[];
+  isMdx: boolean;
+}
+
+export type SkipReason = 'mdx' | 'no-default-export' | 'over-budget';
+
+export interface GeneratedManifestEntry {
+  path: string;
+  verdict: AffectedStory['verdict'];
+  title: string;
+  exportNames: string[];
+  generatedPath: string;
+  generatedTitle: string;
+}
+
+export interface SkippedManifestEntry {
+  path: string;
+  verdict: AffectedStory['verdict'];
+  reason: SkipReason;
+}
+
+export interface NestaPrManifest {
+  prNumber: string;
+  generatedAt: string;
+  generated: GeneratedManifestEntry[];
+  skipped: SkippedManifestEntry[];
+  maybeAffected: string[];
+  orphanVisualFiles: string[];
+  removed: string[];
+}
+
+function gitDiffNameStatus(baseRef: string): string {
+  return execFileSync('git', ['diff', '--name-status', `${baseRef}...HEAD`], {
+    cwd: REPO_ROOT,
+    encoding: 'utf-8',
+    maxBuffer: 32 * 1024 * 1024,
+  });
+}
+
+/** `.storybook/generated/<file>.stories.tsx` importing a repo-relative path
+ *  is always two levels up (`.storybook/generated/` is fixed depth). */
+function importPathFor(repoRelativePath: string): string {
+  return `../../${repoRelativePath}`;
+}
+
+/** Filesystem-safe slug for the generated file's own name — doesn't need to
+ *  be pretty, only unique and stable within one generation run. */
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+/**
+ * Builds the CSF re-export module's source. Each story is re-exported BY NAME
+ * (`export { A, B } from`) because Storybook's static indexer does not follow
+ * `export *` — a star re-export indexes zero stories. The exported objects are
+ * the original ones, so args/decorators/parameters/play stay untouched; only
+ * `default` is rebuilt, spreading the original meta and overriding `title`
+ * (and dropping any explicit `id`, which would collide with the original).
+ */
+export function renderGeneratedCsf(
+  originalImportPath: string,
+  generatedTitle: string,
+  storyExportNames: string[],
+): string {
+  return [
+    '// AUTO-GENERATED by scripts/generate-nesta-pr-stories.ts — do not edit by hand.',
+    `import originalMeta from '${originalImportPath}';`,
+    '',
+    'const { id: _originalId, ...originalMetaWithoutId } = originalMeta as { id?: string };',
+    '',
+    'const generatedMeta = {',
+    '  ...originalMetaWithoutId,',
+    `  title: ${JSON.stringify(generatedTitle)},`,
+    '};',
+    '',
+    'export default generatedMeta;',
+    `export { ${storyExportNames.join(', ')} } from '${originalImportPath}';`,
+    '',
+  ].join('\n');
+}
+
+/** Real story export names, as Storybook's own CSF parser sees them. */
+export function readStoryExportNames(source: string, fileName: string): string[] {
+  const { indexInputs } = loadCsf(source, { fileName, makeTitle: (title) => title ?? 'untitled' }).parse();
+  return indexInputs.map((input) => input.exportName);
+}
+
+/**
+ * Keeps only the story's own name so the PR group stays one level deep
+ * (`Design Playground/🆕 PR #517/Xray`). Two changed stories with the same
+ * name fall back to `<parent> · <name>`, then to the full path.
+ */
+export function buildGeneratedTitle(prNumber: string, originalTitle: string, taken: Set<string> = new Set()): string {
+  const segments = originalTitle.split('/').map((segment) => segment.trim()).filter(Boolean);
+  const candidates = [
+    segments.slice(-1).join(''),
+    segments.slice(-2).join(' · '),
+    segments.join(' · '),
+  ];
+  const leaf = candidates.find((candidate) => !taken.has(candidate)) ?? candidates[candidates.length - 1];
+  taken.add(leaf);
+  return `${PLAYGROUND_GROUP_PREFIX}${prNumber}/${leaf}`;
+}
+
+function main(): void {
+  const prNumber = process.env.STORYBOOK_PR_NUMBER?.trim();
+
+  // Outside a PR build there is no section — and no leftover from a previous
+  // local run should ship either.
+  rmSync(OUTPUT_DIR, { recursive: true, force: true });
+
+  if (!prNumber) {
+    console.log('[generate-nesta-pr-stories] STORYBOOK_PR_NUMBER not set — skipping (not a PR build).');
+    return;
+  }
+
+  const baseRef = process.env.STORYBOOK_BASE_REF?.trim() || 'origin/main';
+  const diffOutput = gitDiffNameStatus(baseRef);
+  const changedFiles = parseGitDiffNameStatus(diffOutput);
+
+  const fs = createRepoFs(REPO_ROOT);
+  const { affected, maybeAffected, orphanVisualFiles, removed } = detectChangedStories(changedFiles, fs);
+
+  const affectedWithMeta: AffectedStoryWithMeta[] = affected.map((story) => {
+    const isMdx = story.path.endsWith('.mdx');
+    if (isMdx) return { ...story, title: undefined, exportNames: [], isMdx };
+    const meta = parseStoryFileMeta(fs.readFile(story.path));
+    return { ...story, title: meta.title, exportNames: meta.exportNames, isMdx };
+  });
+
+  // `new` entries generate first — they end up with the highest
+  // `generatedPrEntryScore` (see storybook-playground-order.ts), so a
+  // brand-new story sits above a merely-changed one at the top of the group.
+  const novas = affectedWithMeta.filter((s) => s.verdict === 'new');
+  const alteradas = affectedWithMeta.filter((s) => s.verdict === 'changed');
+  const generationOrder = [...novas, ...alteradas];
+
+  const generated: GeneratedManifestEntry[] = [];
+  const skipped: SkippedManifestEntry[] = [];
+
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+
+  const takenLeaves = new Set<string>();
+  generationOrder.forEach((story, index) => {
+    // `.live` is the same `CANVAS_CAP` budget `detectChangedStories` already
+    // computes (originally sized for the old MDX page's live-canvas count,
+    // reused here as a cap on how many REAL stories one PR can materialize
+    // — a PR touching hundreds of files still gets a bounded generated set).
+    if (!story.live) {
+      skipped.push({ path: story.path, verdict: story.verdict, reason: 'over-budget' });
+      return;
+    }
+    if (story.isMdx) {
+      skipped.push({ path: story.path, verdict: story.verdict, reason: 'mdx' });
+      return;
+    }
+    if (!story.title) {
+      skipped.push({ path: story.path, verdict: story.verdict, reason: 'no-default-export' });
+      return;
+    }
+
+    const generatedTitle = buildGeneratedTitle(prNumber, story.title, takenLeaves);
+    const fileName = `pr-${prNumber}-${index}-${slugify(story.title)}.stories.tsx`;
+    const generatedPath = `.storybook/generated/${fileName}`;
+    const storyExportNames = readStoryExportNames(readFileSync(join(REPO_ROOT, story.path), 'utf-8'), story.path);
+    if (storyExportNames.length === 0) {
+      skipped.push({ path: story.path, verdict: story.verdict, reason: 'no-default-export' });
+      return;
+    }
+    const source = renderGeneratedCsf(importPathFor(story.path), generatedTitle, storyExportNames);
+    writeFileSync(join(OUTPUT_DIR, fileName), source, 'utf-8');
+
+    generated.push({
+      path: story.path,
+      verdict: story.verdict,
+      title: story.title,
+      exportNames: story.exportNames,
+      generatedPath,
+      generatedTitle,
+    });
+  });
+
+  const manifest: NestaPrManifest = {
+    prNumber,
+    generatedAt: new Date().toISOString(),
+    generated,
+    skipped,
+    maybeAffected,
+    orphanVisualFiles,
+    removed,
+  };
+  writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+
+  console.log(
+    `[generate-nesta-pr-stories] PR #${prNumber}: ${generated.length} generated stor${
+      generated.length === 1 ? 'y' : 'ies'
+    }, ${skipped.length} skipped, ${maybeAffected.length} maybe-affected, ${
+      orphanVisualFiles.length
+    } orphan visual file(s), ${removed.length} removed. Wrote ${MANIFEST_PATH}.`,
+  );
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) main();

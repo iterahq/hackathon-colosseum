@@ -7,7 +7,7 @@
  * reviewer has to already know where to look. PR #517 added
  * `Organisms/Activities/8 · Cena/{Xray,Live type,Inspect}` and it went
  * unnoticed. This module answers "what changed" so a generated page
- * (`generate-nesta-pr-mdx.ts`) can put it first.
+ * (`generate-nesta-pr-stories.ts`) can put it first.
  *
  * v1 walked the FULL transitive import closure and rendered every hit as a
  * live canvas. On real branches that is ~95% noise: `src/i18n/index.ts` alone
@@ -62,14 +62,17 @@
  *     components) that no story directly imports at all. This is the #532
  *     case: the file that actually matters, with no story to demo it in.
  *
- * Live budget is a CANVAS cap (`CANVAS_CAP`), not a story-file cap — a single
- * story file can export dozens of individual stories, each rendering its own
- * `<Canvas>` on the "🆕 Nesta PR" page (`generate-nesta-pr-mdx.ts`), so
+ * Live budget is a CANVAS cap (`CANVAS_CAP`) — originally sized for how many
+ * `<Canvas>` elements a single MDX page could render, now reused by
+ * `generate-nesta-pr-stories.ts` as a cap on how many REAL re-exported
+ * stories one PR can materialize inside Design Playground. Not a story-file
+ * cap — a single story file can export dozens of individual stories, so
  * capping by file undercounts wildly: PR #517's `ActivityRenderer.stories.tsx`
  * alone exports 39. `new` entries are prioritized over `changed` (both consume
  * the same budget, walked in priority order); once a story's own canvas count
  * would push the running total over `CANVAS_CAP`, that story AND every story
- * after it in priority order render as a link instead of a live `<Canvas>`.
+ * after it in priority order is `live: false` — skipped (not generated),
+ * listed with a reason in the PR comment instead.
  *
  * Import resolution understands relative specifiers, the `@/` → `src/` alias
  * (`tsconfig.json` `paths`, mirrored by `vite.config.ts`) and workspace
@@ -111,7 +114,7 @@ export interface DetectChangedStoriesResult {
 }
 
 /**
- * Minimal filesystem seam. The real CLI (`generate-nesta-pr-mdx.ts`) backs
+ * Minimal filesystem seam. The real CLI (`generate-nesta-pr-stories.ts`) backs
  * this with `node:fs`; tests back it with an in-memory map, so the traversal
  * logic never touches disk.
  */
@@ -418,7 +421,7 @@ function resolveOwnComponent(
 }
 
 /**
- * Number of `<Canvas>` elements `generate-nesta-pr-mdx.ts` would render for
+ * Number of `<Canvas>` elements `generate-nesta-pr-stories.ts` would render for
  * this story file if it's live: one per exported story, or zero for an
  * `.mdx` page or a file whose `title` couldn't be parsed (those always
  * render as a link regardless of the `live` flag — see `renderStoryBlock`).

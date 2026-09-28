@@ -72,21 +72,52 @@ const preview: Preview = {
        * dentro de cada arquivo — sem isso o Storybook usaria a ordem do glob e
        * os grupos numerados apareceriam fora de sequência.
        *
-       * A página "🆕 Nesta PR #N" (gerada por `scripts/generate-nesta-pr-mdx.ts`,
-       * só existe em build de PR) vai SEMPRE primeiro — é o ponto de entrada
-       * que substitui vasculhar a árvore Atoms/Molecules/Organisms atrás do
-       * que mudou. Ausente num build de `main`, então essa checagem nunca
-       * dispara lá.
+       * "Design Playground" vai SEMPRE primeiro — em build de `main` e de PR
+       * — é o ponto de entrada da vitrine. DENTRO do grupo, a ordem é "ordem
+       * de envio": arquivo mais recente primeiro, por `playground-order:<score>`
+       * — uma tag que `scripts/storybook-playground-indexer.ts` grava em
+       * tempo de indexação (Node, com `git log`) em cada entrada de story sob
+       * `design-playground/` e (só em build de PR) `.storybook/generated/`
+       * (ver `scripts/generate-nesta-pr-stories.ts`). Fora do grupo, a ordem
+       * de hoje não muda.
        *
-       * ⚠️ Sem anotação de tipo nos parâmetros: o Storybook extrai ESTE literal
-       * do arquivo e roda `eval` nele durante o build do índice — sintaxe de TS
-       * aqui quebra o `build-storybook` com "SyntaxError: Unexpected token ':'".
+       * ⚠️ Sem anotação de tipo nos parâmetros, e SEM QUALQUER referência a
+       * import/closure deste arquivo dentro da função: o Storybook extrai o
+       * SOURCE TEXT literal desta função e roda `eval` nele isolado, durante
+       * o build do índice (`getStorySortParameter`,
+       * `storybook/internal/csf-tools`) — sintaxe de TS aqui quebra o
+       * `build-storybook` com "SyntaxError: Unexpected token ':'", e uma
+       * variável importada quebra em runtime com "ReferenceError" (o eval não
+       * tem o escopo do módulo). Por isso a leitura da tag
+       * `playground-order:` abaixo é reimplementada inline em vez de
+       * importada de `scripts/storybook-playground-order.ts` — esse módulo é
+       * a fonte da verdade do FORMATO da tag, mas não pode ser importado
+       * aqui.
        */
       storySort: (a, b) => {
-        const isNestaPr = (entry) =>
-          typeof entry.title === 'string' && entry.title.startsWith('🆕 Nesta PR');
-        if (isNestaPr(a) && !isNestaPr(b)) return -1;
-        if (!isNestaPr(a) && isNestaPr(b)) return 1;
+        const isDesignPlayground = (entry) =>
+          typeof entry.title === 'string' &&
+          (entry.title === 'Design Playground' || entry.title.indexOf('Design Playground/') === 0);
+        const aIsPlayground = isDesignPlayground(a);
+        const bIsPlayground = isDesignPlayground(b);
+        if (aIsPlayground && !bIsPlayground) return -1;
+        if (!aIsPlayground && bIsPlayground) return 1;
+
+        if (aIsPlayground && bIsPlayground) {
+          const orderOf = (entry) => {
+            const tags = entry.tags || [];
+            for (let i = 0; i < tags.length; i++) {
+              if (typeof tags[i] === 'string' && tags[i].indexOf('playground-order:') === 0) {
+                const value = Number(tags[i].slice('playground-order:'.length));
+                return isNaN(value) ? 0 : value;
+              }
+            }
+            return 0;
+          };
+          const scoreDiff = orderOf(b) - orderOf(a); // higher score (more recent) first
+          if (scoreDiff !== 0) return scoreDiff;
+        }
+
         return a.title === b.title ? 0 : a.title.localeCompare(b.title, 'pt', { numeric: true });
       },
     },
