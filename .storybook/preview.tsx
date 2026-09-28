@@ -72,12 +72,23 @@ const preview: Preview = {
        * dentro de cada arquivo — sem isso o Storybook usaria a ordem do glob e
        * os grupos numerados apareceriam fora de sequência.
        *
+       * A página "🆕 Nesta PR #N" (gerada por `scripts/generate-nesta-pr-mdx.ts`,
+       * só existe em build de PR) vai SEMPRE primeiro — é o ponto de entrada
+       * que substitui vasculhar a árvore Atoms/Molecules/Organisms atrás do
+       * que mudou. Ausente num build de `main`, então essa checagem nunca
+       * dispara lá.
+       *
        * ⚠️ Sem anotação de tipo nos parâmetros: o Storybook extrai ESTE literal
        * do arquivo e roda `eval` nele durante o build do índice — sintaxe de TS
        * aqui quebra o `build-storybook` com "SyntaxError: Unexpected token ':'".
        */
-      storySort: (a, b) =>
-        a.title === b.title ? 0 : a.title.localeCompare(b.title, 'pt', { numeric: true }),
+      storySort: (a, b) => {
+        const isNestaPr = (entry) =>
+          typeof entry.title === 'string' && entry.title.startsWith('🆕 Nesta PR');
+        if (isNestaPr(a) && !isNestaPr(b)) return -1;
+        if (!isNestaPr(a) && isNestaPr(b)) return 1;
+        return a.title === b.title ? 0 : a.title.localeCompare(b.title, 'pt', { numeric: true });
+      },
     },
   },
   decorators: [withProviders, withTheme],

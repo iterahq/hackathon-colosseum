@@ -31,6 +31,7 @@ on:
     paths:
       - '.storybook/**'
       - 'src/**'
+      - 'packages/**'
       - 'design-playground/**'
       - 'package.json'
       - 'package-lock.json'
@@ -52,6 +53,38 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Shallow on purpose — `generate-nesta-pr-mdx.ts` only needs
+          # `origin/<base>` reachable with a real merge-base against HEAD, not
+          # the whole repo history. The next step fetches just enough of the
+          # base branch to find it; `fetch-depth: 0` here would pull full
+          # history on every PR push, on a self-hosted runner with a shared
+          # disk (see the runner note at the top of this file).
+          fetch-depth: 1
+
+      - name: Fetch just enough base-branch history for the diff
+        # Deepens origin/<base> (and HEAD, in case the checkout ref itself is
+        # far from origin/<base>) until `git merge-base` succeeds, instead of
+        # always fetching full history. Falls back to a full unshallow fetch
+        # only if the staged search comes up empty — same end state as
+        # `fetch-depth: 0`, just not paid for on every run.
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          depth=50
+          while ! git merge-base "origin/${BASE_REF}" HEAD >/dev/null 2>&1 && [ "$depth" -le 8000 ]; do
+            git fetch --no-tags --deepen="$depth" origin "$BASE_REF" || true
+            git fetch --no-tags --deepen="$depth" origin HEAD || true
+            depth=$((depth * 4))
+          done
+          if ! git merge-base "origin/${BASE_REF}" HEAD >/dev/null 2>&1; then
+            echo "::warning::merge-base still not found after staged fetch — falling back to full history"
+            git fetch --no-tags --unshallow origin "$BASE_REF" || git fetch --no-tags --depth=100000 origin "$BASE_REF"
+            git fetch --no-tags --unshallow origin HEAD || git fetch --no-tags --depth=100000 origin HEAD || true
+          fi
+          git merge-base "origin/${BASE_REF}" HEAD
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -64,6 +97,15 @@ jobs:
         run: npm install
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate "🆕 Nesta PR" page
+        # Runs BEFORE the build on purpose — it writes
+        # `.storybook/generated/nesta-pr.mdx`, which `.storybook/main.ts`
+        # already globs in. See scripts/generate-nesta-pr-mdx.ts.
+        run: npx tsx scripts/generate-nesta-pr-mdx.ts
+        env:
+          STORYBOOK_PR_NUMBER: ${{ github.event.pull_request.number }}
+          STORYBOOK_BASE_REF: origin/${{ github.event.pull_request.base.ref }}
 
       - name: Build Storybook
         run: npm run build-storybook
@@ -86,14 +128,26 @@ jobs:
         run: |
           set -euo pipefail
           preview="https://pr-${PR}.itera-storybook.pages.dev"
+          # Ids reais só existem depois do build — storybook-pr-comment.ts lê
+          # storybook-static/index.json e o manifesto do gerador (ambos já no
+          # disco neste ponto) e imprime `{depoisUrl, changedSection}`. `{}`
+          # (sem os dois campos) se o manifesto não existir por algum motivo —
+          # o comentário ainda sai, só sem essa seção e com o "Depois"
+          # apontando pra raiz do preview.
+          pr_comment_json=$(npx tsx scripts/storybook-pr-comment.ts "$preview" || echo '{}')
+          depois_url=$(echo "$pr_comment_json" | jq -r '.depoisUrl // empty')
+          changed_section=$(echo "$pr_comment_json" | jq -r '.changedSection // empty')
+          depois="${depois_url:-$preview}"
           body=$(printf '%s\n' \
             '<!-- storybook-preview -->' \
             '### 📖 Storybook desta PR' \
             '' \
             "| | |" \
             "|---|---|" \
-            "| **Depois** (esta PR) | ${preview} |" \
-            "| **Antes** (main) | https://storybook.iterahq.dev |")
+            "| **Depois** (esta PR) | ${depois} |" \
+            "| **Antes** (main) | https://storybook.iterahq.dev |" \
+            '' \
+            "${changed_section}")
           # Edita o comentário existente em vez de empilhar um por push.
           id=$(gh pr view "$PR" --json comments \
                  --jq '.comments[] | select(.body | startswith("<!-- storybook-preview -->")) | .url' \
