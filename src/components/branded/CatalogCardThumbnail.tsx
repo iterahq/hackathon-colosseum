@@ -1,5 +1,4 @@
 import { Lock } from 'lucide-react';
-import { CategoryPill } from './CategoryPill';
 import type { CategoryTone } from '@/types/categoryTone';
 
 /** Band height: 40% of the tile-crossed thumbnail, clamped for narrow/wide cards. */
@@ -7,17 +6,14 @@ const BAND_HEIGHT = 'h-[clamp(112px,30cqw,136px)]';
 
 /**
  * The recessed, lower thumbnail band: a flat category-surface fill (not the
- * old 12% gradient wash), a grid texture, a category-tinted border, the
- * category eyebrow pill, and — visitor mode only — the lock badge. The icon
+ * old 12% gradient wash), a grid texture, a category-tinted border, and — visitor mode only — the lock badge. The icon
  * tile itself is rendered by the caller, offset to cross this band's bottom
  * edge.
  */
 export function CatalogCardThumbnail({
-  icon,
   tone,
   locked,
 }: {
-  icon?: string;
   tone: CategoryTone;
   locked: boolean;
 }) {
@@ -32,7 +28,6 @@ export function CatalogCardThumbnail({
         style={{ borderColor: tone.edge }}
         aria-hidden
       />
-      <CategoryPill icon={icon} />
       {locked && (
         <span
           data-testid="program-card-lock"

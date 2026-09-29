@@ -7,7 +7,7 @@ import type { ProgramCardData } from '@/components/branded/ProgramCard';
  * Catalog grid — visual reference for the /catalog "Catálogo de cursos" surface.
  * `Before` is the old flat card (icon + title + counts + green button); `After`
  * is the shared rich ProgramCard with the Enroll/Open CTA in its footer slot.
- * Catalog programs have no per-user progress → not-started look (level tag, no
+ * Catalog programs have no per-user progress → not-started look (no
  * progress bar), which is the graceful-degradation contract.
  */
 const programs: (ProgramCardData & { slug: string; alreadyEnrolled: boolean })[] = [

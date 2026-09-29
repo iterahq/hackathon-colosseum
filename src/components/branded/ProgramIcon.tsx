@@ -38,21 +38,21 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   cloud: Cloud,
 };
 
-/** Category gradient + label per icon (mirrors João's course-card palette). */
-export const ICON_CATEGORY: Record<string, { gradient: string; label: string }> = {
-  shield: { gradient: 'from-emerald-400 to-teal-600', label: 'Cybersecurity' },
-  code: { gradient: 'from-emerald-400 to-green-700', label: 'Frontend' },
-  layers: { gradient: 'from-sky-400 to-indigo-600', label: 'Cloud' },
-  cloud: { gradient: 'from-sky-400 to-blue-600', label: 'Cloud' },
-  wand: { gradient: 'from-fuchsia-400 to-purple-700', label: 'Design' },
-  sparkles: { gradient: 'from-fuchsia-500 to-indigo-600', label: 'AI / ML' },
-  brain: { gradient: 'from-fuchsia-500 to-indigo-600', label: 'AI / ML' },
-  cpu: { gradient: 'from-violet-400 to-purple-700', label: 'Data' },
-  rocket: { gradient: 'from-amber-400 to-orange-600', label: 'DevOps' },
-  book: { gradient: 'from-emerald-400 to-teal-600', label: 'Foundations' },
+/** Category gradient per icon (mirrors João's course-card palette). */
+export const ICON_CATEGORY: Record<string, { gradient: string }> = {
+  shield: { gradient: 'from-emerald-400 to-teal-600' },
+  code: { gradient: 'from-emerald-400 to-green-700' },
+  layers: { gradient: 'from-sky-400 to-indigo-600' },
+  cloud: { gradient: 'from-sky-400 to-blue-600' },
+  wand: { gradient: 'from-fuchsia-400 to-purple-700' },
+  sparkles: { gradient: 'from-fuchsia-500 to-indigo-600' },
+  brain: { gradient: 'from-fuchsia-500 to-indigo-600' },
+  cpu: { gradient: 'from-violet-400 to-purple-700' },
+  rocket: { gradient: 'from-amber-400 to-orange-600' },
+  book: { gradient: 'from-emerald-400 to-teal-600' },
 };
 
-const DEFAULT_CATEGORY = { gradient: 'from-emerald-400 to-teal-600', label: 'Program' };
+const DEFAULT_CATEGORY = { gradient: 'from-emerald-400 to-teal-600' };
 
 export function categoryFor(icon = 'code') {
   return ICON_CATEGORY[icon] ?? DEFAULT_CATEGORY;

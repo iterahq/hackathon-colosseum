@@ -58,6 +58,29 @@ describe('ProgramCard', () => {
     expect(screen.getByTestId('my-cta')).toBeInTheDocument();
   });
 
+  it('uses singular labels for a count of 1 and labels the activities', () => {
+    renderCard(
+      <ProgramCard
+        program={{ id: 'p1', title: { en: 'One' }, unitCount: 1, lessonCount: 1, activityCount: 1 }}
+      />
+    );
+    const text = screen.getByTestId('program-card').textContent ?? '';
+    expect(text).toMatch(/1 (lição|lesson)/i);
+    expect(text).toMatch(/1 (unidade|unit)/i);
+    expect(text).toMatch(/1 (atividade|activity)/i);
+    expect(text).not.toMatch(/lições|lessons|unidades|units|atividades|activities/i);
+  });
+
+  it('shows no invented category or level tag', () => {
+    renderCard(
+      <ProgramCard
+        program={{ id: 'p1', title: { en: 'X' }, activityCount: 21, icon: 'layers' }}
+      />
+    );
+    const text = screen.getByTestId('program-card').textContent ?? '';
+    expect(text).not.toMatch(/cloud|frontend|devops|iniciante|beginner|intermedi|advanced|avançado/i);
+  });
+
   it('degrades gracefully for a catalog program with no progress field', () => {
     const { container } = renderCard(
       <ProgramCard

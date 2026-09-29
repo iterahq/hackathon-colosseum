@@ -1,26 +1,25 @@
 /**
  * Program card — parity with João Pedro's "Your in-progress courses" card.
  *
- * Anatomy (matches his 100%): category pill (top-left) · category-gradient icon
- * tile (centered) on a faint category-tinted wash · evergreen progress bar at
- * the foot of the image · title · meta row (lessons · units · activities) ·
- * footer (level tag left, "N% complete" / Start right). Wired to our real
- * itera.programs counts + progress — fields we don't have (author/rating) are
- * omitted gracefully; the layout is preserved.
+ * Anatomy: icon tile (centered) on a faint tinted wash · evergreen progress
+ * bar at the foot of the image · title · meta row (lessons · units ·
+ * activities) · footer ("N% complete" / Start). Wired to our real
+ * itera.programs counts + progress — fields we don't have (category, level,
+ * author/rating) are not shown.
  *
  * Reused on TWO surfaces:
- *  - HomePage "Cursos" (enrolled): default footer (level · % complete), whole
+ *  - HomePage "Cursos" (enrolled): default footer (% complete), whole
  *    card is one big button (`onClick`).
  *  - CatalogPage "Catálogo de cursos" (discovery): a custom `footer` slot is
  *    passed for the Enroll/Open CTA. Catalog programs lack `completedCount`
- *    (a not-yet-enrolled user has 0 progress) → the progress bar is hidden and
- *    the level tag shows, exactly the not-started look. No "undefined"/"NaN".
+ *    (a not-yet-enrolled user has 0 progress) → the progress bar is hidden,
+ *    exactly the not-started look. No "undefined"/"NaN".
  */
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Layers, ListChecks, Lock, Play } from 'lucide-react';
 import { ProgramIcon, categoryFor } from './ProgramIcon';
-import { levelFor } from '@/utils/levelFor';
+import { useCountLabel } from './useCountLabel';
 import { useI18n } from '@/i18n';
 import type { I18nText } from '@/types/content';
 
@@ -50,7 +49,7 @@ export function ProgramCard({
   /** Whole-card click (enrolled surface). Ignored when `footer` is provided. */
   onClick?: () => void;
   /** Custom footer slot (e.g. catalog Enroll/Open CTA). Replaces the default
-   *  level · %-complete line and makes the card a non-button container. */
+   *  %-complete line and makes the card a non-button container. */
   footer?: ReactNode;
   /** Visitor mode (2026-09-18): shows a lock badge over the cover image. Counts
    *  and title stay visible — only the CTA (via `footer`) changes what unlocking
@@ -61,8 +60,8 @@ export function ProgramCard({
   const total = program.activityCount ?? 0;
   const done = program.completedCount ?? 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const { label: category, gradient } = categoryFor(program.icon);
-  const level = levelFor(total);
+  const { gradient } = categoryFor(program.icon);
+  const count = useCountLabel();
 
   const cardClass =
     'group relative text-left rounded-2xl overflow-hidden bg-card border border-border hover:border-verde-tech/50 transition-colors';
@@ -80,12 +79,6 @@ export function ProgramCard({
           size="xl"
           className="group-hover:scale-105 transition-transform duration-500"
         />
-      </div>
-      {/* Category pill (top-left) */}
-      <div className="absolute top-3 left-3">
-        <span className="px-2.5 py-1 rounded-full font-mono text-[11px] tracking-wider uppercase bg-obsidiana/70 border border-border text-evergreen-hi">
-          {category}
-        </span>
       </div>
       {/* Lock badge (top-right) — visitor mode. */}
       {locked && (
@@ -123,25 +116,22 @@ export function ProgramCard({
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <BookOpen className="w-3.5 h-3.5" />
-          {program.lessonCount ?? 0} {t('label.lessons').toLowerCase()}
+          {count(program.lessonCount ?? 0, 'label.lesson', 'label.lessons')}
         </span>
         <span className="flex items-center gap-1">
           <Layers className="w-3.5 h-3.5" />
-          {program.unitCount ?? 0} {t('label.units').toLowerCase()}
+          {count(program.unitCount ?? 0, 'label.unit', 'label.units')}
         </span>
         <span className="flex items-center gap-1">
           <ListChecks className="w-3.5 h-3.5" />
-          {total}
+          {count(total, 'label.activity', 'label.activities')}
         </span>
       </div>
     </>
   );
 
   const defaultFooter = (
-    <div className="flex items-center justify-between pt-2 border-t border-border">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        {t(`level.${level}`)}
-      </span>
+    <div className="flex items-center justify-end pt-2 border-t border-border">
       <span className="text-xs font-medium text-evergreen-hi">
         {pct > 0 ? t('program.percentComplete', { n: String(pct) }) : t('program.start')}
       </span>
@@ -167,12 +157,6 @@ export function ProgramCard({
         )}
         <div className="p-4 space-y-3">
           {meta}
-          {/* Level tag preserved above the CTA so catalog keeps the level signal. */}
-          <div className="flex items-center pt-2 border-t border-border">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-              {t(`level.${level}`)}
-            </span>
-          </div>
           {footer}
         </div>
       </motion.div>

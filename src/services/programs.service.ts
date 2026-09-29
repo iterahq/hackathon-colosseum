@@ -10,6 +10,7 @@
  * render a clean empty/error state.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getIteraUserId } from '@/services/iteraUser';
 import { normalizeProgressStatus } from '@/utils/normalizeProgressStatus';
 import { isScenarioKind } from '@/utils/activityFamilies';
 import { resolveLocalizedSpec } from '@/utils/resolveLocalizedSpec';
@@ -118,6 +119,14 @@ export async function getPrograms(): Promise<Program[]> {
 
   if (error) throw new Error(error.message);
 
+  // RLS lets an admin read every learner's progress, so filter to the caller.
+  // Best-effort: a failure here leaves every card at 0% instead of blanking the dashboard.
+  const userId = await getIteraUserId();
+  const { data: done } = userId
+    ? await sb.from('progress').select('activity_id').eq('user_id', userId).eq('status', 'completed')
+    : { data: [] };
+  const completedIds = new Set(asRows(done).map((r) => str(r.activity_id)));
+
   return asRows(data).map((row, i) => {
     const units = asRows(row.units);
     const lessons = units.flatMap((u) => asRows(u.lessons));
@@ -131,6 +140,7 @@ export async function getPrograms(): Promise<Program[]> {
       unitCount: units.length,
       lessonCount: lessons.length,
       activityCount: activities.length,
+      completedCount: activities.filter((a) => completedIds.has(str(a.id))).length,
       accent: accentFor(i),
       icon: iconFor(i),
     } satisfies Program;

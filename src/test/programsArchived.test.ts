@@ -9,7 +9,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const isFilter = vi.fn();
 const order = vi.fn();
 const select = vi.fn();
+const progressStatusEq = vi.fn();
+const progressUserEq = vi.fn();
+const progressSelect = vi.fn();
 const from = vi.fn();
+const getIteraUserId = vi.fn();
+
+vi.mock('@/services/iteraUser', () => ({ getIteraUserId: () => getIteraUserId() }));
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -22,7 +28,15 @@ beforeEach(() => {
   order.mockReset().mockResolvedValue({ data: [], error: null });
   isFilter.mockReset().mockReturnValue({ order });
   select.mockReset().mockReturnValue({ is: isFilter });
-  from.mockReset().mockReturnValue({ select });
+  getIteraUserId.mockReset().mockResolvedValue('me');
+  progressStatusEq.mockReset().mockResolvedValue({ data: [], error: null });
+  progressUserEq.mockReset().mockReturnValue({ eq: progressStatusEq });
+  progressSelect.mockReset().mockReturnValue({ eq: progressUserEq });
+  from
+    .mockReset()
+    .mockImplementation((table: string) =>
+      table === 'progress' ? { select: progressSelect } : { select }
+    );
 });
 
 describe('getPrograms', () => {
@@ -47,6 +61,10 @@ describe('getPrograms', () => {
       ],
       error: null,
     });
+    progressStatusEq.mockResolvedValueOnce({
+      data: [{ activity_id: 'a1' }, { activity_id: 'other-program' }],
+      error: null,
+    });
 
     const out = await getPrograms();
     expect(out).toHaveLength(1);
@@ -55,7 +73,32 @@ describe('getPrograms', () => {
       unitCount: 1,
       lessonCount: 1,
       activityCount: 2,
+      completedCount: 1,
     });
+    expect(progressSelect).toHaveBeenCalledWith('activity_id');
+    expect(progressUserEq).toHaveBeenCalledWith('user_id', 'me');
+    expect(progressStatusEq).toHaveBeenCalledWith('status', 'completed');
+  });
+
+  it('skips the progress read without a resolved Itera user', async () => {
+    getIteraUserId.mockResolvedValueOnce(null);
+    order.mockResolvedValueOnce({
+      data: [{ id: 'p1', slug: 's', units: [{ id: 'u1', lessons: [{ id: 'l1', activities: [{ id: 'a1' }] }] }] }],
+      error: null,
+    });
+    const out = await getPrograms();
+    expect(progressSelect).not.toHaveBeenCalled();
+    expect(out[0].completedCount).toBe(0);
+  });
+
+  it('reports 0 completed when the progress read returns nothing', async () => {
+    order.mockResolvedValueOnce({
+      data: [{ id: 'p1', slug: 's', units: [{ id: 'u1', lessons: [{ id: 'l1', activities: [{ id: 'a1' }] }] }] }],
+      error: null,
+    });
+    progressStatusEq.mockResolvedValueOnce({ data: null, error: { message: 'denied' } });
+    const out = await getPrograms();
+    expect(out[0].completedCount).toBe(0);
   });
 
   it('throws on a PostgREST error instead of rendering an empty catalogue', async () => {

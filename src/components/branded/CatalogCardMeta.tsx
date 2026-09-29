@@ -1,12 +1,10 @@
 import { BookOpen, Layers, ListChecks } from 'lucide-react';
-import { useI18n } from '@/i18n';
+import { useCountLabel } from './useCountLabel';
 import type { CatalogProgramCardData } from '@/types/catalogProgramCardData';
 
 /** Lessons · units · activities counts, singular-aware ("1 lição", not "1 lições"). */
 export function CatalogCardMeta({ program }: { program: CatalogProgramCardData }) {
-  const { t } = useI18n();
-  const count = (n: number, one: string, many: string) =>
-    `${n} ${t(n === 1 ? one : many).toLowerCase()}`;
+  const count = useCountLabel();
 
   return (
     <ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-foreground/60">

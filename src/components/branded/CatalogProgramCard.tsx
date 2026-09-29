@@ -2,8 +2,8 @@
  * The shared v3 catalog card — promoted from the design playground (PR #495,
  * `CatalogPageLab.stories.tsx`, "Proposta v3": the v2 layout with the
  * `PALETTE_V3` colours). Renders the recessed thumbnail band, the 88px flat
- * icon tile crossing its edge, the large colored title, the meta row, the
- * level tag and the caller's `action` slot.
+ * icon tile crossing its edge, the large colored title, the meta row and
+ * the caller's `action` slot.
  *
  * ONE presentational card shared by both catalog surfaces: `CatalogCard`
  * (member — Enroll/Open, wired to `useEnroll`) and `LockedCatalogCard`
@@ -16,7 +16,7 @@ import { CatalogCardThumbnail } from './CatalogCardThumbnail';
 import { CategoryTile } from './CategoryTile';
 import { CatalogCardTitle } from './CatalogCardTitle';
 import { CatalogCardMeta } from './CatalogCardMeta';
-import { CatalogCardLevelRow } from './CatalogCardLevelRow';
+import { CatalogCardActionRow } from './CatalogCardActionRow';
 import { toneFor } from './catalogCardPalette';
 import { splitTitle } from '@/utils/splitTitle';
 import { useI18n } from '@/i18n';
@@ -29,7 +29,7 @@ export function CatalogProgramCard({
   onOpenThumbnail,
 }: {
   program: CatalogProgramCardData;
-  /** Full-width CTA (Enroll / Open / Subscribe), rendered under the level tag. */
+  /** Full-width CTA (Enroll / Open / Subscribe), rendered under the meta row. */
   action: ReactNode;
   /** Visitor mode: shows the lock badge over the thumbnail. Purely visual. */
   locked?: boolean;
@@ -40,7 +40,7 @@ export function CatalogProgramCard({
   const { headline, subline } = splitTitle(tText(program.title));
   const tone = toneFor(program.icon);
 
-  const thumbnail = <CatalogCardThumbnail icon={program.icon} tone={tone} locked={locked} />;
+  const thumbnail = <CatalogCardThumbnail tone={tone} locked={locked} />;
 
   return (
     <motion.div
@@ -63,7 +63,7 @@ export function CatalogProgramCard({
         </div>
         <CatalogCardTitle headline={headline} subline={subline} tone={tone} />
         <CatalogCardMeta program={program} />
-        <CatalogCardLevelRow activityCount={program.activityCount ?? 0} action={action} />
+        <CatalogCardActionRow action={action} />
       </div>
     </motion.div>
   );
