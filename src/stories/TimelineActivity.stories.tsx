@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, fn, within } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
 import { TimelineActivity } from '@/components/branded/activity/TimelineActivity';
 import { dragSlider } from './interactions';
 import { makeGatedActivity, TIMELINE_SPEC } from './sceneMechanicsFixtures';
@@ -52,5 +52,34 @@ export const Done: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
     await expect(args.onComplete).not.toHaveBeenCalled();
+  },
+};
+
+/** A page frame shows its own `url_label` in the browser bar. */
+export const PageFrames: Story = {
+  args: {
+    activity: makeGatedActivity('timeline', {
+      ...TIMELINE_SPEC,
+      steps: TIMELINE_SPEC.steps.slice(0, 2).map((step) => ({
+        ...step,
+        frame: {
+          type: 'page',
+          page: { url_label: 'duda.site', elements: [{ id: 'titulo', tag: 'h1', text: step.label, name: 'título' }] },
+        },
+      })),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('timeline-stage')).toHaveTextContent('duda.site');
+  },
+};
+
+/** H.degenerado — one step has nothing to scrub: it counts as seen and the gate opens once. */
+export const SingleStep: Story = {
+  args: { activity: makeGatedActivity('timeline', { ...TIMELINE_SPEC, steps: TIMELINE_SPEC.steps.slice(0, 1) }) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument());
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };

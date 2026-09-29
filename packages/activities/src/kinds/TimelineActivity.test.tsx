@@ -55,4 +55,19 @@ describe('TimelineActivity', () => {
     expect(errors).not.toHaveBeenCalled();
     errors.mockRestore();
   });
+
+  it('a one-step timeline completes once, with no scrub to make', () => {
+    const onComplete = vi.fn();
+    const single = { ...activity, spec: { ...(activity.spec as object), steps: (activity.spec as { steps: unknown[] }).steps.slice(0, 1) } };
+    const { rerender } = render(<TimelineActivity activity={single as PortableActivity} onComplete={onComplete} />);
+    rerender(<TimelineActivity activity={single as PortableActivity} onComplete={onComplete} />);
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('a done one-step timeline does not fire again', () => {
+    const onComplete = vi.fn();
+    const single = { ...activity, status: 'done', spec: { ...(activity.spec as object), steps: (activity.spec as { steps: unknown[] }).steps.slice(0, 1) } };
+    render(<TimelineActivity activity={single as PortableActivity} onComplete={onComplete} />);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 });

@@ -6,12 +6,14 @@
  * A scrubber steps through `steps[]`; each step shows a frame — a `page` or a
  * block of `code` lines, never both — plus a caption. Ungraded, like `xray` /
  * `inspect`: there is nothing to get wrong, and the beat completes once every
- * step has been visited at least once.
+ * step has been visited at least once. A one-step timeline (the spec asks for
+ * two, but a row may still carry one) has nothing to scrub, so its only step
+ * counts as visited the moment it is shown.
  *
  * ⚠️ Mirrors `@iterahq/activity-spec` read shape locally (`TimelineSpec` in
  * `../specs.js`) — see the release-gate note at the top of that section.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { History } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { localizedText } from '../internal/localizedText.js';
@@ -41,12 +43,17 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
       if (solved) return;
       record('step_visited', { index: next });
       const visited = visitedRef.current;
-      if (visited.has(next)) return;
       visited.add(next);
-      if (visited.size === steps.length) open({ steps: visited.size });
+      if (visited.size >= steps.length) open({ steps: visited.size });
     },
     [open, record, solved, steps.length],
   );
+
+  // Nothing to scrub through: the one step is already seen. After mount, never
+  // during render — `open()` calls the host's `onComplete`.
+  useEffect(() => {
+    if (steps.length === 1 && !solved) open({ steps: 1 });
+  }, [open, solved, steps.length]);
 
   const step = steps[index];
   const text = (value: SceneLocalizedText | undefined) => localizedText(value ?? '', locale);
@@ -68,7 +75,7 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
             className="rounded-xl overflow-hidden border border-black/10 min-h-[160px]"
             style={{ background: SCENE_PAGE_BACKGROUND }}
           >
-            <SceneBrowserBar url="site" />
+            <SceneBrowserBar url={step.frame.page.url_label || 'site'} />
             <div className="flex flex-col gap-3 p-6">
               {step.frame.page.elements.map((el) => (
                 <ScenePageElement key={el.id} element={el} />
