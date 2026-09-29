@@ -41,7 +41,10 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
   const { record, open, solved } = gate;
   const reducedMotion = useReducedMotion();
 
-  const [placed, setPlaced] = useState<Record<string, string>>({});
+  // A `done` activity opens with every chip in its bucket: review shows the answer, not an empty tray.
+  const [placed, setPlaced] = useState<Record<string, string>>(() =>
+    activity.status === 'done' ? Object.fromEntries((spec?.chips ?? []).map((chip) => [chip.id, chip.bucket])) : {},
+  );
   const [picked, setPicked] = useState<string | null>(null);
   const [shaking, setShaking] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -135,6 +138,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
                   {inside.map((chip) => (
                     <span
                       key={chip.id}
+                      data-testid={`bucket-placed-${chip.id}`}
                       className="rounded-full px-3 py-1 text-sm border"
                       style={{ borderColor: `${hex}66`, background: `${hex}22` }}
                     >

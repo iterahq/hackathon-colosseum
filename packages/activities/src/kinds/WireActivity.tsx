@@ -34,7 +34,10 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
   const { record, open, solved } = gate;
   const reducedMotion = useReducedMotion();
 
-  const [wires, setWires] = useState<Record<string, string>>({});
+  // A `done` activity opens fully wired: review shows the answer, not an empty board.
+  const [wires, setWires] = useState<Record<string, string>>(() =>
+    activity.status === 'done' ? Object.fromEntries((spec?.pairs ?? []).map((p) => [p.left_id, p.right_id])) : {},
+  );
   const [picked, setPicked] = useState<string | null>(null);
   const [shaking, setShaking] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -121,6 +124,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
                   if (node) ends.current.set(`L:${end.id}`, node);
                 }}
                 data-testid={`wire-left-${end.id}`}
+                data-wired={done ? 'true' : 'false'}
                 disabled={solved || done}
                 onClick={() => pick(end.id)}
                 aria-pressed={isPicked}

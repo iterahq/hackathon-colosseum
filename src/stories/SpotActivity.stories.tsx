@@ -37,6 +37,8 @@ export const WrongThenRight: Story = {
   args: { activity: makeGatedActivity('spot', SPOT_SPEC) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
+    // The bug token looks exactly like its neighbours: the source never gives the answer away.
+    await expect(canvas.getByTestId('spot-token-typo-clas').className).toBe(canvas.getByTestId('spot-token-plain-0-0').className);
     await userEvent.click(canvas.getByTestId('spot-token-plain-0-0'));
     await expect(canvas.getByTestId('scene-wrong-hint')).toHaveTextContent(/./);
     await userEvent.click(canvas.getByTestId('spot-token-typo-clas'));
@@ -45,12 +47,13 @@ export const WrongThenRight: Story = {
   },
 };
 
-/** B.done — concluída numa sessão anterior: abre resolvida direto. */
+/** B.done — concluída numa sessão anterior: abre resolvida, com o bug já consertado. */
 export const Done: Story = {
   args: { activity: makeGatedActivity('spot', SPOT_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('spot-token-typo-clas')).toHaveTextContent('class');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

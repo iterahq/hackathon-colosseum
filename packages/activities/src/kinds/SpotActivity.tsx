@@ -6,7 +6,9 @@
  * page on the right is broken; the source on the left holds the bug. Tap the
  * exact token that broke it and it heals in place (`bugs[].fixed_text` swaps
  * in, `page` elements carrying that `broken_by` id heal too). A miss shows
- * `miss_hint`; the beat completes once every bug is found.
+ * `miss_hint`; the beat completes once every bug is found. Every token looks
+ * and answers the same, so the source never points at its own bug. A `done`
+ * activity opens with every bug fixed.
  *
  * ⚠️ Mirrors `@iterahq/activity-spec` read shape locally (`SpotSpec` in
  * `../specs.js`) — see the release-gate note at the top of that section.
@@ -31,7 +33,9 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
   const gate = useSceneGate(activity, onComplete);
   const { record, open, solved } = gate;
 
-  const [fixed, setFixed] = useState<Set<string>>(new Set());
+  const [fixed, setFixed] = useState<Set<string>>(
+    () => new Set(activity.status === 'done' ? (spec?.bugs ?? []).map((b) => b.id) : []),
+  );
   const [hint, setHint] = useState<string | null>(null);
 
   const bugsById = useMemo(() => new Map((spec?.bugs ?? []).map((b) => [b.id, b])), [spec?.bugs]);
@@ -91,11 +95,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
                       }
                     }}
                     className={
-                      isFixed
-                        ? 'text-evergreen'
-                        : token.bug_id
-                          ? 'cursor-pointer text-white/85 underline decoration-dotted decoration-white/30 hover:bg-white/10'
-                          : 'text-white/60'
+                      isFixed ? 'text-evergreen' : `text-white/85 ${solved ? '' : 'cursor-pointer hover:bg-white/10'}`
                     }
                   >
                     {text}

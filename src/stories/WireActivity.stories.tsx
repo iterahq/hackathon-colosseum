@@ -51,12 +51,15 @@ export const WrongThenRight: Story = {
   },
 };
 
-/** B.done — concluída numa sessão anterior: abre resolvida direto. */
+/** B.done — concluída numa sessão anterior: abre resolvida, com todos os fios ligados. */
 export const Done: Story = {
   args: { activity: makeGatedActivity('wire', WIRE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    for (const pair of WIRE_SPEC.pairs) {
+      await expect(canvas.getByTestId(`wire-left-${pair.left_id}`)).toHaveAttribute('data-wired', 'true');
+    }
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

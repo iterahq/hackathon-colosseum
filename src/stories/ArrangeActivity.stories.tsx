@@ -21,12 +21,18 @@ const meta: Meta<typeof ArrangeActivity> = {
 export default meta;
 type Story = StoryObj<typeof ArrangeActivity>;
 
-/** A.enabled / C.blank — na ordem `start`, embaralhada. */
+/** A.enabled / C.blank — na ordem `start`, embaralhada; o `sub` de um item aparece embaixo do rótulo. */
 export const Default: Story = {
-  args: { activity: makeGatedActivity('arrange', ARRANGE_SPEC) },
+  args: {
+    activity: makeGatedActivity('arrange', {
+      ...ARRANGE_SPEC,
+      items: ARRANGE_SPEC.items.map((item) => (item.id === 'debitar' ? { ...item, sub: 'tira da conta' } : item)),
+    }),
+  },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('arrange-item-confirmar')).toBeInTheDocument();
+    await expect(canvas.getByTestId('arrange-sub-debitar')).toHaveTextContent('tira da conta');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
@@ -44,12 +50,29 @@ export const Settled: Story = {
   },
 };
 
-/** B.done — concluída numa sessão anterior: abre resolvida direto. */
+/** H.degenerado — `start` já igual a `correct`: nada abre sem um gesto do aluno. */
+export const StartAlreadyCorrect: Story = {
+  args: { activity: makeGatedActivity('arrange', { ...ARRANGE_SPEC, start: ARRANGE_SPEC.correct }) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await expect(canvas.queryByTestId('scene-stamp')).toBeNull();
+    await expect(args.onComplete).not.toHaveBeenCalled();
+    await userEvent.click(canvas.getByTestId('arrange-down-checar-saldo'));
+    await userEvent.click(canvas.getByTestId('arrange-up-checar-saldo'));
+    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** B.done — concluída numa sessão anterior: abre resolvida, já na ordem certa. */
 export const Done: Story = {
   args: { activity: makeGatedActivity('arrange', ARRANGE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    const ids = [...canvas.getByTestId('arrange-stage').querySelectorAll('li')].map((li) => li.dataset.testid);
+    await expect(ids).toEqual(ARRANGE_SPEC.correct.map((id) => `arrange-item-${id}`));
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

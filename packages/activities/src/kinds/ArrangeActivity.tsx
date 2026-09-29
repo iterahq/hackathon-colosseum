@@ -14,6 +14,9 @@
  * geometry, and a settle-on-match kind has no submit moment to also expose a
  * drag affordance around.
  *
+ * Only a learner's move settles it: a `start` that already equals `correct`
+ * waits for a gesture. A `done` activity opens in the correct order.
+ *
  * ⚠️ Mirrors `@iterahq/activity-spec` read shape locally (`ArrangeSpec` in
  * `../specs.js`) — see the release-gate note at the top of that section.
  */
@@ -33,10 +36,13 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
   const itemsById = useMemo(() => new Map((spec?.items ?? []).map((item) => [item.id, item])), [spec?.items]);
   const gate = useSceneGate(activity, onComplete);
   const { record, open, solved } = gate;
-  const [order, setOrder] = useState<string[]>(spec?.start ?? []);
+  const [order, setOrder] = useState<string[]>(() =>
+    (activity.status === 'done' ? spec?.correct : spec?.start) ?? [],
+  );
+  const [moved, setMoved] = useState(false);
 
   const isCorrect = order.length > 0 && order.every((id, i) => id === spec?.correct?.[i]);
-  useGestureSettle(isCorrect && !solved, useCallback(() => open({ order }), [open, order]));
+  useGestureSettle(isCorrect && moved && !solved, useCallback(() => open({ order }), [open, order]));
 
   const move = useCallback(
     (index: number, delta: number) => {
@@ -46,6 +52,7 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
       const next = [...order];
       [next[index], next[target]] = [next[target], next[index]];
       setOrder(next);
+      setMoved(true);
       record('order_changed', { order: next });
     },
     [order, record, solved],
@@ -76,7 +83,14 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
                 codeStyle ? 'font-mono text-sm bg-[#0E0D0B] text-white/90 border-white/10' : 'bg-card'
               }`}
             >
-              <span>{localizedText(item.label, locale)}</span>
+              <span className="flex flex-col">
+                <span>{localizedText(item.label, locale)}</span>
+                {item.sub ? (
+                  <span className="text-xs text-muted-foreground" data-testid={`arrange-sub-${id}`}>
+                    {localizedText(item.sub, locale)}
+                  </span>
+                ) : null}
+              </span>
               <span className="flex items-center gap-1">
                 <button
                   type="button"
