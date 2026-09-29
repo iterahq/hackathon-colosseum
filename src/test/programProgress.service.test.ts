@@ -66,8 +66,12 @@ const programRow = {
   ],
 };
 
-// itera.progress rows — lesson 1 fully completed (DB enum 'completed').
-const progressRows = L1.map((id) => ({ activity_id: id, status: 'completed' }));
+// itera.progress rows — lesson 1 fully completed (DB enum 'completed') by the
+// caller; staff RLS also returns another member who finished lesson 2.
+const progressRows = [
+  ...L1.map((id) => ({ user_id: 'me', activity_id: id, status: 'completed' })),
+  ...L2.map((id) => ({ user_id: 'other', activity_id: id, status: 'completed' })),
+];
 
 function makeFrom(table: string) {
   if (table === 'programs') {
@@ -80,14 +84,21 @@ function makeFrom(table: string) {
     return b;
   }
   if (table === 'progress') {
+    let rows = progressRows;
     const b: Record<string, unknown> = {
       select: () => b,
-      in: async () => ({ data: progressRows, error: null }),
+      eq: (col: string, val: unknown) => {
+        rows = rows.filter((r) => r[col as keyof (typeof rows)[number]] === val);
+        return b;
+      },
+      in: async () => ({ data: rows, error: null }),
     };
     return b;
   }
   return { select: () => ({ in: async () => ({ data: [], error: null }) }) };
 }
+
+vi.mock('@/services/iteraUser', () => ({ getIteraUserId: async () => 'me' }));
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -109,7 +120,7 @@ describe('getProgramBySlug — derives per-activity progress (unlock gate)', () 
     }
   });
 
-  it('leaves lesson 2 activities without a done status (stays locked-able)', async () => {
+  it("leaves lesson 2 activities without a done status (stays locked-able), even when another member finished them", async () => {
     const program = await getProgramBySlug('modele-dados-com-ia');
     const l2 = program.units[0].lessons![1];
     for (const a of l2.activities!) {

@@ -33,7 +33,7 @@ export function LessonCompleteCard({
       <div className="w-20 h-20 mx-auto rounded-3xl bg-evergreen-soft border border-evergreen/40 flex items-center justify-center">
         <Trophy className="w-9 h-9 text-evergreen-hi" />
       </div>
-      <h2 className="font-display text-foreground mt-5">{t('lesson.complete')}</h2>
+      <h2 className="font-display text-3xl text-foreground mt-5">{t('lesson.complete')}</h2>
       <p className="text-sm text-muted-foreground mt-2">
         {doneCount}/{total} {t('label.activities').toLowerCase()}
       </p>

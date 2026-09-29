@@ -192,7 +192,7 @@ export default function ProgramPage() {
                     {tText(program.title)}
                   </h1>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {program.units.length} {t('label.units').toLowerCase()}
+                    {program.units.length} {t(program.units.length === 1 ? 'label.unit' : 'label.units').toLowerCase()}
                   </p>
                 </div>
               </div>

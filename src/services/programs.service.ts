@@ -194,8 +194,10 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
   // can compute lesson-done / unlock-the-next-lesson. WITHOUT this, every
   // activity.status was undefined → no lesson ever read as 'done' → the program
   // stuck at 0/N and lesson 2 stayed LOCKED even after lesson 1 was completed.
-  // RLS scopes itera.progress to the caller's own rows. Best-effort: progress
-  // failures must not blank out the course tree.
+  // RLS does NOT scope itera.progress to the caller alone: admins and
+  // instructors read every member of their tenant, so the query filters on the
+  // caller's own user id. Best-effort: progress failures must not blank out the
+  // course tree.
   const activityIds = units.flatMap((u) =>
     (u.lessons ?? []).flatMap((l) => (l.activities ?? []).map((a) => a.id))
   );
@@ -377,6 +379,7 @@ export async function getUserStats(): Promise<UserStats> {
     return { totalXp: 0, streakDays: 0, badgeCount: 0, completedActivities: 0 };
   }
   const sb = getSupabase();
+  const userId = await getIteraUserId();
 
   const [xp, badges, progress] = await Promise.all([
     sb.from('xp_events').select('amount'),
@@ -384,7 +387,8 @@ export async function getUserStats(): Promise<UserStats> {
     // The itera.progress_status enum is ('not_started','in_progress','completed') —
     // there is NO 'done' value, so filtering on 'done' always returned zero rows
     // (completion counts stuck at 0). Use the real enum value.
-    sb.from('progress').select('status').eq('status', 'completed'),
+    // Staff RLS also returns the tenant's members: count the caller's rows only.
+    userId ? sb.from('progress').select('status').eq('user_id', userId).eq('status', 'completed') : { data: [] },
   ]);
 
   const totalXp = asRows(xp.data).reduce((s, r) => s + num(r.amount), 0);
@@ -425,10 +429,13 @@ export async function getBadges(): Promise<Badge[]> {
  */
 export async function getLessonProgress(activityIds: string[]): Promise<Record<string, ProgressStatus>> {
   if (!isSupabaseConfigured || activityIds.length === 0) return {};
+  const userId = await getIteraUserId();
+  if (!userId) return {};
   const sb = getSupabase();
   const { data } = await sb
     .from('progress')
     .select('activity_id, status')
+    .eq('user_id', userId)
     .in('activity_id', activityIds);
   const map: Record<string, ProgressStatus> = {};
   for (const r of asRows(data)) map[str(r.activity_id)] = normalizeProgressStatus(str(r.status));

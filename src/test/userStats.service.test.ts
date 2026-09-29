@@ -15,17 +15,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const tables: Record<string, Record<string, unknown>[]> = {
   xp_events: [{ amount: 30 }, { amount: 70 }],
   user_badges: [{ badge_id: 'b1' }, { badge_id: 'b2' }, { badge_id: 'b3' }],
+  // staff RLS returns other members too: the 'other' row must never be counted
   progress: [
-    { status: 'completed' },
-    { status: 'completed' },
-    { status: 'completed' },
-    { status: 'in_progress' },
-    { status: 'not_started' },
+    { user_id: 'me', status: 'completed' },
+    { user_id: 'me', status: 'completed' },
+    { user_id: 'me', status: 'completed' },
+    { user_id: 'me', status: 'in_progress' },
+    { user_id: 'me', status: 'not_started' },
+    { user_id: 'other', status: 'completed' },
   ],
 };
 
 // Capture the status value getUserStats filters progress on.
 let progressFilter: { col: string; val: unknown } | null = null;
+let progressUser: unknown = null;
 
 function makeQuery(table: string) {
   let rows = [...(tables[table] ?? [])];
@@ -34,7 +37,8 @@ function makeQuery(table: string) {
       return builder;
     },
     eq(col: string, val: unknown) {
-      if (table === 'progress') progressFilter = { col, val };
+      if (table === 'progress' && col === 'user_id') progressUser = val;
+      else if (table === 'progress') progressFilter = { col, val };
       rows = rows.filter((r) => r[col] === val);
       return builder;
     },
@@ -44,6 +48,8 @@ function makeQuery(table: string) {
   };
   return builder;
 }
+
+vi.mock('@/services/iteraUser', () => ({ getIteraUserId: async () => 'me' }));
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -55,6 +61,7 @@ import { getUserStats } from '@/services/programs.service';
 describe('getUserStats (progress enum bug)', () => {
   beforeEach(() => {
     progressFilter = null;
+    progressUser = null;
     vi.clearAllMocks();
   });
 
@@ -62,6 +69,11 @@ describe('getUserStats (progress enum bug)', () => {
     await getUserStats();
     expect(progressFilter).toEqual({ col: 'status', val: 'completed' });
     expect(progressFilter?.val).not.toBe('done');
+  });
+
+  it("counts only the caller's own progress rows", async () => {
+    await getUserStats();
+    expect(progressUser).toBe('me');
   });
 
   it('counts completed activities (non-zero) and sums XP', async () => {

@@ -256,6 +256,25 @@ html [class*='var(--c-dialog-bg),_0_0_0_3px_#E07A4A']:focus-visible {
   }
 
   /*
+   * JetBrains Mono ligatures fuse `</` (and `=>`, `!=`…) into one glyph. A
+   * learner being taught that the slash is what closes a tag must see both
+   * characters; inside an <input> the fused glyph even drops the `<`.
+   */
+  code,
+  kbd,
+  pre,
+  samp,
+  input,
+  textarea,
+  .font-mono,
+  .font-meta,
+  .cm-editor,
+  .monaco-editor {
+    font-variant-ligatures: none;
+    font-feature-settings: 'liga' 0, 'calt' 0;
+  }
+
+  /*
    * White-border fix: paint #0A0908 end-to-end on the document root, body AND
    * #root so the brand bg covers the FULL viewport — no white canvas edge,
    * gutter, overscroll bleed, or scrollbar-track gap. Previously only `body`
