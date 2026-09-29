@@ -39,7 +39,9 @@ export const Solved: Story = {
     const cable = canvas.getByTestId('plug-cable');
     await userEvent.click(cable);
     await expect(canvas.getByTestId('plug-stage')).toHaveAttribute('data-connected', 'false');
+    await expect(canvas.getByTestId('plug-link-line')).toHaveAttribute('data-connected', 'false');
     await userEvent.click(cable);
+    await expect(canvas.getByTestId('plug-link-line')).toHaveAttribute('data-connected', 'true');
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
     // The cable stays live: the learner compares the two versions freely, with no second verdict.

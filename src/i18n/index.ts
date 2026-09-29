@@ -586,7 +586,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     // ── scene-mechanics batch, batch A (dial/plug/selector/timeline/arrange/press, 2026-09-25) ──
     // Espelha packages/activities/src/i18n/dictionary.ts VERBATIM.
     'activity.dial': 'Ajuste',
-    'activity.plug': 'Plugue',
+    'activity.plug': 'Liga e desliga',
     'activity.selector': 'Seletor',
     'activity.selector.wrongHint': 'Esse seletor não pega exatamente o que a gente quer.',
     'activity.timeline': 'Linha do tempo',
@@ -1577,7 +1577,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.inspect.codeTarget': 'Source line: {name}',
     // ── scene-mechanics batch, batch A (dial/plug/selector/timeline/arrange/press, 2026-09-25) ──
     'activity.dial': 'Dial',
-    'activity.plug': 'Plug',
+    'activity.plug': 'On and off',
     'activity.selector': 'Selector',
     'activity.selector.wrongHint': 'That selector does not name exactly what we want.',
     'activity.timeline': 'Timeline',

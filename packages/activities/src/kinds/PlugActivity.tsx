@@ -20,7 +20,7 @@ import type { PlugSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { SceneBrowserBar } from './scene/SceneBrowserBar.js';
 import { ScenePageElement } from './scene/ScenePageElement.js';
-import { SCENE_PAGE_BACKGROUND, SCENE_RAW_PAGE_BACKGROUND } from './scene/sceneTheme.js';
+import { SCENE_CODE_COLORS as C, SCENE_PAGE_BACKGROUND, SCENE_RAW_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
@@ -80,6 +80,41 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
           {elements.map((el) => (
             <ScenePageElement key={el.id} element={el} style={styleFor.get(el.id)} raw={!connected} />
           ))}
+        </div>
+      </div>
+      <div className="rounded-xl overflow-hidden border border-white/10 bg-[#0E0D0B]" data-testid="plug-head">
+        <div className="flex items-center h-9 bg-[#15130F] border-b border-white/5">
+          <span className="h-full px-4 flex items-center gap-2 bg-[#0E0D0B] border-t-2 border-evergreen text-xs text-white/80 font-mono">
+            <span className="text-[#E07A4A]">&lt;/&gt;</span> index.html
+          </span>
+        </div>
+        <div className="py-3 px-4 text-[clamp(11px,1.25vw,15px)] leading-[2] overflow-x-auto font-mono whitespace-pre">
+          <div>
+            <span style={{ color: C.bracket }}>&lt;</span>
+            <span style={{ color: C.tag }}>head</span>
+            <span style={{ color: C.bracket }}>&gt;</span>
+          </div>
+          <div
+            data-testid="plug-link-line"
+            data-connected={connected ? 'true' : 'false'}
+            className="pl-4 transition-opacity"
+            style={connected ? undefined : { opacity: 0.35, textDecoration: 'line-through' }}
+          >
+            <span style={{ color: C.bracket }}>&lt;</span>
+            <span style={{ color: C.tag }}>link</span>{' '}
+            <span style={{ color: C.attr }}>rel</span>
+            <span style={{ color: C.bracket }}>=</span>
+            <span style={{ color: C.value }}>&quot;stylesheet&quot;</span>{' '}
+            <span style={{ color: C.attr }}>href</span>
+            <span style={{ color: C.bracket }}>=</span>
+            <span style={{ color: C.value }}>&quot;{spec?.cable_name}&quot;</span>
+            <span style={{ color: C.bracket }}>&gt;</span>
+          </div>
+          <div>
+            <span style={{ color: C.bracket }}>&lt;/</span>
+            <span style={{ color: C.tag }}>head</span>
+            <span style={{ color: C.bracket }}>&gt;</span>
+          </div>
         </div>
       </div>
       <button
