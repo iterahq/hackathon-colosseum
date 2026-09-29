@@ -34,6 +34,8 @@
  * Env (same shape as `qa-tenant.ts`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and
  * an author/tenant_admin/owner identity's own credentials —
  * `ITERA_SMOKE_USERNAME` / `ITERA_SMOKE_PASSWORD`, or any pair the caller sets.
+ * An identity that signs in through DFL has no password: pass its Itera
+ * session JWT as `ITERA_ACCESS_TOKEN` instead, and the password grant is skipped.
  * NEVER prints a credential. Only names, and only presence.
  *
  * ═══════════════════════════════════════════════════════════════════════════
@@ -419,6 +421,11 @@ async function main(): Promise<void> {
   }
 
   async function login(): Promise<void> {
+    const token = process.env.ITERA_ACCESS_TOKEN;
+    if (token) {
+      accessToken = token;
+      return;
+    }
     const email = req('ITERA_SMOKE_USERNAME');
     const password = req('ITERA_SMOKE_PASSWORD');
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
