@@ -6,6 +6,7 @@ import "./lib/monaco-loader";
 import App from "./App.tsx";
 import { captureAttribution } from "./lib/attribution";
 import { mountUmami } from "./lib/analytics";
+import { mountStaleChunkReload } from "./lib/stale-chunk-reload";
 import "./index.css";
 
 document.documentElement.classList.add('dark');
@@ -15,5 +16,6 @@ document.documentElement.classList.add('dark');
 // ela vira assinante. Só dá pra ler na chegada. Ver src/lib/attribution.ts.
 captureAttribution(window.location.href, document.referrer || null);
 mountUmami();
+mountStaleChunkReload();
 
 createRoot(document.getElementById("root")!).render(<App />);
