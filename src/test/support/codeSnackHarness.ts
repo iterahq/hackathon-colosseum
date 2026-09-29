@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { act } from '@testing-library/react';
 import type { CodeCheck } from '@iterahq/activity-spec';
+import { runHtmlChecksInDocument, type CodeCheckResult } from '@iterahq/activities/code';
 import { transpileSnack } from '@/utils/transpileSnack';
 import {
   createRequireShim,
@@ -15,6 +16,14 @@ import {
  * sucrase transpile → evaluate with the iframe's `require`/`alert` shims →
  * render with React 18 → run the checks against the resulting DOM. Shared by
  * every test that proves an authored snack (starter fails, solution passes).
+ *
+ * `gradeSource`'s optional `language` dispatches to the plain-web path
+ * (`language: 'html'`) instead: `runHtmlChecksInDocument` from
+ * `@iterahq/activities/code`, which parses `source` with `DOMParser` and grades
+ * it WITHOUT executing any inline `<script>` (see that function's docblock —
+ * a `steps` check that depends on a script side effect is not provable this
+ * way; use a real preview / e2e for that). Every existing caller that does not
+ * pass `language` keeps the exact tsx pipeline above, unchanged.
  */
 
 const originalAlert = window.alert;
@@ -63,8 +72,18 @@ export function nextTick(): Promise<void> {
   });
 }
 
-/** Exactly the iframe's `evalCode` + `mount` + check loop, in one call. */
-export async function gradeSource(source: string, checks: CodeCheck[]) {
+/**
+ * Exactly the iframe's `evalCode` + `mount` + check loop, in one call —
+ * `language: 'html'` skips all of that and grades `source` as a plain HTML
+ * document instead (see the module docblock).
+ */
+export async function gradeSource(
+  source: string,
+  checks: CodeCheck[],
+  language?: string,
+): Promise<CodeCheckResult[]> {
+  if (language === 'html') return runHtmlChecksInDocument(source, checks);
+
   const { preview, mount, dialogs, requireShim } = makeSandbox();
   const Comp = evaluateSnack(source, requireShim);
   expect(typeof Comp, 'the snack must export a default component').toBe('function');

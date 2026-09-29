@@ -586,15 +586,50 @@ plan's coupling table was incomplete, and findings 5–7 arrived with step 5.
      cannot render in jsdom; a textarea can, so "a consumer can render AND answer
      a `code` activity" is now proven from outside the repo rather than asserted.
 
-7. **`spec.language` is read by nobody.** `CodeSpecSchema` has carried a
-   `language` field (default `"tsx"`) since the kind existed, and
-   `CodeSnackPane` has always hardcoded `language="typescript"` on the editor.
-   The seam made it visible — the port's prop interface has a `language` member,
-   and wiring it meant looking at where the value comes from. It is **not fixed
-   here**: step 5 may not change behaviour, and forwarding the field naively
-   would send `"tsx"` to Monaco, which has no such language id, silently
-   unstyling every authored snack. The fix needs an audit of the authored
-   content plus a mapping, and it is its own PR.
+7. **RESOLVED — `spec.language` now drives a second mode, `"html"`, on the
+   one-behaviour kinds.** This
+   finding used to say `CodeSnackPane` hardcoded `language="typescript"` and
+   never read `spec.language`. It now reads it: `"html"` renders a full learner
+   HTML document as-is (no transpile, no React) inside the sandboxed preview
+   and switches Monaco to `html`; every other value — including the schema
+   default `"tsx"`, still not itself a Monaco language id — keeps exactly the
+   behaviour this finding described. `"html"` is reachable through
+   `code_editor_checks`, `code_editor_ungraded` and `code_fill_*` (they share
+   `CodeSnackPane` / `GuidedCodePane` and so the same preview), and is
+   REFUSED by the deprecated `code` kind: `CodeActivity` renders its
+   invalid-spec card for `language: "html"`, because a deprecated kind gains no
+   behaviour (transition list below). `@iterahq/activity-spec` types `language`
+   as a free string, so the gate lives in the renderer, not in the schema.
+
+   `language` is classified **presentation**, not behaviour: with `"html"` the
+   learner still types in the editor (B1), the same DOM `checks` still judge
+   (B2), and Submit / Done still finishes it (B3) — only what the preview
+   draws and which grammar Monaco highlights change. See `HtmlLivePreview.tsx` /
+   `useHtmlLivePreview.ts` (`buildHtmlPreviewDocument` /
+   `buildHtmlCheckDocument` in `codePreviewIframe.ts`) and
+   `htmlDocumentChecks.ts` for the vitest/jsdom grading helper
+   (`runHtmlChecksInDocument`) a content fixture uses without a browser.
+
+   ⚠️ First version of this shipped an in-place re-render (one long-lived
+   iframe, `DOMParser` + swapping `head`/`body` on every keystroke) and it was
+   wrong for arbitrary learner JavaScript: `window`/`document` identity
+   survived across renders, so a top-level `let`/`const`/`class` threw
+   "already declared" the second time its script ran, and a listener on
+   `document`/`window` (unlike one on an element, which dies with
+   `innerHTML`) accumulated one more handler per render. Fixed by making every
+   render — and every graded, STEPPED check within one submission — a FRESH
+   iframe navigation (`srcDoc` reassignment), which is a real browser
+   navigation and therefore a genuinely new realm; proven with real script
+   execution (the `jsdom` package, one `JSDOM` instance per simulated render)
+   in `codePreviewIframe.freshRealm.test.ts`.
+
+   **Known, accepted limitation, unchanged from the React path:** learner
+   scripts run in the SAME realm as the check-grading runtime
+   (`__iteraRunChecks`), so a learner's own script could in principle forge a
+   fake `itera:checks` reply. This is self-cheating only — the sandbox still
+   keeps the parent app, cookies, and storage unreachable — and it is exactly
+   the trust boundary the React preview already has today (a learner's
+   component code runs in that same realm as its own grading runtime too).
 
 Also worth recording, though not a contract problem: the app's `Activity` type
 carries `lessonId`, `ordinal`, `publishStatus` and `artifactPolicy`, and **no

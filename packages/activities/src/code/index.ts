@@ -57,6 +57,13 @@ export {
 } from './CodeKindActivities.js';
 export { CodeSnackPane } from './CodeSnackPane.js';
 export { CodeLivePreview } from './CodeLivePreview.js';
+/**
+ * The `language: 'html'` half of the preview, public for the same reason
+ * `GuidedCodePane` is: a host may want to mount the plain-web preview on its
+ * own. See its docblock and `useHtmlLivePreview` for why every render is a
+ * fresh iframe realm.
+ */
+export { HtmlLivePreview } from './HtmlLivePreview.js';
 export { CodeChecksFeedback } from './CodeChecksFeedback.js';
 export { CodeChecksList } from './CodeChecksList.js';
 export { CodeResetControl } from './CodeResetControl.js';
@@ -112,13 +119,25 @@ export {
 } from './geometry.js';
 
 export { transpileSnack } from './transpileSnack.js';
-export { CODE_PREVIEW_IFRAME_HTML } from './codePreviewIframe.js';
 export {
+  CODE_PREVIEW_IFRAME_HTML,
+  buildHtmlCheckDocument,
+  buildHtmlPreviewDocument,
+} from './codePreviewIframe.js';
+export {
+  CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE,
   CODE_PREVIEW_RUNTIME_SOURCE,
   createRequireShim,
   installPreviewDialogShims,
   runCodeChecks,
 } from './codePreviewRuntime.js';
+
+/**
+ * The `language: 'html'` test helper — see `./htmlDocumentChecks.ts`. Public so
+ * a content fixture in the Player (or any host) can grade an authored html
+ * snack in vitest/jsdom without a real sandboxed iframe.
+ */
+export { runHtmlChecksInDocument } from './htmlDocumentChecks.js';
 
 /**
  * The draft-key contract. A host adapter needs BOTH: the prefix to recognise

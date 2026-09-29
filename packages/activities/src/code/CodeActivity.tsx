@@ -45,7 +45,11 @@ export function CodeActivity({ activity, onComplete, reveal }: ActivityRendererP
   // testid — `code-invalid` is depended on by the e2e and by the invalid-spec
   // coverage sweep, so it crosses into the package unchanged.
   const parsed = safeParseActivitySpec('code', activity.spec);
-  if (!parsed.success) {
+  // `code` is DEPRECATED (transition list) and may not gain behaviour: the
+  // plain-web `language: 'html'` mode lives on the one-behaviour kinds
+  // (`code_editor_checks`, `code_editor_ungraded`, `code_fill_*`) only. The
+  // spec package types `language` as a free string, so the gate is HERE.
+  if (!parsed.success || parsed.data.language === 'html') {
     return (
       <div
         className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"

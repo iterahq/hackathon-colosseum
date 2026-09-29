@@ -379,6 +379,9 @@ const CODE_ENTRYPOINT_SURFACE = [
   'CodeFillTypeActivity',
   'CodeSnackPane',
   'CodeLivePreview',
+  // The `language: 'html'` (plain-web) half of the preview — see
+  // `packages/activities/src/code/HtmlLivePreview.tsx`.
+  'HtmlLivePreview',
   'CodeChecksFeedback',
   'CodeChecksList',
   'CodeResetControl',
@@ -405,10 +408,22 @@ const CODE_ENTRYPOINT_SURFACE = [
   'useGuidedCode',
   'transpileSnack',
   'CODE_PREVIEW_IFRAME_HTML',
+  // The `language: 'html'` (plain-web) twins of the entries above: same
+  // sandboxed-iframe posture, no React/sucrase, one FRESH document per
+  // render/grading call instead of one long-lived iframe — see
+  // `packages/activities/src/code/codePreviewIframe.ts` and
+  // `./codePreviewRuntime.ts`.
+  'buildHtmlPreviewDocument',
+  'buildHtmlCheckDocument',
   'CODE_PREVIEW_RUNTIME_SOURCE',
+  'CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE',
   'createRequireShim',
   'installPreviewDialogShims',
   'runCodeChecks',
+  // The pure vitest/jsdom test helper for `language: 'html'` — parses with
+  // `DOMParser` (no script execution) and runs `runCodeChecks` against the
+  // result. See `packages/activities/src/code/htmlDocumentChecks.ts`.
+  'runHtmlChecksInDocument',
   'CODE_BLANKS_DRAFT_KEY_PREFIX',
   'CODE_DRAFT_KEY_PREFIX',
   'codeBlanksDraftActivityId',

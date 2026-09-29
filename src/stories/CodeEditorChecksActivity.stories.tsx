@@ -28,6 +28,23 @@ const activity = (spec: Record<string, unknown> = SPEC, status?: 'done') =>
 
 const SPEC = CODE_EDITOR_CHECKS_SPEC as Record<string, unknown>;
 
+const HTML_CHECKS = [
+  { id: 'title', label: 'The page has a title', selector: 'head > title', assert: { type: 'exists' } },
+  { id: 'heading', label: 'The heading greets the reader', selector: 'h1', assert: { type: 'text', contains: 'Hello' } },
+];
+
+const htmlSpec = (starter: string) => ({
+  prompt: 'Write your first page: give it a title and a greeting heading.',
+  starter,
+  language: 'html',
+  checks: HTML_CHECKS,
+});
+
+const HTML_FAILING_STARTER = '<!doctype html><html lang="en"><head></head><body><h1>Welcome</h1></body></html>';
+const HTML_SOLVED_STARTER =
+  '<!doctype html><html lang="en"><head><title>My page</title></head><body><h1>Hello, world!</h1></body></html>';
+const HTML_UNCLOSED_STARTER = '<!doctype html><html><head><title>My page<body><h1>Hello<div><p>never closed';
+
 /** A.enabled + C.blank — the open editor on the starter, and the live preview. */
 export const Default: Story = {
   args: { activity: activity() },
@@ -44,5 +61,29 @@ export const EspecInvalida: Story = {
   args: { activity: activity(CODE_FILL_BANK_SPEC as Record<string, unknown>) },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByTestId('code-editor-checks-invalid')).toBeInTheDocument();
+  },
+};
+
+/** A.enabled + language html — the html starter runs in the live preview; the checks fail on it. */
+export const HtmlStarterFailing: Story = {
+  args: { activity: activity(htmlSpec(HTML_FAILING_STARTER)) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('code-preview-iframe')).toBeInTheDocument();
+  },
+};
+
+/** D.correct + language html — a solved page: the same checks pass on submit. */
+export const HtmlSolved: Story = {
+  args: { activity: activity(htmlSpec(HTML_SOLVED_STARTER)) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('code-preview-iframe')).toBeInTheDocument();
+  },
+};
+
+/** H.degenerado + language html — unclosed tags: the parser repairs them, grading still ends. */
+export const HtmlUnclosedTags: Story = {
+  args: { activity: activity(htmlSpec(HTML_UNCLOSED_STARTER)) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByTestId('code-preview-iframe')).toBeInTheDocument();
   },
 };

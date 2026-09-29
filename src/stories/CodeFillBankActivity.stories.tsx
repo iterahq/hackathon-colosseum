@@ -29,6 +29,18 @@ const activity = (spec: Record<string, unknown> = SPEC, status?: 'done') =>
 
 const SPEC = CODE_FILL_BANK_SPEC as Record<string, unknown>;
 
+const HTML_SPEC = {
+  prompt: 'The page is almost done. Drop in the tag that is missing.',
+  starter:
+    '<!doctype html><html lang="en"><head><title>My page</title></head><body>' +
+    '<h1>Hello, world!</h1><{{blank:action}}>Say hi</button></body></html>',
+  language: 'html',
+  word_bank: ['button', 'span', 'div', 'a'],
+  blanks: [
+    { id: 'action', kind: 'bank', answer: 'button', hint: 'Something the reader can click.' },
+  ],
+};
+
 /** A.enabled + C.blank — the locked template, every blank empty. */
 export const Default: Story = { args: { activity: activity() } };
 
@@ -79,5 +91,23 @@ export const EspecInvalida: Story = {
   args: { activity: activity({ ...SPEC, blanks: [{ id: 'hook', kind: 'select', answer: 'useState', options: ['useState', 'useEffect'] }] }) },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByTestId('code-fill-bank-invalid')).toBeInTheDocument();
+  },
+};
+
+/** A.enabled + language html — an html template with a blank, rendered in the html live preview. */
+export const HtmlDefault: Story = {
+  args: { activity: activity(HTML_SPEC) },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getAllByTestId(/^guided-blank-/)).toHaveLength(1);
+  },
+};
+
+/** D.correct + language html — the right tag: the verdict is a pass. */
+export const HtmlCorrect: Story = {
+  args: { activity: activity(HTML_SPEC) },
+  play: async ({ args, canvasElement }) => {
+    await fillGuidedBlanks(canvasElement, { action: 'button' });
+    await settleGuided(canvasElement);
+    await expect(args.onComplete).toHaveBeenCalledWith(true, expect.anything());
   },
 };

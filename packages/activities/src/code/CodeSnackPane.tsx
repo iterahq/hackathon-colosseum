@@ -113,18 +113,16 @@ export function CodeSnackPane({
             // do professor DENTRO deste painel por portal, posicionado em % dele.
             className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
           >
-            {/* ⚠️ `language` is HARDCODED, and `spec.language` is ignored. That
-                is a defect this extraction surfaced rather than introduced —
-                the seam's prop interface made the unread field visible — and it
-                is deliberately NOT fixed here: `CodeSpecSchema` defaults
-                `language` to `"tsx"`, which is not a Monaco language id, so
-                forwarding it would silently unstyle every authored snack. Step 5
-                may not change behaviour; the fix needs an audit of the authored
-                content first. See CONTRACT.md finding 7. */}
+            {/* `spec.language` now drives the editor: `"html"` (the plain-web
+                course) gets Monaco's `html` mode, everything else — including
+                the schema default `"tsx"`, which is not itself a Monaco
+                language id — keeps `"typescript"`, exactly as before this kind
+                had a second language. See CONTRACT.md finding 7 for the
+                history of why this used to be hardcoded. */}
             <CodeEditorSurface
               value={code}
               onChange={setCode}
-              language="typescript"
+              language={spec.language === 'html' ? 'html' : 'typescript'}
               readOnly={readOnly}
               editableRegions={editableRegions}
             />
@@ -144,6 +142,7 @@ export function CodeSnackPane({
         <div className={`${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border`}>
           <CodeLivePreview
             code={code}
+            language={spec.language}
             checksRequest={hasChecks ? checksRequest : null}
             onChecksResult={receiveResults}
           />

@@ -1,4 +1,5 @@
-import { CODE_PREVIEW_RUNTIME_SOURCE } from './codePreviewRuntime.js';
+import type { CodeCheck } from '@iterahq/activity-spec';
+import { CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE, CODE_PREVIEW_RUNTIME_SOURCE } from './codePreviewRuntime.js';
 
 /**
  * The self-contained document for the code-snack preview iframe. Runs INSIDE a
@@ -102,3 +103,95 @@ export const CODE_PREVIEW_IFRAME_HTML = [
   'window.parent.postMessage({type:"itera:ready"},"*");',
   '</script></body></html>',
 ].join('');
+
+/**
+ * The plain-web (`language: 'html'`, one-behaviour code kinds) preview document for ONE
+ * render. `source` is the learner's FULL HTML document
+ * (`<!DOCTYPE html>`, `<head>`, inline `<style>`/`<script>` and all) —
+ * rendered exactly as authored, no transpile, no `#root`/`#preview` wrapper —
+ * with a one-line bootstrap script APPENDED after it that only announces
+ * `itera:ready`.
+ *
+ * ── WHY A FRESH DOCUMENT PER RENDER, NOT AN IN-PLACE RE-RENDER ─────────────
+ * An earlier version of this reused ONE long-lived iframe and re-painted the
+ * learner's markup into it on every keystroke (`DOMParser` + swapping
+ * `head`/`body`). That kept `window`/`document` identity across renders, and
+ * for arbitrary learner JS — the whole point of the Básico JS unit — that is
+ * wrong in two learner-visible ways: a top-level `let`/`const`/`class` throws
+ * "Identifier has already been declared" the SECOND time its script runs, and
+ * a listener attached to `document`/`window` (as opposed to one on a specific
+ * element, which dies when `innerHTML` throws that element away) ACCUMULATES
+ * one more handler per render — a click step then fires the handler N times,
+ * not once, and a counter check reads the wrong number.
+ *
+ * `CodeLivePreview` now sets THIS as the iframe's entire `srcDoc` on every
+ * render (debounced — see `useHtmlLivePreview`). Reassigning `srcDoc` is a
+ * real navigation: the browser discards the previous document and hands the
+ * new one a BRAND NEW realm, so nothing survives between renders by
+ * construction — no revival trick needed, no accumulation possible.
+ *
+ * ── WHY APPENDED, NOT SPLICED INTO `<body>` ─────────────────────────────────
+ * The HTML5 parser is forgiving of content after `</html>`: it re-enters "in
+ * body" insertion mode and appends it, so this lands the bootstrap as the
+ * LAST node of `<body>` regardless of how well-formed the learner's document
+ * is. Locating and rewriting `</body>` by hand would fail on exactly the
+ * malformed HTML a beginner writes. TRADE-OFF, and it is a real one: a check
+ * selector that reads `:last-child` off `body` (or a bare `body >
+ * script:last-child`) would match OUR node instead of the learner's last
+ * element. No shipped `checks[].selector` does that — authors target learner
+ * markup by tag/id/class, never "whatever happens to be last on the page" —
+ * and it is written down here for the one that tries.
+ */
+export function buildHtmlPreviewDocument(source: string): string {
+  return source + '<script>window.parent.postMessage({type:"itera:ready"},"*");</script>';
+}
+
+/**
+ * The GRADED twin of `buildHtmlPreviewDocument`: same fresh-document-per-call
+ * contract, but the appended script runs `checks` against the freshly-parsed
+ * `document` (via `runCodeChecks`, `root: document` — the whole page, exactly
+ * like the contract promises) and replies with the verdicts instead of just
+ * announcing readiness.
+ *
+ * One call = one FRESH realm, so `remount` — only ever invoked by a check that
+ * carries `steps`, to isolate it from a PREVIOUS check's mutations — is a
+ * no-op here: there is nothing to reset, nothing has touched this document
+ * yet. Isolation between TWO stepped checks in the same submission instead
+ * comes from `useHtmlLivePreview.gradeHtml` calling this function ONCE PER
+ * STEPPED CHECK (a separate fresh realm each), while every check WITHOUT
+ * `steps` is safe to batch into a single call — the same rule
+ * `runCodeChecks` itself already applies when it decides whether to remount.
+ */
+export function buildHtmlCheckDocument(source: string, checks: CodeCheck[]): string {
+  return [
+    source,
+    '<script>',
+    CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE,
+    'var __checks=' + serializeForInlineScript(checks) + ';',
+    'function nextTick(){return new Promise(function(res){',
+    '  var raf=window.requestAnimationFrame||function(cb){return setTimeout(cb,16);};',
+    '  raf(function(){setTimeout(res,0);});});}',
+    'function noopRemount(){}',
+    '__iteraRunChecks({root:document,checks:__checks,remount:noopRemount,nextTick:nextTick,win:window})',
+    '  .then(function(r){window.parent.postMessage({type:"itera:checks",results:r},"*");},',
+    '        function(){window.parent.postMessage({type:"itera:checks",results:__checks.map(function(c){return {id:c.id,passed:false};})},"*");});',
+    '</script>',
+  ].join('');
+}
+
+/**
+ * JSON that is safe to inline inside a `<script>` element. A check's
+ * `selector`/`text`/`label` is author-controlled and may legitimately contain
+ * `</script>` (a selector such as `script[src$="</script>"]`, expected text
+ * quoting markup) or `<!--`; raw, either ends or re-modes the script element
+ * and the rest of the grading document becomes markup. Escaping EVERY `<` as
+ * `\u003c` covers `</script`, `<!--` and `<script` at once and parses back to
+ * the identical string; U+2028/U+2029 are escaped too so the literal stays
+ * valid on engines that predate JSON-superset syntax.
+ */
+function serializeForInlineScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}

@@ -291,3 +291,16 @@ export const CODE_PREVIEW_RUNTIME_SOURCE = [
   'var __iteraInstallDialogs = ' + String(installPreviewDialogShims) + ';',
   'var __iteraRunChecks = ' + String(runCodeChecks) + ';',
 ].join('\n');
+
+/**
+ * The HTML-mode twin of `CODE_PREVIEW_RUNTIME_SOURCE`: only `runCodeChecks`.
+ * `language: 'html'` needs no transpiler, no `require` shim, and — unlike the
+ * React path — no in-place re-render helper either: `buildHtmlPreviewDocument`
+ * / `buildHtmlCheckDocument` (`./codePreviewIframe.ts`) bake the learner's
+ * source directly into a FRESH document per render/grading call, so the
+ * browser's own HTML parser does the rendering; the only piece that needs to
+ * run INSIDE that sandboxed realm is the check runner itself.
+ */
+export const CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE = [
+  'var __iteraRunChecks = ' + String(runCodeChecks) + ';',
+].join('\n');

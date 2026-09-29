@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CODE_PREVIEW_IFRAME_HTML } from './codePreviewIframe.js';
+import { HtmlLivePreview } from './HtmlLivePreview.js';
 import { transpileSnack } from './transpileSnack.js';
 import type { CodeCheckResult, CodeChecksRequest } from './types.js';
 
 /**
- * Live React preview of the learner's snack, MOUNTED INSIDE a hardened
+ * Live preview of the learner's snack, MOUNTED INSIDE a hardened
  * `<iframe sandbox="allow-scripts">` (opaque origin — student code CANNOT reach
  * the parent app, its cookies, or storage).
+ *
+ * `language: 'html'` (the plain-web Básico course) is a DIFFERENT preview
+ * shape — no transpile, no React, a FRESH iframe realm per render instead of
+ * one long-lived one — so it is delegated whole to `HtmlLivePreview`; see that
+ * file's docblock for why. Every other `language` value, including the schema
+ * default `'tsx'`, renders below exactly as it always has.
  *
  * A strict `allow-scripts` iframe is a cross-origin opaque document, so the
  * parent cannot portal React into its `contentDocument` (verified: access is
@@ -22,13 +29,36 @@ import type { CodeCheckResult, CodeChecksRequest } from './types.js';
  */
 export function CodeLivePreview({
   code,
+  language,
   checksRequest = null,
   onChecksResult,
 }: {
   code: string;
+  /** `spec.language` — `'html'` is handled entirely by `HtmlLivePreview`; every
+   * other value (including the schema default `'tsx'`) keeps this component's
+   * original React/sucrase preview, unchanged. */
+  language?: string;
   /** A submit asking for a graded run; `token` re-triggers even identical code. */
   checksRequest?: CodeChecksRequest | null;
   /** `token` identifies WHICH submit this answers — a slow run can land late. */
+  onChecksResult?: (results: CodeCheckResult[], token: number) => void;
+}) {
+  if (language === 'html') {
+    return <HtmlLivePreview code={code} checksRequest={checksRequest} onChecksResult={onChecksResult} />;
+  }
+
+  return (
+    <CodeLivePreviewReact code={code} checksRequest={checksRequest} onChecksResult={onChecksResult} />
+  );
+}
+
+function CodeLivePreviewReact({
+  code,
+  checksRequest = null,
+  onChecksResult,
+}: {
+  code: string;
+  checksRequest?: CodeChecksRequest | null;
   onChecksResult?: (results: CodeCheckResult[], token: number) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);

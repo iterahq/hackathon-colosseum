@@ -8,13 +8,23 @@ import { CodeLivePreview } from '../CodeLivePreview.js';
  * a red stack trace in front of code the learner has not finished reading — which
  * reads as "I broke it" and is the one message a first exercise must not send.
  */
-export function GuidedCodePreview({ source, ready }: { source: string; ready: boolean }) {
+export function GuidedCodePreview({
+  source,
+  language,
+  ready,
+}: {
+  source: string;
+  /** `spec.language` — threaded through so a `blanks` html exercise renders the
+   * filled template as a document instead of transpiling it as React. */
+  language?: string;
+  ready: boolean;
+}) {
   const { t } = useActivityI18n();
 
   return (
     <div className="h-[360px] overflow-hidden rounded-2xl border border-border">
       {ready ? (
-        <CodeLivePreview code={source} />
+        <CodeLivePreview code={source} language={language} />
       ) : (
         <div
           data-testid="guided-preview-waiting"

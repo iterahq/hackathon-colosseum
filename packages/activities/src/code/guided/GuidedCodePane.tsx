@@ -134,7 +134,7 @@ export function GuidedCodePane({
           onReset={guided.resetAll}
         />
 
-        <GuidedCodePreview source={guided.source} ready={guided.filled} />
+        <GuidedCodePreview source={guided.source} language={spec.language} ready={guided.filled} />
       </div>
 
       {!showFeedback && !guided.showsAnswer && (
