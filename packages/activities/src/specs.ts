@@ -220,3 +220,47 @@ export interface QuestionSpec {
   allow_other?: boolean;
   free_text?: QuestionFreeTextSpec;
 }
+
+/* ───────── the scene kinds — `xray`, `live_type`, `inspect` (2026-09-24) ──────── */
+/*
+ * Read views of the three gesture-gated kinds. Loose like their neighbours;
+ * `@iterahq/activity-spec` (`schemas/scene.ts`) is the authority on validity.
+ * Text fields may arrive as a plain string or a `{ pt, en }` bag.
+ */
+
+export type SceneLocalizedText = string | { pt?: string; en?: string };
+
+export type SceneTag = 'h1' | 'h2' | 'h3' | 'p' | 'a' | 'button' | 'li' | 'strong' | 'em' | 'span';
+
+export interface ScenePageElementSpec {
+  id: string;
+  tag: SceneTag;
+  attrs?: Record<string, string>;
+  text: string;
+  name: SceneLocalizedText;
+  job?: SceneLocalizedText;
+}
+
+export interface ScenePageSpec {
+  url_label?: string;
+  elements: ScenePageElementSpec[];
+}
+
+export interface SceneFrameSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  page: ScenePageSpec;
+}
+
+export interface XraySpec extends SceneFrameSpec {
+  coverage_goal?: number;
+}
+
+export interface LiveTypeSpec extends SceneFrameSpec {
+  target_id: string;
+  min_length?: number;
+}
+
+export type InspectSpec = SceneFrameSpec;

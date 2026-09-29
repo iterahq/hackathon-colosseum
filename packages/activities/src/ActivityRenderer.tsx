@@ -64,6 +64,9 @@ import { DocumentActivity } from './kinds/DocumentActivity.js';
 import { DiagramActivity } from './kinds/DiagramActivity.js';
 import { QuizActivity } from './kinds/QuizActivity.js';
 import { QuestionActivity } from './kinds/QuestionActivity.js';
+import { XrayActivity } from './kinds/XrayActivity.js';
+import { LiveTypeActivity } from './kinds/LiveTypeActivity.js';
+import { InspectActivity } from './kinds/InspectActivity.js';
 import {
   ChatComposeActivity,
   ChatFillSelectActivity,
@@ -126,6 +129,11 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   // host but i18n, and it is also the first kind here with NO row in
   // `itera.activities`: the plans-app is what mounts it.
   'question',
+  // The scene kinds (2026-09-24) — gesture-gated animated beats over one page.
+  // Ungraded and silent; they need no port but i18n.
+  'xray',
+  'live_type',
+  'inspect',
   // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
   // T10–T12, T14). Each one is ONE behaviour of a kind above, on the SAME
   // shared components; the kind picks the surface, the spec shape does not.
@@ -167,6 +175,9 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   diagram: DiagramActivity as ComponentType<ActivityRendererProps>,
   quiz: QuizActivity as ComponentType<ActivityRendererProps>,
   question: QuestionActivity as ComponentType<ActivityRendererProps>,
+  xray: XrayActivity as ComponentType<ActivityRendererProps>,
+  live_type: LiveTypeActivity as ComponentType<ActivityRendererProps>,
+  inspect: InspectActivity as ComponentType<ActivityRendererProps>,
   chat_compose: ChatComposeActivity as ComponentType<ActivityRendererProps>,
   chat_fill_select: ChatFillSelectActivity as ComponentType<ActivityRendererProps>,
   chat_fill_type: ChatFillTypeActivity as ComponentType<ActivityRendererProps>,

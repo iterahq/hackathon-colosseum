@@ -54,6 +54,7 @@ import {
   connectPairs,
   markDone,
   markQuestionOptions,
+  discoverAllTwins,
   pickMultiChoice,
   pickQuizOption,
   pickSingleChoice,
@@ -348,6 +349,34 @@ const DRIVES: Record<ContractKey, Drive> = {
     why:
       'mesma razão do `question`: sem resposta certa não existe caminho de erro. Esta variante ' +
       'prova que `mode: multi` ACUMULA as marcas em vez de substituir, com o mesmo veredito.',
+  },
+
+  /*
+   * As cenas não corrigem: `correct` aqui é "o gesto que abre o gate". Nenhuma
+   * tem caminho de erro — não existe gesto errado, só gesto incompleto.
+   */
+  xray: {
+    kind: 'xray',
+    why:
+      'o gate do raio-X é COBERTURA do palco medida por `getBoundingClientRect`, e o jsdom ' +
+      'devolve 0×0 para todo elemento — não há área a varrer. Coberto de ponta a ponta no ' +
+      'Storybook (`XrayActivity.stories.tsx`, play function) num navegador real.',
+  },
+  live_type: {
+    kind: 'live_type',
+    why:
+      'o gate só existe DEPOIS de o fantasma digitar o texto inteiro (~3 s de timers reais) e ' +
+      'o texto do aluno ficar parado 700 ms. Coberto no Storybook (`LiveTypeActivity.stories.tsx`) ' +
+      'num navegador real; sem caminho de erro porque não existe texto errado.',
+  },
+  inspect: {
+    kind: 'inspect',
+    correct: async (c) => {
+      await discoverAllTwins(c);
+    },
+    why:
+      'não há caminho de ERRO: apontar uma peça nunca está errado, só incompleto. O `true` é ' +
+      '"achou todas", o mesmo "concluída" das outras cenas.',
   },
 
   /*

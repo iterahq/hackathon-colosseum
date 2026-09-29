@@ -325,6 +325,38 @@ export const QuestionMinima: Story = {
   args: { activity: makeActivity('question', DEGENERATE_SPECS.question_minima.spec) },
 };
 
+/**
+ * Cenas com spec inválido — barradas na FRONTEIRA. Sem `page` não existe o que
+ * varrer, digitar ou apontar; um `live_type` cujo `target_id` não está na
+ * página não teria onde o aluno digitar.
+ */
+export const XraySemPagina: Story = {
+  args: { activity: makeActivity('xray', { prompt: 'Passa o raio-X.', reaction: 'Viu?', stamp: 'Texto' }) },
+};
+
+export const LiveTypeAlvoInexistente: Story = {
+  args: {
+    activity: makeActivity('live_type', {
+      prompt: 'Digita aqui.',
+      reaction: 'Isso!',
+      stamp: 'Escreve → desenha',
+      page: { elements: [{ id: 'titulo', tag: 'h1', text: 'Oi', name: 'título' }] },
+      target_id: 'nao-existe',
+    }),
+  },
+};
+
+export const InspectUmaPeca: Story = {
+  args: {
+    activity: makeActivity('inspect', {
+      prompt: 'Aponta as peças.',
+      reaction: 'Achou!',
+      stamp: 'Tags',
+      page: { elements: [{ id: 'titulo', tag: 'h1', text: 'Oi', name: 'título' }] },
+    }),
+  },
+};
+
 /** kind desconhecido — o fallback explícito do dispatcher. */
 export const KindDesconhecido: Story = {
   args: {

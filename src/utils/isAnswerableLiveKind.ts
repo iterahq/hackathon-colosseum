@@ -65,6 +65,9 @@ const ANSWERABLE_KINDS: ReadonlySet<string> = new Set([
   // activity stays editable. That is why the entry carries a reason instead of
   // being one more line.
   'question',
+  // ⚠️ The scene kinds (`xray`, `live_type`, `inspect`, 2026-09-24) are
+  // deliberately ABSENT: like `concept`, they are reading — a gesture that
+  // reveals, not an answer. No timer, nothing to lock, nothing to reveal.
   // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`):
   // each one answers exactly like the old kind it came from. The `document_*`
   // and `byoc_*` kinds stay OUT, like `document` and the BYOC `concept` rows.

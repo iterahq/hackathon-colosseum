@@ -108,7 +108,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useGuestMode } from '@/guest/GuestModeContext';
 import type { Activity } from '@/types/content';
 import type { ClassCompleter, ClassPresenceMember, StoredLiveAnswer } from '@/types/liveClass';
-import { isScenarioKind } from '@/utils/activityFamilies';
+import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 
 /**
  * Quanto tempo o skeleton do conteúdo pode girar antes de virar diagnóstico.
@@ -472,6 +472,11 @@ export default function LiveSessionPage() {
 
   async function handleComplete(correct: boolean, detail?: ActivityCompleteDetail) {
     if (!current || saving || !gate.canComplete) return;
+    // A scene kind (`xray`/`live_type`/`inspect`) is READING with a gesture gate:
+    // live, the gesture still plays on screen, but finishing it is not an
+    // answer — storing it would score the podium for having swept a slide, the
+    // exact "ranking measures obedience" trap the reading kinds were freed from.
+    if (isSceneKind(current.kind)) return;
     // Force-advance model: answering does NOT move the student forward — only the
     // professor's pointer advances. We persist a correct result, and broadcast
     // EVERY answer (right or wrong) + how long the learner took, so the professor

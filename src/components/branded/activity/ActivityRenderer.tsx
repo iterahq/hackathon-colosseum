@@ -60,6 +60,9 @@ import { DocumentActivity } from './DocumentActivity';
 import { DiagramActivity } from './DiagramActivity';
 import { QuizActivity } from './QuizActivity';
 import { QuestionActivity } from './QuestionActivity';
+import { XrayActivity } from './XrayActivity';
+import { LiveTypeActivity } from './LiveTypeActivity';
+import { InspectActivity } from './InspectActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import {
   ChatComposeActivity,
@@ -226,6 +229,13 @@ export function ActivityRenderer({
     // devolve false pro kind, logo o botão do professor nem aparece.
     case 'question':
       return <QuestionActivity activity={activity} onComplete={onComplete} />;
+    // The scene kinds: ungraded, gesture-gated, no `reveal` (nothing to expose).
+    case 'xray':
+      return <XrayActivity activity={activity} onComplete={onComplete} />;
+    case 'live_type':
+      return <LiveTypeActivity activity={activity} onComplete={onComplete} />;
+    case 'inspect':
+      return <InspectActivity activity={activity} onComplete={onComplete} />;
     // ── The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
     // T9–T14). The KIND names the surface; nothing below sniffs the spec. All
     // of them passed the boundary above (`site: 'boundary'`).

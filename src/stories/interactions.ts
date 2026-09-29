@@ -85,6 +85,16 @@ export async function markQuestionOptions(canvasElement: Canvas, labels: string[
   }
 }
 
+/**
+ * `inspect`: aponta cada peça da PÁGINA, uma por uma. Cada primeira descoberta
+ * vira uma ficha; achar todas abre o gate. Mouse e dedo são o mesmo pointer event.
+ */
+export async function discoverAllTwins(canvasElement: Canvas) {
+  for (const target of within(canvasElement).getAllByTestId('inspect-page-target')) {
+    await userEvent.hover(target);
+  }
+}
+
 /** Liga (ou desliga) o "Outro" — a saída de emergência, ligada por default. */
 export async function toggleQuestionOther(canvasElement: Canvas) {
   await userEvent.click(within(canvasElement).getByTestId('question-other'));

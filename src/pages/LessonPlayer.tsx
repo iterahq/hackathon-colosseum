@@ -62,7 +62,7 @@ import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
 import { canStepBack, stepBack, stepForward } from '@/utils/lessonNavigation';
 import { lessonExitPath } from '@/utils/lessonExitPath';
 import type { Activity, LessonPosition } from '@/types/content';
-import { isScenarioKind } from '@/utils/activityFamilies';
+import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -331,10 +331,14 @@ export default function LessonPlayer() {
     // The HOW, beside the WHAT. Absent for the families not yet wired, which
     // yields the honest two-action trace rather than a fabricated sequence.
     pendingActionsRef.current = detail?.actions ?? null;
-    if (isFooterGradedKind(current.kind) || isByocActivity(current)) {
+    // The scene kinds join the footer path for the HOLD, not for a verdict:
+    // their gesture completes them, and the learner must still see the guide's
+    // reaction and the stamp before moving on — advancing on the gesture would
+    // cut the "name it after" beat that is the whole point of the kind.
+    if (isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind)) {
       // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
       // descobre se passou, e era exatamente o som que faltava no self-paced.
-      onSettle(correct);
+      if (!isSceneKind(current.kind)) onSettle(correct);
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
     }
@@ -657,7 +661,9 @@ export default function LessonPlayer() {
                   forward without grading: a `done` activity is locked by
                   `answerMachine`, so it has no submit of its own — and routing
                   it through `handleComplete` would re-award the XP. */}
-              {(reviewing || (current && !isExerciseActivity(current))) && (
+              {/* A scene kind is reading, but GATED: no "Continuar" before the
+                  gesture. Its completion raises the footer instead. */}
+              {(reviewing || (current && !isExerciseActivity(current) && !isSceneKind(current.kind))) && (
                 <button
                   type="button"
                   onClick={reviewing ? goForward : conceptContinue}

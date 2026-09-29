@@ -309,6 +309,10 @@ activity_kinds:
   - chat_sandbox
   - terminal_sandbox
   - sandbox_scenario
+  # As cenas (0107, 2026-09-24): gesto sobre uma página, conceito nomeado depois.
+  - xray
+  - live_type
+  - inspect
   # Os 19 kinds de COMPORTAMENTO (0104, plano
   # 20260924-activity-type-one-behavior-rule, ADR-1/ADR-4): um activity type =
   # um comportamento. Os kinds antigos acima (code, chat_sandbox,

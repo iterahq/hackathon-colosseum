@@ -108,6 +108,9 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   chat_sandbox: { totalmente: 'inválido' },
   terminal_sandbox: { totalmente: 'inválido' },
   question: { totalmente: 'inválido' },
+  xray: { totalmente: 'inválido' },
+  live_type: { totalmente: 'inválido' },
+  inspect: { totalmente: 'inválido' },
   // The one-behaviour kinds (plan `20260924-activity-type-one-behavior-rule`).
   code_editor_checks: { totalmente: 'inválido' },
   code_editor_ungraded: { totalmente: 'inválido' },

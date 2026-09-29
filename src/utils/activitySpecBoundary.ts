@@ -202,6 +202,12 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
     invalidTestId: 'question-invalid',
     messageKey: 'activity.specInvalid',
   },
+  // The scene kinds (2026-09-24) validate at the BOUNDARY: their schemas are
+  // `.strict()`, close the tag set and pin `live_type.target_id` to a real
+  // element, so a half-authored scene becomes the friendly card, not a blank stage.
+  xray: { site: 'boundary', invalidTestId: 'xray-invalid', messageKey: 'activity.specInvalid' },
+  live_type: { site: 'boundary', invalidTestId: 'live-type-invalid', messageKey: 'activity.specInvalid' },
+  inspect: { site: 'boundary', invalidTestId: 'inspect-invalid', messageKey: 'activity.specInvalid' },
   // The 22 one-behaviour kinds (T9–T14) — see `ONE_BEHAVIOUR_VALIDATION`.
   ...ONE_BEHAVIOUR_VALIDATION,
 };

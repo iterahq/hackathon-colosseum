@@ -449,6 +449,64 @@
       }
     }
   },
+  "xray": {
+    "id": "fixture-xray",
+    "kind": "xray",
+    "spec": {
+      "guide": { "name": "Duda" },
+      "prompt": "Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.",
+      "reaction": "Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.",
+      "stamp": "Todo site é texto",
+      "page": {
+        "url_label": "duda.site",
+        "elements": [
+          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
+          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
+          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
+          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+        ]
+      }
+    }
+  },
+  "live_type": {
+    "id": "fixture-live-type",
+    "kind": "live_type",
+    "spec": {
+      "guide": { "name": "Duda" },
+      "prompt": "Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.",
+      "reaction": "Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.",
+      "stamp": "Escreve → o navegador desenha",
+      "page": {
+        "url_label": "duda.site",
+        "elements": [
+          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
+          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
+          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
+          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+        ]
+      },
+      "target_id": "titulo"
+    }
+  },
+  "inspect": {
+    "id": "fixture-inspect",
+    "kind": "inspect",
+    "spec": {
+      "guide": { "name": "Duda" },
+      "prompt": "Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.",
+      "reaction": "Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.",
+      "stamp": "<tag>conteúdo</tag>",
+      "page": {
+        "url_label": "duda.site",
+        "elements": [
+          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
+          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
+          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
+          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+        ]
+      }
+    }
+  },
   "chat_compose": {
     "id": "fixture-chat-compose",
     "kind": "chat_compose",

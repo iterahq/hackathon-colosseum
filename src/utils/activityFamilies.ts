@@ -136,6 +136,12 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   diagram: 'reading',
   document: 'reading',
   video: 'reading',
+  // The scene kinds (2026-09-24): no verdict, and the only state is what the
+  // gesture has revealed — lens coverage, the learner's own text, found twins.
+  // They entered this family with data + predicates, no new machine.
+  xray: 'reading',
+  live_type: 'reading',
+  inspect: 'reading',
   // — editor: Monaco + autosave + checks —
   code: 'editor',
   // — scenario: turns against a world model —
@@ -285,6 +291,12 @@ export const FAMILY_ACTIONS = {
     'reveal_opened',
     /** …and closed again. The button stays mounted and toggles, so this is reachable. */
     'reveal_closed',
+    /** A scene element was found for the first time. `{ element_id }` — the AUTHORED id. `inspect`. */
+    'element_found',
+    /** The learner's own text changed (debounced). `{ length }` — NEVER the text. `live_type`. */
+    'text_edited',
+    /** The gesture that completes a scene beat. `{ coverage_goal }` · `{ length }` · `{ found }`. */
+    'gate_opened',
   ],
   editor: [
     /** A debounced batch of edits landed. `{ length }` — NEVER the source text; see the privacy note below. */
@@ -389,7 +401,10 @@ export type FamilyAction<F extends ActivityFamily> = (typeof FAMILY_ACTIONS)[F][
 export const FAMILY_EMITTED = {
   selection: ['option_selected', 'option_deselected', 'answer_submitted'],
   arrangement: ['item_moved', 'pair_armed', 'pair_made', 'pair_broken', 'answer_submitted'],
-  reading: [],
+  // `reading` is PARTIALLY wired: the scene kinds (`xray`, `live_type`,
+  // `inspect`) arrived with their instrumentation; `concept_reveal`'s
+  // `reveal_opened`/`reveal_closed` still do not emit. Filter on `kind`.
+  reading: ['element_found', 'text_edited', 'gate_opened'],
   editor: [],
   // `scenario` is PARTIALLY wired: the TERMINAL sandbox emits, the CHAT sandbox
   // still does not. That asymmetry is deliberate and it is why this is a ledger
@@ -492,6 +507,17 @@ export function familyOf(kind: ActivityKind): ActivityFamily {
  */
 export function isScenarioKind(kind: string): boolean {
   return kind in ACTIVITY_FAMILY && ACTIVITY_FAMILY[kind as ActivityKind] === 'scenario';
+}
+
+/**
+ * The scene kinds (2026-09-24): reading-family kinds whose completion is GATED
+ * on a gesture. A shell must not offer "Continuar" before the gesture, and must
+ * hold the solved screen (reaction + stamp) instead of jumping ahead on it.
+ */
+export const SCENE_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['xray', 'live_type', 'inspect']);
+
+export function isSceneKind(kind: string | null | undefined): boolean {
+  return !!kind && SCENE_KINDS.has(kind as ActivityKind);
 }
 
 /** The kinds in one family, in enum order. */

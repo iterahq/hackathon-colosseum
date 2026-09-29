@@ -256,6 +256,10 @@ const PUBLIC_RUNTIME_SURFACE = [
   'QuestionActivityBody',
   'resolveQuestionInputs',
   'QuizActivity',
+  // The scene kinds (1.3.0) — xray / live_type / inspect.
+  'XrayActivity',
+  'LiveTypeActivity',
+  'InspectActivity',
   // The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`,
   // T10–T12, T14): one component per kind, the kind list, and the validation
   // seam that makes the switch to activity-spec ^1.4.0 a no-op

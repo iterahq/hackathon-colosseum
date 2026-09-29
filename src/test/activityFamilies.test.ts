@@ -65,7 +65,10 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
       'document_ai_judge',
       'document_read',
       'document_reflect',
+      'inspect',
+      'live_type',
       'video',
+      'xray',
     ]);
     // One-behaviour kinds sit in the family of the old kind they came from
     // (plan `20260924-activity-type-one-behavior-rule`): a split changes the
@@ -158,7 +161,7 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     expect([...WIRED_FAMILIES]).toEqual(families.filter((f) => FAMILY_EMITTED[f].length > 0));
   });
 
-  it('`selection`, `arrangement` and `scenario` are wired today', () => {
+  it('`selection`, `arrangement`, `reading`, `scenario` and `inquiry` are wired today', () => {
     // ⚠️ This is a LEDGER, not a target. Wiring a family changes this line in
     // the SAME commit that changes the components — that is the point. What it
     // prevents is the opposite: a family quietly listed as emitting while
@@ -174,8 +177,11 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     // `inquiry` entrou JÁ LIGADA (2026-08-28): o kind e a instrumentação dele
     // chegaram na mesma mudança, então não há histórico a perder por
     // instrumentar depois. A ordem sai de `ACTIVITY_FAMILIES`, não da data.
-    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'scenario', 'inquiry']);
-    expect(FAMILY_EMITTED.reading).toEqual([]);
+    // `reading` joined on 2026-09-24 with the scene kinds — PARTIALLY, like
+    // `scenario`: `xray`/`live_type`/`inspect` emit, the older reading kinds
+    // do not, and `familyEmitsSequence` discriminates on the kind.
+    expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'reading', 'scenario', 'inquiry']);
+    expect(FAMILY_EMITTED.reading).toEqual(['element_found', 'text_edited', 'gate_opened']);
     expect(FAMILY_EMITTED.editor).toEqual([]);
     expect(FAMILY_EMITTED.scenario).toEqual(['command_run', 'sandbox_reset']);
     expect(FAMILY_EMITTED.inquiry).toEqual(FAMILY_ACTIONS.inquiry);

@@ -144,6 +144,11 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   // `mode: 'always'` without filling in every field. That is exactly the
   // "pré-engenharia do nosso usuário" case at the top of this file.
   question: { persist: false, type: 'text', filename: 'answer.md' },
+  // The scene kinds produce nothing worth keeping: the gesture IS the point, and
+  // `live_type`'s text is a throwaway name inside a demo page, never a deliverable.
+  xray: { persist: false, type: 'text', filename: 'notes.md' },
+  live_type: { persist: false, type: 'text', filename: 'notes.md' },
+  inspect: { persist: false, type: 'text', filename: 'notes.md' },
   // ── The ONE-BEHAVIOUR kinds (plan `20260924-activity-type-one-behavior-rule`).
   // Each one keeps the default of the old kind it came from, so a kind-only
   // remap changes nothing in "My repository". One exception, and it is not a

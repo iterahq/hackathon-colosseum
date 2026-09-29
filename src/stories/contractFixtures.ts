@@ -44,7 +44,13 @@ export type ActivityFunction =
    * resposta certa ao lado das escolhas corrigidas convida exatamente a leitura
    * que o kind existe pra impedir.
    */
-  | '7 · Consulta';
+  | '7 · Consulta'
+  /**
+   * As CENAS (2026-09-24): o aluno faz um gesto sobre uma página (varre, digita,
+   * aponta) e só depois o conceito ganha nome. São exposição com gate — não
+   * corrigem — mas ganharam grupo próprio porque o que se testa nelas é o GESTO.
+   */
+  | '8 · Cena';
 
 export interface ContractFixture {
   /** O `kind` do enum `itera.activity_kind` que a autoria grava na row. */
@@ -640,6 +646,48 @@ export const QUESTION_MULTI_SPEC = {
   allow_other: false,
 };
 
+/**
+ * A página da Duda — o MESMO artefato nas três cenas. Quatro elementos, um de
+ * cada tag que o Dia 1 do `basico-frontend` apresenta.
+ */
+export const SCENE_DUDA_PAGE = {
+  url_label: 'duda.site',
+  elements: [
+    { id: 'titulo', tag: 'h1', text: 'Oi, eu sou a Duda', name: 'título', job: 'o texto mais importante da página' },
+    { id: 'texto', tag: 'p', text: 'Faço bolo de pote e vendo na escola.', name: 'parágrafo', job: 'um bloco de texto corrido' },
+    { id: 'insta', tag: 'a', attrs: { href: 'insta' }, text: 'Me segue no Insta', name: 'link', job: 'leva pra outro lugar quando clica' },
+    { id: 'pedido', tag: 'button', text: 'Quero um bolo!', name: 'botão', job: 'algo pra apertar' },
+  ],
+};
+
+/** `xray` canônico — varrer 30% (o default) abre o gate. */
+export const XRAY_SPEC = {
+  guide: { name: 'Duda' },
+  prompt: 'Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.',
+  reaction: 'Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.',
+  stamp: 'Todo site é texto',
+  page: SCENE_DUDA_PAGE,
+};
+
+/** `live_type` canônico — o fantasma digita o `<h1>`, depois é a vez do aluno. */
+export const LIVE_TYPE_SPEC = {
+  guide: { name: 'Duda' },
+  prompt: 'Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.',
+  reaction: 'Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.',
+  stamp: 'Escreve → o navegador desenha',
+  page: SCENE_DUDA_PAGE,
+  target_id: 'titulo',
+};
+
+/** `inspect` canônico — achar as 4 peças abre o gate. */
+export const INSPECT_SPEC = {
+  guide: { name: 'Duda' },
+  prompt: 'Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.',
+  reaction: 'Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.',
+  stamp: '<tag>conteúdo</tag>',
+  page: SCENE_DUDA_PAGE,
+};
+
 /* ------------------------------------------------------------------ *
  * 8 · Os kinds de UM COMPORTAMENTO (plano
  * `20260924-activity-type-one-behavior-rule`, T9–T14).
@@ -834,6 +882,30 @@ export const ACTIVITY_CONTRACTS = {
     spec: QUESTION_SPEC,
     validated: true,
     note: '{ title?/description?/instruction?, mode, options[{ id, label, description? }], recommended_option_id?, allow_other (default true), free_text? } — NÃO corrige: sem resposta certa e sem veredito.',
+  },
+  xray: {
+    kind: 'xray',
+    fn: '8 · Cena',
+    label: 'Xray',
+    spec: XRAY_SPEC,
+    validated: true,
+    note: '{ guide?, prompt, reaction, stamp, page{ url_label?, elements[{ id, tag, attrs?, text, name, job? }] }, coverage_goal? } — varrer a lente abre o gate; não corrige.',
+  },
+  live_type: {
+    kind: 'live_type',
+    fn: '8 · Cena',
+    label: 'Live type',
+    spec: LIVE_TYPE_SPEC,
+    validated: true,
+    note: 'frame da cena + target_id (um id de page.elements) + min_length? — o texto do aluno nunca vai pro trace, só o tamanho.',
+  },
+  inspect: {
+    kind: 'inspect',
+    fn: '8 · Cena',
+    label: 'Inspect',
+    spec: INSPECT_SPEC,
+    validated: true,
+    note: 'frame da cena com ≥2 elementos — achar todos os pares página↔código abre o gate.',
   },
   question_multi: {
     kind: 'question',

@@ -93,6 +93,10 @@ const EXPOSITION_NO_ANSWER =
 const EXPOSITION_NO_GRADE = 'kind de exposição: não há o que corrigir (eixo D não existe aqui).';
 const QUESTION_NO_GRADE =
   'kind NÃO-AVALIATIVO: existe resposta, e mesmo assim não existe resposta certa — logo não há veredito a desenhar. Verde ou vermelho aqui diria que uma opinião foi acertada.';
+const SCENE_NOT_ANSWERABLE =
+  'cena é EXPOSIÇÃO com gate de gesto, não resposta: fica fora de `ANSWERABLE_KINDS`, então ao vivo não ganha timer e não há "canetas no chão" a travar.';
+const SCENE_NO_GRADE =
+  'cena não corrige: o gesto abre o gate e o `true` é "concluída". Não existe gesto errado, só incompleto — logo não há veredito a desenhar.';
 /* ── the ONE-BEHAVIOUR rows (plan `20260924-activity-type-one-behavior-rule`) ── */
 const TERMINAL_TAP_RUNS =
   'tocar um comando da paleta JÁ o executa: não existe rascunho entre escolher e enviar, então "respondido e não enviado" não é um estado deste comportamento.';
@@ -664,6 +668,46 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'F.spec_invalido': { story: 'activities-question-write--espec-invalida' },
     'H.degenerado': { na: NO_DEGENERATE_SHAPE },
   },
+  /* ── 9 · Cena ───────────────────────────────────────────────────────── */
+  xray: {
+    'A.enabled': { story: 'activities-cena-xray--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-xray--done' },
+    'C.blank': { story: 'activities-cena-xray--default' },
+    'C.answered': { na: 'a varredura é CONTÍNUA: não há estado intermediário de resposta, só a barra de cobertura subindo até o gate.' },
+    'C.submitted': { story: 'activities-cena-xray--swept' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--xray-sem-pagina' },
+    'H.degenerado': { story: 'activities-cena-xray--single-element' },
+  },
+  live_type: {
+    'A.enabled': { story: 'activities-cena-live-type--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-live-type--done' },
+    'C.blank': { story: 'activities-cena-live-type--default' },
+    'C.answered': { story: 'activities-cena-live-type--learner-turn' },
+    'C.submitted': { story: 'activities-cena-live-type--typed-own-name' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--live-type-alvo-inexistente' },
+    'H.degenerado': { na: 'o mínimo legal é uma página com o próprio alvo — a mesma tela com uma linha; nada degrada.' },
+  },
+  inspect: {
+    'A.enabled': { story: 'activities-cena-inspect--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-inspect--done' },
+    'C.blank': { story: 'activities-cena-inspect--default' },
+    'C.answered': { story: 'activities-cena-inspect--partial' },
+    'C.submitted': { story: 'activities-cena-inspect--all-found' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--inspect-uma-peca' },
+    'H.degenerado': { story: 'activities-cena-inspect--two-elements' },
+  },
 };
 
 /**
@@ -679,7 +723,7 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
 const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell> }> = {};
 
 /**
- * O NÚMERO. Snapshot da distribuição das 396 células (36 kinds × 11 células; a
+ * O NÚMERO. Snapshot da distribuição das 429 células (39 kinds × 11 células; a
  * `BEHAVIOUR_MATRIX` está vazia desde T9–T14).
  *
  * Ele é assertado de propósito: mexer na cobertura tem que ser um ato
@@ -707,7 +751,11 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  *                  num kind sem resposta certa, e declará-las cobertas exigiria
  *                  inventar um veredito.
  *
- *   comportamentos→{ covered: 155, na: 38, deferred: 5, drift: 11 }  (2026-09-24,
+ *   cenas         →{ covered: 128, na: 46, deferred: 5, drift: 8 }  (xray,
+ *                  live_type, inspect — 2026-09-24). +19 cobertas e +14 `na`.
+ *                  As `na` são o kind, não dívida: nenhuma cena corrige (D),
+ *                  revela gabarito (E) ou trava ao vivo (A.locked).
+ *   comportamentos→{ covered: 174, na: 52, deferred: 5, drift: 11 }  (2026-09-24,
  *                  plano `20260924-activity-type-one-behavior-rule`, T4). +5
  *                  linhas de COMPORTAMENTO (`BEHAVIOUR_MATRIX`), 55 células:
  *                  +46 cobertas, +6 `na`, +3 `drift` — as três do
@@ -748,7 +796,7 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 286, na: 83, deferred: 18, drift: 9 };
+const COVERAGE_SNAPSHOT = { covered: 305, na: 97, deferred: 18, drift: 9 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

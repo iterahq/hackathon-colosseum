@@ -267,6 +267,14 @@ describe('a tela sabe dizer que a família ainda não emite sequência', () => {
     expect(familyEmitsSequence(null)).toBe(false);
   });
 
+  it('reading depende do KIND — as cenas emitem, o concept ainda não', () => {
+    // A família `reading` passou a emitir em 2026-09-24, mas só pelas cenas.
+    expect(familyEmitsSequence('xray')).toBe(true);
+    expect(familyEmitsSequence('live_type')).toBe(true);
+    expect(familyEmitsSequence('inspect')).toBe(true);
+    expect(familyEmitsSequence('concept_reveal')).toBe(false);
+  });
+
   it('scenario depende do KIND — o terminal emite, o chat ainda não', () => {
     // A família `scenario` passou a emitir em 2026-08, mas só pelo terminal.
     // Responder pela família sozinha viraria toda linha de chat de "esse kind

@@ -146,6 +146,24 @@ describe('LessonPlayer — som ao passar o exercício', () => {
     expect(play).toHaveBeenCalledWith('success', 0.4);
   });
 
+  it('a cena é muda: settle de xray segura no footer sem tocar acerto', async () => {
+    useLessonContent.mockReturnValue({
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Pulses' },
+        activities: [{ id: 'a1', lessonId: 'lesson-1', ordinal: 1, kind: 'xray', spec: {}, rubric: null }],
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('stub-complete'));
+    await screen.findByTestId('feedback-footer-continue');
+    expect(play).not.toHaveBeenCalledWith('success', expect.anything());
+    expect(play).not.toHaveBeenCalledWith('error', expect.anything());
+  });
+
   it('comemora ao fechar a última atividade da lição', async () => {
     renderPlayer();
     fireEvent.click(await screen.findByTestId('stub-complete'));

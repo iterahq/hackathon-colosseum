@@ -157,6 +157,14 @@ export type {
   QuestionCallerOptions,
 } from './kinds/QuestionActivity.js';
 
+/* ─────── the scene kinds — xray / live_type / inspect (2026-09-24) ─────── */
+// Gesture-gated animated beats over one small page: the learner acts first,
+// the concept is named after (a stamp). Ungraded, silent, i18n-only.
+
+export { XrayActivity } from './kinds/XrayActivity.js';
+export { LiveTypeActivity } from './kinds/LiveTypeActivity.js';
+export { InspectActivity } from './kinds/InspectActivity.js';
+
 /* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
 // Fase C step 4. TWO kinds with five activity types behind them: each
 // dispatcher picks off the AUTHORED SHAPE, never off a second enum —
@@ -205,6 +213,7 @@ export type {
   ActivityRecordedAction,
   ArrangementAction,
   InquiryAction,
+  ReadingAction,
   ScenarioAction,
   SelectionAction,
 } from './internal/actionRecorder.js';
@@ -349,6 +358,12 @@ export type {
   QuestionFreeTextSpec,
   QuestionOptionSpec,
   QuestionSpec,
+  InspectSpec,
+  LiveTypeSpec,
+  SceneFrameSpec,
+  ScenePageElementSpec,
+  ScenePageSpec,
+  XraySpec,
   QuizOption,
   QuizSpec,
   SingleChoiceSpec,

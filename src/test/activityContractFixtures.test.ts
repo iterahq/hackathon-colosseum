@@ -39,6 +39,8 @@ const FUNCTIONS = new Set([
   // `ActivityFunction`: agrupar uma pergunta sem resposta certa em
   // "2 · Escolha" convidaria a leitura que o kind existe pra impedir.
   '7 · Consulta',
+  // As cenas (`xray`, `live_type`, `inspect`, 2026-09-24): exposição com gate de gesto.
+  '8 · Cena',
 ]);
 
 describe('fixtures de story por contrato de activity', () => {

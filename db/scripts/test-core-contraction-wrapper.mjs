@@ -73,8 +73,16 @@ try {
     join(root, "db/migrations/0104_activity_kind_behaviour_kinds.sql"),
     "-- declared activity-kind labels suffix\n",
   );
+  result = spawnSync("bash", [script, "prefix"], { env, encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /0107_activity_kind_scene_kinds/);
+  assert.equal(existsSync(trace), false);
   writeFileSync(
-    join(root, "db/migrations/0103_unaccounted.sql"),
+    join(root, "db/migrations/0107_activity_kind_scene_kinds.sql"),
+    "-- declared scene kinds suffix\n",
+  );
+  writeFileSync(
+    join(root, "db/migrations/0105_unaccounted.sql"),
     "-- future migration must not disappear\n",
   );
   for (const mode of ["prefix", "parity", "restore", "suffix"]) {

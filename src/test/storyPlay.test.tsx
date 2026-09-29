@@ -89,10 +89,16 @@ describe('interação real — todo `play` de story roda no CI (T1)', () => {
     // `getComputedStyle(el).borderRadius` lá responde string vazia para uma
     // classe do Tailwind. Rodá-lo aqui não seria uma cobertura mais fraca — seria
     // um teste verde que não mede nada, que é pior do que não tê-lo.
+    //
+    // `XrayActivity` e `LiveTypeActivity` (2026-09-24, as cenas) entram pelo
+    // mesmo motivo de layout: o gate do raio-X é ÁREA varrida medida com
+    // `getBoundingClientRect` (0×0 no jsdom), e o `live_type` só abre depois de
+    // ~3 s de digitação do fantasma com timers reais seguidos de 700 ms de texto
+    // parado — um `play` que no jsdom ou estoura o timeout ou mede nada.
     const files = new Set(BROWSER_ONLY.map((s) => s.file));
     expect(
       [...files].filter(
-        (f) => !/MatchActivity|CodeSnackActivity|ActivityStyleFreeze/.test(f),
+        (f) => !/MatchActivity|CodeSnackActivity|ActivityStyleFreeze|XrayActivity|LiveTypeActivity/.test(f),
       ),
     ).toEqual([]);
   });

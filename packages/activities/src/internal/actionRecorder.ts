@@ -158,6 +158,11 @@ export const ACTIVITY_TRACE_ACTIONS = {
   //
   // `note_edited` carries `{ length }` and NEVER the text — the same shape
   // `code_edited` uses, under the same `PAYLOADS_CARRY_NO_FREE_TEXT` rule.
+  // `reading` — the scene kinds (`xray`, `live_type`, `inspect`, 2026-09-24).
+  // `element_found` carries `{ element_id }` (an AUTHORED id); `text_edited`
+  // carries `{ length }` and NEVER the text (`live_type` is the only one that
+  // takes typing); `gate_opened` marks the gesture that completed the beat.
+  reading: ['element_found', 'text_edited', 'gate_opened'],
   inquiry: [
     'option_marked',
     'option_unmarked',
@@ -171,3 +176,4 @@ export type SelectionAction = (typeof ACTIVITY_TRACE_ACTIONS)['selection'][numbe
 export type ArrangementAction = (typeof ACTIVITY_TRACE_ACTIONS)['arrangement'][number];
 export type ScenarioAction = (typeof ACTIVITY_TRACE_ACTIONS)['scenario'][number];
 export type InquiryAction = (typeof ACTIVITY_TRACE_ACTIONS)['inquiry'][number];
+export type ReadingAction = (typeof ACTIVITY_TRACE_ACTIONS)['reading'][number];

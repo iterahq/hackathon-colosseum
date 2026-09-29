@@ -60,6 +60,15 @@ export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind
 ]);
 
 /**
+ * The scene kinds put a page and its source SIDE BY SIDE (`live_type`,
+ * `inspect`) or need a stage wide enough to sweep (`xray`). In the prose
+ * measure the source column truncates, so they get a middle cap — on every
+ * surface, which is why it lives here and not in a page's overrides.
+ */
+export const SCENE_COLUMN_MAX_WIDTH = 'max-w-5xl';
+export const SCENE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['xray', 'live_type', 'inspect']);
+
+/**
  * Per-surface caps for kinds that are NOT in `WIDE_COLUMN_KINDS`.
  *
  * The live surfaces give the sandbox kinds a roomier `max-w-4xl` because the
@@ -90,6 +99,7 @@ export function columnMaxWidthClass(
 ): string {
   if (!kind) return DEFAULT_COLUMN_MAX_WIDTH;
   if (WIDE_COLUMN_KINDS.has(kind)) return WIDE_COLUMN_MAX_WIDTH;
+  if (SCENE_COLUMN_KINDS.has(kind)) return overrides?.[kind] ?? SCENE_COLUMN_MAX_WIDTH;
   return overrides?.[kind] ?? DEFAULT_COLUMN_MAX_WIDTH;
 }
 

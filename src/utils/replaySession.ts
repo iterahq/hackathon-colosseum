@@ -287,6 +287,9 @@ export function familyEmitsSequence(kind: ActivityKind | null): boolean {
   // the terminal shell emits `command_run`, the chat shell does not yet.
   if (kind.startsWith('terminal_')) return true;
   if (kind.startsWith('chat_')) return false;
+  // `reading` is partial the same way: only the scene kinds emit (2026-09-24);
+  // `concept`, `concept_reveal`, `diagram`, `document` and `video` do not.
+  if (family === 'reading') return kind === 'xray' || kind === 'live_type' || kind === 'inspect';
   return true;
 }
 
