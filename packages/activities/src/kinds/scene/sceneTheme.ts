@@ -60,3 +60,41 @@ export const SCENE_TAG_STYLES: Record<SceneTag, CSSProperties> = {
     boxShadow: '0 6px 0 #9D174D',
   },
 };
+
+/**
+ * The page with no stylesheet at all: what a browser draws from bare HTML.
+ * `plug` shows it while the cable is out, so the learner sees the colour, the
+ * sizes and the fonts disappear together.
+ */
+export const SCENE_RAW_PAGE_BACKGROUND = '#FFFFFF';
+
+const RAW_BODY: CSSProperties = {
+  display: 'block',
+  fontFamily: "'Times New Roman', Times, serif",
+  fontSize: 16,
+  color: '#000000',
+};
+
+const RAW_HEADING: CSSProperties = { ...RAW_BODY, fontWeight: 700, lineHeight: 1.2 };
+
+export const SCENE_RAW_TAG_STYLES: Record<SceneTag, CSSProperties> = {
+  h1: { ...RAW_HEADING, fontSize: 32 },
+  h2: { ...RAW_HEADING, fontSize: 24 },
+  h3: { ...RAW_HEADING, fontSize: 19 },
+  p: RAW_BODY,
+  li: { ...RAW_BODY, display: 'list-item', marginLeft: 40 },
+  span: { ...RAW_BODY, display: 'inline' },
+  strong: { ...RAW_BODY, display: 'inline', fontWeight: 700 },
+  em: { ...RAW_BODY, display: 'inline', fontStyle: 'italic' },
+  a: { ...RAW_BODY, display: 'inline', color: '#0000EE', textDecoration: 'underline' },
+  button: {
+    display: 'inline-block',
+    fontFamily: 'system-ui, sans-serif',
+    fontSize: 13,
+    color: '#000000',
+    background: '#EFEFEF',
+    border: '1px solid #767676',
+    borderRadius: 2,
+    padding: '1px 6px',
+  },
+};

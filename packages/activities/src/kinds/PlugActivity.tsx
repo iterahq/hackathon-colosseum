@@ -4,7 +4,7 @@
  *
  * Ports `PlugBeat` (`itera-cenas-a1f3/_src/src/mechanics/PlugBeat.tsx`). ONE
  * page, one `stylesheet[]`: plugged in, every rule applies; pulled out, the
- * page renders bare (no rules at all) — the same page, not two authored
+ * page renders as bare HTML (browser defaults: white, Times, black) — the same page, not two authored
  * ReactNodes. The beat only opens after BOTH halves of the gesture, in order:
  * pull, then plug back. No submit; silent; the learner cannot fail.
  *
@@ -20,7 +20,7 @@ import type { PlugSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { SceneBrowserBar } from './scene/SceneBrowserBar.js';
 import { ScenePageElement } from './scene/ScenePageElement.js';
-import { SCENE_PAGE_BACKGROUND } from './scene/sceneTheme.js';
+import { SCENE_PAGE_BACKGROUND, SCENE_RAW_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
@@ -72,14 +72,14 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
     >
       <div
         className="rounded-xl overflow-hidden border border-black/10"
-        style={{ background: SCENE_PAGE_BACKGROUND }}
+        style={{ background: connected ? SCENE_PAGE_BACKGROUND : SCENE_RAW_PAGE_BACKGROUND }}
         data-testid="plug-stage"
         data-connected={connected ? 'true' : 'false'}
       >
         <SceneBrowserBar url={copy.url} />
         <div className="flex flex-col gap-4 p-7 min-h-[160px]">
           {elements.map((el) => (
-            <ScenePageElement key={el.id} element={el} style={styleFor.get(el.id)} />
+            <ScenePageElement key={el.id} element={el} style={styleFor.get(el.id)} raw={!connected} />
           ))}
         </div>
       </div>

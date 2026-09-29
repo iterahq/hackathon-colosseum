@@ -15,6 +15,13 @@ describe('ScenePageElement', () => {
     expect(el.style.color).toBe('rgb(255, 0, 0)');
   });
 
+  it('draws the browser default look when raw', () => {
+    const { container } = render(<ScenePageElement element={{ id: 'title', tag: 'h1', text: 'Oi' }} raw />);
+    const el = container.querySelector('[data-scene-tag="h1"]') as HTMLElement;
+    expect(el.style.color).toBe('rgb(0, 0, 0)');
+    expect(el.style.fontFamily).toContain('Times New Roman');
+  });
+
   it('keeps the tag look without a page style', () => {
     const { container } = render(<ScenePageElement element={{ id: 'title', tag: 'h1', text: 'Oi' }} />);
     const el = container.querySelector('[data-scene-tag="h1"]') as HTMLElement;
