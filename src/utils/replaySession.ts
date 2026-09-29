@@ -87,6 +87,7 @@ import type { ActivityKind } from '@/types/content';
 import {
   ACTIVITY_FAMILY,
   FAMILY_EMITTED,
+  isSceneKind,
   type ActivityFamily,
 } from '@/utils/activityFamilies';
 import { readTrace, type StoredLearnerAction } from '@/utils/learningTrace';
@@ -287,9 +288,13 @@ export function familyEmitsSequence(kind: ActivityKind | null): boolean {
   // the terminal shell emits `command_run`, the chat shell does not yet.
   if (kind.startsWith('terminal_')) return true;
   if (kind.startsWith('chat_')) return false;
-  // `reading` is partial the same way: only the scene kinds emit (2026-09-24);
-  // `concept`, `concept_reveal`, `diagram`, `document` and `video` do not.
-  if (family === 'reading') return kind === 'xray' || kind === 'live_type' || kind === 'inspect';
+  // `reading` is partial the same way: only the scene kinds emit — the
+  // original three (2026-09-24) plus the eleven scene-mechanics kinds
+  // (2026-09-25); `concept`, `concept_reveal`, `diagram`, `document` and
+  // `video` do not. `isSceneKind` is the single registry for that set, so it
+  // grows with `SCENE_KINDS` in `activityFamilies.ts` instead of drifting
+  // from a second, hand-copied list here.
+  if (family === 'reading') return isSceneKind(kind);
   return true;
 }
 

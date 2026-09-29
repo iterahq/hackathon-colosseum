@@ -337,6 +337,19 @@ activity_kinds:
   - byoc_pick_best
   - byoc_judge_each
   - byoc_build_context
+  # Scene-mechanics (0108, 2026-09-25, do-not-merge até o release do spec):
+  # um mecanismo do dfl-labs por kind — plan 20260924-itera-scene-mechanics-kinds.
+  - dial
+  - plug
+  - selector
+  - timeline
+  - arrange
+  - press
+  - wire
+  - spot
+  - bucket
+  - intercept
+  - query
 
 testing:
   framework: vitest

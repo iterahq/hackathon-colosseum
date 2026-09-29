@@ -142,6 +142,23 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   xray: 'reading',
   live_type: 'reading',
   inspect: 'reading',
+  // The scene-mechanics batch (2026-09-25, plan
+  // `20260924-itera-scene-mechanics-kinds`) — batch A (`dial`, `plug`,
+  // `selector`, `timeline`, `arrange`, `press`) and batch B (`wire`, `spot`,
+  // `bucket`, `intercept`, `query`). Same reasoning as the scene kinds right
+  // above: no verdict, the only state is what the gesture has revealed so
+  // far, and the learner cannot fail — a wrong try is a hint, not a loss.
+  dial: 'reading',
+  wire: 'reading',
+  spot: 'reading',
+  bucket: 'reading',
+  intercept: 'reading',
+  query: 'reading',
+  selector: 'reading',
+  timeline: 'reading',
+  plug: 'reading',
+  press: 'reading',
+  arrange: 'reading',
   // — editor: Monaco + autosave + checks —
   code: 'editor',
   // — scenario: turns against a world model —
@@ -291,12 +308,38 @@ export const FAMILY_ACTIONS = {
     'reveal_opened',
     /** …and closed again. The button stays mounted and toggles, so this is reachable. */
     'reveal_closed',
-    /** A scene element was found for the first time. `{ element_id }` — the AUTHORED id. `inspect`. */
+    /** A scene element was found for the first time. `{ element_id }` — the AUTHORED id. `inspect`, and reused by `spot` for a bug find. */
     'element_found',
     /** The learner's own text changed (debounced). `{ length }` — NEVER the text. `live_type`. */
     'text_edited',
-    /** The gesture that completes a scene beat. `{ coverage_goal }` · `{ length }` · `{ found }`. */
+    /** The gesture that completes a scene beat. `{ coverage_goal }` · `{ length }` · `{ found }` · kind-specific completion payload for the scene-mechanics batch. */
     'gate_opened',
+    // — the scene-mechanics batch (2026-09-25) adds one entry per GESTURE
+    // SHAPE, never per kind name, plus `wrong_try` for every kind whose B2
+    // can miss. Mirrors `ACTIVITY_TRACE_ACTIONS.reading` in
+    // `@iterahq/activities` (`packages/activities/src/internal/actionRecorder.ts`)
+    // verbatim — `activityTraceVocabulary.test.ts` asserts the package never
+    // emits outside this list.
+    /** A slider settled on a value. `dial`. `{ value }` — the AUTHORED numeric value. */
+    'value_set',
+    /** A cable was pulled or plugged back in. `plug`. `{ connected: boolean }`. */
+    'cable_toggled',
+    /** A CSS selector option was picked. `selector`. `{ option }` — a closed-grammar token, never free text. */
+    'option_picked',
+    /** A timeline frame was stepped into. `timeline`. `{ index }`. */
+    'step_visited',
+    /** One drag settled the permutation into a new order. `arrange`. `{ order: string[] }` — the AUTHORED ids. */
+    'order_changed',
+    /** The dead button was pressed. `press`. `{ count }` — presses so far. */
+    'pressed',
+    /** Two ends were connected. `wire`. `{ left_id, right_id }` — both AUTHORED ids. */
+    'wire_connected',
+    /** A chip landed in a bucket. `bucket`. `{ chip_id, bucket_id }` — both AUTHORED ids. */
+    'chip_placed',
+    /** A SQL clause chip was switched on or off. `query`. `{ clause_id, enabled: boolean }`. */
+    'clause_toggled',
+    /** Any gate kind whose gesture can miss. `{ kind-specific AUTHORED id }` — e.g. `{ option }` for `selector`, `{ option_id }` for `press`, `{ left_id, right_id }` for `wire`, `{ bug_id }` for `spot`, `{ chip_id, bucket_id }` for `bucket`, `{ node_id }` for `intercept` — never the hint text. */
+    'wrong_try',
   ],
   editor: [
     /** A debounced batch of edits landed. `{ length }` — NEVER the source text; see the privacy note below. */
@@ -402,9 +445,26 @@ export const FAMILY_EMITTED = {
   selection: ['option_selected', 'option_deselected', 'answer_submitted'],
   arrangement: ['item_moved', 'pair_armed', 'pair_made', 'pair_broken', 'answer_submitted'],
   // `reading` is PARTIALLY wired: the scene kinds (`xray`, `live_type`,
-  // `inspect`) arrived with their instrumentation; `concept_reveal`'s
-  // `reveal_opened`/`reveal_closed` still do not emit. Filter on `kind`.
-  reading: ['element_found', 'text_edited', 'gate_opened'],
+  // `inspect`, 2026-09-24) and the scene-mechanics batch (`dial`, `wire`,
+  // `spot`, `bucket`, `intercept`, `query`, `selector`, `timeline`, `plug`,
+  // `press`, `arrange`, 2026-09-25) arrived with their instrumentation;
+  // `concept_reveal`'s `reveal_opened`/`reveal_closed` still do not emit.
+  // Filter on `kind` — `isSceneKind` in this module is the registry.
+  reading: [
+    'element_found',
+    'text_edited',
+    'gate_opened',
+    'value_set',
+    'cable_toggled',
+    'option_picked',
+    'step_visited',
+    'order_changed',
+    'pressed',
+    'wire_connected',
+    'chip_placed',
+    'clause_toggled',
+    'wrong_try',
+  ],
   editor: [],
   // `scenario` is PARTIALLY wired: the TERMINAL sandbox emits, the CHAT sandbox
   // still does not. That asymmetry is deliberate and it is why this is a ledger
@@ -514,7 +574,23 @@ export function isScenarioKind(kind: string): boolean {
  * on a gesture. A shell must not offer "Continuar" before the gesture, and must
  * hold the solved screen (reaction + stamp) instead of jumping ahead on it.
  */
-export const SCENE_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['xray', 'live_type', 'inspect']);
+export const SCENE_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
+  'xray',
+  'live_type',
+  'inspect',
+  // The scene-mechanics batch (2026-09-25) — batch A + batch B.
+  'dial',
+  'wire',
+  'spot',
+  'bucket',
+  'intercept',
+  'query',
+  'selector',
+  'timeline',
+  'plug',
+  'press',
+  'arrange',
+]);
 
 export function isSceneKind(kind: string | null | undefined): boolean {
   return !!kind && SCENE_KINDS.has(kind as ActivityKind);

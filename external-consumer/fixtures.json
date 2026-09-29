@@ -453,17 +453,46 @@
     "id": "fixture-xray",
     "kind": "xray",
     "spec": {
-      "guide": { "name": "Duda" },
+      "guide": {
+        "name": "Duda"
+      },
       "prompt": "Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.",
       "reaction": "Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.",
       "stamp": "Todo site é texto",
       "page": {
         "url_label": "duda.site",
         "elements": [
-          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
-          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
-          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
-          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+          {
+            "id": "titulo",
+            "tag": "h1",
+            "text": "Oi, eu sou a Duda",
+            "name": "título",
+            "job": "o texto mais importante da página"
+          },
+          {
+            "id": "texto",
+            "tag": "p",
+            "text": "Faço bolo de pote e vendo na escola.",
+            "name": "parágrafo",
+            "job": "um bloco de texto corrido"
+          },
+          {
+            "id": "insta",
+            "tag": "a",
+            "attrs": {
+              "href": "insta"
+            },
+            "text": "Me segue no Insta",
+            "name": "link",
+            "job": "leva pra outro lugar quando clica"
+          },
+          {
+            "id": "pedido",
+            "tag": "button",
+            "text": "Quero um bolo!",
+            "name": "botão",
+            "job": "algo pra apertar"
+          }
         ]
       }
     }
@@ -472,17 +501,46 @@
     "id": "fixture-live-type",
     "kind": "live_type",
     "spec": {
-      "guide": { "name": "Duda" },
+      "guide": {
+        "name": "Duda"
+      },
       "prompt": "Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.",
       "reaction": "Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.",
       "stamp": "Escreve → o navegador desenha",
       "page": {
         "url_label": "duda.site",
         "elements": [
-          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
-          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
-          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
-          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+          {
+            "id": "titulo",
+            "tag": "h1",
+            "text": "Oi, eu sou a Duda",
+            "name": "título",
+            "job": "o texto mais importante da página"
+          },
+          {
+            "id": "texto",
+            "tag": "p",
+            "text": "Faço bolo de pote e vendo na escola.",
+            "name": "parágrafo",
+            "job": "um bloco de texto corrido"
+          },
+          {
+            "id": "insta",
+            "tag": "a",
+            "attrs": {
+              "href": "insta"
+            },
+            "text": "Me segue no Insta",
+            "name": "link",
+            "job": "leva pra outro lugar quando clica"
+          },
+          {
+            "id": "pedido",
+            "tag": "button",
+            "text": "Quero um bolo!",
+            "name": "botão",
+            "job": "algo pra apertar"
+          }
         ]
       },
       "target_id": "titulo"
@@ -492,17 +550,46 @@
     "id": "fixture-inspect",
     "kind": "inspect",
     "spec": {
-      "guide": { "name": "Duda" },
+      "guide": {
+        "name": "Duda"
+      },
       "prompt": "Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.",
       "reaction": "Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.",
       "stamp": "<tag>conteúdo</tag>",
       "page": {
         "url_label": "duda.site",
         "elements": [
-          { "id": "titulo", "tag": "h1", "text": "Oi, eu sou a Duda", "name": "título", "job": "o texto mais importante da página" },
-          { "id": "texto", "tag": "p", "text": "Faço bolo de pote e vendo na escola.", "name": "parágrafo", "job": "um bloco de texto corrido" },
-          { "id": "insta", "tag": "a", "attrs": { "href": "insta" }, "text": "Me segue no Insta", "name": "link", "job": "leva pra outro lugar quando clica" },
-          { "id": "pedido", "tag": "button", "text": "Quero um bolo!", "name": "botão", "job": "algo pra apertar" }
+          {
+            "id": "titulo",
+            "tag": "h1",
+            "text": "Oi, eu sou a Duda",
+            "name": "título",
+            "job": "o texto mais importante da página"
+          },
+          {
+            "id": "texto",
+            "tag": "p",
+            "text": "Faço bolo de pote e vendo na escola.",
+            "name": "parágrafo",
+            "job": "um bloco de texto corrido"
+          },
+          {
+            "id": "insta",
+            "tag": "a",
+            "attrs": {
+              "href": "insta"
+            },
+            "text": "Me segue no Insta",
+            "name": "link",
+            "job": "leva pra outro lugar quando clica"
+          },
+          {
+            "id": "pedido",
+            "tag": "button",
+            "text": "Quero um bolo!",
+            "name": "botão",
+            "job": "algo pra apertar"
+          }
         ]
       }
     }
@@ -1455,6 +1542,514 @@
           }
         }
       ]
+    }
+  },
+  "dial": {
+    "id": "fixture-dial",
+    "kind": "dial",
+    "spec": {
+      "prompt": "A vovó não enxerga esse texto. Aumenta o font-size até ela conseguir ler.",
+      "reaction": "Voltou a ser do tamanho de antes — só que agora legível.",
+      "stamp": "font-size muda o texto",
+      "page": {
+        "elements": [
+          {
+            "id": "preco",
+            "tag": "p",
+            "text": "Bolo de Ninho — R$12",
+            "name": "parágrafo"
+          }
+        ]
+      },
+      "target_id": "preco",
+      "property": "font-size",
+      "unit": "px",
+      "min": 12,
+      "max": 32,
+      "step": 1,
+      "start": 12,
+      "target": [
+        24,
+        32
+      ]
+    }
+  },
+  "plug": {
+    "id": "fixture-plug",
+    "kind": "plug",
+    "spec": {
+      "prompt": "Puxa o cabo do style.css e vê a página desmoronar. Recoloca e vê ela sarar.",
+      "reaction": "Sem o `<link>`, o navegador só tem o HTML cru — nenhuma cor sobrevive.",
+      "stamp": "link conecta o CSS",
+      "page": {
+        "elements": [
+          {
+            "id": "titulo",
+            "tag": "h1",
+            "text": "Duda",
+            "name": "título"
+          },
+          {
+            "id": "intro",
+            "tag": "p",
+            "text": "Faço bolo de pote.",
+            "name": "parágrafo"
+          }
+        ]
+      },
+      "stylesheet": [
+        {
+          "target_id": "titulo",
+          "property": "font-size",
+          "value": "42px"
+        },
+        {
+          "target_id": "intro",
+          "property": "color",
+          "value": "#6B4452"
+        }
+      ],
+      "cable_name": "style.css",
+      "on_label": "conectado — o navegador lê o style.css",
+      "off_label": "desconectado — sobrou só o HTML cru"
+    }
+  },
+  "selector": {
+    "id": "fixture-selector",
+    "kind": "selector",
+    "spec": {
+      "prompt": "Quero pintar só o parágrafo da minha página de rosa. Testa os seletores até acertar.",
+      "reaction": "Um seletor de tag acende TODOS os elementos daquela tag — aqui só tinha um parágrafo mesmo.",
+      "stamp": "tag acende por nome",
+      "elements": [
+        {
+          "id": "titulo",
+          "tag": "h1",
+          "classes": []
+        },
+        {
+          "id": "intro",
+          "tag": "p",
+          "classes": []
+        },
+        {
+          "id": "link",
+          "tag": "a",
+          "classes": []
+        },
+        {
+          "id": "botao",
+          "tag": "button",
+          "classes": []
+        }
+      ],
+      "options": [
+        "h1",
+        "p",
+        "a",
+        "button"
+      ],
+      "targets": [
+        "intro"
+      ],
+      "rule": {
+        "property": "color",
+        "value": "#DB2777"
+      }
+    }
+  },
+  "timeline": {
+    "id": "fixture-timeline",
+    "kind": "timeline",
+    "spec": {
+      "prompt": "Anda pelos commits e vê o arquivo mudando de estado.",
+      "reaction": "Cada commit é uma foto — o histórico é a fita inteira.",
+      "stamp": "commit é uma foto no tempo",
+      "axis": "commit",
+      "steps": [
+        {
+          "label": "commit 1",
+          "note": "cria o arquivo vazio.",
+          "frame": {
+            "type": "code",
+            "lines": [
+              "// carrinho.js"
+            ]
+          }
+        },
+        {
+          "label": "commit 2",
+          "note": "adiciona a função de total.",
+          "frame": {
+            "type": "code",
+            "lines": [
+              "// carrinho.js",
+              "function total() {}"
+            ]
+          }
+        },
+        {
+          "label": "commit 3",
+          "note": "implementa a soma.",
+          "frame": {
+            "type": "code",
+            "lines": [
+              "// carrinho.js",
+              "function total(a, b) {",
+              "  return a + b;",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "arrange": {
+    "id": "fixture-arrange",
+    "kind": "arrange",
+    "spec": {
+      "prompt": "Arrasta os passos até a transação de banco rodar na ordem certa.",
+      "reaction": "Confirmar antes de checar saldo é como assinar um cheque sem olhar a conta.",
+      "stamp": "transação tem ordem",
+      "items": [
+        {
+          "id": "checar-saldo",
+          "label": "checar o saldo"
+        },
+        {
+          "id": "debitar",
+          "label": "debitar o valor"
+        },
+        {
+          "id": "confirmar",
+          "label": "confirmar a transação"
+        }
+      ],
+      "correct": [
+        "checar-saldo",
+        "debitar",
+        "confirmar"
+      ],
+      "start": [
+        "confirmar",
+        "checar-saldo",
+        "debitar"
+      ],
+      "item_style": "card"
+    }
+  },
+  "press": {
+    "id": "fixture-press",
+    "kind": "press",
+    "spec": {
+      "prompt": "O botão está morto. Escolhe a reação certa e liga o handler.",
+      "reaction": "onClick liga a função ao clique — sem ele o botão é só um retângulo.",
+      "stamp": "onClick liga o gesto ao código",
+      "file": "botao.js",
+      "before": [
+        "let cliques = 0;"
+      ],
+      "options": [
+        {
+          "id": "onclick",
+          "label": "somar 1 a cada clique",
+          "code": "botao.onclick = () => cliques++;"
+        },
+        {
+          "id": "oninput",
+          "label": "somar 1 a cada tecla digitada",
+          "code": "botao.oninput = () => cliques++;"
+        }
+      ],
+      "correct": "onclick",
+      "wrong_hint": "esse evento não dispara quando você clica um botão.",
+      "button": "clica aqui",
+      "goal": 3,
+      "effect": {
+        "type": "counter"
+      }
+    }
+  },
+  "wire": {
+    "id": "fixture-wire",
+    "kind": "wire",
+    "spec": {
+      "prompt": "Conecta cada tag ao papel dela na página.",
+      "reaction": "Cada tag carrega um papel fixo — o navegador não inventa.",
+      "stamp": "tag define papel",
+      "left_title": "Tag",
+      "right_title": "Papel",
+      "wrong_hint": "essa tag não é isso — olha de novo o que ela costuma segurar.",
+      "left": [
+        {
+          "id": "tag-h1",
+          "label": "h1"
+        },
+        {
+          "id": "tag-p",
+          "label": "p"
+        },
+        {
+          "id": "tag-a",
+          "label": "a"
+        }
+      ],
+      "right": [
+        {
+          "id": "titulo",
+          "label": "título"
+        },
+        {
+          "id": "paragrafo",
+          "label": "parágrafo"
+        },
+        {
+          "id": "link",
+          "label": "link"
+        }
+      ],
+      "pairs": [
+        {
+          "left_id": "tag-h1",
+          "right_id": "titulo"
+        },
+        {
+          "left_id": "tag-p",
+          "right_id": "paragrafo"
+        },
+        {
+          "left_id": "tag-a",
+          "right_id": "link"
+        }
+      ]
+    }
+  },
+  "spot": {
+    "id": "fixture-spot",
+    "kind": "spot",
+    "spec": {
+      "guide": {
+        "name": "Duda"
+      },
+      "prompt": "A página derreteu. Tapa o token exato que quebrou tudo.",
+      "reaction": "Faltava um 's' — 'clas' não é atributo nenhum.",
+      "stamp": "um typo quebra tudo",
+      "file": "index.html",
+      "lines": [
+        [
+          {
+            "text": "<h1 "
+          },
+          {
+            "text": "clas",
+            "bug_id": "typo-clas"
+          },
+          {
+            "text": "=\"titulo\">Oi</h1>"
+          }
+        ]
+      ],
+      "bugs": [
+        {
+          "id": "typo-clas",
+          "fixed_text": "class",
+          "note": "faltava um 's' — 'clas' não é nenhum atributo que o navegador conhece."
+        }
+      ],
+      "miss_hint": "tenta de novo, token por token — o resto da linha está certo."
+    }
+  },
+  "bucket": {
+    "id": "fixture-bucket",
+    "kind": "bucket",
+    "spec": {
+      "prompt": "Separa as unidades de medida CSS: absolutas de um lado, relativas do outro.",
+      "reaction": "px e cm nunca escalam. rem, em, % e vw sempre escalam a partir de algo.",
+      "stamp": "unidade absoluta vs relativa",
+      "chips": [
+        {
+          "id": "px",
+          "label": "px",
+          "bucket": "absoluta",
+          "hint": "px é sempre o mesmo tamanho de pixel — não escala."
+        },
+        {
+          "id": "cm",
+          "label": "cm",
+          "bucket": "absoluta",
+          "hint": "cm é medida do mundo real — fixa, não escala."
+        },
+        {
+          "id": "rem",
+          "label": "rem",
+          "bucket": "relativa",
+          "hint": "rem é relativo ao tamanho da fonte do `html` — escala."
+        },
+        {
+          "id": "em",
+          "label": "em",
+          "bucket": "relativa",
+          "hint": "em é relativo ao tamanho da fonte do PAI — escala."
+        },
+        {
+          "id": "porcento",
+          "label": "%",
+          "bucket": "relativa",
+          "hint": "% é relativo a algo — escala."
+        },
+        {
+          "id": "vw",
+          "label": "vw",
+          "bucket": "relativa",
+          "hint": "vw é relativo à largura da tela — escala."
+        }
+      ],
+      "buckets": [
+        {
+          "id": "absoluta",
+          "label": "ABSOLUTA",
+          "tone": "blue"
+        },
+        {
+          "id": "relativa",
+          "label": "RELATIVA",
+          "tone": "green"
+        }
+      ]
+    }
+  },
+  "intercept": {
+    "id": "fixture-intercept",
+    "kind": "intercept",
+    "spec": {
+      "prompt": "Um pedido sai do celular e viaja até o servidor. Tapa o nó onde o HTML é montado.",
+      "reaction": "O servidor é quem monta a resposta — o navegador só desenha.",
+      "stamp": "servidor monta, navegador desenha",
+      "packet": "GET /",
+      "answer": "servidor",
+      "wrong_hint": "esse nó só recebe ou só desenha — não é ele que monta o HTML.",
+      "nodes": [
+        {
+          "id": "celular",
+          "label": "celular",
+          "icon": "📱",
+          "x": 10,
+          "y": 50
+        },
+        {
+          "id": "rede",
+          "label": "rede",
+          "icon": "📶",
+          "x": 40,
+          "y": 50
+        },
+        {
+          "id": "servidor",
+          "label": "servidor",
+          "icon": "🖥️",
+          "x": 75,
+          "y": 50
+        }
+      ],
+      "edges": [
+        [
+          "celular",
+          "rede"
+        ],
+        [
+          "rede",
+          "servidor"
+        ]
+      ],
+      "path": [
+        "celular",
+        "rede",
+        "servidor"
+      ]
+    }
+  },
+  "query": {
+    "id": "fixture-query",
+    "kind": "query",
+    "spec": {
+      "prompt": "Só quero os bolos baratos e sem estoque. Liga as cláusulas certas.",
+      "reaction": "WHERE filtra ANTES da tabela chegar até você.",
+      "stamp": "WHERE filtra linhas",
+      "table": {
+        "name": "bolos",
+        "columns": [
+          "sabor",
+          "preco",
+          "estoque"
+        ],
+        "rows": [
+          {
+            "id": "1",
+            "cells": [
+              "ninho",
+              12,
+              4
+            ]
+          },
+          {
+            "id": "2",
+            "cells": [
+              "brigadeiro",
+              8,
+              0
+            ]
+          },
+          {
+            "id": "3",
+            "cells": [
+              "prestigio",
+              14,
+              2
+            ]
+          },
+          {
+            "id": "4",
+            "cells": [
+              "limao",
+              9,
+              1
+            ]
+          },
+          {
+            "id": "6",
+            "cells": [
+              "coco",
+              7,
+              3
+            ]
+          }
+        ]
+      },
+      "base_sql": "SELECT sabor, preco, estoque FROM bolos",
+      "clauses": [
+        {
+          "type": "where",
+          "id": "preco-menor-10",
+          "chip": "preço < 10",
+          "column": "preco",
+          "cmp": "<",
+          "value": 10
+        },
+        {
+          "type": "where",
+          "id": "estoque-zero",
+          "chip": "estoque = 0",
+          "column": "estoque",
+          "cmp": "=",
+          "value": 0
+        }
+      ],
+      "goal": {
+        "row_ids": [
+          "2"
+        ],
+        "ordered": false
+      }
     }
   }
 }

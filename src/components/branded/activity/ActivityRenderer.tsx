@@ -63,6 +63,17 @@ import { QuestionActivity } from './QuestionActivity';
 import { XrayActivity } from './XrayActivity';
 import { LiveTypeActivity } from './LiveTypeActivity';
 import { InspectActivity } from './InspectActivity';
+import { DialActivity } from './DialActivity';
+import { PlugActivity } from './PlugActivity';
+import { SelectorActivity } from './SelectorActivity';
+import { TimelineActivity } from './TimelineActivity';
+import { ArrangeActivity } from './ArrangeActivity';
+import { PressActivity } from './PressActivity';
+import { WireActivity } from './WireActivity';
+import { SpotActivity } from './SpotActivity';
+import { BucketActivity } from './BucketActivity';
+import { InterceptActivity } from './InterceptActivity';
+import { QueryActivity } from './QueryActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import {
   ChatComposeActivity,
@@ -285,6 +296,32 @@ export function ActivityRenderer({
       return <QuestionPickManyActivity activity={activity} onComplete={onComplete} />;
     case 'question_write':
       return <QuestionWriteActivity activity={activity} onComplete={onComplete} />;
+    // The scene-mechanics batch (2026-09-25, plan
+    // `20260924-itera-scene-mechanics-kinds`) — batch A + batch B. Same
+    // contract as the scene kinds above: ungraded, gesture-gated, no
+    // `reveal` (the learner cannot fail, so there is nothing to expose).
+    case 'dial':
+      return <DialActivity activity={activity} onComplete={onComplete} />;
+    case 'plug':
+      return <PlugActivity activity={activity} onComplete={onComplete} />;
+    case 'selector':
+      return <SelectorActivity activity={activity} onComplete={onComplete} />;
+    case 'timeline':
+      return <TimelineActivity activity={activity} onComplete={onComplete} />;
+    case 'arrange':
+      return <ArrangeActivity activity={activity} onComplete={onComplete} />;
+    case 'press':
+      return <PressActivity activity={activity} onComplete={onComplete} />;
+    case 'wire':
+      return <WireActivity activity={activity} onComplete={onComplete} />;
+    case 'spot':
+      return <SpotActivity activity={activity} onComplete={onComplete} />;
+    case 'bucket':
+      return <BucketActivity activity={activity} onComplete={onComplete} />;
+    case 'intercept':
+      return <InterceptActivity activity={activity} onComplete={onComplete} />;
+    case 'query':
+      return <QueryActivity activity={activity} onComplete={onComplete} />;
     default:
       return <UnknownActivity activity={activity} />;
   }

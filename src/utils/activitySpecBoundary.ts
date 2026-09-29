@@ -210,6 +210,20 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
   inspect: { site: 'boundary', invalidTestId: 'inspect-invalid', messageKey: 'activity.specInvalid' },
   // The 22 one-behaviour kinds (T9–T14) — see `ONE_BEHAVIOUR_VALIDATION`.
   ...ONE_BEHAVIOUR_VALIDATION,
+  // The scene-mechanics batch (2026-09-25, plan
+  // `20260924-itera-scene-mechanics-kinds`) — batch A + batch B. Same
+  // reasoning as the scene kinds above: `.strict()` schemas, boundary site.
+  dial: { site: 'boundary', invalidTestId: 'dial-invalid', messageKey: 'activity.specInvalid' },
+  wire: { site: 'boundary', invalidTestId: 'wire-invalid', messageKey: 'activity.specInvalid' },
+  spot: { site: 'boundary', invalidTestId: 'spot-invalid', messageKey: 'activity.specInvalid' },
+  bucket: { site: 'boundary', invalidTestId: 'bucket-invalid', messageKey: 'activity.specInvalid' },
+  intercept: { site: 'boundary', invalidTestId: 'intercept-invalid', messageKey: 'activity.specInvalid' },
+  query: { site: 'boundary', invalidTestId: 'query-invalid', messageKey: 'activity.specInvalid' },
+  selector: { site: 'boundary', invalidTestId: 'selector-invalid', messageKey: 'activity.specInvalid' },
+  timeline: { site: 'boundary', invalidTestId: 'timeline-invalid', messageKey: 'activity.specInvalid' },
+  plug: { site: 'boundary', invalidTestId: 'plug-invalid', messageKey: 'activity.specInvalid' },
+  press: { site: 'boundary', invalidTestId: 'press-invalid', messageKey: 'activity.specInvalid' },
+  arrange: { site: 'boundary', invalidTestId: 'arrange-invalid', messageKey: 'activity.specInvalid' },
 };
 
 /** As camadas deliberadamente isentas da fronteira (ver cabeçalho). */

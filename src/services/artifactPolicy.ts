@@ -177,6 +177,19 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   question_pick_one: { persist: false, type: 'text', filename: 'answer.md' },
   question_pick_many: { persist: false, type: 'text', filename: 'answer.md' },
   question_write: { persist: false, type: 'text', filename: 'answer.md' },
+  // The scene-mechanics batch (2026-09-25) — same reasoning: the gesture IS
+  // the point, nothing worth keeping in "My repository".
+  dial: { persist: false, type: 'text', filename: 'notes.md' },
+  wire: { persist: false, type: 'text', filename: 'notes.md' },
+  spot: { persist: false, type: 'text', filename: 'notes.md' },
+  bucket: { persist: false, type: 'text', filename: 'notes.md' },
+  intercept: { persist: false, type: 'text', filename: 'notes.md' },
+  query: { persist: false, type: 'text', filename: 'notes.md' },
+  selector: { persist: false, type: 'text', filename: 'notes.md' },
+  timeline: { persist: false, type: 'text', filename: 'notes.md' },
+  plug: { persist: false, type: 'text', filename: 'notes.md' },
+  press: { persist: false, type: 'text', filename: 'notes.md' },
+  arrange: { persist: false, type: 'text', filename: 'notes.md' },
 };
 
 const MODES: ReadonlySet<string> = new Set<ArtifactMode>(['auto', 'always', 'never']);

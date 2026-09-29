@@ -69,7 +69,19 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
       'live_type',
       'video',
       'xray',
-    ]);
+      // The scene-mechanics batch (2026-09-25) — batch A + batch B.
+      'dial',
+      'wire',
+      'spot',
+      'bucket',
+      'intercept',
+      'query',
+      'selector',
+      'timeline',
+      'plug',
+      'press',
+      'arrange',
+    ].sort());
     // One-behaviour kinds sit in the family of the old kind they came from
     // (plan `20260924-activity-type-one-behavior-rule`): a split changes the
     // input INSIDE the family's machine, never the machine.
@@ -181,7 +193,21 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
     // `scenario`: `xray`/`live_type`/`inspect` emit, the older reading kinds
     // do not, and `familyEmitsSequence` discriminates on the kind.
     expect([...WIRED_FAMILIES]).toEqual(['selection', 'arrangement', 'reading', 'scenario', 'inquiry']);
-    expect(FAMILY_EMITTED.reading).toEqual(['element_found', 'text_edited', 'gate_opened']);
+    expect(FAMILY_EMITTED.reading).toEqual([
+      'element_found',
+      'text_edited',
+      'gate_opened',
+      'value_set',
+      'cable_toggled',
+      'option_picked',
+      'step_visited',
+      'order_changed',
+      'pressed',
+      'wire_connected',
+      'chip_placed',
+      'clause_toggled',
+      'wrong_try',
+    ]);
     expect(FAMILY_EMITTED.editor).toEqual([]);
     expect(FAMILY_EMITTED.scenario).toEqual(['command_run', 'sandbox_reset']);
     expect(FAMILY_EMITTED.inquiry).toEqual(FAMILY_ACTIONS.inquiry);

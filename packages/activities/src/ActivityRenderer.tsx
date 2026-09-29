@@ -90,6 +90,17 @@ import {
   QuestionWriteActivity,
 } from './kinds/oneBehaviour/QuestionKindActivities.js';
 import type { KnownActivityKind } from './oneBehaviourKinds.js';
+import { DialActivity } from './kinds/DialActivity.js';
+import { PlugActivity } from './kinds/PlugActivity.js';
+import { SelectorActivity } from './kinds/SelectorActivity.js';
+import { TimelineActivity } from './kinds/TimelineActivity.js';
+import { ArrangeActivity } from './kinds/ArrangeActivity.js';
+import { PressActivity } from './kinds/PressActivity.js';
+import { WireActivity } from './kinds/WireActivity.js';
+import { SpotActivity } from './kinds/SpotActivity.js';
+import { BucketActivity } from './kinds/BucketActivity.js';
+import { InterceptActivity } from './kinds/InterceptActivity.js';
+import { QueryActivity } from './kinds/QueryActivity.js';
 
 /**
  * The kinds this package renders on its own.
@@ -157,6 +168,33 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'question_pick_one',
   'question_pick_many',
   'question_write',
+  // The scene-mechanics batch (2026-09-25, plan
+  // `20260924-itera-scene-mechanics-kinds`) — all 11: batch A (`dial`, `plug`,
+  // `selector`, `timeline`, `arrange`, `press`) and batch B (`wire`, `spot`,
+  // `bucket`, `intercept`, `query`). Gesture-gated like the scene kinds
+  // above, and just as silent — none of them need a port beyond i18n.
+  //
+  // ⚠️ RELEASE GATE, UPDATED: this list is the package's OWN closed set of
+  // literals, so it never depended on `@iterahq/activity-spec`'s
+  // `ActivityKind` to register these eleven — that part of the original note
+  // stands. What DID change: the local PR #54 build now installed in
+  // `node_modules` already carries all eleven in its `ActivityKind` union and
+  // `SPEC_SCHEMAS`, so the app's `Record<ActivityKind, …>` registries
+  // (`ACTIVITY_FAMILY`, `KIND_VALIDATION`, `KIND_ARTIFACT_DEFAULTS`) and its
+  // own dispatcher ARE wired to all eleven now — see `specs.ts` for the full
+  // note. `npm run typecheck` in CI still goes red until the package
+  // publishes a release with this union; that is the one thing left gated.
+  'dial',
+  'wire',
+  'spot',
+  'bucket',
+  'intercept',
+  'query',
+  'selector',
+  'timeline',
+  'plug',
+  'press',
+  'arrange',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -192,6 +230,17 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   question_pick_one: QuestionPickOneActivity as ComponentType<ActivityRendererProps>,
   question_pick_many: QuestionPickManyActivity as ComponentType<ActivityRendererProps>,
   question_write: QuestionWriteActivity as ComponentType<ActivityRendererProps>,
+  dial: DialActivity as ComponentType<ActivityRendererProps>,
+  plug: PlugActivity as ComponentType<ActivityRendererProps>,
+  selector: SelectorActivity as ComponentType<ActivityRendererProps>,
+  timeline: TimelineActivity as ComponentType<ActivityRendererProps>,
+  arrange: ArrangeActivity as ComponentType<ActivityRendererProps>,
+  press: PressActivity as ComponentType<ActivityRendererProps>,
+  wire: WireActivity as ComponentType<ActivityRendererProps>,
+  spot: SpotActivity as ComponentType<ActivityRendererProps>,
+  bucket: BucketActivity as ComponentType<ActivityRendererProps>,
+  intercept: InterceptActivity as ComponentType<ActivityRendererProps>,
+  query: QueryActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */

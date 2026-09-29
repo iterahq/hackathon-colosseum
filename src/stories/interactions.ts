@@ -29,7 +29,7 @@
  * helper pode casar por id em vez de por texto — mais robusto, porque um typo
  * corrigido no enunciado não quebra mais o seletor.
  */
-import { userEvent, within } from 'storybook/test';
+import { fireEvent, userEvent, within } from 'storybook/test';
 
 type Canvas = HTMLElement;
 
@@ -282,4 +282,18 @@ export async function submitAnswer(canvasElement: Canvas, testId: string) {
 /** Clica o "Marcar como concluída" dos kinds de conclusão. */
 export async function markDone(canvasElement: Canvas) {
   await userEvent.click(within(canvasElement).getByTestId('activity-done'));
+}
+
+/* ── 8 · Cena — scene-mechanics batch (dial/plug/selector/timeline/arrange/press) ── */
+
+/**
+ * Arrasta um `<input type="range">` até `value`, do jeito que dispara o
+ * `onChange` controlado do React — `userEvent` não tem um "drag de slider"
+ * embutido, e `element.value = x` sozinho não reflete pro React porque ele lê
+ * o valor por um setter nativo interceptado. Usado por `dial` e `timeline`.
+ */
+export function dragSlider(slider: HTMLInputElement, value: number) {
+  // `fireEvent` sets the value through the native setter AND goes through the
+  // configured event wrapper, so under jsdom the update lands inside `act`.
+  fireEvent.input(slider, { target: { value: String(value) } });
 }

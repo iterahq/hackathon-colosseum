@@ -134,6 +134,17 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   question_pick_one: { totalmente: 'inválido' },
   question_pick_many: { totalmente: 'inválido' },
   question_write: { totalmente: 'inválido' },
+  dial: { totalmente: 'inválido' },
+  plug: { totalmente: 'inválido' },
+  selector: { totalmente: 'inválido' },
+  timeline: { totalmente: 'inválido' },
+  arrange: { totalmente: 'inválido' },
+  press: { totalmente: 'inválido' },
+  wire: { totalmente: 'inválido' },
+  spot: { totalmente: 'inválido' },
+  bucket: { totalmente: 'inválido' },
+  intercept: { totalmente: 'inválido' },
+  query: { totalmente: 'inválido' },
 };
 
 /** Harness mínimo que o `ByocSpecSchema` ACEITA — o `{seed}` é obrigatório. */

@@ -547,6 +547,90 @@ const DRIVES: Record<ContractKey, Drive> = {
     },
     why: 'como a `question`: sem resposta certa, nenhuma interação produz `false`.',
   },
+
+  /*
+   * Scene mechanics (plan 20260924-itera-scene-mechanics-kinds): gesture-gated
+   * like the scenes above, with no wrong path. Each gesture is pointer-driven
+   * (drag, rotate, hold) and is covered end to end by its Storybook play
+   * function in a real browser.
+   */
+  dial: {
+    kind: 'dial',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `DialActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  plug: {
+    kind: 'plug',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `PlugActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  selector: {
+    kind: 'selector',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `SelectorActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  timeline: {
+    kind: 'timeline',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `TimelineActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  arrange: {
+    kind: 'arrange',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `ArrangeActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  press: {
+    kind: 'press',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `PressActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  wire: {
+    kind: 'wire',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `WireActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  spot: {
+    kind: 'spot',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `SpotActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  bucket: {
+    kind: 'bucket',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `BucketActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  intercept: {
+    kind: 'intercept',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `InterceptActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
+  query: {
+    kind: 'query',
+    why:
+      'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
+      'browser by `QueryActivity.stories.tsx` (play functions). No wrong path: an ' +
+      'incomplete gesture only keeps the gate closed.',
+  },
 };
 
 function activityFor(key: ContractKey, status?: Activity['status']): Activity {

@@ -28,6 +28,7 @@ import {
   TERMINAL_PICK_COMMAND_SPEC,
 } from './behaviourFixtures';
 import { BYOC_BUILD_CONTEXT_SPEC, BYOC_JUDGE_EACH_SPEC, BYOC_PICK_BEST_SPEC } from './byocFixtures';
+import { SCENE_MECHANICS_CONTRACTS } from './contractFixturesSceneMechanics';
 
 /** As funções pedagógicas — a camada de agrupamento da sidebar do Storybook. */
 export type ActivityFunction =
@@ -1182,6 +1183,10 @@ export const ACTIVITY_CONTRACTS = {
     validated: true,
     note: 'sem `options`: o texto livre é a resposta inteira.',
   },
+  // The scene-mechanics batch (2026-09-25) lives in its own module
+  // (`contractFixturesSceneMechanics.ts`) — see the note at the top of this
+  // file's imports.
+  ...SCENE_MECHANICS_CONTRACTS,
 } as const satisfies Record<string, ContractFixture>;
 
 export type ContractKey = keyof typeof ACTIVITY_CONTRACTS;

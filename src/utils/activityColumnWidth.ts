@@ -66,7 +66,25 @@ export const WIDE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind
  * surface, which is why it lives here and not in a page's overrides.
  */
 export const SCENE_COLUMN_MAX_WIDTH = 'max-w-5xl';
-export const SCENE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(['xray', 'live_type', 'inspect']);
+export const SCENE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
+  'xray',
+  'live_type',
+  'inspect',
+  // The scene-mechanics batch (2026-09-25) — every one of them pairs a stage
+  // (page, board, editor or table) with a second column of controls, so the
+  // prose measure truncates them the same way it truncates `live_type`.
+  'dial',
+  'wire',
+  'spot',
+  'bucket',
+  'intercept',
+  'query',
+  'selector',
+  'timeline',
+  'plug',
+  'press',
+  'arrange',
+]);
 
 /**
  * Per-surface caps for kinds that are NOT in `WIDE_COLUMN_KINDS`.

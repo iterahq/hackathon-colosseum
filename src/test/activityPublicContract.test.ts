@@ -285,6 +285,18 @@ const PUBLIC_RUNTIME_SURFACE = [
   'QuestionPickOneActivity',
   'QuestionPickManyActivity',
   'QuestionWriteActivity',
+  // The scene-mechanics kinds (plan 20260924-itera-scene-mechanics-kinds).
+  'DialActivity',
+  'PlugActivity',
+  'SelectorActivity',
+  'TimelineActivity',
+  'ArrangeActivity',
+  'PressActivity',
+  'WireActivity',
+  'SpotActivity',
+  'BucketActivity',
+  'InterceptActivity',
+  'QueryActivity',
   // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
   // dispatchers are public because the app switches on KIND; the five leaves are
   // public because the stories drive them directly.

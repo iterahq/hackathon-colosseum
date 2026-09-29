@@ -165,6 +165,27 @@ export { XrayActivity } from './kinds/XrayActivity.js';
 export { LiveTypeActivity } from './kinds/LiveTypeActivity.js';
 export { InspectActivity } from './kinds/InspectActivity.js';
 
+/* ── the scene-mechanics batch — batch A of 2 (2026-09-25) ──────────────── */
+// `dial`, `plug`, `selector`, `timeline`, `arrange`, `press` — gesture-gated,
+// silent, i18n-only, same as the three above. Needs `@iterahq/activity-spec`
+// 1.4.0, the first release whose `ActivityKind` union carries them.
+
+export { DialActivity } from './kinds/DialActivity.js';
+export { PlugActivity } from './kinds/PlugActivity.js';
+export { SelectorActivity } from './kinds/SelectorActivity.js';
+export { TimelineActivity } from './kinds/TimelineActivity.js';
+export { ArrangeActivity } from './kinds/ArrangeActivity.js';
+export { PressActivity } from './kinds/PressActivity.js';
+
+/* ── the scene-mechanics batch — batch B of 2 (2026-09-25) ──────────────── */
+// `wire`, `spot`, `bucket`, `intercept`, `query` — same as batch A.
+
+export { WireActivity } from './kinds/WireActivity.js';
+export { SpotActivity } from './kinds/SpotActivity.js';
+export { BucketActivity } from './kinds/BucketActivity.js';
+export { InterceptActivity } from './kinds/InterceptActivity.js';
+export { QueryActivity } from './kinds/QueryActivity.js';
+
 /* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
 // Fase C step 4. TWO kinds with five activity types behind them: each
 // dispatcher picks off the AUTHORED SHAPE, never off a second enum —
@@ -364,8 +385,42 @@ export type {
   ScenePageElementSpec,
   ScenePageSpec,
   XraySpec,
+  ArrangeItemSpec,
+  ArrangeSpec,
+  DialSpec,
+  PlugSpec,
+  PlugStylesheetRule,
+  PressEffectSpec,
+  PressOptionSpec,
+  PressSpec,
+  SceneCssProperty,
+  SelectorElementSpec,
+  SelectorSpec,
+  TimelineFrameSpec,
+  TimelineSpec,
+  TimelineStepSpec,
   QuizOption,
   QuizSpec,
   SingleChoiceSpec,
   VideoSpec,
+  WireEndSpec,
+  WirePairSpec,
+  WireSpec,
+  SpotTokenSpec,
+  SpotBugSpec,
+  SpotPageElementSpec,
+  SpotSpec,
+  BucketChipSpec,
+  BucketTone,
+  BucketDefSpec,
+  BucketSpec,
+  InterceptIcon,
+  InterceptNodeSpec,
+  InterceptSpec,
+  QueryRowSpec,
+  QueryTableSpec,
+  QueryCmp,
+  QueryDir,
+  QueryClauseSpec,
+  QuerySpec,
 } from './specs.js';

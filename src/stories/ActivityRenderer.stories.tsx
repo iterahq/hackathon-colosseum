@@ -357,6 +357,54 @@ export const InspectUmaPeca: Story = {
   },
 };
 
+/**
+ * Scene mechanics — prompt, reaction and stamp but no mechanism (no page, no
+ * pieces): the schema rejects it and the dispatcher shows the invalid card.
+ */
+export const DialSemMecanica: Story = {
+  args: { activity: makeActivity('dial', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const PlugSemMecanica: Story = {
+  args: { activity: makeActivity('plug', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const SelectorSemMecanica: Story = {
+  args: { activity: makeActivity('selector', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const TimelineSemMecanica: Story = {
+  args: { activity: makeActivity('timeline', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const ArrangeSemMecanica: Story = {
+  args: { activity: makeActivity('arrange', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const PressSemMecanica: Story = {
+  args: { activity: makeActivity('press', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const WireSemMecanica: Story = {
+  args: { activity: makeActivity('wire', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const SpotSemMecanica: Story = {
+  args: { activity: makeActivity('spot', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const BucketSemMecanica: Story = {
+  args: { activity: makeActivity('bucket', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const InterceptSemMecanica: Story = {
+  args: { activity: makeActivity('intercept', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const QuerySemMecanica: Story = {
+  args: { activity: makeActivity('query', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
 /** kind desconhecido — o fallback explícito do dispatcher. */
 export const KindDesconhecido: Story = {
   args: {

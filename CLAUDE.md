@@ -89,7 +89,7 @@ o monorepo de npm workspaces e os dois gates que a borda do workspace NÃO prova
      db/migrations/*.sql. Editar um nome ou um número sem editar o enum = CI
      vermelha. Não remova os marcadores para calar o check. -->
 
-Os **36 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
+Os **47 kinds** de `itera.activity_kind`. Desde 2026-07-28 `src/types/content.ts`
 **RE-EXPORTA** `ActivityKind` de `@iterahq/activity-spec` (antes era uma união
 literal copiada à mão, que dizia espelhar o pacote e podia sair de sincronia).
 Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
@@ -99,7 +99,10 @@ Resta um ponto a sincronizar na mão: o `ACTIVITY_KINDS` de
 `quiz` (o *hero*) ·
 `single_choice` · `multi_choice` · `match` · `order` · `code` ·
 `chat_sandbox` · `terminal_sandbox` · `sandbox_scenario` ·
-`xray` · `live_type` · `inspect` (as cenas, migration `0107`)
+`xray` · `live_type` · `inspect` (as cenas, migration `0107`) ·
+`dial` · `plug` · `selector` · `timeline` · `arrange` · `press` ·
+`wire` · `spot` · `bucket` · `intercept` · `query`
+(scene-mechanics, migration `0108`, `@iterahq/activity-spec` 1.4.0)
 
 Os dezenove kinds de COMPORTAMENTO (migration `0104`, plano
 `20260924-activity-type-one-behavior-rule`: um activity type = um

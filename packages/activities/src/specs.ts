@@ -264,3 +264,325 @@ export interface LiveTypeSpec extends SceneFrameSpec {
 }
 
 export type InspectSpec = SceneFrameSpec;
+
+/* ── the scene-mechanics batch — `dial`, `plug`, `selector`, `timeline`, ────
+ * `arrange`, `press` (batch A) + `wire`, `spot`, `bucket`, `intercept`, ──────
+ * `query` (batch B) — plan `20260924-itera-scene-mechanics-kinds` ───────────
+ *
+ * Read views of the eleven gesture-gated beats, ported from dfl-labs
+ * (`mechanics/*Beat.tsx`). Loose like their `xray`/`live_type`/`inspect`
+ * neighbours — `@iterahq/activity-spec` (PR #54, head 061a0a0) is the
+ * authority on validity.
+ *
+ * `@iterahq/activity-spec` 1.4.0 carries all eleven names in `ActivityKind`,
+ * their schemas and the `/runtime` helpers (`runQuery`, `matchSelector`, …).
+ */
+
+/** One CSS property the renderer restyles — mirrors `CSS_PROPERTIES` in `scene-mechanics.ts`. */
+export type SceneCssProperty =
+  | 'font-size'
+  | 'padding'
+  | 'margin'
+  | 'gap'
+  | 'border-radius'
+  | 'width'
+  | 'opacity'
+  | 'line-height'
+  | 'color'
+  | 'background'
+  | 'border'
+  | 'text-decoration';
+
+/** `dial` — drag a slider until the styled element settles inside `target`. */
+export interface DialSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  page: ScenePageSpec;
+  target_id: string;
+  property: SceneCssProperty;
+  unit?: string;
+  min: number;
+  max: number;
+  step?: number;
+  start: number;
+  target: [number, number];
+  target_hint?: SceneLocalizedText;
+}
+
+/** One `plug.stylesheet[]` rule. */
+export interface PlugStylesheetRule {
+  target_id: string;
+  property: SceneCssProperty;
+  value: string;
+}
+
+/** `plug` — pull the cable and the page collapses; plug it back and it heals. */
+export interface PlugSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  page: ScenePageSpec;
+  stylesheet: PlugStylesheetRule[];
+  cable_name: string;
+  on_label: SceneLocalizedText;
+  off_label: SceneLocalizedText;
+}
+
+/** One `selector.elements[]` entry — a flat element the matcher can hit. */
+export interface SelectorElementSpec {
+  id: string;
+  tag: string;
+  classes: string[];
+}
+
+/** `selector` — pick the CSS selector that names exactly `targets`. */
+export interface SelectorSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  elements: SelectorElementSpec[];
+  options: string[];
+  targets: string[];
+  rule: { property: SceneCssProperty; value: string };
+}
+
+/** One `timeline.steps[]` frame — a page or a block of source lines, never both. */
+export type TimelineFrameSpec =
+  | { type: 'page'; page: ScenePageSpec }
+  | { type: 'code'; lines: string[] };
+
+export interface TimelineStepSpec {
+  label: SceneLocalizedText;
+  note: SceneLocalizedText;
+  frame: TimelineFrameSpec;
+}
+
+/** `timeline` — scrub through every step of a frame. Ungraded (reading family). */
+export interface TimelineSpec {
+  /** activity-spec PR #54 (head 061a0a0): `spot`/`timeline`/`press` gained an optional guide. */
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  axis: SceneLocalizedText;
+  steps: TimelineStepSpec[];
+}
+
+/** One `arrange.items[]` entry. */
+export interface ArrangeItemSpec {
+  id: string;
+  label: SceneLocalizedText;
+  sub?: SceneLocalizedText;
+}
+
+/** `arrange` — drag items until they settle in the right order. */
+export interface ArrangeSpec {
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  items: ArrangeItemSpec[];
+  correct: string[];
+  start: string[];
+  item_style?: 'code' | 'card';
+}
+
+/** One `press.options[]` choice. */
+export interface PressOptionSpec {
+  id: string;
+  label: SceneLocalizedText;
+  code: string;
+}
+
+/** The closed effect union `press.effect` carries. */
+export type PressEffectSpec =
+  | { type: 'counter' }
+  | { type: 'toggle_class'; target_id: string; class_name: string }
+  | { type: 'append_text'; target_id: string; text: SceneLocalizedText };
+
+/** `press` — pick the reaction, then press until `goal` is reached. */
+export interface PressSpec {
+  /** activity-spec PR #54 (head 061a0a0): `spot`/`timeline`/`press` gained an optional guide. */
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  file: string;
+  before?: string[];
+  options: PressOptionSpec[];
+  correct: string;
+  wrong_hint: SceneLocalizedText;
+  button: SceneLocalizedText;
+  goal: number;
+  effect: PressEffectSpec;
+  page?: ScenePageSpec;
+}
+
+/* ── batch B — `wire`, `spot`, `bucket`, `intercept`, `query` ──────────────
+ * (plan `20260924-itera-scene-mechanics-kinds`, 2026-09-25) ─────────────────
+ *
+ * Shapes below are read off `@iterahq/activity-spec` PR #54 (head 061a0a0)
+ * `WireSpecSchema` / `SpotSpecSchema` / `BucketSpecSchema` /
+ * `InterceptSpecSchema` / `QuerySpecSchema` directly (`z.infer` introspected
+ * against the local build), not from the PLAN.md sketch — `spot.bugs` in
+ * particular is an ARRAY of `{ id, fixed_text, note? }`, not a map keyed by
+ * bug id.
+ */
+
+/** One `wire.left[]` / `wire.right[]` end. */
+export interface WireEndSpec {
+  id: string;
+  label: SceneLocalizedText;
+  sub?: SceneLocalizedText;
+}
+
+/** One authored left↔right correspondence of a `wire` activity. */
+export interface WirePairSpec {
+  left_id: string;
+  right_id: string;
+}
+
+/** `wire` — connect every left end to its right end. Wrong wire → `wrong_hint`. */
+export interface WireSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  left: WireEndSpec[];
+  right: WireEndSpec[];
+  pairs: WirePairSpec[];
+  left_title: SceneLocalizedText;
+  right_title: SceneLocalizedText;
+  wrong_hint: SceneLocalizedText;
+}
+
+/** One token of a `spot.lines[]` code line. */
+export interface SpotTokenSpec {
+  text: string;
+  bug_id?: string;
+}
+
+/** One `spot.bugs[]` entry — what the token becomes once tapped. */
+export interface SpotBugSpec {
+  id: string;
+  fixed_text: string;
+  note?: SceneLocalizedText;
+}
+
+/** One element of `spot.page` — carries `broken_by` while its bug is unfixed. */
+export interface SpotPageElementSpec {
+  id: string;
+  tag: SceneTag;
+  text: string;
+  name: SceneLocalizedText;
+  broken_by?: string;
+}
+
+/** `spot` — tap the exact token that broke the page; a miss shows `miss_hint`. */
+export interface SpotSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  file: string;
+  lines: SpotTokenSpec[][];
+  bugs: SpotBugSpec[];
+  miss_hint: SceneLocalizedText;
+  page?: { elements: SpotPageElementSpec[] };
+}
+
+/** One `bucket.chips[]` entry. */
+export interface BucketChipSpec {
+  id: string;
+  label: SceneLocalizedText;
+  bucket: string;
+  hint: SceneLocalizedText;
+}
+
+/** The closed tone palette a `bucket.buckets[]` entry paints with. */
+export type BucketTone = 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink' | 'red' | 'gray';
+
+/** One `bucket.buckets[]` entry. */
+export interface BucketDefSpec {
+  id: string;
+  label: SceneLocalizedText;
+  tone: BucketTone;
+}
+
+/** `bucket` — drag every chip into its bucket. Wrong bucket → the chip's own `hint`. */
+export interface BucketSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  chips: BucketChipSpec[];
+  buckets: BucketDefSpec[];
+}
+
+/** The closed icon set `intercept.nodes[].icon` may use. */
+export type InterceptIcon =
+  | '🧠' | '📱' | '🖥️' | '⌨️' | '🌐' | '🎨' | '📄' | '⚙️' | '⬆️' | '🌍'
+  | '💻' | '📦' | '📒' | '🔍' | '🔒' | '🔓' | '🗄️' | '🏢' | '📶' | '👉';
+
+/** One `intercept.nodes[]` entry, positioned on the board in percent. */
+export interface InterceptNodeSpec {
+  id: string;
+  label: SceneLocalizedText;
+  sub?: SceneLocalizedText;
+  icon: InterceptIcon;
+  x: number;
+  y: number;
+}
+
+/** `intercept` — a packet loops the diagram; tap the node where it is caught. */
+export interface InterceptSpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  nodes: InterceptNodeSpec[];
+  edges: [string, string][];
+  path: string[];
+  packet: string;
+  answer: string;
+  wrong_hint: SceneLocalizedText;
+  packet_at?: Record<string, string>;
+}
+
+/** One row of `query.table`. `null` cells render as `NULL`, never blank. */
+export interface QueryRowSpec {
+  id: string;
+  cells: (string | number | null)[];
+}
+
+/** `query`'s little in-memory table. */
+export interface QueryTableSpec {
+  name: string;
+  columns: string[];
+  rows: QueryRowSpec[];
+}
+
+export const QUERY_CMPS = ['=', '!=', '<', '<=', '>', '>='] as const;
+export type QueryCmp = (typeof QUERY_CMPS)[number];
+export type QueryDir = 'asc' | 'desc';
+
+/** One toggleable SQL clause chip — a closed, typed union, never a raw SQL string. */
+export type QueryClauseSpec =
+  | { type: 'where'; id: string; chip: SceneLocalizedText; column: string; cmp: QueryCmp; value: string | number | null }
+  | { type: 'order_by'; id: string; chip: SceneLocalizedText; column: string; dir: QueryDir }
+  | { type: 'limit'; id: string; chip: SceneLocalizedText; n: number };
+
+/** `query` — toggle clause chips until the assembled query reaches `goal`. */
+export interface QuerySpec {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+  table: QueryTableSpec;
+  base_sql: string;
+  clauses: QueryClauseSpec[];
+  goal: { row_ids: string[]; ordered: boolean };
+}

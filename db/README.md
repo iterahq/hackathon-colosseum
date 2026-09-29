@@ -186,11 +186,12 @@ change it (`authenticated` holds SELECT and nothing else on `itera.tenants`).
      count here without the matching migration turns CI red. Do not delete the
      markers to silence the check. -->
 
-  The **36 kinds** of `itera.activity_kind`:
+  The **47 kinds** of `itera.activity_kind`:
   `diagram` · `document` · `quiz` · `code` · `concept` · `single_choice` ·
   `multi_choice` · `match` · `order` · `video` · `sandbox_scenario` ·
   `concept_reveal` · `chat_sandbox` · `terminal_sandbox` · `xray` · `live_type` ·
-  `inspect` ·
+  `inspect` · `dial` · `plug` · `selector` · `timeline` · `arrange` · `press` ·
+  `wire` · `spot` · `bucket` · `intercept` · `query` ·
   `code_editor_checks` · `code_editor_ungraded` · `code_fill_bank` · `code_fill_select` · `code_fill_type` ·
   `chat_compose` · `chat_fill_select` · `chat_fill_type` · `chat_pick_context` · `chat_rate_reply` ·
   `terminal_type_command` · `terminal_pick_command` · `terminal_build_command` ·

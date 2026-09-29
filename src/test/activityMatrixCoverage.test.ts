@@ -124,6 +124,10 @@ const BYOC_STATES_IN_TREE =
 const BYOC_VERDICT_IN_FLOW =
   'o veredito sai da árvore gerada, conferida contra o gabarito que a geração embute (ADR-13); o fluxo `--default` leva até ele com a geração mockada. Não há story que chegue ao veredito sem clicar a árvore inteira.';
 
+const SCENE_NO_RESTING_ANSWER =
+  'the gesture has no resting partial answer: an incomplete or wrong move snaps back with a hint, and the play function of the solved story drives it.';
+const SCENE_MINIMAL_SAME_STAGE =
+  'the smallest spec the schema accepts renders the same stage with fewer pieces; nothing degrades.';
 const NO_REVEAL_PROP =
   'o dispatcher não propaga `reveal` para este kind e `hasRevealableAnswer` é false — não há gabarito a expor.';
 const LOOSE_ZOD =
@@ -708,6 +712,150 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'F.spec_invalido': { story: 'activities-dispatcher--inspect-uma-peca' },
     'H.degenerado': { story: 'activities-cena-inspect--two-elements' },
   },
+  /* ── 8 · Scene mechanics (plan 20260924-itera-scene-mechanics-kinds) ── */
+  dial: {
+    'A.enabled': { story: 'activities-cena-dial--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-dial--done' },
+    'C.blank': { story: 'activities-cena-dial--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-dial--settled' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--dial-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  plug: {
+    'A.enabled': { story: 'activities-cena-plug--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-plug--done' },
+    'C.blank': { story: 'activities-cena-plug--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-plug--solved' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--plug-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  selector: {
+    'A.enabled': { story: 'activities-cena-selector--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-selector--done' },
+    'C.blank': { story: 'activities-cena-selector--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-selector--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--selector-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  timeline: {
+    'A.enabled': { story: 'activities-cena-timeline--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-timeline--done' },
+    'C.blank': { story: 'activities-cena-timeline--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-timeline--all-steps-visited' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--timeline-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  arrange: {
+    'A.enabled': { story: 'activities-cena-arrange--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-arrange--done' },
+    'C.blank': { story: 'activities-cena-arrange--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-arrange--settled' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--arrange-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  press: {
+    'A.enabled': { story: 'activities-cena-press--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-press--done' },
+    'C.blank': { story: 'activities-cena-press--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-press--wrong-then-goal-reached' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--press-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  wire: {
+    'A.enabled': { story: 'activities-cena-wire--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-wire--done' },
+    'C.blank': { story: 'activities-cena-wire--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-wire--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--wire-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  spot: {
+    'A.enabled': { story: 'activities-cena-spot--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-spot--done' },
+    'C.blank': { story: 'activities-cena-spot--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-spot--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--spot-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  bucket: {
+    'A.enabled': { story: 'activities-cena-bucket--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-bucket--done' },
+    'C.blank': { story: 'activities-cena-bucket--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-bucket--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--bucket-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  intercept: {
+    'A.enabled': { story: 'activities-cena-intercept--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-intercept--done' },
+    'C.blank': { story: 'activities-cena-intercept--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-intercept--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--intercept-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  query: {
+    'A.enabled': { story: 'activities-cena-query--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-query--done' },
+    'C.blank': { story: 'activities-cena-query--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-query--goal-reached' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--query-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
 };
 
 /**
@@ -796,7 +944,7 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 305, na: 97, deferred: 18, drift: 9 };
+const COVERAGE_SNAPSHOT = { covered: 360, na: 163, deferred: 18, drift: 9 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

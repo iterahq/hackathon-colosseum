@@ -158,11 +158,50 @@ export const ACTIVITY_TRACE_ACTIONS = {
   //
   // `note_edited` carries `{ length }` and NEVER the text — the same shape
   // `code_edited` uses, under the same `PAYLOADS_CARRY_NO_FREE_TEXT` rule.
-  // `reading` — the scene kinds (`xray`, `live_type`, `inspect`, 2026-09-24).
-  // `element_found` carries `{ element_id }` (an AUTHORED id); `text_edited`
-  // carries `{ length }` and NEVER the text (`live_type` is the only one that
-  // takes typing); `gate_opened` marks the gesture that completed the beat.
-  reading: ['element_found', 'text_edited', 'gate_opened'],
+  // `reading` — the scene kinds (`xray`, `live_type`, `inspect`, 2026-09-24)
+  // and the scene-mechanics batch (`dial`/`plug`/`selector`/`timeline`/
+  // `arrange`/`press` batch A + `wire`/`spot`/`bucket`/`intercept`/`query`
+  // batch B, 2026-09-25 — plan `20260924-itera-scene-mechanics-kinds`).
+  // `element_found` carries `{ element_id }` (an AUTHORED id; `spot` reuses it
+  // for a bug find); `text_edited` carries `{ length }` and NEVER the text
+  // (`live_type` is the only one that takes typing); `gate_opened` marks the
+  // gesture that completed the beat.
+  //
+  // The scene-mechanics batch adds ONE vocabulary entry per gesture SHAPE
+  // (never per kind name — `value_set` covers a slider, whichever CSS
+  // property it drives) plus `wrong_try` for every kind whose B2 can miss:
+  //   `value_set`      — `dial`. `{ value }` — the AUTHORED numeric value.
+  //   `cable_toggled`  — `plug`. `{ connected: boolean }`.
+  //   `option_picked`  — `selector`. `{ option }` — the picked selector string,
+  //                       itself a closed-grammar token, never free text.
+  //   `step_visited`   — `timeline`. `{ index }`.
+  //   `order_changed`  — `arrange`. `{ order: string[] }` — the AUTHORED ids,
+  //                       current permutation after one move.
+  //   `pressed`        — `press`. `{ count }` — presses so far.
+  //   `wire_connected` — `wire`. `{ left_id, right_id }` — both AUTHORED ids.
+  //   `chip_placed`    — `bucket`. `{ chip_id, bucket_id }` — both AUTHORED ids.
+  //   `clause_toggled` — `query`. `{ clause_id, enabled: boolean }`.
+  //   `wrong_try`       — any gate kind whose gesture can miss. `{ kind-specific
+  //                       AUTHORED id }`, e.g. `{ option }` for `selector`,
+  //                       `{ option_id }` for `press`, `{ left_id, right_id }`
+  //                       for `wire`, `{ bug_id }` for `spot`, `{ chip_id,
+  //                       bucket_id }` for `bucket`, `{ node_id }` for
+  //                       `intercept` — never the hint text.
+  reading: [
+    'element_found',
+    'text_edited',
+    'gate_opened',
+    'value_set',
+    'cable_toggled',
+    'option_picked',
+    'step_visited',
+    'order_changed',
+    'pressed',
+    'wire_connected',
+    'chip_placed',
+    'clause_toggled',
+    'wrong_try',
+  ],
   inquiry: [
     'option_marked',
     'option_unmarked',
