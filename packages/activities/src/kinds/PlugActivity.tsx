@@ -79,9 +79,7 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
         <SceneBrowserBar url={copy.url} />
         <div className="flex flex-col gap-4 p-7 min-h-[160px]">
           {elements.map((el) => (
-            <span key={el.id} style={styleFor.get(el.id)}>
-              <ScenePageElement element={el} />
-            </span>
+            <ScenePageElement key={el.id} element={el} style={styleFor.get(el.id)} />
           ))}
         </div>
       </div>

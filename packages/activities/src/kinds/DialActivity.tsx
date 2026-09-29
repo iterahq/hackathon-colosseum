@@ -68,9 +68,7 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
         <div className="flex flex-col gap-4 p-7 min-h-[160px] items-start">
           {elements.map((el) =>
             el.id === target.id ? (
-              <span key={el.id} style={style}>
-                <ScenePageElement element={el} />
-              </span>
+              <ScenePageElement key={el.id} element={el} style={style} />
             ) : (
               <ScenePageElement key={el.id} element={el} />
             ),
