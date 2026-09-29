@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { SkillTree } from './SkillTree';
 import { UNIT_PALETTE } from './skillTreeUnitPalette';
@@ -63,12 +63,33 @@ describe('SkillTree', () => {
     expect(screen.getByText('Semana 3')).toBeInTheDocument();
   });
 
-  it('assigns each unit a color from the palette, cycling by unit index', () => {
+  it('renders each unit banner as a solid card in a palette tone, cycling by unit index', () => {
     renderTree();
-    const eyebrows = [screen.getByText('Semana 1'), screen.getByText('Semana 2'), screen.getByText('Semana 3')];
-    eyebrows.forEach((eyebrow, i) => {
-      expect(eyebrow).toHaveStyle({ color: UNIT_PALETTE[i % UNIT_PALETTE.length].hi });
+    screen.getAllByTestId('unit-banner').forEach((banner, i) => {
+      expect(banner).toHaveStyle({ backgroundColor: UNIT_PALETTE[i % UNIT_PALETTE.length].base });
     });
+  });
+
+  it('shows a continuous day number, the lesson title and the kind label under each node', () => {
+    renderTree();
+    expect(screen.getByText('Dia 1')).toBeInTheDocument();
+    expect(screen.getByText('Dia 3')).toBeInTheDocument();
+    expect(screen.getAllByText('Lesson 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Documento').length).toBe(3);
+  });
+
+  it('renders the callout only for the first current node and opens its lesson', () => {
+    const onOpenLesson = vi.fn();
+    render(
+      <I18nProvider>
+        <SkillTree program={program} onOpenLesson={onOpenLesson} />
+      </I18nProvider>
+    );
+    const callouts = screen.getAllByTestId('tree-callout');
+    expect(callouts).toHaveLength(1);
+    fireEvent.click(within(callouts[0]).getByRole('button'));
+    expect(onOpenLesson).toHaveBeenCalledWith('l1');
+    expect(within(callouts[0]).getByText('> dia 01 · lição 1 de 1')).toBeInTheDocument();
   });
 
   it('keeps the current node interactive and the locked node non-interactive', () => {
@@ -80,7 +101,7 @@ describe('SkillTree', () => {
   it('keeps the done/total progress count per unit', () => {
     renderTree();
     const progress = (_content: string, element: Element | null) =>
-      element?.textContent === '0/1 lições';
+      element?.textContent === '0/1';
     expect(screen.getAllByText(progress).length).toBe(3);
   });
 

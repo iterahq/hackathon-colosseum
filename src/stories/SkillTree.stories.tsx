@@ -71,3 +71,45 @@ export default meta;
 type Story = StoryObj<typeof SkillTree>;
 
 export const Default: Story = { args: { program, onOpenLesson: () => {} } };
+
+const lessonWith = (unit: number, n: number, title: string, statuses: Activity['status'][]) => ({
+  id: `f${unit}-${n}`,
+  unitId: `fu${unit}`,
+  ordinal: n,
+  title: { en: title },
+  activities: statuses.map((s, i) =>
+    act(`fa${unit}-${n}-${i}`, s, (['document', 'quiz', 'code'] as const)[i % 3]),
+  ),
+});
+
+const titles = [
+  ['What a database is', 'Tables and rows', 'Primary keys', 'Relating tables', 'Your first schema'],
+  ['Reading with SELECT', 'Filtering with WHERE', 'Sorting and limiting', 'Joining tables', 'Grouping results'],
+  ['Inserting data', 'Updating safely', 'Deleting with care', 'Transactions', 'Indexes in practice'],
+];
+
+const fixtureProgram: ProgramDetail = {
+  ...program,
+  title: { en: 'Databases from Zero' },
+  units: titles.map((unitTitles, u) => ({
+    id: `fu${u}`,
+    programId: 'p1',
+    ordinal: u,
+    title: { en: ['Storing data', 'Asking questions', 'Changing data'][u] },
+    lessons: unitTitles.map((title, n) => {
+      if (u === 0) return lessonWith(u, n, title, ['done', 'done', 'done']);
+      if (u === 1 && n === 0) return lessonWith(u, n, title, ['done', 'done', 'done']);
+      if (u === 1 && n === 1) return lessonWith(u, n, title, ['done', 'todo', 'todo']);
+      return lessonWith(u, n, title, ['todo', 'todo', 'todo']);
+    }),
+  })),
+};
+
+export const WindingTrail: Story = {
+  args: { program: fixtureProgram, onOpenLesson: () => {} },
+  render: (args) => (
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 16 }}>
+      <SkillTree {...args} />
+    </div>
+  ),
+};

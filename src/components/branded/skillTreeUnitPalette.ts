@@ -30,3 +30,13 @@ export const UNIT_PALETTE: UnitTone[] = [EVERGREEN, BLUE, TERRACOTTA];
 export function toneForUnit(unitIndex: number): UnitTone {
   return UNIT_PALETTE[unitIndex % UNIT_PALETTE.length];
 }
+
+/** Darkens a 6-digit hex color by `percent` (0-100), for the solid bottom edge of pressable surfaces. */
+export function darken(hex: string, percent: number): string {
+  const factor = 1 - percent / 100;
+  const channel = (start: number) =>
+    Math.round(parseInt(hex.slice(start, start + 2), 16) * factor)
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(1)}${channel(3)}${channel(5)}`;
+}
