@@ -22,6 +22,7 @@ import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
 import { NextScheduledClassBlock } from '@/components/live/NextScheduledClassBlock';
 import { liveLearnerHref } from '@/utils/liveLearnerView';
+import { orderHomePrograms } from '@/utils/orderHomePrograms';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -50,9 +51,10 @@ export default function HomePage() {
   } = useCatalog({ enabled: isVisitor });
 
   // Navbar search filters the program grid (real feature behind ?q=) — member only.
+  const orderedPrograms = orderHomePrograms(allPrograms);
   const programs = q
-    ? allPrograms.filter((p) => tText(p.title).toLowerCase().includes(q))
-    : allPrograms;
+    ? orderedPrograms.filter((p) => tText(p.title).toLowerCase().includes(q))
+    : orderedPrograms;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
