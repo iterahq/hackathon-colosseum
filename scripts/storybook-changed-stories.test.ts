@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CANVAS_CAP,
   detectChangedStories,
   parseGitDiffNameStatus,
   type ChangedFile,
@@ -51,7 +50,7 @@ describe('parseGitDiffNameStatus', () => {
 });
 
 describe('detectChangedStories', () => {
-  it('marks an added story file as "new" and live', () => {
+  it('marks an added story file as "new"', () => {
     const fs = makeFs({
       'src/stories/New.stories.tsx': `export default { title: 'New' };`,
     });
@@ -60,14 +59,14 @@ describe('detectChangedStories', () => {
       fs,
     );
     expect(result.affected).toEqual([
-      { path: 'src/stories/New.stories.tsx', verdict: 'new', live: true },
+      { path: 'src/stories/New.stories.tsx', verdict: 'new' },
     ]);
     expect(result.removed).toEqual([]);
     expect(result.maybeAffected).toEqual([]);
     expect(result.orphanVisualFiles).toEqual([]);
   });
 
-  it('marks a directly modified story file as "changed" and live', () => {
+  it('marks a directly modified story file as "changed"', () => {
     const fs = makeFs({
       'src/stories/Existing.stories.tsx': `export default { title: 'Existing' };`,
     });
@@ -76,7 +75,7 @@ describe('detectChangedStories', () => {
       fs,
     );
     expect(result.affected).toEqual([
-      { path: 'src/stories/Existing.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/Existing.stories.tsx', verdict: 'changed' },
     ]);
   });
 
@@ -90,7 +89,7 @@ describe('detectChangedStories', () => {
     expect(result.removed).toEqual(['src/stories/Gone.stories.tsx']);
   });
 
-  it('marks a story "changed" and live when it directly imports a changed component', () => {
+  it('marks a story "changed" when it directly imports a changed component', () => {
     const fs = makeFs({
       'src/components/Widget.tsx': `export const Widget = () => null;`,
       'src/stories/Widget.stories.tsx': `
@@ -100,12 +99,12 @@ describe('detectChangedStories', () => {
     });
     const result = detectChangedStories([{ status: 'M', path: 'src/components/Widget.tsx' }], fs);
     expect(result.affected).toEqual([
-      { path: 'src/stories/Widget.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/Widget.stories.tsx', verdict: 'changed' },
     ]);
     expect(result.maybeAffected).toEqual([]);
   });
 
-  it('does NOT treat a transitive (2+ hop) chain as a live direct hit — it lands in maybeAffected', () => {
+  it('does NOT treat a transitive (2+ hop) chain as a direct hit — it lands in maybeAffected', () => {
     const fs = makeFs({
       'src/components/deep/Leaf.tsx': `export const Leaf = () => null;`,
       'src/components/Mid.tsx': `
@@ -144,11 +143,11 @@ describe('detectChangedStories', () => {
     });
     const result = detectChangedStories([{ status: 'M', path: 'src/components/Widget.tsx' }], fs);
     expect(result.affected).toEqual([
-      { path: 'src/stories/Widget.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/Widget.stories.tsx', verdict: 'changed' },
     ]);
   });
 
-  it('treats a whole-package alias (@iterahq/<pkg>) as maybeAffected, not live — too coarse', () => {
+  it('treats a whole-package alias (@iterahq/<pkg>) as maybeAffected, not direct — too coarse', () => {
     const fs = makeFs({
       'packages/activities/package.json': JSON.stringify({ name: '@iterahq/activities' }),
       'packages/activities/src/Kind.tsx': `export const Kind = () => null;`,
@@ -179,7 +178,7 @@ describe('detectChangedStories', () => {
     // Direct-change pass still marks the story file itself — this asserts the
     // external import didn't throw or loop, not that it's ignored entirely.
     expect(result.affected).toEqual([
-      { path: 'src/stories/External.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/External.stories.tsx', verdict: 'changed' },
     ]);
   });
 
@@ -263,7 +262,7 @@ describe('detectChangedStories', () => {
     expect(result.affected).toEqual([]);
   });
 
-  it('does not treat a story that imports a hub file directly as a live direct hit', () => {
+  it('does not treat a story that imports a hub file directly as a direct hit', () => {
     const fs = makeFs({
       'src/i18n/index.ts': `export const t = {};`,
       'src/stories/HubConsumer.stories.tsx': `
@@ -276,9 +275,9 @@ describe('detectChangedStories', () => {
     expect(result.maybeAffected).toEqual(['src/stories/HubConsumer.stories.tsx']);
   });
 
-  it('caps live CANVASES (not story files) at CANVAS_CAP across new stories, marking the overflow non-live', () => {
+  it('reports every new story file, however many there are', () => {
     const files: Record<string, string> = {};
-    const storyCount = CANVAS_CAP + 5; // one export each -> one canvas each
+    const storyCount = 60;
     for (let i = 0; i < storyCount; i++) {
       files[`src/stories/Widget${i}.stories.tsx`] = `
         export default { title: 'Widget${i}' };
@@ -292,38 +291,20 @@ describe('detectChangedStories', () => {
     }));
     const result = detectChangedStories(changedFiles, fs);
     expect(result.affected).toHaveLength(storyCount);
-    expect(result.affected.filter((s) => s.live)).toHaveLength(CANVAS_CAP);
-    expect(result.affected.filter((s) => !s.live)).toHaveLength(storyCount - CANVAS_CAP);
+    expect(result.affected.every((s) => s.verdict === 'new')).toBe(true);
   });
 
-  it('does not spend the canvas budget on a story with zero exports', () => {
+  it('keeps a story with hundreds of exports, new or changed', () => {
+    const manyExports = Array.from({ length: 100 }, (_, i) => `export const S${i} = {};`).join('\n');
     const fs = makeFs({
-      'src/stories/NoExports.stories.tsx': `export default { title: 'NoExports' };`,
-    });
-    const result = detectChangedStories(
-      [{ status: 'A', path: 'src/stories/NoExports.stories.tsx' }],
-      fs,
-    );
-    expect(result.affected).toEqual([
-      { path: 'src/stories/NoExports.stories.tsx', verdict: 'new', live: true },
-    ]);
-  });
-
-  it('prioritizes new stories over changed ones for the canvas budget', () => {
-    const files: Record<string, string> = {
       'src/components/Widget.tsx': `export const Widget = () => null;`,
       'src/stories/Widget.stories.tsx': `
         import { Widget } from '@/components/Widget';
         export default { title: 'Widget' };
-        ${Array.from({ length: CANVAS_CAP }, (_, i) => `export const S${i} = {};`).join('\n')}
+        ${manyExports}
       `,
-    };
-    // A single new story that alone eats the whole budget.
-    files['src/stories/NewBig.stories.tsx'] = `
-      export default { title: 'NewBig' };
-      ${Array.from({ length: CANVAS_CAP }, (_, i) => `export const N${i} = {};`).join('\n')}
-    `;
-    const fs = makeFs(files);
+      'src/stories/NewBig.stories.tsx': `export default { title: 'NewBig' };\n${manyExports}`,
+    });
     const result = detectChangedStories(
       [
         { status: 'A', path: 'src/stories/NewBig.stories.tsx' },
@@ -331,17 +312,13 @@ describe('detectChangedStories', () => {
       ],
       fs,
     );
-    const newEntry = result.affected.find((s) => s.path === 'src/stories/NewBig.stories.tsx');
-    const changedEntry = result.affected.find((s) => s.path === 'src/stories/Widget.stories.tsx');
-    expect(newEntry).toEqual({ path: 'src/stories/NewBig.stories.tsx', verdict: 'new', live: true });
-    expect(changedEntry).toEqual({
-      path: 'src/stories/Widget.stories.tsx',
-      verdict: 'changed',
-      live: false,
-    });
+    expect(result.affected).toEqual([
+      { path: 'src/stories/NewBig.stories.tsx', verdict: 'new' },
+      { path: 'src/stories/Widget.stories.tsx', verdict: 'changed' },
+    ]);
   });
 
-  it('does not promote a story/test HELPER file (src/stories/** non-story) to a live direct hit', () => {
+  it('does not promote a story/test HELPER file (src/stories/** non-story) to a direct hit', () => {
     const fs = makeFs({
       'src/stories/interactions.ts': `export const clickThrough = () => {};`,
       'src/stories/Consumer.stories.tsx': `
@@ -377,7 +354,7 @@ describe('detectChangedStories', () => {
       fs,
     );
     expect(result.affected).toEqual([
-      { path: 'src/stories/ActivityRenderer.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/ActivityRenderer.stories.tsx', verdict: 'changed' },
     ]);
     expect(result.maybeAffected).toEqual(['src/stories/DiagramActivity.stories.tsx']);
   });
@@ -392,7 +369,7 @@ describe('detectChangedStories', () => {
     });
     const result = detectChangedStories([{ status: 'M', path: 'src/components/Widget.tsx' }], fs);
     expect(result.affected).toEqual([
-      { path: 'src/stories/CustomTitle.stories.tsx', verdict: 'changed', live: true },
+      { path: 'src/stories/CustomTitle.stories.tsx', verdict: 'changed' },
     ]);
   });
 

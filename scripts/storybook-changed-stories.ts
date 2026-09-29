@@ -27,8 +27,7 @@
  * which many unrelated stories import to render through) promoted every one
  * of those consumers to "changed" when only its own story should count.
  *
- *   - `new`      — a `*.stories.(ts|tsx|mdx)` file was added. Always live
- *     (budget permitting — see the canvas cap below).
+ *   - `new`      — a `*.stories.(ts|tsx|mdx)` file was added.
  *   - `changed`  — EITHER the story file itself was modified, OR an existing
  *     story's OWN component changed. "Own component" is resolved two ways,
  *     tried IN ORDER: first a DIRECT (one-hop) import target whose basename
@@ -62,17 +61,10 @@
  *     components) that no story directly imports at all. This is the #532
  *     case: the file that actually matters, with no story to demo it in.
  *
- * Live budget is a CANVAS cap (`CANVAS_CAP`) — originally sized for how many
- * `<Canvas>` elements a single MDX page could render, now reused by
- * `generate-nesta-pr-stories.ts` as a cap on how many REAL re-exported
- * stories one PR can materialize inside Design Playground. Not a story-file
- * cap — a single story file can export dozens of individual stories, so
- * capping by file undercounts wildly: PR #517's `ActivityRenderer.stories.tsx`
- * alone exports 39. `new` entries are prioritized over `changed` (both consume
- * the same budget, walked in priority order); once a story's own canvas count
- * would push the running total over `CANVAS_CAP`, that story AND every story
- * after it in priority order is `live: false` — skipped (not generated),
- * listed with a reason in the PR comment instead.
+ * Every new / directly-changed story file is reported — there is no budget.
+ * `generate-nesta-pr-stories.ts` re-exports each one as real CSF stories, so
+ * each story is its own sidebar entry rather than a block on one page.
+ * `new` entries are listed before `changed` ones.
  *
  * Import resolution understands relative specifiers, the `@/` → `src/` alias
  * (`tsconfig.json` `paths`, mirrored by `vite.config.ts`) and workspace
@@ -97,12 +89,10 @@ export type StoryVerdict = 'new' | 'changed';
 export interface AffectedStory {
   path: string;
   verdict: StoryVerdict;
-  /** False once `CANVAS_CAP` is exceeded — render a link, not a `<Canvas>`. */
-  live: boolean;
 }
 
 export interface DetectChangedStoriesResult {
-  /** New + directly-changed stories, live-canvas budget already applied. */
+  /** New + directly-changed stories, no cap applied. */
   affected: AffectedStory[];
   /** Story paths the full transitive walk still finds, beyond the direct
    *  one-hop pass above. Never live — render as a collapsed link list. */
@@ -131,12 +121,6 @@ const WATCHED_DIRS = ['src/', 'packages/', 'design-playground/'];
 const MAX_IMPORT_DEPTH = 8;
 const RESOLVABLE_EXTENSIONS = ['.ts', '.tsx', '.mdx', '.css'];
 
-/** Live-canvas budget for the whole "🆕 Nesta PR" page, counted in `<Canvas>`
- *  elements (one per exported story), not story files — a single story file
- *  can export dozens. `new` entries are prioritized over `changed`; once the
- *  running total would exceed this, that entry and everything after it in
- *  priority order render as a link instead of a live canvas. */
-export const CANVAS_CAP = 24;
 /** Display cap for `maybeAffected` — applied by callers, not here, so this
  *  module always reports the real count. */
 export const MAYBE_AFFECTED_CAP = 30;
@@ -421,25 +405,6 @@ function resolveOwnComponent(
 }
 
 /**
- * Number of `<Canvas>` elements `generate-nesta-pr-stories.ts` would render for
- * this story file if it's live: one per exported story, or zero for an
- * `.mdx` page or a file whose `title` couldn't be parsed (those always
- * render as a link regardless of the `live` flag — see `renderStoryBlock`).
- */
-function canvasCountFor(path: string, fs: RepoFs): number {
-  if (path.endsWith('.mdx')) return 0;
-  let source: string;
-  try {
-    source = fs.readFile(path);
-  } catch {
-    return 0;
-  }
-  const meta = parseStoryFileMeta(source);
-  if (!meta.title) return 0;
-  return meta.exportNames.length;
-}
-
-/**
  * True if `entryFile` transitively imports anything in `changedSet`, within
  * `MAX_IMPORT_DEPTH` hops. Used for the `maybeAffected` bucket — the coarse,
  * full-closure pass that v1 used to treat as the whole answer.
@@ -544,34 +509,17 @@ export function detectChangedStories(
   }
 
   // Directly-edited story files come first — editing the story itself is
-  // the strongest signal — then component-triggered ones. Live budget
-  // applies to the combined "changed" list.
+  // the strongest signal — then component-triggered ones.
   const changedCandidates = [...directFileChanged, ...componentDirect];
 
-  // Canvas budget: `new` entries (sorted for determinism) are prioritized
-  // over `changed` entries, both walked in one priority order against a
-  // single running total of `<Canvas>` elements (one per exported story).
-  // Once a story's own count would push the total over `CANVAS_CAP`, that
-  // story and everything after it in priority order is `live: false`.
+  // `new` entries (sorted for determinism) come before `changed` ones.
   const newPathsSorted = Array.from(newPaths).sort((a, b) => a.localeCompare(b));
-  const priorityOrder: Array<{ path: string; verdict: StoryVerdict }> = [
+  const priorityOrder: AffectedStory[] = [
     ...newPathsSorted.map((path) => ({ path, verdict: 'new' as const })),
     ...changedCandidates.map((path) => ({ path, verdict: 'changed' as const })),
   ];
 
-  let canvasesUsed = 0;
-  let overBudget = false;
-  const budgeted: AffectedStory[] = priorityOrder.map(({ path, verdict }) => {
-    const count = overBudget ? 0 : canvasCountFor(path, fs);
-    if (!overBudget && canvasesUsed + count <= CANVAS_CAP) {
-      canvasesUsed += count;
-      return { path, verdict, live: true };
-    }
-    overBudget = true;
-    return { path, verdict, live: false };
-  });
-
-  const affected = budgeted.sort((a, b) => a.path.localeCompare(b.path));
+  const affected = priorityOrder.sort((a, b) => a.path.localeCompare(b.path));
 
   // Everything else the full transitive closure still reaches — 2+ hops, or
   // only reachable through a coarse whole-package alias.

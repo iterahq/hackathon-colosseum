@@ -50,7 +50,6 @@ const SAFE_COMMENT_CHAR_CAP = 60_000;
 const SKIP_REASON_LABEL: Record<SkipReason, string> = {
   mdx: 'página `.mdx`, sem export para reexportar',
   'no-default-export': 'sem `title` legível no export default',
-  'over-budget': 'fora do orçamento de stories geradas nesta PR',
 };
 
 interface StorybookIndexEntry {

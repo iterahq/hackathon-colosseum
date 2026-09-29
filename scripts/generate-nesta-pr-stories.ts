@@ -55,7 +55,7 @@ interface AffectedStoryWithMeta extends AffectedStory {
   isMdx: boolean;
 }
 
-export type SkipReason = 'mdx' | 'no-default-export' | 'over-budget';
+export type SkipReason = 'mdx' | 'no-default-export';
 
 export interface GeneratedManifestEntry {
   path: string;
@@ -199,14 +199,6 @@ function main(): void {
 
   const takenLeaves = new Set<string>();
   generationOrder.forEach((story, index) => {
-    // `.live` is the same `CANVAS_CAP` budget `detectChangedStories` already
-    // computes (originally sized for the old MDX page's live-canvas count,
-    // reused here as a cap on how many REAL stories one PR can materialize
-    // — a PR touching hundreds of files still gets a bounded generated set).
-    if (!story.live) {
-      skipped.push({ path: story.path, verdict: story.verdict, reason: 'over-budget' });
-      return;
-    }
     if (story.isMdx) {
       skipped.push({ path: story.path, verdict: story.verdict, reason: 'mdx' });
       return;
