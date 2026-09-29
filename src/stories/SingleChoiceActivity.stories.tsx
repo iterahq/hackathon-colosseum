@@ -89,3 +89,24 @@ export const Disabled: Story = {
 export const ImageOptions: Story = {
   args: { activity: makeActivity('single_choice', SINGLE_CHOICE_IMAGE_SPEC) },
 };
+
+/** Letter-only options that name the `**A**` / `**B**` / `**C**` blocks of the instruction keep the authored order. */
+export const LetterOptions: Story = {
+  args: {
+    activity: makeActivity('single_choice', {
+      instruction: 'Qual bloco fecha a tag certo?\n\n**A**\n\n`<h1>Oi<h1>`\n\n**B**\n\n`<h1>Oi</h1>`\n\n**C**\n\n`<h1>Oi</h>`',
+      options: [
+        { id: 'a', label: 'A' },
+        { id: 'b', label: 'B' },
+        { id: 'c', label: 'C' },
+      ],
+      correct_option_id: 'b',
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const labels = within(canvasElement)
+      .getAllByTestId('single-choice-option')
+      .map((option) => option.getAttribute('data-option-id'));
+    await expect(labels).toEqual(['a', 'b', 'c']);
+  },
+};

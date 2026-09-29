@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ChoiceOption, MultiChoiceSpec } from '../specs.js';
-import { learnerShuffle } from '../internal/shuffle.js';
+import { learnerOptionOrder } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
 import {
   useActivityActionRecorder,
@@ -63,8 +63,9 @@ export function MultiChoiceActivity({
   const scope = useLearnerScope();
   const spec = activity.spec as unknown as MultiChoiceSpec;
   // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
-  // different between learners (../internal/shuffle.ts).
-  const [options] = useState(() => learnerShuffle(spec?.options ?? [], scope, activity.id));
+  // different between learners (../internal/shuffle.ts). Reference-only labels
+  // (`A`, `B`, `C` for the instruction's blocks) keep the authored order.
+  const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id));
   const correctIds = spec?.correct_option_ids ?? [];
   // The learner's own earlier set, replayed — in the order they clicked it,
   // which is the order `answer_submitted` recorded and the order the artifact

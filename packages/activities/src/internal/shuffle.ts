@@ -84,6 +84,40 @@ export function learnerShuffleSeed(
   return `${scope}::${activityId ?? 'unknown-activity'}${salt ? `::${salt}` : ''}`;
 }
 
+/**
+ * A label that only POINTS at something the prompt shows — `A`, `**B**`,
+ * `(C)`, `2.` — instead of carrying an answer of its own.
+ */
+const REFERENCE_LABEL = /^\(?\**\s*([A-Za-z]|\d{1,2})\s*\**[).:]?\)?$/;
+
+/**
+ * True when every option is only a reference label (`A`, `B`, `C` for the
+ * `**A**`, `**B**`, `**C**` blocks of the instruction). Such options mean
+ * nothing by position — the answer lives in the blocks, which do not move — so
+ * shuffling them only prints `B, A, C` and makes the learner hunt. Options with
+ * media are never references.
+ */
+export function isReferenceLabelSet(
+  options: readonly { label?: string | null; image_url?: string | null; audio_url?: string | null }[],
+): boolean {
+  return (
+    options.length >= 2 &&
+    options.every((o) => !o.image_url && !o.audio_url && typeof o.label === 'string' && REFERENCE_LABEL.test(o.label.trim()))
+  );
+}
+
+/**
+ * The option order a choice kind shows: authored when the labels are only
+ * references (see `isReferenceLabelSet`), else the per-learner shuffle.
+ */
+export function learnerOptionOrder<T extends { label?: string | null; image_url?: string | null; audio_url?: string | null }>(
+  options: readonly T[],
+  scope: string,
+  activityId: string | undefined,
+): T[] {
+  return isReferenceLabelSet(options) ? [...options] : learnerShuffle(options, scope, activityId);
+}
+
 /** Shuffle `items` deterministically for THIS learner and THIS activity. */
 export function learnerShuffle<T>(
   items: readonly T[],
