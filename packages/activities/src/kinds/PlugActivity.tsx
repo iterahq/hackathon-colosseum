@@ -47,7 +47,6 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
   }, [connected, spec?.stylesheet]);
 
   const toggle = useCallback(() => {
-    if (solved) return;
     if (connected) {
       setConnected(false);
       setEverPulled(true);
@@ -56,7 +55,7 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
     }
     setConnected(true);
     record('cable_toggled', { connected: true });
-    if (everPulled) open({ cable: spec?.cable_name });
+    if (everPulled && !solved) open({ cable: spec?.cable_name });
   }, [connected, everPulled, open, record, solved, spec?.cable_name]);
 
   return (
@@ -87,8 +86,7 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
         type="button"
         data-testid="plug-cable"
         onClick={toggle}
-        disabled={solved}
-        className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-60"
+        className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
       >
         <Cable className="w-4 h-4" />
         {connected ? copy.text(spec?.on_label) : copy.text(spec?.off_label)}

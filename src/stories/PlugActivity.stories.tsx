@@ -42,6 +42,12 @@ export const Solved: Story = {
     await userEvent.click(cable);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
+    // The cable stays live: the learner compares the two versions freely, with no second verdict.
+    await userEvent.click(cable);
+    await expect(canvas.getByTestId('plug-stage')).toHaveAttribute('data-connected', 'false');
+    await userEvent.click(cable);
+    await expect(canvas.getByTestId('plug-stage')).toHaveAttribute('data-connected', 'true');
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -51,6 +57,9 @@ export const Done: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(args.onComplete).not.toHaveBeenCalled();
+    await userEvent.click(canvas.getByTestId('plug-cable'));
+    await expect(canvas.getByTestId('plug-stage')).toHaveAttribute('data-connected', 'false');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
