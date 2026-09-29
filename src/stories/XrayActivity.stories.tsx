@@ -55,6 +55,13 @@ export const Swept: Story = {
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
     const [, detail] = (args.onComplete as Mock).mock.calls[0];
     await expect(Array.isArray(detail.actions)).toBe(true);
+    // After the reveal the page stays and the lens keeps working.
+    stage.dispatchEvent(
+      new PointerEvent('pointermove', { clientX: box.left + box.width / 2, clientY: box.top + box.height / 2, bubbles: true }),
+    );
+    await waitFor(() => expect(canvas.getByTestId('xray-lens')).toBeInTheDocument());
+    await expect(getComputedStyle(canvas.getByTestId('xray-page')).opacity).toBe('1');
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -81,6 +88,8 @@ export const Done: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    // The page is still there to look under — the reveal no longer fades it away.
+    await expect(canvas.getByTestId('xray-page').style.opacity).not.toBe('0');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

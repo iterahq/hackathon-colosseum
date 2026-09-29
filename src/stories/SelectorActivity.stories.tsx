@@ -21,13 +21,33 @@ const meta: Meta<typeof SelectorActivity> = {
 export default meta;
 type Story = StoryObj<typeof SelectorActivity>;
 
-/** A.enabled / C.blank — nenhum chip escolhido ainda. */
+/** A.enabled / C.blank — nenhum chip escolhido ainda; a regra espera um seletor; a guia fala pelo nome. */
 export const Default: Story = {
-  args: { activity: makeGatedActivity('selector', SELECTOR_SPEC) },
+  args: { activity: makeGatedActivity('selector', { ...SELECTOR_SPEC, guide: { name: 'Duda' } }) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('selector-option-h1')).toHaveAttribute('aria-pressed', 'false');
+    await expect(canvas.getByTestId('scene-guide')).toHaveTextContent('Duda');
+    await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('? { color: #DB2777; }');
+    // The element shows its tag and text, never an id the page code does not have.
+    await expect(canvas.getByTestId('selector-element-intro')).toHaveTextContent('<p> Intro');
+    await expect(canvas.getByTestId('selector-element-intro')).not.toHaveTextContent('#');
     await expect(args.onComplete).not.toHaveBeenCalled();
+  },
+};
+
+/** An `id` chip: the element it names carries a real `id` attribute on the page. */
+export const IdSelector: Story = {
+  args: {
+    activity: makeGatedActivity('selector', {
+      ...SELECTOR_SPEC,
+      options: ['p', '#intro', 'a'],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('selector-element-intro')).toHaveTextContent('<p id="intro"> Intro');
+    await expect(canvas.getByTestId('selector-element-titulo')).not.toHaveTextContent('id=');
   },
 };
 
@@ -41,6 +61,13 @@ export const WrongThenRight: Story = {
     await expect(args.onComplete).not.toHaveBeenCalled();
     await userEvent.click(canvas.getByTestId('selector-option-p'));
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('p { color: #DB2777; }');
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
+    // The chips stay live after the gate: comparing selectors is the point, and the verdict fired once.
+    await userEvent.click(canvas.getByTestId('selector-option-h1'));
+    await expect(canvas.getByTestId('selector-element-titulo')).toHaveAttribute('data-lit', 'true');
+    await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('h1 { color: #DB2777; }');
+    await userEvent.click(canvas.getByTestId('selector-option-p'));
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -51,6 +78,12 @@ export const Done: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    // Opens on the chip that solved it, so the answer is on screen.
+    await expect(canvas.getByTestId('selector-option-p')).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getByTestId('selector-element-intro')).toHaveAttribute('data-lit', 'true');
+    await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('p { color: #DB2777; }');
+    await userEvent.click(canvas.getByTestId('selector-option-a'));
+    await expect(canvas.getByTestId('selector-element-link')).toHaveAttribute('data-lit', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

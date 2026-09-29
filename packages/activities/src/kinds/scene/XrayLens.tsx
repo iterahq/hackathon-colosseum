@@ -5,6 +5,7 @@ export function XrayLens({ x, y, label }: { x: number; y: number; label: string 
   const r = XRAY_LENS_RADIUS;
   return (
     <div
+      data-testid="xray-lens"
       className="pointer-events-none absolute rounded-full"
       style={{
         left: x - r,

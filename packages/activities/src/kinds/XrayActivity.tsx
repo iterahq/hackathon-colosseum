@@ -4,11 +4,12 @@
  *
  * The page sits on top of its own source; the pointer is a lens that punches
  * through it. Every source line sits under the element it draws. Sweeping
- * `coverage_goal` of the stage opens the gate: the page fades, only the text
- * remains, the guide reacts and the stamp names the idea. Ungraded; silent.
+ * `coverage_goal` of the stage opens the gate: the guide reacts and the stamp
+ * names the idea. The page and the lens stay live after that, so the learner
+ * keeps looking under any part of the page. Ungraded; silent.
  */
 import { useCallback, useRef } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { ScanLine } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ActivityCompleteHandler, PortableActivity } from '../renderer.js';
@@ -40,7 +41,7 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
   const { lens, progress, scan, scanKey, clearLens } = useXrayScan(stageRef, goal, gate.solved, onGoal);
   const r = XRAY_LENS_RADIUS;
   const mask =
-    lens && !gate.solved
+    lens
       ? `radial-gradient(circle ${r}px at ${lens.x}px ${lens.y}px, transparent 0 ${r - 2}px, #000 ${r}px)`
       : undefined;
 
@@ -68,7 +69,7 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
         onKeyDown={scanKey}
         onBlur={clearLens}
         className="relative w-full aspect-[4/5] sm:aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-evergreen"
-        style={{ touchAction: 'none', cursor: lens && !gate.solved ? 'none' : 'crosshair' }}
+        style={{ touchAction: 'none', cursor: lens ? 'none' : 'crosshair' }}
       >
         <div
           className="absolute inset-0"
@@ -76,19 +77,17 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
         >
           <XrayRows elements={elements} layer="code" />
         </div>
-        <motion.div
+        <div
           className="absolute inset-0"
           data-testid="xray-page"
-          animate={{ opacity: gate.solved ? 0 : 1 }}
-          transition={{ duration: 0.9, delay: gate.solved ? 0.4 : 0 }}
           style={{ background: SCENE_PAGE_BACKGROUND, WebkitMaskImage: mask, maskImage: mask }}
         >
           <div className="absolute top-0 inset-x-0">
             <SceneBrowserBar url={copy.url} />
           </div>
           <XrayRows elements={elements} layer="page" />
-        </motion.div>
-        {lens && !gate.solved && <XrayLens x={lens.x} y={lens.y} label={t('activity.xray.lens')} />}
+        </div>
+        {lens && <XrayLens x={lens.x} y={lens.y} label={t('activity.xray.lens')} />}
         <AnimatePresence>{!lens && !gate.solved && progress === 0 && <XrayHint />}</AnimatePresence>
       </div>
       <ScanMeter

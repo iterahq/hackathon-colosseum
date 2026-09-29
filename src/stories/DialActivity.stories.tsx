@@ -23,13 +23,31 @@ const meta: Meta<typeof DialActivity> = {
 export default meta;
 type Story = StoryObj<typeof DialActivity>;
 
-/** A.enabled / C.blank — o slider no `start`, fora do range alvo. */
+/** A.enabled / C.blank — o slider no `start`, fora do range alvo; a linha do CSS e a dica do alvo embaixo. */
 export const Default: Story = {
-  args: { activity: makeGatedActivity('dial', DIAL_SPEC) },
+  args: { activity: makeGatedActivity('dial', { ...DIAL_SPEC, target_hint: 'entre 24 e 32' }) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'false');
+    await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 12px; }');
+    await expect(canvas.getByTestId('dial-target-hint')).toHaveTextContent('entre 24 e 32');
+    dragSlider(canvas.getByTestId('dial-slider') as HTMLInputElement, 14);
+    await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 14px; }');
     await expect(args.onComplete).not.toHaveBeenCalled();
+  },
+};
+
+/** H.degenerado — o `start` já dentro do alvo: nada abre sem um gesto do aluno. */
+export const StartInsideTarget: Story = {
+  args: { activity: makeGatedActivity('dial', { ...DIAL_SPEC, start: 26 }) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await expect(canvas.queryByTestId('scene-stamp')).toBeNull();
+    await expect(args.onComplete).not.toHaveBeenCalled();
+    dragSlider(canvas.getByTestId('dial-slider') as HTMLInputElement, 27);
+    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -42,15 +60,27 @@ export const Settled: Story = {
     dragSlider(slider, 28);
     await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
+    // The slider stays live after the gate: the learner keeps exploring, with no second verdict.
+    dragSlider(slider, 14);
+    await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 14px; }');
+    dragSlider(slider, 30);
+    await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 30px; }');
+    await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
 
-/** B.done — concluída numa sessão anterior: abre resolvida direto. */
+/** B.done — concluída numa sessão anterior: abre resolvida, com o slider num valor dentro do alvo, e ainda mexe. */
 export const Done: Story = {
   args: { activity: makeGatedActivity('dial', DIAL_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    const slider = canvas.getByTestId('dial-slider') as HTMLInputElement;
+    await expect(slider.value).toBe('28');
+    await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 28px; }');
+    await expect(slider).toBeEnabled();
+    dragSlider(slider, 16);
+    await expect(canvas.getByTestId('dial-value')).toHaveTextContent('16px');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

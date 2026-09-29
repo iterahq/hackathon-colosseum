@@ -57,7 +57,7 @@ export function useXrayScan(stageRef: RefObject<HTMLDivElement>, goal: number, s
   const scanKey = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const step = ARROW_STEPS[event.key];
-      if (!step || solved) return;
+      if (!step) return;
       const box = stageRef.current?.getBoundingClientRect();
       if (!box || box.width === 0) return;
       event.preventDefault();
@@ -68,7 +68,7 @@ export function useXrayScan(stageRef: RefObject<HTMLDivElement>, goal: number, s
       const y = Math.min(box.height - 1, Math.max(0, from.y + step[1] * cellH));
       scanAt(x, y, box);
     },
-    [stageRef, scanAt, solved, lens],
+    [stageRef, scanAt, lens],
   );
 
   const progress = solved ? 1 : Math.min(1, coverage / goal);
