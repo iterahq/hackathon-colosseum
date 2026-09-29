@@ -168,11 +168,15 @@ export function buildHtmlCheckDocument(source: string, checks: CodeCheck[]): str
     '<script>',
     CODE_PREVIEW_HTML_CHECK_RUNTIME_SOURCE,
     'var __checks=' + serializeForInlineScript(checks) + ';',
+    // The raw source rides along for the source-level asserts (`closes`,
+    // `source_has`): the document below is what the PARSER made of it, which is
+    // exactly what hides an `<h2>…</h3>`.
+    'var __source=' + serializeForInlineScript(source) + ';',
     'function nextTick(){return new Promise(function(res){',
     '  var raf=window.requestAnimationFrame||function(cb){return setTimeout(cb,16);};',
     '  raf(function(){setTimeout(res,0);});});}',
     'function noopRemount(){}',
-    '__iteraRunChecks({root:document,checks:__checks,remount:noopRemount,nextTick:nextTick,win:window})',
+    '__iteraRunChecks({root:document,checks:__checks,remount:noopRemount,nextTick:nextTick,win:window,source:__source})',
     '  .then(function(r){window.parent.postMessage({type:"itera:checks",results:r},"*");},',
     '        function(){window.parent.postMessage({type:"itera:checks",results:__checks.map(function(c){return {id:c.id,passed:false};})},"*");});',
     '</script>',

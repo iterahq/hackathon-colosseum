@@ -29,18 +29,41 @@ export function runHtmlChecksInDocument(
   checks: CodeCheck[],
 ): Promise<CodeCheckResult[]> {
   const parse = () => new DOMParser().parseFromString(source, 'text/html');
-  const doc = parse();
+
+  // The parsed tree is HOSTED in a throwaway same-origin iframe instead of
+  // being graded inside the `DOMParser` document itself: that document has no
+  // `defaultView`, so `getComputedStyle` (the `style` assert) would see no
+  // stylesheet at all. Moving already-parsed nodes in does NOT run their
+  // scripts — a parser-created `<script>` is marked "already started" — so the
+  // no-execution guarantee above still holds.
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.display = 'none';
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument as Document;
 
   function remount(): void {
     const fresh = parse();
     doc.replaceChild(doc.adoptNode(fresh.documentElement), doc.documentElement);
   }
+  remount();
 
+  const done = () => frame.remove();
   return runCodeChecks({
     root: doc,
     checks,
     remount,
     nextTick: () => Promise.resolve(),
-    win: window,
-  });
+    win: frame.contentWindow as Window,
+    source,
+  }).then(
+    (results) => {
+      done();
+      return results;
+    },
+    (err: unknown) => {
+      done();
+      throw err;
+    },
+  );
 }

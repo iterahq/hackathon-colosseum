@@ -9,6 +9,7 @@ import {
   rewriteLessonMediaUrls,
   stripUnderscoreKeys,
   unitIdemKey,
+  validateActivities,
   type Fixture,
 } from './program-fixture';
 
@@ -180,5 +181,52 @@ describe('buildMediaPlan', () => {
       program: { ...FIXTURE.program, units: [{ ...FIXTURE.program.units[0], lessons: [] }] },
     };
     expect(buildMediaPlan(noMedia)).toEqual([]);
+  });
+});
+
+describe('validateActivities — source and style asserts', () => {
+  const withChecks = (language: string, checks: unknown[]): Fixture => ({
+    program: {
+      slug: 'asserts',
+      title_i18n: { pt: 'A', en: 'A' },
+      units: [
+        {
+          ordinal: 0,
+          title_i18n: { pt: 'U', en: 'U' },
+          lessons: [
+            {
+              ordinal: 0,
+              key: 'l0',
+              title_i18n: { pt: 'L', en: 'L' },
+              activities: [
+                {
+                  ordinal: 0,
+                  kind: 'code_editor_checks',
+                  status: 'published',
+                  spec: { prompt: '1. Feche o h2.', language, starter: '<h2>Sobre mim</h3>', checks },
+                  rubric: {},
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  const CHECKS = [
+    { id: 'closes', label: 'h2 fechado com </h2>', selector: 'h2', assert: { type: 'closes' } },
+    { id: 'h1-size', label: 'h1 com 40px', selector: 'h1', assert: { type: 'style', property: 'font-size', equals: '40px' } },
+    { id: 'h1-align', label: 'h1 centralizado', selector: 'h1', assert: { type: 'style', property: 'text-align', equals: 'center' } },
+    { id: 'bg', label: 'fundo rosa', selector: 'body', assert: { type: 'style', property: 'background-color', equals: 'rgb(255, 192, 203)' } },
+    { id: 'doctype', label: 'tem doctype', selector: 'doctype', assert: { type: 'source_has', tag: 'doctype' } },
+  ];
+
+  it('accepts a fixture using closes / style / source_has on an html spec', () => {
+    expect(validateActivities(withChecks('html', CHECKS))).toEqual([]);
+  });
+
+  it('rejects the source asserts on a tsx spec', () => {
+    expect(validateActivities(withChecks('tsx', CHECKS))).toHaveLength(1);
   });
 });

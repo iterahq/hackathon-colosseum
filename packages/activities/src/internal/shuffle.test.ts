@@ -15,8 +15,10 @@ describe('isReferenceLabelSet', () => {
     expect(isReferenceLabelSet(opts('A', 'B', 'none of them'))).toBe(false);
     expect(isReferenceLabelSet(opts('h1', 'p'))).toBe(false);
     expect(isReferenceLabelSet(opts('A'))).toBe(false);
-    expect(isReferenceLabelSet([{ id: 'x', label: 'A', image_url: 'a.png' }, { id: 'y', label: 'B' }])).toBe(false);
-    expect(isReferenceLabelSet([{ id: 'x' }, { id: 'y' }])).toBe(false);
+    const withImage = [{ id: 'x', label: 'A', image_url: 'a.png' }, { id: 'y', label: 'B' }];
+    const unlabelled: { id: string; label?: string }[] = [{ id: 'x' }, { id: 'y' }];
+    expect(isReferenceLabelSet(withImage)).toBe(false);
+    expect(isReferenceLabelSet(unlabelled)).toBe(false);
   });
 });
 

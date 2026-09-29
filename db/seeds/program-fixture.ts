@@ -310,13 +310,13 @@ function loadFixture(fixturePath: string): Fixture {
   return stripUnderscoreKeys(raw) as Fixture;
 }
 
-interface ValidationIssue {
+export interface ValidationIssue {
   path: string;
   message: string;
 }
 
 /** Fail closed: every activity spec must parse before ANY write happens. */
-function validateActivities(fixture: Fixture): ValidationIssue[] {
+export function validateActivities(fixture: Fixture): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   for (const unit of fixture.program.units) {
     for (const lesson of unit.lessons) {
