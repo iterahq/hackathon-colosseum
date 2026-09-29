@@ -46,6 +46,22 @@ export const SemStarter: Story = {
   },
 };
 
+/** `language: 'css'` — the stylesheet renders over a sample page built from its own selectors, never through the React transpiler. */
+export const Css: Story = {
+  args: {
+    activity: activity({
+      prompt: 'Deite o menu e ponha 16px de vão entre os itens.',
+      language: 'css',
+      starter: '.menu {\n  display: flex;\n  gap: 16px;\n}\n',
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByTestId('code-preview-iframe').getAttribute('srcdoc')).toContain('class="menu"');
+    await expect(canvas.queryByTestId('code-preview-error')).toBeNull();
+  },
+};
+
 /** B.done — concluded in an earlier session. */
 export const Concluida: Story = { args: { activity: activity(SPEC, 'done') } };
 

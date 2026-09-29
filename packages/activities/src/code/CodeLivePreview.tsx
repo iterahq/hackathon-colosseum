@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CODE_PREVIEW_IFRAME_HTML } from './codePreviewIframe.js';
+import { buildCssPreviewDocument } from './cssPreviewDocument.js';
 import { HtmlLivePreview } from './HtmlLivePreview.js';
 import { transpileSnack } from './transpileSnack.js';
 import type { CodeCheckResult, CodeChecksRequest } from './types.js';
@@ -46,10 +47,35 @@ export function CodeLivePreview({
   if (language === 'html') {
     return <HtmlLivePreview code={code} checksRequest={checksRequest} onChecksResult={onChecksResult} />;
   }
+  if (language === 'css') {
+    return <CssLivePreview code={code} checksRequest={checksRequest} onChecksResult={onChecksResult} />;
+  }
 
   return (
     <CodeLivePreviewReact code={code} checksRequest={checksRequest} onChecksResult={onChecksResult} />
   );
+}
+
+/**
+ * `language: 'css'`: a stylesheet is not a program, so it never goes near the
+ * transpiler. It is wrapped in `<style>` over a small sample page (see
+ * `buildCssPreviewDocument`) and rendered — and graded — as an HTML document.
+ */
+function CssLivePreview({
+  code,
+  checksRequest = null,
+  onChecksResult,
+}: {
+  code: string;
+  checksRequest?: CodeChecksRequest | null;
+  onChecksResult?: (results: CodeCheckResult[], token: number) => void;
+}) {
+  const doc = useMemo(() => buildCssPreviewDocument(code), [code]);
+  const docRequest = useMemo(
+    () => (checksRequest ? { ...checksRequest, code: buildCssPreviewDocument(checksRequest.code) } : null),
+    [checksRequest],
+  );
+  return <HtmlLivePreview code={doc} checksRequest={docRequest} onChecksResult={onChecksResult} />;
 }
 
 function CodeLivePreviewReact({

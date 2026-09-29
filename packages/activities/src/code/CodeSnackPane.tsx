@@ -113,8 +113,8 @@ export function CodeSnackPane({
             // do professor DENTRO deste painel por portal, posicionado em % dele.
             className={`relative ${CODE_PANE_BOX} border border-border bg-[#0a0a0a]`}
           >
-            {/* `spec.language` now drives the editor: `"html"` (the plain-web
-                course) gets Monaco's `html` mode, everything else — including
+            {/* `spec.language` now drives the editor: `"html"` and `"css"` (the
+                plain-web course) get Monaco's own mode, everything else — including
                 the schema default `"tsx"`, which is not itself a Monaco
                 language id — keeps `"typescript"`, exactly as before this kind
                 had a second language. See CONTRACT.md finding 7 for the
@@ -122,7 +122,7 @@ export function CodeSnackPane({
             <CodeEditorSurface
               value={code}
               onChange={setCode}
-              language={spec.language === 'html' ? 'html' : 'typescript'}
+              language={spec.language === 'html' || spec.language === 'css' ? spec.language : 'typescript'}
               readOnly={readOnly}
               editableRegions={editableRegions}
             />

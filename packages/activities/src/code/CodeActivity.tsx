@@ -46,10 +46,10 @@ export function CodeActivity({ activity, onComplete, reveal }: ActivityRendererP
   // coverage sweep, so it crosses into the package unchanged.
   const parsed = safeParseActivitySpec('code', activity.spec);
   // `code` is DEPRECATED (transition list) and may not gain behaviour: the
-  // plain-web `language: 'html'` mode lives on the one-behaviour kinds
+  // plain-web `language: 'html'` / `'css'` modes live on the one-behaviour kinds
   // (`code_editor_checks`, `code_editor_ungraded`, `code_fill_*`) only. The
   // spec package types `language` as a free string, so the gate is HERE.
-  if (!parsed.success || parsed.data.language === 'html') {
+  if (!parsed.success || parsed.data.language === 'html' || parsed.data.language === 'css') {
     return (
       <div
         className="rounded-3xl border border-border bg-card p-8 text-center text-muted-foreground"
