@@ -212,3 +212,24 @@ export function priorText(prior?: ActivityCompletion): string | undefined {
   if (typeof value !== 'string') return undefined;
   return value.trim().length > 0 ? value : undefined;
 }
+
+/* ───────────── scene kinds — the payload of the gesture that opened the gate ─ */
+
+/**
+ * One field of the LAST `gate_opened` action, or `undefined`.
+ *
+ * A scene kind has no `answer_submitted`: its attempt closes when the gesture
+ * opens the gate, so that is the action a kind with learner-shaped end state
+ * (`decompose_canvas`'s assignment) records it on. The value is returned raw —
+ * the kind validates it against its own spec and re-judges it, per rules 2
+ * and 3 above.
+ */
+export function priorGatePayload(prior: ActivityCompletion | undefined, key: string): unknown {
+  const actions = prior?.actions;
+  if (!actions) return undefined;
+  for (let i = actions.length - 1; i >= 0; i -= 1) {
+    const a = actions[i];
+    if (a && a.type === 'gate_opened') return a.payload?.[key];
+  }
+  return undefined;
+}

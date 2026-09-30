@@ -350,6 +350,12 @@ activity_kinds:
   - bucket
   - intercept
   - query
+  # System kinds (0109, 2026-09-30, merge é do Tainan — ADR-5): um micro-app
+  # visto por quatro lentes (partes, composição, estado, eventos).
+  - decompose_canvas
+  - compose_blocks
+  - state_lab
+  - event_trace
 
 testing:
   framework: vitest

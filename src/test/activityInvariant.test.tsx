@@ -35,7 +35,7 @@
  */
 import './storybookTestBridge';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { Activity, ActivityKind } from '@/types/content';
@@ -630,6 +630,62 @@ const DRIVES: Record<ContractKey, Drive> = {
       'the gate opens on a pointer gesture that jsdom does not lay out; covered in a real ' +
       'browser by `QueryActivity.stories.tsx` (play functions). No wrong path: an ' +
       'incomplete gesture only keeps the gate closed.',
+  },
+
+  /*
+   * System kinds (2026-09-30): tap gestures jsdom can drive. No wrong path — a
+   * violated constraint or a bounced block is a hint, never `false`.
+   */
+  decompose_canvas: {
+    kind: 'decompose_canvas',
+    correct: async (c) => {
+      const tap = (id: string) => fireEvent.click(within(c).getByTestId(`system-node-${id}`));
+      const name = (part: string) => fireEvent.click(within(c).getByTestId(`decompose-part-${part}`));
+      tap('title');
+      name('header');
+      tap('new');
+      tap('add_btn');
+      name('add');
+      ['item#0', 'item#1', 'item#2'].forEach(tap);
+      name('item');
+      fireEvent.click(within(c).getByTestId('decompose-verify'));
+    },
+    why: 'constraints only: a violated rule shows its hint and keeps the gate closed, never `false`.',
+  },
+  compose_blocks: {
+    kind: 'compose_blocks',
+    correct: async (c) => {
+      const place = (block: string, slot: string) => {
+        fireEvent.click(within(c).getByTestId(`compose-block-${block}`));
+        fireEvent.click(within(c).getByTestId(`compose-slot-${slot}`));
+      };
+      place('header', 'root');
+      place('add_form', 'root');
+      place('task_list', 'root');
+      const slots = within(c).getAllByTestId(/^compose-slot-n/);
+      const list = (slots[slots.length - 1].dataset.testid ?? '').replace('compose-slot-', '');
+      place('task_item', list);
+      place('task_item', list);
+      await waitFor(() => expect(within(c).getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 3000 });
+    },
+    why: 'a block that does not belong under that parent bounces with a hint; there is no `false`.',
+  },
+  state_lab: {
+    kind: 'state_lab',
+    correct: async (c) => {
+      fireEvent.click(within(c).getByTestId('state-lab-control-toggle_first'));
+      fireEvent.click(within(c).getByTestId('state-lab-control-toggle_second'));
+      await waitFor(() => expect(within(c).getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 3000 });
+    },
+    why: 'goals only tick; a state that misses them keeps the gate closed, never `false`.',
+  },
+  event_trace: {
+    kind: 'event_trace',
+    correct: async (c) => {
+      fireEvent.click(within(c).getByTestId('system-node-item#0'));
+      for (let i = 0; i < 3; i += 1) fireEvent.click(within(c).getByTestId('event-trace-next'));
+    },
+    why: 'a reading walk: there is nothing to get wrong, so no `false` path exists.',
   },
 };
 

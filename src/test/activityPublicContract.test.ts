@@ -297,6 +297,15 @@ const PUBLIC_RUNTIME_SURFACE = [
   'BucketActivity',
   'InterceptActivity',
   'QueryActivity',
+  // The system kinds (2026-09-30): four renderers on the shared `SystemView`,
+  // plus the release-gate list and guard until activity-spec carries them.
+  'DecomposeCanvasActivity',
+  'ComposeBlocksActivity',
+  'StateLabActivity',
+  'EventTraceActivity',
+  'SystemView',
+  'SYSTEM_KINDS',
+  'isSystemKind',
   // chat_sandbox / terminal_sandbox — two kinds, five activity types. The two
   // dispatchers are public because the app switches on KIND; the five leaves are
   // public because the stories drive them directly.

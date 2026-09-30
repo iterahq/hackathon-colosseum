@@ -159,6 +159,13 @@ export const ACTIVITY_FAMILY: Record<ActivityKind, ActivityFamily> = {
   plug: 'reading',
   press: 'reading',
   arrange: 'reading',
+  // The system kinds (2026-09-30) — four lenses over one micro-app (parts,
+  // composition, state, events). Same reasoning: the gesture reveals, a wrong
+  // try is a hint, and the only verdict is "the gesture completed".
+  decompose_canvas: 'reading',
+  compose_blocks: 'reading',
+  state_lab: 'reading',
+  event_trace: 'reading',
   // — editor: Monaco + autosave + checks —
   code: 'editor',
   // — scenario: turns against a world model —
@@ -340,6 +347,17 @@ export const FAMILY_ACTIONS = {
     'clause_toggled',
     /** Any gate kind whose gesture can miss. `{ kind-specific AUTHORED id }` — e.g. `{ option }` for `selector`, `{ option_id }` for `press`, `{ left_id, right_id }` for `wire`, `{ bug_id }` for `spot`, `{ chip_id, bucket_id }` for `bucket`, `{ node_id }` for `intercept` — never the hint text. */
     'wrong_try',
+    // — the system kinds (2026-09-30): one entry per new gesture shape.
+    /** Selected leaves were named as one part. `decompose_canvas`. `{ part_id, node_ids }` — AUTHORED ids. */
+    'part_assigned',
+    /** A block was placed under a parent. `compose_blocks`. `{ block_id, parent_block }`. */
+    'block_placed',
+    /** A placed block was taken out of the tree. `compose_blocks`. `{ block_id }`. */
+    'block_removed',
+    /** A state control was operated. `state_lab`. `{ control_id }` — never the typed value. */
+    'state_changed',
+    /** The trigger node fired the traced event. `event_trace`. `{ node_id }`; each step then is `step_visited`. */
+    'event_triggered',
   ],
   editor: [
     /** A debounced batch of edits landed. `{ length }` — NEVER the source text; see the privacy note below. */
@@ -464,6 +482,11 @@ export const FAMILY_EMITTED = {
     'chip_placed',
     'clause_toggled',
     'wrong_try',
+    'part_assigned',
+    'block_placed',
+    'block_removed',
+    'state_changed',
+    'event_triggered',
   ],
   editor: [],
   // `scenario` is PARTIALLY wired: the TERMINAL sandbox emits, the CHAT sandbox
@@ -590,6 +613,11 @@ export const SCENE_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
   'plug',
   'press',
   'arrange',
+  // The system kinds (2026-09-30).
+  'decompose_canvas',
+  'compose_blocks',
+  'state_lab',
+  'event_trace',
 ]);
 
 export function isSceneKind(kind: string | null | undefined): boolean {

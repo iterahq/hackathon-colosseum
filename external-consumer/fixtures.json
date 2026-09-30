@@ -2051,5 +2051,465 @@
         "ordered": false
       }
     }
+  },
+  "decompose_canvas": {
+    "id": "fixture-decompose-canvas",
+    "kind": "decompose_canvas",
+    "spec": {
+      "guide": {
+        "name": "Duda"
+      },
+      "prompt": "Seleciona os elementos que andam juntos e dá um nome a cada parte da tela.",
+      "reaction": "Cada parte tem um trabalho só: mostrar, adicionar ou listar.",
+      "stamp": "decomposição",
+      "wrong_hint": "Essa divisão ainda mistura partes com trabalhos diferentes.",
+      "view": {
+        "id": "app",
+        "type": "box",
+        "children": [
+          {
+            "id": "title",
+            "type": "heading",
+            "text": "Minhas tarefas"
+          },
+          {
+            "id": "add",
+            "type": "box",
+            "children": [
+              {
+                "id": "new",
+                "type": "input",
+                "placeholder": "Nova tarefa"
+              },
+              {
+                "id": "add_btn",
+                "type": "button",
+                "text": "Adicionar"
+              }
+            ]
+          },
+          {
+            "id": "list",
+            "type": "list",
+            "bind": "tasks",
+            "empty": "Nenhuma tarefa",
+            "item": {
+              "id": "item",
+              "type": "checkbox_item",
+              "text": {
+                "bind": "title"
+              },
+              "checked": {
+                "bind": "done"
+              }
+            }
+          }
+        ]
+      },
+      "state": {
+        "tasks": [
+          {
+            "title": "Comprar café",
+            "done": false
+          },
+          {
+            "title": "Revisar proposta",
+            "done": false
+          },
+          {
+            "title": "Estudar React",
+            "done": false
+          }
+        ]
+      },
+      "parts": [
+        {
+          "id": "header",
+          "label": "Cabeçalho"
+        },
+        {
+          "id": "add",
+          "label": "Adicionar tarefa"
+        },
+        {
+          "id": "list",
+          "label": "Lista de tarefas"
+        },
+        {
+          "id": "item",
+          "label": "Item da tarefa",
+          "inside": "list"
+        }
+      ],
+      "must_group": [
+        {
+          "ids": [
+            "new",
+            "add_btn"
+          ],
+          "hint": "O campo e o botão formam uma parte só: adicionar tarefa."
+        },
+        {
+          "ids": [
+            "item#0",
+            "item#1",
+            "item#2"
+          ],
+          "hint": "Todas as tarefas são o mesmo tipo de item."
+        }
+      ],
+      "must_separate": [
+        {
+          "ids": [
+            "title",
+            "new"
+          ],
+          "hint": "O título não faz parte de adicionar tarefa."
+        },
+        {
+          "ids": [
+            "add_btn",
+            "item#0"
+          ],
+          "hint": "O botão e a lista têm trabalhos diferentes."
+        }
+      ]
+    }
+  },
+  "compose_blocks": {
+    "id": "fixture-compose-blocks",
+    "kind": "compose_blocks",
+    "spec": {
+      "guide": {
+        "name": "Duda"
+      },
+      "prompt": "Monta a tela de tarefas encaixando os blocos, do maior para o menor.",
+      "reaction": "A tela é feita de blocos dentro de blocos.",
+      "stamp": "composição",
+      "wrong_hint": "Esse bloco não pertence a esse lugar.",
+      "blocks": [
+        {
+          "id": "app",
+          "label": "App",
+          "view": {
+            "id": "app",
+            "type": "box",
+            "children": []
+          }
+        },
+        {
+          "id": "header",
+          "label": "Cabeçalho",
+          "view": {
+            "id": "header",
+            "type": "heading",
+            "text": "Minhas tarefas"
+          }
+        },
+        {
+          "id": "add_form",
+          "label": "Adicionar tarefa",
+          "view": {
+            "id": "add_form",
+            "type": "box",
+            "children": [
+              {
+                "id": "new",
+                "type": "input",
+                "placeholder": "Nova tarefa"
+              },
+              {
+                "id": "add_btn",
+                "type": "button",
+                "text": "Adicionar"
+              }
+            ]
+          }
+        },
+        {
+          "id": "task_list",
+          "label": "Lista de tarefas",
+          "view": {
+            "id": "task_list",
+            "type": "box",
+            "children": []
+          }
+        },
+        {
+          "id": "task_item",
+          "label": "Item da tarefa",
+          "view": {
+            "id": "task_item",
+            "type": "checkbox_item",
+            "text": {
+              "bind": "title"
+            },
+            "checked": {
+              "bind": "done"
+            }
+          },
+          "max": 3
+        }
+      ],
+      "root": "app",
+      "target": {
+        "block": "app",
+        "children": [
+          {
+            "block": "header"
+          },
+          {
+            "block": "add_form"
+          },
+          {
+            "block": "task_list",
+            "children": [
+              {
+                "block": "task_item"
+              },
+              {
+                "block": "task_item"
+              }
+            ]
+          }
+        ]
+      },
+      "sibling_order_matters": false,
+      "item_style": "card"
+    }
+  },
+  "state_lab": {
+    "id": "fixture-state-lab",
+    "kind": "state_lab",
+    "spec": {
+      "guide": {
+        "name": "Duda"
+      },
+      "prompt": "Mexe no estado e vê a tela mudar. Deixa as duas primeiras tarefas concluídas.",
+      "reaction": "A tela é só o estado desenhado: muda o dado, muda o desenho.",
+      "stamp": "estado vira tela",
+      "state": {
+        "tasks": [
+          {
+            "title": "Comprar café",
+            "done": false
+          },
+          {
+            "title": "Revisar proposta",
+            "done": false
+          },
+          {
+            "title": "Estudar React",
+            "done": false
+          }
+        ]
+      },
+      "view": {
+        "id": "app",
+        "type": "box",
+        "children": [
+          {
+            "id": "title",
+            "type": "heading",
+            "text": "Minhas tarefas"
+          },
+          {
+            "id": "add",
+            "type": "box",
+            "children": [
+              {
+                "id": "new",
+                "type": "input",
+                "placeholder": "Nova tarefa"
+              },
+              {
+                "id": "add_btn",
+                "type": "button",
+                "text": "Adicionar"
+              }
+            ]
+          },
+          {
+            "id": "list",
+            "type": "list",
+            "bind": "tasks",
+            "empty": "Nenhuma tarefa",
+            "item": {
+              "id": "item",
+              "type": "checkbox_item",
+              "text": {
+                "bind": "title"
+              },
+              "checked": {
+                "bind": "done"
+              }
+            }
+          }
+        ]
+      },
+      "controls": [
+        {
+          "id": "toggle_first",
+          "path": "tasks.0.done",
+          "type": "toggle",
+          "label": "Comprar café concluída"
+        },
+        {
+          "id": "toggle_second",
+          "path": "tasks.1.done",
+          "type": "toggle",
+          "label": "Revisar proposta concluída"
+        },
+        {
+          "id": "add_task",
+          "path": "tasks",
+          "type": "add_item",
+          "label": "Adicionar tarefa",
+          "template": {
+            "title": "Nova tarefa",
+            "done": false
+          }
+        },
+        {
+          "id": "remove_task",
+          "path": "tasks",
+          "type": "remove_item",
+          "label": "Remover última tarefa"
+        }
+      ],
+      "goals": [
+        {
+          "path": "tasks.0.done",
+          "equals": true,
+          "label": "Comprar café está concluída"
+        },
+        {
+          "path": "tasks.1.done",
+          "equals": true,
+          "label": "Revisar proposta está concluída"
+        }
+      ]
+    }
+  },
+  "event_trace": {
+    "id": "fixture-event-trace",
+    "kind": "event_trace",
+    "spec": {
+      "guide": {
+        "name": "Duda"
+      },
+      "prompt": "Clica na primeira tarefa e acompanha o que acontece, passo a passo.",
+      "reaction": "Um clique vira ação, a ação muda o estado e o estado redesenha a tela.",
+      "stamp": "causa e efeito",
+      "state": {
+        "tasks": [
+          {
+            "title": "Comprar café",
+            "done": false
+          },
+          {
+            "title": "Revisar proposta",
+            "done": false
+          },
+          {
+            "title": "Estudar React",
+            "done": false
+          }
+        ]
+      },
+      "view": {
+        "id": "app",
+        "type": "box",
+        "children": [
+          {
+            "id": "title",
+            "type": "heading",
+            "text": "Minhas tarefas"
+          },
+          {
+            "id": "add",
+            "type": "box",
+            "children": [
+              {
+                "id": "new",
+                "type": "input",
+                "placeholder": "Nova tarefa"
+              },
+              {
+                "id": "add_btn",
+                "type": "button",
+                "text": "Adicionar"
+              }
+            ]
+          },
+          {
+            "id": "list",
+            "type": "list",
+            "bind": "tasks",
+            "empty": "Nenhuma tarefa",
+            "item": {
+              "id": "item",
+              "type": "checkbox_item",
+              "text": {
+                "bind": "title"
+              },
+              "checked": {
+                "bind": "done"
+              }
+            }
+          }
+        ]
+      },
+      "trigger": {
+        "node": "item#0"
+      },
+      "steps": [
+        {
+          "id": "event",
+          "lens": "event",
+          "label": "click",
+          "highlight": "item#0"
+        },
+        {
+          "id": "action",
+          "lens": "action",
+          "label": "completeTask",
+          "highlight": "item#0"
+        },
+        {
+          "id": "state",
+          "lens": "state",
+          "label": "done: false → true",
+          "highlight": "list",
+          "state_after": {
+            "tasks": [
+              {
+                "title": "Comprar café",
+                "done": true
+              },
+              {
+                "title": "Revisar proposta",
+                "done": false
+              },
+              {
+                "title": "Estudar React",
+                "done": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "render",
+          "lens": "render",
+          "label": "a tarefa aparece marcada",
+          "highlight": "item#0"
+        }
+      ],
+      "lenses": [
+        "structure",
+        "state",
+        "flow"
+      ]
+    }
   }
 }

@@ -29,6 +29,7 @@ import {
 } from './behaviourFixtures';
 import { BYOC_BUILD_CONTEXT_SPEC, BYOC_JUDGE_EACH_SPEC, BYOC_PICK_BEST_SPEC } from './byocFixtures';
 import { SCENE_MECHANICS_CONTRACTS } from './contractFixturesSceneMechanics';
+import { SYSTEM_KINDS_CONTRACTS } from './contractFixturesSystemKinds';
 
 /** As funções pedagógicas — a camada de agrupamento da sidebar do Storybook. */
 export type ActivityFunction =
@@ -1187,6 +1188,7 @@ export const ACTIVITY_CONTRACTS = {
   // (`contractFixturesSceneMechanics.ts`) — see the note at the top of this
   // file's imports.
   ...SCENE_MECHANICS_CONTRACTS,
+  ...SYSTEM_KINDS_CONTRACTS,
 } as const satisfies Record<string, ContractFixture>;
 
 export type ContractKey = keyof typeof ACTIVITY_CONTRACTS;

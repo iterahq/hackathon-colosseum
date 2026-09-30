@@ -76,7 +76,9 @@
 import { ACTIVITY_KINDS, isActivityKind, isImplementedKind } from '@iterahq/activity-spec';
 import {
   ONE_BEHAVIOUR_KINDS,
+  SYSTEM_KINDS,
   isOneBehaviourKind,
+  isSystemKind,
   kindInvalidTestId,
   safeParseKindSpec,
   specPackageKnowsKind,
@@ -107,12 +109,12 @@ export type ValidationSite = 'boundary' | 'component';
  * removes the duplicates — the list is the same either way.
  */
 export const KNOWN_ACTIVITY_KINDS: readonly ActivityKind[] = [
-  ...new Set<ActivityKind>([...ACTIVITY_KINDS, ...ONE_BEHAVIOUR_KINDS]),
+  ...new Set<ActivityKind>([...ACTIVITY_KINDS, ...ONE_BEHAVIOUR_KINDS, ...SYSTEM_KINDS]),
 ];
 
 /** `isActivityKind`, widened to the one-behaviour kinds. */
 export function isKnownActivityKind(kind: unknown): kind is ActivityKind {
-  return isActivityKind(kind) || isOneBehaviourKind(kind);
+  return isActivityKind(kind) || isOneBehaviourKind(kind) || isSystemKind(kind);
 }
 
 /**
@@ -224,6 +226,12 @@ export const KIND_VALIDATION: Record<ActivityKind, KindValidation> = {
   plug: { site: 'boundary', invalidTestId: 'plug-invalid', messageKey: 'activity.specInvalid' },
   press: { site: 'boundary', invalidTestId: 'press-invalid', messageKey: 'activity.specInvalid' },
   arrange: { site: 'boundary', invalidTestId: 'arrange-invalid', messageKey: 'activity.specInvalid' },
+  // The system kinds (2026-09-30) — boundary site; answered by the package's
+  // structural fallback until `@iterahq/activity-spec` releases their schemas.
+  decompose_canvas: { site: 'boundary', invalidTestId: 'decompose-canvas-invalid', messageKey: 'activity.specInvalid' },
+  compose_blocks: { site: 'boundary', invalidTestId: 'compose-blocks-invalid', messageKey: 'activity.specInvalid' },
+  state_lab: { site: 'boundary', invalidTestId: 'state-lab-invalid', messageKey: 'activity.specInvalid' },
+  event_trace: { site: 'boundary', invalidTestId: 'event-trace-invalid', messageKey: 'activity.specInvalid' },
 };
 
 /** As camadas deliberadamente isentas da fronteira (ver cabeçalho). */
@@ -240,7 +248,7 @@ export function specSchemaClass(kind: ActivityKind): SpecSchemaClass {
   // Mensagem explícita em vez do `TypeError` críptico de dentro do Zod quando um
   // kind do enum não tem schema no pacote — é o cenário exato que a trap existe
   // pra denunciar, e ele merece falhar legível.
-  if (!specPackageKnowsKind(kind) && !isOneBehaviourKind(kind)) {
+  if (!specPackageKnowsKind(kind) && !isOneBehaviourKind(kind) && !isSystemKind(kind)) {
     throw new Error(`kind "${kind}" está no enum mas não tem schema em SPEC_SCHEMAS`);
   }
   return safeParseKindSpec(kind, {}).success ? 'stub' : 'schema';
@@ -374,6 +382,6 @@ export function specBoundaryFailure(activity: {
 export function packageSaysImplemented(kind: ActivityKind): boolean {
   // A one-behaviour kind the installed spec does not know yet (spec < 1.4.0) is
   // implemented by the fallback of `safeParseKindSpec`, not by the spec.
-  if (!specPackageKnowsKind(kind)) return isOneBehaviourKind(kind);
+  if (!specPackageKnowsKind(kind)) return isOneBehaviourKind(kind) || isSystemKind(kind);
   return isImplementedKind(kind as Parameters<typeof isImplementedKind>[0]);
 }

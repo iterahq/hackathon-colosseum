@@ -187,6 +187,11 @@ export const ACTIVITY_TRACE_ACTIONS = {
   //                       for `wire`, `{ bug_id }` for `spot`, `{ chip_id,
   //                       bucket_id }` for `bucket`, `{ node_id }` for
   //                       `intercept` — never the hint text.
+  //   `part_assigned`   — `decompose_canvas`. `{ part_id, node_ids }` — AUTHORED ids.
+  //   `block_placed`    — `compose_blocks`. `{ block_id, parent_block }`.
+  //   `block_removed`   — `compose_blocks`. `{ block_id }`.
+  //   `state_changed`   — `state_lab`. `{ control_id }` — never the typed value.
+  //   `event_triggered` — `event_trace`. `{ node_id }`; each step is `step_visited`.
   reading: [
     'element_found',
     'text_edited',
@@ -201,6 +206,11 @@ export const ACTIVITY_TRACE_ACTIONS = {
     'chip_placed',
     'clause_toggled',
     'wrong_try',
+    'part_assigned',
+    'block_placed',
+    'block_removed',
+    'state_changed',
+    'event_triggered',
   ],
   inquiry: [
     'option_marked',

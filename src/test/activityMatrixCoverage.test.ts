@@ -855,6 +855,57 @@ const MATRIX: Record<string, Record<CellKey, Cell>> = {
     'E.reveal': { na: NO_REVEAL_PROP },
     'F.spec_invalido': { story: 'activities-dispatcher--query-sem-mecanica' },
     'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },  decompose_canvas: {
+    'A.enabled': { story: 'activities-cena-decompose-canvas--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-decompose-canvas--done' },
+    'C.blank': { story: 'activities-cena-decompose-canvas--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-decompose-canvas--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--decompose-canvas-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  compose_blocks: {
+    'A.enabled': { story: 'activities-cena-compose-blocks--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-compose-blocks--done' },
+    'C.blank': { story: 'activities-cena-compose-blocks--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-compose-blocks--wrong-then-right' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--compose-blocks-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  state_lab: {
+    'A.enabled': { story: 'activities-cena-state-lab--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-state-lab--done' },
+    'C.blank': { story: 'activities-cena-state-lab--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-state-lab--reach-goals' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--state-lab-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
+  },
+  event_trace: {
+    'A.enabled': { story: 'activities-cena-event-trace--default' },
+    'A.locked': { na: SCENE_NOT_ANSWERABLE },
+    'B.done': { story: 'activities-cena-event-trace--done' },
+    'C.blank': { story: 'activities-cena-event-trace--default' },
+    'C.answered': { na: SCENE_NO_RESTING_ANSWER },
+    'C.submitted': { story: 'activities-cena-event-trace--trace-all-steps' },
+    'D.correct': { na: SCENE_NO_GRADE },
+    'D.incorrect': { na: SCENE_NO_GRADE },
+    'E.reveal': { na: NO_REVEAL_PROP },
+    'F.spec_invalido': { story: 'activities-dispatcher--event-trace-sem-mecanica' },
+    'H.degenerado': { na: SCENE_MINIMAL_SAME_STAGE },
   },
 };
 
@@ -944,7 +995,7 @@ const BEHAVIOUR_MATRIX: Record<string, { from: string; row: Record<CellKey, Cell
  * técnico escrito na linha. Um número que para em 1 e sabe explicar o 1 vale
  * mais do que um 0 obtido afrouxando a régua.
  */
-const COVERAGE_SNAPSHOT = { covered: 360, na: 163, deferred: 18, drift: 9 };
+const COVERAGE_SNAPSHOT = { covered: 380, na: 187, deferred: 18, drift: 9 };
 
 /**
  * BYOC AO VIVO — o que não entra nesta matriz, e onde ele é provado.

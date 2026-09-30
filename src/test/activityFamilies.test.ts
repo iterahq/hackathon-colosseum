@@ -81,6 +81,11 @@ describe('families PARTITION the kinds — no kind unassigned, no family empty',
       'plug',
       'press',
       'arrange',
+      // The system kinds (2026-09-30).
+      'decompose_canvas',
+      'compose_blocks',
+      'state_lab',
+      'event_trace',
     ].sort());
     // One-behaviour kinds sit in the family of the old kind they came from
     // (plan `20260924-activity-type-one-behavior-rule`): a split changes the
@@ -207,6 +212,11 @@ describe('DECLARED vs EMITTED — the distinction that keeps the registry honest
       'chip_placed',
       'clause_toggled',
       'wrong_try',
+      'part_assigned',
+      'block_placed',
+      'block_removed',
+      'state_changed',
+      'event_triggered',
     ]);
     expect(FAMILY_EMITTED.editor).toEqual([]);
     expect(FAMILY_EMITTED.scenario).toEqual(['command_run', 'sandbox_reset']);

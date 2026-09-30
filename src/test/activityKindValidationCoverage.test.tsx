@@ -145,6 +145,10 @@ const INVALID_SPEC: Record<ActivityKind, unknown> = {
   bucket: { totalmente: 'inválido' },
   intercept: { totalmente: 'inválido' },
   query: { totalmente: 'inválido' },
+  decompose_canvas: { totalmente: 'inválido' },
+  compose_blocks: { totalmente: 'inválido' },
+  state_lab: { totalmente: 'inválido' },
+  event_trace: { totalmente: 'inválido' },
 };
 
 /** Harness mínimo que o `ByocSpecSchema` ACEITA — o `{seed}` é obrigatório. */

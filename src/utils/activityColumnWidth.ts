@@ -84,6 +84,11 @@ export const SCENE_COLUMN_KINDS: ReadonlySet<ActivityKind> = new Set<ActivityKin
   'plug',
   'press',
   'arrange',
+  // The system kinds (2026-09-30) put the interface beside its state, tree or trace.
+  'decompose_canvas',
+  'compose_blocks',
+  'state_lab',
+  'event_trace',
 ]);
 
 /**

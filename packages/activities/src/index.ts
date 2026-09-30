@@ -87,6 +87,8 @@ export {
   specPackageKnowsKind,
   transitionKindOf,
 } from './oneBehaviourKinds.js';
+export { SYSTEM_KINDS } from './specs.js';
+export { isSystemKind } from './systemKindsFallback.js';
 export type {
   KindSpecParse,
   KnownActivityKind,
@@ -185,6 +187,18 @@ export { SpotActivity } from './kinds/SpotActivity.js';
 export { BucketActivity } from './kinds/BucketActivity.js';
 export { InterceptActivity } from './kinds/InterceptActivity.js';
 export { QueryActivity } from './kinds/QueryActivity.js';
+
+/* ── the system kinds (2026-09-30) ──────────────────────────────────────── */
+// `decompose_canvas`, `compose_blocks`, `state_lab`, `event_trace` — four
+// lenses over one micro-app, all on the shared `SystemView`. Gesture-gated,
+// silent, i18n-only; gated locally until `@iterahq/activity-spec` carries them.
+
+export { DecomposeCanvasActivity } from './kinds/DecomposeCanvasActivity.js';
+export { ComposeBlocksActivity } from './kinds/ComposeBlocksActivity.js';
+export { StateLabActivity } from './kinds/StateLabActivity.js';
+export { EventTraceActivity } from './kinds/EventTraceActivity.js';
+export { SystemView } from './kinds/system/SystemView.js';
+export type { SystemRegion, SystemViewProps } from './kinds/system/SystemView.js';
 
 /* ───────────────────── chat_sandbox / terminal_sandbox ───────────────────── */
 // Fase C step 4. TWO kinds with five activity types behind them: each
@@ -418,6 +432,21 @@ export type {
   InterceptNodeSpec,
   InterceptSpec,
   QueryRowSpec,
+  SystemKind,
+  ViewBind,
+  ViewNode,
+  DecomposeCanvasSpec,
+  DecomposePartSpec,
+  ComposeBlocksSpec,
+  ComposeBlockSpec,
+  ComposeTargetNode,
+  StateLabSpec,
+  StateLabControlSpec,
+  StateLabGoalSpec,
+  EventTraceSpec,
+  EventTraceStepSpec,
+  EventTraceLens,
+  EventTracePanel,
   QueryTableSpec,
   QueryCmp,
   QueryDir,

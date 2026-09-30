@@ -586,3 +586,124 @@ export interface QuerySpec {
   clauses: QueryClauseSpec[];
   goal: { row_ids: string[]; ordered: boolean };
 }
+
+/* ── the system kinds — `decompose_canvas`, `compose_blocks`, `state_lab`, ──
+ * `event_trace` (2026-09-30, Tainan's Week 1 proposal) ──────────────────────
+ *
+ * Four lenses over one micro-app (parts, composition, state, events). Same
+ * envelope and gate as the scene family; the shared `SystemView` renders a
+ * declarative `ViewNode` tree from data and is component reuse, not a kind.
+ *
+ * ⚠️ RELEASE GATE: `@iterahq/activity-spec` has not released these four names
+ * yet (sibling PR `feat/system-kinds`). Until it does, `SYSTEM_KINDS` below is
+ * this package's own closed set of literals, `KnownActivityKind` widens with
+ * `SystemKind` (it collapses back into `ActivityKind` once the spec carries
+ * them), and `safeParseKindSpec` answers them with the structural fallback in
+ * `systemKindsFallback.ts`. After the bump: drop the fallback and import the
+ * list from the spec.
+ */
+
+export const SYSTEM_KINDS = ['decompose_canvas', 'compose_blocks', 'state_lab', 'event_trace'] as const;
+export type SystemKind = (typeof SYSTEM_KINDS)[number];
+
+export interface ViewBind {
+  bind: string;
+}
+
+export type ViewNode =
+  | { id: string; type: 'box'; label?: SceneLocalizedText; children: ViewNode[] }
+  | { id: string; type: 'heading'; text: SceneLocalizedText | ViewBind }
+  | { id: string; type: 'text'; text: SceneLocalizedText | ViewBind }
+  | { id: string; type: 'input'; placeholder?: SceneLocalizedText; value?: ViewBind }
+  | { id: string; type: 'button'; text: SceneLocalizedText }
+  | { id: string; type: 'checkbox_item'; text: ViewBind; checked: ViewBind }
+  | { id: string; type: 'list'; bind: string; item: ViewNode; empty?: SceneLocalizedText };
+
+interface SystemSceneEnvelope {
+  guide?: { name: SceneLocalizedText };
+  prompt: SceneLocalizedText;
+  reaction: SceneLocalizedText;
+  stamp: SceneLocalizedText;
+}
+
+export interface DecomposePartSpec {
+  id: string;
+  label: SceneLocalizedText;
+  color?: string;
+  inside?: string;
+}
+
+/** `decompose_canvas` — group the leaves of a working interface into named parts. Judged by constraints. */
+export interface DecomposeCanvasSpec extends SystemSceneEnvelope {
+  wrong_hint?: SceneLocalizedText;
+  view: ViewNode;
+  state?: Record<string, unknown>;
+  parts: DecomposePartSpec[];
+  must_group?: { ids: string[]; hint?: SceneLocalizedText }[];
+  must_separate?: { ids: [string, string]; hint?: SceneLocalizedText }[];
+  require_all_assigned?: boolean;
+}
+
+export interface ComposeTargetNode {
+  block: string;
+  children?: ComposeTargetNode[];
+}
+
+export interface ComposeBlockSpec {
+  id: string;
+  label: SceneLocalizedText;
+  view: ViewNode;
+  max?: number;
+}
+
+/** `compose_blocks` — build a containment tree from blocks until it equals `target`. */
+export interface ComposeBlocksSpec extends SystemSceneEnvelope {
+  wrong_hint?: SceneLocalizedText;
+  blocks: ComposeBlockSpec[];
+  root: string;
+  target: ComposeTargetNode;
+  sibling_order_matters?: boolean;
+  item_style?: 'code' | 'card';
+}
+
+export interface StateLabControlSpec {
+  id: string;
+  path: string;
+  type: 'toggle' | 'text' | 'add_item' | 'remove_item';
+  label?: SceneLocalizedText;
+  template?: Record<string, unknown>;
+}
+
+export interface StateLabGoalSpec {
+  path: string;
+  equals: unknown;
+  label: SceneLocalizedText;
+}
+
+/** `state_lab` — operate the state until every goal holds at once. */
+export interface StateLabSpec extends SystemSceneEnvelope {
+  state: Record<string, unknown>;
+  view: ViewNode;
+  controls: StateLabControlSpec[];
+  goals: StateLabGoalSpec[];
+}
+
+export type EventTraceLens = 'event' | 'action' | 'state' | 'render';
+export type EventTracePanel = 'structure' | 'state' | 'flow';
+
+export interface EventTraceStepSpec {
+  id: string;
+  lens: EventTraceLens;
+  label: SceneLocalizedText;
+  highlight?: string;
+  state_after?: Record<string, unknown>;
+}
+
+/** `event_trace` — trigger an event, then step through event → action → state → render. */
+export interface EventTraceSpec extends SystemSceneEnvelope {
+  state: Record<string, unknown>;
+  view: ViewNode;
+  trigger: { node: string; input?: { node: string; value: string } };
+  steps: EventTraceStepSpec[];
+  lenses?: EventTracePanel[];
+}

@@ -74,6 +74,10 @@ import { SpotActivity } from './SpotActivity';
 import { BucketActivity } from './BucketActivity';
 import { InterceptActivity } from './InterceptActivity';
 import { QueryActivity } from './QueryActivity';
+import { DecomposeCanvasActivity } from './DecomposeCanvasActivity';
+import { ComposeBlocksActivity } from './ComposeBlocksActivity';
+import { StateLabActivity } from './StateLabActivity';
+import { EventTraceActivity } from './EventTraceActivity';
 import { CodeSnackActivity } from './code/CodeSnackActivity';
 import {
   ChatComposeActivity,
@@ -322,6 +326,15 @@ export function ActivityRenderer({
       return <InterceptActivity activity={activity} onComplete={onComplete} />;
     case 'query':
       return <QueryActivity activity={activity} onComplete={onComplete} />;
+    // The system kinds (2026-09-30) — same contract as the scene kinds.
+    case 'decompose_canvas':
+      return <DecomposeCanvasActivity activity={activity} onComplete={onComplete} />;
+    case 'compose_blocks':
+      return <ComposeBlocksActivity activity={activity} onComplete={onComplete} />;
+    case 'state_lab':
+      return <StateLabActivity activity={activity} onComplete={onComplete} />;
+    case 'event_trace':
+      return <EventTraceActivity activity={activity} onComplete={onComplete} />;
     default:
       return <UnknownActivity activity={activity} />;
   }

@@ -190,6 +190,11 @@ export const KIND_ARTIFACT_DEFAULTS: Record<ActivityKind, KindDefault> = {
   plug: { persist: false, type: 'text', filename: 'notes.md' },
   press: { persist: false, type: 'text', filename: 'notes.md' },
   arrange: { persist: false, type: 'text', filename: 'notes.md' },
+  // The system kinds (2026-09-30) — same reasoning.
+  decompose_canvas: { persist: false, type: 'text', filename: 'notes.md' },
+  compose_blocks: { persist: false, type: 'text', filename: 'notes.md' },
+  state_lab: { persist: false, type: 'text', filename: 'notes.md' },
+  event_trace: { persist: false, type: 'text', filename: 'notes.md' },
 };
 
 const MODES: ReadonlySet<string> = new Set<ArtifactMode>(['auto', 'always', 'never']);

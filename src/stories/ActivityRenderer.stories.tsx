@@ -405,6 +405,22 @@ export const QuerySemMecanica: Story = {
   args: { activity: makeActivity('query', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
 };
 
+export const DecomposeCanvasSemMecanica: Story = {
+  args: { activity: makeActivity('decompose_canvas', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const ComposeBlocksSemMecanica: Story = {
+  args: { activity: makeActivity('compose_blocks', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const StateLabSemMecanica: Story = {
+  args: { activity: makeActivity('state_lab', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
+export const EventTraceSemMecanica: Story = {
+  args: { activity: makeActivity('event_trace', { prompt: 'Faz o gesto.', reaction: 'Isso!', stamp: 'Cena' }) },
+};
+
 /** kind desconhecido — o fallback explícito do dispatcher. */
 export const KindDesconhecido: Story = {
   args: {

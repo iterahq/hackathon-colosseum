@@ -39,6 +39,8 @@ import {
   SPEC_SCHEMAS,
   type ActivityKind,
 } from '@iterahq/activity-spec';
+import type { SystemKind } from './specs.js';
+import { isSystemKind, SYSTEM_KINDS_FALLBACK } from './systemKindsFallback.js';
 
 /** The 22 one-behaviour kinds, in the order `ACTIVITY_KINDS` lists them. */
 export const ONE_BEHAVIOUR_KINDS = [
@@ -78,7 +80,7 @@ export type OneBehaviourKind = (typeof ONE_BEHAVIOUR_KINDS)[number];
  * Every kind a renderer may receive: the installed spec's `ActivityKind` plus
  * the one-behaviour kinds. Collapses into `ActivityKind` on spec `^1.4.0`.
  */
-export type KnownActivityKind = ActivityKind | OneBehaviourKind;
+export type KnownActivityKind = ActivityKind | OneBehaviourKind | SystemKind;
 
 /** The old kinds that split. `concept` stands for "a host kind with `spec.byoc`". */
 export type TransitionParentKind =
@@ -157,6 +159,7 @@ export function safeParseKindSpec(kind: string, spec: unknown): KindSpecParse {
       : { success: false, error: parsed.error.message };
   }
   if (isOneBehaviourKind(kind)) return ONE_BEHAVIOUR_FALLBACK[kind](spec);
+  if (isSystemKind(kind)) return SYSTEM_KINDS_FALLBACK[kind](spec);
   return { success: false, error: `unknown activity kind "${kind}"` };
 }
 

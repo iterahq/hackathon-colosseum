@@ -196,7 +196,9 @@ export interface ActivityRendererProps {
    * anything.
    *
    * ── Which kinds read it ───────────────────────────────────────────────────
-   * `single_choice`, `multi_choice`, `order`, `match`. The kinds that never
+   * `single_choice`, `multi_choice`, `order`, `match`, and `decompose_canvas`
+   * (its part assignment, off the trace's `gate_opened`; there is no answer
+   * key to draw a `done` render from). The kinds that never
    * grade (`concept`, `concept_reveal`, `video`, `diagram`) have no answer
    * state to seed and ignore it. `quiz` ignores it too, on purpose — see
    * CONTRACT.md.

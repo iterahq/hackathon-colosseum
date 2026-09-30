@@ -89,8 +89,16 @@ try {
     join(root, "db/migrations/0108_activity_kind_scene_mechanics.sql"),
     "-- declared scene mechanics suffix\n",
   );
+  result = spawnSync("bash", [script, "prefix"], { env, encoding: "utf8" });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /0109_activity_kind_system_kinds/);
+  assert.equal(existsSync(trace), false);
   writeFileSync(
-    join(root, "db/migrations/0109_unaccounted.sql"),
+    join(root, "db/migrations/0109_activity_kind_system_kinds.sql"),
+    "-- declared system kinds suffix\n",
+  );
+  writeFileSync(
+    join(root, "db/migrations/0110_unaccounted.sql"),
     "-- future migration must not disappear\n",
   );
   for (const mode of ["prefix", "parity", "restore", "suffix"]) {

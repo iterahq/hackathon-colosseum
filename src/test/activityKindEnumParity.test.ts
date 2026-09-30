@@ -74,6 +74,13 @@ const BEHAVIOUR_KINDS_AWAITING_SPEC: readonly string[] = [
   'byoc_judge_each',
   'byoc_build_context',
 ];
+/** 0109 — system kinds, enum labels added ahead of the `@iterahq/activity-spec` release. */
+const SYSTEM_KINDS_AWAITING_SPEC: readonly string[] = [
+  'decompose_canvas',
+  'compose_blocks',
+  'state_lab',
+  'event_trace',
+];
 const ENUM = 'itera.activity_kind';
 
 /** Same derivation as `scripts/verify-activity-kinds.mjs`, kept tiny on purpose. */
@@ -170,7 +177,7 @@ describe('itera.activity_kind ⇄ ACTIVITY_KINDS', () => {
     // exports them waits for Tainan's review. When that release lands here,
     // this list shrinks back to `['sandbox_scenario']` — and it must, because
     // a kind the enum holds and the package does not know renders nothing.
-    expect(retired).toEqual(['sandbox_scenario', ...BEHAVIOUR_KINDS_AWAITING_SPEC].filter(
+    expect(retired).toEqual(['sandbox_scenario', ...BEHAVIOUR_KINDS_AWAITING_SPEC, ...SYSTEM_KINDS_AWAITING_SPEC].filter(
       (k) => !(ACTIVITY_KINDS as readonly string[]).includes(k),
     ));
   });

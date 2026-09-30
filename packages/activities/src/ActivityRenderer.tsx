@@ -101,6 +101,10 @@ import { SpotActivity } from './kinds/SpotActivity.js';
 import { BucketActivity } from './kinds/BucketActivity.js';
 import { InterceptActivity } from './kinds/InterceptActivity.js';
 import { QueryActivity } from './kinds/QueryActivity.js';
+import { DecomposeCanvasActivity } from './kinds/DecomposeCanvasActivity.js';
+import { ComposeBlocksActivity } from './kinds/ComposeBlocksActivity.js';
+import { StateLabActivity } from './kinds/StateLabActivity.js';
+import { EventTraceActivity } from './kinds/EventTraceActivity.js';
 
 /**
  * The kinds this package renders on its own.
@@ -195,6 +199,13 @@ export const BUILT_IN_ACTIVITY_KINDS = [
   'plug',
   'press',
   'arrange',
+  // The system kinds (2026-09-30) — four lenses over one micro-app on the
+  // shared `SystemView`. i18n-only. ⚠️ RELEASE GATE: `SYSTEM_KINDS` in
+  // `specs.ts` — the spec has not released these names yet.
+  'decompose_canvas',
+  'compose_blocks',
+  'state_lab',
+  'event_trace',
 ] as const;
 
 export type BuiltInActivityKind = (typeof BUILT_IN_ACTIVITY_KINDS)[number];
@@ -241,6 +252,10 @@ const BUILT_INS: Record<BuiltInActivityKind, ComponentType<ActivityRendererProps
   bucket: BucketActivity as ComponentType<ActivityRendererProps>,
   intercept: InterceptActivity as ComponentType<ActivityRendererProps>,
   query: QueryActivity as ComponentType<ActivityRendererProps>,
+  decompose_canvas: DecomposeCanvasActivity as ComponentType<ActivityRendererProps>,
+  compose_blocks: ComposeBlocksActivity as ComponentType<ActivityRendererProps>,
+  state_lab: StateLabActivity as ComponentType<ActivityRendererProps>,
+  event_trace: EventTraceActivity as ComponentType<ActivityRendererProps>,
 };
 
 /** Whether this package can render a kind without help from the host. */
