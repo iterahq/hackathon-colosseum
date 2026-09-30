@@ -29,11 +29,11 @@ export function RichBlock({
   block: Block;
   muted: boolean;
 }) {
-  // O peso do texto principal é o MESMO de antes do parser existir: instrução
-  // sem marcação nenhuma precisa sair pixel a pixel igual ao que já saía.
+  // Body text is Inter: Barlow Condensed stays on headings only, because a
+  // condensed face in long paragraphs read as slanted and tiring (2026-09-30).
   const body = muted
     ? 'text-sm text-muted-foreground leading-relaxed'
-    : 'font-display text-lg md:text-xl text-foreground leading-relaxed';
+    : 'font-body text-base md:text-lg text-foreground leading-relaxed';
 
   if (block.type === 'heading')
     return (
@@ -50,7 +50,7 @@ export function RichBlock({
   if (block.type === 'quote')
     return (
       <blockquote
-        className={`border-l-2 border-evergreen pl-4 italic ${body}`}
+        className={`rounded-xl border-l-4 border-evergreen bg-evergreen-soft/50 px-4 py-3 font-medium ${body}`}
         data-rich-block="quote"
       >
         <RichSpans spans={block.spans} />

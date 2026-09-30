@@ -40,3 +40,13 @@ describe('RichBlock — cerca mermaid', () => {
     expect(screen.queryByTestId('mermaid-lite')).toBeNull();
   });
 });
+
+describe('RichBlock — citação', () => {
+  it('vira destaque em caixa, nunca itálico', () => {
+    const marcado = bloco('> Hoje você cria a **sua** página.');
+
+    expect(marcado.getAttribute('data-rich-block')).toBe('quote');
+    expect(marcado.className).not.toContain('italic');
+    expect(marcado.className).toContain('bg-evergreen-soft');
+  });
+});

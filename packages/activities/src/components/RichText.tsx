@@ -12,6 +12,7 @@
  */
 import { motion, useReducedMotion } from 'framer-motion';
 import { RichBlock } from './RichBlock.js';
+import { HighlightDelay } from './highlightDelay.js';
 import { parseRichText } from '../internal/richText.js';
 
 export function RichText({
@@ -31,16 +32,21 @@ export function RichText({
   return (
     <div className={className} data-testid={testId}>
       <div className="space-y-3" data-rich-blocks={blocks.length}>
-        {blocks.map((block, i) => (
-          <motion.div
-            key={i}
-            initial={reduced ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: reduced ? 0 : Math.min(i, 8) * 0.04 }}
-          >
-            <RichBlock block={block} muted={muted} />
-          </motion.div>
-        ))}
+        {blocks.map((block, i) => {
+          const delay = reduced ? 0 : Math.min(i, 8) * 0.12;
+          return (
+            <motion.div
+              key={i}
+              initial={reduced ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay }}
+            >
+              <HighlightDelay.Provider value={delay}>
+                <RichBlock block={block} muted={muted} />
+              </HighlightDelay.Provider>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
