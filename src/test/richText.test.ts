@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseInline, parseRichText } from '@/utils/richText';
 
 const plain = (spans: ReturnType<typeof parseInline>): string =>
-  spans.map((s) => (s.type === 'strong' || s.type === 'em' ? plain(s.spans) : s.value)).join('');
+  spans.map((s) => ('spans' in s ? plain(s.spans) : s.value)).join('');
 
 describe('parseInline', () => {
   it('sem delimitador, devolve o texto intacto', () => {
