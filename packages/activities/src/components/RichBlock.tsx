@@ -20,6 +20,7 @@
 import { RichSpans } from './RichSpans.js';
 import { MermaidLite } from './MermaidLite.js';
 import { parseMermaidLite } from '../internal/mermaidLite.js';
+import { RichMedia } from './RichMedia.js';
 import type { Block } from '../internal/richText.js';
 
 export function RichBlock({
@@ -45,6 +46,18 @@ export function RichBlock({
       >
         <RichSpans spans={block.spans} />
       </h3>
+    );
+
+  if (block.type === 'media')
+    return (
+      <div
+        className={`grid gap-4 ${block.items.length > 1 ? 'md:grid-cols-2' : ''}`}
+        data-rich-block="media"
+      >
+        {block.items.map((item, i) => (
+          <RichMedia key={i} item={item} />
+        ))}
+      </div>
     );
 
   if (block.type === 'quote')

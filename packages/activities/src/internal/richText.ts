@@ -7,6 +7,13 @@
  * O parser não adivinha nada: só reconhece delimitador explícito. Texto sem
  * marcação nenhuma sai como um parágrafo por bloco, igual ao que já saía.
  *
+ * Sintaxe reconhecida:
+ *   bloco  `## título` · `> citação` · `- item` · `1. item` · cerca ``` · linha em branco
+ *   inline `**negrito**` · `*ênfase*` · `` `código` `` · `==frase-chave==` (marca-texto)
+ *   mídia  uma linha só com `![legenda](url)` vira figura; duas na mesma linha,
+ *          separadas por espaço, viram par lado a lado (antes × depois).
+ *          URL só `/lesson-media/...` ou `https://...`; qualquer outra é descartada.
+ *
  * Escopo deliberadamente fechado (sem HTML embutido, sem link, sem tabela):
  * conteúdo de aula é dado do banco, e cada construção a mais é superfície de
  * injeção e de dívida de renderer.
@@ -21,7 +28,29 @@ export type Block =
   | { type: 'paragraph'; spans: Inline[] }
   | { type: 'quote'; spans: Inline[] }
   | { type: 'list'; ordered: boolean; start: number; items: Inline[][] }
-  | { type: 'code'; language: string; value: string };
+  | { type: 'code'; language: string; value: string }
+  | { type: 'media'; items: MediaItem[] };
+
+export type MediaKind = 'video' | 'image';
+export interface MediaItem {
+  caption: string;
+  url: string;
+  kind: MediaKind;
+}
+
+const MEDIA_TOKEN = String.raw`!\[([^\]\n]*)\]\(([^)\s]*)\)`;
+const MEDIA_LINE = new RegExp(`^${MEDIA_TOKEN}(?:\\s+${MEDIA_TOKEN})?$`);
+const VIDEO_EXT = /\.(?:mp4|webm)$/i;
+const IMAGE_EXT = /\.(?:gif|png|jpe?g|webp|svg)$/i;
+
+/** Only same-origin lesson media or https; anything else (javascript:, data:, http:) is refused. */
+export function mediaKindFor(url: string): MediaKind | null {
+  if (!url.startsWith('/lesson-media/') && !url.startsWith('https://')) return null;
+  const path = url.split(/[?#]/)[0];
+  if (VIDEO_EXT.test(path)) return 'video';
+  if (IMAGE_EXT.test(path)) return 'image';
+  return null;
+}
 
 const HEADING = /^(#{2,3})\s+(.*)$/;
 const QUOTE = /^>\s?(.*)$/;
@@ -91,6 +120,21 @@ export function parseRichText(input: string): Block[] {
       flush();
       const text = thinkFirst[1].trim();
       if (text) blocks.push({ type: 'paragraph', spans: parseInline(text) });
+      continue;
+    }
+
+    const media = trimmed.match(MEDIA_LINE);
+    if (media) {
+      flush();
+      const items: MediaItem[] = [];
+      for (const [caption, url] of [
+        [media[1], media[2]],
+        [media[3], media[4]],
+      ]) {
+        const kind = url === undefined ? null : mediaKindFor(url);
+        if (kind) items.push({ caption: caption.trim(), url, kind });
+      }
+      if (items.length > 0) blocks.push({ type: 'media', items });
       continue;
     }
 

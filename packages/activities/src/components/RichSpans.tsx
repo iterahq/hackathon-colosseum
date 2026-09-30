@@ -1,5 +1,5 @@
 /**
- * RichSpans — o miolo de uma linha: negrito, ênfase e código inline.
+ * RichSpans — o miolo de uma linha: negrito, marca-texto, ênfase e código inline.
  *
  * O `code` inline usa a cor de marca em vez de cinza porque quase todo uso real
  * é nome de comando ou de variável no meio da frase (`git pull`, `useState`), e
@@ -10,9 +10,9 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { Inline } from '../internal/richText.js';
 import { HighlightDelay } from './highlightDelay.js';
 
-// Bold is a highlighter stroke that sweeps in once the block lands, so the
-// key words are what the eye catches first.
-const HIGHLIGHT = 'linear-gradient(transparent 58%, rgba(63,209,127,.32) 58%)';
+// `==key phrase==` is the highlighter: a soft pill that sweeps in once the
+// block lands. Bold stays plain emphasis so only the key phrase is marked.
+const HIGHLIGHT = 'linear-gradient(rgba(63,209,127,.16), rgba(63,209,127,.16))';
 
 export function RichSpans({ spans }: { spans: Inline[] }) {
   const reduced = useReducedMotion();
@@ -22,16 +22,27 @@ export function RichSpans({ spans }: { spans: Inline[] }) {
       {spans.map((span, i) => {
         if (span.type === 'strong')
           return (
-            <motion.strong
+            <strong key={i} className="font-semibold text-foreground">
+              <RichSpans spans={span.spans} />
+            </strong>
+          );
+        if (span.type === 'mark')
+          return (
+            <motion.mark
               key={i}
-              className="font-semibold text-foreground bg-no-repeat"
-              style={{ backgroundImage: HIGHLIGHT }}
+              className="-mx-0.5 rounded-md bg-transparent bg-no-repeat px-1 text-menta"
+              style={{
+                backgroundImage: HIGHLIGHT,
+                boxShadow: 'inset 0 -2px 0 rgba(63,209,127,.55)',
+                boxDecorationBreak: 'clone',
+                WebkitBoxDecorationBreak: 'clone',
+              }}
               initial={reduced ? false : { backgroundSize: '0% 100%' }}
               animate={{ backgroundSize: '100% 100%' }}
               transition={{ duration: 0.5, ease: 'easeOut', delay: reduced ? 0 : delay + 0.3 }}
             >
               <RichSpans spans={span.spans} />
-            </motion.strong>
+            </motion.mark>
           );
         if (span.type === 'em')
           return (

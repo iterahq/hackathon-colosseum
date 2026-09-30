@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { ExternalLink, Video as VideoIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { MEDIA_LIFT } from './mediaLift.js';
 
 /** Páginas de vídeo (não arquivos) que um autor cola por reflexo. */
 const PAGE_HOSTS = [
@@ -98,7 +99,7 @@ export function InstructionVideo({
 
   return (
     <div
-      className="rounded-2xl border border-border bg-obsidiana/60 overflow-hidden"
+      className={`rounded-2xl border border-border bg-obsidiana/60 overflow-hidden ${MEDIA_LIFT}`}
       data-testid="instruction-video"
     >
       {!loaded && (

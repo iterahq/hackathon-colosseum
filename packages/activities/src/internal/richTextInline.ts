@@ -1,5 +1,5 @@
 /**
- * richTextInline — a camada de DENTRO da linha: negrito, ênfase e código inline.
+ * richTextInline — a camada de DENTRO da linha: negrito, marca-texto (`==x==`), ênfase e código inline.
  *
  * Vive separada de `richText.ts` (que corta o texto em blocos) porque as duas
  * camadas se leem sozinhas e o arquivo único passava do teto de linhas do repo.
@@ -11,6 +11,7 @@ export type Inline =
   | { type: 'text'; value: string }
   | { type: 'code'; value: string }
   | { type: 'strong'; spans: Inline[] }
+  | { type: 'mark'; spans: Inline[] }
   | { type: 'em'; spans: Inline[] };
 
 /**
@@ -21,11 +22,13 @@ export type Inline =
  *   que ênfase — a bolha do sandbox ainda por cima carrega saída de terminal.
  *   Pela mesma razão o negrito não abre em barra: dois asteriscos seguidos de
  *   barra são glob de shell, não marcação;
+ * — `==frase-chave==` é o marca-texto: o negrito é só ênfase, e o que o aluno
+ *   deve levar da tela ganha o destaque. Mesma regra de bordas sem espaço;
  * — nenhuma marcação atravessa `\n`, então delimitador aberto por engano morre
  *   no fim da linha em vez de sequestrar o resto do parágrafo.
  */
 const INLINE_PATTERN =
-  /(\*\*\*(?!\s)[^*\n]*[^*\s]\*\*\*|\*\*(?![\s/])(?:[^*\n]|\*(?!\*))+?(?<!\s)\*\*|`[^`\n]+`|(?<!\*)\*(?!\s)[^*\n]*[^*\s]\*(?!\*))/g;
+  /(==(?![\s=])(?:[^=\n]|=(?!=))*?[^=\s]==|\*\*\*(?!\s)[^*\n]*[^*\s]\*\*\*|\*\*(?![\s/])(?:[^*\n]|\*(?!\*))+?(?<!\s)\*\*|`[^`\n]+`|(?<!\*)\*(?!\s)[^*\n]*[^*\s]\*(?!\*))/g;
 
 /**
  * Quebra uma linha nos delimitadores inline. Nada casou? Um span de texto.
@@ -42,7 +45,9 @@ export function parseInline(line: string): Inline[] {
     const token = match[0];
     const start = match.index ?? 0;
     if (start > last) spans.push({ type: 'text', value: line.slice(last, start) });
-    if (token.startsWith('`')) spans.push({ type: 'code', value: token.slice(1, -1) });
+    if (token.startsWith('=='))
+      spans.push({ type: 'mark', spans: parseInline(token.slice(2, -2)) });
+    else if (token.startsWith('`')) spans.push({ type: 'code', value: token.slice(1, -1) });
     else if (token.startsWith('***'))
       spans.push({ type: 'strong', spans: [{ type: 'em', spans: parseInline(token.slice(3, -3)) }] });
     else if (token.startsWith('**'))

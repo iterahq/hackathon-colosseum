@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useActivityI18n } from '../context.js';
+import { MEDIA_LIFT } from './mediaLift.js';
 
 export function InstructionImage({ src, alt }: { src: string; alt: string }) {
   const { t } = useActivityI18n();
@@ -21,7 +22,7 @@ export function InstructionImage({ src, alt }: { src: string; alt: string }) {
         type="button"
         onClick={() => setZoomed(true)}
         aria-label={t('activity.instructionZoomOpen')}
-        className="relative block w-full min-h-32 rounded-2xl border border-border bg-obsidiana/60 overflow-hidden cursor-zoom-in"
+        className={`relative block w-full min-h-32 rounded-2xl border border-border bg-obsidiana/60 overflow-hidden cursor-zoom-in ${MEDIA_LIFT}`}
         data-testid="instruction-image"
       >
         {!loaded && (

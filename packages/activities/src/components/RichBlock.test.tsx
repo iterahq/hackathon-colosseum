@@ -7,7 +7,7 @@
  * saindo exatamente como saíam antes desta mudança existir.
  */
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { RichText } from './RichText.js';
 
 const bloco = (texto: string) => {
@@ -48,5 +48,38 @@ describe('RichBlock — citação', () => {
     expect(marcado.getAttribute('data-rich-block')).toBe('quote');
     expect(marcado.className).not.toContain('italic');
     expect(marcado.className).toContain('bg-evergreen-soft');
+  });
+});
+
+describe('RichBlock — media', () => {
+  it('renders an mp4 as a silent looping clip', () => {
+    const { container } = render(<RichText text="![demo](/lesson-media/demo.mp4)" />);
+    const video = container.querySelector('video')!;
+    expect(video.muted).toBe(true);
+    expect(video.loop).toBe(true);
+    expect(video.hasAttribute('controls')).toBe(false);
+    expect(screen.getByText('demo')).toBeInTheDocument();
+  });
+
+  it('renders a gif as a lazy image', () => {
+    const { container } = render(<RichText text="![demo](/lesson-media/demo.gif)" />);
+    const img = container.querySelector('img')!;
+    expect(img.getAttribute('loading')).toBe('lazy');
+    expect(container.querySelector('video')).toBeNull();
+  });
+
+  it('opens the lightbox on click and closes on Escape', () => {
+    const { container } = render(<RichText text="![demo](/lesson-media/demo.png)" />);
+    fireEvent.click(container.querySelector('figure button')!);
+    expect(screen.getByTestId('media-lightbox')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('media-lightbox')).toBeNull();
+  });
+
+  it('lays a pair out as two figures', () => {
+    const { container } = render(
+      <RichText text="![a](/lesson-media/a.png) ![b](/lesson-media/b.png)" />,
+    );
+    expect(container.querySelectorAll('figure')).toHaveLength(2);
   });
 });
