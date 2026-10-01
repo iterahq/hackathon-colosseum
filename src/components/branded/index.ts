@@ -1,8 +1,8 @@
 export { Logo } from './Logo';
 export { AppHeader } from './AppHeader';
 export { ProgramIcon } from './ProgramIcon';
-export { ProgramCard } from './ProgramCard';
 export { CatalogProgramCard } from './CatalogProgramCard';
+export { EnrolledProgramCard } from './EnrolledProgramCard';
 export { PageTitleAccent } from './PageTitleAccent';
 export { SlashBar } from './SlashBar';
 export { LockedCatalogCard } from './LockedCatalogCard';

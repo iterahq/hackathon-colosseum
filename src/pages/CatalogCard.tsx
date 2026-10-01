@@ -1,5 +1,5 @@
 /**
- * One catalog course rendered with the shared rich {@link ProgramCard} for a
+ * One catalog course rendered with the shared {@link CatalogProgramCard} for a
  * MEMBER (has paid access) — Enroll / Open CTA + inline error live in the
  * card's `footer` slot. An already-enrolled card also makes the hero
  * clickable so it opens the course directly (parity with HomePage).

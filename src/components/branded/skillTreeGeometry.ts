@@ -3,6 +3,7 @@ export const MAX_TRAIL_WIDTH = 480;
 export const NODE_SIZE = 68;
 export const CURRENT_SIZE = 84;
 export const LABEL_HEIGHT = 66;
+export const PRIMARY_LABEL_HEIGHT = 44;
 export const CALLOUT_HEIGHT = 172;
 export const BANNER_HEIGHT = 92;
 export const BANNER_INSET = 12;
@@ -83,10 +84,11 @@ export function computeTrailLayout({
         indexInSection: i,
         globalIndex,
       });
-      cursor = top + size + NODE_HALO + LABEL_HEIGHT + NODE_GAP;
       if (isPrimary) {
-        calloutTop = top + size + NODE_HALO + LABEL_HEIGHT;
-        cursor += CALLOUT_HEIGHT + CALLOUT_GAP;
+        calloutTop = top + size + NODE_HALO + PRIMARY_LABEL_HEIGHT;
+        cursor = calloutTop + CALLOUT_HEIGHT + CALLOUT_GAP + NODE_GAP;
+      } else {
+        cursor = top + size + NODE_HALO + LABEL_HEIGHT + NODE_GAP;
       }
       globalIndex++;
     }

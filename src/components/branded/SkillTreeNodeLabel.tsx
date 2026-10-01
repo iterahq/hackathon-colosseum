@@ -9,6 +9,7 @@ export function SkillTreeNodeLabel({
   kindLabel,
   state,
   primary,
+  showTitle,
   tone,
 }: {
   dayLabel: string;
@@ -16,6 +17,7 @@ export function SkillTreeNodeLabel({
   kindLabel: string;
   state: NodeState;
   primary: boolean;
+  showTitle: boolean;
   tone: UnitTone;
 }) {
   const locked = state === 'locked';
@@ -33,13 +35,15 @@ export function SkillTreeNodeLabel({
       <span className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground leading-none">
         {kindLabel}
       </span>
-      <span
-        className={`mt-1 text-xs font-medium leading-tight line-clamp-2 ${
-          locked ? 'text-muted-foreground' : 'text-foreground'
-        }`}
-      >
-        {title}
-      </span>
+      {showTitle && (
+        <span
+          className={`mt-1 text-xs font-medium leading-tight line-clamp-2 ${
+            locked ? 'text-muted-foreground' : 'text-foreground'
+          }`}
+        >
+          {title}
+        </span>
+      )}
       </div>
     </div>
   );

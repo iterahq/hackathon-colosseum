@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ArrowRight, CheckCircle2, BookOpen } from 'lucide-react';
-import { ProgramCard, ProgramIcon } from '@/components/branded';
-import type { ProgramCardData } from '@/components/branded/ProgramCard';
+import { CatalogProgramCard, ProgramIcon } from '@/components/branded';
+import type { CatalogProgramCardData } from '@/types/catalogProgramCardData';
 
 /**
  * Catalog grid — visual reference for the /catalog "Catálogo de cursos" surface.
  * `Before` is the old flat card (icon + title + counts + green button); `After`
- * is the shared rich ProgramCard with the Enroll/Open CTA in its footer slot.
+ * is the shared CatalogProgramCard with the Enroll/Open CTA in its action slot.
  * Catalog programs have no per-user progress → not-started look (no
  * progress bar), which is the graceful-degradation contract.
  */
-const programs: (ProgramCardData & { slug: string; alreadyEnrolled: boolean })[] = [
+const programs: (CatalogProgramCardData & { slug: string; alreadyEnrolled: boolean })[] = [
   {
     id: 'p1',
     slug: 'modele-dados-com-ia',
@@ -87,11 +87,11 @@ export const After: Story = {
   render: () => (
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-[1400px] mx-auto p-6">
       {programs.map((p) => (
-        <ProgramCard
+        <CatalogProgramCard
           key={p.id}
           program={p}
-          onClick={p.alreadyEnrolled ? () => {} : undefined}
-          footer={
+          onOpenThumbnail={p.alreadyEnrolled ? () => {} : undefined}
+          action={
             p.alreadyEnrolled ? (
               <button className="w-full inline-flex items-center justify-center gap-2 h-10 px-5 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi font-medium">
                 <CheckCircle2 className="w-4 h-4" /> Abrir curso

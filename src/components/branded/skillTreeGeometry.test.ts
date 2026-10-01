@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   CURRENT_SIZE,
+  LABEL_HEIGHT,
   MAX_TRAIL_WIDTH,
   NODE_SIZE,
   buildTrailPath,
@@ -46,6 +47,12 @@ describe('skillTreeGeometry', () => {
     expect(withCallout.calloutTop!).toBeGreaterThan(withCallout.nodes[1].y);
     expect(withCallout.nodes[2].y).toBeGreaterThan(withCallout.calloutTop! + 150);
     expect(withCallout.height).toBeGreaterThan(plain.height);
+  });
+
+  it('pulls the callout up under the primary node, whose label drops its title', () => {
+    const layout = computeTrailLayout({ width: 390, sectionSizes: [4], primaryIndex: 1 });
+    const nodeBottom = layout.nodes[1].y + CURRENT_SIZE / 2;
+    expect(layout.calloutTop! - nodeBottom).toBeLessThan(LABEL_HEIGHT);
   });
 
   it('builds a continuous cubic path that passes through every node center', () => {

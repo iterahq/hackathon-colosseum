@@ -126,6 +126,7 @@ export function SkillTreePathNode({
           kindLabel={kindLabel}
           state={state}
           primary={primary}
+          showTitle={!primary}
           tone={tone}
         />
       </div>

@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronRight, Sparkles, GraduationCap, Radio } from 'lucide-react';
 import {
   AppHeader,
-  ProgramCard,
+  EnrolledProgramCard,
   StatsCard,
   BadgeGrid,
   LockedCatalogCard,
@@ -222,10 +222,10 @@ export default function HomePage() {
                     data-testid="programs-grid"
                   >
                     {programs.map((p) => (
-                      <ProgramCard
+                      <EnrolledProgramCard
                         key={p.id}
                         program={p}
-                        onClick={() => navigate(`/program/${p.slug}`)}
+                        onOpen={() => navigate(`/program/${p.slug}`)}
                       />
                     ))}
                   </div>

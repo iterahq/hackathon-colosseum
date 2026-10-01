@@ -92,6 +92,13 @@ describe('SkillTree', () => {
     expect(within(callouts[0]).getByText('> dia 01 · lição 1 de 1')).toBeInTheDocument();
   });
 
+  it('leaves the lesson title to the callout on the primary node and keeps it under the others', () => {
+    renderTree();
+    expect(screen.getAllByText('Lesson 1')).toHaveLength(1);
+    expect(within(screen.getByTestId('tree-callout')).getByText('Lesson 1')).toBeInTheDocument();
+    expect(screen.getByText('Lesson 2')).toBeInTheDocument();
+  });
+
   it('keeps the current node interactive and the locked node non-interactive', () => {
     renderTree();
     const current = screen.getAllByTestId('tree-node-current')[0];
