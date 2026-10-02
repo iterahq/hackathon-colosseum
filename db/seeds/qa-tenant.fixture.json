@@ -366,6 +366,146 @@
                   "order that is never the solution, per learner, so a fixture cannot",
                   "pin which one comes out."
                 ]
+              },
+                            {
+                "ordinal": 3,
+                "kind": "chat_sandbox",
+                "status": "published",
+                "spec": {
+                  "id": "l1",
+                  "openness": "fixed",
+                  "title": { "pt": "Ordem que muda tudo", "en": "Order changes everything" },
+                  "initialState": {
+                    "systemPrompt": "Você é um tutor de lógica de programação. Quando o aluno descrever os passos de uma tarefa do dia a dia, aponte se a ORDEM dos passos está certa e o que quebra se ela mudar.",
+                    "seedMessages": [
+                      {
+                        "role": "assistant",
+                        "text": {
+                          "pt": "Vamos montar um lanche! Descreve os passos, na ordem que você faria.",
+                          "en": "Let's make a sandwich! List the steps, in the order you'd do them."
+                        }
+                      }
+                    ],
+                    "basePrompt": {
+                      "pt": "pegar o pão, passar manteiga, cortar o pão, colocar o presunto",
+                      "en": "get the bread, spread butter, cut the bread, add the ham"
+                    },
+                    "cannedResults": {
+                      "fora-de-ordem": {
+                        "quality": "ruim",
+                        "text": {
+                          "pt": "Você passou a manteiga ANTES de cortar o pão — vai lambuzar a faca e ficar difícil de cortar depois. A ordem quebrou o resultado.",
+                          "en": "You spread the butter BEFORE cutting the bread — the knife gets messy and cutting after is harder. The order broke the result."
+                        },
+                        "critique": {
+                          "pt": "Dois passos trocados de lugar mudaram o resultado inteiro. Isso é resposta fraca.",
+                          "en": "Two swapped steps changed the whole result. Weak answer."
+                        }
+                      },
+                      "ordem-correta": {
+                        "quality": "top",
+                        "text": {
+                          "pt": "Agora sim: cortar primeiro, passar a manteiga depois, e por último o presunto. Cada passo prepara o próximo. Isso é um algoritmo — uma sequência ORDENADA de passos.",
+                          "en": "Now cut first, spread butter after, then the ham. Each step preps the next. That is an algorithm — an ORDERED sequence of steps."
+                        },
+                        "critique": {
+                          "pt": "Você reordenou os passos e cada um passou a preparar o seguinte. Resposta forte.",
+                          "en": "You reordered the steps so each one preps the next. Strong answer."
+                        }
+                      }
+                    },
+                    "resultResolver": {
+                      "kind": "match-first",
+                      "rules": [{ "when": { "choseOption": { "id": "add-reordenar" } }, "use": "ordem-correta" }],
+                      "fallback": "fora-de-ordem"
+                    }
+                  },
+                  "choices": [
+                    {
+                      "id": "add-reordenar",
+                      "label": { "pt": "🔁 reordenar: cortar, passar manteiga, presunto", "en": "🔁 reorder: cut, spread, ham" },
+                      "appends": {
+                        "pt": "Reordenando: cortar o pão, passar manteiga, colocar o presunto.",
+                        "en": "Reordered: cut the bread, spread butter, add the ham."
+                      }
+                    },
+                    { "id": "add-pressa", "label": { "pt": "⏰ fazer rápido", "en": "⏰ do it fast" }, "appends": { "pt": "Faz rápido.", "en": "Do it fast." } },
+                    { "id": "add-capricho", "label": { "pt": "✨ caprichar na apresentação", "en": "✨ make it look nice" }, "appends": { "pt": "Capricha na apresentação.", "en": "Make it look nice." } }
+                  ],
+                  "steps": [
+                    {
+                      "id": "rodar-fora-de-ordem",
+                      "prompt": { "pt": "Manda os passos do jeito que estão, fora de ordem.", "en": "Send the steps as-is, out of order." },
+                      "mode": "compose",
+                      "expose": {},
+                      "unlock": { "ranPrompt": { "withContext": false } }
+                    },
+                    {
+                      "id": "avaliar-fora-de-ordem",
+                      "prompt": { "pt": "Essa sequência funciona? Avalia.", "en": "Does that sequence work? Rate it." },
+                      "mode": "evaluate",
+                      "unlock": { "all": [{ "ranPromptCount": { "eq": 1 } }, { "evaluated": { "correct": true } }] }
+                    },
+                    {
+                      "id": "montar-ordem-correta",
+                      "prompt": { "pt": "Agora escolhe reordenar os passos e manda de novo.", "en": "Now pick reorder and send again." },
+                      "hint": { "pt": "Qual passo precisa acontecer ANTES dos outros?", "en": "Which step needs to happen BEFORE the others?" },
+                      "mode": "compose",
+                      "expose": { "choices": ["add-reordenar", "add-pressa", "add-capricho"] },
+                      "unlock": { "ranPrompt": { "withContext": true } }
+                    },
+                    {
+                      "id": "avaliar-ordem-correta",
+                      "prompt": { "pt": "E agora, na ordem certa?", "en": "And now, in the right order?" },
+                      "mode": "evaluate",
+                      "unlock": { "all": [{ "ranPromptCount": { "gte": 2 } }, { "evaluated": { "correct": true } }, { "resultQualityReached": "top" }] }
+                    }
+                  ],
+                  "success": { "stepCompleted": { "id": "avaliar-ordem-correta" } },
+                  "reveal": {
+                    "recap": {
+                      "pt": "Um algoritmo é uma sequência ORDENADA. Trocar a ordem dos passos muda o resultado.",
+                      "en": "An algorithm is an ORDERED sequence. Swapping steps changes the result."
+                    }
+                  },
+                  "evaluation": {
+                    "mode": "ai-judge",
+                    "artifact": { "pt": "a sequência de passos reordenada", "en": "the reordered sequence of steps" },
+                    "criteria": [
+                      {
+                        "id": "passos-na-ordem-certa",
+                        "text": { "pt": "os passos aparecem na ordem em que precisam acontecer", "en": "steps appear in the order they need to happen" },
+                        "weight": 1
+                      },
+                      {
+                        "id": "nenhum-passo-pulado",
+                        "text": { "pt": "nenhum passo obrigatório foi pulado", "en": "no required step was skipped" },
+                        "weight": 1
+                      }
+                    ],
+                    "passMark": 60
+                  }
+                },
+                "rubric": {},
+               "_comment": [
+                  "THE SIXTH KIND. `chat_sandbox` (migration 0057, split from",
+                  "`sandbox_scenario` in 2026-09) had no coverage in this unit — the",
+                  "five kinds documented above stop at `order`.",
+                  "",
+                  "Spec copied from scenario `L1` in",
+                  "`@iterahq/activity-spec:src/schemas/fixtures/beginner-logic-scenarios.ts`",
+                  "(PR #42, merged 2026-08-19), no change to the pedagogical content.",
+                  "L1 was chosen among the fixture's 6 scenarios for being the",
+                  "simplest structurally: `openness: 'fixed'` and `choices[]` (no",
+                  "`slots[]`, which would need an extra form control in the",
+                  "authoring harness).",
+                  "",
+                  "`evaluation` (ai-judge mode) was kept from the original file: it",
+                  "is not read by the e2e harness (which only drives to",
+                  "`verdict`/`render`, never grades with a real LLM), but it is part",
+                  "of the scenario's real object and removing it would diverge from",
+                  "what PR #42 actually merged."
+                ]
               }
             ]
           }
