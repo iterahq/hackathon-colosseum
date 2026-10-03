@@ -59,7 +59,13 @@ import { toast } from 'sonner';
 // Monaco split-pane measurement behind `max-w-7xl`, and for why it must not be
 // re-inlined per page.
 import { columnMaxWidthClass } from '@/utils/activityColumnWidth';
-import { canStepBack, stepBack, stepForward } from '@/utils/lessonNavigation';
+import {
+  canStepBack,
+  canStepForward,
+  jumpToFrontier,
+  stepBack,
+  stepForward,
+} from '@/utils/lessonNavigation';
 import { lessonExitPath } from '@/utils/lessonExitPath';
 import type { Activity, LessonPosition } from '@/types/content';
 import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
@@ -78,6 +84,12 @@ export default function LessonPlayer() {
   const [index, setIndex] = useState(0);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [completed, setCompleted] = useState(false);
+  // The furthest activity the learner has reached by ANSWERING, hit or miss. A
+  // miss moves on without entering `doneIds`, so the done set cannot say this.
+  const [furthest, setFurthest] = useState(0);
+  // The learner has been past the last activity (this session or a resumed one),
+  // so forward from the last activity may reach the completion screen again.
+  const [finished, setFinished] = useState(false);
   // True when the last persistProgress write FAILED — we surface a retry instead
   // of a false success trophy (round-2 nit: never celebrate an unsaved completion).
   const [saveError, setSaveError] = useState(false);
@@ -109,6 +121,8 @@ export default function LessonPlayer() {
   useEffect(() => {
     resumedForRef.current = null;
     setIndex(0);
+    setFurthest(0);
+    setFinished(false);
     setDoneIds(new Set());
     setCompleted(false);
     setSaveError(false);
@@ -159,9 +173,12 @@ export default function LessonPlayer() {
         // Everything is already done — go straight to the completion screen
         // instead of replaying a finished lesson from the top.
         setCompleted(true);
+        setFinished(true);
         setIndex(Math.max(0, ids.length - 1));
+        setFurthest(Math.max(0, ids.length - 1));
       } else {
         setIndex(resumeAt);
+        setFurthest(resumeAt);
       }
       resumedForRef.current = lessonId;
       setResuming(false);
@@ -505,9 +522,11 @@ export default function LessonPlayer() {
     if (!isLast) {
       onAdvance();
       setIndex((i) => i + 1);
+      setFurthest((f) => Math.max(f, index + 1));
     } else {
       onFinish();
       setCompleted(true);
+      setFinished(true);
     }
   }
 
@@ -541,16 +560,29 @@ export default function LessonPlayer() {
 
   /** Revisiting something already finished — the lesson reopens as a book. */
   const reviewing = current ? doneIds.has(current.id) : false;
-  const canGoBack = !resuming && canStepBack(position, activities.length);
+  // An unsettled answer (footer up, or its write in flight) only moves on through the
+  // footer's Continue: leaving by hand would drop the attempt unwritten.
+  const unsettled = pending !== null || saving;
+  const canGoBack = !resuming && !unsettled && canStepBack(position, activities.length);
+  const frontier = furthest;
+  const canNavigateForward = !resuming && !completed && activities.length > 1;
+  // Same formula as `progressPct` (position-derived), applied to the frontier.
+  const frontierPct = activities.length ? Math.round((frontier / activities.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <LessonChrome
         progressPct={progressPct}
+        frontierPct={frontierPct}
         muted={muted}
         onToggleMuted={toggleMuted}
         onClose={() => navigate(lessonExitPath(placement.programSlug))}
         onBack={canGoBack ? goBack : undefined}
+        onForward={canNavigateForward ? goForward : undefined}
+        forwardDisabled={unsettled || !canStepForward(position, frontier, finished)}
+        onJumpToCurrent={
+          canNavigateForward && !unsettled && frontier - index >= 2 ? () => applyPosition(jumpToFrontier(frontier)) : undefined
+        }
       />
 
       {/* ── Centered focused column ── */}
@@ -669,7 +701,7 @@ export default function LessonPlayer() {
                   onClick={reviewing ? goForward : conceptContinue}
                   disabled={saving}
                   data-testid="concept-continue"
-                  className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana hover:bg-evergreen-hi transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {t('activity.continue')}
                 </button>

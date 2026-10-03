@@ -8,11 +8,14 @@ export function MediaLightbox({
   kind,
   label,
   onClose,
+  onError,
 }: {
   src: string;
   kind: MediaKind;
   label: string;
   onClose: () => void;
+  /** The video could not be played (broken link, unsupported codec). */
+  onError?: () => void;
 }) {
   const { t } = useActivityI18n();
 
@@ -40,6 +43,7 @@ export function MediaLightbox({
           autoPlay
           loop
           playsInline
+          onError={onError}
           onClick={(e) => e.stopPropagation()}
           className="max-h-full max-w-full"
         />

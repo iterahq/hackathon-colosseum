@@ -19,6 +19,7 @@ import type { WireSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 
 interface Point {
@@ -40,7 +41,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
   );
   const [picked, setPicked] = useState<string | null>(null);
   const [shaking, setShaking] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const boardRef = useRef<HTMLDivElement>(null);
   const ends = useRef(new Map<string, HTMLElement>());
@@ -81,14 +82,14 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
       setShaking(rightId);
       window.setTimeout(() => setShaking(null), 500);
       record('wrong_try', { left_id: leftId, right_id: rightId });
-      setHint(copy.text(spec?.wrong_hint));
+      showHint(copy.text(spec?.wrong_hint));
       setPicked(null);
       return;
     }
     const next = { ...wires, [leftId]: rightId };
     setWires(next);
     setPicked(null);
-    setHint(null);
+    clearHint();
     record('wire_connected', { left_id: leftId, right_id: rightId });
     if (Object.keys(next).length === left.length) open({ pairs: Object.keys(next).length });
   };
@@ -186,7 +187,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
           </AnimatePresence>
         </svg>
       </div>
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>
   );
 }

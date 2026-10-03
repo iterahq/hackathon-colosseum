@@ -24,6 +24,7 @@ import type { InterceptSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 
 const HOP_MS = 1400;
@@ -38,7 +39,7 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
 
   const [hop, setHop] = useState(0);
   const [shaking, setShaking] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const path = spec?.path ?? [];
   const byId = useMemo(() => new Map((spec?.nodes ?? []).map((n) => [n.id, n])), [spec?.nodes]);
@@ -58,10 +59,10 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
       setShaking(id);
       window.setTimeout(() => setShaking(null), 500);
       record('wrong_try', { node_id: id });
-      setHint(copy.text(spec?.wrong_hint));
+      showHint(copy.text(spec?.wrong_hint));
       return;
     }
-    setHint(null);
+    clearHint();
     open({ node_id: id });
   };
 
@@ -131,7 +132,7 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
           </motion.div>
         )}
       </div>
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>
   );
 }

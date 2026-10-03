@@ -32,9 +32,9 @@ export function SceneFrame({
   return (
     <ActivityShell kind={kind} icon={icon} label={label}>
       <div className="flex flex-col gap-5" data-testid="scene-frame" data-solved={solved ? 'true' : 'false'}>
-        <GuideBubble name={guideName} text={solved ? reaction : prompt} happy={solved} />
+        <GuideBubble name={guideName} text={solved ? reaction : prompt} sizers={[prompt, reaction]} happy={solved} />
         {children}
-        <div className="min-h-[56px]">{solved && <SceneStamp text={stamp} />}</div>
+        <div className="min-h-[40px]">{solved && <SceneStamp text={stamp} />}</div>
       </div>
     </ActivityShell>
   );

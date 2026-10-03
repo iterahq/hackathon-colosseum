@@ -1,7 +1,7 @@
 /**
  * Order — reorder a scrambled sequence into `correct_order` (plan: ≈ "unscramble").
- * Reorder via native drag (grip handle) OR the up/down buttons (keyboard/touch
- * accessible). Submit compares the current order to `correct_order`. Reuses
+ * Reorder by dragging the row (framer-motion `Reorder`: the grip on touch, the
+ * whole row with a mouse) OR the up/down buttons (keyboard/touch accessible). Submit compares the current order to `correct_order`. Reuses
  * InstructionPanel + `onComplete(correct)`.
  *
  * NO story-only seams (ADR-4): answered/correct/incorrect are reached by moving
@@ -20,7 +20,8 @@
  *     learner keeps looking at the arrangement they are being graded on.
  */
 import { useState } from 'react';
-import { CheckCircle2, ChevronDown, ChevronUp, GripVertical, ListOrdered, XCircle } from 'lucide-react';
+import { Reorder } from 'framer-motion';
+import { ListOrdered } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ChoiceOption, OrderSpec } from '../specs.js';
 import { learnerShuffleAvoidingSolution } from '../internal/shuffle.js';
@@ -34,6 +35,8 @@ import { priorOrder } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { OrderRow } from '../components/OrderRow.js';
+import { useOrderDrag } from '../components/useOrderDrag.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 export function OrderActivity({
@@ -72,7 +75,6 @@ export function OrderActivity({
       learnerShuffleAvoidingSolution(items.map((i) => i.id), scope, activity.id, correctOrder),
   );
   const [submitted, setSubmitted] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
   // The list is pre-populated by the shuffle, so "there is a sequence on screen"
   // is NOT evidence the learner composed one. Submitting requires having moved
   // at least one item — the same bar every other graded kind already sets.
@@ -101,15 +103,21 @@ export function OrderActivity({
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<ArrangementAction>(activity.id);
 
-  function move(from: number, to: number, via: 'drag' | 'button' = 'button') {
+  // The ONE place a learner's move is recorded, whether it came from a button
+  // or from the end of a drag.
+  function recordMove(itemId: string, from: number, to: number, via: 'drag' | 'button') {
+    // `via` separates the learner who dragged from the learner on a phone using
+    // the arrows — same permutation, different interaction cost.
+    trace.record('item_moved', { item_id: itemId, from, to, via });
+    setTouched(true);
+  }
+
+  function move(from: number, to: number) {
     if (locked || to < 0 || to >= order.length) return;
     // AFTER the guard, so a no-op nudge at the top of the list is not recorded
     // as a move the learner never made; BEFORE the setState, so the updater
     // stays free of side effects (StrictMode double-invokes it in dev).
-    // `via` separates the learner who dragged from the learner on a phone using
-    // the arrows — same permutation, different interaction cost.
-    trace.record('item_moved', { item_id: order[from], from, to, via });
-    setTouched(true);
+    recordMove(order[from], from, to, 'button');
     setOrder((prev) => {
       const next = [...prev];
       const [x] = next.splice(from, 1);
@@ -117,6 +125,14 @@ export function OrderActivity({
       return next;
     });
   }
+
+  // Only the DROP of a drag counts as a move (see useOrderDrag).
+  const drag = useOrderDrag({
+    order,
+    locked,
+    setOrder,
+    onDrop: (id, from, to) => recordMove(id, from, to, 'drag'),
+  });
 
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
   // CURRENT order (the machine's `gradeResult` isn't set yet at click time).
@@ -136,79 +152,35 @@ export function OrderActivity({
         {t('activity.orderHint')}
       </p>
 
-      <ol className="mt-3 space-y-2.5" data-testid="order-list">
+      <Reorder.Group
+        as="ol"
+        axis="y"
+        values={displayOrder}
+        onReorder={drag.onReorder}
+        className="mt-3 space-y-2.5"
+        data-testid="order-list"
+      >
         {displayOrder.map((id, idx) => {
-          const o = byId(id);
-          const posCorrect = shown && correctOrder[idx] === id;
-          const posWrong = shown && correctOrder[idx] !== id;
+          const verdict = !shown ? null : correctOrder[idx] === id ? 'right' : 'miss';
           return (
-            <li
+            <OrderRow
               key={id}
-              draggable={!locked}
-              onDragStart={() => setDragIndex(idx)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragIndex !== null && dragIndex !== idx) move(dragIndex, idx, 'drag');
-                setDragIndex(null);
-              }}
-              data-testid="order-item"
-              // The AUTHORED item id — what `correct_order` is keyed on. The
-              // rendered position is per-learner and changes as they reorder.
-              data-option-id={id}
-              data-position={idx}
-              className={`flex items-center gap-3 py-3 px-4 rounded-2xl border transition-colors ${
-                posCorrect
-                  ? 'border-verde-tech bg-verde-tech/10'
-                  : posWrong
-                    ? 'border-destructive bg-destructive/10'
-                    : 'border-border bg-card'
-              } ${locked ? '' : 'cursor-grab active:cursor-grabbing'}`}
-            >
-              {/* Kept mounted when locked (dimmed) so the row keeps the exact
-                  geometry the learner was looking at when they submitted. */}
-              <GripVertical
-                className={`w-4 h-4 text-muted-foreground flex-shrink-0 ${locked ? 'opacity-30' : ''}`}
-                aria-hidden
-              />
-              <span className="font-mono text-xs text-menta w-5 flex-shrink-0">{idx + 1}</span>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {o?.image_url && (
-                  <img src={o.image_url} alt={o.label ?? id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
-                )}
-                {o?.label && <span className="flex-1 min-w-0 break-words">{o.label}</span>}
-                {o?.audio_url && <audio src={o.audio_url} controls className="h-7 max-w-[8rem]" />}
-              </div>
-              {posCorrect && <CheckCircle2 className="w-4 h-4 text-menta flex-shrink-0" />}
-              {posWrong && <XCircle className="w-4 h-4 text-destructive flex-shrink-0" />}
-              {/* DISABLED, never unmounted. Removing the controls after a
-                  submit deletes the learner's own reference for what they
-                  arranged; a disabled control still says "this is the thing you
-                  used, and it is closed now". */}
-              <span className="flex flex-col flex-shrink-0">
-                <button
-                  onClick={() => move(idx, idx - 1)}
-                  disabled={locked || idx === 0}
-                  data-testid="order-up"
-                  aria-label={t('activity.moveUp')}
-                  className="text-muted-foreground hover:text-menta disabled:opacity-30 disabled:hover:text-muted-foreground"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => move(idx, idx + 1)}
-                  disabled={locked || idx === displayOrder.length - 1}
-                  data-testid="order-down"
-                  aria-label={t('activity.moveDown')}
-                  className="text-muted-foreground hover:text-menta disabled:opacity-30 disabled:hover:text-muted-foreground"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              </span>
-            </li>
+              id={id}
+              option={byId(id)}
+              position={idx}
+              count={displayOrder.length}
+              locked={locked}
+              verdict={verdict}
+              moveUpLabel={t('activity.moveUp')}
+              moveDownLabel={t('activity.moveDown')}
+              onDragStart={() => drag.onDragStart(id)}
+              onDragEnd={drag.onDragEnd}
+              onNudge={(delta) => move(idx, idx + delta)}
+            />
           );
         })}
-        {order.length === 0 && <p className="text-sm text-muted-foreground">{t('activity.noItems')}</p>}
-      </ol>
+      </Reorder.Group>
+      {order.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{t('activity.noItems')}</p>}
 
       <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
 

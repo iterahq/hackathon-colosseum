@@ -15,8 +15,8 @@
  * that a live click produces — so every state it can reach is a state a learner
  * really produced. The full argument is in `../internal/priorAnswer.ts`.
  */
-import { useState } from 'react';
-import { CheckCircle2, ListChecks, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ListChecks } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ChoiceOption, SingleChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
@@ -30,11 +30,13 @@ import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
+import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
-    <div className="flex items-start gap-3 flex-1 min-w-0">
+    <div className="flex items-center gap-3 flex-1 min-w-0">
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
       )}
@@ -122,51 +124,54 @@ export function SingleChoiceActivity({
     });
   }
 
+  function pick(id: string) {
+    // The AUTHORED id, never the post-shuffle index: the order is
+    // per-learner, so a position would not be comparable across
+    // learners — and cross-learner comparison is the whole point.
+    trace.record('option_selected', { option_id: id });
+    setSelected(id);
+  }
+
+  const optionsRef = useRef<HTMLDivElement>(null);
+  useChoiceHotkeys({
+    scope: optionsRef,
+    count: options.length,
+    enabled: !m.locked,
+    onPick: (i) => pick(options[i].id),
+    onSubmit: () => {
+      if (!m.submitDisabled) handleSubmit();
+    },
+  });
+
   return (
     <ActivityShell kind="single_choice" icon={ListChecks} label={t('activity.singleChoice')}>
       <InstructionPanel spec={spec?.instruction} />
 
-      <div className="mt-5 grid gap-2.5 auto-rows-fr" data-testid="single-choice-options">
-        {options.map((o) => {
+      <div ref={optionsRef} className="mt-5 grid gap-2.5 auto-rows-fr" data-testid="single-choice-options">
+        {options.map((o, i) => {
           const chosen = selected === o.id;
           const state = choiceOptionState({
             shown: m.shown,
             chosen,
             isCorrectOption: o.id === spec?.correct_option_id,
           });
-          const showCorrect = state === 'correct';
-          const showWrong = state === 'wrong';
           return (
-            <button
+            <ChoiceOptionCard
               key={o.id}
+              index={i}
+              state={state}
+              chosen={chosen}
+              shown={m.shown}
               disabled={m.locked}
-              onClick={() => {
-                // The AUTHORED id, never the post-shuffle index: the order is
-                // per-learner, so a position would not be comparable across
-                // learners — and cross-learner comparison is the whole point.
-                trace.record('option_selected', { option_id: o.id });
-                setSelected(o.id);
-              }}
-              data-testid="single-choice-option"
+              onClick={() => pick(o.id)}
+              testId="single-choice-option"
               // The AUTHORED id — what grading keys on, and what a learning
               // event must reference. NOT the post-shuffle position, which
               // differs per learner and per mount.
-              data-option-id={o.id}
-              data-selected={chosen ? 'true' : undefined}
-              className={`w-full h-full flex items-start gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
-                showCorrect
-                  ? 'border-verde-tech bg-verde-tech/10'
-                  : showWrong
-                    ? 'border-destructive bg-destructive/10'
-                    : chosen
-                      ? 'border-menta bg-menta/10'
-                      : 'border-border bg-card hover:border-verde-tech/50 disabled:opacity-70'
-              }`}
+              optionId={o.id}
             >
               <OptionMedia option={o} />
-              {showCorrect && <CheckCircle2 className="w-5 h-5 text-menta flex-shrink-0" />}
-              {showWrong && <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />}
-            </button>
+            </ChoiceOptionCard>
           );
         })}
         {options.length === 0 && (

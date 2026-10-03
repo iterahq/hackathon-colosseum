@@ -29,7 +29,7 @@ export function VideoActivity({
     <ActivityShell kind="video" icon={VideoIcon} label={t('activity.video')}>
       {spec?.instruction && (
         <div className="mb-5">
-          <InstructionPanel spec={spec.instruction} />
+          <InstructionPanel spec={spec.instruction} inlineVideo />
         </div>
       )}
       {spec?.video_url ? (

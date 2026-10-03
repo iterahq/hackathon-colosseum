@@ -20,6 +20,7 @@ import { SceneFrame } from './scene/SceneFrame.js';
 import { useGestureSettle } from './scene/useGestureSettle.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 import { SystemView } from './system/SystemView.js';
 import {
@@ -59,7 +60,7 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
     activity.status === 'done' && spec?.target ? targetAsPlaced(spec.target) : empty,
   );
   const [picked, setPicked] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
   const [overSlot, setOverSlot] = useState<string | null>(null);
   const seq = useRef(0);
 
@@ -81,14 +82,14 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
     const siblings = parent.children.filter((c) => c.block === blockId).length;
     if (allowed === 0 || siblings >= allowed || remaining(block) <= 0) {
       record('wrong_try', { block_id: blockId, parent_block: parent.block });
-      setHint(copy.text(spec?.wrong_hint) || t('activity.composeBlocks.wrongHint'));
+      showHint(copy.text(spec?.wrong_hint) || t('activity.composeBlocks.wrongHint'));
       setPicked(null);
       return;
     }
     seq.current += 1;
     setTree((current) => insertChild(current, parentUid, { uid: `n${seq.current}`, block: blockId, children: [] }));
     setPicked(null);
-    setHint(null);
+    clearHint();
     record('block_placed', { block_id: blockId, parent_block: parent.block });
   };
 
@@ -219,7 +220,7 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
               {renderNode(tree, 0)}
             </ul>
           </div>
-          {!solved && <WrongHint text={hint} />}
+          {!solved && <WrongHint {...hintProps} />}
         </div>
         <div className="flex flex-col gap-2">
           <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">

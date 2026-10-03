@@ -97,8 +97,8 @@ describe('quiz honors `reveal` like every other graded kind', () => {
   it('flags the correct option and freezes the inputs with no submission', () => {
     renderActivity(makeActivity('quiz', QUIZ_SPEC), true);
 
-    expect(optionButton('Matrícula').classList.contains('border-verde-tech')).toBe(true);
-    expect(optionButton('Nome').classList.contains('border-verde-tech')).toBe(false);
+    expect(optionButton('Matrícula').getAttribute('data-verdict')).toBe('right');
+    expect(optionButton('Nome').getAttribute('data-verdict')).toBeNull();
     screen
       .getAllByTestId('quiz-option')
       .forEach((o) => expect((o as HTMLButtonElement).disabled).toBe(true));
@@ -107,7 +107,7 @@ describe('quiz honors `reveal` like every other graded kind', () => {
   it('reveals nothing while the instructor has not revealed', () => {
     renderActivity(makeActivity('quiz', QUIZ_SPEC));
 
-    expect(optionButton('Matrícula').classList.contains('border-verde-tech')).toBe(false);
+    expect(optionButton('Matrícula').getAttribute('data-verdict')).toBeNull();
     expect((screen.getAllByTestId('quiz-option')[0] as HTMLButtonElement).disabled).toBe(false);
   });
 

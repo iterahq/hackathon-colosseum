@@ -6,7 +6,7 @@ export type DecomposeVerdict =
   | { ok: false; reason: 'unassigned'; unassigned: string[] }
   | { ok: false; reason: 'must_group' | 'must_separate'; index: number; hint?: SceneLocalizedText };
 
-const PART_PALETTE = ['#3B82F6', '#22C55E', '#EC4899', '#F59E0B', '#8B5CF6', '#14B8A6', '#EF4444', '#0EA5E9'];
+const PART_PALETTE = ['#3B82F6', '#22C55E', '#EC4899', '#F59E0B', '#8B5CF6', '#14B8A6', '#A3E635', '#0EA5E9'];
 
 const NAMED: Record<string, string> = {
   blue: '#3B82F6',
@@ -15,7 +15,8 @@ const NAMED: Record<string, string> = {
   purple: '#8B5CF6',
   orange: '#F97316',
   pink: '#EC4899',
-  red: '#EF4444',
+  // Red is reserved for the host's feedback: authored `red` renders as rose.
+  red: '#E879F9',
   gray: '#9CA3AF',
 };
 

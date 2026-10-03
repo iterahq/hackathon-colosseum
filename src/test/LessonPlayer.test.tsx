@@ -24,7 +24,11 @@ const useLessonContent = vi.fn();
 const useNextLesson = vi.fn();
 const play = vi.fn();
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play }) }));
-const { configured } = vi.hoisted(() => ({ configured: vi.fn(() => false) }));
+const { configured, upsert, progressRows } = vi.hoisted(() => ({
+  configured: vi.fn(() => false),
+  upsert: vi.fn(),
+  progressRows: { current: [] as Array<{ activity_id: string; status: string }> },
+}));
 vi.mock('@/api/iteraApi', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/api/iteraApi')>()),
   iteraApiConfigured: configured,
@@ -36,10 +40,15 @@ vi.mock('@/hooks', () => ({
 
 // The renderer pulls auth/AI/supabase; stub it to a deterministic complete button.
 vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
-  ActivityRenderer: ({ onComplete }: { onComplete: (c: boolean) => void }) => (
-    <button data-testid="stub-complete" onClick={() => onComplete(true)}>
-      complete
-    </button>
+  ActivityRenderer: ({ activity, onComplete }: { activity: { id: string }; onComplete: (c: boolean) => void }) => (
+    <div data-testid="stub-activity" data-activity-id={activity.id}>
+      <button data-testid="stub-complete" onClick={() => onComplete(true)}>
+        complete
+      </button>
+      <button data-testid="stub-miss" onClick={() => onComplete(false)}>
+        miss
+      </button>
+    </div>
   ),
 }));
 
@@ -54,11 +63,11 @@ vi.mock('@/lib/supabase/client', () => ({
       // stopped, so the stub needs the select→eq→in shape too. It resolves empty:
       // these tests all start a fresh lesson from activity 1.
       const builder: Record<string, unknown> = {
-        upsert: vi.fn().mockResolvedValue({ error: null }),
+        upsert,
         insert: vi.fn().mockResolvedValue({ error: null }),
         select: () => builder,
         eq: () => builder,
-        in: () => Promise.resolve({ data: [], error: null }),
+        in: () => Promise.resolve({ data: progressRows.current, error: null }),
       };
       return builder;
     },
@@ -108,6 +117,9 @@ function renderPlayer() {
 
 beforeEach(() => {
   play.mockReset();
+  upsert.mockReset();
+  progressRows.current = [];
+  upsert.mockResolvedValue({ error: null });
   localStorage.clear();
   useLessonContent.mockReset();
   useNextLesson.mockReset();
@@ -330,5 +342,222 @@ describe('LessonPlayer — global feedback footer (Duolingo pattern)', () => {
     await waitFor(() => expect(screen.queryByTestId('feedback-footer')).toBeNull(), { timeout: 5000 });
     expect(screen.getByTestId('stub-complete')).toBeTruthy();
     expect(screen.queryByTestId('lesson-complete')).toBeNull();
+  });
+});
+
+describe('LessonPlayer — forward navigation to where the learner stopped', () => {
+  function conceptLesson(count: number) {
+    return {
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Intro' },
+        activities: Array.from({ length: count }, (_, i) => ({
+          id: `c${i + 1}`,
+          lessonId: 'lesson-1',
+          ordinal: i + 1,
+          kind: 'concept',
+          spec: { instruction: { text: `Leia ${i + 1}.` } },
+          rubric: null,
+        })),
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  }
+
+  async function advanceConcept() {
+    fireEvent.click(await screen.findByTestId('concept-continue'));
+  }
+
+  it('shows the forward arrow disabled at the frontier', async () => {
+    useLessonContent.mockReturnValue(conceptLesson(4));
+    renderPlayer();
+    const next = (await screen.findByTestId('lesson-next')) as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    expect(screen.queryByTestId('lesson-jump-current')).toBeNull();
+  });
+
+  it('does not render the forward arrow on a single-activity lesson', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(screen.queryByTestId('lesson-next')).toBeNull();
+  });
+
+  it('returns forward after stepping back without writing progress', async () => {
+    useLessonContent.mockReturnValue(conceptLesson(4));
+    renderPlayer();
+    await advanceConcept();
+    await waitFor(() => expect(screen.getByTestId('lesson-prev')).toBeTruthy());
+    await waitFor(() => expect((screen.getByTestId('lesson-next') as HTMLButtonElement).disabled).toBe(true));
+    const writesBefore = upsert.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    const next = (await screen.findByTestId('lesson-next')) as HTMLButtonElement;
+    expect(next.disabled).toBe(false);
+    expect(screen.getByTestId('lesson-progress-frontier')).toBeTruthy();
+
+    fireEvent.click(next);
+    await waitFor(() => expect((screen.getByTestId('lesson-next') as HTMLButtonElement).disabled).toBe(true));
+    expect(screen.queryByTestId('lesson-progress-frontier')).toBeNull();
+    expect(screen.queryByTestId('lesson-complete')).toBeNull();
+    expect(upsert.mock.calls.length).toBe(writesBefore);
+  });
+
+  it('offers the jump pill only when two or more behind, landing on the furthest activity reached', async () => {
+    useLessonContent.mockReturnValue(conceptLesson(5));
+    renderPlayer();
+    await advanceConcept();
+    await waitFor(() => expect(screen.getByTestId('lesson-prev')).toBeTruthy());
+    await advanceConcept();
+    await waitFor(() => expect(screen.getByTestId('lesson-progress')).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByTestId('lesson-progress').getAttribute('aria-valuenow')).toBe('40')
+    );
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() =>
+      expect(screen.getByTestId('lesson-progress').getAttribute('aria-valuenow')).toBe('20')
+    );
+    expect(screen.queryByTestId('lesson-jump-current')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() =>
+      expect(screen.getByTestId('lesson-progress').getAttribute('aria-valuenow')).toBe('0')
+    );
+    const writesBefore = upsert.mock.calls.length;
+    expect(screen.getByTestId('lesson-jump-current')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('lesson-jump-current'));
+    await waitFor(() =>
+      expect(screen.getByTestId('lesson-progress').getAttribute('aria-valuenow')).toBe('40')
+    );
+    expect(screen.queryByTestId('lesson-jump-current')).toBeNull();
+    expect((screen.getByTestId('lesson-next') as HTMLButtonElement).disabled).toBe(true);
+    expect(upsert.mock.calls.length).toBe(writesBefore);
+  });
+
+  it('hides the jump pill when only one step behind', async () => {
+    useLessonContent.mockReturnValue(conceptLesson(4));
+    renderPlayer();
+    await advanceConcept();
+    await waitFor(() => expect(screen.getByTestId('lesson-prev')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await screen.findByTestId('lesson-progress-frontier');
+    expect(screen.queryByTestId('lesson-jump-current')).toBeNull();
+  });
+
+  function quizLesson(count: number) {
+    return {
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Quiz' },
+        activities: Array.from({ length: count }, (_, i) => ({
+          id: `q${i + 1}`,
+          lessonId: 'lesson-1',
+          ordinal: i + 1,
+          kind: 'quiz',
+          spec: {},
+          rubric: null,
+        })),
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  }
+
+  const shownId = () => screen.getByTestId('stub-activity').getAttribute('data-activity-id');
+  const nextDisabled = () => (screen.getByTestId('lesson-next') as HTMLButtonElement).disabled;
+
+  it('keeps the forward arrow usable after a MISSED answer advanced', async () => {
+    useLessonContent.mockReturnValue(quizLesson(3));
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('stub-miss'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(true);
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('q1'));
+    expect(nextDisabled()).toBe(false);
+    const writesBefore = upsert.mock.calls.length;
+    fireEvent.click(screen.getByTestId('lesson-next'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(true);
+    expect(upsert.mock.calls.length).toBe(writesBefore);
+  });
+
+  it('resumed at activity N: forward is disabled on landing, enabled after one step back', async () => {
+    progressRows.current = [
+      { activity_id: 'q1', status: 'completed' },
+      { activity_id: 'q2', status: 'completed' },
+    ];
+    useLessonContent.mockReturnValue(quizLesson(4));
+    configured.mockReturnValue(false);
+    renderPlayer();
+    await waitFor(() => expect(shownId()).toBe('q3'));
+    expect(nextDisabled()).toBe(true);
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(false);
+    fireEvent.click(screen.getByTestId('lesson-next'));
+    await waitFor(() => expect(shownId()).toBe('q3'));
+    expect(nextDisabled()).toBe(true);
+  });
+
+  it('after finishing, forward from the last activity returns to the completion screen', async () => {
+    useLessonContent.mockReturnValue(quizLesson(2));
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(true);
+    fireEvent.click(screen.getByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await screen.findByTestId('lesson-complete');
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(false);
+    fireEvent.click(screen.getByTestId('lesson-next'));
+    await screen.findByTestId('lesson-complete');
+  });
+
+  it('a lesson resumed into the completion screen can step back and forward to it again', async () => {
+    progressRows.current = [
+      { activity_id: 'q1', status: 'completed' },
+      { activity_id: 'q2', status: 'completed' },
+    ];
+    useLessonContent.mockReturnValue(quizLesson(2));
+    renderPlayer();
+    await screen.findByTestId('lesson-complete');
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(nextDisabled()).toBe(false);
+  });
+
+  it('blocks forward and the jump pill while the footer is up, and restores them after Continue', async () => {
+    useLessonContent.mockReturnValue(quizLesson(5));
+    renderPlayer();
+    for (let i = 0; i < 3; i++) {
+      fireEvent.click(await screen.findByTestId('stub-miss'));
+      fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+      await waitFor(() => expect(shownId()).toBe(`q${i + 2}`));
+    }
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    fireEvent.click(await screen.findByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('q2'));
+    expect(screen.getByTestId('lesson-jump-current')).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId('stub-miss'));
+    await screen.findByTestId('feedback-footer');
+    expect(nextDisabled()).toBe(true);
+    expect(screen.queryByTestId('lesson-jump-current')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('q3'));
+    expect(nextDisabled()).toBe(false);
+    await waitFor(() => expect(screen.queryByTestId('feedback-footer')).toBeNull(), { timeout: 5000 });
   });
 });

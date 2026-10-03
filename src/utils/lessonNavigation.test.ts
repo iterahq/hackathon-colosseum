@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canStepBack, stepBack, stepForward } from './lessonNavigation';
+import { canStepBack, canStepForward, jumpToFrontier, stepBack, stepForward } from './lessonNavigation';
 
 describe('stepBack', () => {
   it('lands on the last activity when leaving the completion screen', () => {
@@ -44,5 +44,33 @@ describe('canStepBack', () => {
 
   it('is false for an empty lesson', () => {
     expect(canStepBack({ index: 0, completed: true }, 0)).toBe(false);
+  });
+});
+
+describe('canStepForward', () => {
+  it('is true while behind the frontier', () => {
+    expect(canStepForward({ index: 1, completed: false }, 3)).toBe(true);
+  });
+
+  it('is false at the frontier', () => {
+    expect(canStepForward({ index: 3, completed: false }, 3)).toBe(false);
+  });
+
+  it('is true at the frontier once the learner has finished the lesson', () => {
+    expect(canStepForward({ index: 3, completed: false }, 3, true)).toBe(true);
+  });
+
+  it('is false on the completion screen even when finished', () => {
+    expect(canStepForward({ index: 3, completed: true }, 3, true)).toBe(false);
+  });
+
+  it('is false on the completion screen', () => {
+    expect(canStepForward({ index: 0, completed: true }, 3)).toBe(false);
+  });
+});
+
+describe('jumpToFrontier', () => {
+  it('lands on the frontier activity, not the completion screen', () => {
+    expect(jumpToFrontier(2)).toEqual({ index: 2, completed: false });
   });
 });

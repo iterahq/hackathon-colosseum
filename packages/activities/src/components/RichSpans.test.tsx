@@ -15,7 +15,7 @@ describe('RichSpans — bold vs mark', () => {
     const { container } = render(<RichText text="a ==key phrase== word" />);
     const mark = container.querySelector('mark')!;
     expect(mark.textContent).toBe('key phrase');
-    expect(mark.style.backgroundImage).toContain('rgba(63, 209, 127, 0.16)');
+    expect(mark.style.backgroundImage).toContain('rgba(63, 209, 127, 0.1)');
     expect(mark.style.boxShadow).toContain('inset');
   });
 });

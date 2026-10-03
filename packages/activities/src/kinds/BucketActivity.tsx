@@ -20,6 +20,7 @@ import type { BucketSpec, BucketTone } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 
 const TONE_HEX: Record<BucketTone, string> = {
@@ -47,7 +48,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
   );
   const [picked, setPicked] = useState<string | null>(null);
   const [shaking, setShaking] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const chips = spec?.chips ?? [];
   const buckets = spec?.buckets ?? [];
@@ -66,13 +67,13 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
       setShaking(bucketId);
       window.setTimeout(() => setShaking(null), 500);
       record('wrong_try', { chip_id: chip.id, bucket_id: bucketId });
-      setHint(copy.text(chip.hint));
+      showHint(copy.text(chip.hint));
       return;
     }
     const next = { ...placed, [picked]: bucketId };
     setPlaced(next);
     setPicked(null);
-    setHint(null);
+    clearHint();
     record('chip_placed', { chip_id: chip.id, bucket_id: bucketId });
     if (Object.keys(next).length === chips.length) open({ chips: Object.keys(next).length });
   };
@@ -151,7 +152,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
           })}
         </div>
       </div>
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>
   );
 }

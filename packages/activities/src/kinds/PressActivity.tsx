@@ -24,6 +24,7 @@ import { SceneFrame } from './scene/SceneFrame.js';
 import { ScenePageElement } from './scene/ScenePageElement.js';
 import { SCENE_CODE_BACKGROUND, SCENE_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 
 export function PressActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
@@ -32,7 +33,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
   const gate = useSceneGate(activity, onComplete);
   const { record, open, solved } = gate;
   const [wired, setWired] = useState(false);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
   const [count, setCount] = useState(0);
   const [toggled, setToggled] = useState(false);
   const [appended, setAppended] = useState('');
@@ -42,13 +43,13 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
       if (solved || wired) return;
       if (optionId === spec?.correct) {
         setWired(true);
-        setHint(null);
+        clearHint();
         return;
       }
       record('wrong_try', { option_id: optionId });
-      setHint(localizedText(spec?.wrong_hint ?? '', locale));
+      showHint(localizedText(spec?.wrong_hint ?? '', locale));
     },
-    [locale, record, solved, spec?.correct, spec?.wrong_hint, wired],
+    [clearHint, locale, record, showHint, solved, spec?.correct, spec?.wrong_hint, wired],
   );
 
   const press = useCallback(() => {
@@ -105,7 +106,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
           </button>
         ))}
       </div>
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
       <div
         className="rounded-xl overflow-hidden border border-black/10 p-6 flex flex-col items-start gap-3 min-h-[120px]"
         style={{ background: SCENE_PAGE_BACKGROUND }}

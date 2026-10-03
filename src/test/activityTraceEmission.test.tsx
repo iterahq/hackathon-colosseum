@@ -186,18 +186,22 @@ describe('arrangement family — order', () => {
     });
   });
 
-  it('separates a DRAG from an arrow tap — same permutation, different interaction cost', () => {
+  // Native HTML5 drag is gone (the rows use framer's `Reorder`, which needs real
+  // layout and so cannot be driven in jsdom). The `via: 'drag'` half — one
+  // `item_moved` per completed drag — is proven where the drop bookkeeping
+  // lives, in `useOrderDrag.test.ts`. What is reachable here is the other side
+  // of the contrast: an arrow tap is recorded as `via: 'button'`.
+  it('records an arrow tap as via button, the half that contrasts with a drag', () => {
     const cap = renderOrder();
-    const rows = screen.getAllByTestId('order-item');
-    fireEvent.dragStart(rows[2]);
-    fireEvent.dragOver(rows[0]);
-    fireEvent.drop(rows[0]);
+    const before = screen.getAllByTestId('order-item').map((r) => r.getAttribute('data-option-id'));
+    fireEvent.click(screen.getAllByTestId('order-up')[2]);
     fireEvent.click(screen.getByTestId('order-submit'));
 
     const actions = cap.actions();
     assertFamilyContract('arrangement', actions);
     expect(actions[0].type).toBe('item_moved');
-    expect(actions[0].payload).toMatchObject({ from: 2, to: 0, via: 'drag' });
+    expect(actions[0].payload).toMatchObject({ item_id: before[2], from: 2, to: 1, via: 'button' });
+    expect(actions.filter((a) => a.type === 'item_moved')).toHaveLength(1);
   });
 });
 

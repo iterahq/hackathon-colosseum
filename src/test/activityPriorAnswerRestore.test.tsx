@@ -136,6 +136,7 @@ function optionsSnapshot(testId: string): Array<Record<string, string | null>> {
   return screen.getAllByTestId(testId).map((el) => ({
     id: el.getAttribute('data-option-id'),
     selected: el.getAttribute('data-selected'),
+    verdict: el.getAttribute('data-verdict'),
     className: el.className,
     disabled: String((el as HTMLButtonElement).disabled),
   }));
@@ -202,7 +203,7 @@ describe('single_choice — a replay renders exactly what CLICKING renders', () 
     expect(submitSnapshot('single-choice-submit')).toEqual(clickedSubmit);
   });
 
-  it('shows the WRONG pick in red and the right one in green — the pedagogical half', () => {
+  it('marks the WRONG pick as a quiet miss and the right one as right — the pedagogical half', () => {
     mount(
       activity('single_choice', SINGLE_SPEC, 'done'),
       completion({ option_ids: ['a'] }),
@@ -213,13 +214,13 @@ describe('single_choice — a replay renders exactly what CLICKING renders', () 
     );
     // The learner's own pick is marked AND flagged wrong.
     expect(byId.a.selected).toBe('true');
-    expect(byId.a.className).toContain('border-destructive');
+    expect(byId.a.verdict).toBe('miss');
     // The answer key is flagged too, which is what makes the render teach.
-    expect(byId.b.className).toContain('border-verde-tech');
+    expect(byId.b.verdict).toBe('right');
     // An unpicked distractor stays neutral — we mark what they got wrong, not
     // every option they did not choose.
     expect(byId.c.selected).toBeNull();
-    expect(byId.c.className).not.toContain('border-destructive');
+    expect(byId.c.verdict).toBeNull();
   });
 });
 
@@ -302,7 +303,7 @@ describe('a replay onto a NOT-done activity seeds the inputs and stops there', (
     expect(byId.b.selected).toBe('true');
     // But NOT settled: no verdict, nothing locked, Enviar is live.
     expect(verdict('single-choice-submit')).toBeNull();
-    expect(byId.b.className).not.toContain('border-verde-tech');
+    expect(byId.b.verdict).toBeNull();
     expect(byId.b.disabled).toBe('false');
     const submit = screen.getByTestId('single-choice-submit') as HTMLButtonElement;
     expect(submit.disabled).toBe(false);

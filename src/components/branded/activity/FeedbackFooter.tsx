@@ -78,13 +78,25 @@
  * reach today — that file's header says so explicitly. Do not assume it is
  * gated.
  */
-import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, XCircle } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Check, X } from 'lucide-react';
+import { useEffect, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import { parseInline } from '@/utils/richText';
 import { RichSpans } from './RichSpans';
 import type { FooterResult } from './activityFeedbackKinds';
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  );
+}
+
+const FOREIGN_CONTROL = 'button, a, summary, [role="button"], [role="textbox"], .monaco-editor, .xterm';
 
 export function FeedbackFooter({
   result,
@@ -105,6 +117,23 @@ export function FeedbackFooter({
 }) {
   const { t } = useI18n();
   const correct = result?.correct ?? false;
+  const reducedMotion = !!useReducedMotion();
+  const enterEnabled = !!result && !!onContinue && !busy;
+
+  useEffect(() => {
+    if (!enterEnabled) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.repeat || event.defaultPrevented || isTypingTarget(event.target)) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const control = target?.closest(FOREIGN_CONTROL);
+      if (control && control.getAttribute('data-testid') !== continueTestId) return;
+      // The footer's own focused button would also fire its click on Enter.
+      event.preventDefault();
+      onContinue?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [enterEnabled, onContinue, continueTestId]);
 
   return (
     <AnimatePresence>
@@ -115,31 +144,38 @@ export function FeedbackFooter({
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', stiffness: 380, damping: 34 }}
-          className={`fixed inset-x-0 bottom-0 z-50 border-t backdrop-blur-md ${
-            correct ? 'border-menta/40 bg-menta/10' : 'border-destructive/40 bg-destructive/10'
+          className={`fixed inset-x-0 bottom-0 z-50 border-t-2 backdrop-blur-md ${
+            correct ? 'border-menta bg-menta/15' : 'border-destructive bg-destructive/15'
           }`}
           role="status"
           aria-live="polite"
           data-testid="feedback-footer"
           data-correct={correct ? 'true' : 'false'}
         >
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-            <div
-              className={`flex min-w-0 items-start gap-2.5 md:flex-1 ${
-                correct ? 'text-menta' : 'text-destructive'
-              }`}
-            >
-              {correct ? (
-                <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0" />
-              ) : (
-                <XCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
-              )}
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-6 md:py-6">
+            <div className="flex min-w-0 items-start gap-3 md:flex-1 md:gap-4">
+              <motion.span
+                initial={reducedMotion ? false : { scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 520, damping: 14 }}
+                className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${
+                  correct ? 'bg-menta text-obsidiana' : 'bg-destructive text-destructive-foreground'
+                }`}
+                aria-hidden="true"
+              >
+                {correct ? <Check className="h-6 w-6" strokeWidth={3} /> : <X className="h-6 w-6" strokeWidth={3} />}
+              </motion.span>
               <div className="min-w-0">
-                <p className="font-display font-semibold leading-tight" data-testid="feedback-footer-title">
+                <p
+                  className={`font-display text-xl font-bold leading-tight md:text-2xl ${
+                    correct ? 'text-menta' : 'text-destructive'
+                  }`}
+                  data-testid="feedback-footer-title"
+                >
                   {result.message ?? (correct ? t('activity.correct') : t('activity.incorrect'))}
                 </p>
                 {result.explanation && (
-                  <p className="mt-0.5 text-sm text-foreground/80" data-testid="feedback-footer-explanation">
+                  <p className="mt-1 text-base text-foreground/85" data-testid="feedback-footer-explanation">
                     <RichSpans spans={parseInline(result.explanation)} />
                   </p>
                 )}
@@ -152,10 +188,10 @@ export function FeedbackFooter({
                 onClick={onContinue}
                 disabled={busy}
                 data-testid={continueTestId}
-                className={`inline-flex h-11 flex-shrink-0 items-center justify-center gap-2 rounded-full px-8 font-medium transition-colors disabled:opacity-60 ${
+                className={`inline-flex h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-full px-10 font-semibold transition-[background-color,box-shadow,transform] active:translate-y-[3px] disabled:opacity-60 md:w-auto ${
                   correct
-                    ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
-                    : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                    ? 'bg-menta text-obsidiana shadow-[0_4px_0_#249457] hover:bg-evergreen-hi active:shadow-[0_1px_0_#249457]'
+                    : 'bg-destructive text-destructive-foreground shadow-[0_4px_0_#b3283f] hover:bg-destructive/90 active:shadow-[0_1px_0_#b3283f]'
                 }`}
               >
                 {t('activity.continue')}

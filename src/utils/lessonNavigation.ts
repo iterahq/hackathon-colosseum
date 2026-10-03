@@ -36,3 +36,23 @@ export function canStepBack({ index, completed }: LessonPosition, total: number)
   if (total === 0) return false;
   return completed || index > 0;
 }
+
+/**
+ * Forward by hand is only free over ground already covered: strictly behind the
+ * frontier — the furthest activity the learner reached by answering, hit or
+ * miss — and never from the completion screen (there is nothing after it).
+ * Once the learner has been through the completion screen (`finished`), the
+ * last activity may step on to it again, as the review "Continuar" does.
+ */
+export function canStepForward(
+  { index, completed }: LessonPosition,
+  frontier: number,
+  finished = false
+): boolean {
+  return !completed && (index < frontier || finished);
+}
+
+/** The "back to where I was" jump — always lands on an activity, never on the trophy. */
+export function jumpToFrontier(frontier: number): LessonPosition {
+  return { index: frontier, completed: false };
+}

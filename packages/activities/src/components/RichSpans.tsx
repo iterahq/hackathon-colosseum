@@ -12,7 +12,7 @@ import { HighlightDelay } from './highlightDelay.js';
 
 // `==key phrase==` is the highlighter: a soft pill that sweeps in once the
 // block lands. Bold stays plain emphasis so only the key phrase is marked.
-const HIGHLIGHT = 'linear-gradient(rgba(63,209,127,.16), rgba(63,209,127,.16))';
+const HIGHLIGHT = 'linear-gradient(rgba(63,209,127,.10), rgba(63,209,127,.10))';
 
 export function RichSpans({ spans }: { spans: Inline[] }) {
   const reduced = useReducedMotion();
@@ -30,10 +30,10 @@ export function RichSpans({ spans }: { spans: Inline[] }) {
           return (
             <motion.mark
               key={i}
-              className="-mx-0.5 rounded-md bg-transparent bg-no-repeat px-1 text-menta"
+              className="-mx-0.5 rounded-md bg-transparent bg-no-repeat px-1 text-foreground"
               style={{
                 backgroundImage: HIGHLIGHT,
-                boxShadow: 'inset 0 -2px 0 rgba(63,209,127,.55)',
+                boxShadow: 'inset 0 -2px 0 rgba(63,209,127,.4)',
                 boxDecorationBreak: 'clone',
                 WebkitBoxDecorationBreak: 'clone',
               }}

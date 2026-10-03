@@ -24,6 +24,7 @@ import { ScenePageElement } from './scene/ScenePageElement.js';
 import { SCENE_CODE_BACKGROUND, SCENE_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 
 export function SpotActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
@@ -36,7 +37,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
   const [fixed, setFixed] = useState<Set<string>>(
     () => new Set(activity.status === 'done' ? (spec?.bugs ?? []).map((b) => b.id) : []),
   );
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const bugsById = useMemo(() => new Map((spec?.bugs ?? []).map((b) => [b.id, b])), [spec?.bugs]);
   const total = spec?.bugs?.length ?? 0;
@@ -46,13 +47,13 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
     const bug = bugId ? bugsById.get(bugId) : undefined;
     if (!bug || fixed.has(bug.id)) {
       record('wrong_try', { bug_id: bugId ?? null });
-      setHint(copy.text(spec?.miss_hint));
+      showHint(copy.text(spec?.miss_hint));
       return;
     }
     const next = new Set(fixed).add(bug.id);
     setFixed(next);
     record('element_found', { element_id: bug.id });
-    setHint(bug.note ? copy.text(bug.note) : null);
+    showHint(bug.note ? copy.text(bug.note) : null, 'hit');
     if (next.size === total) open({ bugs: next.size });
   };
 
@@ -122,7 +123,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
           </div>
         </div>
       </div>
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>
   );
 }

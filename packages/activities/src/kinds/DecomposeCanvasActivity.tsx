@@ -9,14 +9,16 @@
  * (`DecomposeCanvasSpec` in `../specs.js`) — see the release-gate note there.
  */
 import { useMemo, useState } from 'react';
-import { Puzzle, RotateCcw } from 'lucide-react';
+import { Eraser, Puzzle, RotateCcw } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { TACTILE_CTA } from '../components/tactile.js';
 import { priorGatePayload } from '../internal/priorAnswer.js';
 import type { ActivityCompleteHandler, ActivityCompletion, PortableActivity } from '../renderer.js';
 import type { DecomposeCanvasSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 import { SystemView, type SystemRegion } from './system/SystemView.js';
 import {
@@ -52,11 +54,11 @@ export function DecomposeCanvasActivity({
       ? (restorableAssignment(priorGatePayload(priorAnswer, 'assignment'), spec, leaves) ?? {})
       : {},
   );
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const toggle = (id: string) => {
     if (solved) return;
-    setHint(null);
+    clearHint();
     setSelected((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -67,8 +69,26 @@ export function DecomposeCanvasActivity({
 
   const lasso = (ids: string[]) => {
     if (solved) return;
-    setHint(null);
-    setSelected((current) => new Set([...current, ...ids]));
+    clearHint();
+    setSelected((current) => {
+      // A full re-lasso over already selected leaves toggles them off.
+      if (ids.length > 0 && ids.every((id) => current.has(id))) return new Set([...current].filter((id) => !ids.includes(id)));
+      return new Set([...current, ...ids]);
+    });
+  };
+
+  const clearSelection = () => {
+    clearHint();
+    setSelected(new Set());
+  };
+
+  const selectedAssigned = [...selected].filter((id) => assignment[id]);
+
+  // Records no action on purpose: the trace vocabulary is closed and Reset records none either.
+  const unassign = () => {
+    if (solved || selectedAssigned.length === 0) return;
+    setAssignment((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !selectedAssigned.includes(id))));
+    setSelected(new Set());
   };
 
   const assign = (partId: string) => {
@@ -82,14 +102,14 @@ export function DecomposeCanvasActivity({
   const reset = () => {
     setAssignment({});
     setSelected(new Set());
-    setHint(null);
+    clearHint();
   };
 
   const verify = () => {
     if (solved) return;
     const verdict = judgeDecomposition(spec, leaves, assignment);
     if (verdict.ok) {
-      setHint(null);
+      clearHint();
       setSelected(new Set());
       // The pairs are what a `done` render replays (`priorAnswer`) — authored ids only.
       open({
@@ -100,11 +120,11 @@ export function DecomposeCanvasActivity({
     }
     if (verdict.reason === 'unassigned') {
       record('wrong_try', { rule: 'require_all_assigned' });
-      setHint(t('activity.decomposeCanvas.unassigned', { count: verdict.unassigned.length }));
+      showHint(t('activity.decomposeCanvas.unassigned', { count: verdict.unassigned.length }));
       return;
     }
     record('wrong_try', { rule: `${verdict.reason}#${verdict.index}` });
-    setHint(copy.text(verdict.hint ?? spec?.wrong_hint) || t('activity.decomposeCanvas.wrongHint'));
+    showHint(copy.text(verdict.hint ?? spec?.wrong_hint) || t('activity.decomposeCanvas.wrongHint'));
   };
 
   const regions: SystemRegion[] = parts
@@ -150,11 +170,25 @@ export function DecomposeCanvasActivity({
         )}
         {!solved && (
           <>
-            <p className="text-sm text-muted-foreground" data-testid="decompose-instruction">
-              {selected.size === 0
-                ? t('activity.decomposeCanvas.selectHint')
-                : t('activity.decomposeCanvas.selected', { count: selected.size })}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" data-testid="decompose-instruction">
+                {selected.size === 0
+                  ? t('activity.decomposeCanvas.selectHint')
+                  : t('activity.decomposeCanvas.selected', { count: selected.size })}
+              </p>
+              <button
+                type="button"
+                onClick={clearSelection}
+                tabIndex={selected.size === 0 ? -1 : 0}
+                aria-hidden={selected.size === 0}
+                data-testid="decompose-clear-selection"
+                className={`shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${
+                  selected.size === 0 ? 'invisible' : ''
+                }`}
+              >
+                {t('activity.decomposeCanvas.clearSelection')}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label={t('activity.decomposeCanvas')}>
               {parts.map((part, i) => {
                 const color = partColor(part, i);
@@ -165,7 +199,7 @@ export function DecomposeCanvasActivity({
                     data-testid={`decompose-part-${part.id}`}
                     onClick={() => assign(part.id)}
                     disabled={selected.size === 0}
-                    className="inline-flex items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition-opacity disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-b-4 px-3.5 py-2 text-sm font-semibold transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
                     style={{ borderColor: color, background: `${color}1F` }}
                   >
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
@@ -173,15 +207,25 @@ export function DecomposeCanvasActivity({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                data-testid="decompose-unassign"
+                onClick={unassign}
+                disabled={selectedAssigned.length === 0}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-b-4 border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
+              >
+                <Eraser className="h-4 w-4" aria-hidden />
+                {t('activity.decomposeCanvas.unassign')}
+              </button>
             </div>
-            <WrongHint text={hint} />
+            <WrongHint {...hintProps} />
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={reset}
                 disabled={assignedCount === 0}
                 data-testid="decompose-reset"
-                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-40"
               >
                 <RotateCcw className="h-4 w-4" />
                 {t('activity.decomposeCanvas.reset')}
@@ -191,7 +235,7 @@ export function DecomposeCanvasActivity({
                 onClick={verify}
                 disabled={assignedCount === 0}
                 data-testid="decompose-verify"
-                className="rounded-full bg-[#6366F1] px-6 py-2.5 text-sm font-bold text-white shadow-[0_4px_0_#4338CA] disabled:opacity-40"
+                className={`h-12 rounded-full px-8 text-sm ${TACTILE_CTA}`}
               >
                 {t('activity.decomposeCanvas.verify')}
               </button>

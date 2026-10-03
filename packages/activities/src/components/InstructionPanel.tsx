@@ -21,33 +21,53 @@
  * a borda não custa nada numa foto, mas custa quando a imagem É o conteúdo: os
  * diagramas da aula de Git perdiam título e legenda no corte.
  *
+ * Vídeo: o texto é o padrão. Com `text` E `video_url` (arquivo http/https .mp4
+ * ou .webm) o vídeo vira um botão opcional logo abaixo do texto
+ * (`OptionalVideoButton`, abre no lightbox) em vez do player inline. Sem texto
+ * (instrução só de vídeo), com link de página (YouTube etc.) ou com
+ * `inlineVideo`, ou depois de o arquivo falhar ao tocar no lightbox, vale o
+ * `InstructionVideo` inline de sempre — o kind `video` passa `inlineVideo` porque o vídeo É a atividade.
+ *
  * Texto e descrição passam pelo RichText: 25 das 47 activities `concept` em
  * produção já escrevem markdown-leve, e num <p> só o aluno lia os asteriscos.
  */
+import { useState } from 'react';
 import { RichText } from './RichText.js';
 import { InstructionImage } from './InstructionImage.js';
 import { InstructionVideo } from './InstructionVideo.js';
+import { OptionalVideoButton, isPlayableFileUrl } from './OptionalVideoButton.js';
 import type { InstructionPanelSpec } from '../specs.js';
 
 export function InstructionPanel({
   spec,
   className = '',
+  inlineVideo = false,
 }: {
   spec: InstructionPanelSpec | undefined | null;
   className?: string;
+  /** Keep the video as an inline player even beside text (the `video` kind). */
+  inlineVideo?: boolean;
 }) {
+  // Keyed by src, like `InstructionVideo`: a failed file never condemns the next video.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (!spec) return null;
   const { text, image_url, video_url, audio_url, description } = spec;
   const hasAny = Boolean(text || image_url || video_url || audio_url || description);
   if (!hasAny) return null;
 
+  const optionalVideo = Boolean(
+    text && video_url && !inlineVideo && failedSrc !== video_url && isPlayableFileUrl(video_url),
+  );
+
   return (
     <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
       {text && <RichText text={text} data-testid="instruction-text" />}
 
+      {optionalVideo && video_url && <OptionalVideoButton src={video_url} onUnplayable={() => setFailedSrc(video_url)} />}
+
       {image_url && <InstructionImage src={image_url} alt={text ?? 'instruction'} />}
 
-      {video_url && <InstructionVideo src={video_url} />}
+      {video_url && !optionalVideo && <InstructionVideo src={video_url} />}
 
       {audio_url && (
         <audio src={audio_url} controls className="w-full" data-testid="instruction-audio" />

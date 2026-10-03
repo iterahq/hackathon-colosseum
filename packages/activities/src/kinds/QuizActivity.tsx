@@ -50,7 +50,6 @@
  */
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import type { QuizOption, QuizSpec } from '../specs.js';
@@ -58,6 +57,8 @@ import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
 import { parseInline } from '../internal/richText.js';
 import { RichSpans } from '../components/RichSpans.js';
 import { AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { tactileSurface } from '../components/tactileSurface.js';
+import { VerdictMark } from '../components/VerdictMark.js';
 import {
   useActivityActionRecorder,
   type SelectionAction,
@@ -176,23 +177,18 @@ export function QuizActivity({
                 setSelected(i);
               }}
               data-testid="quiz-option"
-              className={`rounded-2xl border px-5 transition-colors ${
+              data-verdict={showCorrect ? 'right' : showWrong ? 'miss' : undefined}
+              className={`px-5 ${sideBySide ? 'h-16' : 'min-h-14'} ${tactileSurface(
+                showCorrect ? 'right' : showWrong ? 'miss' : chosen ? 'picked' : 'idle',
+                !(submitted || reveal),
+              )} ${m.shown && state === 'idle' ? 'opacity-60' : ''} ${
                 sideBySide
-                  ? 'h-16 flex items-center justify-center text-center font-display font-bold text-lg'
-                  : 'w-full flex items-center gap-3 py-4 text-left'
-              } ${
-                showCorrect
-                  ? 'border-verde-tech bg-verde-tech/10'
-                  : showWrong
-                    ? 'border-destructive bg-destructive/10'
-                    : chosen
-                      ? 'border-menta bg-menta/10'
-                      : 'border-border bg-card hover:border-verde-tech/50'
+                  ? 'flex items-center justify-center text-center font-display font-bold text-lg'
+                  : 'w-full flex items-center gap-3 py-3 text-left'
               }`}
             >
               <span className={sideBySide ? '' : 'flex-1'}>{label}</span>
-              {!sideBySide && showCorrect && <CheckCircle2 className="w-5 h-5 text-menta" />}
-              {!sideBySide && showWrong && <XCircle className="w-5 h-5 text-destructive" />}
+              {!sideBySide && <VerdictMark verdict={showCorrect ? 'right' : showWrong ? 'miss' : null} />}
             </button>
           );
         })}

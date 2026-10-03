@@ -9,8 +9,8 @@
  * activity handed up earlier and re-grades it with the same `sameSet` below —
  * see `../internal/priorAnswer.ts` for why that is not a seam.
  */
-import { useState } from 'react';
-import { Check, CheckCircle2, CheckSquare, XCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { CheckSquare } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ChoiceOption, MultiChoiceSpec } from '../specs.js';
 import { learnerOptionOrder } from '../internal/shuffle.js';
@@ -24,6 +24,8 @@ import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
+import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -34,7 +36,7 @@ function sameSet(a: string[], b: string[]): boolean {
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
-    <div className="flex items-start gap-3 flex-1 min-w-0">
+    <div className="flex items-center gap-3 flex-1 min-w-0">
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
       )}
@@ -123,6 +125,17 @@ export function MultiChoiceActivity({
     onComplete(isCorrect, { response: chosen, actions: trace.drain() });
   }
 
+  const optionsRef = useRef<HTMLDivElement>(null);
+  useChoiceHotkeys({
+    scope: optionsRef,
+    count: options.length,
+    enabled: !m.locked,
+    onPick: (i) => toggle(options[i].id),
+    onSubmit: () => {
+      if (!m.submitDisabled) handleSubmit();
+    },
+  });
+
   return (
     <ActivityShell kind="multi_choice" icon={CheckSquare} label={t('activity.multiChoice')}>
       <InstructionPanel spec={spec?.instruction} />
@@ -130,47 +143,31 @@ export function MultiChoiceActivity({
         {t('activity.selectAll')}
       </p>
 
-      <div className="mt-3 grid gap-2.5 auto-rows-fr" data-testid="multi-choice-options">
-        {options.map((o) => {
+      <div ref={optionsRef} className="mt-3 grid gap-2.5 auto-rows-fr" data-testid="multi-choice-options">
+        {options.map((o, i) => {
           const chosen = selected.includes(o.id);
           const state = choiceOptionState({
             shown: m.shown,
             chosen,
             isCorrectOption: correctIds.includes(o.id),
           });
-          const showCorrect = state === 'correct';
-          const showWrong = state === 'wrong';
           return (
-            <button
+            <ChoiceOptionCard
               key={o.id}
+              index={i}
+              state={state}
+              chosen={chosen}
+              shown={m.shown}
+              multi
               disabled={m.locked}
               onClick={() => toggle(o.id)}
-              data-testid="multi-choice-option"
+              testId="multi-choice-option"
               // The AUTHORED id — see SingleChoiceActivity for why the index is
               // not an acceptable substitute.
-              data-option-id={o.id}
-              data-selected={chosen ? 'true' : undefined}
-              className={`w-full h-full flex items-start gap-3 py-4 px-5 rounded-2xl border text-left transition-colors ${
-                showCorrect
-                  ? 'border-verde-tech bg-verde-tech/10'
-                  : showWrong
-                    ? 'border-destructive bg-destructive/10'
-                    : chosen
-                      ? 'border-menta bg-menta/10'
-                      : 'border-border bg-card hover:border-verde-tech/50 disabled:opacity-70'
-              }`}
+              optionId={o.id}
             >
-              <span
-                className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${
-                  chosen ? 'border-menta bg-menta/20' : 'border-muted-foreground/40'
-                }`}
-              >
-                {chosen && <Check className="w-3.5 h-3.5 text-menta" />}
-              </span>
               <OptionMedia option={o} />
-              {showCorrect && <CheckCircle2 className="w-5 h-5 text-menta flex-shrink-0" />}
-              {showWrong && <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />}
-            </button>
+            </ChoiceOptionCard>
           );
         })}
         {options.length === 0 && (

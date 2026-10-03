@@ -27,6 +27,7 @@ import { SCENE_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
+import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 import { SceneCssRule } from './scene/SceneCssRule.js';
 
@@ -66,7 +67,7 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
       : null,
   );
   const idAttributes = useMemo(() => selectorReferencedIds(spec?.options ?? []), [spec?.options]);
-  const [hint, setHint] = useState<string | null>(null);
+  const { showHint, clearHint, hintProps } = useWrongHint();
 
   const matched = picked ? new Set(matchSelector(picked, elements)) : new Set<string>();
 
@@ -75,14 +76,14 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
       setPicked(option);
       record('option_picked', { option });
       if (selectorHitsExactly(option, elements, spec?.targets ?? [])) {
-        setHint(null);
+        clearHint();
         open({ option });
         return;
       }
       record('wrong_try', { option });
-      setHint(t('activity.selector.wrongHint'));
+      showHint(t('activity.selector.wrongHint'));
     },
-    [elements, open, record, spec?.targets, t],
+    [clearHint, elements, open, record, showHint, spec?.targets, t],
   );
 
   return (
@@ -148,7 +149,7 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
         value={spec?.rule?.value ?? ''}
         testId="selector-rule"
       />
-      {!solved && <WrongHint text={hint} />}
+      {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>
   );
 }

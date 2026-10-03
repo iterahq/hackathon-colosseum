@@ -177,4 +177,32 @@ describe('DecomposeCanvasActivity', () => {
     expect(document.querySelectorAll('[data-region="header"]')).toHaveLength(1);
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
+
+  it('clears the selection and toggles a leaf off', () => {
+    render(<DecomposeCanvasActivity activity={activity} onComplete={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('system-node-title'));
+    fireEvent.click(screen.getByTestId('system-node-new'));
+    expect(screen.getByTestId('system-node-title')).toHaveAttribute('data-selected', 'true');
+    fireEvent.click(screen.getByTestId('system-node-title'));
+    expect(screen.getByTestId('system-node-title')).not.toHaveAttribute('data-selected');
+    fireEvent.click(screen.getByTestId('decompose-clear-selection'));
+    expect(screen.getByTestId('system-node-new')).not.toHaveAttribute('data-selected');
+    expect(screen.getByTestId('decompose-instruction')).toHaveTextContent('Toque nos elementos');
+  });
+
+  it('releases an assigned leaf through its part chip row', () => {
+    const onComplete = vi.fn();
+    render(<DecomposeCanvasActivity activity={activity} onComplete={onComplete} />);
+    expect(screen.getByTestId('decompose-unassign')).toBeDisabled();
+    group(['title'], 'header');
+    expect(document.querySelectorAll('[data-region="header"]')).toHaveLength(1);
+    expect(screen.getByTestId('decompose-unassign')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('system-node-title'));
+    expect(screen.getByTestId('system-node-title')).toHaveAttribute('data-selected', 'true');
+    fireEvent.click(screen.getByTestId('decompose-unassign'));
+    expect(document.querySelectorAll('[data-region="header"]')).toHaveLength(0);
+    expect(screen.getByTestId('system-node-title')).not.toHaveAttribute('data-selected');
+    expect(screen.getByTestId('decompose-verify')).toBeDisabled();
+  });
 });

@@ -1,30 +1,26 @@
-import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
 
-/** The concept's name lands like a rubber stamp — only after the gesture —
- * and is scrolled into view, because a tall stage can leave it below the fold. */
+/** The concept's name appears as a compact label — only after the gesture. It
+ * never scrolls the page: its slot in `SceneFrame` is reserved up front. */
 export function SceneStamp({ text }: { text: string }) {
   const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.scrollIntoView?.({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
-  }, [reduced]);
   return (
     <motion.div
-      ref={ref}
       data-testid="scene-stamp"
-      initial={reduced ? { opacity: 0 } : { scale: 2.4, rotate: -14, opacity: 0 }}
-      animate={{ scale: 1, rotate: -3, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 16 }}
-      className="inline-block rounded-lg border-[3px] border-evergreen px-5 py-2 text-evergreen shadow-[0_0_40px_rgba(63,209,127,.35)]"
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+      className="inline-flex items-center gap-2 rounded-xl border border-evergreen/50 bg-evergreen-soft/60 px-3.5 py-1.5 text-evergreen-hi"
       style={{
         fontFamily: "'Barlow Condensed', sans-serif",
-        fontWeight: 800,
-        fontSize: 'clamp(22px,3vw,34px)',
+        fontWeight: 700,
+        fontSize: 'clamp(16px,2vw,20px)',
         textTransform: 'uppercase',
         letterSpacing: '.02em',
       }}
     >
+      <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
       {text}
     </motion.div>
   );

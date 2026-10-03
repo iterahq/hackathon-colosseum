@@ -11,6 +11,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { transitionKindOf } from '../oneBehaviourKinds.js';
+import { TACTILE_CTA, TACTILE_CTA_MISSED, TACTILE_CTA_SETTLED } from './tactile.js';
 
 export { AnswerExplanation } from './AnswerExplanation.js';
 
@@ -86,10 +87,8 @@ export function DoneButton({
       onClick={onClick}
       disabled={disabled || locked}
       data-locked={locked ? 'true' : undefined}
-      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium transition-colors ${
-        locked
-          ? 'bg-menta/15 text-menta border border-menta/40 cursor-default'
-          : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed'
+      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+        locked ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
       data-testid="activity-done"
     >
@@ -111,8 +110,7 @@ export function DoneButton({
  * submission (i.e. `submitted` just flipped true in this session — never pass
  * it for a merely-`isDone`/reveal render where the learner's actual answer
  * isn't known), the locked state also carries the correctness signal — green
- * when right, red when wrong — the Duolingo "feedback lives in the action"
- * law. The LABEL stays "Enviado" either way (existing test contract); only the
+ * when right, dashed and quiet when wrong (never red inside an activity). The LABEL stays "Enviado" either way (existing test contract); only the
  * color/icon change. Omit `correct` to keep the old neutral "Enviado" look.
  *
  * NOTE: the correctness MESSAGE no longer lives inline next to this button.
@@ -145,12 +143,8 @@ export function SubmitButton({
       data-submitted={submitted ? 'true' : undefined}
       data-correct={graded ? String(correct) : undefined}
       data-testid={testId}
-      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium transition-colors ${
-        incorrect
-          ? 'bg-destructive/15 text-destructive border border-destructive/40 cursor-default'
-          : submitted
-            ? 'bg-menta/15 text-menta border border-menta/40 cursor-default'
-            : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed'
+      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+        incorrect ? TACTILE_CTA_MISSED : submitted ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
     >
       {submitted && (incorrect ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />)}
