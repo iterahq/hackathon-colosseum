@@ -58,7 +58,7 @@ export const PLUG_SPEC = {
   stamp: 'link conecta o CSS',
   page: {
     elements: [
-      { id: 'titulo', tag: 'h1', text: 'Duda', name: 'título' },
+      { id: 'titulo', tag: 'h1', text: 'Tera', name: 'título' },
       { id: 'intro', tag: 'p', text: 'Faço bolo de pote.', name: 'parágrafo' },
     ],
   },

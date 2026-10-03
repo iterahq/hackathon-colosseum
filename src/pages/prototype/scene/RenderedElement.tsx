@@ -1,7 +1,7 @@
-import type { DudaElement } from "@/types/scenePrototype";
+import type { TeraElement } from "@/types/scenePrototype";
 
-/** How the browser draws one element of Duda's page. */
-export function RenderedElement({ element, text }: { element: DudaElement; text?: string }) {
+/** How the browser draws one element of Tera's page. */
+export function RenderedElement({ element, text }: { element: TeraElement; text?: string }) {
   const content = text ?? element.text;
   switch (element.id) {
     case "h1":

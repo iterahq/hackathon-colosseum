@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { SceneBeatProps } from "@/types/scenePrototype";
-import { CODE_COLORS, DUDA_ELEMENTS } from "./dudaElements";
+import { CODE_COLORS, TERA_ELEMENTS } from "./teraElements";
 import { CodeLine } from "./CodeLine";
 import { EditorFrame } from "./EditorFrame";
 import { BrowserFrame } from "./BrowserFrame";
@@ -9,11 +9,11 @@ import { SparkWire } from "./SparkWire";
 import { useGhostTyping } from "./useGhostTyping";
 import { playClip } from "./sfx";
 
-const titleElement = DUDA_ELEMENTS[0];
+const titleElement = TERA_ELEMENTS[0];
 const SETTLE_MS = 700;
 
 /**
- * First a ghost cursor writes Duda's title and the browser redraws on every
+ * First a ghost cursor writes Tera's title and the browser redraws on every
  * letter; then the learner's own finger takes over, inside the same tag.
  */
 export function LiveTypeBeat({ solved, onSolved }: SceneBeatProps) {

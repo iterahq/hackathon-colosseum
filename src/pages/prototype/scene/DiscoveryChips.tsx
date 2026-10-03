@@ -1,12 +1,12 @@
 import { motion } from "framer-motion";
-import { DUDA_ELEMENTS } from "./dudaElements";
-import type { DudaElementId } from "@/types/scenePrototype";
+import { TERA_ELEMENTS } from "./teraElements";
+import type { TeraElementId } from "@/types/scenePrototype";
 
 /** The learner's collection: one slot per element, filled when found. */
-export function DiscoveryChips({ found }: { found: Set<DudaElementId> }) {
+export function DiscoveryChips({ found }: { found: Set<TeraElementId> }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {DUDA_ELEMENTS.map((element) => {
+      {TERA_ELEMENTS.map((element) => {
         const isFound = found.has(element.id);
         return (
           <motion.div

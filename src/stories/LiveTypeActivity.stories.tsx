@@ -45,7 +45,7 @@ export const LearnerTurn: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const input = await waitFor(() => canvas.getByTestId('live-type-input'), GHOST_DONE);
-    await expect(input).toHaveValue('Oi, eu sou a Duda');
+    await expect(input).toHaveValue('Oi, eu sou o Tera');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

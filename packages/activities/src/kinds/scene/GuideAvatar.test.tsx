@@ -23,4 +23,11 @@ describe('GuideAvatar', () => {
     act(() => void vi.advanceTimersByTime(3600));
     expect(face(container)).toBe('happy');
   });
+
+  it('looks again with the learner on a wrong try, without blinking', () => {
+    const { container } = render(<GuideAvatar happy={false} oops />);
+    expect(face(container)).toBe('oops');
+    act(() => void vi.advanceTimersByTime(3600));
+    expect(face(container)).toBe('oops');
+  });
 });

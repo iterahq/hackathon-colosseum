@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, waitFor, within, type Mock } from 'storybook/test';
 import { XrayActivity } from '@/components/branded/activity/XrayActivity';
 import { makeActivity } from './activityFixtures';
-import { SCENE_DUDA_PAGE, XRAY_SPEC } from './contractFixtures';
+import { SCENE_TERA_PAGE, XRAY_SPEC } from './contractFixtures';
 import { withActivityWidth } from './decorators';
 
 /**
@@ -97,6 +97,6 @@ export const Done: Story = {
 /** H.degenerado — uma página de UM elemento: a mesma cena, uma linha só. */
 export const SingleElement: Story = {
   args: {
-    activity: makeActivity('xray', { ...XRAY_SPEC, page: { elements: [SCENE_DUDA_PAGE.elements[0]] } }),
+    activity: makeActivity('xray', { ...XRAY_SPEC, page: { elements: [SCENE_TERA_PAGE.elements[0]] } }),
   },
 };

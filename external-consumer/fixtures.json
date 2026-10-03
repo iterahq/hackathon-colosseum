@@ -460,12 +460,12 @@
       "reaction": "Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.",
       "stamp": "Todo site é texto",
       "page": {
-        "url_label": "duda.site",
+        "url_label": "tera.site",
         "elements": [
           {
             "id": "titulo",
             "tag": "h1",
-            "text": "Oi, eu sou a Duda",
+            "text": "Oi, eu sou o Tera",
             "name": "título",
             "job": "o texto mais importante da página"
           },
@@ -508,12 +508,12 @@
       "reaction": "Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.",
       "stamp": "Escreve → o navegador desenha",
       "page": {
-        "url_label": "duda.site",
+        "url_label": "tera.site",
         "elements": [
           {
             "id": "titulo",
             "tag": "h1",
-            "text": "Oi, eu sou a Duda",
+            "text": "Oi, eu sou o Tera",
             "name": "título",
             "job": "o texto mais importante da página"
           },
@@ -557,12 +557,12 @@
       "reaction": "Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.",
       "stamp": "<tag>conteúdo</tag>",
       "page": {
-        "url_label": "duda.site",
+        "url_label": "tera.site",
         "elements": [
           {
             "id": "titulo",
             "tag": "h1",
-            "text": "Oi, eu sou a Duda",
+            "text": "Oi, eu sou o Tera",
             "name": "título",
             "job": "o texto mais importante da página"
           },
@@ -1586,7 +1586,7 @@
           {
             "id": "titulo",
             "tag": "h1",
-            "text": "Duda",
+            "text": "Tera",
             "name": "título"
           },
           {

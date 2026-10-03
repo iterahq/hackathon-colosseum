@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { SceneBeatProps } from "@/types/scenePrototype";
-import { DUDA_PAGE_BACKGROUND } from "./dudaElements";
+import { TERA_PAGE_BACKGROUND } from "./teraElements";
 import { XrayRows } from "./XrayRows";
 import { COVERAGE_GOAL, useXrayScan } from "./useXrayScan";
 
@@ -43,13 +43,13 @@ export function XrayBeat({ solved, onSolved }: SceneBeatProps) {
           className="absolute inset-0"
           animate={{ opacity: solved ? 0 : 1 }}
           transition={{ duration: 0.9, delay: solved ? 0.5 : 0 }}
-          style={{ background: DUDA_PAGE_BACKGROUND, WebkitMaskImage: mask, maskImage: mask }}
+          style={{ background: TERA_PAGE_BACKGROUND, WebkitMaskImage: mask, maskImage: mask }}
         >
           <div className="absolute top-0 inset-x-0 h-8 flex items-center gap-1.5 px-3 bg-white/60 border-b border-black/5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
             <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
             <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]" />
-            <span className="ml-3 text-[11px] text-black/40 font-mono">duda.site</span>
+            <span className="ml-3 text-[11px] text-black/40 font-mono">tera.site</span>
           </div>
           <XrayRows layer="page" />
         </motion.div>

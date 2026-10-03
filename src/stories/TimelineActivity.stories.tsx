@@ -64,13 +64,13 @@ export const PageFrames: Story = {
         ...step,
         frame: {
           type: 'page',
-          page: { url_label: 'duda.site', elements: [{ id: 'titulo', tag: 'h1', text: step.label, name: 'título' }] },
+          page: { url_label: 'tera.site', elements: [{ id: 'titulo', tag: 'h1', text: step.label, name: 'título' }] },
         },
       })),
     }),
   },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByTestId('timeline-stage')).toHaveTextContent('duda.site');
+    await expect(within(canvasElement).getByTestId('timeline-stage')).toHaveTextContent('tera.site');
   },
 };
 

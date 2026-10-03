@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { InspectActivity } from '@/components/branded/activity/InspectActivity';
 import { makeActivity } from './activityFixtures';
-import { INSPECT_SPEC, SCENE_DUDA_PAGE } from './contractFixtures';
+import { INSPECT_SPEC, SCENE_TERA_PAGE } from './contractFixtures';
 import { discoverAllTwins } from './interactions';
 import { withActivityWidth } from './decorators';
 
@@ -82,6 +82,6 @@ export const Done: Story = {
 /** H.degenerado — o mínimo legal: DUAS peças. Um par só não seria descoberta. */
 export const TwoElements: Story = {
   args: {
-    activity: makeActivity('inspect', { ...INSPECT_SPEC, page: { elements: SCENE_DUDA_PAGE.elements.slice(0, 2) } }),
+    activity: makeActivity('inspect', { ...INSPECT_SPEC, page: { elements: SCENE_TERA_PAGE.elements.slice(0, 2) } }),
   },
 };

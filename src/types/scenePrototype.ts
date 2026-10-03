@@ -1,12 +1,12 @@
 /**
- * Duda's page, the single artifact every beat of the scene prototype talks
+ * Tera's page, the single artifact every beat of the scene prototype talks
  * about. Each element exists twice — as the source line she wrote and as what
  * the browser draws — and the beats keep the two visibly tied together.
  */
-export type DudaElementId = "h1" | "p" | "a" | "button";
+export type TeraElementId = "h1" | "p" | "a" | "button";
 
-export interface DudaElement {
-  id: DudaElementId;
+export interface TeraElement {
+  id: TeraElementId;
   tag: string;
   attrs?: string;
   text: string;

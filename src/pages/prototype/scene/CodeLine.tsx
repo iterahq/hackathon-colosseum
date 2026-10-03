@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { DudaElement } from "@/types/scenePrototype";
-import { CODE_COLORS } from "./dudaElements";
+import type { TeraElement } from "@/types/scenePrototype";
+import { CODE_COLORS } from "./teraElements";
 
 export function CodeLine({
   element,
@@ -8,7 +8,7 @@ export function CodeLine({
   children,
   style,
 }: {
-  element: DudaElement;
+  element: TeraElement;
   /** Overrides the element text (the live-type beat edits it). */
   text?: string;
   /** Replaces the text slot entirely (e.g. an input). */

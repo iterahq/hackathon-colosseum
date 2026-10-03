@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, Lightbulb } from 'lucide-react';
 import { useActivityI18n } from '../../context.js';
+import { GuideAvatar } from './GuideAvatar.js';
 import { SPRING_POP, SPRING_SETTLE, TACTILE_CTA } from '../../components/tactile.js';
 
 /**
@@ -94,9 +94,9 @@ export function WrongHint({
                       initial={reduced ? false : { scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={SPRING_POP}
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-obsidiana ${hit ? 'bg-evergreen' : 'bg-clay'}`}
+                      className="mt-3 shrink-0"
                     >
-                      {hit ? <Check className="h-6 w-6" aria-hidden /> : <Lightbulb className="h-6 w-6" aria-hidden />}
+                      <GuideAvatar happy={hit} oops={!hit} size="bar" />
                     </motion.span>
                     <div className="min-w-0">
                       <p className={`font-display text-xl font-bold ${hit ? 'text-evergreen-hi' : 'text-clay'}`}>

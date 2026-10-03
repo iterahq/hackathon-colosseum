@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { DudaElementId, SceneBeatProps } from "@/types/scenePrototype";
-import { DUDA_ELEMENTS, DUDA_PAGE_BACKGROUND } from "./dudaElements";
+import type { TeraElementId, SceneBeatProps } from "@/types/scenePrototype";
+import { TERA_ELEMENTS, TERA_PAGE_BACKGROUND } from "./teraElements";
 import { CodeLine } from "./CodeLine";
 import { RenderedElement } from "./RenderedElement";
 import { DiscoveryChips } from "./DiscoveryChips";
@@ -14,8 +14,8 @@ import { useDiscoveries } from "./useDiscoveries";
  */
 export function InspectBeat({ solved, onSolved }: SceneBeatProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef(new Map<DudaElementId, HTMLElement>());
-  const codeRefs = useRef(new Map<DudaElementId, HTMLElement>());
+  const pageRefs = useRef(new Map<TeraElementId, HTMLElement>());
+  const codeRefs = useRef(new Map<TeraElementId, HTMLElement>());
   const { active, found, discover, release } = useDiscoveries(solved, onSolved);
 
   const path = useConnectorPath(
@@ -24,19 +24,19 @@ export function InspectBeat({ solved, onSolved }: SceneBeatProps) {
     active ? codeRefs.current.get(active) ?? null : null,
   );
 
-  const bind = (id: DudaElementId) => ({
+  const bind = (id: TeraElementId) => ({
     onPointerEnter: () => discover(id),
     onPointerDown: () => discover(id),
     onPointerLeave: release,
   });
 
-  const activeElement = DUDA_ELEMENTS.find((element) => element.id === active);
+  const activeElement = TERA_ELEMENTS.find((element) => element.id === active);
 
   return (
     <div className="flex flex-col gap-5">
       <div ref={containerRef} className="relative grid md:grid-cols-2 gap-10 md:gap-16">
-        <div className="rounded-xl p-7 flex flex-col gap-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.9)]" style={{ background: DUDA_PAGE_BACKGROUND }}>
-          {DUDA_ELEMENTS.map((element) => (
+        <div className="rounded-xl p-7 flex flex-col gap-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.9)]" style={{ background: TERA_PAGE_BACKGROUND }}>
+          {TERA_ELEMENTS.map((element) => (
             <div
               key={element.id}
               ref={(node) => node && pageRefs.current.set(element.id, node)}
@@ -50,7 +50,7 @@ export function InspectBeat({ solved, onSolved }: SceneBeatProps) {
         </div>
 
         <div className="rounded-xl bg-[#0E0D0B] border border-white/10 p-6 flex flex-col justify-center gap-4 text-[clamp(12px,1.3vw,15px)]">
-          {DUDA_ELEMENTS.map((element) => (
+          {TERA_ELEMENTS.map((element) => (
             <div
               key={element.id}
               ref={(node) => node && codeRefs.current.set(element.id, node)}

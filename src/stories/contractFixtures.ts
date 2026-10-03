@@ -649,13 +649,13 @@ export const QUESTION_MULTI_SPEC = {
 };
 
 /**
- * A página da Duda — o MESMO artefato nas três cenas. Quatro elementos, um de
+ * A página do Tera — o MESMO artefato nas três cenas. Quatro elementos, um de
  * cada tag que o Dia 1 do `basico-frontend` apresenta.
  */
-export const SCENE_DUDA_PAGE = {
-  url_label: 'duda.site',
+export const SCENE_TERA_PAGE = {
+  url_label: 'tera.site',
   elements: [
-    { id: 'titulo', tag: 'h1', text: 'Oi, eu sou a Duda', name: 'título', job: 'o texto mais importante da página' },
+    { id: 'titulo', tag: 'h1', text: 'Oi, eu sou o Tera', name: 'título', job: 'o texto mais importante da página' },
     { id: 'texto', tag: 'p', text: 'Faço bolo de pote e vendo na escola.', name: 'parágrafo', job: 'um bloco de texto corrido' },
     { id: 'insta', tag: 'a', attrs: { href: 'insta' }, text: 'Me segue no Insta', name: 'link', job: 'leva pra outro lugar quando clica' },
     { id: 'pedido', tag: 'button', text: 'Quero um bolo!', name: 'botão', job: 'algo pra apertar' },
@@ -668,7 +668,7 @@ export const XRAY_SPEC = {
   prompt: 'Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.',
   reaction: 'Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.',
   stamp: 'Todo site é texto',
-  page: SCENE_DUDA_PAGE,
+  page: SCENE_TERA_PAGE,
 };
 
 /** `live_type` canônico — o fantasma digita o `<h1>`, depois é a vez do aluno. */
@@ -677,7 +677,7 @@ export const LIVE_TYPE_SPEC = {
   prompt: 'Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.',
   reaction: 'Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.',
   stamp: 'Escreve → o navegador desenha',
-  page: SCENE_DUDA_PAGE,
+  page: SCENE_TERA_PAGE,
   target_id: 'titulo',
 };
 
@@ -687,7 +687,7 @@ export const INSPECT_SPEC = {
   prompt: 'Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.',
   reaction: 'Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.',
   stamp: '<tag>conteúdo</tag>',
-  page: SCENE_DUDA_PAGE,
+  page: SCENE_TERA_PAGE,
 };
 
 /* ------------------------------------------------------------------ *

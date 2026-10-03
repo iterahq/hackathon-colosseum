@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { DUDA_ELEMENTS } from "./dudaElements";
+import { TERA_ELEMENTS } from "./teraElements";
 import { CodeLine } from "./CodeLine";
 
 /** A code editor window whose h1 line hosts whatever the beat puts there. */
@@ -12,7 +12,7 @@ export function EditorFrame({ h1Slot }: { h1Slot: ReactNode }) {
         </span>
       </div>
       <div className="py-5 pr-4 text-[clamp(11px,1.25vw,15px)] leading-[2.2] overflow-x-auto">
-        {DUDA_ELEMENTS.map((element, i) => (
+        {TERA_ELEMENTS.map((element, i) => (
           <div key={element.id} className="flex">
             <span className="w-10 shrink-0 text-right pr-4 text-white/20 font-mono select-none">{i + 1}</span>
             {element.id === "h1" ? h1Slot : <CodeLine element={element} />}
