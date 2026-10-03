@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { DudaAvatar } from "./DudaAvatar";
+import { TeraAvatar } from "./TeraAvatar";
 
-export function DudaBubble({ text, happy }: { text: string; happy: boolean }) {
+export function TeraBubble({ text, happy }: { text: string; happy: boolean }) {
   return (
     <div className="flex items-end gap-3">
-      <DudaAvatar happy={happy} />
+      <TeraAvatar happy={happy} />
       <AnimatePresence mode="wait">
         <motion.div
           key={text}
@@ -16,7 +16,7 @@ export function DudaBubble({ text, happy }: { text: string; happy: boolean }) {
             happy ? "bg-[#3FD17F] text-[#0A0908]" : "bg-[#1A1714] text-white/90 border border-white/10"
           }`}
         >
-          <span className="block text-[10px] font-mono tracking-[.25em] uppercase opacity-60 mb-1">Duda</span>
+          <span className="block text-[10px] font-mono tracking-[.25em] uppercase opacity-60 mb-1">Tera</span>
           {text}
         </motion.div>
       </AnimatePresence>

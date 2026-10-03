@@ -23,11 +23,11 @@ type Story = StoryObj<typeof SelectorActivity>;
 
 /** A.enabled / C.blank — nenhum chip escolhido ainda; a regra espera um seletor; a guia fala pelo nome. */
 export const Default: Story = {
-  args: { activity: makeGatedActivity('selector', { ...SELECTOR_SPEC, guide: { name: 'Duda' } }) },
+  args: { activity: makeGatedActivity('selector', { ...SELECTOR_SPEC, guide: { name: 'Tera' } }) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('selector-option-h1')).toHaveAttribute('aria-pressed', 'false');
-    await expect(canvas.getByTestId('scene-guide')).toHaveTextContent('Duda');
+    await expect(canvas.getByTestId('scene-guide')).toHaveTextContent('Tera');
     await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('? { color: #DB2777; }');
     // The element shows its tag and text, never an id the page code does not have.
     await expect(canvas.getByTestId('selector-element-intro')).toHaveTextContent('<p> Intro');

@@ -60,7 +60,7 @@ export const TASK_LIST_VIEW = {
 };
 
 export const DECOMPOSE_CANVAS_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Seleciona os elementos que andam juntos e dá um nome a cada parte da tela.',
   reaction: 'Cada parte tem um trabalho só: mostrar, adicionar ou listar.',
   stamp: 'decomposição',
@@ -84,7 +84,7 @@ export const DECOMPOSE_CANVAS_SPEC = {
 };
 
 export const COMPOSE_BLOCKS_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Monta a tela de tarefas encaixando os blocos, do maior para o menor.',
   reaction: 'A tela é feita de blocos dentro de blocos.',
   stamp: 'composição',
@@ -126,7 +126,7 @@ export const COMPOSE_BLOCKS_SPEC = {
 };
 
 export const STATE_LAB_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Mexe no estado e vê a tela mudar. Deixa as duas primeiras tarefas concluídas.',
   reaction: 'A tela é só o estado desenhado: muda o dado, muda o desenho.',
   stamp: 'estado vira tela',
@@ -151,7 +151,7 @@ export const STATE_LAB_SPEC = {
 };
 
 export const EVENT_TRACE_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Clica na primeira tarefa e acompanha o que acontece, passo a passo.',
   reaction: 'Um clique vira ação, a ação muda o estado e o estado redesenha a tela.',
   stamp: 'causa e efeito',

@@ -664,7 +664,7 @@ export const SCENE_DUDA_PAGE = {
 
 /** `xray` canônico — varrer 30% (o default) abre o gate. */
 export const XRAY_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.',
   reaction: 'Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.',
   stamp: 'Todo site é texto',
@@ -673,7 +673,7 @@ export const XRAY_SPEC = {
 
 /** `live_type` canônico — o fantasma digita o `<h1>`, depois é a vez do aluno. */
 export const LIVE_TYPE_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.',
   reaction: 'Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.',
   stamp: 'Escreve → o navegador desenha',
@@ -683,7 +683,7 @@ export const LIVE_TYPE_SPEC = {
 
 /** `inspect` canônico — achar as 4 peças abre o gate. */
 export const INSPECT_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.',
   reaction: 'Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.',
   stamp: '<tag>conteúdo</tag>',

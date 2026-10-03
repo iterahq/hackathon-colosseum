@@ -454,7 +454,7 @@
     "kind": "xray",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Esse é o meu site. Parece mágica, né? Passa o raio-X por cima e descobre do que ele é feito.",
       "reaction": "Viu? Embaixo de tudo é só texto. O navegador lê esse texto e desenha a página.",
@@ -502,7 +502,7 @@
     "kind": "live_type",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Olha eu escrevendo no editor, e o navegador desenhando a página a cada letra. Quando eu terminar, é sua vez: troca pelo SEU nome.",
       "reaction": "Você acabou de programar! Mudou o arquivo e o navegador redesenhou na hora.",
@@ -551,7 +551,7 @@
     "kind": "inspect",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Minha página tem 4 peças. Passa o mouse (ou o dedo) em cada uma e descobre o nome dela.",
       "reaction": "Cada peça é uma tag: abre, conteúdo, fecha. É assim que o HTML dá nome às coisas.",
@@ -1829,7 +1829,7 @@
     "kind": "spot",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "A página derreteu. Tapa o token exato que quebrou tudo.",
       "reaction": "Faltava um 's' — 'clas' não é atributo nenhum.",
@@ -2057,7 +2057,7 @@
     "kind": "decompose_canvas",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Seleciona os elementos que andam juntos e dá um nome a cada parte da tela.",
       "reaction": "Cada parte tem um trabalho só: mostrar, adicionar ou listar.",
@@ -2181,7 +2181,7 @@
     "kind": "compose_blocks",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Monta a tela de tarefas encaixando os blocos, do maior para o menor.",
       "reaction": "A tela é feita de blocos dentro de blocos.",
@@ -2283,7 +2283,7 @@
     "kind": "state_lab",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Mexe no estado e vê a tela mudar. Deixa as duas primeiras tarefas concluídas.",
       "reaction": "A tela é só o estado desenhado: muda o dado, muda o desenho.",
@@ -2396,7 +2396,7 @@
     "kind": "event_trace",
     "spec": {
       "guide": {
-        "name": "Duda"
+        "name": "Tera"
       },
       "prompt": "Clica na primeira tarefa e acompanha o que acontece, passo a passo.",
       "reaction": "Um clique vira ação, a ação muda o estado e o estado redesenha a tela.",

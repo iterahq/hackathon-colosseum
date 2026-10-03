@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { SCENE_BEATS } from "./scene/sceneBeats";
 import { BeatStage } from "./scene/BeatStage";
-import { DudaBubble } from "./scene/DudaBubble";
+import { TeraBubble } from "./scene/TeraBubble";
 import { ConceptStamp } from "./scene/ConceptStamp";
 import { SceneProgress } from "./scene/SceneProgress";
 import { SceneFinale } from "./scene/SceneFinale";
@@ -38,7 +38,7 @@ export default function ScenePrototypePage() {
     setRun((r) => r + 1);
   };
 
-  // `reducedMotion="user"`: the looping hints (Duda's bob, the x-ray lens)
+  // `reducedMotion="user"`: the looping hints (Tera's bob, the x-ray lens)
   // stop when the reader asks the OS for less motion. The source-stamp capture
   // runs with reduced motion, so the screen can settle and be captured.
   return (
@@ -65,7 +65,7 @@ export default function ScenePrototypePage() {
               <h1 className="text-[clamp(30px,5vw,52px)] leading-none uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800 }}>
                 {beat.kicker}
               </h1>
-              <DudaBubble text={solved ? beat.reaction : beat.prompt} happy={solved} />
+              <TeraBubble text={solved ? beat.reaction : beat.prompt} happy={solved} />
               <BeatStage beat={beat} solved={solved} onSolved={onSolved} />
               <div className="flex items-center justify-between gap-4 min-h-[64px]">
                 {solved && <ConceptStamp text={beat.stamp} />}

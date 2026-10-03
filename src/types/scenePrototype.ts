@@ -23,9 +23,9 @@ export interface SceneBeatProps {
 export interface SceneBeat {
   id: "xray" | "live-type" | "inspect";
   kicker: string;
-  /** What Duda says before the gesture. */
+  /** What Tera says before the gesture. */
   prompt: string;
-  /** What Duda says once the learner did it. */
+  /** What Tera says once the learner did it. */
   reaction: string;
   /** The concept, named only AFTER the learner experienced it. */
   stamp: string;

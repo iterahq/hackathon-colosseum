@@ -35,7 +35,7 @@ export const WIRE_SPEC = {
 };
 
 export const SPOT_SPEC = {
-  guide: { name: 'Duda' },
+  guide: { name: 'Tera' },
   prompt: 'A página derreteu. Tapa o token exato que quebrou tudo.',
   reaction: "Faltava um 's' — 'clas' não é atributo nenhum.",
   stamp: 'um typo quebra tudo',
