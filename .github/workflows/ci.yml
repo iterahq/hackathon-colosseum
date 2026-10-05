@@ -47,6 +47,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Shell-only gate (ADR-13/14, Q-7 = B). Decides whether `activity-baseline`,
+  # `source-stamp` and `browser-mode` run. Fails OPEN: anything but a proven
+  # "every changed path is under apps/mobile/" runs them (scripts/ci-shell-only.mjs).
+  changes:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 5
+    outputs:
+      shell_only: ${{ steps.diff.outputs.shell_only }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Classify the diff
+        id: diff
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-shell-only.mjs
+
   build-test:
     # See the runner rationale at the top of this file (iterahq free-plan
     # Actions-minutes exhaustion -> our own iterahq-scoped dfl-runners).
@@ -359,6 +387,8 @@ jobs:
   # no wall-clock, do mesmo jeito que o `browser-mode` (ver abaixo).
   # ──────────────────────────────────────────────────────────────────────────
   activity-baseline:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.shell_only != 'true' }}
     runs-on: [self-hosted, dfl-runner]
     timeout-minutes: 15
     steps:
@@ -455,6 +485,8 @@ jobs:
   # would have declared that fixed two times out of three.
   # ──────────────────────────────────────────────────────────────────────────
   source-stamp:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.shell_only != 'true' }}
     runs-on: [self-hosted, dfl-runner]
     timeout-minutes: 15
     steps:
@@ -579,6 +611,8 @@ jobs:
   # precisa. Misturá-lo no `build-test` esconderia a única medida que importa.
   # ──────────────────────────────────────────────────────────────────────────
   browser-mode:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.shell_only != 'true' }}
     # Mesmo runner do `build-test`: os dfl-runners próprios do iterahq (ver o
     # cabeçalho deste arquivo). O job é `continue-on-error: true`, então mesmo
     # que o `playwright install --with-deps` tropece no host self-hosted ele
