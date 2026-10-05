@@ -47,6 +47,8 @@ export const ROUTE_WRAPPERS: ReadonlySet<string> = new Set([
   "RequireRole",
   "LazyRoute",
   "Suspense",
+  "WebOnlyRoute",
+  "ShellAccessGate",
 ]);
 
 export function loadRepo(root: string): Repo {

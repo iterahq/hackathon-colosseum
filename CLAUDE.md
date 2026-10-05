@@ -202,6 +202,22 @@ WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm:
   memória). Refresh token nunca atravessa a ponte; a casca nunca renova nem persiste token. As
   únicas variáveis da casca são `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY`
   (públicas, as mesmas da web); **nenhum segredo em `apps/mobile`**.
+- **Dentro da casca o app não fala de assinatura, preço nem cadastro** (W-7, Q-3/Q-11). "Estou na
+  casca" só se sabe pelo handshake da ponte: `useShellSurface()` → `pending | web | shell`
+  (`src/hooks/useShellSurface.ts`). Link, botão ou texto de assinatura/cadastro vai dentro de
+  `<WebOnly>`; rota de checkout/cadastro vai dentro de `<WebOnlyRoute>`; conta sem acesso vê
+  `ShellNoAccessScreen` (decidido em `RequireSubscription`); leitura de acesso que FALHOU nunca diz
+  "sem acesso" (`ShellAccessUnverifiedScreen`). Vale como "casca" só uma RESPOSTA ao nosso `hello`
+  (`isNativeReply` em `src/lib/shellReply.ts`): envelope JSON com `tag` da ponte no topo, `kind`
+  `result` ou `refusal` e o `id` do `hello` enviado, vindo desta janela e desta origem. Eco do
+  próprio `hello` ou string que só contém a tag não vale. Só o silêncio (2 `hello` em 1,5 s) vira `web`. `scripts/shell-commerce.test.ts` é um **alarme, não
+  uma prova**: pega as rotas e o vocabulário CONHECIDOS (`/subscribe`, `/signup`, Stripe e afins,
+  chaves e frases de assinatura/preço/cadastro) fora do portão, numa lista fechada de arquivos. Não
+  vê rota montada por concatenação, chave em template nem oferta com palavra fora da lista — quem
+  revisa a PR e a caminhada num build real (R-14) continuam sendo o controle. Falso positivo de
+  TEXTO (aula que fala de pagamento): comentário `// not-commerce: <motivo>` na linha ou na de cima,
+  e a contagem por arquivo em `NOT_COMMERCE_MARKERS` do teste. O marcador nunca cala rota, host de
+  pagamento nem Stripe.
 - O Metro só sobe por `apps/mobile/scripts/start-metro.sh`, depois do filtro de pacotes de
   `apps/mobile/scripts/metro-firewall.sh`. Nunca `expo start` direto, nunca `--tunnel`.
 - Runbook, medições e lacunas conhecidas: [`docs/mobile-shell.md`](docs/mobile-shell.md).

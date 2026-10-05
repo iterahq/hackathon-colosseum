@@ -29,6 +29,16 @@ export interface AccessInput {
   entitlementError?: boolean;
 }
 
+/**
+ * A read that FAILED after an earlier read had answered "entitled": TanStack keeps that answer in
+ * `data`. Inside the native shell this keeps the learner on the page instead of downgrading a
+ * subscriber on a background refetch that died in a tunnel (plan 20261003-itera-player-mobile, row
+ * W-7). The browser never asks this: there a failed read paywalls, as `hasPaidAccess` says.
+ */
+export function wasEntitledBeforeFailedRead({ entitlement, entitlementError = false }: Pick<AccessInput, 'entitlement' | 'entitlementError'>): boolean {
+  return entitlementError && entitlement?.active === true;
+}
+
 /** True when the signed-in user has full (paid or exempt) access. */
 export function hasPaidAccess({ memberships, entitlement, entitlementError = false }: AccessInput): boolean {
   if (isTenantAdmin(memberships ?? [])) return true;

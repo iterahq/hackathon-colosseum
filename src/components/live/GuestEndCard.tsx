@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { WebOnly } from '@/components/shell/WebOnly';
 
 /**
  * Where a guest's live experience ENDS (ADR-3 + ADR-7).
@@ -29,15 +30,17 @@ export function GuestEndCard({ onBack }: { onBack?: () => void }) {
           <Sparkles className="w-7 h-7" />
         </div>
         <h1 className="font-display text-2xl text-foreground mt-5">{t('live.guest.end.title')}</h1>
-        <p className="text-sm text-muted-foreground mt-2">{t('live.guest.end.subtitle')}</p>
+        <WebOnly>
+          <p className="text-sm text-muted-foreground mt-2">{t('live.guest.end.subtitle')}</p>
 
-        <Link
-          to="/signup"
-          data-testid="guest-end-signup"
-          className="mt-8 w-full h-12 px-6 inline-flex items-center justify-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-        >
-          {t('live.guest.end.cta')}
-        </Link>
+          <Link
+            to="/signup"
+            data-testid="guest-end-signup"
+            className="mt-8 w-full h-12 px-6 inline-flex items-center justify-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+          >
+            {t('live.guest.end.cta')}
+          </Link>
+        </WebOnly>
 
         {/* A learner who ALREADY has an account can land here by accident: a
             stale guest token in localStorage routes every page to this card.

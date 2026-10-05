@@ -35,6 +35,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { isTenantAdmin, highestRole, instructorTenantId } from '@/services/membership.service';
 import { useEnabledTenantIds } from '@/hooks/useLiveClass';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
+import { WebOnly } from '@/components/shell/WebOnly';
 
 export function AppHeader({
   active = 'discover',
@@ -184,13 +185,15 @@ export function AppHeader({
           {/* Visitor mode: subtle subscribe CTA next to the role pill — the
               exit from "browsing locked" back to the paid checkout. */}
           {isVisitor && (
-            <Link
-              to="/subscribe"
-              data-testid="nav-subscribe-cta"
-              className="hidden sm:inline-flex items-center px-3 h-9 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi text-xs font-medium hover:bg-evergreen-soft/70 transition-colors"
-            >
-              {t('subscribe.cta')}
-            </Link>
+            <WebOnly>
+              <Link
+                to="/subscribe"
+                data-testid="nav-subscribe-cta"
+                className="hidden sm:inline-flex items-center px-3 h-9 rounded-full border border-evergreen/40 bg-evergreen-soft text-evergreen-hi text-xs font-medium hover:bg-evergreen-soft/70 transition-colors"
+              >
+                {t('subscribe.cta')}
+              </Link>
+            </WebOnly>
           )}
 
           {/* Notifications bell */}

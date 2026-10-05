@@ -34,6 +34,8 @@ import { RequireSubscription } from "./auth/RequireSubscription";
 import { ShellBridgeMount } from "./lib/shellBridge";
 import { KeepAwakeRouteMount } from "./lib/shellKeepAwake";
 import { ShellAuthSessionMount } from "./lib/shellAuthSession";
+import { WebOnlyRoute } from "./components/shell/WebOnlyRoute";
+import { ShellAccessGate } from "./components/shell/ShellAccessGate";
 /* ── Code-split surfaces (lazy) ───────────────────────────────────────────
    /admin/* and /author/* are staff surfaces: role-gated, and never rendered in
    the overwhelmingly common learner session. Statically importing them pulled
@@ -154,7 +156,7 @@ const App = () => (
                     /login. The landing site points "Criar conta" here; the page
                     creates the account passwordlessly and lands on /subscribe,
                     because a fresh account is entitled to nothing. */}
-                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/signup" element={<WebOnlyRoute><SignupPage /></WebOnlyRoute>} />
                 {/* Password recovery — /auth/forgot requests the email link
                     (public); /auth/reset is where the link lands (the recovery
                     token signs the user in via detectSessionInUrl). */}
@@ -244,7 +246,9 @@ const App = () => (
                   path="/profile"
                   element={
                     <RequireAuth>
-                      <ProfilePage />
+                      <ShellAccessGate>
+                        <ProfilePage />
+                      </ShellAccessGate>
                     </RequireAuth>
                   }
                 />
@@ -258,17 +262,21 @@ const App = () => (
                 <Route
                   path="/subscribe"
                   element={
-                    <RequireAuth signedOutTo="/signup">
-                      <SubscribePage />
-                    </RequireAuth>
+                    <WebOnlyRoute>
+                      <RequireAuth signedOutTo="/signup">
+                        <SubscribePage />
+                      </RequireAuth>
+                    </WebOnlyRoute>
                   }
                 />
                 <Route
                   path="/subscribe/return"
                   element={
-                    <RequireAuth>
-                      <SubscribeReturnPage />
-                    </RequireAuth>
+                    <WebOnlyRoute>
+                      <RequireAuth>
+                        <SubscribeReturnPage />
+                      </RequireAuth>
+                    </WebOnlyRoute>
                   }
                 />
                 {/* Live-class / real-time cohort mode (plan 20260702-…).

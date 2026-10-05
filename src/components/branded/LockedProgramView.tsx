@@ -13,6 +13,7 @@ import { Lock } from 'lucide-react';
 import { ProgramIcon } from './ProgramIcon';
 import { useProgramOutline } from '@/hooks/useProgramOutline';
 import { useI18n } from '@/i18n';
+import { WebOnly } from '@/components/shell/WebOnly';
 import type { CatalogProgram } from '@/types/catalog';
 
 export function LockedProgramView({ program }: { program: CatalogProgram }) {
@@ -46,14 +47,16 @@ export function LockedProgramView({ program }: { program: CatalogProgram }) {
         <div className="w-11 h-11 rounded-2xl bg-muted/40 border border-border flex items-center justify-center text-muted-foreground">
           <Lock className="w-5 h-5" />
         </div>
-        <p className="text-sm text-muted-foreground max-w-[46ch]">{t('program.locked.hint')}</p>
-        <Link
-          to="/subscribe"
-          data-testid="program-locked-subscribe"
-          className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors mt-1"
-        >
-          {t('catalog.locked.cta')}
-        </Link>
+        <WebOnly>
+          <p className="text-sm text-muted-foreground max-w-[46ch]">{t('program.locked.hint')}</p>
+          <Link
+            to="/subscribe"
+            data-testid="program-locked-subscribe"
+            className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors mt-1"
+          >
+            {t('catalog.locked.cta')}
+          </Link>
+        </WebOnly>
         {/* `outline` is always null today — see useProgramOutline. Once a real
             RPC backs it, render the unit/lesson titles here. */}
         {outline && outline.length > 0 && (

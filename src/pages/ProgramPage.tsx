@@ -16,6 +16,7 @@ import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { isProgramNotFoundError } from '@/services/programs.service';
 import { useI18n } from '@/i18n';
+import { WebOnly } from '@/components/shell/WebOnly';
 
 /**
  * The route resolved to no program. Two causes, ONE screen, on purpose: the
@@ -49,13 +50,15 @@ function ProgramUnavailable({
       <p className="text-sm text-muted-foreground max-w-[46ch]">{t('program.noAccess.body')}</p>
       <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
         {visitor && (
-          <Link
-            to="/subscribe"
-            className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
-            data-testid="program-unavailable-subscribe"
-          >
-            {t('catalog.locked.cta')}
-          </Link>
+          <WebOnly>
+            <Link
+              to="/subscribe"
+              className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              data-testid="program-unavailable-subscribe"
+            >
+              {t('catalog.locked.cta')}
+            </Link>
+          </WebOnly>
         )}
         {onRetry && (
           <button

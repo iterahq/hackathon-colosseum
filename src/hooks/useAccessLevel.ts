@@ -8,9 +8,10 @@
  * hook only adds the loading/unauthenticated states around it.
  */
 import { useAuth } from '@/auth/AuthContext';
-import { hasPaidAccess } from '@/auth/accessLevel';
+import { hasPaidAccess, wasEntitledBeforeFailedRead } from '@/auth/accessLevel';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
+import { useShellSurface } from '@/hooks/useShellSurface';
 
 export type AccessLevel = 'pending' | 'member' | 'visitor';
 
@@ -29,6 +30,7 @@ export function useAccessLevel(): AccessLevelState {
   const { session, loading: authLoading, configured } = useAuth();
   const { data: entitlement, isPending: entPending, isError: entError } = useEntitlement();
   const { data: memberships, isPending: memPending } = useMembership();
+  const surface = useShellSurface();
 
   // Unconfigured/mock mode: mirrors RequireSubscription's pass-through — treat
   // as a full member so the mock/dev path renders unlocked.
@@ -41,6 +43,12 @@ export function useAccessLevel(): AccessLevelState {
   if (!session) return { level: 'visitor', entitlementError: false };
 
   if (hasPaidAccess({ memberships, entitlement, entitlementError: entError })) {
+    return { level: 'member', entitlementError: entError };
+  }
+
+  // Inside the shell the gate keeps a subscriber on the page when a refetch fails; the page must
+  // then agree with the gate and not render its locked variant.
+  if (surface === 'shell' && wasEntitledBeforeFailedRead({ entitlement, entitlementError: entError })) {
     return { level: 'member', entitlementError: entError };
   }
 

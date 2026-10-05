@@ -13,6 +13,7 @@ import { Button, Input, Label, PasswordInput } from '@devfellowship/components';
 import { useAuth } from '@/auth/AuthContext';
 import { loginWithDfl } from '@/auth/dflFederation';
 import { AuthShell } from '@/components/auth/AuthShell';
+import { WebOnly } from '@/components/shell/WebOnly';
 import { useI18n } from '@/i18n';
 import { safeInternalPath } from '@/lib/safeInternalPath';
 import { isGuestAccessToken } from '@/services/guestSession.service';
@@ -131,16 +132,18 @@ export default function AuthPage() {
 
       {/* Sign-up CTA — the self-serve door. Access still requires a subscription
           or DFL membership; /signup only mints the account that can pay. */}
-      <p className="mt-6 text-center text-xs text-muted-foreground">
-        {t('auth.noAccount')}{' '}
-        <Link
-          to="/signup"
-          className="font-medium text-foreground underline-offset-2 hover:underline"
-          data-testid="goto-signup"
-        >
-          {t('auth.signUp')}
-        </Link>
-      </p>
+      <WebOnly>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          {t('auth.noAccount')}{' '}
+          <Link
+            to="/signup"
+            className="font-medium text-foreground underline-offset-2 hover:underline"
+            data-testid="goto-signup"
+          >
+            {t('auth.signUp')}
+          </Link>
+        </p>
+      </WebOnly>
     </AuthShell>
   );
 }

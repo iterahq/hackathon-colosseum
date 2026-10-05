@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { fileURLToPath } from "node:url";
 import {
   loadRepo,
+  pageOfElement,
   parseAppRoutes,
   readMap,
   repoFromFiles,
@@ -292,6 +293,27 @@ describe("negative fixtures, one per rule", () => {
     expect(found.path).toBe("/admin/roster");
     const map: RouteMap = { ...MAP, routes: [{ path: "/admin/roster", screen: "roster", mode: "webview", universal: false, web_paths: ["src/pages/admin/RosterPage.tsx"] }] };
     expect(rule3b(repo, map)).toEqual([]);
+  });
+  it("3b: the shell-only wrappers of W-7 are wrappers, never the page", () => {
+    const app = `
+      import SignupPage from "./pages/auth/SignupPage";
+      import ProfilePage from "./pages/ProfilePage";
+      import { WebOnlyRoute } from "./components/shell/WebOnlyRoute";
+      import { ShellAccessGate } from "./components/shell/ShellAccessGate";
+      const a = <Route path="/signup" element={<WebOnlyRoute><SignupPage /></WebOnlyRoute>} />;
+      const b = <Route path="/profile" element={<RequireAuth><ShellAccessGate><ProfilePage /></ShellAccessGate></RequireAuth>} />;
+    `;
+    const { repo } = fixture({
+      "src/App.tsx": app,
+      "src/pages/auth/SignupPage.tsx": "export default 1;\n",
+      "src/pages/ProfilePage.tsx": "export default 1;\n",
+      "src/components/shell/WebOnlyRoute.tsx": "export const WebOnlyRoute = 1;\n",
+      "src/components/shell/ShellAccessGate.tsx": "export const ShellAccessGate = 1;\n",
+    });
+    expect(pageOfElement("<WebOnlyRoute><SignupPage /></WebOnlyRoute>", app, repo)).toBe("src/pages/auth/SignupPage.tsx");
+    expect(pageOfElement("<RequireAuth><ShellAccessGate><ProfilePage /></ShellAccessGate></RequireAuth>", app, repo)).toBe("src/pages/ProfilePage.tsx");
+    expect(pageOfElement("<WebOnlyRoute />", app, repo)).toBeNull();
+    expect(pageOfElement("<RequireAuth><ShellAccessGate /></RequireAuth>", app, repo)).toBeNull();
   });
   it("4: a native route that is not universal", () => {
     const { map } = fixture({}, { ...MAP, routes: [{ ...MAP.routes[0], mode: "native" }] });

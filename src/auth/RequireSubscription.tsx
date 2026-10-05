@@ -36,14 +36,33 @@
  * não tem paywall. `mode="preview"` não é uma isenção — quem entra sem
  * assinatura continua SEM `hasPaidAccess`; só muda a reação da rota.
  *
+ * INSIDE THE NATIVE SHELL (plan 20261003-itera-player-mobile, row W-7, Q-11 = A)
+ * a "no access" verdict is neither a redirect nor a locked preview: both modes
+ * render `ShellNoAccessScreen`, so the app never names a subscription. That
+ * sentence is only for a read that ANSWERED "no access". A read that FAILED
+ * keeps the page when an earlier read had answered "entitled", and otherwise
+ * shows `ShellAccessUnverifiedScreen` (retry + sign out). The browser verdict
+ * (`hasPaidAccess`, `graceOnError`) is untouched.
+ * ⚠️ "Keep the page after an entitled answer" is the bypass this file refuses
+ * for the browser, accepted in the shell ONLY so a background refetch that dies
+ * in a tunnel does not throw a subscriber out of a lesson. It rests on the
+ * in-memory query cache alone (an `active: true` answer earlier in this same
+ * page; nothing is persisted), the surface is client-side, and content stays
+ * behind RLS either way. Do not widen it: no persisted answer, no other
+ * surface, no other signal than that cached read.
+ *
  * Plan: 20260624-itera-plg-subscribe-flow (Phase 3) + 20260918-visitor-mode.
  */
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { hasPaidAccess } from './accessLevel';
+import { hasPaidAccess, wasEntitledBeforeFailedRead } from './accessLevel';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
+import { useShellSurface } from '@/hooks/useShellSurface';
+import { ShellAccessUnverifiedScreen } from '@/components/shell/ShellAccessUnverifiedScreen';
+import { ShellNoAccessScreen } from '@/components/shell/ShellNoAccessScreen';
+import { ShellSettling } from '@/components/shell/ShellSettling';
 
 export function RequireSubscription({
   children,
@@ -58,8 +77,9 @@ export function RequireSubscription({
 }) {
   const { session, loading: authLoading, configured } = useAuth();
   const location = useLocation();
-  const { data: entitlement, isPending: entPending, isError: entError } = useEntitlement();
+  const { data: entitlement, isPending: entPending, isError: entError, refetch: refetchEntitlement } = useEntitlement();
   const { data: memberships, isPending: memPending } = useMembership();
+  const surface = useShellSurface();
 
   // In unconfigured/mock mode there is no entitlement data — let through so the
   // mock/dev path still renders (mirrors RequireAuth's mock pass-through).
@@ -79,6 +99,15 @@ export function RequireSubscription({
   // Tenant admins/owners are exempt from the seat paywall; a paid/exempt
   // entitlement also passes. Single decision, shared with useAccessLevel.
   if (hasPaidAccess({ memberships, entitlement, entitlementError: entError })) return <>{children}</>;
+
+  if (!(entError && graceOnError)) {
+    if (surface === 'pending') return <ShellSettling />;
+    if (surface === 'shell') {
+      if (!entError) return <ShellNoAccessScreen />;
+      if (wasEntitledBeforeFailedRead({ entitlement, entitlementError: entError })) return <>{children}</>;
+      return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
+    }
+  }
 
   // Uma leitura que FALHOU não é uma resposta — é a ausência dela. Só a aula ao
   // vivo escolhe passar nesse caso (`graceOnError`): ela roda no mesmo wifi de

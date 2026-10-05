@@ -6,9 +6,11 @@
 import { Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { useShellSurface } from '@/hooks/useShellSurface';
 
 export function VisitorBanner() {
   const { t } = useI18n();
+  if (useShellSurface() !== 'web') return null;
   return (
     <div
       className="rounded-3xl border border-evergreen/30 bg-evergreen-soft/20 p-6 md:p-8 flex flex-col justify-center gap-3"
