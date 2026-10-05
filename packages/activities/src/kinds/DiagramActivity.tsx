@@ -54,6 +54,7 @@ import type { DiagramSpec } from '../specs.js';
 import { parseInline } from '../internal/richText.js';
 import { normalizeMermaidLabel, parseMermaidLite } from '../internal/mermaidLite.js';
 import { RichSpans } from '../components/RichSpans.js';
+import { MediaHoverZone } from '../components/MediaHoverZone.js';
 import { MermaidLite } from '../components/MermaidLite.js';
 import { ActivityShell } from '../components/parts.js';
 
@@ -107,7 +108,9 @@ export function DiagramActivity({
         }}
       >
         {spec?.imageUrl ? (
-          <img src={spec.imageUrl} alt={spec.prompt ?? 'diagram'} className="mx-auto rounded-xl" />
+          <MediaHoverZone src={spec.imageUrl}>
+            <img src={spec.imageUrl} alt={spec.prompt ?? 'diagram'} className="mx-auto rounded-xl" />
+          </MediaHoverZone>
         ) : graph ? (
           <MermaidLite
             graph={graph}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useActivityI18n } from '../context.js';
 import { MEDIA_LIFT } from './mediaLift.js';
+import { MediaHoverZone } from './MediaHoverZone.js';
 
 export function InstructionImage({ src, alt }: { src: string; alt: string }) {
   const { t } = useActivityI18n();
@@ -18,6 +19,7 @@ export function InstructionImage({ src, alt }: { src: string; alt: string }) {
 
   return (
     <>
+      <MediaHoverZone src={src}>
       <button
         type="button"
         onClick={() => setZoomed(true)}
@@ -40,6 +42,7 @@ export function InstructionImage({ src, alt }: { src: string; alt: string }) {
           </span>
         )}
       </button>
+      </MediaHoverZone>
 
       {zoomed && (
         <div

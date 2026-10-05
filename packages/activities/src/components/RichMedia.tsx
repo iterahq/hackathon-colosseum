@@ -5,6 +5,9 @@
  * controls, autoplay, muted. Under prefers-reduced-motion it does not autoplay
  * and shows controls instead, with a separate expand button so the controls
  * keep their own clicks. Everything else is a lazy `<img>`.
+ *
+ * Images also get the hover preview (`MediaHoverZone`); clips do not — a
+ * second `<video>` would download the file again and play out of step.
  */
 import { useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
@@ -12,6 +15,7 @@ import { Maximize2 } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { MEDIA_LIFT } from './mediaLift.js';
 import { MediaLightbox } from './MediaLightbox.js';
+import { MediaHoverZone } from './MediaHoverZone.js';
 import { RichSpans } from './RichSpans.js';
 import { parseInline, type MediaItem } from '../internal/richText.js';
 
@@ -56,6 +60,17 @@ export function RichMedia({ item }: { item: MediaItem }) {
             <Maximize2 className="h-4 w-4" aria-hidden />
           </button>
         </div>
+      ) : item.kind === 'image' ? (
+        <MediaHoverZone src={item.url}>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label={t('activity.instructionZoomOpen')}
+            className={`${CARD} cursor-zoom-in`}
+          >
+            {media}
+          </button>
+        </MediaHoverZone>
       ) : (
         <button
           type="button"

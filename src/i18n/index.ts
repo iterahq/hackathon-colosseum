@@ -510,6 +510,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.codeSoon': 'O editor de código chega em breve (judge0).',
     'activity.codeSnackHint': 'Edite o código; a telinha de resultado atualiza sozinha.',
     'activity.instructionZoomOpen': 'Ampliar a imagem',
+    'activity.mediaHoverOff': 'Desligar a prévia ao passar o mouse',
+    'activity.mediaHoverOn': 'Ligar a prévia ao passar o mouse',
     'activity.instructionZoomClose': 'Fechar',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
     // Fronteira de validação de spec (estado F) — os 12 kinds.
@@ -1565,6 +1567,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.codeSoon': 'The code editor is coming soon (judge0).',
     'activity.codeSnackHint': 'Edit the code; the preview updates live.',
     'activity.instructionZoomOpen': 'Zoom in on the image',
+    'activity.mediaHoverOff': 'Turn off the hover preview',
+    'activity.mediaHoverOn': 'Turn on the hover preview',
     'activity.instructionZoomClose': 'Close',
     'activity.codeInvalid': 'This code activity has an invalid configuration.',
     'activity.specInvalid': 'This activity has an invalid configuration and could not be loaded.',
