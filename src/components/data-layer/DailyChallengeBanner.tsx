@@ -27,7 +27,7 @@ export function DailyChallengeBanner({ challenge, className }: DailyChallengeBan
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent p-5 md:p-6",
+        "relative overflow-hidden rounded-xl border border-primary/30 bg-linear-to-r/srgb from-primary/15 via-primary/5 to-transparent p-5 md:p-6",
         className,
       )}
       data-testid="daily-challenge-banner"

@@ -42,7 +42,7 @@ import { defineConfig, devices } from '@playwright/test';
  *    catalogue, so it is the hardest overflow case. It also turns on touch, so
  *    tap-only affordances are exercised the way a learner meets them.
  *  - **iPad (gen 7) (810x1080)** — 810 is the one tablet width that matters
- *    here. `tailwind.config.ts` does not override `screens`, so the defaults
+ *    here. `src/index.css` pins the default pixel breakpoints, so the defaults
  *    apply, and this app flips its whole live layout at `lg` (1024). 810 sits
  *    inside [md 768, lg 1024), which proves the "below lg" branch on a WIDE
  *    screen — where full-bleed layouts break most often. A 1024+ tablet would

@@ -1,0 +1,188 @@
+/*
+ * Tailwind 3 behaviour kept on Tailwind 4, so the upgrade moves no pixel by
+ * itself. Each block names the v4 default it neutralises; deleting a block
+ * adopts that default.
+ *
+ * The first half also keeps `@iterahq/activities` rendering unchanged: the
+ * package ships Tailwind 3 class names to hosts that may still run Tailwind 3,
+ * so its strings are not renamed and the names v4 dropped or redefined are
+ * served from here.
+ */
+
+/* v4 applies `hover:` only where the device can hover; v3 applied it everywhere. */
+@custom-variant hover (&:hover);
+
+@theme {
+  /* v4: bare `ring` is 1px and `ring-*` without a colour is `currentcolor`. */
+  --default-ring-width: 3px;
+  --default-ring-color: rgb(59 130 246 / 0.5);
+
+  /* v4: `rounded-full` is `calc(infinity * 1px)`, which computes to 3.35544e+07px. */
+  --radius-full: 9999px;
+
+  /*
+   * v4 ships unitless line-height ratios with each font size, which a child
+   * with another font size inherits as a ratio. v3 shipped these lengths.
+   */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  /*
+   * The default palette is oklch in v4 and close to, not equal to, the v3 hex
+   * values. Every default-palette colour this app uses is pinned to its v3
+   * value; a colour used for the first time needs a line here.
+   */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-lime-500: #84cc16;
+  --color-green-500: #22c55e;
+  --color-green-700: #15803d;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-teal-500: #14b8a6;
+  --color-teal-600: #0d9488;
+  --color-teal-700: #0f766e;
+  --color-sky-300: #7dd3fc;
+  --color-sky-400: #38bdf8;
+  --color-sky-500: #0ea5e9;
+  --color-sky-600: #0284c7;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-indigo-600: #4f46e5;
+  --color-indigo-700: #4338ca;
+  --color-violet-400: #a78bfa;
+  --color-purple-700: #7e22ce;
+  --color-fuchsia-400: #e879f9;
+  --color-fuchsia-500: #d946ef;
+  --color-fuchsia-600: #c026d3;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-800: #1e293b;
+  --color-gray-200: #e5e7eb;
+  --color-gray-500: #6b7280;
+  --color-gray-900: #111827;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-600: #525252;
+}
+
+/* Removed in v4 (`shrink-*` / `grow-*` exist in both majors). */
+@utility flex-shrink {
+  flex-shrink: 1;
+}
+@utility flex-shrink-0 {
+  flex-shrink: 0;
+}
+@utility flex-grow {
+  flex-grow: 1;
+}
+@utility flex-grow-0 {
+  flex-grow: 0;
+}
+
+/*
+ * v4 redefines `outline-none` as `outline-style: none` and records that style
+ * for every later `outline-*` width, so `outline-none focus-visible:outline-2`
+ * would draw nothing. This restores the v3 declaration (what v4 calls
+ * `outline-hidden`) for the spellings the package and the design system use.
+ * A plain rule, not `@utility`: a custom utility is emitted next to the core
+ * one instead of replacing it.
+ */
+.outline-none,
+.focus\:outline-none:focus,
+.focus-visible\:outline-none:focus-visible {
+  --tw-outline-style: solid;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+/*
+ * `@devfellowship/components` is written for Tailwind 4. On Tailwind 3 the
+ * classes below produced nothing: `aria-invalid:` and `**:` are not v3
+ * variants, `rounded-xs` and `outline-hidden` are not v3 names, v3 found the
+ * arbitrary durations and easings ambiguous, and it read
+ * `shadow-[var(--token)]` as a shadow colour, so no shadow was drawn. Tailwind
+ * 4 understands all of them, which would give dialogs and tooltips a shadow,
+ * inputs an `aria-invalid` border and badges a 120ms transition in the same
+ * change as the upgrade. They stay switched off here so that change can be
+ * made and looked at by itself: delete this block to let the design system
+ * render as designed. A design-system release can add classes of this kind;
+ * they render as designed unless listed here.
+ */
+@source not inline('rounded-xs');
+@source not inline('border-current/20');
+@source not inline('duration-[120ms]');
+@source not inline('duration-[180ms]');
+@source not inline('duration-[var(--c-progress-duration)]');
+@source not inline('duration-[var(--p-duration,180ms)]');
+@source not inline('duration-[var(--p-duration-fast)]');
+@source not inline('ease-[var(--c-progress-easing)]');
+@source not inline('ease-[var(--p-ease-out)]');
+@source not inline('aria-invalid:border-[var(--c-checkbox-danger-border)]');
+@source not inline('aria-invalid:border-[var(--c-input-border-error)]');
+@source not inline('aria-invalid:border-destructive');
+@source not inline('aria-invalid:bg-[var(--c-checkbox-danger-bg)]');
+@source not inline('aria-invalid:focus-visible:[box-shadow:var(--c-textarea-ring-focus-error)]');
+@source not inline('aria-invalid:focus-visible:ring-[var(--s-danger-solid)]');
+@source not inline('**:data-[slot=command-input-wrapper]:h-12');
+@source not inline('**:data-[slot=navigation-menu-link]:focus:ring-0');
+@source not inline('aria-invalid:data-[state=checked]:border-[var(--c-checkbox-danger-checked-bg)]');
+@source not inline('aria-invalid:data-[state=checked]:bg-[var(--c-checkbox-danger-checked-bg)]');
+@source not inline('shadow-[var(--c-alert-dialog-shadow)]');
+@source not inline('shadow-[var(--c-card-shadow)]');
+@source not inline('shadow-[var(--c-contextmenu-shadow)]');
+@source not inline('shadow-[var(--c-dialog-shadow)]');
+@source not inline('shadow-[var(--c-dropdownmenu-shadow)]');
+@source not inline('shadow-[var(--c-hovercard-shadow)]');
+@source not inline('shadow-[var(--c-nav-content-shadow)]');
+@source not inline('shadow-[var(--c-popover-shadow)]');
+@source not inline('shadow-[var(--c-select-menu-shadow)]');
+@source not inline('shadow-[var(--c-slider-thumb-shadow)]');
+@source not inline('shadow-[var(--c-toast-shadow)]');
+@source not inline('shadow-[var(--c-tooltip-shadow)]');
+@source not inline('shadow-[var(--p-shadow-sm)]');
+@source not inline('group-data-[viewport=false]/navigation-menu:shadow-[var(--c-nav-content-shadow)]');
+@source not inline('hover:shadow-[var(--c-slider-thumb-hover-shadow)]');
+@source not inline('focus:shadow-[var(--c-usermenu-item-danger-focus-ring)]');
+@source not inline('focus:shadow-[var(--c-usermenu-item-focus-ring)]');
+@source not inline('focus-visible:shadow-[var(--c-contextmenu-item-focus-ring)]');
+@source not inline('focus-visible:shadow-[var(--c-dropdownmenu-focus-ring)]');
+@source not inline('focus-visible:shadow-[var(--c-slider-thumb-focus-shadow)]');
+@source not inline('focus-visible:shadow-[var(--c-toggle-focus-ring)]');
+@source not inline('data-[variant=outline]:shadow-[var(--p-shadow-sm)]');
+@source not inline('data-[variant=outline]:data-[state=on]:shadow-[var(--c-toggle-outline-active-shadow)]');
+
+/*
+ * v4 makes `leading-*` survive a font-size utility that applies later:
+ * `leading-tight md:text-2xl` keeps 1.25 at `md`, where v3 switched to the
+ * line-height that ships with `text-2xl`. Clearing the carrier variable turns
+ * that off; `leading-*` still sets `line-height` itself.
+ */
+[class*='leading-'] {
+  --tw-leading: initial;
+}
+@source not inline('outline-hidden');
+@source not inline('focus-visible:outline-hidden');

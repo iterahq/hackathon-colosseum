@@ -68,13 +68,13 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
             {/* Hex medal — pointy-top hexagon with a coloured glow halo on
                 earned medals (drop-shadow reads through clip-path; box-shadow
                 does not, so the halo lives on the wrapper as a blurred clone). */}
-            <div className="relative h-[5.25rem] w-20">
+            <div className="relative h-21 w-20">
               {/* Glow halo — a blurred, scaled clone of the hex behind the face.
                   Only on earned medals; reads as a soft coloured aura on the
                   dark background. */}
               {b.earned && (
                 <div
-                  className="pointer-events-none absolute inset-0 scale-110 bg-gradient-to-br from-sky-400 to-indigo-600 opacity-60 blur-md"
+                  className="pointer-events-none absolute inset-0 scale-110 bg-linear-to-br/srgb from-sky-400 to-indigo-600 opacity-60 blur-md"
                   style={{ clipPath: HEX_CLIP }}
                   aria-hidden
                 />
@@ -85,7 +85,7 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
               <div
                 className={`absolute inset-0 ${
                   b.earned
-                    ? 'bg-gradient-to-br from-sky-300 to-indigo-700'
+                    ? 'bg-linear-to-br/srgb from-sky-300 to-indigo-700'
                     : 'bg-border'
                 }`}
                 style={{ clipPath: HEX_CLIP }}
@@ -96,7 +96,7 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
               <div
                 className={`absolute inset-[2px] flex items-center justify-center ${
                   b.earned
-                    ? 'bg-gradient-to-br from-sky-400 to-indigo-600'
+                    ? 'bg-linear-to-br/srgb from-sky-400 to-indigo-600'
                     : 'bg-obsidiana'
                 }`}
                 style={{ clipPath: HEX_CLIP }}
@@ -104,7 +104,7 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
                 {/* Inner bevel / top-light glow on earned medals */}
                 {b.earned && (
                   <span
-                    className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/35 via-transparent to-transparent"
+                    className="pointer-events-none absolute inset-0 bg-linear-to-b/srgb from-white/35 via-transparent to-transparent"
                     style={{ clipPath: HEX_CLIP }}
                     aria-hidden
                   />
@@ -121,7 +121,7 @@ export function BadgeGrid({ badges, loading }: { badges?: Badge[]; loading?: boo
 
               {/* Earned check overlay (top-right) */}
               {b.earned && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-evergreen text-obsidiana shadow-sm">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-card bg-evergreen text-obsidiana shadow-xs">
                   <Check className="h-3 w-3" strokeWidth={3.5} />
                 </span>
               )}

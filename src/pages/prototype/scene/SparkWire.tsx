@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 export function SparkWire({ sparks }: { sparks: number[] }) {
   return (
     <div className="relative hidden md:flex w-14 items-center justify-center">
-      <div className="h-px w-full bg-gradient-to-r from-[#3FD17F]/10 via-[#3FD17F]/40 to-[#3FD17F]/10" />
+      <div className="h-px w-full bg-linear-to-r/srgb from-[#3FD17F]/10 via-[#3FD17F]/40 to-[#3FD17F]/10" />
       <AnimatePresence>
         {sparks.map((id) => (
           <motion.span

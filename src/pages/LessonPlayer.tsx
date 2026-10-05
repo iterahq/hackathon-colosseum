@@ -657,7 +657,7 @@ export default function LessonPlayer() {
                     onClick={retrySave}
                     disabled={saving}
                     data-testid="lesson-save-retry"
-                    className="flex-shrink-0 h-9 px-4 rounded-full bg-evergreen text-obsidiana text-sm font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-60"
+                    className="shrink-0 h-9 px-4 rounded-full bg-evergreen text-obsidiana text-sm font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-60"
                   >
                     {t('lesson.retrySave')}
                   </button>

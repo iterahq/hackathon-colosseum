@@ -29,7 +29,7 @@ export function SkillTreeUnitHeader({
   return (
     <div
       data-testid="unit-banner"
-      className="absolute z-[3] flex items-center gap-3 rounded-[18px] px-[18px]"
+      className="absolute z-3 flex items-center gap-3 rounded-[18px] px-[18px]"
       style={{
         left: inset,
         right: inset,

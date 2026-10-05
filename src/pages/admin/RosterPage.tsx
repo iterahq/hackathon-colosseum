@@ -72,7 +72,7 @@ export default function RosterPage() {
             {data.slice(0, 12).map((l) => (
               <div key={l.userId} className="flex-1 flex flex-col items-center justify-end gap-1.5">
                 <div
-                  className="w-full rounded-t bg-gradient-to-t from-evergreen-soft to-evergreen min-h-[2px]"
+                  className="w-full rounded-t bg-linear-to-t/srgb from-evergreen-soft to-evergreen min-h-[2px]"
                   style={{ height: `${Math.max(2, l.completionPct)}%` }}
                   title={`${l.name}: ${l.completionPct}%`}
                 />
@@ -88,7 +88,7 @@ export default function RosterPage() {
             <ul className="space-y-3">
               {recent.map((l) => (
                 <li key={l.userId} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-evergreen-soft border border-evergreen/40 text-evergreen-hi font-display font-bold flex items-center justify-center text-xs shrink-0">
                     {(l.name || '?').slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">

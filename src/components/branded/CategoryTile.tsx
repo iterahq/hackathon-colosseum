@@ -11,7 +11,7 @@ import { iconForCategory } from '@/utils/iconForCategory';
 export function CategoryTile({ icon, accent }: { icon?: string; accent: string }) {
   return (
     <div
-      className="flex items-center justify-center w-[88px] h-[88px] rounded-[22px] outline outline-[5px] outline-card group-hover:scale-105 transition-transform duration-500"
+      className="flex items-center justify-center w-[88px] h-[88px] rounded-[22px] outline-solid outline-[5px] outline-card group-hover:scale-105 transition-transform duration-500"
       style={{ backgroundColor: accent }}
     >
       {createElement(iconForCategory(icon), { className: 'w-10 h-10 text-brand-bg', strokeWidth: 2.25 })}

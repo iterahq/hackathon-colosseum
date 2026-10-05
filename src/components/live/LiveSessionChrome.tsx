@@ -80,7 +80,7 @@ export function LiveSessionChrome({
       {/* Sem teto este grupo cresce por cima do X — que é pintado antes — e
           engole o botão de sair a 360px. O teto reserva 3rem de cada lado. */}
       <div
-        className="absolute top-2.5 left-1/2 -translate-x-1/2 h-10 sm:h-9 flex items-center gap-2 max-w-[calc(100%_-_6rem)] min-w-0"
+        className="absolute top-2.5 left-1/2 -translate-x-1/2 h-10 sm:h-9 flex items-center gap-2 max-w-[calc(100%-6rem)] min-w-0"
         data-testid="live-indicator"
         data-status={ended ? 'ended' : 'live'}
         data-activity-index={typeof activityIndex === 'number' ? activityIndex + 1 : undefined}

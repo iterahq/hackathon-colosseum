@@ -30,7 +30,7 @@ export function LiveRoomActionsToggle({ name, open, onToggle }: LiveRoomActionsT
             // O revelar por foco é `:focus-visible`, não `:focus`: fechar as
             // ações por clique deixa ESTE botão focado, e com focus-within o ⋯
             // ficava preso visível (e a pontuação escondida) até um clique fora.
-            'inset-y-0 w-9 rounded-lg opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
+            'inset-y-0 w-9 rounded-lg opacity-0 group-hover:opacity-100 group-has-focus-visible:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100'
       }`}
     >
       {open ? <X className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}

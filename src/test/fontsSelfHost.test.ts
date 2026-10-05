@@ -116,7 +116,7 @@ describe('fontes self-hosted', () => {
 
   it('as famílias usadas no CSS/Tailwind têm @font-face', () => {
     const declared = new Set(faces.map((f) => f.family));
-    const sources = `${read('src/index.css')}\n${read('tailwind.config.ts')}`;
+    const sources = read('src/index.css');
     for (const family of ['Barlow Condensed', 'Inter', 'JetBrains Mono']) {
       expect(sources, `${family} deveria ser usada em algum lugar`).toContain(family);
       expect(declared.has(family), `${family} usada mas sem @font-face local`).toBe(true);

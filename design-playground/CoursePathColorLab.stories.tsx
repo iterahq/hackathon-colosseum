@@ -257,7 +257,7 @@ function SwatchCard({ accent }: { accent: Accent }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-3">
       <div
-        className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-mono text-[10px]"
+        className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center font-mono text-[10px]"
         style={{ backgroundColor: accent.base, color: accent.onBase }}
       >
         Aa
@@ -341,7 +341,7 @@ function ProgramHero({ accent }: { accent: Accent }) {
       <div className="absolute inset-0 grid-pattern opacity-30" />
       <div className="relative flex items-center gap-5">
         <div
-          className="w-[68px] h-[68px] rounded-2xl flex items-center justify-center flex-shrink-0"
+          className="w-[68px] h-[68px] rounded-2xl flex items-center justify-center shrink-0"
           style={{ backgroundColor: accent.base, color: accent.onBase }}
         >
           <Code2 className="w-8 h-8" />

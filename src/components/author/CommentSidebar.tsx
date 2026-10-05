@@ -99,7 +99,7 @@ export const CommentSidebar = ({
   return (
     <aside
       data-testid="comment-sidebar"
-      className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-card/60 backdrop-blur-sm"
+      className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-card/60 backdrop-blur-xs"
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">

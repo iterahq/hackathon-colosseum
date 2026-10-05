@@ -859,7 +859,7 @@ function CompareLab() {
           <div className="space-y-2">
             <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground text-center">Atual</p>
             {/* Neutralize the production aside's page-level chrome (sticky/h-dvh/top-padding). */}
-            <div className="w-[340px] rounded-3xl border border-border overflow-hidden [&>aside]:!pt-0 [&>aside]:lg:!h-auto [&>aside]:lg:!static [&>aside]:border-0">
+            <div className="w-[340px] rounded-3xl border border-border overflow-hidden [&>aside]:pt-0! lg:[&>aside]:h-auto! lg:[&>aside]:static! [&>aside]:border-0">
               <LiveSidebar
                 role="instructor"
                 roster={sim.roster}

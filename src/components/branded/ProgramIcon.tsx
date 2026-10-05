@@ -92,7 +92,7 @@ export function ProgramIcon({
   const { gradient } = categoryFor(icon);
   return (
     <div
-      className={`relative flex items-center justify-center bg-gradient-to-br ${gradient} ${SIZES[size]} ${className}`}
+      className={`relative flex items-center justify-center bg-linear-to-br/srgb ${gradient} ${SIZES[size]} ${className}`}
     >
       <Icon className={`${ICON_SIZES[size]} text-white`} strokeWidth={2} />
     </div>

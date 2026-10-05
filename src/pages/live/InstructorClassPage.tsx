@@ -145,7 +145,7 @@ export default function InstructorClassPage() {
               onClick={() => setNotice(null)}
               aria-label={t('live.instructor.index.notice.dismiss')}
               data-testid="instructor-notice-dismiss"
-              className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -253,7 +253,7 @@ function LiveSessionCard({
       className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5"
       data-testid="instructor-live-card"
     >
-      <span className="inline-flex items-center gap-1.5 flex-shrink-0 rounded-full bg-clay/15 text-clay text-[11px] font-mono uppercase tracking-wider px-2.5 py-1">
+      <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-clay/15 text-clay text-[11px] font-mono uppercase tracking-wider px-2.5 py-1">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full rounded-full bg-clay opacity-60 animate-ping" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-clay" />
@@ -270,7 +270,7 @@ function LiveSessionCard({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onOpen}
           data-testid="instructor-live-card-open"
@@ -322,7 +322,7 @@ function ScheduledSessionCard({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onStartNow}
           data-testid="instructor-scheduled-start"

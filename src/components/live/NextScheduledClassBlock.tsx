@@ -24,7 +24,7 @@ export function NextScheduledClassBlock() {
     <section data-testid="next-scheduled-block">
       <div className="rounded-3xl border border-border bg-card p-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-clay/10 border border-clay/30 flex items-center justify-center text-clay flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-clay/10 border border-clay/30 flex items-center justify-center text-clay shrink-0">
             <CalendarClock className="w-5 h-5" />
           </div>
           <div className="min-w-0">
@@ -42,7 +42,7 @@ export function NextScheduledClassBlock() {
             type="button"
             onClick={() => navigate('/live/instructor')}
             data-testid="next-scheduled-manage"
-            className="flex-shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full border border-border text-sm font-medium text-foreground hover:border-clay/50 transition-colors"
+            className="shrink-0 inline-flex items-center gap-2 h-10 px-5 rounded-full border border-border text-sm font-medium text-foreground hover:border-clay/50 transition-colors"
           >
             {t('live.scheduled.manageCta')}
           </button>

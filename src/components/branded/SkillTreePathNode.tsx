@@ -91,7 +91,7 @@ export function SkillTreePathNode({
         disabled={!interactive}
         data-testid={`tree-node-${state}`}
         aria-label={title}
-        className={`relative z-[2] w-full h-full rounded-full flex flex-col items-center justify-center p-0 ${
+        className={`relative z-2 w-full h-full rounded-full flex flex-col items-center justify-center p-0 ${
           interactive ? 'cursor-pointer' : 'bg-card text-muted-foreground cursor-not-allowed'
         }`}
         style={

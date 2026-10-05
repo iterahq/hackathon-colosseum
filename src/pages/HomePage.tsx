@@ -123,7 +123,7 @@ export default function HomePage() {
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
+                      className="rounded-2xl border border-border bg-card aspect-16/13 ds-shimmer"
                     />
                   ))}
                 </div>
@@ -173,7 +173,7 @@ export default function HomePage() {
                     {[0, 1, 2].map((i) => (
                       <div
                         key={i}
-                        className="rounded-2xl border border-border bg-card aspect-[16/13] ds-shimmer"
+                        className="rounded-2xl border border-border bg-card aspect-16/13 ds-shimmer"
                       />
                     ))}
                   </div>
@@ -286,7 +286,7 @@ function LiveClassBlock() {
       <div className="rounded-3xl border border-clay/50 bg-clay/5 p-6 flex items-center justify-between gap-4">
         {/* left: pulse indicator + label + subtitle */}
         <div className="flex items-center gap-4 min-w-0">
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             <span className="block w-3 h-3 rounded-full bg-red-500 animate-ping absolute" />
             <span className="block w-3 h-3 rounded-full bg-red-500" />
           </div>
@@ -299,7 +299,7 @@ function LiveClassBlock() {
         </div>
 
         {/* right: CTA */}
-        <div className="flex-shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-2">
           {/* O professor às vezes quer VER a aula como o aluno vê (conferir um
               exercício, acompanhar de outro dispositivo). Sem isso o redirect
               do /live/:id o devolve pro console toda vez. */}

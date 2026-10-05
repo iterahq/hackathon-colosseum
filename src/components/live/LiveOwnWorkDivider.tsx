@@ -20,7 +20,7 @@ export function LiveOwnWorkDivider() {
   const { t } = useI18n();
   return (
     <div
-      className="sticky top-0 z-20 mb-6 -mx-4 md:-mx-8 px-4 md:px-8 py-2 flex items-center gap-3 bg-background/95 backdrop-blur-sm"
+      className="sticky top-0 z-20 mb-6 -mx-4 md:-mx-8 px-4 md:px-8 py-2 flex items-center gap-3 bg-background/95 backdrop-blur-xs"
       data-testid="live-own-work-divider"
     >
       <span className="inline-flex items-center gap-1.5 shrink-0 text-[11px] uppercase tracking-wider font-mono text-clay">

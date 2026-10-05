@@ -305,7 +305,7 @@ export default function UnitCanvasPage() {
               {({ zoomIn, zoomOut, resetTransform }) => (
                 <>
                   {/* Zoom controls (bottom-right) — mirror of Lesson Studio. */}
-                  <div className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card/90 p-1.5 shadow-lg backdrop-blur-sm">
+                  <div className="absolute bottom-6 right-6 z-10 flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card/90 p-1.5 shadow-lg backdrop-blur-xs">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -342,8 +342,8 @@ export default function UnitCanvasPage() {
                   </div>
 
                   <TransformComponent
-                    wrapperClass="!w-full !h-full"
-                    contentClass="!w-auto !h-auto"
+                    wrapperClass="w-full! h-full!"
+                    contentClass="w-auto! h-auto!"
                   >
                     <div
                       className="flex flex-col gap-14 p-16"
@@ -504,7 +504,7 @@ function ActivityCell({
       {/* Hover-revealed control strip — the only chrome. Hidden at rest; the
           default resting state is just the bare activity below. */}
       <div className="pointer-events-none absolute -top-9 left-0 right-0 z-20 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card/95 px-2.5 py-1 shadow-sm backdrop-blur-sm">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border bg-card/95 px-2.5 py-1 shadow-xs backdrop-blur-xs">
           <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
             #{String(activity.ordinal).padStart(2, "0")}
           </span>

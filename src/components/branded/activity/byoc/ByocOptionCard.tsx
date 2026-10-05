@@ -32,11 +32,11 @@ export function ByocOptionCard({
       className={`rounded-2xl border px-5 py-4 transition-colors ${BYOC_TONE_CLASS[tone]} ${className}`}
     >
       <div className="flex items-start gap-3">
-        <p className="flex-1 min-w-0 whitespace-normal break-words text-left">
+        <p className="flex-1 min-w-0 whitespace-normal wrap-break-word text-left">
           {localized(option.content, locale as Locale)}
         </p>
-        {tone === 'correct' && <CheckCircle2 className="w-5 h-5 text-menta flex-shrink-0" />}
-        {tone === 'wrong' && <XCircle className="w-5 h-5 text-destructive flex-shrink-0" />}
+        {tone === 'correct' && <CheckCircle2 className="w-5 h-5 text-menta shrink-0" />}
+        {tone === 'wrong' && <XCircle className="w-5 h-5 text-destructive shrink-0" />}
       </div>
 
       {children}

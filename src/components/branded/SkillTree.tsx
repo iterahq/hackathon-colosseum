@@ -107,7 +107,7 @@ export function SkillTree({
       data-testid="skill-tree"
     >
       {/* JOURNEY header */}
-      <div className="relative z-[1] flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3.5 mb-6">
+      <div className="relative z-1 flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3.5 mb-6">
         <span className="font-mono text-xs uppercase tracking-widest text-evergreen-hi flex items-center gap-2">
           <GitBranch className="w-3.5 h-3.5" /> {t('journey.title')}
         </span>
@@ -123,7 +123,7 @@ export function SkillTree({
       </div>
 
       {/* Base camp */}
-      <div className="relative z-[1] flex justify-center mb-2">
+      <div className="relative z-1 flex justify-center mb-2">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-card font-mono text-xs text-muted-foreground">
           <Flag className="w-3.5 h-3.5 text-evergreen-hi" /> {t('journey.basecamp')}
         </span>
@@ -285,7 +285,7 @@ export function SkillTree({
       </div>
 
       {/* Summit badge */}
-      <div className="relative z-[1] flex flex-col items-center mt-2">
+      <div className="relative z-1 flex flex-col items-center mt-2">
         <div className="w-0.5 h-8 bg-border" />
         <div className="flex flex-col items-center gap-2 mt-2">
           <div className="w-16 h-16 rounded-2xl bg-evergreen-soft border border-evergreen/30 flex items-center justify-center">

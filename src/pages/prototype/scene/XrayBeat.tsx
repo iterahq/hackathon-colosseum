@@ -22,7 +22,7 @@ export function XrayBeat({ solved, onSolved }: SceneBeatProps) {
         onPointerMove={scan}
         onPointerDown={scan}
         onPointerLeave={clearLens}
-        className="relative w-full aspect-[4/5] sm:aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden select-none"
+        className="relative w-full aspect-4/5 sm:aspect-video max-h-[460px] rounded-2xl overflow-hidden select-none"
         style={{ touchAction: "none", cursor: lens ? "none" : "crosshair", boxShadow: "0 30px 80px -30px rgba(0,0,0,.8)" }}
       >
         {/* Bottom layer: the text the browser actually reads. */}

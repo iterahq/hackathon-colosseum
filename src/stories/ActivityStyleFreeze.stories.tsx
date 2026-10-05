@@ -94,11 +94,11 @@ const FROZEN = {
   pillRadius: '9999px',
 
   /**
-   * `font-display`, as it RESOLVES — which is not what `tailwind.config.ts`
-   * says.
+   * `font-display`, as it RESOLVES — which is not what the Tailwind 3 theme
+   * said.
    *
    * 🔎 MEASURED FINDING, and it is the reason a freeze is worth writing.
-   * `tailwind.config.ts` declares `display: ['Barlow Condensed', 'system-ui',
+   * `tailwind.config.ts` declared `display: ['Barlow Condensed', 'system-ui',
    * 'sans-serif']`, but `src/index.css` re-declares `.font-display` inside
    * `@layer utilities` with `'Barlow Condensed', sans-serif` plus a
    * `letter-spacing`. Same layer, later rule, so the APP's CSS wins and
@@ -117,7 +117,7 @@ const FROZEN = {
    */
   bodyFont: 'Inter, sans-serif',
   /**
-   * `font-mono` → `fontFamily.mono` in `tailwind.config.ts`. This one is NOT
+   * `font-mono` → `--font-mono` in the `@theme` of `src/index.css`. This one is NOT
    * shadowed: the brand-utilities block of `src/index.css` re-declares the
    * display and body families and adds a "meta" one, but leaves the monospace
    * utility to Tailwind.

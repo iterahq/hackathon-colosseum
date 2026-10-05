@@ -345,7 +345,7 @@ function ArtifactPreview({
 
       <pre
         data-testid="artifact-preview-body"
-        className="mt-4 max-h-[420px] overflow-auto scrollbar-hide rounded-xl bg-background border border-border p-4 text-[13px] leading-relaxed text-foreground whitespace-pre-wrap break-words"
+        className="mt-4 max-h-[420px] overflow-auto scrollbar-hide rounded-xl bg-background border border-border p-4 text-[13px] leading-relaxed text-foreground whitespace-pre-wrap wrap-break-word"
       >
         {isPending ? t('common.loading') : (content ?? t('artifacts.previewUnavailable'))}
       </pre>

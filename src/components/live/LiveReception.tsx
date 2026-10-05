@@ -29,7 +29,7 @@ export function LiveReception({ roster, guestUserIds }: LiveReceptionProps) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mt-8 rounded-3xl border border-clay/40 bg-gradient-to-b from-clay/10 to-transparent p-10 md:p-12 text-center"
+      className="mt-8 rounded-3xl border border-clay/40 bg-linear-to-b/srgb from-clay/10 to-transparent p-10 md:p-12 text-center"
       data-testid="live-reception"
     >
       <div className="w-16 h-16 mx-auto rounded-2xl bg-clay/15 border border-clay/40 flex items-center justify-center text-clay">

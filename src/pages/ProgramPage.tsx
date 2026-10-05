@@ -126,12 +126,12 @@ export default function ProgramPage() {
 
       {/* Sticky course sub-header (back · branch · title). No heart/fire/XP. */}
       {program && (
-        <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur border-b border-border">
+        <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="max-w-[1100px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
             <Link
               to="/"
               aria-label={t('common.back')}
-              className="flex-shrink-0 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </Link>

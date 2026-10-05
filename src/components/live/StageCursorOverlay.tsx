@@ -143,7 +143,7 @@ export function StageCursorOverlay({
       </svg>
       <span
         data-testid="stage-cursor-label"
-        className={`absolute left-5 top-5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight shadow ${VARIANTS[variant].label}`}
+        className={`absolute left-5 top-5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight shadow-sm ${VARIANTS[variant].label}`}
       >
         {authorName}
       </span>

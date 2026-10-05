@@ -181,7 +181,7 @@ Duas coisas que a borda do workspace NÃO prova, e que têm gate próprio na CI:
   sem nada da Itera) e renderiza toda kind anunciada a partir de specs de fixture,
   com `fetch` armado pra estourar. `npm run external-consumer`;
 - **estilo** → as classes Tailwind dos renderers extraídos vivem fora de
-  `./src`, então `tailwind.config.ts` precisa do glob `./packages/*/dist/**/*.js`.
+  `./src`, então `src/index.css` precisa do `@source '../packages/*/dist/**/*.js'`.
   Sem ele o build fica **verde e sem estilo**; o job `build-test` assere no CSS
   gerado.
 

@@ -47,7 +47,7 @@ export function CatalogProgramCard({
       whileHover={{ y: -6 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       data-testid="catalog-program-card"
-      className="group relative flex flex-col text-left rounded-3xl p-2.5 bg-card border border-border hover:border-verde-tech/50 transition-colors [container-type:inline-size]"
+      className="group relative flex flex-col text-left rounded-3xl p-2.5 bg-card border border-border hover:border-verde-tech/50 transition-colors @container"
     >
       {onOpenThumbnail ? (
         <button type="button" aria-label={headline} onClick={onOpenThumbnail} className="block w-full rounded-[14px] text-left">

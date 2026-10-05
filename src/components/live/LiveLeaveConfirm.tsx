@@ -39,7 +39,7 @@ export function LiveLeaveConfirm({
       aria-labelledby="live-leave-title"
       aria-describedby="live-leave-body"
       data-testid="live-leave-confirm"
-      className="w-[17rem] rounded-2xl border border-border bg-card p-4 shadow-xl"
+      className="w-68 rounded-2xl border border-border bg-card p-4 shadow-xl"
     >
       <p id="live-leave-title" className="text-sm font-medium text-foreground">
         {t('live.leave.title')}

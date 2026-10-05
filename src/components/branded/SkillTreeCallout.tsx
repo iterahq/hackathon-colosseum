@@ -34,7 +34,7 @@ export function SkillTreeCallout({
   return (
     <div
       data-testid="tree-callout"
-      className="absolute z-[4] box-border flex flex-col gap-1.5 rounded-2xl bg-obsidiana px-3.5 pt-3 pb-3.5 shadow-[0_16px_44px_rgba(0,0,0,0.65)]"
+      className="absolute z-4 box-border flex flex-col gap-1.5 rounded-2xl bg-obsidiana px-3.5 pt-3 pb-3.5 shadow-[0_16px_44px_rgba(0,0,0,0.65)]"
       style={{ left, top, width, border: `1px solid ${tone.base}` }}
     >
       <span

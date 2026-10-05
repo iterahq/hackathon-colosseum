@@ -30,16 +30,16 @@ export function LiveRosterBadges({
           role="status"
           aria-label={t('live.rankedRoster.disconnected')}
           title={t('live.rankedRoster.disconnected')}
-          className="flex-shrink-0 inline-block h-2 w-2 rounded-full bg-clay animate-pulse"
+          className="shrink-0 inline-block h-2 w-2 rounded-full bg-clay animate-pulse"
         />
       )}
       {raised && (
-        <span data-testid="live-hand-badge" className="flex-shrink-0" aria-label={t('live.hand.raised')}>
+        <span data-testid="live-hand-badge" className="shrink-0" aria-label={t('live.hand.raised')}>
           ✋
         </span>
       )}
       {userId === selfUserId && (
-        <span className="text-[10px] uppercase tracking-wide text-clay font-mono flex-shrink-0">
+        <span className="text-[10px] uppercase tracking-wide text-clay font-mono shrink-0">
           · {t('live.instructor.roster.you')}
         </span>
       )}

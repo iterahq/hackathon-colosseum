@@ -72,7 +72,7 @@ export function ByocRounds({
         {made.length > 0 && (
           <pre
             data-testid="byoc-assembled-context"
-            className="mt-3 whitespace-pre-wrap break-words rounded-2xl border border-azul bg-azul/10 px-5 py-4 text-sm text-foreground"
+            className="mt-3 whitespace-pre-wrap wrap-break-word rounded-2xl border border-azul bg-azul/10 px-5 py-4 text-sm text-foreground"
           >
             {assembled}
           </pre>

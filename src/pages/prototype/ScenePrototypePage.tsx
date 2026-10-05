@@ -75,7 +75,7 @@ export default function ScenePrototypePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                     onClick={next}
-                    className="ml-auto rounded-full bg-[#3FD17F] px-7 py-3 font-semibold text-[#0A0908] hover:brightness-110 shadow-[0_10px_30px_-8px_rgba(63,209,127,.6)]"
+                    className="ml-auto rounded-full bg-[#3FD17F] px-7 py-3 font-semibold text-brand-bg hover:brightness-110 shadow-[0_10px_30px_-8px_rgba(63,209,127,.6)]"
                   >
                     Continuar →
                   </motion.button>

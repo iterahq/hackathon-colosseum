@@ -94,7 +94,7 @@ export default function AdminLayout() {
                 key={tab.to}
                 to={tab.to}
                 className={({ isActive }) =>
-                  `inline-flex flex-shrink-0 items-center gap-2 px-4 h-10 -mb-px border-b-2 text-sm font-medium transition-colors ${
+                  `inline-flex shrink-0 items-center gap-2 px-4 h-10 -mb-px border-b-2 text-sm font-medium transition-colors ${
                     isActive
                       ? 'border-menta text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'

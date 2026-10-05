@@ -11,7 +11,7 @@ const hand = readFileSync(resolve(__dirname, '../components/live/LiveHandButton.
 describe('chrome da aula no celular', () => {
   it('o grupo central tem teto e nunca alcança o X', () => {
     expect(chrome).toMatch(/data-testid="live-indicator"/);
-    expect(chrome).toMatch(/max-w-\[calc\(100%_-_6rem\)\]/);
+    expect(chrome).toMatch(/max-w-\[calc\(100%-6rem\)\]/);
   });
 
   it('o X fica acima do grupo central', () => {

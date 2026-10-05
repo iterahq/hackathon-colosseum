@@ -78,7 +78,7 @@ export function LivePodium({
                 <div className={isSelf ? 'rounded-full ring-2 ring-menta ring-offset-2 ring-offset-card' : ''}>
                   <LiveAvatar name={entry.name} avatarUrl={entry.avatarUrl} size="w-12 h-12" />
                 </div>
-                <span className="mt-1.5 text-sm text-foreground text-center break-words w-full">{entry.name}</span>
+                <span className="mt-1.5 text-sm text-foreground text-center wrap-break-word w-full">{entry.name}</span>
                 {isGuest(entry.userId, entry.isGuest) && <LiveGuestBadge className="mt-0.5" />}
                 {isSelf && (
                   <span className="text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>
@@ -110,17 +110,17 @@ export function LivePodium({
                 data-rank={r.rank}
                 data-self={isSelf ? 'true' : 'false'}
               >
-                <span className="w-6 text-center font-mono tabular-nums text-muted-foreground flex-shrink-0">{r.rank}</span>
+                <span className="w-6 text-center font-mono tabular-nums text-muted-foreground shrink-0">{r.rank}</span>
                 <LiveAvatar name={r.name} avatarUrl={r.avatarUrl} size="w-6 h-6" />
-                <span className="text-foreground flex-1 min-w-0 break-words">
+                <span className="text-foreground flex-1 min-w-0 wrap-break-word">
                   {r.name}
                   {isGuest(r.userId, r.isGuest) && <LiveGuestBadge className="ml-1.5" />}
                   {isSelf && <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-menta">{t('live.podium.you')}</span>}
                 </span>
-                <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground flex-shrink-0">
+                <span className="ml-auto font-mono text-[10px] tabular-nums text-muted-foreground shrink-0">
                   {formatMmss(r.totalMs / 1000)}
                 </span>
-                <span className="font-mono text-xs tabular-nums text-clay flex-shrink-0">
+                <span className="font-mono text-xs tabular-nums text-clay shrink-0">
                   {t('live.podium.score', { n: String(r.correctCount) })}
                 </span>
               </li>

@@ -181,7 +181,7 @@ export function LiveStage({
 
       {!collapsed && (
         <div
-          className={`px-4 md:px-8 py-6 bg-muted/40 bg-gradient-to-b from-streak/[0.08] to-transparent ${
+          className={`px-4 md:px-8 py-6 bg-muted/40 bg-linear-to-b/srgb from-streak/8 to-transparent ${
             capped ? 'max-h-[52dvh] overflow-y-auto' : ''
           }`}
           data-testid="live-stage-body"

@@ -22,14 +22,14 @@ export function LiveAvatar({ name, avatarUrl, size = 'w-6 h-6' }: LiveAvatarProp
         src={avatarUrl}
         alt={name}
         onError={() => setBroken(true)}
-        className={`${size} rounded-full object-cover flex-shrink-0 border border-border`}
+        className={`${size} rounded-full object-cover shrink-0 border border-border`}
         data-testid="live-avatar"
       />
     );
   }
   return (
     <span
-      className={`${size} rounded-full flex-shrink-0 bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-mono uppercase`}
+      className={`${size} rounded-full shrink-0 bg-muted text-muted-foreground flex items-center justify-center text-[10px] font-mono uppercase`}
       data-testid="live-avatar-fallback"
       aria-hidden="true"
     >

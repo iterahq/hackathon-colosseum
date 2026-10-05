@@ -27,7 +27,7 @@ export function LiveStageAnswerCard({ correct, response }: { correct: boolean; r
             {t('live.stage.answer.label')}
           </p>
           <p
-            className="mt-2 max-h-64 overflow-y-auto whitespace-pre-line break-words text-base text-foreground"
+            className="mt-2 max-h-64 overflow-y-auto whitespace-pre-line wrap-break-word text-base text-foreground"
             data-testid="live-stage-response"
           >
             {response}

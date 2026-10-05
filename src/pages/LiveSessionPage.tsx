@@ -736,7 +736,7 @@ export default function LiveSessionPage() {
   if (removed) return <LiveRemovedScreen onLeave={leave} />;
 
   return (
-    <div className={`bg-background flex flex-col ${onSandbox ? 'h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
+    <div className={`bg-background flex flex-col ${onSandbox ? 'h-dvh overflow-hidden' : 'min-h-screen'}`}>
       <LiveReconnectBanner show={reconnecting} />
       {/* Immersive chrome — shared verbatim with the instructor surface. */}
       <LiveSessionChrome
@@ -775,7 +775,7 @@ export default function LiveSessionPage() {
             onSandbox
               ? `overflow-y-auto pb-6 ${stagedAnswer && !ended ? 'pt-14' : 'pt-6'}`
               : 'lg:overflow-y-auto pt-14 md:pt-20'
-          } ${footerResult ? 'pb-40' : onSandbox ? '' : 'pb-8'}`}
+          } ${onSandbox ? '' : footerResult ? 'pb-40' : 'pb-8'}`}
         >
           {/* Focused column — width follows the ACTIVITY KIND via the SHARED
               rule, so a `code` snack gets the wide column in the LIVE class too

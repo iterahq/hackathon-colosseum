@@ -101,7 +101,7 @@ export function LiveRoomRow({
             <span
               // Inerte ao toque: cobre o mesmo canto do ⋯ e engolia o tap.
               className={`absolute inset-0 flex items-center justify-end gap-2 pointer-events-none transition-opacity ${
-                actions ? 'group-hover:opacity-0 group-has-[:focus-visible]:opacity-0' : ''
+                actions ? 'group-hover:opacity-0 group-has-focus-visible:opacity-0' : ''
               }`}
             >
               {showDetail && (

@@ -88,7 +88,7 @@ export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
           aria-pressed={muted}
           aria-label={label}
           title={label}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-xs hover:border-menta/50 hover:text-foreground transition-colors"
         >
           {muted ? (
             <VolumeX className="w-4 h-4" />
@@ -108,7 +108,7 @@ export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
           aria-controls="live-sound-panel"
           aria-label={t('live.sound.volume')}
           title={t('live.sound.volume')}
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:border-menta/50 hover:text-foreground transition-colors"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground shadow-xs hover:border-menta/50 hover:text-foreground transition-colors"
         >
           <ChevronUp className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

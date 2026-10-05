@@ -48,7 +48,7 @@ export default function CatalogPage() {
           {isPending ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="rounded-2xl border border-border bg-card aspect-[16/12] ds-shimmer" />
+                <div key={i} className="rounded-2xl border border-border bg-card aspect-16/12 ds-shimmer" />
               ))}
             </div>
           ) : isError ? (

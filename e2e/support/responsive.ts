@@ -18,7 +18,7 @@
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-/** Tailwind defaults — `tailwind.config.ts` does not override `screens`. */
+/** Tailwind defaults — the `@theme` of `src/index.css` pins these pixel values. */
 export const BREAKPOINTS = { sm: 640, md: 768, lg: 1024, xl: 1280 } as const;
 
 /**

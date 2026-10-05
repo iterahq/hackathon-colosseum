@@ -16,7 +16,7 @@ export function LiveGuestBadge({ className = '' }: { className?: string }) {
       data-testid="live-guest-badge"
       title={t('live.guest.badge')}
       aria-label={t('live.guest.badge')}
-      className={`flex-shrink-0 inline-flex items-center rounded-full border border-clay/50 bg-clay/10 px-1.5 text-[10px] uppercase tracking-wide font-mono text-clay ${className}`}
+      className={`shrink-0 inline-flex items-center rounded-full border border-clay/50 bg-clay/10 px-1.5 text-[10px] uppercase tracking-wide font-mono text-clay ${className}`}
     >
       {t('live.guest.badge')}
     </span>

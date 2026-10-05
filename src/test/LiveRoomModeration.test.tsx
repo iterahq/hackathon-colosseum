@@ -92,7 +92,7 @@ describe('per-student actions', () => {
     // até o professor clicar em outro lugar da tela.
     const toggle = screen.getAllByTestId('live-room-actions-open')[0];
     expect(toggle.className).not.toContain('group-focus-within');
-    expect(toggle.className).toContain('group-has-[:focus-visible]:opacity-100');
+    expect(toggle.className).toContain('group-has-focus-visible:opacity-100');
     const info = screen.getAllByTestId('live-room-score')[0].parentElement;
     expect(info?.className).not.toContain('group-focus-within');
   });

@@ -1227,7 +1227,7 @@ function MentorFlowPrototype() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* ── Chrome: X + 3-stage progress + XP ── */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-4">
           <button aria-label="Sair" className="p-2 -ml-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-card transition-colors">
             <X className="w-5 h-5" />

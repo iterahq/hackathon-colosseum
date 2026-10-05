@@ -33,7 +33,7 @@
  *
  * The row is `md:flex-row md:justify-between` with two children: the verdict
  * block and a trailing slot (the CTA, or the wait hint). The trailing slot is
- * `flex-shrink-0`; the verdict block had no grow factor and a `flex-basis:auto`
+ * `shrink-0`; the verdict block had no grow factor and a `flex-basis:auto`
  * of max-content. So the verdict block was the ONLY shrinkable item in the row
  * and absorbed the entire deficit by itself. The live wait hint — indicator +
  * *"Pronto! Aguarde o professor avançar. · você levou 11 segundos"* — is ~460px
@@ -70,7 +70,7 @@
  *     and compared; 50% is the one that fixes the complaint without creating a
  *     second, smaller one.
  *
- * The CTA keeps `flex-shrink-0` with NO cap: a button that wraps its own label
+ * The CTA keeps `shrink-0` with NO cap: a button that wraps its own label
  * is a worse defect than a hint that wraps, and "Continuar" is short anyway.
  *
  * `e2e/feedback-footer-width.spec.ts` measures (1) and (2) in a real browser.
@@ -158,7 +158,7 @@ export function FeedbackFooter({
                 initial={reducedMotion ? false : { scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 14 }}
-                className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
                   correct ? 'bg-menta text-obsidiana' : 'bg-destructive text-destructive-foreground'
                 }`}
                 aria-hidden="true"
@@ -188,7 +188,7 @@ export function FeedbackFooter({
                 onClick={onContinue}
                 disabled={busy}
                 data-testid={continueTestId}
-                className={`inline-flex h-12 w-full flex-shrink-0 items-center justify-center gap-2 rounded-full px-10 font-semibold transition-[background-color,box-shadow,transform] active:translate-y-[3px] disabled:opacity-60 md:w-auto ${
+                className={`inline-flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full px-10 font-semibold transition-[background-color,box-shadow,transform] active:translate-y-[3px] disabled:opacity-60 md:w-auto ${
                   correct
                     ? 'bg-menta text-obsidiana shadow-[0_4px_0_#249457] hover:bg-evergreen-hi active:shadow-[0_1px_0_#249457]'
                     : 'bg-destructive text-destructive-foreground shadow-[0_4px_0_#b3283f] hover:bg-destructive/90 active:shadow-[0_1px_0_#b3283f]'
@@ -198,7 +198,7 @@ export function FeedbackFooter({
               </button>
             ) : waitHint ? (
               <div
-                className="flex-shrink-0 text-sm md:max-w-[50%] md:text-right"
+                className="shrink-0 text-sm md:max-w-[50%] md:text-right"
                 data-testid="feedback-footer-wait"
               >
                 {waitHint}
