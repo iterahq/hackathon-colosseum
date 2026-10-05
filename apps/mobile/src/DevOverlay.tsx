@@ -7,13 +7,18 @@ interface Props {
   forwardedErrors: number;
   /** How many bridge handshakes (HelloAck) the shell answered since it opened. */
   bridgeHandshakes: number;
+  /** Whether the shell holds an access token copy and for how long (`sessionLine`). Never the token. */
+  session: string;
+  /** The answer of the development probe (`probeLine`). */
+  backend: string;
 }
 
 /**
  * Dev-only strip over the page: shell version, the URL the WebView is on, the count of forwarded
- * errors and the count of bridge handshakes. It takes no touches, so it never sits on a lesson button.
+ * errors, the count of bridge handshakes, the session line and the probe line. It takes no touches,
+ * so it never sits on a lesson button.
  */
-export function DevOverlay({ version, url, forwardedErrors, bridgeHandshakes }: Props) {
+export function DevOverlay({ version, url, forwardedErrors, bridgeHandshakes, session, backend }: Props) {
   return (
     <View pointerEvents="none" style={styles.wrap}>
       <View style={styles.strip}>
@@ -21,6 +26,8 @@ export function DevOverlay({ version, url, forwardedErrors, bridgeHandshakes }: 
         <Text style={styles.text} numberOfLines={2}>{`URL ${url}`}</Text>
         <Text style={[styles.text, forwardedErrors > 0 && styles.error]}>{`Erros encaminhados: ${forwardedErrors}`}</Text>
         <Text style={styles.text}>{`Bridge: ${bridgeHandshakes} handshake(s)`}</Text>
+        <Text style={styles.text}>{session}</Text>
+        <Text style={styles.text} numberOfLines={2}>{backend}</Text>
       </View>
     </View>
   );

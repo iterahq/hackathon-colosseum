@@ -1,7 +1,20 @@
 import vm from 'node:vm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CONSOLE_FORWARDER_SOURCE } from './consoleForwarder.injected';
-import { MAX_MESSAGES_PER_SECOND, MAX_MESSAGE_CHARS, MAX_TEXT_CHARS, admitMessage, buildConsoleForwarder, parseConsoleMessage, redactSecrets } from './consoleMessage';
+import {
+  MAX_MESSAGES_PER_SECOND,
+  MAX_MESSAGE_CHARS,
+  MAX_RAW_CHARS_PER_SECOND,
+  MAX_RAW_MESSAGES_PER_SECOND,
+  MAX_TEXT_CHARS,
+  admitMessage,
+  admitRaw,
+  buildConsoleForwarder,
+  messageSize,
+  parseConsoleMessage,
+  redactSecrets,
+  type RawBucket,
+} from './consoleMessage';
 
 const O = 'https://app.iterahq.dev';
 const post = (data: unknown, url: unknown = `${O}/lesson/1`) => parseConsoleMessage({ data, url }, O);
@@ -206,5 +219,88 @@ describe('admitMessage (native-side limit)', () => {
     for (let i = 0; i < 20; i++) w = admitMessage(w, 5000).bucket;
     expect(admitMessage(w, 5000).admitted).toBe(false);
     expect(admitMessage(w, 6000).admitted).toBe(true);
+  });
+});
+
+describe('messageSize and admitRaw (the raw limit in front of the parsers, R-12)', () => {
+  const PAGE = `${O}/lesson/1`;
+
+  it('messageSize is the length of a string from a frame on the app origin, and null for anything else, with no parse', () => {
+    const parse = vi.spyOn(JSON, 'parse');
+    expect(messageSize({ data: 'x'.repeat(300), url: PAGE }, O)).toBe(300);
+    expect(messageSize({ data: '{"a":1}', url: O }, O)).toBe(7);
+    for (const url of ['about:srcdoc', 'null', 'https://evil.example/', 'blob:https://app.iterahq.dev/1', null, 7]) {
+      expect(messageSize({ data: '{"a":1}', url }, O)).toBeNull();
+    }
+    expect(messageSize({ data: { a: 1 }, url: PAGE }, O)).toBeNull();
+    expect(parse).not.toHaveBeenCalled();
+    parse.mockRestore();
+  });
+
+  it('admitRaw admits a count and a length per second, refuses beyond either, and opens again a second later', () => {
+    const bucket: RawBucket = { start: 0, count: 0, chars: 0 };
+    let admitted = 0;
+    for (let i = 0; i < 500; i++) if (admitRaw(bucket, 5000 + i, 10)) admitted += 1;
+    expect(admitted).toBe(MAX_RAW_MESSAGES_PER_SECOND);
+    expect(admitRaw(bucket, 6000, 10)).toBe(true);
+
+    const big: RawBucket = { start: 0, count: 0, chars: 0 };
+    let chars = 0;
+    for (let i = 0; i < 30; i++) if (admitRaw(big, 9000, 64 * 1024)) chars += 64 * 1024;
+    expect(chars).toBe(MAX_RAW_CHARS_PER_SECOND);
+    expect(admitRaw(big, 9000, 1)).toBe(false);
+  });
+
+  it('admitRaw changes the bucket in place: the same object, no new one per message', () => {
+    const bucket: RawBucket = { start: 0, count: 0, chars: 0 };
+    admitRaw(bucket, 5000, 12);
+    expect(bucket).toEqual({ start: 5000, count: 1, chars: 12 });
+  });
+
+  /** The order of `onMessage` in app/[...path].tsx (pinned as text by scripts/mobile/shell-route.test.ts). */
+  function shell() {
+    const raw: RawBucket = { start: 0, count: 0, chars: 0 };
+    let page = { start: 0, count: 0 };
+    const handled: string[] = [];
+    return {
+      handled,
+      receive(event: { data: unknown; url: unknown }, now: number) {
+        const size = messageSize(event, O);
+        if (size === null || !admitRaw(raw, now, size)) return;
+        const message = parseConsoleMessage(event, O);
+        if (message === null) return;
+        const admission = admitMessage(page, now);
+        page = admission.bucket;
+        if (admission.admitted) handled.push(message.text);
+      },
+    };
+  }
+
+  it('starvation is impossible where the frame is known: a sandboxed frame posting in a loop costs the page nothing', () => {
+    const s = shell();
+    const parse = vi.spyOn(JSON, 'parse');
+    for (let i = 0; i < 100_000; i++) s.receive({ data: wire('error', 'flood'), url: i % 2 ? 'about:srcdoc' : 'null' }, 5000);
+    expect(parse).not.toHaveBeenCalled();
+    s.receive({ data: wire('error', 'the page'), url: PAGE }, 5000);
+    expect(s.handled).toEqual(['the page']);
+    parse.mockRestore();
+  });
+
+  it('garbage from the app origin does not use up the page budget', () => {
+    const s = shell();
+    for (let i = 0; i < MAX_RAW_MESSAGES_PER_SECOND - 1; i++) s.receive({ data: '{"not":"ours"}', url: PAGE }, 5000);
+    s.receive({ data: wire('error', 'the page'), url: PAGE }, 5000);
+    expect(s.handled).toEqual(['the page']);
+  });
+
+  it('the parse flood is bounded where every frame looks like the page (Android legacy): 100 000 messages, at most the raw limit is parsed', () => {
+    const s = shell();
+    const parse = vi.spyOn(JSON, 'parse');
+    const big = wire('error', 'x'.repeat(3000));
+    for (let i = 0; i < 100_000; i++) s.receive({ data: big, url: PAGE }, 5000 + (i % 900));
+    expect(parse.mock.calls.length).toBeLessThanOrEqual(MAX_RAW_MESSAGES_PER_SECOND);
+    expect(parse.mock.calls.reduce((n, [text]) => n + String(text).length, 0)).toBeLessThanOrEqual(MAX_RAW_CHARS_PER_SECOND);
+    expect(s.handled.length).toBe(MAX_MESSAGES_PER_SECOND);
+    parse.mockRestore();
   });
 });

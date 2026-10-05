@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { METHODS, SUPPORTED_PROTOCOLS, compareVersions, type Method } from './protocol';
+import { createShellSession } from './shellSession';
 import { wire } from './wire.testkit';
 
 interface ShellContract {
@@ -11,6 +12,9 @@ interface ShellContract {
   protocols: number[];
   capabilities: string[];
 }
+
+/** An unsigned token of the shape the schema reads: `sub` and `exp` (2_000_000_000 s). Not a real session. */
+const TOKEN = 'eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyLTEiLCJleHAiOjIwMDAwMDAwMDB9.c2ln';
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'contracts', 'shells');
 export const CONTRACTS: ShellContract[] = readdirSync(DIR)
@@ -90,11 +94,35 @@ describe.each(CONTRACTS.map((c) => [c.shellVersion, c] as const))('the current w
     expect(w.shellOutcomes.filter((o) => o.refused)).toEqual([]);
   });
 
+  it('auth.session round-trips when the contract offers it; otherwise the page never sends a token (a 0.2.0 shell is told nothing)', async () => {
+    const offered = contract.capabilities.includes('auth.session');
+    const session = createShellSession({ now: () => 1_999_999_000_000 });
+    const w = wire({ shell: contract.bridge ? { handlers: { ...handlersOf(contract), ...(offered ? { 'auth.session': session.handler } : {}) }, shellVersion: contract.shellVersion, secrets: session.secrets } : null });
+    await w.client.handshake();
+    const before = w.sent.length;
+    const call = w.client.call('auth.session', { accessToken: TOKEN, expiresAt: 2_000_000_000_000 });
+    if (offered) {
+      await expect(call).resolves.toEqual({ stored: true });
+      expect(w.sent.length).toBe(before + 1);
+      expect(session.current()).toEqual({ userId: 'user-1', accessToken: TOKEN, expiresAt: 2_000_000_000_000 });
+      await expect(w.client.call('auth.session', { signedOut: true })).resolves.toEqual({ stored: false });
+      expect(session.current()).toBeNull();
+    } else {
+      await expect(call).rejects.toBeDefined();
+      expect(w.sent.length).toBe(before);
+      expect(w.sent.join('')).not.toContain(TOKEN);
+    }
+    await w.flush();
+    expect(w.shellOutcomes.filter((o) => o.refused)).toEqual([]);
+  });
+
   it('a method outside the contract never leaves the page', async () => {
     const w = wire({ shell: contract.bridge ? { handlers: handlersOf(contract), shellVersion: contract.shellVersion } : null });
     await w.client.handshake();
     const before = w.sent.length;
-    await expect(w.client.call('auth.session', { signedOut: true })).rejects.toBeDefined();
+    for (const m of METHODS.filter((x) => !contract.capabilities.includes(x))) {
+      await expect(w.client.call(m as Method, {} as never), m).rejects.toBeDefined();
+    }
     expect(w.sent.length).toBe(before);
   });
 });

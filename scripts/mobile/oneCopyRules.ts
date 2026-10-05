@@ -145,7 +145,12 @@ export function rule1(repo: Repo, map: RouteMap): string[] {
 // `@iterahq/shell-bridge` (bare name only) is admitted: the pure, react-free bridge package (ADR-9, R-6).
 // Its `/web` entry (DOM) and every other `@iterahq/*` package stay forbidden.
 const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/(?!shell-bridge$)|@supabase\/|@tanstack\/|react-router)/;
-const FETCH_ALLOWED = "apps/mobile/src/shellGate.ts";
+const PROBE_FILE = "apps/mobile/src/backendProbe.ts";
+// R-12 admits ONE more file: the development probe that reads the backend with the learner's access token.
+// It is held tighter than `shellGate.ts`: one call, and no host written in it (its host is a parameter,
+// the origin of EXPO_PUBLIC_SUPABASE_URL).
+const FETCH_ALLOWED: readonly string[] = ["apps/mobile/src/shellGate.ts", PROBE_FILE];
+const HOST_LITERAL = /\bhttps?:\/\/[A-Za-z0-9[]/;
 
 /**
  * Rule 1b: the closed chrome list. The forbidden data-layer imports and `fetch(` apply to EVERY
@@ -165,7 +170,12 @@ export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): st
       if (CHROME_FORBIDDEN_IMPORT.test(spec)) out.push(`rule 1b: ${file} imports ${spec}`);
       else if (/(^|\/)packages\/bridge(\/|$)/.test(spec)) out.push(`rule 1b: ${file} imports ${spec}; reach the bridge by the package name @iterahq/shell-bridge only`);
     }
-    if (file !== FETCH_ALLOWED && /\bfetch\(/.test(stripComments(text))) out.push(`rule 1b: ${file} contains fetch( (only ${FETCH_ALLOWED} may)`);
+    const code = stripComments(text);
+    if (!FETCH_ALLOWED.includes(file) && /\bfetch\(/.test(code)) out.push(`rule 1b: ${file} contains fetch( (only ${FETCH_ALLOWED.join(" and ")} may)`);
+    if (file === PROBE_FILE) {
+      if ((code.match(/\bfetch\(/g) ?? []).length > 1) out.push(`rule 1b: ${file} contains more than one fetch(`);
+      if (HOST_LITERAL.test(code)) out.push(`rule 1b: ${file} names a host; its only host is the origin it is given`);
+    }
   }
   return out;
 }
@@ -178,11 +188,13 @@ const BRIDGE_PARSER_TEST = "apps/mobile/src/bridgeMessage.test.ts";
 /** Error events carry no page-controlled payload: `onError` (description) and `onHttpError` (statusCode). */
 const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|statusCode)\b/g;
 /** The two places a WebView event may be read: handed whole to one of the two named pure parsers. */
-const PARSER_CALL = /\b(?:parseConsoleMessage|parseBridgeMessage)\(\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,)]/g;
+const PARSER_CALL = /\b(?:parseConsoleMessage|parseBridgeMessage|messageSize)\(\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,)]/g;
 
 const PARSER_IMPORTS: readonly (readonly [string, string])[] = [
   ["parseConsoleMessage", "../src/consoleMessage"],
   ["parseBridgeMessage", "../src/bridgeMessage"],
+  // R-12: the pre-parse gate. It returns a length or null and reads no content.
+  ["messageSize", "../src/consoleMessage"],
 ];
 const importsFrom = (text: string, name: string, mod: string) =>
   new RegExp(`\\bimport\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]${mod.replace(/[./]/g, "\\$&")}['"]`).test(text);

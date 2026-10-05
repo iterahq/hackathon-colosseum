@@ -6,7 +6,7 @@
  *
  * Constraints, each unit-tested by running this source in a sandbox (consoleMessage.test.ts):
  *  1. Attaches only when `location.origin` is the app origin.
- *  2. Redacts `(access|refresh|dfl)_token` and api-key values, bearer tokens, JWT-shaped and
+ *  2. Redacts `(access|refresh|dfl)_token` and api-key values, bearer tokens, JWT-shaped (whole or cut short) and
  *     `sb_publishable_`/`sb_secret_` strings, and e-mail addresses, before posting.
  *  3. Forwards only `console.error`, uncaught errors and unhandled rejections, as
  *     `{type:'console', level, text}`; text is cut to 500 characters, at most 5 messages per second
@@ -26,7 +26,7 @@ export const CONSOLE_FORWARDER_SOURCE = `(function () {
   var windowStart = 0;
   var inWindow = 0;
   var SECRET = /((?:access|refresh|dfl)_token["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
-  var JWT = /eyJ[\\w-]+\\.[\\w-]+\\.[\\w-]+/g;
+  var JWT = /eyJ[\\w-]{4,}(?:\\.[\\w-]*){0,2}/g;
   var API_KEY = /(api[_-]?key["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
   var OPAQUE_KEY = /sb_(?:publishable|secret)_[\\w-]+/g;
   var BEARER = /(bearer\\s+)[A-Za-z0-9._~+\\/=-]{16,}/gi;

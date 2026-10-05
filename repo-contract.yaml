@@ -257,6 +257,16 @@ environment:
       description: 'Kill-switch: "true" desliga o export OTEL mesmo em build de produção (VITE_OTEL_ENABLED=false não desliga). Só para build hermético de e2e (playwright.baseline.config.ts); nunca em produção.'
     - name: VITE_SENTRY_DSN
       description: DSN do Sentry
+    # Mobile shell (apps/mobile), plan row R-12. Read from apps/mobile/.env, never from the
+    # web's. Both are PUBLIC (Metro inlines EXPO_PUBLIC_* into the bundle, as Vite does with
+    # VITE_*): the same two values as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. No
+    # service-role key and no other secret ever goes under apps/mobile.
+    - name: EXPO_PUBLIC_SUPABASE_URL
+      description: Shell only. https origin of the Itera Supabase project; the one host the shell's development probe may call (apps/mobile/src/backendProbe.ts). Public.
+      default: "unset (the probe reports not configured)"
+    - name: EXPO_PUBLIC_SUPABASE_ANON_KEY
+      description: Shell only. The anon key of that project (public; row-level security applies). A key whose role is not anon is refused.
+      default: "unset (the probe reports not configured)"
     # ⚠️ NÃO é VITE_*: é lido pelo vite.config.ts no processo de build, nunca
     # pelo app. Liga o plugin scripts/source-stamp.ts, que carimba
     # data-source="<arquivo>:<linha>" em cada elemento host — só para o build de
@@ -287,6 +297,15 @@ workflows:
     trigger: pull requests that touch apps/mobile (path-filtered), plus a weekly Expo Go SDK check
     steps: disk guard, npm ci, tsc, check:expo-go-sdk, web-inert
     one_copy_check: scripts/mobile/one-copy.test.ts (runs in the build-test job of ci.yml)
+
+mobile_shell_session:
+  # Plan row R-12, ADR-10. The WebView owns the Supabase session and its refresh.
+  capability: auth.session (web to shell only; contract packages/bridge/contracts/shells/0.3.0.json)
+  payload: access token and its expiry, or signedOut; never a refresh token, a provider token or the session object
+  web_call_site: src/lib/shellAuthSession.ts
+  native_holder: apps/mobile/src/nativeSession.ts (memory only; dropped on sign-out, user change, top-frame load, relaunch, unmount)
+  not_offered: Android System WebView without WebMessageListener (the sender frame is unknown there); any build without EXPO_PUBLIC_SUPABASE_URL (no issuer to check a token against)
+  native_network: apps/mobile/src/backendProbe.ts (development probe; the https origin of EXPO_PUBLIC_SUPABASE_URL only)
 
 agent_entry_point: CLAUDE.md
 

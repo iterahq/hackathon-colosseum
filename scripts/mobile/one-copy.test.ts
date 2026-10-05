@@ -196,9 +196,25 @@ describe("negative fixtures, one per rule", () => {
     const { repo, map } = fixture({ "apps/mobile/src/other.ts": "export const g = () => fetch('/x');\n" });
     expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("contains fetch(")]);
   });
-  it("1b: fetch( in shellGate.ts is the one allowed place", () => {
+  it("1b: fetch( in shellGate.ts is allowed", () => {
     const { repo, map } = fixture({ "apps/mobile/src/shellGate.ts": "export const g = () => fetch('/x');\n" });
     expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([]);
+  });
+  it("1b: one fetch( in backendProbe.ts, to the origin it is given, is the other allowed place (R-12)", () => {
+    const { repo, map } = fixture({ "apps/mobile/src/backendProbe.ts": "export const p = (origin: string) => fetch(`${origin}/rest/v1/rpc/x`);\n" });
+    expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([]);
+  });
+  it("1b: a second fetch( in backendProbe.ts", () => {
+    const { repo, map } = fixture({ "apps/mobile/src/backendProbe.ts": "export const p = (o: string) => fetch(o);\nexport const q = (o: string) => fetch(o);\n" });
+    expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("more than one fetch(")]);
+  });
+  it("1b: backendProbe.ts with a host written in it", () => {
+    const { repo, map } = fixture({ "apps/mobile/src/backendProbe.ts": "export const p = () => fetch('https://api.iterahq.dev/v1/me');\n" });
+    expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("names a host")]);
+  });
+  it("1b: a second data file beside backendProbe.ts (the admission is one file, not a folder)", () => {
+    const { repo, map } = fixture({ "apps/mobile/src/backendCatalog.ts": "export const c = (o: string) => fetch(o);\n" });
+    expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("backendCatalog.ts contains fetch(")]);
   });
   it("1c: a chrome file opens a WebSocket", () => {
     const { repo, map } = fixture({ "apps/mobile/src/DevOverlay.tsx": "export const s = () => new WebSocket('wss://x');\n" });
@@ -445,6 +461,16 @@ describe("R-6: the bridge parser joins the forwarder parser (rules 1b and 1c wid
         "import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nconst parseBridgeMessage = (x: unknown) => x;\nexport default function S() { const f = (e) => { parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n",
     });
     expect(rule1c(repo)).toEqual([expect.stringContaining("calls parseBridgeMessage but does not import it from ../src/bridgeMessage")]);
+  });
+  it("1c: messageSize(e.nativeEvent, ...) imported from consoleMessage is the third allowed read (R-12)", () => {
+    const handler =
+      "import { WebView } from 'react-native-webview';\nimport { messageSize, parseConsoleMessage } from '../src/consoleMessage';\nimport { parseBridgeMessage } from '../src/bridgeMessage';\nexport default function S() { const f = (e) => { if (messageSize(e.nativeEvent, 'o') === null) return; parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n";
+    expect(rule1c(fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": handler }).repo)).toEqual([]);
+  });
+  it("1c: a locally defined messageSize shadow is flagged", () => {
+    const handler =
+      "import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nconst messageSize = (x: { data: string }) => x.data;\nexport default function S() { const f = (e) => { messageSize(e.nativeEvent); parseConsoleMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n";
+    expect(rule1c(fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": handler }).repo)).toEqual([expect.stringContaining("calls messageSize but does not import it from ../src/consoleMessage")]);
   });
   it("1c: a locally defined parseConsoleMessage shadow is flagged", () => {
     const { repo } = fixture({

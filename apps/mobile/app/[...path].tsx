@@ -17,6 +17,14 @@
  * app" notice, the safe-area frame, and the console forwarder (src/consoleMessage.ts). The WebView
  * is re-created (React key) on Retry and after a process death instead of `reload()`: a dead
  * Android renderer cannot be reloaded, and one path then serves every failure.
+ * R-12 adds `auth.session` (PLAN ADR-10): the page hands its access token to `src/nativeSession.ts` (memory
+ * only, one copy per process); the session token of the router comes from `expo-crypto`; the copy is dropped
+ * on every top-frame load start, relaunch and unmount, and the next page sends its own. Under `__DEV__` the
+ * probe of `src/backendProbe.ts` reads the backend with that token and the overlay shows the answer.
+ * `onMessage` has two windows: a raw one before any parse (count and length of what frames on the app origin
+ * send), and the page's budget after it, which counts only what a parser accepted. A frame on another origin
+ * reaches neither. A build with no backend has no native session and never offers `auth.session`.
+ * On return to the foreground the session is revalidated: the page is asked once, and a copy nobody vouches for is dropped.
  *
  * The one catch-all route of the shell. Every path opens the web app in a WebView; a path that is
  * not in the route map opens the home route.
@@ -30,6 +38,7 @@
  * and "index.tsx" re-exports it for the root.
  */
 import Constants from 'expo-constants';
+import { getRandomValues } from 'expo-crypto';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
@@ -37,11 +46,13 @@ import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
+import { parseBackend, probeIteraUser, probeLine, type ProbeResult } from '../src/backendProbe';
 import { createShellBridge, parseBridgeMessage } from '../src/bridgeMessage';
-import { admitMessage, buildConsoleForwarder, parseConsoleMessage, type MessageBucket } from '../src/consoleMessage';
+import { admitMessage, admitRaw, buildConsoleForwarder, messageSize, parseConsoleMessage, type MessageBucket, type RawBucket } from '../src/consoleMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
+import { createNativeSession, issuerOf, sessionLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
 import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
@@ -68,6 +79,13 @@ const KEEP_AWAKE = createKeepAwakeClaims({
   activate: (tag: string) => activateKeepAwakeAsync(tag),
   deactivate: (tag: string) => deactivateKeepAwake(tag),
 });
+
+// Both values are public (Metro inlines `EXPO_PUBLIC_*` into the bundle): the ones the web ships as `VITE_SUPABASE_*`.
+const BACKEND = parseBackend(process.env.EXPO_PUBLIC_SUPABASE_URL, process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+// One copy of the access token per process, in memory only (ADR-10). The WebView owns the session and its refresh.
+// No backend in the build = no issuer to hold a token to = no native session: `auth.session` is not offered.
+const NATIVE_SESSION = BACKEND === null ? null : createNativeSession({ issuer: issuerOf(BACKEND.origin) });
+const RANDOM = (bytes: Uint8Array) => getRandomValues(bytes);
 
 // react-native-webview declares `class WebView<P = undefined>` in some releases. With that default
 // the props type is `WebViewProps & undefined`, which is `never` (TS2769). Instantiate the class
@@ -125,7 +143,13 @@ function WebShell({ shellPath }: { shellPath: string }) {
   const [startUrl, setStartUrl] = useState(entryUrl);
   const [forwardedErrors, setForwardedErrors] = useState(0);
   const [bridgeHandshakes, setBridgeHandshakes] = useState(0);
-  const shellBridge = useMemo(() => createShellBridge({ origin: ORIGIN, shellVersion: SHELL_VERSION, keepAwake: KEEP_AWAKE }), []);
+  const [sessionOffered, setSessionOffered] = useState<boolean | null>(null);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+  const [probe, setProbe] = useState<ProbeResult | null>(null);
+  const shellBridge = useMemo(
+    () => createShellBridge({ origin: ORIGIN, shellVersion: SHELL_VERSION, keepAwake: KEEP_AWAKE, session: NATIVE_SESSION, random: RANDOM }),
+    [],
+  );
   // The console forwarder is a development aid (Expo Go is always __DEV__); the bridge channel is always on.
   const forwarder = useMemo(() => (__DEV__ ? buildConsoleForwarder(ORIGIN) : undefined), []);
 
@@ -147,31 +171,77 @@ function WebShell({ shellPath }: { shellPath: string }) {
   }, []);
 
   const bucket = useRef<MessageBucket>({ start: 0, count: 0 });
-  // One router behind one native rate window: the console shape first (development only), then the
-  // bridge envelope; anything else is dropped.
+  const rawBucket = useRef<RawBucket>({ start: 0, count: 0, chars: 0 });
+  // A frame that is not on the app origin stops at `messageSize`: unparsed and uncounted, so it can never
+  // use up a window of the page. The raw window then bounds what is parsed at all. The page's own budget
+  // counts only what a parser accepted: the console shape first (development only), then the bridge envelope.
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
+      const size = messageSize(e.nativeEvent, ORIGIN);
+      if (size === null || !admitRaw(rawBucket.current, Date.now(), size)) return;
+      const consoleMessage = __DEV__ ? parseConsoleMessage(e.nativeEvent, ORIGIN) : null;
+      const bridgeMessage = consoleMessage === null ? parseBridgeMessage(e.nativeEvent, ORIGIN, Platform.OS) : null;
+      if (consoleMessage === null && bridgeMessage === null) return;
       const admission = admitMessage(bucket.current, Date.now());
       bucket.current = admission.bucket;
       if (!admission.admitted) return;
-      if (__DEV__) {
-        const message = parseConsoleMessage(e.nativeEvent, ORIGIN);
-        if (message !== null) {
-          setForwardedErrors((n) => n + 1);
-          console.warn(`[web ${message.level}] ${message.text}`);
-          return;
-        }
+      if (consoleMessage !== null) {
+        setForwardedErrors((n) => n + 1);
+        console.warn(`[web ${consoleMessage.level}] ${consoleMessage.text}`);
+        return;
       }
-      const bridgeMessage = parseBridgeMessage(e.nativeEvent, ORIGIN);
       if (bridgeMessage === null) return;
       void shellBridge.handle(bridgeMessage).then((out) => {
         if (out.script !== null) webview.current?.injectJavaScript(out.script);
-        if (out.handshake) setBridgeHandshakes((n) => n + 1);
+        if (out.handshake) {
+          setBridgeHandshakes((n) => n + 1);
+          setSessionOffered(out.sessionOffered);
+        }
         if (__DEV__ && out.refused !== null) console.warn(`[bridge] refused: ${out.refused}`);
       });
     },
     [shellBridge],
   );
+
+  // The native session asks the page of this WebView when its copy is absent or about to expire.
+  useEffect(
+    () =>
+      NATIVE_SESSION?.bindAsk((forceRefresh) => {
+        const script = shellBridge.askSession(forceRefresh);
+        if (script === null || webview.current === null) return false;
+        webview.current.injectJavaScript(script);
+        return true;
+      }),
+    [shellBridge],
+  );
+
+  // A sign-out sent while the app was suspended can be lost. Back in the foreground the page is asked once;
+  // with no answer inside the grace the copy is dropped. No interval: one timer per return to the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') NATIVE_SESSION?.revalidate();
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Development probe (R-12): on each session change, read the backend as the learner. A sign-out clears the answer.
+  const probeRun = useRef(0);
+  useEffect(() => {
+    if (!__DEV__ || NATIVE_SESSION === null) return undefined;
+    const native = NATIVE_SESSION.session;
+    return native.subscribe((event) => {
+      const run = (probeRun.current += 1);
+      if (event.type === 'signed-out') {
+        setSessionExpiresAt(null);
+        setProbe({ kind: 'no-session' });
+        return;
+      }
+      setSessionExpiresAt(event.session.expiresAt);
+      void probeIteraUser(BACKEND, () => native.getAccessToken()).then((result) => {
+        if (probeRun.current === run) setProbe(result);
+      });
+    });
+  }, []);
 
   // The page asks to keep the screen on; whatever it holds ends with the WebView.
   useEffect(() => () => shellBridge.reset(), [shellBridge]);
@@ -243,7 +313,16 @@ function WebShell({ shellPath }: { shellPath: string }) {
       {isCardVisible(chrome) ? (
         <OfflineCard title={copy.title} body={copy.body} onRetry={() => relaunch('retry')} onOpenBrowser={openInBrowser} />
       ) : null}
-      {__DEV__ ? <DevOverlay version={SHELL_VERSION} url={loadedUrl} forwardedErrors={forwardedErrors} bridgeHandshakes={bridgeHandshakes} /> : null}
+      {__DEV__ ? (
+        <DevOverlay
+          version={SHELL_VERSION}
+          url={loadedUrl}
+          forwardedErrors={forwardedErrors}
+          bridgeHandshakes={bridgeHandshakes}
+          session={sessionOffered === false ? (NATIVE_SESSION === null ? 'Sessão: não oferecida (build sem backend)' : 'Sessão: não oferecida (este WebView não informa o frame)') : sessionLine(sessionExpiresAt === null ? null : { expiresAt: sessionExpiresAt }, Date.now())}
+          backend={probeLine(probe)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -1,0 +1,7 @@
+{
+  "shellVersion": "0.3.0",
+  "note": "R-12: auth.session (web to shell: the access token only, or signedOut). Offered only where the shell can attribute a message to its frame: iOS, and Android on the WebMessageListener path. On the Android legacy path, and in a build that names no backend (no issuer to check a token against), the handshake lists keepAwake and shell.version only.",
+  "bridge": true,
+  "protocols": [1],
+  "capabilities": ["auth.session", "keepAwake", "shell.version"]
+}

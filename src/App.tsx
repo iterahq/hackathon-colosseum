@@ -34,6 +34,7 @@ import { RequireRole } from "./auth/RequireRole";
 import { RequireSubscription } from "./auth/RequireSubscription";
 import { ShellBridgeMount } from "./lib/shellBridge";
 import { KeepAwakeRouteMount } from "./lib/shellKeepAwake";
+import { ShellAuthSessionMount } from "./lib/shellAuthSession";
 /* ── Code-split surfaces (lazy) ───────────────────────────────────────────
    /admin/* and /author/* are staff surfaces: role-gated, and never rendered in
    the overwhelmingly common learner session. Statically importing them pulled
@@ -139,6 +140,7 @@ const App = () => (
               <EmbedBridgeMount />
               <ShellBridgeMount />
               <KeepAwakeRouteMount />
+              <ShellAuthSessionMount />
               {/* App-wide mounts: locale sync (writes itera.users.locale) + the
                   "a class went live" signal (reads memberships, deep-links into
                   the authenticated /live/:id). BOTH are suppressed on the guest

@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -9,7 +10,8 @@ import { describe, expect, it } from 'vitest';
 // react-native-webview 13.16.1 typings use.
 const source = readFileSync(fileURLToPath(new URL('../../apps/mobile/app/[...path].tsx', import.meta.url)), 'utf8');
 const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
-const count = (re: RegExp) => (code.match(re) ?? []).length;
+// Global, so `toBe(1)` means exactly once (a non-global match returns one entry however often the text occurs).
+const count = (re: RegExp) => (code.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`)) ?? []).length;
 
 describe('route file wiring', () => {
   it.each([
@@ -34,8 +36,20 @@ describe('route file wiring', () => {
     expect(count(/\binjectedJavaScriptForMainFrameOnly=\{true\}/)).toBe(1);
   });
 
-  it('the message handler applies the native rate limit before parsing', () => {
-    expect(code).toMatch(/admitMessage\(bucket\.current, Date\.now\(\)\)[\s\S]*parseConsoleMessage\(e\.nativeEvent, ORIGIN\)/);
+  it('before any parse: a frame off the app origin stops at messageSize, and the raw window bounds what reaches the parsers (R-12)', () => {
+    expect(code).toMatch(
+      /const size = messageSize\(e\.nativeEvent, ORIGIN\);\s*if \(size === null \|\| !admitRaw\(rawBucket\.current, Date\.now\(\), size\)\) return;\s*const consoleMessage = /,
+    );
+    expect(count(/\bmessageSize\(/)).toBe(1);
+    expect(count(/\badmitRaw\(/)).toBe(1);
+    expect(code.indexOf('admitRaw(')).toBeLessThan(code.indexOf('parseConsoleMessage(e.nativeEvent'));
+  });
+
+  it('the page budget counts only what a parser accepted: a message neither accepts is dropped uncounted (R-12)', () => {
+    expect(code).toMatch(
+      /parseConsoleMessage\(e\.nativeEvent, ORIGIN\)[\s\S]*parseBridgeMessage\(e\.nativeEvent, ORIGIN, Platform\.OS\)[\s\S]*if \(consoleMessage === null && bridgeMessage === null\) return;\s*const admission = admitMessage\(bucket\.current, Date\.now\(\)\);\s*bucket\.current = admission\.bucket;\s*if \(!admission\.admitted\) return;/,
+    );
+    expect(count(/\badmitMessage\(/)).toBe(1);
   });
 
   it('keep-awake is per route over the bridge (R-8): no shell-level hook, released on unmount and on relaunch', () => {
@@ -84,22 +98,90 @@ describe('route file wiring: the bridge (R-6)', () => {
 
   it('onMessage reads the console shape first, then the bridge envelope, each once and through its own parser', () => {
     expect(count(/\bparseConsoleMessage\(e\.nativeEvent, ORIGIN\)/)).toBe(1);
-    expect(count(/\bparseBridgeMessage\(e\.nativeEvent, ORIGIN\)/)).toBe(1);
+    expect(count(/\bparseBridgeMessage\(e\.nativeEvent, ORIGIN, Platform\.OS\)/)).toBe(1);
     expect(code.indexOf('parseConsoleMessage(e.nativeEvent')).toBeLessThan(code.indexOf('parseBridgeMessage(e.nativeEvent'));
   });
 
-  it('both parsers sit behind the one native rate window, and the console shape is development only', () => {
-    expect(code).toMatch(/admitMessage\(bucket\.current, Date\.now\(\)\)[\s\S]*if \(__DEV__\) \{\s*const message = parseConsoleMessage\(e\.nativeEvent, ORIGIN\)[\s\S]*parseBridgeMessage\(e\.nativeEvent, ORIGIN\)/);
+  it('one native rate window covers both shapes: nothing is logged, counted or routed before it, and the console shape is development only', () => {
+    expect(code).toMatch(/const consoleMessage = __DEV__ \? parseConsoleMessage\(e\.nativeEvent, ORIGIN\) : null;/);
+    const admitted = code.indexOf('if (!admission.admitted) return;');
+    expect(admitted).toBeGreaterThan(0);
+    for (const effect of ['setForwardedErrors(', 'console.warn(`[web', 'shellBridge.handle(bridgeMessage)']) {
+      expect(code.indexOf(effect), effect).toBeGreaterThan(admitted);
+    }
     expect(code).not.toMatch(/onMessage=\{__DEV__/);
   });
 
-  it('a reply goes back through injectJavaScript of the WebView, and only a script from the router', () => {
-    expect(count(/\binjectJavaScript\(/)).toBe(1);
+  it('only two scripts enter the WebView, both built by the router: a reply, and the ask for the session (R-12)', () => {
+    expect(count(/\binjectJavaScript\(/)).toBe(2);
     expect(code).toMatch(/if \(out\.script !== null\) webview\.current\?\.injectJavaScript\(out\.script\);/);
+    expect(code).toMatch(/NATIVE_SESSION\?\.bindAsk\(\(forceRefresh\) => \{/);
+    expect(code).toMatch(/const script = shellBridge\.askSession\(forceRefresh\);\s*if \(script === null \|\| webview\.current === null\) return false;\s*webview\.current\.injectJavaScript\(script\);/);
   });
 
-  it('the router is created with the one configured origin and the shell version', () => {
-    expect(code).toMatch(/createShellBridge\(\{ origin: ORIGIN, shellVersion: SHELL_VERSION, keepAwake: KEEP_AWAKE \}\)/);
+  it('the router is created with the one configured origin, the shell version, the process-wide session and the random source', () => {
+    expect(code).toMatch(/createShellBridge\(\{ origin: ORIGIN, shellVersion: SHELL_VERSION, keepAwake: KEEP_AWAKE, session: NATIVE_SESSION, random: RANDOM \}\)/);
+  });
+});
+
+describe('route file wiring: auth.session (R-12)', () => {
+  it('the session token of the router comes from expo-crypto, never Math.random', () => {
+    expect(code).toMatch(/import \{ getRandomValues \} from 'expo-crypto';/);
+    expect(code).toMatch(/const RANDOM = \(bytes: Uint8Array\) => getRandomValues\(bytes\);/);
+    expect(count(/Math\.random/)).toBe(0);
+  });
+
+  it('one session per process, in memory: no storage module is imported by the shell', () => {
+    expect(count(/createNativeSession\(/)).toBe(1);
+    expect(code).toMatch(/^const NATIVE_SESSION = BACKEND === null \? null : createNativeSession\(\{ issuer: issuerOf\(BACKEND\.origin\) \}\);$/m);
+    expect(code).not.toMatch(/secure-store|async-storage|AsyncStorage|expo-file-system|expo-sqlite/);
+    const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('../../apps/mobile/package.json', import.meta.url)), 'utf8')) as { dependencies: Record<string, string> };
+    for (const name of Object.keys(pkg.dependencies)) expect(name).not.toMatch(/secure-store|async-storage|file-system|sqlite|mmkv|supabase/);
+  });
+
+  it('the backend is the two public variables and nothing else: no other env var is read by the shell', () => {
+    expect(code).toMatch(/parseBackend\(process\.env\.EXPO_PUBLIC_SUPABASE_URL, process\.env\.EXPO_PUBLIC_SUPABASE_ANON_KEY\)/);
+    expect((code.match(/process\.env\.\w+/g) ?? []).sort()).toEqual(['process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY', 'process.env.EXPO_PUBLIC_SUPABASE_URL']);
+    expect(code).not.toMatch(/service_role|SERVICE_ROLE/);
+    const shell = fileURLToPath(new URL('../../apps/mobile/', import.meta.url));
+    const sources = ['app', 'src'].flatMap((dir) => readdirSync(path.join(shell, dir)).filter((f) => /\.tsx?$/.test(f) && !/\.(test|testkit)\.ts$/.test(f)).map((f) => path.join(shell, dir, f)));
+    expect(sources.length).toBeGreaterThan(10);
+    for (const file of sources) {
+      if (file.endsWith('[...path].tsx')) continue;
+      expect(readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''), file).not.toMatch(/process\.env|expoConfig\?\.extra\?\.(?!webOrigin)/);
+    }
+  });
+
+  it('the probe runs in development only, once per session change, and a sign-out clears its answer without a request', () => {
+    expect(count(/\bprobeIteraUser\(/)).toBe(1);
+    expect(code).toMatch(
+      /if \(!__DEV__ \|\| NATIVE_SESSION === null\) return undefined;\s*const native = NATIVE_SESSION\.session;\s*return native\.subscribe\(\(event\) => \{[\s\S]*if \(event\.type === 'signed-out'\) \{\s*setSessionExpiresAt\(null\);\s*setProbe\(\{ kind: 'no-session' \}\);\s*return;\s*\}[\s\S]*probeIteraUser\(BACKEND, \(\) => native\.getAccessToken\(\)\)/,
+    );
+    expect(code).toMatch(/if \(probeRun\.current === run\) setProbe\(result\);/);
+  });
+
+  it('the token never enters React state or a log: state holds the expiry only, and each console call prints a level or a reason', () => {
+    expect(code).not.toMatch(/accessToken/);
+    expect(code).toMatch(/setSessionExpiresAt\(event\.session\.expiresAt\);/);
+    expect((code.match(/console\.\w+\([^\n]*/g) ?? []).sort()).toEqual([
+      'console.warn(`[bridge] refused: ${out.refused}`);',
+      'console.warn(`[web ${consoleMessage.level}] ${consoleMessage.text}`);',
+    ]);
+  });
+
+  it('a build with no backend has no native session: nothing can hold a token whose issuer is unchecked', () => {
+    expect(code).not.toMatch(/issuer: null/);
+    expect(count(/NATIVE_SESSION\.(?!session;)/)).toBe(0);
+  });
+
+  it('back in the foreground the session is revalidated once: a listener, no interval', () => {
+    expect(code).toMatch(/AppState\.addEventListener\('change', \(state\) => \{\s*if \(state === 'active'\) NATIVE_SESSION\?\.revalidate\(\);\s*\}\);/);
+    expect(count(/\bsetInterval\b/)).toBe(0);
+  });
+
+  it('the overlay gets the session line and the probe line, never the snapshot', () => {
+    expect(code).toMatch(/sessionLine\(sessionExpiresAt === null \? null : \{ expiresAt: sessionExpiresAt \}, Date\.now\(\)\)/);
+    expect(code).toMatch(/backend=\{probeLine\(probe\)\}/);
   });
 });
 

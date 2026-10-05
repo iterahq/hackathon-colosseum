@@ -192,6 +192,11 @@ WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm:
   falha se o shell copiar um componente ou página da web. Casca = só os arquivos de
   `shell_chrome` do mapa; nada de chamada de dados nela.
 - Navegação decidida em um lugar só: `apps/mobile/src/origin.ts` (com testes ao lado).
+- **Sessão (`auth.session`):** a WebView é dona da sessão e do refresh. A página entrega à casca
+  **só o access token** (`src/lib/shellAuthSession.ts` → `apps/mobile/src/nativeSession.ts`, em
+  memória). Refresh token nunca atravessa a ponte; a casca nunca renova nem persiste token. As
+  únicas variáveis da casca são `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+  (públicas, as mesmas da web); **nenhum segredo em `apps/mobile`**.
 - O Metro só sobe por `apps/mobile/scripts/start-metro.sh`, depois do filtro de pacotes de
   `apps/mobile/scripts/metro-firewall.sh`. Nunca `expo start` direto, nunca `--tunnel`.
 - Runbook, medições e lacunas conhecidas: [`docs/mobile-shell.md`](docs/mobile-shell.md).

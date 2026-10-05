@@ -3,8 +3,11 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ENVELOPE_TAG, MAX_MESSAGE_BYTES, createBridgeClient, type IncomingMessage } from '@iterahq/shell-bridge';
 import { createKeepAwakeClaims, type KeepAwakeClaims, type KeepAwakeEffects } from './keepAwakeHolder';
-import { createShellBridge, parseBridgeMessage, type BridgeMessage } from './bridgeMessage';
+import { randomFillSync } from 'node:crypto';
+import { createShellBridge, parseBridgeMessage, senderAttributed, type BridgeMessage } from './bridgeMessage';
 import { parseConsoleMessage } from './consoleMessage';
+import { ISSUER, NOW, OTHER_USER, USER, fakeJwt } from './jwt.testkit';
+import { createNativeSession, type NativeSession } from './nativeSession';
 
 const O = 'https://app.iterahq.dev';
 const PAGE = `${O}/lesson/1`;
@@ -13,13 +16,17 @@ const call = (id: string, method: string, session: string, payload: unknown = {}
   JSON.stringify({ tag: ENVELOPE_TAG, v: 1, kind: 'call', id, session, method, payload });
 const noEffects: KeepAwakeEffects = { activate: () => undefined, deactivate: () => undefined };
 const claimsOf = (effects: KeepAwakeEffects = noEffects): KeepAwakeClaims => createKeepAwakeClaims(effects);
-const parse = (data: unknown, url: unknown = PAGE) => parseBridgeMessage({ data, url }, O);
+const parse = (data: unknown, url: unknown = PAGE, platform = 'ios') => parseBridgeMessage({ data, url }, O, platform);
+const random = (bytes: Uint8Array) => randomFillSync(bytes);
+const nativeSession = (now = NOW): NativeSession => createNativeSession({ issuer: ISSUER, now: () => now, askTimeoutMs: 20 });
+const shellBridge = (options: { keepAwake?: KeepAwakeClaims; session?: NativeSession; version?: string } = {}) =>
+  createShellBridge({ origin: O, shellVersion: options.version ?? '0.3.0', keepAwake: options.keepAwake ?? claimsOf(), session: options.session ?? nativeSession(), random });
 const replyOf = (script: string | null): string => JSON.parse(/postMessage\((".*"),"https/.exec(script ?? '')?.[1] ?? 'null') as string;
 const sessionOf = (script: string | null): string => (JSON.parse(replyOf(script)) as { payload: { session: string } }).payload.session;
 
 describe('parseBridgeMessage', () => {
   it('accepts a bridge envelope from a frame on the app origin', () => {
-    expect(parse(hello())).toEqual({ raw: hello(), senderUrl: PAGE, kind: 'hello' });
+    expect(parse(hello())).toEqual({ raw: hello(), senderUrl: PAGE, kind: 'hello', attributed: true });
     expect(parse(call('wBBBBBBBB1', 'shell.version', 's'))).toMatchObject({ kind: 'call' });
   });
 
@@ -52,22 +59,22 @@ describe('parseBridgeMessage', () => {
   it('a forged id passes the gate and is refused by the router as bad_id', async () => {
     const message = parse(hello('forged')) as BridgeMessage;
     expect(message).not.toBeNull();
-    expect((await createShellBridge({ origin: O, shellVersion: '0.2.0', keepAwake: claimsOf() }).handle(message)).refused).toBe('bad_id');
+    expect((await shellBridge().handle(message)).refused).toBe('bad_id');
   });
 
   it('the two parsers never read each other: a console message is no bridge message and a bridge message is no console message', () => {
     const consoleRaw = JSON.stringify({ type: 'console', level: 'error', text: 'x' });
     expect(parseConsoleMessage({ data: consoleRaw, url: PAGE }, O)).not.toBeNull();
-    expect(parseBridgeMessage({ data: consoleRaw, url: PAGE }, O)).toBeNull();
+    expect(parseBridgeMessage({ data: consoleRaw, url: PAGE }, O, 'ios')).toBeNull();
     expect(parseConsoleMessage({ data: hello(), url: PAGE }, O)).toBeNull();
   });
 });
 
 describe('createShellBridge', () => {
-  const bridge = (keepAwake: KeepAwakeClaims = claimsOf()) => createShellBridge({ origin: O, shellVersion: '0.2.0', keepAwake });
+  const bridge = (keepAwake: KeepAwakeClaims = claimsOf()) => shellBridge({ keepAwake, version: '0.2.0' });
 
-  it('offers keepAwake and shell.version and nothing else', () => {
-    expect(bridge().capabilities).toEqual(['keepAwake', 'shell.version']);
+  it('offers auth.session, keepAwake and shell.version and nothing else', () => {
+    expect(bridge().capabilities).toEqual(['auth.session', 'keepAwake', 'shell.version']);
   });
 
   it('a hello gets a delivery script that posts to the app origin only, and counts as a handshake', async () => {
@@ -75,7 +82,8 @@ describe('createShellBridge', () => {
     expect(out.handshake).toBe(true);
     expect(out.refused).toBeNull();
     expect(out.script).toContain(`,${JSON.stringify(O)})`);
-    expect(replyOf(out.script)).toContain('"capabilities":["keepAwake","shell.version"]');
+    expect(out.sessionOffered).toBe(true);
+    expect(replyOf(out.script)).toContain('"capabilities":["auth.session","keepAwake","shell.version"]');
   });
 
   it('round-trips shell.version through the real web client, as the page does', async () => {
@@ -94,12 +102,12 @@ describe('createShellBridge', () => {
       webVersion: 't',
       timeoutMs: 200,
     });
-    expect(await client.handshake()).toMatchObject({ kind: 'shell', shellVersion: '0.2.0', capabilities: ['keepAwake', 'shell.version'] });
+    expect(await client.handshake()).toMatchObject({ kind: 'shell', shellVersion: '0.2.0', capabilities: ['auth.session', 'keepAwake', 'shell.version'] });
     expect(await client.call('shell.version', {})).toEqual({ shellVersion: '0.2.0', protocol: 1 });
   });
 
-  it.each(['auth.session', 'link.open', 'haptics', 'file.save', 'share', 'capture.open'])(
-    '%s is capability_absent: no token, no navigation, no file access in v1',
+  it.each(['link.open', 'haptics', 'file.save', 'share', 'capture.open'])(
+    '%s is capability_absent: no navigation, no file access',
     async (method) => {
       const b = bridge();
       const ack = await b.handle(parse(hello()) as BridgeMessage);
@@ -252,6 +260,323 @@ describe('the shell against its contract file', () => {
   it('expo.version has a contract file that says bridge: true and lists exactly the capabilities the shell registers', () => {
     expect(contract.shellVersion).toBe(version);
     expect(contract.bridge).toBe(true);
-    expect([...contract.capabilities].sort()).toEqual([...createShellBridge({ origin: O, shellVersion: version, keepAwake: claimsOf() }).capabilities].sort());
+    expect([...contract.capabilities].sort()).toEqual([...shellBridge({ version }).capabilities].sort());
+  });
+});
+
+describe('senderAttributed', () => {
+  it.each([
+    ['ios, the page', 'ios', PAGE, true],
+    ['ios, the origin alone', 'ios', O, true],
+    ['android on the WebMessageListener path: the origin of the sender frame, no path', 'android', O, true],
+    ['android on the legacy path at the root: the URL of the top frame', 'android', `${O}/`, false],
+    ['android on the legacy path on a lesson', 'android', PAGE, false],
+    ['android, the origin with a query', 'android', `${O}?x=1`, false],
+    ['android, the origin in another case', 'android', 'HTTPS://APP.ITERAHQ.DEV', false],
+    ['an unknown platform', 'web', O, false],
+    ['no platform', '', PAGE, false],
+  ])('%s', (_what, platform, url, expected) => {
+    expect(senderAttributed(platform, url, O)).toBe(expected);
+  });
+});
+
+describe('auth.session (R-12)', () => {
+  const JWT = fakeJwt();
+  const EXPIRES_AT = 2_000_000_000_000;
+  const shake = async (b: ReturnType<typeof shellBridge>, id = 'wAAAAAAAA1', url: string = PAGE, platform = 'ios') => {
+    const out = await b.handle(parse(hello(id), url, platform) as BridgeMessage);
+    return { out, session: sessionOf(out.script) };
+  };
+  const push = (b: ReturnType<typeof shellBridge>, session: string, id: string, payload: unknown, url: string = PAGE, platform = 'ios') =>
+    b.handle(parse(call(id, 'auth.session', session, payload), url, platform) as BridgeMessage);
+
+  it('stores the access token of the page and answers {stored:true}; the reply carries no token', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    const out = await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    expect(out.refused).toBeNull();
+    expect(JSON.parse(replyOf(out.script))).toMatchObject({ kind: 'result', payload: { stored: true } });
+    expect(out.script).not.toContain(JWT);
+    expect(native.session.current()).toEqual({ userId: USER, accessToken: JWT, expiresAt: EXPIRES_AT });
+  });
+
+  it('signedOut clears the copy', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    expect((await push(b, session, 'wBBBBBBBB2', { signedOut: true })).refused).toBeNull();
+    expect(native.session.current()).toBeNull();
+    expect(await native.session.getAccessToken()).toBeNull();
+  });
+
+  it('another user replaces the copy: the first user is gone', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    const other = fakeJwt({ sub: OTHER_USER });
+    await push(b, session, 'wBBBBBBBB2', { accessToken: other, expiresAt: EXPIRES_AT });
+    expect(native.session.current()).toMatchObject({ userId: OTHER_USER, accessToken: other });
+  });
+
+  it.each([
+    ['a refresh token beside the access token', { accessToken: JWT, expiresAt: EXPIRES_AT, refreshToken: 'r' }, 'bad_payload'],
+    ['a snake-case refresh token', { accessToken: JWT, expiresAt: EXPIRES_AT, refresh_token: 'r' }, 'bad_payload'],
+    ['a provider token', { accessToken: JWT, expiresAt: EXPIRES_AT, provider_token: 'p' }, 'bad_payload'],
+    ['a whole session object', { access_token: JWT, refresh_token: 'r', expires_at: 2_000_000_000, user: { id: USER } }, 'bad_payload'],
+    ['a user id field', { accessToken: JWT, expiresAt: EXPIRES_AT, userId: USER }, 'bad_payload'],
+    ['two dot parts', { accessToken: JWT.split('.').slice(0, 2).join('.'), expiresAt: EXPIRES_AT }, 'bad_payload'],
+    ['an expiry after the token exp', { accessToken: JWT, expiresAt: EXPIRES_AT + 1 }, 'bad_payload'],
+    ['an expired token', { accessToken: fakeJwt({ exp: 1_999_998_000 }), expiresAt: 1_999_998_000_000 }, 'handler_failed'],
+    ['a sub that is no uuid', { accessToken: fakeJwt({ sub: 'admin' }), expiresAt: EXPIRES_AT }, 'handler_failed'],
+    ['another project as issuer', { accessToken: fakeJwt({ iss: 'https://evil.supabase.co/auth/v1' }), expiresAt: EXPIRES_AT }, 'handler_failed'],
+    ['the anon audience', { accessToken: fakeJwt({ aud: 'anon' }), expiresAt: EXPIRES_AT }, 'handler_failed'],
+    ['a guest of a live class', { accessToken: fakeJwt({ app_metadata: { is_guest: true } }), expiresAt: EXPIRES_AT }, 'handler_failed'],
+  ])('refuses %s and stores nothing', async (_what, payload, reason) => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    const out = await push(b, session, 'wBBBBBBBB1', payload);
+    expect(out.refused).toBe(reason);
+    expect(native.session.current()).toBeNull();
+    expect(out.script).not.toMatch(/eyJ[\w-]{20,}\.[\w-]{20,}\./);
+  });
+
+  it('a refused token does not replace the copy already held', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    await push(b, session, 'wBBBBBBBB2', { accessToken: fakeJwt({ sub: OTHER_USER, iss: 'https://evil.supabase.co/auth/v1' }), expiresAt: EXPIRES_AT });
+    expect(native.session.current()).toMatchObject({ userId: USER });
+  });
+
+  it('needs the session of the handshake: a guessed or missing session stores nothing', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    expect((await push(b, 's'.padEnd(65, '0'), 'wBBBBBBBB0', { accessToken: JWT, expiresAt: EXPIRES_AT })).refused).toBe('no_handshake');
+    await shake(b);
+    expect((await push(b, 's'.padEnd(65, '0'), 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT })).refused).toBe('bad_session');
+    expect(native.session.current()).toBeNull();
+  });
+
+  it('the session token is 256 random bits from the supplied source, new on every handshake', async () => {
+    const b = shellBridge();
+    const first = (await shake(b, 'wAAAAAAAA1')).session;
+    const second = (await shake(b, 'wAAAAAAAA2')).session;
+    expect(first).toMatch(/^s[0-9a-f]{64}$/);
+    expect(second).toMatch(/^s[0-9a-f]{64}$/);
+    expect(second).not.toBe(first);
+  });
+
+  it('a frame of another origin, or a sandboxed frame of learner code, never reaches the router', () => {
+    for (const url of ['about:srcdoc', 'null', 'about:blank', 'blob:https://app.iterahq.dev/1b0f', 'data:text/html,x', 'https://evil.example/']) {
+      for (const platform of ['ios', 'android']) {
+        expect(parse(hello(), url, platform), `${platform} ${url}`).toBeNull();
+        expect(parse(call('wBBBBBBBB1', 'auth.session', 's', { signedOut: true }), url, platform), `${platform} ${url}`).toBeNull();
+      }
+    }
+  });
+
+  describe('Android legacy WebView: the sender frame is unknown', () => {
+    const LEGACY = [PAGE, 'android'] as const;
+
+    it('the handshake does not list auth.session', async () => {
+      const { out } = await shake(shellBridge(), 'wAAAAAAAA1', ...LEGACY);
+      expect(out.handshake).toBe(true);
+      expect(out.sessionOffered).toBe(false);
+      expect(replyOf(out.script)).toContain('"capabilities":["keepAwake","shell.version"]');
+    });
+
+    it('a call of auth.session is capability_absent and stores nothing', async () => {
+      const native = nativeSession();
+      const b = shellBridge({ session: native });
+      const { session } = await shake(b, 'wAAAAAAAA1', ...LEGACY);
+      expect((await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT }, ...LEGACY)).refused).toBe('capability_absent');
+      expect(native.session.current()).toBeNull();
+    });
+
+    it('the shell never asks such a page for a token', async () => {
+      const b = shellBridge();
+      await shake(b, 'wAAAAAAAA1', ...LEGACY);
+      expect(b.askSession(false)).toBeNull();
+    });
+
+    it('a legacy-shaped message cannot use the session of an attributed handshake', async () => {
+      const native = nativeSession();
+      const b = shellBridge({ session: native });
+      const { session } = await shake(b, 'wAAAAAAAA1', O, 'android');
+      expect((await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT }, ...LEGACY)).refused).toBe('no_handshake');
+      expect((await push(b, session, 'wBBBBBBBB2', { signedOut: true }, ...LEGACY)).refused).toBe('no_handshake');
+      expect(native.session.current()).toBeNull();
+    });
+
+    it('a legacy-shaped hello does not end the session of the attributed page, nor its token', async () => {
+      const native = nativeSession();
+      const b = shellBridge({ session: native });
+      const { session } = await shake(b, 'wAAAAAAAA1', O, 'android');
+      await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT }, O, 'android');
+      await shake(b, 'wAAAAAAAA2', ...LEGACY);
+      expect(native.session.current()).toMatchObject({ userId: USER });
+      expect((await push(b, session, 'wBBBBBBBB2', { signedOut: true }, O, 'android')).refused).toBeNull();
+      expect(native.session.current()).toBeNull();
+    });
+
+    it('keepAwake still works there', async () => {
+      const b = shellBridge();
+      const { session } = await shake(b, 'wAAAAAAAA1', ...LEGACY);
+      const out = await b.handle(parse(call('wBBBBBBBB1', 'keepAwake', session, { on: true }), ...LEGACY) as BridgeMessage);
+      expect(out.refused).toBeNull();
+      expect(b.keepAwakeHeld()).toBe(true);
+    });
+  });
+
+  it('Android on the WebMessageListener path is offered auth.session and stores the token', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { out, session } = await shake(b, 'wAAAAAAAA1', O, 'android');
+    expect(out.sessionOffered).toBe(true);
+    expect((await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT }, O, 'android')).refused).toBeNull();
+    expect(native.session.current()).toMatchObject({ userId: USER });
+  });
+
+  describe('a build that names no backend (no issuer to hold a token to)', () => {
+    const bare = () => createShellBridge({ origin: O, shellVersion: '0.3.0', keepAwake: claimsOf(), session: null, random });
+
+    it('does not have the capability: not on iOS, not on Android', async () => {
+      expect(bare().capabilities).toEqual(['keepAwake', 'shell.version']);
+      for (const [url, platform] of [[PAGE, 'ios'], [O, 'android'], [PAGE, 'android']] as const) {
+        const { out } = await shake(bare(), 'wAAAAAAAA1', url, platform);
+        expect(out.sessionOffered, platform).toBe(false);
+        expect(replyOf(out.script), platform).toContain('"capabilities":["keepAwake","shell.version"]');
+      }
+    });
+
+    it('a call of auth.session is capability_absent, and the shell never asks', async () => {
+      const b = bare();
+      const { session } = await shake(b);
+      expect((await push(b, session, 'wBBBBBBBB1', { accessToken: fakeJwt({ iss: 'https://any.supabase.co/auth/v1' }), expiresAt: EXPIRES_AT })).refused).toBe('capability_absent');
+      expect((await push(b, session, 'wBBBBBBBB2', { signedOut: true })).refused).toBe('capability_absent');
+      expect(b.askSession(false)).toBeNull();
+      b.reset();
+    });
+  });
+
+  it('reset() (top-frame load start, relaunch, unmount) drops the copy this WebView delivered', async () => {
+    const native = nativeSession();
+    const events: string[] = [];
+    native.session.subscribe((e) => void events.push(e.type));
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    b.reset();
+    expect(native.session.current()).toBeNull();
+    expect(events).toEqual(['signed-in', 'signed-out']);
+    expect(b.askSession(false)).toBeNull();
+  });
+
+  it('reset() of a WebView that delivered nothing keeps the copy another WebView delivered', async () => {
+    const native = nativeSession();
+    const visible = shellBridge({ session: native });
+    const hidden = shellBridge({ session: native });
+    const { session } = await shake(visible);
+    await shake(hidden, 'wAAAAAAAA2');
+    await push(visible, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    hidden.reset();
+    expect(native.session.current()).toMatchObject({ userId: USER });
+    visible.reset();
+    expect(native.session.current()).toBeNull();
+  });
+
+  it('a second hello keeps the copy; the old session can no longer change it', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    await shake(b, 'wAAAAAAAA2');
+    expect(native.session.current()).toMatchObject({ userId: USER });
+    expect((await push(b, session, 'wBBBBBBBB2', { signedOut: true })).refused).toBe('bad_session');
+  });
+
+  it('another method cannot carry the held token out (a URL, a share text)', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    const out = await b.handle(parse(call('wBBBBBBBB2', 'keepAwake', session, { on: true, note: JWT })) as BridgeMessage);
+    expect(out.refused).toBe('bad_payload');
+    expect(out.script).not.toContain(JWT);
+  });
+
+  it('the shell asks the page through the attributed router, to the app origin only, and the ask carries no token', async () => {
+    const native = nativeSession();
+    const b = shellBridge({ session: native });
+    expect(b.askSession(false)).toBeNull();
+    const { session } = await shake(b);
+    await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+    const script = b.askSession(true) as string;
+    expect(script).toContain(`,${JSON.stringify(O)})`);
+    expect(script).not.toContain(JWT);
+    expect(JSON.parse(replyOf(script))).toMatchObject({ kind: 'ask', method: 'auth.session', session, payload: { forceRefresh: true } });
+    expect((JSON.parse(replyOf(script)) as { id: string }).id).toMatch(/^n[0-9a-f]{32}$/);
+  });
+
+  describe('no token in a log', () => {
+    const logged = async (run: () => Promise<void>) => {
+      const lines: string[] = [];
+      const methods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+      const original = methods.map((m) => console[m]);
+      methods.forEach((m) => (console[m] = (...args: unknown[]) => void lines.push(args.map(String).join(' '))));
+      try {
+        await run();
+      } finally {
+        methods.forEach((m, i) => (console[m] = original[i]));
+      }
+      return lines;
+    };
+
+    it('the new shell code prints nothing while it stores, refuses, asks and clears', async () => {
+      const lines = await logged(async () => {
+        const native = nativeSession();
+        const b = shellBridge({ session: native });
+        const { session } = await shake(b);
+        await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+        await push(b, session, 'wBBBBBBBB2', { accessToken: fakeJwt({ sub: 'x' }), expiresAt: EXPIRES_AT });
+        await push(b, 'wrong', 'wBBBBBBBB3', { accessToken: JWT, expiresAt: EXPIRES_AT });
+        b.askSession(false);
+        await native.session.getAccessToken();
+        b.reset();
+      });
+      expect(lines).toEqual([]);
+    });
+
+    it('what the host logs of an outcome (the refusal reason) never holds the token, also when the handler error quotes it', async () => {
+      const native = nativeSession();
+      const quoting: NativeSession = { ...native, handlerFor: () => () => { throw new Error(`cannot store ${JWT}`); } };
+      const b = shellBridge({ session: quoting });
+      const { session } = await shake(b);
+      const out = await push(b, session, 'wBBBBBBBB1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+      expect(out.refused).toBe('handler_failed');
+      expect(`[bridge] refused: ${out.refused}`).not.toContain('eyJ');
+      expect(out.script).not.toContain(JWT);
+      expect(replyOf(out.script)).toContain('[redacted]');
+    });
+
+    it('an auth.session envelope sent down the console path is not a console message', () => {
+      const envelope = call('wBBBBBBBB1', 'auth.session', 's1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+      expect(parseConsoleMessage({ data: envelope, url: PAGE }, O)).toBeNull();
+    });
+
+    it('an auth.session envelope quoted inside a forwarded console error is redacted', () => {
+      const envelope = call('wBBBBBBBB1', 'auth.session', 's1', { accessToken: JWT, expiresAt: EXPIRES_AT });
+      for (const text of [envelope.slice(0, 400), `bridge call failed: ${JSON.stringify({ accessToken: JWT })}`, `Authorization: Bearer ${JWT}`]) {
+        const message = parseConsoleMessage({ data: JSON.stringify({ type: 'console', level: 'error', text }), url: PAGE }, O);
+        const line = `[web ${message?.level}] ${message?.text}`;
+        expect(line).not.toMatch(/eyJ[\w-]+\.[\w-]+/);
+        expect(line).not.toContain(JWT.split('.')[1].slice(0, 24));
+      }
+    });
   });
 });

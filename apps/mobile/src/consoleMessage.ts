@@ -25,7 +25,8 @@ export const MAX_TEXT_CHARS = 500;
 
 const LEVELS: readonly string[] = ['error', 'uncaught', 'rejection'];
 const SECRET = /((?:access|refresh|dfl)_token["']?\s*[:=]\s*["']?)[^&\s"',}#]+/gi;
-const JWT = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g;
+// Also a token that something cut short: a header and part of the claims is not a credential, but the claims name the user.
+const JWT = /eyJ[\w-]{4,}(?:\.[\w-]*){0,2}/g;
 
 const API_KEY = /(api[_-]?key["']?\s*[:=]\s*["']?)[^&\s"',}#]+/gi;
 const OPAQUE_KEY = /sb_(?:publishable|secret)_[\w-]+/g;
@@ -77,4 +78,44 @@ export function admitMessage(bucket: MessageBucket, now: number): { bucket: Mess
   const current = now - bucket.start >= 1000 ? { start: now, count: 0 } : bucket;
   if (current.count >= MAX_MESSAGES_PER_SECOND) return { bucket: current, admitted: false };
   return { bucket: { start: current.start, count: current.count + 1 }, admitted: true };
+}
+
+/**
+ * The length of a message from a frame the WebView reports on the app origin, or null for any other
+ * frame or a non-string. No parse: it is what `onMessage` reads BEFORE either parser, so that a frame
+ * of another origin costs nothing and is counted nowhere, and a frame that passes the origin gate is
+ * counted (`admitRaw`) before any JSON of it is parsed.
+ */
+export function messageSize(event: { data: unknown; url: unknown }, origin: string): number | null {
+  const appOrigin = originOf(origin);
+  if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
+  return typeof event.data === 'string' ? event.data.length : null;
+}
+
+export const MAX_RAW_MESSAGES_PER_SECOND = 40;
+export const MAX_RAW_CHARS_PER_SECOND = 256 * 1024;
+
+export interface RawBucket {
+  start: number;
+  count: number;
+  chars: number;
+}
+
+/**
+ * The window in front of the parsers: at most `MAX_RAW_MESSAGES_PER_SECOND` messages and
+ * `MAX_RAW_CHARS_PER_SECOND` characters per second reach `JSON.parse`. Generous on purpose: the budget of
+ * the page is `admitMessage`, which counts only what a parser accepted, so garbage cannot use it up.
+ * This one bounds the parsing itself, for a WebView that reports every frame as the page (Android without
+ * `WebMessageListener`). It changes `bucket` in place and allocates nothing.
+ */
+export function admitRaw(bucket: RawBucket, now: number, chars: number): boolean {
+  if (now - bucket.start >= 1000) {
+    bucket.start = now;
+    bucket.count = 0;
+    bucket.chars = 0;
+  }
+  if (bucket.count >= MAX_RAW_MESSAGES_PER_SECOND || bucket.chars + chars > MAX_RAW_CHARS_PER_SECOND) return false;
+  bucket.count += 1;
+  bucket.chars += chars;
+  return true;
 }
