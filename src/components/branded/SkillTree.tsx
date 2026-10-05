@@ -17,6 +17,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { BookOpen, Flag, GitBranch, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { buildSections } from '@/utils/buildSections';
+import { hexAlpha } from '@/utils/hexAlpha';
 import { toneForUnit } from './skillTreeUnitPalette';
 import { SkillTreeUnitHeader } from './SkillTreeUnitHeader';
 import { SkillTreePathNode } from './SkillTreePathNode';
@@ -24,8 +25,12 @@ import { SkillTreeCallout } from './SkillTreeCallout';
 import {
   BANNER_INSET,
   buildTrailPath,
+  buildWideTrailPath,
   computeTrailLayout,
+  computeWideTrailLayout,
+  isWideTrail,
   trailWidthFor,
+  wideBannerInset,
 } from './skillTreeGeometry';
 import type { ProgramDetail, Lesson, ActivityKind } from '@/types/content';
 
@@ -88,16 +93,19 @@ export function SkillTree({
   const primaryIndex = flatNodes.findIndex((n) => n.state === 'current');
   const primary = primaryIndex >= 0 ? primaryIndex : null;
 
-  const width = trailWidthFor(containerWidth);
-  const layout = computeTrailLayout({
+  const wide = isWideTrail(containerWidth);
+  const width = wide ? containerWidth : trailWidthFor(containerWidth);
+  const layout = (wide ? computeWideTrailLayout : computeTrailLayout)({
     width,
     sectionSizes: sections.map((s) => s.nodes.length),
     primaryIndex: primary,
   });
-  const fullPath = buildTrailPath(layout.nodes);
+  const buildPath = wide ? buildWideTrailPath : buildTrailPath;
+  const bannerInset = wide ? wideBannerInset(width) : BANNER_INSET;
+  const fullPath = buildPath(layout.nodes);
   const doneUpTo = primary ?? layout.nodes.length - 1;
-  const donePath = doneUpTo >= 1 ? buildTrailPath(layout.nodes.slice(0, doneUpTo + 1)) : '';
-  const flowPath = primary !== null && primary >= 1 ? buildTrailPath(layout.nodes.slice(primary - 1, primary + 1)) : '';
+  const donePath = doneUpTo >= 1 ? buildPath(layout.nodes.slice(0, doneUpTo + 1)) : '';
+  const flowPath = primary !== null && primary >= 1 ? buildPath(layout.nodes.slice(primary - 1, primary + 1)) : '';
   const trailLeft = (containerWidth - width) / 2;
 
   return (
@@ -130,13 +138,27 @@ export function SkillTree({
       </div>
 
       <div ref={trailRef} className="relative w-full" style={{ height: layout.height }}>
+        {wide &&
+          sections.map((section, si) => (
+            <span
+              key={`glow-${section.unit.id}`}
+              aria-hidden="true"
+              data-testid="unit-glow"
+              className="absolute inset-x-0 pointer-events-none"
+              style={{
+                top: layout.banners[si].y,
+                height: (layout.banners[si + 1]?.y ?? layout.height) - layout.banners[si].y,
+                background: `radial-gradient(60% 55% at 50% 45%, ${hexAlpha(toneForUnit(section.index).base, 9)}, transparent)`,
+              }}
+            />
+          ))}
         {sections.map((section, si) => (
           <span
             key={`mark-${section.unit.id}`}
             aria-hidden="true"
             className="absolute pointer-events-none select-none font-display font-bold leading-none whitespace-nowrap"
             style={{
-              top: layout.banners[si].y + layout.banners[si].height + 30,
+              top: wide ? layout.banners[si].y - 38 : layout.banners[si].y + layout.banners[si].height + 30,
               [si % 2 === 0 ? 'left' : 'right']: 8,
               fontSize: 168,
               color: 'transparent',
@@ -209,7 +231,7 @@ export function SkillTree({
                 weekLabel={t('journey.unitWeek', { n: section.index + 1 })}
                 top={layout.banners[si].y}
                 height={layout.banners[si].height}
-                inset={BANNER_INSET}
+                inset={bannerInset}
               />
             );
           })}

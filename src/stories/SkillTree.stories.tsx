@@ -52,6 +52,17 @@ export const UnitNotLaunched: Story = {
   render: wideRender,
 };
 
+/** Desktop: the trail takes the whole page and each week snakes edge to edge. */
+export const FullPage: Story = {
+  args: { program: fixtureProgram, onOpenLesson: () => {} },
+  parameters: { layout: 'fullscreen' },
+  render: (args) => (
+    <div style={{ padding: 40 }}>
+      <SkillTree {...args} />
+    </div>
+  ),
+};
+
 /** Phone width: narrower zig-zag, callout clamped inside the trail. */
 export const Mobile: Story = {
   args: { program: fixtureProgram, onOpenLesson: () => {} },

@@ -130,7 +130,7 @@ export default function ProgramPage() {
       {/* Sticky course sub-header (back · branch · title). No heart/fire/XP. */}
       {program && (
         <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="max-w-[1100px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
+          <div className="px-4 md:px-6 lg:px-10 h-14 flex items-center gap-3">
             <Link
               to="/"
               aria-label={t('common.back')}
@@ -150,7 +150,7 @@ export default function ProgramPage() {
         </div>
       )}
 
-      <main className="flex-1 max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
+      <main className="flex-1 w-full px-4 md:px-6 lg:px-10 py-6 md:py-10">
         {loading ? (
           <div className="space-y-4" data-testid="program-loading">
             <div className="h-40 rounded-3xl ds-shimmer" />
