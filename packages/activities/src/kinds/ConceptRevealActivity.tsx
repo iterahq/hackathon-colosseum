@@ -49,7 +49,7 @@ export function ConceptRevealActivity({
 
   return (
     <ActivityShell kind="concept_reveal" icon={Lightbulb} label={t('activity.conceptReveal')}>
-      <InstructionPanel spec={spec?.instruction} />
+      <InstructionPanel spec={spec?.instruction} reading />
 
       <div
         className="rounded-2xl border border-evergreen/30 bg-evergreen-soft/20 p-4"

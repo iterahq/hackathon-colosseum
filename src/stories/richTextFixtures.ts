@@ -47,6 +47,43 @@ function BookCard({ title }) {
 
 > Prop vem de fora e não muda aqui. Estado nasce dentro e muda aqui.`;
 
+/**
+ * A long reading screen: eight-plus blocks, two four-line paragraphs, both
+ * list kinds, a quote, inline code, key-phrase marks and a fenced block. The
+ * test of the reading feel is this, not a three-line demo.
+ */
+export const LONG_FUNCTION = `## O que é uma função
+
+Uma função é um ==pedaço de código com nome== que você escreve uma vez e chama quantas vezes quiser. Pense numa receita de bolo colada na geladeira: você não reescreve a receita toda vez que vai fazer um bolo, só olha pra ela e segue os passos. No código é igual — você define a função uma vez e, quando precisa do resultado, chama pelo nome.
+
+**Toda função tem três partes:**
+
+- O **nome**, que é como você chama ela depois. Ex.: \`calcularTotal\`.
+- Os **parâmetros**, que são os ingredientes que entram. Ex.: a lista de preços.
+- O **retorno**, que é o bolo pronto: o valor que sai quando a função termina.
+
+Sem função, o mesmo cálculo apareceria copiado em cinco lugares diferentes, e no dia que o imposto mudasse você teria que achar os cinco e corrigir um por um. Com função, você corrige num lugar só e todos os cinco passam a usar a versão nova — é por isso que programador fala tanto em ==não se repetir==.
+
+### Como se escreve
+
+1. Escreva \`function\` e o nome que você escolheu.
+2. Entre parênteses, liste os parâmetros separados por vírgula.
+3. Entre chaves, escreva o que a função faz.
+4. Use \`return\` para devolver o resultado.
+
+\`\`\`js
+function calcularTotal(precos) {
+  const soma = precos.reduce((a, b) => a + b, 0);
+  return soma * 1.1;
+}
+
+calcularTotal([10, 20, 30]); // 66
+\`\`\`
+
+Repare que \`calcularTotal([10, 20, 30])\` é uma *chamada*: o nome seguido de parênteses com os ingredientes dentro. A função roda, chega no \`return\` e entrega o valor pra quem chamou. Se você esquecer o \`return\`, a função roda do mesmo jeito mas devolve \`undefined\`, que é o jeito do JavaScript dizer "não tenho nada pra te dar".
+
+> Função é a menor unidade de reuso que existe. Quando algo se repete, o primeiro instinto deve ser dar um nome pra aquilo.`;
+
 /** Todo bloco que o parser conhece, num texto só — é o dicionário da marcação. */
 export const VOCABULARY = `## Título de seção
 

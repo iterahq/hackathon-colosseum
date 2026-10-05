@@ -4,6 +4,9 @@
  * `muted` existe porque o mesmo desenho serve o texto principal da instrução e
  * a descrição secundária embaixo dela, que precisa continuar sendo secundária.
  *
+ * `lead` is the opening paragraph of a reading screen, one size up: the first
+ * thing the eye lands on should look like the first thing, not like line four.
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  * A CERCA ```mermaid VIRA DESENHO — EM QUALQUER KIND
  * ─────────────────────────────────────────────────────────────────────────────
@@ -17,7 +20,11 @@
  * `parseMermaidLite` recusa continua caindo no `<pre>` de sempre. Nenhuma cerca
  * que já está no banco pode piorar por causa desta mudança.
  */
+import { Quote } from 'lucide-react';
 import { RichSpans } from './RichSpans.js';
+import { RichHeading } from './RichHeading.js';
+import { RichList } from './RichList.js';
+import { RichCodeBlock } from './RichCodeBlock.js';
 import { MermaidLite } from './MermaidLite.js';
 import { parseMermaidLite } from '../internal/mermaidLite.js';
 import { RichMedia } from './RichMedia.js';
@@ -26,27 +33,25 @@ import type { Block } from '../internal/richText.js';
 export function RichBlock({
   block,
   muted,
+  lead = false,
+  section,
 }: {
   block: Block;
   muted: boolean;
+  lead?: boolean;
+  /** 1-based position among the `##` headings, when the text has more than one. */
+  section?: number;
 }) {
   // Body text is Inter: Barlow Condensed stays on headings only, because a
   // condensed face in long paragraphs read as slanted and tiring (2026-09-30).
   const body = muted
     ? 'text-sm text-muted-foreground leading-relaxed'
-    : 'font-body text-base md:text-lg text-foreground leading-relaxed';
+    : lead
+      ? 'font-body text-lg md:text-xl text-foreground leading-relaxed'
+      : 'font-body text-base md:text-lg text-foreground leading-relaxed';
 
   if (block.type === 'heading')
-    return (
-      <h3
-        className={`font-display font-semibold text-foreground ${
-          block.level === 2 ? 'text-xl md:text-2xl' : 'text-lg md:text-xl'
-        }`}
-        data-rich-block="heading"
-      >
-        <RichSpans spans={block.spans} />
-      </h3>
-    );
+    return <RichHeading level={block.level} spans={block.spans} muted={muted} section={section} />;
 
   if (block.type === 'media')
     return (
@@ -63,9 +68,10 @@ export function RichBlock({
   if (block.type === 'quote')
     return (
       <blockquote
-        className={`rounded-xl border-l-4 border-evergreen bg-evergreen-soft/50 px-4 py-3 font-medium ${body}`}
+        className={`relative rounded-xl border border-evergreen/25 border-l-4 border-l-evergreen bg-evergreen-soft/40 py-3 pl-11 pr-4 font-medium ${body}`}
         data-rich-block="quote"
       >
+        <Quote className="absolute left-4 top-4 h-4 w-4 text-evergreen" aria-hidden="true" />
         <RichSpans spans={block.spans} />
       </blockquote>
     );
@@ -83,48 +89,25 @@ export function RichBlock({
       );
   }
 
-  if (block.type === 'code')
-    return (
-      <pre
-        className="overflow-x-auto rounded-2xl border border-border bg-obsidiana/80 p-4"
-        data-rich-block="code"
-        data-language={block.language || undefined}
-      >
-        <code className="font-mono text-sm text-menta">{block.value}</code>
-      </pre>
-    );
-
-  if (block.type === 'list' && block.ordered)
-    return (
-      <ol
-        className={`list-decimal space-y-1.5 pl-5 marker:text-evergreen ${body}`}
-        data-rich-block="list"
-        start={block.start}
-      >
-        {block.items.map((item, i) => (
-          <li key={i}>
-            <RichSpans spans={item} />
-          </li>
-        ))}
-      </ol>
-    );
+  if (block.type === 'code') return <RichCodeBlock language={block.language} value={block.value} />;
 
   if (block.type === 'list')
     return (
-      <ul
-        className={`list-disc space-y-1.5 pl-5 marker:text-evergreen ${body}`}
-        data-rich-block="list"
-      >
-        {block.items.map((item, i) => (
-          <li key={i}>
-            <RichSpans spans={item} />
-          </li>
-        ))}
-      </ul>
+      <RichList
+        ordered={block.ordered}
+        start={block.start}
+        items={block.items}
+        muted={muted}
+        textClass={body}
+      />
     );
 
   return (
-    <p className={`whitespace-pre-line ${body}`} data-rich-block="paragraph">
+    <p
+      className={`whitespace-pre-line ${body}`}
+      data-rich-block="paragraph"
+      data-lead={lead ? 'true' : undefined}
+    >
       <RichSpans spans={block.spans} />
     </p>
   );

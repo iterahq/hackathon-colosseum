@@ -42,11 +42,14 @@ export function InstructionPanel({
   spec,
   className = '',
   inlineVideo = false,
+  reading = false,
 }: {
   spec: InstructionPanelSpec | undefined | null;
   className?: string;
   /** Keep the video as an inline player even beside text (the `video` kind). */
   inlineVideo?: boolean;
+  /** The text IS the screen (concept): long-form reading rhythm instead of the prompt above an exercise. */
+  reading?: boolean;
 }) {
   // Keyed by src, like `InstructionVideo`: a failed file never condemns the next video.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export function InstructionPanel({
 
   return (
     <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
-      {text && <RichText text={text} data-testid="instruction-text" />}
+      {text && <RichText text={text} reading={reading} data-testid="instruction-text" />}
 
       {optionalVideo && video_url && <OptionalVideoButton src={video_url} onUnplayable={() => setFailedSrc(video_url)} />}
 

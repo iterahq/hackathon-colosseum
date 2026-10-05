@@ -27,7 +27,7 @@ export function ConceptActivity({
   const spec = activity.spec as unknown as ConceptSpec;
   return (
     <ActivityShell kind="concept" icon={BookOpen} label={t('activity.concept')}>
-      <InstructionPanel spec={spec?.instruction} />
+      <InstructionPanel spec={spec?.instruction} reading />
     </ActivityShell>
   );
 }

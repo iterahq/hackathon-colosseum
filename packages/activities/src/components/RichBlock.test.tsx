@@ -83,3 +83,41 @@ describe('RichBlock — media', () => {
     expect(container.querySelectorAll('figure')).toHaveLength(2);
   });
 });
+
+describe('RichBlock — lists', () => {
+  it('draws numbered items as steps that keep the author numbering', () => {
+    const { container } = render(<RichText text={'3. terceiro\n4. quarto'} />);
+    const list = container.querySelector('[data-rich-block="list"]')!;
+    expect(list.tagName).toBe('OL');
+    expect(list.getAttribute('start')).toBe('3');
+    const steps = [...list.querySelectorAll('[data-step]')].map((n) => n.textContent);
+    expect(steps).toEqual(['3', '4']);
+    expect(screen.getByText('terceiro')).toBeInTheDocument();
+  });
+
+  it('keeps the plain browser list when muted', () => {
+    const { container } = render(<RichText text={'1. um\n2. dois'} muted />);
+    const list = container.querySelector('[data-rich-block="list"]')!;
+    expect(list.className).toContain('list-decimal');
+    expect(list.querySelector('[data-step]')).toBeNull();
+  });
+});
+
+describe('RichBlock — code window', () => {
+  it('numbers the lines of a multi-line block outside the copyable text', () => {
+    const { container } = render(<RichText text={'```js\nconst a = 1;\nconst b = 2;\n```'} />);
+    const block = container.querySelector('[data-rich-block="code"]')!;
+    expect(block.getAttribute('data-language')).toBe('js');
+    expect(block.querySelectorAll('[data-line]')).toHaveLength(2);
+    expect(block.querySelector('code')!.textContent).toBe('const a = 1;const b = 2;');
+    expect(block.textContent).toContain('js');
+  });
+
+  it('leaves a one-liner unnumbered and without a language label', () => {
+    const { container } = render(<RichText text={'```\ngit pull\n```'} />);
+    const block = container.querySelector('[data-rich-block="code"]')!;
+    expect(block.querySelector('[data-line]')).toBeNull();
+    expect(block.hasAttribute('data-language')).toBe(false);
+    expect(block.querySelector('code')!.textContent).toBe('git pull');
+  });
+});

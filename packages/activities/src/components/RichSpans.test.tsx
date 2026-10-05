@@ -19,3 +19,13 @@ describe('RichSpans — bold vs mark', () => {
     expect(mark.style.boxShadow).toContain('inset');
   });
 });
+
+describe('RichSpans — inline code', () => {
+  it('renders inline code as a keycap with a ledge', () => {
+    const { container } = render(<RichText text="run `git pull` now" />);
+    const code = container.querySelector('code')!;
+    expect(code.textContent).toBe('git pull');
+    expect(code.className).toContain('border-b-2');
+    expect(code.className).toContain('font-mono');
+  });
+});

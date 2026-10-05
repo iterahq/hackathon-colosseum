@@ -8,15 +8,20 @@
 import { useContext } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Inline } from '../internal/richText.js';
-import { HighlightDelay } from './highlightDelay.js';
+import { BlockReveal } from './blockReveal.js';
 
 // `==key phrase==` is the highlighter: a soft pill that sweeps in once the
 // block lands. Bold stays plain emphasis so only the key phrase is marked.
 const HIGHLIGHT = 'linear-gradient(rgba(63,209,127,.10), rgba(63,209,127,.10))';
 
+// Inline code is a keycap: the same ledge the tactile surfaces press on, at
+// chip size, so a command name reads as something you type.
+const KEYCAP =
+  'rounded-md border border-border border-b-2 bg-obsidiana/80 px-1.5 py-0.5 font-mono text-[0.85em] text-menta';
+
 export function RichSpans({ spans }: { spans: Inline[] }) {
   const reduced = useReducedMotion();
-  const delay = useContext(HighlightDelay);
+  const { landed, delay } = useContext(BlockReveal);
   return (
     <>
       {spans.map((span, i) => {
@@ -38,7 +43,7 @@ export function RichSpans({ spans }: { spans: Inline[] }) {
                 WebkitBoxDecorationBreak: 'clone',
               }}
               initial={reduced ? false : { backgroundSize: '0% 100%' }}
-              animate={{ backgroundSize: '100% 100%' }}
+              animate={{ backgroundSize: landed || reduced ? '100% 100%' : '0% 100%' }}
               transition={{ duration: 0.5, ease: 'easeOut', delay: reduced ? 0 : delay + 0.3 }}
             >
               <RichSpans spans={span.spans} />
@@ -52,10 +57,7 @@ export function RichSpans({ spans }: { spans: Inline[] }) {
           );
         if (span.type === 'code')
           return (
-            <code
-              key={i}
-              className="rounded bg-evergreen-soft/70 px-1 py-0.5 font-mono text-[0.85em] text-menta"
-            >
+            <code key={i} className={KEYCAP}>
               {span.value}
             </code>
           );

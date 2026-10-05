@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { ConceptActivity } from '@/components/branded/activity/ConceptActivity';
 import { SAMPLE_AUDIO, SAMPLE_IMAGE, SAMPLE_VIDEO, makeActivity, noop } from './activityFixtures';
 import { withActivityWidth } from './decorators';
-import { FLAT_GIT } from './richTextFixtures';
+import { FLAT_GIT, LONG_FUNCTION } from './richTextFixtures';
 
 /**
  * Concept — a pure READING/exposition activity built on the InstructionPanel.
@@ -40,6 +40,13 @@ export const TextOnly: Story = {
 export const AulaReal: Story = {
   render: () => (
     <ConceptActivity activity={makeActivity('concept', { instruction: { text: FLAT_GIT } })} onComplete={noop} />
+  ),
+};
+
+/** A long reading screen: the rhythm, the steps and the code window have to hold up over eight-plus blocks. */
+export const TextoLongo: Story = {
+  render: () => (
+    <ConceptActivity activity={makeActivity('concept', { instruction: { text: LONG_FUNCTION } })} onComplete={noop} />
   ),
 };
 
