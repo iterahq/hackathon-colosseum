@@ -9,35 +9,17 @@
  *    behaviour change against the LS file (PLAN ADR-5); its tests in origin.test.ts are new.
  *  - The custom-scheme bundle origin (`resolveShellOrigin`, `WebBundleStatus`, `isBundleScheme`,
  *    `bundleOrigin`) is removed: this shell has no native bundle handler (Expo Go, ADR-11).
- *  - `originOf` is copied here instead of imported, because the bridge package is not part of
- *    this shell yet (ADR-9). It is byte-for-byte the LS function.
+ *  - `originOf` is the bridge's (`@iterahq/shell-bridge`), re-exported: one origin parser in the shell.
  *
  * The origin of the web content in the shell stays ONE config value: `expo.extra.webOrigin`.
  *
  * Pure TypeScript: no React Native import.
  */
+import { originOf } from '@iterahq/shell-bridge';
+
+export { originOf };
 
 export const DEFAULT_WEB_ORIGIN = 'https://app.iterahq.dev';
-
-/**
- * The origin of a URL, as `scheme://host[:port]`, lower case, default port removed. `null` for an
- * opaque origin (file:, about:, data:, blob:, a URL with user info, or a string that is not an
- * absolute hierarchical URL). No `URL` object: Hermes gives some schemes the opaque origin "null".
- */
-export function originOf(url: string): string | null {
-  if (typeof url !== 'string') return null;
-  const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]*)/.exec(url.trim());
-  if (!m) return null;
-  const scheme = m[1].toLowerCase();
-  if (scheme === 'file' || scheme === 'blob' || scheme === 'data' || scheme === 'about' || scheme === 'javascript') return null;
-  const authority = m[2].toLowerCase();
-  if (!authority || authority.includes('@') || authority.includes('\\')) return null;
-  const host = (scheme === 'https' && authority.endsWith(':443')) || (scheme === 'http' && authority.endsWith(':80'))
-    ? authority.slice(0, authority.lastIndexOf(':'))
-    : authority;
-  if (!/^[a-z0-9.-]+(:\d{1,5})?$/.test(host) && !/^\[[0-9a-f:.]+\](:\d{1,5})?$/.test(host)) return null;
-  return `${scheme}://${host}`;
-}
 
 /**
  * Read an https origin from a config value. Refuses a value that is not an

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BACK_CONFIRM_COPY, backConfirmEnabled, decideBack, type BackInput } from './backConfirm';
 
-const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true };
+const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true };
 const press = (over: Partial<BackInput>) => decideBack({ ...base, ...over });
 
 describe('decideBack', () => {
@@ -22,6 +22,13 @@ describe('decideBack', () => {
   it('leaves the press to the system when the card is off (Expo Go)', () => {
     expect(press({ confirmEnabled: false })).toBe('leave');
     expect(press({ confirmEnabled: false, phase: 'failed', canGoBack: true })).toBe('leave');
+  });
+
+  it('a route beneath the visible one leaves every press: its hidden page never goes back, and it opens or closes no card', () => {
+    expect(press({ focused: false, canGoBack: true })).toBe('leave');
+    expect(press({ focused: false, canGoBack: true, confirmEnabled: false })).toBe('leave');
+    expect(press({ focused: false })).toBe('leave');
+    expect(press({ focused: false, confirmOpen: true })).toBe('leave');
   });
 
   it('still goes back in the page with the card off', () => {

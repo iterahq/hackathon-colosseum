@@ -93,7 +93,10 @@ export const REVALIDATE_GRACE_MS = 5000;
 export interface NativeSession {
   /** The held copy: `getAccessToken`, `subscribe`, `secrets`, `current`. Bind the asker with `bindAsk` below. */
   readonly session: ShellSession;
-  /** Connect the asker of one mounted WebView (the last one bound is the one asked). Returns the disconnect function. */
+  /**
+   * Connect the asker of one mounted WebView. The one bound last is the one asked; when it disconnects, the
+   * one bound before it is asked again. Returns the disconnect function.
+   */
   bindAsk(ask: SessionAsker): () => void;
   /**
    * The app came back to the foreground: a sign-out may have been lost while it was suspended. Ask the
@@ -111,7 +114,15 @@ export function createNativeSession({ issuer, graceMs = REVALIDATE_GRACE_MS, ...
   const session = createShellSession(options);
   const setTimer = options.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
   let deliveredBy: string | null = null;
-  let asker: SessionAsker | null = null;
+  // Every mounted WebView binds one; the page asked is the one bound last that is still mounted.
+  const askers: SessionAsker[] = [];
+  let unbindCurrent: (() => void) | null = null;
+  const currentAsker = (): SessionAsker | null => askers[askers.length - 1] ?? null;
+  const rebind = () => {
+    unbindCurrent?.();
+    const top = currentAsker();
+    unbindCurrent = top === null ? null : session.bindAsk(top);
+  };
   let pushes = 0;
   const drop = () => {
     deliveredBy = null;
@@ -120,16 +131,18 @@ export function createNativeSession({ issuer, graceMs = REVALIDATE_GRACE_MS, ...
   return {
     session,
     bindAsk(ask) {
-      asker = ask;
-      const unbind = session.bindAsk(ask);
+      askers.push(ask);
+      rebind();
       return () => {
-        if (asker === ask) asker = null;
-        unbind();
+        const at = askers.lastIndexOf(ask);
+        if (at !== -1) askers.splice(at, 1);
+        rebind();
       };
     },
     revalidate() {
       if (session.current() === null) return;
       const seen = pushes;
+      const asker = currentAsker();
       if (asker === null || !asker(false)) return drop();
       setTimer(() => {
         if (pushes === seen) drop();
@@ -160,4 +173,10 @@ export function createNativeSession({ issuer, graceMs = REVALIDATE_GRACE_MS, ...
 export function sessionLine(snapshot: { expiresAt: number } | null, now: number): string {
   if (snapshot === null) return 'Sessão: não';
   return `Sessão: sim (expira em ${Math.max(0, Math.floor((snapshot.expiresAt - now) / 60_000))} min)`;
+}
+
+/** The session line of the dev overlay. `offered` is what the last handshake of this WebView said; null before any. */
+export function sessionStatusLine(offered: boolean | null, hasBackend: boolean, expiresAt: number | null, now: number): string {
+  if (offered === false) return hasBackend ? 'Sessão: não oferecida (este WebView não informa o frame)' : 'Sessão: não oferecida (build sem backend)';
+  return sessionLine(expiresAt === null ? null : { expiresAt }, now);
 }

@@ -58,7 +58,12 @@ describe('route file wiring', () => {
     expect(code).toMatch(/activate: \(tag: string\) => activateKeepAwakeAsync\(tag\)/);
     expect(code).toMatch(/deactivate: \(tag: string\) => deactivateKeepAwake\(tag\)/);
     expect(code).toMatch(/useEffect\(\(\) => \(\) => shellBridge\.reset\(\), \[shellBridge\]\);/);
-    expect(code).toMatch(/canGoBack\.current = false;\s*shellBridge\.reset\(\);\s*setStartUrl\(/);
+    expect(code).toMatch(/canGoBack\.current = false;\s*shellBridge\.reset\(\);\s*dispatch\(\{ type: event, url: restartUrl\(loadedUrl, ORIGIN, entryUrl\) \}\);/);
+  });
+
+  it('the start URL of the WebView is the reducer\'s: it moves only with the mount key, never from a state of the route', () => {
+    expect(count(/\bsource=\{\{ uri: chrome\.startUrl \?\? entryUrl \}\}/)).toBe(1);
+    expect(count(/\bsetStartUrl\b/)).toBe(0);
   });
 
   it('the launch gate (R-7): read in parallel with the WebView, the card replaces it only on update, re-read on foreground and on retry', () => {
@@ -72,7 +77,8 @@ describe('route file wiring', () => {
 
   it('Android back follows canGoBack, is reset on every remount, and returns false at the root or on the card', () => {
     expect(code).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
-    expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM \}\)/);
+    expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef\.current \}\)/);
+    expect(code).toMatch(/focusedRef\.current = useIsFocused\(\);/);
     expect(code).toMatch(/return action !== 'leave';/);
     expect(code).toMatch(/const BACK_CONFIRM = backConfirmEnabled\(Constants\.executionEnvironment\);/);
     expect(code).toMatch(/canGoBack\.current = false;/);
@@ -186,7 +192,7 @@ describe('route file wiring: auth.session (R-12)', () => {
   });
 
   it('the overlay gets the session line and the probe line, never the snapshot', () => {
-    expect(code).toMatch(/sessionLine\(sessionExpiresAt === null \? null : \{ expiresAt: sessionExpiresAt \}, Date\.now\(\)\)/);
+    expect(code).toMatch(/session=\{sessionStatusLine\(sessionOffered, NATIVE_SESSION !== null, sessionExpiresAt, Date\.now\(\)\)\}/);
     expect(code).toMatch(/backend=\{probeLine\(probe\)\}/);
   });
 });

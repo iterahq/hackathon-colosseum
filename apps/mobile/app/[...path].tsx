@@ -41,21 +41,21 @@
 import Constants from 'expo-constants';
 import { getRandomValues } from 'expo-crypto';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import { parseBackend, probeIteraUser, probeLine, type ProbeResult } from '../src/backendProbe';
-import { createShellBridge, parseBridgeMessage } from '../src/bridgeMessage';
+import { createShellBridge, parseBridgeMessage, type ShellBridge } from '../src/bridgeMessage';
 import { admitMessage, admitRaw, buildConsoleForwarder, messageSize, parseConsoleMessage, type MessageBucket, type RawBucket } from '../src/consoleMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
 import { backConfirmEnabled, decideBack } from '../src/backConfirm';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
-import { createNativeSession, issuerOf, sessionLine } from '../src/nativeSession';
+import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
 import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
@@ -136,44 +136,15 @@ export default function ShellRoute() {
   return <WebShell key={shellPath} shellPath={shellPath} />;
 }
 
-function WebShell({ shellPath }: { shellPath: string }) {
-  const entryUrl = ORIGIN + shellPath;
-  const webview = useRef<ShellWebView>(null);
-  const [chrome, dispatch] = useReducer(chromeReducer, INITIAL_CHROME);
-  const canGoBack = useRef(false);
-  const phase = useRef(chrome.phase);
-  phase.current = chrome.phase;
-  const [loadedUrl, setLoadedUrl] = useState(entryUrl);
-  const [startUrl, setStartUrl] = useState(entryUrl);
+// The one reader of WebView messages and the router that answers them. `nativeEvent` is read here only (rule 1c).
+function useBridgeChannel(webview: RefObject<ShellWebView | null>) {
   const [forwardedErrors, setForwardedErrors] = useState(0);
   const [bridgeHandshakes, setBridgeHandshakes] = useState(0);
   const [sessionOffered, setSessionOffered] = useState<boolean | null>(null);
-  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
-  const [probe, setProbe] = useState<ProbeResult | null>(null);
   const shellBridge = useMemo(
     () => createShellBridge({ origin: ORIGIN, shellVersion: SHELL_VERSION, keepAwake: KEEP_AWAKE, session: NATIVE_SESSION, random: RANDOM }),
     [],
   );
-  // The console forwarder is a development aid (Expo Go is always __DEV__); the bridge channel is always on.
-  const forwarder = useMemo(() => (__DEV__ ? buildConsoleForwarder(ORIGIN) : undefined), []);
-
-  const lastNotice = useRef<number | null>(null);
-  const onShouldStart = useCallback((req: ShouldStartLoadRequest) => {
-    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame);
-    if (decision === 'external') void Linking.openURL(req.url);
-    const notice = blockedNotice(decision, req.isTopFrame);
-    if (notice !== null && noticeDue(lastNotice.current, Date.now())) {
-      lastNotice.current = Date.now();
-      Alert.alert(notice);
-    }
-    return decision === 'load';
-  }, []);
-
-  const onNavigationStateChange = useCallback((nav: WebViewNavigation) => {
-    canGoBack.current = nav.canGoBack;
-    setLoadedUrl(nav.url);
-  }, []);
-
   const bucket = useRef<MessageBucket>({ start: 0, count: 0 });
   const rawBucket = useRef<RawBucket>({ start: 0, count: 0, chars: 0 });
   // A frame that is not on the app origin stops at `messageSize`: unparsed and uncounted, so it can never
@@ -204,9 +175,12 @@ function WebShell({ shellPath }: { shellPath: string }) {
         if (__DEV__ && out.refused !== null) console.warn(`[bridge] refused: ${out.refused}`);
       });
     },
-    [shellBridge],
+    [shellBridge, webview],
   );
+  return { shellBridge, onMessage, forwardedErrors, bridgeHandshakes, sessionOffered };
+}
 
+function useNativeSessionLink(webview: RefObject<ShellWebView | null>, shellBridge: ShellBridge) {
   // The native session asks the page of this WebView when its copy is absent or about to expire.
   useEffect(
     () =>
@@ -216,7 +190,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
         webview.current.injectJavaScript(script);
         return true;
       }),
-    [shellBridge],
+    [shellBridge, webview],
   );
 
   // A sign-out sent while the app was suspended can be lost. Back in the foreground the page is asked once;
@@ -227,8 +201,12 @@ function WebShell({ shellPath }: { shellPath: string }) {
     });
     return () => subscription.remove();
   }, []);
+}
 
-  // Development probe (R-12): on each session change, read the backend as the learner. A sign-out clears the answer.
+// Development probe (R-12): on each session change, read the backend as the learner. A sign-out clears the answer.
+function useSessionProbe() {
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+  const [probe, setProbe] = useState<ProbeResult | null>(null);
   const probeRun = useRef(0);
   useEffect(() => {
     if (!__DEV__ || NATIVE_SESSION === null) return undefined;
@@ -246,6 +224,42 @@ function WebShell({ shellPath }: { shellPath: string }) {
       });
     });
   }, []);
+  return { sessionExpiresAt, probe };
+}
+
+function useNavigationGuard() {
+  const lastNotice = useRef<number | null>(null);
+  return useCallback((req: ShouldStartLoadRequest) => {
+    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame);
+    if (decision === 'external') void Linking.openURL(req.url);
+    const notice = blockedNotice(decision, req.isTopFrame);
+    if (notice !== null && noticeDue(lastNotice.current, Date.now())) {
+      lastNotice.current = Date.now();
+      Alert.alert(notice);
+    }
+    return decision === 'load';
+  }, []);
+}
+
+function WebShell({ shellPath }: { shellPath: string }) {
+  const entryUrl = ORIGIN + shellPath;
+  const webview = useRef<ShellWebView>(null);
+  const [chrome, dispatch] = useReducer(chromeReducer, INITIAL_CHROME);
+  const canGoBack = useRef(false);
+  const phase = useRef(chrome.phase);
+  phase.current = chrome.phase;
+  const [loadedUrl, setLoadedUrl] = useState(entryUrl);
+  const { shellBridge, onMessage, forwardedErrors, bridgeHandshakes, sessionOffered } = useBridgeChannel(webview);
+  useNativeSessionLink(webview, shellBridge);
+  const { sessionExpiresAt, probe } = useSessionProbe();
+  // The console forwarder is a development aid (Expo Go is always __DEV__); the bridge channel is always on.
+  const forwarder = useMemo(() => (__DEV__ ? buildConsoleForwarder(ORIGIN) : undefined), []);
+  const onShouldStart = useNavigationGuard();
+
+  const onNavigationStateChange = useCallback((nav: WebViewNavigation) => {
+    canGoBack.current = nav.canGoBack;
+    setLoadedUrl(nav.url);
+  }, []);
 
   // The page asks to keep the screen on; whatever it holds ends with the WebView.
   useEffect(() => () => shellBridge.reset(), [shellBridge]);
@@ -255,13 +269,13 @@ function WebShell({ shellPath }: { shellPath: string }) {
     dispatch({ type: 'loadStart' });
   }, [shellBridge]);
 
-  // Re-create the WebView on the page it was on (Retry, process death).
+  // Re-create the WebView on the page it was on (Retry, process death). The reducer owns the start URL,
+  // so it changes only when the WebView is in fact created again.
   const relaunch = useCallback(
     (event: 'retry' | 'processGone') => {
       canGoBack.current = false;
       shellBridge.reset();
-      setStartUrl(restartUrl(loadedUrl, ORIGIN, entryUrl));
-      dispatch({ type: event });
+      dispatch({ type: event, url: restartUrl(loadedUrl, ORIGIN, entryUrl) });
     },
     [loadedUrl, entryUrl, shellBridge],
   );
@@ -279,9 +293,11 @@ function WebShell({ shellPath }: { shellPath: string }) {
   const [backConfirmOpen, setBackConfirmOpen] = useState(false);
   const backConfirmOpenRef = useRef(false);
   backConfirmOpenRef.current = backConfirmOpen;
+  const focusedRef = useRef(true);
+  focusedRef.current = useIsFocused();
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM });
+      const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef.current });
       if (action === 'history') webview.current?.goBack();
       else if (action === 'confirm') setBackConfirmOpen(true);
       else if (action === 'dismiss') setBackConfirmOpen(false);
@@ -297,7 +313,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
       <ShellWebView
         key={chrome.mountKey}
         ref={webview}
-        source={{ uri: startUrl }}
+        source={{ uri: chrome.startUrl ?? entryUrl }}
         originWhitelist={['*']}
         setSupportMultipleWindows={false}
         injectedJavaScriptBeforeContentLoaded={forwarder}
@@ -330,7 +346,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
           url={loadedUrl}
           forwardedErrors={forwardedErrors}
           bridgeHandshakes={bridgeHandshakes}
-          session={sessionOffered === false ? (NATIVE_SESSION === null ? 'Sessão: não oferecida (build sem backend)' : 'Sessão: não oferecida (este WebView não informa o frame)') : sessionLine(sessionExpiresAt === null ? null : { expiresAt: sessionExpiresAt }, Date.now())}
+          session={sessionStatusLine(sessionOffered, NATIVE_SESSION !== null, sessionExpiresAt, Date.now())}
           backend={probeLine(probe)}
         />
       ) : null}

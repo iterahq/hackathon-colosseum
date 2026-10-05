@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ISSUER, NOW, OTHER_USER, PROJECT, USER, fakeJwt } from './jwt.testkit';
-import { createNativeSession, issuerOf, sessionLine, tokenShapeProblem } from './nativeSession';
+import { createNativeSession, issuerOf, sessionLine, sessionStatusLine, tokenShapeProblem } from './nativeSession';
 
 const EXPIRES_AT = 2_000_000_000_000;
 
@@ -197,6 +197,78 @@ describe('revalidate (the app returns to the foreground)', () => {
     expect(b.native.session.current()).toBeNull();
     expect(b.timers).toEqual([]);
     unbind();
+  });
+});
+
+describe('two mounted WebViews (a deep link over an open route)', () => {
+  const JWT = fakeJwt();
+  const make = () => {
+    const timers: Array<() => void> = [];
+    const native = createNativeSession({ issuer: ISSUER, now: () => NOW, askTimeoutMs: 10, setTimer: (fn) => timers.push(fn), clearTimer: () => undefined });
+    return { native, timers, handler: native.handlerFor('lower') };
+  };
+
+  it('the one bound last is asked', () => {
+    const { native, handler } = make();
+    handler({ accessToken: JWT, expiresAt: EXPIRES_AT });
+    const asked: string[] = [];
+    native.bindAsk(() => (asked.push('lower'), true));
+    native.bindAsk(() => (asked.push('upper'), true));
+    native.revalidate();
+    expect(asked).toEqual(['upper']);
+  });
+
+  it('when the upper one unmounts the lower one is asked again: the copy is not dropped for want of a page', () => {
+    const { native, timers, handler } = make();
+    handler({ accessToken: JWT, expiresAt: EXPIRES_AT });
+    const asked: string[] = [];
+    native.bindAsk(() => (asked.push('lower'), true));
+    const unbindUpper = native.bindAsk(() => (asked.push('upper'), true));
+    unbindUpper();
+    native.revalidate();
+    expect(asked).toEqual(['lower']);
+    expect(native.session.current()).not.toBeNull();
+    handler({ accessToken: JWT, expiresAt: EXPIRES_AT });
+    for (const fire of timers) fire();
+    expect(native.session.current()).toMatchObject({ userId: USER });
+  });
+
+  it('getAccessToken asks the lower one too, once the upper one is gone', async () => {
+    const { native, timers } = make();
+    const asked: string[] = [];
+    native.bindAsk(() => (asked.push('lower'), true));
+    native.bindAsk(() => (asked.push('upper'), true))();
+    const token = native.session.getAccessToken();
+    for (const fire of timers) fire();
+    expect(await token).toBeNull();
+    expect(asked).toEqual(['lower']);
+  });
+
+  it('the lower one unmounting first leaves the upper one bound, and the last unbind leaves nobody', () => {
+    const { native, handler } = make();
+    handler({ accessToken: JWT, expiresAt: EXPIRES_AT });
+    const asked: string[] = [];
+    const unbindLower = native.bindAsk(() => (asked.push('lower'), true));
+    const unbindUpper = native.bindAsk(() => (asked.push('upper'), true));
+    unbindLower();
+    native.revalidate();
+    expect(asked).toEqual(['upper']);
+    unbindUpper();
+    unbindUpper();
+    native.revalidate();
+    expect(asked).toEqual(['upper']);
+    expect(native.session.current()).toBeNull();
+  });
+});
+
+describe('sessionStatusLine', () => {
+  it('before any handshake and after one that offered the session it is the session line', () => {
+    expect(sessionStatusLine(null, true, null, NOW)).toBe('Sessão: não');
+    expect(sessionStatusLine(true, true, NOW + 10 * 60_000, NOW)).toBe('Sessão: sim (expira em 10 min)');
+  });
+  it('a handshake that did not offer it says why: no backend in the build, or a sender the WebView cannot attribute', () => {
+    expect(sessionStatusLine(false, false, null, NOW)).toBe('Sessão: não oferecida (build sem backend)');
+    expect(sessionStatusLine(false, true, NOW + 60_000, NOW)).toBe('Sessão: não oferecida (este WebView não informa o frame)');
   });
 });
 

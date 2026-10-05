@@ -205,3 +205,33 @@ describe('noticeDue', () => {
     expect(noticeDue(1000, 1000 + NOTICE_GAP_MS)).toBe(true);
   });
 });
+
+describe('start URL of a re-created WebView', () => {
+  const A = 'https://app.iterahq.dev/lesson/a';
+  const B = 'https://app.iterahq.dev/lesson/b';
+
+  it('starts on the entry URL', () => {
+    expect(INITIAL_CHROME.startUrl).toBeNull();
+  });
+  it('a retry and a process death start the new WebView on the URL they carry', () => {
+    const card = run([{ type: 'error', description: 'x' }]);
+    expect(run([{ type: 'retry', url: A }], card).startUrl).toBe(A);
+    expect(run([{ type: 'processGone', url: B }]).startUrl).toBe(B);
+  });
+  it('the start URL changes only together with the mount key', () => {
+    const ready = run([{ type: 'processGone', url: A }, { type: 'loadEnd' }]);
+    const ignored = run([{ type: 'retry', url: B }], ready);
+    expect(ignored.mountKey).toBe(ready.mountKey);
+    expect(ignored.startUrl).toBe(A);
+  });
+  it('the death that shows the card keeps the mounted WebView on its URL: no new source, so no load under the card', () => {
+    const twice = run([{ type: 'processGone', url: A }, { type: 'processGone', url: A }]);
+    const dead = run([{ type: 'processGone', url: B }], twice);
+    expect(dead.failure).toBe('process');
+    expect(dead.mountKey).toBe(twice.mountKey);
+    expect(dead.startUrl).toBe(A);
+  });
+  it('an event with no URL keeps the one before it', () => {
+    expect(run([{ type: 'processGone', url: A }, { type: 'processGone' }]).startUrl).toBe(A);
+  });
+});

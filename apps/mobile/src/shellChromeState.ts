@@ -25,6 +25,8 @@ export interface ChromeState {
   /** Changes whenever a load starts from a non-loading phase: the 15 s timer belongs to one id. */
   loadId: number;
   deaths: number;
+  /** Where the WebView created for `mountKey` starts; null is the entry URL. It changes only together with `mountKey`. */
+  startUrl: string | null;
 }
 
 export type ChromeEvent =
@@ -33,10 +35,10 @@ export type ChromeEvent =
   | { type: 'error'; description: string }
   | { type: 'httpError'; statusCode: number }
   | { type: 'timeout'; loadId: number }
-  | { type: 'retry' }
-  | { type: 'processGone' };
+  | { type: 'retry'; url?: string }
+  | { type: 'processGone'; url?: string };
 
-export const INITIAL_CHROME: ChromeState = { phase: 'loading', failure: null, mountKey: 0, loadId: 0, deaths: 0 };
+export const INITIAL_CHROME: ChromeState = { phase: 'loading', failure: null, mountKey: 0, loadId: 0, deaths: 0, startUrl: null };
 
 const OFFLINE = /ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|internet connection appears to be offline|not connected to the internet/i;
 
@@ -50,12 +52,13 @@ export function classifyLoadError(description: string): FailureKind {
 }
 
 const failed = (state: ChromeState, failure: FailureKind): ChromeState => ({ ...state, phase: 'failed', failure });
-const relaunch = (state: ChromeState, deaths: number): ChromeState => ({
+const relaunch = (state: ChromeState, deaths: number, url: string | undefined): ChromeState => ({
   phase: 'loading',
   failure: null,
   mountKey: state.mountKey + 1,
   loadId: state.loadId + 1,
   deaths,
+  startUrl: url ?? state.startUrl,
 });
 
 export function chromeReducer(state: ChromeState, event: ChromeEvent): ChromeState {
@@ -74,9 +77,10 @@ export function chromeReducer(state: ChromeState, event: ChromeEvent): ChromeSta
     case 'timeout':
       return state.phase === 'loading' && event.loadId === state.loadId ? failed(state, 'timeout') : state;
     case 'retry':
-      return state.phase === 'failed' ? relaunch(state, 0) : state;
+      return state.phase === 'failed' ? relaunch(state, 0, event.url) : state;
     case 'processGone':
-      return state.deaths + 1 >= MAX_PROCESS_DEATHS ? failed({ ...state, deaths: 0 }, 'process') : relaunch(state, state.deaths + 1);
+      // The third death keeps the dead WebView and its start URL: a new `source` would make it load again under the card.
+      return state.deaths + 1 >= MAX_PROCESS_DEATHS ? failed({ ...state, deaths: 0 }, 'process') : relaunch(state, state.deaths + 1, event.url);
   }
 }
 

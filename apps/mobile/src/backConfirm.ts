@@ -13,14 +13,19 @@ export interface BackInput {
   phase: ChromePhase;
   confirmOpen: boolean;
   confirmEnabled: boolean;
+  /** False for a route that sits beneath another one (a deep link over an open route). Its listener still runs. */
+  focused: boolean;
 }
 
 /**
  * What one hardware back press does. An open card takes the press (it closes). Otherwise the page
  * goes back while it can, never from the failure card (as before R-2: that card is a root). At the
  * root the card opens when it is enabled; when it is not, the press is left to the system.
+ * A route that is not the visible one leaves every press: `BackHandler` calls each mounted route, newest
+ * first, until one takes it, so a hidden WebView would otherwise go back where nobody sees it.
  */
-export function decideBack({ canGoBack, phase, confirmOpen, confirmEnabled }: BackInput): BackAction {
+export function decideBack({ canGoBack, phase, confirmOpen, confirmEnabled, focused }: BackInput): BackAction {
+  if (!focused) return 'leave';
   if (confirmOpen) return 'dismiss';
   if (shouldHandleBack(canGoBack, phase)) return 'history';
   return confirmEnabled ? 'confirm' : 'leave';
