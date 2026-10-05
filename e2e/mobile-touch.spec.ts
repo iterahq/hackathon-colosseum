@@ -24,29 +24,7 @@ import {
   type ActivityFixture,
 } from './support/activityFixtures';
 import { installHarnessSubstrate, harnessUrl } from './support/harnessStub';
-import {
-  ARRANGE_SPEC,
-  DIAL_SPEC,
-  PLUG_SPEC,
-  PRESS_SPEC,
-  SELECTOR_SPEC,
-  TIMELINE_SPEC,
-} from '../src/stories/sceneMechanicsFixtures';
-import { BUCKET_SPEC, INTERCEPT_SPEC, QUERY_SPEC, SPOT_SPEC, WIRE_SPEC } from '../src/stories/sceneMechanicsFixturesB';
-import { COMPOSE_BLOCKS_SPEC, DECOMPOSE_CANVAS_SPEC, EVENT_TRACE_SPEC } from '../src/stories/systemKindsFixtures';
-
-const id = (n: number) => `00000000-0000-4000-9100-${String(n).padStart(12, '0')}`;
-const fixture = (n: number, kind: string, spec: Record<string, unknown>): ActivityFixture => ({ id: id(n), kind, label: kind, spec });
-
-/** The page of the lesson in the video: the learner pressed "Tera" in its title. */
-const TERA_PAGE = {
-  url_label: 'tera.site',
-  elements: [
-    { id: 'titulo', tag: 'h1', text: 'Oi, eu sou o Tera', name: 'título', job: 'o texto mais importante da página' },
-    { id: 'texto', tag: 'p', text: 'Faço bolo de pote.', name: 'parágrafo', job: 'um bloco de texto corrido' },
-  ],
-};
-const SCENE_COPY = { guide: { name: 'Tera' }, prompt: 'Descubra as peças.', reaction: 'Isso.', stamp: 'tag' };
+import { LIVE_TYPE, SCENE_TARGETS, fixture } from './support/sceneFixtures';
 
 interface Surface {
   fx: ActivityFixture;
@@ -58,28 +36,11 @@ interface Surface {
 const SURFACES: Surface[] = [
   { fx: ORDER, target: '[data-testid="order-item"]', gesture: 'drag a row' },
   { fx: MATCH, target: '[data-testid="match-left-card"]', gesture: 'drag a wire / tap a pair' },
-  { fx: fixture(1, 'wire', WIRE_SPEC), target: '[data-testid^="wire-left-"]', gesture: 'tap two ends' },
-  { fx: fixture(2, 'compose_blocks', COMPOSE_BLOCKS_SPEC), target: '[data-testid^="compose-block-"]', gesture: 'drag or tap a block' },
-  { fx: fixture(3, 'arrange', ARRANGE_SPEC), target: '[data-testid^="arrange-item-"]', gesture: 'tap up / down' },
-  { fx: fixture(4, 'bucket', BUCKET_SPEC), target: '[data-testid^="bucket-drop-"]', gesture: 'tap a chip, tap a bucket' },
-  { fx: fixture(5, 'intercept', INTERCEPT_SPEC), target: '[data-testid^="intercept-node-"]', gesture: 'tap a node in time' },
-  { fx: fixture(6, 'xray', { ...SCENE_COPY, page: TERA_PAGE }), target: '[data-testid="xray-page"] [data-scene-tag="h1"]', gesture: 'scrub the lens' },
-  { fx: fixture(7, 'inspect', { ...SCENE_COPY, page: TERA_PAGE }), target: '[data-testid="inspect-page-target"] [data-scene-tag="h1"]', gesture: 'press a piece' },
-  { fx: fixture(8, 'spot', SPOT_SPEC), target: '[data-testid^="spot-token-"]', gesture: 'tap a token of code' },
-  { fx: fixture(9, 'dial', DIAL_SPEC), target: '[data-testid="dial-value"]', gesture: 'drag the slider' },
-  { fx: fixture(10, 'timeline', TIMELINE_SPEC), target: '[data-testid="timeline-index"]', gesture: 'scrub the slider' },
-  { fx: fixture(11, 'plug', PLUG_SPEC), target: '[data-testid="plug-cable"]', gesture: 'tap the cable' },
-  { fx: fixture(12, 'press', PRESS_SPEC), target: '[data-testid="press-button"]', gesture: 'press the button' },
-  { fx: fixture(13, 'selector', SELECTOR_SPEC), target: '[data-testid^="selector-option-"]', gesture: 'tap a selector' },
-  { fx: fixture(14, 'query', QUERY_SPEC), target: '[data-testid^="query-clause-"]', gesture: 'tap a clause' },
-  { fx: fixture(15, 'decompose_canvas', DECOMPOSE_CANVAS_SPEC), target: '[data-testid="decompose-stage"] [data-testid^="system-node-"]', gesture: 'lasso / tap parts' },
-  { fx: fixture(16, 'event_trace', EVENT_TRACE_SPEC), target: '[data-testid="event-trace-stage"] [data-testid^="system-node-"]', gesture: 'tap the page' },
+  ...SCENE_TARGETS,
   { fx: SINGLE_CHOICE, target: '[data-testid="single-choice-option"]', gesture: 'tap an option' },
   { fx: MULTI_CHOICE, target: '[data-testid="multi-choice-option"]', gesture: 'tap options' },
   { fx: QUIZ, target: '[data-testid="quiz-option"]', gesture: 'tap an option' },
 ];
-
-const LIVE_TYPE = fixture(17, 'live_type', { ...SCENE_COPY, page: TERA_PAGE, target_id: 'titulo' });
 
 const svg = (width: number, height: number) =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +

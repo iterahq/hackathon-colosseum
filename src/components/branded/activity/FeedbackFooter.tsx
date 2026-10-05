@@ -80,8 +80,9 @@
  */
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { TeraVerdict } from '@iterahq/activities';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
+import { usePublishedHeight } from '@/hooks/usePublishedHeight';
 import { parseInline } from '@/utils/richText';
 import { RichSpans } from './RichSpans';
 import type { FooterResult } from './activityFeedbackKinds';
@@ -119,6 +120,8 @@ export function FeedbackFooter({
   const correct = result?.correct ?? false;
   const reducedMotion = !!useReducedMotion();
   const enterEnabled = !!result && !!onContinue && !busy;
+  const barRef = useRef<HTMLDivElement>(null);
+  usePublishedHeight(barRef, '--feedback-footer-h', !!result);
 
   useEffect(() => {
     if (!enterEnabled) return;
@@ -140,6 +143,7 @@ export function FeedbackFooter({
       {result && (
         <motion.div
           key="feedback-footer"
+          ref={barRef}
           initial={{ y: '100%' }}
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
@@ -152,13 +156,13 @@ export function FeedbackFooter({
           data-testid="feedback-footer"
           data-correct={correct ? 'true' : 'false'}
         >
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:flex-row md:items-center md:justify-between md:px-6 md:py-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:pl-[max(1.5rem,env(safe-area-inset-left,0px))] md:pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:flex-row md:items-center md:justify-between md:px-6 md:py-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:pl-[max(1.5rem,env(safe-area-inset-left,0px))] md:pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
             <div className="flex min-w-0 items-start gap-3 md:flex-1 md:gap-4">
               <motion.span
                 initial={reducedMotion ? false : { scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 14 }}
-                className="mt-2 shrink-0"
+                className="mt-2 shrink-0 max-sm:mt-0.5"
                 aria-hidden="true"
                 data-testid="feedback-footer-mark"
               >
@@ -166,6 +170,7 @@ export function FeedbackFooter({
                   correct={correct}
                   size="bar"
                   missTone="destructive"
+                  avatarClassName="max-sm:h-10 max-sm:w-10"
                   ringClassName={correct ? 'ring-[#1a2a20]' : 'ring-[#2a1a1e]'}
                 />
               </motion.span>

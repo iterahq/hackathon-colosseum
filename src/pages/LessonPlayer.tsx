@@ -70,6 +70,15 @@ import { lessonExitPath } from '@/utils/lessonExitPath';
 import type { Activity, LessonPosition } from '@/types/content';
 import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 
+/**
+ * On a phone the room under the content is the bar that is up (verdict footer
+ * or a scene's hint bar, each publishing its own height) plus a gap — and only
+ * the gap while none is. The 10rem every other width keeps is one bar's worth of
+ * scroll on a 640 px screen.
+ */
+const PHONE_BOTTOM_RESERVE =
+  'max-sm:pb-[calc(max(var(--feedback-footer-h,0px),var(--scene-hint-h,0px),env(safe-area-inset-bottom,0px))+1.5rem)]';
+
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
@@ -108,6 +117,9 @@ export default function LessonPlayer() {
   // review beat) and used ONLY when the author configured this activity to
   // persist — otherwise it is dropped, exactly as it was before 0027.
   const pendingResponseRef = useRef<string | null>(null);
+
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [titleClipped, setTitleClipped] = useState(false);
 
   // True until the persisted progress for this lesson has been read back (or has
   // failed to read). We hold the first render behind it so the learner never
@@ -191,6 +203,20 @@ export default function LessonPlayer() {
   }, [lessonId, activities, isPending]);
 
   const current = activities[index];
+
+  // The phone title is one truncated line; only then does it need a tooltip.
+  const titleText = data ? tText(data.title) : '';
+  const titleMounted = !!current && !completed && !resuming;
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const check = () => setTitleClipped(el.scrollWidth > el.clientWidth);
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [titleText, titleMounted]);
+
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
   // into a scroll. Trim the top/bottom padding for the sandbox kind.
@@ -570,7 +596,7 @@ export default function LessonPlayer() {
   const frontierPct = activities.length ? Math.round((frontier / activities.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh bg-background flex flex-col">
       <LessonChrome
         progressPct={progressPct}
         frontierPct={frontierPct}
@@ -590,8 +616,8 @@ export default function LessonPlayer() {
       <main
         data-testid="lesson-main"
         className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
-          isSandbox && !completed ? 'pt-4' : 'pt-14 md:pt-16'
-        } ${pending ? 'pb-[calc(10rem+env(safe-area-inset-bottom,0px))]' : isSandbox ? 'pb-4' : 'pb-[calc(10rem+env(safe-area-inset-bottom,0px))]'}`}
+          isSandbox && !completed ? 'pt-4 max-sm:pt-[3.25rem]' : 'pt-14 max-sm:pt-[3.25rem] md:pt-16'
+        } ${pending || !isSandbox ? `pb-[calc(10rem+env(safe-area-inset-bottom,0px))] ${PHONE_BOTTOM_RESERVE}` : 'pb-4'}`}
       >
         {/* `resuming` shares the content skeleton on purpose: reading back where
             the learner stopped is part of loading the lesson, and showing
@@ -632,7 +658,7 @@ export default function LessonPlayer() {
                   the git-metaphor "PULL · FEATURE/<branch>" was dropped (round-3
                   finding #1: it read as "am I in the right place?" to non-devs). */}
               <div
-                className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi"
+                className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi max-sm:sr-only"
                 data-testid="lesson-eyebrow"
               >
                 {t('lesson.eyebrow')}
@@ -640,7 +666,9 @@ export default function LessonPlayer() {
 
               {/* Big bold display title = the lesson title. */}
               <h1
-                className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5"
+                ref={titleRef}
+                title={titleClipped ? tText(data.title) : undefined}
+                className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5 max-sm:mt-0 max-sm:truncate max-sm:text-xl"
                 data-testid="lesson-title"
               >
                 {tText(data.title)}
@@ -670,7 +698,7 @@ export default function LessonPlayer() {
                 // about identity, and "activity 3 is showing" is not otherwise
                 // observable from the DOM.
                 <div
-                  className={isSandbox ? 'mt-4' : 'mt-7'}
+                  className={isSandbox ? 'mt-4 max-sm:mt-3' : 'mt-7 max-sm:mt-3'}
                   data-testid="lesson-activity"
                   data-activity-id={current.id}
                 >
@@ -701,7 +729,7 @@ export default function LessonPlayer() {
                   onClick={reviewing ? goForward : conceptContinue}
                   disabled={saving}
                   data-testid="concept-continue"
-                  className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-6 max-sm:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {t('activity.continue')}
                 </button>

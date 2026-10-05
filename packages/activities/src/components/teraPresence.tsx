@@ -29,7 +29,7 @@ export function TeraPeek() {
   const reduced = useReducedMotion();
   return (
     <motion.span
-      className="pointer-events-none absolute -top-2 right-5 block h-10 w-10 md:right-6 md:h-14 md:w-14"
+      className="pointer-events-none absolute -top-2 right-5 block h-10 w-10 max-sm:top-1 md:right-6 md:h-14 md:w-14"
       data-testid="tera-presence"
       aria-hidden="true"
       initial={reduced ? false : { opacity: 0, y: 12, scale: 0.7 }}

@@ -108,7 +108,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
           ))}
         </div>
         <div
-          className="rounded-xl overflow-hidden border border-black/10 min-h-[160px]"
+          className="rounded-xl overflow-hidden border border-black/10 min-h-[160px] max-sm:min-h-[112px]"
           style={{ background: SCENE_PAGE_BACKGROUND }}
           data-testid="spot-preview"
         >

@@ -17,9 +17,12 @@ import { TeraPeek, useTeraMentioned } from './teraPresence.js';
 export { AnswerExplanation } from './AnswerExplanation.js';
 
 /** Evergreen eyebrow badge naming the activity kind. */
-export function KindBadge({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+export function KindBadge({ icon: Icon, label, className = '' }: { icon: LucideIcon; label: string; className?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider border bg-evergreen-soft text-evergreen-hi border-evergreen/30">
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider border bg-evergreen-soft text-evergreen-hi border-evergreen/30 ${className}`}
+      data-testid="kind-badge"
+    >
       <Icon className="w-3.5 h-3.5" /> {label}
     </span>
   );
@@ -42,6 +45,11 @@ const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind)
  * The rounded branded card shell every non-hero activity kind lives inside.
  * When the activity talks about Tera he peeks over the top-right corner —
  * unless the kind draws him itself (`mascot="none"`, the scene guide).
+ *
+ * On a phone the kind badge is read by screen readers only and the padding is
+ * tighter: the card is the screen there, and every band above the exercise
+ * pushes its answer below the fold. A card Tera peeks over keeps the room the
+ * badge row gave him, so he covers neither the lesson title nor the first line.
  */
 export function ActivityShell({
   kind,
@@ -62,16 +70,16 @@ export function ActivityShell({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`relative w-full rounded-3xl border border-border bg-card px-6 md:px-8 ${
-        compact ? 'py-4 md:py-5' : 'py-6 md:py-8'
-      }`}
+      className={`relative w-full rounded-3xl border border-border bg-card px-6 max-sm:px-4 md:px-8 ${
+        compact ? 'py-4 max-sm:py-3 md:py-5' : 'py-6 max-sm:py-4 md:py-8'
+      } ${tera ? 'max-sm:pt-11' : ''}`}
       data-testid="activity-shell"
       data-activity-kind={kind}
       data-tera={tera ? 'true' : undefined}
     >
       {tera && <TeraPeek />}
-      <KindBadge icon={icon} label={label} />
-      <div className={compact ? 'mt-3' : 'mt-5'}>{children}</div>
+      <KindBadge icon={icon} label={label} className="max-sm:sr-only" />
+      <div className={compact ? 'mt-3 max-sm:mt-0' : 'mt-5 max-sm:mt-0'}>{children}</div>
     </motion.div>
   );
 }
@@ -97,7 +105,7 @@ export function DoneButton({
       onClick={onClick}
       disabled={disabled || locked}
       data-locked={locked ? 'true' : undefined}
-      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+      className={`mt-6 max-sm:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
         locked ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
       data-testid="activity-done"
@@ -153,7 +161,7 @@ export function SubmitButton({
       data-submitted={submitted ? 'true' : undefined}
       data-correct={graded ? String(correct) : undefined}
       data-testid={testId}
-      className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+      className={`mt-6 max-sm:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
         incorrect ? TACTILE_CTA_MISSED : submitted ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
     >

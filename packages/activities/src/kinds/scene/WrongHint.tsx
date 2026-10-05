@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useActivityI18n } from '../../context.js';
 import { GuideAvatar } from './GuideAvatar.js';
 import { SPRING_POP, SPRING_SETTLE, TACTILE_CTA } from '../../components/tactile.js';
+import { usePublishedHeight } from '../../components/usePublishedHeight.js';
 
 /**
  * The feedback a wrong try shows — `wire.wrong_hint`, `spot.miss_hint`,
@@ -39,6 +40,8 @@ export function WrongHint({
   }, [text]);
 
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  usePublishedHeight(barRef, '--scene-hint-h', visible);
   const returnFocusTo = useRef<HTMLElement | null>(null);
 
   const dismiss = () => {
@@ -80,6 +83,7 @@ export function WrongHint({
             {visible && (
               <motion.div
                 key="wrong-bar"
+                ref={barRef}
                 data-testid="scene-wrong-bar"
                 data-tone={tone}
                 initial={reduced ? { opacity: 0 } : { y: '100%', opacity: 0 }}
@@ -88,15 +92,15 @@ export function WrongHint({
                 transition={SPRING_SETTLE}
                 className={`fixed inset-x-0 bottom-0 z-40 border-t-2 ${hit ? 'border-evergreen/60' : 'border-clay/60'} bg-[#1C1916]/95 backdrop-blur-md`}
               >
-                <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:px-6">
+                <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 max-sm:gap-3 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] md:flex-row md:items-center md:px-6">
                   <div className="flex min-w-0 flex-1 items-start gap-4">
                     <motion.span
                       initial={reduced ? false : { scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={SPRING_POP}
-                      className="mt-3 shrink-0"
+                      className="mt-3 shrink-0 max-sm:mt-1"
                     >
-                      <GuideAvatar happy={hit} oops={!hit} size="bar" />
+                      <GuideAvatar happy={hit} oops={!hit} size="bar" className="max-sm:h-10 max-sm:w-10" />
                     </motion.span>
                     <div className="min-w-0">
                       <p className={`font-display text-xl font-bold ${hit ? 'text-evergreen-hi' : 'text-clay'}`}>

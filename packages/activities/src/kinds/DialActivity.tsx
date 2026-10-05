@@ -87,7 +87,7 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
         data-testid="dial-stage"
       >
         <SceneBrowserBar url={copy.url} />
-        <div className="flex flex-col gap-4 p-7 min-h-[160px] items-start">
+        <div className="flex flex-col gap-4 p-7 min-h-[160px] max-sm:min-h-[112px] max-sm:p-5 items-start">
           {elements.map((el) =>
             el.id === target.id ? (
               <ScenePageElement key={el.id} element={el} style={style} />

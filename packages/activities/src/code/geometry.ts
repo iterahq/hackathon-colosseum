@@ -31,8 +31,11 @@
  * empty background while the code the class came to read sat in a small
  * rectangle. The floor keeps a real editor usable on a laptop and the ceiling
  * stops it outgrowing the page on a 4K screen.
+ *
+ * On a phone the two panes stack, so the floor alone was 720 px of panes on a
+ * 640 px screen: there each is 220 px and the pair fits one screen.
  */
-export const CODE_PANE_BOX = 'h-[clamp(360px,55vh,720px)] overflow-hidden rounded-2xl';
+export const CODE_PANE_BOX = 'h-[clamp(360px,55vh,720px)] max-sm:h-[220px] overflow-hidden rounded-2xl';
 
 /**
  * 60/40 in favour of the editor (call de 06/08: "aproveitar mais espaço, 60%

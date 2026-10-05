@@ -9,10 +9,12 @@ export function GuideAvatar({
   happy,
   oops = false,
   size = 'bubble',
+  className,
 }: {
   happy: boolean;
   oops?: boolean;
   size?: Extract<TeraSize, 'bubble' | 'bar'>;
+  className?: string;
 }) {
-  return <TeraAvatar mood={happy ? 'happy' : oops ? 'oops' : 'neutral'} size={size} />;
+  return <TeraAvatar mood={happy ? 'happy' : oops ? 'oops' : 'neutral'} size={size} className={className} />;
 }

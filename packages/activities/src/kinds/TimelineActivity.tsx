@@ -73,7 +73,7 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
       <div className="flex flex-col gap-3" data-testid="timeline-stage">
         {step?.frame.type === 'page' ? (
           <div
-            className="rounded-xl overflow-hidden border border-black/10 min-h-[160px]"
+            className="rounded-xl overflow-hidden border border-black/10 min-h-[160px] max-sm:min-h-[112px]"
             style={{ background: SCENE_PAGE_BACKGROUND }}
           >
             <SceneBrowserBar url={step.frame.page.url_label || 'site'} />
@@ -85,7 +85,7 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
           </div>
         ) : (
           <div
-            className="rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 min-h-[160px] justify-center"
+            className="rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 min-h-[160px] max-sm:min-h-[112px] justify-center"
             style={{ background: SCENE_CODE_BACKGROUND }}
           >
             {step?.frame.type === 'code' &&

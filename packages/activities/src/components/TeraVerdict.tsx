@@ -16,6 +16,7 @@ export function TeraVerdict({
   missTone = 'quiet',
   ringClassName = 'ring-card',
   className = '',
+  avatarClassName,
 }: {
   correct: boolean;
   size?: TeraSize;
@@ -23,6 +24,7 @@ export function TeraVerdict({
   /** The ring takes the colour behind him, so the badge reads as a sticker. */
   ringClassName?: string;
   className?: string;
+  avatarClassName?: string;
 }) {
   const badge = correct
     ? 'bg-menta text-obsidiana'
@@ -32,7 +34,7 @@ export function TeraVerdict({
 
   return (
     <span className={`relative inline-block shrink-0 ${className}`} aria-hidden="true" data-tera-verdict={correct ? 'right' : 'miss'}>
-      <TeraAvatar mood={correct ? 'happy' : 'oops'} size={size} />
+      <TeraAvatar mood={correct ? 'happy' : 'oops'} size={size} className={avatarClassName} />
       <span
         className={`absolute -bottom-0.5 -right-1 flex h-[22px] w-[22px] items-center justify-center rounded-full ring-2 ${ringClassName} ${badge}`}
       >
