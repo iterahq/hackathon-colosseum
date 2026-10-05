@@ -49,6 +49,10 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // Source-only workspace: the Docker build runs `npm ci` before `COPY . .`, so the workspace link
+      // is not there to resolve through. The more specific entry must come first.
+      "@iterahq/shell-bridge/web": path.resolve(__dirname, "./packages/bridge/src/web.ts"),
+      "@iterahq/shell-bridge": path.resolve(__dirname, "./packages/bridge/src/index.ts"),
       ...(swapyInstalled
         ? {}
         : {
