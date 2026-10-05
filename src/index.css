@@ -71,6 +71,37 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * A laptop or a tablet on its side: wider than a phone, 800 px of height or less
+ * (1366x768, 1280x720, 1280x800, 1024x768). The lesson player folds the same
+ * bands there as on a phone, so the exercise and its button share one screen.
+ */
+@custom-variant short (@media (width >= 40rem) and (height <= 50rem));
+
+/*
+ * Auth forms under a finger (`AuthShell`). Fields and buttons come from
+ * `@devfellowship/components` at 34-36 px and 13 px: under 44 px a thumb misses,
+ * and under 16 px iOS zooms the page when the field takes focus. The code fields
+ * set their own larger type. A text link keeps its size and grows only its hit
+ * area (`touch-hit`).
+ */
+@media (pointer: coarse) {
+  .auth-touch :is(input, select, textarea):not([inputmode='numeric']) {
+    font-size: 1rem;
+  }
+  .auth-touch :is(input, select, textarea):not([data-input-otp]),
+  .auth-touch :is(button, a[href]):not(.touch-hit) {
+    min-height: 2.75rem;
+  }
+  .auth-touch button:not(.touch-hit) {
+    min-width: 2.75rem;
+  }
+  .touch-hit {
+    padding-block: 0.9375rem;
+    margin-block: -0.9375rem;
+  }
+}
+
+/*
  * v3 `theme.container`: centred, 2rem gutters, one max-width step at 1400px.
  * The core utility adds a step per breakpoint, so those are switched off.
  */

@@ -23,7 +23,7 @@ export function BrowserFrame({
       data-testid="live-type-browser"
     >
       <SceneBrowserBar url={url} />
-      <div className="flex flex-col gap-4 p-7 min-h-[230px] max-sm:min-h-[150px] max-sm:p-5">
+      <div className="flex flex-col gap-4 p-7 min-h-[230px] max-sm:min-h-[150px] max-sm:p-5 short:min-h-[150px] short:p-5">
         {elements.map((element) =>
           element.id === targetId ? (
             <motion.div

@@ -69,7 +69,7 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
         onPointerLeave={clearLens}
         onKeyDown={scanKey}
         onBlur={clearLens}
-        className={`relative w-full aspect-[4/5] max-sm:aspect-square sm:aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-evergreen ${TOUCH_SURFACE}`}
+        className={`relative w-full aspect-[4/5] max-sm:aspect-square sm:aspect-[16/9] max-h-[460px] short:max-h-[340px] rounded-2xl overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-evergreen ${TOUCH_SURFACE}`}
         style={{ touchAction: 'none', cursor: lens ? 'none' : 'crosshair' }}
       >
         <div

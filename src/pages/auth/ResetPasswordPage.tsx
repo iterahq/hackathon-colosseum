@@ -85,6 +85,7 @@ export default function ResetPasswordPage() {
           <PasswordInput
             id="new-password"
             autoComplete="new-password"
+            enterKeyHint="next"
             autoFocus
             required
             value={password}
@@ -96,6 +97,7 @@ export default function ResetPasswordPage() {
           <PasswordInput
             id="confirm-password"
             autoComplete="new-password"
+            enterKeyHint="go"
             required
             value={confirm}
             onValueChange={setConfirm}

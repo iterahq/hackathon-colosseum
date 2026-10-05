@@ -134,7 +134,7 @@ export default function ProgramPage() {
             <Link
               to="/"
               aria-label={t('common.back')}
-              className="shrink-0 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="relative shrink-0 w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors before:absolute before:-inset-1"
             >
               <ChevronLeft className="w-4 h-4" />
             </Link>

@@ -13,7 +13,7 @@ export const LESSON_TITLE = 'Dia 1 — Minha página nasce: tags e esqueleto';
 
 const NEXT_ACTIVITY_ID = '00000000-0000-4000-9200-000000000001';
 
-function lessonRow(fx: ActivityFixture) {
+function lessonRow(fx: ActivityFixture, title: string) {
   const activity = (id: string, ordinal: number, kind: string, spec: unknown, rubric: unknown = {}) => ({
     id,
     lesson_id: fx.id,
@@ -25,7 +25,7 @@ function lessonRow(fx: ActivityFixture) {
   });
   return {
     id: fx.id,
-    title_i18n: { pt: LESSON_TITLE, en: LESSON_TITLE },
+    title_i18n: { pt: title, en: title },
     ordinal: 1,
     unit: { id: fx.id, ordinal: 1, program_id: fx.id, title_i18n: { pt: 'Semana 1' }, program: { slug: 'html-do-zero' } },
     activities: [
@@ -35,7 +35,7 @@ function lessonRow(fx: ActivityFixture) {
   };
 }
 
-export async function installLessonSubstrate(page: Page, fx: ActivityFixture): Promise<void> {
+export async function installLessonSubstrate(page: Page, fx: ActivityFixture, title = LESSON_TITLE): Promise<void> {
   await installHarnessSubstrate(page, [fx]);
   const json = (body: unknown) => ({
     status: 200,
@@ -43,7 +43,7 @@ export async function installLessonSubstrate(page: Page, fx: ActivityFixture): P
     headers: { 'access-control-allow-origin': '*' },
     body: JSON.stringify(body),
   });
-  await page.route(`${STUB_SUPABASE_URL}/rest/v1/lessons*`, (route) => route.fulfill(json(lessonRow(fx))));
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/lessons*`, (route) => route.fulfill(json(lessonRow(fx, title))));
   await page.route(`${STUB_SUPABASE_URL}/rest/v1/my_subscription*`, (route) =>
     route.fulfill(json([{ status: 'active', is_active: true, current_period_end: null, seat_count: 1, cancel_at_period_end: false }])),
   );

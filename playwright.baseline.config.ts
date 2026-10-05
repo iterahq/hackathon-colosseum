@@ -47,7 +47,7 @@ const MOBILE_TOUCH = /mobile-(touch|height)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height)\.spec\.ts$/,
+  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|laptop-height)\.spec\.ts$/,
 
   // Hermetic: no shared server state, no login, no DB. Parallel is free, and
   // it is what keeps the suite inside the 10-minute budget (V3).

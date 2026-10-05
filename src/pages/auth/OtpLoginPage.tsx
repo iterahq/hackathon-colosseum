@@ -68,6 +68,8 @@ export default function OtpLoginPage() {
             id="otp-email"
             type="email"
             autoComplete="email"
+            inputMode="email"
+            enterKeyHint="send"
             autoFocus
             required
             value={email}
@@ -100,6 +102,7 @@ export default function OtpLoginPage() {
             id="otp-code"
             inputMode="numeric"
             autoComplete="one-time-code"
+            enterKeyHint="go"
             pattern="[0-9]*"
             maxLength={6}
             required
@@ -123,7 +126,7 @@ export default function OtpLoginPage() {
               setCode('');
               setError(null);
             }}
-            className="self-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+            className="self-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
             data-testid="otp-resend"
           >
             {t('auth.otp.resend')}
@@ -133,7 +136,7 @@ export default function OtpLoginPage() {
       <p className="mt-6 text-center text-xs text-muted-foreground">
         <Link
           to="/login"
-          className="font-medium text-foreground underline-offset-2 hover:underline"
+          className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="otp-back-to-login"
         >
           {t('auth.otp.back')}

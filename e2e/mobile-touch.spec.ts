@@ -6,6 +6,9 @@
  * 2. The enlarged lesson image opens with the whole picture inside the visible
  *    viewport, over a backdrop that covers the page, with the page scroll locked.
  *
+ * And one found on production the same day: outside `/login`, the auth forms
+ * had 34 px buttons and 13 px fields (iOS zooms the page on those).
+ *
  * Hermetic, same substrate as the activity baseline. It runs on the `mobile`
  * project (Chromium, touch) on every PR; `BASELINE_WEBKIT=1` adds an `iphone`
  * project for a local WebKit run. Neither is a real iPhone: no engine here
@@ -23,7 +26,7 @@ import {
   SINGLE_CHOICE,
   type ActivityFixture,
 } from './support/activityFixtures';
-import { installHarnessSubstrate, harnessUrl } from './support/harnessStub';
+import { installHarnessSubstrate, installSupabaseStub, harnessUrl } from './support/harnessStub';
 import { LIVE_TYPE, SCENE_TARGETS, fixture } from './support/sceneFixtures';
 
 interface Surface {
@@ -306,4 +309,35 @@ test.describe('the enlarged lesson image fits the screen', () => {
     await expect(lightbox(page)).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('');
   });
+});
+
+test.describe('the auth forms fit a thumb', () => {
+  for (const route of ['/login', '/signup', '/auth/forgot', '/auth/code']) {
+    test(`${route}: 44 px controls, 16 px fields, the e-mail keyboard`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 640 });
+      await installSupabaseStub(page, []);
+      await page.goto(route);
+      const email = page.locator('input[type="email"]');
+      await expect(email).toBeVisible();
+      await expect(email).toHaveAttribute('inputmode', 'email');
+      await expect(email).toHaveAttribute('enterkeyhint', /next|send/);
+
+      const controls = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('input, button, a[href]')]
+          .map((el) => ({ el, box: el.getBoundingClientRect() }))
+          .filter(({ box }) => box.width > 0 && box.height > 0)
+          .map(({ el, box }) => ({
+            name: el.getAttribute('data-testid') ?? el.id ?? el.tagName,
+            height: Math.round(box.height),
+            field: el.tagName === 'INPUT',
+            fontSize: parseFloat(getComputedStyle(el).fontSize),
+          })),
+      );
+      expect(controls.length).toBeGreaterThan(2);
+      for (const control of controls) {
+        expect(control.height, `${control.name} is ${control.height} px tall`).toBeGreaterThanOrEqual(44);
+        if (control.field) expect(control.fontSize, `${control.name} zooms the page on iOS`).toBeGreaterThanOrEqual(16);
+      }
+    });
+  }
 });

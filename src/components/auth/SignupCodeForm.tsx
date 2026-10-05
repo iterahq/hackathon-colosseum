@@ -46,7 +46,7 @@ export function SignupCodeForm({
         <button
           type="button"
           onClick={onChangeEmail}
-          className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+          className="mt-1 text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="signup-change-email"
         >
           {t('auth.signup.changeEmail')}
@@ -58,6 +58,7 @@ export function SignupCodeForm({
         data-testid="signup-code-input"
         inputMode="numeric"
         autoComplete="one-time-code"
+        enterKeyHint="go"
         maxLength={6}
         pattern={REGEXP_ONLY_DIGITS}
         value={code}
@@ -84,7 +85,7 @@ export function SignupCodeForm({
         type="button"
         onClick={handleResend}
         disabled={isActive}
-        className="self-center text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
+        className="self-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline disabled:opacity-60"
         data-testid="signup-resend"
       >
         {isActive ? t('auth.otp.resendIn', { seconds: remaining }) : t('auth.otp.resend')}

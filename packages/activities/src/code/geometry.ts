@@ -33,9 +33,11 @@
  * stops it outgrowing the page on a 4K screen.
  *
  * On a phone the two panes stack, so the floor alone was 720 px of panes on a
- * 640 px screen: there each is 220 px and the pair fits one screen.
+ * 640 px screen: there the code activity shows one pane at a time, 264 px high. On a screen
+ * 800 px high or less (`short:`) the panes take what the lesson chrome leaves, so
+ * the editor, the result and the button under them share the screen.
  */
-export const CODE_PANE_BOX = 'h-[clamp(360px,55vh,720px)] max-sm:h-[220px] overflow-hidden rounded-2xl';
+export const CODE_PANE_BOX = 'h-[clamp(360px,55vh,720px)] max-sm:h-[264px] short:h-[max(300px,calc(100vh-25.5rem))] overflow-hidden rounded-2xl';
 
 /**
  * 60/40 in favour of the editor (call de 06/08: "aproveitar mais espaço, 60%

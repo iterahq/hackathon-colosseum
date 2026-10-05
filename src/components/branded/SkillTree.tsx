@@ -12,18 +12,21 @@
  * `current` node of the program is the learner's "primary" node: it is enlarged,
  * shows its activity progress ring and the continue callout.
  */
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BookOpen, Flag, GitBranch, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { buildSections } from '@/utils/buildSections';
 import { hexAlpha } from '@/utils/hexAlpha';
 import { toneForUnit } from './skillTreeUnitPalette';
+import { kindLabelKey } from './skillTreeKindLabel';
 import { SkillTreeUnitHeader } from './SkillTreeUnitHeader';
 import { SkillTreePathNode } from './SkillTreePathNode';
 import { SkillTreeCallout } from './SkillTreeCallout';
 import {
   BANNER_INSET,
+  CALLOUT_HEIGHT,
+  PRIMARY_LABEL_HEIGHT,
   buildTrailPath,
   buildWideTrailPath,
   computeTrailLayout,
@@ -92,6 +95,23 @@ export function SkillTree({
   const flatNodes = sections.flatMap((s) => s.nodes);
   const primaryIndex = flatNodes.findIndex((n) => n.state === 'current');
   const primary = primaryIndex >= 0 ? primaryIndex : null;
+
+  // The trail of a learner in week 8 is thousands of pixels below the fold:
+  // open the page on the lesson they are in, once, unless they already scrolled.
+  const programId = program.id;
+  const hasPrimary = primary !== null;
+  useEffect(() => {
+    if (!hasPrimary) return;
+    const frame = requestAnimationFrame(() => {
+      const node = trailRef.current?.querySelector<HTMLElement>('[data-primary="true"]');
+      if (!node || window.scrollY > 0) return;
+      const box = node.getBoundingClientRect();
+      const roomBelow = PRIMARY_LABEL_HEIGHT + CALLOUT_HEIGHT;
+      if (box.top >= 0 && box.bottom + roomBelow <= window.innerHeight) return;
+      window.scrollTo({ top: Math.max(0, box.top + box.height / 2 - window.innerHeight * 0.38), behavior: 'instant' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [programId, hasPrimary, trailRef]);
 
   const wide = isWideTrail(containerWidth);
   const width = wide ? containerWidth : trailWidthFor(containerWidth);
@@ -252,7 +272,7 @@ export function SkillTree({
                 day={placement.day}
                 dayLabel={t('journey.day', { n: placement.day })}
                 title={tText(node.lesson.title)}
-                kindLabel={t(`activity.${lessonKind(node.lesson)}`)}
+                kindLabel={t(kindLabelKey(lessonKind(node.lesson)))}
                 tone={tone}
                 primary={isPrimary}
                 activitiesDone={countDone(node.lesson)}

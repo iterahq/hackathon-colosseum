@@ -58,7 +58,11 @@ export function SkillTreePathNode({
   ) - (x - NODE_LABEL_WIDTH / 2);
 
   return (
-    <div className="absolute" style={{ left: x - size / 2, top: y - size / 2, width: size, height: size }}>
+    <div
+      className="absolute"
+      data-primary={primary ? 'true' : undefined}
+      style={{ left: x - size / 2, top: y - size / 2, width: size, height: size }}
+    >
       {showProgress && (
         <span
           aria-hidden="true"

@@ -60,14 +60,14 @@ export default function ForgotPasswordPage() {
             type="button"
             onClick={onResend}
             disabled={isActive}
-            className="self-center text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-60"
+            className="self-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline disabled:opacity-60"
             data-testid="forgot-resend"
           >
             {isActive ? t('auth.otp.resendIn', { seconds: remaining }) : t('auth.forgot.resend')}
           </button>
           <Link
             to="/auth/code"
-            className="self-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+            className="self-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
             data-testid="forgot-use-code"
           >
             {t('auth.forgot.useCode')}
@@ -80,6 +80,8 @@ export default function ForgotPasswordPage() {
             id="email"
             type="email"
             autoComplete="email"
+            inputMode="email"
+            enterKeyHint="send"
             autoFocus
             required
             value={email}
@@ -101,7 +103,7 @@ export default function ForgotPasswordPage() {
       <p className="mt-6 text-center text-xs text-muted-foreground">
         <Link
           to="/login"
-          className="font-medium text-foreground underline-offset-2 hover:underline"
+          className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="back-to-login"
         >
           {t('auth.forgot.back')}

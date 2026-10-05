@@ -22,7 +22,7 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-background px-4 relative overflow-hidden"
+      className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh flex items-center justify-center bg-background px-4 relative overflow-hidden"
       style={
         branding.loginBg
           ? { backgroundImage: `url(${branding.loginBg})`, backgroundSize: 'cover' }
@@ -32,7 +32,7 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
     >
       {!branding.loginBg && <div className="absolute inset-0 grid-pattern opacity-30" />}
       <div className={`relative flex w-full max-w-sm items-stretch gap-6 ${sidePanel ? 'lg:max-w-3xl' : ''}`}>
-        <div className="w-full rounded-3xl border border-border bg-card p-8">
+        <div className="auth-touch w-full rounded-3xl border border-border bg-card p-8">
           <div className="mb-6 flex flex-col items-center gap-3 text-center">
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt={branding.name} className="h-10" data-testid="tenant-logo" />
@@ -48,7 +48,7 @@ export function AuthShell({ title, subtitle, testId, children, sidePanel }: Auth
           <button
             type="button"
             onClick={toggleLocale}
-            className="mt-4 w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+            className="mt-4 w-full text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
             data-testid="locale-toggle"
           >
             {t('locale.switch')}

@@ -14,6 +14,29 @@ wired to the **Itera Supabase** project. Foundation batch of the Itera execution
   `@tanstack/react-query`, `vitest`, `@devfellowship/observability` (OTel)
 - `@supabase/supabase-js` → the **Itera** Supabase project `kjefmwlopzeaqgqtlbdn`
 
+## Supported browsers
+
+Tailwind 4 sets the floor (decided 2026-10-05, plan `20261003-itera-player-mobile`, Q-12 = A):
+
+| Browser | Minimum |
+| --- | --- |
+| Safari (macOS and every browser on iOS/iPadOS) | 16.4 |
+| Chrome, Edge and Chromium-based Android browsers | 111 |
+| Firefox | 128 |
+
+Below the floor the app is not supported, and **nothing detects it**: there is no
+"update your browser" screen. What the learner sees depends on how old the browser is:
+
+- Just below the floor (for example iOS 15 or 16.0-16.3): the app loads and signs in,
+  but the stylesheet needs cascade layers, `@property` and `color-mix()`, so colours,
+  borders, shadows and spacing come out wrong or missing. Lessons may still be usable;
+  they do not look like the product.
+- Much older (below what the Vite build targets): the script does not parse and the
+  page stays blank on the background colour.
+
+Support answer for a learner on an old phone: update the system (iOS) or the browser
+(Android), or open the lesson on another device.
+
 ## Layout (monorepo, ADR-F1)
 
 ```

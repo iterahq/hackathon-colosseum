@@ -79,7 +79,7 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
       solved={solved}
     >
       <div
-        className={`relative w-full aspect-[4/3] sm:aspect-[16/9] max-h-[440px] rounded-2xl overflow-hidden border border-border bg-[#0B0F14] ${TOUCH_SURFACE}`}
+        className={`relative w-full aspect-[4/3] sm:aspect-[16/9] max-h-[440px] short:max-h-[340px] rounded-2xl overflow-hidden border border-border bg-[#0B0F14] ${TOUCH_SURFACE}`}
         data-testid="intercept-board"
       >
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">

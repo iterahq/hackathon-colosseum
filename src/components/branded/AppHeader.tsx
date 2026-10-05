@@ -125,7 +125,7 @@ export function AppHeader({
               <Link
                 key={it.id}
                 to={it.to}
-                className={`relative px-4 h-9 rounded-full text-sm font-medium flex items-center gap-2 transition-colors ${
+                className={`relative px-4 h-9 rounded-full text-sm font-medium whitespace-nowrap flex items-center gap-2 transition-colors ${
                   isActive ? 'text-obsidiana' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -172,7 +172,7 @@ export function AppHeader({
           <span
             data-testid="role-pill"
             data-role={role}
-            className={`hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-full border text-xs font-medium ${
+            className={`hidden sm:inline-flex md:hidden lg:inline-flex items-center gap-1.5 px-3 h-9 rounded-full border text-xs font-medium ${
               roleIsPrivileged
                 ? 'border-evergreen/40 bg-evergreen-soft text-evergreen-hi'
                 : 'border-border bg-card text-muted-foreground'

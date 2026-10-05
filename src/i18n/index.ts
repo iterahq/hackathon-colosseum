@@ -525,6 +525,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     // Correção determinística do snack de código — o feedback SÓ aparece depois
     // do envio (não existe checklist permanente enquanto a pessoa edita).
     'code.checks.running': 'Conferindo…',
+    'code.pane.label': 'Painel',
+    'code.pane.code': 'Código',
+    'code.pane.preview': 'Resultado',
     'code.checks.allPassed': 'Tudo certo! Você conseguiu.',
     'code.checks.someFailed': 'Quase lá — falta pouco.',
     'code.checks.score': '{passed} de {total}',
@@ -714,6 +717,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'byoc.aiResponse': 'Resposta da IA',
     // sandbox (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
+    'activity.chatSandbox': 'Conversa',
+    'activity.terminalSandbox': 'Terminal',
     'activity.step': 'Passo',
     'activity.stepCleared': 'passo concluído',
     'activity.continue': 'Continuar',
@@ -1581,6 +1586,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.specInvalid': 'This activity has an invalid configuration and could not be loaded.',
     'activity.sandboxInvalid': 'This scenario has an invalid configuration and could not be loaded.',
     'code.checks.running': 'Checking…',
+    'code.pane.label': 'Pane',
+    'code.pane.code': 'Code',
+    'code.pane.preview': 'Result',
     'code.checks.allPassed': 'All good! You did it.',
     'code.checks.someFailed': 'Almost there — just a bit more.',
     'code.checks.score': '{passed} of {total}',
@@ -1749,6 +1757,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'byoc.aiResponse': 'AI response',
     // sandbox (plano-sandbox-studio-2026-07-15)
     'activity.sandboxScenario': 'Sandbox',
+    'activity.chatSandbox': 'Chat',
+    'activity.terminalSandbox': 'Terminal',
     'activity.step': 'Step',
     'activity.stepCleared': 'step cleared',
     'activity.continue': 'Continue',

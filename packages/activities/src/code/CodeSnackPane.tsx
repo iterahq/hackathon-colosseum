@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Code2, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
@@ -65,6 +65,10 @@ export function CodeSnackPane({
     complete,
   } = useCodeSnack(activity.id, spec, { onComplete });
   const isDone = activity.status === 'done';
+  // A phone shows one pane at a time: stacked, the pair pushed the button a
+  // screen away. The hidden pane keeps its box (`invisible`, not `hidden`), so
+  // the preview frame the checks run in never collapses to 0x0.
+  const [phonePane, setPhonePane] = useState<'code' | 'preview'>('code');
   // Recomputed from the CURRENT source, never from the starter: the learner's
   // own saved draft and every edit they make move the marker lines around, and
   // a region pinned to the starter's line numbers would drift onto locked code
@@ -89,14 +93,40 @@ export function CodeSnackPane({
       <RichText text={spec.prompt ?? ''} />
 
       <div
-        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground"
+        className="mt-3 flex items-center gap-2 rounded-xl border border-menta/30 bg-menta/10 px-3.5 py-2.5 text-sm text-muted-foreground max-sm:hidden"
         data-testid="code-snack-hint"
       >
         <Code2 className="w-4 h-4 shrink-0 text-menta" /> {t('activity.codeSnackHint')}
       </div>
 
-      <div className={`mt-4 ${CODE_SPLIT_GRID}`}>
-        <div className={`flex flex-col ${CODE_SPLIT_EDITOR}`}>
+      <div
+        role="group"
+        aria-label={t('code.pane.label')}
+        className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-border bg-background p-1 sm:hidden"
+        data-testid="code-pane-switch"
+      >
+        {(['code', 'preview'] as const).map((pane) => (
+          <button
+            key={pane}
+            type="button"
+            aria-pressed={phonePane === pane}
+            onClick={() => setPhonePane(pane)}
+            data-testid={`code-pane-${pane}`}
+            className={`h-11 rounded-lg text-sm font-medium transition-colors ${
+              phonePane === pane ? 'bg-evergreen-soft text-evergreen-hi' : 'text-muted-foreground'
+            }`}
+          >
+            {t(pane === 'code' ? 'code.pane.code' : 'code.pane.preview')}
+          </button>
+        ))}
+      </div>
+
+      <div className={`mt-4 max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
+        <div
+          className={`flex flex-col max-sm:[grid-area:1/1] ${CODE_SPLIT_EDITOR} ${
+            phonePane === 'code' ? '' : 'max-sm:invisible'
+          }`}
+        >
           {/* The marker (the Player's `utils/stageCursorDom`) is what the
               live-class layer finds to mirror this learner's pointer to the
               class while they are on stage. A DATA ATTRIBUTE, not a prop, and
@@ -139,7 +169,11 @@ export function CodeSnackPane({
           />
         </div>
 
-        <div className={`${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border`}>
+        <div
+          className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border ${
+            phonePane === 'preview' ? '' : 'max-sm:invisible'
+          }`}
+        >
           <CodeLivePreview
             code={code}
             language={spec.language}

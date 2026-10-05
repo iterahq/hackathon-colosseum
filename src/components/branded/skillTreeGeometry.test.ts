@@ -13,6 +13,8 @@ import {
   segmentPath,
   trailWidthFor,
   waveAmplitude,
+  wideBannerInset,
+  wideSegmentPath,
 } from './skillTreeGeometry';
 
 describe('skillTreeGeometry', () => {
@@ -119,11 +121,26 @@ describe('skillTreeGeometry', () => {
       expect(layout.height).toBeGreaterThan(plain.height);
     });
 
-    it('keeps days and sections continuous and centers a single-lesson week', () => {
+    it('keeps days and sections continuous', () => {
       const layout = computeWideTrailLayout({ width: 1000, sectionSizes: [1, 3], primaryIndex: null });
       expect(layout.nodes.map((n) => n.day)).toEqual([1, 2, 3, 4]);
-      expect(layout.nodes[0].x).toBe(500);
       expect(layout.banners[1].y).toBeGreaterThan(layout.nodes[0].y);
+    });
+
+    it('keeps a single-lesson week on the edge the path is on, so no segment crosses a banner', () => {
+      const width = 1360;
+      const layout = computeWideTrailLayout({ width, sectionSizes: [5, 1, 5, 1, 1, 4], primaryIndex: null });
+      const inset = wideBannerInset(width);
+      for (let i = 1; i < layout.nodes.length; i++) {
+        const [a, b] = [layout.nodes[i - 1], layout.nodes[i]];
+        if (a.row === b.row) continue;
+        expect(b.x).toBe(a.x);
+        const onLeft = a.x < width / 2;
+        expect(onLeft ? a.x : width - a.x).toBeLessThan(inset);
+        expect(wideSegmentPath(a, b)).toContain(`C${a.x + (onLeft ? -110 : 110)},`);
+      }
+      expect(layout.nodes[5].x).toBe(layout.nodes[4].x);
+      expect(layout.nodes[6].x).toBe(layout.nodes[5].x);
     });
 
     it('draws one continuous path through every node', () => {

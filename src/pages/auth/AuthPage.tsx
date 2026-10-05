@@ -68,6 +68,8 @@ export default function AuthPage() {
           id="email"
           type="email"
           autoComplete="email"
+          inputMode="email"
+          enterKeyHint="next"
           autoFocus
           required
           value={email}
@@ -80,6 +82,7 @@ export default function AuthPage() {
         <PasswordInput
           id="password"
           autoComplete="current-password"
+          enterKeyHint="go"
           required
           value={password}
           onValueChange={setPassword}
@@ -89,7 +92,7 @@ export default function AuthPage() {
         />
         <Link
           to="/auth/forgot"
-          className="self-end text-xs text-muted-foreground underline-offset-2 hover:underline"
+          className="self-end text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="forgot-password-link"
         >
           {t('auth.forgot.link')}
@@ -123,7 +126,7 @@ export default function AuthPage() {
         </Button>
         <Link
           to="/auth/code"
-          className="text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+          className="text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"
           data-testid="goto-otp"
         >
           {t('auth.otp.link')}
@@ -137,7 +140,7 @@ export default function AuthPage() {
           {t('auth.noAccount')}{' '}
           <Link
             to="/signup"
-            className="font-medium text-foreground underline-offset-2 hover:underline"
+            className="font-medium text-foreground touch-hit underline-offset-2 hover:underline"
             data-testid="goto-signup"
           >
             {t('auth.signUp')}

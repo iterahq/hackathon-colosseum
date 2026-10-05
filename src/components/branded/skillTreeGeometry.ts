@@ -143,6 +143,9 @@ export function computeWideTrailLayout({
     let rowStart = 0;
     for (let r = 0; r < rows; r++) {
       const columns = baseColumns + (r < count % rows ? 1 : 0);
+      // A row of one stays on the edge the path is on and does not turn it
+      // around: centred, the path cut across the banners above and below it.
+      const alone = columns === 1;
       const spacing = columns > 1 ? span / (columns - 1) : 0;
       const centerline = cursor + NODE_HALO + WIDE_WAVE + CURRENT_SIZE / 2;
       let rowBottom = cursor;
@@ -153,7 +156,7 @@ export function computeWideTrailLayout({
         const edge = direction === 1 ? WIDE_MARGIN : width - WIDE_MARGIN;
         const y = centerline + WIDE_WAVE_STEPS[column % WIDE_WAVE_STEPS.length] * WIDE_WAVE;
         nodes.push({
-          x: columns === 1 ? width / 2 : edge + direction * column * spacing,
+          x: edge + direction * column * spacing,
           y,
           size,
           day: globalIndex + 1,
@@ -161,7 +164,7 @@ export function computeWideTrailLayout({
           indexInSection: i,
           globalIndex,
           row,
-          direction,
+          direction: alone ? (direction === 1 ? -1 : 1) : direction,
         });
         const below = y + size / 2 + NODE_HALO;
         if (isPrimary) {
@@ -174,7 +177,7 @@ export function computeWideTrailLayout({
       }
       rowStart += columns;
       cursor = rowBottom + WIDE_ROW_GAP;
-      direction = direction === 1 ? -1 : 1;
+      if (!alone) direction = direction === 1 ? -1 : 1;
       row++;
     }
     cursor += SECTION_GAP;

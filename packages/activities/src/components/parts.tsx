@@ -46,8 +46,8 @@ const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind)
  * When the activity talks about Tera he peeks over the top-right corner —
  * unless the kind draws him itself (`mascot="none"`, the scene guide).
  *
- * On a phone the kind badge is read by screen readers only and the padding is
- * tighter: the card is the screen there, and every band above the exercise
+ * On a phone, and on a screen 800 px high or less (`short:`), the kind badge is
+ * read by screen readers only and the padding is tighter: the card is the screen there, and every band above the exercise
  * pushes its answer below the fold. A card Tera peeks over keeps the room the
  * badge row gave him, so he covers neither the lesson title nor the first line.
  */
@@ -71,15 +71,15 @@ export function ActivityShell({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className={`relative w-full rounded-3xl border border-border bg-card px-6 max-sm:px-4 md:px-8 ${
-        compact ? 'py-4 max-sm:py-3 md:py-5' : 'py-6 max-sm:py-4 md:py-8'
-      } ${tera ? 'max-sm:pt-11' : ''}`}
+        compact ? 'py-4 max-sm:py-3 md:py-5 short:py-4' : 'py-6 max-sm:py-4 md:py-8 short:py-5'
+      } ${tera ? 'max-sm:pt-11 short:pt-11' : ''}`}
       data-testid="activity-shell"
       data-activity-kind={kind}
       data-tera={tera ? 'true' : undefined}
     >
       {tera && <TeraPeek />}
-      <KindBadge icon={icon} label={label} className="max-sm:sr-only" />
-      <div className={compact ? 'mt-3 max-sm:mt-0' : 'mt-5 max-sm:mt-0'}>{children}</div>
+      <KindBadge icon={icon} label={label} className="max-sm:sr-only short:sr-only" />
+      <div className={compact ? 'mt-3 max-sm:mt-0 short:mt-0' : 'mt-5 max-sm:mt-0 short:mt-0'}>{children}</div>
     </motion.div>
   );
 }
@@ -105,7 +105,7 @@ export function DoneButton({
       onClick={onClick}
       disabled={disabled || locked}
       data-locked={locked ? 'true' : undefined}
-      className={`mt-6 max-sm:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+      className={`mt-6 max-sm:mt-4 short:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
         locked ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
       data-testid="activity-done"
@@ -161,7 +161,7 @@ export function SubmitButton({
       data-submitted={submitted ? 'true' : undefined}
       data-correct={graded ? String(correct) : undefined}
       data-testid={testId}
-      className={`mt-6 max-sm:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
+      className={`mt-6 max-sm:mt-4 short:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${
         incorrect ? TACTILE_CTA_MISSED : submitted ? TACTILE_CTA_SETTLED : TACTILE_CTA
       }`}
     >

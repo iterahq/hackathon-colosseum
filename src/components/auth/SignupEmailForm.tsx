@@ -25,6 +25,8 @@ export function SignupEmailForm({
         id="signup-email"
         type="email"
         autoComplete="email"
+        inputMode="email"
+        enterKeyHint="send"
         autoFocus
         required
         value={email}
