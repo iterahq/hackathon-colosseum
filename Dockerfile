@@ -35,7 +35,8 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 # `@iterahq/activities` is an in-repo WORKSPACE (packages/activities). npm ci
 # writes it as a symlink whose target only lands with the `COPY . .` below —
-# a dangling link here is expected and fine.
+# a dangling link here is expected and fine. A source-only workspace (packages/bridge) has no
+# build output either, so vite.config.ts aliases it; scripts/workspace-alias.test.ts keeps that true.
 RUN --mount=type=secret,id=NODE_AUTH_TOKEN,required=true \
     NODE_AUTH_TOKEN="$(cat /run/secrets/NODE_AUTH_TOKEN)" \
     npm ci
