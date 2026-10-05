@@ -22,6 +22,7 @@ import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 const TONE_HEX: Record<BucketTone, string> = {
   blue: '#3B82F6',
@@ -89,7 +90,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
       stamp={copy.stamp}
       solved={solved}
     >
-      <div className="flex flex-col gap-5" data-testid="bucket-stage">
+      <div className={`flex flex-col gap-5 ${TOUCH_SURFACE}`} data-testid="bucket-stage">
         <div
           className="flex flex-wrap gap-2 min-h-[52px] rounded-xl border border-dashed border-border p-3"
           data-testid="bucket-tray"

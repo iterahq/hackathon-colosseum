@@ -515,6 +515,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.instructionZoomOpen': 'Ampliar a imagem',
     'activity.mediaHoverOff': 'Desligar a prévia ao passar o mouse',
     'activity.mediaHoverOn': 'Ligar a prévia ao passar o mouse',
+    'activity.mediaZoomIn': 'Aproximar a imagem',
+    'activity.mediaZoomOut': 'Ver a imagem inteira',
     'activity.instructionZoomClose': 'Fechar',
     'activity.codeInvalid': 'Esta atividade de código está com a configuração inválida.',
     // Fronteira de validação de spec (estado F) — os 12 kinds.
@@ -1572,6 +1574,8 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.instructionZoomOpen': 'Zoom in on the image',
     'activity.mediaHoverOff': 'Turn off the hover preview',
     'activity.mediaHoverOn': 'Turn on the hover preview',
+    'activity.mediaZoomIn': 'Zoom in',
+    'activity.mediaZoomOut': 'Fit the whole image',
     'activity.instructionZoomClose': 'Close',
     'activity.codeInvalid': 'This code activity has an invalid configuration.',
     'activity.specInvalid': 'This activity has an invalid configuration and could not be loaded.',

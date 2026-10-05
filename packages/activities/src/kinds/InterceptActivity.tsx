@@ -26,6 +26,7 @@ import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 const HOP_MS = 1400;
 
@@ -78,7 +79,7 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
       solved={solved}
     >
       <div
-        className="relative w-full aspect-[4/3] sm:aspect-[16/9] max-h-[440px] rounded-2xl overflow-hidden border border-border bg-[#0B0F14] select-none"
+        className={`relative w-full aspect-[4/3] sm:aspect-[16/9] max-h-[440px] rounded-2xl overflow-hidden border border-border bg-[#0B0F14] ${TOUCH_SURFACE}`}
         data-testid="intercept-board"
       >
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">

@@ -35,6 +35,7 @@ import {
   treeMatches,
   type PlacedNode,
 } from './system/composeTree.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 const DRAG_TYPE = 'application/x-itera-block';
 
@@ -175,7 +176,7 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
       stamp={copy.stamp}
       solved={solved}
     >
-      <div className="grid gap-4 md:grid-cols-2" data-testid="compose-stage">
+      <div className={`grid gap-4 md:grid-cols-2 ${TOUCH_SURFACE}`} data-testid="compose-stage">
         <div className="flex flex-col gap-4">
           {!solved && (
             <div className="flex flex-col gap-2">

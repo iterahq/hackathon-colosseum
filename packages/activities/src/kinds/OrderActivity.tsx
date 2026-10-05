@@ -38,6 +38,7 @@ import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/pa
 import { OrderRow } from '../components/OrderRow.js';
 import { useOrderDrag } from '../components/useOrderDrag.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function OrderActivity({
   activity,
@@ -157,7 +158,7 @@ export function OrderActivity({
         axis="y"
         values={displayOrder}
         onReorder={drag.onReorder}
-        className="mt-3 space-y-2.5"
+        className={`mt-3 space-y-2.5 ${TOUCH_SURFACE}`}
         data-testid="order-list"
       >
         {displayOrder.map((id, idx) => {

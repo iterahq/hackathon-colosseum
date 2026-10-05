@@ -24,6 +24,7 @@ import { SCENE_CODE_COLORS as C, SCENE_PAGE_BACKGROUND, SCENE_RAW_PAGE_BACKGROUN
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function PlugActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t } = useActivityI18n();
@@ -121,7 +122,7 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
         type="button"
         data-testid="plug-cable"
         onClick={toggle}
-        className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+        className={`inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted ${TOUCH_SURFACE}`}
       >
         <Cable className="w-4 h-4" />
         {connected ? copy.text(spec?.on_label) : copy.text(spec?.off_label)}

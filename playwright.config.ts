@@ -69,7 +69,7 @@ export default defineConfig({
    * gate that can skip is not a gate. Mirror of that config's `testMatch`.
    */
   testIgnore:
-    /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access|source-stamp|capture-regions)\.spec\.ts$/,
+    /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|source-stamp|capture-regions)\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

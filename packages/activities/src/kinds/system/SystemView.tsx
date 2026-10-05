@@ -7,6 +7,7 @@ import type { SceneLocalizedText, ViewBind, ViewNode } from '../../specs.js';
 import { SceneBrowserBar } from '../scene/SceneBrowserBar.js';
 import { SCENE_PAGE_BACKGROUND } from '../scene/sceneTheme.js';
 import { getPath, isBind, renderId } from './viewModel.js';
+import { TOUCH_SURFACE } from '../../components/touchSurface.js';
 
 export interface SystemRegion {
   id: string;
@@ -333,7 +334,7 @@ export function SystemView({
       <SceneBrowserBar url={urlLabel} />
       <div
         ref={stageRef}
-        className="relative p-5 sm:p-6 select-none"
+        className={`relative p-5 sm:p-6 ${TOUCH_SURFACE}`}
         style={{ touchAction: lasso ? 'none' : undefined }}
         onPointerDown={startLasso}
         onPointerMove={moveLasso}

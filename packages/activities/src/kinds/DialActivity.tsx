@@ -30,6 +30,7 @@ import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
 import { SceneCssRule } from './scene/SceneCssRule.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 /**
  * Where the slider sits when the activity opens. A `done` activity opens on a
@@ -96,7 +97,7 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className={`flex items-center gap-3 ${TOUCH_SURFACE}`}>
         <input
           type="range"
           role="slider"

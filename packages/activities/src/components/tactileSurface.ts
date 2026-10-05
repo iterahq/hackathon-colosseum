@@ -5,6 +5,7 @@ import {
   TACTILE_RIGHT,
   TACTILE_SURFACE,
 } from './tactile.js';
+import { TOUCH_SURFACE } from './touchSurface.js';
 
 export type SurfaceState = 'idle' | 'picked' | 'right' | 'miss' | 'lifted';
 
@@ -26,5 +27,5 @@ const STATE_CLASSES: Record<SurfaceState, string> = {
 /** The class list of a tactile surface in one state, with no conflicting colours. */
 export function tactileSurface(state: SurfaceState, pressable: boolean): string {
   const press = !pressable ? '' : state === 'idle' ? TACTILE_PRESSABLE : PRESS_ONLY;
-  return `${SURFACE_BASE} ${STATE_CLASSES[state]} ${press}`.trim();
+  return `${SURFACE_BASE} ${TOUCH_SURFACE} ${STATE_CLASSES[state]} ${press}`.trim();
 }

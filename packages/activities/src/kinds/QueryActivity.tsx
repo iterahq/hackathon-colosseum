@@ -24,6 +24,7 @@ import { SCENE_CODE_BACKGROUND } from './scene/sceneTheme.js';
 import { useGestureSettle } from './scene/useGestureSettle.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function QueryActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t } = useActivityI18n();
@@ -73,7 +74,7 @@ export function QueryActivity({ activity, onComplete }: { activity: PortableActi
       solved={solved}
     >
       <div className="grid md:grid-cols-[1fr_1.2fr] gap-5 items-start" data-testid="query-stage">
-        <div className="flex flex-col gap-3">
+        <div className={`flex flex-col gap-3 ${TOUCH_SURFACE}`}>
           <div
             className="rounded-xl border border-white/10 p-4 flex flex-col gap-0.5"
             style={{ background: SCENE_CODE_BACKGROUND, fontFamily: "'JetBrains Mono', monospace" }}

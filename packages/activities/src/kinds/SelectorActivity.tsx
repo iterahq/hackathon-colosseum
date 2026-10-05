@@ -30,6 +30,7 @@ import { cssPropertyToReact } from './scene/cssPropertyToReact.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
 import { SceneCssRule } from './scene/SceneCssRule.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 /** Stage text: dark on the pastel page, never the app's muted grey. */
 const STAGE_INK = '#3B1F2B';
@@ -125,7 +126,7 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
           );
         })}
       </div>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={t('activity.selector')}>
+      <div className={`flex flex-wrap gap-2 ${TOUCH_SURFACE}`} role="group" aria-label={t('activity.selector')}>
         {(spec?.options ?? []).map((option) => (
           <button
             key={option}

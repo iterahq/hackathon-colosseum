@@ -1,21 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useActivityI18n } from '../context.js';
 import { MEDIA_LIFT } from './mediaLift.js';
 import { MediaHoverZone } from './MediaHoverZone.js';
+import { MediaLightbox } from './MediaLightbox.js';
 
 export function InstructionImage({ src, alt }: { src: string; alt: string }) {
   const { t } = useActivityI18n();
   const [loaded, setLoaded] = useState(false);
   const [zoomed, setZoomed] = useState(false);
-
-  useEffect(() => {
-    if (!zoomed) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setZoomed(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [zoomed]);
 
   return (
     <>
@@ -45,27 +37,7 @@ export function InstructionImage({ src, alt }: { src: string; alt: string }) {
       </MediaHoverZone>
 
       {zoomed && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={alt}
-          onClick={() => setZoomed(false)}
-          className="fixed inset-0 z-50 flex items-center overflow-auto bg-black/95 p-4"
-          data-testid="instruction-image-zoom"
-        >
-          {/* Ilustração larga em tela estreita: forçar uma largura mínima e deixar
-              rolar na horizontal é o que mantém o texto do diagrama legível. */}
-          <img src={src} alt={alt} className="min-w-[860px] w-full max-w-none h-auto" />
-          <button
-            type="button"
-            onClick={() => setZoomed(false)}
-            aria-label={t('activity.instructionZoomClose')}
-            className="fixed top-4 right-4 rounded-full border border-border bg-obsidiana/90 px-4 py-2 text-sm text-foreground"
-            data-testid="instruction-image-zoom-close"
-          >
-            {t('activity.instructionZoomClose')}
-          </button>
-        </div>
+        <MediaLightbox src={src} kind="image" label={alt} onClose={() => setZoomed(false)} testId="instruction-image-zoom" />
       )}
     </>
   );

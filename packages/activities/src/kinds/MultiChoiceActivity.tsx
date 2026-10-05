@@ -38,7 +38,7 @@ function OptionMedia({ option }: { option: ChoiceOption }) {
   return (
     <div className="flex items-center gap-3 flex-1 min-w-0">
       {option.image_url && (
-        <img src={option.image_url} alt={option.label ?? option.id} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+        <img src={option.image_url} alt={option.label ?? option.id} draggable={false} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
       )}
       {option.label && <span className="flex-1 min-w-0 whitespace-normal break-words">{option.label}</span>}
       {option.audio_url && (

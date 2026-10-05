@@ -24,6 +24,7 @@ import { SceneBrowserBar } from './scene/SceneBrowserBar.js';
 import { ScenePageElement } from './scene/ScenePageElement.js';
 import { SCENE_CODE_BACKGROUND, SCENE_PAGE_BACKGROUND } from './scene/sceneTheme.js';
 import { useSceneGate } from './scene/useSceneGate.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function TimelineActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t, locale } = useActivityI18n();
@@ -98,7 +99,7 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
         <p className="text-sm text-muted-foreground" data-testid="timeline-note">
           <span className="font-semibold text-foreground">{step && text(step.label)}</span> — {step && text(step.note)}
         </p>
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${TOUCH_SURFACE}`}>
           <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">{text(spec?.axis)}</span>
           <input
             type="range"

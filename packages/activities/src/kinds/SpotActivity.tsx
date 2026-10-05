@@ -26,6 +26,7 @@ import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function SpotActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t } = useActivityI18n();
@@ -70,7 +71,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
     >
       <div className="grid md:grid-cols-2 gap-5 items-stretch" data-testid="spot-stage">
         <div
-          className="rounded-xl border border-white/10 p-5 flex flex-col gap-1.5"
+          className={`rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 ${TOUCH_SURFACE}`}
           style={{ background: SCENE_CODE_BACKGROUND }}
           data-testid="spot-editor"
         >

@@ -29,6 +29,7 @@ import type { ArrangeSpec } from '../specs.js';
 import { SceneFrame } from './scene/SceneFrame.js';
 import { useGestureSettle } from './scene/useGestureSettle.js';
 import { useSceneGate } from './scene/useSceneGate.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function ArrangeActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t, locale } = useActivityI18n();
@@ -71,7 +72,7 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
       stamp={localizedText(spec?.stamp ?? '', locale)}
       solved={solved}
     >
-      <ol className="flex flex-col gap-2" data-testid="arrange-stage">
+      <ol className={`flex flex-col gap-2 ${TOUCH_SURFACE}`} data-testid="arrange-stage">
         {order.map((id, index) => {
           const item = itemsById.get(id);
           if (!item) return null;

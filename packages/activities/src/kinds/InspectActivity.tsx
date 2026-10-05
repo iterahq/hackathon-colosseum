@@ -23,6 +23,7 @@ import { useConnectorPath } from './scene/useConnectorPath.js';
 import { useDiscoveries } from './scene/useDiscoveries.js';
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function InspectActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t } = useActivityI18n();
@@ -77,7 +78,7 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
       stamp={copy.stamp}
       solved={gate.solved}
     >
-      <div ref={containerRef} className="relative grid md:grid-cols-2 gap-8 md:gap-14" data-testid="inspect-stage">
+      <div ref={containerRef} className={`relative grid md:grid-cols-2 gap-8 md:gap-14 ${TOUCH_SURFACE}`} data-testid="inspect-stage">
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: SCENE_PAGE_BACKGROUND }}>
           {elements.map((el) => target(el, 'page'))}
         </div>

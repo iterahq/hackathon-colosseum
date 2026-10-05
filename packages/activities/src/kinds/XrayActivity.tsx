@@ -24,6 +24,7 @@ import { SCENE_CODE_BACKGROUND, SCENE_PAGE_BACKGROUND } from './scene/sceneTheme
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { DEFAULT_COVERAGE_GOAL, useXrayScan } from './scene/useXrayScan.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 const GRID_BACKGROUND =
   'linear-gradient(rgba(63,209,127,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(63,209,127,.06) 1px, transparent 1px)';
@@ -68,7 +69,7 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
         onPointerLeave={clearLens}
         onKeyDown={scanKey}
         onBlur={clearLens}
-        className="relative w-full aspect-[4/5] sm:aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-evergreen"
+        className={`relative w-full aspect-[4/5] sm:aspect-[16/9] max-h-[460px] rounded-2xl overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-evergreen ${TOUCH_SURFACE}`}
         style={{ touchAction: 'none', cursor: lens ? 'none' : 'crosshair' }}
       >
         <div

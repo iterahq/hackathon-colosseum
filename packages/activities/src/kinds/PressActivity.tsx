@@ -26,6 +26,7 @@ import { SCENE_CODE_BACKGROUND, SCENE_PAGE_BACKGROUND } from './scene/sceneTheme
 import { useSceneGate } from './scene/useSceneGate.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 export function PressActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t, locale } = useActivityI18n();
@@ -90,7 +91,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
           <SceneCodeLine element={{ id: 'press-handler', tag: 'span', text: spec.options.find((o) => o.id === spec.correct)?.code ?? '', name: '' }} />
         )}
       </div>
-      <div className="flex flex-col gap-2" role="radiogroup" aria-label={t('activity.press')}>
+      <div className={`flex flex-col gap-2 ${TOUCH_SURFACE}`} role="radiogroup" aria-label={t('activity.press')}>
         {(spec?.options ?? []).map((option) => (
           <button
             key={option.id}
@@ -108,7 +109,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
       </div>
       {!solved && <WrongHint {...hintProps} />}
       <div
-        className="rounded-xl overflow-hidden border border-black/10 p-6 flex flex-col items-start gap-3 min-h-[120px]"
+        className={`rounded-xl overflow-hidden border border-black/10 p-6 flex flex-col items-start gap-3 min-h-[120px] ${TOUCH_SURFACE}`}
         style={{ background: SCENE_PAGE_BACKGROUND }}
         data-testid="press-page"
       >

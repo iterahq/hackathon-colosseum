@@ -21,6 +21,7 @@ import { useSceneGate } from './scene/useSceneGate.js';
 import { useSceneText } from './scene/useSceneText.js';
 import { useWrongHint } from './scene/useWrongHint.js';
 import { WrongHint } from './scene/WrongHint.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 interface Point {
   x: number;
@@ -107,7 +108,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
     >
       <div
         ref={boardRef}
-        className="relative grid grid-cols-[1fr_auto_1fr] gap-3 sm:gap-8 select-none"
+        className={`relative grid grid-cols-[1fr_auto_1fr] gap-3 sm:gap-8 ${TOUCH_SURFACE}`}
         data-testid="wire-board"
       >
         <div className="flex flex-col gap-2">

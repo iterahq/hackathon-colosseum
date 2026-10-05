@@ -43,9 +43,11 @@ import { defineConfig, devices } from '@playwright/test';
  * produce exactly, with no credential. `route-access-matrix.spec.ts` asks the
  * neighbouring question but needs real logins, so it can only skip.
  */
+const MOBILE_TOUCH = /mobile-touch\.spec\.ts$/;
+
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access)\.spec\.ts$/,
+  testMatch: /(activity-baseline|terminal-sandbox|feedback-footer-width|program-access|mobile-touch)\.spec\.ts$/,
 
   // Hermetic: no shared server state, no login, no DB. Parallel is free, and
   // it is what keeps the suite inside the 10-minute budget (V3).
@@ -86,5 +88,15 @@ export default defineConfig({
     timeout: 300_000,
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // `mobile-touch.spec.ts` is about a finger, so it runs on a touch device and only
+  // there. WebKit is opt-in: CI installs Chromium alone, and a second engine on
+  // every PR costs a browser download plus its system libraries per run.
+  // It starts after `chromium` ends, so the touch specs never share the runner with the baseline.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, testIgnore: MOBILE_TOUCH },
+    { name: 'mobile', use: { ...devices['Pixel 5'] }, testMatch: MOBILE_TOUCH, dependencies: ['chromium'] },
+    ...(process.env.BASELINE_WEBKIT
+      ? [{ name: 'iphone', use: { ...devices['iPhone 13'] }, testMatch: MOBILE_TOUCH, dependencies: ['chromium'] }]
+      : []),
+  ],
 });

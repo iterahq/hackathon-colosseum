@@ -95,7 +95,7 @@ export function OrderRow({
       </span>
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {option?.image_url && (
-          <img src={option.image_url} alt={option.label ?? id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+          <img src={option.image_url} alt={option.label ?? id} draggable={false} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
         )}
         {option?.label && <span className="flex-1 min-w-0 break-words text-sm min-[480px]:text-base">{option.label}</span>}
         {option?.audio_url && <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" />}

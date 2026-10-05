@@ -41,6 +41,7 @@ import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { tactileSurface, type SurfaceState } from '../components/tactileSurface.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
+import { TOUCH_SURFACE } from '../components/touchSurface.js';
 
 /** One learner-created pairing, kept in creation order so numbering is stable. */
 interface MadePair {
@@ -52,7 +53,7 @@ function CardBody({ option }: { option: ChoiceOption }) {
   return (
     <div className="flex items-start gap-2 min-w-0 flex-1">
       {option.image_url && (
-        <img src={option.image_url} alt={option.label ?? option.id} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+        <img src={option.image_url} alt={option.label ?? option.id} draggable={false} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
       )}
       {option.label && <span className="min-w-0 whitespace-normal break-words">{option.label}</span>}
       {option.audio_url && (
@@ -369,7 +370,7 @@ export function MatchActivity({
         {t('activity.matchHint')}
       </p>
 
-      <div ref={containerRef} className="relative mt-4 grid grid-cols-2 gap-y-6 gap-x-10 sm:gap-x-20" data-testid="match-columns">
+      <div ref={containerRef} className={`relative mt-4 grid grid-cols-2 gap-y-6 gap-x-10 sm:gap-x-20 ${TOUCH_SURFACE}`} data-testid="match-columns">
         <svg
           aria-hidden
           className="absolute inset-0 w-full h-full overflow-visible pointer-events-none"
@@ -441,7 +442,7 @@ export function MatchActivity({
                     onPointerUp={endDrag}
                     onPointerCancel={cancelDrag}
                     style={{ touchAction: 'none' }}
-                    className="absolute right-0 top-0 h-full w-9 flex items-center justify-center cursor-crosshair select-none"
+                    className="absolute right-0 top-0 h-full w-9 flex items-center justify-center cursor-crosshair"
                   >
                     <span
                       className={`w-3 h-3 rounded-full border-2 ${
