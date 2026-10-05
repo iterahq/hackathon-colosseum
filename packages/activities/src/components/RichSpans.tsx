@@ -9,6 +9,8 @@ import { useContext } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { Inline } from '../internal/richText.js';
 import { BlockReveal } from './blockReveal.js';
+import { TermChip } from './TermChip.js';
+import { pickTerms } from '../internal/termChip.js';
 
 // `==key phrase==` is the highlighter: a soft pill that sweeps in once the
 // block lands. Bold stays plain emphasis so only the key phrase is marked.
@@ -19,14 +21,26 @@ const HIGHLIGHT = 'linear-gradient(rgba(63,209,127,.10), rgba(63,209,127,.10))';
 const KEYCAP =
   'rounded-md border border-border border-b-2 bg-obsidiana/80 px-1.5 py-0.5 font-mono text-[0.85em] text-menta';
 
-export function RichSpans({ spans }: { spans: Inline[] }) {
+export function RichSpans({
+  spans,
+  terms = false,
+}: {
+  spans: Inline[];
+  /** Raise the bold runs that name a term (`internal/termChip.ts`). Only the body of a reading block opts in. */
+  terms?: boolean;
+}) {
   const reduced = useReducedMotion();
   const { landed, delay } = useContext(BlockReveal);
+  const chip = terms ? pickTerms(spans) : null;
   return (
     <>
       {spans.map((span, i) => {
         if (span.type === 'strong')
-          return (
+          return chip?.[i] ? (
+            <TermChip key={i}>
+              <RichSpans spans={span.spans} />
+            </TermChip>
+          ) : (
             <strong key={i} className="font-semibold text-foreground">
               <RichSpans spans={span.spans} />
             </strong>

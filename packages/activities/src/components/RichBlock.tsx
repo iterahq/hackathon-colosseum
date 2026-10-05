@@ -99,6 +99,7 @@ export function RichBlock({
         items={block.items}
         muted={muted}
         textClass={body}
+        terms={!muted}
       />
     );
 
@@ -108,7 +109,7 @@ export function RichBlock({
       data-rich-block="paragraph"
       data-lead={lead ? 'true' : undefined}
     >
-      <RichSpans spans={block.spans} />
+      <RichSpans spans={block.spans} terms={!muted} />
     </p>
   );
 }

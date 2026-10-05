@@ -22,12 +22,14 @@ export function RichList({
   items,
   muted,
   textClass,
+  terms = false,
 }: {
   ordered: boolean;
   start: number;
   items: Inline[][];
   muted: boolean;
   textClass: string;
+  terms?: boolean;
 }) {
   const { landed, delay } = useContext(BlockReveal);
   const reduced = useReducedMotion();
@@ -90,7 +92,7 @@ export function RichList({
             />
           )}
           <span className="min-w-0 flex-1">
-            <RichSpans spans={item} />
+            <RichSpans spans={item} terms={terms} />
           </span>
         </motion.li>
       ))}
