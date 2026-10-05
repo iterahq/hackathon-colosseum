@@ -36,6 +36,7 @@
  */
 import { useMemo } from 'react';
 import { safeParseActivitySpec } from '@iterahq/activity-spec';
+import { TeraMentionProvider } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import { KIND_VALIDATION, specBoundaryFailure } from '@/utils/activitySpecBoundary';
@@ -112,12 +113,7 @@ import { isByocLive } from './sandbox-live/byocLive';
 import { SandboxScenarioLiveActivity } from './sandbox-live/SandboxScenarioLiveActivity';
 import { iteraApiConfigured } from '@/api/iteraApi';
 
-export function ActivityRenderer({
-  activity: authored,
-  onComplete,
-  reveal = false,
-  live = false,
-}: {
+type ActivityRendererProps = {
   activity: Activity;
   /**
    * `detail` carries the richer verdict AND the produced content / answer
@@ -133,7 +129,18 @@ export function ActivityRenderer({
    * "seguir mesmo assim" skip on a failed practical (live only).
    */
   live?: boolean;
-}) {
+};
+
+/** Tera peeks over the card of any activity whose prose names him (`mentionsTera`). */
+export function ActivityRenderer(props: ActivityRendererProps) {
+  return (
+    <TeraMentionProvider spec={props.activity.spec}>
+      <DispatchedActivity {...props} />
+    </TeraMentionProvider>
+  );
+}
+
+function DispatchedActivity({ activity: authored, onComplete, reveal = false, live = false }: ActivityRendererProps) {
   const { locale } = useI18n();
   const { values, mayAsk } = usePersonalization();
 

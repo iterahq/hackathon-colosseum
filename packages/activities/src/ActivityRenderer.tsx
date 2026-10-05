@@ -46,6 +46,7 @@
  * rather than throwing (ADR-3: degrade explicitly).
  */
 import { useEffect, useMemo, useRef } from 'react';
+import { TeraMentionProvider } from './components/teraPresence.js';
 import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import { useActivityEmitter, useActivityHost } from './context.js';
 import { cn } from './internal/cn.js';
@@ -293,6 +294,7 @@ export function ActivityRenderer(props: ActivityRendererProps) {
 
   return (
     <ActivityThemeScope theme={theme}>
+      <TeraMentionProvider spec={activity.spec}>
       <Kind
         {...props}
         onComplete={(correct, detail) => {
@@ -300,6 +302,7 @@ export function ActivityRenderer(props: ActivityRendererProps) {
           onComplete(correct, detail);
         }}
       />
+      </TeraMentionProvider>
     </ActivityThemeScope>
   );
 }

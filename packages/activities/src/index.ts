@@ -293,6 +293,13 @@ export { RichBlock } from './components/RichBlock.js';
 export { RichSpans } from './components/RichSpans.js';
 export { RichText } from './components/RichText.js';
 export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components/parts.js';
+// Tera, the mascot: the one component that draws him, and the mention rule a
+// host's own dispatcher wraps its kinds in so the shell knows to show him.
+export { TeraAvatar } from './components/TeraAvatar.js';
+export { TeraVerdict } from './components/TeraVerdict.js';
+export type { TeraMood, TeraSize } from './components/TeraAvatar.js';
+export { TeraMentionProvider } from './components/teraPresence.js';
+export { mentionsTera, textMentionsTera } from './internal/teraMention.js';
 export { parseInline, parseRichText } from './internal/richText.js';
 export type { Block, Inline } from './internal/richText.js';
 // O desenho do `diagram` e o parser que o alimenta saem juntos, e por um motivo

@@ -12,6 +12,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { transitionKindOf } from '../oneBehaviourKinds.js';
 import { TACTILE_CTA, TACTILE_CTA_MISSED, TACTILE_CTA_SETTLED } from './tactile.js';
+import { TeraPeek, useTeraMentioned } from './teraPresence.js';
 
 export { AnswerExplanation } from './AnswerExplanation.js';
 
@@ -37,29 +38,38 @@ const COMPACT_KINDS = new Set(['chat_sandbox', 'terminal_sandbox']);
 // The one-behaviour chat and terminal kinds are the same windows (T10, T11).
 const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind));
 
-/** The rounded branded card shell every non-hero activity kind lives inside. */
+/**
+ * The rounded branded card shell every non-hero activity kind lives inside.
+ * When the activity talks about Tera he peeks over the top-right corner —
+ * unless the kind draws him itself (`mascot="none"`, the scene guide).
+ */
 export function ActivityShell({
   kind,
   icon,
   label,
+  mascot = 'auto',
   children,
 }: {
   kind: string;
   icon: LucideIcon;
   label: string;
+  mascot?: 'auto' | 'none';
   children: React.ReactNode;
 }) {
   const compact = isCompactKind(kind);
+  const tera = useTeraMentioned() && mascot === 'auto';
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`w-full rounded-3xl border border-border bg-card px-6 md:px-8 ${
+      className={`relative w-full rounded-3xl border border-border bg-card px-6 md:px-8 ${
         compact ? 'py-4 md:py-5' : 'py-6 md:py-8'
       }`}
       data-testid="activity-shell"
       data-activity-kind={kind}
+      data-tera={tera ? 'true' : undefined}
     >
+      {tera && <TeraPeek />}
       <KindBadge icon={icon} label={label} />
       <div className={compact ? 'mt-3' : 'mt-5'}>{children}</div>
     </motion.div>

@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
+import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeCheck } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
+import { TeraVerdict } from '../components/TeraVerdict.js';
 import type { CodeCheckResult } from './types.js';
 import { CodeAttemptsNotice } from './CodeAttemptsNotice.js';
 import { CodeChecksList } from './CodeChecksList.js';
@@ -57,11 +58,7 @@ export function CodeChecksFeedback({
       data-out-of-lives={outOfLives ? 'true' : undefined}
     >
       <div className="flex items-center gap-2">
-        {allPassed ? (
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-menta" />
-        ) : (
-          <XCircle className="h-5 w-5 flex-shrink-0 text-clay" />
-        )}
+        <TeraVerdict correct={allPassed} size="sm" ringClassName={allPassed ? 'ring-[#1b2d24]' : 'ring-[#2b221a]'} />
         <p
           className={`font-display font-semibold ${allPassed ? 'text-menta' : 'text-clay'}`}
           data-testid="code-checks-title"

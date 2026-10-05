@@ -59,6 +59,7 @@ import { RichSpans } from '../components/RichSpans.js';
 import { AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { tactileSurface } from '../components/tactileSurface.js';
 import { VerdictMark } from '../components/VerdictMark.js';
+import { TeraPeek, useTeraMentioned } from '../components/teraPresence.js';
 import {
   useActivityActionRecorder,
   type SelectionAction,
@@ -82,6 +83,7 @@ export function QuizActivity({
   reveal?: boolean;
 }) {
   const { t } = useActivityI18n();
+  const tera = useTeraMentioned();
   const spec = activity.spec as unknown as QuizSpec;
   const options = useMemo(() => spec?.options ?? [], [spec?.options]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -131,8 +133,10 @@ export function QuizActivity({
       data-testid="activity-quiz"
       data-activity-kind="quiz"
     >
-      {/* Question card — subtle border, slightly-lighter dark bg. */}
-      <div className="rounded-3xl border border-border bg-card p-6 md:p-7">
+      {/* Question card — subtle border, slightly-lighter dark bg. The hero kind
+          has no ActivityShell, so Tera peeks over this card instead. */}
+      <div className="relative rounded-3xl border border-border bg-card p-6 md:p-7" data-tera={tera ? 'true' : undefined}>
+        {tera && <TeraPeek />}
         <div
           className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi"
           data-testid="quiz-eyebrow"

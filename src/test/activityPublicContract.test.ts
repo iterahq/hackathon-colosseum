@@ -337,6 +337,11 @@ const PUBLIC_RUNTIME_SURFACE = [
   // provisional: shared primitives the un-extracted kinds still compose with
   'AnswerExplanation',
   'ActivityShell',
+  'TeraAvatar',
+  'TeraVerdict',
+  'TeraMentionProvider',
+  'mentionsTera',
+  'textMentionsTera',
   'ArtifactVisibilityNotice',
   'JudgeHeatmap',
   'DoneButton',

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Trophy } from 'lucide-react';
+import { TeraAvatar } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 
 /**
@@ -30,8 +30,8 @@ export function LessonCompleteCard({
       className="rounded-3xl border border-border bg-card p-10 text-center"
       data-testid="lesson-complete"
     >
-      <div className="w-20 h-20 mx-auto rounded-3xl bg-evergreen-soft border border-evergreen/40 flex items-center justify-center">
-        <Trophy className="w-9 h-9 text-evergreen-hi" />
+      <div className="mx-auto flex w-24 justify-center pt-6" data-testid="lesson-complete-tera">
+        <TeraAvatar mood="happy" size="xl" />
       </div>
       <h2 className="font-display text-3xl text-foreground mt-5">{t('lesson.complete')}</h2>
       <p className="text-sm text-muted-foreground mt-2">

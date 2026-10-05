@@ -33,11 +33,11 @@
  * fallback que discordam é como um leitor EN acaba vendo frases diferentes
  * dependendo de qual componente renderizou.
  */
-import { Lightbulb } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { parseInline } from '../internal/richText.js';
 import { resolveLocalizedText } from '../internal/localizedText.js';
 import { RichSpans } from './RichSpans.js';
+import { TeraAvatar } from './TeraAvatar.js';
 
 export function AnswerExplanation({
   spec,
@@ -63,7 +63,7 @@ export function AnswerExplanation({
       className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
       data-testid="answer-explanation"
     >
-      <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0 text-menta" />
+      <TeraAvatar mood="neutral" size="sm" idle={false} className="-mt-1" />
       <div className="min-w-0">
         <p className="font-mono text-[11px] uppercase tracking-wider text-menta">
           {t('activity.explanationTitle')}

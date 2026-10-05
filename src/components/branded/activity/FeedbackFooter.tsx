@@ -79,7 +79,7 @@
  * gated.
  */
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+import { TeraVerdict } from '@iterahq/activities';
 import { useEffect, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import { parseInline } from '@/utils/richText';
@@ -158,12 +158,16 @@ export function FeedbackFooter({
                 initial={reducedMotion ? false : { scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 14 }}
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-                  correct ? 'bg-menta text-obsidiana' : 'bg-destructive text-destructive-foreground'
-                }`}
+                className="mt-2 shrink-0"
                 aria-hidden="true"
+                data-testid="feedback-footer-mark"
               >
-                {correct ? <Check className="h-6 w-6" strokeWidth={3} /> : <X className="h-6 w-6" strokeWidth={3} />}
+                <TeraVerdict
+                  correct={correct}
+                  size="bar"
+                  missTone="destructive"
+                  ringClassName={correct ? 'ring-[#1a2a20]' : 'ring-[#2a1a1e]'}
+                />
               </motion.span>
               <div className="min-w-0">
                 <p

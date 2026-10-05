@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Lightbulb } from 'lucide-react';
+import { TeraAvatar } from '../../components/TeraAvatar.js';
 
 /**
  * The step hint — a collapsed "💡 ver dica" toggle in the TOP zone (instruction
@@ -22,12 +23,13 @@ export function SandboxHint({ hint, label }: { hint: string; label: string }) {
         <Lightbulb className="h-3.5 w-3.5" /> {label}
       </button>
       {open && (
-        <p
-          className="mt-2 rounded-2xl border border-menta/25 bg-menta/5 p-3 text-sm leading-relaxed text-muted-foreground"
+        <div
+          className="mt-2 flex items-start gap-3 rounded-2xl border border-menta/25 bg-menta/5 p-3 text-sm leading-relaxed text-muted-foreground"
           data-testid="sandbox-hint"
         >
-          {hint}
-        </p>
+          <TeraAvatar mood="neutral" size="sm" className="-mt-1" />
+          <p className="min-w-0 flex-1">{hint}</p>
+        </div>
       )}
     </div>
   );

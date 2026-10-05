@@ -30,7 +30,7 @@ export function SceneFrame({
   children: ReactNode;
 }) {
   return (
-    <ActivityShell kind={kind} icon={icon} label={label}>
+    <ActivityShell kind={kind} icon={icon} label={label} mascot="none">
       <div className="flex flex-col gap-5" data-testid="scene-frame" data-solved={solved ? 'true' : 'false'}>
         <GuideBubble name={guideName} text={solved ? reaction : prompt} sizers={[prompt, reaction]} happy={solved} />
         {children}
