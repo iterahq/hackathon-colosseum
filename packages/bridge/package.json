@@ -1,0 +1,16 @@
+{
+  "name": "@iterahq/shell-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Bridge v1 between the native shell and the web app: a pinned copy of the Lesson Studio bridge (see PROVENANCE.md). Source-only: no build step.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./web": "./src/web.ts",
+    "./contracts/shells/*": "./contracts/shells/*"
+  }
+}

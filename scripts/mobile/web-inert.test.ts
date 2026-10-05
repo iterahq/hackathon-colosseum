@@ -91,6 +91,6 @@ describe("web-inert allow-list", () => {
   );
   it("the workflow carries exactly this allow-list", () => {
     const yml = readFileSync(fileURLToPath(new URL("../../.github/workflows/mobile-shell.yml", import.meta.url)), "utf8");
-    expect(yml).toContain(`grep -qvE '${mod.ALLOW_LIST}'`);
+    expect(yml).toContain(`grep -vE '${mod.ALLOW_LIST}'`);
   });
 });

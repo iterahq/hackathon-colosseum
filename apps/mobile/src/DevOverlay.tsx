@@ -5,19 +5,22 @@ interface Props {
   url: string;
   /** How many console errors the page forwarded since the shell opened (the forwarder of consoleMessage.ts). */
   forwardedErrors: number;
+  /** How many bridge handshakes (HelloAck) the shell answered since it opened. */
+  bridgeHandshakes: number;
 }
 
 /**
- * Dev-only strip over the page: shell version, the URL the WebView is on and the count of forwarded
- * errors. It takes no touches, so it never sits on a lesson button.
+ * Dev-only strip over the page: shell version, the URL the WebView is on, the count of forwarded
+ * errors and the count of bridge handshakes. It takes no touches, so it never sits on a lesson button.
  */
-export function DevOverlay({ version, url, forwardedErrors }: Props) {
+export function DevOverlay({ version, url, forwardedErrors, bridgeHandshakes }: Props) {
   return (
     <View pointerEvents="none" style={styles.wrap}>
       <View style={styles.strip}>
         <Text style={styles.text}>{`Shell ${version}`}</Text>
         <Text style={styles.text} numberOfLines={2}>{`URL ${url}`}</Text>
         <Text style={[styles.text, forwardedErrors > 0 && styles.error]}>{`Erros encaminhados: ${forwardedErrors}`}</Text>
+        <Text style={styles.text}>{`Bridge: ${bridgeHandshakes} handshake(s)`}</Text>
       </View>
     </View>
   );

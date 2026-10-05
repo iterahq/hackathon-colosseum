@@ -1,0 +1,7 @@
+{
+  "shellVersion": "0.2.0",
+  "note": "R-8: bridge v1 with shell.version and keepAwake (the screen stays on during /lesson/:lessonId and /live/*).",
+  "bridge": true,
+  "protocols": [1],
+  "capabilities": ["keepAwake", "shell.version"]
+}

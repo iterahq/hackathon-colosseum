@@ -67,14 +67,27 @@ jobs:
           echo "apps/mobile was NOT compiled or tested on this run (runner disk below 3 GB). Do not merge on this run." >> "$GITHUB_STEP_SUMMARY"
 
       # Runs before the install steps and does not need them, so a failing doctor or export cannot hide it.
-      # Prints web-inert=yes when every changed path is one that cannot change the web build, and
-      # fails when eslint.config.js, renovate.json, .dockerignore or .gitignore changed outside its
-      # one allowed place. A `no` is also written to the step summary; an empty diff is an error.
+      # REPORTS web-inert=yes|no (annotation and step summary, naming the paths that made it "no") and does
+      # not fail on a "no": a web-touching PR is legitimate (PLAN ADR-14), and ADR-13's wording "fails"
+      # contradicts R-6, which owns the lint rule in eslint.config.js. When the diff IS inert, the allowance
+      # script fails on an eslint.config.js, renovate.json, .dockerignore or .gitignore edit outside its one
+      # allowed place. An empty diff or a script error fails.
       - name: Web inert
         if: github.event_name == 'pull_request'
         run: |
-          set -euo pipefail; git fetch origin main; changed="$(git diff --name-only --no-renames origin/main...HEAD)"; if [ -z "$changed" ]; then echo "web-inert: empty diff"; exit 1; fi; if printf '%s\n' "$changed" | grep -qvE '^(apps/mobile/|scripts/mobile/|\.github/workflows/mobile-|\.github/CODEOWNERS$|docs/|repo-contract\.yaml$|renovate\.json$|\.dockerignore$|\.gitignore$|eslint\.config\.js$|[^/]+\.md$)' ; then echo web-inert=no | tee -a "$GITHUB_STEP_SUMMARY"; else echo web-inert=yes | tee -a "$GITHUB_STEP_SUMMARY"; fi
-          node apps/mobile/scripts/web-inert.mjs
+          set -euo pipefail
+          git fetch origin main
+          changed="$(git diff --name-only --no-renames origin/main...HEAD)"
+          if [ -z "$changed" ]; then echo "web-inert: empty diff"; exit 1; fi
+          offending="$(printf '%s\n' "$changed" | grep -vE '^(apps/mobile/|scripts/mobile/|\.github/workflows/mobile-|\.github/CODEOWNERS$|docs/|repo-contract\.yaml$|renovate\.json$|\.dockerignore$|\.gitignore$|eslint\.config\.js$|[^/]+\.md$)' || true)"
+          if [ -n "$offending" ]; then
+            echo "web-inert=no" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=web-inert=no::web-touching PR (ADR-14): two reviews, full CI, post-deploy check. Paths: $(printf '%s' "$offending" | tr '\n' ' ')"
+            { echo "Web-touching paths:"; printf '%s\n' "$offending" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "web-inert=yes" | tee -a "$GITHUB_STEP_SUMMARY"
+            node apps/mobile/scripts/web-inert.mjs
+          fi
 
       # Reads the shell's `expo` range and the public Expo versions endpoint; needs no install.
       - name: Expo Go SDK

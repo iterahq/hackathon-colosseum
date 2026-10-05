@@ -59,4 +59,30 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // PLAN ADR-9: the bridge handshake is the only "am I in the shell" test. A user-agent test and
+    // the WebView channel (`ReactNativeWebView`, `webkit.messageHandlers`) belong to
+    // packages/bridge alone (tests may fake the channel); everything else asks `startShellBridge()` in src/lib/shellBridge.ts.
+    // Every way to name the property is covered: dot, computed (string or template), destructuring,
+    // `in`, and `Reflect.get/has` with a literal. A type-level mention is not a read and is allowed.
+    files: ["**/*.{ts,tsx}"],
+    ignores: ["packages/bridge/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[property.name=/^(userAgent|userAgentData)$/], MemberExpression[computed=true][property.value=/^(userAgent|userAgentData)$/], MemberExpression[computed=true][property.quasis.0.value.raw=/^(userAgent|userAgentData)$/], ObjectPattern > Property[key.name=/^(userAgent|userAgentData)$/], ObjectPattern > Property[key.value=/^(userAgent|userAgentData)$/], BinaryExpression[operator='in'][left.value=/^(userAgent|userAgentData)$/], CallExpression[callee.object.name='Reflect'][arguments.1.value=/^(userAgent|userAgentData)$/]",
+          message: "No user-agent test. Detect the shell with the bridge handshake (src/lib/shellBridge.ts, PLAN ADR-4 and ADR-9).",
+        },
+        {
+          selector: "MemberExpression[property.name='ReactNativeWebView'], MemberExpression[computed=true][property.value='ReactNativeWebView'], MemberExpression[computed=true][property.quasis.0.value.raw='ReactNativeWebView'], ObjectPattern > Property[key.name='ReactNativeWebView'], ObjectPattern > Property[key.value='ReactNativeWebView'], BinaryExpression[operator='in'][left.value='ReactNativeWebView'], CallExpression[callee.object.name='Reflect'][arguments.1.value='ReactNativeWebView'], Identifier[name='ReactNativeWebView']:not(TSPropertySignature > .key, Property > .key, MemberExpression > .property, TSTypeReference > .typeName)",
+          message: "ReactNativeWebView belongs to packages/bridge. Ask the bridge (src/lib/shellBridge.ts) instead (PLAN ADR-9).",
+        },
+        {
+          selector: "MemberExpression[property.name='messageHandlers'], MemberExpression[computed=true][property.value='messageHandlers'], MemberExpression[computed=true][property.quasis.0.value.raw='messageHandlers'], ObjectPattern > Property[key.name='messageHandlers'], ObjectPattern > Property[key.value='messageHandlers'], BinaryExpression[operator='in'][left.value='messageHandlers'], CallExpression[callee.object.name='Reflect'][arguments.1.value='messageHandlers']",
+          message: "webkit.messageHandlers belongs to packages/bridge. Ask the bridge (src/lib/shellBridge.ts) instead (PLAN ADR-9).",
+        },
+      ],
+    },
+  },
 );

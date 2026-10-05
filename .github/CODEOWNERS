@@ -52,3 +52,6 @@
 # Route map of the mobile shell: which paths the shell opens, and which are not
 # counted as ported. A record, not a gate (same GitHub limitation as above).
 /apps/mobile/route-map.json @taigfs
+
+# Values of the shell launch gate (minShellVersion, store URLs, forced routes). A record, not a gate.
+/public/shell-config.json @taigfs

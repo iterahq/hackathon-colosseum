@@ -17,3 +17,26 @@ export function mountUmami(doc: Document = document): boolean {
   doc.head.appendChild(script);
   return true;
 }
+
+interface UmamiTracker {
+  identify?: (data: Record<string, string>) => void;
+}
+
+/**
+ * Sets one session property on Umami through its own `identify` call. The tracker script loads
+ * async, so when `window.umami` is not there yet the property goes out on the script's `load`.
+ * Does nothing when no tracker tag was mounted (no website id): no call, no listener.
+ */
+export function setUmamiProperty(name: string, value: string, win: Window = window, doc: Document = document): boolean {
+  const send = () => {
+    const tracker = (win as Window & { umami?: UmamiTracker }).umami;
+    if (typeof tracker?.identify !== 'function') return false;
+    tracker.identify({ [name]: value });
+    return true;
+  };
+  if (send()) return true;
+  const script = doc.querySelector('script[data-website-id]');
+  if (!script) return false;
+  script.addEventListener('load', () => void send(), { once: true });
+  return false;
+}

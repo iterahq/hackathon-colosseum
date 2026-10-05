@@ -1,6 +1,6 @@
 {
   "name": "@iterahq/itera-mobile",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Mobile shell of the Itera player: Expo Router + one WebView route. Not a root workspace (own install and lockfile).",
   "main": "expo-router/entry",

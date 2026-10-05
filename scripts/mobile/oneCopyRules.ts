@@ -142,7 +142,9 @@ export function rule1(repo: Repo, map: RouteMap): string[] {
   return out;
 }
 
-const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/|@supabase\/|@tanstack\/|react-router)/;
+// `@iterahq/shell-bridge` (bare name only) is admitted: the pure, react-free bridge package (ADR-9, R-6).
+// Its `/web` entry (DOM) and every other `@iterahq/*` package stay forbidden.
+const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/(?!shell-bridge$)|@supabase\/|@tanstack\/|react-router)/;
 const FETCH_ALLOWED = "apps/mobile/src/shellGate.ts";
 
 /**
@@ -161,6 +163,7 @@ export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): st
     const text = repo.read(file);
     for (const spec of importSpecifiers(text)) {
       if (CHROME_FORBIDDEN_IMPORT.test(spec)) out.push(`rule 1b: ${file} imports ${spec}`);
+      else if (/(^|\/)packages\/bridge(\/|$)/.test(spec)) out.push(`rule 1b: ${file} imports ${spec}; reach the bridge by the package name @iterahq/shell-bridge only`);
     }
     if (file !== FETCH_ALLOWED && /\bfetch\(/.test(stripComments(text))) out.push(`rule 1b: ${file} contains fetch( (only ${FETCH_ALLOWED} may)`);
   }
@@ -170,16 +173,26 @@ export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): st
 const ONMESSAGE_FILE = "apps/mobile/app/[...path].tsx";
 const PARSER_FILE = "apps/mobile/src/consoleMessage.ts";
 const PARSER_TEST = "apps/mobile/src/consoleMessage.test.ts";
+const BRIDGE_PARSER_FILE = "apps/mobile/src/bridgeMessage.ts";
+const BRIDGE_PARSER_TEST = "apps/mobile/src/bridgeMessage.test.ts";
 /** Error events carry no page-controlled payload: `onError` (description) and `onHttpError` (statusCode). */
 const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|statusCode)\b/g;
-/** The one place a WebView event may be read: handed whole to the named pure parser. */
-const PARSER_CALL = /\bparseConsoleMessage\(\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,)]/g;
+/** The two places a WebView event may be read: handed whole to one of the two named pure parsers. */
+const PARSER_CALL = /\b(?:parseConsoleMessage|parseBridgeMessage)\(\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,)]/g;
+
+const PARSER_IMPORTS: readonly (readonly [string, string])[] = [
+  ["parseConsoleMessage", "../src/consoleMessage"],
+  ["parseBridgeMessage", "../src/bridgeMessage"],
+];
+const importsFrom = (text: string, name: string, mod: string) =>
+  new RegExp(`\\bimport\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]${mod.replace(/[./]/g, "\\$&")}['"]`).test(text);
 
 /**
  * Rule 1c, for every file under apps/mobile/{app,src}: no raw network; `onMessage` is handled in one
- * file; and `nativeEvent` appears only as the whole argument of `parseConsoleMessage`, a pure
- * parser in `src/consoleMessage.ts` that has its own unit test and returns the
- * `{type:'console', ...}` shape or null. Destructuring `nativeEvent`, or reading `.data` anywhere
+ * file; and `nativeEvent` appears only as the whole argument of `parseConsoleMessage` (a pure
+ * parser in `src/consoleMessage.ts` with its own unit test, which returns the `{type:'console', ...}`
+ * shape or null) or of `parseBridgeMessage` (R-6: a pure parser in `src/bridgeMessage.ts` with its own
+ * unit test, which returns a bridge envelope that passed the native gate or null). Destructuring `nativeEvent`, or reading `.data` anywhere
  * else, is flagged. The error events of the WebView (`.nativeEvent.description`, `.nativeEvent.statusCode`)
  * carry no page-controlled payload and are the only other reads allowed.
  */
@@ -195,12 +208,21 @@ export function rule1c(repo: Repo): string[] {
     if ((text.match(/\bonMessage=/g) ?? []).length > 1) out.push(`rule 1c: ${file} sets onMessage more than once`);
     const rest = text.replace(PARSER_CALL, "").replace(ERROR_EVENT_FIELD, "");
     if (/\bnativeEvent\b/.test(rest)) {
-      out.push(`rule 1c: ${file} reads nativeEvent outside parseConsoleMessage(e.nativeEvent); the payload must go through the one tested parser`);
+      out.push(`rule 1c: ${file} reads nativeEvent outside parseConsoleMessage(e.nativeEvent) or parseBridgeMessage(e.nativeEvent); the payload must go through a tested parser`);
     }
     if (file === ONMESSAGE_FILE && handlesMessage) {
+      for (const [parser, mod] of PARSER_IMPORTS) {
+        if (new RegExp(`\\b${parser}\\(`).test(text) && !importsFrom(text, parser, mod)) {
+          out.push(`rule 1c: ${file} calls ${parser} but does not import it from ${mod} (a local shadow is not the tested parser)`);
+        }
+      }
       if (!/\bparseConsoleMessage\b/.test(text)) out.push(`rule 1c: ${file} handles onMessage without parseConsoleMessage`);
       if (!repo.paths.includes(PARSER_FILE)) out.push(`rule 1c: ${PARSER_FILE} is missing`);
       if (!repo.paths.includes(PARSER_TEST)) out.push(`rule 1c: ${PARSER_TEST} is missing (the parser needs its own unit test)`);
+      if (/\bparseBridgeMessage\b/.test(text)) {
+        if (!repo.paths.includes(BRIDGE_PARSER_FILE)) out.push(`rule 1c: ${BRIDGE_PARSER_FILE} is missing`);
+        if (!repo.paths.includes(BRIDGE_PARSER_TEST)) out.push(`rule 1c: ${BRIDGE_PARSER_TEST} is missing (the bridge parser needs its own unit test)`);
+      }
     }
   }
   return out;

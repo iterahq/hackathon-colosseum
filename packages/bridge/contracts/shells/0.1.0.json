@@ -1,0 +1,7 @@
+{
+  "shellVersion": "0.1.0",
+  "note": "The shell of R-6: bridge v1, shell.version only. Builds of PR-1 and PR-2 report the same version but answer no bridge message (the handshake times out and the web runs as in a browser).",
+  "bridge": true,
+  "protocols": [1],
+  "capabilities": ["shell.version"]
+}

@@ -32,6 +32,8 @@ import { IteraActivityHost } from "./components/branded/activity/IteraActivityHo
 import { RequireAuth } from "./auth/RequireAuth";
 import { RequireRole } from "./auth/RequireRole";
 import { RequireSubscription } from "./auth/RequireSubscription";
+import { ShellBridgeMount } from "./lib/shellBridge";
+import { KeepAwakeRouteMount } from "./lib/shellKeepAwake";
 /* ── Code-split surfaces (lazy) ───────────────────────────────────────────
    /admin/* and /author/* are staff surfaces: role-gated, and never rendered in
    the overwhelmingly common learner session. Statically importing them pulled
@@ -135,6 +137,8 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <EmbedBridgeMount />
+              <ShellBridgeMount />
+              <KeepAwakeRouteMount />
               {/* App-wide mounts: locale sync (writes itera.users.locale) + the
                   "a class went live" signal (reads memberships, deep-links into
                   the authenticated /live/:id). BOTH are suppressed on the guest

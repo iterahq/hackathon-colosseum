@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 // Unit tests of the shell. Pure TypeScript only: the files under test import no
@@ -6,6 +7,9 @@ import { defineConfig } from 'vitest/config';
 // file Vitest would walk up to the root config.
 export default defineConfig({
   root: __dirname,
+  resolve: {
+    alias: { '@iterahq/shell-bridge': path.resolve(__dirname, '../../packages/bridge/src/index.ts') },
+  },
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',

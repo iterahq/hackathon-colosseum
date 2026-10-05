@@ -71,6 +71,12 @@ RUN printf 'server {\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
   }\n\
+  # The shell reads this file at every launch: a changed value must reach it at once. add_header here\n\
+  # replaces the server-level one, which is fine for a JSON file. A missing file is a 404, not index.html.\n\
+  location = /shell-config.json {\n\
+    add_header Cache-Control "no-cache" always;\n\
+    try_files $uri =404;\n\
+  }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
