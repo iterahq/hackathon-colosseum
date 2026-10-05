@@ -98,7 +98,7 @@ export default function AuthPage() {
             {error}
           </p>
         )}
-        <Button type="submit" disabled={busy} className="mt-2 w-full" data-testid="submit-login">
+        <Button type="submit" disabled={busy} className="mt-2 min-h-11 w-full" data-testid="submit-login">
           {busy ? t('common.loading') : t('auth.signIn')}
         </Button>
       </form>
@@ -114,7 +114,7 @@ export default function AuthPage() {
         <Button
           type="button"
           variant="outline"
-          className="w-full"
+          className="min-h-11 w-full"
           onClick={() => loginWithDfl(from)}
           data-testid="oauth-dfl"
         >

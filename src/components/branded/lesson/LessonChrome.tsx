@@ -4,6 +4,9 @@ import { useI18n } from '@/i18n';
 /** Decorative lives count — inert chrome (no lives backend). */
 const DECORATIVE_HEARTS = 5;
 
+/** 36 px visual box, 44 px hit area: the pseudo-element is part of the button for pointer events. */
+export const HIT_SLOP = 'relative before:absolute before:-inset-1';
+
 /**
  * Immersive chrome of the lesson: full-width progress bar flush to the top
  * edge, close-X on the left, and on the right the mute toggle plus a decorative
@@ -67,7 +70,7 @@ export function LessonChrome({
           onClick={onClose}
           aria-label={t('common.back')}
           data-testid="lesson-close"
-          className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          className={`${HIT_SLOP} w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors`}
         >
           <X className="w-4 h-4" />
         </button>
@@ -77,7 +80,7 @@ export function LessonChrome({
             onClick={onBack}
             aria-label={t('lesson.prev')}
             data-testid="lesson-prev"
-            className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            className={`${HIT_SLOP} w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors`}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -89,7 +92,7 @@ export function LessonChrome({
             disabled={forwardDisabled}
             aria-label={t('lesson.next')}
             data-testid="lesson-next"
-            className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            className={`${HIT_SLOP} w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors disabled:opacity-40 disabled:pointer-events-none`}
           >
             <ArrowRight className="w-4 h-4" />
           </button>
@@ -100,7 +103,7 @@ export function LessonChrome({
             onClick={onJumpToCurrent}
             aria-label={t('lesson.jumpToCurrent')}
             data-testid="lesson-jump-current"
-            className="h-9 min-w-9 rounded-full border border-border bg-card px-3 flex items-center justify-center gap-1.5 text-sm font-medium text-evergreen-hi hover:border-evergreen-hi/50 transition-colors"
+            className={`${HIT_SLOP} h-9 min-w-9 rounded-full border border-border bg-card px-3 flex items-center justify-center gap-1.5 text-sm font-medium text-evergreen-hi hover:border-evergreen-hi/50 transition-colors`}
           >
             <SkipForward className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline whitespace-nowrap">{t('lesson.jumpToCurrent')}</span>
@@ -115,7 +118,7 @@ export function LessonChrome({
           aria-pressed={muted}
           aria-label={t('lesson.sound.mute')}
           data-testid="lesson-sound-toggle"
-          className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+          className={`${HIT_SLOP} w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors`}
         >
           {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
