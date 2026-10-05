@@ -50,6 +50,7 @@ env:
   EAS_CLI: eas-cli@24.10.0
   EAS_BUILD_MAX: "12"
   EXPO_APPLE_TEAM_ID: P7WN2R8S4C
+  EXPO_APPLE_TEAM_TYPE: INDIVIDUAL
 
 jobs:
   build:
@@ -110,7 +111,7 @@ jobs:
           EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
         run: |
           set -o pipefail
-          if [ "$PLATFORM" != "ios" ]; then unset EXPO_ASC_API_KEY_PATH EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID EXPO_APPLE_TEAM_ID; fi
+          if [ "$PLATFORM" != "ios" ]; then unset EXPO_ASC_API_KEY_PATH EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID EXPO_APPLE_TEAM_ID EXPO_APPLE_TEAM_TYPE; fi
           npx --yes "$EAS_CLI" build --platform "$PLATFORM" --profile "$PROFILE" --non-interactive --no-wait --json > build.json
           id="$(node -e 'const b=JSON.parse(require("fs").readFileSync("build.json","utf8"));console.log((Array.isArray(b)?b[0]:b).id)')"
           url="https://expo.dev/accounts/iterahq/projects/itera-player/builds/${id}"
