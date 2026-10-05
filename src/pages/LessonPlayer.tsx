@@ -591,7 +591,7 @@ export default function LessonPlayer() {
         data-testid="lesson-main"
         className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
           isSandbox && !completed ? 'pt-4' : 'pt-14 md:pt-16'
-        } ${pending ? 'pb-40' : isSandbox ? 'pb-4' : 'pb-40'}`}
+        } ${pending ? 'pb-[calc(10rem+env(safe-area-inset-bottom,0px))]' : isSandbox ? 'pb-4' : 'pb-[calc(10rem+env(safe-area-inset-bottom,0px))]'}`}
       >
         {/* `resuming` shares the content skeleton on purpose: reading back where
             the learner stopped is part of loading the lesson, and showing

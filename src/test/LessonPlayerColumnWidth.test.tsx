@@ -127,6 +127,12 @@ describe('LessonPlayer — focused column width by activity kind', () => {
     expect(screen.getByTestId('lesson-main').className).toContain('max-w-2xl');
   });
 
+  it('keeps room for the footer plus the bottom safe-area inset', () => {
+    mockLesson('quiz');
+    renderPlayer();
+    expect(screen.getByTestId('lesson-main').className).toContain('pb-[calc(10rem+env(safe-area-inset-bottom,0px))]');
+  });
+
   it('stays responsive — the column is width-capped, never fixed-width', () => {
     mockLesson('code');
     renderPlayer();

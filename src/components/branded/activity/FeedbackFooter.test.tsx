@@ -24,6 +24,15 @@ describe('FeedbackFooter', () => {
     expect(screen.getByTestId('feedback-footer-continue')).toBeTruthy();
   });
 
+  it('pads the footer by the safe-area insets and falls back to 0px', () => {
+    renderFooter();
+    const inner = screen.getByTestId('feedback-footer').firstElementChild as HTMLElement;
+    expect(inner.className).toContain('pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]');
+    expect(inner.className).toContain('pl-[max(1rem,env(safe-area-inset-left,0px))]');
+    expect(inner.className).toContain('pr-[max(1rem,env(safe-area-inset-right,0px))]');
+    expect(inner.className).toContain('md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]');
+  });
+
   it('continues on Enter', () => {
     const onContinue = vi.fn();
     renderFooter({ onContinue });

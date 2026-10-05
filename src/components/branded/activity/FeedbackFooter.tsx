@@ -152,7 +152,7 @@ export function FeedbackFooter({
           data-testid="feedback-footer"
           data-correct={correct ? 'true' : 'false'}
         >
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-6 md:py-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:flex-row md:items-center md:justify-between md:px-6 md:py-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:pl-[max(1.5rem,env(safe-area-inset-left,0px))] md:pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
             <div className="flex min-w-0 items-start gap-3 md:flex-1 md:gap-4">
               <motion.span
                 initial={reducedMotion ? false : { scale: 0 }}
