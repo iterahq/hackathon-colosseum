@@ -2,7 +2,7 @@ import { useLayoutEffect, useState, type RefObject } from 'react';
 
 /** A curve from the right edge of `from` to the left edge of `to`, in the
  * coordinate space of `container`. Recomputed on hover and on resize. */
-export function useConnectorPath(container: RefObject<HTMLElement>, from: HTMLElement | null, to: HTMLElement | null) {
+export function useConnectorPath(container: RefObject<HTMLElement | null>, from: HTMLElement | null, to: HTMLElement | null) {
   const [path, setPath] = useState<string | null>(null);
 
   useLayoutEffect(() => {

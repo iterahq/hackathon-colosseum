@@ -4,7 +4,13 @@ import { XrayHint } from './XrayHint.js';
 
 const mockHover = (none: boolean) =>
   vi.spyOn(window, 'matchMedia').mockImplementation(
-    (query: string) => ({ matches: query === '(hover: none)' && none, media: query }) as MediaQueryList,
+    (query: string) =>
+      ({
+        matches: query === '(hover: none)' && none,
+        media: query,
+        addListener: () => {},
+        removeListener: () => {},
+      }) as unknown as MediaQueryList,
   );
 
 describe('XrayHint', () => {

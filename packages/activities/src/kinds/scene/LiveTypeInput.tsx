@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { Ref } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { SCENE_CODE_COLORS } from './sceneTheme.js';
 
@@ -12,7 +12,7 @@ export function LiveTypeInput({
   solved,
   label,
 }: {
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: Ref<HTMLInputElement>;
   value: string;
   onChange: (value: string) => void;
   solved: boolean;

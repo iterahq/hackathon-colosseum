@@ -9,7 +9,7 @@ wired to the **Itera Supabase** project. Foundation batch of the Itera execution
 
 ## Stack
 
-- Vite + React 18 + TypeScript
+- Vite + React 19 + TypeScript (the learner code preview iframe still runs React 18.3.1 from the committed UMD build in `public/vendor/`)
 - `@devfellowship/components` (shadcn) + Tailwind, `@monaco-editor/react`,
   `@tanstack/react-query`, `vitest`, `@devfellowship/observability` (OTel)
 - `@supabase/supabase-js` → the **Itera** Supabase project `kjefmwlopzeaqgqtlbdn`

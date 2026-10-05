@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage';
@@ -57,7 +57,9 @@ describe('ForgotPasswordPage', () => {
       const resend = screen.getByTestId('forgot-resend');
       expect(resend).toBeDisabled();
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
       fireEvent.click(resend);
       await waitFor(() => expect(requestPasswordReset).toHaveBeenCalledTimes(2));
       await waitFor(() => expect(resend).toBeDisabled());
@@ -75,7 +77,9 @@ describe('ForgotPasswordPage', () => {
       fireEvent.click(screen.getByTestId('submit-forgot'));
       await screen.findByTestId('forgot-sent');
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
       fireEvent.click(screen.getByTestId('forgot-resend'));
 
       expect(await screen.findByTestId('forgot-error')).toBeInTheDocument();

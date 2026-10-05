@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { resources } from '@/i18n';
@@ -226,7 +226,9 @@ describe('self-serve sign-up — /signup route', () => {
       const resend = screen.getByTestId('signup-resend');
       expect(resend).toBeDisabled();
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
       expect(resend).not.toBeDisabled();
       fireEvent.click(resend);
       expect(sendSignupCode).toHaveBeenCalledTimes(2);
@@ -248,7 +250,9 @@ describe('self-serve sign-up — /signup route', () => {
       fireEvent.click(screen.getByTestId('submit-signup-send'));
       await screen.findByTestId('signup-verify-form');
 
-      await vi.advanceTimersByTimeAsync(60_000);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000);
+      });
       fireEvent.click(screen.getByTestId('signup-resend'));
 
       expect(await screen.findByTestId('signup-error')).toBeInTheDocument();

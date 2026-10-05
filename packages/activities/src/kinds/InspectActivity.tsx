@@ -58,7 +58,9 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
       dimmed={side === 'code' && !!active && active !== el.id}
       onEnter={() => discover(el.id)}
       onLeave={release}
-      bindRef={(node) => node && (side === 'page' ? pageRefs : codeRefs).current.set(el.id, node)}
+      bindRef={(node) => {
+        if (node) (side === 'page' ? pageRefs : codeRefs).current.set(el.id, node);
+      }}
     >
       {side === 'page' ? <ScenePageElement element={el} /> : <SceneCodeLine element={el} />}
     </InspectTarget>

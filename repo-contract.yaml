@@ -23,7 +23,7 @@ owner:
 
 stack:
   runtime: browser
-  framework: react-18
+  framework: react-19
   bundler: vite-8
   language: typescript-5
   styling: tailwind-css

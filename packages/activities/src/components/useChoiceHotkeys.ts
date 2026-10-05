@@ -28,7 +28,7 @@ export function useChoiceHotkeys({
   onPick,
   onSubmit,
 }: {
-  scope: RefObject<HTMLElement>;
+  scope: RefObject<HTMLElement | null>;
   count: number;
   enabled: boolean;
   onPick: (index: number) => void;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from '@testing-library/react';
 import { CodeAssertSchema, classTokens, type CodeCheck } from '@iterahq/activity-spec';

@@ -306,7 +306,7 @@ install weight rather than bundle weight — and bundle weight is what ADR-5 is
 about. That the base graph cannot reach it is checked mechanically, over the
 built `dist/`, by `scripts/assert-entrypoint-isolation.mjs`.
 
-**Peers:** `react` (^18.3.1) and `@iterahq/activity-spec` (>=0.8.0). The spec
+**Peers:** `react` (^18.3.1 || ^19.0.0) and `@iterahq/activity-spec` (>=0.8.0). The spec
 package is a **types-only** peer: `dist/**/*.js` contains no import of it, so a
 JavaScript consumer that never typechecks does not need it installed.
 

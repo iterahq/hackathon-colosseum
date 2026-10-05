@@ -76,7 +76,7 @@ export function LiveActivityStage({
         className={readOnly ? 'select-none' : undefined}
         data-testid={testid}
         onClick={handleClick}
-        {...(readOnly ? { inert: '' } : {})}
+        {...(readOnly ? { inert: true } : {})}
       >
         <ActivityRenderer key={`${activity.id}:${attempt}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live />
       </div>

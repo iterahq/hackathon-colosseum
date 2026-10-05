@@ -16,7 +16,7 @@ const ARROW_STEPS: Record<string, readonly [number, number]> = {
  * lens cell and its 8 neighbours; reaching `goal` calls `onGoal` once. Silent
  * by design — the gesture is the feedback, not a sound (Tainan, 2026-09-24).
  */
-export function useXrayScan(stageRef: RefObject<HTMLDivElement>, goal: number, solved: boolean, onGoal: () => void) {
+export function useXrayScan(stageRef: RefObject<HTMLDivElement | null>, goal: number, solved: boolean, onGoal: () => void) {
   const visited = useRef(new Set<number>());
   const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
   const [coverage, setCoverage] = useState(0);

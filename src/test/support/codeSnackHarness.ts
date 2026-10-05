@@ -147,7 +147,7 @@ export function evaluateSnack(source: string, requireShim: ReturnType<typeof cre
     exportsObj,
     moduleObj,
   );
-  return (moduleObj.exports as { default?: unknown }).default as () => JSX.Element;
+  return (moduleObj.exports as { default?: unknown }).default as () => React.JSX.Element;
 }
 
 /** Renders a snack once, the way the preview does, and returns its sandbox. */

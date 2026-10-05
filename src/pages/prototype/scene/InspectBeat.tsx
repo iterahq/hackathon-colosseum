@@ -39,7 +39,7 @@ export function InspectBeat({ solved, onSolved }: SceneBeatProps) {
           {TERA_ELEMENTS.map((element) => (
             <div
               key={element.id}
-              ref={(node) => node && pageRefs.current.set(element.id, node)}
+              ref={(node) => { if (node) pageRefs.current.set(element.id, node); }}
               {...bind(element.id)}
               className="self-start rounded-md px-2 py-1 -mx-2 transition-all duration-200 cursor-help"
               style={{ outline: active === element.id ? "2px solid #3FD17F" : "2px solid transparent", background: active === element.id ? "rgba(63,209,127,.12)" : undefined }}
@@ -53,7 +53,7 @@ export function InspectBeat({ solved, onSolved }: SceneBeatProps) {
           {TERA_ELEMENTS.map((element) => (
             <div
               key={element.id}
-              ref={(node) => node && codeRefs.current.set(element.id, node)}
+              ref={(node) => { if (node) codeRefs.current.set(element.id, node); }}
               {...bind(element.id)}
               className="self-start rounded-md px-2 py-1.5 -mx-2 transition-all duration-200 cursor-help"
               style={{

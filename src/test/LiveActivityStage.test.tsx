@@ -32,6 +32,25 @@ describe('LiveActivityStage', () => {
     expect(wrapper.className).not.toContain('select-none');
   });
 
+  it('gains the inert attribute when the stage locks and loses it when it reopens', () => {
+    const stage = (readOnly: boolean) => (
+      <MemoryRouter>
+        <I18nProvider>
+          <LiveActivityStage activity={activity} readOnly={readOnly} testid="stage" />
+        </I18nProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(stage(false));
+    const wrapper = screen.getByTestId('stage');
+    expect(wrapper.hasAttribute('inert')).toBe(false);
+
+    rerender(stage(true));
+    expect(wrapper.getAttribute('inert')).toBe('');
+
+    rerender(stage(false));
+    expect(wrapper.hasAttribute('inert')).toBe(false);
+  });
+
   it('renders the timer slot and footer around the activity', () => {
     renderStage({
       testid: 'stage',

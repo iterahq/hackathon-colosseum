@@ -23,12 +23,12 @@ export function useLiveTypeTurn({
   minLength: number;
   ghostDone: boolean;
   solved: boolean;
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLInputElement | null>;
   onGate: (length: number) => void;
   onEdit: (length: number) => void;
 }) {
   const [mine, setMine] = useState<string | null>(null);
-  const editTimer = useRef<number>();
+  const editTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!ghostDone || mine !== null) return;

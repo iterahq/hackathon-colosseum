@@ -75,7 +75,7 @@ export function CodeEditor({
   editableRegions,
 }: CodeEditorProps) {
   // Claimed lazily once per mounted editor; stable across re-renders.
-  const instanceIdRef = useRef<number>();
+  const instanceIdRef = useRef<number | undefined>(undefined);
   if (instanceIdRef.current === undefined) {
     instanceIdRef.current = ++modelSeq;
   }
