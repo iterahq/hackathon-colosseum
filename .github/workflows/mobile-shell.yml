@@ -2,9 +2,11 @@
 #
 # The fleet runner is loaded and its root disk is nearly full, so the first step reads the free
 # disk and skips the install steps below 3 GB (it prints `skipped: runner disk <n> GB` instead of
-# failing or proceeding). PR-1 runs: df, npm ci, tsc, check:expo-go-sdk, web-inert. The export and
-# check:one-react run locally for PR-1 and their output is pasted in the PR. PR-2 adds Vitest,
-# expo-doctor, the export and check:one-react.
+# failing or proceeding). Steps: df, npm ci, tsc, the shell's Vitest, expo-doctor, check:expo-go-sdk,
+# the iOS export, check:one-react, web-inert (PLAN ADR-13; PR-1 had the first, second, third and last
+# of these, PR-2 adds Vitest, expo-doctor, the export and check:one-react). Row 0.24 is read from
+# the first PR-2 run: at most 10 minutes with at least 3 GB free. If not, the export and
+# check:one-react come out of the job and their output is pasted in the PR (PLAN row 0.24).
 name: mobile-shell
 
 on:
@@ -57,6 +59,27 @@ jobs:
         with:
           node-version: 20
 
+      # A skipped install is a green run that compiled and tested nothing: say so in the annotations and the summary.
+      - name: Warn when apps/mobile is not built
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install != 'true'
+        run: |
+          echo "::warning title=mobile-shell skipped::apps/mobile was NOT compiled or tested on this run (runner disk below 3 GB)"
+          echo "apps/mobile was NOT compiled or tested on this run (runner disk below 3 GB). Do not merge on this run." >> "$GITHUB_STEP_SUMMARY"
+
+      # Runs before the install steps and does not need them, so a failing doctor or export cannot hide it.
+      # Prints web-inert=yes when every changed path is one that cannot change the web build, and
+      # fails when eslint.config.js, renovate.json, .dockerignore or .gitignore changed outside its
+      # one allowed place. A `no` is also written to the step summary; an empty diff is an error.
+      - name: Web inert
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail; git fetch origin main; changed="$(git diff --name-only --no-renames origin/main...HEAD)"; if [ -z "$changed" ]; then echo "web-inert: empty diff"; exit 1; fi; if printf '%s\n' "$changed" | grep -qvE '^(apps/mobile/|scripts/mobile/|\.github/workflows/mobile-|\.github/CODEOWNERS$|docs/|repo-contract\.yaml$|renovate\.json$|\.dockerignore$|\.gitignore$|eslint\.config\.js$|[^/]+\.md$)' ; then echo web-inert=no | tee -a "$GITHUB_STEP_SUMMARY"; else echo web-inert=yes | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          node apps/mobile/scripts/web-inert.mjs
+
+      # Reads the shell's `expo` range and the public Expo versions endpoint; needs no install.
+      - name: Expo Go SDK
+        run: npm --prefix apps/mobile run check:expo-go-sdk
+
       - name: Install (npm ci)
         if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
         run: npm ci
@@ -66,15 +89,20 @@ jobs:
         if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
         run: npm --prefix apps/mobile run typecheck
 
-      # Reads the shell's `expo` range and the public Expo versions endpoint; needs no install.
-      - name: Expo Go SDK
-        run: npm --prefix apps/mobile run check:expo-go-sdk
+      # Pure-TypeScript unit tests with the shell's own config: without it Vitest walks up to the root config.
+      - name: Unit tests
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm --prefix apps/mobile run test
 
-      # Prints web-inert=yes when every changed path is one that cannot change the web build, and
-      # fails when eslint.config.js, renovate.json, .dockerignore or .gitignore changed outside its
-      # one allowed place. A `no` is also written to the step summary; an empty diff is an error.
-      - name: Web inert
-        if: github.event_name == 'pull_request'
-        run: |
-          set -euo pipefail; git fetch origin main; changed="$(git diff --name-only --no-renames origin/main...HEAD)"; if [ -z "$changed" ]; then echo "web-inert: empty diff"; exit 1; fi; if printf '%s\n' "$changed" | grep -qvE '^(apps/mobile/|scripts/mobile/|\.github/workflows/mobile-|\.github/CODEOWNERS$|docs/|repo-contract\.yaml$|renovate\.json$|\.dockerignore$|\.gitignore$|eslint\.config\.js$|[^/]+\.md$)' ; then echo web-inert=no | tee -a "$GITHUB_STEP_SUMMARY"; else echo web-inert=yes | tee -a "$GITHUB_STEP_SUMMARY"; fi
-          node apps/mobile/scripts/web-inert.mjs
+      - name: Expo Doctor
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm --prefix apps/mobile run doctor
+
+      # The bundle that check:one-react reads: it needs the source maps under dist-ios.
+      - name: Export (iOS)
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm --prefix apps/mobile run bundle:ios
+
+      - name: One React
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm --prefix apps/mobile run check:one-react

@@ -89,6 +89,9 @@ describe('navigationDecision, blocked origins (ADR-5, Q-3)', () => {
   ])('blocks %s', (_what, url) => {
     expect(navigationDecision(url, O)).toBe('block');
   });
+  it('the blocked list wins over the app origin', () => {
+    expect(navigationDecision('https://checkout.stripe.com/x', 'https://checkout.stripe.com', true, [], BLOCKED_ORIGINS)).toBe('block');
+  });
   it('does not widen sub-frames: a blocked origin is a plain cross-origin frame', () => {
     expect(navigationDecision('https://checkout.stripe.com/x', O, false)).toBe('block');
   });

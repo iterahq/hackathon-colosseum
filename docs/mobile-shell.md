@@ -15,6 +15,7 @@ Each row: the plan row, the value, the date (UTC). A row says "not run" when it 
 | 0.7 | `npm ci` with strict peers; `expo-doctor` on Node 20 and 22; is `@expo/metro-runtime` required? | **partial.** Lockfile: `npx --yes npm@11 install --package-lock-only --ignore-scripts` in `apps/mobile` succeeded (lockfileVersion 3, 593 packages, no `node_modules` of packages written; peer warnings only, e.g. optional `react-native-worklets`). npm 10.9.7 had crashed twice (text below). `npm ci` itself, `expo-doctor`: not run (no install, row 0.4). `@expo/metro-runtime`: declared explicitly, as the LS shell does; `expo-router` already lists it as a dependency and a peer, so it is not removable until row 0.7 is measured. | 2026-10-04 |
 | 0.9 | Metro first bundle, rebundle, RSS | not run: needs `apps/mobile/node_modules` (row 0.4) | — |
 | 0.11 | Does `https://app.iterahq.dev/login` answer 200 with the app? | yes: HTTP 200, title "Itera \| Microlearning com IA" | 2026-10-04 18:55 |
+| 0.24 | `mobile-shell` run <= 10 min, runner disk >= 3 GB? | not run: the value comes from the first `mobile-shell` run of PR-2 (job time and the `df -h` line of the disk guard). Not measured here. | — |
 | 0.23 | PR-1 path diff has no web file | see the PR body (pasted output of `git diff --name-only --no-renames origin/main...HEAD`) | 2026-10-04 |
 
 Row 0.7, npm 10.9.7, verbatim, run 1 (versions pinned as in `apps/mobile/package.json` of that moment, no `react-dom`):
@@ -62,6 +63,40 @@ Metro:
 - Never run `expo start` directly. Never use `--tunnel`: a tunnel is a public URL and ADR-12 forbids it. Row 0.8 "no" means no shell evidence this weekend.
 - A reviewer session runs only while Metro is stopped (`ss -ltn | grep 8091` is empty).
 
+## Chrome states (PR-2)
+
+The shell draws only states that exist before the web document does (PLAN section 4.1, ADR-6). The load logic is one pure reducer, `apps/mobile/src/shellChromeState.ts`; `LoadingVeil.tsx` and `OfflineCard.tsx` only draw what it says. Strings are pt-BR.
+
+| State | Shown | Event | Unit test (`apps/mobile/src/shellChromeState.test.ts`) |
+|---|---|---|---|
+| Loading | veil, monogram, thin top bar; 150 ms fade out | `onLoadStart`, `onLoadEnd` | "loading veil" |
+| Load failure | card "Não foi possível abrir a Itera" | `onError`, or `onHttpError` with `statusCode >= 400` (no URL comparison), or 15 s without a finished load | "load failure card", "15 s timeout" |
+| No network at start | same card, title "Sem conexão" | `onError` whose description names an offline error (`ERR_INTERNET_DISCONNECTED`, "appears to be offline") | "load failure card" |
+| Retry | veil again, WebView re-created on the page it was on | "Tentar de novo" | "retry" |
+| Open in browser | system browser on the same page | "Abrir no navegador" | `restartUrl` |
+| Process death | veil, WebView re-created; the card after 3 deaths in a row | `onContentProcessDidTerminate` (iOS), `onRenderProcessGone` (Android) | "process death" |
+| Back | Android hardware back goes back while the WebView can; at the root it returns false | `BackHandler` + `canGoBack` | wiring test `scripts/mobile/shell-route.test.ts`; phone row 0.19 |
+| Blocked navigation | `Alert` "Indisponível no app" (top-frame refusals only: Stripe, custom schemes, `blob:`, `data:`) | `navigationDecision` answers `block` | "blocked-navigation notice" |
+| Screen stays on | no dimming | `useKeepAwake()` (`expo-keep-awake` `~57.0.2`, from `bundledNativeModules.json` of `expo@57.0.26`) | wiring test |
+| Safe areas | insets painted `#0A0908` | `SafeAreaView` | phone screenshot |
+| Dev overlay (`__DEV__`) | shell version, loaded URL, count of forwarded errors | `onMessage` through `parseConsoleMessage` | `apps/mobile/src/consoleMessage.test.ts` |
+
+Both Retry and a process death create a new WebView (a React `key`) instead of calling `reload()`: a dead Android renderer cannot be reloaded, and one path then serves every failure. `onHttpError` fires for the main frame only on both platforms (`RNCWebViewImpl.m` `forMainFrame` at v13.16.1; `RNCWebViewClient.java:267`), so a failing API call or image never shows the card. Not measured on a phone: whether the airplane-mode description matches the offline pattern (a miss shows the generic card, never nothing).
+
+## Console forwarder (ADR-5 "Consequence")
+
+`apps/mobile/src/consoleForwarder.injected.ts` is a script string injected with `injectedJavaScriptBeforeContentLoaded` plus `injectedJavaScriptBeforeContentLoadedForMainFrameOnly={true}` and `injectedJavaScriptForMainFrameOnly={true}`, so boot errors are counted. `apps/mobile/src/consoleMessage.ts` fills in the origin (`buildConsoleForwarder`) and holds the one parser, `parseConsoleMessage`. Each constraint is tested in `consoleMessage.test.ts` by running the built script in a bare sandbox:
+
+| Constraint | Where |
+|---|---|
+| Attaches only when `location.origin` is the app origin | the script's first check |
+| Redacts `(access\|refresh\|dfl)_token` and api-key values, bearer tokens, JWT-shaped and `sb_publishable_`/`sb_secret_` strings, e-mail addresses, before posting | the script's `redact`, again in `redactSecrets` of the parser |
+| `onMessage` drops a message whose frame URL is not on the app origin, or that is not `{type:'console', level, text}` | `parseConsoleMessage` |
+| Size: text cut to 500 characters, a message over 4096 characters dropped | script and parser |
+| Rate: at most 5 messages per second and 50 per page load in the page; at most 10 per second natively | the script; `admitMessage` |
+| Development only: in a release build the script is not injected and `onMessage` is not set | the route file (`__DEV__`) |
+| Forwards only `console.error`, uncaught errors and unhandled rejections | the script |
+
 ## Route map vocabulary
 
 `apps/mobile/route-map.json` uses the key names of the Lesson Studio map (`map.yaml` in `dfl-loops`), plus three keys that are new here.
@@ -102,12 +137,12 @@ Residual: the closed chrome list is edited in the same PR that adds a chrome fil
 ## Known gaps
 
 - Analytics: shell sessions look like mobile web until the bridge lands (R-6).
-- Stripe (`checkout.stripe.com`, `billing.stripe.com`) is blocked: never loaded, never opened in the system browser, Expo Go included (ADR-5, Q-3). A blocked navigation shows nothing: ADR-5 assigns no shell state to it, so the default is a refused navigation, and in Expo Go the web's subscribe button does nothing. Any user-visible message is not in PR-1.
+- Stripe (`checkout.stripe.com`, `billing.stripe.com`) is blocked: never loaded, never opened in the system browser, Expo Go included (ADR-5, Q-3). A blocked top-frame navigation shows the notice "Indisponível no app" (PR-2); in Expo Go the web's subscribe button therefore answers with that notice.
 - "Sign in with DFL": no DFL host loads in the WebView. Until R-20 the handoff URL takes the default path (system browser, no way back); the shell login is email or code.
-- No chrome states in PR-1: no loading veil, no offline card, no safe-area handling, no keep-awake. The dev overlay shows the shell version, the loaded URL and, after a load error, a retry button. PR-2 adds the chrome.
-- `tsc`, `expo-doctor`, `expo export`, `check:one-react` and the shell's own Vitest run need `apps/mobile/node_modules` and have not run (the lockfile exists; the install waits for row 0.4).
+- The chrome states, the console forwarder and keep-awake are in PR-2 (sections above). None of them has run on a phone yet: the recording and the screenshots of S9 are Samuel's.
+- `tsc` of the shell (the three `.tsx` chrome files and the route file), `expo-doctor`, `expo export`, `check:one-react` need `apps/mobile/node_modules` and have not run on this box (row 0.4); `mobile-shell` runs them on the runner. The shell's pure `.ts` files and their tests do run: root Vitest with `apps/mobile/vitest.config.ts` (move `apps/mobile/tsconfig.json` aside, it extends `expo/tsconfig.base`).
 - Rule 2 is read as: a file under `packages/screens/src/<dir>/` belongs to the one universal route whose `screen` equals `<dir>`; `packages/screens/src/index.ts` (the barrel) is exempt, and so is any `index` file in rule 7. For a `universal: true` route, rule 3b skips the page resolution (its `web_paths` are the deleted pages, rule 3). ADR-8 does not say this yet. No such package exists yet.
-- Rules 1b and 1c apply to every `.ts`, `.tsx`, `.js` and `.jsx` file under `apps/mobile/app` and `apps/mobile/src`, not only to chrome. `.js`/`.jsx` there are refused; `nativeEvent` is read only as `parseConsoleMessage(e.nativeEvent, ...)` (a pure parser in `apps/mobile/src/consoleMessage.ts` with its own test, added by PR-2), plus `.nativeEvent.description` and `.nativeEvent.statusCode` of the error events.
+- Rules 1b and 1c apply to every `.ts`, `.tsx`, `.js` and `.jsx` file under `apps/mobile/app` and `apps/mobile/src`, not only to chrome. `.js`/`.jsx` there are refused; `nativeEvent` is read only as `parseConsoleMessage(e.nativeEvent, ...)` (a pure parser in `apps/mobile/src/consoleMessage.ts` with its own test), plus `.nativeEvent.description` and `.nativeEvent.statusCode` of the error events.
 
 ## Monday checklist
 

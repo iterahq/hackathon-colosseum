@@ -86,7 +86,8 @@ export const FRAME_ORIGIN_ALLOW_LIST: readonly string[] = [];
  *
  * - `load`: the app origin (exact: scheme + host + port), and `about:`. A SUB-frame also loads
  *   `blob:` and `data:` (srcdoc templates, previews).
- * - `block` (top frame): an http(s) URL whose origin is one of `blockedOrigins` (checked first).
+ * - `block` (top frame): an http(s) URL whose origin is one of `blockedOrigins` (checked first, even
+ *   before the app origin).
  *   A TOP-frame `blob:` or `data:`.
  * - `external`: any other http(s) URL (the DFL sign-in handoff included, until the system auth
  *   session of R-20), plus `mailto:` and `tel:`; opened outside the shell.
@@ -115,13 +116,12 @@ export function navigationDecision(
   }
   if (scheme === 'blob' || scheme === 'data') return 'block';
   if (scheme === 'about') return 'load';
-  const top = originOf(url);
-  if (top !== null && top === appOrigin) return 'load';
   if (scheme === 'https' || scheme === 'http') {
+    const top = originOf(url);
     if (top === null) return 'block';
     const dotless = originWithoutTrailingDot(url);
     if (dotless !== null && blockedOrigins.includes(dotless)) return 'block';
-    return 'external';
+    return top === appOrigin ? 'load' : 'external';
   }
   if (scheme === 'mailto' || scheme === 'tel') return 'external';
   return 'block';

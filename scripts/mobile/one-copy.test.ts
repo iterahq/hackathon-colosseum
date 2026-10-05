@@ -29,7 +29,14 @@ import {
  * `src/OfflineCard.tsx`). Whether a new file on the list is chrome or a copy is decided by the
  * reviewer; rules 1b and 1c only close the data routes into such a file.
  */
-const CLOSED_CHROME = ["app/_layout.tsx", "app/[...path].tsx", "app/index.tsx", "src/DevOverlay.tsx"];
+const CLOSED_CHROME = [
+  "app/_layout.tsx",
+  "app/[...path].tsx",
+  "app/index.tsx",
+  "src/DevOverlay.tsx",
+  "src/LoadingVeil.tsx",
+  "src/OfflineCard.tsx",
+];
 
 /** `src/App.tsx` has 32 paths (ADR-8 rule 5). A new non-literal path fails the scan instead of being skipped. */
 const APP_PATHS = 32;
@@ -113,6 +120,8 @@ const CLEAN: Record<string, string> = {
   "apps/mobile/app/[...path].tsx": "import { WebView } from 'react-native-webview';\nexport default function S() { return <WebView />; }\n",
   "apps/mobile/app/index.tsx": "export { default } from './[...path]';\n",
   "apps/mobile/src/DevOverlay.tsx": "import { Text } from 'react-native';\nexport const DevOverlay = () => <Text>ok</Text>;\n",
+  "apps/mobile/src/LoadingVeil.tsx": "import { Text } from 'react-native';\nexport const LoadingVeil = () => <Text>veil</Text>;\n",
+  "apps/mobile/src/OfflineCard.tsx": "import { Text } from 'react-native';\nexport const OfflineCard = () => <Text>card</Text>;\n",
   "apps/mobile/src/origin.ts": "export const x = 1;\n",
   "src/App.tsx": APP,
   "src/pages/auth/LoginPage.tsx": "export default function LoginPage() { return null; }\n",
