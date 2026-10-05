@@ -300,6 +300,22 @@ workflows:
     one_copy_check: scripts/mobile/one-copy.test.ts (runs in the build-test job of ci.yml)
     shared_packages: packages/core and packages/screens are typechecked twice (root `npm run typecheck`; apps/mobile `tsc`)
 
+  mobile-eas:
+    file: .github/workflows/mobile-eas.yml
+    runs_on: self-hosted dfl-runner
+    trigger: workflow_dispatch only, on main (platform android|ios, profile preview|production, optional iOS submit by build id)
+    steps: build counter (holds each platform at 12 of the 15 a month), npm ci, eas build --no-wait; a separate submit job for iOS
+    secrets: EXPO_TOKEN, ASC_API_KEY_P8, ASC_API_KEY_ID, ASC_API_ISSUER_ID
+
+mobile_shell_eas:
+  # Plan row R-2 (R-3 and R-4 prepared, not run).
+  project: "@iterahq/itera-player, Expo org iterahq (id in apps/mobile/app.json extra.eas.projectId)"
+  ids: com.tainanfidelis.iterahq (bundle identifier and Android package)
+  config: apps/mobile/eas.json, apps/mobile/app.json
+  build_counter: apps/mobile/scripts/eas-build-counter.mjs
+  back_confirm: apps/mobile/src/backConfirm.ts
+  expo_go: expo start must pass --go (apps/mobile/scripts/start-metro.sh does)
+
 mobile_shell_session:
   # Plan row R-12, ADR-10. The WebView owns the Supabase session and its refresh.
   capability: auth.session (web to shell only; contract packages/bridge/contracts/shells/0.3.0.json)

@@ -2,19 +2,54 @@
   "expo": {
     "name": "Itera",
     "slug": "itera-player",
+    "owner": "iterahq",
     "scheme": "itera",
     "version": "0.3.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0A0908",
+    "icon": "./assets/icon.png",
     "platforms": ["ios", "android"],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tainanfidelis.iterahq",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-    "plugins": ["expo-router"],
+    "android": {
+      "package": "com.tainanfidelis.iterahq",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#0A0908"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A0908",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
+      ["expo-dev-client", { "addGeneratedScheme": false }]
+    ],
+    "runtimeVersion": { "policy": "fingerprint" },
+    "updates": {
+      "url": "https://u.expo.dev/14894fdb-316a-4b24-a12b-ac3106ee9d6d",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "extra": {
       "webOrigin": "https://app.iterahq.dev",
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "14894fdb-316a-4b24-a12b-ac3106ee9d6d"
+      }
     }
   }
 }

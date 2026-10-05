@@ -25,6 +25,7 @@
  * send), and the page's budget after it, which counts only what a parser accepted. A frame on another origin
  * reaches neither. A build with no backend has no native session and never offers `auth.session`.
  * On return to the foreground the session is revalidated: the page is asked once, and a copy nobody vouches for is dropped.
+ * R-2 adds the back-confirm card of installed builds (src/backConfirm.ts, src/BackConfirmCard.tsx); Expo Go keeps the system back.
  *
  * The one catch-all route of the shell. Every path opens the web app in a WebView; a path that is
  * not in the route map opens the home route.
@@ -50,6 +51,8 @@ import { parseBackend, probeIteraUser, probeLine, type ProbeResult } from '../sr
 import { createShellBridge, parseBridgeMessage } from '../src/bridgeMessage';
 import { admitMessage, admitRaw, buildConsoleForwarder, messageSize, parseConsoleMessage, type MessageBucket, type RawBucket } from '../src/consoleMessage';
 import { DevOverlay } from '../src/DevOverlay';
+import { BackConfirmCard } from '../src/BackConfirmCard';
+import { backConfirmEnabled, decideBack } from '../src/backConfirm';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
 import { createNativeSession, issuerOf, sessionLine } from '../src/nativeSession';
@@ -68,12 +71,13 @@ import {
   isVeilVisible,
   noticeDue,
   restartUrl,
-  shouldHandleBack,
 } from '../src/shellChromeState';
 
 const ORIGIN = parseWebOrigin(Constants.expoConfig?.extra?.webOrigin);
 const SHELL_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const BACKGROUND = '#0A0908';
+// Expo Go keeps the system back (it returns to the Expo Go home); an installed app asks first.
+const BACK_CONFIRM = backConfirmEnabled(Constants.executionEnvironment);
 // One platform lock per process, shared by every mounted WebView.
 const KEEP_AWAKE = createKeepAwakeClaims({
   activate: (tag: string) => activateKeepAwakeAsync(tag),
@@ -270,12 +274,18 @@ function WebShell({ shellPath }: { shellPath: string }) {
     return () => clearTimeout(timer);
   }, [chrome.phase, chrome.loadId]);
 
-  // Android hardware back follows the WebView history; at the root it returns false (Expo Go home).
+  // Android hardware back follows the WebView history. At the root an installed app opens the back-confirm
+  // card (src/backConfirm.ts); in Expo Go the press is left to the system (the Expo Go home).
+  const [backConfirmOpen, setBackConfirmOpen] = useState(false);
+  const backConfirmOpenRef = useRef(false);
+  backConfirmOpenRef.current = backConfirmOpen;
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!shouldHandleBack(canGoBack.current, phase.current)) return false;
-      webview.current?.goBack();
-      return true;
+      const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM });
+      if (action === 'history') webview.current?.goBack();
+      else if (action === 'confirm') setBackConfirmOpen(true);
+      else if (action === 'dismiss') setBackConfirmOpen(false);
+      return action !== 'leave';
     });
     return () => subscription.remove();
   }, []);
@@ -313,6 +323,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
       {isCardVisible(chrome) ? (
         <OfflineCard title={copy.title} body={copy.body} onRetry={() => relaunch('retry')} onOpenBrowser={openInBrowser} />
       ) : null}
+      {backConfirmOpen ? <BackConfirmCard onStay={() => setBackConfirmOpen(false)} onLeave={() => BackHandler.exitApp()} /> : null}
       {__DEV__ ? (
         <DevOverlay
           version={SHELL_VERSION}

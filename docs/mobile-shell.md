@@ -59,7 +59,7 @@ Box addresses (private repo): tailnet `100.69.123.19`; public IPv4 `178.156.191.
 Metro:
 
 - The only start path is `apps/mobile/scripts/start-metro.sh`. It exits 1 unless the four checks pass (`iptables -C INPUT -p tcp --dport 8091 -j METRO-8091`, `iptables -C METRO-8091 -j DROP`, and the same two with `ip6tables`). The checks need root: the script uses `sudo -n` when it is not root, and fails closed when sudo would ask for a password.
-- Then it starts Expo on port 8091 with the packager host set to the tailnet address and `--host lan`, and prints `ss -ltn` for the port (expected `*:8091`, or `0.0.0.0:8091` and `[::]:8091`).
+- Then it starts Expo on port 8091 with `--go` (Expo Go; see "EAS builds": `expo-dev-client` makes `expo start` default to a development build), the packager host set to the tailnet address and `--host lan`, and prints `ss -ltn` for the port (expected `*:8091`, or `0.0.0.0:8091` and `[::]:8091`).
 - Never run `expo start` directly. Never use `--tunnel`: a tunnel is a public URL and ADR-12 forbids it. Row 0.8 "no" means no shell evidence this weekend.
 - A reviewer session runs only while Metro is stopped (`ss -ltn | grep 8091` is empty).
 
@@ -161,6 +161,45 @@ Residual: the closed chrome list is edited in the same PR that adds a chrome fil
 - `tsc` of the shell (the three `.tsx` chrome files and the route file), `expo-doctor`, `expo export`, `check:one-react` need `apps/mobile/node_modules` and have not run on this box (row 0.4); `mobile-shell` runs them on the runner. The shell's pure `.ts` files and their tests do run: root Vitest with `apps/mobile/vitest.config.ts` (move `apps/mobile/tsconfig.json` aside, it extends `expo/tsconfig.base`).
 - Rule 2 is read as: a file under `packages/screens/src/<dir>/` belongs to the one universal route whose `screen` equals `<dir>`; `packages/screens/src/index.ts` (the barrel) is exempt, and so is any `index` file in rule 7. For a `universal: true` route, rule 3b skips the page resolution (its `web_paths` are the deleted pages, rule 3). ADR-8 does not say this yet. No such package exists yet.
 - Rules 1b and 1c apply to every `.ts`, `.tsx`, `.js` and `.jsx` file under `apps/mobile/app` and `apps/mobile/src`, not only to chrome. `.js`/`.jsx` there are refused; `nativeEvent` is read only as `parseConsoleMessage(e.nativeEvent, ...)` (a pure parser in `apps/mobile/src/consoleMessage.ts` with its own test) or `parseBridgeMessage(e.nativeEvent, ...)` (R-6, `apps/mobile/src/bridgeMessage.ts` with its own test), plus `.nativeEvent.description` and `.nativeEvent.statusCode` of the error events.
+
+## EAS builds (R-2; R-3 and R-4 prepared, none run)
+
+EAS project `@iterahq/itera-player` (Expo org `iterahq`, id `14894fdb-316a-4b24-a12b-ac3106ee9d6d`, created with `eas init` and the org robot token; the id is not a secret). Bundle id and Android package: `com.tainanfidelis.iterahq` (Q-2; the Android package is the same id until Tainan says otherwise). Apple app record: Apple ID `6819303533`, SKU `iterahq-ios`.
+
+Files: `apps/mobile/app.json` (owner, ids, `runtimeVersion` policy `fingerprint`, `updates.url`, icon, splash, `ITSAppUsesNonExemptEncryption: false`, no usage string and no associated domain: the shell uses no camera, microphone or location, and R-5 owns deep links), `apps/mobile/eas.json` (profiles `development`, `preview`, `production`; `appVersionSource: remote`, so EAS numbers builds and `app.json` carries no `buildNumber` or `versionCode`; Node `20.19.4`, the major `mobile-shell.yml` runs), `.github/workflows/mobile-eas.yml`, `apps/mobile/scripts/eas-build-counter.mjs` (+ `scripts/mobile/eas-build-counter.test.ts`), `apps/mobile/scripts/make-icons.py` (draws `apps/mobile/assets/*.png` from the geometry and colours of `public/favicon.svg`: the web repo has no square 1024 px source).
+
+| Profile | Does | Used by |
+|---|---|---|
+| `development` | dev client, internal distribution, Android `apk` | a development build, when one is wanted (iOS needs registered devices and an ad-hoc profile: not set up) |
+| `preview` | Android `apk`, internal distribution, channel `preview` | R-3, the APK link |
+| `production` | store distribution, `autoIncrement`, channel `production`; iOS for TestFlight, Android `app-bundle` | R-4; Android only when the Play track is set up |
+
+### Expo Go still works
+
+- `expo-dev-client` is installed. Its config plugin only runs at prebuild, so Expo Go ignores it. But the Expo CLI defaults `expo start` to the development-build target when this package is a direct dependency (`node_modules/@expo/cli/build/src/start/resolveOptions.js`: `isAutoDevClient`): the QR and URL would use the app scheme and Expo Go would not be offered. `scripts/start-metro.sh` therefore passes `--go`. Anyone starting Expo by hand must pass `--go` too (`--dev-client` is the opposite flag).
+- The plugin is declared with `addGeneratedScheme: false`, so a store build does not claim the extra `exp+itera` scheme.
+- `expo-updates` is a native module that Expo Go already ships; the app imports nothing from it. In Expo Go the `updates` and `runtimeVersion` fields are not used for loading. The Expo Go manifest handler does ask `expo-updates` for the runtime version on each manifest request; with the `fingerprint` policy that is a fingerprint of the project (measured here: 5.7 s and 136 MB RSS on iOS, 5.0 s and 130 MB on Android, one process, no Metro). A first connection is that much slower.
+- Not verified on a phone: that the owner's Expo Go session still opens after this change.
+
+### Back-confirm card (R-2)
+
+`src/backConfirm.ts` (pure, tested) decides each Android hardware back press: close an open card; go back in the page while it can (never from the failure card); at the root, open the card ("Sair do Itera?", "Continuar no app" / "Sair"). The card is on in an installed build and a development build, off in Expo Go (`Constants.executionEnvironment === 'storeClient'`), where the press still returns to the Expo Go home. "Sair" calls `BackHandler.exitApp()`. iOS has no hardware back.
+
+### First builds (run by the owner; nothing here has run)
+
+Secrets in the repo (Settings, Secrets and variables, Actions): `ASC_API_KEY_P8`, `ASC_API_KEY_ID`, `ASC_API_ISSUER_ID` exist (2026-10-05). `EXPO_TOKEN` does not: it is the robot token of the Expo org `iterahq`, from Samuel's Infisical vault ("Expo Go Cli Samuel"). Add it first. Counter: each platform is held at 12 of the 15 a month of the Free plan (`EAS_BUILD_MAX` in the workflow); a run above the hold fails before any build starts.
+
+1. Android APK (R-3): Actions, `mobile-eas`, Run workflow on `main` with `platform=android`, `profile=preview`. Or `gh workflow run mobile-eas.yml --ref main -f platform=android -f profile=preview`. Consumes one Android build of the org (the first keystore is generated by EAS and stored in its credentials). The run prints the build page, `https://expo.dev/accounts/iterahq/projects/itera-player/builds/<id>`; the build takes about 10 to 30 minutes on EAS, not on the runner. Once it is finished, the page has the install link and a QR.
+2. TestFlight (R-4): `platform=ios`, `profile=production`. Consumes one iOS build. When the build page says "finished", run again with `submit_build_id=<that id>` (and `platform=ios profile=production`): the submit job sends it to App Store Connect (app `6819303533`, key from the repo secrets). It builds nothing and spends no build.
+3. `platform=ios profile=preview` is refused on purpose. `dry_run=true` only reads the counter.
+
+Installing: Android tester opens the link on the phone, allows installs from the browser once, installs the APK (signed with the keystore EAS holds; it does not come from Play). iOS tester: a TestFlight invite, then the TestFlight app.
+
+Still manual, and who can do it:
+
+- Apple (Tainan: the Apple account and the team are his): confirm the team id in `eas.json` (`P7WN2R8S4C`, copied from the Lesson Studio shell, same team key); the first iOS build asks EAS for a distribution certificate and provisioning profile through the API key, which has not been tried for this app; if EAS refuses in non-interactive mode, someone with the Apple login runs `eas credentials` once. App Store Connect: add the testers to the internal group, answer the export-compliance and privacy questions of the app record, and screenshots and the review for anything beyond internal TestFlight (R-14). Samuel has an iPhone, Windows and Linux and no Mac, so he can install from TestFlight but not do the Mac-only steps.
+- Play Console (Tainan): the app record, the Play service account and the first upload to the internal track are not done; R-3 stops at the APK link.
+- Supabase: the build carries no `EXPO_PUBLIC_SUPABASE_URL` or `EXPO_PUBLIC_SUPABASE_ANON_KEY` (the anon key is not in this repo). The `auth.session` capability is then not registered, by design (ADR-10): the first builds open the web app and have no native session. Putting the two public values in the `env` of a profile in `eas.json` is the owner's decision.
 
 ## Monday checklist
 

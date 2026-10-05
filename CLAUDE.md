@@ -181,7 +181,7 @@ viewport e não `fullPage`, e a armadilha de rasterização que valia 19 pixels 
 ## Mobile shell (`apps/mobile`)
 
 Casca de celular da Itera: Expo Router 57 com UMA rota que abre `app.iterahq.dev` num
-WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm: tem
+WebView. Roda no Expo Go e, desde o R-2, em builds EAS (`expo-dev-client`, `expo-updates`). **Não é workspace** do npm: tem
 `package.json` e lockfile próprios, e o `npm install` da raiz não toca nela.
 
 - Comandos: `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run test`,
@@ -220,6 +220,11 @@ WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm:
   pagamento nem Stripe.
 - O Metro só sobe por `apps/mobile/scripts/start-metro.sh`, depois do filtro de pacotes de
   `apps/mobile/scripts/metro-firewall.sh`. Nunca `expo start` direto, nunca `--tunnel`.
+- **EAS** (R-2): projeto `@iterahq/itera-player` na org `iterahq`, `apps/mobile/eas.json`, workflow manual
+  `.github/workflows/mobile-eas.yml` com contador de builds (teto 12 por plataforma). Nunca
+  `eas build`/`submit` à mão sem ler o contador; o primeiro build é decisão do dono. Com
+  `expo-dev-client` instalado o `expo start` mira o dev build: no Expo Go sempre `--go` (o
+  `start-metro.sh` já passa). Receita: `docs/mobile-shell.md` § "EAS builds".
 - Runbook, medições e lacunas conhecidas: [`docs/mobile-shell.md`](docs/mobile-shell.md).
 
 ## Contracts

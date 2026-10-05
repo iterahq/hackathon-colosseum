@@ -28,13 +28,14 @@ import {
 /**
  * ADR-8, "one copy of each component/screen". The closed chrome list is asserted HERE, so adding
  * a chrome file is a visible edit of this test (PR-2 adds `src/LoadingVeil.tsx` and
- * `src/OfflineCard.tsx`; R-7 adds `src/UpdateNowCard.tsx`). Whether a new file on the list is chrome or a copy is decided by the
+ * `src/OfflineCard.tsx`; R-7 adds `src/UpdateNowCard.tsx`; R-2 adds `src/BackConfirmCard.tsx`). Whether a new file on the list is chrome or a copy is decided by the
  * reviewer; rules 1b and 1c only close the data routes into such a file.
  */
 const CLOSED_CHROME = [
   "app/_layout.tsx",
   "app/[...path].tsx",
   "app/index.tsx",
+  "src/BackConfirmCard.tsx",
   "src/DevOverlay.tsx",
   "src/LoadingVeil.tsx",
   "src/OfflineCard.tsx",
@@ -135,6 +136,7 @@ const CLEAN: Record<string, string> = {
   "apps/mobile/app/_layout.tsx": "import { Stack } from 'expo-router';\nexport default function L() { return <Stack />; }\n",
   "apps/mobile/app/[...path].tsx": "import { WebView } from 'react-native-webview';\nexport default function S() { return <WebView />; }\n",
   "apps/mobile/app/index.tsx": "export { default } from './[...path]';\n",
+  "apps/mobile/src/BackConfirmCard.tsx": "import { Text } from 'react-native';\nexport const BackConfirmCard = () => <Text>back</Text>;\n",
   "apps/mobile/src/DevOverlay.tsx": "import { Text } from 'react-native';\nexport const DevOverlay = () => <Text>ok</Text>;\n",
   "apps/mobile/src/LoadingVeil.tsx": "import { Text } from 'react-native';\nexport const LoadingVeil = () => <Text>veil</Text>;\n",
   "apps/mobile/src/OfflineCard.tsx": "import { Text } from 'react-native';\nexport const OfflineCard = () => <Text>card</Text>;\n",

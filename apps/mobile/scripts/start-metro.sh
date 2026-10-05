@@ -8,6 +8,8 @@
 #   ip6tables -C INPUT -p tcp --dport 8091 -j METRO-8091
 #   ip6tables -C METRO-8091 -j DROP
 # Then it starts Metro on the tailnet address and prints the listener of the port.
+# `--go` is required since R-2: with `expo-dev-client` in package.json, `expo start` defaults to the
+# development-build target (QR and URL use the app scheme, not `exp://`) and Expo Go is not offered.
 # Reviewer sessions run only while Metro is stopped (`ss -ltn | grep 8091` is empty).
 set -euo pipefail
 
@@ -43,7 +45,7 @@ if ss -ltn | grep -q ":$PORT "; then
   exit 1
 fi
 
-REACT_NATIVE_PACKAGER_HOSTNAME="$TAILNET_IP" npx expo start --port "$PORT" --host lan &
+REACT_NATIVE_PACKAGER_HOSTNAME="$TAILNET_IP" npx expo start --go --port "$PORT" --host lan &
 METRO_PID=$!
 trap 'kill "$METRO_PID" 2>/dev/null || true' INT TERM
 

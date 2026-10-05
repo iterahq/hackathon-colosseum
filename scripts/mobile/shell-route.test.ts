@@ -72,7 +72,9 @@ describe('route file wiring', () => {
 
   it('Android back follows canGoBack, is reset on every remount, and returns false at the root or on the card', () => {
     expect(code).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
-    expect(code).toMatch(/if \(!shouldHandleBack\(canGoBack\.current, phase\.current\)\) return false;/);
+    expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM \}\)/);
+    expect(code).toMatch(/return action !== 'leave';/);
+    expect(code).toMatch(/const BACK_CONFIRM = backConfirmEnabled\(Constants\.executionEnvironment\);/);
     expect(code).toMatch(/canGoBack\.current = false;/);
     expect(code).toMatch(/canGoBack\.current = nav\.canGoBack;/);
   });
@@ -80,6 +82,10 @@ describe('route file wiring', () => {
   it('both card buttons are wired to a handler', () => {
     expect(code).toMatch(/onRetry=\{\(\) => relaunch\('retry'\)\}/);
     expect(code).toMatch(/onOpenBrowser=\{openInBrowser\}/);
+  });
+
+  it('both back-confirm buttons are wired to a handler', () => {
+    expect(code).toMatch(/<BackConfirmCard onStay=\{\(\) => setBackConfirmOpen\(false\)\} onLeave=\{\(\) => BackHandler\.exitApp\(\)\} \/>/);
   });
 
   it('a blocked navigation shows the notice', () => {

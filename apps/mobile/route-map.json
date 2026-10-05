@@ -33,7 +33,7 @@
     {"path": "/author/activities/:activityId/test-live", "screen": "author-activities-activityId-test-live", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/LiveActivityTestPage.tsx"]},
     {"path": "*", "screen": "not-found", "mode": "webview", "universal": true, "web_paths": ["src/pages/NotFound.tsx"]}
   ],
-  "shell_chrome": ["app/_layout.tsx", "app/[...path].tsx", "app/index.tsx", "src/DevOverlay.tsx", "src/LoadingVeil.tsx", "src/OfflineCard.tsx", "src/UpdateNowCard.tsx"],
+  "shell_chrome": ["app/_layout.tsx", "app/[...path].tsx", "app/index.tsx", "src/BackConfirmCard.tsx", "src/DevOverlay.tsx", "src/LoadingVeil.tsx", "src/OfflineCard.tsx", "src/UpdateNowCard.tsx"],
   "dom_zones": [
     {"id": "live-class", "reason": "realtime + pointer mirroring", "paths": ["/live/:sessionId", "/g/:code"], "kinds": []},
     {"id": "staff", "reason": "authoring, admin, instructor", "paths": ["/live/instructor", "/live/instructor/report/:sessionId", "/live/instructor/:sessionId", "/admin", "/admin/roster", "/admin/programs", "/admin/engagement", "/admin/replay", "/admin/replay/:traceId", "/admin/artifacts", "/author", "/author/units/:unitId/canvas", "/author/activities/:activityId/test", "/author/activities/:activityId/test-live"], "kinds": []},

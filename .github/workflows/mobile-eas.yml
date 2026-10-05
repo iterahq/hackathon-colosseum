@@ -1,0 +1,190 @@
+# EAS builds of the mobile shell (apps/mobile). PLAN rows R-3 (Android preview APK) and R-4 (iOS TestFlight).
+# Provenance: devfellowship/dfl-lesson-studio, .github/workflows/ios-eas.yml (manual trigger, counter
+# before any build, token and ASC key only on the steps that need them, key removed at the end).
+# Changes: Android as well as iOS, `--no-wait` (the run prints the build page; EAS builds for 10-30
+# minutes and the self-hosted runner is not held for it), the submit as its own job started by a
+# build id, no `Production` environment (this repo has none; the ref test below is the gate).
+#
+# Manual only. One build is one slot of the Expo Free plan (15 per platform a month). The counter
+# holds each platform at EAS_BUILD_MAX and fails the job before a build starts.
+#
+#   Android APK (R-3):  platform=android profile=preview
+#   iOS TestFlight (R-4): platform=ios profile=production   -> then, when the build is "finished",
+#                         run again with submit_build_id=<the build id> to send it to TestFlight.
+#
+# Secrets (repo): EXPO_TOKEN (the robot token of the Expo org `iterahq`), ASC_API_KEY_P8,
+# ASC_API_KEY_ID, ASC_API_ISSUER_ID (set 2026-10-05). The shell holds no secret of its own.
+name: mobile-eas
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        options: [android, ios]
+        default: android
+      profile:
+        description: preview = Android APK (internal link). production = store build (iOS for TestFlight, Android app bundle).
+        type: choice
+        options: [preview, production]
+        default: preview
+      dry_run:
+        description: Read the build counter only, start no build
+        type: boolean
+        default: false
+      submit_build_id:
+        description: iOS only. A finished production build id to submit to TestFlight. Set it and nothing is built.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-eas
+  cancel-in-progress: false
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+  EAS_CLI: eas-cli@24.10.0
+  EAS_BUILD_MAX: "12"
+  EXPO_APPLE_TEAM_ID: P7WN2R8S4C
+
+jobs:
+  build:
+    name: Counter, then EAS build (no wait)
+    if: ${{ github.ref == 'refs/heads/main' && inputs.submit_build_id == '' }}
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check the platform and profile
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          if [ "$PLATFORM" = "ios" ] && [ "$PROFILE" = "preview" ]; then
+            echo "::error title=No iOS preview::an iOS internal build needs registered devices and an ad-hoc profile; none is set up. Use platform=ios profile=production (TestFlight)."
+            exit 1
+          fi
+
+      - name: Build counter (refuses a build above the hold)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PLATFORM: ${{ inputs.platform }}
+        run: node scripts/eas-build-counter.mjs
+
+      - name: Install (npm ci)
+        if: ${{ !inputs.dry_run }}
+        run: npm ci --no-audit --no-fund
+
+      - name: Write the App Store Connect key (iOS)
+        if: ${{ !inputs.dry_run && inputs.platform == 'ios' }}
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          umask 077
+          mkdir -p .secrets
+          printf '%s\n' "$ASC_API_KEY_P8" > .secrets/asc-api-key.p8
+
+      - name: EAS build
+        id: build
+        if: ${{ !inputs.dry_run }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+          EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/apps/mobile/.secrets/asc-api-key.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          if [ "$PLATFORM" != "ios" ]; then unset EXPO_ASC_API_KEY_PATH EXPO_ASC_KEY_ID EXPO_ASC_ISSUER_ID EXPO_APPLE_TEAM_ID; fi
+          npx --yes "$EAS_CLI" build --platform "$PLATFORM" --profile "$PROFILE" --non-interactive --no-wait --json > build.json
+          id="$(node -e 'const b=JSON.parse(require("fs").readFileSync("build.json","utf8"));console.log((Array.isArray(b)?b[0]:b).id)')"
+          url="https://expo.dev/accounts/iterahq/projects/itera-player/builds/${id}"
+          echo "id=${id}" >> "$GITHUB_OUTPUT"
+          echo "EAS build started: ${url}"
+          { echo "### EAS build queued"; echo; echo "- platform: ${PLATFORM}, profile: ${PROFILE}"; echo "- build: ${url}"; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: rm -f .secrets/asc-api-key.p8
+
+  submit:
+    name: Submit an iOS build to TestFlight
+    if: ${{ github.ref == 'refs/heads/main' && inputs.submit_build_id != '' }}
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check the build id
+        env:
+          BUILD_ID: ${{ inputs.submit_build_id }}
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          if ! printf '%s' "$BUILD_ID" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+            echo "::error title=Bad build id::submit_build_id must be an EAS build id (a UUID)."
+            exit 1
+          fi
+          if [ "$PLATFORM" != "ios" ] || [ "$PROFILE" != "production" ]; then
+            echo "::error title=Wrong inputs::a submit needs platform=ios and profile=production."
+            exit 1
+          fi
+
+      - name: Install (npm ci)
+        run: npm ci --no-audit --no-fund
+
+      # eas submit reads the key path and id from eas.json only (not from env), so the run
+      # writes the key file and fills in the two ids from the secrets; none of them is committed.
+      - name: Write the App Store Connect key and fill eas.json
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          umask 077
+          mkdir -p .secrets
+          printf '%s\n' "$ASC_API_KEY_P8" > .secrets/asc-api-key.p8
+          node -e '
+            const fs = require("fs");
+            const eas = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+            const ios = eas.submit.production.ios;
+            ios.ascApiKeyId = process.env.ASC_API_KEY_ID;
+            ios.ascApiKeyIssuerId = process.env.ASC_API_ISSUER_ID;
+            fs.writeFileSync("eas.json", JSON.stringify(eas, null, 2));
+          '
+
+      - name: EAS submit
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          BUILD_ID: ${{ inputs.submit_build_id }}
+        run: npx --yes "$EAS_CLI" submit --platform ios --profile production --id "$BUILD_ID" --non-interactive --no-wait
+
+      - name: Remove the key
+        if: always()
+        run: |
+          rm -f .secrets/asc-api-key.p8
+          git checkout -- eas.json
