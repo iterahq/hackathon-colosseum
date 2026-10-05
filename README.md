@@ -148,6 +148,11 @@ O `<link>` para `/vendor/fonts/fonts.css` existe em **dois** lugares:
 Detalhes e regras de manutenção em `CLAUDE.md` → "Zero fetch de CDN externa em
 runtime".
 
+## Mobile shell
+
+`apps/mobile` is the phone shell (Expo Go, one WebView route on the web app). It has its own
+install and lockfile and is not an npm workspace. See [`docs/mobile-shell.md`](docs/mobile-shell.md).
+
 ## DB
 
 See [`db/README.md`](db/README.md) for the schema, RLS, and the migration flow.

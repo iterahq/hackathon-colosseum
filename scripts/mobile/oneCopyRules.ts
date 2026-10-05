@@ -1,0 +1,462 @@
+/**
+ * The rules of "one copy of each component/screen" (PLAN ADR-8), as pure functions over a
+ * snapshot of the repo. `one-copy.test.ts` runs them against the real tree and against one
+ * negative fixture per rule.
+ *
+ * Everything here reads files as text and JSON. Nothing imports from `apps/mobile/**`
+ * (that would pull React Native types into the root `tsc` program).
+ */
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+
+export interface Repo {
+  /** Every file of the snapshot, repo-relative, posix separators. */
+  paths: readonly string[];
+  read(file: string): string;
+}
+
+export interface RouteEntry {
+  path: string;
+  screen: string;
+  mode: string;
+  universal: boolean;
+  web_paths: string[];
+}
+
+export interface RouteMap {
+  version: number;
+  routes: RouteEntry[];
+  shell_chrome: string[];
+  dom_zones: { id: string; reason: string; paths: string[]; kinds: string[] }[];
+  not_counted_routes: { path: string; reason: string }[];
+}
+
+const SKIP_DIRS = new Set(["node_modules", ".expo", "dist-ios", "dist", ".git"]);
+const WALK_ROOTS = ["apps/mobile", "packages", "src"];
+const EXTRA_FILES = ["e2e/support/capture-manifest.json"];
+
+export const MAP_PATH = "apps/mobile/route-map.json";
+export const APP_PATH = "src/App.tsx";
+export const GUEST_PATH_FILE = "src/guest/guestRoute.ts";
+export const MANIFEST_PATH = "e2e/support/capture-manifest.json";
+
+/** Wrappers that sit around a page inside `element=` (ADR-8 rule 3b). */
+export const ROUTE_WRAPPERS: ReadonlySet<string> = new Set([
+  "RequireAuth",
+  "RequireSubscription",
+  "RequireRole",
+  "LazyRoute",
+  "Suspense",
+]);
+
+export function loadRepo(root: string): Repo {
+  const paths: string[] = [];
+  const walk = (rel: string) => {
+    const abs = path.join(root, rel);
+    if (!existsSync(abs)) return;
+    for (const name of readdirSync(abs)) {
+      if (SKIP_DIRS.has(name)) continue;
+      const child = `${rel}/${name}`;
+      if (statSync(path.join(root, child)).isDirectory()) walk(child);
+      else paths.push(child);
+    }
+  };
+  for (const r of WALK_ROOTS) walk(r);
+  for (const f of EXTRA_FILES) if (existsSync(path.join(root, f))) paths.push(f);
+  return { paths, read: (file) => readFileSync(path.join(root, file), "utf8") };
+}
+
+export function repoFromFiles(files: Record<string, string>): Repo {
+  return {
+    paths: Object.keys(files),
+    read: (file) => {
+      const text = files[file];
+      if (text === undefined) throw new Error(`fixture has no file ${file}`);
+      return text;
+    },
+  };
+}
+
+export const readMap = (repo: Repo): RouteMap => JSON.parse(repo.read(MAP_PATH)) as RouteMap;
+
+// ---------------------------------------------------------------- text helpers
+
+/** Drops block comments and line comments. A `//` counts only after whitespace, so `https://` survives. */
+export function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
+}
+
+/** Every module specifier the file imports, re-exports, `import()`s or `require()`s. */
+export function importSpecifiers(source: string): string[] {
+  const text = stripComments(source);
+  const found: string[] = [];
+  const re =
+    /\b(?:import|export)\s[^'";]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]|\bimport\(\s*['"`]([^'"`]+)['"`]\s*\)|\brequire\(\s*['"]([^'"]+)['"]\s*\)/g;
+  for (const m of text.matchAll(re)) found.push(m[1] ?? m[2] ?? m[3] ?? m[4]);
+  return found;
+}
+
+const under = (repo: Repo, prefix: string) => repo.paths.filter((p) => p.startsWith(prefix));
+const basename = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+const mobileFiles = (repo: Repo) => under(repo, "apps/mobile/");
+/** Source files of the shell that Metro bundles: every extension, `app/` and `src/` only. */
+const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
+const shellSource = (repo: Repo) => mobileFiles(repo).filter((p) => /^apps\/mobile\/(app|src)\//.test(p) && SOURCE_EXT.test(p));
+const stem = (p: string) => basename(p).replace(/\.[^.]+$/, "");
+const chromePaths = (map: RouteMap) => map.shell_chrome.map((p) => `apps/mobile/${p}`);
+
+// ---------------------------------------------------------------- rule 1, 1b, 1c
+
+const THIN_ROUTE_MAX_LINES = 15;
+const THIN_ROUTE_MAX_LINE_LENGTH = 120;
+
+/**
+ * Rule 1: every `.tsx` under apps/mobile is shell chrome, or a thin route file that renders a
+ * `@iterahq/screens` export. Also: no `.js`/`.jsx` under `app/` or `src/` (Metro bundles them), and a
+ * non-chrome `.ts` there imports neither `react` nor `react-native` (a copy built without JSX).
+ */
+export function rule1(repo: Repo, map: RouteMap): string[] {
+  const chrome = new Set(chromePaths(map));
+  const out: string[] = [];
+  for (const file of mobileFiles(repo).filter((p) => p.endsWith(".tsx"))) {
+    if (chrome.has(file)) continue;
+    const text = repo.read(file);
+    const lines = text.split("\n").filter((l) => l.trim() !== "").length;
+    const longest = Math.max(...text.split("\n").map((l) => l.length));
+    const specs = importSpecifiers(text);
+    const thin =
+      file.startsWith("apps/mobile/app/") &&
+      lines <= THIN_ROUTE_MAX_LINES &&
+      longest <= THIN_ROUTE_MAX_LINE_LENGTH &&
+      specs.includes("@iterahq/screens") &&
+      specs.every((s) => s === "@iterahq/screens" || s === "react");
+    if (!thin) out.push(`rule 1: ${file} is neither in shell_chrome nor a route file of at most ${THIN_ROUTE_MAX_LINES} lines that renders an export of @iterahq/screens`);
+  }
+  for (const file of shellSource(repo)) {
+    if (/\.(js|jsx|mjs|cjs)$/.test(file)) out.push(`rule 1: ${file} is a ${file.slice(file.lastIndexOf("."))} file under apps/mobile/{app,src}; the shell is TypeScript`);
+    else if (file.endsWith(".ts") && !chrome.has(file)) {
+      const bad = importSpecifiers(repo.read(file)).find((s) => s === "react" || s.startsWith("react/") || s === "react-native" || s.startsWith("react-native/"));
+      if (bad) out.push(`rule 1: ${file} is a non-chrome .ts that imports ${bad} (a UI copy without JSX)`);
+    }
+  }
+  return out;
+}
+
+const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/|@supabase\/|@tanstack\/|react-router)/;
+const FETCH_ALLOWED = "apps/mobile/src/shellGate.ts";
+
+/**
+ * Rule 1b: the closed chrome list. The forbidden data-layer imports and `fetch(` apply to EVERY
+ * file under apps/mobile/{app,src}, so a helper imported by a chrome file is held to the same line.
+ */
+export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): string[] {
+  const out: string[] = [];
+  const a = [...map.shell_chrome].sort().join("\n");
+  const b = [...closed].sort().join("\n");
+  if (a !== b) out.push(`rule 1b: shell_chrome [${[...map.shell_chrome].sort().join(", ")}] differs from the closed list [${[...closed].sort().join(", ")}]`);
+  for (const file of chromePaths(map)) {
+    if (!repo.paths.includes(file)) out.push(`rule 1b: shell_chrome names ${file}, which is not on disk`);
+  }
+  for (const file of shellSource(repo)) {
+    const text = repo.read(file);
+    for (const spec of importSpecifiers(text)) {
+      if (CHROME_FORBIDDEN_IMPORT.test(spec)) out.push(`rule 1b: ${file} imports ${spec}`);
+    }
+    if (file !== FETCH_ALLOWED && /\bfetch\(/.test(stripComments(text))) out.push(`rule 1b: ${file} contains fetch( (only ${FETCH_ALLOWED} may)`);
+  }
+  return out;
+}
+
+const ONMESSAGE_FILE = "apps/mobile/app/[...path].tsx";
+const PARSER_FILE = "apps/mobile/src/consoleMessage.ts";
+const PARSER_TEST = "apps/mobile/src/consoleMessage.test.ts";
+/** Error events carry no page-controlled payload: `onError` (description) and `onHttpError` (statusCode). */
+const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|statusCode)\b/g;
+/** The one place a WebView event may be read: handed whole to the named pure parser. */
+const PARSER_CALL = /\bparseConsoleMessage\(\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,)]/g;
+
+/**
+ * Rule 1c, for every file under apps/mobile/{app,src}: no raw network; `onMessage` is handled in one
+ * file; and `nativeEvent` appears only as the whole argument of `parseConsoleMessage`, a pure
+ * parser in `src/consoleMessage.ts` that has its own unit test and returns the
+ * `{type:'console', ...}` shape or null. Destructuring `nativeEvent`, or reading `.data` anywhere
+ * else, is flagged. The error events of the WebView (`.nativeEvent.description`, `.nativeEvent.statusCode`)
+ * carry no page-controlled payload and are the only other reads allowed.
+ */
+export function rule1c(repo: Repo): string[] {
+  const out: string[] = [];
+  for (const file of shellSource(repo)) {
+    const text = stripComments(repo.read(file));
+    for (const token of ["XMLHttpRequest", "WebSocket", "expo/fetch"]) {
+      if (text.includes(token)) out.push(`rule 1c: ${file} references ${token}`);
+    }
+    const handlesMessage = /\bonMessage\b/.test(text);
+    if (file !== ONMESSAGE_FILE && handlesMessage) out.push(`rule 1c: ${file} handles onMessage; the single handler lives in ${ONMESSAGE_FILE}`);
+    if ((text.match(/\bonMessage=/g) ?? []).length > 1) out.push(`rule 1c: ${file} sets onMessage more than once`);
+    const rest = text.replace(PARSER_CALL, "").replace(ERROR_EVENT_FIELD, "");
+    if (/\bnativeEvent\b/.test(rest)) {
+      out.push(`rule 1c: ${file} reads nativeEvent outside parseConsoleMessage(e.nativeEvent); the payload must go through the one tested parser`);
+    }
+    if (file === ONMESSAGE_FILE && handlesMessage) {
+      if (!/\bparseConsoleMessage\b/.test(text)) out.push(`rule 1c: ${file} handles onMessage without parseConsoleMessage`);
+      if (!repo.paths.includes(PARSER_FILE)) out.push(`rule 1c: ${PARSER_FILE} is missing`);
+      if (!repo.paths.includes(PARSER_TEST)) out.push(`rule 1c: ${PARSER_TEST} is missing (the parser needs its own unit test)`);
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- rules 2, 2b, 2c
+
+const SCREENS_SRC = "packages/screens/src/";
+
+/** Rule 2: every file under packages/screens/src is inside the directory of exactly one universal route's screen. */
+export function rule2(repo: Repo, map: RouteMap): string[] {
+  const out: string[] = [];
+  const universal = map.routes.filter((r) => r.universal);
+  for (const file of under(repo, SCREENS_SRC)) {
+    if (file === `${SCREENS_SRC}index.ts`) continue; // the package barrel (ADR-3), the one file no single route owns
+    const dir = file.slice(SCREENS_SRC.length).split("/")[0];
+    const owners = universal.filter((r) => `${r.screen}` === dir);
+    if (owners.length !== 1) out.push(`rule 2: ${file} belongs to ${owners.length} universal routes (want exactly 1)`);
+  }
+  return out;
+}
+
+const PLATFORM_FILE = /\.(native|web|ios|android)\.tsx$/;
+
+/** Rule 2b: platform files only inside `slots/`, and a slot has no default export. */
+export function rule2b(repo: Repo): string[] {
+  const out: string[] = [];
+  for (const file of under(repo, SCREENS_SRC)) {
+    const inSlots = file.includes("/slots/");
+    if (PLATFORM_FILE.test(file) && !inSlots) out.push(`rule 2b: ${file} is a platform file outside a slots/ directory`);
+    if (inSlots && /\.(ts|tsx)$/.test(file) && /\bexport\s+default\b/.test(stripComments(repo.read(file)))) {
+      out.push(`rule 2b: slot file ${file} has a default export`);
+    }
+  }
+  return out;
+}
+
+/** Rule 2c: `Platform.OS` and `Platform.select` only inside `slots/`. */
+export function rule2c(repo: Repo): string[] {
+  const out: string[] = [];
+  for (const file of under(repo, SCREENS_SRC)) {
+    if (file.includes("/slots/") || !/\.(ts|tsx)$/.test(file)) continue;
+    if (/\bPlatform\.(OS|select)\b/.test(stripComments(repo.read(file)))) out.push(`rule 2c: ${file} uses Platform.OS or Platform.select outside slots/`);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- rules 3, 3b, 4
+
+/** Rule 3: a universal route has none of its web_paths on disk. */
+export function rule3(repo: Repo, map: RouteMap): string[] {
+  const out: string[] = [];
+  for (const r of map.routes.filter((x) => x.universal)) {
+    for (const p of r.web_paths) if (repo.paths.includes(p)) out.push(`rule 3: universal route ${r.path} still has ${p} on disk`);
+  }
+  return out;
+}
+
+export interface AppRoute {
+  path: string;
+  element: string;
+}
+
+/** Index of the `}` that closes the `{` at `open`, skipping quoted strings. */
+function closingBrace(text: string, open: number): number {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = open; i < text.length; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return i;
+  }
+  return -1;
+}
+
+/**
+ * Every `<Route path=…>` of `App.tsx` with its path composed with its parents'. `index` routes
+ * (no path) are skipped. `consts` resolves `path={NAME}` (the guest route constant).
+ */
+export function parseAppRoutes(source: string, consts: Record<string, string> = {}): AppRoute[] {
+  const text = stripComments(source);
+  const out: AppRoute[] = [];
+  const stack: string[] = [];
+  const tokens = /<Route(?=[\s/>])|<\/Route>/g;
+  let m: RegExpExecArray | null;
+  while ((m = tokens.exec(text)) !== null) {
+    if (m[0] === "</Route>") {
+      stack.pop();
+      continue;
+    }
+    let i = tokens.lastIndex;
+    const start = i;
+    let depth = 0;
+    let quote: string | null = null;
+    for (; i < text.length; i++) {
+      const c = text[i];
+      if (quote) {
+        if (c === quote) quote = null;
+      } else if (c === '"' || c === "'" || c === "`") quote = c;
+      else if (c === "{") depth++;
+      else if (c === "}") depth--;
+      else if (c === ">" && depth === 0) break;
+    }
+    const attrs = text.slice(start, i);
+    const selfClosing = text[i - 1] === "/";
+    tokens.lastIndex = i + 1;
+    let element = "";
+    let rest = attrs;
+    const el = /\belement=\{/.exec(attrs);
+    if (el) {
+      const open = el.index + el[0].length - 1;
+      const close = closingBrace(attrs, open);
+      element = attrs.slice(open + 1, close);
+      rest = attrs.slice(0, el.index) + attrs.slice(close + 1);
+    }
+    const pm = /\bpath=(?:"([^"]*)"|\{"([^"]*)"\}|\{([A-Za-z_]\w*)\})/.exec(rest);
+    const parent = stack[stack.length - 1] ?? "";
+    let full: string | null = null;
+    if (pm) {
+      const raw = pm[1] ?? pm[2] ?? consts[pm[3]];
+      if (raw === undefined) throw new Error(`App.tsx: cannot resolve path={${pm[3]}}`);
+      full = raw.startsWith("/") || raw === "*" ? raw : `${parent}/${raw}`;
+      out.push({ path: full, element });
+    }
+    if (!selfClosing) stack.push(full ?? parent);
+  }
+  return out;
+}
+
+/** The page file of an `element=` expression: the innermost JSX tag that is not a wrapper, resolved through App.tsx's imports. */
+export function pageOfElement(element: string, appSource: string, repo: Repo): string | null {
+  const tags = [...element.matchAll(/<([A-Z][A-Za-z0-9_]*)/g)].map((t) => t[1]).filter((t) => !ROUTE_WRAPPERS.has(t));
+  const name = tags[tags.length - 1];
+  if (!name) return null;
+  const text = stripComments(appSource);
+  let spec: string | null = null;
+  const lazy = new RegExp(`\\bconst\\s+${name}\\s*=\\s*lazy\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*['"]([^'"]+)['"]\\s*\\)`).exec(text);
+  if (lazy) spec = lazy[1];
+  for (const im of text.matchAll(/\bimport\s+([^'";]+?)\s+from\s*['"]([^'"]+)['"]/g)) {
+    const clause = im[1];
+    const def = /^([A-Za-z_]\w*)\s*(,|$)/.exec(clause)?.[1];
+    const named = /\{([^}]*)\}/.exec(clause)?.[1] ?? "";
+    const locals = named.split(",").map((s) => s.trim().split(/\s+as\s+/).pop() ?? "");
+    if (def === name || locals.includes(name)) spec = im[2];
+  }
+  if (!spec) return null;
+  const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? path.posix.normalize(`src/${spec}`) : null;
+  if (!base) return null;
+  for (const cand of [`${base}.tsx`, `${base}.ts`, `${base}/index.tsx`, `${base}/index.ts`]) {
+    if (repo.paths.includes(cand)) return cand;
+  }
+  return null;
+}
+
+export function appConsts(repo: Repo): Record<string, string> {
+  const m = /export const GUEST_ROUTE_PATH = ['"]([^'"]+)['"]/.exec(repo.paths.includes(GUEST_PATH_FILE) ? repo.read(GUEST_PATH_FILE) : "");
+  return m ? { GUEST_ROUTE_PATH: m[1] } : {};
+}
+
+const inZone = (map: RouteMap, id: string, p: string) => map.dom_zones.find((z) => z.id === id)?.paths.includes(p) ?? false;
+
+/** Rule 3b: web_paths is checked, not declared. */
+export function rule3b(repo: Repo, map: RouteMap): string[] {
+  const out: string[] = [];
+  const source = repo.read(APP_PATH);
+  const appRoutes = new Map(parseAppRoutes(source, appConsts(repo)).map((r) => [r.path, r]));
+  for (const r of map.routes) {
+    if (!r.universal && r.web_paths.length === 0) out.push(`rule 3b: route ${r.path} is not universal and has empty web_paths`);
+    if (inZone(map, "staff", r.path)) continue;
+    const app = appRoutes.get(r.path);
+    if (!app) {
+      out.push(`rule 3b: route ${r.path} is not a path of ${APP_PATH}`);
+      continue;
+    }
+    // A ported route renders a package component; its web_paths are the deleted pages (rule 3).
+    if (r.universal) continue;
+    const page = pageOfElement(app.element, source, repo);
+    if (!page) out.push(`rule 3b: cannot resolve the page component of ${r.path} in ${APP_PATH}`);
+    else if (!r.web_paths.includes(page)) out.push(`rule 3b: route ${r.path} renders ${page}, which is not in its web_paths [${r.web_paths.join(", ")}]`);
+  }
+  return out;
+}
+
+/** Rule 4: `mode: native` requires `universal: true`. */
+export function rule4(map: RouteMap): string[] {
+  return map.routes.filter((r) => r.mode === "native" && !r.universal).map((r) => `rule 4: route ${r.path} is native but not universal`);
+}
+
+// ---------------------------------------------------------------- rule 5
+
+const manifestPath = (p: string) => (p === "/*" ? "*" : p);
+
+/** Rule 5: the frozen manifest is the primary source; the scan of App.tsx is the secondary one. */
+export function rule5(repo: Repo, map: RouteMap, expectedPaths: number): string[] {
+  const out: string[] = [];
+  const rows = [...map.routes.map((r) => r.path), ...map.not_counted_routes.map((r) => r.path)];
+  const dup = rows.filter((p, i) => rows.indexOf(p) !== i);
+  for (const p of new Set(dup)) out.push(`rule 5: ${p} is in the map more than once (it must be in exactly one of routes and not_counted_routes)`);
+  const manifest = (JSON.parse(repo.read(MANIFEST_PATH)) as { routes: { route: string }[] }).routes.map((r) => manifestPath(r.route));
+  for (const p of manifest) if (!rows.includes(p)) out.push(`rule 5: manifest route ${p} has no row in the map`);
+  const scanned = parseAppRoutes(repo.read(APP_PATH), appConsts(repo)).map((r) => r.path);
+  if (scanned.length !== expectedPaths) out.push(`rule 5: scanning ${APP_PATH} found ${scanned.length} paths, expected ${expectedPaths}`);
+  for (const p of scanned) {
+    if (!manifest.includes(p)) out.push(`rule 5: ${APP_PATH} has path ${p}, which is not in the manifest`);
+    if (!rows.includes(p)) out.push(`rule 5: ${APP_PATH} has path ${p}, which has no row in the map`);
+  }
+  return out;
+}
+
+/** The route meter of ADR-8: routes outside the staff zone and the other DOM zones. */
+export function routeMeter(map: RouteMap): number {
+  const zoned = new Set(map.dom_zones.flatMap((z) => z.paths));
+  return map.routes.filter((r) => !zoned.has(r.path)).length;
+}
+
+// ---------------------------------------------------------------- rules 6, 7
+
+const SHARED_PACKAGES = ["bridge", "core", "screens"];
+const DOM_GLOBALS = /(?<![.\w$])(document|window|localStorage|sessionStorage|HTMLElement|DOMParser)\b/;
+const HOST_TAG = /(^|[\s(>{?:&|,])<([a-z][A-Za-z0-9]*)(?=[\s/>])/m;
+
+const isInjectedStringsOnly = (file: string, text: string) =>
+  /\.injected\.ts$/.test(file) &&
+  (text.match(/^export\s.*$/gm) ?? []).every((l) => /^export const \w+(\s*:\s*string)?\s*=\s*[`'"]/.test(l));
+
+/** Rule 6: the shell and the shared packages stay clear of the web tree, the DOM and (for bridge/core) React. */
+export function rule6(repo: Repo): string[] {
+  const out: string[] = [];
+  const scope = [...mobileFiles(repo), ...SHARED_PACKAGES.flatMap((n) => under(repo, `packages/${n}/`))];
+  for (const file of scope.filter((p) => /\.(ts|tsx|js|jsx|mjs)$/.test(p))) {
+    const text = repo.read(file);
+    for (const spec of importSpecifiers(text)) {
+      const resolved = spec.startsWith(".") ? path.posix.normalize(`${path.posix.dirname(file)}/${spec}`) : spec;
+      if (spec === "react-dom" || spec.startsWith("react-dom/") || spec.startsWith("src/") || spec.startsWith("@/") || resolved.startsWith("src/")) {
+        out.push(`rule 6: ${file} imports ${spec}`);
+      }
+      if (/^packages\/(bridge|core)\//.test(file) && (spec === "react" || spec.startsWith("react/"))) out.push(`rule 6: ${file} imports ${spec} (bridge and core import no react)`);
+    }
+    const dom = file.startsWith("apps/mobile/") || file.startsWith("packages/screens/");
+    if (!dom || isInjectedStringsOnly(file, text)) continue;
+    const code = stripComments(text);
+    const g = DOM_GLOBALS.exec(code);
+    if (g) out.push(`rule 6: ${file} uses the DOM global ${g[1]}`);
+    const tag = /\.(tsx|jsx)$/.test(file) ? HOST_TAG.exec(code) : null;
+    if (tag) out.push(`rule 6: ${file} renders the lowercase JSX host tag <${tag[2]}>`);
+  }
+  return out;
+}
+
+/** Rule 7: no file stem under the shell or screens src equals one in the web tree (`index` is exempt). */
+export function rule7(repo: Repo): string[] {
+  const web = new Set([...under(repo, "src/pages/"), ...under(repo, "src/components/"), ...under(repo, "packages/activities/src/")].map(stem));
+  return [...under(repo, "apps/mobile/src/"), ...under(repo, SCREENS_SRC)]
+    .filter((p) => stem(p) !== "index" && web.has(stem(p)))
+    .map((p) => `rule 7: ${p} has the same file stem as a file of the web tree`);
+}

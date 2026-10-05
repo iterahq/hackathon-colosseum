@@ -1,0 +1,36 @@
+{
+  "name": "@iterahq/itera-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mobile shell of the Itera player: Expo Router + one WebView route. Not a root workspace (own install and lockfile).",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "bash scripts/start-metro.sh",
+    "bundle:ios": "expo export --platform ios --output-dir dist-ios --dump-sourcemap",
+    "doctor": "expo-doctor",
+    "check:one-react": "node scripts/check-one-react.mjs",
+    "check:expo-go-sdk": "node scripts/check-expo-go-sdk.mjs",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
+    "expo": "~57.0.26",
+    "expo-constants": "~57.0.20",
+    "expo-linking": "~57.0.11",
+    "expo-router": "~57.0.24",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-webview": "13.16.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "~19.2.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

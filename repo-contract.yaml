@@ -33,6 +33,7 @@ stack:
   state: tanstack-react-query
   data: supabase
   testing: vitest + playwright
+  mobile_shell: expo-57 (apps/mobile, Expo Go only)
   observability: opentelemetry
 
 provides:
@@ -278,6 +279,14 @@ scripts:
   lint: npm run lint
   typecheck: npm run typecheck
   storybook: npm run storybook
+
+workflows:
+  mobile-shell:
+    file: .github/workflows/mobile-shell.yml
+    runs_on: self-hosted dfl-runner
+    trigger: pull requests that touch apps/mobile (path-filtered), plus a weekly Expo Go SDK check
+    steps: disk guard, npm ci, tsc, check:expo-go-sdk, web-inert
+    one_copy_check: scripts/mobile/one-copy.test.ts (runs in the build-test job of ci.yml)
 
 agent_entry_point: CLAUDE.md
 

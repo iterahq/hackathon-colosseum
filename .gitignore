@@ -80,3 +80,8 @@ preview.log
 
 # Bundled output of scripts/ux-capture (see its README — tsx cannot run those scripts).
 /.capture-build/
+
+# Mobile shell (apps/mobile): its own install, Expo cache and export output
+apps/mobile/node_modules
+apps/mobile/.expo
+apps/mobile/dist-ios

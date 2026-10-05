@@ -1,0 +1,80 @@
+# Checks of the mobile shell (apps/mobile). PLAN ADR-13: one job, path-filtered, self-hosted.
+#
+# The fleet runner is loaded and its root disk is nearly full, so the first step reads the free
+# disk and skips the install steps below 3 GB (it prints `skipped: runner disk <n> GB` instead of
+# failing or proceeding). PR-1 runs: df, npm ci, tsc, check:expo-go-sdk, web-inert. The export and
+# check:one-react run locally for PR-1 and their output is pasted in the PR. PR-2 adds Vitest,
+# expo-doctor, the export and check:one-react.
+name: mobile-shell
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - "packages/bridge/**"
+      - "packages/core/**"
+      - "packages/screens/**"
+      - ".github/workflows/mobile-shell.yml"
+  schedule:
+    # Weekly: Expo Go moves to a new SDK without a PR to tell us.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-shell-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-shell:
+    runs-on: [self-hosted, dfl-runner]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Disk guard
+        id: disk
+        run: |
+          set -euo pipefail
+          df -h .
+          free_kb="$(df --output=avail -k . | tail -1 | tr -d ' ')"
+          free_gb=$((free_kb / 1024 / 1024))
+          if [ "$free_gb" -lt 3 ]; then
+            echo "skipped: runner disk ${free_gb} GB"
+            echo "install=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "install=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Node is needed by every run (the schedule and the low-disk run included): the bare runner has
+      # no npm on PATH. No `cache:` option (it fails without a lockfile); the self-hosted host keeps ~/.npm between runs.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install (npm ci)
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm ci
+        working-directory: apps/mobile
+
+      - name: Typecheck
+        if: github.event_name == 'pull_request' && steps.disk.outputs.install == 'true'
+        run: npm --prefix apps/mobile run typecheck
+
+      # Reads the shell's `expo` range and the public Expo versions endpoint; needs no install.
+      - name: Expo Go SDK
+        run: npm --prefix apps/mobile run check:expo-go-sdk
+
+      # Prints web-inert=yes when every changed path is one that cannot change the web build, and
+      # fails when eslint.config.js, renovate.json, .dockerignore or .gitignore changed outside its
+      # one allowed place. A `no` is also written to the step summary; an empty diff is an error.
+      - name: Web inert
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail; git fetch origin main; changed="$(git diff --name-only --no-renames origin/main...HEAD)"; if [ -z "$changed" ]; then echo "web-inert: empty diff"; exit 1; fi; if printf '%s\n' "$changed" | grep -qvE '^(apps/mobile/|scripts/mobile/|\.github/workflows/mobile-|\.github/CODEOWNERS$|docs/|repo-contract\.yaml$|renovate\.json$|\.dockerignore$|\.gitignore$|eslint\.config\.js$|[^/]+\.md$)' ; then echo web-inert=no | tee -a "$GITHUB_STEP_SUMMARY"; else echo web-inert=yes | tee -a "$GITHUB_STEP_SUMMARY"; fi
+          node apps/mobile/scripts/web-inert.mjs

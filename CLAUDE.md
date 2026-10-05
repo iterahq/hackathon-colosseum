@@ -178,6 +178,24 @@ opostos.
 viewport e não `fullPage`, e a armadilha de rasterização que valia 19 pixels em
 1 rodada a cada 3: [`docs/source-stamp-e-captura.md`](docs/source-stamp-e-captura.md).
 
+## Mobile shell (`apps/mobile`)
+
+Casca de celular da Itera: Expo Router 57 com UMA rota que abre `app.iterahq.dev` num
+WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm: tem
+`package.json` e lockfile próprios, e o `npm install` da raiz não toca nela.
+
+- Comandos: `npm --prefix apps/mobile run typecheck`, `npm --prefix apps/mobile run test`,
+  `npm --prefix apps/mobile run check:expo-go-sdk`.
+- Rotas ficam em `apps/mobile/route-map.json` (uma linha por rota, com `web_paths`).
+  Mexer nele pede revisão do Tainan (CODEOWNERS).
+- **Uma cópia de cada tela:** `scripts/mobile/one-copy.test.ts` roda no `build-test` e
+  falha se o shell copiar um componente ou página da web. Casca = só os arquivos de
+  `shell_chrome` do mapa; nada de chamada de dados nela.
+- Navegação decidida em um lugar só: `apps/mobile/src/origin.ts` (com testes ao lado).
+- O Metro só sobe por `apps/mobile/scripts/start-metro.sh`, depois do filtro de pacotes de
+  `apps/mobile/scripts/metro-firewall.sh`. Nunca `expo start` direto, nunca `--tunnel`.
+- Runbook, medições e lacunas conhecidas: [`docs/mobile-shell.md`](docs/mobile-shell.md).
+
 ## Contracts
 
 - **Activity**: linha de `itera.activities` com `kind` + `spec` (JSON validado

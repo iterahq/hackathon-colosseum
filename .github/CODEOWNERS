@@ -48,3 +48,7 @@
 # enforcing the rule that already exists, with no further change.
 # ─────────────────────────────────────────────────────────────────────────────
 /db/migrations/ @taigfs
+
+# Route map of the mobile shell: which paths the shell opens, and which are not
+# counted as ported. A record, not a gate (same GitHub limitation as above).
+/apps/mobile/route-map.json @taigfs

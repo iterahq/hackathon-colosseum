@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Itera",
+    "slug": "itera-player",
+    "scheme": "itera",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0908",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": false
+    },
+    "plugins": ["expo-router"],
+    "extra": {
+      "webOrigin": "https://app.iterahq.dev",
+      "router": {}
+    }
+  }
+}

@@ -2,6 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": "Self-contained ON PURPOSE. The devfellowship fleet extends github>devfellowship/dfl-hq:renovate-config, but dfl-hq is a PRIVATE repo in a DIFFERENT org: a Renovate installation on iterahq holds an iterahq token and cannot read it, so that preset fails to resolve here. The rules below are the parts of the fleet config that apply to this repo, inlined.",
   "extends": ["config:recommended"],
+  "ignorePaths": ["**/node_modules/**", "**/test/**", "**/tests/**", "**/__tests__/**", "**/__fixtures__/**", "**/examples/**", "**/vendor/**", "**/bower_components/**", "apps/mobile/**"],
   "schedule": ["before 8am every weekday"],
   "dependencyDashboard": true,
   "dependencyDashboardAutoclose": true,

@@ -6,3 +6,6 @@ dist
 .env*
 .vscode
 .idea
+
+# The mobile shell is not part of the web image
+apps/

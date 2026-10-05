@@ -8,7 +8,7 @@ export default tseslint.config(
   // `dist` alone is cwd-relative in flat config, so it stopped covering build
   // output once `packages/*` became workspaces (Fase B). `**/dist` covers both
   // the app's own `dist/` and every `packages/*/dist/`.
-  { ignores: ["**/dist", "storybook-static"] },
+  { ignores: ["**/dist", "storybook-static", "apps/mobile/.expo", "apps/mobile/dist-ios", "apps/mobile/expo-env.d.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

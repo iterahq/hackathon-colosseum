@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "routes": [
+    {"path": "/login", "screen": "login", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/LoginPage.tsx"]},
+    {"path": "/signup", "screen": "signup", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/SignupPage.tsx"]},
+    {"path": "/auth/forgot", "screen": "auth-forgot", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/ForgotPasswordPage.tsx"]},
+    {"path": "/auth/reset", "screen": "auth-reset", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/ResetPasswordPage.tsx"]},
+    {"path": "/auth/code", "screen": "auth-code", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/OtpLoginPage.tsx"]},
+    {"path": "/auth/dfl/callback", "screen": "auth-dfl-callback", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/DflCallbackPage.tsx"]},
+    {"path": "/", "screen": "home", "mode": "webview", "universal": false, "web_paths": ["src/pages/HomePage.tsx"]},
+    {"path": "/catalog", "screen": "catalog", "mode": "webview", "universal": false, "web_paths": ["src/pages/CatalogPage.tsx"]},
+    {"path": "/program/:slug", "screen": "program-slug", "mode": "webview", "universal": false, "web_paths": ["src/pages/ProgramPage.tsx"]},
+    {"path": "/lesson/:lessonId", "screen": "lesson-lessonId", "mode": "webview", "universal": false, "web_paths": ["src/pages/LessonPlayer.tsx"]},
+    {"path": "/artifacts", "screen": "artifacts", "mode": "webview", "universal": false, "web_paths": ["src/pages/ArtifactsPage.tsx"]},
+    {"path": "/profile", "screen": "profile", "mode": "webview", "universal": false, "web_paths": ["src/pages/ProfilePage.tsx"]},
+    {"path": "/subscribe", "screen": "subscribe", "mode": "webview", "universal": false, "web_paths": ["src/pages/SubscribePage.tsx"]},
+    {"path": "/subscribe/return", "screen": "subscribe-return", "mode": "webview", "universal": false, "web_paths": ["src/pages/SubscribeReturnPage.tsx"]},
+    {"path": "/live/instructor", "screen": "live-instructor", "mode": "webview", "universal": false, "web_paths": ["src/pages/live/InstructorClassPage.tsx"]},
+    {"path": "/live/instructor/report/:sessionId", "screen": "live-instructor-report-sessionId", "mode": "webview", "universal": false, "web_paths": ["src/pages/live/InstructorReportPage.tsx"]},
+    {"path": "/live/instructor/:sessionId", "screen": "live-instructor-sessionId", "mode": "webview", "universal": false, "web_paths": ["src/pages/live/InstructorSessionPage.tsx"]},
+    {"path": "/live/:sessionId", "screen": "live-sessionId", "mode": "webview", "universal": false, "web_paths": ["src/pages/LiveSessionPage.tsx"]},
+    {"path": "/g/:code", "screen": "g-code", "mode": "webview", "universal": false, "web_paths": ["src/pages/GuestLiveRoute.tsx"]},
+    {"path": "/admin", "screen": "admin", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/AdminLayout.tsx"]},
+    {"path": "/admin/roster", "screen": "admin-roster", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/RosterPage.tsx"]},
+    {"path": "/admin/programs", "screen": "admin-programs", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/CompletionPage.tsx"]},
+    {"path": "/admin/engagement", "screen": "admin-engagement", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/EngagementPage.tsx"]},
+    {"path": "/admin/replay", "screen": "admin-replay", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/ReplayPage.tsx"]},
+    {"path": "/admin/replay/:traceId", "screen": "admin-replay-traceId", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/ReplaySessionPage.tsx"]},
+    {"path": "/admin/artifacts", "screen": "admin-artifacts", "mode": "webview", "universal": false, "web_paths": ["src/pages/admin/AdminArtifactsPage.tsx"]},
+    {"path": "/author", "screen": "author", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/AuthorHomePage.tsx"]},
+    {"path": "/author/units/:unitId/canvas", "screen": "author-units-unitId-canvas", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/UnitCanvasPage.tsx"]},
+    {"path": "/author/activities/:activityId/test", "screen": "author-activities-activityId-test", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/ActivityTestPage.tsx"]},
+    {"path": "/author/activities/:activityId/test-live", "screen": "author-activities-activityId-test-live", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/LiveActivityTestPage.tsx"]}
+  ],
+  "shell_chrome": ["app/_layout.tsx", "app/[...path].tsx", "app/index.tsx", "src/DevOverlay.tsx"],
+  "dom_zones": [
+    {"id": "live-class", "reason": "realtime + pointer mirroring", "paths": ["/live/:sessionId", "/g/:code"], "kinds": []},
+    {"id": "staff", "reason": "authoring, admin, instructor", "paths": ["/live/instructor", "/live/instructor/report/:sessionId", "/live/instructor/:sessionId", "/admin", "/admin/roster", "/admin/programs", "/admin/engagement", "/admin/replay", "/admin/replay/:traceId", "/admin/artifacts", "/author", "/author/units/:unitId/canvas", "/author/activities/:activityId/test", "/author/activities/:activityId/test-live"], "kinds": []},
+    {"id": "code-kinds", "reason": "Monaco + sandboxed iframe", "paths": [], "kinds": ["code", "code_editor_*", "code_fill_*"]}
+  ],
+  "not_counted_routes": [
+    {"path": "*", "reason": "NotFound, no behaviour to port"},
+    {"path": "/prototipo/cena", "reason": "internal prototype"}
+  ]
+}
