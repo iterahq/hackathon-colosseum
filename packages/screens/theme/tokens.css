@@ -1,0 +1,110 @@
+/*
+ * The values behind the semantic colours of `theme.css`, as HSL channels.
+ * `.dark` is the canonical Itera theme: the web ships `class="dark"` on `<body>`, and `:root` is the
+ * fallback of an element outside `.dark`. The shell has no class to match: Uniwind reads both blocks
+ * as plain variables and the later one wins, so it gets the `.dark` values (seen in the exported
+ * bundle: `--muted` is `30 12% 10%`). Keep `.dark` after `:root`.
+ * Moved here from `src/index.css` unchanged.
+ */
+/*
+ * Itera player theme — João Oak's evergreen design system.
+ *
+ * Single dark theme (the app ships `class="dark"` on <body>). Tokens mirror
+ * johnoak-itera/src/styles/theme.css: obsidiana panels, evergreen (verde-tech /
+ * menta) accents, Barlow Condensed display + Inter body. HSL channel values are
+ * used so shadcn `hsl(var(--x))` consumers keep working.
+ */
+@layer base {
+  :root {
+    /* Light fallback (rarely used — app forces dark) */
+    --background: 30 20% 4%;
+    --foreground: 40 38% 92%;
+    --card: 30 13% 7%;
+    --card-foreground: 40 38% 92%;
+    --popover: 30 13% 7%;
+    --popover-foreground: 40 38% 92%;
+    --primary: 146 60% 53%;
+    --primary-foreground: 30 20% 4%;
+    --secondary: 30 12% 9%;
+    --secondary-foreground: 40 38% 92%;
+    --muted: 30 12% 9%;
+    --muted-foreground: 38 9% 46%;
+    --accent: 146 35% 17%;
+    --accent-foreground: 146 60% 68%;
+    --destructive: 347 100% 66%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 9% 13%;
+    --input: 30 12% 9%;
+    --ring: 146 60% 53%;
+    --radius: 0.875rem;
+
+    --sidebar-background: 34 14% 5%;
+    --sidebar-foreground: 40 38% 92%;
+    --sidebar-primary: 146 60% 53%;
+    --sidebar-primary-foreground: 30 20% 4%;
+    --sidebar-accent: 30 12% 9%;
+    --sidebar-accent-foreground: 146 60% 68%;
+    --sidebar-border: 30 9% 13%;
+    --sidebar-ring: 146 60% 53%;
+  }
+
+  /* The canonical Itera theme — evergreen on obsidiana.
+   * HSL channels recomputed to hit the EXACT brand hexes
+   * (brand.devfellowship.com/itera) — was slightly over-saturated before
+   * (#0C0A08 instead of #0A0908). */
+  .dark {
+    --background: 30 11% 4%;          /* #0A0908 bg */
+    --foreground: 37 45% 92%;         /* #F4EDE2 ink */
+
+    --card: 30 11% 7%;               /* #141210 panel */
+    --card-foreground: 37 45% 92%;
+
+    --popover: 30 11% 7%;
+    --popover-foreground: 37 45% 92%;
+
+    --primary: 146 61% 53%;          /* #3FD17F evergreen */
+    --primary-foreground: 30 11% 4%;
+
+    --secondary: 30 12% 10%;         /* #1C1916 panel-2 */
+    --secondary-foreground: 37 45% 92%;
+
+    --muted: 30 12% 10%;
+    --muted-foreground: 37 9% 45%;   /* #7D7568 muted */
+
+    --accent: 148 35% 17%;           /* #1C3A2A evergreen-soft */
+    --accent-foreground: 146 61% 62%;/* #62D996 evergreen-hi */
+
+    --destructive: 347 100% 66%;     /* #ff5470 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Hairline border — subtle warm-obsidiana edge (#262320), matching João
+     * Pedro's design where panels are separated by a faint dark line, NOT a
+     * white outline. Previously this was the near-white ink (37 45% 92%) which
+     * rendered as glaring white borders on every `border-border` surface (the
+     * default applied by `* { @apply border-border }`). Accent borders that
+     * WANT brightness use explicit tokens (evergreen/40, foreground/8, etc.). */
+    --border: 30 9% 13%;             /* #262320 hairline */
+    --input: 30 12% 10%;
+    --ring: 146 61% 62%;             /* evergreen-hi ring (AAA on bg) */
+
+    --success: 146 61% 53%;          /* evergreen */
+    --success-foreground: 30 11% 4%;
+    --success-dark: 148 35% 30%;
+    --warning: 30 65% 66%;           /* clay #E0A86F — Q&A / human-info ONLY */
+    --warning-foreground: 30 11% 4%;
+
+    /* Gamification accents — kept flat on the brand palette (no neon) */
+    --life: 347 100% 66%;
+    --streak: 30 65% 66%;            /* clay-leaning flame (no orange neon) */
+    --xp: 146 61% 62%;               /* evergreen-hi */
+
+    --sidebar-background: 30 11% 4%; /* #0A0908 */
+    --sidebar-foreground: 37 45% 92%;
+    --sidebar-primary: 146 61% 53%;
+    --sidebar-primary-foreground: 30 11% 4%;
+    --sidebar-accent: 30 12% 10%;
+    --sidebar-accent-foreground: 146 61% 62%;
+    --sidebar-border: 30 9% 13%;
+    --sidebar-ring: 146 61% 62%;
+  }
+}

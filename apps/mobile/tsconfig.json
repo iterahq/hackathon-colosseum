@@ -3,8 +3,18 @@
   "compilerOptions": {
     "strict": true,
     "resolveJsonModule": true,
-    "paths": { "@iterahq/shell-bridge": ["../../packages/bridge/src/index.ts"] }
+    // The shared packages are typechecked HERE against the real `react-native` (the root program only has
+    // a lower-bound surface for it: packages/screens/types/react-native.web.d.ts). Their files sit outside
+    // this folder, where a bare import would be looked up from the repo root, so the modules they import
+    // are pinned to this install — the same rule metro.config.js applies to the bundle.
+    "paths": {
+      "@iterahq/shell-bridge": ["../../packages/bridge/src/index.ts"],
+      "@iterahq/shell-core": ["../../packages/core/src/index.ts"],
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "react-native": ["./node_modules/react-native"]
+    }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "dist-ios"]
+  "include": ["**/*.ts", "**/*.tsx", "../../packages/core/src/**/*.ts", "../../packages/screens/src/**/*.ts", "../../packages/screens/src/**/*.tsx"],
+  "exclude": ["node_modules", "dist-ios", "dist-android", "../../packages/*/src/**/*.test.ts", "../../packages/*/src/**/*.test.tsx"]
 }

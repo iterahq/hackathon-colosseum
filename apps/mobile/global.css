@@ -1,0 +1,19 @@
+/* Uniwind in the shell (R-18, shell half). metro.config.js names this file as the Uniwind CSS entry;
+   app/_layout.tsx imports it. Derived from devfellowship/dfl-lesson-studio `apps/ios/global.css`. */
+@import 'tailwindcss';
+@import 'uniwind';
+
+/* The Itera theme: the SAME two files `src/index.css` imports on the web. Not a copy. */
+@import '../../packages/screens/theme/theme.css';
+@import '../../packages/screens/theme/tokens.css';
+
+/* The one token the shell overrides. On the web `--font-sans` is a CSS font stack
+   (`Inter, system-ui, sans-serif`); React Native takes ONE family name, and Uniwind would join the stack
+   into a name no device has. The Inter files are not bundled yet (PLAN ADR-16: fonts as build assets),
+   so text is the system face until they are. `font-mono` needs the same line the day a screen uses it. */
+@theme inline {
+  --font-sans: System;
+}
+
+/* The universal screens live outside this app. Tailwind scans them for class names. */
+@source '../../packages/screens/src';

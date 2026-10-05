@@ -13,6 +13,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found/messages';
 
 export type Locale = 'pt' | 'en';
 
@@ -1008,9 +1009,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'leaderboard.player': 'Jogador',
     'home.footerBrand': 'Itera',
     'home.footerBy': 'by DevFellowship',
-    'notFound.title': '404',
-    'notFound.message': 'Ops! Página não encontrada',
-    'notFound.returnHome': 'Voltar para o início',
+    ...NOT_FOUND_MESSAGES.pt,
     'author.reviewCanvas': 'Canvas de revisão',
     'author.homeSubtitle': 'Escolha uma unidade para revisar as atividades, comentar e publicar. A edição de conteúdo acontece pelo agente (itera-mcp) — este canvas é revisão + publicação.',
     'author.loadError': 'Não foi possível carregar seus programas.',
@@ -2023,9 +2022,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'leaderboard.player': 'Player',
     'home.footerBrand': 'Itera',
     'home.footerBy': 'by DevFellowship',
-    'notFound.title': '404',
-    'notFound.message': 'Oops! Page not found',
-    'notFound.returnHome': 'Return to Home',
+    ...NOT_FOUND_MESSAGES.en,
     'author.reviewCanvas': 'Review canvas',
     'author.homeSubtitle': 'Pick a unit to review its activities, leave comments, and publish. Content edits happen via the agent (itera-mcp) — this canvas is review + publish.',
     'author.loadError': 'Could not load your programs.',

@@ -24,7 +24,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // The root install has no `react-native`: the header of that file says why and what checks it.
+      "react-native": ["./packages/screens/types/react-native.web.d.ts"]
     }
   },
   // The co-located tests of the workspace packages are here because nothing

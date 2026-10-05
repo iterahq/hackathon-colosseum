@@ -1,0 +1,114 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ITERA BRAND OVERRIDE — evergreen over the DFL design-system brand tokens
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Up to `@devfellowship/components` v0.2.0 the shared `Button` emitted
+ * `bg-primary`, which resolved through the Itera theme below and painted
+ * evergreen for free. From v1.1.0 the components emit DFL tokens and ignore the
+ * consumer theme, so the same button turned amber. The package invites exactly
+ * this fix: "Override any --p-* / --s-* / --c-* variable in your own CSS to
+ * retheme".
+ *
+ * WHICH LAYER, AND WHY THE MIDDLE ONE
+ * -----------------------------------
+ * The DS has three layers: `--p-*` primitives, `--s-*` semantic, `--c-*`
+ * component. This block overrides the SEMANTIC layer only.
+ *
+ *   • NOT `--p-*`. `--p-amber-500` means "the amber stop", not "the brand". A
+ *     component that wants amber-as-amber must keep getting amber.
+ *   • NOT `--c-*`. 80 component tokens derive from `--s-brand-*`; re-listing
+ *     them here would copy the DS's internal wiring into this app and go stale
+ *     the next time the DS adds a component.
+ *   • `--s-*` is the intent layer — "brand solid", "focus border" — and it is
+ *     the one hook that carries the whole derivation with eight declarations.
+ *
+ * WHICH TOKENS, AND WHY THOSE
+ * ---------------------------
+ * Every `--s-*` token whose value is the DFL brand colour, and nothing else.
+ * Surface, ink, border-subtle, success, warning and danger are untouched: they
+ * are not brand, and Itera's own theme already agrees with them (the DS page
+ * colour `--p-sand-950` IS Itera obsidiana `#0A0908`, and the primary-button
+ * ink `--c-button-primary-fg` is that same token — so the text on an evergreen
+ * CTA needs no override either).
+ *
+ * The Itera palette (brand.devfellowship.com/itera) has three evergreen stops,
+ * and it already names the job of each one:
+ *
+ *   evergreen      #3FD17F   primary · CTA · slash
+ *   evergreen-hi   #62D996   text-on-dark · hover · ring   (11.3:1 on #0A0908)
+ *   evergreen-soft #1C3A2A   subtle bg · line highlight
+ *
+ * So `--s-brand-hover`, `--s-brand-fg` and `--s-border-focus` all land on
+ * evergreen-hi — that is one colour doing the three jobs the brand assigns it,
+ * not three tokens collapsed by accident.
+ *
+ * `--s-brand-pressed` is the ONE value the brand palette does not supply: a
+ * pressed CTA has to read darker than its resting state, and Itera names no
+ * stop below `#3FD17F`. It is derived, at the same lightness step the DFL ramp
+ * uses between `--p-amber-500` (L 58.4) and `--p-amber-600` (L 49.6): evergreen
+ * at L 44.5, i.e. `#2CB769`. Contrast against the button ink `#0A0908` is
+ * 7.7:1 — still AAA, so the pressed state does not trade brand for legibility.
+ *
+ * The alpha tints keep the DS's own alpha values (.10 / .22 / .45) and change
+ * only the RGB, so a tint that was designed to sit at a given strength over a
+ * surface keeps sitting there.
+ */
+:root {
+  --s-brand-solid: #3fd17f; /* evergreen      — CTA fill, was --p-amber-500 */
+  --s-brand-hover: #62d996; /* evergreen-hi   — hover,    was --p-amber-400 */
+  --s-brand-pressed: #2cb769; /* derived        — pressed,  was --p-amber-600 */
+  --s-brand-fg: #62d996; /* evergreen-hi   — brand text, was --p-amber-300 */
+  --s-brand-subtle: rgba(63, 209, 127, 0.1);
+  --s-brand-border: rgba(63, 209, 127, 0.22);
+  --s-brand-ring: rgba(63, 209, 127, 0.45);
+  --s-border-focus: #62d996; /* evergreen-hi — matches Itera's own --ring below */
+}
+
+/*
+ * THE THREE THAT A VARIABLE CANNOT REACH
+ * --------------------------------------
+ * Three shared components bake `#E07A4A` into their focus-ring CLASS NAME
+ * rather than reading a token, so the `:root` block above cannot touch them:
+ *
+ *   Button   focus-visible:shadow-[0_0_0_2px_var(--s-surface-page),_0_0_0_3px_#E07A4A]
+ *   Badge    focus-visible:[box-shadow:0_0_0_2px_var(--background),0_0_0_3px_#E07A4A]
+ *   Dialog   focus-visible:shadow-[0_0_0_2px_var(--c-dialog-bg),_0_0_0_3px_#E07A4A]
+ *
+ * Those are the only three reachable from the components this app imports
+ * (`Button`, `Badge`, `Dialog`, `Textarea`, `Tooltip`) — `Textarea` and
+ * `Tooltip` read `--s-border-focus` and are already covered above. Leaving them
+ * would give Itera an evergreen button with an amber ring around it, which
+ * reads as a bug rather than as a brand.
+ *
+ * Each rule below repeats its upstream declaration and changes ONLY the ring
+ * colour: the 2px gap keeps whichever surface token the component chose, so a
+ * dialog close button still gets its panel colour and not the page colour.
+ *
+ * ⚠️ The leading `html` is load-bearing, and source order is NOT enough. An
+ * attribute selector plus `:focus-visible` scores (0,2,0), exactly what
+ * Tailwind's own `.focus-visible\:shadow-[…]:focus-visible` scores — and
+ * Tailwind emits its utilities AFTER this point in the sheet (measured: byte
+ * 156051 against 131145), so a tie would go to Tailwind and the ring would stay
+ * amber. `html` adds one type selector, (0,2,1), which wins wherever the rule
+ * lands.
+ *
+ * ⚠️ An attribute selector that stops matching fails SILENTLY back to amber, so
+ * the CI step "the shared focus rings are Itera evergreen" asserts, for each of
+ * the three, that the upstream rule AND its override are both in the built CSS.
+ */
+html [class*='var(--s-surface-page),_0_0_0_3px_#E07A4A']:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--s-surface-page),
+    0 0 0 3px var(--s-border-focus);
+}
+html [class*='var(--background),0_0_0_3px_#E07A4A']:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 3px var(--s-border-focus);
+}
+html [class*='var(--c-dialog-bg),_0_0_0_3px_#E07A4A']:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--c-dialog-bg),
+    0 0 0 3px var(--s-border-focus);
+}

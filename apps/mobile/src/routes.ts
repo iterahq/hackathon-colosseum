@@ -11,6 +11,9 @@
  *    `webview` stays, and now covers `native` too.
  *  - The route map is `../route-map.json` of this repo, not a copy of a map in another repo.
  *
+ * R-11: the map gains its first `universal: true` row, `*` (the not-found screen). It stays `webview`:
+ * `compilePattern` gives it a pattern that matches nothing, so an unknown path still opens the home route.
+ *
  * Pure TypeScript: no React Native import, so the unit tests run in plain Node.
  */
 import routeMap from '../route-map.json';
@@ -55,6 +58,8 @@ interface CompiledRoute {
 /** `/program/:slug` -> /^\/program\/[^/]+$/ */
 export function compilePattern(path: string): RegExp {
   if (path === '/') return /^\/$/;
+  // The web's catch-all (the universal not-found screen) is a row of the map, not a path the shell opens.
+  if (path === '*') return /(?!)/;
   const parts = path
     .split('/')
     .filter(Boolean)

@@ -1,0 +1,19 @@
+{
+  // The boundary of the core, by the compiler: `lib` has no DOM and `types` is empty, so `window`,
+  // `document`, `console` and the Node globals do not exist here. Run by the root `npm run typecheck`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

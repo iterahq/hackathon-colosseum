@@ -49,6 +49,7 @@ import {
 } from './support/captureRegions';
 import { ALL_FIXTURES, SINGLE_CHOICE } from './support/activityFixtures';
 import { harnessUrl, installHarnessSubstrate } from './support/harnessStub';
+import { lineOpensElement } from './support/sourceLine';
 
 /** Generated output. Gitignored — the PR links uploaded copies instead. */
 const ARTIFACT_ROOT = path.join(REPO_ROOT, 'e2e', 'artifacts', 'regions');
@@ -140,7 +141,9 @@ function unresolved(regions: Region[]): string[] {
       problems.push(`line out of range (file has ${lines.length}): ${region.file}:${region.line}`);
       continue;
     }
-    if (!lines[region.line - 1].includes(`<${region.tag}`)) {
+    // On a universal screen the line opens the react-native component that
+    // react-native-web rendered as `region.tag` (`e2e/support/sourceLine.ts`).
+    if (!lineOpensElement(lines, region.line, region.tag)) {
       problems.push(
         `line does not open <${region.tag}>: ${region.file}:${region.line} -> ` +
           JSON.stringify(lines[region.line - 1].trim())
@@ -212,9 +215,12 @@ test.describe('screenshot regions capture', () => {
   /**
    * THE PRODUCT CLAIM, END TO END.
    *
-   * `src/pages/NotFound.tsx` is the witness because it is twenty-six lines
-   * long, has exactly one component and one `<h1>`, and reaches the screen with
-   * no substrate at all — so a failure here is about the map and nothing else.
+   * `packages/screens/src/not-found/NotFoundScreen.tsx` is the witness because
+   * it is short, has exactly one component and one heading, and reaches the
+   * screen with no substrate at all — so a failure here is about the map and
+   * nothing else. It is a UNIVERSAL screen: the heading is a react-native
+   * `<Text role="heading" aria-level={1}>`, which react-native-web renders as
+   * an `<h1>`, and the stamp reaches it through `dataSet`.
    */
   test('a coordinate inside a known component resolves to its exact file', async ({ browser }) => {
     const context = await browser.newContext(CAPTURE_CONTEXT_OPTIONS);
@@ -236,14 +242,15 @@ test.describe('screenshot regions capture', () => {
 
     const hit = resolveRegionAt(manifest.regions, point.x, point.y);
     expect(hit, `nothing resolves at (${point.x}, ${point.y})`).not.toBeNull();
-    expect(hit!.file).toBe('src/pages/NotFound.tsx');
+    expect(hit!.file).toBe('packages/screens/src/not-found/NotFoundScreen.tsx');
     expect(hit!.tag).toBe('h1');
-    expect(hit!.componentName).toBe('NotFound');
+    expect(hit!.componentName).toBe('NotFoundScreen');
 
-    // And the named line really is the `<h1>` — the assertion that stops the
-    // map from being confidently wrong.
+    // And the named line really is the heading — the assertion that stops the
+    // map from being confidently wrong. `Text role="heading"` is what
+    // react-native-web turned into the `<h1>` above.
     const source = readFileSync(path.join(REPO_ROOT, hit!.file), 'utf8').split('\n');
-    expect(source[hit!.line - 1]).toContain('<h1');
+    expect(source[hit!.line - 1]).toContain('<Text role="heading" aria-level={1}');
 
     // A point outside every region must answer NOTHING rather than guess. That
     // is what stops a viewer from reporting a file for empty canvas.
@@ -252,7 +259,7 @@ test.describe('screenshot regions capture', () => {
     // And a point that IS inside the page but not inside the heading must
     // resolve to something else. The 404 shell is `min-h-screen`, so the
     // bottom-right corner is inside the shell and outside the card — the
-    // honest answer there is the shell, never the `<h1>`.
+    // honest answer there is the shell, never the heading.
     const corner = resolveRegionAt(
       manifest.regions,
       manifest.viewport.width - 1,

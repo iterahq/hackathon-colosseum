@@ -14,7 +14,6 @@ import LiveSessionPage from "./pages/LiveSessionPage";
 import InstructorClassPage from "./pages/live/InstructorClassPage";
 import InstructorSessionPage from "./pages/live/InstructorSessionPage";
 import InstructorReportPage from "./pages/live/InstructorReportPage";
-import NotFound from "./pages/NotFound";
 import SubscribePage from "./pages/SubscribePage";
 import ProfilePage from "./pages/ProfilePage";
 import SubscribeReturnPage from "./pages/SubscribeReturnPage";
@@ -60,6 +59,8 @@ const ActivityTestPage = lazy(() => import("./pages/author/ActivityTestPage"));
 const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestPage"));
 // Public prototype of the future `scene` kind: static, no data, no auth.
 const ScenePrototypePage = lazy(() => import("./pages/prototype/ScenePrototypePage"));
+// The first universal screen (packages/screens). Lazy: react-native-web loads with this route only.
+const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
@@ -493,7 +494,7 @@ const App = () => (
                 />
 
                 <Route path="/prototipo/cena" element={<LazyRoute><ScenePrototypePage /></LazyRoute>} />
-                <Route path="*" element={<NotFound />} />
+                <Route path="*" element={<LazyRoute><NotFoundRoute /></LazyRoute>} />
               </Routes>
             </BrowserRouter>
             </IteraActivityHost>

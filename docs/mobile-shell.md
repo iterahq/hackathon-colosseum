@@ -124,30 +124,31 @@ Metro reaches the package by name through `apps/mobile/metro.config.js` (`watchF
 | `routes[].path` | route pattern of `src/App.tsx`, composed with its parents | same |
 | `routes[].screen` | a name for the screen | same |
 | `routes[].mode` | `webview` (the only mode this shell opens) or `native` | same |
-| `routes[].universal` | the route renders from one shared screen package (false for all rows today) | same |
+| `routes[].universal` | the route renders from one shared screen package (`packages/screens/src/<screen>/`). True for one row since R-11: `*`, the not-found screen | same |
 | `routes[].web_paths` | the web page file(s) of the route; the one-copy test checks them against `src/App.tsx` | new |
 | `shell_chrome[]` | the closed list of shell `.tsx` files that are chrome | new |
 | `dom_zones[]` | `{id, reason, paths, kinds}`: routes and activity kinds that stay in the DOM | new (`paths`, `kinds`) |
-| `not_counted_routes[]` | `{path, reason}`: `*` and `/prototipo/cena` | same |
+| `not_counted_routes[]` | `{path, reason}`: `/prototipo/cena`. `*` was here until R-11; it is a `routes[]` row now, because rule 2 needs a route that owns the screen's folder | same |
 
-The route meter (printed by the one-copy test) is 14: 32 paths in `src/App.tsx`, minus 14 staff, minus 2 not counted, minus 2 learner DOM zones.
+The route meter (printed by the one-copy test) is 14, the routes still to port: 32 paths in `src/App.tsx`, minus 14 staff, minus 1 not counted, minus 2 learner DOM zones = 15 rows, minus the 1 that is universal (`*`). A port moves it down by one.
 
 ## One-copy rules
 
 `scripts/mobile/one-copy.test.ts` runs in the `build-test` job. The rules live in `scripts/mobile/oneCopyRules.ts`; each rule has a negative fixture in the test. A PR that touches `apps/mobile/route-map.json` needs Tainan's review (CODEOWNERS is a record, not a gate).
 
-1. Every `.tsx` under `apps/mobile/` is in `shell_chrome`, or is a route file of at most 15 lines that only renders an export of `@iterahq/screens`.
-1b. `shell_chrome` equals a closed list asserted in the test. A chrome file imports nothing from `@iterahq/*` (except the bare `@iterahq/shell-bridge`, R-6; its `/web` entry stays forbidden), `@supabase/*`, `@tanstack/*`, `react-router*`, and no file under `apps/mobile/app` or `apps/mobile/src` contains `fetch(` except `apps/mobile/src/shellGate.ts` and, from R-12, `apps/mobile/src/backendProbe.ts` (exactly one `fetch(`, and no host written in the file: its host is the origin it is given).
+1. Every `.tsx` under `apps/mobile/` is in `shell_chrome`, or is a route file of at most 15 lines that only renders an export of `@iterahq/screens`. From R-11 such a file imports the screen by its own entry (`@iterahq/screens/<screen>`), `react`, `expo-router`, and `apps/mobile/src/screenPorts.ts` — nothing else.
+1b. `shell_chrome` equals a closed list asserted in the test. A chrome file imports nothing from `@iterahq/*` (except the bare `@iterahq/shell-bridge`, R-6, and the bare `@iterahq/shell-core`, R-11; the bridge's `/web` entry stays forbidden, and `@iterahq/screens` is admitted only in a thin route file of rule 1), `@supabase/*`, `@tanstack/*`, `react-router*`, and no file under `apps/mobile/app` or `apps/mobile/src` contains `fetch(` except `apps/mobile/src/shellGate.ts` and, from R-12, `apps/mobile/src/backendProbe.ts` (exactly one `fetch(`, and no host written in the file: its host is the origin it is given).
 1c. A chrome file references no `XMLHttpRequest`, `WebSocket` or `expo/fetch`, and reads `onMessage` data only through `parseConsoleMessage` (the forwarder's `{type:'console', …}` shape) or `parseBridgeMessage` (a bridge envelope that passed the native gate; R-6); the single `onMessage` handler lives in `apps/mobile/app/[...path].tsx`.
 2. Every file under `packages/screens/src/` belongs to exactly one route's universal path.
 2b. No `*.{native,web,ios,android}.tsx` under `packages/screens/src` except under a `**/slots/` directory; a slot file has no default export.
 2c. `Platform.OS` and `Platform.select` appear under `packages/screens/src` only inside `**/slots/`.
 3. A route with `universal: true` has none of its `web_paths` on disk.
 3b. `web_paths` is checked, not declared: for every route outside the staff zone, the page component of its `element=` in `src/App.tsx` (the innermost non-wrapper JSX element; wrappers `RequireAuth`, `RequireSubscription`, `RequireRole`, `LazyRoute`, `Suspense`; `lazy(() => import(x))` resolves to `x`) must be in `web_paths`; `web_paths` is non-empty while `universal: false`.
+3c. (R-11) The web host of a universal route — the file its `element=` resolves to under `src/` — has at most 15 lines, imports the screen from `@iterahq/screens`, and has no lowercase JSX host tag.
 4. `mode: native` requires `universal: true`.
 5. The frozen manifest `e2e/support/capture-manifest.json` (32 routes) is the primary source: every route of it has a row in the map. A secondary scan of `src/App.tsx` composes every `path` with its parent, asserts it found 32 paths, and reports any path missing from the manifest.
-6. `apps/mobile/**` and `packages/{bridge,core,screens}/**` import nothing from `src/`, `@/`, `react-dom`; `apps/mobile` and `packages/screens` have no lowercase JSX host tag and no DOM global, except files named `*.injected.ts` that export only strings; `packages/{bridge,core}` import no `react`.
-7. No basename under `apps/mobile/src` or `packages/screens/src` equals one under `src/pages`, `src/components` or `packages/activities/src`.
+6. `apps/mobile/**` and `packages/{bridge,core,screens}/**` import nothing from `src/`, `@/`, `react-dom`; `apps/mobile` and `packages/screens` have no lowercase JSX host tag and no DOM global, except files named `*.injected.ts` that export only strings; `packages/{bridge,core}` import no `react`. From R-11: `packages/core` imports no package at all; a file of `packages/screens/src` imports by name only `react`, `react/jsx-runtime`, `react-native`, `uniwind` and `@iterahq/shell-core` (a platform file of a slot, `slots/x.web.tsx`, is exempt), and neither package imports from `apps/`.
+7. No basename under `apps/mobile/src` or `packages/screens/src` equals one under `src/pages`, `src/components` or `packages/activities/src`. From R-11: and no file under `apps/mobile/{app,src}` has the basename of a file of `packages/screens/src`.
 
 Residual: the closed chrome list is edited in the same PR that adds a chrome file, so whether a new file on that list is chrome or a copy is decided by the reviewer, not by CI.
 
@@ -214,3 +215,58 @@ Also changed: `onMessage` has two windows. `messageSize` (no parse) drops a fram
 Matrix: new web + shell 0.2.0 or older: `auth.session` is not listed, the page sends nothing. Shell 0.3.0 + a web build without this row: no token ever arrives; the probe shows `Backend: —`, the session line `Sessão: não`.
 
 Known limits: a hidden second WebView (a deep link over an open route) shares the one copy, last writer wins, and the page asked for a fresh token is the one mounted last; a sign-out lost three times in a row while the app stays in the foreground leaves the copy until its `exp` or the next top-frame load (the next return to the foreground ends it); one-copy rule 1b for `apps/mobile/src/backendProbe.ts` ("exactly one `fetch(`, no host literal") is a tripwire read by a reviewer, not a guarantee: `const f = fetch; f(url)`, `globalThis['fetch'](url)`, a host assembled from pieces (`'https:' + '//host'`), a decoded one (`atob(...)`) and `new Function('return fetch')()` all pass it unchanged (rule 1c still closes `XMLHttpRequest`, `WebSocket` and `expo/fetch` in every shell file, and a `fetch(` in any other file); on the Android legacy path a frame can still spend the raw window, so the page's messages can be dropped there (no token exists on that path); React Native's `fetch` follows redirects and that cannot be turned off from JavaScript (the probe discards an answer that came from another origin; PostgREST does not redirect). Not verified on a device: everything in this section.
+
+## Universal screens (R-11; Uniwind in the shell, R-18 shell half)
+
+One file under `packages/screens/src/<screen>/` is rendered by the web (react-native-web, in a lazy chunk) and by the shell (React Native), with the same Tailwind classes. The first one is `not-found`. Shape derived from Lesson Studio (`packages/screens`, `apps/ios`).
+
+| Piece | Where | Who resolves it |
+|---|---|---|
+| Ports (`Translate`, `LogPort`, `NavigationIntent`) | `packages/core` (`@iterahq/shell-core`): pure TypeScript, no package import | a type import on both sides |
+| Screen, its strings, its slots | `packages/screens/src/<screen>/` (`@iterahq/screens/<screen>`) | web: Vite alias in `vite.config.ts`; shell: `file:` link in `apps/mobile/package.json` |
+| Theme | `packages/screens/theme/{theme,tokens}.css` | web: `@import` in `src/index.css`; shell: `@import` in `apps/mobile/global.css` |
+| Web host + adapters | `src/pages/<Screen>Route.tsx`, `src/lib/universalScreenHost.ts` | `lazy()` in `src/App.tsx` |
+| Native route + adapters | `apps/mobile/app/…`, `apps/mobile/src/screenPorts.ts` | expo-router |
+
+### Recipe
+
+1. Add the row to `apps/mobile/route-map.json`: `screen: "<screen>"`, `universal: true`, `mode: "webview"`, `web_paths` = the page files you are about to delete.
+2. Write `packages/screens/src/<screen>/<Name>Screen.tsx` with `View` / `Text` from `react-native` and `className`. No HTML tag, no `window`/`document`, no hook of a router or of a data client: what the screen needs from its host is a prop typed by a port of `@iterahq/shell-core`.
+3. Give every `Text` its `font-sans`, size and colour class: a `Text` inherits nothing (react-native-web resets it to 14 px black, React Native has no cascade). Headings (`role="heading" aria-level={n}`) take the display face from the web's base layer; leave the font class off.
+4. Put a platform difference in `<screen>/slots/` and nowhere else (`Platform.OS` there, or `x.web.tsx` + `x.native.tsx` with named exports).
+5. Strings: `<screen>/messages.ts`, spread into `src/i18n/index.ts`. Give the file its own `exports` entry and Vite alias, so the web's entry chunk imports the strings and not the screen.
+6. Add the `exports` entry of the screen to `packages/screens/package.json` and the alias to `vite.config.ts` (most specific first; `scripts/workspace-alias.test.ts` fails otherwise).
+7. Web: a host of at most 15 lines under `src/pages/` that passes the adapters, mounted with `lazy()` in `src/App.tsx`. Delete the old page, its tests and its now-unused children in the same PR.
+8. Shell: a route file of at most 15 lines under `apps/mobile/app/` importing the screen, `expo-router` and `../src/screenPorts`. Until Tainan flips the row to `native`, it is a `__DEV__` preview that redirects home in a release build.
+9. A prop of React Native that the web typecheck does not know: add it to `packages/screens/types/react-native.web.d.ts` (the shell job checks the same file against the real types).
+10. Run `npx vitest run scripts/mobile/one-copy.test.ts`, `npm run typecheck`, then in `apps/mobile`: `npx tsc -p . --noEmit && npx expo export --platform ios --output-dir dist-ios --dump-sourcemap && npm run check:one-react`.
+
+### What Uniwind / React Native cannot express, and what to do instead
+
+| Web habit | On native | Instead |
+|---|---|---|
+| `grid`, `col-span-*`, `place-items-*` | no grid | `flex-row flex-wrap` with fixed basis, or a list component in a slot |
+| `before:` / `after:`, `placeholder:`, `marker:` | no pseudo-elements | a real `View`; `placeholderTextColor` |
+| `group`, `group-hover:`, `peer-*`, `[&_x]:` | no selectors across elements | state in the component, classes chosen in JS |
+| `fixed`, `sticky` | no such position | the native header/tab slot, or `absolute` inside a full-screen `View` |
+| `backdrop-*`, `blur` | not available | a translucent background colour |
+| `animate-*`, `@keyframes`, `transition*` | not available | none, or an animation in a slot |
+| inherited text style (`text-center` on a parent, `body` font) | a `Text` inherits only from a parent `Text` | repeat the class on the `Text` |
+| a font stack (`Inter, system-ui, sans-serif`) | one family name; Uniwind joins the stack into a name no device has | override the token in `apps/mobile/global.css` (`--font-sans: System` today; the Inter files are not bundled) |
+| `<a href>`, `<p>` | no such thing | `role="link"` + `href` on the web through a slot, `onPress` on native; `role="paragraph"` on the web only |
+| `hover:` | never fires | harmless; do not hide content behind it |
+| `web:` / `native:` / `ios:` variants | exist in the shell only: `src/index.css` does not import `uniwind` (it would redefine `dark:` and `disabled:` for every page) | a slot |
+
+### How one source is typechecked and bundled
+
+- Web typecheck: `npm run typecheck` runs `tsc -p packages/core` and `tsc -p packages/screens` (strict, `lib` without DOM). The root has no `react-native`, so both resolve it to `packages/screens/types/react-native.web.d.ts`, a deliberately small lower bound.
+- Shell typecheck: `apps/mobile/tsconfig.json` includes `packages/{core,screens}/src` and checks them against the real `react-native` and `uniwind/types`.
+- Web bundle: `scripts/vite/universal-screens.ts` (`uniwind()` aliases `react-native` to Uniwind's web components over react-native-web; the app's CSS pipeline is kept as it was; two edits of react-native-web so that a screen leaves nothing in the document: no reset rule, no listener).
+- Shell bundle: `apps/mobile/metro.config.js`. A bare import made by a file of `packages/` is resolved from `apps/mobile` (one React: `npm run check:one-react`). PLAN 2.3 names `nodeModulesPaths` + `disableHierarchicalLookup`; expo-doctor rejects both.
+
+### Known gaps of R-11
+
+- **The UX-paths source stamp does not see inside a universal screen.** `@devfellowship/ux-paths-capture` stamps lowercase host tags; a screen has none. `e2e/capture-regions.spec.ts` uses the not-found page as its witness (`minRegions: 4`, and "a coordinate inside a known component resolves to its exact file"): both go red (0 regions) with this port. Uniwind's web components forward `data-*` props to the DOM, so the stamp can reach these elements once the package also stamps `View`/`Text`; that is a change in the package, not here.
+- react-native-web is edited while it is bundled (`scripts/vite/universal-screens.ts`): its four document-wide reset rules are removed, and its responder listeners attach when a node registers (a `Pressable`, a `ScrollView`) instead of when the first `View` mounts. Lesson Studio also detaches them when the last such node leaves (`scripts/vite/rnw-lazy-responder.ts`); that half is not ported, so the first screen with a `Pressable` leaves 13 listeners on `document` until the next page load. Port it with that screen.
+- The shell's text is the system face (see the table). The native rendering has not been seen on a simulator or a phone: what is proven is that the screen, its strings and its compiled classes are in the exported bundle.
+- `apps/mobile/app/preview/not-found.tsx` exists in release builds as a redirect to `/`.

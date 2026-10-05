@@ -1,0 +1,25 @@
+{
+  // The web-side typecheck of the universal screens, under their own strictness (the root program
+  // that reaches them through `src/App.tsx` is not strict). `lib` has no DOM: `window` and `document`
+  // do not exist here. Run by the root `npm run typecheck`. The shell-side typecheck, against the real
+  // `react-native`, is `apps/mobile/tsconfig.json`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": [],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "paths": {
+      "react-native": ["./types/react-native.web.d.ts"],
+      "@iterahq/shell-core": ["../core/src/index.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

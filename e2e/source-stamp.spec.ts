@@ -56,6 +56,7 @@ import {
   type ActivityFixture,
 } from './support/activityFixtures';
 import { installHarnessSubstrate, harnessUrl } from './support/harnessStub';
+import { lineOpensElement } from './support/sourceLine';
 
 // `package.json` declares `"type": "module"`, so this file is ESM and there is
 // no `__dirname`.
@@ -63,7 +64,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 
 /** One rendered element that carries a stamp. */
 interface StampedElement {
-  /** The raw attribute value, e.g. `src/pages/NotFound.tsx:14`. */
+  /** The raw attribute value, e.g. `packages/screens/src/not-found/NotFoundScreen.tsx:28`. */
   value: string;
   /** Lowercased DOM tag name, e.g. `div`. */
   tag: string;
@@ -134,8 +135,9 @@ function unresolved(stamps: StampedElement[]): string[] {
     }
 
     // The assertion that carries the weight: the source line must open the very
-    // tag we found in the DOM.
-    if (!lines[line - 1].includes(`<${tag}`)) {
+    // tag we found in the DOM — or, on a universal screen, the react-native
+    // component that react-native-web rendered as that tag.
+    if (!lineOpensElement(lines, line, tag)) {
       problems.push(
         `line does not open <${tag}>: ${value} -> ${JSON.stringify(lines[line - 1].trim())}`
       );
@@ -189,6 +191,9 @@ test.describe('data-source build stamp', () => {
 
   test('the 404 screen resolves every stamp', async ({ page }) => {
     await page.goto('/there-is-no-such-route');
+    // The 404 is a universal screen (`packages/screens`, a lazy chunk): the app
+    // shell is stamped before it mounts, so wait for the screen's own heading.
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.locator('[data-source]').first()).toBeVisible();
     await assertScreen(page, '/there-is-no-such-route', 4);
   });

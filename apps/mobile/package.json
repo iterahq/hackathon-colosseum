@@ -2,7 +2,7 @@
   "name": "@iterahq/itera-mobile",
   "version": "0.3.0",
   "private": true,
-  "description": "Mobile shell of the Itera player: Expo Router + one WebView route. Not a root workspace (own install and lockfile).",
+  "description": "Mobile shell of the Itera player: Expo Router + one WebView route, and the universal screens of packages/screens (Uniwind). Not a root workspace (own install and lockfile); the shared packages are file: links.",
   "main": "expo-router/entry",
   "scripts": {
     "start": "bash scripts/start-metro.sh",
@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
+    "@iterahq/screens": "file:../../packages/screens",
+    "@iterahq/shell-bridge": "file:../../packages/bridge",
+    "@iterahq/shell-core": "file:../../packages/core",
     "expo": "~57.0.26",
     "expo-constants": "~57.0.20",
     "expo-crypto": "~57.0.3",
@@ -27,7 +30,9 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
-    "react-native-webview": "13.16.1"
+    "react-native-webview": "13.16.1",
+    "tailwindcss": "^4.3.3",
+    "uniwind": "^1.12.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

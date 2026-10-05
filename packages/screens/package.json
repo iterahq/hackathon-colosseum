@@ -1,0 +1,14 @@
+{
+  "name": "@iterahq/screens",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Universal screens: one source rendered by the web app (react-native-web) and by the native shell (React Native), styled by the same Tailwind classes (Uniwind). Source-only: no build step. No dependency entry on purpose: react, react-native and uniwind come from the host that bundles a screen (the root install on the web, apps/mobile in the shell), so there is one React per bundle.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./not-found/messages": "./src/not-found/messages.ts",
+    "./not-found": "./src/not-found/index.ts",
+    "./theme/*.css": "./theme/*.css"
+  }
+}

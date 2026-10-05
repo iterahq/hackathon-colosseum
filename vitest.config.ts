@@ -1,13 +1,19 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { universalScreens } from "./scripts/vite/universal-screens";
 
 export default defineConfig({
-  plugins: [react()],
+  // `universalScreens()`: a test that renders a screen of `packages/screens` gets the same
+  // `react-native` -> Uniwind web components -> react-native-web resolution as the build.
+  plugins: [react(), ...universalScreens()],
+  define: { __DEV__: "true" },
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // Both ship ESM that imports `react-native`; inlined, that import goes through the alias above.
+    server: { deps: { inline: ["uniwind", "react-native-web"] } },
     // `scripts/` joined `src/` when the build-time `data-source` stamp landed
     // there (`scripts/source-stamp.ts`). Build tooling that decides what ships
     // deserves the same unit coverage as product code, and the alternative -
@@ -41,6 +47,11 @@ export default defineConfig({
     ],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+      // The ES module build, as the Vite build bundles it (Node would pick `dist/cjs`, which the
+      // edits of `universalScreens()` do not reach). Exact match: deep imports keep their path.
+      { find: /^react-native-web$/, replacement: path.resolve(__dirname, "./node_modules/react-native-web/dist/index.js") },
+    ],
   },
 });

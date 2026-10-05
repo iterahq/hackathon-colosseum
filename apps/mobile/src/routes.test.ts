@@ -2,14 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { ROUTE_MAP, compilePattern, compileRoutes, matchRoute, normalisePath, pathOnOrigin, resolveShellPath } from './routes';
 
 describe('route map', () => {
-  it('holds the 30 routes of the shell, all webview, each with a web page', () => {
+  it('holds the 31 rows of the map, all webview; each has a web page unless it is universal', () => {
     expect(ROUTE_MAP.version).toBe(1);
-    expect(ROUTE_MAP.routes).toHaveLength(30);
+    expect(ROUTE_MAP.routes).toHaveLength(31);
     for (const r of ROUTE_MAP.routes) {
       expect(r.mode).toBe('webview');
-      expect(r.universal).toBe(false);
       expect(r.web_paths.length).toBeGreaterThan(0);
     }
+    expect(ROUTE_MAP.routes.filter((r) => r.universal).map((r) => r.path)).toEqual(['*']);
+  });
+
+  it('the catch-all row matches no path: an unknown path still opens the home route', () => {
+    expect(compilePattern('*').test('/*')).toBe(false);
+    expect(compilePattern('*').test('/anything')).toBe(false);
+    expect(matchRoute('/*')).toBeNull();
+    expect(resolveShellPath('/*')).toBe('/');
   });
 
   it('refuses a route whose mode this shell cannot open', () => {

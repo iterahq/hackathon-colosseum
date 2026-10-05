@@ -34,6 +34,7 @@ stack:
   data: supabase
   testing: vitest + playwright
   mobile_shell: expo-57 (apps/mobile, Expo Go only)
+  universal_screens: react-native-web + uniwind (packages/screens, one source for the web and the shell)
   observability: opentelemetry
 
 provides:
@@ -297,6 +298,7 @@ workflows:
     trigger: pull requests that touch apps/mobile (path-filtered), plus a weekly Expo Go SDK check
     steps: disk guard, npm ci, tsc, check:expo-go-sdk, web-inert
     one_copy_check: scripts/mobile/one-copy.test.ts (runs in the build-test job of ci.yml)
+    shared_packages: packages/core and packages/screens are typechecked twice (root `npm run typecheck`; apps/mobile `tsc`)
 
 mobile_shell_session:
   # Plan row R-12, ADR-10. The WebView owns the Supabase session and its refresh.

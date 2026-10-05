@@ -30,7 +30,8 @@
     {"path": "/author", "screen": "author", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/AuthorHomePage.tsx"]},
     {"path": "/author/units/:unitId/canvas", "screen": "author-units-unitId-canvas", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/UnitCanvasPage.tsx"]},
     {"path": "/author/activities/:activityId/test", "screen": "author-activities-activityId-test", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/ActivityTestPage.tsx"]},
-    {"path": "/author/activities/:activityId/test-live", "screen": "author-activities-activityId-test-live", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/LiveActivityTestPage.tsx"]}
+    {"path": "/author/activities/:activityId/test-live", "screen": "author-activities-activityId-test-live", "mode": "webview", "universal": false, "web_paths": ["src/pages/author/LiveActivityTestPage.tsx"]},
+    {"path": "*", "screen": "not-found", "mode": "webview", "universal": true, "web_paths": ["src/pages/NotFound.tsx"]}
   ],
   "shell_chrome": ["app/_layout.tsx", "app/[...path].tsx", "app/index.tsx", "src/DevOverlay.tsx", "src/LoadingVeil.tsx", "src/OfflineCard.tsx", "src/UpdateNowCard.tsx"],
   "dom_zones": [
@@ -39,7 +40,6 @@
     {"id": "code-kinds", "reason": "Monaco + sandboxed iframe", "paths": [], "kinds": ["code", "code_editor_*", "code_fill_*"]}
   ],
   "not_counted_routes": [
-    {"path": "*", "reason": "NotFound, no behaviour to port"},
     {"path": "/prototipo/cena", "reason": "internal prototype"}
   ]
 }

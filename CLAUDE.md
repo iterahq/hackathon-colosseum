@@ -191,6 +191,11 @@ WebView. Roda só no Expo Go (sem módulo nativo). **Não é workspace** do npm:
 - **Uma cópia de cada tela:** `scripts/mobile/one-copy.test.ts` roda no `build-test` e
   falha se o shell copiar um componente ou página da web. Casca = só os arquivos de
   `shell_chrome` do mapa; nada de chamada de dados nela.
+- **Tela universal** (uma fonte, web + casca): `packages/screens/src/<tela>/`, com `View`/`Text` de
+  `react-native` e `className` (Uniwind); portas em `packages/core`; tema em
+  `packages/screens/theme/`. A web monta por um host fino em `src/pages/` (chunk lazy), a casca por
+  uma rota fina em `apps/mobile/app/`. A página antiga é apagada no mesmo PR. Receita em
+  `docs/mobile-shell.md` § "Universal screens".
 - Navegação decidida em um lugar só: `apps/mobile/src/origin.ts` (com testes ao lado).
 - **Sessão (`auth.session`):** a WebView é dona da sessão e do refresh. A página entrega à casca
   **só o access token** (`src/lib/shellAuthSession.ts` → `apps/mobile/src/nativeSession.ts`, em

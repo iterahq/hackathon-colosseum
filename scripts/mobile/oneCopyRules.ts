@@ -109,28 +109,43 @@ const chromePaths = (map: RouteMap) => map.shell_chrome.map((p) => `apps/mobile/
 
 const THIN_ROUTE_MAX_LINES = 15;
 const THIN_ROUTE_MAX_LINE_LENGTH = 120;
+/** The one shell module a thin route may import next to the screen: the adapters of the screen's ports (R-11). */
+export const SHELL_PORTS_FILE = "apps/mobile/src/screenPorts.ts";
+const isScreensSpec = (spec: string) => spec === "@iterahq/screens" || spec.startsWith("@iterahq/screens/");
+const resolveRelative = (file: string, spec: string) => path.posix.normalize(`${path.posix.dirname(file)}/${spec}`);
+
+/** A route file that only mounts a universal screen: short, and importing nothing but the screen, its router and its ports. */
+export function isThinRoute(repo: Repo, file: string): boolean {
+  if (!file.startsWith("apps/mobile/app/") || !file.endsWith(".tsx")) return false;
+  const text = repo.read(file);
+  const lines = text.split("\n").filter((l) => l.trim() !== "").length;
+  const longest = Math.max(...text.split("\n").map((l) => l.length));
+  const specs = importSpecifiers(text);
+  return (
+    lines <= THIN_ROUTE_MAX_LINES &&
+    longest <= THIN_ROUTE_MAX_LINE_LENGTH &&
+    specs.some(isScreensSpec) &&
+    specs.every(
+      (s) => isScreensSpec(s) || s === "react" || s === "expo-router" || (s.startsWith(".") && `${resolveRelative(file, s)}.ts` === SHELL_PORTS_FILE),
+    )
+  );
+}
 
 /**
  * Rule 1: every `.tsx` under apps/mobile is shell chrome, or a thin route file that renders a
  * `@iterahq/screens` export. Also: no `.js`/`.jsx` under `app/` or `src/` (Metro bundles them), and a
  * non-chrome `.ts` there imports neither `react` nor `react-native` (a copy built without JSX).
+ *
+ * R-11 fixed what "thin" admits, with the first real route: the screen by its own entry
+ * (`@iterahq/screens/<screen>`, one lazy chunk per screen on the web), `react`, `expo-router` (the
+ * router the file is a route of) and `src/screenPorts.ts` (the adapters the screen is handed).
  */
 export function rule1(repo: Repo, map: RouteMap): string[] {
   const chrome = new Set(chromePaths(map));
   const out: string[] = [];
   for (const file of mobileFiles(repo).filter((p) => p.endsWith(".tsx"))) {
     if (chrome.has(file)) continue;
-    const text = repo.read(file);
-    const lines = text.split("\n").filter((l) => l.trim() !== "").length;
-    const longest = Math.max(...text.split("\n").map((l) => l.length));
-    const specs = importSpecifiers(text);
-    const thin =
-      file.startsWith("apps/mobile/app/") &&
-      lines <= THIN_ROUTE_MAX_LINES &&
-      longest <= THIN_ROUTE_MAX_LINE_LENGTH &&
-      specs.includes("@iterahq/screens") &&
-      specs.every((s) => s === "@iterahq/screens" || s === "react");
-    if (!thin) out.push(`rule 1: ${file} is neither in shell_chrome nor a route file of at most ${THIN_ROUTE_MAX_LINES} lines that renders an export of @iterahq/screens`);
+    if (!isThinRoute(repo, file)) out.push(`rule 1: ${file} is neither in shell_chrome nor a route file of at most ${THIN_ROUTE_MAX_LINES} lines that renders an export of @iterahq/screens`);
   }
   for (const file of shellSource(repo)) {
     if (/\.(js|jsx|mjs|cjs)$/.test(file)) out.push(`rule 1: ${file} is a ${file.slice(file.lastIndexOf("."))} file under apps/mobile/{app,src}; the shell is TypeScript`);
@@ -142,9 +157,11 @@ export function rule1(repo: Repo, map: RouteMap): string[] {
   return out;
 }
 
-// `@iterahq/shell-bridge` (bare name only) is admitted: the pure, react-free bridge package (ADR-9, R-6).
-// Its `/web` entry (DOM) and every other `@iterahq/*` package stay forbidden.
-const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/(?!shell-bridge$)|@supabase\/|@tanstack\/|react-router)/;
+// `@iterahq/shell-bridge` and `@iterahq/shell-core` (bare names only) are admitted: the two pure, react-free
+// packages (ADR-9, R-6; ADR-3, R-11). The bridge's `/web` entry (DOM) and every other `@iterahq/*` package
+// stay forbidden. `@iterahq/screens` is admitted in ONE kind of file, a thin route (rule 1): chrome and
+// helpers never import a screen.
+const CHROME_FORBIDDEN_IMPORT = /^(@iterahq\/(?!shell-bridge$|shell-core$)|@supabase\/|@tanstack\/|react-router)/;
 const PROBE_FILE = "apps/mobile/src/backendProbe.ts";
 // R-12 admits ONE more file: the development probe that reads the backend with the learner's access token.
 // It is held tighter than `shellGate.ts`: one call, and no host written in it (its host is a parameter,
@@ -166,7 +183,9 @@ export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): st
   }
   for (const file of shellSource(repo)) {
     const text = repo.read(file);
+    const thinRoute = !chromePaths(map).includes(file) && isThinRoute(repo, file);
     for (const spec of importSpecifiers(text)) {
+      if (thinRoute && isScreensSpec(spec)) continue;
       if (CHROME_FORBIDDEN_IMPORT.test(spec)) out.push(`rule 1b: ${file} imports ${spec}`);
       else if (/(^|\/)packages\/bridge(\/|$)/.test(spec)) out.push(`rule 1b: ${file} imports ${spec}; reach the bridge by the package name @iterahq/shell-bridge only`);
     }
@@ -421,6 +440,36 @@ export function rule3b(repo: Repo, map: RouteMap): string[] {
   return out;
 }
 
+const WEB_HOST_MAX_LINES = 15;
+
+/**
+ * Rule 3c (R-11): on the web a universal route is mounted by a host that only hands the screen its ports.
+ * The element of the route in `App.tsx` resolves either to the package itself or to a file under `src/`;
+ * that file is held to the line of a thin native route: at most 15 lines, an import of the screen, no
+ * host tag. Without this a "host" could grow back into the page the port deleted.
+ */
+export function rule3c(repo: Repo, map: RouteMap): string[] {
+  const out: string[] = [];
+  const source = repo.read(APP_PATH);
+  const appRoutes = new Map(parseAppRoutes(source, appConsts(repo)).map((r) => [r.path, r]));
+  for (const r of map.routes.filter((x) => x.universal)) {
+    const app = appRoutes.get(r.path);
+    if (!app) continue; // rule 3b reports it
+    const host = pageOfElement(app.element, source, repo);
+    if (!host) {
+      if (!importSpecifiers(source).some(isScreensSpec)) out.push(`rule 3c: universal route ${r.path} renders neither a web host under src/ nor an export of @iterahq/screens`);
+      continue;
+    }
+    const text = repo.read(host);
+    const lines = text.split("\n").filter((l) => l.trim() !== "").length;
+    if (lines > WEB_HOST_MAX_LINES) out.push(`rule 3c: ${host}, the web host of universal route ${r.path}, has ${lines} lines (at most ${WEB_HOST_MAX_LINES}: a host only hands the screen its ports)`);
+    if (!importSpecifiers(text).some(isScreensSpec)) out.push(`rule 3c: ${host}, the web host of universal route ${r.path}, does not import the screen from @iterahq/screens`);
+    const tag = HOST_TAG.exec(stripComments(text));
+    if (tag) out.push(`rule 3c: ${host}, the web host of universal route ${r.path}, renders the lowercase JSX host tag <${tag[2]}>`);
+  }
+  return out;
+}
+
 /** Rule 4: `mode: native` requires `universal: true`. */
 export function rule4(map: RouteMap): string[] {
   return map.routes.filter((r) => r.mode === "native" && !r.universal).map((r) => `rule 4: route ${r.path} is native but not universal`);
@@ -447,10 +496,13 @@ export function rule5(repo: Repo, map: RouteMap, expectedPaths: number): string[
   return out;
 }
 
-/** The route meter of ADR-8: routes outside the staff zone and the other DOM zones. */
+/**
+ * The route meter of ADR-8: the routes still to port, i.e. outside every DOM zone and not yet universal.
+ * R-11: a universal route no longer counts, so a port moves the meter down by one (R-13: 14 -> 13).
+ */
 export function routeMeter(map: RouteMap): number {
   const zoned = new Set(map.dom_zones.flatMap((z) => z.paths));
-  return map.routes.filter((r) => !zoned.has(r.path)).length;
+  return map.routes.filter((r) => !zoned.has(r.path) && !r.universal).length;
 }
 
 // ---------------------------------------------------------------- rules 6, 7
@@ -463,18 +515,36 @@ const isInjectedStringsOnly = (file: string, text: string) =>
   /\.injected\.ts$/.test(file) &&
   (text.match(/^export\s.*$/gm) ?? []).every((l) => /^export const \w+(\s*:\s*string)?\s*=\s*[`'"]/.test(l));
 
-/** Rule 6: the shell and the shared packages stay clear of the web tree, the DOM and (for bridge/core) React. */
+/** What a universal screen may import by name: the libraries both bundles have (R-11). Everything else is relative. */
+const UNIVERSAL_IMPORTS: ReadonlySet<string> = new Set(["react", "react/jsx-runtime", "react-native", "uniwind", "@iterahq/shell-core"]);
+/** A platform file of a slot (`slots/x.web.tsx`, `slots/x.native.ts`) is bundled on one side only and may import that side's libraries. */
+const PLATFORM_SLOT = /\/slots\/[^/]+\.(native|web|ios|android)\.(ts|tsx)$/;
+const isBare = (spec: string) => !spec.startsWith(".") && !spec.startsWith("/");
+
+/**
+ * Rule 6: the shell and the shared packages stay clear of the web tree, the DOM and (for bridge/core) React.
+ * R-11 adds, now that the packages exist: `packages/core` imports no package at all; a file of
+ * `packages/screens` imports only what exists on both platforms (so `react-router-dom`, `react-native-web`,
+ * `expo-router` or `react-native-webview` in a screen is red), and neither reaches into `apps/`.
+ */
 export function rule6(repo: Repo): string[] {
   const out: string[] = [];
   const scope = [...mobileFiles(repo), ...SHARED_PACKAGES.flatMap((n) => under(repo, `packages/${n}/`))];
   for (const file of scope.filter((p) => /\.(ts|tsx|js|jsx|mjs)$/.test(p))) {
     const text = repo.read(file);
+    const isTest = /\.test\.(ts|tsx)$/.test(file);
     for (const spec of importSpecifiers(text)) {
       const resolved = spec.startsWith(".") ? path.posix.normalize(`${path.posix.dirname(file)}/${spec}`) : spec;
       if (spec === "react-dom" || spec.startsWith("react-dom/") || spec.startsWith("src/") || spec.startsWith("@/") || resolved.startsWith("src/")) {
         out.push(`rule 6: ${file} imports ${spec}`);
+        continue;
       }
       if (/^packages\/(bridge|core)\//.test(file) && (spec === "react" || spec.startsWith("react/"))) out.push(`rule 6: ${file} imports ${spec} (bridge and core import no react)`);
+      else if (file.startsWith("packages/core/") && isBare(spec) && !isTest) out.push(`rule 6: ${file} imports ${spec} (core is platform-free: relative imports only)`);
+      if (/^packages\/(core|screens)\//.test(file) && (resolved.startsWith("apps/") || spec.includes("apps/mobile"))) out.push(`rule 6: ${file} imports ${spec} (a shared package does not reach into the shell)`);
+      if (file.startsWith(SCREENS_SRC) && isBare(spec) && !UNIVERSAL_IMPORTS.has(spec) && !PLATFORM_SLOT.test(file) && !isTest) {
+        out.push(`rule 6: ${file} imports ${spec}, which is not on both platforms (a universal screen imports ${[...UNIVERSAL_IMPORTS].join(", ")} or a relative module)`);
+      }
     }
     const dom = file.startsWith("apps/mobile/") || file.startsWith("packages/screens/");
     if (!dom || isInjectedStringsOnly(file, text)) continue;
@@ -487,10 +557,19 @@ export function rule6(repo: Repo): string[] {
   return out;
 }
 
-/** Rule 7: no file stem under the shell or screens src equals one in the web tree (`index` is exempt). */
+/**
+ * Rule 7: no file stem under the shell or screens src equals one in the web tree (`index` is exempt).
+ * R-11: and no shell file has the stem of a universal screen's file (a second copy on the native side).
+ */
 export function rule7(repo: Repo): string[] {
   const web = new Set([...under(repo, "src/pages/"), ...under(repo, "src/components/"), ...under(repo, "packages/activities/src/")].map(stem));
-  return [...under(repo, "apps/mobile/src/"), ...under(repo, SCREENS_SRC)]
-    .filter((p) => stem(p) !== "index" && web.has(stem(p)))
-    .map((p) => `rule 7: ${p} has the same file stem as a file of the web tree`);
+  const screens = new Set(under(repo, SCREENS_SRC).map(stem).filter((n) => n !== "index"));
+  return [
+    ...[...under(repo, "apps/mobile/src/"), ...under(repo, SCREENS_SRC)]
+      .filter((p) => stem(p) !== "index" && web.has(stem(p)))
+      .map((p) => `rule 7: ${p} has the same file stem as a file of the web tree`),
+    ...shellSource(repo)
+      .filter((p) => screens.has(stem(p)))
+      .map((p) => `rule 7: ${p} has the same file stem as a file of packages/screens/src`),
+  ];
 }

@@ -15,6 +15,7 @@ import {
   rule2c,
   rule3,
   rule3b,
+  rule3c,
   rule4,
   rule5,
   rule6,
@@ -41,7 +42,11 @@ const CLOSED_CHROME = [
 
 /** `src/App.tsx` has 32 paths (ADR-8 rule 5). A new non-literal path fails the scan instead of being skipped. */
 const APP_PATHS = 32;
-/** 32 paths - 14 staff - 2 not counted - 2 learner DOM zones = 14 (ADR-8 consequence). */
+/**
+ * The routes still to port. 32 paths - 14 staff - 1 not counted (`/prototipo/cena`) - 2 learner DOM zones
+ * = 15 rows; one of them, `*` (the not-found screen, R-11), is universal and no longer counts: 14.
+ * `*` left `not_counted_routes` because rule 2 needs a route that owns `packages/screens/src/not-found/`.
+ */
 const ROUTE_METER = 14;
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -73,8 +78,17 @@ describe("one copy, the real tree", () => {
   it("rule 3b: web_paths is the page App.tsx renders", () => {
     expect(rule3b(real, realMap)).toEqual([]);
   });
+  it("rule 3c: the web host of a universal route only hands the screen its ports", () => {
+    expect(rule3c(real, realMap)).toEqual([]);
+  });
   it("rule 4: native requires universal", () => {
     expect(rule4(realMap)).toEqual([]);
+  });
+  it("the real tree has its first universal route, and the files it names exist", () => {
+    expect(realMap.routes.filter((r) => r.universal).map((r) => `${r.path} -> ${r.screen} (${r.mode})`)).toEqual(["* -> not-found (webview)"]);
+    expect(real.paths).toContain("packages/screens/src/not-found/NotFoundScreen.tsx");
+    expect(real.paths).toContain("src/pages/NotFoundRoute.tsx");
+    expect(real.paths).toContain("apps/mobile/app/preview/not-found.tsx");
   });
   it("rule 5: the map covers the frozen manifest and every path of App.tsx", () => {
     expect(rule5(real, realMap, APP_PATHS)).toEqual([]);
@@ -535,5 +549,213 @@ describe("review fixes: minor evasions", () => {
   it("6: a backtick import() of the web tree is found", () => {
     const { repo } = fixture({ "apps/mobile/src/lazy.ts": "export const l = () => import(`@/pages/CatalogPage`);\n" });
     expect(rule6(repo)).toEqual([expect.stringContaining("lazy.ts imports @/pages/CatalogPage")]);
+  });
+});
+
+// ---------------------------------------------------------------- R-11: the first real universal route
+
+describe("R-11: the not-found screen, ported — green as built, red for each seeded violation", () => {
+  const U_MAP: RouteMap = {
+    ...MAP,
+    routes: [...MAP.routes, { path: "*", screen: "not-found", mode: "webview", universal: true, web_paths: ["src/pages/NotFound.tsx"] }],
+    not_counted_routes: [],
+  };
+  const U_APP = `
+import { lazy } from "react";
+import { Routes, Route } from "react-router-dom";
+import LoginPage from "./pages/auth/LoginPage";
+const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
+const App = () => (
+  <Routes>
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="*" element={<LazyRoute><NotFoundRoute /></LazyRoute>} />
+  </Routes>
+);
+`;
+  const SCREEN = `import { useEffect } from 'react';
+import { Text, View } from 'react-native';
+import type { LogPort } from '@iterahq/shell-core';
+import { linkProps } from './slots/webSemantics';
+export function NotFoundScreen({ log }: { log: LogPort }) {
+  useEffect(() => log.error('404', '/x'), [log]);
+  return <View><Text role="heading" {...linkProps()}>404</Text></View>;
+}
+`;
+  const HOST = `import { NotFoundScreen } from '@iterahq/screens/not-found';
+import { consoleLog } from '@/lib/universalScreenHost';
+export default function NotFoundRoute() {
+  return <NotFoundScreen log={consoleLog} />;
+}
+`;
+  const THIN = `import { Redirect, usePathname } from 'expo-router';
+import { NotFoundScreen } from '@iterahq/screens/not-found';
+import { shellLog } from '../../src/screenPorts';
+export default function NotFoundPreview() {
+  const path = usePathname();
+  if (!__DEV__) return <Redirect href="/" />;
+  return <NotFoundScreen path={path} log={shellLog} />;
+}
+`;
+  const U: Record<string, string | null> = {
+    "src/App.tsx": U_APP,
+    "src/pages/NotFound.tsx": null,
+    "src/pages/NotFoundRoute.tsx": HOST,
+    "packages/core/src/index.ts": "export type { LogPort } from './ports/log';\n",
+    "packages/core/src/ports/log.ts": "export interface LogPort { error(message: string, detail: string): void }\n",
+    "packages/screens/src/not-found/index.ts": "export { NotFoundScreen } from './NotFoundScreen';\n",
+    "packages/screens/src/not-found/NotFoundScreen.tsx": SCREEN,
+    "packages/screens/src/not-found/messages.ts": "export const NOT_FOUND_MESSAGES = { pt: { 'notFound.title': '404' } } as const;\n",
+    "packages/screens/src/not-found/slots/webSemantics.ts": "import { Platform } from 'react-native';\nexport const linkProps = () => (Platform.OS === 'web' ? { href: '/' } : {});\n",
+    "apps/mobile/app/preview/not-found.tsx": THIN,
+    "apps/mobile/src/screenPorts.ts": "import { router } from 'expo-router';\nimport type { LogPort } from '@iterahq/shell-core';\nexport const shellLog: LogPort = { error: () => router.replace('/') };\n",
+  };
+  const all = (repo: Repo, map: RouteMap) => [
+    ...rule1(repo, map),
+    ...rule1b(repo, map, CLOSED_CHROME),
+    ...rule1c(repo),
+    ...rule2(repo, map),
+    ...rule2b(repo),
+    ...rule2c(repo),
+    ...rule3(repo, map),
+    ...rule3b(repo, map),
+    ...rule3c(repo, map),
+    ...rule4(map),
+    ...rule5(repo, map, 2),
+    ...rule6(repo),
+    ...rule7(repo),
+  ];
+  const seeded = (overrides: Record<string, string | null>, map: RouteMap = U_MAP) => {
+    const { repo, map: m } = fixture({ ...U, ...overrides }, map);
+    return all(repo, m);
+  };
+  const SCREEN_PATH = "packages/screens/src/not-found/NotFoundScreen.tsx";
+
+  it("as built: every rule passes, and the universal route is off the meter", () => {
+    expect(seeded({})).toEqual([]);
+    expect(routeMeter(U_MAP)).toBe(1);
+    expect(routeMeter({ ...U_MAP, routes: U_MAP.routes.map((r) => ({ ...r, universal: false })) })).toBe(2);
+  });
+
+  it("second copy under src/: the old page comes back", () => {
+    expect(seeded({ "src/pages/NotFound.tsx": "export default function NotFound() { return <h1>404</h1>; }\n" })).toEqual([
+      "rule 3: universal route * still has src/pages/NotFound.tsx on disk",
+    ]);
+  });
+  it("second copy under src/: a web file named like the screen", () => {
+    expect(seeded({ "src/components/NotFoundScreen.tsx": "export const NotFoundScreen = () => <h1>404</h1>;\n" })).toEqual([
+      `rule 7: ${SCREEN_PATH} has the same file stem as a file of the web tree`,
+    ]);
+  });
+  it("second copy under src/: the web host grows the markup back", () => {
+    const fat = HOST.replace("return <NotFoundScreen log={consoleLog} />;", "return <div><h1>404</h1><NotFoundScreen log={consoleLog} /></div>;");
+    expect(seeded({ "src/pages/NotFoundRoute.tsx": fat })).toEqual([
+      "rule 3c: src/pages/NotFoundRoute.tsx, the web host of universal route *, renders the lowercase JSX host tag <div>",
+    ]);
+  });
+  it("second copy under src/: the web host is long, or stops importing the screen", () => {
+    expect(seeded({ "src/pages/NotFoundRoute.tsx": HOST + "const pad = 1;\n".repeat(12) })).toEqual([expect.stringContaining("has 17 lines (at most 15")]);
+    expect(seeded({ "src/pages/NotFoundRoute.tsx": "export default function NotFoundRoute() { return null; }\n" })).toEqual([
+      expect.stringContaining("does not import the screen from @iterahq/screens"),
+    ]);
+  });
+
+  it("second copy under apps/mobile/src: a .tsx, and a .ts with the screen's name", () => {
+    expect(seeded({ "apps/mobile/src/NotFoundScreen.tsx": "import { Text } from 'react-native';\nexport const NotFoundScreen = () => <Text>404</Text>;\n" })).toEqual([
+      expect.stringContaining("rule 1: apps/mobile/src/NotFoundScreen.tsx is neither in shell_chrome nor a route file"),
+      "rule 7: apps/mobile/src/NotFoundScreen.tsx has the same file stem as a file of packages/screens/src",
+    ]);
+    expect(seeded({ "apps/mobile/src/NotFoundScreen.ts": "export const title = '404';\n" })).toEqual([
+      "rule 7: apps/mobile/src/NotFoundScreen.ts has the same file stem as a file of packages/screens/src",
+    ]);
+  });
+  it("second copy in the route file: a native route that draws instead of mounting the screen", () => {
+    const drawn = "import { Text } from 'react-native';\nimport { NotFoundScreen } from '@iterahq/screens/not-found';\nexport default () => <Text>404</Text>;\n";
+    expect(seeded({ "apps/mobile/app/preview/not-found.tsx": drawn })).toEqual([
+      expect.stringContaining("rule 1: apps/mobile/app/preview/not-found.tsx is neither"),
+      "rule 1b: apps/mobile/app/preview/not-found.tsx imports @iterahq/screens/not-found",
+    ]);
+  });
+
+  it.each([
+    ["react-dom", "import { createPortal } from 'react-dom';", "imports react-dom"],
+    ["react-router-dom", "import { useLocation } from 'react-router-dom';", "imports react-router-dom, which is not on both platforms"],
+    ["react-native-web", "import { unstable_createElement } from 'react-native-web';", "imports react-native-web, which is not on both platforms"],
+  ])("web-only import in a screen: %s", (_name, line, message) => {
+    expect(seeded({ [SCREEN_PATH]: `${line}\n${SCREEN}` })).toEqual([expect.stringContaining(`rule 6: ${SCREEN_PATH} ${message}`)]);
+  });
+  it.each([
+    ["window", "export const w = window.location.pathname;"],
+    ["document", "export const d = document.title;"],
+  ])("web-only global in a screen: %s", (name, line) => {
+    expect(seeded({ [SCREEN_PATH]: `${SCREEN}${line}\n` })).toEqual([`rule 6: ${SCREEN_PATH} uses the DOM global ${name}`]);
+  });
+  it.each([
+    ["expo-router", "import { router } from 'expo-router';"],
+    ["react-native-webview", "import { WebView } from 'react-native-webview';"],
+    ["react-native/Libraries/Utilities/Platform", "import P from 'react-native/Libraries/Utilities/Platform';"],
+    ["expo-constants", "import Constants from 'expo-constants';"],
+  ])("native-only import in a screen: %s", (name, line) => {
+    expect(seeded({ [SCREEN_PATH]: `${line}\n${SCREEN}` })).toEqual([expect.stringContaining(`rule 6: ${SCREEN_PATH} imports ${name}, which is not on both platforms`)]);
+  });
+  it("a platform file of a slot may import its own platform's library; the same import one level up may not", () => {
+    expect(seeded({ "packages/screens/src/not-found/slots/Icon.web.tsx": "import { Sparkles } from 'lucide-react';\nexport const Icon = Sparkles;\n" })).toEqual([]);
+    expect(seeded({ "packages/screens/src/not-found/Icon.tsx": "import { Sparkles } from 'lucide-react';\nexport const Icon = Sparkles;\n" })).toEqual([
+      expect.stringContaining("Icon.tsx imports lucide-react, which is not on both platforms"),
+    ]);
+  });
+
+  it("a DOM tag in a universal screen", () => {
+    expect(seeded({ [SCREEN_PATH]: SCREEN.replace("<View>", "<div>").replace("</View>", "</div>") })).toEqual([
+      `rule 6: ${SCREEN_PATH} renders the lowercase JSX host tag <div>`,
+    ]);
+  });
+  it("Platform.OS in the screen itself, outside slots/", () => {
+    expect(seeded({ [SCREEN_PATH]: `import { Platform } from 'react-native';\nexport const web = Platform.OS === 'web';\n${SCREEN}` })).toEqual([
+      `rule 2c: ${SCREEN_PATH} uses Platform.OS or Platform.select outside slots/`,
+    ]);
+  });
+
+  it.each([
+    ["the web tree by alias", "import { useI18n } from '@/i18n';", "imports @/i18n"],
+    ["the web tree by path", "import { useI18n } from '../../../../src/i18n';", "imports ../../../../src/i18n"],
+    ["the shell", "import { ORIGIN } from '../../../../apps/mobile/src/origin';", "imports ../../../../apps/mobile/src/origin (a shared package does not reach into the shell)"],
+  ])("a screens file importing from %s", (_name, line, message) => {
+    expect(seeded({ [SCREEN_PATH]: `${line}\n${SCREEN}` })).toEqual([`rule 6: ${SCREEN_PATH} ${message}`]);
+  });
+  it("packages/core importing a platform library, or reaching into the shell", () => {
+    expect(seeded({ "packages/core/src/ports/log.ts": "import { Platform } from 'react-native';\nexport const os = Platform.OS;\n" })).toEqual([
+      "rule 6: packages/core/src/ports/log.ts imports react-native (core is platform-free: relative imports only)",
+    ]);
+    expect(seeded({ "packages/core/src/ports/log.ts": "export { ORIGIN } from '../../../../apps/mobile/src/origin';\n" })).toEqual([
+      "rule 6: packages/core/src/ports/log.ts imports ../../../../apps/mobile/src/origin (a shared package does not reach into the shell)",
+    ]);
+  });
+
+  it("a screen reaches the shell only through a thin route: chrome and helpers may not import it", () => {
+    expect(seeded({ "apps/mobile/app/_layout.tsx": "import { NotFoundScreen } from '@iterahq/screens/not-found';\nexport default NotFoundScreen;\n" })).toEqual([
+      "rule 1b: apps/mobile/app/_layout.tsx imports @iterahq/screens/not-found",
+    ]);
+    expect(seeded({ "apps/mobile/src/screenPorts.ts": "export { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found';\n" })).toEqual([
+      "rule 1b: apps/mobile/src/screenPorts.ts imports @iterahq/screens/not-found",
+    ]);
+  });
+  it("a thin route imports the screen, its router and its ports — nothing else", () => {
+    expect(seeded({ "apps/mobile/app/preview/not-found.tsx": THIN.replace("'../../src/screenPorts'", "'../../src/origin'") })).toEqual([
+      expect.stringContaining("rule 1: apps/mobile/app/preview/not-found.tsx is neither"),
+      "rule 1b: apps/mobile/app/preview/not-found.tsx imports @iterahq/screens/not-found",
+    ]);
+    expect(seeded({ "apps/mobile/app/preview/not-found.tsx": `import { View } from 'react-native';\n${THIN}` })).toEqual([
+      expect.stringContaining("rule 1: apps/mobile/app/preview/not-found.tsx is neither"),
+      "rule 1b: apps/mobile/app/preview/not-found.tsx imports @iterahq/screens/not-found",
+    ]);
+  });
+
+  it("the screen's folder with no universal route that owns it", () => {
+    const orphan = { ...U_MAP, routes: MAP.routes, not_counted_routes: MAP.not_counted_routes };
+    expect(seeded({}, orphan).filter((m) => m.startsWith("rule 2:"))).toHaveLength(4);
+  });
+  it("the route flipped to native while the shell cannot open it is a start-up throw, not a rule (apps/mobile/src/routes.ts)", () => {
+    const native = { ...U_MAP, routes: U_MAP.routes.map((r) => (r.universal ? { ...r, mode: "native" } : r)) };
+    expect(seeded({}, native)).toEqual([]);
   });
 });

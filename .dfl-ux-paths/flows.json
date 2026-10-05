@@ -40,7 +40,7 @@
       "name": "Not found",
       "route": "/*",
       "source_ref": {
-        "component_file": "src/pages/NotFound.tsx"
+        "component_file": "packages/screens/src/not-found/NotFoundScreen.tsx"
       },
       "screenshots": [],
       "prerequisites": {

@@ -5,6 +5,7 @@ import { componentTagger } from "lovable-tagger";
 import { readFileSync, existsSync } from "fs";
 import { monacoSelfHost } from "./scripts/vendor-monaco";
 import { sourceStamp } from "./scripts/source-stamp";
+import { universalScreens } from "./scripts/vite/universal-screens";
 
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
@@ -44,6 +45,7 @@ export default defineConfig(({ mode }) => ({
     sourceStamp({ root: __dirname }),
     monacoSelfHost(),
     react(),
+    ...universalScreens(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   resolve: {
@@ -53,6 +55,9 @@ export default defineConfig(({ mode }) => ({
       // is not there to resolve through. The more specific entry must come first.
       "@iterahq/shell-bridge/web": path.resolve(__dirname, "./packages/bridge/src/web.ts"),
       "@iterahq/shell-bridge": path.resolve(__dirname, "./packages/bridge/src/index.ts"),
+      "@iterahq/shell-core": path.resolve(__dirname, "./packages/core/src/index.ts"),
+      "@iterahq/screens/not-found/messages": path.resolve(__dirname, "./packages/screens/src/not-found/messages.ts"),
+      "@iterahq/screens/not-found": path.resolve(__dirname, "./packages/screens/src/not-found/index.ts"),
       ...(swapyInstalled
         ? {}
         : {
@@ -63,5 +68,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     "import.meta.env.VITE_APP_NAME": JSON.stringify(pkg.name),
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version),
+    // Uniwind's web runtime reads the React Native `__DEV__` global.
+    __DEV__: JSON.stringify(mode === "development"),
   },
 }));

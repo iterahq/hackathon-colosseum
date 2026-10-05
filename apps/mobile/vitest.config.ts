@@ -8,7 +8,10 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   root: __dirname,
   resolve: {
-    alias: { '@iterahq/shell-bridge': path.resolve(__dirname, '../../packages/bridge/src/index.ts') },
+    alias: {
+      '@iterahq/shell-bridge': path.resolve(__dirname, '../../packages/bridge/src/index.ts'),
+      '@iterahq/shell-core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+    },
   },
   test: {
     include: ['src/**/*.test.ts'],
