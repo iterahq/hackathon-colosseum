@@ -144,7 +144,7 @@ export function QuizActivity({
           {eyebrow}
         </div>
         <h2
-          className="font-display font-bold text-xl md:text-2xl text-foreground mt-2"
+          className="font-display font-bold text-lg md:text-xl text-foreground mt-2"
           data-testid="quiz-question"
         >
           <RichSpans spans={parseInline(question)} />

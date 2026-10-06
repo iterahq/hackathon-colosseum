@@ -31,7 +31,7 @@ export function RichHeading({
     return (
       <h3
         className={`flex items-baseline gap-2.5 font-display font-semibold ${
-          muted ? 'text-base' : 'text-lg md:text-xl'
+          muted ? 'text-sm' : 'text-base md:text-lg'
         } ${tone}`}
         data-rich-block="heading"
         data-level="3"
@@ -49,7 +49,7 @@ export function RichHeading({
   return (
     <h3
       className={`font-display font-bold leading-tight tracking-tight ${
-        muted ? 'text-lg' : 'text-2xl md:text-[1.75rem]'
+        muted ? 'text-base' : 'text-xl md:text-2xl'
       } ${tone}`}
       data-rich-block="heading"
       data-level="2"

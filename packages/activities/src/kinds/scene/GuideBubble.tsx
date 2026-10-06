@@ -31,7 +31,7 @@ export function GuideBubble({
       <GuideAvatar happy={happy} className="max-sm:absolute max-sm:left-4 max-sm:top-2.5 max-sm:z-10 max-sm:h-7 max-sm:w-7" />
       <div aria-live="polite" className="min-w-0 max-sm:flex-1">
         <div
-          className={`relative grid max-w-xl rounded-2xl rounded-bl-sm border border-l-[3px] bg-[#1A1714] px-5 py-3.5 text-[15px] leading-relaxed text-foreground transition-colors duration-200 max-sm:rounded-bl-2xl max-sm:px-4 max-sm:py-2.5 max-sm:leading-snug [&>*]:col-start-1 [&>*]:row-start-1 ${
+          className={`relative grid max-w-xl rounded-2xl rounded-bl-sm border border-l-[3px] bg-[#1A1714] px-5 py-3 text-sm leading-snug text-foreground transition-colors duration-200 max-sm:rounded-bl-2xl max-sm:px-4 max-sm:py-2.5 max-sm:leading-snug [&>*]:col-start-1 [&>*]:row-start-1 ${
             happy ? 'border-evergreen/60' : 'border-white/10'
           }`}
         >

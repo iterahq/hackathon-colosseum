@@ -508,7 +508,7 @@ export function QuestionView({
   return (
     <ActivityShell kind={activity.kind} icon={MessageCircleQuestion} label={t('activity.question')}>
       {spec?.title && (
-        <RichText text={spec.title} className="text-lg font-medium" data-testid="question-title" />
+        <RichText text={spec.title} className="text-base font-medium" data-testid="question-title" />
       )}
       {spec?.description && (
         <RichText

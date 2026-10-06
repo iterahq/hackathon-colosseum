@@ -47,8 +47,8 @@ export function RichBlock({
   const body = muted
     ? 'text-sm text-muted-foreground leading-relaxed'
     : lead
-      ? 'font-body text-lg md:text-xl text-foreground leading-relaxed'
-      : 'font-body text-base md:text-lg text-foreground leading-relaxed';
+      ? 'font-body text-base md:text-lg text-foreground leading-normal'
+      : 'font-body text-[15px] md:text-base text-foreground leading-normal';
 
   if (block.type === 'heading')
     return <RichHeading level={block.level} spans={block.spans} muted={muted} section={section} />;

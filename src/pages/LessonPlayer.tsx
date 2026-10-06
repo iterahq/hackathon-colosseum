@@ -643,7 +643,7 @@ export default function LessonPlayer() {
                   the git-metaphor "PULL · FEATURE/<branch>" was dropped (round-3
                   finding #1: it read as "am I in the right place?" to non-devs). */}
               <div
-                className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi max-sm:sr-only short:sr-only"
+                className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi sr-only"
                 data-testid="lesson-eyebrow"
               >
                 {t('lesson.eyebrow')}
@@ -652,7 +652,7 @@ export default function LessonPlayer() {
               {/* Big bold display title = the lesson title. */}
               <LessonTitle
                 text={tText(data.title)}
-                className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5 max-sm:mt-0 short:mt-0 truncate pb-1 -mb-1 max-sm:text-xl"
+                className="font-display font-bold text-xl md:text-2xl text-foreground truncate pb-1 -mb-1 max-sm:text-lg"
               />
 
               {saveError && (

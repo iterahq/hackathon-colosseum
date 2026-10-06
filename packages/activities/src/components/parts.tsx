@@ -46,10 +46,11 @@ const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind)
  * When the activity talks about Tera he peeks over the top-right corner —
  * unless the kind draws him itself (`mascot="none"`, the scene guide).
  *
- * On a phone, and on a screen 800 px high or less (`short:`), the kind badge is
- * read by screen readers only and the padding is tighter: the card is the screen there, and every band above the exercise
- * pushes its answer below the fold. A card Tera peeks over keeps the room the
- * badge row gave him, so he covers neither the lesson title nor the first line.
+ * The kind badge is read by screen readers only, on every screen: the learner
+ * does not need the exercise type named, and every band above the exercise
+ * pushes its answer below the fold. On a phone, and on a screen 800 px high or
+ * less (`short:`), the padding is tighter too. A card Tera peeks over keeps
+ * room at the top, so he covers neither the lesson title nor the first line.
  */
 export function ActivityShell({
   kind,
@@ -72,14 +73,14 @@ export function ActivityShell({
       animate={{ opacity: 1, y: 0 }}
       className={`relative w-full rounded-3xl border border-border bg-card px-6 max-sm:px-4 md:px-8 ${
         compact ? 'py-4 max-sm:py-3 md:py-5 short:py-4' : 'py-6 max-sm:py-4 md:py-8 short:py-5'
-      } ${tera ? 'max-sm:pt-11 short:pt-11' : ''}`}
+      } ${tera ? 'pt-11' : ''}`}
       data-testid="activity-shell"
       data-activity-kind={kind}
       data-tera={tera ? 'true' : undefined}
     >
       {tera && <TeraPeek />}
-      <KindBadge icon={icon} label={label} className="max-sm:sr-only short:sr-only" />
-      <div className={compact ? 'mt-3 max-sm:mt-0 short:mt-0' : 'mt-5 max-sm:mt-0 short:mt-0'}>{children}</div>
+      <KindBadge icon={icon} label={label} className="sr-only" />
+      <div>{children}</div>
     </motion.div>
   );
 }
