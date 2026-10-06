@@ -77,6 +77,9 @@
  */
 @custom-variant short (@media (width >= 40rem) and (height <= 50rem));
 
+/* A finger as the primary pointer: where a 36 px control needs a 44 px hit area. */
+@custom-variant coarse (@media (pointer: coarse));
+
 /*
  * Auth forms under a finger (`AuthShell`). Fields and buttons come from
  * `@devfellowship/components` at 34-36 px and 13 px: under 44 px a thumb misses,

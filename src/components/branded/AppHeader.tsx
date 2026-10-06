@@ -37,6 +37,13 @@ import { useEnabledTenantIds } from '@/hooks/useLiveClass';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { WebOnly } from '@/components/shell/WebOnly';
 
+/**
+ * 36 px visual box, 44 px hit area on touch only: the same idea as `HIT_SLOP` in
+ * `LessonChrome`, 5 px because the pseudo-element is positioned from the padding
+ * box, inside the 1 px border.
+ */
+const TOUCH_SLOP = 'coarse:relative coarse:before:absolute coarse:before:-inset-[5px]';
+
 export function AppHeader({
   active = 'discover',
 }: {
@@ -201,7 +208,7 @@ export function AppHeader({
             type="button"
             aria-label={t('nav.notifications')}
             data-testid="nav-bell"
-            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors"
+            className={`${TOUCH_SLOP} hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors`}
           >
             <Bell className="w-4 h-4" />
           </button>
@@ -212,7 +219,7 @@ export function AppHeader({
             aria-label={t('nav.settings')}
             data-testid="nav-settings"
             onClick={() => setOpen((v) => !v)}
-            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors"
+            className={`${TOUCH_SLOP} hidden sm:flex items-center justify-center w-9 h-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:border-verde-tech/50 transition-colors`}
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -220,7 +227,7 @@ export function AppHeader({
           {/* Mobile-only compact locale toggle (the gear/menu carries it on ≥sm) */}
           <button
             onClick={toggleLocale}
-            className="sm:hidden flex items-center gap-1.5 px-3 h-9 rounded-full border border-border text-xs font-medium hover:border-verde-tech transition-colors"
+            className={`${TOUCH_SLOP} sm:hidden flex items-center gap-1.5 px-3 h-9 rounded-full border border-border text-xs font-medium hover:border-verde-tech transition-colors`}
             data-testid="locale-toggle-mobile"
             aria-label="Toggle language"
           >
@@ -231,7 +238,7 @@ export function AppHeader({
           <div className="relative" ref={ref}>
             <button
               onClick={() => setOpen((v) => !v)}
-              className={`flex items-center gap-1 md:gap-1.5 p-0.5 md:pr-2 rounded-full border transition-colors ${
+              className={`${TOUCH_SLOP} flex items-center gap-1 md:gap-1.5 p-0.5 md:pr-2 rounded-full border transition-colors ${
                 open ? 'border-verde-tech bg-card' : 'border-transparent hover:border-border'
               }`}
               data-testid="user-menu-trigger"

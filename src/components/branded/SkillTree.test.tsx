@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { I18nProvider } from '@/i18n';
 import { SkillTree } from './SkillTree';
 import { UNIT_PALETTE } from './skillTreeUnitPalette';
@@ -121,5 +122,72 @@ describe('SkillTree', () => {
     );
     screen.getAllByTestId('tree-node-current')[0].click();
     expect(onOpenLesson).toHaveBeenCalledWith('l1');
+  });
+
+  describe('a locked node', () => {
+    const lockedProgram: ProgramDetail = {
+      ...program,
+      units: [
+        {
+          id: 'u1',
+          programId: 'p1',
+          ordinal: 0,
+          title: { en: 'Week one' },
+          lessons: [1, 2, 3].map((n) => ({
+            id: `l${n}`,
+            unitId: 'u1',
+            ordinal: n,
+            title: { en: `Lesson ${n}` },
+            activities: [act(`a${n}`, 'todo')],
+          })),
+        },
+      ],
+    };
+
+    function renderWith(onOpenLesson = vi.fn()) {
+      render(
+        <I18nProvider>
+          <SkillTree program={lockedProgram} onOpenLesson={onOpenLesson} />
+        </I18nProvider>
+      );
+      return onOpenLesson;
+    }
+
+    it('says what it waits for, announces it, and opens nothing', () => {
+      const onOpenLesson = renderWith();
+      const [first] = screen.getAllByTestId('tree-node-locked');
+      expect(first).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(first);
+      const hint = screen.getByTestId('tree-lock-hint');
+      expect(within(hint).getByText('Conclua o Dia 1 para liberar')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('Conclua o Dia 1 para liberar');
+      expect(onOpenLesson).not.toHaveBeenCalled();
+    });
+
+    it('answers Enter and Space on the focused node', async () => {
+      const user = userEvent.setup();
+      renderWith();
+      const [first] = screen.getAllByTestId('tree-node-locked');
+      first.focus();
+      await user.keyboard('{Enter}');
+      expect(screen.getByTestId('tree-lock-hint')).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByTestId('tree-lock-hint')).toBeNull();
+      await user.keyboard(' ');
+      expect(screen.getByTestId('tree-lock-hint')).toBeInTheDocument();
+    });
+
+    it('moves to another locked node and closes on a tap outside', async () => {
+      const user = userEvent.setup();
+      renderWith();
+      const [first, second] = screen.getAllByTestId('tree-node-locked');
+      await user.click(first);
+      await user.click(second);
+      expect(screen.getAllByTestId('tree-lock-hint')).toHaveLength(1);
+      expect(screen.getByRole('status')).toHaveTextContent('Conclua o Dia 1 para liberar');
+      await user.click(document.body);
+      expect(screen.queryByTestId('tree-lock-hint')).toBeNull();
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
   });
 });

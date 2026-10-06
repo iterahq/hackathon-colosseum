@@ -8,8 +8,9 @@ export function SkillTreeCallout({
   eyebrow,
   title,
   ctaLabel,
-  activitiesDone,
-  activitiesTotal,
+  activitiesDone = 0,
+  activitiesTotal = 0,
+  message,
   tone,
   left,
   top,
@@ -18,22 +19,24 @@ export function SkillTreeCallout({
   onOpen,
 }: {
   eyebrow: string;
-  title: string;
-  ctaLabel: string;
-  activitiesDone: number;
-  activitiesTotal: number;
+  title?: string;
+  ctaLabel?: string;
+  activitiesDone?: number;
+  activitiesTotal?: number;
+  /** A note instead of a lesson: no title, progress or button. Used to say what a locked node waits for. */
+  message?: string;
   tone: UnitTone;
   left: number;
   top: number;
   width: number;
   tailLeft: number;
-  onOpen: () => void;
+  onOpen?: () => void;
 }) {
   const ticks = Math.min(activitiesTotal, MAX_TICKS);
   const filled = activitiesTotal > MAX_TICKS ? Math.round((activitiesDone / activitiesTotal) * ticks) : activitiesDone;
   return (
     <div
-      data-testid="tree-callout"
+      data-testid={message === undefined ? 'tree-callout' : 'tree-lock-hint'}
       className="absolute z-4 box-border flex flex-col gap-1.5 rounded-2xl bg-obsidiana px-3.5 pt-3 pb-3.5 shadow-[0_16px_44px_rgba(0,0,0,0.65)]"
       style={{ left, top, width, border: `1px solid ${tone.base}` }}
     >
@@ -50,8 +53,12 @@ export function SkillTreeCallout({
       <span className="font-mono text-[11px]" style={{ color: tone.hi }}>
         {`> ${eyebrow}`}
       </span>
-      <span className="font-display text-[22px] font-bold leading-[1.05] line-clamp-2">{title}</span>
-      {ticks > 0 && (
+      {message !== undefined ? (
+        <span className="font-display text-[17px] font-bold leading-tight">{message}</span>
+      ) : (
+        <span className="font-display text-[22px] font-bold leading-[1.05] line-clamp-2">{title}</span>
+      )}
+      {message === undefined && ticks > 0 && (
         <div className="my-0.5 flex gap-1" aria-hidden="true">
           {Array.from({ length: ticks }, (_, i) => (
             <span
@@ -62,6 +69,7 @@ export function SkillTreeCallout({
           ))}
         </div>
       )}
+      {message === undefined && (
       <button
         type="button"
         onClick={onOpen}
@@ -74,6 +82,7 @@ export function SkillTreeCallout({
       >
         {ctaLabel}
       </button>
+      )}
     </div>
   );
 }

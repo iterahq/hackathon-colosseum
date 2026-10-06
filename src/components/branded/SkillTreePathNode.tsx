@@ -92,11 +92,11 @@ export function SkillTreePathNode({
         whileHover={interactive && !reducedMotion ? { scale: 1.06 } : undefined}
         whileTap={interactive ? { y: 4, scale: 0.97 } : undefined}
         onClick={onClick}
-        disabled={!interactive}
+        aria-disabled={interactive ? undefined : true}
         data-testid={`tree-node-${state}`}
         aria-label={title}
         className={`relative z-2 w-full h-full rounded-full flex flex-col items-center justify-center p-0 ${
-          interactive ? 'cursor-pointer' : 'bg-card text-muted-foreground cursor-not-allowed'
+          interactive ? 'cursor-pointer' : 'bg-card text-muted-foreground cursor-help'
         }`}
         style={
           interactive

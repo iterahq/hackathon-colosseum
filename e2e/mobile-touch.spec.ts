@@ -26,7 +26,7 @@ import {
   SINGLE_CHOICE,
   type ActivityFixture,
 } from './support/activityFixtures';
-import { installHarnessSubstrate, installSupabaseStub, harnessUrl } from './support/harnessStub';
+import { installHarnessSubstrate, installSupabaseStub, harnessUrl, STUB_SUPABASE_URL } from './support/harnessStub';
 import { LIVE_TYPE, SCENE_TARGETS, fixture } from './support/sceneFixtures';
 
 interface Surface {
@@ -340,4 +340,86 @@ test.describe('the auth forms fit a thumb', () => {
       }
     });
   }
+});
+
+const uuid = (unit: number, lesson: number, activity = 0) =>
+  `00000000-0000-4000-9${String(unit).padStart(3, '0')}-${String(lesson).padStart(6, '0')}${String(activity).padStart(6, '0')}`;
+
+/** Two weeks of three lessons, nothing done: each week opens at its first lesson. */
+async function openProgram(page: Page): Promise<void> {
+  const units = [1, 2].map((u) => ({
+    id: uuid(u, 0),
+    program_id: uuid(0, 1),
+    ordinal: u,
+    title_i18n: { pt: `Semana ${u}` },
+    lessons: [1, 2, 3].map((l) => ({
+      id: uuid(u, l),
+      unit_id: uuid(u, 0),
+      ordinal: l,
+      title_i18n: { pt: `Lição ${u}.${l}` },
+      activities: [{ id: uuid(u, l, 1), lesson_id: uuid(u, l), ordinal: 0, kind: 'concept', spec: {}, rubric: {}, artifact_policy: {} }],
+    })),
+  }));
+  const program = {
+    id: uuid(0, 1),
+    tenant_id: '00000000-0000-4000-8000-000000000003',
+    slug: 'html-do-zero',
+    title_i18n: { pt: 'HTML do zero' },
+    created_at: '2026-01-01T00:00:00Z',
+    units,
+  };
+  const json = (body: unknown) => ({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify(body),
+  });
+  await installHarnessSubstrate(page, []);
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/programs*`, (route) => route.fulfill(json(program)));
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/progress*`, (route) => route.fulfill(json([])));
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/my_subscription*`, (route) =>
+    route.fulfill(json([{ status: 'active', is_active: true, current_period_end: null, seat_count: 1, cancel_at_period_end: false }])),
+  );
+  await page.goto('/program/html-do-zero');
+  await expect(page.getByTestId('skill-tree')).toBeVisible();
+}
+
+test.describe('the program page under a finger', () => {
+  test('a locked lesson answers a tap with what it waits for, and opens nothing', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openProgram(page);
+    const nodes = page.locator('[data-testid^="tree-node-"]');
+    await expect(nodes.nth(0)).toHaveAttribute('data-testid', 'tree-node-current');
+    await expect(nodes.nth(2)).toHaveAttribute('data-testid', 'tree-node-locked');
+
+    await nodes.nth(1).tap({ force: true });
+    const hint = page.getByTestId('tree-lock-hint');
+    await expect(hint).toHaveText(/Conclua o Dia 1 para liberar/);
+    await expect(page.getByRole('status')).toHaveText('Conclua o Dia 1 para liberar');
+    expect(new URL(page.url()).pathname).toBe('/program/html-do-zero');
+    const [box, view] = [(await hint.boundingBox())!, page.viewportSize()!];
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(view.width);
+
+    await page.touchscreen.tap(4, 520);
+    await expect(hint).toHaveCount(0);
+  });
+
+  test('the app header controls have a 44 px hit area', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openProgram(page);
+    for (const id of ['locale-toggle-mobile', 'user-menu-trigger']) {
+      const hit = await page.getByTestId(id).evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const reaches = (y: number) => document.elementFromPoint(x, y)?.closest('[data-testid]') === el;
+        let top = box.top;
+        while (reaches(top - 1)) top -= 1;
+        let bottom = box.bottom;
+        while (reaches(bottom + 1)) bottom += 1;
+        return bottom - top;
+      });
+      expect(hit, `${id} reaches ${hit} px`).toBeGreaterThanOrEqual(43);
+    }
+  });
 });

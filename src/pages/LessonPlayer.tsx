@@ -29,6 +29,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
+import { LessonTitle } from '@/components/branded/lesson/LessonTitle';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
@@ -118,9 +119,6 @@ export default function LessonPlayer() {
   // persist — otherwise it is dropped, exactly as it was before 0027.
   const pendingResponseRef = useRef<string | null>(null);
 
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const [titleClipped, setTitleClipped] = useState(false);
-
   // True until the persisted progress for this lesson has been read back (or has
   // failed to read). We hold the first render behind it so the learner never
   // sees activity 1 flash before being moved to where they actually stopped.
@@ -203,21 +201,6 @@ export default function LessonPlayer() {
   }, [lessonId, activities, isPending]);
 
   const current = activities[index];
-
-  // The title is one truncated line; only when it is cut does it need a tooltip.
-  // (`truncate` clips at the line box, which is shorter than the descenders of
-  // the display face: the heading carries `pb-1 -mb-1` so a "g" keeps its tail.)
-  const titleText = data ? tText(data.title) : '';
-  const titleMounted = !!current && !completed && !resuming;
-  useEffect(() => {
-    const el = titleRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const check = () => setTitleClipped(el.scrollWidth > el.clientWidth);
-    check();
-    const observer = new ResizeObserver(check);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [titleText, titleMounted]);
 
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
@@ -667,14 +650,10 @@ export default function LessonPlayer() {
               </div>
 
               {/* Big bold display title = the lesson title. */}
-              <h1
-                ref={titleRef}
-                title={titleClipped ? tText(data.title) : undefined}
+              <LessonTitle
+                text={tText(data.title)}
                 className="font-display font-bold text-3xl md:text-4xl text-foreground mt-1.5 max-sm:mt-0 short:mt-0 truncate pb-1 -mb-1 max-sm:text-xl"
-                data-testid="lesson-title"
-              >
-                {tText(data.title)}
-              </h1>
+              />
 
               {saveError && (
                 <div

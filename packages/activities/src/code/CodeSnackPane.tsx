@@ -14,6 +14,7 @@ import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
 import { CodeChecksFeedback } from './CodeChecksFeedback.js';
 import { CodeResetControl } from './CodeResetControl.js';
+import { useResultBadge } from './useResultBadge.js';
 
 /**
  * The split-pane snack surface: the editor (seeded from the learner's saved
@@ -69,6 +70,11 @@ export function CodeSnackPane({
   // screen away. The hidden pane keeps its box (`invisible`, not `hidden`), so
   // the preview frame the checks run in never collapses to 0x0.
   const [phonePane, setPhonePane] = useState<'code' | 'preview'>('code');
+  const { unseen: resultUnseen, markStale } = useResultBadge(phonePane, results);
+  const onEdit = (next: string) => {
+    if (next !== code) markStale();
+    setCode(next);
+  };
   // Recomputed from the CURRENT source, never from the starter: the learner's
   // own saved draft and every edit they make move the marker lines around, and
   // a region pinned to the starter's line numbers would drift onto locked code
@@ -117,8 +123,18 @@ export function CodeSnackPane({
             }`}
           >
             {t(pane === 'code' ? 'code.pane.code' : 'code.pane.preview')}
+            {pane === 'preview' && resultUnseen && (
+              <span
+                aria-hidden="true"
+                data-testid="code-pane-new-result"
+                className="ml-1.5 inline-block h-2 w-2 rounded-full bg-menta align-middle"
+              />
+            )}
           </button>
         ))}
+        <span role="status" aria-live="polite" className="sr-only">
+          {resultUnseen ? t('code.pane.newResult') : ''}
+        </span>
       </div>
 
       <div className={`mt-4 max-sm:mt-3 ${CODE_SPLIT_GRID}`}>
@@ -151,7 +167,7 @@ export function CodeSnackPane({
                 history of why this used to be hardcoded. */}
             <CodeEditorSurface
               value={code}
-              onChange={setCode}
+              onChange={onEdit}
               language={spec.language === 'html' || spec.language === 'css' ? spec.language : 'typescript'}
               readOnly={readOnly}
               editableRegions={editableRegions}

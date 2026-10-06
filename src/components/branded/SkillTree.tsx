@@ -23,6 +23,8 @@ import { kindLabelKey } from './skillTreeKindLabel';
 import { SkillTreeUnitHeader } from './SkillTreeUnitHeader';
 import { SkillTreePathNode } from './SkillTreePathNode';
 import { SkillTreeCallout } from './SkillTreeCallout';
+import { lockedPrerequisiteDay } from './skillTreeLockedHint';
+import { useLockedHint } from './useLockedHint';
 import {
   BANNER_INSET,
   CALLOUT_HEIGHT,
@@ -36,6 +38,7 @@ import type { ProgramDetail, Lesson, ActivityKind } from '@/types/content';
 const DEFAULT_WIDTH = 390;
 const CALLOUT_MAX_WIDTH = 280;
 const CALLOUT_INSET = 12;
+const LOCKED_HINT_GAP = 14;
 const PATH_BASE = '#2E2A25';
 const PATH_FLOW = '#A9F0C7';
 const GRID_LINE = 'rgba(63,209,127,0.022)';
@@ -87,6 +90,7 @@ export function SkillTree({
   const reducedMotion = !!useReducedMotion();
   const [trailRef, containerWidth] = useElementWidth<HTMLDivElement>();
   const sections = buildSections(program);
+  const lockedHint = useLockedHint();
 
   const flatNodes = sections.flatMap((s) => s.nodes);
   const primaryIndex = flatNodes.findIndex((n) => n.state === 'current');
@@ -121,11 +125,30 @@ export function SkillTree({
   const flowPath = primary !== null && primary >= 1 ? buildTrailPath(layout.nodes.slice(primary - 1, primary + 1)) : '';
   const trailLeft = (containerWidth - width) / 2;
 
+  const hintPlacement = lockedHint.openIndex === null ? null : layout.nodes[lockedHint.openIndex];
+  const hintDay = lockedHint.openIndex === null ? null : lockedPrerequisiteDay(flatNodes, lockedHint.openIndex);
+  const lockedMessage = hintDay === null ? t('journey.lockedGeneric') : t('journey.lockedBehind', { n: hintDay });
+  const lockedHintWidth = Math.min(CALLOUT_MAX_WIDTH, width - CALLOUT_INSET * 2);
+  const lockedHintLeft = hintPlacement
+    ? Math.max(CALLOUT_INSET, Math.min(width - CALLOUT_INSET - lockedHintWidth, hintPlacement.x - lockedHintWidth / 2))
+    : 0;
+  const lockedHintBox = hintPlacement && {
+    day: hintPlacement.day,
+    sectionIndex: hintPlacement.sectionIndex,
+    width: lockedHintWidth,
+    left: lockedHintLeft,
+    top: hintPlacement.y + hintPlacement.size / 2 + LOCKED_HINT_GAP,
+    tailLeft: hintPlacement.x - lockedHintLeft,
+  };
+
   return (
     <div
       className="relative px-2 py-4 md:px-4"
       data-testid="skill-tree"
     >
+      <p role="status" className="sr-only">
+        {lockedHintBox ? lockedMessage : ''}
+      </p>
       <span
         aria-hidden="true"
         data-testid="trail-backdrop"
@@ -259,10 +282,22 @@ export function SkillTree({
                 activitiesDone={countDone(node.lesson)}
                 activitiesTotal={node.lesson.activities?.length ?? 0}
                 reducedMotion={reducedMotion}
-                onClick={() => node.state !== 'locked' && onOpenLesson(node.lesson.id)}
+                onClick={() => (node.state === 'locked' ? lockedHint.toggle(placement.globalIndex) : onOpenLesson(node.lesson.id))}
               />
             );
           })}
+
+          {lockedHintBox && (
+            <SkillTreeCallout
+              eyebrow={t('journey.lockedEyebrow', { day: String(lockedHintBox.day).padStart(2, '0') })}
+              message={lockedMessage}
+              tone={toneForUnit(sections[lockedHintBox.sectionIndex].index)}
+              left={lockedHintBox.left}
+              top={lockedHintBox.top}
+              width={lockedHintBox.width}
+              tailLeft={lockedHintBox.tailLeft}
+            />
+          )}
 
           {primary !== null && layout.calloutTop !== null && (() => {
             const node = flatNodes[primary];

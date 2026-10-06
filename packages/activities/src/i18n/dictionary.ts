@@ -90,6 +90,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.pane.label': 'Painel',
     'code.pane.code': 'Código',
     'code.pane.preview': 'Resultado',
+    'code.pane.newResult': 'Novo resultado',
     'code.checks.score': '{passed} de {total}',
     'code.checks.someFailed': 'Quase lá — falta pouco.',
     // VIDAS: o teto de envios errados por exercício (`code/attemptBudget.ts`).
@@ -281,6 +282,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.pane.label': 'Pane',
     'code.pane.code': 'Code',
     'code.pane.preview': 'Result',
+    'code.pane.newResult': 'New result',
     'code.checks.score': '{passed} of {total}',
     'code.checks.someFailed': 'Almost there — just a bit more.',
     'code.lives.remaining': '{count} attempts left',
