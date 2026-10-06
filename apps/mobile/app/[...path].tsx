@@ -59,7 +59,7 @@ import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeS
 import { OfflineCard } from '../src/OfflineCard';
 import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
-import { navigationDecision, parseWebOrigin } from '../src/origin';
+import { DEV_TOP_FRAME_ORIGINS, navigationDecision, parseWebOrigin } from '../src/origin';
 import { resolveShellPath } from '../src/routes';
 import {
   INITIAL_CHROME,
@@ -230,7 +230,7 @@ function useSessionProbe() {
 function useNavigationGuard() {
   const lastNotice = useRef<number | null>(null);
   return useCallback((req: ShouldStartLoadRequest) => {
-    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame);
+    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame, undefined, undefined, __DEV__ ? DEV_TOP_FRAME_ORIGINS : []);
     if (decision === 'external') void Linking.openURL(req.url);
     const notice = blockedNotice(decision, req.isTopFrame);
     if (notice !== null && noticeDue(lastNotice.current, Date.now())) {

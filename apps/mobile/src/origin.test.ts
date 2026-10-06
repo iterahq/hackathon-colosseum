@@ -159,3 +159,26 @@ describe('navigationDecision, sub-frame', () => {
     expect(navigationDecision('http://player.example/v/1', O, false, allow)).toBe('block');
   });
 });
+
+describe('navigationDecision — development top-frame origins', () => {
+  const APP = 'https://app.iterahq.dev';
+  const DFL = 'https://learn.devfellowship.com/auth/federate?return=x';
+
+  it('sends the DFL handoff to the system browser when no origin is listed', () => {
+    expect(navigationDecision(DFL, APP)).toBe('external');
+  });
+
+  it('loads a listed https origin in the WebView and nothing that only looks like it', () => {
+    const dev = ['https://learn.devfellowship.com'];
+    expect(navigationDecision(DFL, APP, true, undefined, undefined, dev)).toBe('load');
+    expect(navigationDecision('http://learn.devfellowship.com/auth/federate', APP, true, undefined, undefined, dev)).toBe('external');
+    expect(navigationDecision('https://learn.devfellowship.com.evil.com/', APP, true, undefined, undefined, dev)).toBe('external');
+    expect(navigationDecision('https://learn.devfellowship.com@evil.com/', APP, true, undefined, undefined, dev)).toBe('block');
+  });
+
+  it('keeps a blocked origin blocked even when it is also listed', () => {
+    expect(
+      navigationDecision('https://checkout.stripe.com/c/pay', APP, true, undefined, undefined, ['https://checkout.stripe.com']),
+    ).toBe('block');
+  });
+});

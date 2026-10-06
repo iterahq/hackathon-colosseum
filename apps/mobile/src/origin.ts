@@ -64,6 +64,13 @@ export type NavigationDecision = 'load' | 'external' | 'block';
 export const FRAME_ORIGIN_ALLOW_LIST: readonly string[] = [];
 
 /**
+ * Development builds only (Expo Go): the DFL handoff page loads inside the WebView, so "Entrar com DFL"
+ * can finish without a deep-link return, which Expo Go cannot receive. A store build passes nothing here
+ * and the handoff goes to the system browser until the auth session of R-20 exists.
+ */
+export const DEV_TOP_FRAME_ORIGINS: readonly string[] = ['https://learn.devfellowship.com'];
+
+/**
  * What the WebView does with a navigation request. `origin` is the app origin.
  *
  * - `load`: the app origin (exact: scheme + host + port), and `about:`. A SUB-frame also loads
@@ -84,6 +91,7 @@ export function navigationDecision(
   isTopFrame = true,
   frameOrigins: readonly string[] = FRAME_ORIGIN_ALLOW_LIST,
   blockedOrigins: readonly string[] = BLOCKED_ORIGINS,
+  topFrameOrigins: readonly string[] = [],
 ): NavigationDecision {
   const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(url.trim())?.[1].toLowerCase() ?? null;
   if (scheme === null) return 'block';
@@ -103,7 +111,8 @@ export function navigationDecision(
     if (top === null) return 'block';
     const dotless = originWithoutTrailingDot(url);
     if (dotless !== null && blockedOrigins.includes(dotless)) return 'block';
-    return top === appOrigin ? 'load' : 'external';
+    if (top === appOrigin) return 'load';
+    return scheme === 'https' && topFrameOrigins.includes(top) ? 'load' : 'external';
   }
   if (scheme === 'mailto' || scheme === 'tel') return 'external';
   return 'block';
