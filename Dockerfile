@@ -69,8 +69,24 @@ RUN printf 'server {\n\
   # ADR itera-edge-allow-framing-by-learn: scope embedding to learn.devfellowship.com\n\
   # (+ localhost for dev). MUST NOT send X-Frame-Options (would block the iframe).\n\
   add_header Content-Security-Policy "frame-ancestors '"'"'self'"'"' https://learn.devfellowship.com http://localhost:* http://127.0.0.1:*" always;\n\
+  # The bundle went out uncompressed (1.5 MB of JS on a phone). The proxy in front does not compress,\n\
+  # so nginx does; text/html is always included. gzip_proxied: the request arrives through a proxy.\n\
+  gzip on;\n\
+  gzip_comp_level 6;\n\
+  gzip_min_length 1024;\n\
+  gzip_proxied any;\n\
+  gzip_vary on;\n\
+  gzip_types text/css application/javascript application/json image/svg+xml text/plain application/manifest+json;\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
+  }\n\
+  # Vite names every file in /assets/ after its content, so a year and immutable. A name that is gone\n\
+  # (a tab older than the last deploy) is a 404, not index.html. add_header here replaces the\n\
+  # server-level one, so the CSP is repeated. No "always" on Cache-Control: a 404 must not be kept.\n\
+  location /assets/ {\n\
+    add_header Cache-Control "public, max-age=31536000, immutable";\n\
+    add_header Content-Security-Policy "frame-ancestors '"'"'self'"'"' https://learn.devfellowship.com http://localhost:* http://127.0.0.1:*" always;\n\
+    try_files $uri =404;\n\
   }\n\
   # The shell reads this file at every launch: a changed value must reach it at once. add_header here\n\
   # replaces the server-level one, which is fine for a JSON file. A missing file is a 404, not index.html.\n\
