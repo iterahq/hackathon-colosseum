@@ -26,7 +26,7 @@ export function InstructionImage({ src, alt }: { src: string; alt: string }) {
           src={src}
           alt={alt}
           onLoad={() => setLoaded(true)}
-          className={`w-full h-auto max-h-64 md:max-h-96 object-contain transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-auto max-h-[min(16rem,28dvh)] md:max-h-[min(24rem,28dvh)] object-contain transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         />
         {loaded && (
           <span className="absolute bottom-2 right-2 rounded-full bg-obsidiana/90 px-3 py-1 text-xs text-muted-foreground">

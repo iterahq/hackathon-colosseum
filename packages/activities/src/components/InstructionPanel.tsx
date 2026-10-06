@@ -7,7 +7,9 @@
  * etc. The flexibility is the point. When the spec is empty it renders nothing.
  *
  * Render order (top→bottom): text (the prominent prompt) → image → video →
- * audio → description (muted secondary note). Brand DS: dark card surfaces,
+ * audio → description (muted secondary note). Beside an image the description
+ * is that image's text alternative and is not drawn: a caption under every
+ * diagram was a band of scroll. Brand DS: dark card surfaces,
  * evergreen/menta accents, JB-mono eyebrow voice inherited from the shell.
  *
  * Media loading: image and video reserve space with a pulse skeleton so the
@@ -63,12 +65,12 @@ export function InstructionPanel({
   );
 
   return (
-    <div className={`space-y-4 ${className}`} data-testid="instruction-panel">
+    <div className={`space-y-3 ${className}`} data-testid="instruction-panel">
       {text && <RichText text={text} reading={reading} data-testid="instruction-text" />}
 
       {optionalVideo && video_url && <OptionalVideoButton src={video_url} onUnplayable={() => setFailedSrc(video_url)} />}
 
-      {image_url && <InstructionImage src={image_url} alt={text ?? 'instruction'} />}
+      {image_url && <InstructionImage src={image_url} alt={description ?? text ?? 'instruction'} />}
 
       {video_url && !optionalVideo && <InstructionVideo src={video_url} />}
 
@@ -76,7 +78,7 @@ export function InstructionPanel({
         <audio src={audio_url} controls className="w-full" data-testid="instruction-audio" />
       )}
 
-      {description && (
+      {description && !image_url && (
         <RichText text={description} muted data-testid="instruction-description" />
       )}
     </div>

@@ -46,3 +46,16 @@ describe('InstructionPanel video', () => {
     expect(screen.getByTestId('instruction-video')).toBeInTheDocument();
   });
 });
+
+describe('InstructionPanel description', () => {
+  it('beside an image, the description is the image text alternative and is not drawn', () => {
+    render(<InstructionPanel spec={{ text: 'Read me', image_url: 'https://cdn.x.io/a.png', description: 'A tag up close' }} />);
+    expect(screen.queryByTestId('instruction-description')).toBeNull();
+    expect(screen.getByAltText('A tag up close')).toBeInTheDocument();
+  });
+
+  it('without an image, the description is still drawn', () => {
+    render(<InstructionPanel spec={{ text: 'Read me', description: 'A note' }} />);
+    expect(screen.getByTestId('instruction-description')).toHaveTextContent('A note');
+  });
+});

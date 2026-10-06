@@ -39,7 +39,7 @@ export function GuidedCodeTemplate({
   return (
     <div
       data-testid="guided-code-template"
-      className="h-[360px] overflow-auto rounded-2xl border border-border bg-[#0a0a0a] py-3 font-mono text-[13px] leading-[22px]"
+      className="max-h-[min(360px,46dvh)] overflow-auto rounded-2xl border border-border bg-[#0a0a0a] py-3 font-mono text-[13px] leading-[22px]"
     >
       {lines.map((line) => (
         <div key={line.number} className="flex items-start px-3">

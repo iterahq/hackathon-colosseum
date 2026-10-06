@@ -133,10 +133,10 @@ const FROZEN = {
 
   /** `ActivityShell` → `px-6 md:px-8`. Both arms, and the breakpoint. */
   shellPaddingX: { base: '24px', md: '32px' },
-  /** `ActivityShell`, non-compact → `py-6 md:py-8`. */
-  shellPaddingY: { base: '24px', md: '32px' },
+  /** `ActivityShell`, non-compact → `py-5`, `py-4` on a phone (the no-scroll pass, 2026-10-06). */
+  shellPaddingY: { base: '16px', md: '20px' },
   /**
-   * `ActivityShell`, compact → `py-4 md:py-5`.
+   * `ActivityShell`, compact → `py-4`, `py-3` on a phone.
    *
    * The compact arm is frozen too, and on purpose: `COMPACT_KINDS` exists
    * because splitting the old single sandbox kind into `chat_sandbox` +
@@ -144,12 +144,15 @@ const FROZEN = {
    * migrated row. That component's own comment calls it "a layout regression
    * with no failing test to catch it". This is that test.
    */
-  compactPaddingY: { base: '16px', md: '20px' },
+  compactPaddingY: { base: '12px', md: '16px' },
 
-  /** `ActivityShell` → `mt-5` between the kind badge and the content. */
-  shellInnerGap: '20px',
-  /** `ActivityShell`, compact → `mt-3`. Same reason as `compactPaddingY`. */
-  compactInnerGap: '12px',
+  /**
+   * `ActivityShell` → no gap above the content: the kind badge is screen-reader
+   * only since 2026-10-06, so the row it took and the gap under it are gone.
+   */
+  shellInnerGap: '0px',
+  /** `ActivityShell`, compact → none either. */
+  compactInnerGap: '0px',
   /** `DoneButton` → `mt-6`. The gap above the completion affordance. */
   controlGap: '24px',
   /** `DoneButton` → `h-12`. A pill with the wrong height is not the same pill. */
@@ -312,8 +315,8 @@ export const CongelamentoDeEstilo: Story = {
     );
 
     /* ─── 8. vertical rhythm ──────────────────────────────────────────────
-     * The gaps INSIDE the card: badge → content, and content → done button.
-     * `mt-5` / `mt-3` / `mt-6`, plus the button's own `h-12`, because a pill
+     * The gaps INSIDE the card: none above the content (the badge is not
+     * drawn), and content → done button `mt-6`, plus the button's own `h-12`, because a pill
      * that keeps its radius and loses its height is not the same pill. */
     const content = shell!.children[1];
     const compactContent = compactShell!.children[1];

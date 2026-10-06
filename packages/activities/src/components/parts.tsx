@@ -49,8 +49,9 @@ const isCompactKind = (kind: string) => COMPACT_KINDS.has(transitionKindOf(kind)
  * The kind badge is read by screen readers only, on every screen: the learner
  * does not need the exercise type named, and every band above the exercise
  * pushes its answer below the fold. On a phone, and on a screen 800 px high or
- * less (`short:`), the padding is tighter too. A card Tera peeks over keeps
- * room at the top, so he covers neither the lesson title nor the first line.
+ * less (`short:`), the padding is tighter too. A card Tera peeks over floats a
+ * spacer the size of his face in the top-right corner of the content: the first
+ * lines wrap around him instead of running under him, and no row is spent.
  */
 export function ActivityShell({
   kind,
@@ -72,8 +73,8 @@ export function ActivityShell({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className={`relative w-full rounded-3xl border border-border bg-card px-6 max-sm:px-4 md:px-8 ${
-        compact ? 'py-4 max-sm:py-3 md:py-5 short:py-4' : 'py-6 max-sm:py-4 md:py-8 short:py-5'
-      } ${tera ? 'sm:pt-11' : ''}`}
+        compact ? 'py-4 max-sm:py-3' : 'py-5 max-sm:py-4'
+      }`}
       data-testid="activity-shell"
       data-activity-kind={kind}
       data-tera={tera ? 'true' : undefined}

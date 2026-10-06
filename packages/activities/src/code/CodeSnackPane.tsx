@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Code2, Loader2 } from 'lucide-react';
 import type { CodeSpec } from '@iterahq/activity-spec';
@@ -15,6 +15,7 @@ import { CodeLivePreview } from './CodeLivePreview.js';
 import { CodeChecksFeedback } from './CodeChecksFeedback.js';
 import { CodeResetControl } from './CodeResetControl.js';
 import { useResultBadge } from './useResultBadge.js';
+import { useShrinkToFit } from './useShrinkToFit.js';
 
 /**
  * The split-pane snack surface: the editor (seeded from the learner's saved
@@ -70,6 +71,9 @@ export function CodeSnackPane({
   // screen away. The hidden pane keeps its box (`invisible`, not `hidden`), so
   // the preview frame the checks run in never collapses to 0x0.
   const [phonePane, setPhonePane] = useState<'code' | 'preview'>('code');
+  const editorBox = useRef<HTMLDivElement>(null);
+  const previewBox = useRef<HTMLDivElement>(null);
+  useShrinkToFit([editorBox, previewBox]);
   const { unseen: resultUnseen, markStale } = useResultBadge(phonePane, results);
   const onEdit = (next: string) => {
     if (next !== code) markStale();
@@ -154,6 +158,7 @@ export function CodeSnackPane({
               against those tokens — which is what makes normalized coordinates
               honest; the remaining size difference is handled on the wire. */}
           <div
+            ref={editorBox}
             data-stage-cursor-source
             // `relative` é a outra metade do contrato: o host desenha o ponteiro
             // do professor DENTRO deste painel por portal, posicionado em % dele.
@@ -186,6 +191,7 @@ export function CodeSnackPane({
         </div>
 
         <div
+          ref={previewBox}
           className={`max-sm:[grid-area:1/1] ${CODE_SPLIT_PREVIEW} ${CODE_PANE_BOX} border border-border ${
             phonePane === 'preview' ? '' : 'max-sm:invisible'
           }`}

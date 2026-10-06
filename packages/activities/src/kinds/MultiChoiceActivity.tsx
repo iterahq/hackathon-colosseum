@@ -26,6 +26,7 @@ import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
+import { choiceGridClass } from '../components/choiceGrid.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -143,7 +144,7 @@ export function MultiChoiceActivity({
         {t('activity.selectAll')}
       </p>
 
-      <div ref={optionsRef} className="mt-3 grid gap-2.5 auto-rows-fr" data-testid="multi-choice-options">
+      <div ref={optionsRef} className={`mt-3 grid gap-2.5 auto-rows-fr ${choiceGridClass(options)}`} data-testid="multi-choice-options">
         {options.map((o, i) => {
           const chosen = selected.includes(o.id);
           const state = choiceOptionState({

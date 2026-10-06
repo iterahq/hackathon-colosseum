@@ -72,13 +72,13 @@ import type { Activity, LessonPosition } from '@/types/content';
 import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 
 /**
- * On a phone, and on a screen 800 px high or less (`short:`), the room under the
- * content is the bar that is up (verdict footer or a scene's hint bar, each
- * publishing its own height) plus a gap — and only the gap while none is. The
- * 10rem a taller screen keeps is one bar's worth of scroll on a 640 px screen.
+ * The room under the content is the bar that is up (verdict footer or a scene's
+ * hint bar, each publishing its own height) plus a gap — and only the gap while
+ * none is. A fixed reserve was a bar's worth of scroll on every exercise that
+ * had no bar up.
  */
 const BAR_BOTTOM_RESERVE =
-  'max-sm:pb-[calc(max(var(--feedback-footer-h,0px),var(--scene-hint-h,0px),env(safe-area-inset-bottom,0px))+1.5rem)] short:pb-[calc(max(var(--feedback-footer-h,0px),var(--scene-hint-h,0px),env(safe-area-inset-bottom,0px))+1.5rem)]';
+  'pb-[calc(max(var(--feedback-footer-h,0px),var(--scene-hint-h,0px),env(safe-area-inset-bottom,0px))+1rem)]';
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -600,9 +600,10 @@ export default function LessonPlayer() {
       {/* pb leaves room so the fixed FeedbackFooter never clips the SubmitButton. */}
       <main
         data-testid="lesson-main"
+        data-fit-viewport
         className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
-          isSandbox && !completed ? 'pt-4 max-sm:pt-[3.25rem]' : 'pt-14 max-sm:pt-[3.25rem] md:pt-16 short:pt-[3.25rem]'
-        } ${pending || !isSandbox ? `pb-[calc(10rem+env(safe-area-inset-bottom,0px))] ${BAR_BOTTOM_RESERVE}` : 'pb-4'}`}
+          isSandbox && !completed ? 'pt-4 max-sm:pt-[3.25rem]' : 'pt-[3.25rem]'
+        } ${pending || !isSandbox ? BAR_BOTTOM_RESERVE : 'pb-4'}`}
       >
         {/* `resuming` shares the content skeleton on purpose: reading back where
             the learner stopped is part of loading the lesson, and showing
@@ -679,7 +680,7 @@ export default function LessonPlayer() {
                 // about identity, and "activity 3 is showing" is not otherwise
                 // observable from the DOM.
                 <div
-                  className={isSandbox ? 'mt-4 max-sm:mt-3 short:mt-3' : 'mt-7 max-sm:mt-3 short:mt-3'}
+                  className="mt-3"
                   data-testid="lesson-activity"
                   data-activity-id={current.id}
                 >
@@ -710,7 +711,7 @@ export default function LessonPlayer() {
                   onClick={reviewing ? goForward : conceptContinue}
                   disabled={saving}
                   data-testid="concept-continue"
-                  className="mt-6 max-sm:mt-4 short:mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {t('activity.continue')}
                 </button>

@@ -176,8 +176,8 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
       stamp={copy.stamp}
       solved={solved}
     >
-      <div className={`grid gap-4 md:grid-cols-2 ${TOUCH_SURFACE}`} data-testid="compose-stage">
-        <div className="flex flex-col gap-4">
+      <div className={`grid gap-4 max-sm:gap-3 md:grid-cols-2 ${TOUCH_SURFACE}`} data-testid="compose-stage">
+        <div className="flex flex-col gap-4 max-sm:gap-3">
           {!solved && (
             <div className="flex flex-col gap-2">
               <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">

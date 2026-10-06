@@ -16,17 +16,17 @@ export function RichCodeBlock({ language, value }: { language: string; value: st
       data-rich-block="code"
       data-language={language || undefined}
     >
-      <div className="flex items-center gap-1.5 border-b border-border/70 px-4 py-2" aria-hidden="true">
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
-        <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
-        {language && (
+      {language && (
+        <div className="flex items-center gap-1.5 border-b border-border/70 px-4 py-2" aria-hidden="true" data-testid="code-block-bar">
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
           <span className="ml-auto font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {language}
           </span>
-        )}
-      </div>
-      <pre className="overflow-x-auto px-4 py-3">
+        </div>
+      )}
+      <pre className={`overflow-x-auto px-4 ${language ? 'py-3' : 'py-2.5'}`}>
         <code className="block font-mono text-sm leading-6 text-menta">
           {numbered
             ? lines.map((line, i) => (
