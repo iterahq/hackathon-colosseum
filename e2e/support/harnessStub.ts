@@ -120,7 +120,13 @@ export async function seedSession(page: Page): Promise<void> {
   const payload = JSON.stringify(fakeSession());
   await page.addInitScript(
     ([key, value]) => {
-      window.localStorage.setItem(key, value);
+      // Init scripts also run inside the sandboxed code preview iframe, where reading
+      // `localStorage` throws; only the app's own frames need a session.
+      try {
+        window.localStorage.setItem(key, value);
+      } catch {
+        // opaque-origin frame
+      }
     },
     [STORAGE_KEY, payload] as const
   );

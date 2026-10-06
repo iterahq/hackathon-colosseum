@@ -629,6 +629,18 @@ test.describe('code', () => {
     await expect(page.getByTestId('code-submit')).toHaveCount(0);
   });
 
+  for (const fx of [CODE_NO_CHECKS, CODE_WITH_CHECKS]) {
+    test(`the sandboxed preview raises no page error (${fx.label})`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(`${e.message}\n${e.stack ?? ''}`));
+      await open(page, fx);
+      const preview = page.frameLocator('[data-testid="code-preview-iframe"]');
+      await expect(preview.locator('#root')).not.toBeEmpty();
+      await page.waitForTimeout(500);
+      expect(errors, `page errors from the preview:\n${errors.join('\n')}`).toEqual([]);
+    });
+  }
+
   test('com `checks`: screen graduado — submit, sem "concluir"', async ({ page }) => {
     await open(page, CODE_WITH_CHECKS);
     await expect(page.getByTestId('code-submit')).toBeVisible();

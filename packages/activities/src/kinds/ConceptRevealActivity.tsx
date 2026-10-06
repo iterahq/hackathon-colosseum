@@ -71,7 +71,7 @@ export function ConceptRevealActivity({
             aria-expanded={shown}
             aria-controls={answerId}
             data-testid="concept-reveal-show"
-            className="mt-3 inline-flex h-9 items-center rounded-full border border-evergreen/40 px-4 text-sm text-evergreen-hi transition-colors hover:bg-evergreen-soft/40"
+            className="mt-3 inline-flex h-9 items-center coarse:relative coarse:before:absolute coarse:before:-inset-y-1 coarse:before:inset-x-0 rounded-full border border-evergreen/40 px-4 text-sm text-evergreen-hi transition-colors hover:bg-evergreen-soft/40"
           >
             {t(shown ? 'activity.reveal.hide' : 'activity.reveal.show')}
           </button>

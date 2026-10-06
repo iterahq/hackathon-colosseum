@@ -9,7 +9,7 @@
  * (`DecomposeCanvasSpec` in `../specs.js`) — see the release-gate note there.
  */
 import { useMemo, useState } from 'react';
-import { Eraser, Puzzle, RotateCcw } from 'lucide-react';
+import { Eraser, Puzzle, RotateCcw, X } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { TACTILE_CTA } from '../components/tactile.js';
 import { priorGatePayload } from '../internal/priorAnswer.js';
@@ -156,7 +156,7 @@ export function DecomposeCanvasActivity({
       stamp={copy.stamp}
       solved={solved}
     >
-      <div className="flex flex-col gap-4" data-testid="decompose-stage">
+      <div className="flex flex-col gap-4 max-sm:gap-3" data-testid="decompose-stage">
         {spec?.view && (
           <SystemView
             view={spec.view}
@@ -182,14 +182,16 @@ export function DecomposeCanvasActivity({
                 tabIndex={selected.size === 0 ? -1 : 0}
                 aria-hidden={selected.size === 0}
                 data-testid="decompose-clear-selection"
-                className={`shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${
+                aria-label={t('activity.decomposeCanvas.clearSelection')}
+                className={`shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline max-sm:grid max-sm:h-11 max-sm:w-11 max-sm:place-items-center max-sm:rounded-full max-sm:border max-sm:border-border ${
                   selected.size === 0 ? 'invisible' : ''
                 }`}
               >
-                {t('activity.decomposeCanvas.clearSelection')}
+                <span className="max-sm:hidden">{t('activity.decomposeCanvas.clearSelection')}</span>
+                <X className="hidden h-4 w-4 max-sm:block" aria-hidden />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2" role="group" aria-label={t('activity.decomposeCanvas')}>
+            <div className="flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-1 max-sm:pb-1" role="group" aria-label={t('activity.decomposeCanvas')}>
               {parts.map((part, i) => {
                 const color = partColor(part, i);
                 return (
@@ -199,7 +201,7 @@ export function DecomposeCanvasActivity({
                     data-testid={`decompose-part-${part.id}`}
                     onClick={() => assign(part.id)}
                     disabled={selected.size === 0}
-                    className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-b-4 px-3.5 py-2 text-sm font-semibold transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
+                    className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border-2 border-b-4 px-3.5 py-2 text-sm font-semibold transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
                     style={{ borderColor: color, background: `${color}1F` }}
                   >
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
@@ -212,7 +214,7 @@ export function DecomposeCanvasActivity({
                 data-testid="decompose-unassign"
                 onClick={unassign}
                 disabled={selectedAssigned.length === 0}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-b-4 border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
+                className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border-2 border-b-4 border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground/80 transition-[transform,opacity] duration-100 active:translate-y-[2px] active:border-b-2 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:border-b-4"
               >
                 <Eraser className="h-4 w-4" aria-hidden />
                 {t('activity.decomposeCanvas.unassign')}

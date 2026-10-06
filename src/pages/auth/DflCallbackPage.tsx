@@ -67,7 +67,7 @@ export default function DflCallbackPage() {
             </p>
             <button
               type="button"
-              className="touch-hit text-xs text-muted-foreground underline"
+              className="touch-hit coarse:min-w-11 text-xs text-muted-foreground underline"
               onClick={() => navigate('/login', { replace: true })}
             >
               {t('auth.signIn')}
