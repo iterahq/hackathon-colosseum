@@ -339,6 +339,7 @@ const PUBLIC_RUNTIME_SURFACE = [
   'ActivityShell',
   'TeraAvatar',
   'TeraVerdict',
+  'VerdictMark',
   'TeraMentionProvider',
   'mentionsTera',
   'textMentionsTera',

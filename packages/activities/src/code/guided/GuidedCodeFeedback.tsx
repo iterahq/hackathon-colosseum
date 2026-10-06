@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeBlank } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
-import { TeraVerdict } from '../../components/TeraVerdict.js';
+import { TeraVerdict, VerdictMark } from '../../components/TeraVerdict.js';
 import { CodeAttemptsNotice } from '../CodeAttemptsNotice.js';
 import type { GuidedGrade } from './types.js';
 
@@ -57,7 +57,8 @@ export function GuidedCodeFeedback({
       data-out-of-lives={outOfLives ? 'true' : undefined}
     >
       <div className="flex items-center gap-2">
-        <TeraVerdict correct={grade.allCorrect} size="sm" ringClassName={grade.allCorrect ? 'ring-[#1b2d24]' : 'ring-[#2b221a]'} />
+        <TeraVerdict correct={grade.allCorrect} size="bar" />
+        <VerdictMark correct={grade.allCorrect} />
         <p
           className={`font-display font-semibold ${grade.allCorrect ? 'text-menta' : 'text-clay'}`}
           data-testid="guided-feedback-title"

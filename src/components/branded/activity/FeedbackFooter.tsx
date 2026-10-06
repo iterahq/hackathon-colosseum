@@ -79,7 +79,7 @@
  * gated.
  */
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { TeraVerdict } from '@iterahq/activities';
+import { TeraVerdict, VerdictMark } from '@iterahq/activities';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import { usePublishedHeight } from '@/hooks/usePublishedHeight';
@@ -156,31 +156,26 @@ export function FeedbackFooter({
           data-testid="feedback-footer"
           data-correct={correct ? 'true' : 'false'}
         >
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:flex-row md:items-center md:justify-between md:px-6 md:py-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:pl-[max(1.5rem,env(safe-area-inset-left,0px))] md:pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
+          <div className="relative mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:flex-row md:items-center md:justify-between md:px-6 md:py-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:pl-[max(1.5rem,env(safe-area-inset-left,0px))] md:pr-[max(1.5rem,env(safe-area-inset-right,0px))]">
             <div className="flex min-w-0 items-start gap-3 md:flex-1 md:gap-4">
               <motion.span
                 initial={reducedMotion ? false : { scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 14 }}
-                className="mt-2 shrink-0 max-sm:mt-0.5"
+                className="pointer-events-none absolute -top-8 left-[max(1rem,env(safe-area-inset-left,0px))] origin-bottom md:-top-10 md:left-[max(1.5rem,env(safe-area-inset-left,0px))]"
                 aria-hidden="true"
                 data-testid="feedback-footer-mark"
               >
-                <TeraVerdict
-                  correct={correct}
-                  size="bar"
-                  missTone="destructive"
-                  avatarClassName="max-sm:h-10 max-sm:w-10"
-                  ringClassName={correct ? 'ring-[#1a2a20]' : 'ring-[#2a1a1e]'}
-                />
+                <TeraVerdict correct={correct} size="xl" avatarClassName="max-sm:h-[72px] max-sm:w-[72px]" />
               </motion.span>
-              <div className="min-w-0">
+              <div className="min-h-10 min-w-0 pl-[84px] md:min-h-14 md:pl-[112px]">
                 <p
                   className={`font-display text-xl font-bold leading-tight md:text-2xl ${
                     correct ? 'text-menta' : 'text-destructive'
                   }`}
                   data-testid="feedback-footer-title"
                 >
+                  <VerdictMark correct={correct} missTone="destructive" className="mr-2 align-[-2px]" />
                   {result.message ?? (correct ? t('activity.correct') : t('activity.incorrect'))}
                 </p>
                 {result.explanation && (

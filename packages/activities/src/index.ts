@@ -296,7 +296,7 @@ export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components
 // Tera, the mascot: the one component that draws him, and the mention rule a
 // host's own dispatcher wraps its kinds in so the shell knows to show him.
 export { TeraAvatar } from './components/TeraAvatar.js';
-export { TeraVerdict } from './components/TeraVerdict.js';
+export { TeraVerdict, VerdictMark } from './components/TeraVerdict.js';
 export type { TeraMood, TeraSize } from './components/TeraAvatar.js';
 export { TeraMentionProvider } from './components/teraPresence.js';
 export { mentionsTera, textMentionsTera } from './internal/teraMention.js';
