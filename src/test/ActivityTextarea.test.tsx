@@ -12,6 +12,11 @@ describe('ActivityTextarea', () => {
     expect(onChange).toHaveBeenCalledWith('abcde');
   });
 
+  it('takes 16 px under a finger so iOS does not zoom the page on focus', () => {
+    render(<ActivityTextarea value="" onChange={() => {}} rows={3} data-testid="ta" />);
+    expect(screen.getByTestId('ta').className).toContain('coarse:text-base');
+  });
+
   it('leaves the value alone when no maxLength is given', () => {
     const onChange = vi.fn();
     render(<ActivityTextarea value="" onChange={onChange} rows={3} data-testid="ta" />);

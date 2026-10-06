@@ -123,8 +123,39 @@ async function boxOf(page: Page, testId: string) {
  * number is different on a phone, so a constant would only test one branch.
  */
 async function expectedFloor(page: Page): Promise<number> {
-  const vh = await page.evaluate(() => window.innerHeight);
+  const { vw, vh } = await page.evaluate(() => ({
+    vw: window.innerWidth,
+    vh: window.innerHeight,
+  }));
+  if (isShortPhone(vw, vh)) return SHORT_PHONE_FLOOR_PX;
   return Math.min(BODY_FLOOR_PX, BODY_FLOOR_DVH * vh);
+}
+
+/** Mirrors `TERMINAL_BODY`'s short-phone media rule: height <= 700 and width < 640. */
+const SHORT_PHONE_FLOOR_PX = 112;
+const SHORT_PHONE_TRANSCRIPT_MAX_DVH = 0.26;
+
+function isShortPhone(vw: number, vh: number): boolean {
+  return vh <= 700 && vw < 640;
+}
+
+/**
+ * On a short phone the body follows its content instead of sitting on the
+ * floor: it must never fall under `SHORT_PHONE_FLOOR_PX` (the #339 collapse), and
+ * never exceed the 26dvh transcript cap plus the rigid prompt bar and the `p-4`
+ * padding (8px of slack for the gap between them).
+ */
+async function expectShortPhoneBody(page: Page) {
+  const vh = await page.evaluate(() => window.innerHeight);
+  const body = await boxOf(page, 'sandbox-window-body');
+  const bar = await boxOf(page, 'terminal-prompt-bar');
+  expect(body.height, `body collapsed to ${body.height}px`).toBeGreaterThan(
+    SHORT_PHONE_FLOOR_PX - 2,
+  );
+  expect(body.height, `body ate ${body.height}px of a ${vh}px phone`).toBeLessThan(
+    SHORT_PHONE_TRANSCRIPT_MAX_DVH * vh + bar.height + 32 + 8,
+  );
+  expect(body.height).toBeLessThan(BODY_FLOOR_DVH * vh);
 }
 
 for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
@@ -236,13 +267,20 @@ test('§1 narrow viewport: the floor degrades instead of eating the screen', asy
   await open(page, TERMINAL_OPTIONS);
 
   const body = await boxOf(page, 'sandbox-window-body');
-  const floor = await expectedFloor(page);
 
-  // The `min()` must have BOUND here, or this test proves nothing about the
-  // degrade: 40% of 667 is ~267, well under the 314px desktop floor.
-  expect(floor).toBeLessThan(BODY_FLOOR_PX - 20);
-  expect(body.height).toBeGreaterThan(floor - 2);
-  expect(body.height).toBeLessThan(floor + 2);
+  // 375x667 is a short phone: the 40dvh floor (~267px) is dropped for a 112px
+  // minimum and the body follows its content, so it must sit well under it.
+  expect(await expectedFloor(page)).toBe(SHORT_PHONE_FLOOR_PX);
+  await expectShortPhoneBody(page);
+
+  // The same width just over the 700px limit keeps the `min()` floor, bound by 40dvh.
+  await page.setViewportSize({ width: 375, height: 701 });
+  const tall = await boxOf(page, 'sandbox-window-body');
+  const tallFloor = await expectedFloor(page);
+  expect(tallFloor).toBeLessThan(BODY_FLOOR_PX - 20);
+  expect(tall.height).toBeGreaterThan(tallFloor - 2);
+  expect(tall.height).toBeLessThan(tallFloor + 2);
+  await page.setViewportSize({ width: 375, height: 667 });
 
   // Still a terminal, and still bottom-railed.
   const bar = await boxOf(page, 'terminal-prompt-bar');
@@ -646,11 +684,9 @@ for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
     await open(page, fx);
 
     // Same two properties §1 owns, re-measured with the prefix shortened: the
-    // floor still binds, and the prompt is still the bottom rail.
+    // short-phone window never collapses, and the prompt is still the bottom rail.
     const body = await boxOf(page, 'sandbox-window-body');
-    const floor = await expectedFloor(page);
-    expect(body.height).toBeGreaterThan(floor - 2);
-    expect(body.height).toBeLessThan(floor + 2);
+    await expectShortPhoneBody(page);
 
     const bar = await boxOf(page, 'terminal-prompt-bar');
     const belowBar = body.y + body.height - (bar.y + bar.height);
@@ -660,6 +696,22 @@ for (const fx of [TERMINAL_FREE_TEXT, TERMINAL_OPTIONS]) {
     // The bar is ONE line: a prefix that wrapped would push the window past its
     // floor, which is the failure `TERMINAL_BODY`'s `min-h` was left open for.
     expect(bar.height, `the prompt bar wrapped to ${bar.height}px`).toBeLessThan(56);
+  });
+}
+
+for (const width of [360, 390]) {
+  test(`§6 options: the draft hint is shown in full at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await open(page, TERMINAL_OPTIONS);
+
+    const hint = await page.getByTestId('terminal-draft').evaluate((el) => ({
+      clippedX: el.scrollWidth - el.clientWidth,
+      clippedY: el.scrollHeight - el.clientHeight,
+      ellipsis: getComputedStyle(el).whiteSpace === 'nowrap',
+    }));
+    expect(hint.ellipsis, 'the hint is still a single truncated line').toBe(false);
+    expect(hint.clippedX).toBeLessThan(2);
+    expect(hint.clippedY).toBeLessThan(2);
   });
 }
 

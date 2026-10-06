@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nProvider } from '@/i18n';
 import { SkillTree } from './SkillTree';
@@ -162,6 +162,43 @@ describe('SkillTree', () => {
       expect(within(hint).getByText('Conclua o Dia 1 para liberar')).toBeInTheDocument();
       expect(screen.getByRole('status')).toHaveTextContent('Conclua o Dia 1 para liberar');
       expect(onOpenLesson).not.toHaveBeenCalled();
+    });
+
+    describe('scrolling the hint into view', () => {
+      const scrollBy = vi.fn();
+      const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect');
+
+      function hintBottomAt(bottom: number) {
+        rect.mockImplementation(function (this: HTMLElement) {
+          const isHint = this.dataset.testid === 'tree-lock-hint';
+          return { top: 0, left: 0, width: 0, height: 0, right: 0, x: 0, y: 0, bottom: isHint ? bottom : 0, toJSON: () => ({}) };
+        });
+      }
+
+      beforeEach(() => {
+        scrollBy.mockReset();
+        window.scrollBy = scrollBy as unknown as typeof window.scrollBy;
+        Object.defineProperty(window, 'innerHeight', { value: 640, configurable: true });
+      });
+
+      afterEach(() => rect.mockReset());
+
+      it('scrolls just enough when the hint sits under the fold', async () => {
+        hintBottomAt(707);
+        renderWith();
+        fireEvent.click(screen.getAllByTestId('tree-node-locked')[0]);
+        await waitFor(() => expect(scrollBy).toHaveBeenCalledTimes(1));
+        expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ top: 83 }));
+      });
+
+      it('does not move the page for a hint that is already visible', async () => {
+        hintBottomAt(400);
+        renderWith();
+        fireEvent.click(screen.getAllByTestId('tree-node-locked')[0]);
+        await screen.findByTestId('tree-lock-hint');
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+        expect(scrollBy).not.toHaveBeenCalled();
+      });
     });
 
     it('answers Enter and Space on the focused node', async () => {

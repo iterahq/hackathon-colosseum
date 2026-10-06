@@ -139,7 +139,28 @@ describe('dispatch — sandboxKind picks the sandbox, inputMode picks the surfac
     mount(OPTIONS_SPEC, captor().fn, 'a-options');
     expect(screen.queryByTestId('terminal-input')).toBeNull();
     expect(screen.getByTestId('terminal-draft')).toBeTruthy();
+    expect(screen.getByTestId('terminal-draft').className).toContain('max-sm:whitespace-normal');
     expect(screen.getByTestId('terminal-options')).toBeTruthy();
+  });
+});
+
+describe('the prompt on a phone', () => {
+  it('takes 16 px under a finger so iOS does not zoom the page on focus', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    expect(screen.getByTestId('terminal-input').className).toContain('coarse:text-base');
+  });
+
+  it('gives the run button and the restart button a 44 px hit area under a finger', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    expect(screen.getByTestId('terminal-run').className).toContain('coarse:before:-inset-1');
+    expect(screen.getByTestId('terminal-restart').className).toContain('coarse:before:-inset-y-2');
+  });
+
+  it('gives each option a 44 px hit area under a finger', () => {
+    mount(OPTIONS_SPEC, captor().fn, 'a-options');
+    for (const option of screen.getAllByTestId('terminal-option-command')) {
+      expect(option.className).toContain('coarse:before:-inset-y-1');
+    }
   });
 });
 

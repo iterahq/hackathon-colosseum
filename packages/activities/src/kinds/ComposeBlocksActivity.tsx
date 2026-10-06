@@ -201,7 +201,7 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
                       aria-pressed={picked === block.id}
                       disabled={spent}
                       data-testid={`compose-block-${block.id}`}
-                      className={`rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-40 ${
+                      className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-1 coarse:before:inset-x-0 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-40 ${
                         spec?.item_style === 'code' ? 'font-mono' : 'font-semibold'
                       } ${picked === block.id ? 'border-[#6366F1] bg-[#6366F1]/15' : 'border-border bg-card hover:border-foreground/30'}`}
                     >

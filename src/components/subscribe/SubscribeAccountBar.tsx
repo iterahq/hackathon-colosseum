@@ -21,7 +21,7 @@ export function SubscribeAccountBar() {
       <button
         type="button"
         onClick={handleUseAnotherAccount}
-        className="underline-offset-2 hover:underline"
+        className="touch-hit underline-offset-2 hover:underline"
         data-testid="subscribe-use-another-account"
       >
         {t('subscribe.useAnotherAccount')}

@@ -89,6 +89,12 @@ describe('ChatSandboxActivity dispatcher', () => {
   });
 
   describe('ai variant (no choices/slots) — the seed chip', () => {
+    it('gives the send button and the seed chip a 44 px hit area under a finger', () => {
+      renderActivity(makeActivity(cIA));
+      expect(screen.getByTestId('sandbox-send').className).toContain('coarse:before:-inset-0.5');
+      expect(screen.getByTestId('sandbox-seed-chip').className).toContain('coarse:before:-inset-y-1');
+    });
+
     // Tainan: "sempre o usuário tem que inserir" — the composer must NEVER
     // start pre-filled with the step's fixed basePrompt. It shows up as a chip
     // BELOW the sandbox window instead; clicking the chip is what inserts it

@@ -13,11 +13,14 @@ import { AppHeader, LockedCatalogCard, PageTitleAccent, SlashBar } from '@/compo
 import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useI18n } from '@/i18n';
+import { isUnreachable } from '@/lib/networkFailure';
 import { CatalogCard } from './CatalogCard';
 
 export default function CatalogPage() {
   const { t } = useI18n();
-  const { data: programs = [], isPending, isError, refetch } = useCatalog();
+  const catalog = useCatalog();
+  const { data: programs = [], isPending, refetch } = catalog;
+  const isError = catalog.isError || isUnreachable(catalog);
   // Visitor mode (2026-09-18): a signed-in user with no active subscription
   // still reaches this page (RequireSubscription mode="preview") and browses
   // the SAME cards, but locked — the enroll button never renders and
@@ -45,7 +48,7 @@ export default function CatalogPage() {
             </p>
           </header>
 
-          {isPending ? (
+          {isPending && !isError ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="rounded-2xl border border-border bg-card aspect-16/12 ds-shimmer" />

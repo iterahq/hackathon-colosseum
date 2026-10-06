@@ -33,7 +33,7 @@ export function SandboxChoiceChips({
             type="button"
             disabled={disabled}
             onClick={() => onChoose(c.id)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+            className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-1 coarse:before:inset-x-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
               active ? 'border-evergreen bg-evergreen text-obsidiana' : 'border-border bg-card text-foreground hover:border-evergreen/50'
             }`}
           >

@@ -1,6 +1,6 @@
 /** Class sets for `ActivityTextarea`. See that component for why there are only two. */
 export const ACTIVITY_TEXTAREA_BASE =
-  'w-full text-foreground placeholder:text-muted-foreground focus:outline-none';
+  'w-full text-foreground placeholder:text-muted-foreground focus:outline-none coarse:text-base';
 
 export const ACTIVITY_TEXTAREA_VARIANTS = {
   boxed:

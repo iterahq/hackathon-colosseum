@@ -18,7 +18,7 @@ export function SandboxHint({ hint, label }: { hint: string; label: string }) {
         onClick={() => setOpen((o) => !o)}
         data-testid="sandbox-hint-toggle"
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-menta transition-colors hover:text-evergreen-hi"
+        className="inline-flex items-center gap-1.5 text-sm font-medium coarse:relative coarse:before:absolute coarse:before:-inset-y-3 coarse:before:inset-x-0 text-menta transition-colors hover:text-evergreen-hi"
       >
         <Lightbulb className="h-3.5 w-3.5" /> {label}
       </button>

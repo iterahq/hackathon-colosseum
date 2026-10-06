@@ -99,7 +99,7 @@ export function QueryActivity({ activity, onComplete }: { activity: PortableActi
                 aria-pressed={on.has(clause.id)}
                 disabled={solved}
                 onClick={() => toggle(clause.id)}
-                className={`rounded-full border px-3.5 py-1.5 font-mono text-sm transition-colors ${on.has(clause.id) ? 'border-[#F2C66D] bg-[#F2C66D]/15 text-[#F2C66D]' : 'border-border text-muted-foreground hover:border-foreground/40'}`}
+                className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-0.5 rounded-full border px-3.5 py-1.5 font-mono text-sm transition-colors ${on.has(clause.id) ? 'border-[#F2C66D] bg-[#F2C66D]/15 text-[#F2C66D]' : 'border-border text-muted-foreground hover:border-foreground/40'}`}
               >
                 {copy.text(clause.chip)}
               </button>

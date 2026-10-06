@@ -146,12 +146,12 @@ export function TerminalPromptBar({
           autoComplete="off"
           data-testid="terminal-input"
           aria-label={placeholder}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-foreground caret-evergreen outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] coarse:text-base text-foreground caret-evergreen outline-none placeholder:text-muted-foreground"
         />
       ) : (
         <p
           data-testid="terminal-draft"
-          className={`min-w-0 flex-1 truncate font-mono text-[13px] ${
+          className={`min-w-0 flex-1 truncate max-sm:whitespace-normal max-sm:break-words max-sm:leading-tight font-mono text-[13px] ${
             value.trim() ? 'text-foreground' : 'text-muted-foreground'
           }`}
         >
@@ -165,7 +165,7 @@ export function TerminalPromptBar({
           onClick={onRun}
           data-testid="terminal-run"
           aria-label={runLabel}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full coarse:relative coarse:before:absolute coarse:before:-inset-1 bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
           <CornerDownLeft className="h-4 w-4" />
         </button>

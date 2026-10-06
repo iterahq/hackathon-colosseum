@@ -99,7 +99,7 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
                   data-testid={`arrange-up-${id}`}
                   onClick={() => move(index, -1)}
                   disabled={solved || index === 0}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-border hover:bg-muted disabled:opacity-30"
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-border hover:bg-muted disabled:opacity-30 coarse:relative coarse:before:absolute coarse:before:-inset-y-[7px] coarse:before:-left-3 coarse:before:-right-0.5"
                 >
                   <ArrowUp className="w-4 h-4" />
                 </button>
@@ -109,7 +109,7 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
                   data-testid={`arrange-down-${id}`}
                   onClick={() => move(index, 1)}
                   disabled={solved || index === order.length - 1}
-                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-border hover:bg-muted disabled:opacity-30"
+                  className="h-8 w-8 inline-flex items-center justify-center rounded-full border border-border hover:bg-muted disabled:opacity-30 coarse:relative coarse:before:absolute coarse:before:-inset-y-[7px] coarse:before:-left-0.5 coarse:before:-right-3"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </button>

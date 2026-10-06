@@ -16,6 +16,9 @@ const entitlement = vi.hoisted(() => ({
   data: { active: false } as { active: boolean } | undefined,
   isPending: false,
   isError: false,
+  fetchStatus: 'idle' as 'idle' | 'fetching' | 'paused',
+  failureCount: 0,
+  failureReason: null as Error | null,
   refetch: vi.fn(),
 }));
 const membership = vi.hoisted(() => ({ data: [{ tenantId: 'T', role: 'learner' }] as { tenantId: string; role: string }[], isPending: false }));
@@ -54,6 +57,10 @@ describe('RequireSubscription inside the shell', () => {
     auth.session = { user: { id: 'u1' } };
     entitlement.data = { active: false };
     entitlement.isError = false;
+    entitlement.isPending = false;
+    entitlement.fetchStatus = 'idle';
+    entitlement.failureCount = 0;
+    entitlement.failureReason = null;
     entitlement.refetch.mockReset();
     membership.data = [{ tenantId: 'T', role: 'learner' }];
   });
@@ -65,6 +72,49 @@ describe('RequireSubscription inside the shell', () => {
     expect(screen.queryByTestId('subscribe')).not.toBeInTheDocument();
     expect(screen.queryByTestId('page')).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(FORBIDDEN);
+  });
+
+  describe('a read still pending', () => {
+    beforeEach(() => {
+      entitlement.data = undefined;
+      entitlement.isPending = true;
+      entitlement.fetchStatus = 'fetching';
+    });
+
+    it('waits behind "Loading…" while the first attempt is in flight', () => {
+      renderGate();
+      expect(screen.getByText('Loading…')).toBeInTheDocument();
+      expect(screen.queryByTestId('shell-access-unverified')).not.toBeInTheDocument();
+    });
+
+    it('says the access could not be checked, at once, when the browser is offline', () => {
+      entitlement.fetchStatus = 'paused';
+      renderGate();
+      expect(screen.getByTestId('shell-access-unverified')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+      expect(entitlement.refetch).toHaveBeenCalledOnce();
+    });
+
+    it('says it after the first attempt died on the network, retries still running', () => {
+      entitlement.failureCount = 1;
+      entitlement.failureReason = new Error('TypeError: Failed to fetch');
+      renderGate();
+      expect(screen.getByTestId('shell-access-unverified')).toBeInTheDocument();
+    });
+
+    it('keeps waiting through the retries of any other error', () => {
+      entitlement.failureCount = 2;
+      entitlement.failureReason = new Error('permission denied');
+      renderGate();
+      expect(screen.getByText('Loading…')).toBeInTheDocument();
+    });
+
+    it('does not apply outside the shell', () => {
+      surface.value = 'web';
+      entitlement.fetchStatus = 'paused';
+      renderGate();
+      expect(screen.getByText('Loading…')).toBeInTheDocument();
+    });
   });
 
   describe('a FAILED entitlement read', () => {

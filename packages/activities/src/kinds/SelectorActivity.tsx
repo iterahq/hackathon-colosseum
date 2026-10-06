@@ -134,7 +134,7 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
             data-testid={`selector-option-${option}`}
             onClick={() => pick(option)}
             aria-pressed={picked === option}
-            className={`rounded-full border px-4 py-1.5 text-sm font-mono transition-colors ${
+            className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-0.5 rounded-full border px-4 py-1.5 text-sm font-mono transition-colors ${
               picked === option
                 ? 'border-evergreen bg-evergreen-soft text-evergreen-hi'
                 : 'border-border hover:bg-muted'

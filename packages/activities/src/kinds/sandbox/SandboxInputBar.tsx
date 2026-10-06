@@ -38,7 +38,7 @@ export function SandboxInputBar({
         onClick={onSend}
         data-testid="sandbox-send"
         aria-label={sendLabel}
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full coarse:relative coarse:before:absolute coarse:before:-inset-0.5 bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
       >
         <Send className="h-5 w-5" />
       </button>

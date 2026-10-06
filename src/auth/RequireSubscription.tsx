@@ -42,7 +42,10 @@
  * sentence is only for a read that ANSWERED "no access". A read that FAILED
  * keeps the page when an earlier read had answered "entitled", and otherwise
  * shows `ShellAccessUnverifiedScreen` (retry + sign out). The browser verdict
- * (`hasPaidAccess`, `graceOnError`) is untouched.
+ * (`hasPaidAccess`, `graceOnError`) is untouched. A read that cannot reach the server
+ * at all (offline, or the first attempt died on the network) shows the same screen at
+ * once instead of waiting out React Query's retries behind a bare "Loading…"; the
+ * retries go on underneath and the page appears if one of them answers.
  * ⚠️ "Keep the page after an entitled answer" is the bypass this file refuses
  * for the browser, accepted in the shell ONLY so a background refetch that dies
  * in a tunnel does not throw a subscriber out of a lesson. It rests on the
@@ -59,6 +62,7 @@ import { useAuth } from './AuthContext';
 import { hasPaidAccess, wasEntitledBeforeFailedRead } from './accessLevel';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
+import { isUnreachable } from '@/lib/networkFailure';
 import { useShellSurface } from '@/hooks/useShellSurface';
 import { ShellAccessUnverifiedScreen } from '@/components/shell/ShellAccessUnverifiedScreen';
 import { ShellNoAccessScreen } from '@/components/shell/ShellNoAccessScreen';
@@ -77,7 +81,8 @@ export function RequireSubscription({
 }) {
   const { session, loading: authLoading, configured } = useAuth();
   const location = useLocation();
-  const { data: entitlement, isPending: entPending, isError: entError, refetch: refetchEntitlement } = useEntitlement();
+  const entitlementQuery = useEntitlement();
+  const { data: entitlement, isPending: entPending, isError: entError, refetch: refetchEntitlement } = entitlementQuery;
   const { data: memberships, isPending: memPending } = useMembership();
   const surface = useShellSurface();
 
@@ -86,6 +91,9 @@ export function RequireSubscription({
   if (!configured) return <>{children}</>;
 
   if (authLoading || (session && (entPending || memPending))) {
+    if (session && surface === 'shell' && isUnreachable(entitlementQuery)) {
+      return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
         Loading…

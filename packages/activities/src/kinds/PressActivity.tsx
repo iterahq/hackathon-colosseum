@@ -101,7 +101,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
             data-testid={`press-option-${option.id}`}
             onClick={() => choose(option.id)}
             disabled={solved || wired}
-            className="text-left rounded-lg border border-border px-4 py-2 text-sm font-mono hover:bg-muted disabled:opacity-60"
+            className="coarse:relative coarse:before:absolute coarse:before:-inset-y-1 coarse:before:inset-x-0 text-left rounded-lg border border-border px-4 py-2 text-sm font-mono hover:bg-muted disabled:opacity-60"
           >
             {localizedText(option.label, locale)}
           </button>

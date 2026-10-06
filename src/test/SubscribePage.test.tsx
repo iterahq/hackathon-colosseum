@@ -139,6 +139,7 @@ describe('SubscribePage (self-serve subscribe)', () => {
     renderPage();
 
     expect(screen.getByTestId('subscribe-account-bar')).toHaveTextContent('learner@itera.dev');
+    expect(screen.getByTestId('subscribe-use-another-account').className).toContain('touch-hit');
     fireEvent.click(screen.getByTestId('subscribe-use-another-account'));
 
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));

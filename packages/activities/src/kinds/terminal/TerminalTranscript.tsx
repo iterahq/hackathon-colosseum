@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { TerminalLine } from '@iterahq/activity-spec/runtime';
+import { TERMINAL_TRANSCRIPT_SHORT } from './terminalGeometry.js';
 
 /**
  * The transcript — echoed commands and the sandbox's output, oldest first.
@@ -67,7 +68,7 @@ export function TerminalTranscript({
   return (
     <div
       ref={scrollRef}
-      className="min-h-0 grow basis-0 overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed"
+      className={`min-h-0 grow basis-0 ${TERMINAL_TRANSCRIPT_SHORT} overflow-y-auto pr-1 font-mono text-[13px] leading-relaxed`}
       data-testid="terminal-transcript"
     >
       {lines.length === 0 && <div className="text-muted-foreground">{emptyHint}</div>}

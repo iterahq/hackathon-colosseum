@@ -108,7 +108,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
                 onClick={() => pick(chip.id)}
                 aria-pressed={picked === chip.id}
                 disabled={solved}
-                className={`rounded-full border px-4 py-2 text-[15px] ${picked === chip.id ? 'border-evergreen bg-evergreen/15' : 'border-border bg-card hover:border-foreground/30'}`}
+                className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-[3px] coarse:before:inset-x-0 rounded-full border px-4 py-2 text-[15px] ${picked === chip.id ? 'border-evergreen bg-evergreen/15' : 'border-border bg-card hover:border-foreground/30'}`}
               >
                 {copy.text(chip.label)}
               </motion.button>

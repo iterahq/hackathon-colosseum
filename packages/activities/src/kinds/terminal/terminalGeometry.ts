@@ -35,5 +35,14 @@
  * If it picked its own floor, a viewer's window and the learner's window would
  * be two different shapes for the same terminal, and the drift would appear at
  * the exact moment the two are meant to be compared. One constant, two callers.
+ *
+ * ── SHORT PHONES ─────────────────────────────────────────────────────────────
+ * At 700px of height or less (360x640) the floor is 256px of mostly empty
+ * transcript above two lines of text, and the options sit under the fold. There
+ * the floor drops to 112px (never a collapsed window) and
+ * `TERMINAL_TRANSCRIPT_SHORT` lets the transcript take its content's height, up
+ * to 26dvh, before it scrolls.
  */
-export const TERMINAL_BODY = 'flex flex-col min-h-[min(314px,40dvh)]';
+export const TERMINAL_BODY =
+  'flex flex-col min-h-[min(314px,40dvh)] [@media(max-height:700px)_and_(max-width:639px)]:min-h-[112px]';
+export const TERMINAL_TRANSCRIPT_SHORT = '[@media(max-height:700px)_and_(max-width:639px)]:grow-0 [@media(max-height:700px)_and_(max-width:639px)]:basis-auto [@media(max-height:700px)_and_(max-width:639px)]:max-h-[26dvh]';

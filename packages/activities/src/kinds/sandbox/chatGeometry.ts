@@ -17,5 +17,14 @@
  * that grows unbounded would push the composer off the window on a long
  * transcript, and one that collapses to its content reads as a quote block
  * instead of a chat.
+ *
+ * On a phone the 34dvh box leaves the composer 3 px under the fold at 844 px of
+ * height, so it takes 30dvh there. At 700 px of height or less the 220 px floor
+ * is what pushes the composer and the chips under the fold, with one bubble in
+ * it: there the box takes its content's height, up to 28dvh, and scrolls past
+ * that. The two media rules do not overlap, so their order in the sheet cannot
+ * matter.
  */
-export const CHAT_SCROLL = 'h-[34dvh] min-h-[220px] max-h-[400px] overflow-y-auto pr-1';
+export const CHAT_SCROLL =
+  'h-[34dvh] min-h-[220px] max-h-[400px] overflow-y-auto pr-1 [@media(min-height:701px)_and_(max-width:639px)]:h-[30dvh] [@media(max-height:700px)_and_(max-width:639px)]:h-auto [@media(max-height:700px)_and_(max-width:639px)]:min-h-[72px] [@media(max-height:700px)_and_(max-width:639px)]:max-h-[28dvh]';
+export const CHAT_SCROLL_END = '[@media(max-height:700px)_and_(max-width:639px)]:-mt-3.5';

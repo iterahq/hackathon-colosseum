@@ -33,7 +33,7 @@ export function NotFoundScreen({ path, t, log, home }: NotFoundScreenProps) {
         </Text>
         {/* A line box around the link, as the old `<a>` had: the anchor stays inline, so its focus ring hugs the text. */}
         <Text className="text-center font-sans text-base">
-          <Text role="link" {...linkProps(home)} className="text-primary underline hover:text-primary/90">
+          <Text role="link" {...linkProps(home)} className="touch-hit text-primary underline hover:text-primary/90">
             {t('notFound.returnHome')}
           </Text>
         </Text>

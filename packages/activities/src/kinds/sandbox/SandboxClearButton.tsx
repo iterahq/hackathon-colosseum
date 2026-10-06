@@ -22,7 +22,7 @@ export function SandboxClearButton({
       onClick={onClear}
       disabled={disabled}
       data-testid="sandbox-clear"
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 coarse:relative coarse:before:absolute coarse:before:-inset-y-2 coarse:before:inset-x-0 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
     >
       <Eraser className="h-3.5 w-3.5" /> {label}
     </button>

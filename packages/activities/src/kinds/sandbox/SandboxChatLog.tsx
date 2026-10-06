@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { Message } from '@iterahq/activity-spec/runtime';
 import { SandboxBubble } from './SandboxBubble.js';
+import { CHAT_SCROLL_END } from './chatGeometry.js';
 
 /**
  * The chat transcript — STRICTLY the message exchange, nothing else. Steps,
@@ -39,7 +40,7 @@ export function SandboxChatLog({
           />
         );
       })}
-      <div ref={endRef} />
+      <div ref={endRef} className={CHAT_SCROLL_END} />
     </div>
   );
 }

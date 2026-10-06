@@ -37,9 +37,13 @@ export async function getMyEntitlement(): Promise<Entitlement> {
   // user who belongs to an exempt tenant and also has a lapsed subscription of
   // their own gets both. Taking the first row (the old `.limit(1)`) picked one
   // at random — so the entitled row is chosen explicitly.
+  // `.retry(false)`: the client's own 1s+2s+4s retry of a network failure would
+  // hold the first error back for 7 s, and the gate reads that first error to
+  // tell a learner the access could not be checked (React Query still retries).
   const { data, error } = await sb
     .from('my_subscription')
-    .select('status, is_active, current_period_end, seat_count, cancel_at_period_end');
+    .select('status, is_active, current_period_end, seat_count, cancel_at_period_end')
+    .retry(false);
   if (error) throw new Error(error.message);
   const rows = asRows(data);
   const row = rows.find((r) => bool(r.is_active)) ?? rows[0];

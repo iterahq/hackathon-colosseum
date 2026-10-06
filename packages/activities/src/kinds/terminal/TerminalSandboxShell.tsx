@@ -277,7 +277,7 @@ export function TerminalSandboxShell({
                 disabled={!s.canRestart}
                 onClick={s.restart}
                 data-testid="terminal-restart"
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-evergreen/50 hover:text-foreground disabled:opacity-40"
+                className="coarse:relative coarse:before:absolute coarse:before:-inset-y-2 coarse:before:inset-x-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-evergreen/50 hover:text-foreground disabled:opacity-40"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 {tr('terminal.restart')}

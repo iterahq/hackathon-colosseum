@@ -13,6 +13,8 @@ const hasFinePointer = () =>
 
 const NUDGE =
   'w-9 h-[26px] min-[480px]:h-9 flex-shrink-0 inline-flex items-center justify-center rounded-xl border-2 border-b-4 border-border text-muted-foreground transition-[transform,color] duration-100 hover:text-menta active:translate-y-[2px] active:border-b-2 disabled:opacity-30 disabled:hover:text-muted-foreground disabled:active:translate-y-0 disabled:active:border-b-4';
+const NUDGE_UP = `${NUDGE} coarse:relative coarse:before:absolute coarse:before:-top-5 coarse:before:-bottom-1 coarse:before:-inset-x-1.5`;
+const NUDGE_DOWN = `${NUDGE} coarse:relative coarse:before:absolute coarse:before:-top-1 coarse:before:-bottom-[22px] coarse:before:-inset-x-1.5`;
 
 /**
  * One draggable row of the Order list. The row follows the pointer while the
@@ -112,7 +114,7 @@ export function OrderRow({
           disabled={locked || position === 0}
           data-testid="order-up"
           aria-label={moveUpLabel}
-          className={NUDGE}
+          className={NUDGE_UP}
         >
           <ChevronUp className="w-4 h-4" />
         </button>
@@ -122,7 +124,7 @@ export function OrderRow({
           disabled={locked || position === count - 1}
           data-testid="order-down"
           aria-label={moveDownLabel}
-          className={NUDGE}
+          className={NUDGE_DOWN}
         >
           <ChevronDown className="w-4 h-4" />
         </button>

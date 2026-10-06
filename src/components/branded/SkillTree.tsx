@@ -39,6 +39,7 @@ const DEFAULT_WIDTH = 390;
 const CALLOUT_MAX_WIDTH = 280;
 const CALLOUT_INSET = 12;
 const LOCKED_HINT_GAP = 14;
+const LOCKED_HINT_BOTTOM_MARGIN = 16;
 const PATH_BASE = '#2E2A25';
 const PATH_FLOW = '#A9F0C7';
 const GRID_LINE = 'rgba(63,209,127,0.022)';
@@ -112,6 +113,19 @@ export function SkillTree({
     });
     return () => cancelAnimationFrame(frame);
   }, [programId, hasPrimary, trailRef]);
+
+  const openHintIndex = lockedHint.openIndex;
+  useEffect(() => {
+    if (openHintIndex === null) return;
+    const frame = requestAnimationFrame(() => {
+      const hint = trailRef.current?.querySelector<HTMLElement>('[data-testid="tree-lock-hint"]');
+      if (!hint) return;
+      const hidden = hint.getBoundingClientRect().bottom + LOCKED_HINT_BOTTOM_MARGIN - window.innerHeight;
+      if (hidden <= 0) return;
+      window.scrollBy({ top: hidden, behavior: reducedMotion ? 'instant' : 'smooth' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [openHintIndex, reducedMotion, trailRef]);
 
   const width = trailWidthFor(containerWidth);
   const layout = computeTrailLayout({

@@ -70,7 +70,7 @@ export function TerminalOptionPalette({
               data-testid="terminal-option-command"
               data-option={item}
               onClick={() => onPickCommand(item)}
-              className="rounded-full border border-border bg-card px-4 py-2 font-mono text-sm text-foreground transition-colors hover:border-evergreen/50 disabled:opacity-60"
+              className="coarse:relative coarse:before:absolute coarse:before:-inset-y-1 coarse:before:inset-x-0 rounded-full border border-border bg-card px-4 py-2 font-mono text-sm text-foreground transition-colors hover:border-evergreen/50 disabled:opacity-60"
             >
               {item}
             </button>
@@ -104,7 +104,7 @@ export function TerminalOptionPalette({
             data-option={token}
             data-option-index={index}
             onClick={() => onPickToken(index)}
-            className="rounded-full border border-border bg-card px-3 py-1.5 font-mono text-[13px] font-semibold text-foreground transition-colors hover:border-evergreen/50 disabled:opacity-60"
+            className="coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-0.5 rounded-full border border-border bg-card px-3 py-1.5 font-mono text-[13px] font-semibold text-foreground transition-colors hover:border-evergreen/50 disabled:opacity-60"
           >
             {token}
           </button>

@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 let rows: Record<string, unknown>[] = [];
 let limitCalled = false;
+let retryArg: boolean | undefined;
 
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: true,
@@ -17,6 +18,10 @@ vi.mock('@/lib/supabase/client', () => ({
     from: () => {
       const builder: Record<string, unknown> = {
         select: () => builder,
+        retry: (enabled: boolean) => {
+          retryArg = enabled;
+          return builder;
+        },
         limit: () => {
           limitCalled = true;
           return builder;
@@ -34,6 +39,7 @@ import { getMyEntitlement } from '@/services/entitlement.service';
 beforeEach(() => {
   rows = [];
   limitCalled = false;
+  retryArg = undefined;
 });
 
 describe('entitlement com tenant isento', () => {
@@ -52,6 +58,11 @@ describe('entitlement com tenant isento', () => {
     rows = [{ status: 'active', is_active: true, current_period_end: null }];
     await getMyEntitlement();
     expect(limitCalled).toBe(false);
+  });
+
+  it('leaves the retry of a network failure to React Query, so the first error is not held back for 7 s', async () => {
+    await getMyEntitlement();
+    expect(retryArg).toBe(false);
   });
 
   it('sem nenhuma linha entitled, continua inativo', async () => {

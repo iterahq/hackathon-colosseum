@@ -159,6 +159,30 @@ describe('CatalogPage', () => {
     expect(screen.getByTestId('catalog-empty')).toBeInTheDocument();
   });
 
+  describe('a first read that cannot reach the server', () => {
+    it('shows the error and a retry at once while the browser is offline', () => {
+      const refetch = vi.fn();
+      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'paused', failureCount: 0, failureReason: null, refetch });
+      renderPage();
+      expect(screen.getByTestId('catalog-error')).toHaveTextContent('Não foi possível carregar o catálogo.');
+      fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+      expect(refetch).toHaveBeenCalledOnce();
+    });
+
+    it('shows the error after the first attempt died on the network, retries still running', () => {
+      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'fetching', failureCount: 1, failureReason: new Error('TypeError: Failed to fetch'), refetch: vi.fn() });
+      renderPage();
+      expect(screen.getByTestId('catalog-error')).toBeInTheDocument();
+    });
+
+    it('keeps the shimmer while any other error is being retried', () => {
+      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'fetching', failureCount: 1, failureReason: new Error('boom'), refetch: vi.fn() });
+      const { container } = renderPage();
+      expect(screen.queryByTestId('catalog-error')).toBeNull();
+      expect(container.querySelectorAll('.ds-shimmer')).toHaveLength(3);
+    });
+  });
+
   describe('visitor mode (no active subscription)', () => {
     beforeEach(() => {
       useAccessLevel.mockReturnValue({ level: 'visitor', entitlementError: false });

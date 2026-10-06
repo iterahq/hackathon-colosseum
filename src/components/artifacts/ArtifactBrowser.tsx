@@ -74,7 +74,7 @@ export function ArtifactBrowser({
               type="button"
               onClick={() => setView(mode)}
               data-testid={`artifact-view-${mode}`}
-              className={`px-3.5 h-8 rounded-full text-xs font-mono uppercase tracking-wider transition-colors ${
+              className={`px-3.5 h-8 coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:inset-x-0 rounded-full text-xs font-mono uppercase tracking-wider transition-colors ${
                 view === mode
                   ? 'bg-evergreen-soft text-evergreen-hi'
                   : 'text-muted-foreground hover:text-foreground'
@@ -174,7 +174,7 @@ function TreeNode({
           onClick={() => setOpen((v) => !v)}
           style={indent}
           data-testid="artifact-folder"
-          className="w-full flex items-center gap-2 py-1.5 pr-2 rounded-lg text-sm text-foreground hover:bg-obsidiana/40 transition-colors text-left"
+          className="w-full flex items-center gap-2 py-1.5 pr-2 coarse:min-h-11 rounded-lg text-sm text-foreground hover:bg-obsidiana/40 transition-colors text-left"
         >
           {open ? (
             <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -217,7 +217,7 @@ function TreeNode({
         style={indent}
         data-testid="artifact-file"
         data-artifact-path={node.path}
-        className={`w-full flex items-center gap-2 py-1.5 pr-2 rounded-lg text-sm transition-colors text-left ${
+        className={`w-full flex items-center gap-2 py-1.5 pr-2 coarse:min-h-11 rounded-lg text-sm transition-colors text-left ${
           isSelected ? 'bg-evergreen-soft text-evergreen-hi' : 'text-foreground hover:bg-obsidiana/40'
         }`}
       >
