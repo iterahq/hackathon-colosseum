@@ -63,7 +63,7 @@ export function AnswerExplanation({
       className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
       data-testid="answer-explanation"
     >
-      <TeraAvatar mood="neutral" size="sm" idle={false} className="-mt-1" />
+      <TeraAvatar mood={correct === false ? 'oops' : 'neutral'} size="sm" idle={false} className="-mt-1" />
       <div className="min-w-0">
         <p className="font-mono text-[11px] uppercase tracking-wider text-menta">
           {t('activity.explanationTitle')}

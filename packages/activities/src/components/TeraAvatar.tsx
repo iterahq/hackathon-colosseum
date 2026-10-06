@@ -6,8 +6,8 @@
  * When Tera becomes an animation, this file changes and nothing else does:
  * every surface passes a `mood` and a `size` and gets whatever Tera is today.
  *
- * The box is square and the face hangs from its bottom edge at 5:4, so the
- * head rises above the box — that is how he peeks over a border.
+ * The box is square and the face hangs from its bottom edge, taller than the
+ * box, so the crest rises above it — that is how he peeks over a border.
  */
 import { motion, useReducedMotion } from 'framer-motion';
 import {
