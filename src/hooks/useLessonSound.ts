@@ -1,6 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { getSoundEngine } from '@/lib/soundEngine';
+import type { SoundName } from '@/types/sound';
 import { useSoundEffects } from './useSoundEffects';
 import { useLessonMuted } from './useLessonMuted';
+
+const LESSON_CLIPS: readonly SoundName[] = ['success', 'error', 'click', 'celebration'];
 
 /**
  * Sound cues of the self-paced lesson.
@@ -13,6 +17,12 @@ import { useLessonMuted } from './useLessonMuted';
 export function useLessonSound() {
   const { play } = useSoundEffects();
   const [muted, toggleMuted] = useLessonMuted();
+
+  // Fetched when the lesson opens, not at the first verdict. A muted lesson
+  // fetches nothing; turning the sound on preloads then.
+  useEffect(() => {
+    if (!muted) getSoundEngine().schedulePreload(LESSON_CLIPS);
+  }, [muted]);
 
   const onSettle = useCallback(
     (correct: boolean) => {

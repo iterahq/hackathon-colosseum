@@ -17,7 +17,18 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(__dirname, '../..');
 const SFX_DIR = path.join(ROOT, 'public/vendor/sfx');
-const hook = readFileSync(path.join(ROOT, 'src/hooks/useSoundEffects.ts'), 'utf-8');
+// The clip map moved from the hook to the engine's clip module; every file that
+// can name a clip is read, so none of them can point at a CDN.
+const read = (file: string) => readFileSync(path.join(ROOT, file), 'utf-8');
+const clips = read('src/lib/soundClips.ts');
+const hook = [
+  clips,
+  read('src/lib/soundEngine.ts'),
+  read('src/lib/soundClipStore.ts'),
+  read('src/lib/soundEnvironment.ts'),
+  read('src/hooks/useSoundEffects.ts'),
+  read('src/pages/prototype/scene/sfx.ts'),
+].join('\n');
 
 const NAMES = ['success', 'error', 'click', 'celebration', 'chime', 'submit'];
 
@@ -28,7 +39,7 @@ describe('efeitos sonoros self-hosted', () => {
 
   it('todo som declarado aponta para /vendor/sfx', () => {
     for (const name of NAMES) {
-      expect(hook).toContain(`${name}: '/vendor/sfx/${name}.mp3'`);
+      expect(clips).toContain(`${name}: '/vendor/sfx/${name}.mp3'`);
     }
   });
 

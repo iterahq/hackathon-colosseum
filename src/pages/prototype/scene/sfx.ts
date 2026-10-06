@@ -1,19 +1,18 @@
-/** Self-hosted clips from public/vendor/sfx — never a CDN (see CLAUDE.md). */
-export type SceneClip = "click" | "chime" | "success" | "celebration" | "error" | "submit";
+import { getSoundEngine } from "@/lib/soundEngine";
+import type { SoundName } from "@/types/sound";
 
-const cache = new Map<SceneClip, HTMLAudioElement>();
+/** Self-hosted clips from public/vendor/sfx — never a CDN (see CLAUDE.md). */
+export type SceneClip = SoundName;
+
+const SCENE_CLIPS: readonly SceneClip[] = ["click", "chime", "success", "submit", "celebration"];
+
+let preloaded = false;
 
 export function playClip(clip: SceneClip, volume = 0.5) {
-  try {
-    let audio = cache.get(clip);
-    if (!audio) {
-      audio = new Audio(`/vendor/sfx/${clip}.mp3`);
-      cache.set(clip, audio);
-    }
-    audio.volume = volume;
-    audio.currentTime = 0;
-    void audio.play().catch(() => undefined);
-  } catch {
-    // Audio is garnish; a blocked autoplay must never break the scene.
+  const engine = getSoundEngine();
+  if (!preloaded) {
+    preloaded = true;
+    engine.schedulePreload(SCENE_CLIPS);
   }
+  engine.play(clip, volume);
 }

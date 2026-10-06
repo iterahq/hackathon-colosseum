@@ -13,6 +13,8 @@ import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 
 const play = vi.fn();
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play }) }));
+const schedulePreload = vi.fn();
+vi.mock('@/lib/soundEngine', () => ({ getSoundEngine: () => ({ schedulePreload }) }));
 
 function Probe() {
   const { muted, toggleMuted, onSettle } = useLessonSound();
@@ -35,6 +37,7 @@ function renderProbe() {
 
 beforeEach(() => {
   play.mockReset();
+  schedulePreload.mockReset();
   localStorage.clear();
 });
 
@@ -65,6 +68,29 @@ describe('som da lição self-paced', () => {
   it('não herda o mudo da aula ao vivo', () => {
     localStorage.setItem('itera.live.muted', '1');
     renderProbe();
+    fireEvent.click(screen.getByTestId('settle-pass'));
+    expect(play).toHaveBeenCalledWith('success', 0.4);
+  });
+
+  it('preloads the lesson clips when the lesson opens, not at the verdict', () => {
+    renderProbe();
+    expect(schedulePreload).toHaveBeenCalledTimes(1);
+    expect(schedulePreload).toHaveBeenCalledWith(['success', 'error', 'click', 'celebration']);
+    fireEvent.click(screen.getByTestId('settle-pass'));
+    expect(schedulePreload).toHaveBeenCalledTimes(1);
+  });
+
+  it('a muted lesson preloads nothing, and unmuting preloads without a reload', () => {
+    localStorage.setItem('itera.lesson.muted', '1');
+    renderProbe();
+    fireEvent.click(screen.getByTestId('settle-pass'));
+    expect(schedulePreload).not.toHaveBeenCalled();
+    expect(play).not.toHaveBeenCalled();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('lesson-sound-toggle'));
+    });
+    expect(schedulePreload).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('settle-pass'));
     expect(play).toHaveBeenCalledWith('success', 0.4);
   });

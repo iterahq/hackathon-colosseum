@@ -83,7 +83,13 @@ a dependência externa pra CI.
 - O script rejeita resposta cujo `content-type` não comece com `audio/`:
   portal cativo de rede responde 200 com HTML, que viraria um `.mp3` quebrado.
 
+Quem toca é `src/lib/soundEngine.ts` (Web Audio): o mapa de clipes mora em
+`src/lib/soundClips.ts`, a lição busca os dela ao abrir (não no primeiro
+veredito) e cada clipe é decodificado uma vez só. O nginx do `Dockerfile` serve
+`/vendor/sfx/` com `Cache-Control` de 7 dias — os nomes não têm hash, então
+trocar um clipe pede nome novo ou espera do cache.
+
 `src/test/sfxSelfHost.test.ts` tranca isso (sem rede): nenhuma URL absoluta no
-hook, todo som apontando pra `/vendor/sfx`, e cada arquivo com cabeçalho de MP3
+engine nem no hook, todo som apontando pra `/vendor/sfx`, e cada arquivo com cabeçalho de MP3
 de verdade. Se ele quebrar, o som voltou a depender de CDN — não silencie o
 teste.

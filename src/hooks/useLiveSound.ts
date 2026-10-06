@@ -1,7 +1,11 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import { getSoundEngine } from '@/lib/soundEngine';
+import type { SoundName } from '@/types/sound';
 import { useSoundEffects } from './useSoundEffects';
 import { useLiveMuted } from './useLiveMuted';
 import { useLiveVolume } from './useLiveVolume';
+
+const LIVE_CLIPS: readonly SoundName[] = ['success', 'error', 'submit', 'click'];
 
 /**
  * Live-class sound cues, gated by the shared mute preference and scaled by the
@@ -12,6 +16,10 @@ export function useLiveSound() {
   const { play } = useSoundEffects();
   const [muted, toggleMuted] = useLiveMuted();
   const [volume] = useLiveVolume();
+
+  useEffect(() => {
+    if (!muted) getSoundEngine().schedulePreload(LIVE_CLIPS);
+  }, [muted]);
 
   const onAnswer = useCallback(
     (correct: boolean) => {

@@ -7,6 +7,7 @@ import { useLiveVolume } from '@/hooks/useLiveVolume';
 import { useLiveMusicEnabled } from '@/hooks/useLiveMusicEnabled';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import { getSoundEngine } from '@/lib/soundEngine';
 
 /**
  * Sound dock for the live class, pinned bottom-LEFT: a mute toggle, a panel that
@@ -35,6 +36,11 @@ export function LiveSoundDock({ raised = false }: LiveSoundDockProps) {
   const dockRef = useRef<HTMLDivElement>(null);
 
   useBackgroundMusic({ enabled: musicOn, muted, volume });
+
+  // The live class starts muted, and the chime is what the unmute tap plays.
+  useEffect(() => {
+    getSoundEngine().schedulePreload(['chime']);
+  }, []);
 
   useEffect(() => {
     if (!open) return;

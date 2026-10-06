@@ -78,6 +78,14 @@ RUN printf 'server {\n\
     add_header Cache-Control "no-cache" always;\n\
     try_files $uri =404;\n\
   }\n\
+  # Feedback clips: static and unhashed, so a week and not immutable. Without this they had no cache\n\
+  # header at all. add_header here replaces the server-level one, so the CSP is repeated. No "always" on\n\
+  # Cache-Control: a 404 must not be kept for a week.\n\
+  location /vendor/sfx/ {\n\
+    add_header Cache-Control "public, max-age=604800";\n\
+    add_header Content-Security-Policy "frame-ancestors '"'"'self'"'"' https://learn.devfellowship.com http://localhost:* http://127.0.0.1:*" always;\n\
+    try_files $uri =404;\n\
+  }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
