@@ -50,12 +50,14 @@ const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
    Only /login stays in the entry chunk: it is what a cold first visit renders.
    Every other page (and the activity renderers, code transpiler and animation
    library they pull in) is fetched on first navigation; a signed-in
-   learner gets the four learner pages ahead of the tap (LearnerPagePrefetch). Guards stay static
+   learner gets the four learner pages ahead of the tap (LearnerPagePrefetch;
+   learnerPageLoaders.ts imports the same modules, so both share one chunk). Inline
+   import() keeps the route-map guard able to read which page each route renders. Guards stay static
    and OUTSIDE each <Suspense>, so authorization is still decided first. */
-const HomePage = lazy(loadHomePage);
-const CatalogPage = lazy(loadCatalogPage);
-const ProgramPage = lazy(loadProgramPage);
-const LessonPlayer = lazy(loadLessonPlayer);
+const HomePage = lazy(() => import("./pages/HomePage"));
+const CatalogPage = lazy(() => import("./pages/CatalogPage"));
+const ProgramPage = lazy(() => import("./pages/ProgramPage"));
+const LessonPlayer = lazy(() => import("./pages/LessonPlayer"));
 const ArtifactsPage = lazy(() => import("./pages/ArtifactsPage"));
 const LiveSessionPage = lazy(() => import("./pages/LiveSessionPage"));
 const InstructorClassPage = lazy(() => import("./pages/live/InstructorClassPage"));
@@ -75,7 +77,6 @@ import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
-import { loadCatalogPage, loadHomePage, loadLessonPlayer, loadProgramPage } from "./pages/learnerPageLoaders";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 

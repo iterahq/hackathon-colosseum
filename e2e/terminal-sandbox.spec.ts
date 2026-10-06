@@ -266,8 +266,6 @@ test('§1 narrow viewport: the floor degrades instead of eating the screen', asy
   await page.setViewportSize({ width: 375, height: 667 });
   await open(page, TERMINAL_OPTIONS);
 
-  const body = await boxOf(page, 'sandbox-window-body');
-
   // 375x667 is a short phone: the 40dvh floor (~267px) is dropped for a 112px
   // minimum and the body follows its content, so it must sit well under it.
   expect(await expectedFloor(page)).toBe(SHORT_PHONE_FLOOR_PX);
@@ -283,10 +281,23 @@ test('§1 narrow viewport: the floor degrades instead of eating the screen', asy
   await page.setViewportSize({ width: 375, height: 667 });
 
   // Still a terminal, and still bottom-railed.
-  const bar = await boxOf(page, 'terminal-prompt-bar');
-  const belowBar = body.y + body.height - (bar.y + bar.height);
-  // `p-4` plus the sub-pixel slack of a fractional `40dvh` floor (266.8px here).
-  expect(belowBar).toBeLessThan(20);
+  // The rail rule: nothing sits under the prompt bar but the body's own bottom
+  // padding. Body and bar are read together, retried until the layout settles
+  // (web fonts re-wrap the hint line), and the padding is measured, not assumed:
+  // the body read before the 701px round trip may be stale.
+  await expect
+    .poll(
+      async () => {
+        const bodyNow = await boxOf(page, 'sandbox-window-body');
+        const bar = await boxOf(page, 'terminal-prompt-bar');
+        const padBottom = await page
+          .getByTestId('sandbox-window-body')
+          .evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
+        return bodyNow.y + bodyNow.height - (bar.y + bar.height) - padBottom;
+      },
+      { message: 'something sits below the prompt bar besides the body padding' },
+    )
+    .toBeLessThan(2);
 
   // No horizontal overflow at 375px.
   const overflowX = await page.evaluate(

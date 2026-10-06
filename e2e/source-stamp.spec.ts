@@ -179,8 +179,8 @@ test.describe('data-source build stamp', () => {
   test('public auth screens resolve every stamp', async ({ page }) => {
     for (const [route, testId] of [
       ['/login', 'login-page'],
-      ['/auth/forgot', undefined],
-      ['/auth/code', undefined],
+      ['/auth/forgot', 'forgot-page'],
+      ['/auth/code', 'otp-page'],
     ] as const) {
       await page.goto(route);
       if (testId) await expect(page.getByTestId(testId)).toBeVisible();
