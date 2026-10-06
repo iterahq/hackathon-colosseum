@@ -12,7 +12,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { transitionKindOf } from '../oneBehaviourKinds.js';
 import { TACTILE_CTA, TACTILE_CTA_MISSED, TACTILE_CTA_SETTLED } from './tactile.js';
-import { TeraPeek, useTeraMentioned } from './teraPresence.js';
+import { TeraPeek, TeraPeekRoom, useTeraMentioned } from './teraPresence.js';
 
 export { AnswerExplanation } from './AnswerExplanation.js';
 
@@ -73,14 +73,17 @@ export function ActivityShell({
       animate={{ opacity: 1, y: 0 }}
       className={`relative w-full rounded-3xl border border-border bg-card px-6 max-sm:px-4 md:px-8 ${
         compact ? 'py-4 max-sm:py-3 md:py-5 short:py-4' : 'py-6 max-sm:py-4 md:py-8 short:py-5'
-      } ${tera ? 'pt-11' : ''}`}
+      } ${tera ? 'sm:pt-11' : ''}`}
       data-testid="activity-shell"
       data-activity-kind={kind}
       data-tera={tera ? 'true' : undefined}
     >
       {tera && <TeraPeek />}
       <KindBadge icon={icon} label={label} className="sr-only" />
-      <div>{children}</div>
+      <div>
+        {tera && <TeraPeekRoom />}
+        {children}
+      </div>
     </motion.div>
   );
 }

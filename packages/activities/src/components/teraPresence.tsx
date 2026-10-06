@@ -29,7 +29,7 @@ export function TeraPeek() {
   const reduced = useReducedMotion();
   return (
     <motion.span
-      className="pointer-events-none absolute -top-2 right-5 block h-10 w-10 max-sm:top-1 md:right-6 md:h-14 md:w-14"
+      className="pointer-events-none absolute -top-2 right-5 block h-10 w-10 max-sm:right-4 max-sm:top-1 md:right-6 md:h-14 md:w-14"
       data-testid="tera-presence"
       aria-hidden="true"
       initial={reduced ? false : { opacity: 0, y: 12, scale: 0.7 }}
@@ -39,4 +39,12 @@ export function TeraPeek() {
       <TeraAvatar mood="neutral" size="sm" className="md:h-14 md:w-14" />
     </motion.span>
   );
+}
+
+/**
+ * On a phone the card has no spare top padding, so the first lines of its text
+ * wrap around Tera instead of running under him.
+ */
+export function TeraPeekRoom() {
+  return <span aria-hidden="true" data-testid="tera-presence-room" className="float-right block h-8 w-12 sm:hidden" />;
 }

@@ -6,6 +6,9 @@
  * and shows controls instead, with a separate expand button so the controls
  * keep their own clicks. Everything else is a lazy `<img>`.
  *
+ * On a phone the caption is not drawn: it restates the picture (it is already
+ * the `alt`) and costs the screen a scroll.
+ *
  * Images also get the hover preview (`MediaHoverZone`); clips do not — a
  * second `<video>` would download the file again and play out of step.
  */
@@ -82,7 +85,7 @@ export function RichMedia({ item }: { item: MediaItem }) {
         </button>
       )}
       {item.caption && (
-        <figcaption className="text-sm text-muted-foreground">
+        <figcaption className="text-sm text-muted-foreground max-sm:hidden">
           <RichSpans spans={parseInline(item.caption)} />
         </figcaption>
       )}
