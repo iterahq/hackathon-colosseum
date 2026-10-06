@@ -52,7 +52,7 @@ export const UnitNotLaunched: Story = {
   render: wideRender,
 };
 
-/** Desktop: the trail takes the whole page and each week snakes edge to edge. */
+/** Desktop: the backdrop covers the whole page, the trail stays a centered vertical path. */
 export const FullPage: Story = {
   args: { program: fixtureProgram, onOpenLesson: () => {} },
   parameters: { layout: 'fullscreen' },

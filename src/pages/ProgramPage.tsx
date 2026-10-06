@@ -124,13 +124,13 @@ export default function ProgramPage() {
   const loading = Boolean(slug) && !unavailable && (isVisitor ? catalogPending : isPending);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-clip">
       <AppHeader active="discover" />
 
       {/* Sticky course sub-header (back · branch · title). No heart/fire/XP. */}
       {program && (
         <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-          <div className="px-4 md:px-6 lg:px-10 h-14 flex items-center gap-3">
+          <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
             <Link
               to="/"
               aria-label={t('common.back')}
@@ -150,7 +150,7 @@ export default function ProgramPage() {
         </div>
       )}
 
-      <main className="flex-1 w-full px-4 md:px-6 lg:px-10 py-6 md:py-10">
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         {loading ? (
           <div className="space-y-4" data-testid="program-loading">
             <div className="h-40 rounded-3xl ds-shimmer" />

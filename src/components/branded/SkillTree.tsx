@@ -28,12 +28,8 @@ import {
   CALLOUT_HEIGHT,
   PRIMARY_LABEL_HEIGHT,
   buildTrailPath,
-  buildWideTrailPath,
   computeTrailLayout,
-  computeWideTrailLayout,
-  isWideTrail,
   trailWidthFor,
-  wideBannerInset,
 } from './skillTreeGeometry';
 import type { ProgramDetail, Lesson, ActivityKind } from '@/types/content';
 
@@ -43,6 +39,7 @@ const CALLOUT_INSET = 12;
 const PATH_BASE = '#2E2A25';
 const PATH_FLOW = '#A9F0C7';
 const GRID_LINE = 'rgba(63,209,127,0.022)';
+const FULL_BLEED = 'absolute left-1/2 w-screen -translate-x-1/2 pointer-events-none';
 const GRID_BACKGROUND = `linear-gradient(${GRID_LINE} 1px, transparent 1px) 0 0/26px 26px, linear-gradient(90deg, ${GRID_LINE} 1px, transparent 1px) 0 0/26px 26px`;
 
 /**
@@ -113,27 +110,29 @@ export function SkillTree({
     return () => cancelAnimationFrame(frame);
   }, [programId, hasPrimary, trailRef]);
 
-  const wide = isWideTrail(containerWidth);
-  const width = wide ? containerWidth : trailWidthFor(containerWidth);
-  const layout = (wide ? computeWideTrailLayout : computeTrailLayout)({
+  const width = trailWidthFor(containerWidth);
+  const layout = computeTrailLayout({
     width,
     sectionSizes: sections.map((s) => s.nodes.length),
     primaryIndex: primary,
   });
-  const buildPath = wide ? buildWideTrailPath : buildTrailPath;
-  const bannerInset = wide ? wideBannerInset(width) : BANNER_INSET;
-  const fullPath = buildPath(layout.nodes);
+  const fullPath = buildTrailPath(layout.nodes);
   const doneUpTo = primary ?? layout.nodes.length - 1;
-  const donePath = doneUpTo >= 1 ? buildPath(layout.nodes.slice(0, doneUpTo + 1)) : '';
-  const flowPath = primary !== null && primary >= 1 ? buildPath(layout.nodes.slice(primary - 1, primary + 1)) : '';
+  const donePath = doneUpTo >= 1 ? buildTrailPath(layout.nodes.slice(0, doneUpTo + 1)) : '';
+  const flowPath = primary !== null && primary >= 1 ? buildTrailPath(layout.nodes.slice(primary - 1, primary + 1)) : '';
   const trailLeft = (containerWidth - width) / 2;
 
   return (
     <div
-      className="relative overflow-hidden rounded-3xl px-2 py-4 md:px-4"
-      style={{ background: GRID_BACKGROUND }}
+      className="relative px-2 py-4 md:px-4"
       data-testid="skill-tree"
     >
+      <span
+        aria-hidden="true"
+        data-testid="trail-backdrop"
+        className={`${FULL_BLEED} inset-y-0`}
+        style={{ background: GRID_BACKGROUND }}
+      />
       {/* JOURNEY header */}
       <div className="relative z-1 flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3.5 mb-6">
         <span className="font-mono text-xs uppercase tracking-widest text-evergreen-hi flex items-center gap-2">
@@ -158,17 +157,16 @@ export function SkillTree({
       </div>
 
       <div ref={trailRef} className="relative w-full" style={{ height: layout.height }}>
-        {wide &&
-          sections.map((section, si) => (
+        {sections.map((section, si) => (
             <span
               key={`glow-${section.unit.id}`}
               aria-hidden="true"
               data-testid="unit-glow"
-              className="absolute inset-x-0 pointer-events-none"
+              className={FULL_BLEED}
               style={{
                 top: layout.banners[si].y,
                 height: (layout.banners[si + 1]?.y ?? layout.height) - layout.banners[si].y,
-                background: `radial-gradient(60% 55% at 50% 45%, ${hexAlpha(toneForUnit(section.index).base, 9)}, transparent)`,
+                background: `radial-gradient(42% 55% at 50% 45%, ${hexAlpha(toneForUnit(section.index).base, 9)}, transparent)`,
               }}
             />
           ))}
@@ -178,7 +176,7 @@ export function SkillTree({
             aria-hidden="true"
             className="absolute pointer-events-none select-none font-display font-bold leading-none whitespace-nowrap"
             style={{
-              top: wide ? layout.banners[si].y - 38 : layout.banners[si].y + layout.banners[si].height + 30,
+              top: layout.banners[si].y + layout.banners[si].height + 30,
               [si % 2 === 0 ? 'left' : 'right']: 8,
               fontSize: 168,
               color: 'transparent',
@@ -251,7 +249,7 @@ export function SkillTree({
                 weekLabel={t('journey.unitWeek', { n: section.index + 1 })}
                 top={layout.banners[si].y}
                 height={layout.banners[si].height}
-                inset={bannerInset}
+                inset={BANNER_INSET}
               />
             );
           })}
