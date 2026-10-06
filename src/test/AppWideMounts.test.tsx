@@ -20,7 +20,7 @@ import { MemoryRouter } from 'react-router-dom';
 const mocks = vi.hoisted(() => ({ localeSync: vi.fn() }));
 
 vi.mock('@/hooks/useLocaleSync', () => ({ useLocaleSync: () => mocks.localeSync() }));
-vi.mock('@/components/branded', () => ({
+vi.mock('@/components/branded/LiveClassSignal', () => ({
   LiveClassSignal: () => <div data-testid="live-class-signal" />,
 }));
 

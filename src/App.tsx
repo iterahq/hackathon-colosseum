@@ -5,24 +5,7 @@ import { TooltipProvider } from "@devfellowship/components";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ObservabilityProvider } from "@devfellowship/observability";
-import HomePage from "./pages/HomePage";
-import CatalogPage from "./pages/CatalogPage";
-import ProgramPage from "./pages/ProgramPage";
-import LessonPlayer from "./pages/LessonPlayer";
-import ArtifactsPage from "./pages/ArtifactsPage";
-import LiveSessionPage from "./pages/LiveSessionPage";
-import InstructorClassPage from "./pages/live/InstructorClassPage";
-import InstructorSessionPage from "./pages/live/InstructorSessionPage";
-import InstructorReportPage from "./pages/live/InstructorReportPage";
-import SubscribePage from "./pages/SubscribePage";
-import ProfilePage from "./pages/ProfilePage";
-import SubscribeReturnPage from "./pages/SubscribeReturnPage";
 import LoginPage from "./pages/auth/LoginPage";
-import SignupPage from "./pages/auth/SignupPage";
-import DflCallbackPage from "./pages/auth/DflCallbackPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
-import OtpLoginPage from "./pages/auth/OtpLoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { PersonalizationProvider } from "./personalization/PersonalizationProvider";
 // The app side of ADR-3: injects i18n + the learner identity into
@@ -63,11 +46,36 @@ const LiveActivityTestPage = lazy(() => import("./pages/author/LiveActivityTestP
 const ScenePrototypePage = lazy(() => import("./pages/prototype/ScenePrototypePage"));
 // The first universal screen (packages/screens). Lazy: react-native-web loads with this route only.
 const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
+/* ── Learner-surface pages (lazy) ───────────────────────────────────────
+   Only /login stays in the entry chunk: it is what a cold first visit renders.
+   Every other page (and the activity renderers, code transpiler and animation
+   library they pull in) is fetched on first navigation; a signed-in
+   learner gets the four learner pages ahead of the tap (LearnerPagePrefetch). Guards stay static
+   and OUTSIDE each <Suspense>, so authorization is still decided first. */
+const HomePage = lazy(loadHomePage);
+const CatalogPage = lazy(loadCatalogPage);
+const ProgramPage = lazy(loadProgramPage);
+const LessonPlayer = lazy(loadLessonPlayer);
+const ArtifactsPage = lazy(() => import("./pages/ArtifactsPage"));
+const LiveSessionPage = lazy(() => import("./pages/LiveSessionPage"));
+const InstructorClassPage = lazy(() => import("./pages/live/InstructorClassPage"));
+const InstructorSessionPage = lazy(() => import("./pages/live/InstructorSessionPage"));
+const InstructorReportPage = lazy(() => import("./pages/live/InstructorReportPage"));
+const SubscribePage = lazy(() => import("./pages/SubscribePage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const SubscribeReturnPage = lazy(() => import("./pages/SubscribeReturnPage"));
+const SignupPage = lazy(() => import("./pages/auth/SignupPage"));
+const DflCallbackPage = lazy(() => import("./pages/auth/DflCallbackPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const OtpLoginPage = lazy(() => import("./pages/auth/OtpLoginPage"));
+const GuestLiveRoute = lazy(() => import("./pages/GuestLiveRoute"));
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
-import GuestLiveRoute from "./pages/GuestLiveRoute";
+import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
+import { loadCatalogPage, loadHomePage, loadLessonPlayer, loadProgramPage } from "./pages/learnerPageLoaders";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 
@@ -150,24 +158,25 @@ const App = () => (
                   route — see AppWideMounts. They live inside the router now
                   precisely so that decision can be route-keyed. */}
               <AppWideMounts />
+              <LearnerPagePrefetch />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as
                     /login. The landing site points "Criar conta" here; the page
                     creates the account passwordlessly and lands on /subscribe,
                     because a fresh account is entitled to nothing. */}
-                <Route path="/signup" element={<WebOnlyRoute><SignupPage /></WebOnlyRoute>} />
+                <Route path="/signup" element={<WebOnlyRoute><LazyRoute><SignupPage /></LazyRoute></WebOnlyRoute>} />
                 {/* Password recovery — /auth/forgot requests the email link
                     (public); /auth/reset is where the link lands (the recovery
                     token signs the user in via detectSessionInUrl). */}
-                <Route path="/auth/forgot" element={<ForgotPasswordPage />} />
-                <Route path="/auth/reset" element={<ResetPasswordPage />} />
+                <Route path="/auth/forgot" element={<LazyRoute><ForgotPasswordPage /></LazyRoute>} />
+                <Route path="/auth/reset" element={<LazyRoute><ResetPasswordPage /></LazyRoute>} />
                 {/* Passwordless sign-in (B6) — request a one-time code / magic
                     link and verify it here. Public (pre-auth). */}
-                <Route path="/auth/code" element={<OtpLoginPage />} />
+                <Route path="/auth/code" element={<LazyRoute><OtpLoginPage /></LazyRoute>} />
                 {/* "Sign in with DFL" callback — exchanges the DFL token (from
                     the URL fragment) for an Itera session. Public (pre-auth). */}
-                <Route path="/auth/dfl/callback" element={<DflCallbackPage />} />
+                <Route path="/auth/dfl/callback" element={<LazyRoute><DflCallbackPage /></LazyRoute>} />
                 {/* Learner surfaces — RequireAuth → RequireSubscription. A
                     signed-in user with no active subscription is redirected to
                     /subscribe (tenant-admins/owners are exempt). PLG gate:
@@ -185,7 +194,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription mode="preview">
-                        <HomePage />
+                        <LazyRoute><HomePage /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -200,7 +209,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription mode="preview">
-                        <CatalogPage />
+                        <LazyRoute><CatalogPage /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -210,7 +219,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription mode="preview">
-                        <ProgramPage />
+                        <LazyRoute><ProgramPage /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -220,7 +229,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription>
-                        <LessonPlayer />
+                        <LazyRoute><LessonPlayer /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -234,7 +243,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription>
-                        <ArtifactsPage />
+                        <LazyRoute><ArtifactsPage /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }
@@ -247,7 +256,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <ShellAccessGate>
-                        <ProfilePage />
+                        <LazyRoute><ProfilePage /></LazyRoute>
                       </ShellAccessGate>
                     </RequireAuth>
                   }
@@ -264,7 +273,7 @@ const App = () => (
                   element={
                     <WebOnlyRoute>
                       <RequireAuth signedOutTo="/signup">
-                        <SubscribePage />
+                        <LazyRoute><SubscribePage /></LazyRoute>
                       </RequireAuth>
                     </WebOnlyRoute>
                   }
@@ -274,7 +283,7 @@ const App = () => (
                   element={
                     <WebOnlyRoute>
                       <RequireAuth>
-                        <SubscribeReturnPage />
+                        <LazyRoute><SubscribeReturnPage /></LazyRoute>
                       </RequireAuth>
                     </WebOnlyRoute>
                   }
@@ -290,7 +299,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="instructor">
-                        <InstructorClassPage />
+                        <LazyRoute><InstructorClassPage /></LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -304,7 +313,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="instructor">
-                        <InstructorReportPage />
+                        <LazyRoute><InstructorReportPage /></LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -318,7 +327,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireRole role="instructor">
-                        <InstructorSessionPage />
+                        <LazyRoute><InstructorSessionPage /></LazyRoute>
                       </RequireRole>
                     </RequireAuth>
                   }
@@ -344,7 +353,7 @@ const App = () => (
                     <RequireAuth>
                       <RequireSubscription graceOnError>
                         <LiveEntryRoleGate>
-                          <LiveSessionPage />
+                          <LazyRoute><LiveSessionPage /></LazyRoute>
                         </LiveEntryRoleGate>
                       </RequireSubscription>
                     </RequireAuth>
@@ -361,7 +370,7 @@ const App = () => (
                     It renders the SAME LiveSessionPage in guest mode; content
                     comes from itera-api because the guest holds ZERO memberships
                     (ADR-2/B5) and therefore reads no lesson rows at all. */}
-                <Route path={GUEST_ROUTE_PATH} element={<GuestLiveRoute />} />
+                <Route path={GUEST_ROUTE_PATH} element={<LazyRoute><GuestLiveRoute /></LazyRoute>} />
 
                 {/* Tenant-admin observability (plan #6) — role-gated, READ-ONLY,
                     single-tenant. NO authoring routes exist here by design

@@ -25,8 +25,25 @@ export function shouldReloadForStaleChunk(
   return !lastReloadAt || !Number.isFinite(last) || now - last > RELOAD_WINDOW_MS;
 }
 
+let quietImports = 0;
+
+/**
+ * Runs imports whose failure must not reload the tab: a page fetched ahead of
+ * need that dies on a weak connection is not a stale deploy, and reloading
+ * would throw the learner out of what is on screen.
+ */
+export async function withoutStaleChunkReload<T>(run: () => Promise<T>): Promise<T> {
+  quietImports += 1;
+  try {
+    return await run();
+  } finally {
+    quietImports -= 1;
+  }
+}
+
 export function mountStaleChunkReload(win: Window = window): void {
   win.addEventListener('vite:preloadError', (event) => {
+    if (quietImports > 0) return;
     const now = Date.now();
     let lastReloadAt: string | null = null;
     try {

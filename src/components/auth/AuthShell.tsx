@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTenantBranding } from '@/auth/useTenantBranding';
 import { useI18n } from '@/i18n';
-import { Logo } from '@/components/branded';
+import { Logo } from '@/components/branded/Logo';
 
 interface AuthShellProps {
   title: string;

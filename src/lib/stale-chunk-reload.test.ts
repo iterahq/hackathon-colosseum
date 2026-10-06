@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mountStaleChunkReload, shouldReloadForStaleChunk } from './stale-chunk-reload';
+import { mountStaleChunkReload, shouldReloadForStaleChunk, withoutStaleChunkReload } from './stale-chunk-reload';
 
 describe('shouldReloadForStaleChunk', () => {
   it('reloads when no reload happened yet', () => {
@@ -53,5 +53,28 @@ describe('mountStaleChunkReload', () => {
     const second = fire();
     expect(reload).toHaveBeenCalledTimes(1);
     expect(second.defaultPrevented).toBe(false);
+  });
+
+  it('does not reload for a failure inside a quiet import, and reloads again after it', async () => {
+    const { reload, fire } = setup();
+    let inside: Event | undefined;
+    await withoutStaleChunkReload(async () => {
+      inside = fire();
+    });
+    expect(reload).not.toHaveBeenCalled();
+    expect(inside?.defaultPrevented).toBe(false);
+    fire();
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the quiet state when the import throws', async () => {
+    const { reload, fire } = setup();
+    await expect(
+      withoutStaleChunkReload(async () => {
+        throw new Error('offline');
+      }),
+    ).rejects.toThrow('offline');
+    fire();
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });

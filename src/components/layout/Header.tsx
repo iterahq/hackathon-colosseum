@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { ProjectStatus } from '@/enums';
 import { Button } from '@devfellowship/components';
-import { Logo } from '@/components/branded';
+import { Logo } from '@/components/branded/Logo';
 
 interface HeaderProps {
   projectName: string;

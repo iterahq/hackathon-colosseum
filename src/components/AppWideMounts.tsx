@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { LiveClassSignal } from '@/components/branded';
+import { LiveClassSignal } from '@/components/branded/LiveClassSignal';
 import { useLocaleSync } from '@/hooks/useLocaleSync';
 import { isGuestRoutePath } from '@/guest/guestRoute';
 
