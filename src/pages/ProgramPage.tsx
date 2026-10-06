@@ -8,9 +8,8 @@
  * Program → Unit → Lesson → Activity data.
  */
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ChevronLeft, GitBranch, SearchX } from 'lucide-react';
-import { AppHeader, ProgramIcon, SkillTree, LockedProgramView } from '@/components/branded';
+import { AppHeader, SkillTree, LockedProgramView } from '@/components/branded';
 import { useProgram } from '@/hooks';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
@@ -123,6 +122,8 @@ export default function ProgramPage() {
   const unavailable = !slug || memberUnavailable;
   const loading = Boolean(slug) && !unavailable && (isVisitor ? catalogPending : isPending);
 
+  const lessonCount = program?.units.reduce((n, unit) => n + (unit.lessons?.length ?? 0), 0) ?? 0;
+
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-x-clip">
       <AppHeader active="discover" />
@@ -140,11 +141,15 @@ export default function ProgramPage() {
             </Link>
             <div className="min-w-0">
               <div className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi flex items-center gap-1.5">
-                <GitBranch className="w-3 h-3" /> {t('label.program')}
+                <GitBranch className="w-3 h-3 shrink-0" /> {t('label.program')}
+                <span className="truncate text-muted-foreground" data-testid="program-counts">
+                  · {program.units.length} {t(program.units.length === 1 ? 'label.unit' : 'label.units')} · {lessonCount}{' '}
+                  {t('label.lessons')}
+                </span>
               </div>
-              <div className="font-display font-semibold truncate leading-tight">
+              <h1 className="font-display font-semibold text-base truncate leading-tight">
                 {tText(program.title)}
-              </div>
+              </h1>
             </div>
           </div>
         </div>
@@ -178,29 +183,6 @@ export default function ProgramPage() {
           </div>
         ) : program ? (
           <>
-            {/* Program hero */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative rounded-3xl overflow-hidden border border-border bg-obsidiana p-6 md:p-8 mb-8"
-            >
-              <div className="absolute inset-0 grid-pattern opacity-30" />
-              <div className="relative flex items-center gap-5">
-                <ProgramIcon icon={program.icon} size="lg" />
-                <div>
-                  <span className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
-                    {t('label.program')}
-                  </span>
-                  <h1 className="font-display font-bold text-foreground mt-1">
-                    {tText(program.title)}
-                  </h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {program.units.length} {t(program.units.length === 1 ? 'label.unit' : 'label.units').toLowerCase()}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
             {program.units.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-card/50 p-12 text-center text-muted-foreground">
                 {t('home.emptyHint')}

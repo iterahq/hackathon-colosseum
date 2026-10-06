@@ -14,7 +14,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { BookOpen, Flag, GitBranch, Trophy } from 'lucide-react';
+import { Flag, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { buildSections } from '@/utils/buildSections';
 import { hexAlpha } from '@/utils/hexAlpha';
@@ -88,7 +88,6 @@ export function SkillTree({
   const [trailRef, containerWidth] = useElementWidth<HTMLDivElement>();
   const sections = buildSections(program);
 
-  const totalLessons = sections.reduce((n, s) => n + s.total, 0);
   const flatNodes = sections.flatMap((s) => s.nodes);
   const primaryIndex = flatNodes.findIndex((n) => n.state === 'current');
   const primary = primaryIndex >= 0 ? primaryIndex : null;
@@ -133,22 +132,6 @@ export function SkillTree({
         className={`${FULL_BLEED} inset-y-0`}
         style={{ background: GRID_BACKGROUND }}
       />
-      {/* JOURNEY header */}
-      <div className="relative z-1 flex items-center justify-between rounded-2xl border border-border bg-card px-5 py-3.5 mb-6">
-        <span className="font-mono text-xs uppercase tracking-widest text-evergreen-hi flex items-center gap-2">
-          <GitBranch className="w-3.5 h-3.5" /> {t('journey.title')}
-        </span>
-        <span className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" /> {totalLessons} {t('label.lessons').toLowerCase()}
-          </span>
-          <span className="text-border">·</span>
-          <span className="flex items-center gap-1.5">
-            <Trophy className="w-3.5 h-3.5" /> {t('journey.badge')}
-          </span>
-        </span>
-      </div>
-
       {/* Base camp */}
       <div className="relative z-1 flex justify-center mb-2">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-card font-mono text-xs text-muted-foreground">
