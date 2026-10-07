@@ -3,14 +3,14 @@
  * packages/bridge/src/protocol.ts), commit e90a642c4f7a7f4b9651895270a3f489cffc84a7.
  * Changed:
  *  - `DEFAULT_WEB_ORIGIN` is `https://app.iterahq.dev` (PLAN ADR-4).
- *  - `navigationDecision` gains a fifth parameter, `blockedOrigins` (exact origins, a trailing dot
+ *  - `navigationDecision` gains the option `blockedOrigins` (exact origins, a trailing dot
  *    and the case of the host ignored). It is checked first in the http(s) branch and answers
  *    `block`: such a URL is never loaded and never handed to the system browser. This is a
  *    behaviour change against the LS file (PLAN ADR-5); its tests in origin.test.ts are new.
  *  - The custom-scheme bundle origin (`resolveShellOrigin`, `WebBundleStatus`, `isBundleScheme`,
  *    `bundleOrigin`) is removed: this shell has no native bundle handler (Expo Go, ADR-11).
- *  - R-20 (PLAN ADR-10): the answer `auth-session` for exactly the DFL handoff (`isDflHandoff`), asked for through a
- *    seventh parameter. The shell opens it in the system auth session instead of the default path.
+ *  - R-20 (PLAN ADR-10): the answer `auth-session` for exactly the DFL handoff (`isDflHandoff`), asked for through the
+ *    option `useAuthSession`. The shell opens it in the system auth session instead of the default path.
  *  - `originOf` is the bridge's (`@iterahq/shell-bridge`), re-exported: one origin parser in the shell.
  *
  * Sub-frame rules hold on iOS only. Android does not report the frame: the event of its normal path
@@ -78,17 +78,19 @@ export type NavigationDecision = 'load' | 'external' | 'block' | 'auth-session';
  * cross-origin iframe. A frame origin added here can load, but a host-only media grant would
  * still be a risk, so keep it empty until a measured flow needs it.
  */
-export const FRAME_ORIGIN_ALLOW_LIST: readonly string[] = [];
+const FRAME_ORIGIN_ALLOW_LIST: readonly string[] = [];
+
+/** The origin of the DFL handoff page. */
+export const DFL_HANDOFF_ORIGIN = 'https://learn.devfellowship.com';
 
 /**
  * Expo Go only: the DFL handoff page loads inside the WebView, so "Entrar com DFL"
  * can finish without a deep-link return, which Expo Go cannot receive. An installed build passes nothing here
  * and the handoff takes the system auth session (`auth-session`, R-20).
  */
-export const DEV_TOP_FRAME_ORIGINS: readonly string[] = ['https://learn.devfellowship.com'];
+export const DEV_TOP_FRAME_ORIGINS: readonly string[] = [DFL_HANDOFF_ORIGIN];
 
 /** The DFL handoff the web starts with `loginWithDfl` (`src/auth/dflFederation.ts`): exact origin, exact path. */
-export const DFL_HANDOFF_ORIGIN = 'https://learn.devfellowship.com';
 export const DFL_HANDOFF_PATH = '/auth/federate';
 /** The path on the app origin where the handoff returns, and where the shell's auth session ends. */
 export const DFL_CALLBACK_PATH = '/auth/dfl/callback';
@@ -127,10 +129,10 @@ export function isDflHandoff(url: string, appOrigin: string): boolean {
 }
 
 /**
- * What the WebView does with a navigation request. `origin` is the app origin.
+ * What the WebView does with a navigation request. `options.origin` is the app origin; `isTopFrame` defaults to true.
  *
- * - `load`: the app origin (exact: scheme + host + port), and `about:`. A SUB-frame also loads
- *   `blob:` and `data:` (srcdoc templates, previews).
+ * - `load`: the app origin (exact: scheme + host + port), and `about:`; also an https origin listed in `topFrameOrigins` (Expo Go, development:
+ *   the DFL handoff page). A SUB-frame also loads `blob:` and `data:` (srcdoc templates, previews).
  * - `block` (top frame): an http(s) URL whose origin is one of `blockedOrigins` (checked first, even
  *   before the app origin).
  *   A TOP-frame `blob:` or `data:`.
@@ -143,15 +145,24 @@ export function isDflHandoff(url: string, appOrigin: string): boolean {
  * A sub-frame loads for `about:`, `blob:`, `data:`, and a URL whose origin is EXACTLY the app
  * origin or is in `frameOrigins` (http(s) only). Any other sub-frame is blocked.
  */
-export function navigationDecision(
-  url: string,
-  origin: string,
-  isTopFrame = true,
-  frameOrigins: readonly string[] = FRAME_ORIGIN_ALLOW_LIST,
-  blockedOrigins: readonly string[] = BLOCKED_ORIGINS,
-  topFrameOrigins: readonly string[] = [],
-  useAuthSession = false,
-): NavigationDecision {
+export type NavigationOptions = {
+  origin: string;
+  isTopFrame?: boolean;
+  frameOrigins?: readonly string[];
+  blockedOrigins?: readonly string[];
+  topFrameOrigins?: readonly string[];
+  useAuthSession?: boolean;
+};
+
+export function navigationDecision(url: string, options: NavigationOptions): NavigationDecision {
+  const {
+    origin,
+    isTopFrame = true,
+    frameOrigins = FRAME_ORIGIN_ALLOW_LIST,
+    blockedOrigins = BLOCKED_ORIGINS,
+    topFrameOrigins = [],
+    useAuthSession = false,
+  } = options;
   const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(url.trim())?.[1].toLowerCase() ?? null;
   if (scheme === null) return 'block';
   const appOrigin = originOf(origin);

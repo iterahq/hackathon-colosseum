@@ -29,38 +29,15 @@ import {
   type ShellHandler,
   type ShellSession,
   type ShellSessionOptions,
-  base64DecodedLength,
   createShellSession,
-  decodeBase64Into,
   readTokenClaims,
 } from '@iterahq/shell-bridge';
+import { UUID, jwtPayload } from './tokenPayload';
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUDIENCE = 'authenticated';
 
 /** The issuer of the Supabase project at `supabaseOrigin`. */
 export const issuerOf = (supabaseOrigin: string): string => `${supabaseOrigin}/auth/v1`;
-
-/**
- * The payload of a JWT as an object, or null. The bytes are read one character each: a name with an
- * accent comes out wrong, but the JSON structure and every ASCII claim are exact, and only ASCII claims
- * are compared below.
- */
-function payloadOf(token: string): Record<string, unknown> | null {
-  const part = token.split('.')[1] ?? '';
-  if (part === '' || part.length % 4 === 1) return null;
-  const b64 = part.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (part.length % 4)) % 4);
-  try {
-    const bytes = new Uint8Array(base64DecodedLength(b64));
-    decodeBase64Into(b64, bytes, 0);
-    let text = '';
-    for (const b of bytes) text += String.fromCharCode(b);
-    const value: unknown = JSON.parse(text);
-    return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Why this token is not one the shell holds, as the NAME of the failing part (never a value), or null.
@@ -70,7 +47,7 @@ export function tokenShapeProblem(token: unknown, issuer: string): string | null
   const base = readTokenClaims(token);
   if (base === null || typeof token !== 'string') return 'accessToken';
   if (!UUID.test(base.sub)) return 'sub';
-  const claims = payloadOf(token);
+  const claims = jwtPayload(token);
   if (claims === null) return 'accessToken';
   const aud = claims.aud;
   if (aud !== AUDIENCE && !(Array.isArray(aud) && aud.includes(AUDIENCE))) return 'aud';

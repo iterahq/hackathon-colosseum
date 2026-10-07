@@ -15,6 +15,9 @@ describe('parseWebOrigin', () => {
   it.each(['itera://localhost', 'file:///app/index.html', 'http://app.iterahq.dev'])('refuses %s', (v) => {
     expect(() => parseWebOrigin(v)).toThrow(/https/);
   });
+  it.each(['not a url', 'app.iterahq.dev', 'https://', '://app.iterahq.dev'])('refuses %j as not a URL, and the message names it', (v) => {
+    expect(() => parseWebOrigin(v)).toThrow(`expo.extra.webOrigin is not a URL: ${v}`);
+  });
   it('refuses a value with a path', () => {
     expect(() => parseWebOrigin(`${O}/app`)).toThrow(/no path/);
   });
@@ -53,7 +56,7 @@ describe('navigationDecision, top frame', () => {
     ['itms-services://x', 'block'],
     ['not a url', 'block'],
   ])('%s -> %s', (url, want) => {
-    expect(navigationDecision(url, O)).toBe(want);
+    expect(navigationDecision(url, { origin: O })).toBe(want);
   });
 });
 
@@ -66,14 +69,14 @@ describe('navigationDecision, blocked origins (ADR-5, Q-3)', () => {
     'https://checkout.stripe.com./c/pay/x',
     'https://checkout.stripe.com:443/c/pay/x',
   ])('blocks %s: not loaded, not handed to the system browser', (url) => {
-    expect(navigationDecision(url, O)).toBe('block');
+    expect(navigationDecision(url, { origin: O })).toBe('block');
   });
   it('blocks both Stripe origins by default and with an explicit list', () => {
     expect(BLOCKED_ORIGINS).toEqual(['https://checkout.stripe.com', 'https://billing.stripe.com']);
-    expect(navigationDecision('https://checkout.stripe.com/x', O, true, [], ['https://checkout.stripe.com'])).toBe('block');
+    expect(navigationDecision('https://checkout.stripe.com/x', { origin: O, frameOrigins: [], blockedOrigins: ['https://checkout.stripe.com'] })).toBe('block');
   });
   it('an empty list blocks nothing: the same URL goes to the system browser', () => {
-    expect(navigationDecision('https://checkout.stripe.com/x', O, true, [], [])).toBe('external');
+    expect(navigationDecision('https://checkout.stripe.com/x', { origin: O, frameOrigins: [], blockedOrigins: [] })).toBe('external');
   });
   it.each([
     ['another port', 'https://checkout.stripe.com:8443/'],
@@ -81,19 +84,19 @@ describe('navigationDecision, blocked origins (ADR-5, Q-3)', () => {
     ['a sibling host', 'https://js.stripe.com/'],
     ['plain http', 'http://checkout.stripe.com/'],
   ])('does not treat %s as the blocked origin', (_what, url) => {
-    expect(navigationDecision(url, O)).toBe('external');
+    expect(navigationDecision(url, { origin: O })).toBe('external');
   });
   it.each([
     ['a user-info spoof (Stripe as the host)', 'https://evil.example@checkout.stripe.com/'],
     ['a user-info spoof (Stripe as the user)', 'https://checkout.stripe.com@evil.example/'],
   ])('blocks %s', (_what, url) => {
-    expect(navigationDecision(url, O)).toBe('block');
+    expect(navigationDecision(url, { origin: O })).toBe('block');
   });
   it('the blocked list wins over the app origin', () => {
-    expect(navigationDecision('https://checkout.stripe.com/x', 'https://checkout.stripe.com', true, [], BLOCKED_ORIGINS)).toBe('block');
+    expect(navigationDecision('https://checkout.stripe.com/x', { origin: 'https://checkout.stripe.com', frameOrigins: [], blockedOrigins: BLOCKED_ORIGINS })).toBe('block');
   });
   it('does not widen sub-frames: a blocked origin is a plain cross-origin frame', () => {
-    expect(navigationDecision('https://checkout.stripe.com/x', O, false)).toBe('block');
+    expect(navigationDecision('https://checkout.stripe.com/x', { origin: O, isTopFrame: false })).toBe('block');
   });
 });
 
@@ -102,7 +105,7 @@ describe('navigationDecision, DFL sign-in handoff and the app origin only', () =
     'https://learn.devfellowship.com/auth/federate?redirect=x',
     'https://learn.devfellowship.com/anything',
   ])('%s goes to the system browser, never loads in the WebView', (url) => {
-    expect(navigationDecision(url, O)).toBe('external');
+    expect(navigationDecision(url, { origin: O })).toBe('external');
   });
 });
 
@@ -119,10 +122,10 @@ describe('navigationDecision, bypass strings never load in the top frame', () =>
     ['file:///etc/passwd', 'block'],
     ['intent://scan/#Intent;scheme=zxing;end', 'block'],
   ])('%s -> %s', (url, want) => {
-    expect(navigationDecision(url, O)).toBe(want);
+    expect(navigationDecision(url, { origin: O })).toBe(want);
   });
   it.each(['https://APP.ITERAHQ.DEV/login', 'HTTPS://app.iterahq.dev:443/login'])('%s is the app origin', (url) => {
-    expect(navigationDecision(url, O)).toBe('load');
+    expect(navigationDecision(url, { origin: O })).toBe('load');
   });
 });
 
@@ -137,7 +140,7 @@ describe('navigationDecision, sub-frame', () => {
     ['javascript:alert(1)', 'block'],
     ['wss://app.iterahq.dev/', 'block'],
   ])('%s -> %s', (url, want) => {
-    expect(navigationDecision(url, O, false)).toBe(want);
+    expect(navigationDecision(url, { origin: O, isTopFrame: false })).toBe(want);
   });
 
   // The media grant of the WebView compares the host only, so a sub-frame of the app host on
@@ -149,14 +152,14 @@ describe('navigationDecision, sub-frame', () => {
     ['a look-alike host', 'https://app.iterahq.dev.evil.example/'],
     ['a user-info spoof', 'https://app.iterahq.dev@evil.example/'],
   ])('%s is blocked', (_what, url) => {
-    expect(navigationDecision(url, O, false)).toBe('block');
+    expect(navigationDecision(url, { origin: O, isTopFrame: false })).toBe('block');
   });
 
   it('an explicit allow list loads an exact origin, and only that origin', () => {
     const allow = ['https://player.example'];
-    expect(navigationDecision('https://player.example/v/1', O, false, allow)).toBe('load');
-    expect(navigationDecision('https://player.example:444/v/1', O, false, allow)).toBe('block');
-    expect(navigationDecision('http://player.example/v/1', O, false, allow)).toBe('block');
+    expect(navigationDecision('https://player.example/v/1', { origin: O, isTopFrame: false, frameOrigins: allow })).toBe('load');
+    expect(navigationDecision('https://player.example:444/v/1', { origin: O, isTopFrame: false, frameOrigins: allow })).toBe('block');
+    expect(navigationDecision('http://player.example/v/1', { origin: O, isTopFrame: false, frameOrigins: allow })).toBe('block');
   });
 });
 
@@ -165,20 +168,20 @@ describe('navigationDecision — development top-frame origins', () => {
   const DFL = 'https://learn.devfellowship.com/auth/federate?return=x';
 
   it('sends the DFL handoff to the system browser when no origin is listed', () => {
-    expect(navigationDecision(DFL, APP)).toBe('external');
+    expect(navigationDecision(DFL, { origin: APP })).toBe('external');
   });
 
   it('loads a listed https origin in the WebView and nothing that only looks like it', () => {
     const dev = ['https://learn.devfellowship.com'];
-    expect(navigationDecision(DFL, APP, true, undefined, undefined, dev)).toBe('load');
-    expect(navigationDecision('http://learn.devfellowship.com/auth/federate', APP, true, undefined, undefined, dev)).toBe('external');
-    expect(navigationDecision('https://learn.devfellowship.com.evil.com/', APP, true, undefined, undefined, dev)).toBe('external');
-    expect(navigationDecision('https://learn.devfellowship.com@evil.com/', APP, true, undefined, undefined, dev)).toBe('block');
+    expect(navigationDecision(DFL, { origin: APP, topFrameOrigins: dev })).toBe('load');
+    expect(navigationDecision('http://learn.devfellowship.com/auth/federate', { origin: APP, topFrameOrigins: dev })).toBe('external');
+    expect(navigationDecision('https://learn.devfellowship.com.evil.com/', { origin: APP, topFrameOrigins: dev })).toBe('external');
+    expect(navigationDecision('https://learn.devfellowship.com@evil.com/', { origin: APP, topFrameOrigins: dev })).toBe('block');
   });
 
   it('keeps a blocked origin blocked even when it is also listed', () => {
     expect(
-      navigationDecision('https://checkout.stripe.com/c/pay', APP, true, undefined, undefined, ['https://checkout.stripe.com']),
+      navigationDecision('https://checkout.stripe.com/c/pay', { origin: APP, topFrameOrigins: ['https://checkout.stripe.com'] }),
     ).toBe('block');
   });
 });
@@ -188,7 +191,7 @@ describe('navigationDecision, DFL handoff in the system auth session (R-20)', ()
   const CALLBACK = 'https://app.iterahq.dev/auth/dfl/callback';
   const handoff = (ret: string, extra = '') => `https://learn.devfellowship.com/auth/federate?return=${encodeURIComponent(ret)}${extra}`;
   const decide = (url: string, useAuthSession = true, blocked?: readonly string[]) =>
-    navigationDecision(url, APP, true, undefined, blocked, [], useAuthSession);
+    navigationDecision(url, { origin: APP, blockedOrigins: blocked, useAuthSession });
 
   it('answers auth-session for the exact handoff the web builds', () => {
     expect(decide(handoff(CALLBACK, '&next=%2F'))).toBe('auth-session');
@@ -200,7 +203,7 @@ describe('navigationDecision, DFL handoff in the system auth session (R-20)', ()
 
   it('keeps today\'s answer when the session is off (Expo Go): external, or load when the origin is listed', () => {
     expect(decide(handoff(CALLBACK), false)).toBe('external');
-    expect(navigationDecision(handoff(CALLBACK), APP, true, undefined, undefined, ['https://learn.devfellowship.com'], false)).toBe('load');
+    expect(navigationDecision(handoff(CALLBACK), { origin: APP, topFrameOrigins: ['https://learn.devfellowship.com'], useAuthSession: false })).toBe('load');
   });
 
   it.each([
@@ -254,7 +257,7 @@ describe('navigationDecision, DFL handoff in the system auth session (R-20)', ()
   });
 
   it('never answers auth-session in a sub-frame', () => {
-    expect(navigationDecision(handoff(CALLBACK), APP, false, undefined, undefined, [], true)).toBe('block');
+    expect(navigationDecision(handoff(CALLBACK), { origin: APP, isTopFrame: false, useAuthSession: true })).toBe('block');
   });
 
   it('the app origin and everything else are unchanged with the session on', () => {
@@ -282,9 +285,9 @@ describe('isTopFrameRequest: Android does not report the frame', () => {
 
   it('a request without the field is judged as a top frame, the way Android sends it', () => {
     const stripe = 'https://checkout.stripe.com/c/pay/x';
-    expect(navigationDecision(stripe, O, isTopFrameRequest(undefined))).toBe('block');
-    expect(navigationDecision('data:text/html,x', O, isTopFrameRequest(undefined))).toBe('block');
-    expect(navigationDecision('https://example.com/', O, isTopFrameRequest(undefined))).toBe('external');
-    expect(navigationDecision('data:text/html,x', O, isTopFrameRequest(false))).toBe('load');
+    expect(navigationDecision(stripe, { origin: O, isTopFrame: isTopFrameRequest(undefined) })).toBe('block');
+    expect(navigationDecision('data:text/html,x', { origin: O, isTopFrame: isTopFrameRequest(undefined) })).toBe('block');
+    expect(navigationDecision('https://example.com/', { origin: O, isTopFrame: isTopFrameRequest(undefined) })).toBe('external');
+    expect(navigationDecision('data:text/html,x', { origin: O, isTopFrame: isTopFrameRequest(false) })).toBe('load');
   });
 });

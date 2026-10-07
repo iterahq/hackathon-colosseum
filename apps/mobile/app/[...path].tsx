@@ -37,8 +37,10 @@
  * not in the route map opens the home route.
  *
  * - Origin: ONE config value, `expo.extra.webOrigin` (src/origin.ts, PLAN ADR-4).
- * - Navigation: `navigationDecision` loads the app origin only. Stripe is blocked (never loaded,
- *   never opened outside); the DFL sign-in handoff goes to the system browser (PLAN ADR-5).
+ * - Navigation: `navigationDecision` loads the app origin (and `about:`) in the WebView; any other http(s) URL, `mailto:` and
+ *   `tel:` open outside it. Stripe and every custom scheme are blocked (never loaded, never opened outside). The DFL sign-in
+ *   handoff goes to the system auth session in an installed build (R-20) and loads in the WebView in Expo Go, development only
+ *   (`DEV_TOP_FRAME_ORIGINS`; PLAN ADR-5).
  *
  * File name: Expo Router 57 does not match the root path "/" (Expo Go opens "/--/") with an
  * optional catch-all "[[...path]]": it shows "Unmatched Route". So the catch-all is "[...path]"
@@ -72,6 +74,7 @@ import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeS
 import { OfflineCard } from '../src/OfflineCard';
 import { browserMethod, createOpenReporter } from '../src/openExternal';
 import { createLaunchGate, rereadOnForeground, rereadOnRetry, shownLaunch, updateCardCopy, type LaunchConfig } from '../src/shellGate';
+import { BACKGROUND } from '../src/shellTheme';
 import { UpdateNowCard } from '../src/UpdateNowCard';
 import { DEV_TOP_FRAME_ORIGINS, dflCallbackUrl, isTopFrameRequest, navigationDecision, parseWebOrigin } from '../src/origin';
 import {
@@ -92,7 +95,6 @@ import {
 
 const ORIGIN = parseWebOrigin(Constants.expoConfig?.extra?.webOrigin);
 const SHELL_VERSION = Constants.expoConfig?.version ?? '0.0.0';
-const BACKGROUND = '#0A0908';
 // Expo Go keeps the system back (it returns to the Expo Go home); an installed app asks first.
 const BACK_CONFIRM = backConfirmEnabled(Constants.executionEnvironment);
 // Installed builds sign in with DFL through the system auth session (R-20); Expo Go cannot receive the return link.
@@ -343,7 +345,7 @@ function useBlockedNotice() {
 function useNavigationGuard(onAuthSession: (handoffUrl: string) => void, showNotice: (notice: string) => void) {
   return useCallback((req: ShouldStartLoadRequest) => {
     const topFrame = isTopFrameRequest(req.isTopFrame);
-    const decision = navigationDecision(req.url, ORIGIN, topFrame, undefined, undefined, TOP_FRAME_ORIGINS, AUTH_SESSION);
+    const decision = navigationDecision(req.url, { origin: ORIGIN, isTopFrame: topFrame, topFrameOrigins: TOP_FRAME_ORIGINS, useAuthSession: AUTH_SESSION });
     if (decision === 'external') void OPENS.attempt(() => Linking.openURL(req.url));
     if (decision === 'auth-session') onAuthSession(req.url);
     const notice = blockedNotice(decision, topFrame);
@@ -435,12 +437,12 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
     [loadedUrl, entryUrl, shellBridge],
   );
 
-  // Android: a Custom Tab, never `Linking.openURL` (the installed app is the verified handler of its own links and would get the intent back).
   const retry = useCallback(() => {
     onRetryRead();
     relaunch('retry');
   }, [onRetryRead, relaunch]);
 
+  // Android: a Custom Tab, never `Linking.openURL` (the installed app is the verified handler of its own links and would get the intent back).
   const openInBrowser = useCallback(() => {
     const url = browserUrl(restartUrl(loadedUrl, ORIGIN, entryUrl));
     void OPENS.attempt(() => (browserMethod(Platform.OS) === 'custom-tab' ? WebBrowser.openBrowserAsync(url) : Linking.openURL(url)));
@@ -452,8 +454,9 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
     return () => clearTimeout(timer);
   }, [chrome.phase, chrome.loadId]);
 
-  // Android hardware back follows the WebView history. At the root an installed app opens the back-confirm
-  // card (src/backConfirm.ts); in Expo Go the press is left to the system (the Expo Go home).
+  // Android hardware back follows the WebView history (never from the failure card). At the root of the page, a route beneath
+  // is left to the navigator, which pops it; with nothing beneath an installed app opens the back-confirm card (src/backConfirm.ts)
+  // and Expo Go leaves the press to the system (the Expo Go home). A route that is not focused leaves every press.
   const [backConfirmOpen, setBackConfirmOpen] = useState(false);
   const backConfirmOpenRef = useRef(false);
   backConfirmOpenRef.current = backConfirmOpen;

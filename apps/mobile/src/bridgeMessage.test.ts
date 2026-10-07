@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { ENVELOPE_TAG, MAX_MESSAGE_BYTES, createBridgeClient, type IncomingMessage } from '@iterahq/shell-bridge';
 import { createKeepAwakeClaims, type KeepAwakeClaims, type KeepAwakeEffects } from './keepAwakeHolder';
 import { randomFillSync } from 'node:crypto';
-import { createShellBridge, parseBridgeMessage, senderAttributed, type BridgeMessage } from './bridgeMessage';
-import { parseConsoleMessage } from './consoleMessage';
+import { createShellBridge, readBridgeEnvelope, senderAttributed, type BridgeMessage } from './bridgeMessage';
+import { readConsoleShape } from './consoleMessage';
 import { ISSUER, NOW, OTHER_USER, USER, fakeJwt } from './jwt.testkit';
 import { createNativeSession, type NativeSession } from './nativeSession';
+import { receiveShellMessage } from './receiveShellMessage';
 
 const O = 'https://app.iterahq.dev';
 const PAGE = `${O}/lesson/1`;
@@ -16,7 +17,7 @@ const call = (id: string, method: string, session: string, payload: unknown = {}
   JSON.stringify({ tag: ENVELOPE_TAG, v: 1, kind: 'call', id, session, method, payload });
 const noEffects: KeepAwakeEffects = { activate: () => undefined, deactivate: () => undefined };
 const claimsOf = (effects: KeepAwakeEffects = noEffects): KeepAwakeClaims => createKeepAwakeClaims(effects);
-const parse = (data: unknown, url: unknown = PAGE, platform = 'ios') => parseBridgeMessage({ data, url }, O, platform);
+const parse = (data: unknown, url: string = PAGE, platform = 'ios') => readBridgeEnvelope(data, url, O, platform);
 const random = (bytes: Uint8Array) => randomFillSync(bytes);
 const nativeSession = (now = NOW): NativeSession => createNativeSession({ issuer: ISSUER, now: () => now, askTimeoutMs: 20 });
 const shellBridge = (options: { keepAwake?: KeepAwakeClaims; session?: NativeSession; version?: string } = {}) =>
@@ -24,22 +25,10 @@ const shellBridge = (options: { keepAwake?: KeepAwakeClaims; session?: NativeSes
 const replyOf = (script: string | null): string => JSON.parse(/postMessage\((".*"),"https/.exec(script ?? '')?.[1] ?? 'null') as string;
 const sessionOf = (script: string | null): string => (JSON.parse(replyOf(script)) as { payload: { session: string } }).payload.session;
 
-describe('parseBridgeMessage', () => {
-  it('accepts a bridge envelope from a frame on the app origin', () => {
+describe('readBridgeEnvelope (the frame is proved by messageSize, messageWindow.test.ts)', () => {
+  it('accepts a bridge envelope', () => {
     expect(parse(hello())).toEqual({ raw: hello(), senderUrl: PAGE, kind: 'hello', attributed: true });
     expect(parse(call('wBBBBBBBB1', 'shell.version', 's'))).toMatchObject({ kind: 'call' });
-  });
-
-  it.each([
-    ['another origin', 'https://evil.example/'],
-    ['a look-alike host', 'https://app.iterahq.dev.evil.example/'],
-    ['another port', 'https://app.iterahq.dev:8443/'],
-    ['plain http', 'http://app.iterahq.dev/'],
-    ['an opaque frame', 'about:srcdoc'],
-    ['a missing URL', null],
-    ['a non-string URL', 42],
-  ])('drops a message from %s', (_what, url) => {
-    expect(parse(hello(), url)).toBeNull();
   });
 
   it.each([
@@ -64,9 +53,9 @@ describe('parseBridgeMessage', () => {
 
   it('the two parsers never read each other: a console message is no bridge message and a bridge message is no console message', () => {
     const consoleRaw = JSON.stringify({ type: 'console', level: 'error', text: 'x' });
-    expect(parseConsoleMessage({ data: consoleRaw, url: PAGE }, O)).not.toBeNull();
-    expect(parseBridgeMessage({ data: consoleRaw, url: PAGE }, O, 'ios')).toBeNull();
-    expect(parseConsoleMessage({ data: hello(), url: PAGE }, O)).toBeNull();
+    expect(readConsoleShape(consoleRaw)).not.toBeNull();
+    expect(parse(consoleRaw)).toBeNull();
+    expect(readConsoleShape(hello())).toBeNull();
   });
 });
 
@@ -243,6 +232,46 @@ describe('createShellBridge', () => {
   });
 });
 
+describe('createShellBridge: refusals the router names for what the gate lets through', () => {
+  const reasonOf = (script: string | null): string => (JSON.parse(replyOf(script)) as { reason: string }).reason;
+  const handMade = (raw: string): BridgeMessage => ({ raw, senderUrl: PAGE, kind: 'other', attributed: true });
+
+  it('malformed: an envelope kind the shell never takes from the web (the gate lets it through as "other")', async () => {
+    const result = JSON.stringify({ tag: ENVELOPE_TAG, v: 1, kind: 'result', id: 'wAAAAAAAA1', payload: {} });
+    const message = parse(result) as BridgeMessage;
+    expect(message).toMatchObject({ kind: 'other' });
+    expect((await shellBridge().handle(message)).refused).toBe('malformed');
+  });
+
+  it('malformed: a raw message that is not an envelope is refused by the router itself, whatever the gate said', async () => {
+    expect((await shellBridge().handle(handMade('{nope'))).refused).toBe('malformed');
+    expect((await shellBridge().handle(handMade(JSON.stringify({ tag: 'other', v: 1 })))).refused).toBe('malformed');
+  });
+
+  it('version_mismatch: a hello of a protocol version the shell does not speak is answered with the named refusal and no handshake', async () => {
+    const hello9 = JSON.stringify({ tag: ENVELOPE_TAG, v: 9, kind: 'hello', id: 'wAAAAAAAA1', payload: { webVersion: 't', protocols: [9] } });
+    const out = await shellBridge().handle(parse(hello9) as BridgeMessage);
+    expect(out.refused).toBe('version_mismatch');
+    expect(out.handshake).toBe(false);
+    expect(reasonOf(out.script)).toBe('version_mismatch');
+  });
+
+  it('version_mismatch: a hello of version 1 that offers only protocols the shell does not speak', async () => {
+    const out = await shellBridge().handle(parse(hello('wAAAAAAAA1').replace('"protocols":[1]', '"protocols":[7]')) as BridgeMessage);
+    expect(out.refused).toBe('version_mismatch');
+    expect(out.handshake).toBe(false);
+  });
+
+  it('unknown_method: a call with the right session and a method that is not in the protocol', async () => {
+    const b = shellBridge();
+    const session = sessionOf((await b.handle(parse(hello()) as BridgeMessage)).script);
+    const out = await b.handle(parse(call('wBBBBBBBB1', 'format.disk', session)) as BridgeMessage);
+    expect(out.refused).toBe('unknown_method');
+    expect(reasonOf(out.script)).toBe('unknown_method');
+  });
+});
+
+
 describe('the shell against its contract file', () => {
   const root = path.resolve(__dirname, '../../..');
   const version = (JSON.parse(readFileSync(path.join(root, 'apps/mobile/app.json'), 'utf8')) as { expo: { version: string } }).expo.version;
@@ -374,8 +403,10 @@ describe('auth.session (R-12)', () => {
   it('a frame of another origin, or a sandboxed frame of learner code, never reaches the router', () => {
     for (const url of ['about:srcdoc', 'null', 'about:blank', 'blob:https://app.iterahq.dev/1b0f', 'data:text/html,x', 'https://evil.example/']) {
       for (const platform of ['ios', 'android']) {
-        expect(parse(hello(), url, platform), `${platform} ${url}`).toBeNull();
-        expect(parse(call('wBBBBBBBB1', 'auth.session', 's', { signedOut: true }), url, platform), `${platform} ${url}`).toBeNull();
+        for (const data of [hello(), call('wBBBBBBBB1', 'auth.session', 's', { signedOut: true })]) {
+          const answer = receiveShellMessage({ event: { data, url }, raw: { start: 0, count: 0, chars: 0 }, page: { start: 0, count: 0 }, origin: O, platform, dev: true, now: 5000 });
+          expect(answer.kind, `${platform} ${url}`).toBe('drop');
+        }
       }
     }
   });
@@ -566,13 +597,13 @@ describe('auth.session (R-12)', () => {
 
     it('an auth.session envelope sent down the console path is not a console message', () => {
       const envelope = call('wBBBBBBBB1', 'auth.session', 's1', { accessToken: JWT, expiresAt: EXPIRES_AT });
-      expect(parseConsoleMessage({ data: envelope, url: PAGE }, O)).toBeNull();
+      expect(readConsoleShape(envelope)).toBeNull();
     });
 
     it('an auth.session envelope quoted inside a forwarded console error is redacted', () => {
       const envelope = call('wBBBBBBBB1', 'auth.session', 's1', { accessToken: JWT, expiresAt: EXPIRES_AT });
       for (const text of [envelope.slice(0, 400), `bridge call failed: ${JSON.stringify({ accessToken: JWT })}`, `Authorization: Bearer ${JWT}`]) {
-        const message = parseConsoleMessage({ data: JSON.stringify({ type: 'console', level: 'error', text }), url: PAGE }, O);
+        const message = readConsoleShape(JSON.stringify({ type: 'console', level: 'error', text }));
         const line = `[web ${message?.level}] ${message?.text}`;
         expect(line).not.toMatch(/eyJ[\w-]+\.[\w-]+/);
         expect(line).not.toContain(JWT.split('.')[1].slice(0, 24));

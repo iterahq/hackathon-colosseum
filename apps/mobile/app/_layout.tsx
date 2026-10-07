@@ -2,8 +2,7 @@ import '../global.css';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-const BACKGROUND = '#0A0908';
+import { BACKGROUND } from '../src/shellTheme';
 
 export default function RootLayout() {
   return (

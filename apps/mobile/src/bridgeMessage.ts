@@ -1,7 +1,7 @@
 /**
- * The bridge side of the shell (PLAN ADR-9): the parser of a bridge message and the routers that
- * answer it. It sits beside `consoleMessage.ts`; the console parser stays the only reader of the
- * console forwarder's messages, this parser the only reader of bridge messages. Neither
+ * The bridge side of the shell (PLAN ADR-9): the reader of a bridge message (`readBridgeEnvelope`) and the routers that
+ * answer it. It sits beside `consoleMessage.ts`; the console reader stays the only reader of the
+ * console forwarder's messages, this reader the only reader of bridge messages. Neither
  * touches the other's shape, and `receiveShellMessage.ts` calls them in that order.
  *
  * Capabilities: `shell.version`, `keepAwake` (R-8, held by `keepAwakeHolder.ts`) and `auth.session`
@@ -26,7 +26,6 @@ import {
   PROTOCOL_VERSION,
   createShellRouter,
   deliveryScript,
-  originOf,
   parseEnvelope,
   type RefusalReason,
   type ShellHandlers,
@@ -65,25 +64,13 @@ export interface BridgeMessage {
 }
 
 /**
- * `event` is the `nativeEvent` of the WebView message. The sender is the frame URL the WebView reports:
- * a frame on any other origin (an iframe of a third party, a page navigated away) is dropped here, with
- * no reply. A same-origin sub-frame cannot be told from the top frame by this URL; it can only speak to
- * the router, which holds one handshake session per page load, and every reply goes to the top frame.
+ * The envelope check, for a caller that has already proved the frame is on the app origin (`receiveShellMessage`, by
+ * `messageSize`, which drops a frame on any other origin with no reply): `url` is the checked frame URL and `appOrigin` the
+ * normalised origin. A same-origin sub-frame cannot be told from the top frame by this URL; it can only speak to the
+ * router, which holds one handshake session per page load, and every reply goes to the top frame.
  * What is dropped silently: a non-string, a message above the size cap, and anything that is not a bridge
  * envelope at all (the forwarder's messages included). A bridge envelope with a bad version or id passes,
- * so the router answers it with a named refusal.
- */
-export function parseBridgeMessage(event: { data: unknown; url: unknown }, origin: string, platform: string): BridgeMessage | null {
-  const appOrigin = originOf(origin);
-  if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
-  return readBridgeEnvelope(event.data, event.url, appOrigin, platform);
-}
-
-/**
- * The envelope check alone, for a caller that has already proved the frame is on the app origin
- * (`receiveShellMessage`, by `messageSize`): `url` is the checked frame URL and `appOrigin` the normalised
- * origin. `parseBridgeMessage` is this plus the origin check. The check inside `parseEnvelope`
- * (packages/bridge, pinned) stays as it is.
+ * so the router answers it with a named refusal. The check inside `parseEnvelope` (packages/bridge, pinned) stays as it is.
  */
 export function readBridgeEnvelope(data: unknown, url: string, appOrigin: string, platform: string): BridgeMessage | null {
   if (typeof data !== 'string' || data.length > MAX_MESSAGE_BYTES) return null;

@@ -14,8 +14,8 @@
  *
  * Pure TypeScript: no React Native import.
  */
-import { base64DecodedLength, decodeBase64Into } from '@iterahq/shell-bridge';
 import { originOf } from './origin';
+import { UUID, jwtPayload } from './tokenPayload';
 
 export interface Backend {
   /** `https://<host>`: the only host the probe talks to. */
@@ -28,23 +28,11 @@ export const PROBE_TIMEOUT_MS = 8000;
 const MAX_KEY_CHARS = 4096;
 const MAX_BODY_CHARS = 256;
 const KEY_SHAPE = /^[A-Za-z0-9._-]+$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The `role` claim of a legacy JWT key, or null for an opaque key (`sb_publishable_...`). */
 function roleOfKey(key: string): string | null {
-  const part = key.split('.')[1];
-  if (part === undefined || part.length % 4 === 1) return null;
-  const b64 = part.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (part.length % 4)) % 4);
-  try {
-    const bytes = new Uint8Array(base64DecodedLength(b64));
-    decodeBase64Into(b64, bytes, 0);
-    let text = '';
-    for (const b of bytes) text += String.fromCharCode(b);
-    const role = (JSON.parse(text) as { role?: unknown }).role;
-    return typeof role === 'string' ? role : null;
-  } catch {
-    return null;
-  }
+  const role = jwtPayload(key)?.role;
+  return typeof role === 'string' ? role : null;
 }
 
 /**

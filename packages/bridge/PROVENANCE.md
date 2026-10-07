@@ -23,17 +23,17 @@ is memory only and there is no upload.
 
 `protocol.ts` keeps every LS method name and schema (`file.*`, `upload.*`, `capture.*`, `auth.session`,
 ...): ADR-9 says only LS method names. A method is a capability only when the shell registers a
-handler for it; `apps/mobile/src/bridgeMessage.ts` registers `shell.version` alone, so the rest answer
-`capability_absent`. The comments in these files name Lesson Studio paths and plans; they are upstream's.
+handler for it; `apps/mobile/src/bridgeMessage.ts` registers `shell.version`, `keepAwake` (R-8) and `auth.session` (R-12), so the
+rest answer `capability_absent`. The comments in these files name Lesson Studio paths and plans; they are upstream's.
 `UPDATE_URL_HOSTS` is upstream's list (`apps.apple.com`, `testflight.apple.com`) unchanged: the host
 decision (Google Play) belongs to R-7, the first reader of `shell-config.json`.
 
 ## Changed against upstream (every line)
 
-1. `src/client.ts` (upstream sha256 `009edff4facc`): the handshake-timeout branch now clears `helloId` and
+1. `src/client.ts` (sha256 12: upstream `009edff4facc`, here `117a931db1f9`): the handshake-timeout branch now clears `helloId` and
    adds it to `settled`, so a HelloAck that arrives after the timeout is ignored instead of flipping the
-   page from `web` to `shell` (review R-6 finding 5). Test: `src/client.test.ts`. To be filed upstream;
-   drop this patch when upstream has it.
+   page from `web` to `shell` (review R-6 finding 5). Test: `src/client.test.ts`. Not filed upstream: no issue or PR has been
+   opened; drop this patch if upstream ever has the fix.
    ```
    -        if (mode.kind === 'pending') finishHandshake(toWeb('timeout', 'no hello ack'));
    +        if (mode.kind === 'pending') {

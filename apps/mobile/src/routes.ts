@@ -96,11 +96,3 @@ export function resolveShellPath(path: string, compiled: CompiledRoute[] = COMPI
   const p = normalisePath(path);
   return matchRoute(p, compiled) ? p : '/';
 }
-
-/** The path of a WebView URL on the app origin, or null for another origin or a bad URL. */
-export function pathOnOrigin(url: string, origin: string): string | null {
-  if (!url.startsWith(origin)) return null;
-  const rest = url.slice(origin.length);
-  if (rest !== '' && !/^[/?#]/.test(rest)) return null;
-  return normalisePath(rest.split(/[?#]/)[0] ?? '');
-}

@@ -1,27 +1,17 @@
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
 import { CONSOLE_FORWARDER_SOURCE } from './consoleForwarder.injected';
-import { MAX_MESSAGE_CHARS, MAX_TEXT_CHARS, buildConsoleForwarder, parseConsoleMessage, readConsoleShape, redactSecrets } from './consoleMessage';
+import { MAX_MESSAGE_CHARS, MAX_TEXT_CHARS, buildConsoleForwarder, readConsoleShape, redactSecrets } from './consoleMessage';
 
 const O = 'https://app.iterahq.dev';
-const post = (data: unknown, url: unknown = `${O}/lesson/1`) => parseConsoleMessage({ data, url }, O);
+const post = (data: unknown) => readConsoleShape(data);
 const wire = (level: string, text: string) => JSON.stringify({ type: 'console', level, text });
 
-describe('parseConsoleMessage', () => {
-  it('accepts the forwarder shape from a frame on the app origin', () => {
+describe('readConsoleShape', () => {
+  it('accepts the forwarder shape', () => {
     expect(post(wire('error', 'boom'))).toEqual({ type: 'console', level: 'error', text: 'boom' });
     expect(post(wire('uncaught', 'x'))?.level).toBe('uncaught');
     expect(post(wire('rejection', 'x'))?.level).toBe('rejection');
-  });
-  it.each([
-    ['another origin', 'https://evil.example/'],
-    ['a look-alike host', 'https://app.iterahq.dev.evil.example/'],
-    ['another port', 'https://app.iterahq.dev:8443/'],
-    ['plain http', 'http://app.iterahq.dev/'],
-    ['an opaque frame', 'about:blank'],
-    ['no URL', null],
-  ])('drops a message from %s', (_what, url) => {
-    expect(post(wire('error', 'boom'), url)).toBeNull();
   });
   it.each([
     ['not JSON', 'hello'],
@@ -43,9 +33,6 @@ describe('parseConsoleMessage', () => {
   });
   it('redacts a token that reached it unredacted', () => {
     expect(post(wire('error', 'GET /cb#dfl_token=abc123&next=/'))?.text).toBe('GET /cb#dfl_token=[redacted]&next=/');
-  });
-  it('refuses an origin that is not http(s)', () => {
-    expect(parseConsoleMessage({ data: wire('error', 'x'), url: 'about:blank' }, 'about:blank')).toBeNull();
   });
 });
 
@@ -103,11 +90,14 @@ describe('console forwarder script (ADR-5 constraints)', () => {
   it('is a plain string source with the origin placeholder, and nothing else exported', () => {
     expect(typeof CONSOLE_FORWARDER_SOURCE).toBe('string');
     expect(CONSOLE_FORWARDER_SOURCE).toContain('__APP_ORIGIN__');
+    expect(CONSOLE_FORWARDER_SOURCE).toContain('__MAX_TEXT_CHARS__');
     expect(CONSOLE_FORWARDER_SOURCE.trimEnd().endsWith('true;')).toBe(true);
   });
   it('builds a script with the origin as a JSON literal and refuses a non-http(s) origin', () => {
     expect(buildConsoleForwarder(`${O}/path?x=1`)).toContain(`!== "${O}"`);
     expect(buildConsoleForwarder(O)).not.toContain('__APP_ORIGIN__');
+    expect(buildConsoleForwarder(O)).not.toContain('__MAX_TEXT_CHARS__');
+    expect(buildConsoleForwarder(O)).toContain(`var MAX_TEXT = ${MAX_TEXT_CHARS};`);
     expect(() => buildConsoleForwarder('about:blank')).toThrow(/http/);
   });
 
@@ -155,7 +145,7 @@ describe('console forwarder script (ADR-5 constraints)', () => {
     const h = load(O);
     h.error('boom');
     h.listeners.error({});
-    expect(h.posted.map((data) => parseConsoleMessage({ data, url: `${O}/` }, O)?.type)).toEqual(['console', 'console']);
+    expect(h.posted.map((data) => readConsoleShape(data)?.type)).toEqual(['console', 'console']);
   });
   it('size: cuts the text to 500 characters', () => {
     const h = load(O);
@@ -190,14 +180,6 @@ describe('console forwarder script (ADR-5 constraints)', () => {
     const h = load(O, O, false);
     expect(() => h.error('boom')).not.toThrow();
     expect(h.calls).toEqual([['boom']]);
-  });
-});
-
-describe('readConsoleShape (the shape alone, after the caller proved the frame)', () => {
-  it('accepts what parseConsoleMessage accepts and refuses what it refuses, without looking at a frame', () => {
-    for (const data of [wire('error', 'boom'), wire('uncaught', 'x'), '{"type":"console","level":"info","text":"x"}', 'not json', '[]', 7, 'x'.repeat(MAX_MESSAGE_CHARS + 1)]) {
-      expect(readConsoleShape(data)).toEqual(post(data));
-    }
   });
 });
 

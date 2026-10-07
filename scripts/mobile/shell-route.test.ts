@@ -108,7 +108,7 @@ describe('route file wiring', () => {
   it('the frame is read once, by isTopFrameRequest, for the decision and for the notice (Android sends no isTopFrame)', () => {
     expect(count(/\bisTopFrameRequest\(req\.isTopFrame\)/)).toBe(1);
     expect(count(/\breq\.isTopFrame\b/)).toBe(1);
-    expect(code).toMatch(/navigationDecision\(req\.url, ORIGIN, topFrame, undefined, undefined, TOP_FRAME_ORIGINS, AUTH_SESSION\)/);
+    expect(code).toMatch(/navigationDecision\(req\.url, \{ origin: ORIGIN, isTopFrame: topFrame, topFrameOrigins: TOP_FRAME_ORIGINS, useAuthSession: AUTH_SESSION \}\)/);
     expect(code).toMatch(/blockedNotice\(decision, topFrame\)/);
   });
 
@@ -244,7 +244,8 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
   it('the guard asks for the session in installed builds only and lists the dev origin in Expo Go only', () => {
     expect(code).toMatch(/const AUTH_SESSION = authSessionEnabled\(Constants\.executionEnvironment\);/);
     expect(code).toMatch(/const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION \? DEV_TOP_FRAME_ORIGINS : \[\];/);
-    expect(count(/\bTOP_FRAME_ORIGINS, AUTH_SESSION\)/)).toBe(2);
+    expect(count(/topFrameOrigins: TOP_FRAME_ORIGINS, useAuthSession: AUTH_SESSION \}\)/)).toBe(1);
+    expect(count(/createLateGuard\(ORIGIN, TOP_FRAME_ORIGINS, AUTH_SESSION\)/)).toBe(1);
   });
 
   it('the returned URL (a bearer token) is never logged: no console call reads it, and the only console calls are the two known ones', () => {

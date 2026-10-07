@@ -45,7 +45,7 @@ describe('entryPathFor', () => {
   it('the URL the WebView starts on stays on the app origin and is a load for navigationDecision', () => {
     const url = DEFAULT_WEB_ORIGIN + entryPathFor(['auth', 'dfl', 'callback'], { '#': 'dfl_token=t&next=/' });
     expect(url).toBe('https://app.iterahq.dev/auth/dfl/callback#dfl_token=t&next=/');
-    expect(navigationDecision(url, DEFAULT_WEB_ORIGIN)).toBe('load');
+    expect(navigationDecision(url, { origin: DEFAULT_WEB_ORIGIN })).toBe('load');
   });
   it('a hostile fragment or query cannot change the origin', () => {
     const url = DEFAULT_WEB_ORIGIN + entryPathFor(['catalog'], { next: '//evil.tld', '#': '@evil.tld/' });
@@ -192,7 +192,7 @@ describe('intakeLink (ADR-10 at the intake)', () => {
     expect(intakeLink('\ud800/#%').remember).not.toBeNull();
   });
 
-  it('a path through the unreadable branch with the text in any casing is `/`', () => {
+  it('an object with its own toString is not a string: `/` and nothing remembered', () => {
     const hostile = { toString: () => 'x' } as unknown;
     expect(intakeLink(hostile)).toEqual({ path: '/', remember: null });
   });

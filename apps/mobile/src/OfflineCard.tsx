@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { CARD_STYLES } from './shellTheme';
 
 interface Props {
   title: string;
@@ -24,12 +25,12 @@ export function OfflineCard({ title, body, onRetry, onOpenBrowser }: Props) {
 }
 
 const styles = StyleSheet.create({
-  fill: { ...StyleSheet.absoluteFill, backgroundColor: '#0A0908', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  title: { color: '#F5F1EA', fontSize: 22, fontWeight: '600', textAlign: 'center', marginBottom: 12 },
-  body: { color: '#C9C3B8', fontSize: 16, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
-  button: { height: 48, minWidth: 240, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
-  primary: { backgroundColor: '#F5F1EA' },
-  primaryText: { color: '#0A0908', fontSize: 16, fontWeight: '600' },
-  secondary: { borderWidth: 1, borderColor: '#F5F1EA' },
-  secondaryText: { color: '#F5F1EA', fontSize: 16 },
+  fill: { ...StyleSheet.absoluteFill, ...CARD_STYLES.fill },
+  title: CARD_STYLES.title,
+  body: { ...CARD_STYLES.body, marginBottom: 28 },
+  button: CARD_STYLES.button,
+  primary: CARD_STYLES.primary,
+  primaryText: CARD_STYLES.primaryText,
+  secondary: CARD_STYLES.secondary,
+  secondaryText: CARD_STYLES.secondaryText,
 });

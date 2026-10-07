@@ -93,8 +93,8 @@ export function entryFromLink(link: string | null, origin: string, segments: rea
   const appOrigin = originOf(origin);
   if (appOrigin === null || originOf(link) !== appOrigin) return fallback;
   const rest = link.slice(link.indexOf('//') + 2).replace(/^[^/?#]*/, '');
+  // The pattern matches every string `rest` can be (it starts at `/`, `?`, `#` or is empty), so `m` is never null; the `?.` is for the types.
   const m = /^([^?#]*)(\?[^#]*)?(#.*)?$/s.exec(rest);
-  if (m === null) return fallback;
   const decodeSegments = (path: string): string[] | null => {
     try {
       return path.split('/').filter(Boolean).map(decodeURIComponent);
@@ -102,13 +102,13 @@ export function entryFromLink(link: string | null, origin: string, segments: rea
       return null;
     }
   };
-  const linkSegments = decodeSegments(m[1] ?? '');
+  const linkSegments = decodeSegments(m?.[1] ?? '');
   const shown = segments.map((x) => x);
   if (linkSegments === null || linkSegments.join('/') !== shown.join('/')) return fallback;
   const joined = shown.join('/');
   if (matchRoute(normalisePath(joined)) === null) return fallback;
-  const search = m[2] ?? '';
-  const hash = m[3] ?? '';
+  const search = m?.[2] ?? '';
+  const hash = m?.[3] ?? '';
   const path = resolveShellPath(joined);
   return `${path}${search === '?' || carriesRefreshToken(search) ? '' : search}${hash === '#' || carriesRefreshToken(hash) ? '' : hash}`;
 }
@@ -130,24 +130,20 @@ const REFRESH_ANYWHERE = /refresh(?:_|%5f|%255f)token/i;
  * into params and before `rawLink` remembers it. ADR-10: no refresh token in native memory. A link whose query or
  * fragment carries a `refresh_token` parameter (any casing, percent-encoded name, or the text anywhere in them) comes out
  * WITHOUT its query and fragment, and that stripped form is what the router gets and what is remembered. Anything else
- * passes unchanged. Never throws: on input it cannot read, nothing is remembered and the path is unchanged only when it has
- * no `refresh_token` text in any casing, else `/`.
+ * passes unchanged. A value that is not a string gives `/` and remembers nothing. Nothing in it can throw: it is string
+ * slicing and regex tests.
  */
 export function intakeLink(raw: unknown): { path: string; remember: string | null } {
-  try {
-    if (typeof raw !== 'string') return { path: '/', remember: null };
-    const hashAt = raw.indexOf('#');
-    const beforeHash = hashAt === -1 ? raw : raw.slice(0, hashAt);
-    const hash = hashAt === -1 ? '' : raw.slice(hashAt);
-    const queryAt = beforeHash.indexOf('?');
-    const base = queryAt === -1 ? beforeHash : beforeHash.slice(0, queryAt);
-    const search = queryAt === -1 ? '' : beforeHash.slice(queryAt);
-    if (REFRESH_ANYWHERE.test(base)) return { path: '/', remember: null };
-    if (carriesRefreshToken(search) || carriesRefreshToken(hash) || REFRESH_ANYWHERE.test(search) || REFRESH_ANYWHERE.test(hash)) {
-      return { path: base === '' ? '/' : base, remember: base === '' ? '/' : base };
-    }
-    return { path: raw, remember: raw };
-  } catch {
-    return { path: typeof raw === 'string' && !REFRESH_ANYWHERE.test(raw) ? raw : '/', remember: null };
+  if (typeof raw !== 'string') return { path: '/', remember: null };
+  const hashAt = raw.indexOf('#');
+  const beforeHash = hashAt === -1 ? raw : raw.slice(0, hashAt);
+  const hash = hashAt === -1 ? '' : raw.slice(hashAt);
+  const queryAt = beforeHash.indexOf('?');
+  const base = queryAt === -1 ? beforeHash : beforeHash.slice(0, queryAt);
+  const search = queryAt === -1 ? '' : beforeHash.slice(queryAt);
+  if (REFRESH_ANYWHERE.test(base)) return { path: '/', remember: null };
+  if (carriesRefreshToken(search) || carriesRefreshToken(hash) || REFRESH_ANYWHERE.test(search) || REFRESH_ANYWHERE.test(hash)) {
+    return { path: base === '' ? '/' : base, remember: base === '' ? '/' : base };
   }
+  return { path: raw, remember: raw };
 }

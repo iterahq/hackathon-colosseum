@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROUTE_MAP, compilePattern, compileRoutes, matchRoute, normalisePath, pathOnOrigin, resolveShellPath } from './routes';
+import { ROUTE_MAP, compilePattern, compileRoutes, matchRoute, normalisePath, resolveShellPath } from './routes';
 
 describe('route map', () => {
   it('holds the 31 rows of the map, all webview; each has a web page unless it is universal', () => {
@@ -58,11 +58,5 @@ describe('helpers', () => {
   });
   it('escapes literal parts of a pattern', () => {
     expect(compilePattern('/a.b').test('/aXb')).toBe(false);
-  });
-  it('reads the path of a URL on the app origin only', () => {
-    const o = 'https://app.iterahq.dev';
-    expect(pathOnOrigin(`${o}/lesson/1?x=2#h`, o)).toBe('/lesson/1');
-    expect(pathOnOrigin(`${o}.evil.example/lesson/1`, o)).toBeNull();
-    expect(pathOnOrigin('https://other.example/', o)).toBeNull();
   });
 });

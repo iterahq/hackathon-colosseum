@@ -1,10 +1,10 @@
 /**
- * The parser of the console forwarder's message (PLAN ADR-5 and ADR-8 rule 1c), the redaction rule, and the builder
- * of the forwarder script. `receiveShellMessage.ts` is the one function that hands it `event.data`.
+ * The reader of the console forwarder's message (PLAN ADR-5 and ADR-8 rule 1c), the redaction rule, and the builder
+ * of the forwarder script. `receiveShellMessage.ts` is the one function that hands it `event.data`, after its frame
+ * is proved to be on the app origin (`messageSize`).
  *
- * `parseConsoleMessage` accepts only the forwarder's `{type:'console', level, text}` shape from a
- * frame whose URL is on the app origin; anything else is dropped (returns null). The text is
- * redacted again and cut, so a page that skips the forwarder still cannot push a token or a
+ * `readConsoleShape` accepts only the forwarder's `{type:'console', level, text}` shape; anything else is dropped
+ * (returns null). The text is redacted again and cut, so a page that skips the forwarder still cannot push a token or a
  * megabyte into the shell's log.
  *
  * Pure TypeScript: no React Native import.
@@ -51,16 +51,9 @@ const REDACTIONS: readonly (readonly [RegExp, string])[] = [
 
 export const redactSecrets = (text: string): string => REDACTIONS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text);
 
-/** `event` is the `nativeEvent` of the WebView message: `data` (the posted string) and `url` (the frame that posted it). */
-export function parseConsoleMessage(event: { data: unknown; url: unknown }, origin: string): ConsoleMessage | null {
-  const appOrigin = originOf(origin);
-  if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
-  return readConsoleShape(event.data);
-}
-
 /**
- * The shape check alone, for a caller that has already proved the frame is on the app origin
- * (`receiveShellMessage`, by `messageSize`). `parseConsoleMessage` is this plus the origin check.
+ * The forwarder's `{type:'console', level, text}` shape, with the text redacted again and cut, for a caller that has already
+ * proved the frame is on the app origin (`receiveShellMessage`, by `messageSize`). Anything else is null.
  */
 export function readConsoleShape(data: unknown): ConsoleMessage | null {
   if (typeof data !== 'string' || data.length > MAX_MESSAGE_CHARS) return null;
@@ -81,5 +74,7 @@ export function buildConsoleForwarder(origin: string): string {
   const appOrigin = originOf(origin);
   if (appOrigin === null) throw new Error(`console forwarder needs an http(s) origin: ${origin}`);
   const rules = JSON.stringify(REDACTIONS.map(([pattern, replacement]) => [pattern.source, pattern.flags, replacement]));
-  return CONSOLE_FORWARDER_SOURCE.replace('__APP_ORIGIN__', () => JSON.stringify(appOrigin)).replace('__REDACTION_RULES__', () => rules);
+  return CONSOLE_FORWARDER_SOURCE.replace('__APP_ORIGIN__', () => JSON.stringify(appOrigin))
+    .replace('__REDACTION_RULES__', () => rules)
+    .replace('__MAX_TEXT_CHARS__', () => String(MAX_TEXT_CHARS));
 }

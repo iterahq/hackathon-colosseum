@@ -9,9 +9,8 @@
  *  4. The bridge envelope (`readBridgeEnvelope`), only when the console shape did not match.
  *  5. The page budget (`admitMessage`), charged only for what a parser accepted.
  *
- * The frame origin is proved once, in step 1. The two parsers are then given the checked URL and origin and
- * do not repeat it (`parseConsoleMessage` and `parseBridgeMessage` keep their own check for any other caller;
- * the check inside `parseEnvelope`, in the pinned bridge copy, is unchanged).
+ * The frame origin is proved once, in step 1. The two readers are then given the checked URL and origin and
+ * do not repeat it (the check inside `parseEnvelope`, in the pinned bridge copy, is unchanged).
  *
  * Every answer carries the next buckets; the caller stores them whatever the kind.
  *

@@ -42,9 +42,10 @@ describe('messageSize', () => {
     const parse = vi.spyOn(JSON, 'parse');
     expect(messageSize({ data: 'x'.repeat(300), url: PAGE }, O)).toBe(300);
     expect(messageSize({ data: '{"a":1}', url: O }, O)).toBe(7);
-    for (const url of ['about:srcdoc', 'null', 'https://evil.example/', 'blob:https://app.iterahq.dev/1', null, 7]) {
+    for (const url of ['about:srcdoc', 'about:blank', 'null', 'https://evil.example/', 'https://app.iterahq.dev.evil.example/', 'https://app.iterahq.dev:8443/', 'http://app.iterahq.dev/', 'blob:https://app.iterahq.dev/1', null, 7]) {
       expect(messageSize({ data: '{"a":1}', url }, O)).toBeNull();
     }
+    expect(messageSize({ data: '{"a":1}', url: 'about:blank' }, 'about:blank')).toBeNull();
     expect(messageSize({ data: { a: 1 }, url: PAGE }, O)).toBeNull();
     expect(parse).not.toHaveBeenCalled();
     parse.mockRestore();

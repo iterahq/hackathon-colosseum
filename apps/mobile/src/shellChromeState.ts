@@ -1,7 +1,9 @@
 /**
  * The load state of the shell chrome (PLAN section 4.1): loading veil, load-failure card, process
  * death. A pure reducer: the route file feeds it WebView events and renders what it says, so the
- * rules below are unit-tested in plain Node.
+ * rules below are unit-tested in plain Node. Beside the reducer it holds the pure decisions the route needs around it: the
+ * restart URL, the late navigation guard (the second line of the Android guard), the Android load-start classifier, the
+ * blocked-navigation notice and its gap.
  *
  * Pure TypeScript: no React Native import.
  */
@@ -102,7 +104,9 @@ export function chromeReducer(state: ChromeState, event: ChromeEvent): ChromeSta
       if (state.phase === 'loading') return state;
       return { ...state, phase: 'loading', failure: null, loadId: state.loadId + 1 };
     case 'loadEnd':
-      // After `error`/`httpError` a finish event follows on Android and must not hide the card; after
+      // Android sends the finish event of a failed load BEFORE its `error` (react-native-webview `RNCWebViewClient.java`
+      // `onReceivedError` emits the finish itself, then the error; `onPageFinished` emits nothing after a failure), so the
+      // order is `loadEnd`, `error`. After `httpError` the page's own finish does follow, and it must not hide the card; after
       // the 15 s timeout the load is still running, so its finish means the page is there.
       return state.phase === 'loading' || state.failure === 'timeout' ? { ...state, phase: 'ready', failure: null, deaths: 0 } : state;
     case 'error':
@@ -189,7 +193,7 @@ export function createLateGuard(appOrigin: string, topFrameOrigins: readonly str
   const recoveries = new Map<string, number[]>();
   return {
     judge(url, lastGood) {
-      const decision = navigationDecision(url, appOrigin, true, undefined, undefined, topFrameOrigins, useAuthSession);
+      const decision = navigationDecision(url, { origin: appOrigin, topFrameOrigins, useAuthSession });
       if (decision === 'load') return { kind: 'none' };
       const notice = blockedNotice(decision, true);
       const at = now();
