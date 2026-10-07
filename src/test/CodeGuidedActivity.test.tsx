@@ -243,6 +243,18 @@ describe('CodeWithTextInput (text)', () => {
     expect(savedBlanks()).toEqual({ setter: 'setCurtidas' });
   });
 
+  it('salva as lacunas ainda dentro do debounce quando a página vai embora', () => {
+    renderGuided(CODE_TEXT_SPEC);
+    type('setter', 'setCurtidas');
+    act(() => {
+      vi.advanceTimersByTime(100);
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(savedBlanks()).toEqual({ setter: 'setCurtidas' });
+    act(() => void vi.advanceTimersByTime(600));
+    expect(saveGuidedBlanks).toHaveBeenCalledTimes(1);
+  });
+
   it('não escreve rascunho de quem só abriu a tela', () => {
     readGuidedBlanks.mockReturnValue(JSON.stringify({ setter: 'setCurtidas' }));
     renderGuided(CODE_TEXT_SPEC);

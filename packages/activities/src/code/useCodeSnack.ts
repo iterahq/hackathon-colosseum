@@ -7,6 +7,7 @@ import type { UseCodeSnackCallbacks } from './types.js';
 import { useCodeAttempts } from './useCodeAttempts.js';
 import { useCodeChecks } from './useCodeChecks.js';
 import { useCodeLiveBuffer } from './useCodeLiveBuffer.js';
+import { usePagehideFlush } from './usePagehideFlush.js';
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
 
@@ -105,14 +106,26 @@ export function useCodeSnack(
   }, [activityId, spec.starter, reset]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The write the debounce is still holding. A reload inside the window used to
+  // lose the last keystrokes: the timer died with the page.
+  const pendingWriteRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    pendingWriteRef.current = null;
     if (!touchedRef.current) return;
-    timerRef.current = setTimeout(() => persist(code), AUTOSAVE_DEBOUNCE_MS);
+    const write = () => {
+      // Timer and page-hide can both reach this: the first one wins.
+      if (pendingWriteRef.current !== write) return;
+      pendingWriteRef.current = null;
+      persist(code);
+    };
+    pendingWriteRef.current = write;
+    timerRef.current = setTimeout(write, AUTOSAVE_DEBOUNCE_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [code, persist]);
+  usePagehideFlush(pendingWriteRef);
 
   /**
    * "Recomeçar do código inicial" — the OPPOSITE of `retry`, and the two must

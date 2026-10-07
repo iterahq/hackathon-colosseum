@@ -82,6 +82,58 @@ describe('CodeSnackActivity', () => {
     expect(saveCodeSnapshot).toHaveBeenCalledWith('t-code', 'const a = 1');
   });
 
+  it('saves the keystrokes still inside the debounce when the page goes away', () => {
+    renderSnack({ prompt: 'Build it', starter: '' });
+    saveCodeSnapshot.mockClear();
+    act(() => {
+      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'const a = 1' } });
+    });
+    // A reload 100 ms after the last key: the timer would die with the page.
+    act(() => {
+      vi.advanceTimersByTime(100);
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledWith('t-code', 'const a = 1');
+    // …and the timer, had the page lived, does not write it a second time.
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves the pending keystrokes when the tab drops to the background, and only then', () => {
+    renderSnack({ prompt: 'Build it', starter: '' });
+    saveCodeSnapshot.mockClear();
+    act(() => {
+      fireEvent.change(screen.getByTestId('mock-editor'), { target: { value: 'const a = 1' } });
+    });
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    visibility.mockReturnValue('visible');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(saveCodeSnapshot).not.toHaveBeenCalled();
+    visibility.mockReturnValue('hidden');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledWith('t-code', 'const a = 1');
+    visibility.mockRestore();
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(saveCodeSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('writes nothing on page hide for a learner who only opened the exercise', () => {
+    renderSnack({ prompt: 'Build it', starter: 'export default () => null' });
+    saveCodeSnapshot.mockClear();
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(saveCodeSnapshot).not.toHaveBeenCalled();
+  });
+
   it('renders an invalid card when the spec fails validation', () => {
     renderSnack({ starter: 'no prompt' });
     expect(screen.getByTestId('code-invalid')).toBeInTheDocument();

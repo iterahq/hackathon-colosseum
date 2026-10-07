@@ -13,6 +13,7 @@ import {
 } from './guidedCode.js';
 import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
 import { useCodeAttempts } from '../useCodeAttempts.js';
+import { usePagehideFlush } from '../usePagehideFlush.js';
 
 /**
  * The same debounce as the open editor's, and that is deliberate: the two
@@ -146,8 +147,12 @@ export function useGuidedCode(
   }, [activityId, blankIdsKey]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The write the debounce is still holding — flushed if the page goes away
+  // inside the window, so a reload does not empty the holes just filled.
+  const pendingWriteRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    pendingWriteRef.current = null;
     if (!touchedRef.current) return;
     // BOTH halves are written: the substituted source under the key the open
     // editor already uses (the professor's stage reads that one and must not
@@ -159,14 +164,20 @@ export function useGuidedCode(
     // neither and the effect never re-runs. An early return keyed on `revealed`
     // would look safer and be worse — it would drop the debounced write of the
     // keystrokes typed in the second before the professor clicked.
-    timerRef.current = setTimeout(() => {
+    const write = () => {
+      // Timer and page-hide can both reach this: the first one wins.
+      if (pendingWriteRef.current !== write) return;
+      pendingWriteRef.current = null;
       storageRef.current.write(codeDraftKey(activityId), source);
       storageRef.current.write(codeBlanksDraftKey(activityId), JSON.stringify(values));
-    }, AUTOSAVE_DEBOUNCE_MS);
+    };
+    pendingWriteRef.current = write;
+    timerRef.current = setTimeout(write, AUTOSAVE_DEBOUNCE_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [activityId, source, values]);
+  usePagehideFlush(pendingWriteRef);
 
   /*
    * The three transitions refuse to run while the gabarito is up.
