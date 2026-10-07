@@ -18,6 +18,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { useCheckoutActivation } from '@/hooks/useCheckoutActivation';
 
 export default function SubscribeReturnPage() {
@@ -48,6 +49,8 @@ export default function SubscribeReturnPage() {
     success: { title: 'successTitle', body: 'successBody' },
     slow: { title: 'slowTitle', body: 'slowBody' },
   }[state];
+
+  usePageTitle(t(`subscribe.return.${copy.title}`));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

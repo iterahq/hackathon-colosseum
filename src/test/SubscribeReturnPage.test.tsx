@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import SubscribeReturnPage from '@/pages/SubscribeReturnPage';
+import { pageName } from '@/lib/pageTitle';
 
 /**
  * O retorno do Checkout. O caso que importa é a JANELA entre o browser voltar e
@@ -80,6 +81,15 @@ describe('SubscribeReturnPage', () => {
     // A cobrança aconteceu: a tela não pode sugerir que o pagamento falhou.
     expect(screen.getByTestId('return-recheck-button')).toBeTruthy();
     expect(screen.queryByTestId('return-home-button')).toBeNull();
+  });
+
+  it('names the page after what happened to the payment', () => {
+    useEntitlement.mockReturnValue({ data: { active: true } });
+    const { unmount } = renderReturn('success');
+    expect(pageName.get()).toBe('Assinatura concluída');
+    unmount();
+    renderReturn('cancel');
+    expect(pageName.get()).toBe('Pagamento cancelado');
   });
 
   it('cancelamento não espera nada — oferece voltar e tentar de novo', () => {

@@ -77,6 +77,7 @@ import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
+import { PageTitle } from "./components/PageTitle";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 
@@ -160,6 +161,7 @@ const App = () => (
                   precisely so that decision can be route-keyed. */}
               <AppWideMounts />
               <LearnerPagePrefetch />
+              <PageTitle />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as

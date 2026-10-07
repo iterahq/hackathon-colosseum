@@ -15,6 +15,7 @@ import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { isProgramNotFoundError } from '@/services/programs.service';
 import { useI18n } from '@/i18n';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { WebOnly } from '@/components/shell/WebOnly';
 
 /**
@@ -113,6 +114,7 @@ export default function ProgramPage() {
     enabled: isVisitor,
   });
   const catalogMatch = isVisitor ? catalogPrograms.find((p) => p.slug === slug) : undefined;
+  usePageTitle(tText(program?.title ?? catalogMatch?.title));
 
   // A missing route param can never resolve either (the query stays disabled and
   // therefore permanently `isPending`) — treat it exactly like a hidden/absent

@@ -11,6 +11,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import ProgramPage from '@/pages/ProgramPage';
+import { pageName } from '@/lib/pageTitle';
 
 const useAccessLevel = vi.fn();
 const useProgram = vi.fn();
@@ -72,6 +73,7 @@ describe('ProgramPage — visitor mode', () => {
 
     expect(screen.getByTestId('program-locked')).toHaveTextContent('Modele seus dados com IA');
     expect(useProgram).toHaveBeenCalledWith(undefined);
+    expect(pageName.get()).toBe('Modele seus dados com IA');
   });
 
   it('falls back to ProgramUnavailable when the slug is not in the catalog either', () => {

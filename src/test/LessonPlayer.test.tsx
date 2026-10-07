@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import LessonPlayer from '@/pages/LessonPlayer';
 import type { Activity } from '@/types/content';
+import { pageName } from '@/lib/pageTitle';
 
 /**
  * LessonPlayer — round-3 lesson-chrome + end-CTA fixes.
@@ -136,6 +137,14 @@ describe('LessonPlayer — lesson chrome (finding #1)', () => {
     expect(eyebrow.textContent ?? '').toMatch(/Lição/i);
     expect(eyebrow.textContent ?? '').not.toMatch(/PULL/);
     expect(eyebrow.textContent ?? '').not.toMatch(/FEATURE\//);
+  });
+
+  it('names the page after the lesson while it is open', async () => {
+    const { unmount } = renderPlayer();
+    await waitForPlayerReady();
+    expect(pageName.get()).toBe('Pulses (micro-lições)');
+    unmount();
+    expect(pageName.get()).toBeNull();
   });
 
   it('does not render the git branch name anywhere in the chrome', async () => {

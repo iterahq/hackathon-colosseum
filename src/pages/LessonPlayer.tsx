@@ -42,6 +42,7 @@ import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { isExerciseActivity } from '@/utils/isExerciseActivity';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { persistActivityProgress } from '@/services/progress.service';
 import { resumeLesson } from '@/services/lessonResume.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
@@ -97,6 +98,7 @@ export default function LessonPlayer() {
   const { muted, toggleMuted, onSettle, onAdvance, onFinish } = useLessonSound();
   useAnswerOutbox();
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
+  usePageTitle(tText(data?.title));
 
   const activities = useMemo<Activity[]>(() => data?.activities ?? [], [data]);
   // Where this lesson sits in the hierarchy, for the artifact's git-shaped path.
