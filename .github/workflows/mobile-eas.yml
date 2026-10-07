@@ -6,7 +6,8 @@
 # build id, no `Production` environment (this repo has none; the ref test below is the gate).
 #
 # Manual only. One build is one slot of the Expo Free plan (15 per platform a month). The counter
-# holds each platform at EAS_BUILD_MAX and fails the job before a build starts.
+# holds each platform at EAS_BUILD_MAX and fails the job before a build starts. After `npm ci`, the shell's typecheck and
+# unit tests run before the build (not in a dry run), so a failing one stops the job before a slot is spent.
 #
 #   Android APK (R-3):  platform=android profile=preview
 #   iOS TestFlight (R-4): platform=ios profile=production   -> then, when the build is "finished",
@@ -89,6 +90,16 @@ jobs:
       - name: Install (npm ci)
         if: ${{ !inputs.dry_run }}
         run: npm ci --no-audit --no-fund
+
+      # The counter above only reads the meter; the slot is spent by `eas build`. mobile-shell never runs on
+      # main, so these two stop a build of shell code that does not typecheck or pass its own tests.
+      - name: Typecheck the shell
+        if: ${{ !inputs.dry_run }}
+        run: npm run typecheck
+
+      - name: Unit tests of the shell
+        if: ${{ !inputs.dry_run }}
+        run: npm test
 
       - name: Write the App Store Connect key (iOS)
         if: ${{ !inputs.dry_run && inputs.platform == 'ios' }}
