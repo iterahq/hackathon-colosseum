@@ -119,6 +119,14 @@ export interface Unit {
   lessons?: Lesson[];
 }
 
+export interface TenantLesson {
+  id: string;
+  title: I18nText;
+  programId: string;
+  programSlug: string;
+  programTitle: I18nText;
+}
+
 export interface Program {
   id: string;
   tenantId: string;

@@ -43,6 +43,7 @@ export const queryKeys = {
   programs: {
     all: ['programs'] as const,
     bySlug: (slug: string, locale: string) => ['programs', slug, { locale }] as const,
+    tenantLessons: (tenantId: string) => ['programs', 'tenant-lessons', tenantId] as const,
   },
   // Self-serve catalog (membership-independent, via SECURITY DEFINER RPC).
   catalog: {

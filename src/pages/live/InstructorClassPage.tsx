@@ -36,7 +36,8 @@ import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
 import { instructorTenantId } from '@/services/membership.service';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
-import { usePrograms, useProgram, useLessonContent } from '@/hooks';
+import { useTenantLessons, useLessonContent } from '@/hooks';
+import { filterLessons, groupLessonsByProgram } from './startClassLessons';
 import {
   useMySessions,
   useLiveClassEnabled,
@@ -359,7 +360,7 @@ function StartClass({
   onScheduled: () => void;
 }) {
   const { t, tText } = useI18n();
-  const { data: programs = [], isPending } = usePrograms();
+  const { data: tenantLessons = [], isPending } = useTenantLessons(tenantId);
   const [slug, setSlug] = useState<string>('');
   const [lessonId, setLessonId] = useState<string>('');
   const [scheduledAt, setScheduledAt] = useState<string>('');
@@ -370,24 +371,13 @@ function StartClass({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: program } = useProgram(slug || undefined);
   const { data: lesson, isFetching: lessonFetching } = useLessonContent(lessonId || undefined);
 
-  // Only programs of the teaching tenant — starting a class on another tenant's
-  // catalog program would leave its learners with an empty (RLS-blocked) activity
-  // (black screen), since they can't read cross-tenant content.
-  const tenantPrograms = useMemo(
-    () => programs.filter((p) => p.tenantId === tenantId),
-    [programs, tenantId]
-  );
-
-  const lessons = useMemo(
-    () =>
-      (program?.units ?? [])
-        .flatMap((u) => (u.lessons ?? []).map((l) => ({ id: l.id, title: l.title })))
-        .filter((l) => l.id),
-    [program]
-  );
+  // useTenantLessons already scopes to the teaching tenant — another tenant's
+  // lesson would leave its learners with an RLS-blocked black screen.
+  const programGroups = useMemo(() => groupLessonsByProgram(tenantLessons), [tenantLessons]);
+  const lessons = useMemo(() => filterLessons(tenantLessons, slug), [tenantLessons, slug]);
+  const lessonGroups = useMemo(() => groupLessonsByProgram(lessons), [lessons]);
 
   // The lesson's first activity — resolved once useLessonContent lands. We GUARD
   // Start on this being non-null so a professor can't start a class on a lesson
@@ -449,7 +439,7 @@ function StartClass({
       </div>
       <p className="text-sm text-muted-foreground mb-6">{t('live.instructor.start.subtitle')}</p>
 
-      {/* Step 1 — program */}
+      {/* Step 1 — optional program filter */}
       <label className="block text-[13px] font-medium text-muted-foreground mb-1.5">
         {t('live.instructor.start.program')}
       </label>
@@ -459,16 +449,17 @@ function StartClass({
         <select
           value={slug}
           onChange={(e) => {
-            setSlug(e.target.value);
-            setLessonId('');
+            const next = e.target.value;
+            setSlug(next);
+            if (!filterLessons(tenantLessons, next).some((l) => l.id === lessonId)) setLessonId('');
           }}
           data-testid="instructor-program-select"
           className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 mb-5"
         >
           <option value="">{t('live.instructor.start.programPlaceholder')}</option>
-          {tenantPrograms.map((p) => (
-            <option key={p.id} value={p.slug}>
-              {tText(p.title)}
+          {programGroups.map((g) => (
+            <option key={g.programSlug} value={g.programSlug}>
+              {tText(g.programTitle)}
             </option>
           ))}
         </select>
@@ -481,17 +472,19 @@ function StartClass({
       <select
         value={lessonId}
         onChange={(e) => setLessonId(e.target.value)}
-        disabled={!slug || lessons.length === 0}
+        disabled={isPending || lessons.length === 0}
         data-testid="instructor-lesson-select"
         className="w-full h-11 px-3 rounded-xl bg-background border border-border text-sm text-foreground focus:outline-none focus:border-clay/60 disabled:opacity-50 mb-6"
       >
-        <option value="">
-          {slug ? t('live.instructor.start.lessonPlaceholder') : t('live.instructor.start.pickProgramFirst')}
-        </option>
-        {lessons.map((l) => (
-          <option key={l.id} value={l.id}>
-            {tText(l.title)}
-          </option>
+        <option value="">{t('live.instructor.start.lessonPlaceholder')}</option>
+        {lessonGroups.map((g) => (
+          <optgroup key={g.programSlug} label={tText(g.programTitle)}>
+            {g.lessons.map((l) => (
+              <option key={l.id} value={l.id}>
+                {tText(l.title)}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
 

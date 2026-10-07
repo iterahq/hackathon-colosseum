@@ -20,6 +20,7 @@ import type {
   Program,
   ProgramDetail,
   ProgressStatus,
+  TenantLesson,
   Unit,
   UserStats,
 } from '@/types/content';
@@ -270,6 +271,44 @@ export interface LessonPlacement {
   unitTitle?: import('@/types/content').I18nText | null;
   unitOrdinal?: number | null;
   lessonOrdinal?: number | null;
+}
+
+/**
+ * Every lesson of one tenant's live programs, flattened in curriculum order.
+ * The tenant filter is load-bearing: a class on another tenant's lesson leaves
+ * learners with an RLS-blocked black screen.
+ */
+export async function getTenantLessons(tenantId: string): Promise<TenantLesson[]> {
+  const sb = client();
+  const { data, error } = await sb
+    .from('programs')
+    .select(
+      `id, slug, title_i18n, created_at,
+       units:units ( id, ordinal, lessons:lessons ( id, ordinal, title_i18n ) )`
+    )
+    .eq('tenant_id', tenantId)
+    .is('archived_at', null);
+
+  if (error) throw new Error(error.message);
+
+  return asRows(data)
+    .sort((a, b) => str(a.created_at).localeCompare(str(b.created_at)))
+    .flatMap((program) =>
+      asRows(program.units)
+        .sort((a, b) => num(a.ordinal) - num(b.ordinal))
+        .flatMap((unit) =>
+          asRows(unit.lessons)
+            .sort((a, b) => num(a.ordinal) - num(b.ordinal))
+            .map((lesson) => ({
+              id: str(lesson.id),
+              title: bag(lesson.title_i18n),
+              programId: str(program.id),
+              programSlug: str(program.slug),
+              programTitle: bag(program.title_i18n),
+            }))
+        )
+    )
+    .filter((l) => l.id);
 }
 
 /** Single lesson with its activities (used by the lesson player). */

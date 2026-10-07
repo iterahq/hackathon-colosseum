@@ -14,6 +14,7 @@ import {
   getNextLesson,
   getProgramBySlug,
   getPrograms,
+  getTenantLessons,
   getUserStats,
   isProgramNotFoundError,
 } from '@/services/programs.service';
@@ -21,6 +22,14 @@ import { getGuestLessonContent } from '@/services/guestSession.service';
 
 export function usePrograms({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: queryKeys.programs.all, queryFn: getPrograms, enabled });
+}
+
+export function useTenantLessons(tenantId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.programs.tenantLessons(tenantId ?? ''),
+    queryFn: () => getTenantLessons(tenantId as string),
+    enabled: Boolean(tenantId),
+  });
 }
 
 export function useProgram(slug: string | undefined) {

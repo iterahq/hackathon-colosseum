@@ -32,8 +32,7 @@ vi.mock('@/hooks/useIteraIdentity', () => ({
   useIteraIdentity: () => ({ userId: 'inst-1', name: 'Prof', avatarUrl: null, loading: false }),
 }));
 vi.mock('@/hooks', () => ({
-  usePrograms: () => ({ data: [], isPending: false }),
-  useProgram: () => ({ data: null }),
+  useTenantLessons: () => ({ data: [], isPending: false }),
   useLessonContent: () => ({ data: { title: { pt: 'Lição X', en: 'Lesson X' }, activities: [] }, isFetching: false }),
 }));
 vi.mock('@/hooks/useLiveClass', () => ({

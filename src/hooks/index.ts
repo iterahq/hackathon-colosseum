@@ -3,6 +3,7 @@ export { useLessons } from './useLessons';
 export {
   usePrograms,
   useProgram,
+  useTenantLessons,
   useLessonContent,
   useNextLesson,
   useUserStats,
