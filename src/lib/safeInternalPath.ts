@@ -5,5 +5,8 @@
 // cross-origin URL; only a bare absolute path ("/...") is allowed.
 export function safeInternalPath(raw: string | null | undefined, fallback = '/'): string {
   if (typeof raw !== 'string') return fallback;
-  return /^\/(?![/\\])/.test(raw) ? raw : fallback;
+  // Control characters and whitespace are stripped by URL parsers ("/\t/evil.com"
+  // resolves to https://evil.com/), and a backslash is read as a slash.
+  // eslint-disable-next-line no-control-regex -- the control range is the point
+  return /^\/(?![/\\])[^\u0000-\u0020\u007f\\]*$/.test(raw) ? raw : fallback;
 }

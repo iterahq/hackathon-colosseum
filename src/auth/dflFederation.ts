@@ -1,3 +1,5 @@
+import { createDflState, wrapNext } from '@/auth/dflState';
+
 /**
  * "Sign in with DFL" — standalone (non-iframe) federation entrypoint. forma 1:
  * DFL Supabase is the IdP; Itera trusts DFL's signed token (ADR-103/ADR-4).
@@ -11,6 +13,12 @@
  *
  * Our DflCallbackPage then exchanges the token for an Itera session via
  * itera-api POST /v1/embed/session (the same verified path the iframe uses).
+ *
+ * State binding (login CSRF): starting a sign-in stores a one-shot nonce in this
+ * browser (dflState.ts) and sends it inside `next` as `/~<nonce><path>`; the DFL
+ * page returns `next` unchanged. The callback exchanges a token only when that
+ * nonce matches, so a link carrying someone else's token signs nobody in. The
+ * `return` URL stays exactly the callback: the mobile shell matches it verbatim.
  *
  * The handoff URL is configurable; default targets the DFL learn app.
  *
@@ -38,6 +46,14 @@ export function loginWithDfl(next = '/'): void {
   if (typeof window === 'undefined') return;
   const url = new URL(DFL_HANDOFF_URL);
   url.searchParams.set('return', dflCallbackUrl());
-  url.searchParams.set('next', next);
+  let storage: Storage;
+  try {
+    storage = window.localStorage;
+  } catch {
+    // Blocked storage: the nonce is sent but never stored, so the callback refuses.
+    storage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined } as unknown as Storage;
+  }
+  const nonce = createDflState(storage, Date.now());
+  url.searchParams.set('next', wrapNext(nonce, next));
   window.location.assign(url.toString());
 }

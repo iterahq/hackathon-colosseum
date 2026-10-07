@@ -3,6 +3,7 @@
  * Verifies the handoff redirect carries the correct return + next params.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { consumeDflState, unwrapNext } from '@/auth/dflState';
 
 describe('dflFederation.loginWithDfl', () => {
   const origAssign = window.location.assign;
@@ -37,6 +38,16 @@ describe('dflFederation.loginWithDfl', () => {
     expect(assigned).toBeTruthy();
     const u = new URL(assigned!);
     expect(u.searchParams.get('return')).toBe('https://app.iterahq.dev/auth/dfl/callback');
-    expect(u.searchParams.get('next')).toBe('/program/dfl-batch');
+    const read = unwrapNext(u.searchParams.get('next'));
+    expect(read?.next).toBe('/program/dfl-batch');
+    expect(consumeDflState(window.localStorage, Date.now(), read?.nonce)).toBe(true);
+  });
+
+  it('return is exactly the callback and carries no extra parts', async () => {
+    const { loginWithDfl } = await import('@/auth/dflFederation');
+    loginWithDfl();
+    const u = new URL(assigned!);
+    expect(u.searchParams.getAll('return')).toEqual(['https://app.iterahq.dev/auth/dfl/callback']);
+    expect(unwrapNext(u.searchParams.get('next'))?.next).toBe('/');
   });
 });
