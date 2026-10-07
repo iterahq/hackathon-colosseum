@@ -823,18 +823,30 @@ export async function persistActivityAbandonment(
 export async function fetchActivityProgress(
   activityIds: string[]
 ): Promise<Record<string, ProgressStatus>> {
-  if (!isSupabaseConfigured || activityIds.length === 0) return {};
+  return (await fetchActivityProgressOrNull(activityIds)) ?? {};
+}
+
+/**
+ * The same read, telling a FAILED read (`null`) from "no progress" (`{}`). A
+ * caller that reconciles local state against the server needs the difference:
+ * an outage must not read as the server saying nothing was ever completed.
+ */
+export async function fetchActivityProgressOrNull(
+  activityIds: string[]
+): Promise<Record<string, ProgressStatus> | null> {
+  if (!isSupabaseConfigured) return null;
+  if (activityIds.length === 0) return {};
   try {
     const sb = getSupabase();
     const userId = await getIteraUserId();
-    if (!userId) return {};
+    if (!userId) return null;
 
     const { data, error } = await sb
       .from('progress')
       .select('activity_id,status')
       .eq('user_id', userId)
       .in('activity_id', activityIds);
-    if (error || !data) return {};
+    if (error || !data) return null;
 
     const map: Record<string, ProgressStatus> = {};
     for (const row of data as Array<{ activity_id: string; status: ProgressStatus }>) {
@@ -842,7 +854,145 @@ export async function fetchActivityProgress(
     }
     return map;
   } catch {
-    return {};
+    return null;
+  }
+}
+
+/** One settled attempt of the learner's own, as the attempt log holds it. */
+export interface LoggedAttempt {
+  passed: boolean;
+  response?: string;
+  /** `created_at` of the row, in ms. */
+  settledAt: number;
+}
+
+/** Per activity: the newest attempt, and the newest one that passed. */
+export interface LatestAttempts {
+  latest: LoggedAttempt;
+  latestPass?: LoggedAttempt;
+}
+
+/** Newest-first rows read per lesson load; a learner retrying 500 times is not a lesson. */
+const LATEST_ATTEMPTS_LIMIT = 500;
+
+/**
+ * The learner's own newest attempts for a set of activities, read back from
+ * `activity_results`. This is what lets an answered exercise re-open answered
+ * on ANOTHER device: `progress` says `completed` or not, and a miss is
+ * `in_progress` — the same value a lesson reset leaves behind.
+ *
+ * Resolves to `null` when the read FAILED, which is not the same as `{}` ("no
+ * attempts"): a caller reconciling local state must not treat an outage as the
+ * server saying nothing was ever answered.
+ */
+export async function fetchLatestAttempts(
+  activityIds: string[]
+): Promise<Record<string, LatestAttempts> | null> {
+  if (!isSupabaseConfigured) return null;
+  if (activityIds.length === 0) return {};
+  try {
+    const sb = getSupabase();
+    const userId = await getIteraUserId();
+    if (!userId) return null;
+
+    const { data, error } = await sb
+      .from('activity_results')
+      .select('activity_id,passed,feedback,created_at')
+      .eq('user_id', userId)
+      .in('activity_id', activityIds)
+      .order('created_at', { ascending: false })
+      .limit(LATEST_ATTEMPTS_LIMIT);
+    if (error || !data) return null;
+
+    const map: Record<string, LatestAttempts> = {};
+    for (const row of data as Array<{
+      activity_id: string;
+      passed: boolean;
+      feedback: AttemptFeedback | null;
+      created_at: string;
+    }>) {
+      const attempt: LoggedAttempt = {
+        passed: row.passed === true,
+        response: row.feedback?.response,
+        settledAt: Date.parse(row.created_at),
+      };
+      const entry = (map[row.activity_id] ??= { latest: attempt });
+      if (attempt.passed && !entry.latestPass) entry.latestPass = attempt;
+    }
+    return map;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A trace is stamped by the learner's browser and the attempt row by the
+ * database: how far apart the two may sit and still be the same attempt.
+ */
+const TRACE_CLOCK_SLACK_MS = 5 * 60_000;
+
+/** Traces read back per activity: enough to step over abandoned rows and later retries. */
+const ANSWER_TRACES_LIMIT = 8;
+
+/**
+ * The action sequence of the learner's own attempt that settled at `settledAt`, as `RecordedAction`s — the shape an activity hands up and reads
+ * back through `priorAnswer`. Abandoned traces are never an answer.
+ *
+ * Best-effort: any failure resolves to `[]`, and the exercise re-opens locked
+ * without the picked answer drawn.
+ */
+export async function fetchAnswerActions(
+  activityId: string,
+  settledAt: number,
+  passed?: boolean
+): Promise<RecordedAction[]> {
+  if (!isSupabaseConfigured || !activityId) return [];
+  try {
+    const sb = getSupabase();
+    const userId = await getIteraUserId();
+    if (!userId) return [];
+
+    const { data, error } = await sb
+      .from('activity_traces')
+      .select('started_at,actions,outcome')
+      .eq('user_id', userId)
+      .eq('activity_id', activityId)
+      .order('started_at', { ascending: false })
+      .limit(ANSWER_TRACES_LIMIT);
+    if (error || !data) return [];
+
+    const rows = data as Array<{
+      started_at: string;
+      outcome: string | null;
+      actions: Array<{ type: RecordedAction['type']; at_ms: number; payload?: Record<string, unknown> }>;
+    }>;
+    // The trace of THIS attempt is the one that settled nearest to it. An
+    // attempt can have no trace at all (a replayed one carries no duration), and
+    // then the previous attempt's picks must not be drawn as this one's.
+    let trace: (typeof rows)[number] | undefined;
+    let nearest = TRACE_CLOCK_SLACK_MS;
+    for (const row of rows) {
+      if (row.outcome === 'abandoned' || !Array.isArray(row.actions)) continue;
+      const last = row.actions[row.actions.length - 1];
+      // Two attempts a few seconds apart: the outcome tells them apart where
+      // the two clocks cannot.
+      if (passed !== undefined && last?.type === 'attempt_settled' && last.payload?.passed !== passed) continue;
+      const settled = Date.parse(row.started_at) + (last?.at_ms ?? 0);
+      const distance = Math.abs(settled - settledAt);
+      if (distance <= nearest) {
+        nearest = distance;
+        trace = row;
+      }
+    }
+    if (!trace || !Array.isArray(trace.actions)) return [];
+    const origin = Date.parse(trace.started_at);
+    return trace.actions.map((action) => ({
+      type: action.type,
+      at: origin + action.at_ms,
+      ...(action.payload ? { payload: action.payload } : {}),
+    }));
+  } catch {
+    return [];
   }
 }
 

@@ -188,6 +188,42 @@ async function ownProgress(page: Page, rest: LearnerRest) {
   return rows[0] ?? null;
 }
 
+/**
+ * Put the pinned activity on screen, answerable.
+ *
+ * The lesson used to resume ON it every run, because a miss never completes it.
+ * It now resumes PAST an exercise the attempt log says was missed, and re-opens
+ * it locked — so a second run has to step back to it and ask for the retry,
+ * exactly as a learner would. The retry is not an attempt: the row counts below
+ * still move by one per run.
+ */
+async function openPinnedActivity(page: Page): Promise<void> {
+  const shown = page.locator('[data-testid="lesson-activity"]');
+  await page
+    .locator('[data-testid="lesson-activity"], [data-testid="lesson-complete"]')
+    .first()
+    .waitFor({ state: 'visible', timeout: 30_000 });
+  // Bounded by the lesson's length; each step back shows the previous activity.
+  for (let step = 0; step < 40; step += 1) {
+    // On the completion screen there is no activity to read: `count()` does not wait.
+    const onScreen = (await shown.count()) > 0 ? await shown.getAttribute('data-activity-id') : null;
+    if (onScreen === ACTIVITY_ID) break;
+    await page.locator('[data-testid="lesson-prev"]').click();
+    await shown.waitFor({ state: 'visible', timeout: 15_000 });
+  }
+  await expect(shown, 'the pinned activity is not in this lesson').toHaveAttribute(
+    'data-activity-id',
+    ACTIVITY_ID
+  );
+  const retry = page.locator('[data-testid="lesson-retry-missed"]');
+  // The lock is drawn a render after the activity: give it a moment to show.
+  const locked = await retry.waitFor({ state: 'visible', timeout: 3_000 }).then(
+    () => true,
+    () => false
+  );
+  if (locked) await retry.click();
+}
+
 test.describe('a wrong answer is recorded, and recording it is repeatable', () => {
   test('a miss on a pinned activity appends exactly one attempt and never completes it', async ({ page }) => {
     await requireCapabilities('itera-player', 'itera-aluno1');
@@ -232,13 +268,16 @@ test.describe('a wrong answer is recorded, and recording it is repeatable', () =
     // the form.
     const personalization = page.locator('[data-testid="personalization-form"]');
     await page
-      .locator('[data-testid="personalization-form"], [data-testid="single-choice-options"]')
+      .locator(
+        '[data-testid="personalization-form"], [data-testid="lesson-activity"], [data-testid="lesson-complete"]'
+      )
       .first()
       .waitFor({ state: 'visible', timeout: 30_000 });
     if (await personalization.isVisible().catch(() => false)) {
       await page.locator('[data-testid="personalization-dismiss"]').click();
     }
 
+    await openPinnedActivity(page);
     await page.locator('[data-testid="single-choice-options"]').waitFor({ state: 'visible', timeout: 30_000 });
 
     // Selecting by the AUTHORED option id, never by position: the options are

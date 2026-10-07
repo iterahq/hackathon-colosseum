@@ -40,16 +40,12 @@ import { isByocActivity } from '@/components/branded/activity/byoc/byocSpec';
 import { isExerciseActivity } from '@/utils/isExerciseActivity';
 import { useLessonContent, useNextLesson } from '@/hooks';
 import { useI18n } from '@/i18n';
-import {
-  fetchActivityProgress,
-  persistActivityProgress,
-  resumeIndexFor,
-} from '@/services/progress.service';
+import { persistActivityProgress } from '@/services/progress.service';
+import { resumeLesson } from '@/services/lessonResume.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import {
   clearLessonAnswers,
   confirmLessonAnswer,
-  readLessonAnswers,
   storeLessonAnswer,
   type StoredLessonAnswer,
 } from '@/utils/lessonAnswerStorage';
@@ -172,10 +168,11 @@ export default function LessonPlayer() {
    * reload was dropped on activity 1 with a zeroed counter and no indication
    * that any of it had been saved.
    *
-   * We read the learner's own progress rows for exactly this lesson's activities
-   * and land on the first one that is not yet 'completed'. Best-effort by
-   * design: on any failure `fetchActivityProgress` resolves to `{}`, which
-   * yields index 0 — the pre-fix behaviour — rather than blocking the lesson.
+   * `resumeLesson` reads the learner's own progress and attempt log for exactly
+   * this lesson's activities, reconciles them with this device's record, and
+   * says where to open: the first activity not yet answered. Best-effort by
+   * design — a failed read degrades to the device's record, and with none to
+   * index 0, rather than blocking the lesson.
    *
    * Guarded by `cancelled` because the effect re-runs when the lesson changes
    * and a slow in-flight read must not seek the NEW lesson to the OLD lesson's
@@ -198,44 +195,16 @@ export default function LessonPlayer() {
     }
     if (resumedForRef.current === lessonId) return;
     let cancelled = false;
-    const ids = activities.map((a) => a.id);
-    void fetchActivityProgress(ids).then((statuses) => {
-      if (cancelled) return;
-      const done = ids.filter((id) => statuses[id] === 'completed');
-      setDoneIds(new Set(done));
-      const stored = readLessonAnswers();
-      const local: Record<string, StoredLessonAnswer> = {};
-      for (const id of ids) {
-        const answer = stored[id];
-        if (!answer) continue;
-        local[id] = answer;
-        // The tab closed with this attempt still in flight. Replay it through
-        // the durable outbox, dated to when the learner actually answered.
-        if (!answer.saved && statuses[id] !== 'completed') {
-          void writeOrQueue({
-            kind: 'progress',
-            activityId: id,
-            passed: answer.correct,
-            response: answer.response ?? null,
-            duration: null,
-            settledAt: answer.settledAt,
-          });
-          storeLessonAnswer(id, { ...answer, saved: true });
-        }
-      }
-      setAnswers(local);
-      const resumeAt = resumeIndexFor(ids, statuses, new Set(Object.keys(local)));
-      if (resumeAt >= ids.length) {
-        // Everything is already done — go straight to the completion screen
-        // instead of replaying a finished lesson from the top.
-        setCompleted(true);
-        setFinished(true);
-        setIndex(Math.max(0, ids.length - 1));
-        setFurthest(Math.max(0, ids.length - 1));
-      } else {
-        setIndex(resumeAt);
-        setFurthest(resumeAt);
-      }
+    void resumeLesson(activities, () => cancelled).then((resume) => {
+      if (!resume) return;
+      setDoneIds(resume.doneIds);
+      setAnswers(resume.answers);
+      // Everything already answered goes straight to the completion screen
+      // instead of replaying a finished lesson from the top.
+      setCompleted(resume.completed);
+      setFinished(resume.completed);
+      setIndex(resume.index);
+      setFurthest(resume.furthest);
       resumedForRef.current = lessonId;
       setResuming(false);
     });

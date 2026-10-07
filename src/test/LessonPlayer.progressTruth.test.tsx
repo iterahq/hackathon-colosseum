@@ -6,6 +6,7 @@ import { I18nProvider } from '@/i18n';
 import LessonPlayer from '@/pages/LessonPlayer';
 import {
   buildAttemptFeedback,
+  fetchAnswerActions,
   resumeIndexFor,
   MAX_RESPONSE_CHARS,
 } from '@/services/progress.service';
@@ -39,11 +40,20 @@ const inserts: Record<string, unknown[]> = {};
 /** Every payload handed to `.upsert()`, with its options. */
 const upserts: Array<{ table: string; payload: Record<string, unknown>; opts?: unknown }> = [];
 /** What `progress` rows the fake DB hands back to the resume read. */
-let progressRows: Array<{ activity_id: string; status: string }> = [];
+let progressRows: Array<{ activity_id: string; status: string }> | null = [];
 /**
  * Lets a test make a specific `.insert()` fail, the way PostgREST does when the
  * payload names a column the deployed schema does not have. Null = insert works.
  */
+/** What the learner's attempt log / trace reads return, newest first. */
+let attemptRows: Array<Record<string, unknown>> | null = [];
+let traceRows: Array<Record<string, unknown>> = [];
+function orderedRead(table: string) {
+  if (table === 'activity_results') {
+    return attemptRows ? { data: attemptRows, error: null } : { data: null, error: { message: 'down' } };
+  }
+  return { data: table === 'activity_traces' ? traceRows : [], error: null };
+}
 let insertErrorFor:
   | ((table: string, payload: Record<string, unknown>) => { message: string } | null)
   | null = null;
@@ -141,7 +151,17 @@ vi.mock('@/lib/supabase/client', () => ({
         },
         select: () => builder,
         eq: () => builder,
-        in: () => Promise.resolve({ data: table === 'progress' ? progressRows : [], error: null }),
+        // `progress` awaits `.in()` itself; the attempt log goes on to `.order().limit()`.
+        in: () =>
+          Object.assign(
+            Promise.resolve(
+              table === 'progress' && !progressRows
+                ? { data: null, error: { message: 'down' } }
+                : { data: table === 'progress' ? progressRows : [], error: null }
+            ),
+            { order: () => ({ limit: () => Promise.resolve(orderedRead(table)) }) }
+          ),
+        order: () => ({ limit: () => Promise.resolve(orderedRead(table)) }),
       };
       return builder;
     },
@@ -194,6 +214,8 @@ beforeEach(async () => {
   for (const k of Object.keys(inserts)) delete inserts[k];
   upserts.length = 0;
   progressRows = [];
+  attemptRows = [];
+  traceRows = [];
   insertErrorFor = null;
   // Module-level mock: without clearing, call counts accumulate across cases in
   // this file and the "no XP for a miss" assertion sees an earlier test's award.
@@ -547,6 +569,168 @@ describe('the result stands — it is recorded at the answer and survives a relo
     expect(shownId()).toBe('a2');
     await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
     expect(completedUpserts()[0].payload.activity_id).toBe('a1');
+  });
+});
+
+describe('the result follows the learner to another device', () => {
+  const shownId = () => screen.getByTestId('lesson-activity').getAttribute('data-activity-id');
+  const state = () => screen.getByTestId('stub-state');
+  const at = (ms: number) => new Date(ms).toISOString();
+  const T = 1_700_000_000_000;
+
+  beforeEach(() => {
+    localStorage.clear();
+    rememberStorageScope('itera-user-1');
+  });
+
+  it('re-opens a miss made elsewhere locked on its answer, with the retry', async () => {
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    attemptRows = [
+      { activity_id: 'a1', passed: false, feedback: { response: 'O distrator errado' }, created_at: at(T) },
+    ];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+    expect(state().getAttribute('data-status')).toBe('done');
+    expect(state().getAttribute('data-prior')).toBe('O distrator errado');
+    expect(screen.getByTestId('lesson-retry-missed')).toBeTruthy();
+    // Reading the log back writes nothing.
+    expect(inserts['activity_results']).toBeUndefined();
+  });
+
+  it('re-opens a pass made elsewhere on the answer that passed', async () => {
+    progressRows = [{ activity_id: 'a1', status: 'completed' }];
+    attemptRows = [
+      { activity_id: 'a1', passed: true, feedback: { response: 'A opção certa' }, created_at: at(T + 9000) },
+      { activity_id: 'a1', passed: false, feedback: { response: 'O distrator errado' }, created_at: at(T) },
+    ];
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+    expect(state().getAttribute('data-prior')).toBe('A opção certa');
+    expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+  });
+
+  it('leaves an exercise a lesson reset re-opened answerable', async () => {
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    attemptRows = [{ activity_id: 'a1', passed: true, feedback: {}, created_at: at(T) }];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a1');
+    expect(state().getAttribute('data-status')).not.toBe('done');
+  });
+
+  it('forgets a local pass the server re-opened, instead of locking it for good', async () => {
+    storeLessonAnswer('a1', { correct: true, settledAt: T, saved: true });
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a1');
+    expect(state().getAttribute('data-status')).not.toBe('done');
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    await screen.findByTestId('feedback-footer-continue');
+  });
+
+  it('does not send again an answer whose row landed just before the tab closed', async () => {
+    storeLessonAnswer('a1', { correct: false, settledAt: T, saved: false, response: 'O distrator errado' });
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    attemptRows = [
+      { activity_id: 'a1', passed: false, feedback: { response: 'O distrator errado' }, created_at: at(T + 400) },
+    ];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(inserts['activity_results']).toBeUndefined();
+  });
+
+  it('keeps the frontier past later answers when an earlier exercise is open again', async () => {
+    progressRows = [
+      { activity_id: 'a1', status: 'completed' },
+      { activity_id: 'a3', status: 'completed' },
+    ];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+    // a3 was already covered: forward is open up to a4.
+    expect(screen.getByTestId('lesson-next').hasAttribute('disabled')).toBe(false);
+  });
+
+  it('keeps this device’s passes when PROGRESS cannot be read, even if the log can', async () => {
+    storeLessonAnswer('a1', { correct: true, settledAt: T, saved: true });
+    progressRows = null;
+    attemptRows = [{ activity_id: 'a1', passed: true, feedback: {}, created_at: at(T) }];
+    const first = renderPlayer();
+    await waitForPlayerReady();
+    // Without the guard this reads as a lesson reset and the pass is deleted.
+    expect(shownId()).toBe('a2');
+    first.unmount();
+    progressRows = [{ activity_id: 'a1', status: 'completed' }];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+  });
+
+  it('keeps this device’s record when the attempt log cannot be read', async () => {
+    storeLessonAnswer('a1', { correct: true, settledAt: T, saved: true });
+    attemptRows = null;
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+  });
+});
+
+describe('fetchAnswerActions — the picked answer, read back from the trace', () => {
+  const T = 1_700_000_000_000;
+  const at = (ms: number) => new Date(ms).toISOString();
+  const submit = (ids: string[], at_ms: number) => ({ type: 'answer_submitted', at_ms, payload: { option_ids: ids } });
+
+  it('rebuilds wall-clock actions from the newest settled trace', async () => {
+    traceRows = [{ started_at: at(T), outcome: null, actions: [{ type: 'opened', at_ms: 0 }, submit(['b'], 4000)] }];
+    expect(await fetchAnswerActions('a1', T + 5000)).toEqual([
+      { type: 'opened', at: T },
+      { type: 'answer_submitted', at: T + 4000, payload: { option_ids: ['b'] } },
+    ]);
+  });
+
+  it('never reads an abandoned trace as an answer', async () => {
+    traceRows = [
+      { started_at: at(T + 60_000), outcome: 'abandoned', actions: [{ type: 'opened', at_ms: 0 }] },
+      { started_at: at(T), outcome: 'settled', actions: [submit(['a'], 1000)] },
+    ];
+    expect((await fetchAnswerActions('a1', T + 90_000))[0]?.payload).toEqual({ option_ids: ['a'] });
+  });
+
+  it('draws nothing when the attempt has no trace of its own', async () => {
+    // A replayed attempt writes no trace: the previous attempt's picks are not its picks.
+    traceRows = [{ started_at: at(T - 3_600_000), outcome: null, actions: [submit(['c'], 1000)] }];
+    expect(await fetchAnswerActions('a1', T)).toEqual([]);
+  });
+
+  it('skips a retry opened well after the attempt being restored', async () => {
+    traceRows = [
+      { started_at: at(T + 3_600_000), outcome: null, actions: [submit(['c'], 1000)] },
+      { started_at: at(T), outcome: null, actions: [submit(['a'], 1000)] },
+    ];
+    expect((await fetchAnswerActions('a1', T + 2000))[0]?.payload).toEqual({ option_ids: ['a'] });
+  });
+
+  it('tells two close attempts apart by their outcome', async () => {
+    const settled = (passed: boolean, at_ms: number) => ({ type: 'attempt_settled', at_ms, payload: { passed } });
+    traceRows = [
+      { started_at: at(T + 20_000), outcome: null, actions: [submit(['a'], 1000), settled(true, 1000)] },
+      { started_at: at(T), outcome: null, actions: [submit(['b'], 1000), settled(false, 1000)] },
+    ];
+    // The row's clock puts it nearer the miss; the pass is still the pass.
+    expect((await fetchAnswerActions('a1', T + 2000, true))[0]?.payload).toEqual({ option_ids: ['a'] });
+    expect((await fetchAnswerActions('a1', T + 2000, false))[0]?.payload).toEqual({ option_ids: ['b'] });
+  });
+
+  it('resolves to nothing when there is no trace', async () => {
+    expect(await fetchAnswerActions('a1', T)).toEqual([]);
   });
 });
 

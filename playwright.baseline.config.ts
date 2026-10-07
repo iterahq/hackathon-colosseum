@@ -45,6 +45,14 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const MOBILE_TOUCH = /mobile-(touch|height|sound)\.spec\.ts$/;
 
+/**
+ * The CI runner shares a machine with people running this suite by hand, and
+ * `--strictPort` makes the second one fail with "port already used". A local
+ * run picks its own port with `BASELINE_PORT`; CI keeps the default.
+ */
+const PREVIEW_PORT = process.env.BASELINE_PORT || '4188';
+const PREVIEW_URL = `http://127.0.0.1:${PREVIEW_PORT}`;
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: /(activity-baseline|lesson-reload|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|mobile-sound|laptop-height)\.spec\.ts$/,
@@ -62,7 +70,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
 
   use: {
-    baseURL: process.env.BASELINE_BASE_URL || 'http://127.0.0.1:4188',
+    baseURL: process.env.BASELINE_BASE_URL || PREVIEW_URL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
@@ -82,8 +90,8 @@ export default defineConfig({
     command:
       'VITE_OTEL_DISABLED=true ' +
       'VITE_SUPABASE_URL=http://stub.supabase.invalid VITE_SUPABASE_ANON_KEY=stub-anon-key ' +
-      'npm run build && npx vite preview --port 4188 --strictPort',
-    url: 'http://127.0.0.1:4188',
+      `npm run build && npx vite preview --port ${PREVIEW_PORT} --strictPort`,
+    url: PREVIEW_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
   },

@@ -215,7 +215,13 @@ describe('a emissão do trace mora no serviço, não nos call-sites', () => {
         'persistActivityAbandonment',
         // leitura + função pura de retomada — não escrevem nada
         'fetchActivityProgress',
+        'fetchActivityProgressOrNull',
         'resumeIndexFor',
+        // LEITURA do próprio aluno, pra reabrir respondido o que ele já respondeu
+        // (inclusive em outro aparelho): as tentativas mais recentes de
+        // `activity_results` e a sequência do trace dela. Não escrevem nada.
+        'fetchLatestAttempts',
+        'fetchAnswerActions',
         // rebaixa `progress` de 'completed' pra 'in_progress' no reset da aula
         // ao vivo. NÃO escreve activity_results, NÃO escreve trace, NÃO mexe em
         // XP: a tentativa antiga aconteceu e o relatório do professor a lê.

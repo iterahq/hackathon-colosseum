@@ -4,7 +4,7 @@
  * (progress, controls, title) is the one a learner sees. Same substrate as
  * `harnessStub.ts`; it adds the two reads the player makes on top of it.
  */
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 import type { ActivityFixture } from './activityFixtures';
 import { installHarnessSubstrate, STUB_SUPABASE_URL } from './harnessStub';
 
@@ -44,6 +44,46 @@ export async function installLessonSubstrate(page: Page, fx: ActivityFixture, ti
     body: JSON.stringify(body),
   });
   await page.route(`${STUB_SUPABASE_URL}/rest/v1/lessons*`, (route) => route.fulfill(json(lessonRow(fx, title))));
+  // The learner's own record, remembered for the life of the page: a reload
+  // reads back what was written, like the real database.
+  const progress = new Map<string, string>();
+  const attempts: Array<Record<string, unknown>> = [];
+  const traces: Array<Record<string, unknown>> = [];
+  const rowsOf = (route: Route): Array<Record<string, unknown>> => {
+    const body = route.request().postDataJSON() as Record<string, unknown> | Array<Record<string, unknown>>;
+    return Array.isArray(body) ? body : [body];
+  };
+  const eq = (route: Route, column: string): string | null =>
+    new URL(route.request().url()).searchParams.get(column)?.replace(/^eq\./, '') ?? null;
+  const newestFirst = (rows: Array<Record<string, unknown>>, column: string) =>
+    [...rows].sort((a, b) => String(b[column]).localeCompare(String(a[column])));
+
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/progress*`, (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill(json([...progress].map(([activity_id, status]) => ({ activity_id, status }))));
+    }
+    const keepExisting = (route.request().headers()['prefer'] ?? '').includes('ignore-duplicates');
+    for (const row of rowsOf(route)) {
+      const id = String(row.activity_id);
+      if (!(keepExisting && progress.has(id))) progress.set(id, String(row.status));
+    }
+    return route.fulfill(json([]));
+  });
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/activity_results*`, (route) => {
+    if (route.request().method() === 'GET') return route.fulfill(json(newestFirst(attempts, 'created_at')));
+    for (const row of rowsOf(route)) attempts.push({ ...row, created_at: new Date().toISOString() });
+    return route.fulfill(json([]));
+  });
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/activity_traces*`, (route) => {
+    if (route.request().method() === 'GET') {
+      const activityId = eq(route, 'activity_id');
+      return route.fulfill(
+        json(newestFirst(traces.filter((t) => !activityId || t.activity_id === activityId), 'started_at')),
+      );
+    }
+    traces.push(...rowsOf(route));
+    return route.fulfill(json([]));
+  });
   await page.route(`${STUB_SUPABASE_URL}/rest/v1/my_subscription*`, (route) =>
     route.fulfill(json([{ status: 'active', is_active: true, current_period_end: null, seat_count: 1, cancel_at_period_end: false }])),
   );
