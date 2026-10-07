@@ -145,11 +145,12 @@ export function SingleChoiceActivity({
     },
   });
 
+  const gridClass = choiceGridClass(options);
   return (
     <ActivityShell kind="single_choice" icon={ListChecks} label={t('activity.singleChoice')}>
       <InstructionPanel spec={spec?.instruction} />
 
-      <div ref={optionsRef} className={`mt-5 grid gap-2.5 auto-rows-fr ${choiceGridClass(options)}`} data-testid="single-choice-options">
+      <div ref={optionsRef} className={`mt-5 grid gap-2.5 auto-rows-fr ${gridClass}`} data-testid="single-choice-options">
         {options.map((o, i) => {
           const chosen = selected === o.id;
           const state = choiceOptionState({
@@ -161,6 +162,7 @@ export function SingleChoiceActivity({
             <ChoiceOptionCard
               key={o.id}
               index={i}
+              compact={gridClass !== ''}
               state={state}
               chosen={chosen}
               shown={m.shown}

@@ -77,4 +77,35 @@ describe('SingleChoiceActivity keyboard', () => {
     expect(option('c').className).toContain('opacity-60');
     expect(screen.getByTestId('single-choice-options').innerHTML).not.toMatch(/destructive|red-/);
   });
+
+  it('stamps the verdict on the corner when the options share a row, so the label keeps the width', () => {
+    render(<SingleChoiceActivity activity={activity} onComplete={vi.fn()} />);
+    expect(screen.getByTestId('single-choice-options').className).toContain('grid-cols-2');
+    expect(option('a').getAttribute('data-compact')).toBe('true');
+    fireEvent.click(option('a'));
+    fireEvent.click(screen.getByTestId('single-choice-submit'));
+    expect(option('b').querySelector('[data-verdict-corner] [data-verdict-mark="right"]')).not.toBeNull();
+    expect(option('a').querySelector('[data-verdict-corner] [data-verdict-mark="miss"]')).not.toBeNull();
+    expect(option('c').querySelector('[data-verdict-corner]')).toBeNull();
+  });
+
+  it('keeps the verdict beside the label of a full-width option', () => {
+    const sentences = {
+      ...activity,
+      spec: {
+        options: [
+          { id: 'a', label: 'The browser reads the file from top to bottom' },
+          { id: 'b', label: 'The browser reads the head last' },
+        ],
+        correct_option_id: 'a',
+      },
+    } as unknown as PortableActivity;
+    render(<SingleChoiceActivity activity={sentences} onComplete={vi.fn()} />);
+    expect(screen.getByTestId('single-choice-options').className).not.toContain('grid-cols');
+    expect(option('a').getAttribute('data-compact')).toBeNull();
+    fireEvent.click(option('a'));
+    fireEvent.click(screen.getByTestId('single-choice-submit'));
+    expect(option('a').querySelector('[data-verdict-mark="right"]')).not.toBeNull();
+    expect(option('a').querySelector('[data-verdict-corner]')).toBeNull();
+  });
 });

@@ -18,6 +18,8 @@ const SURFACE_OF: Record<ChoiceCardState, SurfaceState> = {
 /**
  * One tactile option of a choice list: key badge, the option's media, and a
  * verdict slot. `state` is `choiceOptionState()`'s answer, only mapped to looks.
+ * In a row of several (`compact`) the slot would leave the label no width, so
+ * the verdict is stamped on the corner.
  * The enter animation lives on a wrapper so it never fights the press transform
  * of the button itself.
  */
@@ -27,6 +29,7 @@ export function ChoiceOptionCard({
   chosen,
   shown,
   multi = false,
+  compact = false,
   disabled,
   testId,
   optionId,
@@ -38,6 +41,8 @@ export function ChoiceOptionCard({
   chosen: boolean;
   shown: boolean;
   multi?: boolean;
+  /** The card shares its row with others: tighter padding, and the verdict lands on the corner instead of holding a slot. */
+  compact?: boolean;
   disabled: boolean;
   testId: string;
   optionId: string;
@@ -60,7 +65,8 @@ export function ChoiceOptionCard({
         data-selected={chosen ? 'true' : undefined}
         data-state={state}
         data-verdict={verdict ?? undefined}
-        className={`w-full h-full min-h-14 flex items-center gap-3 py-3 px-4 text-left ${tactileSurface(
+        data-compact={compact ? 'true' : undefined}
+        className={`w-full h-full min-h-14 flex items-center py-3 text-left ${compact ? 'relative gap-2 px-2.5' : 'gap-3 px-4'} ${tactileSurface(
           SURFACE_OF[state],
           !disabled,
         )} ${dimmed ? 'opacity-60' : ''} ${disabled ? 'cursor-default' : ''}`}
@@ -81,7 +87,15 @@ export function ChoiceOptionCard({
           {multi && keyed && <Check className="w-4 h-4" strokeWidth={3} />}
         </motion.span>
         <div className="flex items-center gap-3 flex-1 min-w-0">{children}</div>
-        <VerdictMark verdict={verdict} />
+        {compact ? (
+          verdict && (
+            <span data-verdict-corner="" className="absolute -right-2 -top-2 flex h-6 w-6 rounded-full bg-card">
+              <VerdictMark verdict={verdict} />
+            </span>
+          )
+        ) : (
+          <VerdictMark verdict={verdict} />
+        )}
       </button>
     </motion.div>
   );

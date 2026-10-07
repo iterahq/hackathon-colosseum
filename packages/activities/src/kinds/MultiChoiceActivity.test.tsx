@@ -42,4 +42,17 @@ describe('MultiChoiceActivity keyboard', () => {
     expect(byId('b').getAttribute('data-verdict')).toBe('miss');
     expect(byId('c').getAttribute('data-verdict')).toBe('right');
   });
+
+  it('stamps each verdict on the corner when the options share a row', () => {
+    render(<MultiChoiceActivity activity={activity} onComplete={vi.fn()} />);
+    const byId = (id: string) =>
+      screen.getAllByTestId('multi-choice-option').find((o) => o.getAttribute('data-option-id') === id) as HTMLElement;
+    expect(screen.getByTestId('multi-choice-options').className).toContain('grid-cols-2 sm:grid-cols-3');
+    expect(byId('a').getAttribute('data-compact')).toBe('true');
+    fireEvent.click(byId('a'));
+    fireEvent.click(byId('b'));
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(byId('a').querySelector('[data-verdict-corner] [data-verdict-mark="right"]')).not.toBeNull();
+    expect(byId('b').querySelector('[data-verdict-corner] [data-verdict-mark="miss"]')).not.toBeNull();
+  });
 });

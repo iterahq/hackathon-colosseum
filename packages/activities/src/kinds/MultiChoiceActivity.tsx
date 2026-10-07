@@ -138,6 +138,7 @@ export function MultiChoiceActivity({
     },
   });
 
+  const gridClass = choiceGridClass(options);
   return (
     <ActivityShell kind="multi_choice" icon={CheckSquare} label={t('activity.multiChoice')}>
       <InstructionPanel spec={spec?.instruction} />
@@ -145,7 +146,7 @@ export function MultiChoiceActivity({
         {t('activity.selectAll')}
       </p>
 
-      <div ref={optionsRef} className={`mt-3 grid gap-2.5 auto-rows-fr ${choiceGridClass(options)}`} data-testid="multi-choice-options">
+      <div ref={optionsRef} className={`mt-3 grid gap-2.5 auto-rows-fr ${gridClass}`} data-testid="multi-choice-options">
         {options.map((o, i) => {
           const chosen = selected.includes(o.id);
           const state = choiceOptionState({
@@ -157,6 +158,7 @@ export function MultiChoiceActivity({
             <ChoiceOptionCard
               key={o.id}
               index={i}
+              compact={gridClass !== ''}
               state={state}
               chosen={chosen}
               shown={m.shown}
