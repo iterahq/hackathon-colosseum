@@ -92,6 +92,13 @@ describe('OrderActivity', () => {
     expect((screen.getByTestId('order-submit') as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('leaves the row transform to the drag: no CSS transition competes with it', () => {
+    render(<OrderActivity activity={activity} onComplete={vi.fn()} />);
+    screen.getAllByTestId('order-item').forEach((row) => {
+      expect(row.className).not.toMatch(/transition-\[[^\]]*transform/);
+    });
+  });
+
   it('marks each row right or miss after submit and keeps the rows mounted and locked', () => {
     render(<OrderActivity activity={activity} onComplete={vi.fn()} />);
     drag(ids()[0]!, 1);

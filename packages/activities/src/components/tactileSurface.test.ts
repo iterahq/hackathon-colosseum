@@ -15,4 +15,14 @@ describe('tactileSurface', () => {
     expect(tactileSurface('idle', false)).not.toContain('active:');
     expect(tactileSurface('idle', true)).toContain('active:translate-y-[2px]');
   });
+
+  it.each(STATES)('%s leaves transform to framer-motion on a motion-driven surface', (state) => {
+    const classes = tactileSurface(state, false, true);
+    expect(classes).toContain('transition-[border-color,background-color]');
+    expect(classes).not.toMatch(/transition-\[[^\]]*transform/);
+  });
+
+  it('keeps the CSS transform transition on a surface framer-motion does not drive', () => {
+    expect(tactileSurface('idle', true)).toContain('transition-[transform,border-color,background-color]');
+  });
 });

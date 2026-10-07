@@ -125,7 +125,7 @@ describe('CodeWithOptions (bank)', () => {
     expect(blank('hook')).not.toHaveTextContent('useState');
   });
 
-  it('enviar com lacunas vazias corrige como errado, sem travar', () => {
+  it('submitting with empty gaps is graded as wrong, never blocked', () => {
     const onComplete = renderGuided(CODE_OPTIONS_SPEC);
     expect(screen.getByTestId('guided-submit')).toBeEnabled();
 
@@ -135,7 +135,7 @@ describe('CodeWithOptions (bank)', () => {
     expect(screen.getByTestId('guided-retry')).toBeInTheDocument();
   });
 
-  it('o enviar fica livre e corrige certo quando todas as lacunas estão preenchidas', () => {
+  it('submit stays enabled and grades as correct once every gap is filled', () => {
     const onComplete = renderGuided(CODE_OPTIONS_SPEC);
     expect(screen.getByTestId('guided-submit')).toBeEnabled();
 

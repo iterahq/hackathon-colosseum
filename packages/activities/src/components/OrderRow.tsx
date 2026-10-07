@@ -65,7 +65,7 @@ export function OrderRow({
       data-option-id={id}
       data-position={position}
       data-verdict={verdict ?? undefined}
-      className={`relative flex items-center gap-2 min-[480px]:gap-2.5 py-2.5 pl-1.5 pr-3 min-[480px]:pl-2 ${tactileSurface(surface, false)} ${
+      className={`relative flex items-center gap-2 min-[480px]:gap-2.5 py-2.5 pl-1.5 pr-3 min-[480px]:pl-2 ${tactileSurface(surface, false, true)} ${
         locked ? '' : dragging ? 'cursor-grabbing' : fine ? 'cursor-grab' : ''
       } ${dragging ? 'z-10' : ''}`}
     >
