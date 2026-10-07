@@ -38,6 +38,7 @@ import { answerMachine } from '../internal/answerMachine.js';
 import { priorPairs } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
+import { InlineLabel } from '../components/InlineLabel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { tactileSurface, type SurfaceState } from '../components/tactileSurface.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
@@ -55,7 +56,7 @@ function CardBody({ option }: { option: ChoiceOption }) {
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} draggable={false} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="min-w-0 whitespace-normal break-words">{option.label}</span>}
+      {option.label && <span className="min-w-0 whitespace-normal break-words"><InlineLabel text={option.label} /></span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" onClick={(e) => e.stopPropagation()} />
       )}

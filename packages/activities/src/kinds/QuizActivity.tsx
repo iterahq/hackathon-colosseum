@@ -59,6 +59,7 @@ import { RichSpans } from '../components/RichSpans.js';
 import { AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { tactileSurface } from '../components/tactileSurface.js';
 import { VerdictMark } from '../components/VerdictMark.js';
+import { InlineLabel } from '../components/InlineLabel.js';
 import { TeraPeek, useTeraMentioned } from '../components/teraPresence.js';
 import {
   useActivityActionRecorder,
@@ -191,7 +192,7 @@ export function QuizActivity({
                   : 'w-full flex items-center gap-3 py-3 text-left'
               }`}
             >
-              <span className={sideBySide ? '' : 'flex-1'}>{label}</span>
+              <span className={sideBySide ? '' : 'flex-1'}><InlineLabel text={label} /></span>
               {!sideBySide && <VerdictMark verdict={showCorrect ? 'right' : showWrong ? 'miss' : null} />}
             </button>
           );

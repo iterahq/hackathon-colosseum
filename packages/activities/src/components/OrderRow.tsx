@@ -5,6 +5,7 @@ import type { ChoiceOption } from '../specs.js';
 import { SPRING_SETTLE } from './tactile.js';
 import { tactileSurface } from './tactileSurface.js';
 import { VerdictMark } from './VerdictMark.js';
+import { InlineLabel } from './InlineLabel.js';
 
 // A fine pointer (mouse, trackpad) may drag from anywhere on the row; a touch
 // screen drags from the grip only, so a swipe on the text still scrolls the page.
@@ -99,7 +100,7 @@ export function OrderRow({
         {option?.image_url && (
           <img src={option.image_url} alt={option.label ?? id} draggable={false} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
         )}
-        {option?.label && <span className="flex-1 min-w-0 break-words text-sm min-[480px]:text-base">{option.label}</span>}
+        {option?.label && <span className="flex-1 min-w-0 break-words text-sm min-[480px]:text-base"><InlineLabel text={option.label} /></span>}
         {option?.audio_url && <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" />}
       </div>
       <VerdictMark verdict={verdict} delay={position * 0.04} />

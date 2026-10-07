@@ -25,6 +25,7 @@ import { priorOptionIds } from '../internal/priorAnswer.js';
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
+import { InlineLabel } from '../components/InlineLabel.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
 import { choiceGridClass } from '../components/choiceGrid.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
@@ -41,7 +42,7 @@ function OptionMedia({ option }: { option: ChoiceOption }) {
       {option.image_url && (
         <img src={option.image_url} alt={option.label ?? option.id} draggable={false} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
       )}
-      {option.label && <span className="flex-1 min-w-0 whitespace-normal break-words">{option.label}</span>}
+      {option.label && <span className="flex-1 min-w-0 whitespace-normal break-words"><InlineLabel text={option.label} /></span>}
       {option.audio_url && (
         <audio src={option.audio_url} controls className="h-8 max-w-[10rem]" onClick={(e) => e.stopPropagation()} />
       )}
