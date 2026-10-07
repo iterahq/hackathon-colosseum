@@ -26,6 +26,7 @@ export const CONSOLE_FORWARDER_SOURCE = `(function () {
   var windowStart = 0;
   var inWindow = 0;
   var SECRET = /((?:access|refresh|dfl)_token["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
+  var AUTH_CODE = /([?&#]code=)[^&\\s"',}#]+/gi;
   var JWT = /eyJ[\\w-]{4,}(?:\\.[\\w-]*){0,2}/g;
   var API_KEY = /(api[_-]?key["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
   var OPAQUE_KEY = /sb_(?:publishable|secret)_[\\w-]+/g;
@@ -35,6 +36,7 @@ export const CONSOLE_FORWARDER_SOURCE = `(function () {
   function redact(value) {
     return String(value)
       .replace(SECRET, '$1[redacted]')
+      .replace(AUTH_CODE, '$1[redacted]')
       .replace(API_KEY, '$1[redacted]')
       .replace(BEARER, '$1[redacted]')
       .replace(JWT, '[redacted]')

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tainanfidelis.iterahq",
+      "sha256_cert_fingerprints": [
+        "21:8E:E0:58:D7:3A:8E:DE:76:B4:A3:02:DB:98:05:51:34:7C:1C:13:29:08:FD:D3:98:D1:DE:5B:97:15:92:0F"
+      ]
+    }
+  }
+]

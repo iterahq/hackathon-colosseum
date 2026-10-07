@@ -69,7 +69,7 @@ describe('route file wiring', () => {
   it('the launch gate (R-7): read in parallel with the WebView, the card replaces it only on update, re-read on foreground and on retry', () => {
     expect(count(/createLaunchGate\(ORIGIN, SHELL_VERSION, Platform\.OS\)/)).toBe(1);
     expect(code).toMatch(/gate\?\.kind === 'update'[\s\S]*<UpdateNowCard copy=\{updateCardCopy\(gate\)\} onRetry=\{refresh\} \/>/);
-    expect(code).toMatch(/return <WebShell key=\{shellPath\} shellPath=\{shellPath\} \/>;/);
+    expect(code).toMatch(/return <WebShell key=\{entryPath\} entryPath=\{entryPath\} \/>;/);
     expect(code).not.toMatch(/launch === null/);
     expect(code).toMatch(/AppState\.addEventListener\('change'[\s\S]*state === 'active' && LAUNCH\.peek\(\)\?\.gate\.kind === 'update'\) refresh\(\)/);
     expect(code).not.toMatch(/\bfetch\b/);

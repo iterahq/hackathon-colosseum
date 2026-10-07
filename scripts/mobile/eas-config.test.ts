@@ -47,11 +47,11 @@ describe("EAS identity (app.json)", () => {
     expect(expo.updates.url).toBe(`https://u.expo.dev/${projectId}`);
   });
 
-  it("declares no capability the WebView shell does not use, and no associated domain yet (R-5)", () => {
+  it("declares no capability the WebView shell does not use, and the associated domain of R-5 only", () => {
     expect(Object.keys(expo.ios.infoPlist)).toEqual(["ITSAppUsesNonExemptEncryption"]);
     expect(expo.ios.infoPlist.ITSAppUsesNonExemptEncryption).toBe(false);
-    expect(expo.ios.associatedDomains).toBeUndefined();
-    expect(expo.android.intentFilters).toBeUndefined();
+    expect(expo.ios.associatedDomains).toEqual(["applinks:app.iterahq.dev"]);
+    expect(Array.isArray(expo.android.intentFilters)).toBe(true);
     expect(expo.android.permissions).toBeUndefined();
   });
 

@@ -13,12 +13,33 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tainanfidelis.iterahq",
+      "associatedDomains": ["applinks:app.iterahq.dev"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.tainanfidelis.iterahq",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/login"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/auth/forgot"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/auth/code"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/auth/dfl/callback"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/catalog"},
+            {"scheme": "https", "host": "app.iterahq.dev", "pathPrefix": "/program/"},
+            {"scheme": "https", "host": "app.iterahq.dev", "pathPrefix": "/lesson/"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/artifacts"},
+            {"scheme": "https", "host": "app.iterahq.dev", "path": "/profile"},
+            {"scheme": "https", "host": "app.iterahq.dev", "pathPrefix": "/g/"}
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/adaptive-icon-monochrome.png",

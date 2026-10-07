@@ -11,6 +11,8 @@
  * drive the load state instead of the bridge reset and the splash.
  * R-7 adds the launch gate back, as `src/shellGate.ts` (pure, tested) and `src/UpdateNowCard.tsx`: one read of
  * `<webOrigin>/shell-config.json` per launch; a shell below `minShellVersion` shows the card instead of the WebView, read in parallel with it.
+ * R-5 (deep links): the route reads the incoming query and fragment raw (`+native-intent.ts`, `src/rawLink.ts`, `src/deepLink.ts`), so the WebView starts on the link's query and fragment as written, e.g.
+ * `/auth/dfl/callback#dfl_token=…`; the dev overlay shows the URL without query or fragment.
  * Added: the `DevOverlay` mount, and the Stripe origins (`BLOCKED_ORIGINS`, via the default of `blockedOrigins`) in `navigationDecision`.
  * PR-2 adds the chrome of PLAN section 4.1: the load state (src/shellChromeState.ts), the veil and the
  * failure card, `onHttpError`, `onRenderProcessGone`, the hardware back button, the "Indisponível no
@@ -41,7 +43,7 @@
 import Constants from 'expo-constants';
 import { getRandomValues } from 'expo-crypto';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { useIsFocused, useLocalSearchParams } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,6 +55,8 @@ import { admitMessage, admitRaw, buildConsoleForwarder, messageSize, parseConsol
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
 import { backConfirmEnabled, decideBack } from '../src/backConfirm';
+import { browserUrl, displayUrl, entryFromLink, type LinkParams } from '../src/deepLink';
+import { lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
 import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
@@ -60,7 +64,6 @@ import { OfflineCard } from '../src/OfflineCard';
 import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
 import { DEV_TOP_FRAME_ORIGINS, navigationDecision, parseWebOrigin } from '../src/origin';
-import { resolveShellPath } from '../src/routes';
 import {
   INITIAL_CHROME,
   LOAD_TIMEOUT_MS,
@@ -122,8 +125,11 @@ function useLaunchConfig(): { launch: LaunchConfig | null; refresh: () => void }
 }
 
 export default function ShellRoute() {
-  const { path } = useLocalSearchParams<{ path?: string[] }>();
-  const shellPath = resolveShellPath((path ?? []).join('/'));
+  // The query and the fragment of an incoming link ride in the params (`#` is the fragment): the page needs both.
+  // The segments come from the pathname, never from the `path` param: a link with `?path=…` cannot pick the route.
+  const pathname = usePathname();
+  const params = useLocalSearchParams() as LinkParams;
+  const entryPath = entryFromLink(lastLink(), ORIGIN, pathname.split('/').filter(Boolean), params);
   const { launch, refresh } = useLaunchConfig();
   const gate = launch?.gate;
   if (gate?.kind === 'update') {
@@ -133,7 +139,7 @@ export default function ShellRoute() {
       </SafeAreaView>
     );
   }
-  return <WebShell key={shellPath} shellPath={shellPath} />;
+  return <WebShell key={entryPath} entryPath={entryPath} />;
 }
 
 // The one reader of WebView messages and the router that answers them. `nativeEvent` is read here only (rule 1c).
@@ -241,8 +247,8 @@ function useNavigationGuard() {
   }, []);
 }
 
-function WebShell({ shellPath }: { shellPath: string }) {
-  const entryUrl = ORIGIN + shellPath;
+function WebShell({ entryPath }: { entryPath: string }) {
+  const entryUrl = ORIGIN + entryPath;
   const webview = useRef<ShellWebView>(null);
   const [chrome, dispatch] = useReducer(chromeReducer, INITIAL_CHROME);
   const canGoBack = useRef(false);
@@ -280,7 +286,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
     [loadedUrl, entryUrl, shellBridge],
   );
 
-  const openInBrowser = useCallback(() => void Linking.openURL(restartUrl(loadedUrl, ORIGIN, entryUrl)), [loadedUrl, entryUrl]);
+  const openInBrowser = useCallback(() => void Linking.openURL(browserUrl(restartUrl(loadedUrl, ORIGIN, entryUrl))), [loadedUrl, entryUrl]);
 
   useEffect(() => {
     if (chrome.phase !== 'loading') return undefined;
@@ -343,7 +349,7 @@ function WebShell({ shellPath }: { shellPath: string }) {
       {__DEV__ ? (
         <DevOverlay
           version={SHELL_VERSION}
-          url={loadedUrl}
+          url={displayUrl(loadedUrl)}
           forwardedErrors={forwardedErrors}
           bridgeHandshakes={bridgeHandshakes}
           session={sessionStatusLine(sessionOffered, NATIVE_SESSION !== null, sessionExpiresAt, Date.now())}

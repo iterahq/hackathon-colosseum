@@ -94,6 +94,21 @@ RUN printf 'server {\n\
     add_header Cache-Control "no-cache" always;\n\
     try_files $uri =404;\n\
   }\n\
+  # R-5: the files an OS fetches to verify universal links / App Links. Exact paths, 200 with JSON, never the\n\
+  # SPA fallback and never a redirect (both OSes refuse a redirect). The iOS file has no extension, so nginx\n\
+  # would type it octet-stream: default_type says JSON. Not compressed. A missing file is a 404.\n\
+  location = /.well-known/apple-app-site-association {\n\
+    default_type application/json;\n\
+    gzip off;\n\
+    add_header Cache-Control "no-cache" always;\n\
+    try_files $uri =404;\n\
+  }\n\
+  location = /.well-known/assetlinks.json {\n\
+    default_type application/json;\n\
+    gzip off;\n\
+    add_header Cache-Control "no-cache" always;\n\
+    try_files $uri =404;\n\
+  }\n\
   # Feedback clips: static and unhashed, so a week and not immutable. Without this they had no cache\n\
   # header at all. add_header here replaces the server-level one, so the CSP is repeated. No "always" on\n\
   # Cache-Control: a 404 must not be kept for a week.\n\

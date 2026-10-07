@@ -25,6 +25,8 @@ export const MAX_TEXT_CHARS = 500;
 
 const LEVELS: readonly string[] = ['error', 'uncaught', 'rejection'];
 const SECRET = /((?:access|refresh|dfl)_token["']?\s*[:=]\s*["']?)[^&\s"',}#]+/gi;
+// The one-time code of a reset link (`/auth/reset?code=…`): a credential until it is exchanged.
+const AUTH_CODE = /([?&#]code=)[^&\s"',}#]+/gi;
 // Also a token that something cut short: a header and part of the claims is not a credential, but the claims name the user.
 const JWT = /eyJ[\w-]{4,}(?:\.[\w-]*){0,2}/g;
 
@@ -36,6 +38,7 @@ const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 export const redactSecrets = (text: string): string =>
   text
     .replace(SECRET, '$1[redacted]')
+    .replace(AUTH_CODE, '$1[redacted]')
     .replace(API_KEY, '$1[redacted]')
     .replace(BEARER, '$1[redacted]')
     .replace(JWT, '[redacted]')

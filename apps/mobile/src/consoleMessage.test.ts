@@ -67,6 +67,8 @@ describe('redactSecrets', () => {
     ['access_token=abc.def&x=1', 'access_token=[redacted]&x=1'],
     ['?refresh_token=r1', '?refresh_token=[redacted]'],
     ['#dfl_token=z9&next=/', '#dfl_token=[redacted]&next=/'],
+    ['GET /auth/reset?code=9f8e&x=1', 'GET /auth/reset?code=[redacted]&x=1'],
+    ['postcode=123', 'postcode=123'],
     ['{"access_token":"abc123","x":1}', '{"access_token":"[redacted]","x":1}'],
     ['ACCESS_TOKEN = abc', 'ACCESS_TOKEN = [redacted]'],
     ['Bearer eyJhbGciOi.eyJzdWIiOiIx.c2ln', 'Bearer [redacted]'],
@@ -142,6 +144,7 @@ describe('console forwarder script (ADR-5 constraints)', () => {
   it('2: redacts tokens before posting', () => {
     const h = load(O);
     h.error('callback failed', 'https://app.iterahq.dev/auth/dfl/callback#dfl_token=SECRET1&next=/');
+    h.error('reset failed', 'https://app.iterahq.dev/auth/reset?code=SECRET6');
     h.error({ access_token: 'SECRET2', refresh_token: 'SECRET3' });
     h.error('Bearer eyJhbGciOi.eyJzdWIiOiIx.c2ln');
     h.error('Authorization: Bearer opaqueTOKEN1234567890', 'apikey=SECRET4', 'sb_publishable_SECRET5', 'ana@example.com');
