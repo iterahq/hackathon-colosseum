@@ -22,6 +22,11 @@ describe('Tera on the activity card', () => {
     expect(room.nextElementSibling?.textContent).toBe('O Tera escreveu 3 linhas.');
   });
 
+  it('marks the peeking Tera so the host can keep its title clear of his crest', () => {
+    shell('O Tera escreveu 3 linhas.');
+    expect(screen.getByTestId('tera-presence')).toHaveAttribute('data-tera-peek');
+  });
+
   it('draws neither him nor his room when the activity does not mention him', () => {
     shell('Qual linha está quebrada?');
     expect(screen.queryByTestId('tera-presence')).toBeNull();

@@ -84,6 +84,14 @@ import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 const BAR_BOTTOM_RESERVE =
   'pb-[calc(max(var(--feedback-footer-h,0px),var(--scene-hint-h,0px),env(safe-area-inset-bottom,0px))+1rem)]';
 
+/**
+ * Tera peeks over the top-right corner of the card (56 px wide, 16 px in; 80 px
+ * and 24 px from `md`) and his crest rises into the title line. The title gives
+ * up that width only on the screens where he is there.
+ */
+const TITLE_CLEARS_TERA =
+  'group-has-[[data-tera-peek]]/lesson:pr-[76px] md:group-has-[[data-tera-peek]]/lesson:pr-[108px]';
+
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
@@ -714,7 +722,7 @@ export default function LessonPlayer() {
       <main
         data-testid="lesson-main"
         data-fit-viewport
-        className={`flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
+        className={`group/lesson flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
           isSandbox && !completed ? 'pt-4 max-sm:pt-[3.25rem]' : 'pt-[3.25rem]'
         } ${pending || !isSandbox ? BAR_BOTTOM_RESERVE : 'pb-4'}`}
       >
@@ -763,11 +771,14 @@ export default function LessonPlayer() {
                 {t('lesson.eyebrow')}
               </div>
 
-              {/* Big bold display title = the lesson title. */}
-              <LessonTitle
-                text={tText(data.title)}
-                className="font-display font-bold text-xl md:text-2xl text-foreground truncate pb-1 -mb-1 max-sm:text-lg"
-              />
+              {/* Big bold display title = the lesson title. When Tera peeks over the
+                  card below, the line ends before his crest instead of running under it. */}
+              <div className={TITLE_CLEARS_TERA}>
+                <LessonTitle
+                  text={tText(data.title)}
+                  className="font-display font-bold text-xl md:text-2xl text-foreground truncate pb-1 -mb-1 max-sm:text-lg"
+                />
+              </div>
 
               {saveError && (
                 <div

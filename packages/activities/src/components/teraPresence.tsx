@@ -24,13 +24,18 @@ export function useTeraMentioned(): boolean {
   return useContext(TeraMention);
 }
 
-/** Tera peeking over the card's top-right corner, outside the text column. */
+/**
+ * Tera peeking over the card's top-right corner, outside the text column.
+ * His crest rises above the card, so whatever the host draws right above it
+ * (the lesson title) keeps clear of him by matching `[data-tera-peek]`.
+ */
 export function TeraPeek() {
   const reduced = useReducedMotion();
   return (
     <motion.span
       className="pointer-events-none absolute -top-3 right-4 block h-14 w-14 md:-top-6 md:right-6 md:h-20 md:w-20"
       data-testid="tera-presence"
+      data-tera-peek=""
       aria-hidden="true"
       initial={reduced ? false : { opacity: 0, y: 12, scale: 0.7 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
