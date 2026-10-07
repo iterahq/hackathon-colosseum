@@ -302,6 +302,12 @@ Both `CODE_DRAFT_KEY_PREFIX` and `codeDraftKey(activityId)` are exported, so an
 adapter that has to translate the key into its own store (the Itera Player
 routes it to a per-learner, event-emitting snapshot service) is three lines.
 
+A free-text answer in progress (the reflection of `document` /
+`document_reflect`) goes through the same port under
+`itera.text.draft:<activityId>`: written 600 ms after the last key and when the
+page hides, read back when an unfinished activity mounts. A host that routes
+keys by prefix gives it its own slot.
+
 ## Dependencies
 
 **Runtime:** `lucide-react`, `framer-motion` — real dependencies, installed with

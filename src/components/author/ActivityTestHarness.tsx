@@ -25,6 +25,7 @@ import { CheckCircle2, RotateCcw, XCircle, FlaskConical } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import { WithoutTextDrafts } from '@/components/branded/activity/IteraActivityHost';
 import { diagnoseByoc } from '@/components/branded/activity/byoc/byocSpec';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { useI18n } from '@/i18n';
@@ -103,7 +104,9 @@ export function ActivityTestHarness({ activity }: { activity: Activity }) {
           declined gets. */}
       <div key={runKey}>
         <PersonalizationContext.Provider value={PERSONALIZATION_OFF}>
-          <ActivityRenderer activity={activity} onComplete={handleComplete} />
+          <WithoutTextDrafts>
+            <ActivityRenderer activity={activity} onComplete={handleComplete} />
+          </WithoutTextDrafts>
         </PersonalizationContext.Provider>
       </div>
 

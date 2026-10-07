@@ -23,6 +23,7 @@
  * itera.activities.status. Refresh re-reads the graph so external MCP edits
  * appear (NO realtime — TanStack Query + manual).
  */
+import { WithoutTextDrafts } from '@/components/branded/activity/IteraActivityHost';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -558,7 +559,9 @@ function ActivityCell({
             pointer-blocked anyway — a form here would be unanswerable. */}
         <div className="pointer-events-none select-none">
           <PersonalizationContext.Provider value={PERSONALIZATION_OFF}>
-            <ActivityRenderer activity={activity} onComplete={noop} />
+            <WithoutTextDrafts>
+              <ActivityRenderer activity={activity} onComplete={noop} />
+            </WithoutTextDrafts>
           </PersonalizationContext.Provider>
         </div>
 

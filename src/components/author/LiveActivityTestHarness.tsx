@@ -12,6 +12,7 @@
  * persists its OWN verdict server-side; that is pre-existing endpoint behavior,
  * independent of the harness's player-side in-memory sink.)
  */
+import { WithoutTextDrafts } from '@/components/branded/activity/IteraActivityHost';
 import { useCallback, useState } from 'react';
 import { CheckCircle2, FlaskConical, RotateCcw, XCircle } from 'lucide-react';
 import { Badge, Button } from '@devfellowship/components';
@@ -62,11 +63,13 @@ export function LiveActivityTestHarness({ activity }: { activity: Activity }) {
       </div>
 
       <div key={runKey}>
-        <LiveActivityRenderer
-          activity={activity}
-          onComplete={handleComplete}
-          forceLive
-        />
+        <WithoutTextDrafts>
+          <LiveActivityRenderer
+            activity={activity}
+            onComplete={handleComplete}
+            forceLive
+          />
+        </WithoutTextDrafts>
       </div>
 
       {showSandboxFooter && attempt && (

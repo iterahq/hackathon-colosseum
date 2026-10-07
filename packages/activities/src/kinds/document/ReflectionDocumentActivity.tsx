@@ -28,6 +28,7 @@ import { ArtifactVisibilityNotice } from '../../components/ArtifactVisibilityNot
 import { RichText } from '../../components/RichText.js';
 import { ActivityShell, DoneButton } from '../../components/parts.js';
 import { priorText } from '../../internal/priorAnswer.js';
+import { useTextDraft } from '../../internal/textDraft.js';
 
 /** Count words in a free-text reflection (whitespace-split, trimmed). */
 function countWords(text: string): number {
@@ -52,7 +53,13 @@ export function ReflectionDocumentActivity({
   const isDone = activity.status === 'done';
   // A finished reflection re-opens on what the learner wrote, and stays theirs:
   // an empty, editable box under "0 words" read as work that was never sent.
-  const [text, setText] = useState(() => (isDone ? (priorText(priorAnswer) ?? '') : ''));
+  const draft = useTextDraft(activity.id);
+  // …and an unfinished one on what they had typed before the page went away.
+  const [text, setText] = useState(() => (isDone ? (priorText(priorAnswer) ?? '') : draft.read()));
+  const write = (next: string) => {
+    setText(next);
+    draft.save(next);
+  };
   const words = countWords(text);
   const meetsMin = words >= Math.max(minWords, 1);
 
@@ -68,7 +75,7 @@ export function ReflectionDocumentActivity({
 
       <ActivityTextarea
         value={text}
-        onChange={setText}
+        onChange={write}
         placeholder={isDone ? undefined : t('activity.reflectionPlaceholder')}
         rows={6}
         readOnly={isDone}
@@ -92,7 +99,8 @@ export function ReflectionDocumentActivity({
       <DoneButton
         done={isDone}
         disabled={!meetsMin}
-        onClick={() =>
+        onClick={() => {
+          draft.flush();
           onComplete(true, {
             artifact: {
               type: 'text',
@@ -101,8 +109,8 @@ export function ReflectionDocumentActivity({
               mimeType: 'text/markdown',
             },
             response: text,
-          })
-        }
+          });
+        }}
       />
     </ActivityShell>
   );

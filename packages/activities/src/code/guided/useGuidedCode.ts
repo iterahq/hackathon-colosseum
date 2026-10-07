@@ -13,7 +13,7 @@ import {
 } from './guidedCode.js';
 import { buildWordBank, restoreGuidedValues, spentBankCounts } from './wordBank.js';
 import { useCodeAttempts } from '../useCodeAttempts.js';
-import { usePagehideFlush } from '../usePagehideFlush.js';
+import { usePagehideFlush } from '../../internal/usePagehideFlush.js';
 
 /**
  * The same debounce as the open editor's, and that is deliberate: the two

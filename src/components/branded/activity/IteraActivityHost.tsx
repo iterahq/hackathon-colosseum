@@ -86,7 +86,7 @@
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
-import { ActivityProvider } from '@iterahq/activities';
+import { ActivityProvider, useActivityHost } from '@iterahq/activities';
 import type {
   ActivityApiPort,
   ActivityIdentity,
@@ -135,6 +135,7 @@ import {
   readCodeAttempts,
   saveCodeAttempts,
 } from '@/services/codeAttempts.service';
+import { clearTextDraft, readTextDraft, saveTextDraft } from '@/services/textDraft.service';
 import { hasTenantAudience } from '@/services/artifact.service';
 import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope';
 
@@ -166,16 +167,19 @@ import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope
  */
 export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
   read: (key) => {
+    if (isTextDraftKey(key)) return readTextDraft(textDraftActivityId(key));
     if (isBlanksKey(key)) return readGuidedBlanks(codeBlanksDraftActivityId(key));
     if (isAttemptsKey(key)) return readCodeAttempts(codeAttemptsActivityId(key));
     return readCodeSnapshot(codeDraftActivityId(key))?.code ?? null;
   },
   write: (key, value) => {
+    if (isTextDraftKey(key)) return saveTextDraft(textDraftActivityId(key), value);
     if (isBlanksKey(key)) return saveGuidedBlanks(codeBlanksDraftActivityId(key), value);
     if (isAttemptsKey(key)) return saveCodeAttempts(codeAttemptsActivityId(key), value);
     return saveCodeSnapshot(codeDraftActivityId(key), value);
   },
   clear: (key) => {
+    if (isTextDraftKey(key)) return clearTextDraft(textDraftActivityId(key));
     if (isBlanksKey(key)) return clearGuidedBlanks(codeBlanksDraftActivityId(key));
     if (isAttemptsKey(key)) return clearCodeAttempts(codeAttemptsActivityId(key));
     return clearCodeSnapshot(codeDraftActivityId(key));
@@ -183,10 +187,55 @@ export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
 };
 
 /**
- * Which of the three slots a key names. Routed on the PREFIX and not on the
+ * Which of the slots a key names. Routed on the PREFIX and not on the
  * value's shape: all of them hold a string, and guessing from the content would
  * make a learner whose source happens to be JSON land in the wrong slot.
  */
+/**
+ * The key the package keeps a free-text answer in progress under
+ * (`packages/activities/src/internal/textDraft.ts`). Spelled here because the
+ * package does not export it; `IteraActivityHost.storage.test.tsx` writes a
+ * draft through the real activity and fails if the two drift apart.
+ */
+const TEXT_DRAFT_KEY_PREFIX = 'itera.text.draft:';
+
+function isTextDraftKey(key: string): boolean {
+  return key.startsWith(TEXT_DRAFT_KEY_PREFIX);
+}
+
+function textDraftActivityId(key: string): string {
+  return key.slice(TEXT_DRAFT_KEY_PREFIX.length);
+}
+
+/**
+ * A subtree that SHOWS an activity which is not this person's own work in
+ * progress: the classroom stage mirroring a learner, an author's test run.
+ * Text drafts are neither read nor written there — otherwise the stage would
+ * put each viewer's own half-written text under the staged learner's name, and
+ * an author's "reset" would hand back what they had just typed.
+ */
+export function WithoutTextDrafts({ children }: { children: ReactNode }) {
+  const host = useActivityHost();
+  const inner = host.storage ?? ITERA_ACTIVITY_STORAGE;
+  const storage = useMemo<ActivityStoragePort>(
+    () => ({
+      read: (key) => (isTextDraftKey(key) ? null : inner.read(key)),
+      write: (key, value) => {
+        if (!isTextDraftKey(key)) inner.write(key, value);
+      },
+      clear: (key) => {
+        if (!isTextDraftKey(key)) inner.clear(key);
+      },
+    }),
+    [inner],
+  );
+  return (
+    <ActivityProvider {...host} storage={storage}>
+      {children}
+    </ActivityProvider>
+  );
+}
+
 function isBlanksKey(key: string): boolean {
   return key.startsWith(CODE_BLANKS_DRAFT_KEY_PREFIX);
 }

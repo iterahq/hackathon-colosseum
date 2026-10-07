@@ -7,7 +7,7 @@ import type { UseCodeSnackCallbacks } from './types.js';
 import { useCodeAttempts } from './useCodeAttempts.js';
 import { useCodeChecks } from './useCodeChecks.js';
 import { useCodeLiveBuffer } from './useCodeLiveBuffer.js';
-import { usePagehideFlush } from './usePagehideFlush.js';
+import { usePagehideFlush } from '../internal/usePagehideFlush.js';
 
 const AUTOSAVE_DEBOUNCE_MS = 600;
 

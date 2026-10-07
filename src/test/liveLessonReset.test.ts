@@ -11,6 +11,7 @@ import {
   saveCodeSnapshot,
   saveGuidedBlanks,
 } from '@/services/codeSnapshot.service';
+import { readTextDraft, saveTextDraft } from '@/services/textDraft.service';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { rememberStorageScope } from '@/utils/storageScope';
 
@@ -76,6 +77,16 @@ describe('clearLearnerLessonState', () => {
     expect(readCodeSnapshot('act-1')).toBeNull();
     expect(readGuidedBlanks('act-1')).toBeNull();
     expect(readStoredAnswer(SESSION, 'act-1')).toBeNull();
+  });
+
+  it('forgets the text a learner was writing', () => {
+    saveTextDraft('act-1', 'half a reflection');
+    saveTextDraft('act-2', 'another lesson');
+
+    clearLearnerLessonState(SESSION, ['act-1']);
+
+    expect(readTextDraft('act-1')).toBeNull();
+    expect(readTextDraft('act-2')).toBe('another lesson');
   });
 
   it('não toca em atividade fora da lição resetada', () => {

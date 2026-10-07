@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReflectionDocumentActivity } from './ReflectionDocumentActivity.js';
+import { textDraftKey } from '../../internal/textDraft.js';
 import type { PortableActivity } from '../../renderer.js';
 
 const WRITTEN = 'A tag abre e fecha, e o navegador desenha o que está entre as duas.';
@@ -51,3 +52,69 @@ describe('ReflectionDocumentActivity', () => {
     expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: WRITTEN }));
   });
 });
+
+describe('ReflectionDocumentActivity — the text being written', () => {
+  const saved = () => localStorage.getItem(textDraftKey('reflect-1'));
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it('is kept a moment after the last key, and is back on the next open', () => {
+    const { input } = renderReflection('todo');
+    fireEvent.change(input, { target: { value: 'Merge junta' } });
+    expect(saved()).toBeNull();
+    act(() => void vi.advanceTimersByTime(600));
+    expect(saved()).toBe('Merge junta');
+
+    screen.getByTestId('document-reflection-input');
+    const second = render(
+      <ReflectionDocumentActivity
+        activity={activity('todo')}
+        spec={{ prompt: 'O que você aprendeu?' }}
+        minWords={5}
+        onComplete={vi.fn()}
+      />,
+    );
+    const reopened = second.getAllByTestId('document-reflection-input').at(-1) as HTMLTextAreaElement;
+    expect(reopened.value).toBe('Merge junta');
+  });
+
+  it('is written at once when the page goes away inside that moment', () => {
+    const { input } = renderReflection('todo');
+    fireEvent.change(input, { target: { value: 'Merge junta duas linhas' } });
+    act(() => {
+      vi.advanceTimersByTime(100);
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(saved()).toBe('Merge junta duas linhas');
+  });
+
+  it('is forgotten when the learner empties the box', () => {
+    const { input } = renderReflection('todo');
+    fireEvent.change(input, { target: { value: 'Merge' } });
+    act(() => void vi.advanceTimersByTime(600));
+    fireEvent.change(input, { target: { value: '' } });
+    act(() => void vi.advanceTimersByTime(600));
+    expect(saved()).toBeNull();
+  });
+
+  it('is kept when sent, so a save that fails does not cost the text', () => {
+    const { input } = renderReflection('todo');
+    fireEvent.change(input, { target: { value: WRITTEN } });
+    fireEvent.click(screen.getByRole('button'));
+    expect(saved()).toBe(WRITTEN);
+  });
+
+  it('never overrides what a finished reflection shows', () => {
+    localStorage.setItem(textDraftKey('reflect-1'), 'an older draft');
+    const { input } = renderReflection('done', WRITTEN);
+    expect(input.value).toBe(WRITTEN);
+  });
+});
+

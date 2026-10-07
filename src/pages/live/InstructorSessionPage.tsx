@@ -16,6 +16,7 @@
  * The live control panel (ClassControl) is unchanged from the old inline render
  * in InstructorClassPage — only its home became a routed page.
  */
+import { WithoutTextDrafts } from '@/components/branded/activity/IteraActivityHost';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -669,22 +670,24 @@ function ClassControl({
               // activity live on the projector (type in the code snack, click a
               // choice to demonstrate). It only freezes into a static mirror once
               // there is a revealed answer to protect (`ownStageFrozen`).
-              <LiveActivityStage
-                activity={current}
-                readOnly={ownStageFrozen}
-                reveal={revealCurrent}
-                testid="instructor-activity-stage"
-                footer={
-                  stageHint ? (
-                    <p
-                      className={`mt-4 text-center text-sm ${selfStaged ? 'text-evergreen-hi' : 'text-muted-foreground'}`}
-                      data-testid={selfStaged ? 'instructor-self-staged-hint' : 'instructor-mirror-hint'}
-                    >
-                      {stageHint}
-                    </p>
-                  ) : undefined
-                }
-              />
+              <WithoutTextDrafts>
+                <LiveActivityStage
+                  activity={current}
+                  readOnly={ownStageFrozen}
+                  reveal={revealCurrent}
+                  testid="instructor-activity-stage"
+                  footer={
+                    stageHint ? (
+                      <p
+                        className={`mt-4 text-center text-sm ${selfStaged ? 'text-evergreen-hi' : 'text-muted-foreground'}`}
+                        data-testid={selfStaged ? 'instructor-self-staged-hint' : 'instructor-mirror-hint'}
+                      >
+                        {stageHint}
+                      </p>
+                    ) : undefined
+                  }
+                />
+              </WithoutTextDrafts>
             ) : lessonLoading ? (
               // Pointer set, lesson content still resolving (refresh mid-class) —
               // the SAME skeleton the learners get, never the lobby.

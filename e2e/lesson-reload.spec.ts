@@ -203,6 +203,20 @@ test.describe('a written reflection', () => {
     await backOnTheReflection(page);
     expect(writes.passed).toEqual([true]);
   });
+
+  test('half written and not yet sent, it is back after a reload right after the last key', async ({ page }) => {
+    await installLessonSubstrate(page, DOCUMENT_REFLECTION);
+    const writes = countAttemptWrites(page);
+    await page.goto(lessonUrl(DOCUMENT_REFLECTION));
+
+    await input(page).fill('Merge junta duas linhas');
+    await page.reload();
+
+    await expect.poll(() => shownActivity(page)).toBe(DOCUMENT_REFLECTION.id);
+    await expect(input(page)).toHaveValue('Merge junta duas linhas');
+    await expect(input(page)).toBeEditable();
+    expect(writes.passed).toEqual([]);
+  });
 });
 
 /**

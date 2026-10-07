@@ -3,6 +3,7 @@ import { ChatScreenMirror, TerminalScreenMirror } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { CodeLivePreview } from '@/components/branded/activity/code/CodeLivePreview';
+import { WithoutTextDrafts } from '@/components/branded/activity/IteraActivityHost';
 import { LiveActivityStage } from '@/components/live/LiveActivityStage';
 import { LiveStageAnswerCard } from '@/components/live/LiveStageAnswerCard';
 import { StageCursorOverlay } from '@/components/live/StageCursorOverlay';
@@ -140,7 +141,9 @@ export function LiveStageBody({
   return (
     <>
       {mirrorActivity && (
-        <LiveActivityStage activity={mirrorActivity} readOnly testid="live-stage-activity" />
+        <WithoutTextDrafts>
+          <LiveActivityStage activity={mirrorActivity} readOnly testid="live-stage-activity" />
+        </WithoutTextDrafts>
       )}
       {answered && (
         <div className={mirrorActivity ? 'mt-6' : undefined}>
