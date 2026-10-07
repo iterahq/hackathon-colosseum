@@ -111,6 +111,7 @@ import { InstructionPanel } from '../components/InstructionPanel.js';
 import { ActivityTextarea } from '../components/ActivityTextarea.js';
 import { RichText } from '../components/RichText.js';
 import { ActivityShell, SubmitButton } from '../components/parts.js';
+import { useHostOwnsSettledAction } from '../components/settledAction.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 /**
@@ -449,6 +450,7 @@ export function QuestionView({
   // every other kind has, and it is NOT a verdict, only a lock.
   const settled = submitted || (activity.status === 'done' && restored.any);
   const locked = submitted || activity.status === 'done';
+  const hostOwnsSettled = useHostOwnsSettledAction();
 
   // What the answer may hold is what the screen SHOWS: a hidden "Outro" or a
   // hidden notes box cannot carry a restored value into the submit.
@@ -547,12 +549,14 @@ export function QuestionView({
         `correct={true}` here would paint a settled question green — the exact
         verdict this kind exists to not draw.
       */}
-      <SubmitButton
-        submitted={settled}
-        disabled={!hasAnswer}
-        onSubmit={handleSubmit}
-        testId="question-submit"
-      />
+      {!(hostOwnsSettled && locked) && (
+        <SubmitButton
+          submitted={settled}
+          disabled={!hasAnswer}
+          onSubmit={handleSubmit}
+          testId="question-submit"
+        />
+      )}
     </ActivityShell>
   );
 }

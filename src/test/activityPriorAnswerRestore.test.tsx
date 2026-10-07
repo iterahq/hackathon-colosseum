@@ -49,6 +49,12 @@ import {
   type PortableActivity,
   type PortableActivityStatus,
 } from '@iterahq/activities';
+import { dragOrderRow } from './support/orderDragDouble';
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const { withReorderDouble } = await import('./support/orderDragDouble');
+  return withReorderDouble(await importOriginal<object>());
+});
 
 /* ─────────────────────────────── fixtures ────────────────────────────────── */
 
@@ -389,8 +395,8 @@ describe('order — the submitted SEQUENCE comes back', () => {
 
   it('clicked and replayed produce the same screen', () => {
     const live = mount(activity('order', ORDER_SPEC));
-    // Move the last item to the top, twice — a real reordering.
-    fireEvent.click(screen.getAllByTestId('order-down')[0]);
+    // Drag the first row below the second — a real reordering.
+    dragOrderRow(screen.getAllByTestId('order-item')[0].getAttribute('data-option-id')!, 1);
     fireEvent.click(screen.getByTestId('order-submit'));
     const clickedOrder = rendered();
     const clickedSubmit = submitSnapshot('order-submit');

@@ -14,6 +14,7 @@ import { useCodeSnack } from './useCodeSnack.js';
 import { CodeLivePreview } from './CodeLivePreview.js';
 import { CodeChecksFeedback } from './CodeChecksFeedback.js';
 import { CodeResetControl } from './CodeResetControl.js';
+import { useHostOwnsSettledAction } from '../components/settledAction.js';
 import { useResultBadge } from './useResultBadge.js';
 import { useShrinkToFit } from './useShrinkToFit.js';
 
@@ -67,6 +68,7 @@ export function CodeSnackPane({
     complete,
   } = useCodeSnack(activity.id, spec, { onComplete });
   const isDone = activity.status === 'done';
+  const hostOwnsSettled = useHostOwnsSettledAction();
   // A phone shows one pane at a time: stacked, the pair pushed the button a
   // screen away. The hidden pane keeps its box (`invisible`, not `hidden`), so
   // the preview frame the checks run in never collapses to 0x0.
@@ -183,11 +185,13 @@ export function CodeSnackPane({
               so a reset cannot land between the submit and its verdicts. It
               stays available ON the feedback screen on purpose: that is exactly
               where the learner who broke everything asks to start over. */}
-          <CodeResetControl
-            onReset={resetToStarter}
-            disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
-            className="mt-2"
-          />
+          {!(hostOwnsSettled && isDone) && (
+            <CodeResetControl
+              onReset={resetToStarter}
+              disabled={isDone || outOfLives || phase === 'submitting' || phase === 'settled'}
+              className="mt-2"
+            />
+          )}
         </div>
 
         <div
@@ -207,7 +211,7 @@ export function CodeSnackPane({
 
       {!hasChecks && <DoneButton done={isDone} onClick={complete} />}
 
-      {hasChecks && !showFeedback && (
+      {hasChecks && !showFeedback && !(hostOwnsSettled && isDone) && (
         <button
           type="button"
           onClick={submit}

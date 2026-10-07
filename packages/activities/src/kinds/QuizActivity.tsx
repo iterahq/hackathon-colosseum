@@ -56,7 +56,7 @@ import type { QuizOption, QuizSpec } from '../specs.js';
 import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
 import { parseInline } from '../internal/richText.js';
 import { RichSpans } from '../components/RichSpans.js';
-import { AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { AnswerExplanation, answerExplanationText, SubmitButton } from '../components/parts.js';
 import { tactileSurface } from '../components/tactileSurface.js';
 import { VerdictMark } from '../components/VerdictMark.js';
 import { InlineLabel } from '../components/InlineLabel.js';
@@ -83,7 +83,7 @@ export function QuizActivity({
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   reveal?: boolean;
 }) {
-  const { t } = useActivityI18n();
+  const { t, locale } = useActivityI18n();
   const tera = useTeraMentioned();
   const spec = activity.spec as unknown as QuizSpec;
   const options = useMemo(() => spec?.options ?? [], [spec?.options]);
@@ -117,6 +117,7 @@ export function QuizActivity({
     onComplete(isQuizCorrect, {
       response: chosen ? quizOptionLabel(chosen, selected as number) : '',
       actions: trace.drain(),
+      explanation: answerExplanationText(activity.spec, locale, isQuizCorrect),
     });
   }
 
@@ -200,7 +201,7 @@ export function QuizActivity({
         {options.length === 0 && <p className="text-sm text-muted-foreground">{spec?.prompt}</p>}
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
 
       {/* BOTTOM ZONE — just the action. The correct/incorrect message lives in
           the host's own feedback surface (the Player's viewport-fixed

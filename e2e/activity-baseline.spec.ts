@@ -58,6 +58,7 @@ import {
   type ActivityFixture,
 } from './support/activityFixtures';
 import { installHarnessSubstrate, harnessUrl } from './support/harnessStub';
+import { dragOrderRow } from './support/orderDrag';
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Helpers
@@ -135,7 +136,7 @@ async function orderIds(page: Page): Promise<(string | null)[]> {
 }
 
 /**
- * Selection-sort `order-item` into the target ID sequence using `order-up`.
+ * Selection-sort `order-item` into the target ID sequence by dragging each row by its grip.
  * Mirrors `src/stories/interactions.ts::arrangeOrder`, which is the recipe the
  * repo's own story/unit tests use — same mechanic, same guarantees.
  * Re-queries after every click because React re-renders the whole `<ol>`.
@@ -155,14 +156,14 @@ async function arrangeOrder(page: Page, ids: readonly string[]): Promise<void> {
         throw new Error(`order: item ${ids[target]} não está na lista (${current.join(', ')})`);
       }
       if (at <= target) break;
-      await page.getByTestId('order-item').nth(at).getByTestId('order-up').click();
+      await dragOrderRow(page, at, target);
       moves += 1;
     }
   }
   if (moves === 0 && ids.length >= 2) {
     // A real round-trip: same arrangement, but the learner did move something.
-    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
-    await page.getByTestId('order-item').nth(1).getByTestId('order-up').click();
+    await dragOrderRow(page, 0, 1);
+    await dragOrderRow(page, 1, 0);
   }
 }
 
@@ -340,8 +341,10 @@ test.describe('quiz', () => {
     await optionByLabel(page, 'quiz-option', 'VERDADEIRO').click();
     await page.getByTestId('quiz-submit').click();
     await expectVerdict(page, false);
-    // `answer-explanation` renders on a WRONG submit only.
-    await expect(page.getByTestId('answer-explanation')).toBeVisible();
+    // The why renders on a WRONG submit only, inside Tera's footer; the in-card
+    // `answer-explanation` is for a review, never beside the footer.
+    await expect(page.getByTestId('feedback-footer-explanation')).toBeVisible();
+    await expect(page.getByTestId('answer-explanation')).toHaveCount(0);
   });
 
   test('🧊 FROZEN — acerto NÃO mostra a explicação', async ({ page }) => {
@@ -350,6 +353,7 @@ test.describe('quiz', () => {
     await page.getByTestId('quiz-submit').click();
     await expectVerdict(page, true);
     await expect(page.getByTestId('answer-explanation')).toHaveCount(0);
+    await expect(page.getByTestId('feedback-footer-explanation')).toHaveCount(0);
   });
 
   test('🧊 FROZEN — não há retentativa no lugar; só o reset do harness', async ({ page }) => {
@@ -533,7 +537,7 @@ test.describe('order', () => {
     await expectDispatchedTo(page, 'order');
     await expect(page.getByTestId('order-submit')).toBeDisabled();
     // One move — the smallest real learner act — is what opens it.
-    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+    await dragOrderRow(page, 0, 1);
     await expect(page.getByTestId('order-submit')).toBeEnabled();
   });
 
@@ -572,7 +576,7 @@ test.describe('order', () => {
     await open(page, ORDER);
     await arrangeOrder(page, ORDER_SOLUTION);
     // Push the first item down once — any permutation ≠ correct_order is wrong.
-    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+    await dragOrderRow(page, 0, 1);
     await page.getByTestId('order-submit').click();
     await expectVerdict(page, false);
   });
@@ -591,20 +595,18 @@ test.describe('order', () => {
    * strictly MORE precision than before (their count and their state, where the
    * old test only asserted their absence).
    */
-  test('após enviar, os controles de reordenar ficam DESABILITADOS (não somem)', async ({ page }) => {
+  test('após enviar, as linhas ficam TRAVADAS (não somem) e arrastar não reordena', async ({ page }) => {
     await open(page, ORDER);
-    await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+    await dragOrderRow(page, 0, 1);
     await page.getByTestId('order-submit').click();
     await expect(verdict(page)).toBeVisible();
 
-    const ups = page.getByTestId('order-up');
-    const downs = page.getByTestId('order-down');
-    await expect(ups).toHaveCount(ORDER_SOLUTION.length);
-    await expect(downs).toHaveCount(ORDER_SOLUTION.length);
-    for (let i = 0; i < ORDER_SOLUTION.length; i++) {
-      await expect(ups.nth(i)).toBeDisabled();
-      await expect(downs.nth(i)).toBeDisabled();
-    }
+    await expect(page.getByTestId('order-up')).toHaveCount(0);
+    await expect(page.getByTestId('order-down')).toHaveCount(0);
+    await expect(page.getByTestId('order-item')).toHaveCount(ORDER_SOLUTION.length);
+    const lockedOrder = await orderIds(page);
+    await dragOrderRow(page, 0, ORDER_SOLUTION.length - 1);
+    expect(await orderIds(page)).toEqual(lockedOrder);
     // And the answered sequence is still fully on screen, identities included.
     expect((await orderIds(page)).filter(Boolean)).toHaveLength(ORDER_SOLUTION.length);
   });

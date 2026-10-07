@@ -1,10 +1,13 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { useState } from 'react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 // The activity tree needs an i18n PORT, not just the app's provider — the
 // bilingual-explanation cases below read `locale`. See the component.
 import { ActivityI18nBridge } from '@/components/branded/activity/IteraActivityHost';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
+import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
+import type { ActivityCompleteDetail, FooterResult } from '@/components/branded/activity/activityFeedbackKinds';
 import { mapActivity } from '@/services/programs.service';
 import type { Activity, ActivityKind } from '@/types/content';
 
@@ -69,23 +72,46 @@ function makeActivity(kind: ActivityKind, spec: Record<string, unknown>): Activi
   return { id: `t-${kind}`, lessonId: 'l', ordinal: 0, kind, spec, rubric: null };
 }
 
-function renderActivity(activity: Activity, reveal = false) {
+/** The shell in miniature: the activity, and the footer its `onComplete` raises. */
+function Shell({
+  activity,
+  reveal,
+  onComplete,
+  priorAnswer,
+}: {
+  activity: Activity;
+  reveal: boolean;
+  onComplete: (correct: boolean, detail?: ActivityCompleteDetail) => void;
+  priorAnswer?: ActivityCompleteDetail;
+}) {
+  const [pending, setPending] = useState<FooterResult | null>(null);
+  return (
+    <>
+      <ActivityRenderer
+        activity={activity}
+        reveal={reveal}
+        priorAnswer={priorAnswer}
+        onComplete={(correct, detail) => {
+          onComplete(correct, detail);
+          setPending({ correct, message: detail?.message, explanation: detail?.explanation });
+        }}
+      />
+      <FeedbackFooter result={pending} onContinue={() => setPending(null)} />
+    </>
+  );
+}
+
+function renderActivity(activity: Activity, reveal = false, priorAnswer?: ActivityCompleteDetail) {
   const onComplete = vi.fn();
-  const view = render(
+  const tree = (revealed: boolean) => (
     <I18nProvider>
       <ActivityI18nBridge>
-        <ActivityRenderer activity={activity} onComplete={onComplete} reveal={reveal} />
+        <Shell activity={activity} reveal={revealed} onComplete={onComplete} priorAnswer={priorAnswer} />
       </ActivityI18nBridge>
     </I18nProvider>
   );
-  const rerenderWith = (next: boolean) =>
-    view.rerender(
-      <I18nProvider>
-        <ActivityI18nBridge>
-          <ActivityRenderer activity={activity} onComplete={onComplete} reveal={next} />
-        </ActivityI18nBridge>
-      </I18nProvider>
-    );
+  const view = render(tree(reveal));
+  const rerenderWith = (next: boolean) => view.rerender(tree(next));
   return { onComplete, rerenderWith };
 }
 
@@ -127,12 +153,12 @@ describe('quiz honors `reveal` like every other graded kind', () => {
 describe('the authored explanation surfaces on a wrong answer only', () => {
   it('quiz: shown after a wrong submission', () => {
     renderActivity(makeActivity('quiz', QUIZ_SPEC));
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
 
     fireEvent.click(screen.getByText('Nome'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
   });
 
   it('quiz: NOT shown after a correct submission', () => {
@@ -141,7 +167,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Matrícula'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 
   it('quiz: a correct answer keeps the why hidden even once the class reveals', () => {
@@ -150,7 +176,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByTestId('quiz-submit'));
     rerenderWith(true);
 
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 
   it('single_choice: same beat, from the one shared primitive', () => {
@@ -158,7 +184,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
   });
 
   it('multi_choice: same beat, from the one shared primitive', () => {
@@ -166,7 +192,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(MULTI_CHOICE_SPEC.explanation);
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(MULTI_CHOICE_SPEC.explanation);
   });
 
   it('single_choice: nothing extra when the spec carries no explanation', () => {
@@ -175,7 +201,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 
   it('single_choice: whitespace only never becomes a card', () => {
@@ -183,7 +209,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 
   /**
@@ -197,7 +223,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     renderActivity(makeActivity('single_choice', { ...SINGLE_CHOICE_SPEC, explanation: 42 }));
 
     expect(screen.getByTestId('single-choice-invalid')).toBeInTheDocument();
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 });
 
@@ -207,6 +233,52 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
  * acaso. Gatilho é `gradeResult`, não o rascunho: quem não enviou nada é quem
  * mais precisa do porquê.
  */
+describe('the why lives in Tera\'s footer, one Tera at a time', () => {
+  it('a fresh miss puts exactly one Tera and one explanation on screen, inside the footer', () => {
+    renderActivity(makeActivity('single_choice', SINGLE_CHOICE_SPEC));
+    fireEvent.click(screen.getByText('Alfa'));
+    fireEvent.click(screen.getByTestId('single-choice-submit'));
+
+    const footer = screen.getByTestId('feedback-footer');
+    expect(document.querySelectorAll('[data-tera]')).toHaveLength(1);
+    expect(footer.querySelectorAll('[data-tera]')).toHaveLength(1);
+    expect(screen.getAllByTestId('feedback-footer-explanation')).toHaveLength(1);
+    expect(within(footer).getByTestId('feedback-footer-explanation')).toHaveTextContent(
+      SINGLE_CHOICE_SPEC.explanation
+    );
+    expect(within(footer).getByTestId('feedback-footer-explanation-title')).toHaveTextContent('Entenda o porquê');
+    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+  });
+
+  it('hands the explanation up to the host on a miss, and only on a miss', () => {
+    const miss = renderActivity(makeActivity('quiz', QUIZ_SPEC));
+    fireEvent.click(screen.getByText('Nome'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+    expect(miss.onComplete).toHaveBeenCalledWith(
+      false,
+      expect.objectContaining({ explanation: QUIZ_SPEC.explanation })
+    );
+  });
+
+  it('does not hand it up on a correct answer', () => {
+    const hit = renderActivity(makeActivity('quiz', QUIZ_SPEC));
+    fireEvent.click(screen.getByText('Matrícula'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+    expect(hit.onComplete.mock.calls[0][1].explanation).toBeUndefined();
+  });
+
+  it('on review (re-opened, no footer) the in-card box still shows the why, and nothing else does', () => {
+    const prior = {
+      actions: [{ type: 'answer_submitted', at: 1, payload: { option_ids: ['a'] } }],
+    } as unknown as ActivityCompleteDetail;
+    renderActivity({ ...makeActivity('single_choice', SINGLE_CHOICE_SPEC), status: 'done' }, false, prior);
+
+    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
+    expect(screen.queryByTestId('feedback-footer')).toBeNull();
+    expect(document.querySelectorAll('[data-tera]')).toHaveLength(1);
+  });
+});
+
 describe('a reveal with no submission always gets the why', () => {
   it.each([
     ['match', MATCH_SPEC],
@@ -302,7 +374,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('VERDADEIRO'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    const card = screen.getByTestId('answer-explanation');
+    const card = screen.getByTestId('feedback-footer-explanation');
     expect(card).toHaveTextContent(expected);
     expect(card).not.toHaveTextContent(notExpected);
   });
@@ -314,7 +386,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Um-para-um'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(
       'each Order belongs to ONE Customer'
     );
   });
@@ -345,7 +417,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(expected);
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(expected);
   });
 
   /**
@@ -371,7 +443,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(
+    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(
       'Só a redação em português existe nesta linha.'
     );
   });
@@ -392,6 +464,6 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.queryByTestId('answer-explanation')).toBeNull();
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
   });
 });

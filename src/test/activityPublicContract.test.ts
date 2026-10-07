@@ -353,6 +353,8 @@ const PUBLIC_RUNTIME_SURFACE = [
   'RichSpans',
   'RichText',
   'SubmitButton',
+  'HostOwnsSettledAction',
+  'useHostOwnsSettledAction',
   'ActivityTextarea',
   'SandboxBubble',
   'SandboxChatLog',

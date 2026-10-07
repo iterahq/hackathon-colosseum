@@ -179,9 +179,17 @@ export function FeedbackFooter({
                   {result.message ?? (correct ? t('activity.correct') : t('activity.incorrect'))}
                 </p>
                 {result.explanation && (
-                  <p className="mt-1 text-base text-foreground/85" data-testid="feedback-footer-explanation">
-                    <RichSpans spans={parseInline(result.explanation)} />
-                  </p>
+                  <>
+                    <p
+                      className="mt-1 font-mono text-[11px] uppercase tracking-wider text-foreground/70"
+                      data-testid="feedback-footer-explanation-title"
+                    >
+                      {t('activity.explanationTitle')}
+                    </p>
+                    <p className="mt-1 text-base text-foreground/85" data-testid="feedback-footer-explanation">
+                      <RichSpans spans={parseInline(result.explanation)} />
+                    </p>
+                  </>
                 )}
               </div>
             </div>

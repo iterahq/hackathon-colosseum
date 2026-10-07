@@ -9,6 +9,12 @@ import type { Activity } from '@/types/content';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import { FAMILY_EMITTED, isActionOfFamily, type ActivityFamily } from '@/utils/activityFamilies';
 import type { RecordedAction } from '@/utils/learningTrace';
+import { dragOrderRow } from './support/orderDragDouble';
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const { withReorderDouble } = await import('./support/orderDragDouble');
+  return withReorderDouble(await importOriginal<object>());
+});
 
 /**
  * The BEHAVIOURAL half of the Fase A guard.
@@ -172,36 +178,18 @@ describe('arrangement family — order', () => {
     // from the DOM rather than assumed, because the arrangement is seeded from
     // the activity id and is deliberately never the solution.
     const movedId = screen.getAllByTestId('order-item')[1].getAttribute('data-option-id');
-    fireEvent.click(screen.getAllByTestId('order-up')[1]); // row 2 moves up
+    dragOrderRow(movedId!, 0); // row 2 is dragged to the top
     fireEvent.click(screen.getByTestId('order-submit'));
 
     const actions = cap.actions();
     assertFamilyContract('arrangement', actions);
     expect(actions.map((a) => a.type)).toEqual(['item_moved', 'answer_submitted']);
-    expect(actions[0].payload).toEqual({ item_id: movedId, from: 1, to: 0, via: 'button' });
+    expect(actions[0].payload).toEqual({ item_id: movedId, from: 1, to: 0, via: 'drag' });
     // The submitted permutation is the arrangement, by id — replaying the moves
     // against the seeded start has to land on exactly this.
     expect(actions[1].payload).toEqual({
       order: screen.getAllByTestId('order-item').map((el) => el.getAttribute('data-option-id')),
     });
-  });
-
-  // Native HTML5 drag is gone (the rows use framer's `Reorder`, which needs real
-  // layout and so cannot be driven in jsdom). The `via: 'drag'` half — one
-  // `item_moved` per completed drag — is proven where the drop bookkeeping
-  // lives, in `useOrderDrag.test.ts`. What is reachable here is the other side
-  // of the contrast: an arrow tap is recorded as `via: 'button'`.
-  it('records an arrow tap as via button, the half that contrasts with a drag', () => {
-    const cap = renderOrder();
-    const before = screen.getAllByTestId('order-item').map((r) => r.getAttribute('data-option-id'));
-    fireEvent.click(screen.getAllByTestId('order-up')[2]);
-    fireEvent.click(screen.getByTestId('order-submit'));
-
-    const actions = cap.actions();
-    assertFamilyContract('arrangement', actions);
-    expect(actions[0].type).toBe('item_moved');
-    expect(actions[0].payload).toMatchObject({ item_id: before[2], from: 2, to: 1, via: 'button' });
-    expect(actions.filter((a) => a.type === 'item_moved')).toHaveLength(1);
   });
 });
 

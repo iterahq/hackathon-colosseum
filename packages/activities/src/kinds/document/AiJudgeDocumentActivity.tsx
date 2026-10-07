@@ -42,6 +42,7 @@ import { ArtifactVisibilityNotice } from '../../components/ArtifactVisibilityNot
 import { JudgeHeatmap } from '../../components/JudgeHeatmap.js';
 import { RichText } from '../../components/RichText.js';
 import { ActivityShell } from '../../components/parts.js';
+import { useHostOwnsSettledAction } from '../../components/settledAction.js';
 
 export function AiJudgeDocumentActivity({
   activity,
@@ -53,6 +54,7 @@ export function AiJudgeDocumentActivity({
   const { t } = useActivityI18n();
   const { api, identity } = useActivityHost();
   const spec = activity.spec as unknown as DocumentSpec;
+  const hideSubmit = useHostOwnsSettledAction() && activity.status === 'done';
 
   const [seeds, setSeeds] = useState<ActivitySeed[]>([]);
   const [brief, setBrief] = useState<ActivityBrief | null>(null);
@@ -194,14 +196,16 @@ export function AiJudgeDocumentActivity({
 
       {error && <p className="mt-2 text-sm text-clay">{error}</p>}
 
-      <button
-        onClick={onSubmit}
-        disabled={submitting || content.trim().length === 0}
-        className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi disabled:opacity-50"
-        data-testid="judge-submit"
-      >
-        {submitting ? 'Avaliando…' : 'Enviar para avaliação da IA'}
-      </button>
+      {!hideSubmit && (
+        <button
+          onClick={onSubmit}
+          disabled={submitting || content.trim().length === 0}
+          className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi disabled:opacity-50"
+          data-testid="judge-submit"
+        >
+          {submitting ? 'Avaliando…' : 'Enviar para avaliação da IA'}
+        </button>
+      )}
 
       {/* 3) Heat-map verdict */}
       {verdict && <JudgeHeatmap verdict={verdict} />}

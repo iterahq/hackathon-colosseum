@@ -31,6 +31,21 @@ describe('LessonStepActions', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it('puts "Refazer" in the same place for a finished exercise, and a miss keeps its retry', () => {
+    const onRedo = vi.fn();
+    const { unmount } = mount({ onContinue: vi.fn(), onRedo });
+    const redo = screen.getByTestId('lesson-redo');
+    expect(redo.parentElement).toBe(screen.getByTestId('concept-continue').parentElement);
+    expect(redo.className).toContain('flex-1');
+    fireEvent.click(redo);
+    expect(onRedo).toHaveBeenCalledTimes(1);
+    unmount();
+
+    mount({ onContinue: vi.fn(), onRetry: vi.fn(), onRedo });
+    expect(screen.getByTestId('lesson-retry-missed')).toBeTruthy();
+    expect(screen.queryByTestId('lesson-redo')).toBeNull();
+  });
+
   it('holds Continuar while a save is in flight, and leaves the retry alone', () => {
     mount({ onContinue: vi.fn(), onRetry: vi.fn(), busy: true });
     expect(screen.getByTestId('concept-continue')).toBeDisabled();

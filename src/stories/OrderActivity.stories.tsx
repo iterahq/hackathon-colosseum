@@ -15,8 +15,9 @@ import { arrangeOrder, submitAnswer } from './interactions';
  * `items[].id`. Função pedagógica própria (sequenciar) → grupo próprio.
  *
  * ── FASE 3 (ADR-4) ─────────────────────────────────────────────────────────
- * A prop `initialOrder` sumiu. Cada estado abaixo é produzido movendo os itens
- * com os controles ↑/↓ — os MESMOS que o aluno de teclado/touch usa. O
+ * A prop `initialOrder` sumiu. Cada estado abaixo é produzido ARRASTANDO as
+ * linhas pela alça — o único jeito de reordenar. O arrasto precisa de layout,
+ * então os `play` carregam a tag `browser-mode` (ADR-8) e rodam no Chromium. O
  * embaralhamento inicial é POR ALUNO (`learnerShuffle`) e nunca é a solução,
  * então o `play` faz um selection-sort por RÓTULO, nunca por posição.
  *
@@ -62,6 +63,7 @@ export const Default: Story = {
 /** C.answered — sequência mexida (quase certa), ainda sem enviar. */
 export const Answered: Story = {
   args: { activity: makeActivity('order', SPEC) },
+  tags: ['browser-mode'],
   play: async ({ canvasElement }) => {
     await arrangeOrder(canvasElement, NEARLY);
     const labels = within(canvasElement)
@@ -75,6 +77,7 @@ export const Answered: Story = {
 /** C.submitted + D.correct — sequência certa, enviada. */
 export const Correct: Story = {
   args: { activity: makeActivity('order', SPEC) },
+  tags: ['browser-mode'],
   play: async ({ args, canvasElement }) => {
     await arrangeOrder(canvasElement, RIGHT);
     await submitAnswer(canvasElement, 'order-submit');
@@ -86,6 +89,7 @@ export const Correct: Story = {
 /** D.incorrect — dois passos trocados: um erro de posição basta. */
 export const Incorrect: Story = {
   args: { activity: makeActivity('order', SPEC) },
+  tags: ['browser-mode'],
   play: async ({ args, canvasElement }) => {
     await arrangeOrder(canvasElement, WRONG);
     await submitAnswer(canvasElement, 'order-submit');
@@ -94,7 +98,7 @@ export const Incorrect: Story = {
   },
 };
 
-/** B.done — activity já concluída: os controles ↑/↓ ficam DESABILITADOS (não somem). */
+/** B.done — activity já concluída: as linhas ficam travadas (não somem). */
 export const Disabled: Story = {
   args: { activity: makeActivity('order', SPEC, 'done') },
 };

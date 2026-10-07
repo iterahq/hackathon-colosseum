@@ -41,8 +41,14 @@ vi.mock('@/hooks', () => ({
 
 // The renderer pulls auth/AI/supabase; stub it to a deterministic complete button.
 vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
-  ActivityRenderer: ({ activity, onComplete }: { activity: { id: string }; onComplete: (c: boolean) => void }) => (
-    <div data-testid="stub-activity" data-activity-id={activity.id}>
+  ActivityRenderer: ({
+    activity,
+    onComplete,
+  }: {
+    activity: { id: string; status?: string };
+    onComplete: (c: boolean) => void;
+  }) => (
+    <div data-testid="stub-activity" data-activity-id={activity.id} data-activity-status={activity.status}>
       <button data-testid="stub-complete" onClick={() => onComplete(true)}>
         complete
       </button>
@@ -570,5 +576,96 @@ describe('LessonPlayer — forward navigation to where the learner stopped', () 
     await waitFor(() => expect(shownId()).toBe('q3'));
     expect(nextDisabled()).toBe(false);
     await waitFor(() => expect(screen.queryByTestId('feedback-footer')).toBeNull(), { timeout: 5000 });
+  });
+});
+
+describe('LessonPlayer — redoing a finished exercise', () => {
+  function lesson(kinds: string[]) {
+    return {
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Intro' },
+        activities: kinds.map((kind, i) => ({
+          id: `r${i + 1}`,
+          lessonId: 'lesson-1',
+          ordinal: i + 1,
+          kind,
+          spec: kind === 'concept' ? { instruction: { text: 'Leia.' } } : {},
+          rubric: null,
+        })),
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  }
+  const shownId = () => screen.getByTestId('lesson-activity').getAttribute('data-activity-id');
+  const shownStatus = () => screen.getByTestId('stub-activity').getAttribute('data-activity-status');
+
+  /** Pass r1, land on r2, step back onto the finished r1. */
+  async function passFirstAndStepBack() {
+    fireEvent.click(await screen.findByTestId('stub-complete'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('r2'));
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('r1'));
+  }
+
+  it('offers "Refazer" beside Continuar on a finished exercise, and reopens it blank', async () => {
+    useLessonContent.mockReturnValue(lesson(['quiz', 'quiz']));
+    renderPlayer();
+    await passFirstAndStepBack();
+    expect(shownStatus()).toBe('done');
+
+    fireEvent.click(screen.getByTestId('lesson-redo'));
+    await waitFor(() => expect(shownStatus()).toBe('todo'));
+    // The exercise owns the screen again: no review row under it.
+    expect(screen.queryByTestId('lesson-step-actions')).toBeNull();
+  });
+
+  it('shows the verdict of a redo and moves on without writing a second attempt', async () => {
+    useLessonContent.mockReturnValue(lesson(['quiz', 'quiz']));
+    renderPlayer();
+    await passFirstAndStepBack();
+    const writesBefore = upsert.mock.calls.length;
+
+    fireEvent.click(screen.getByTestId('lesson-redo'));
+    fireEvent.click(await screen.findByTestId('stub-miss'));
+    expect((await screen.findByTestId('feedback-footer')).getAttribute('data-correct')).toBe('false');
+    fireEvent.click(screen.getByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('r2'));
+    expect(upsert.mock.calls.length).toBe(writesBefore);
+
+    // The first answer stands: a missed redo does not turn the pass into a miss.
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('r1'));
+    expect(shownStatus()).toBe('done');
+    expect(screen.getByTestId('lesson-redo')).toBeTruthy();
+    expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+  });
+
+  it('ends a redo the learner walks away from', async () => {
+    useLessonContent.mockReturnValue(lesson(['quiz', 'quiz']));
+    renderPlayer();
+    await passFirstAndStepBack();
+    fireEvent.click(screen.getByTestId('lesson-redo'));
+    await waitFor(() => expect(shownStatus()).toBe('todo'));
+
+    fireEvent.click(screen.getByTestId('lesson-next'));
+    await waitFor(() => expect(shownId()).toBe('r2'));
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('r1'));
+    expect(shownStatus()).toBe('done');
+  });
+
+  it('does not offer it on a screen that was only read', async () => {
+    useLessonContent.mockReturnValue(lesson(['concept', 'quiz']));
+    renderPlayer();
+    fireEvent.click(await screen.findByTestId('concept-continue'));
+    await waitFor(() => expect(shownId()).toBe('r2'));
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('r1'));
+    expect(screen.getByTestId('concept-continue')).toBeTruthy();
+    expect(screen.queryByTestId('lesson-redo')).toBeNull();
   });
 });

@@ -5,6 +5,7 @@ import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
 import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 import { RichText } from '../../components/RichText.js';
+import { useHostOwnsSettledAction } from '../../components/settledAction.js';
 import { guidedVariant } from './guidedCode.js';
 import { useGuidedCode } from './useGuidedCode.js';
 import { GuidedCodeFeedback } from './GuidedCodeFeedback.js';
@@ -49,6 +50,7 @@ export function GuidedCodePane({
   const variant = guidedVariant(blanks);
   const guided = useGuidedCode(activity.id, spec, { onComplete, reveal });
   const isDone = activity.status === 'done';
+  const hostOwnsSettled = useHostOwnsSettledAction();
   // O veredito do ALUNO sai da tela enquanto o gabarito está nela: verde de
   // "você acertou" em cima de uma resposta que o professor colocou é a única
   // leitura que esta tela não pode permitir.
@@ -132,16 +134,17 @@ export function GuidedCodePane({
             setAimed(null);
           }}
           onReset={guided.resetAll}
+          hideReset={hostOwnsSettled && isDone}
         />
 
         <GuidedCodePreview source={guided.source} language={spec.language} ready={guided.filled} />
       </div>
 
-      {!showFeedback && !guided.showsAnswer && (
+      {!showFeedback && !guided.showsAnswer && !(hostOwnsSettled && isDone) && (
         <button
           type="button"
           onClick={guided.submit}
-          disabled={!guided.filled || isDone || guided.outOfLives}
+          disabled={isDone || guided.outOfLives}
           data-testid="guided-submit"
           className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:opacity-40"
         >

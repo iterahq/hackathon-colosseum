@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Reorder, useDragControls, useReducedMotion } from 'framer-motion';
-import { ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import type { ChoiceOption } from '../specs.js';
 import { SPRING_SETTLE } from './tactile.js';
 import { tactileSurface } from './tactileSurface.js';
@@ -12,11 +12,6 @@ import { InlineLabel } from './InlineLabel.js';
 const hasFinePointer = () =>
   typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(pointer: fine)').matches;
 
-const NUDGE =
-  'w-9 h-[26px] min-[480px]:h-9 flex-shrink-0 inline-flex items-center justify-center rounded-xl border-2 border-b-4 border-border text-muted-foreground transition-[transform,color] duration-100 hover:text-menta active:translate-y-[2px] active:border-b-2 disabled:opacity-30 disabled:hover:text-muted-foreground disabled:active:translate-y-0 disabled:active:border-b-4';
-const NUDGE_UP = `${NUDGE} coarse:relative coarse:before:absolute coarse:before:-top-5 coarse:before:-bottom-1 coarse:before:-inset-x-1.5`;
-const NUDGE_DOWN = `${NUDGE} coarse:relative coarse:before:absolute coarse:before:-top-1 coarse:before:-bottom-[22px] coarse:before:-inset-x-1.5`;
-
 /**
  * One draggable row of the Order list. The row follows the pointer while the
  * others slide aside; locked rows stay mounted with the same geometry.
@@ -25,26 +20,18 @@ export function OrderRow({
   id,
   option,
   position,
-  count,
   locked,
   verdict,
-  moveUpLabel,
-  moveDownLabel,
   onDragStart,
   onDragEnd,
-  onNudge,
 }: {
   id: string;
   option: ChoiceOption | undefined;
   position: number;
-  count: number;
   locked: boolean;
   verdict: 'right' | 'miss' | null;
-  moveUpLabel: string;
-  moveDownLabel: string;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onNudge: (delta: -1 | 1) => void;
 }) {
   const reduced = useReducedMotion();
   const controls = useDragControls();
@@ -89,7 +76,8 @@ export function OrderRow({
           if (!locked && !fine) controls.start(e);
         }}
         style={{ touchAction: locked || fine ? undefined : 'none' }}
-        className={`w-6 min-[480px]:w-7 h-9 flex-shrink-0 inline-flex items-center justify-center text-muted-foreground ${locked ? 'opacity-30' : ''}`}
+        data-testid="order-grip"
+        className={`w-6 min-[480px]:w-7 h-9 flex-shrink-0 inline-flex items-center justify-center text-muted-foreground coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-2 ${locked ? 'opacity-30' : ''}`}
       >
         <GripVertical className="w-4 h-4" aria-hidden />
       </span>
@@ -104,32 +92,6 @@ export function OrderRow({
         {option?.audio_url && <audio src={option.audio_url} controls className="h-7 max-w-[8rem]" />}
       </div>
       <VerdictMark verdict={verdict} delay={position * 0.04} />
-      {/* DISABLED, never unmounted. Removing the controls after a
-          submit deletes the learner's own reference for what they
-          arranged; a disabled control still says "this is the thing you
-          used, and it is closed now". */}
-      <span className="flex flex-col min-[480px]:flex-row items-center gap-1 min-[480px]:gap-1.5 flex-shrink-0">
-        <button
-          type="button"
-          onClick={() => onNudge(-1)}
-          disabled={locked || position === 0}
-          data-testid="order-up"
-          aria-label={moveUpLabel}
-          className={NUDGE_UP}
-        >
-          <ChevronUp className="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onNudge(1)}
-          disabled={locked || position === count - 1}
-          data-testid="order-down"
-          aria-label={moveDownLabel}
-          className={NUDGE_DOWN}
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </span>
     </Reorder.Item>
   );
 }

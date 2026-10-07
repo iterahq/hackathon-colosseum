@@ -26,6 +26,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { HostOwnsSettledAction } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
@@ -47,7 +48,7 @@ import { persistActivityProgress } from '@/services/progress.service';
 import { resumeLesson } from '@/services/lessonResume.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import { confirmLessonAnswer, type StoredLessonAnswer } from '@/utils/lessonAnswerStorage';
-import { codeBudgetSpentAt } from '@/services/codeAttempts.service';
+import { clearCodeAttempts, codeBudgetSpentAt } from '@/services/codeAttempts.service';
 import { useLessonAnswers } from '@/hooks/useLessonAnswers';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
@@ -121,6 +122,12 @@ export default function LessonPlayer() {
   // screen showing its graded state, and only the footer's "Continuar" advances.
   // Non-graded kinds (concept/video/document) advance immediately (no footer).
   const [pending, setPending] = useState<FooterResult | null>(null);
+  // The finished exercise the learner chose to do again, and how many times a
+  // redo has started (part of the activity's key, so it re-mounts fresh). A redo
+  // is PRACTICE: the pass already stands, so it writes nothing — no second
+  // attempt row, no second XP award — and the first answer is what review keeps.
+  const [redoing, setRedoing] = useState<string | null>(null);
+  const [redoCount, setRedoCount] = useState(0);
   // Content the current activity produced, held between `handleComplete` and the
   // commit in `advance`. A ref (not state) on purpose — it must not trigger a
   // re-render, and it must survive the footer's review beat unchanged.
@@ -166,6 +173,7 @@ export default function LessonPlayer() {
     setSaveErrorFor(null);
     setSaving(false);
     setPending(null);
+    setRedoing(null);
     setResuming(true);
     loadAnswers({});
     settleWriteRef.current = null;
@@ -230,10 +238,16 @@ export default function LessonPlayer() {
   // The failed save belongs to ONE activity: the retry replays that activity's
   // pending answer, so it is only offered while that activity is on screen.
   const saveError = saveErrorFor !== null && saveErrorFor === current?.id;
+  const practising = !!current && redoing === current.id;
   const reviewing =
-    !!current && (doneIds.has(current.id) || (!!answers[current.id] && pending === null && !saving));
+    !!current &&
+    !practising &&
+    (doneIds.has(current.id) || (!!answers[current.id] && pending === null && !saving));
   const missedBefore =
     reviewing && !!current && !doneIds.has(current.id) && answers[current.id]?.correct === false;
+  // Anything the learner DID can be done again; a screen that was only read cannot.
+  const canRedo =
+    reviewing && !missedBefore && !!current && (isExerciseActivity(current) || isSceneKind(current.kind));
 
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
@@ -244,9 +258,11 @@ export default function LessonPlayer() {
   // cards, so they always keep the narrow measure.
   const maxWidthClass = columnMaxWidthClass(completed ? undefined : current?.kind);
 
-  // Clear a stale footer whenever the activity on screen changes.
+  // Clear a stale footer whenever the activity on screen changes. Leaving a redo
+  // halfway ends it: the exercise is back to its finished state on return.
   useEffect(() => {
     setPending(null);
+    setRedoing(null);
   }, [current?.id]);
 
   // ── Duration (plan 20260731-itera-eventos-aprendizagem, Phase 1) ───────────
@@ -339,12 +355,13 @@ export default function LessonPlayer() {
             activityId: current.id,
             startedAt: activityStartedAt,
             read: duration.read,
-            reviewing,
+            // A redo left halfway is not an abandoned attempt either.
+            reviewing: reviewing || practising,
             specSnapshot: buildSpecSnapshot(current.spec, locale),
             pedagogicalContext: buildPedagogicalContext(current),
           }
         : null,
-    [current, activityStartedAt, duration.read, reviewing, locale]
+    [current, activityStartedAt, duration.read, reviewing, practising, locale]
   );
   const beacon = useAbandonmentBeacon(beaconTarget);
 
@@ -402,6 +419,16 @@ export default function LessonPlayer() {
     // would raise the feedback footer over the review Continuar and write a
     // second attempt for work the learner is only re-reading.
     if (reviewing) return;
+    // A redo shows its verdict and moves on like the first time, minus the write.
+    if (practising) {
+      if (isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind)) {
+        if (!isSceneKind(current.kind)) onSettle(correct);
+        setPending({ correct, message: detail?.message, explanation: detail?.explanation });
+        return;
+      }
+      finishRedo();
+      return;
+    }
     // A pass already settled during this review beat stands; a kind that fires
     // again must not write a second pass (and a second XP award).
     const settled = settleWriteRef.current;
@@ -673,6 +700,10 @@ export default function LessonPlayer() {
 
   function handleContinue() {
     if (!pending) return;
+    if (practising) {
+      finishRedo();
+      return;
+    }
     void advance(pending.correct);
   }
 
@@ -703,6 +734,23 @@ export default function LessonPlayer() {
   function retryMissed() {
     if (!current || !missedBefore) return;
     retryAnswer(current.id);
+  }
+
+  /** Open a finished exercise again, blank and with its `code` lives back. */
+  function startRedo() {
+    if (!current || !canRedo) return;
+    clearCodeAttempts(current.id);
+    setRedoCount((n) => n + 1);
+    setRedoing(current.id);
+  }
+
+  /** The redo is over, hit or miss: step on, and the first answer stands. */
+  function finishRedo() {
+    if (!current) return;
+    clearCodeAttempts(current.id);
+    setPending(null);
+    setRedoing(null);
+    goForward();
   }
 
   // An unsettled answer (footer up, or its write in flight) only moves on through the
@@ -805,12 +853,19 @@ export default function LessonPlayer() {
                   data-testid="lesson-activity"
                   data-activity-id={current.id}
                 >
-                  <ActivityRenderer
-                    key={`${current.id}:${retryCount}`}
-                    activity={{ ...current, status: reviewing ? 'done' : current.status }}
-                    onComplete={handleComplete}
-                    priorAnswer={reviewing ? answers[current.id] : undefined}
-                  />
+                  {/* The footer and the row below own "Continuar": a settled
+                      exercise does not keep a dead button of its own above them. */}
+                  <HostOwnsSettledAction>
+                    <ActivityRenderer
+                      key={`${current.id}:${retryCount}:${redoCount}`}
+                      activity={{
+                        ...current,
+                        status: reviewing ? 'done' : practising ? 'todo' : current.status,
+                      }}
+                      onComplete={handleComplete}
+                      priorAnswer={reviewing ? answers[current.id] : undefined}
+                    />
+                  </HostOwnsSettledAction>
                 </div>
               )}
 
@@ -831,6 +886,7 @@ export default function LessonPlayer() {
                 <LessonStepActions
                   onContinue={reviewing ? goForward : conceptContinue}
                   onRetry={missedBefore ? retryMissed : undefined}
+                  onRedo={canRedo ? startRedo : undefined}
                   busy={saving}
                 />
               )}

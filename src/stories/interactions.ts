@@ -125,37 +125,88 @@ export async function connectPairs(canvasElement: Canvas, pairs: [string, string
 /* ── 4 · Ordenação ────────────────────────────────────────────────────────── */
 
 /**
- * Coloca a lista na ordem dos rótulos, usando SÓ o botão "subir" — o mesmo
- * affordance acessível que o aluno de teclado/touch usa (o drag nativo do
- * `OrderActivity` não é dirigível em jsdom, e o componente oferece os dois).
+ * Arrasta a linha `from` até a posição `to` pela alça (o grip), com o ponteiro:
+ * o único jeito de reordenar o `order`. Num browser de verdade o framer
+ * acompanha o `pointermove`; o jsdom não tem layout, então os testes de jsdom
+ * passam o próprio `drag` (ver `src/test/support/orderDragDouble.tsx`).
+ */
+export async function dragOrderRowByPointer(canvasElement: Canvas, from: number, to: number) {
+  // Uma casa por vez: as linhas trocam de lugar no meio do gesto, e um arrasto
+  // longo mede o alvo num layout que já mudou.
+  const step = to > from ? 1 : -1;
+  for (let at = from; at !== to; at += step) {
+    await dragOrderRowOneSlot(canvasElement, at, at + step);
+    // A troca anima o layout; a próxima medida espera ele assentar.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+}
+
+async function dragOrderRowOneSlot(canvasElement: Canvas, from: number, to: number) {
+  const rows = all(canvasElement, 'order-item');
+  const grip = within(rows[from]).getByTestId('order-grip');
+  const start = grip.getBoundingClientRect();
+  const end = rows[to].getBoundingClientRect();
+  const clientX = start.left + start.width / 2;
+  const startY = start.top + start.height / 2;
+  const endY = end.top + end.height / 2 + (to > from ? 4 : -4);
+  // Eventos crus, um por frame: o framer só troca duas linhas quando o ponteiro
+  // tem VELOCIDADE, e ela vem do intervalo entre dois `pointermove`.
+  const at = (clientY: number): PointerEventInit => ({
+    clientX,
+    clientY,
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    button: 0,
+    buttons: 1,
+    bubbles: true,
+    cancelable: true,
+  });
+  const frame = () => new Promise((resolve) => setTimeout(resolve, 20));
+  const STEPS = 12;
+  grip.dispatchEvent(new PointerEvent('pointerdown', at(startY)));
+  for (let step = 1; step <= STEPS; step += 1) {
+    await frame();
+    grip.dispatchEvent(new PointerEvent('pointermove', at(startY + ((endY - startY) * step) / STEPS)));
+  }
+  await frame();
+  grip.dispatchEvent(new PointerEvent('pointerup', { ...at(endY), buttons: 0 }));
+  await frame();
+}
+
+/**
+ * Coloca a lista na ordem dos rótulos arrastando as linhas.
  *
- * Selection-sort: para cada posição alvo, acha o item e o sobe até lá. A lista
- * é re-consultada a cada clique porque o React remonta a `<ol>`.
+ * Selection-sort: para cada posição alvo, acha o item e o arrasta até lá. A lista
+ * é re-consultada a cada arrasto porque o React remonta a `<ol>`.
  *
  * ⚠️ O `order-submit` só habilita depois de o aluno MEXER na lista (o
  * embaralhamento inicial não conta como resposta composta). Se o alvo já for a
- * ordem em que a lista nasceu, o selection-sort não clica nada e o "Enviar"
- * continuaria desabilitado — então o helper faz um vai-e-volta real (descer o
- * primeiro item e subi-lo de novo), que deixa a ordem idêntica e a atividade
+ * ordem em que a lista nasceu, o selection-sort não arrasta nada e o "Enviar"
+ * continuaria desabilitado — então o helper faz um vai-e-volta real (arrastar o
+ * primeiro item para baixo e de volta), que deixa a ordem idêntica e a atividade
  * legitimamente tocada.
  */
-export async function arrangeOrder(canvasElement: Canvas, labels: string[]) {
+export async function arrangeOrder(
+  canvasElement: Canvas,
+  labels: string[],
+  drag: (canvas: Canvas, from: number, to: number) => Promise<void> = dragOrderRowByPointer,
+) {
   let moves = 0;
   for (let target = 0; target < labels.length; target += 1) {
-    for (let guard = 0; guard <= labels.length; guard += 1) {
-      const items = all(canvasElement, 'order-item');
-      const current = items.findIndex((li) => (li.textContent ?? '').includes(labels[target]));
-      if (current === -1) throw new Error(`order: item ${JSON.stringify(labels[target])} não está na lista`);
-      if (current === target) break;
-      if (current < target) throw new Error(`order: item ${labels[target]} já passou da posição alvo`);
-      await userEvent.click(within(items[current]).getByTestId('order-up'));
-      moves += 1;
-      if (guard === labels.length) throw new Error('order: não convergiu — o botão "subir" não moveu o item');
-    }
+    const items = all(canvasElement, 'order-item');
+    const current = items.findIndex((li) => (li.textContent ?? '').includes(labels[target]));
+    if (current === -1) throw new Error(`order: item ${JSON.stringify(labels[target])} não está na lista`);
+    if (current === target) continue;
+    if (current < target) throw new Error(`order: item ${labels[target]} já passou da posição alvo`);
+    await drag(canvasElement, current, target);
+    moves += 1;
+    const after = all(canvasElement, 'order-item').findIndex((li) => (li.textContent ?? '').includes(labels[target]));
+    if (after !== target) throw new Error(`order: o arrasto não moveu ${JSON.stringify(labels[target])} para a posição ${target}`);
   }
   if (moves === 0 && labels.length >= 2) {
-    await userEvent.click(within(all(canvasElement, 'order-item')[0]).getByTestId('order-down'));
-    await userEvent.click(within(all(canvasElement, 'order-item')[1]).getByTestId('order-up'));
+    await drag(canvasElement, 0, 1);
+    await drag(canvasElement, 1, 0);
   }
 }
 

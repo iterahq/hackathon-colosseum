@@ -1,11 +1,11 @@
 /**
  * Order — reorder a scrambled sequence into `correct_order` (plan: ≈ "unscramble").
  * Reorder by dragging the row (framer-motion `Reorder`: the grip on touch, the
- * whole row with a mouse) OR the up/down buttons (keyboard/touch accessible). Submit compares the current order to `correct_order`. Reuses
- * InstructionPanel + `onComplete(correct)`.
+ * whole row with a mouse). Submit compares the current order to `correct_order`.
+ * Reuses InstructionPanel + `onComplete(correct)`.
  *
- * NO story-only seams (ADR-4): answered/correct/incorrect are reached by moving
- * items with the up/down controls, from the story's own `play`. `priorAnswer`
+ * NO story-only seams (ADR-4): answered/correct/incorrect are reached by dragging
+ * items, from the story's own `play`. `priorAnswer`
  * replays the SEQUENCE this activity handed up earlier — only ever a real
  * permutation of the authored items — and the position colors are re-derived
  * from it exactly as they are after a live submit
@@ -16,8 +16,8 @@
  *     the shuffle occasionally deals an acerto for zero work (`learnerShuffle`);
  *   • submitting requires having MOVED something: the list arrives populated, so
  *     "there is a sequence on screen" is not a composed answer;
- *   • after submit the reorder controls are DISABLED, never unmounted — the
- *     learner keeps looking at the arrangement they are being graded on.
+ *   • after submit the rows are LOCKED, never unmounted — the learner keeps
+ *     looking at the arrangement they are being graded on.
  */
 import { useState } from 'react';
 import { Reorder } from 'framer-motion';
@@ -34,7 +34,7 @@ import { answerMachine } from '../internal/answerMachine.js';
 import { priorOrder } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
-import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton } from '../components/parts.js';
 import { OrderRow } from '../components/OrderRow.js';
 import { useOrderDrag } from '../components/useOrderDrag.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
@@ -51,7 +51,7 @@ export function OrderActivity({
   reveal?: boolean;
   priorAnswer?: ActivityCompletion;
 }) {
-  const { t } = useActivityI18n();
+  const { t, locale } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -104,27 +104,9 @@ export function OrderActivity({
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<ArrangementAction>(activity.id);
 
-  // The ONE place a learner's move is recorded, whether it came from a button
-  // or from the end of a drag.
-  function recordMove(itemId: string, from: number, to: number, via: 'drag' | 'button') {
-    // `via` separates the learner who dragged from the learner on a phone using
-    // the arrows — same permutation, different interaction cost.
-    trace.record('item_moved', { item_id: itemId, from, to, via });
+  function recordMove(itemId: string, from: number, to: number) {
+    trace.record('item_moved', { item_id: itemId, from, to, via: 'drag' });
     setTouched(true);
-  }
-
-  function move(from: number, to: number) {
-    if (locked || to < 0 || to >= order.length) return;
-    // AFTER the guard, so a no-op nudge at the top of the list is not recorded
-    // as a move the learner never made; BEFORE the setState, so the updater
-    // stays free of side effects (StrictMode double-invokes it in dev).
-    recordMove(order[from], from, to, 'button');
-    setOrder((prev) => {
-      const next = [...prev];
-      const [x] = next.splice(from, 1);
-      next.splice(to, 0, x);
-      return next;
-    });
   }
 
   // Only the DROP of a drag counts as a move (see useOrderDrag).
@@ -132,7 +114,7 @@ export function OrderActivity({
     order,
     locked,
     setOrder,
-    onDrop: (id, from, to) => recordMove(id, from, to, 'drag'),
+    onDrop: recordMove,
   });
 
   // ONE-STEP: "Enviar" grades AND completes in the same click. Grade off the
@@ -143,7 +125,11 @@ export function OrderActivity({
     // Hand the settled sequence up as text (dropped unless the author opted in).
     const sequence = order.map((id, i) => `${i + 1}. ${byId(id)?.label ?? id}`).join('\n');
     trace.record('answer_submitted', { order: [...order] });
-    onComplete(isOrderCorrect, { response: sequence, actions: trace.drain() });
+    onComplete(isOrderCorrect, {
+      response: sequence,
+      actions: trace.drain(),
+      explanation: answerExplanationText(activity.spec, locale, isOrderCorrect),
+    });
   }
 
   return (
@@ -169,21 +155,17 @@ export function OrderActivity({
               id={id}
               option={byId(id)}
               position={idx}
-              count={displayOrder.length}
               locked={locked}
               verdict={verdict}
-              moveUpLabel={t('activity.moveUp')}
-              moveDownLabel={t('activity.moveDown')}
               onDragStart={() => drag.onDragStart(id)}
               onDragEnd={drag.onDragEnd}
-              onNudge={(delta) => move(idx, idx + delta)}
             />
           );
         })}
       </Reorder.Group>
       {order.length === 0 && <p className="mt-3 text-sm text-muted-foreground">{t('activity.noItems')}</p>}
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
 
       <SubmitButton
         submitted={m.submitLocked}

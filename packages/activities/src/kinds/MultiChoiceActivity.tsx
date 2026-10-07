@@ -23,7 +23,7 @@ import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
 import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
-import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton } from '../components/parts.js';
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
 import { InlineLabel } from '../components/InlineLabel.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
@@ -61,7 +61,7 @@ export function MultiChoiceActivity({
   reveal?: boolean;
   priorAnswer?: ActivityCompletion;
 }) {
-  const { t } = useActivityI18n();
+  const { t, locale } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -124,7 +124,11 @@ export function MultiChoiceActivity({
       .map((id) => `- ${options.find((o) => o.id === id)?.label ?? id}`)
       .join('\n');
     trace.record('answer_submitted', { option_ids: [...selected] });
-    onComplete(isCorrect, { response: chosen, actions: trace.drain() });
+    onComplete(isCorrect, {
+      response: chosen,
+      actions: trace.drain(),
+      explanation: answerExplanationText(activity.spec, locale, isCorrect),
+    });
   }
 
   const optionsRef = useRef<HTMLDivElement>(null);
@@ -179,7 +183,7 @@ export function MultiChoiceActivity({
         )}
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
 
       <SubmitButton
         submitted={m.submitLocked}

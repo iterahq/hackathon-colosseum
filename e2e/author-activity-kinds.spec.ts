@@ -98,6 +98,7 @@
 import { test, expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { ITERA_BASE_URL } from './support/capabilities';
 import { requireCapabilities, skipBlocked } from './support/gate';
+import { dragOrderRow } from './support/orderDrag';
 
 const BASE = ITERA_BASE_URL;
 const USER = process.env.ITERA_SMOKE_USERNAME ?? '';
@@ -227,10 +228,9 @@ const CASES: KindCase[] = [
     kind: 'order',
     depth: 'verdict',
     drive: async (page) => {
-      // The list starts in an answerable state; nudge it so the submit is a
+      // The list starts in an answerable state; drag a row so the submit is a
       // real learner action rather than an accident of the initial order.
-      const down = page.getByTestId('order-down').first();
-      if ((await down.count()) && (await down.isEnabled())) await down.click();
+      if ((await page.getByTestId('order-item').count()) >= 2) await dragOrderRow(page, 0, 1);
       await clickFirst(page, 'order-submit');
     },
   },

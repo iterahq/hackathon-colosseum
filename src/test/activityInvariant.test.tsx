@@ -63,6 +63,18 @@ import {
   submitAnswer,
   writeReflection,
 } from '@/stories/interactions';
+import { dragOrderRow } from './support/orderDragDouble';
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const { withReorderDouble } = await import('./support/orderDragDouble');
+  return withReorderDouble(await importOriginal<object>());
+});
+
+/** jsdom has no layout, so a drag is played through the `Reorder` double. */
+const jsdomDrag = async (c: HTMLElement, from: number, to: number) => {
+  const id = within(c).getAllByTestId('order-item')[from].getAttribute('data-option-id')!;
+  dragOrderRow(id, to);
+};
 
 /** Como dirigir UM contrato até um veredito, e qual veredito esperar. */
 interface Drive {
@@ -201,11 +213,11 @@ const DRIVES: Record<ContractKey, Drive> = {
   order: {
     kind: 'order',
     correct: async (c) => {
-      await arrangeOrder(c, ORDER_RIGHT);
+      await arrangeOrder(c, ORDER_RIGHT, jsdomDrag);
       await submitAnswer(c, 'order-submit');
     },
     incorrect: async (c) => {
-      await arrangeOrder(c, ORDER_WRONG);
+      await arrangeOrder(c, ORDER_WRONG, jsdomDrag);
       await submitAnswer(c, 'order-submit');
     },
   },

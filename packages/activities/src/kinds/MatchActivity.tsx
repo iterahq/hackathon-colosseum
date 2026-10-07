@@ -39,7 +39,7 @@ import { priorPairs } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
 import { InlineLabel } from '../components/InlineLabel.js';
-import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton } from '../components/parts.js';
 import { tactileSurface, type SurfaceState } from '../components/tactileSurface.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import { TOUCH_SURFACE } from '../components/touchSurface.js';
@@ -124,7 +124,7 @@ export function MatchActivity({
   reveal?: boolean;
   priorAnswer?: ActivityCompletion;
 }) {
-  const { t } = useActivityI18n();
+  const { t, locale } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -245,7 +245,11 @@ export function MatchActivity({
     trace.record('answer_submitted', {
       pairs: made.map((p) => [p.left_id, p.right_id]),
     });
-    onComplete(isMatchCorrect, { response: pairing, actions: trace.drain() });
+    onComplete(isMatchCorrect, {
+      response: pairing,
+      actions: trace.drain(),
+      explanation: answerExplanationText(activity.spec, locale, isMatchCorrect),
+    });
   }
 
   useLayoutEffect(() => {
@@ -483,7 +487,7 @@ export function MatchActivity({
         </div>
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
 
       <SubmitButton
         submitted={m.submitLocked}

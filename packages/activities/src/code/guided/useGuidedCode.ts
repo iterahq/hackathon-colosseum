@@ -187,13 +187,13 @@ export function useGuidedCode(
    * unclicked. Whoever wires a new affordance later inherits the rule for free.
    */
   const submit = useCallback(() => {
-    if (revealed || outOfLives || !filled) return;
+    if (revealed || outOfLives) return;
     // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
     // fase: o guiado corrige localmente e sem round trip, então um efeito só
     // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
     if (!grade.allCorrect) attempts.spend();
     setPhase('submitted');
-  }, [revealed, outOfLives, filled, grade.allCorrect, attempts]);
+  }, [revealed, outOfLives, grade.allCorrect, attempts]);
 
   const retry = useCallback(() => {
     if (outOfLives) return;
@@ -210,10 +210,10 @@ export function useGuidedCode(
   }, [activityId, revealed, outOfLives]);
 
   const complete = useCallback(() => {
-    if (revealed || !filled) return;
+    if (revealed) return;
     setPhase('settled');
     onComplete(grade.allCorrect, { response: source });
-  }, [revealed, filled, grade.allCorrect, onComplete, source]);
+  }, [revealed, grade.allCorrect, onComplete, source]);
 
   return {
     values: shownValues,

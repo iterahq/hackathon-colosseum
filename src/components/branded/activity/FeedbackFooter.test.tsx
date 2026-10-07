@@ -24,6 +24,21 @@ describe('FeedbackFooter', () => {
     expect(screen.getByTestId('feedback-footer-continue')).toBeTruthy();
   });
 
+  it('labels the explanation under the title, with the single Tera face', () => {
+    renderFooter();
+    const label = screen.getByTestId('feedback-footer-explanation-title');
+    expect(label.textContent).toBe('Entenda o porquê');
+    expect(label.compareDocumentPosition(screen.getByTestId('feedback-footer-explanation'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(document.querySelectorAll('[data-tera]')).toHaveLength(1);
+  });
+
+  it('shows no label when there is no explanation', () => {
+    renderFooter({ result: { correct: false } });
+    expect(screen.queryByTestId('feedback-footer-explanation-title')).toBeNull();
+  });
+
   it('pads the footer by the safe-area insets and falls back to 0px', () => {
     renderFooter();
     const inner = screen.getByTestId('feedback-footer').firstElementChild as HTMLElement;

@@ -30,6 +30,7 @@ export function GuidedCodeWorkspace({
   onSet,
   onPickChip,
   onReset,
+  hideReset = false,
 }: {
   variant: GuidedVariant;
   lines: GuidedLine[];
@@ -50,6 +51,7 @@ export function GuidedCodeWorkspace({
   /** A chip left the bank; the pane decides which hole it lands in. */
   onPickChip: (word: string) => void;
   onReset: () => void;
+  hideReset?: boolean;
 }) {
   const hasBank = variant === 'options' || variant === 'mixed';
 
@@ -81,7 +83,7 @@ export function GuidedCodeWorkspace({
 
       <CodeHelpLink help={help} />
 
-      <CodeResetControl onReset={onReset} disabled={resetDisabled} className="mt-2" />
+      {!hideReset && <CodeResetControl onReset={onReset} disabled={resetDisabled} className="mt-2" />}
     </div>
   );
 }

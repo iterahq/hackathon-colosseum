@@ -33,16 +33,33 @@
  * fallback que discordam é como um leitor EN acaba vendo frases diferentes
  * dependendo de qual componente renderizou.
  */
+import type { Locale } from '@iterahq/activity-spec/runtime';
 import { useActivityI18n } from '../context.js';
 import { parseInline } from '../internal/richText.js';
 import { resolveLocalizedText } from '../internal/localizedText.js';
 import { RichSpans } from './RichSpans.js';
 import { TeraAvatar } from './TeraAvatar.js';
 
+/**
+ * The authored "porquê" as text for a MISS, or `undefined` when there is none or
+ * the answer was right. The kinds hand it up in `onComplete`, so a host with a
+ * feedback footer shows it THERE; this component then stays out of the way.
+ */
+export function answerExplanationText(
+  spec: Record<string, unknown> | undefined,
+  locale: Locale,
+  correct: boolean,
+): string | undefined {
+  if (correct) return undefined;
+  const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
+  return text === '' ? undefined : text;
+}
+
 export function AnswerExplanation({
   spec,
   shown,
   correct,
+  handedUp = false,
 }: {
   spec: Record<string, unknown> | undefined;
   /** `shown` do answerMachine: o gabarito já está na tela. */
@@ -53,10 +70,16 @@ export function AnswerExplanation({
    * revelar, quem não enviou nada é justamente quem mais precisa lê-lo.
    */
   correct: boolean | undefined;
+  /**
+   * The learner just submitted in THIS session, so the kind already handed the
+   * explanation up through `onComplete` for the host's feedback footer. On a
+   * review (re-opened activity, no footer) it is `false` and the box shows.
+   */
+  handedUp?: boolean;
 }) {
   const { t, locale } = useActivityI18n();
   const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
-  if (!shown || correct === true || text === '') return null;
+  if (!shown || correct === true || text === '' || handedUp) return null;
 
   return (
     <div

@@ -11,6 +11,7 @@ import {
 } from './support/activityFixtures';
 import { STUB_SUPABASE_URL } from './support/harnessStub';
 import { installLessonSubstrate, lessonUrl } from './support/lessonStub';
+import { dragOrderRow } from './support/orderDrag';
 
 const option = (page: Page, id: string) =>
   page.locator(`[data-testid="single-choice-option"][data-option-id="${id}"]`);
@@ -136,6 +137,38 @@ test.describe('an answered exercise follows the learner to another device', () =
     await expect(option(page, 'a')).toHaveAttribute('data-state', 'correct');
     await expect(option(page, 'a')).toHaveAttribute('data-selected', 'true');
     await expect(page.getByTestId('lesson-retry-missed')).toHaveCount(0);
+  });
+});
+
+test.describe('a finished exercise can be done again', () => {
+  test('"Refazer" reopens it blank, shows the verdict, and writes no second attempt', async ({ page }) => {
+    await installLessonSubstrate(page, SINGLE_CHOICE);
+    const writes = countAttemptWrites(page);
+    await page.goto(lessonUrl(SINGLE_CHOICE));
+
+    await option(page, 'a').click();
+    await page.getByTestId('single-choice-submit').click();
+    await page.getByTestId('feedback-footer-continue').click();
+    await expect.poll(() => shownActivity(page)).not.toBe(SINGLE_CHOICE.id);
+
+    await page.getByTestId('lesson-prev').click();
+    await expect.poll(() => shownActivity(page)).toBe(SINGLE_CHOICE.id);
+    // One action row: the exercise keeps no locked button above "Continuar".
+    await expect(page.getByTestId('single-choice-submit')).toHaveCount(0);
+    await page.getByTestId('lesson-redo').click();
+
+    await expect(option(page, 'b')).toBeEnabled();
+    await option(page, 'b').click();
+    await page.getByTestId('single-choice-submit').click();
+    await expect(page.getByTestId('feedback-footer')).toHaveAttribute('data-correct', 'false');
+    await page.getByTestId('feedback-footer-continue').click();
+    await expect.poll(() => shownActivity(page)).not.toBe(SINGLE_CHOICE.id);
+
+    // The pass stands: back on it, the first answer is the one on screen.
+    await page.getByTestId('lesson-prev').click();
+    await expect(option(page, 'a')).toHaveAttribute('data-state', 'correct');
+    await expect(page.getByTestId('lesson-redo')).toBeVisible();
+    expect(writes.passed).toEqual([true]);
   });
 });
 
@@ -266,10 +299,10 @@ const RESTORING_KINDS: Array<{
   {
     fixture: ORDER,
     miss: async (page) => {
-      await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+      await dragOrderRow(page, 0, 1);
       await page.getByTestId('order-submit').click();
     },
-    control: (page) => page.getByTestId('order-item').nth(0).getByTestId('order-down'),
+    control: (page) => page.getByTestId('order-item').nth(0).getByTestId('order-grip'),
     drawn: async () => {},
   },
 ];

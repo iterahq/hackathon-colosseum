@@ -95,10 +95,13 @@ describe('interação real — todo `play` de story roda no CI (T1)', () => {
     // `getBoundingClientRect` (0×0 no jsdom), e o `live_type` só abre depois de
     // ~3 s de digitação do fantasma com timers reais seguidos de 700 ms de texto
     // parado — um `play` que no jsdom ou estoura o timeout ou mede nada.
+    //
+    // `OrderActivity` (2026-10-07): as setas ↑/↓ saíram e reordenar é só por
+    // arrasto, que o framer mede com layout e velocidade do ponteiro.
     const files = new Set(BROWSER_ONLY.map((s) => s.file));
     expect(
       [...files].filter(
-        (f) => !/MatchActivity|CodeSnackActivity|ActivityStyleFreeze|XrayActivity|LiveTypeActivity/.test(f),
+        (f) => !/MatchActivity|CodeSnackActivity|ActivityStyleFreeze|XrayActivity|LiveTypeActivity|OrderActivity/.test(f),
       ),
     ).toEqual([]);
   });

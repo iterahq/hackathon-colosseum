@@ -14,7 +14,7 @@ import { ACTIVITY_CONTRACTS, type ContractFixture } from '@/stories/contractFixt
 const HIT_AREA = /coarse:before:|touch-hit|coarse:min-h-11/;
 
 const CONTROLS: Partial<Record<ActivityKind, string>> = {
-  order: '[data-testid="order-up"], [data-testid="order-down"]',
+  order: '[data-testid="order-grip"]',
   arrange: '[data-testid^="arrange-up-"], [data-testid^="arrange-down-"]',
   selector: '[data-testid^="selector-option-"]',
   query: '[data-testid^="query-clause-"]',

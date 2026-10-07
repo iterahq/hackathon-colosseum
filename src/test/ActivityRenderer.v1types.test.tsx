@@ -3,6 +3,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { Activity, ActivityKind } from '@/types/content';
+import { dragOrderRow } from './support/orderDragDouble';
+
+vi.mock('framer-motion', async (importOriginal) => {
+  const { withReorderDouble } = await import('./support/orderDragDouble');
+  return withReorderDouble(await importOriginal<object>());
+});
 
 /**
  * v1 general learning-activity taxonomy (plan 20260703). Asserts the branded
@@ -129,9 +135,9 @@ describe('ActivityRenderer — v1 general activity kinds', () => {
     );
     // Options render in a per-learner shuffled order, so drive the list into the
     // correct sequence regardless of the starting order: if 'First' isn't on top,
-    // move it up (2 items → one nudge is enough).
+    // drag it to the top (2 items → one drag is enough).
     if (!screen.getAllByTestId('order-item')[0].textContent?.includes('First')) {
-      fireEvent.click(screen.getAllByTestId('order-down')[0]);
+      dragOrderRow('a', 0);
     }
     fireEvent.click(screen.getByTestId('order-submit'));
     expect(onComplete).toHaveBeenCalledWith(true, expect.objectContaining({ response: '1. First\n2. Second' }));

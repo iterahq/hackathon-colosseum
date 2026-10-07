@@ -125,9 +125,19 @@ describe('CodeWithOptions (bank)', () => {
     expect(blank('hook')).not.toHaveTextContent('useState');
   });
 
-  it('só libera o enviar com todas as lacunas preenchidas', () => {
+  it('enviar com lacunas vazias corrige como errado, sem travar', () => {
     const onComplete = renderGuided(CODE_OPTIONS_SPEC);
-    expect(screen.getByTestId('guided-submit')).toBeDisabled();
+    expect(screen.getByTestId('guided-submit')).toBeEnabled();
+
+    click(screen.getByTestId('guided-submit'));
+    expect(screen.getByTestId('guided-feedback')).toHaveAttribute('data-all-correct', 'false');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByTestId('guided-retry')).toBeInTheDocument();
+  });
+
+  it('o enviar fica livre e corrige certo quando todas as lacunas estão preenchidas', () => {
+    const onComplete = renderGuided(CODE_OPTIONS_SPEC);
+    expect(screen.getByTestId('guided-submit')).toBeEnabled();
 
     click(chip('useState'));
     click(chip('onClick'));
@@ -269,7 +279,7 @@ describe('CodeWithTextInput (text)', () => {
     );
     renderGuided(CODE_TEXT_SPEC);
     expect(blank('setter')).toHaveValue('setCurtidas');
-    expect(screen.getByTestId('guided-submit')).toBeDisabled();
+    expect(screen.getByTestId('guided-submit')).toBeEnabled();
   });
 
   it('"recomeçar" esvazia as lacunas e joga as duas metades fora', () => {
@@ -331,7 +341,8 @@ describe('code guiado — o aluno preso', () => {
     // Vazia de verdade: com o valor restaurado no estado o enviar abria e o
     // veredito falava de uma palavra que não estava na tela.
     expect(blank('evento')).toHaveValue('');
-    expect(screen.getByTestId('guided-submit')).toBeDisabled();
+    click(screen.getByTestId('guided-submit'));
+    expect(screen.getByTestId('guided-feedback')).toHaveAttribute('data-all-correct', 'false');
   });
 
   it('o veredito diz QUAL lacuna errou, não só que uma errou', () => {

@@ -29,7 +29,7 @@ import { answerMachine, choiceOptionState } from '../internal/answerMachine.js';
 import { priorOptionIds } from '../internal/priorAnswer.js';
 
 import { InstructionPanel } from '../components/InstructionPanel.js';
-import { ActivityShell, AnswerExplanation, SubmitButton } from '../components/parts.js';
+import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton } from '../components/parts.js';
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
 import { InlineLabel } from '../components/InlineLabel.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
@@ -66,7 +66,7 @@ export function SingleChoiceActivity({
   reveal?: boolean;
   priorAnswer?: ActivityCompletion;
 }) {
-  const { t } = useActivityI18n();
+  const { t, locale } = useActivityI18n();
   // The learner half of the shuffle seed, injected by the host (ADR-3):
   // it used to be read straight out of the Player's localStorage.
   const scope = useLearnerScope();
@@ -123,6 +123,7 @@ export function SingleChoiceActivity({
       // here, which is the difference between "got it right" and "got it right
       // after changing their mind twice".
       actions: trace.drain(),
+      explanation: answerExplanationText(activity.spec, locale, isCorrect),
     });
   }
 
@@ -183,7 +184,7 @@ export function SingleChoiceActivity({
         )}
       </div>
 
-      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} />
+      <AnswerExplanation spec={activity.spec} shown={m.shown} correct={m.gradeResult} handedUp={submitted} />
 
       <SubmitButton
         submitted={m.submitLocked}

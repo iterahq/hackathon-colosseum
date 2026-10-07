@@ -11,10 +11,11 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import { transitionKindOf } from '../oneBehaviourKinds.js';
+import { useHostOwnsSettledAction } from './settledAction.js';
 import { TACTILE_CTA, TACTILE_CTA_MISSED, TACTILE_CTA_SETTLED } from './tactile.js';
 import { TeraPeek, TeraPeekRoom, useTeraMentioned } from './teraPresence.js';
 
-export { AnswerExplanation } from './AnswerExplanation.js';
+export { AnswerExplanation, answerExplanationText } from './AnswerExplanation.js';
 
 /** Evergreen eyebrow badge naming the activity kind. */
 export function KindBadge({ icon: Icon, label, className = '' }: { icon: LucideIcon; label: string; className?: string }) {
@@ -104,7 +105,9 @@ export function DoneButton({
   disabled?: boolean;
 }) {
   const { t } = useActivityI18n();
+  const hostOwns = useHostOwnsSettledAction();
   const locked = Boolean(done);
+  if (hostOwns && locked) return null;
   return (
     <button
       onClick={onClick}
@@ -156,6 +159,8 @@ export function SubmitButton({
   testId?: string;
 }) {
   const { t } = useActivityI18n();
+  const hostOwns = useHostOwnsSettledAction();
+  if (hostOwns && submitted) return null;
   const graded = submitted && correct !== undefined;
   const incorrect = graded && correct === false;
   return (

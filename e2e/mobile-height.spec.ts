@@ -89,8 +89,10 @@ test.describe('a phone shows the activity without a long scroll', () => {
       .toBeLessThan(1);
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const footerBox = (await footer.boundingBox())!;
-    const submit = (await page.getByTestId('single-choice-submit').boundingBox())!;
-    expect(submit.y + submit.height).toBeLessThanOrEqual(footerBox.y);
+    // The footer owns "Continuar": the card keeps no locked button of its own.
+    await expect(page.getByTestId('single-choice-submit')).toHaveCount(0);
+    const card = (await page.getByTestId('activity-shell').boundingBox())!;
+    expect(card.y + card.height).toBeLessThanOrEqual(footerBox.y);
     const reserve = (await measure(page, undefined)).bands.bottomReserve;
     expect(reserve).toBeGreaterThanOrEqual(footerBox.height);
     expect(reserve).toBeLessThanOrEqual(footerBox.height + 32);
