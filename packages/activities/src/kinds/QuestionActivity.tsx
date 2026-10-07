@@ -333,7 +333,8 @@ export function QuestionActivityBody({
           </button>
         )}
 
-        {options.length === 0 && (
+        {/* `pickHint="none"` is the caller saying there is nothing to pick. */}
+        {options.length === 0 && pickHint !== 'none' && (
           <p className="text-sm text-muted-foreground">{t('activity.noOptions')}</p>
         )}
       </div>

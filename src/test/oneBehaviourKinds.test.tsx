@@ -368,6 +368,8 @@ describe('question — the kind pins the input; no "Outro" on a pick kind (ADR-9
     mount(kindActivity('question_write', QUESTION_WRITE_SPEC), { onComplete });
     expect(screen.queryAllByTestId('question-option')).toHaveLength(0);
     expect(screen.queryByTestId('question-other')).toBeNull();
+    // Nothing to pick is this kind's design, not a spec with its options missing.
+    expect(screen.queryByText(/nenhuma opção configurada|no options configured/i)).toBeNull();
     expect(screen.getByTestId('question-submit')).toBeDisabled();
     await userEvent.type(screen.getByTestId('question-text'), 'Testar o contrato primeiro.');
     await userEvent.click(screen.getByTestId('question-submit'));
