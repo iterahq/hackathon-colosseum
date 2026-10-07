@@ -28,6 +28,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
+import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
+import { LessonStepActions } from '@/components/branded/lesson/LessonStepActions';
 import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
 import { LessonTitle } from '@/components/branded/lesson/LessonTitle';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
@@ -789,23 +791,7 @@ export default function LessonPlayer() {
                 />
               </div>
 
-              {saveError && (
-                <div
-                  className="mt-7 rounded-2xl border border-clay/40 bg-clay/10 px-4 py-3 text-sm text-foreground flex items-center justify-between gap-3"
-                  role="alert"
-                  data-testid="lesson-save-error"
-                >
-                  <span>{t('lesson.saveError')}</span>
-                  <button
-                    onClick={retrySave}
-                    disabled={saving}
-                    data-testid="lesson-save-retry"
-                    className="shrink-0 h-9 px-4 rounded-full bg-evergreen text-obsidiana text-sm font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-60"
-                  >
-                    {t('lesson.retrySave')}
-                  </button>
-                </div>
-              )}
+              {saveError && <LessonSaveError onRetry={retrySave} busy={saving} />}
 
               {current && (
                 // `data-activity-id` makes WHICH activity is on screen assertable
@@ -839,31 +825,12 @@ export default function LessonPlayer() {
                   it through `handleComplete` would re-award the XP. */}
               {/* A scene kind is reading, but GATED: no "Continuar" before the
                   gesture. Its completion raises the footer instead. */}
-              {/* A missed exercise offers the retry BESIDE "Continuar", not under
-                  it: a second row cost 60 px and pushed the retry off a short
-                  phone (27 px on `order`, 125 px on `multi_choice` at 390×640). */}
               {(reviewing || (current && !isExerciseActivity(current) && !isSceneKind(current.kind))) && (
-                <div className="mt-4 flex gap-3">
-                  {missedBefore && (
-                    <button
-                      type="button"
-                      onClick={retryMissed}
-                      data-testid="lesson-retry-missed"
-                      className="flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
-                    >
-                      {t('common.retry')}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={reviewing ? goForward : conceptContinue}
-                    disabled={saving}
-                    data-testid="concept-continue"
-                    className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 h-12 px-4 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {t('activity.continue')}
-                  </button>
-                </div>
+                <LessonStepActions
+                  onContinue={reviewing ? goForward : conceptContinue}
+                  onRetry={missedBefore ? retryMissed : undefined}
+                  busy={saving}
+                />
               )}
             </>
           )
