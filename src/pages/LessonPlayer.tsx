@@ -43,13 +43,9 @@ import { useI18n } from '@/i18n';
 import { persistActivityProgress } from '@/services/progress.service';
 import { resumeLesson } from '@/services/lessonResume.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
-import {
-  clearLessonAnswers,
-  confirmLessonAnswer,
-  storeLessonAnswer,
-  type StoredLessonAnswer,
-} from '@/utils/lessonAnswerStorage';
-import { clearCodeAttempts, codeBudgetSpentAt } from '@/services/codeAttempts.service';
+import { confirmLessonAnswer, type StoredLessonAnswer } from '@/utils/lessonAnswerStorage';
+import { codeBudgetSpentAt } from '@/services/codeAttempts.service';
+import { useLessonAnswers } from '@/hooks/useLessonAnswers';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
 import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
@@ -133,7 +129,7 @@ export default function LessonPlayer() {
   // What the learner answered on this device, hit or miss, read back on load.
   // `doneIds` (the server's `completed`) cannot say this: it holds no misses and
   // no answer content, so a reload re-opened every answered exercise blank.
-  const [answers, setAnswers] = useState<Record<string, StoredLessonAnswer>>({});
+  const { answers, retryCount, load: loadAnswers, record: recordAnswer, retry: retryAnswer } = useLessonAnswers();
   // The write the current exercise fired when it SETTLED. It used to wait for
   // the footer's "Continuar", so a refresh during the review beat erased a hit
   // and let a miss be dodged. `advance` awaits this instead of writing again.
@@ -142,8 +138,6 @@ export default function LessonPlayer() {
     correct: boolean;
     promise: Promise<boolean>;
   } | null>(null);
-  // Bumped by "Tentar de novo" to remount a missed exercise fresh.
-  const [retryCount, setRetryCount] = useState(0);
 
   // True until the persisted progress for this lesson has been read back (or has
   // failed to read). We hold the first render behind it so the learner never
@@ -165,10 +159,9 @@ export default function LessonPlayer() {
     setSaving(false);
     setPending(null);
     setResuming(true);
-    setAnswers({});
-    setRetryCount(0);
+    loadAnswers({});
     settleWriteRef.current = null;
-  }, [lessonId]);
+  }, [lessonId, loadAnswers]);
 
   /**
    * RESUME (E2E finding D1). The player used to write itera.progress faithfully
@@ -206,7 +199,7 @@ export default function LessonPlayer() {
     void resumeLesson(activities, () => cancelled).then((resume) => {
       if (!resume) return;
       setDoneIds(resume.doneIds);
-      setAnswers(resume.answers);
+      loadAnswers(resume.answers);
       // Everything already answered goes straight to the completion screen
       // instead of replaying a finished lesson from the top.
       setCompleted(resume.completed);
@@ -221,7 +214,7 @@ export default function LessonPlayer() {
     };
     // `activities` is memoized off the query data, so this runs once per lesson
     // load rather than once per render.
-  }, [lessonId, activities, isPending]);
+  }, [lessonId, activities, isPending, loadAnswers]);
 
   const current = activities[index];
   // Answered before this visit — completed on the server, or settled on this
@@ -358,8 +351,7 @@ export default function LessonPlayer() {
     const answer: StoredLessonAnswer = { correct: false, settledAt: spentAt, saved: false };
     // The learner answered — five times. Leaving now is not abandoning.
     beacon.markSettled(activityId);
-    storeLessonAnswer(activityId, answer);
-    setAnswers((prev) => ({ ...prev, [activityId]: answer }));
+    recordAnswer(activityId, answer);
     void writeOrQueue({
       kind: 'progress',
       activityId,
@@ -442,8 +434,7 @@ export default function LessonPlayer() {
         response: detail?.response,
         actions: detail?.actions ? [...detail.actions] : undefined,
       };
-      storeLessonAnswer(activityId, answer);
-      setAnswers((prev) => ({ ...prev, [activityId]: answer }));
+      recordAnswer(activityId, answer);
       const promise = writeSettled(current, correct).then((ok) => {
         // A miss is always durable (server or outbox); a pass only once it landed.
         if (ok) confirmLessonAnswer(activityId, answer.settledAt);
@@ -680,16 +671,7 @@ export default function LessonPlayer() {
   /** A miss stands until the learner chooses to try again — never by reload. */
   function retryMissed() {
     if (!current || !missedBefore) return;
-    const activityId = current.id;
-    clearLessonAnswers([activityId]);
-    // A `code` exercise missed by running out of lives would re-open with none.
-    clearCodeAttempts(activityId);
-    setAnswers((prev) => {
-      const next = { ...prev };
-      delete next[activityId];
-      return next;
-    });
-    setRetryCount((n) => n + 1);
+    retryAnswer(current.id);
   }
 
   // An unsettled answer (footer up, or its write in flight) only moves on through the
