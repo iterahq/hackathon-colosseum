@@ -1,20 +1,7 @@
 import vm from 'node:vm';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CONSOLE_FORWARDER_SOURCE } from './consoleForwarder.injected';
-import {
-  MAX_MESSAGES_PER_SECOND,
-  MAX_MESSAGE_CHARS,
-  MAX_RAW_CHARS_PER_SECOND,
-  MAX_RAW_MESSAGES_PER_SECOND,
-  MAX_TEXT_CHARS,
-  admitMessage,
-  admitRaw,
-  buildConsoleForwarder,
-  messageSize,
-  parseConsoleMessage,
-  redactSecrets,
-  type RawBucket,
-} from './consoleMessage';
+import { MAX_MESSAGE_CHARS, MAX_TEXT_CHARS, buildConsoleForwarder, parseConsoleMessage, readConsoleShape, redactSecrets } from './consoleMessage';
 
 const O = 'https://app.iterahq.dev';
 const post = (data: unknown, url: unknown = `${O}/lesson/1`) => parseConsoleMessage({ data, url }, O);
@@ -206,104 +193,54 @@ describe('console forwarder script (ADR-5 constraints)', () => {
   });
 });
 
-describe('admitMessage (native-side limit)', () => {
-  it(`admits ${MAX_MESSAGES_PER_SECOND} messages in a second and drops the rest`, () => {
-    let w = { start: 0, count: 0 };
-    let admitted = 0;
-    for (let i = 0; i < 50; i++) {
-      const r = admitMessage(w, 5000 + i);
-      w = r.bucket;
-      if (r.admitted) admitted += 1;
+describe('readConsoleShape (the shape alone, after the caller proved the frame)', () => {
+  it('accepts what parseConsoleMessage accepts and refuses what it refuses, without looking at a frame', () => {
+    for (const data of [wire('error', 'boom'), wire('uncaught', 'x'), '{"type":"console","level":"info","text":"x"}', 'not json', '[]', 7, 'x'.repeat(MAX_MESSAGE_CHARS + 1)]) {
+      expect(readConsoleShape(data)).toEqual(post(data));
     }
-    expect(admitted).toBe(MAX_MESSAGES_PER_SECOND);
-  });
-  it('admits again once a second has passed', () => {
-    let w = { start: 0, count: 0 };
-    for (let i = 0; i < 20; i++) w = admitMessage(w, 5000).bucket;
-    expect(admitMessage(w, 5000).admitted).toBe(false);
-    expect(admitMessage(w, 6000).admitted).toBe(true);
   });
 });
 
-describe('messageSize and admitRaw (the raw limit in front of the parsers, R-12)', () => {
-  const PAGE = `${O}/lesson/1`;
-
-  it('messageSize is the length of a string from a frame on the app origin, and null for anything else, with no parse', () => {
-    const parse = vi.spyOn(JSON, 'parse');
-    expect(messageSize({ data: 'x'.repeat(300), url: PAGE }, O)).toBe(300);
-    expect(messageSize({ data: '{"a":1}', url: O }, O)).toBe(7);
-    for (const url of ['about:srcdoc', 'null', 'https://evil.example/', 'blob:https://app.iterahq.dev/1', null, 7]) {
-      expect(messageSize({ data: '{"a":1}', url }, O)).toBeNull();
-    }
-    expect(messageSize({ data: { a: 1 }, url: PAGE }, O)).toBeNull();
-    expect(parse).not.toHaveBeenCalled();
-    parse.mockRestore();
-  });
-
-  it('admitRaw admits a count and a length per second, refuses beyond either, and opens again a second later', () => {
-    const bucket: RawBucket = { start: 0, count: 0, chars: 0 };
-    let admitted = 0;
-    for (let i = 0; i < 500; i++) if (admitRaw(bucket, 5000 + i, 10)) admitted += 1;
-    expect(admitted).toBe(MAX_RAW_MESSAGES_PER_SECOND);
-    expect(admitRaw(bucket, 6000, 10)).toBe(true);
-
-    const big: RawBucket = { start: 0, count: 0, chars: 0 };
-    let chars = 0;
-    for (let i = 0; i < 30; i++) if (admitRaw(big, 9000, 64 * 1024)) chars += 64 * 1024;
-    expect(chars).toBe(MAX_RAW_CHARS_PER_SECOND);
-    expect(admitRaw(big, 9000, 1)).toBe(false);
-  });
-
-  it('admitRaw changes the bucket in place: the same object, no new one per message', () => {
-    const bucket: RawBucket = { start: 0, count: 0, chars: 0 };
-    admitRaw(bucket, 5000, 12);
-    expect(bucket).toEqual({ start: 5000, count: 1, chars: 12 });
-  });
-
-  /** The order of `onMessage` in app/[...path].tsx (pinned as text by scripts/mobile/shell-route.test.ts). */
-  function shell() {
-    const raw: RawBucket = { start: 0, count: 0, chars: 0 };
-    let page = { start: 0, count: 0 };
-    const handled: string[] = [];
-    return {
-      handled,
-      receive(event: { data: unknown; url: unknown }, now: number) {
-        const size = messageSize(event, O);
-        if (size === null || !admitRaw(raw, now, size)) return;
-        const message = parseConsoleMessage(event, O);
-        if (message === null) return;
-        const admission = admitMessage(page, now);
-        page = admission.bucket;
-        if (admission.admitted) handled.push(message.text);
-      },
-    };
+describe('one redaction source: the script is built from the parser\'s list', () => {
+  /** Evaluates the generated `redact` of the built script (test only) and returns it. */
+  function scriptRedact(): (value: unknown) => string {
+    const source = buildConsoleForwarder(O);
+    const start = source.indexOf('var RULES =');
+    const end = source.indexOf('function describe');
+    expect(start).toBeGreaterThan(0);
+    return new Function(`${source.slice(start, end)}\nreturn redact;`)() as (value: unknown) => string;
   }
-
-  it('starvation is impossible where the frame is known: a sandboxed frame posting in a loop costs the page nothing', () => {
-    const s = shell();
-    const parse = vi.spyOn(JSON, 'parse');
-    for (let i = 0; i < 100_000; i++) s.receive({ data: wire('error', 'flood'), url: i % 2 ? 'about:srcdoc' : 'null' }, 5000);
-    expect(parse).not.toHaveBeenCalled();
-    s.receive({ data: wire('error', 'the page'), url: PAGE }, 5000);
-    expect(s.handled).toEqual(['the page']);
-    parse.mockRestore();
+  const INPUTS = [
+    'access_token=abc.def&x=1',
+    '?refresh_token=r1',
+    '#dfl_token=z9&next=/',
+    'GET /auth/reset?code=9f8e&x=1',
+    'https://x/auth/dfl/callback#dfl_token=T0K&code=C0DE',
+    'postcode=123',
+    '{"access_token":"abc123","x":1}',
+    'ACCESS_TOKEN = abc',
+    'Bearer eyJhbGciOi.eyJzdWIiOiIx.c2ln',
+    'Authorization: Bearer abcDEF1234567890xyz',
+    'bearer short',
+    'apikey=sb123&x=1',
+    '{"api_key":"k-9"}',
+    'key sb_publishable_AbC123-x and sb_secret_Zz9 ok',
+    'cut short eyJhbGciOiJIUzI1NiJ9.eyJzdWIi',
+    'save failed for ana.silva+x@example.com',
+    'a $1 and $& stay',
+    'nothing to hide',
+  ];
+  it.each(INPUTS)('same output as redactSecrets: %s', (input) => {
+    expect(scriptRedact()(input)).toBe(redactSecrets(input));
   });
-
-  it('garbage from the app origin does not use up the page budget', () => {
-    const s = shell();
-    for (let i = 0; i < MAX_RAW_MESSAGES_PER_SECOND - 1; i++) s.receive({ data: '{"not":"ours"}', url: PAGE }, 5000);
-    s.receive({ data: wire('error', 'the page'), url: PAGE }, 5000);
-    expect(s.handled).toEqual(['the page']);
+  it('redacts the four credential shapes in the script itself', () => {
+    const redact = scriptRedact();
+    expect(redact('?code=9f8e')).toBe('?code=[redacted]');
+    expect(redact('dfl_token=a')).toBe('dfl_token=[redacted]');
+    expect(redact('access_token=a')).toBe('access_token=[redacted]');
+    expect(redact('refresh_token=a')).toBe('refresh_token=[redacted]');
   });
-
-  it('the parse flood is bounded where every frame looks like the page (Android legacy): 100 000 messages, at most the raw limit is parsed', () => {
-    const s = shell();
-    const parse = vi.spyOn(JSON, 'parse');
-    const big = wire('error', 'x'.repeat(3000));
-    for (let i = 0; i < 100_000; i++) s.receive({ data: big, url: PAGE }, 5000 + (i % 900));
-    expect(parse.mock.calls.length).toBeLessThanOrEqual(MAX_RAW_MESSAGES_PER_SECOND);
-    expect(parse.mock.calls.reduce((n, [text]) => n + String(text).length, 0)).toBeLessThanOrEqual(MAX_RAW_CHARS_PER_SECOND);
-    expect(s.handled.length).toBe(MAX_MESSAGES_PER_SECOND);
-    parse.mockRestore();
+  it('the built script has no placeholder left', () => {
+    expect(buildConsoleForwarder(O)).not.toMatch(/__APP_ORIGIN__|__REDACTION_RULES__/);
   });
 });

@@ -1,12 +1,13 @@
 /**
  * The console forwarder (PLAN ADR-5, "Consequence"): a script string that runs in the WebView, in the
  * main frame, before the page's own code. Strings only: the one-copy test (rule 6) lets a
- * `*.injected.ts` file use browser globals because it exports nothing else. The origin is a
- * placeholder that `buildConsoleForwarder` (consoleMessage.ts) fills in.
+ * `*.injected.ts` file use browser globals because it exports nothing else. The origin and the redaction
+ * rules are placeholders that `buildConsoleForwarder` (consoleMessage.ts) fills in; the rules are the parser's own
+ * list (`REDACTIONS`), so the two redactions cannot drift.
  *
  * Constraints, each unit-tested by running this source in a sandbox (consoleMessage.test.ts):
  *  1. Attaches only when `location.origin` is the app origin.
- *  2. Redacts `(access|refresh|dfl)_token` and api-key values, bearer tokens, JWT-shaped (whole or cut short) and
+ *  2. Applies the parser's redaction list (`(access|refresh|dfl)_token`, `code=`, api-key values, bearer tokens, JWT-shaped (whole or cut short) and
  *     `sb_publishable_`/`sb_secret_` strings, and e-mail addresses, before posting.
  *  3. Forwards only `console.error`, uncaught errors and unhandled rejections, as
  *     `{type:'console', level, text}`; text is cut to 500 characters, at most 5 messages per second
@@ -25,23 +26,12 @@ export const CONSOLE_FORWARDER_SOURCE = `(function () {
   var sent = 0;
   var windowStart = 0;
   var inWindow = 0;
-  var SECRET = /((?:access|refresh|dfl)_token["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
-  var AUTH_CODE = /([?&#]code=)[^&\\s"',}#]+/gi;
-  var JWT = /eyJ[\\w-]{4,}(?:\\.[\\w-]*){0,2}/g;
-  var API_KEY = /(api[_-]?key["']?\\s*[:=]\\s*["']?)[^&\\s"',}#]+/gi;
-  var OPAQUE_KEY = /sb_(?:publishable|secret)_[\\w-]+/g;
-  var BEARER = /(bearer\\s+)[A-Za-z0-9._~+\\/=-]{16,}/gi;
-  var EMAIL = /[\\w.+-]+@[\\w-]+\\.[\\w.-]+/g;
+  var RULES = __REDACTION_RULES__;
 
   function redact(value) {
-    return String(value)
-      .replace(SECRET, '$1[redacted]')
-      .replace(AUTH_CODE, '$1[redacted]')
-      .replace(API_KEY, '$1[redacted]')
-      .replace(BEARER, '$1[redacted]')
-      .replace(JWT, '[redacted]')
-      .replace(OPAQUE_KEY, '[redacted]')
-      .replace(EMAIL, '[email]');
+    var text = String(value);
+    for (var i = 0; i < RULES.length; i += 1) text = text.replace(new RegExp(RULES[i][0], RULES[i][1]), RULES[i][2]);
+    return text;
   }
 
   function describe(arg) {

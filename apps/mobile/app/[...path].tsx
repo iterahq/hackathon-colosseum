@@ -24,7 +24,7 @@
  * only, one copy per process); the session token of the router comes from `expo-crypto`; the copy is dropped
  * on every top-frame load start, relaunch and unmount, and the next page sends its own. Under `__DEV__` the
  * probe of `src/backendProbe.ts` reads the backend with that token and the overlay shows the answer.
- * `onMessage` has two windows: a raw one before any parse (count and length of what frames on the app origin
+ * `onMessage` is `src/receiveShellMessage.ts` plus its effects. It has two windows (`src/messageWindow.ts`): a raw one before any parse (count and length of what frames on the app origin
  * send), and the page's budget after it, which counts only what a parser accepted. A frame on another origin
  * reaches neither. A build with no backend has no native session and never offers `auth.session`.
  * On return to the foreground the session is revalidated: the page is asked once, and a copy nobody vouches for is dropped.
@@ -52,8 +52,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import { parseBackend, probeIteraUser, probeLine, type ProbeResult } from '../src/backendProbe';
-import { createShellBridge, parseBridgeMessage, type ShellBridge } from '../src/bridgeMessage';
-import { admitMessage, admitRaw, buildConsoleForwarder, messageSize, parseConsoleMessage, type MessageBucket, type RawBucket } from '../src/consoleMessage';
+import { createShellBridge, type ShellBridge } from '../src/bridgeMessage';
+import { buildConsoleForwarder } from '../src/consoleMessage';
+import { type MessageBucket, type RawBucket } from '../src/messageWindow';
+import { receiveShellMessage } from '../src/receiveShellMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
 import { backConfirmEnabled, decideBack } from '../src/backConfirm';
@@ -159,7 +161,7 @@ export default function ShellRoute() {
   return <WebShell key={entryPath} entryPath={entryPath} />;
 }
 
-// The one reader of WebView messages and the router that answers them. `nativeEvent` is read here only (rule 1c).
+// The one reader of WebView messages and the router that answers them. `nativeEvent` is handed whole to `receiveShellMessage` and read nowhere else (rule 1c).
 function useBridgeChannel(webview: RefObject<ShellWebView | null>) {
   const [forwardedErrors, setForwardedErrors] = useState(0);
   const [bridgeHandshakes, setBridgeHandshakes] = useState(0);
@@ -170,26 +172,20 @@ function useBridgeChannel(webview: RefObject<ShellWebView | null>) {
   );
   const bucket = useRef<MessageBucket>({ start: 0, count: 0 });
   const rawBucket = useRef<RawBucket>({ start: 0, count: 0, chars: 0 });
-  // A frame that is not on the app origin stops at `messageSize`: unparsed and uncounted, so it can never
-  // use up a window of the page. The raw window then bounds what is parsed at all. The page's own budget
-  // counts only what a parser accepted: the console shape first (development only), then the bridge envelope.
+  // Every decision (origin, the raw window, the console shape in development, the bridge envelope, the
+  // page budget) is `receiveShellMessage`'s; this callback stores the buckets and performs the effect.
   const onMessage = useCallback(
     (e: WebViewMessageEvent) => {
-      const size = messageSize(e.nativeEvent, ORIGIN);
-      if (size === null || !admitRaw(rawBucket.current, Date.now(), size)) return;
-      const consoleMessage = __DEV__ ? parseConsoleMessage(e.nativeEvent, ORIGIN) : null;
-      const bridgeMessage = consoleMessage === null ? parseBridgeMessage(e.nativeEvent, ORIGIN, Platform.OS) : null;
-      if (consoleMessage === null && bridgeMessage === null) return;
-      const admission = admitMessage(bucket.current, Date.now());
-      bucket.current = admission.bucket;
-      if (!admission.admitted) return;
-      if (consoleMessage !== null) {
+      const answer = receiveShellMessage({ event: e.nativeEvent, raw: rawBucket.current, page: bucket.current, origin: ORIGIN, platform: Platform.OS, dev: __DEV__, now: Date.now() });
+      rawBucket.current = answer.raw;
+      bucket.current = answer.page;
+      if (answer.kind === 'drop') return;
+      if (answer.kind === 'console') {
         setForwardedErrors((n) => n + 1);
-        console.warn(`[web ${consoleMessage.level}] ${consoleMessage.text}`);
+        console.warn(`[web ${answer.message.level}] ${answer.message.text}`);
         return;
       }
-      if (bridgeMessage === null) return;
-      void shellBridge.handle(bridgeMessage).then((out) => {
+      void shellBridge.handle(answer.message).then((out) => {
         if (out.script !== null) webview.current?.injectJavaScript(out.script);
         if (out.handshake) {
           setBridgeHandshakes((n) => n + 1);

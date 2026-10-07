@@ -1,8 +1,8 @@
 /**
  * The bridge side of the shell (PLAN ADR-9): the parser of a bridge message and the routers that
- * answer it. It sits beside `consoleMessage.ts`; `parseConsoleMessage` stays the only reader of the
- * console forwarder's messages, `parseBridgeMessage` the only reader of bridge messages. Neither
- * touches the other's shape, and `app/[...path].tsx` calls them in that order.
+ * answer it. It sits beside `consoleMessage.ts`; the console parser stays the only reader of the
+ * console forwarder's messages, this parser the only reader of bridge messages. Neither
+ * touches the other's shape, and `receiveShellMessage.ts` calls them in that order.
  *
  * Capabilities: `shell.version`, `keepAwake` (R-8, held by `keepAwakeHolder.ts`) and `auth.session`
  * (R-12, ADR-10, held by `nativeSession.ts`): the page hands over its access token, or says it signed
@@ -76,14 +76,24 @@ export interface BridgeMessage {
 export function parseBridgeMessage(event: { data: unknown; url: unknown }, origin: string, platform: string): BridgeMessage | null {
   const appOrigin = originOf(origin);
   if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
-  if (typeof event.data !== 'string' || event.data.length > MAX_MESSAGE_BYTES) return null;
-  const attributed = senderAttributed(platform, event.url, appOrigin);
-  const parsed = parseEnvelope(event.data);
+  return readBridgeEnvelope(event.data, event.url, appOrigin, platform);
+}
+
+/**
+ * The envelope check alone, for a caller that has already proved the frame is on the app origin
+ * (`receiveShellMessage`, by `messageSize`): `url` is the checked frame URL and `appOrigin` the normalised
+ * origin. `parseBridgeMessage` is this plus the origin check. The check inside `parseEnvelope`
+ * (packages/bridge, pinned) stays as it is.
+ */
+export function readBridgeEnvelope(data: unknown, url: string, appOrigin: string, platform: string): BridgeMessage | null {
+  if (typeof data !== 'string' || data.length > MAX_MESSAGE_BYTES) return null;
+  const attributed = senderAttributed(platform, url, appOrigin);
+  const parsed = parseEnvelope(data);
   if (parsed.ok === false) {
-    return parsed.reason === 'version_mismatch' || parsed.reason === 'bad_id' ? { raw: event.data, senderUrl: event.url, kind: 'other', attributed } : null;
+    return parsed.reason === 'version_mismatch' || parsed.reason === 'bad_id' ? { raw: data, senderUrl: url, kind: 'other', attributed } : null;
   }
   const kind = parsed.envelope.kind;
-  return { raw: event.data, senderUrl: event.url, kind: kind === 'hello' || kind === 'call' ? kind : 'other', attributed };
+  return { raw: data, senderUrl: url, kind: kind === 'hello' || kind === 'call' ? kind : 'other', attributed };
 }
 
 export interface ShellBridgeOptions {

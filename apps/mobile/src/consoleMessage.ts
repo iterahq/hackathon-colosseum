@@ -1,6 +1,6 @@
 /**
- * The single parser of a WebView message (PLAN ADR-5 and ADR-8 rule 1c) and the builder of the
- * forwarder script. Nothing else in the shell reads `nativeEvent`.
+ * The parser of the console forwarder's message (PLAN ADR-5 and ADR-8 rule 1c), the redaction rule, and the builder
+ * of the forwarder script. `receiveShellMessage.ts` is the one function that hands a `nativeEvent` to it.
  *
  * `parseConsoleMessage` accepts only the forwarder's `{type:'console', level, text}` shape from a
  * frame whose URL is on the app origin; anything else is dropped (returns null). The text is
@@ -35,24 +35,38 @@ const OPAQUE_KEY = /sb_(?:publishable|secret)_[\w-]+/g;
 const BEARER = /(bearer\s+)[A-Za-z0-9._~+/=-]{16,}/gi;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
 
-export const redactSecrets = (text: string): string =>
-  text
-    .replace(SECRET, '$1[redacted]')
-    .replace(AUTH_CODE, '$1[redacted]')
-    .replace(API_KEY, '$1[redacted]')
-    .replace(BEARER, '$1[redacted]')
-    .replace(JWT, '[redacted]')
-    .replace(OPAQUE_KEY, '[redacted]')
-    .replace(EMAIL, '[email]');
+/**
+ * THE redaction rule, in order. `redactSecrets` applies it here, and `buildConsoleForwarder` writes the same
+ * list into the forwarder script (source, flags and replacement), so a new secret shape is added once, here.
+ */
+const REDACTIONS: readonly (readonly [RegExp, string])[] = [
+  [SECRET, '$1[redacted]'],
+  [AUTH_CODE, '$1[redacted]'],
+  [API_KEY, '$1[redacted]'],
+  [BEARER, '$1[redacted]'],
+  [JWT, '[redacted]'],
+  [OPAQUE_KEY, '[redacted]'],
+  [EMAIL, '[email]'],
+];
+
+export const redactSecrets = (text: string): string => REDACTIONS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text);
 
 /** `event` is the `nativeEvent` of the WebView message: `data` (the posted string) and `url` (the frame that posted it). */
 export function parseConsoleMessage(event: { data: unknown; url: unknown }, origin: string): ConsoleMessage | null {
   const appOrigin = originOf(origin);
   if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
-  if (typeof event.data !== 'string' || event.data.length > MAX_MESSAGE_CHARS) return null;
+  return readConsoleShape(event.data);
+}
+
+/**
+ * The shape check alone, for a caller that has already proved the frame is on the app origin
+ * (`receiveShellMessage`, by `messageSize`). `parseConsoleMessage` is this plus the origin check.
+ */
+export function readConsoleShape(data: unknown): ConsoleMessage | null {
+  if (typeof data !== 'string' || data.length > MAX_MESSAGE_CHARS) return null;
   let value: unknown;
   try {
-    value = JSON.parse(event.data);
+    value = JSON.parse(data);
   } catch {
     return null;
   }
@@ -66,59 +80,6 @@ export function parseConsoleMessage(event: { data: unknown; url: unknown }, orig
 export function buildConsoleForwarder(origin: string): string {
   const appOrigin = originOf(origin);
   if (appOrigin === null) throw new Error(`console forwarder needs an http(s) origin: ${origin}`);
-  return CONSOLE_FORWARDER_SOURCE.replace('__APP_ORIGIN__', () => JSON.stringify(appOrigin));
-}
-
-export const MAX_MESSAGES_PER_SECOND = 10;
-
-export interface MessageBucket {
-  start: number;
-  count: number;
-}
-
-/** Native-side limit (a one-second bucket), independent of the page's own: a page that calls the bridge directly still cannot flood the shell. */
-export function admitMessage(bucket: MessageBucket, now: number): { bucket: MessageBucket; admitted: boolean } {
-  const current = now - bucket.start >= 1000 ? { start: now, count: 0 } : bucket;
-  if (current.count >= MAX_MESSAGES_PER_SECOND) return { bucket: current, admitted: false };
-  return { bucket: { start: current.start, count: current.count + 1 }, admitted: true };
-}
-
-/**
- * The length of a message from a frame the WebView reports on the app origin, or null for any other
- * frame or a non-string. No parse: it is what `onMessage` reads BEFORE either parser, so that a frame
- * of another origin costs nothing and is counted nowhere, and a frame that passes the origin gate is
- * counted (`admitRaw`) before any JSON of it is parsed.
- */
-export function messageSize(event: { data: unknown; url: unknown }, origin: string): number | null {
-  const appOrigin = originOf(origin);
-  if (appOrigin === null || typeof event.url !== 'string' || originOf(event.url) !== appOrigin) return null;
-  return typeof event.data === 'string' ? event.data.length : null;
-}
-
-export const MAX_RAW_MESSAGES_PER_SECOND = 40;
-export const MAX_RAW_CHARS_PER_SECOND = 256 * 1024;
-
-export interface RawBucket {
-  start: number;
-  count: number;
-  chars: number;
-}
-
-/**
- * The window in front of the parsers: at most `MAX_RAW_MESSAGES_PER_SECOND` messages and
- * `MAX_RAW_CHARS_PER_SECOND` characters per second reach `JSON.parse`. Generous on purpose: the budget of
- * the page is `admitMessage`, which counts only what a parser accepted, so garbage cannot use it up.
- * This one bounds the parsing itself, for a WebView that reports every frame as the page (Android without
- * `WebMessageListener`). It changes `bucket` in place and allocates nothing.
- */
-export function admitRaw(bucket: RawBucket, now: number, chars: number): boolean {
-  if (now - bucket.start >= 1000) {
-    bucket.start = now;
-    bucket.count = 0;
-    bucket.chars = 0;
-  }
-  if (bucket.count >= MAX_RAW_MESSAGES_PER_SECOND || bucket.chars + chars > MAX_RAW_CHARS_PER_SECOND) return false;
-  bucket.count += 1;
-  bucket.chars += chars;
-  return true;
+  const rules = JSON.stringify(REDACTIONS.map(([pattern, replacement]) => [pattern.source, pattern.flags, replacement]));
+  return CONSOLE_FORWARDER_SOURCE.replace('__APP_ORIGIN__', () => JSON.stringify(appOrigin)).replace('__REDACTION_RULES__', () => rules);
 }

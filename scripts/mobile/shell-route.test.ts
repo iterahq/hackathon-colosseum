@@ -36,20 +36,9 @@ describe('route file wiring', () => {
     expect(count(/\binjectedJavaScriptForMainFrameOnly=\{true\}/)).toBe(1);
   });
 
-  it('before any parse: a frame off the app origin stops at messageSize, and the raw window bounds what reaches the parsers (R-12)', () => {
-    expect(code).toMatch(
-      /const size = messageSize\(e\.nativeEvent, ORIGIN\);\s*if \(size === null \|\| !admitRaw\(rawBucket\.current, Date\.now\(\), size\)\) return;\s*const consoleMessage = /,
-    );
-    expect(count(/\bmessageSize\(/)).toBe(1);
-    expect(count(/\badmitRaw\(/)).toBe(1);
-    expect(code.indexOf('admitRaw(')).toBeLessThan(code.indexOf('parseConsoleMessage(e.nativeEvent'));
-  });
-
-  it('the page budget counts only what a parser accepted: a message neither accepts is dropped uncounted (R-12)', () => {
-    expect(code).toMatch(
-      /parseConsoleMessage\(e\.nativeEvent, ORIGIN\)[\s\S]*parseBridgeMessage\(e\.nativeEvent, ORIGIN, Platform\.OS\)[\s\S]*if \(consoleMessage === null && bridgeMessage === null\) return;\s*const admission = admitMessage\(bucket\.current, Date\.now\(\)\);\s*bucket\.current = admission\.bucket;\s*if \(!admission\.admitted\) return;/,
-    );
-    expect(count(/\badmitMessage\(/)).toBe(1);
+  it('onMessage hands the whole nativeEvent to receiveShellMessage and stores both buckets from the answer (the order is tested in receiveShellMessage.test.ts)', () => {
+    expect(count(/\breceiveShellMessage\(\{ event: e\.nativeEvent, raw: rawBucket\.current, page: bucket\.current, origin: ORIGIN, platform: Platform\.OS, dev: __DEV__, now: Date\.now\(\) \}\)/)).toBe(1);
+    expect(code).toMatch(/rawBucket\.current = answer\.raw;\s*bucket\.current = answer\.page;\s*if \(answer\.kind === 'drop'\) return;/);
   });
 
   it('keep-awake is per route over the bridge (R-8): no shell-level hook, released on unmount and on relaunch', () => {
@@ -108,19 +97,10 @@ describe('route file wiring: the bridge (R-6)', () => {
     expect(code).toMatch(/const onLoadStart = useCallback\(\(\) => \{\s*shellBridge\.reset\(\);\s*dispatch\(\{ type: 'loadStart' \}\);\s*\}, \[shellBridge\]\);/);
   });
 
-  it('onMessage reads the console shape first, then the bridge envelope, each once and through its own parser', () => {
-    expect(count(/\bparseConsoleMessage\(e\.nativeEvent, ORIGIN\)/)).toBe(1);
-    expect(count(/\bparseBridgeMessage\(e\.nativeEvent, ORIGIN, Platform\.OS\)/)).toBe(1);
-    expect(code.indexOf('parseConsoleMessage(e.nativeEvent')).toBeLessThan(code.indexOf('parseBridgeMessage(e.nativeEvent'));
-  });
-
-  it('one native rate window covers both shapes: nothing is logged, counted or routed before it, and the console shape is development only', () => {
-    expect(code).toMatch(/const consoleMessage = __DEV__ \? parseConsoleMessage\(e\.nativeEvent, ORIGIN\) : null;/);
-    const admitted = code.indexOf('if (!admission.admitted) return;');
-    expect(admitted).toBeGreaterThan(0);
-    for (const effect of ['setForwardedErrors(', 'console.warn(`[web', 'shellBridge.handle(bridgeMessage)']) {
-      expect(code.indexOf(effect), effect).toBeGreaterThan(admitted);
-    }
+  it('nothing in the route reads the payload or calls a parser or a window: only receiveShellMessage sees nativeEvent.data', () => {
+    expect(count(/\bnativeEvent\b/)).toBe(3);
+    expect(count(/\.data\b/)).toBe(0);
+    expect(count(/\b(?:parseConsoleMessage|parseBridgeMessage|readConsoleShape|readBridgeEnvelope|messageSize|admitRaw|admitMessage)\(/)).toBe(0);
     expect(code).not.toMatch(/onMessage=\{__DEV__/);
   });
 
@@ -177,7 +157,7 @@ describe('route file wiring: auth.session (R-12)', () => {
     expect(code).toMatch(/setSessionExpiresAt\(event\.session\.expiresAt\);/);
     expect((code.match(/console\.\w+\([^\n]*/g) ?? []).sort()).toEqual([
       'console.warn(`[bridge] refused: ${out.refused}`);',
-      'console.warn(`[web ${consoleMessage.level}] ${consoleMessage.text}`);',
+      'console.warn(`[web ${answer.message.level}] ${answer.message.text}`);',
     ]);
   });
 
@@ -222,7 +202,7 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
 
   it('the returned URL (a bearer token) is never logged: no console call reads it, and the only console calls are the two known ones', () => {
     expect(count(/\bconsole\./)).toBe(2);
-    expect(code).toMatch(/console\.warn\(`\[web \$\{consoleMessage\.level\}\] \$\{consoleMessage\.text\}`\)/);
+    expect(code).toMatch(/console\.warn\(`\[web \$\{answer\.message\.level\}\] \$\{answer\.message\.text\}`\)/);
     expect(code).toMatch(/console\.warn\(`\[bridge\] refused: \$\{out\.refused\}`\)/);
   });
 });

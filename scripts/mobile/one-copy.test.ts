@@ -242,7 +242,7 @@ describe("negative fixtures, one per rule", () => {
       "apps/mobile/app/[...path].tsx":
         "import { WebView } from 'react-native-webview';\nexport default function S() { const f = (e) => show(e.nativeEvent.data); return <WebView onMessage={f} />; }\n",
     });
-    expect(rule1c(repo)).toEqual(expect.arrayContaining([expect.stringContaining("reads nativeEvent outside parseConsoleMessage")]));
+    expect(rule1c(repo)).toEqual(expect.arrayContaining([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]));
   });
   it("1c: onMessage handled outside app/[...path].tsx", () => {
     const { repo, map } = fixture({ "apps/mobile/src/DevOverlay.tsx": "export const D = (p) => <View onMessage={p.f} />;\n" });
@@ -364,6 +364,12 @@ describe("negative fixtures, one per rule", () => {
     const { repo } = fixture({ "apps/mobile/src/forwarder.injected.ts": "export const SCRIPT = `window.addEventListener('error', () => {});`;\n" });
     expect(rule6(repo)).toEqual([]);
   });
+  it("6: a *.injected.ts with a placeholder for the redaction rules is still only a string; one that exports code is not", () => {
+    const strings = fixture({ "apps/mobile/src/forwarder.injected.ts": "export const SCRIPT = `var RULES = __REDACTION_RULES__; window.x = RULES;`;\n" }).repo;
+    expect(rule6(strings)).toEqual([]);
+    const code = fixture({ "apps/mobile/src/forwarder.injected.ts": "export const SCRIPT = (rules: string) => `window.x = ${rules};`;\n" }).repo;
+    expect(rule6(code)).toEqual([expect.stringContaining("DOM global window")]);
+  });
   it("6: packages/core imports react", () => {
     const { repo } = fixture({ "packages/core/src/x.ts": "import { useState } from 'react';\nexport const u = useState;\n" });
     expect(rule6(repo)).toEqual([expect.stringContaining("bridge and core import no react")]);
@@ -419,39 +425,59 @@ describe("review fixes: data routes into chrome (finding 4)", () => {
   });
 });
 
-describe("review fixes: onMessage payload goes through one parser (finding 5)", () => {
-  const HANDLER = (body: string) =>
-    `import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nexport default function S() { const f = (e) => { ${body} }; return <WebView onMessage={f} />; }\n`;
-  const PARSER = { "apps/mobile/src/consoleMessage.ts": "export const parseConsoleMessage = (e: unknown) => (e ? null : null);\n", "apps/mobile/src/consoleMessage.test.ts": "export {};\n" };
+describe("review fixes: onMessage payload goes through one function (finding 5; R-6; R-12; F6)", () => {
+  const HANDLER = (body: string, imports = "import { receiveShellMessage } from '../src/receiveShellMessage';\n") =>
+    `import { WebView } from 'react-native-webview';\n${imports}export default function S() { const f = (e) => { ${body} }; return <WebView onMessage={f} />; }\n`;
+  const RECEIVER = { "apps/mobile/src/receiveShellMessage.ts": "export const receiveShellMessage = (o: unknown) => (o ? null : null);\n", "apps/mobile/src/receiveShellMessage.test.ts": "export {};\n" };
+  const CALL = "receiveShellMessage({ event: e.nativeEvent, raw: r, page: p, origin: 'o', platform: 'ios', dev: true, now: 1 })";
   it("a handler that checks type console and then uses the payload another way is flagged", () => {
     const { repo } = fixture({
       "apps/mobile/app/[...path].tsx": "import { WebView } from 'react-native-webview';\nexport default function S() { const f = (e) => { const m = JSON.parse(e.nativeEvent.data); if (m.type === 'console') return; setCatalog(m.items); }; return <WebView onMessage={f} />; }\n",
     });
-    expect(rule1c(repo)).toEqual(expect.arrayContaining([expect.stringContaining("reads nativeEvent outside parseConsoleMessage"), expect.stringContaining("without parseConsoleMessage")]));
+    expect(rule1c(repo)).toEqual(expect.arrayContaining([expect.stringContaining("reads nativeEvent outside receiveShellMessage"), expect.stringContaining("without receiveShellMessage")]));
   });
   it("destructuring nativeEvent is flagged", () => {
-    const { repo } = fixture({ ...PARSER, "apps/mobile/app/[...path].tsx": HANDLER("const { nativeEvent: { data } } = e; setCatalog(data);") });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside parseConsoleMessage")]);
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("const { nativeEvent: { data } } = e; setCatalog(data);") });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
   });
-  it("the parser call is the one allowed form", () => {
-    const { repo } = fixture({ ...PARSER, "apps/mobile/app/[...path].tsx": HANDLER("const m = parseConsoleMessage(e.nativeEvent, 'https://app.iterahq.dev'); void m;") });
+  it("a bridge payload read outside the function is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("const m = JSON.parse(e.nativeEvent.data); run(m.method);") });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("a destructured nativeEvent next to the function is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER(`const { nativeEvent: { data } } = e; ${CALL}; run(data);`) });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("another field of nativeEvent read inside the same options object is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("receiveShellMessage({ event: e.nativeEvent, extra: e.nativeEvent.data });") });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("nativeEvent passed to the function under any other key is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("receiveShellMessage({ raw: e.nativeEvent.data, event: e.nativeEvent });") });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("the old parsers called with nativeEvent from the route are no longer an allowed form", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER(`${CALL}; parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o');`) });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("the call with the whole nativeEvent as the event is the one allowed form", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER(`const a = ${CALL}; void a;`) });
     expect(rule1c(repo)).toEqual([]);
   });
-  it("a handler without the parser file and its unit test is flagged", () => {
-    const { repo } = fixture({ "apps/mobile/app/[...path].tsx": HANDLER("parseConsoleMessage(e.nativeEvent);") });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("consoleMessage.ts is missing"), expect.stringContaining("consoleMessage.test.ts is missing")]);
+  it("a handler without the function's file and its behaviour test is flagged", () => {
+    const { repo } = fixture({ "apps/mobile/app/[...path].tsx": HANDLER(`${CALL};`) });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("receiveShellMessage.ts is missing"), expect.stringContaining("receiveShellMessage.test.ts is missing")]);
+  });
+  it("a locally defined receiveShellMessage shadow is flagged", () => {
+    const { repo } = fixture({
+      ...RECEIVER,
+      "apps/mobile/app/[...path].tsx": HANDLER(`${CALL};`, "const receiveShellMessage = (x: unknown) => x;\n"),
+    });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("calls receiveShellMessage but does not import it from ../src/receiveShellMessage")]);
   });
 });
 
-describe("R-6: the bridge parser joins the forwarder parser (rules 1b and 1c widened)", () => {
-  const BRIDGE_HANDLER = (body: string) =>
-    `import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nimport { parseBridgeMessage } from '../src/bridgeMessage';\nexport default function S() { const f = (e) => { ${body} }; return <WebView onMessage={f} />; }\n`;
-  const PARSERS = {
-    "apps/mobile/src/consoleMessage.ts": "export const parseConsoleMessage = (e: unknown) => (e ? null : null);\n",
-    "apps/mobile/src/consoleMessage.test.ts": "export {};\n",
-    "apps/mobile/src/bridgeMessage.ts": "export const parseBridgeMessage = (e: unknown) => (e ? null : null);\n",
-    "apps/mobile/src/bridgeMessage.test.ts": "export {};\n",
-  };
+describe("R-6: the bridge imports (rule 1b widened)", () => {
   it("1b: the bare @iterahq/shell-bridge import is the one @iterahq/* admitted", () => {
     const { repo, map } = fixture({ "apps/mobile/src/bridgeMessage.ts": "import { createShellRouter } from '@iterahq/shell-bridge';\nexport const r = createShellRouter;\n" });
     expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([]);
@@ -468,55 +494,9 @@ describe("R-6: the bridge parser joins the forwarder parser (rules 1b and 1c wid
     const { repo, map } = fixture({ "apps/mobile/src/other.ts": "import x from '@iterahq/shell-bridge-extra';\nexport default x;\n" });
     expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("imports @iterahq/shell-bridge-extra")]);
   });
-  it("1c: both parsers called with the whole nativeEvent is the allowed form", () => {
-    const { repo } = fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": BRIDGE_HANDLER("const c = parseConsoleMessage(e.nativeEvent, 'o'); const b = parseBridgeMessage(e.nativeEvent, 'o'); void [c, b];") });
-    expect(rule1c(repo)).toEqual([]);
-  });
-  it("1c: a bridge payload read outside the two parsers is flagged", () => {
-    const { repo } = fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": BRIDGE_HANDLER("const m = JSON.parse(e.nativeEvent.data); run(m.method);") });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside parseConsoleMessage")]);
-  });
-  it("1c: a destructured nativeEvent next to the bridge parser is flagged", () => {
-    const { repo } = fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": BRIDGE_HANDLER("const { nativeEvent: { data } } = e; parseBridgeMessage(e.nativeEvent, 'o'); run(data);") });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside parseConsoleMessage")]);
-  });
-  it("1c: the handler uses parseBridgeMessage but the parser file and its unit test are missing", () => {
-    const { repo } = fixture({
-      "apps/mobile/src/consoleMessage.ts": PARSERS["apps/mobile/src/consoleMessage.ts"],
-      "apps/mobile/src/consoleMessage.test.ts": "export {};\n",
-      "apps/mobile/app/[...path].tsx": BRIDGE_HANDLER("parseConsoleMessage(e.nativeEvent); parseBridgeMessage(e.nativeEvent);"),
-    });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("bridgeMessage.ts is missing"), expect.stringContaining("bridgeMessage.test.ts is missing")]);
-  });
   it("1b: a relative deep import into packages/bridge from a shell file is flagged", () => {
     const { repo, map } = fixture({ "apps/mobile/src/bridgeMessage.ts": "import { domTransport } from '../../../packages/bridge/src/web';\nexport const t = domTransport;\n" });
     expect(rule1b(repo, map, CLOSED_CHROME)).toEqual([expect.stringContaining("imports ../../../packages/bridge/src/web")]);
-  });
-  it("1c: a locally defined parseBridgeMessage shadow is flagged", () => {
-    const { repo } = fixture({
-      ...PARSERS,
-      "apps/mobile/app/[...path].tsx":
-        "import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nconst parseBridgeMessage = (x: unknown) => x;\nexport default function S() { const f = (e) => { parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n",
-    });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("calls parseBridgeMessage but does not import it from ../src/bridgeMessage")]);
-  });
-  it("1c: messageSize(e.nativeEvent, ...) imported from consoleMessage is the third allowed read (R-12)", () => {
-    const handler =
-      "import { WebView } from 'react-native-webview';\nimport { messageSize, parseConsoleMessage } from '../src/consoleMessage';\nimport { parseBridgeMessage } from '../src/bridgeMessage';\nexport default function S() { const f = (e) => { if (messageSize(e.nativeEvent, 'o') === null) return; parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n";
-    expect(rule1c(fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": handler }).repo)).toEqual([]);
-  });
-  it("1c: a locally defined messageSize shadow is flagged", () => {
-    const handler =
-      "import { WebView } from 'react-native-webview';\nimport { parseConsoleMessage } from '../src/consoleMessage';\nconst messageSize = (x: { data: string }) => x.data;\nexport default function S() { const f = (e) => { messageSize(e.nativeEvent); parseConsoleMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n";
-    expect(rule1c(fixture({ ...PARSERS, "apps/mobile/app/[...path].tsx": handler }).repo)).toEqual([expect.stringContaining("calls messageSize but does not import it from ../src/consoleMessage")]);
-  });
-  it("1c: a locally defined parseConsoleMessage shadow is flagged", () => {
-    const { repo } = fixture({
-      ...PARSERS,
-      "apps/mobile/app/[...path].tsx":
-        "import { WebView } from 'react-native-webview';\nimport { parseBridgeMessage } from '../src/bridgeMessage';\nconst parseConsoleMessage = (x: unknown) => x;\nexport default function S() { const f = (e) => { parseConsoleMessage(e.nativeEvent, 'o'); parseBridgeMessage(e.nativeEvent, 'o'); }; return <WebView onMessage={f} />; }\n",
-    });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("calls parseConsoleMessage but does not import it from ../src/consoleMessage")]);
   });
   it("1c: onMessage in the bridge parser file is flagged (the one handler stays in app/[...path].tsx)", () => {
     const { repo } = fixture({ "apps/mobile/src/bridgeMessage.ts": "export const x = { onMessage: () => null };\n" });
