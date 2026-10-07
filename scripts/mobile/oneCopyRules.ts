@@ -216,7 +216,7 @@ const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|code|domain|statusCode)\b
  */
 /** The two parsers `receiveShellMessage` calls, and their tests: "both parsers stay unit-tested" (docs/mobile-shell.md). */
 const PARSER_FILES = ["apps/mobile/src/consoleMessage.test.ts", "apps/mobile/src/bridgeMessage.ts", "apps/mobile/src/bridgeMessage.test.ts"] as const;
-const PARSER_CALL = /\breceiveShellMessage\(\s*\{\s*event:\s*[A-Za-z_$][\w$]*\.nativeEvent\s*(?:,|\}(?!\s*[.\[?]))/g;
+const PARSER_CALL = /\breceiveShellMessage\(\s*\{\s*event:\s*[A-Za-z_$][\w$]*\.nativeEvent\s*(?:,|\}(?!\s*[.[?]))/g;
 
 const PARSER_IMPORTS: readonly (readonly [string, string])[] = [["receiveShellMessage", "../src/receiveShellMessage"]];
 const importsFrom = (text: string, name: string, mod: string) =>
