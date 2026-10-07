@@ -55,10 +55,10 @@ describe("EAS identity (app.json)", () => {
     expect((expo.updates as Record<string, unknown>).codeSigningCertificate).toBeUndefined();
   });
 
-  it("declares no capability the WebView shell does not use, and the associated domain of R-5 only", () => {
+  it("declares no capability the WebView shell does not use, and the associated domains of R-5 and R-20 only", () => {
     expect(Object.keys(expo.ios.infoPlist)).toEqual(["ITSAppUsesNonExemptEncryption"]);
     expect(expo.ios.infoPlist.ITSAppUsesNonExemptEncryption).toBe(false);
-    expect(expo.ios.associatedDomains).toEqual(["applinks:app.iterahq.dev"]);
+    expect(expo.ios.associatedDomains).toEqual(["applinks:app.iterahq.dev", "webcredentials:app.iterahq.dev"]);
     expect(Array.isArray(expo.android.intentFilters)).toBe(true);
     expect(expo.android.permissions).toBeUndefined();
   });

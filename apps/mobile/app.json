@@ -13,7 +13,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.tainanfidelis.iterahq",
-      "associatedDomains": ["applinks:app.iterahq.dev"],
+      "associatedDomains": ["applinks:app.iterahq.dev", "webcredentials:app.iterahq.dev"],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

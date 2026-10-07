@@ -37,7 +37,7 @@ interface Component {
   exclude?: boolean;
 }
 const aasaText = read('public/.well-known/apple-app-site-association');
-const aasa = JSON.parse(aasaText) as { applinks: { details: { appIDs: string[]; components: Component[] }[] } };
+const aasa = JSON.parse(aasaText) as { applinks: { details: { appIDs: string[]; components: Component[] }[] }; webcredentials: { apps: string[] } };
 const components = aasa.applinks.details[0].components;
 
 /** iOS evaluates components in order; the first match decides. `*` matches any run of characters. */
@@ -58,12 +58,17 @@ function claimedOnAndroid(p: string): boolean {
 }
 
 describe('public/.well-known/apple-app-site-association', () => {
-  it('is applinks only, for the one app id, with components', () => {
-    expect(Object.keys(aasa)).toEqual(['applinks']);
+  it('is applinks with components plus webcredentials, both for the one app id', () => {
+    expect(Object.keys(aasa)).toEqual(['applinks', 'webcredentials']);
     expect(Object.keys(aasa.applinks).sort()).toEqual(['details']);
     expect(aasa.applinks.details).toHaveLength(1);
     expect(aasa.applinks.details[0].appIDs).toEqual([APP_ID]);
     expect(Object.keys(aasa.applinks.details[0]).sort()).toEqual(['appIDs', 'components']);
+  });
+
+  // The iOS auth session ends on an https callback only for a host the app holds as `webcredentials`.
+  it('webcredentials names the one app id, so the DFL sign-in session can end on the callback', () => {
+    expect(aasa.webcredentials).toEqual({ apps: [APP_ID] });
   });
 
   it('claims exactly the learner paths of the route map, plus /auth/dfl/callback, and not a session-carrying return', () => {
@@ -108,8 +113,8 @@ describe('public/.well-known/apple-app-site-association', () => {
 });
 
 describe('apps/mobile/app.json', () => {
-  it('iOS: one associated domain, the app host', () => {
-    expect(expo.ios.associatedDomains).toEqual([`applinks:${HOST}`]);
+  it('iOS: the app host, as applinks and as webcredentials', () => {
+    expect(expo.ios.associatedDomains).toEqual([`applinks:${HOST}`, `webcredentials:${HOST}`]);
   });
 
   it('Android: one auto-verified https filter for the app host, and nothing else', () => {
