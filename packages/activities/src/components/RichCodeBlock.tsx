@@ -5,6 +5,10 @@
  *
  * Numbers are drawn with `::before`, so they are not in the text the learner
  * selects and copies.
+ *
+ * On a phone the gutter is narrower and the type one step smaller: lesson
+ * code is written to 34 columns, and the full gutter pushed the end of those
+ * lines out of a 390 px screen.
  */
 export function RichCodeBlock({ language, value }: { language: string; value: string }) {
   const lines = value.split('\n');
@@ -26,14 +30,14 @@ export function RichCodeBlock({ language, value }: { language: string; value: st
           </span>
         </div>
       )}
-      <pre className={`overflow-x-auto px-4 ${language ? 'py-3' : 'py-2.5'}`}>
-        <code className="block font-mono text-sm leading-6 text-menta">
+      <pre className={`overflow-x-auto px-3 sm:px-4 ${language ? 'py-3' : 'py-2.5'}`}>
+        <code className="block font-mono text-[13px] leading-6 text-menta max-[380px]:text-[12px] sm:text-[14px]">
           {numbered
             ? lines.map((line, i) => (
                 <span
                   key={i}
                   data-line={i + 1}
-                  className="block min-h-6 before:mr-4 before:inline-block before:w-5 before:select-none before:text-right before:tabular-nums before:text-foreground/30 before:content-[attr(data-line)]"
+                  className="block min-h-6 before:mr-2 before:inline-block before:w-4 before:select-none before:text-right before:tabular-nums before:text-foreground/30 before:content-[attr(data-line)] sm:before:mr-4 sm:before:w-5"
                 >
                   {line}
                 </span>
