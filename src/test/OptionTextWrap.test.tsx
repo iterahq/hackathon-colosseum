@@ -20,8 +20,13 @@ function activity(kind: ActivityKind, spec: Record<string, unknown>): Activity {
   return { id: `t-${kind}`, lessonId: 'l', ordinal: 0, kind, spec, rubric: null, status: undefined };
 }
 
+/**
+ * The span that decides how the label wraps. Since the labels draw their inline
+ * marks (`InlineLabel`), the text sits one span deeper than the wrapping one.
+ */
 function labelSpan(text: string): HTMLElement {
-  return screen.getByText(text);
+  const inner = screen.getByText(text);
+  return inner.closest<HTMLElement>('.break-words') ?? inner;
 }
 
 describe('option cards — full text (no truncation) + equal height', () => {
