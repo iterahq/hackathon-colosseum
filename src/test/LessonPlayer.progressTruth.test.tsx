@@ -674,6 +674,27 @@ describe('the result follows the learner to another device', () => {
     expect(shownId()).toBe('a2');
   });
 
+  it('opens on the first miss, not on a completion screen, when only misses are left', async () => {
+    progressRows = [
+      { activity_id: 'a1', status: 'completed' },
+      { activity_id: 'a2', status: 'in_progress' },
+      { activity_id: 'a3', status: 'completed' },
+      { activity_id: 'a4', status: 'in_progress' },
+    ];
+    attemptRows = [
+      { activity_id: 'a4', passed: false, feedback: { response: 'O distrator errado' }, created_at: at(T + 9000) },
+      { activity_id: 'a2', passed: false, feedback: { response: 'O distrator errado' }, created_at: at(T) },
+    ];
+    renderPlayer();
+    await waitForPlayerReady();
+    // Pre-fix: "Lição concluída!" over 2/4.
+    expect(screen.queryByTestId('lesson-complete')).toBeNull();
+    expect(shownId()).toBe('a2');
+    expect(screen.getByTestId('lesson-retry-missed')).toBeTruthy();
+    // The end was reached: the learner can still walk forward to it.
+    expect(screen.getByTestId('lesson-next').hasAttribute('disabled')).toBe(false);
+  });
+
   it('keeps this device’s record when the attempt log cannot be read', async () => {
     storeLessonAnswer('a1', { correct: true, settledAt: T, saved: true });
     attemptRows = null;

@@ -34,8 +34,10 @@ export interface LessonResume {
   index: number;
   /** The furthest activity already reached. */
   furthest: number;
-  /** Every activity is answered: open on the completion screen. */
+  /** Every activity is DONE: open on the completion screen. */
   completed: boolean;
+  /** Every activity is answered, hit or miss: the end of the lesson has been reached. */
+  finished: boolean;
 }
 
 /**
@@ -113,12 +115,18 @@ export async function resumeLesson(
   const answered = new Set([...done, ...Object.keys(known)]);
   const resumeAt = resumeIndexFor(ids, statuses, answered);
   const last = Math.max(0, ids.length - 1);
-  const completed = resumeAt >= ids.length;
+  const finished = resumeAt >= ids.length;
+  // Answered is not done: a miss is answered. A learner coming back to a
+  // lesson whose only open work is what they missed lands ON the first miss,
+  // not on a completion screen for a lesson that is not complete.
+  const firstPending = ids.findIndex((id) => statuses[id] !== 'completed');
+  const completed = finished && firstPending === -1;
   return {
     doneIds: new Set(done),
     answers: known,
-    index: completed ? last : resumeAt,
-    furthest: completed ? last : furthestReached(ids, resumeAt, answered),
+    index: completed ? last : finished ? firstPending : resumeAt,
+    furthest: finished ? last : furthestReached(ids, resumeAt, answered),
     completed,
+    finished,
   };
 }

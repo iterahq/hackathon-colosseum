@@ -200,10 +200,10 @@ export default function LessonPlayer() {
       if (!resume) return;
       setDoneIds(resume.doneIds);
       loadAnswers(resume.answers);
-      // Everything already answered goes straight to the completion screen
-      // instead of replaying a finished lesson from the top.
+      // A lesson with everything done opens on the completion screen instead of
+      // replaying from the top; one with misses left opens on the first of them.
       setCompleted(resume.completed);
-      setFinished(resume.completed);
+      setFinished(resume.finished);
       setIndex(resume.index);
       setFurthest(resume.furthest);
       resumedForRef.current = lessonId;

@@ -203,13 +203,18 @@ async function openPinnedActivity(page: Page): Promise<void> {
     .locator('[data-testid="lesson-activity"], [data-testid="lesson-complete"]')
     .first()
     .waitFor({ state: 'visible', timeout: 30_000 });
-  // Bounded by the lesson's length; each step back shows the previous activity.
-  for (let step = 0; step < 40; step += 1) {
-    // On the completion screen there is no activity to read: `count()` does not wait.
-    const onScreen = (await shown.count()) > 0 ? await shown.getAttribute('data-activity-id') : null;
-    if (onScreen === ACTIVITY_ID) break;
-    await page.locator('[data-testid="lesson-prev"]').click();
-    await shown.waitFor({ state: 'visible', timeout: 15_000 });
+  // The lesson opens on the first activity still pending, which can sit before
+  // or after the pinned one: walk back to the start, then forward. Bounded by
+  // the lesson's length.
+  const onScreen = async () => ((await shown.count()) > 0 ? shown.getAttribute('data-activity-id') : null);
+  for (const direction of ['lesson-prev', 'lesson-next'] as const) {
+    const arrow = page.locator(`[data-testid="${direction}"]`);
+    for (let step = 0; step < 40; step += 1) {
+      if ((await onScreen()) === ACTIVITY_ID) break;
+      if ((await arrow.count()) === 0 || (await arrow.isDisabled())) break;
+      await arrow.click();
+      await shown.waitFor({ state: 'visible', timeout: 15_000 });
+    }
   }
   await expect(shown, 'the pinned activity is not in this lesson').toHaveAttribute(
     'data-activity-id',
