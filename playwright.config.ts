@@ -67,9 +67,15 @@ export default defineConfig({
    * (`playwright.baseline.config.ts`). They must never be picked up here, where
    * `baseURL` points at live prod and absent capabilities turn into skips — a
    * gate that can skip is not a gate. Mirror of that config's `testMatch`.
+   *
+   * The same holds for the specs of the two other substrates: the frozen
+   * capture (`playwright.stamp.config.ts`, a stubbed preview) and the bring-up
+   * (`playwright.bringup.config.ts`, a disposable stack). Against the live site
+   * `capture-manifest` and `bringup-capture` were 55 of the 61 failures of the
+   * weekly run. `src/test/e2eHermeticMirror.test.ts` keeps the list complete.
    */
   testIgnore:
-    /(activity-baseline|lesson-reload|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|mobile-sound|laptop-height|source-stamp|capture-regions)\.spec\.ts$/,
+    /(activity-baseline|lesson-reload|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|mobile-sound|laptop-height|source-stamp|capture-regions|capture-manifest|bringup-capture)\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,
