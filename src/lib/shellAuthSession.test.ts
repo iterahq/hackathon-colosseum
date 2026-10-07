@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { createElement } from 'react';
-import { BridgeRefusal, ENVELOPE_TAG, createShellRouter, createShellSession, deliveryScript, type BridgeClient, type Method, type ShellSession } from '@iterahq/shell-bridge';
+import { BridgeRefusal, ENVELOPE_TAG, createShellRouter, createShellSession, deliveryScript, type BridgeClient, type BridgeMode, type Method, type ShellSession } from '@iterahq/shell-bridge';
+import type { RenewableBridgeClient } from './shellBridge';
 
 const ORIGIN = 'https://app.iterahq.dev';
 const USER = '5b0f7c3e-2f4d-4c1a-9d53-8a6f2b1c0e77';
@@ -395,5 +396,111 @@ describe('toShellSnapshot', () => {
     expect(toShellSnapshot(null)).toBeNull();
     expect(toShellSnapshot({ ...session, expires_at: undefined })).toBeNull();
     expect(toShellSnapshot({ ...session, access_token: '' })).toBeNull();
+  });
+});
+
+describe('withSessionRenewal', () => {
+  const shellMode: BridgeMode = { kind: 'shell', protocol: 1, shellVersion: '0.3.0', capabilities: ['auth.session'] };
+  const fakeRenewable = (outcomes: Array<'bad_session' | 'timeout' | 'ok'>, renewed: BridgeMode = shellMode) => {
+    const calls: unknown[] = [];
+    let generation = 0;
+    const handshakes = { count: 0 };
+    const client = {
+      call: async (method: string, payload: unknown) => {
+        calls.push({ method, payload });
+        const outcome = outcomes.shift() ?? 'ok';
+        if (outcome !== 'ok') throw new BridgeRefusal(outcome, method);
+        return { stored: true };
+      },
+      has: () => true,
+      generation: () => generation,
+      renew: async () => {
+        handshakes.count += 1;
+        generation += 1;
+        return renewed;
+      },
+    } as unknown as RenewableBridgeClient;
+    return { client, calls, handshakes };
+  };
+  const load = async () => (await import('./shellAuthSession')).withSessionRenewal;
+  const push = { accessToken: 'a.b.c', expiresAt: 1 };
+
+  it('bad_session: one new handshake and one retry of the same payload', async () => {
+    const { client, calls, handshakes } = fakeRenewable(['bad_session', 'ok']);
+    await expect((await load())(client, () => true).call('auth.session', push)).resolves.toEqual({ stored: true });
+    expect(handshakes.count).toBe(1);
+    expect(calls).toEqual([{ method: 'auth.session', payload: push }, { method: 'auth.session', payload: push }]);
+  });
+
+  it('a second bad_session is thrown: two calls, one handshake, no third call', async () => {
+    const { client, calls, handshakes } = fakeRenewable(['bad_session', 'bad_session', 'ok']);
+    await expect((await load())(client, () => true).call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    expect(handshakes.count).toBe(1);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('a page renews at most `limit` times, however many calls meet bad_session', async () => {
+    const { client, handshakes } = fakeRenewable(Array.from({ length: 20 }, () => 'bad_session' as const));
+    const renewing = (await load())(client, () => true, 2);
+    for (let i = 0; i < 5; i += 1) await expect(renewing.call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    expect(handshakes.count).toBe(2);
+  });
+
+  it('a sign-out is exempt from the cap; a token push is not', async () => {
+    const { client, calls } = fakeRenewable(['bad_session', 'bad_session', 'ok']);
+    const renewing = (await load())(client, () => true, 0);
+    await expect(renewing.call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    await expect(renewing.call('auth.session', { signedOut: true })).resolves.toEqual({ stored: true });
+    expect(calls).toHaveLength(3);
+  });
+
+  it('the cap belongs to the page: a second wrapper over the same client does not reset it', async () => {
+    const { client, handshakes } = fakeRenewable(Array.from({ length: 20 }, () => 'bad_session' as const));
+    const make = await load();
+    for (let i = 0; i < 4; i += 1) await expect(make(client, () => true, 2).call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    expect(handshakes.count).toBe(2);
+  });
+
+  it('does nothing when the page is not in the shell', async () => {
+    const { client, calls, handshakes } = fakeRenewable(['bad_session', 'ok']);
+    await expect((await load())(client, () => false).call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    expect(handshakes.count).toBe(0);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('the renewed handshake not settling at shell gives up without a retry', async () => {
+    const { client, calls } = fakeRenewable(['bad_session', 'ok'], { kind: 'web', reason: 'timeout' });
+    await expect((await load())(client, () => true).call('auth.session', push)).rejects.toMatchObject({ reason: 'bad_session' });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('only auth.session is renewed, and only for bad_session', async () => {
+    const other = fakeRenewable(['bad_session']);
+    await expect((await load())(other.client, () => true).call('keepAwake', { on: true })).rejects.toMatchObject({ reason: 'bad_session' });
+    const lost = fakeRenewable(['timeout']);
+    await expect((await load())(lost.client, () => true).call('auth.session', push)).rejects.toMatchObject({ reason: 'timeout' });
+    expect(other.handshakes.count + lost.handshakes.count).toBe(0);
+  });
+
+  it('the sign-out retry still works on top of it', async () => {
+    const { client, calls } = fakeRenewable(['timeout', 'ok']);
+    const { withSignOutRetry } = await import('./shellAuthSession');
+    const both = withSignOutRetry((await load())(client, () => true), [1], async () => undefined);
+    await expect(both.call('auth.session', { signedOut: true })).resolves.toEqual({ stored: true });
+    expect(calls).toHaveLength(2);
+  });
+});
+
+describe('the auth.session error path', () => {
+  it('records a bad_session of the shell once, in the shell only', async () => {
+    const events: Array<[string, Record<string, string>]> = [];
+    const { createBridgeReporter } = await import('./shellBridgeReport');
+    for (const active of [true, false]) {
+      events.length = 0;
+      const reporter = createBridgeReporter({ active: () => active, sink: (n, a) => void events.push([n, a]) });
+      reporter.failure('auth.session', new BridgeRefusal('bad_session'));
+      reporter.failure('auth.session', new BridgeRefusal('bad_session'));
+      expect(events).toHaveLength(active ? 1 : 0);
+    }
   });
 });

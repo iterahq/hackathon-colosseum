@@ -16,6 +16,12 @@ export function helloIdOf(raw: string): string | null {
   return o && o.tag === ENVELOPE_TAG && o.kind === 'hello' && typeof o.id === 'string' ? o.id : null;
 }
 
+/** The id of a `call` this page is about to send, or null for any other message. */
+export function callIdOf(raw: string): string | null {
+  const o = parseObject(raw);
+  return o && o.tag === ENVELOPE_TAG && o.kind === 'call' && typeof o.id === 'string' ? o.id : null;
+}
+
 /**
  * Is this string a reply of the native shell to a `hello` of this page? It must parse as JSON
  * (at most MAX_MESSAGE_BYTES, checked before the parse) into an object whose TOP-LEVEL `tag` is the

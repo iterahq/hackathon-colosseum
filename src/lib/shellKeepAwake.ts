@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { startShellBridge } from './shellBridge';
+import { bridgeReport, startShellBridge } from './shellBridge';
 
 const KEEP_AWAKE_ROUTE = /^\/(lesson\/[^/]+|live(\/.*)?)\/?$/;
 
@@ -23,6 +23,11 @@ export function KeepAwakeRouteMount(): null {
     if (!client) return undefined;
     let cancelled = false;
     let asked = false;
+    const report = (error: unknown) => bridgeReport.failure('keepAwake', error);
+    // Any accepted hello makes the shell release the wake lock: after a renewal the wish is asked again.
+    const offRenewed = client.onRenewed(() => {
+      if (asked && !cancelled) void client.call('keepAwake', { on: true }).catch(report);
+    });
     void client
       .handshake()
       .then(() => {
@@ -30,10 +35,11 @@ export function KeepAwakeRouteMount(): null {
         asked = true;
         return client.call('keepAwake', { on: true });
       })
-      .catch(() => undefined);
+      .catch(report);
     return () => {
       cancelled = true;
-      if (asked) void client.call('keepAwake', { on: false }).catch(() => undefined);
+      offRenewed();
+      if (asked) void client.call('keepAwake', { on: false }).catch(report);
     };
   }, [wanted]);
   return null;

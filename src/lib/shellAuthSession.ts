@@ -14,7 +14,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import type { ShellSessionAuth, ShellSessionHeld, ShellSessionInput, ShellSessionSource } from '@/types/shellSession';
-import { startShellBridge } from './shellBridge';
+import { bridgeReport, inShell, startShellBridge, type RenewableBridgeClient } from './shellBridge';
 
 /**
  * What the shell may know of a session: the access token and its expiry, read field by field. A
@@ -81,11 +81,11 @@ export const SIGN_OUT_RETRY_DELAYS_MS: readonly number[] = [1000, 3000];
  * push that fails is replaced by the next refresh. The bridge sends in order, so a sign-in that follows
  * waits behind the retries and can never be undone by one.
  */
-export function withSignOutRetry(
-  client: BridgeClient,
+export function withSignOutRetry<C extends BridgeClient>(
+  client: C,
   delays: readonly number[] = SIGN_OUT_RETRY_DELAYS_MS,
   wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-): BridgeClient {
+): C {
   async function call<M extends Method>(method: M, payload: Req<M>): Promise<Res<M>> {
     const signOut = method === 'auth.session' && typeof payload === 'object' && payload !== null && 'signedOut' in payload;
     for (let attempt = 0; ; attempt += 1) {
@@ -96,6 +96,46 @@ export function withSignOutRetry(
         if (!signOut || !lost || attempt >= delays.length) throw error;
         await wait(delays[attempt]);
       }
+    }
+  }
+  return { ...client, call };
+}
+
+/** Handshakes a page may start over in its lifetime (the client's `generation`), however many calls meet `bad_session`. */
+export const MAX_HANDSHAKE_RENEWALS = 3;
+
+const isSignedOut = (payload: unknown): boolean => typeof payload === 'object' && payload !== null && 'signedOut' in payload;
+
+/**
+ * `bad_session` on `auth.session` means the shell replaced the session this page handshook with, and
+ * the client would keep sending the old one for good. Once per call: start the handshake over
+ * (`client.renew()`: a new client, the old one disposed, so a call still in flight is rejected at
+ * once; the chain of `connectAuthSession` sends one call at a time, so only this one is) and send
+ * the same payload again. A second `bad_session` is thrown to the caller, which records it: there is
+ * no third call. Nothing happens outside the shell. The cap is per page (the client's generation, so
+ * a second wrapper cannot reset it): a shell that always refuses cannot make the page loop. A
+ * `{signedOut: true}` is exempt from the cap, because a sign-out the shell never takes leaves its
+ * copy of the token alive; it still renews at most once per call.
+ */
+export function withSessionRenewal(
+  client: RenewableBridgeClient,
+  active: () => boolean = inShell,
+  limit: number = MAX_HANDSHAKE_RENEWALS,
+): RenewableBridgeClient {
+  async function call<M extends Method>(method: M, payload: Req<M>): Promise<Res<M>> {
+    const generation = client.generation();
+    try {
+      return await client.call(method, payload);
+    } catch (error) {
+      const stale = method === 'auth.session' && (error as { reason?: unknown } | null)?.reason === 'bad_session';
+      if (!stale || !active()) throw error;
+      // Another call already started the handshake over since this one was sent: just send again.
+      if (client.generation() === generation) {
+        if (client.generation() >= limit && !isSignedOut(payload)) throw error;
+        const mode = await client.renew();
+        if (mode.kind !== 'shell') throw error;
+      }
+      return client.call(method, payload);
     }
   }
   return { ...client, call };
@@ -123,7 +163,7 @@ export function ShellAuthSessionMount(): null {
     let connected: ConnectedSession | null = null;
     try {
       const client = startShellBridge();
-      if (client) connected = connectAuthSession(withSignOutRetry(client), sessionSource());
+      if (client) connected = connectAuthSession(withSignOutRetry(withSessionRenewal(client)), sessionSource(), (error) => bridgeReport.failure('auth.session', error));
     } catch {
       // the bridge must never break the page
     }
