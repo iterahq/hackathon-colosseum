@@ -138,6 +138,10 @@ export default function LessonPlayer() {
     correct: boolean;
     promise: Promise<boolean>;
   } | null>(null);
+  // What a kind that moves on at once handed up with its pass (a reflection, a
+  // question's note and picks). Kept once the write lands, so stepping back
+  // shows the learner their own answer instead of an empty box.
+  const writtenPassRef = useRef<{ activityId: string; answer: StoredLessonAnswer } | null>(null);
 
   // True until the persisted progress for this lesson has been read back (or has
   // failed to read). We hold the first render behind it so the learner never
@@ -421,6 +425,19 @@ export default function LessonPlayer() {
     // cut the "name it after" beat that is the whole point of the kind.
     const holds =
       isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind);
+    writtenPassRef.current =
+      !holds && correct && detail?.response
+        ? {
+            activityId: current.id,
+            answer: {
+              correct: true,
+              settledAt: pendingSettledAtRef.current ?? Date.now(),
+              saved: true,
+              response: detail.response,
+              actions: detail.actions ? [...detail.actions] : undefined,
+            },
+          }
+        : null;
     // THE RESULT IS RECORDED HERE, not on "Continuar". Locally first, so a
     // reload in the very next instant still knows this exercise was answered.
     // A miss is kept for EVERY kind: a `code` exercise does not hold on the
@@ -618,6 +635,13 @@ export default function LessonPlayer() {
       const ok = (held ? await held.promise : false) || (await writeSettled(current, true));
       setSaving(false);
       if (ok) {
+        // Tied to its activity: a save retried from another screen must not
+        // file this text under that one.
+        const written = writtenPassRef.current;
+        if (written?.activityId === current.id) {
+          writtenPassRef.current = null;
+          recordAnswer(current.id, written.answer);
+        }
         setDoneIds((prev) => new Set(prev).add(current.id));
         setSaveError(false);
       } else {

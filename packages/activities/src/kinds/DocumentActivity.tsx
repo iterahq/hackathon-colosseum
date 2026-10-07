@@ -44,9 +44,11 @@ import { ReflectionDocumentActivity } from './document/ReflectionDocumentActivit
 export function DocumentActivity({
   activity,
   onComplete,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
   const { api } = useActivityHost();
@@ -65,6 +67,7 @@ export function DocumentActivity({
         spec={spec}
         minWords={minWords}
         onComplete={onComplete}
+        priorAnswer={priorAnswer}
       />
     );
   }

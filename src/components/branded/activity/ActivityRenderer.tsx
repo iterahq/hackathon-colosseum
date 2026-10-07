@@ -215,7 +215,7 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
 
   switch (activity.kind) {
     case 'document':
-      return <DocumentActivity activity={activity} onComplete={onComplete} />;
+      return <DocumentActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     case 'diagram':
       return <DiagramActivity activity={activity} onComplete={onComplete} />;
     case 'quiz':
@@ -303,7 +303,7 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
     case 'document_read':
       return <DocumentReadActivity activity={activity} onComplete={onComplete} />;
     case 'document_reflect':
-      return <DocumentReflectActivity activity={activity} onComplete={onComplete} />;
+      return <DocumentReflectActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     case 'document_ai_judge':
       return <DocumentAiJudgeActivity activity={activity} onComplete={onComplete} />;
     // question (T14) — no `reveal`: no correct answer to expose.

@@ -32,7 +32,7 @@ export type ActivityTextareaProps = {
   className?: string;
 } & Pick<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
-  'placeholder' | 'disabled' | 'autoFocus' | 'aria-label'
+  'placeholder' | 'disabled' | 'readOnly' | 'autoFocus' | 'aria-label'
 > & { 'data-testid'?: string };
 
 export function ActivityTextarea({

@@ -38,6 +38,7 @@ type DocumentKindProps = {
   activity: PortableActivity;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
   onEvent?: ActivityRendererProps['onEvent'];
+  priorAnswer?: ActivityCompletion;
 };
 
 /** The read-only card: a prompt and a body, nothing to do. */
@@ -76,7 +77,7 @@ function reflectMinWords(activity: PortableActivity): number {
 }
 
 /** `document_reflect` — write; a word count gates the submit. */
-export function DocumentReflectActivity({ activity, onComplete }: DocumentKindProps) {
+export function DocumentReflectActivity({ activity, onComplete, priorAnswer }: DocumentKindProps) {
   const spec = (activity.spec ?? {}) as unknown as DocumentSpec;
   return (
     <KindSpecGate kind={activity.kind} spec={activity.spec}>
@@ -85,6 +86,7 @@ export function DocumentReflectActivity({ activity, onComplete }: DocumentKindPr
         spec={spec}
         minWords={reflectMinWords(activity)}
         onComplete={onComplete}
+        priorAnswer={priorAnswer}
       />
     </KindSpecGate>
   );

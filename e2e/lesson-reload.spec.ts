@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import {
   CODE_WITH_FAILING_CHECKS,
+  DOCUMENT_REFLECTION,
   MATCH,
   MULTI_CHOICE,
   ORDER,
@@ -166,6 +167,40 @@ test.describe('a code exercise out of lives', () => {
     await expect(page.locator('[data-out-of-lives]').first()).toHaveAttribute('data-out-of-lives', 'false');
     await expect(page.getByTestId('code-submit')).toBeEnabled();
     expect(writes.passed).toEqual([false]);
+  });
+});
+
+test.describe('a written reflection', () => {
+  const WRITTEN = 'Merge junta duas linhas de trabalho em uma só, e o Git pede ajuda quando elas brigam.';
+  const input = (page: Page) => page.getByTestId('document-reflection-input');
+
+  async function backOnTheReflection(page: Page) {
+    await expect(page.getByTestId('lesson-activity')).toBeVisible();
+    // Moving on waits for the write: poll, the first call lands before it.
+    await expect.poll(() => shownActivity(page)).not.toBe(DOCUMENT_REFLECTION.id);
+    await page.getByTestId('lesson-prev').click();
+    await expect.poll(() => shownActivity(page)).toBe(DOCUMENT_REFLECTION.id);
+    await expect(input(page)).toHaveValue(WRITTEN);
+    await expect(input(page)).not.toBeEditable();
+  }
+
+  test('is still on screen on the step back, after a reload and on another device', async ({ page }) => {
+    await installLessonSubstrate(page, DOCUMENT_REFLECTION);
+    const writes = countAttemptWrites(page);
+    await page.goto(lessonUrl(DOCUMENT_REFLECTION));
+
+    await input(page).fill(WRITTEN);
+    await page.getByTestId('activity-done').click();
+    await expect.poll(() => writes.passed).toEqual([true]);
+    await backOnTheReflection(page);
+
+    await page.reload();
+    await backOnTheReflection(page);
+
+    await forgetLocalAnswers(page);
+    await page.reload();
+    await backOnTheReflection(page);
+    expect(writes.passed).toEqual([true]);
   });
 });
 

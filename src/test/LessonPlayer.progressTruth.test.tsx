@@ -11,7 +11,7 @@ import {
   MAX_RESPONSE_CHARS,
 } from '@/services/progress.service';
 import type { Activity } from '@/types/content';
-import { storeLessonAnswer } from '@/utils/lessonAnswerStorage';
+import { readLessonAnswers, storeLessonAnswer } from '@/utils/lessonAnswerStorage';
 import { readCodeAttempts, saveCodeAttempts } from '@/services/codeAttempts.service';
 import { rememberStorageScope } from '@/utils/storageScope';
 
@@ -117,6 +117,14 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
         onClick={() => onComplete(false, { response: 'O distrator errado' })}
       >
         errar
+      </button>
+      <button
+        data-testid="stub-picked-and-noted"
+        onClick={() =>
+          onComplete(true, { response: 'Uma nota', actions: [{ type: 'answer_submitted', at: 10, payload: { option_ids: ['b'] } }] } as never)
+        }
+      >
+        marcar e anotar
       </button>
       <button
         data-testid="stub-wrong-long"
@@ -546,6 +554,39 @@ describe('the result stands — it is recorded at the answer and survives a relo
       expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
       expect(inserts['activity_results']).toBeUndefined();
     });
+  });
+
+  it('keeps what was written in a kind that moves on at once, for the step back', async () => {
+    const data = lessonData();
+    data.activities[0] = { ...data.activities[0], kind: 'document_reflect' } as Activity;
+    useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    expect(inserts['activity_results']).toHaveLength(1);
+
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+    const state = screen.getByTestId('stub-state');
+    expect(state.getAttribute('data-status')).toBe('done');
+    expect(state.getAttribute('data-prior')).toBe('A opção certa');
+    expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+    // Kept as already saved: a reload must not send the pass a second time.
+    expect(readLessonAnswers().a1).toMatchObject({ correct: true, saved: true });
+  });
+
+  it('keeps the picks beside the note, so a reload still draws what was chosen', async () => {
+    const data = lessonData();
+    data.activities[0] = { ...data.activities[0], kind: 'question_pick_one' } as Activity;
+    useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('stub-picked-and-noted'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    expect(readLessonAnswers().a1?.actions).toEqual([
+      expect.objectContaining({ type: 'answer_submitted', payload: { option_ids: ['b'] } }),
+    ]);
   });
 
   it('offers no retry on an exercise the learner passed', async () => {

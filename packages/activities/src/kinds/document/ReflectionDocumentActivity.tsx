@@ -27,6 +27,7 @@ import { ActivityTextarea } from '../../components/ActivityTextarea.js';
 import { ArtifactVisibilityNotice } from '../../components/ArtifactVisibilityNotice.js';
 import { RichText } from '../../components/RichText.js';
 import { ActivityShell, DoneButton } from '../../components/parts.js';
+import { priorText } from '../../internal/priorAnswer.js';
 
 /** Count words in a free-text reflection (whitespace-split, trimmed). */
 function countWords(text: string): number {
@@ -39,15 +40,19 @@ export function ReflectionDocumentActivity({
   spec,
   minWords,
   onComplete,
+  priorAnswer,
 }: {
   activity: PortableActivity;
   spec: DocumentSpec;
   minWords: number;
   onComplete: (correct: boolean, detail?: ActivityCompletion) => void;
+  priorAnswer?: ActivityCompletion;
 }) {
   const { t } = useActivityI18n();
-  const [text, setText] = useState('');
   const isDone = activity.status === 'done';
+  // A finished reflection re-opens on what the learner wrote, and stays theirs:
+  // an empty, editable box under "0 words" read as work that was never sent.
+  const [text, setText] = useState(() => (isDone ? (priorText(priorAnswer) ?? '') : ''));
   const words = countWords(text);
   const meetsMin = words >= Math.max(minWords, 1);
 
@@ -64,8 +69,9 @@ export function ReflectionDocumentActivity({
       <ActivityTextarea
         value={text}
         onChange={setText}
-        placeholder={t('activity.reflectionPlaceholder')}
+        placeholder={isDone ? undefined : t('activity.reflectionPlaceholder')}
         rows={6}
+        readOnly={isDone}
         data-testid="document-reflection-input"
         className="mt-5"
       />
