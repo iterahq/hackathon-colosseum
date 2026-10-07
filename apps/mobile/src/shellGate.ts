@@ -163,6 +163,11 @@ export function rereadDue(kind: 'run' | 'update', status: ReadStatus | null, now
   return now - status.at >= (status.ok ? REREAD_OK_MS : REREAD_FAILED_MS);
 }
 
+/** The foreground listener of the route: only the `active` state reads again, and a pending update card (the launch in memory) always does. */
+export function rereadOnForeground(appState: string, launch: LaunchConfig | null, status: ReadStatus | null, now: number): boolean {
+  return appState === 'active' && rereadDue(launch?.gate.kind === 'update' ? 'update' : 'run', status, now);
+}
+
 export interface ShownLaunchContext {
   /** The route being shown changed (a new `entryPath`): a pending update card may come up now. */
   entryChanged: boolean;

@@ -11,12 +11,14 @@ import {
   loadLaunchConfig,
   parseForceWebview,
   rereadDue,
+  rereadOnForeground,
   rereadOnRetry,
   shownLaunch,
   storeUrlFor,
   updateCardCopy,
   type ConfigResponse,
   type FetchLike,
+  type LaunchConfig,
 } from './shellGate';
 
 const ORIGIN = 'https://app.iterahq.dev';
@@ -382,6 +384,26 @@ describe('rereadDue and rereadOnRetry', () => {
     expect(rereadOnRetry(null)).toBe(false);
     expect(rereadOnRetry({ ok: true, at })).toBe(false);
     expect(rereadOnRetry({ ok: false, at })).toBe(true);
+  });
+});
+
+describe('rereadOnForeground: the listener of the route', () => {
+  const at = 1_000_000;
+  const UPDATE: LaunchConfig = { gate: { kind: 'update', shellVersion: '0.2.0', minShellVersion: '0.3.0', updateUrl: APPLE }, forceWebview: [] };
+  it.each(['background', 'inactive', 'unknown', ''])('the state "%s" never reads', (state) => {
+    expect(rereadOnForeground(state, UPDATE, { ok: true, at }, at + REREAD_OK_MS)).toBe(false);
+    expect(rereadOnForeground(state, OPEN_LAUNCH, { ok: false, at }, at + REREAD_FAILED_MS)).toBe(false);
+  });
+  it('active with the update card in memory always reads', () => {
+    expect(rereadOnForeground('active', UPDATE, { ok: true, at }, at + 1)).toBe(true);
+  });
+  it('active with a run launch reads by the age of the last read', () => {
+    expect(rereadOnForeground('active', OPEN_LAUNCH, { ok: true, at }, at + REREAD_OK_MS - 1)).toBe(false);
+    expect(rereadOnForeground('active', OPEN_LAUNCH, { ok: true, at }, at + REREAD_OK_MS)).toBe(true);
+    expect(rereadOnForeground('active', OPEN_LAUNCH, { ok: false, at }, at + REREAD_FAILED_MS)).toBe(true);
+  });
+  it('active before the first read answered (no launch, no status) reads nothing', () => {
+    expect(rereadOnForeground('active', null, null, at)).toBe(false);
   });
 });
 

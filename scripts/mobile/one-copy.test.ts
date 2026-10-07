@@ -482,6 +482,24 @@ describe("review fixes: onMessage payload goes through one function (finding 5; 
     const { repo } = fixture({ ...RECEIVER, [f]: null, "apps/mobile/app/[...path].tsx": HANDLER(`${CALL};`) });
     expect(rule1c(repo)).toEqual([expect.stringContaining(`${f} is missing`)]);
   });
+  it("the error event fields of onError (description, code, domain) and onHttpError (statusCode) are the other reads allowed", () => {
+    const { repo } = fixture({
+      ...RECEIVER,
+      "apps/mobile/app/[...path].tsx": HANDLER(`${CALL}; const a = e.nativeEvent.description; const b = e.nativeEvent.code; const c = e.nativeEvent.domain; const d = e.nativeEvent.statusCode;`),
+    });
+    expect(rule1c(repo)).toEqual([]);
+  });
+  it.each(["e.nativeEvent.url", "e.nativeEvent.data", "e.nativeEvent.title", "e.nativeEvent.codes", "e.nativeEvent.domainName", "e.nativeEvent['code']", "e.nativeEvent?.code"])("reading %s next to the allowed error fields is flagged", (read) => {
+    const { repo } = fixture({
+      ...RECEIVER,
+      "apps/mobile/app/[...path].tsx": HANDLER(`${CALL}; const a = e.nativeEvent.code; const b = ${read};`),
+    });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it("destructuring code out of nativeEvent is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER(`${CALL}; const { code } = e.nativeEvent;`) });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
   it("the call closed right after the options object is still allowed", () => {
     const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("receiveShellMessage({ event: e.nativeEvent });") });
     expect(rule1c(repo)).toEqual([]);

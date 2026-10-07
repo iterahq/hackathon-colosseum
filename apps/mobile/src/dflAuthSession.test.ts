@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isCallbackEntry } from './deepLink';
-import { AUTH_BUSY_NOTICE, RETURN_MARKER_TTL_MS, SESSION_STALE_MS, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from './dflAuthSession';
+import { AUTH_BUSY_NOTICE, RETURN_MARKER_TTL_MS, SESSION_STALE_MS, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from './dflAuthSession';
 
 const APP = 'https://app.iterahq.dev';
 const OK = 'https://app.iterahq.dev/auth/dfl/callback#dfl_token=a.b.c&next=%2Fprogram%2Fx';
@@ -221,5 +221,40 @@ describe('the raw callback link is consumed in either Android order', () => {
     expect(out.effective).toBe('/login');
     expect(isCallbackEntry(out.effective)).toBe(false);
     expect(out.forget).toBe(true);
+  });
+});
+
+describe('routerArrival and sessionReturnToLoad: the validator is asked before the latch', () => {
+  const ORIGIN = 'https://app.iterahq.dev';
+  const CB = '/auth/dfl/callback#dfl_token=a.b.c';
+  const spy = () => {
+    const calls: string[] = [];
+    return { calls, arrive: (source: 'router' | 'session') => (calls.push(source), 'load' as const) };
+  };
+
+  it('an entry that is not the callback answers null and leaves the latch alone', () => {
+    const latch = spy();
+    for (const entry of ['/', '/lesson/x', '/auth/dfl/callback/extra', '/auth/dfl/callback2']) expect(routerArrival(entry, ORIGIN, latch)).toBeNull();
+    expect(latch.calls).toEqual([]);
+  });
+
+  it('the callback entry asks the latch as the router', () => {
+    const latch = spy();
+    expect(routerArrival(CB, ORIGIN, latch)).toBe('load');
+    expect(latch.calls).toEqual(['router']);
+  });
+
+  it('a result that is not a validated return never reaches the latch', () => {
+    const latch = spy();
+    for (const result of [{ type: 'cancel' }, { type: 'dismiss' }, { type: 'success' }, { type: 'success', url: 'https://evil.example/auth/dfl/callback#x' }, { type: 'success', url: `${ORIGIN}/lesson/x` }]) {
+      expect(sessionReturnToLoad(result, ORIGIN, latch)).toBeNull();
+    }
+    expect(latch.calls).toEqual([]);
+  });
+
+  it('a validated return loads when the latch says load, and is dropped on duplicate', () => {
+    const url = `${ORIGIN}${CB}`;
+    expect(sessionReturnToLoad({ type: 'success', url }, ORIGIN, { arrive: () => 'load' })).toBe(url);
+    expect(sessionReturnToLoad({ type: 'success', url }, ORIGIN, { arrive: () => 'duplicate' })).toBeNull();
   });
 });

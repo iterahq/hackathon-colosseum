@@ -41,6 +41,22 @@ export function decideBack({ canGoBack, phase, confirmOpen, confirmEnabled, focu
   return confirmEnabled ? 'confirm' : 'leave';
 }
 
+export type BackEffect = 'webview-back' | 'open-confirm' | 'close-confirm' | 'none';
+
+/** What the route does for a `BackAction`, and the value its `hardwareBackPress` listener returns: true takes the press, false leaves it to the navigator or the system. */
+export function backEffect(action: BackAction): { effect: BackEffect; handled: boolean } {
+  switch (action) {
+    case 'history':
+      return { effect: 'webview-back', handled: true };
+    case 'confirm':
+      return { effect: 'open-confirm', handled: true };
+    case 'dismiss':
+      return { effect: 'close-confirm', handled: true };
+    case 'leave':
+      return { effect: 'none', handled: false };
+  }
+}
+
 /** `expo-constants` reports 'storeClient' for Expo Go; every other environment is an installed app. */
 export const backConfirmEnabled = (executionEnvironment: string | null | undefined): boolean => executionEnvironment !== 'storeClient';
 

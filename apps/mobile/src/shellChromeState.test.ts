@@ -84,8 +84,8 @@ describe('load failure card', () => {
       expect(cardCopy(s.failure).title).toBe('Sem conexão');
     },
   );
-  it.each(['net::ERR_NAME_NOT_RESOLVED', 'net::ERR_SSL_PROTOCOL_ERROR', ''])('classifies "%s" as a plain load failure', (description) => {
-    expect(classifyLoadError(description)).toBe('load');
+  it.each(['net::ERR_SSL_PROTOCOL_ERROR', 'net::ERR_CONNECTION_REFUSED', ''])('classifies "%s" as a plain load failure', (description) => {
+    expect(classifyLoadError({ description })).toBe('load');
   });
   it.each([400, 403, 404, 500, 503])('a page answering %i shows the card, with no URL comparison', (statusCode) => {
     const s = run([{ type: 'loadStart' }, { type: 'httpError', statusCode }]);
@@ -359,7 +359,7 @@ describe('createLateGuard: the second line of the Android guard', () => {
   });
 
   it('the refusal puts the failure card up at once, through the reducer, from the veil and from a committed page', () => {
-    expect(classifyLoadError(LATE_GUARD_ERROR)).toBe('load');
+    expect(classifyLoadError({ description: LATE_GUARD_ERROR })).toBe('load');
     for (const start of [INITIAL_CHROME, chromeReducer(INITIAL_CHROME, { type: 'loadEnd' })]) {
       const state = chromeReducer(start, { type: 'error', description: LATE_GUARD_ERROR });
       expect(isCardVisible(state)).toBe(true);
@@ -414,5 +414,70 @@ describe('classifyLoadStart: Android reports pushState as a load start', () => {
   it('a real navigation from a ready page (loading true) still starts a load', () => {
     const state = chromeReducer(ready, { type: 'loadStart' });
     expect(state.phase).toBe('loading');
+  });
+});
+
+describe('classifyLoadError: the code first, the text as the fallback', () => {
+  const ios = (code: number, description = 'localised text that matches nothing', domain = 'NSURLErrorDomain') => classifyLoadError({ os: 'ios', code, domain, description });
+  const android = (code: number, description = 'net::ERR_SOMETHING_ELSE') => classifyLoadError({ os: 'android', code, description });
+
+  it.each([
+    [-1009, 'not connected'],
+    [-1020, 'data not allowed'],
+    [-1018, 'international roaming off'],
+    [-1005, 'connection lost'],
+    [-1003, 'cannot find host'],
+  ])('iOS %i (%s) is offline whatever the language of the text', (code) => {
+    expect(ios(code, 'Sem conexão com a Internet.')).toBe('offline');
+    expect(ios(code, '')).toBe('offline');
+  });
+
+  it.each([-1001, -1004, -1200, -1100, -999, 0])('iOS %i is not listed: a text that matches nothing is a load failure', (code) => {
+    expect(ios(code)).toBe('load');
+  });
+
+  it('iOS: a code of another domain is not an NSURLError code', () => {
+    expect(ios(-1009, 'x', 'WebKitErrorDomain')).toBe('load');
+    expect(classifyLoadError({ os: 'ios', code: -1009, description: 'x' })).toBe('load');
+  });
+
+  it('Android -2 (ERROR_HOST_LOOKUP, a Wi-Fi without internet) is offline', () => {
+    expect(android(-2, 'net::ERR_NAME_NOT_RESOLVED')).toBe('offline');
+    expect(android(-2, '')).toBe('offline');
+  });
+
+  it.each([-1, -6, -8, -11, -14])('Android %i is not decided by the code alone: the other text keeps it a load failure', (code) => {
+    expect(android(code)).toBe('load');
+  });
+
+  it('Android -6 and -8 with an offline net:: text are offline (the text is the fallback)', () => {
+    expect(android(-6, 'net::ERR_INTERNET_DISCONNECTED')).toBe('offline');
+    expect(android(-8, 'net::ERR_NETWORK_CHANGED')).toBe('offline');
+    expect(android(-6, 'net::ERR_ADDRESS_UNREACHABLE')).toBe('offline');
+  });
+
+  it('an iOS code is not read on Android and the reverse', () => {
+    expect(classifyLoadError({ os: 'android', code: -1009, description: 'x' })).toBe('load');
+    expect(classifyLoadError({ os: 'ios', domain: 'NSURLErrorDomain', code: -2, description: 'x' })).toBe('load');
+  });
+
+  it('an unknown code with an English text falls back to the text', () => {
+    expect(ios(-7777, 'The Internet connection appears to be offline.')).toBe('offline');
+    expect(ios(-7777, 'You are not connected to the internet')).toBe('offline');
+    expect(ios(-7777, 'The network connection was lost.')).toBe('offline');
+    expect(android(-7777, 'net::ERR_NAME_NOT_RESOLVED')).toBe('offline');
+  });
+
+  it('no code, no OS, odd values: a plain load failure, never a throw', () => {
+    expect(classifyLoadError({ description: 'x' })).toBe('load');
+    expect(classifyLoadError({ description: 'x', code: -1009 })).toBe('load');
+    expect(classifyLoadError({ description: 'x', code: Number.NaN, os: 'ios', domain: 'NSURLErrorDomain' })).toBe('load');
+    expect(classifyLoadError({ description: undefined as unknown as string, code: 'x' as unknown as number, os: 'web' })).toBe('load');
+  });
+
+  it('the reducer passes code, domain and os to the classifier', () => {
+    const s = run([{ type: 'error', description: 'Sem conexão', code: -1009, domain: 'NSURLErrorDomain', os: 'ios' }]);
+    expect(s.failure).toBe('offline');
+    expect(cardCopy(s.failure).title).toBe('Sem conexão');
   });
 });

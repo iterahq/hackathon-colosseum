@@ -34,7 +34,7 @@ export interface ChromeState {
 export type ChromeEvent =
   | { type: 'loadStart' }
   | { type: 'loadEnd' }
-  | { type: 'error'; description: string }
+  | ({ type: 'error' } & LoadErrorInfo)
   | { type: 'httpError'; statusCode: number }
   | { type: 'timeout'; loadId: number }
   | { type: 'retry'; url?: string }
@@ -43,15 +43,47 @@ export type ChromeEvent =
 
 export const INITIAL_CHROME: ChromeState = { phase: 'loading', failure: null, mountKey: 0, loadId: 0, deaths: 0, startUrl: null };
 
-const OFFLINE = /ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|internet connection appears to be offline|not connected to the internet/i;
+const OFFLINE =
+  /ERR_INTERNET_DISCONNECTED|ERR_NETWORK_CHANGED|ERR_NAME_NOT_RESOLVED|ERR_ADDRESS_UNREACHABLE|internet connection appears to be offline|not connected to the internet|network connection was lost|cellular data is turned off|hostname could not be found/i;
 
 /**
- * The shell reads the description of `onError` only (rule 1c of the one-copy test). The strings
- * are the Android WebView `net::ERR_*` names and the iOS NSURLError text; any other description is
- * a plain load failure. Not measured on a phone yet: a miss shows the generic card, never nothing.
+ * What `onError` of the WebView reports, reduced to the fields the shell reads (rule 1c of the one-copy test): `description` is the OS's
+ * own text (iOS: `error.localizedDescription`, so it is in the phone's language; Android: the Chromium `net::ERR_*` name), `code` and
+ * `domain` do not depend on the locale (react-native-webview `apple/RNCWebViewImpl.m` `didFailProvisionalNavigation`, `android/.../RNCWebViewClient.java`
+ * `onReceivedError`). `os` is `Platform.OS`; `domain` is iOS only.
  */
-export function classifyLoadError(description: string): FailureKind {
-  return OFFLINE.test(description) ? 'offline' : 'load';
+export interface LoadErrorInfo {
+  description: string;
+  code?: number;
+  domain?: string;
+  os?: string;
+}
+
+/**
+ * iOS, `NSURLErrorDomain`: the codes that mean "this phone has no usable network".
+ * -1009 NotConnectedToInternet, -1020 DataNotAllowed (cellular data off), -1018 InternationalRoamingOff, -1005 NetworkConnectionLost (the connection
+ * dropped; react-native-webview implements no `didFailNavigation`, so this reaches `onError` only when it happens in the provisional phase, before the page commits), -1003 CannotFindHost (the name does not resolve; it resolves for everyone else, so it is this network).
+ * Left out on purpose: -1001 TimedOut and -1004 CannotConnectToHost (a slow or refusing server is as likely as a bad network; the generic card
+ * keeps the "open in browser" way out).
+ */
+const IOS_OFFLINE_CODES: ReadonlySet<number> = new Set([-1009, -1020, -1018, -1005, -1003]);
+/**
+ * Android `WebViewClient`: -2 ERROR_HOST_LOOKUP (a Wi-Fi without internet fails here: `ERR_NAME_NOT_RESOLVED`). -6 ERROR_CONNECT and -8
+ * ERROR_TIMEOUT cover refused and slow servers as well as a dead network, so they are left to the `net::ERR_*` text in `description`.
+ */
+const ANDROID_OFFLINE_CODES: ReadonlySet<number> = new Set([-2]);
+
+/**
+ * The code first (it does not depend on the phone's language), the description as the fallback. A code the shell does not list says
+ * nothing and falls through to the text; no code, an unknown code or an unknown OS with a text that does not match is a plain load failure.
+ * Not measured on a phone yet: a miss shows the generic card, never nothing.
+ */
+export function classifyLoadError({ description, code, domain, os }: LoadErrorInfo): FailureKind {
+  if (typeof code === 'number') {
+    if (os === 'ios' && domain === 'NSURLErrorDomain' && IOS_OFFLINE_CODES.has(code)) return 'offline';
+    if (os === 'android' && ANDROID_OFFLINE_CODES.has(code)) return 'offline';
+  }
+  return typeof description === 'string' && OFFLINE.test(description) ? 'offline' : 'load';
 }
 
 const failed = (state: ChromeState, failure: FailureKind): ChromeState => ({ ...state, phase: 'failed', failure });
@@ -74,7 +106,7 @@ export function chromeReducer(state: ChromeState, event: ChromeEvent): ChromeSta
       // the 15 s timeout the load is still running, so its finish means the page is there.
       return state.phase === 'loading' || state.failure === 'timeout' ? { ...state, phase: 'ready', failure: null, deaths: 0 } : state;
     case 'error':
-      return failed(state, classifyLoadError(event.description));
+      return failed(state, classifyLoadError(event));
     case 'httpError':
       return event.statusCode >= 400 ? failed(state, 'http') : state;
     case 'timeout':

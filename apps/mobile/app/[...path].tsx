@@ -30,6 +30,7 @@
  * On return to the foreground the session is revalidated: the page is asked once, and a copy nobody vouches for is dropped.
  * The Android guard has a second line (`createLateGuard`, `onNavigationStateChange`): native loads the page when JS is late to answer the tap guard, so the URL of every navigation event is judged again.
  * Android reports a route change of the web app (pushState) as a load start with `loading: false`: `classifyLoadStart` makes it a history update, so it shows no veil and resets nothing.
+ * Android sign-in started on `index`: the App Link pushes a new `[...path]` instance (the router reuses a route only by name) and that instance loads the callback; the session's copy is the duplicate. `usePathname()` is global, so an instance that is not focused keeps its entry (`src/routeEntry.ts`, `focused`) and the one beneath keeps its page. Defensive: if the session's copy arrives first, the pushed instance has no WebShell and pops itself (not run on a device).
  * R-2 adds the back-confirm card of installed builds (src/backConfirm.ts, src/BackConfirmCard.tsx); Expo Go keeps the system back.
  *
  * The one catch-all route of the shell. Every path opens the web app in a WebView; a path that is
@@ -60,16 +61,17 @@ import { type MessageBucket, type RawBucket } from '../src/messageWindow';
 import { receiveShellMessage } from '../src/receiveShellMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
-import { backConfirmEnabled, decideBack } from '../src/backConfirm';
+import { backConfirmEnabled, backEffect, decideBack } from '../src/backConfirm';
 import { browserUrl, displayUrl, entryFromLink, isCallbackEntry, type LinkParams } from '../src/deepLink';
-import { AUTH_BUSY_NOTICE, AUTH_FAILED_NOTICE, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from '../src/dflAuthSession';
+import { AUTH_BUSY_NOTICE, AUTH_FAILED_NOTICE, authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from '../src/dflAuthSession';
+import { nextEntry, type RouteEntry } from '../src/routeEntry';
 import { forgetLink, lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
 import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
 import { browserMethod, createOpenReporter } from '../src/openExternal';
-import { createLaunchGate, rereadDue, rereadOnRetry, shownLaunch, updateCardCopy, type LaunchConfig } from '../src/shellGate';
+import { createLaunchGate, rereadOnForeground, rereadOnRetry, shownLaunch, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
 import { DEV_TOP_FRAME_ORIGINS, dflCallbackUrl, isTopFrameRequest, navigationDecision, parseWebOrigin } from '../src/origin';
 import {
@@ -147,7 +149,7 @@ function useLaunchConfig(): { launch: LaunchConfig | null; refresh: () => void; 
   }, []);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && rereadDue(LAUNCH.peek()?.gate.kind === 'update' ? 'update' : 'run', LAUNCH.status(), Date.now())) refresh();
+      if (rereadOnForeground(state, LAUNCH.peek(), LAUNCH.status(), Date.now())) refresh();
     });
     return () => subscription.remove();
   }, [refresh]);
@@ -160,27 +162,32 @@ export default function ShellRoute() {
   const pathname = usePathname();
   const params = useLocalSearchParams() as LinkParams;
   // Android: when the session already loaded this return link, the router's copy of it keeps the WebShell it has (same key, no second load).
+  // A pushed instance (the sign-in started on `index`: the link does not reuse a route of another name) has nothing to keep: it leaves (`leaving`)
+  // and the WebShell beneath keeps the page; see `src/routeEntry.ts`.
   // The raw link of the DFL callback (a bearer token in its fragment) is forgotten once taken as the entry (the effect below), so a render
   // after that, on the same route and params, keeps the entry it built from the link instead of rebuilding it from the decoded params.
-  const entry = useRef<{ raw: string; effective: string; view: string } | null>(null);
+  const router = useRouter();
+  // `usePathname()` is global (every mounted instance sees the focused route's path): only the focused instance may rebuild its entry.
+  const focused = useIsFocused();
+  const entry = useRef<RouteEntry | null>(null);
   const view = `${pathname}\n${JSON.stringify(params)}`;
   const link = lastLink();
   const rawEntry =
     link === null && entry.current?.view === view
       ? entry.current.raw
       : entryFromLink(link, ORIGIN, pathname.split('/').filter(Boolean), params);
-  if (entry.current?.raw !== rawEntry) {
-    const returned = acceptAuthSessionReturn({ type: 'success', url: ORIGIN + rawEntry }, ORIGIN);
-    const duplicate = returned !== null && DFL_RETURNS.arrive('router') === 'duplicate';
-    entry.current = { raw: rawEntry, effective: duplicate && entry.current !== null ? entry.current.effective : rawEntry, view };
-  }
-  entry.current.view = view;
+  entry.current = nextEntry({ previous: entry.current, rawEntry, view, arrival: () => routerArrival(rawEntry, ORIGIN, DFL_RETURNS), canPop: router.canGoBack(), focused });
+  const leaving = entry.current.leaving;
+  useEffect(() => {
+    if (leaving) router.back();
+  }, [leaving]);
   const entryPath = entry.current.effective;
   // The RAW entry, not the effective one: in the Android order where the session loaded the return first, the router's copy is a
   // `duplicate`, the effective entry stays `/login`, and the raw link was consumed all the same.
+  const takenEntry = entry.current.raw;
   useEffect(() => {
-    if (isCallbackEntry(rawEntry)) forgetLink();
-  }, [rawEntry]);
+    if (isCallbackEntry(takenEntry)) forgetLink();
+  }, [takenEntry]);
   const { launch, refresh, retryRead } = useLaunchConfig();
   // A run -> update flip is not applied under a mounted page (`shownLaunch`): at the next launch, the next route entry, or when the page is already gone.
   const shown = useRef<{ config: LaunchConfig | null; fresh: LaunchConfig | null; entry: string }>({ config: null, fresh: null, entry: entryPath });
@@ -191,6 +198,7 @@ export default function ShellRoute() {
     shown.current.fresh = launch;
     pageGone.current = false;
   }
+  if (leaving) return <SafeAreaView style={styles.root} />;
   const gate = shown.current.config?.gate;
   if (gate?.kind === 'update') {
     return (
@@ -310,8 +318,8 @@ function useDflAuthSession(onReturn: (url: string) => void) {
       // Android ignores the option (the library reads it on iOS only).
       WebBrowser.openAuthSessionAsync(handoffUrl, DFL_RETURN, { preferUniversalLinks: true })
         .then((result) => {
-          const returned = acceptAuthSessionReturn(result, ORIGIN);
-          if (returned !== null && DFL_RETURNS.arrive('session') === 'load') onReturn(returned);
+          const returned = sessionReturnToLoad(result, ORIGIN, DFL_RETURNS);
+          if (returned !== null) onReturn(returned);
         })
         .catch(() => OPENS.fail(AUTH_FAILED_NOTICE))
         .finally(() => {
@@ -455,10 +463,11 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef.current, canPop: router.canGoBack() });
-      if (action === 'history') webview.current?.goBack();
-      else if (action === 'confirm') setBackConfirmOpen(true);
-      else if (action === 'dismiss') setBackConfirmOpen(false);
-      return action !== 'leave';
+      const { effect, handled } = backEffect(action);
+      if (effect === 'webview-back') webview.current?.goBack();
+      else if (effect === 'open-confirm') setBackConfirmOpen(true);
+      else if (effect === 'close-confirm') setBackConfirmOpen(false);
+      return handled;
     });
     return () => subscription.remove();
   }, []);
@@ -484,7 +493,7 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
         allowsBackForwardNavigationGestures
         onLoadStart={onLoadStart}
         onLoadEnd={() => dispatch({ type: 'loadEnd' })}
-        onError={(e) => dispatch({ type: 'error', description: e.nativeEvent.description })}
+        onError={(e) => dispatch({ type: 'error', description: e.nativeEvent.description, code: e.nativeEvent.code, domain: e.nativeEvent.domain, os: Platform.OS })}
         onHttpError={(e) => dispatch({ type: 'httpError', statusCode: e.nativeEvent.statusCode })}
         onContentProcessDidTerminate={() => relaunch('processGone')}
         onRenderProcessGone={() => relaunch('processGone')}

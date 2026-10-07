@@ -114,3 +114,17 @@ export function createReturnLatch(now: () => number, ttlMs = RETURN_MARKER_TTL_M
     },
   };
 }
+
+/**
+ * The router's arrival of an entry, judged BEFORE the latch is asked: only the exact DFL callback counts as a return (`acceptAuthSessionReturn`),
+ * any other entry answers null and leaves the latch untouched.
+ */
+export function routerArrival(rawEntry: string, appOrigin: string, latch: Pick<ReturnLatch, 'arrive'>): 'load' | 'duplicate' | null {
+  return acceptAuthSessionReturn({ type: 'success', url: appOrigin + rawEntry }, appOrigin) === null ? null : latch.arrive('router');
+}
+
+/** The URL the session's result loads, or null: the validator first, and the latch only for a validated return. */
+export function sessionReturnToLoad(result: AuthSessionResult, appOrigin: string, latch: Pick<ReturnLatch, 'arrive'>): string | null {
+  const returned = acceptAuthSessionReturn(result, appOrigin);
+  return returned !== null && latch.arrive('session') === 'load' ? returned : null;
+}

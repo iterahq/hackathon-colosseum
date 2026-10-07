@@ -204,8 +204,11 @@ export function rule1b(repo: Repo, map: RouteMap, closed: readonly string[]): st
 const ONMESSAGE_FILE = "apps/mobile/app/[...path].tsx";
 const RECEIVER_FILE = "apps/mobile/src/receiveShellMessage.ts";
 const RECEIVER_TEST = "apps/mobile/src/receiveShellMessage.test.ts";
-/** Error events carry no page-controlled payload: `onError` (description) and `onHttpError` (statusCode). */
-const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|statusCode)\b/g;
+/**
+ * Error events carry no page-controlled payload: `onError` (description, and the locale-free `code` and `domain` the offline card is classified by)
+ * and `onHttpError` (statusCode). `.data` and `.url` stay refused.
+ */
+const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|code|domain|statusCode)\b/g;
 /**
  * The one place a WebView event may be read: handed whole, as the `event` of the options object, to
  * `receiveShellMessage`. That function (src/receiveShellMessage.ts, with its own behaviour test) is the
@@ -224,7 +227,7 @@ const importsFrom = (text: string, name: string, mod: string) =>
  * file; and `nativeEvent` appears only as the `event` of a call to `receiveShellMessage` (a pure function
  * in `src/receiveShellMessage.ts` with its own behaviour test: origin and size gate, raw window, console
  * shape (development only), bridge envelope, page budget; it returns what to do or a drop). Destructuring `nativeEvent`, or reading `.data` anywhere
- * else, is flagged. The error events of the WebView (`.nativeEvent.description`, `.nativeEvent.statusCode`)
+ * else, is flagged. The error events of the WebView (`.nativeEvent.description`, `.code`, `.domain`, `.nativeEvent.statusCode`)
  * carry no page-controlled payload and are the only other reads allowed.
  */
 export function rule1c(repo: Repo): string[] {

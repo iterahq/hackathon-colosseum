@@ -17,7 +17,7 @@ describe('route file wiring', () => {
   it.each([
     ['onLoadStart', /\bonLoadStart=\{onLoadStart\}/],
     ['onLoadEnd', /\bonLoadEnd=\{\(\) => dispatch\(\{ type: 'loadEnd' \}\)\}/],
-    ['onError', /\bonError=\{\(e\) => dispatch\(\{ type: 'error', description: e\.nativeEvent\.description \}\)\}/],
+    ['onError', /\bonError=\{\(e\) => dispatch\(\{ type: 'error', description: e\.nativeEvent\.description, code: e\.nativeEvent\.code, domain: e\.nativeEvent\.domain, os: Platform\.OS \}\)\}/],
     ['onHttpError (statusCode, no URL)', /\bonHttpError=\{\(e\) => dispatch\(\{ type: 'httpError', statusCode: e\.nativeEvent\.statusCode \}\)\}/],
     ['onContentProcessDidTerminate (iOS)', /\bonContentProcessDidTerminate=\{\(\) => relaunch\('processGone'\)\}/],
     ['onRenderProcessGone (Android)', /\bonRenderProcessGone=\{\(\) => relaunch\('processGone'\)\}/],
@@ -61,7 +61,8 @@ describe('route file wiring', () => {
     expect(code).toMatch(/return <WebShell key=\{entryPath\} entryPath=\{entryPath\} onRetryRead=\{\(\) => \{\s*if \(retryRead\(\)\) pageGone\.current = true;\s*\}\} \/>;/);
     expect(code).not.toMatch(/launch === null/);
     expect(code).toMatch(/shownLaunch\(shown\.current\.config, launch, \{ entryChanged: shown\.current\.entry !== entryPath, pageGone: pageGone\.current \}\)/);
-    expect(code).toMatch(/AppState\.addEventListener\('change'[\s\S]*state === 'active' && rereadDue\(LAUNCH\.peek\(\)\?\.gate\.kind === 'update' \? 'update' : 'run', LAUNCH\.status\(\), Date\.now\(\)\)\) refresh\(\)/);
+    // The foreground conditions are behaviour now: shellGate.test.ts, `rereadOnForeground`.
+    expect(code).toMatch(/AppState\.addEventListener\('change'[\s\S]*if \(rereadOnForeground\(state, LAUNCH\.peek\(\), LAUNCH\.status\(\), Date\.now\(\)\)\) refresh\(\)/);
     expect(code).toMatch(/if \(!rereadOnRetry\(LAUNCH\.status\(\)\)\) return false;\s*refresh\(\);/);
     expect(code).toMatch(/onRetryRead\(\);\s*relaunch\('retry'\);/);
     expect(code).not.toMatch(/\bfetch\b/);
@@ -72,7 +73,8 @@ describe('route file wiring', () => {
     expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef\.current, canPop: router\.canGoBack\(\) \}\)/);
     expect(code).toMatch(/const router = useRouter\(\);/);
     expect(code).toMatch(/focusedRef\.current = useIsFocused\(\);/);
-    expect(code).toMatch(/return action !== 'leave';/);
+    // What each answer does, and what the listener returns, is behaviour now: backConfirm.test.ts, `backEffect`.
+    expect(code).toMatch(/const \{ effect, handled \} = backEffect\(action\);[\s\S]*return handled;/);
     expect(code).toMatch(/const BACK_CONFIRM = backConfirmEnabled\(Constants\.executionEnvironment\);/);
     expect(code).toMatch(/canGoBack\.current = false;/);
     expect(code).toMatch(/canGoBack\.current = nav\.canGoBack;/);
@@ -131,7 +133,7 @@ describe('route file wiring: the bridge (R-6)', () => {
   });
 
   it('nothing in the route reads the payload or calls a parser or a window: only receiveShellMessage sees nativeEvent.data', () => {
-    expect(count(/\bnativeEvent\b/)).toBe(3);
+    expect(count(/\bnativeEvent\b/)).toBe(5);
     expect(count(/\.data\b/)).toBe(0);
     expect(count(/\b(?:parseConsoleMessage|parseBridgeMessage|readConsoleShape|readBridgeEnvelope|messageSize|admitRaw|admitMessage)\(/)).toBe(0);
     expect(code).not.toMatch(/onMessage=\{__DEV__/);
@@ -219,17 +221,23 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
   });
 
   it('the raw callback link (a bearer token) is forgotten as soon as the route has taken it as its entry, and the entry survives the next render', () => {
-    expect(code).toMatch(/useEffect\(\(\) => \{\s*if \(isCallbackEntry\(rawEntry\)\) forgetLink\(\);\s*\}, \[rawEntry\]\);/);
+    expect(code).toMatch(/const takenEntry = entry\.current\.raw;\s*useEffect\(\(\) => \{\s*if \(isCallbackEntry\(takenEntry\)\) forgetLink\(\);\s*\}, \[takenEntry\]\);/);
     expect(code).toMatch(/link === null && entry\.current\?\.view === view\s*\? entry\.current\.raw/);
   });
 
   it('loads the returned URL only after the pure validator, and only through the reducer', () => {
-    expect(code).toMatch(/const returned = acceptAuthSessionReturn\(result, ORIGIN\);\s*if \(returned !== null && DFL_RETURNS\.arrive\('session'\) === 'load'\) onReturn\(returned\);/);
+    // The order validator -> latch is behaviour now: dflAuthSession.test.ts, `sessionReturnToLoad`.
+    expect(code).toMatch(/const returned = sessionReturnToLoad\(result, ORIGIN, DFL_RETURNS\);\s*if \(returned !== null\) onReturn\(returned\);/);
+    expect(count(/\bacceptAuthSessionReturn\b/)).toBe(0);
     expect(code).toMatch(/dispatch\(\{ type: 'load', url \}\)/);
   });
 
   it('Android: the router\'s copy and the session\'s copy of the return link go through one latch, so one of them loads', () => {
-    expect(code).toMatch(/DFL_RETURNS\.arrive\('router'\) === 'duplicate'/);
+    // The router's side of the latch and the pushed-instance rule are behaviour now: routeEntry.test.ts, dflAuthSession.test.ts.
+    expect(code).toMatch(/nextEntry\(\{ previous: entry\.current, rawEntry, view, arrival: \(\) => routerArrival\(rawEntry, ORIGIN, DFL_RETURNS\), canPop: router\.canGoBack\(\), focused \}\)/);
+    expect(code).toMatch(/const focused = useIsFocused\(\);/);
+    expect(code).toMatch(/if \(leaving\) router\.back\(\);/);
+    expect(code).toMatch(/if \(leaving\) return <SafeAreaView style=\{styles\.root\} \/>;/);
     expect(code).toMatch(/DFL_RETURNS\.begin\(\);/);
   });
 

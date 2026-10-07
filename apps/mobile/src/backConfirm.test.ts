@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BACK_CONFIRM_COPY, backConfirmEnabled, decideBack, type BackInput } from './backConfirm';
+import { BACK_CONFIRM_COPY, backConfirmEnabled, backEffect, decideBack, type BackInput } from './backConfirm';
 
 const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true, canPop: false };
 const press = (over: Partial<BackInput>) => decideBack({ ...base, ...over });
@@ -89,5 +89,25 @@ describe('BACK_CONFIRM_COPY', () => {
     for (const text of Object.values(BACK_CONFIRM_COPY)) expect(text.trim().length).toBeGreaterThan(0);
     expect(BACK_CONFIRM_COPY.title).toMatch(/Sair/);
     expect(BACK_CONFIRM_COPY.leave).toBe('Sair');
+  });
+});
+
+describe('backEffect: what the route does with the answer, and what its listener returns', () => {
+  it.each([
+    ['history', 'webview-back', true],
+    ['confirm', 'open-confirm', true],
+    ['dismiss', 'close-confirm', true],
+    ['leave', 'none', false],
+  ] as const)('%s -> %s, handled %s', (action, effect, handled) => {
+    expect(backEffect(action)).toEqual({ effect, handled });
+  });
+
+  it('only leave hands the press back to the navigator or the system', () => {
+    const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true, canPop: false };
+    expect(backEffect(decideBack({ ...base, focused: false })).handled).toBe(false);
+    expect(backEffect(decideBack({ ...base, canPop: true })).handled).toBe(false);
+    expect(backEffect(decideBack({ ...base, confirmEnabled: false })).handled).toBe(false);
+    expect(backEffect(decideBack(base)).handled).toBe(true);
+    expect(backEffect(decideBack({ ...base, canGoBack: true })).effect).toBe('webview-back');
   });
 });
