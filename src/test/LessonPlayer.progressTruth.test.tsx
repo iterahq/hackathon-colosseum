@@ -54,6 +54,7 @@ function orderedRead(table: string) {
   }
   return { data: table === 'activity_traces' ? traceRows : [], error: null };
 }
+let progressWriteDown = false;
 let insertErrorFor:
   | ((table: string, payload: Record<string, unknown>) => { message: string } | null)
   | null = null;
@@ -150,7 +151,7 @@ vi.mock('@/lib/supabase/client', () => ({
       const builder: Record<string, unknown> = {
         upsert: (payload: Record<string, unknown>, opts?: unknown) => {
           upserts.push({ table, payload, opts });
-          return Promise.resolve({ error: null });
+          return Promise.resolve({ error: table === 'progress' && progressWriteDown ? { message: 'down' } : null });
         },
         insert: (payload: Record<string, unknown>) => {
           (inserts[table] ??= []).push(payload);
@@ -225,6 +226,7 @@ beforeEach(async () => {
   attemptRows = [];
   traceRows = [];
   insertErrorFor = null;
+  progressWriteDown = false;
   // Module-level mock: without clearing, call counts accumulate across cases in
   // this file and the "no XP for a miss" assertion sees an earlier test's award.
   const { awardActivityXp } = await import('@/services/gamification.service');
@@ -574,6 +576,34 @@ describe('the result stands — it is recorded at the answer and survives a relo
     expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
     // Kept as already saved: a reload must not send the pass a second time.
     expect(readLessonAnswers().a1).toMatchObject({ correct: true, saved: true });
+  });
+
+  it('offers the save retry only on the activity whose save failed, and saves that one', async () => {
+    progressRows = [{ activity_id: 'a1', status: 'completed' }];
+    const data = lessonData();
+    data.activities[1] = { ...data.activities[1], kind: 'document_reflect' } as Activity;
+    useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+
+    progressWriteDown = true;
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    await screen.findByTestId('lesson-save-retry');
+    expect(shownId()).toBe('a2');
+
+    // Stepping back onto another activity: its screen has no retry to press.
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+    expect(screen.queryByTestId('lesson-save-retry')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('lesson-next'));
+    await waitFor(() => expect(shownId()).toBe('a2'));
+    progressWriteDown = false;
+    upserts.length = 0;
+    fireEvent.click(await screen.findByTestId('lesson-save-retry'));
+    await waitFor(() => expect(shownId()).toBe('a3'), { timeout: 5000 });
+    expect(completedUpserts().map((u) => u.payload.activity_id)).toEqual(['a2']);
   });
 
   it('keeps the picks beside the note, so a reload still draws what was chosen', async () => {

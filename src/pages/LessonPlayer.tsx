@@ -110,7 +110,7 @@ export default function LessonPlayer() {
   const [finished, setFinished] = useState(false);
   // True when the last persistProgress write FAILED — we surface a retry instead
   // of a false success trophy (round-2 nit: never celebrate an unsaved completion).
-  const [saveError, setSaveError] = useState(false);
+  const [saveErrorFor, setSaveErrorFor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // The settled result for the GLOBAL fixed feedback footer (Duolingo pattern).
   // A graded activity's `onComplete(correct)` sets this; the activity STAYS on
@@ -159,7 +159,7 @@ export default function LessonPlayer() {
     setFinished(false);
     setDoneIds(new Set());
     setCompleted(false);
-    setSaveError(false);
+    setSaveErrorFor(null);
     setSaving(false);
     setPending(null);
     setResuming(true);
@@ -223,6 +223,9 @@ export default function LessonPlayer() {
   const current = activities[index];
   // Answered before this visit — completed on the server, or settled on this
   // device and already past its review beat. The lesson reopens it as a book.
+  // The failed save belongs to ONE activity: the retry replays that activity's
+  // pending answer, so it is only offered while that activity is on screen.
+  const saveError = saveErrorFor !== null && saveErrorFor === current?.id;
   const reviewing =
     !!current && (doneIds.has(current.id) || (!!answers[current.id] && pending === null && !saving));
   const missedBefore =
@@ -643,11 +646,11 @@ export default function LessonPlayer() {
           recordAnswer(current.id, written.answer);
         }
         setDoneIds((prev) => new Set(prev).add(current.id));
-        setSaveError(false);
+        setSaveErrorFor(null);
       } else {
         // The completion did NOT persist — surface a retry, do NOT advance and do
         // NOT show a success trophy (the footer stays up). Retrying re-runs this.
-        setSaveError(true);
+        setSaveErrorFor(current.id);
         return;
       }
     }
