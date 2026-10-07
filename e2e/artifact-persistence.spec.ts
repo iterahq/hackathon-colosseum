@@ -65,7 +65,7 @@ test.beforeEach(async () => {
 async function login(page: Page, creds: { user: string; pass: string }) {
   await page.goto(`${BASE}/login`);
   await page.getByLabel(/e-?mail/i).fill(creds.user);
-  await page.getByLabel(/senha|password/i).fill(creds.pass);
+  await page.locator('input[type="password"]').first().fill(creds.pass);
   await page.getByRole('button', { name: /entrar|sign in|log in/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 });
 }

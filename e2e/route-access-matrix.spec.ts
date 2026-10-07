@@ -70,7 +70,7 @@ async function login(page: Page, id: IdentityKey) {
   const { user, pass } = IDENTITIES[id];
   await page.goto(`${BASE}/login`);
   await page.getByLabel(/e-?mail/i).fill(user);
-  await page.getByLabel(/senha|password/i).fill(pass);
+  await page.locator('input[type="password"]').first().fill(pass);
   // testid, not the accessible name: "Entrar" also matches the "Entrar com DFL"
   // federated-IdP button, which is a different flow entirely.
   await page.getByTestId('submit-login').click();

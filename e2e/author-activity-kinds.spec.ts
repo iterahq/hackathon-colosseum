@@ -278,7 +278,7 @@ let page: Page;
 async function login(p: Page) {
   await p.goto(`${BASE}/login`);
   await p.getByLabel(/e-?mail/i).fill(USER);
-  await p.getByLabel(/senha|password/i).fill(PASS);
+  await p.locator('input[type="password"]').first().fill(PASS);
   // testid, not the accessible name: "Entrar" also matches the federated
   // "Entrar com DFL" button, which is a different flow entirely.
   await p.getByTestId('submit-login').click();
