@@ -152,6 +152,19 @@ describe('createShellBridge', () => {
       expect(b.keepAwakeHeld()).toBe(false);
     });
 
+    it('two on:true asked while the activate is pending both get handler_failed when it fails, and nothing is held', async () => {
+      let fail: (error: Error) => void = () => undefined;
+      const b = bridge(claimsOf({ activate: () => new Promise<void>((_resolve, reject) => (fail = reject)), deactivate: () => undefined }));
+      const session = await shake(b);
+      const first = ask(b, session, 'wBBBBBBBB1', { on: true });
+      const second = ask(b, session, 'wBBBBBBBB2', { on: true });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fail(new Error('no native module'));
+      expect((await first).refused).toBe('handler_failed');
+      expect((await second).refused).toBe('handler_failed');
+      expect(b.keepAwakeHeld()).toBe(false);
+    });
+
     it('reset() (each top-frame load start, relaunch, unmount) releases the lock and forgets the handshake', async () => {
       const k = keepAwakeEffects();
       const b = bridge(k.claims);

@@ -6,7 +6,7 @@
  * back to the app: Android opens a Custom Tab (`WebBrowser.openBrowserAsync`) instead, which is a browser by construction.
  * iOS keeps `Linking.openURL`.
  *
- * A failed open is never silent: `createOpenReporter` shows ONE short `Alert` (`OPEN_FAILED_NOTICE`, or the notice the caller
+ * A failed open is never silent: `createOpenReporter` shows ONE short `Alert` (`openFailed` of `chromeCopy.ts`, or the notice the caller
  * names), at most one per `NOTICE_GAP_MS` like the blocked-navigation notice. Neither the URL nor the error text is shown or kept.
  *
  * Pure TypeScript: no React Native import.
@@ -28,9 +28,9 @@ export interface OpenReporter {
 }
 
 /** One reporter per surface: its own clock for the rate limit. `show` is `Alert.alert`; `now` is `Date.now`. */
-export function createOpenReporter(show: (notice: string) => void, now: () => number, defaultNotice: string): OpenReporter {
+export function createOpenReporter(show: (notice: string) => void, now: () => number, defaultNotice: string | (() => string)): OpenReporter {
   let last: number | null = null;
-  const fail = (notice: string = defaultNotice) => {
+  const fail = (notice: string = typeof defaultNotice === 'function' ? defaultNotice() : defaultNotice) => {
     if (!noticeDue(last, now())) return;
     last = now();
     show(notice);

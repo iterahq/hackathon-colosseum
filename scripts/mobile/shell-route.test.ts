@@ -93,7 +93,7 @@ describe('route file wiring', () => {
   it('no open call is left to fail silently: every Linking.openURL and the auth session go through the open reporter', () => {
     expect(count(/\bLinking\.openURL\(/)).toBe(2);
     expect(count(/\bOPENS\.attempt\(\(\) => Linking\.openURL\(req\.url\)\)/)).toBe(1);
-    expect(code).toMatch(/\.catch\(\(\) => OPENS\.fail\(AUTH_FAILED_NOTICE\)\)/);
+    expect(code).toMatch(/\.catch\(\(\) => OPENS\.fail\(chromeStrings\(\)\.authFailed\)\)/);
     expect(count(/\.catch\(\(\) => undefined\)/)).toBe(0);
     const card = readFileSync(fileURLToPath(new URL('../../apps/mobile/src/UpdateNowCard.tsx', import.meta.url)), 'utf8');
     expect(card).toMatch(/OPENS\.attempt\(\(\) => Linking\.openURL\(url\)\)/);
@@ -216,7 +216,7 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
   it('opens the handoff URL as the page built it, with the one return link, behind a one-session guard', () => {
     expect(count(/WebBrowser\.openAuthSessionAsync\(handoffUrl, DFL_RETURN, \{ preferUniversalLinks: true \}\)/)).toBe(1);
     expect(count(/openAuthSessionAsync/)).toBe(1);
-    expect(code).toMatch(/const ticket = DFL_SESSION\.tryEnter\(\);\s*if \(ticket === null\) \{[\s\S]*?Alert\.alert\(AUTH_BUSY_NOTICE\);/);
+    expect(code).toMatch(/const ticket = DFL_SESSION\.tryEnter\(\);\s*if \(ticket === null\) \{[\s\S]*?Alert\.alert\(chromeStrings\(\)\.authBusy\);/);
     expect(code).toMatch(/\.finally\(\(\) => \{\s*if \(DFL_SESSION\.leave\(ticket\)\) DFL_RETURNS\.end\(\);/);
   });
 

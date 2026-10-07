@@ -7,6 +7,7 @@
  *
  * Pure TypeScript: no React Native import.
  */
+import { chromeStrings, type ChromeLocale } from './chromeCopy';
 import { DFL_CALLBACK_PATH, navigationDecision, originOf, type NavigationDecision } from './origin';
 
 /** Loading for this long without the document finishing shows the failure card. */
@@ -14,9 +15,6 @@ export const LOAD_TIMEOUT_MS = 15_000;
 export const VEIL_FADE_MS = 150;
 /** Consecutive WebView process deaths (no finished load between them) before the card replaces the reload loop. */
 export const MAX_PROCESS_DEATHS = 3;
-export const BLOCKED_NOTICE = 'Indisponível no app';
-/** A page the shell tried to open outside the WebView (the browser, the store, a mail or phone link) and the system refused. */
-export const OPEN_FAILED_NOTICE = 'Não foi possível abrir';
 
 export type ChromePhase = 'loading' | 'ready' | 'failed';
 export type FailureKind = 'offline' | 'load' | 'http' | 'timeout' | 'process';
@@ -134,9 +132,11 @@ export interface CardCopy {
   body: string;
 }
 
-export function cardCopy(failure: FailureKind | null): CardCopy {
-  if (failure === 'offline') return { title: 'Sem conexão', body: 'Verifique sua internet e tente de novo.' };
-  return { title: 'Não foi possível abrir a Itera', body: 'Tente de novo ou abra no navegador.' };
+/** Offline says only to check the connection: "open in the browser" cannot work without one. Every other cause also offers the browser. */
+export function cardCopy(failure: FailureKind | null, locale?: ChromeLocale): CardCopy {
+  const t = chromeStrings(locale);
+  if (failure === 'offline') return { title: t.offlineTitle, body: t.offlineBody };
+  return { title: t.failureTitle, body: t.failureBody };
 }
 
 /**
@@ -157,8 +157,8 @@ function isCallbackUrl(url: string, appOrigin: string): boolean {
 }
 
 /** The notice for a refused navigation: top frame only (a blocked sub-frame is not a tap of the learner). */
-export function blockedNotice(decision: NavigationDecision, isTopFrame: boolean): string | null {
-  return decision === 'block' && isTopFrame ? BLOCKED_NOTICE : null;
+export function blockedNotice(decision: NavigationDecision, isTopFrame: boolean, locale?: ChromeLocale): string | null {
+  return decision === 'block' && isTopFrame ? chromeStrings(locale).blocked : null;
 }
 
 /** Recoveries onto the same last good page, inside `LATE_WINDOW_MS`, before the guard stops relaunching and shows the failure card. */

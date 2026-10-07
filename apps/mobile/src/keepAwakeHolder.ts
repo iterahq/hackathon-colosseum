@@ -15,7 +15,10 @@ export interface KeepAwakeEffects {
 }
 
 export interface KeepAwakeHolder {
-  /** Hold (`true`) or release (`false`). Resolves with the state asked for; rejects when the platform call fails. */
+  /**
+   * Hold (`true`) or release (`false`). Resolves with the state asked for; rejects when the platform call it depends on fails. A call that
+   * asks for the state already asked for (and still being applied) waits for that same platform call and shares its outcome.
+   */
   set(on: boolean): Promise<boolean>;
   /** Release whatever is held. Idempotent; a failing platform call is swallowed and `held()` stays true so the next release retries. */
   releaseAll(): Promise<void>;
@@ -25,6 +28,8 @@ export interface KeepAwakeHolder {
 export function createKeepAwakeHolder(effects: KeepAwakeEffects): KeepAwakeHolder {
   let held = false;
   let chain: Promise<unknown> = Promise.resolve();
+  // The platform call that set `held`, while it is in flight: a caller asking for the same state shares its outcome, success or failure.
+  let pending: Promise<boolean> | null = null;
 
   const enqueue = (run: () => Promise<unknown> | unknown): Promise<unknown> => {
     const next = chain.then(run);
@@ -33,15 +38,21 @@ export function createKeepAwakeHolder(effects: KeepAwakeEffects): KeepAwakeHolde
   };
 
   const set = (on: boolean): Promise<boolean> => {
-    if (on === held) return chain.then(() => on);
+    if (on === held) return pending !== null ? pending.then(() => on) : chain.then(() => on);
     held = on;
-    return enqueue(() => (on ? effects.activate(KEEP_AWAKE_TAG) : effects.deactivate(KEEP_AWAKE_TAG))).then(
+    const op: Promise<boolean> = enqueue(() => (on ? effects.activate(KEEP_AWAKE_TAG) : effects.deactivate(KEEP_AWAKE_TAG))).then(
       () => on,
       (error: unknown) => {
         if (held === on) held = !on;
         throw error;
       },
     );
+    pending = op;
+    const settled = () => {
+      if (pending === op) pending = null;
+    };
+    op.then(settled, settled);
+    return op;
   };
 
   return {
@@ -74,8 +85,9 @@ export function createKeepAwakeClaims(effects: KeepAwakeEffects): KeepAwakeClaim
           await platform.set(claims.size > 0);
           return on;
         } catch (error) {
-          if (had) claims.add(id);
-          else claims.delete(id);
+          // A hold whose activation failed is not held, for every caller that asked for it; a release that failed leaves the claim it dropped.
+          if (!on && had) claims.add(id);
+          else if (on) claims.delete(id);
           throw error;
         }
       };

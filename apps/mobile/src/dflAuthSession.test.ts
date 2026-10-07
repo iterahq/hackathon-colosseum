@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isCallbackEntry } from './deepLink';
-import { AUTH_BUSY_NOTICE, RETURN_MARKER_TTL_MS, SESSION_STALE_MS, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from './dflAuthSession';
+import { CHROME_COPY } from './chromeCopy';
+import { RETURN_MARKER_TTL_MS, SESSION_STALE_MS, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from './dflAuthSession';
 
 const APP = 'https://app.iterahq.dev';
 const OK = 'https://app.iterahq.dev/auth/dfl/callback#dfl_token=a.b.c&next=%2Fprogram%2Fx';
@@ -106,7 +107,8 @@ describe('createSessionGuard', () => {
   });
 
   it('has a notice for the refused tap', () => {
-    expect(AUTH_BUSY_NOTICE.length).toBeGreaterThan(0);
+    expect(CHROME_COPY.pt.authBusy).toBe('Login com DFL em andamento');
+    expect(CHROME_COPY.en.authBusy).toBe('DFL sign-in in progress');
   });
 });
 

@@ -1,18 +1,24 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BACK_CONFIRM_COPY } from './backConfirm';
+import { useEffect } from 'react';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { backConfirmCopy } from './backConfirm';
+import { cardAnnouncement } from './chromeA11y';
 import { CARD_STYLES } from './shellTheme';
 
-/** Shown on Android back at the root of an installed app (src/backConfirm.ts). Both buttons act: stay closes the card, leave exits the app. */
+/** Shown on Android back at the root of an installed app (src/backConfirm.ts). Both buttons act: stay closes the card, leave exits the app. Modal for a screen reader, announced once when it opens. */
 export function BackConfirmCard({ onStay, onLeave }: { onStay: () => void; onLeave: () => void }) {
+  const copy = backConfirmCopy();
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(cardAnnouncement(copy.title, copy.body));
+  }, []);
   return (
-    <View style={styles.fill} testID="shell-back-confirm">
-      <Text style={styles.title}>{BACK_CONFIRM_COPY.title}</Text>
-      <Text style={styles.body}>{BACK_CONFIRM_COPY.body}</Text>
+    <View style={styles.fill} testID="shell-back-confirm" accessibilityViewIsModal>
+      <Text style={styles.title} accessibilityRole="header">{copy.title}</Text>
+      <Text style={styles.body}>{copy.body}</Text>
       <Pressable accessibilityRole="button" onPress={onStay} style={[styles.button, styles.primary]} testID="shell-back-confirm-stay">
-        <Text style={styles.primaryText}>{BACK_CONFIRM_COPY.stay}</Text>
+        <Text style={styles.primaryText}>{copy.stay}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={onLeave} style={[styles.button, styles.secondary]} testID="shell-back-confirm-leave">
-        <Text style={styles.secondaryText}>{BACK_CONFIRM_COPY.leave}</Text>
+      <Pressable accessibilityRole="button" accessibilityHint={copy.leaveHint} onPress={onLeave} style={[styles.button, styles.secondary]} testID="shell-back-confirm-leave">
+        <Text style={styles.secondaryText}>{copy.leave}</Text>
       </Pressable>
     </View>
   );

@@ -19,6 +19,7 @@
  * Pure TypeScript with an injected fetch: no React Native import, so the tests run in plain Node.
  */
 import { SHELL_CONFIG_PATH, parseShellConfig, shellGate, type ShellConfig, type ShellGate } from '@iterahq/shell-bridge';
+import { chromeStrings, fill, type ChromeLocale } from './chromeCopy';
 import { originOf } from './origin';
 
 export const CONFIG_TIMEOUT_MS = 4000;
@@ -282,14 +283,15 @@ export interface UpdateCardCopy {
   retry: string;
 }
 
-export function updateCardCopy(gate: Extract<ShellGate, { kind: 'update' }>): UpdateCardCopy {
+export function updateCardCopy(gate: Extract<ShellGate, { kind: 'update' }>, locale?: ChromeLocale): UpdateCardCopy {
   const url = gate.updateUrl;
+  const t = chromeStrings(locale);
   return {
-    title: 'Atualize o app',
-    body: `Esta versão (${gate.shellVersion}) é antiga demais para o Itera atual. Instale a versão ${gate.minShellVersion} ou mais nova.`,
-    detail: url ? null : 'Uma atualização é necessária. Fale com quem te passou o app.',
-    button: url ? 'Atualizar agora' : null,
+    title: t.updateTitle,
+    body: fill(t.updateBody, { current: gate.shellVersion, min: gate.minShellVersion }),
+    detail: url ? null : t.updateDetail,
+    button: url ? t.updateButton : null,
     url,
-    retry: 'Tentar de novo',
+    retry: t.tryAgain,
   };
 }

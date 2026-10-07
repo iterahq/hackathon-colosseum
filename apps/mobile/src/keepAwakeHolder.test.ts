@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { KEEP_AWAKE_TAG, createKeepAwakeClaims, createKeepAwakeHolder } from './keepAwakeHolder';
 
 function spies(opts: { failActivate?: boolean; failDeactivate?: boolean } = {}) {
@@ -85,10 +85,8 @@ describe('createKeepAwakeHolder', () => {
 });
 
 describe('createKeepAwakeHolder: a second on:true while the first activate is pending', () => {
-  // PINS THE CURRENT BEHAVIOUR, WHICH IS UNDER QUESTION (PR "Found, not changed", keepAwakeHolder.ts `if (on === held) return chain.then(() => on)`):
-  // the second caller is told `true` although the activate it waited for failed and nothing is held. If this is fixed, the
-  // second call should reject (or resolve false) and this test should change with it.
-  it('resolves true for the second caller even when the pending activate then fails, and nothing is held', async () => {
+  // Every caller gets the outcome of the activation it depends on: the second shares the first's platform call, success or failure.
+  it('rejects the second caller too when the pending activate then fails, and nothing is held', async () => {
     let fail: (error: Error) => void = () => undefined;
     const holder = createKeepAwakeHolder({
       activate: () => new Promise<void>((_resolve, reject) => (fail = reject)),
@@ -97,11 +95,35 @@ describe('createKeepAwakeHolder: a second on:true while the first activate is pe
     const first = holder.set(true);
     const firstOutcome = first.then(() => 'resolved', () => 'rejected');
     const second = holder.set(true);
+    const secondOutcome = second.then(() => 'resolved', () => 'rejected');
     await new Promise((resolve) => setTimeout(resolve, 0));
     fail(new Error('activate failed'));
     expect(await firstOutcome).toBe('rejected');
-    expect(await second).toBe(true);
+    expect(await secondOutcome).toBe('rejected');
     expect(holder.held()).toBe(false);
+  });
+
+  it('resolves the second caller true when the pending activate succeeds, with one platform call', async () => {
+    let done: () => void = () => undefined;
+    const activate = vi.fn(() => new Promise<void>((resolve) => (done = resolve)));
+    const holder = createKeepAwakeHolder({ activate, deactivate: () => undefined });
+    const first = holder.set(true);
+    const second = holder.set(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    done();
+    expect(await first).toBe(true);
+    expect(await second).toBe(true);
+    expect(activate).toHaveBeenCalledTimes(1);
+    expect(holder.held()).toBe(true);
+  });
+
+  it('after the failure settled, a new on:true tries again and a release resolves false without an error', async () => {
+    let calls = 0;
+    const holder = createKeepAwakeHolder({ activate: () => (++calls === 1 ? Promise.reject(new Error('once')) : undefined), deactivate: () => undefined });
+    await expect(holder.set(true)).rejects.toThrow('once');
+    await expect(holder.set(false)).resolves.toBe(false);
+    await expect(holder.set(true)).resolves.toBe(true);
+    expect(holder.held()).toBe(true);
   });
 });
 
@@ -154,17 +176,16 @@ describe('createKeepAwakeClaims', () => {
     expect(b.held()).toBe(true);
   });
 
-  // PINS THE CURRENT BEHAVIOUR, WHICH IS UNDER QUESTION (same cause as the holder test above): the second on:true of one owner,
-  // asked while its first activate is pending, resolves true after that activate failed, and the owner holds nothing.
-  it('a second on:true of one owner while the first activate is pending resolves true although the activate fails', async () => {
+  // The second on:true of one owner, asked while its first activate is pending, gets the outcome of that activate.
+  it('a second on:true of one owner while the first activate is pending rejects when the activate fails, and the owner holds nothing', async () => {
     let fail: (error: Error) => void = () => undefined;
     const a = createKeepAwakeClaims({ activate: () => new Promise<void>((_resolve, reject) => (fail = reject)), deactivate: () => undefined }).owner('a');
     const first = a.set(true).then(() => 'resolved', () => 'rejected');
-    const second = a.set(true);
+    const second = a.set(true).then(() => 'resolved', () => 'rejected');
     await new Promise((resolve) => setTimeout(resolve, 0));
     fail(new Error('activate failed'));
     expect(await first).toBe('rejected');
-    expect(await second).toBe(true);
+    expect(await second).toBe('rejected');
     expect(a.held()).toBe(false);
   });
 });

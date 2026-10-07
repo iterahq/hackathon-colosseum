@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BACK_CONFIRM_COPY, backConfirmEnabled, backEffect, decideBack, type BackInput } from './backConfirm';
+import { backConfirmCopy, backConfirmEnabled, backEffect, decideBack, type BackInput } from './backConfirm';
 
 const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true, canPop: false };
 const press = (over: Partial<BackInput>) => decideBack({ ...base, ...over });
@@ -84,11 +84,23 @@ describe('backConfirmEnabled', () => {
   });
 });
 
-describe('BACK_CONFIRM_COPY', () => {
-  it('is Portuguese, non-empty, and names the way out', () => {
-    for (const text of Object.values(BACK_CONFIRM_COPY)) expect(text.trim().length).toBeGreaterThan(0);
-    expect(BACK_CONFIRM_COPY.title).toMatch(/Sair/);
-    expect(BACK_CONFIRM_COPY.leave).toBe('Sair');
+describe('backConfirmCopy', () => {
+  it('is Portuguese by default, non-empty, and names the way out', () => {
+    const copy = backConfirmCopy();
+    for (const text of Object.values(copy)) expect(text.trim().length).toBeGreaterThan(0);
+    expect(copy.title).toBe('Sair do Itera?');
+    expect(copy.leave).toBe('Sair');
+    expect(copy.stay).toBe('Continuar no app');
+    expect(copy.leaveHint).toBe('Fecha o app');
+  });
+  it('is English on request, with no article before the product', () => {
+    expect(backConfirmCopy('en')).toEqual({
+      title: 'Leave Itera?',
+      body: 'You go back to your phone\u2019s home screen. Your progress is saved.',
+      stay: 'Stay in the app',
+      leave: 'Leave',
+      leaveHint: 'Closes the app',
+    });
   });
 });
 

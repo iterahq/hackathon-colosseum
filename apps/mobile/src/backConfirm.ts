@@ -10,6 +10,7 @@
  * The failure card is a root of the PAGE, not of the app: from it the press never goes into page history,
  * and with a route beneath (`canPop`) it pops to that route; with nothing beneath it opens the card.
  */
+import { chromeStrings, type ChromeLocale } from './chromeCopy';
 import { shouldHandleBack, type ChromePhase } from './shellChromeState';
 
 export type BackAction = 'history' | 'confirm' | 'dismiss' | 'leave';
@@ -60,9 +61,17 @@ export function backEffect(action: BackAction): { effect: BackEffect; handled: b
 /** `expo-constants` reports 'storeClient' for Expo Go; every other environment is an installed app. */
 export const backConfirmEnabled = (executionEnvironment: string | null | undefined): boolean => executionEnvironment !== 'storeClient';
 
-export const BACK_CONFIRM_COPY = {
-  title: 'Sair do Itera?',
-  body: 'Você volta para a tela inicial do celular. Seu progresso fica salvo.',
-  stay: 'Continuar no app',
-  leave: 'Sair',
-} as const;
+export interface BackConfirmCopy {
+  title: string;
+  body: string;
+  stay: string;
+  leave: string;
+  /** Spoken with the leave button: "Sair" alone does not say it closes the app. */
+  leaveHint: string;
+}
+
+/** The words of the card, in the device language (`src/chromeCopy.ts`). */
+export function backConfirmCopy(locale?: ChromeLocale): BackConfirmCopy {
+  const t = chromeStrings(locale);
+  return { title: t.leaveTitle, body: t.leaveBody, stay: t.leaveStay, leave: t.leaveLeave, leaveHint: t.leaveHint };
+}

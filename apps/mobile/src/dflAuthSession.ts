@@ -37,10 +37,7 @@ export function acceptAuthSessionReturn(result: AuthSessionResult, appOrigin: st
 
 /** An open session older than this is taken as dead (Android: the promise settles only when the app returns to `active`). */
 export const SESSION_STALE_MS = 120_000;
-/** Shown for a tap refused while a session is genuinely open. */
-export const AUTH_BUSY_NOTICE = 'Login com DFL em andamento';
-/** Shown when the system auth sheet could not open or failed (a cancel is not a failure). */
-export const AUTH_FAILED_NOTICE = 'Não foi possível entrar com DFL';
+// The notices for a tap refused while a session is open (`authBusy`) and for a sheet that could not open or failed (`authFailed`; a cancel is not a failure) live in `chromeCopy.ts`.
 
 export interface SessionGuard {
   /** A ticket when the session may open, null when one is genuinely open (a tap refused). A session older than `staleMs` is released first. */

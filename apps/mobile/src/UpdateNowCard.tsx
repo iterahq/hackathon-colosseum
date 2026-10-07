@@ -1,18 +1,24 @@
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { AccessibilityInfo, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { cardAnnouncement } from './chromeA11y';
 import { createOpenReporter } from './openExternal';
-import { OPEN_FAILED_NOTICE } from './shellChromeState';
+import { chromeStrings } from './chromeCopy';
 import type { UpdateCardCopy } from './shellGate';
 import { CARD_STYLES } from './shellTheme';
 
 // A store link the system refuses is not a silent tap: one short notice, never the URL.
-const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, OPEN_FAILED_NOTICE);
+const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, () => chromeStrings().openFailed);
 
-/** Full-screen "update the app": a shell older than `minShellVersion`. The store button exists only when the config gave a vetted URL for this platform; "Tentar de novo" reads the config again. */
+/** Full-screen "update the app": a shell older than `minShellVersion`. The store button exists only when the config gave a vetted URL for this platform; "Tentar de novo" reads the config again. Modal for a screen reader, announced once when it appears. */
 export function UpdateNowCard({ copy, onRetry }: { copy: UpdateCardCopy; onRetry: () => void }) {
   const { url } = copy;
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(cardAnnouncement(copy.title, copy.body));
+    // Once per appearance: the card mounts when it appears.
+  }, []);
   return (
-    <View style={styles.fill} testID="shell-update-now">
-      <Text style={styles.title}>{copy.title}</Text>
+    <View style={styles.fill} testID="shell-update-now" accessibilityViewIsModal>
+      <Text style={styles.title} accessibilityRole="header">{copy.title}</Text>
       <Text style={styles.body}>{copy.body}</Text>
       {url !== null && copy.button !== null ? (
         <Pressable accessibilityRole="button" onPress={() => void OPENS.attempt(() => Linking.openURL(url))} style={styles.button} testID="shell-update-now-button">
@@ -32,7 +38,7 @@ const styles = StyleSheet.create({
   fill: { ...StyleSheet.absoluteFill, ...CARD_STYLES.fill },
   title: CARD_STYLES.title,
   body: CARD_STYLES.body,
-  detail: { color: '#8F897E', fontSize: 14, lineHeight: 20, textAlign: 'center', marginTop: 24 },
+  detail: CARD_STYLES.detail,
   button: { ...CARD_STYLES.button, ...CARD_STYLES.primary, marginTop: 28 },
   buttonText: CARD_STYLES.primaryText,
   retry: { ...CARD_STYLES.button, ...CARD_STYLES.secondary },

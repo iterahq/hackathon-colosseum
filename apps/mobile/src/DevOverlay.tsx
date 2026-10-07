@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { DEV_STYLES } from './shellTheme';
 
 interface Props {
   version: string;
@@ -35,7 +36,7 @@ export function DevOverlay({ version, url, forwardedErrors, bridgeHandshakes, se
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  strip: { backgroundColor: 'rgba(10, 9, 8, 0.85)', paddingHorizontal: 8, paddingVertical: 4 },
-  text: { color: '#F5F1EA', fontSize: 11 },
-  error: { color: '#FF8A7A' },
+  strip: { ...DEV_STYLES.strip, paddingHorizontal: 8, paddingVertical: 4 },
+  text: { ...DEV_STYLES.text, fontSize: 11 },
+  error: DEV_STYLES.error,
 });

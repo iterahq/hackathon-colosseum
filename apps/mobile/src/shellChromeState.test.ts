@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isTopFrameRequest } from './origin';
 import {
-  BLOCKED_NOTICE,
   INITIAL_CHROME,
   LOAD_TIMEOUT_MS,
   MAX_PROCESS_DEATHS,
@@ -27,6 +26,8 @@ import {
 
 const run = (events: ChromeEvent[], from: ChromeState = INITIAL_CHROME) => events.reduce(chromeReducer, from);
 const O = 'https://app.iterahq.dev';
+
+const BLOCKED_NOTICE = 'Indisponível no app';
 
 describe('loading veil', () => {
   it('starts with the veil up and no card', () => {
@@ -74,7 +75,8 @@ describe('load failure card', () => {
     const s = run([{ type: 'loadStart' }, { type: 'error', description: 'net::ERR_CONNECTION_REFUSED' }]);
     expect(isCardVisible(s)).toBe(true);
     expect(s.failure).toBe('load');
-    expect(cardCopy(s.failure).title).toBe('Não foi possível abrir a Itera');
+    expect(cardCopy(s.failure).title).toBe('Não foi possível abrir o Itera');
+    expect(cardCopy(s.failure, 'en').title).toBe('Could not open Itera');
   });
   it.each(['net::ERR_INTERNET_DISCONNECTED', 'The Internet connection appears to be offline.', 'You are not connected to the internet'])(
     'onError "%s" shows the "Sem conexão" card',
@@ -84,6 +86,15 @@ describe('load failure card', () => {
       expect(cardCopy(s.failure).title).toBe('Sem conexão');
     },
   );
+  it('the offline card never tells the learner to open the browser, in either language', () => {
+    for (const locale of ['pt', 'en'] as const) {
+      const { title, body } = cardCopy('offline', locale);
+      expect(`${title} ${body}`).not.toMatch(/navegador|browser/i);
+      expect(body).toMatch(/internet/i);
+    }
+    expect(cardCopy('timeout', 'pt').body).toMatch(/navegador/);
+    expect(cardCopy('http', 'en').body).toMatch(/browser/);
+  });
   it.each(['net::ERR_SSL_PROTOCOL_ERROR', 'net::ERR_CONNECTION_REFUSED', ''])('classifies "%s" as a plain load failure', (description) => {
     expect(classifyLoadError({ description })).toBe('load');
   });
@@ -181,6 +192,7 @@ describe('blocked-navigation notice', () => {
   it('a blocked top-frame navigation shows "Indisponível no app"', () => {
     expect(blockedNotice('block', true)).toBe(BLOCKED_NOTICE);
     expect(BLOCKED_NOTICE).toBe('Indisponível no app');
+    expect(blockedNotice('block', true, 'en')).toBe('Not available in the app');
   });
   it.each([
     ['block', false],

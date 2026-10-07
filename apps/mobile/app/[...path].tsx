@@ -52,7 +52,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as WebBrowser from 'expo-web-browser';
 import { useIsFocused, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
-import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'react-native';
+import { Alert, AppState, BackHandler, I18nManager, Linking, Platform, Settings, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import type { ShouldStartLoadRequest, WebViewMessageEvent, WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
@@ -63,9 +63,11 @@ import { type MessageBucket, type RawBucket } from '../src/messageWindow';
 import { receiveShellMessage } from '../src/receiveShellMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
+import { hiddenBeneath, hiddenProps, surfaceOf } from '../src/chromeA11y';
+import { chromeLocale, chromeStrings, setChromeLocale } from '../src/chromeCopy';
 import { backConfirmEnabled, backEffect, decideBack } from '../src/backConfirm';
 import { browserUrl, displayUrl, entryFromLink, isCallbackEntry, type LinkParams } from '../src/deepLink';
-import { AUTH_BUSY_NOTICE, AUTH_FAILED_NOTICE, authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from '../src/dflAuthSession';
+import { authSessionEnabled, createReturnLatch, createSessionGuard, routerArrival, sessionReturnToLoad } from '../src/dflAuthSession';
 import { nextEntry, type RouteEntry } from '../src/routeEntry';
 import { forgetLink, lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
@@ -89,12 +91,34 @@ import {
   isCardVisible,
   isVeilVisible,
   noticeDue,
-  OPEN_FAILED_NOTICE,
   restartUrl,
 } from '../src/shellChromeState';
 
 const ORIGIN = parseWebOrigin(Constants.expoConfig?.extra?.webOrigin);
 const SHELL_VERSION = Constants.expoConfig?.version ?? '0.0.0';
+
+// The language of the native chrome (`src/chromeCopy.ts`): the phone's first language, read with what React Native already ships.
+// iOS: `Settings.get('AppleLanguages')` is the user's ordered language list (NSUserDefaults). Android: `I18nManager.getConstants().localeIdentifier`
+// is the first locale of the configuration (`I18nManagerModule.kt`); iOS's `I18nManager` has no such field. Any failure falls back to `Intl`, then to Portuguese.
+function readDeviceLocales(): string[] {
+  try {
+    if (Platform.OS === 'ios') {
+      const languages: unknown = Settings.get('AppleLanguages');
+      if (Array.isArray(languages)) return languages.filter((tag): tag is string => typeof tag === 'string');
+    } else {
+      const id = I18nManager.getConstants().localeIdentifier;
+      if (typeof id === 'string') return [id];
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    return [Intl.DateTimeFormat().resolvedOptions().locale];
+  } catch {
+    return [];
+  }
+}
+setChromeLocale(chromeLocale(readDeviceLocales()));
 // Expo Go keeps the system back (it returns to the Expo Go home); an installed app asks first.
 const BACK_CONFIRM = backConfirmEnabled(Constants.executionEnvironment);
 // Installed builds sign in with DFL through the system auth session (R-20); Expo Go cannot receive the return link.
@@ -102,7 +126,7 @@ const AUTH_SESSION = authSessionEnabled(Constants.executionEnvironment);
 // Top-frame origins the WebView may load besides the app: Expo Go only (it cannot receive the DFL return link). Both guards read this.
 const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION ? DEV_TOP_FRAME_ORIGINS : [];
 // A page the system refuses to open (the browser, a mail or phone link, the auth sheet) is never a silent tap: one short notice.
-const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, OPEN_FAILED_NOTICE);
+const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, () => chromeStrings().openFailed);
 const DFL_RETURN = dflCallbackUrl(ORIGIN);
 const DFL_SESSION = createSessionGuard();
 // Android delivers the return link twice (Expo Router and the session promise): the latch lets exactly one of them load it.
@@ -310,7 +334,7 @@ function useDflAuthSession(onReturn: (url: string) => void) {
       if (ticket === null) {
         if (noticeDue(lastBusyNotice.current, Date.now())) {
           lastBusyNotice.current = Date.now();
-          Alert.alert(AUTH_BUSY_NOTICE);
+          Alert.alert(chromeStrings().authBusy);
         }
         return;
       }
@@ -323,7 +347,7 @@ function useDflAuthSession(onReturn: (url: string) => void) {
           const returned = sessionReturnToLoad(result, ORIGIN, DFL_RETURNS);
           if (returned !== null) onReturn(returned);
         })
-        .catch(() => OPENS.fail(AUTH_FAILED_NOTICE))
+        .catch(() => OPENS.fail(chromeStrings().authFailed))
         .finally(() => {
           if (DFL_SESSION.leave(ticket)) DFL_RETURNS.end();
         });
@@ -476,6 +500,8 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
   }, []);
 
   const copy = cardCopy(chrome.failure);
+  // What sits over the WebView hides it from TalkBack and VoiceOver (`src/chromeA11y.ts`).
+  const surface = surfaceOf(chrome.phase, backConfirmOpen);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -502,11 +528,12 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
         onRenderProcessGone={() => relaunch('processGone')}
         renderError={() => <></>}
         style={styles.web}
+        {...hiddenProps(hiddenBeneath(surface).webview)}
         testID="shell-webview"
       />
       <LoadingVeil visible={isVeilVisible(chrome)} />
       {isCardVisible(chrome) ? (
-        <OfflineCard title={copy.title} body={copy.body} onRetry={retry} onOpenBrowser={openInBrowser} />
+        <OfflineCard title={copy.title} body={copy.body} onRetry={retry} onOpenBrowser={openInBrowser} covered={hiddenBeneath(surface).failureCard} />
       ) : null}
       {backConfirmOpen ? <BackConfirmCard onStay={() => setBackConfirmOpen(false)} onLeave={() => BackHandler.exitApp()} /> : null}
       {__DEV__ ? (

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AUTH_FAILED_NOTICE } from './dflAuthSession';
+import { CHROME_COPY } from './chromeCopy';
 import { browserMethod, createOpenReporter } from './openExternal';
-import { NOTICE_GAP_MS, OPEN_FAILED_NOTICE } from './shellChromeState';
+import { NOTICE_GAP_MS } from './shellChromeState';
+
+const OPEN_FAILED_NOTICE = CHROME_COPY.pt.openFailed;
+const AUTH_FAILED_NOTICE = CHROME_COPY.pt.authFailed;
 
 describe('browserMethod', () => {
   it('Android opens a Custom Tab, because the app itself handles its https links there', () => {
@@ -61,8 +64,8 @@ describe('createOpenReporter', () => {
     expect(show).toHaveBeenCalledTimes(2);
   });
 
-  it('the copy is short Portuguese with no URL', () => {
-    for (const text of [OPEN_FAILED_NOTICE, AUTH_FAILED_NOTICE]) {
+  it('the copy is short, in both languages, with no URL', () => {
+    for (const text of [OPEN_FAILED_NOTICE, AUTH_FAILED_NOTICE, CHROME_COPY.en.openFailed, CHROME_COPY.en.authFailed]) {
       expect(text.length).toBeLessThan(40);
       expect(text).not.toMatch(/https?:|\//);
     }

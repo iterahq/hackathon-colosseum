@@ -453,6 +453,18 @@ describe('updateCardCopy', () => {
     expect(updateCardCopy(gate(APPLE))).toMatchObject({ button: 'Atualizar agora', url: APPLE, detail: null });
   });
 
+  it('speaks English when asked, with no article before the product', () => {
+    expect(updateCardCopy(gate(APPLE), 'en')).toEqual({
+      title: 'Update the app',
+      body: 'This version (0.2.0) is too old for the current Itera. Install version 0.3.0 or newer.',
+      detail: null,
+      button: 'Update now',
+      url: APPLE,
+      retry: 'Try again',
+    });
+    expect(updateCardCopy(gate(null), 'en').detail).toBe('An update is required. Talk to whoever gave you the app.');
+  });
+
   it('end to end: a config with a foreign store host gives a card with no button', () => {
     const { gate: g } = decideLaunch('0.2.0', { minShellVersion: '0.3.0', updateUrl: { ios: 'https://evil.example/' } }, 'ios');
     expect(g.kind === 'update' && updateCardCopy(g).button).toBeNull();
