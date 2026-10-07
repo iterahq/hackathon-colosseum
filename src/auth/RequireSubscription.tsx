@@ -59,7 +59,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
-import { hasPaidAccess, wasEntitledBeforeFailedRead } from './accessLevel';
+import { accessVerdict } from './accessLevel';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
 import { isUnreachable } from '@/lib/networkFailure';
@@ -86,53 +86,67 @@ export function RequireSubscription({
   const { data: memberships, isPending: memPending } = useMembership();
   const surface = useShellSurface();
 
-  // In unconfigured/mock mode there is no entitlement data — let through so the
-  // mock/dev path still renders (mirrors RequireAuth's mock pass-through).
-  if (!configured) return <>{children}</>;
+  const verdict = accessVerdict({
+    configured,
+    authLoading,
+    hasSession: !!session,
+    entitlementPending: entPending,
+    membershipPending: memPending,
+    memberships,
+    entitlement,
+    entitlementError: entError,
+    entitlementUnreachable: isUnreachable(entitlementQuery),
+    surface,
+  });
 
-  if (authLoading || (session && (entPending || memPending))) {
-    if (session && surface === 'shell' && isUnreachable(entitlementQuery)) {
-      return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
-    }
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
-
-  // Unauthenticated should already be caught by RequireAuth; defensively to login.
-  if (!session) return <Navigate to="/login" replace />;
-
-  // Tenant admins/owners are exempt from the seat paywall; a paid/exempt
-  // entitlement also passes. Single decision, shared with useAccessLevel.
-  if (hasPaidAccess({ memberships, entitlement, entitlementError: entError })) return <>{children}</>;
-
-  if (!(entError && graceOnError)) {
-    if (surface === 'pending') return <ShellSettling />;
-    if (surface === 'shell') {
-      if (!entError) return <ShellNoAccessScreen />;
-      if (wasEntitledBeforeFailedRead({ entitlement, entitlementError: entError })) return <>{children}</>;
-      return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
-    }
-  }
-
-  // Uma leitura que FALHOU não é uma resposta — é a ausência dela. Só a aula ao
-  // vivo escolhe passar nesse caso (`graceOnError`): ela roda no mesmo wifi de
-  // escola em que a query morre, e derrubar o aluno no meio da aula custa uma
-  // aula real. Nas outras superfícies pagas o mesmo comportamento seria bypass
-  // permanente para quem bloqueia a request de propósito, então elas paywallam
-  // (ou, em `mode="preview"`, renderizam a versão travada).
-  if (entError) {
-    if (graceOnError) {
-      console.warn('[entitlement] leitura falhou; liberando aula ao vivo (graceOnError)');
+  // The one decision lives in `accessVerdict`; this file only maps it to an element.
+  switch (verdict.kind) {
+    // In unconfigured/mock mode there is no entitlement data — let through so the
+    // mock/dev path still renders (mirrors RequireAuth's mock pass-through).
+    case 'unconfigured':
       return <>{children}</>;
-    }
-    if (mode === 'preview') return <>{children}</>;
-    return <Navigate to="/subscribe" replace state={{ from: location }} />;
-  }
 
-  // No access — block (redirect) or preview (render locked), per `mode`.
-  if (mode === 'preview') return <>{children}</>;
-  return <Navigate to="/subscribe" replace state={{ from: location }} />;
+    case 'pending':
+      if (verdict.unreachableInShell) return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+          Loading…
+        </div>
+      );
+
+    // Unauthenticated should already be caught by RequireAuth; defensively to login.
+    case 'signed-out':
+      return <Navigate to="/login" replace />;
+
+    // Tenant admins/owners are exempt from the seat paywall; a paid/exempt entitlement also passes.
+    case 'paid':
+      return <>{children}</>;
+
+    case 'kept-after-failed-read':
+      if (graceOnError) console.warn('[entitlement] leitura falhou; liberando aula ao vivo (graceOnError)');
+      return <>{children}</>;
+
+    // Uma leitura que FALHOU não é uma resposta — é a ausência dela. Só a aula ao
+    // vivo escolhe passar nesse caso (`graceOnError`): ela roda no mesmo wifi de
+    // escola em que a query morre, e derrubar o aluno no meio da aula custa uma
+    // aula real. Nas outras superfícies pagas o mesmo comportamento seria bypass
+    // permanente para quem bloqueia a request de propósito, então elas paywallam
+    // (ou, em `mode="preview"`, renderizam a versão travada).
+    case 'read-failed':
+      if (graceOnError) {
+        console.warn('[entitlement] leitura falhou; liberando aula ao vivo (graceOnError)');
+        return <>{children}</>;
+      }
+      if (verdict.surface === 'pending') return <ShellSettling />;
+      if (verdict.surface === 'shell') return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
+      if (mode === 'preview') return <>{children}</>;
+      return <Navigate to="/subscribe" replace state={{ from: location }} />;
+
+    // No access — block (redirect) or preview (render locked), per `mode`.
+    case 'no-access':
+      if (verdict.surface === 'pending') return <ShellSettling />;
+      if (verdict.surface === 'shell') return <ShellNoAccessScreen />;
+      if (mode === 'preview') return <>{children}</>;
+      return <Navigate to="/subscribe" replace state={{ from: location }} />;
+  }
 }

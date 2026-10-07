@@ -15,6 +15,7 @@
  * `db/migrations/0075` and RequireSubscription's comment for why.
  */
 import { isTenantAdmin, type Membership } from '@/services/membership.service';
+import type { ShellSurface } from '@/lib/shellSurface';
 
 /** The subset of `itera.my_subscription` this decision actually needs. */
 export interface MinimalEntitlement {
@@ -43,4 +44,50 @@ export function wasEntitledBeforeFailedRead({ entitlement, entitlementError = fa
 export function hasPaidAccess({ memberships, entitlement, entitlementError = false }: AccessInput): boolean {
   if (isTenantAdmin(memberships ?? [])) return true;
   return !entitlementError && entitlement?.active === true;
+}
+
+export interface AccessVerdictInput extends AccessInput {
+  configured: boolean;
+  authLoading: boolean;
+  hasSession: boolean;
+  entitlementPending: boolean;
+  membershipPending: boolean;
+  /** The first entitlement read cannot reach the server (`isUnreachable`). Only the gate asks. */
+  entitlementUnreachable?: boolean;
+  surface: ShellSurface;
+}
+
+/**
+ * Every answer the access decision can give. The subscription gate and `useAccessLevel` each map it
+ * to what they show; neither re-derives it. Opt-in per-route behaviour (`graceOnError`, `mode`) is
+ * NOT part of the verdict: it is the gate's reaction to `no-access` and `read-failed`.
+ *   - `unconfigured`  no backend (mock/dev): nothing to decide.
+ *   - `pending`       auth or a read is in flight; `unreachableInShell` when a signed-in learner
+ *                     inside the shell has a first read that cannot reach the server.
+ *   - `signed-out`    no session.
+ *   - `paid`          `hasPaidAccess`.
+ *   - `kept-after-failed-read`  shell only: the read failed after an "entitled" answer.
+ *   - `read-failed`   the read failed and there is no earlier "entitled" answer to keep.
+ *   - `no-access`     the read answered, and the answer is no.
+ */
+export type AccessVerdict =
+  | { kind: 'unconfigured' }
+  | { kind: 'pending'; unreachableInShell: boolean }
+  | { kind: 'signed-out' }
+  | { kind: 'paid' }
+  | { kind: 'kept-after-failed-read' }
+  | { kind: 'read-failed'; surface: ShellSurface }
+  | { kind: 'no-access'; surface: ShellSurface };
+
+export function accessVerdict(input: AccessVerdictInput): AccessVerdict {
+  const { configured, authLoading, hasSession, entitlementPending, membershipPending, entitlementUnreachable = false, surface } = input;
+  if (!configured) return { kind: 'unconfigured' };
+  if (authLoading || (hasSession && (entitlementPending || membershipPending))) {
+    return { kind: 'pending', unreachableInShell: hasSession && surface === 'shell' && entitlementUnreachable };
+  }
+  if (!hasSession) return { kind: 'signed-out' };
+  if (hasPaidAccess(input)) return { kind: 'paid' };
+  if (!input.entitlementError) return { kind: 'no-access', surface };
+  if (surface === 'shell' && wasEntitledBeforeFailedRead(input)) return { kind: 'kept-after-failed-read' };
+  return { kind: 'read-failed', surface };
 }

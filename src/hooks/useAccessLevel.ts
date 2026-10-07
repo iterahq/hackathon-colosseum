@@ -1,14 +1,14 @@
 /**
- * The signed-in user's ACCESS LEVEL — the single hook both `RequireSubscription`
- * (the gate) and `AppHeader` (the role pill) read, so the two surfaces can never
- * disagree about whether someone is a paying member or a browsing visitor.
+ * The signed-in user's ACCESS LEVEL — read by `AppHeader` (the role pill) and the
+ * locked/unlocked pages. `RequireSubscription` (the gate) does not call this hook:
+ * both ask the same pure `accessVerdict` (src/auth/accessLevel.ts) and each maps
+ * the verdict to its own answer, so they cannot disagree about who is a paying
+ * member and who is a browsing visitor.
  *
  * componente → hook (composes useAuth/useEntitlement/useMembership) → service.
- * Decision itself lives in `hasPaidAccess` (src/auth/accessLevel.ts) — this
- * hook only adds the loading/unauthenticated states around it.
  */
 import { useAuth } from '@/auth/AuthContext';
-import { hasPaidAccess, wasEntitledBeforeFailedRead } from '@/auth/accessLevel';
+import { accessVerdict } from '@/auth/accessLevel';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useMembership } from '@/hooks/useMembership';
 import { useShellSurface } from '@/hooks/useShellSurface';
@@ -32,25 +32,34 @@ export function useAccessLevel(): AccessLevelState {
   const { data: memberships, isPending: memPending } = useMembership();
   const surface = useShellSurface();
 
-  // Unconfigured/mock mode: mirrors RequireSubscription's pass-through — treat
-  // as a full member so the mock/dev path renders unlocked.
-  if (!configured) return { level: 'member', entitlementError: false };
+  const verdict = accessVerdict({
+    configured,
+    authLoading,
+    hasSession: !!session,
+    entitlementPending: entPending,
+    membershipPending: memPending,
+    memberships,
+    entitlement,
+    entitlementError: entError,
+    surface,
+  });
 
-  if (authLoading || (session && (entPending || memPending))) {
-    return { level: 'pending', entitlementError: false };
+  switch (verdict.kind) {
+    // Unconfigured/mock mode is a full member so the mock/dev path renders unlocked.
+    case 'unconfigured':
+      return { level: 'member', entitlementError: false };
+    case 'pending':
+      return { level: 'pending', entitlementError: false };
+    case 'signed-out':
+    case 'no-access':
+      return { level: 'visitor', entitlementError: false };
+    case 'paid':
+      return { level: 'member', entitlementError: entError };
+    // Inside the shell the gate keeps a subscriber on the page when a refetch fails; the page must
+    // then agree with the gate and not render its locked variant.
+    case 'kept-after-failed-read':
+      return { level: 'member', entitlementError: true };
+    case 'read-failed':
+      return { level: 'visitor', entitlementError: true };
   }
-
-  if (!session) return { level: 'visitor', entitlementError: false };
-
-  if (hasPaidAccess({ memberships, entitlement, entitlementError: entError })) {
-    return { level: 'member', entitlementError: entError };
-  }
-
-  // Inside the shell the gate keeps a subscriber on the page when a refetch fails; the page must
-  // then agree with the gate and not render its locked variant.
-  if (surface === 'shell' && wasEntitledBeforeFailedRead({ entitlement, entitlementError: entError })) {
-    return { level: 'member', entitlementError: entError };
-  }
-
-  return { level: 'visitor', entitlementError: entError };
 }
