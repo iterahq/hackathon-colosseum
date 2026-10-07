@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
@@ -32,6 +32,9 @@ const stubActivity: Activity = {
 };
 
 describe('DocumentActivity — reflection (min_words)', () => {
+  // A reflection sent is kept as that learner's draft: each case starts clean.
+  beforeEach(() => localStorage.clear());
+
   it('renders a real text input (not just a button)', () => {
     renderActivity(stubActivity);
     expect(screen.getByTestId('document-reflection-input')).toBeInTheDocument();
