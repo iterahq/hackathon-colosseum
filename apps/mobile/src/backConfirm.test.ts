@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BACK_CONFIRM_COPY, backConfirmEnabled, decideBack, type BackInput } from './backConfirm';
 
-const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true };
+const base: BackInput = { canGoBack: false, phase: 'ready', confirmOpen: false, confirmEnabled: true, focused: true, canPop: false };
 const press = (over: Partial<BackInput>) => decideBack({ ...base, ...over });
 
 describe('decideBack', () => {
@@ -39,6 +39,39 @@ describe('decideBack', () => {
     expect(press({ confirmOpen: true })).toBe('dismiss');
     expect(press({ confirmOpen: true, canGoBack: true })).toBe('dismiss');
     expect(press({ confirmOpen: true, phase: 'failed' })).toBe('dismiss');
+  });
+});
+
+describe('decideBack with a route beneath (canPop)', () => {
+  it('at the page root leaves the press to the navigator: no card, card enabled or not', () => {
+    expect(press({ canPop: true })).toBe('leave');
+    expect(press({ canPop: true, phase: 'loading' })).toBe('leave');
+    expect(press({ canPop: true, confirmEnabled: false })).toBe('leave');
+  });
+
+  it('from the failure card pops to the route beneath, never into page history', () => {
+    expect(press({ canPop: true, phase: 'failed' })).toBe('leave');
+    expect(press({ canPop: true, phase: 'failed', canGoBack: true })).toBe('leave');
+  });
+
+  it('page history still goes first', () => {
+    expect(press({ canPop: true, canGoBack: true })).toBe('history');
+  });
+
+  it('an open card still closes first', () => {
+    expect(press({ canPop: true, confirmOpen: true })).toBe('dismiss');
+    expect(press({ canPop: true, confirmOpen: true, canGoBack: true })).toBe('dismiss');
+  });
+
+  it('an unfocused route leaves the press', () => {
+    expect(press({ canPop: true, focused: false })).toBe('leave');
+    expect(press({ canPop: false, focused: false, confirmOpen: true })).toBe('leave');
+  });
+
+  it('with nothing beneath (first route, cold-start deep link) the card rule is unchanged', () => {
+    expect(press({ canPop: false })).toBe('confirm');
+    expect(press({ canPop: false, phase: 'failed' })).toBe('confirm');
+    expect(press({ canPop: false, confirmEnabled: false })).toBe('leave');
   });
 });
 

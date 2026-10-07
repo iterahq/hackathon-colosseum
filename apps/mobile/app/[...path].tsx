@@ -45,7 +45,7 @@ import Constants from 'expo-constants';
 import { getRandomValues } from 'expo-crypto';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as WebBrowser from 'expo-web-browser';
-import { useIsFocused, useLocalSearchParams, usePathname } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -357,9 +357,10 @@ function WebShell({ entryPath }: { entryPath: string }) {
   backConfirmOpenRef.current = backConfirmOpen;
   const focusedRef = useRef(true);
   focusedRef.current = useIsFocused();
+  const router = useRouter();
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef.current });
+      const action = decideBack({ canGoBack: canGoBack.current, phase: phase.current, confirmOpen: backConfirmOpenRef.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef.current, canPop: router.canGoBack() });
       if (action === 'history') webview.current?.goBack();
       else if (action === 'confirm') setBackConfirmOpen(true);
       else if (action === 'dismiss') setBackConfirmOpen(false);

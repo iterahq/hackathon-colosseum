@@ -64,9 +64,10 @@ describe('route file wiring', () => {
     expect(code).not.toMatch(/\bfetch\b/);
   });
 
-  it('Android back follows canGoBack, is reset on every remount, and returns false at the root or on the card', () => {
+  it('Android back follows canGoBack, is reset on every remount, and returns false at the root, on the card, or when a route lies beneath (the navigator pops it)', () => {
     expect(code).toMatch(/BackHandler\.addEventListener\('hardwareBackPress'/);
-    expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef\.current \}\)/);
+    expect(code).toMatch(/decideBack\(\{ canGoBack: canGoBack\.current, phase: phase\.current, confirmOpen: backConfirmOpenRef\.current, confirmEnabled: BACK_CONFIRM, focused: focusedRef\.current, canPop: router\.canGoBack\(\) \}\)/);
+    expect(code).toMatch(/const router = useRouter\(\);/);
     expect(code).toMatch(/focusedRef\.current = useIsFocused\(\);/);
     expect(code).toMatch(/return action !== 'leave';/);
     expect(code).toMatch(/const BACK_CONFIRM = backConfirmEnabled\(Constants\.executionEnvironment\);/);
