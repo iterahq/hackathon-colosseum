@@ -1,12 +1,12 @@
 /**
- * The launch gate (PLAN R-7, ADR-7): one read of `<webOrigin>/shell-config.json` per launch, decided by
+ * The launch gate (PLAN R-7, ADR-7): a read of `<webOrigin>/shell-config.json` at launch (and again, see `rereadDue`), decided by
  * pure functions. `minShellVersion` and `updateUrl` are parsed by the pinned bridge copy
  * (`parseShellConfig`, `shellGate`, the upstream `UPDATE_URL_HOSTS` check); `forceWebview` is parsed here.
  *
  * `updateUrl` is `{ ios, android }` and read here, not by the pinned copy (which only knows one Apple URL and
  * leaves the copy byte-identical): the card offers the URL of the running platform only, on its own store host.
  *
- * Fail open: no file, a non-2xx answer, a timeout, a network error, a body above `MAX_CONFIG_BYTES`, a
+ * Fail open (and read again, `rereadDue`): no file, a non-2xx answer, a timeout, a network error, a body above `MAX_CONFIG_BYTES`, a
  * redirect to another origin or text that is not a JSON object all give "no restriction". Fail closed, by
  * design: a valid config whose `minShellVersion` is above this shell shows the update card, and so does a
  * shell whose own version is not `x.y.z` (upstream `shellGate`). A half-valid file is read half by half: a
@@ -139,11 +139,60 @@ export async function loadLaunchConfig(
   return (await readLaunchConfig(origin, shellVersion, platform, fetchImpl, timeoutMs)) ?? OPEN_LAUNCH;
 }
 
+/** How the last read ended: `ok` is false when the file could not be read (the decision is then the open one, or the previous read's). */
+export interface ReadStatus {
+  ok: boolean;
+  at: number;
+}
+
+/**
+ * Back in the foreground, a read that FAILED is tried again once this long has passed (offline at launch must not dodge
+ * `minShellVersion` for the life of the process, and a flapping connection must not fetch on every app switch).
+ */
+export const REREAD_FAILED_MS = 30_000;
+/**
+ * A read that succeeded is repeated at most this often, on a return to the foreground: a `minShellVersion` raised while the process
+ * lives is seen within half an hour, and an app switched in and out all day costs one 16 KiB request per half hour.
+ */
+export const REREAD_OK_MS = 30 * 60_000;
+
+/** Whether a return to the foreground reads the file again. The update card always does (it is only left by a new read). */
+export function rereadDue(kind: 'run' | 'update', status: ReadStatus | null, now: number): boolean {
+  if (kind === 'update') return true;
+  if (status === null) return false;
+  return now - status.at >= (status.ok ? REREAD_OK_MS : REREAD_FAILED_MS);
+}
+
+export interface ShownLaunchContext {
+  /** The route being shown changed (a new `entryPath`): a pending update card may come up now. */
+  entryChanged: boolean;
+  /** The page is already gone (the failure card's Retry creates the WebView again): nothing in memory is torn down by the card. */
+  pageGone: boolean;
+}
+
+/**
+ * Which launch config the route shows. The first read, and any change while the update card is up, apply at once. A run -> update
+ * flip that arrives while a page is mounted (a re-read on a return to the foreground) is NOT applied under it: the card would
+ * unmount the WebView and the learner's unsaved in-memory state with it. It waits for the next launch or the next route entry, or
+ * applies at once when the page is already gone (`pageGone`). Everything else (run -> run) follows the fresh read.
+ */
+export function shownLaunch(shown: LaunchConfig | null, fresh: LaunchConfig | null, ctx: ShownLaunchContext): LaunchConfig | null {
+  if (fresh === null) return shown;
+  if (shown === null || shown.gate.kind === 'update') return fresh;
+  if (fresh.gate.kind === 'update' && !ctx.entryChanged && !ctx.pageGone) return shown;
+  return fresh;
+}
+
+/** "Tentar de novo" on the failure card: reads again when the last read failed (no wait: the learner asked), never when it succeeded. */
+export const rereadOnRetry = (status: ReadStatus | null): boolean => status !== null && !status.ok;
+
 export interface LaunchGate {
-  /** The decision, read once per launch: every later call returns the same promise. */
+  /** The decision of the first read: every later call returns the same promise (kept up to date by `refresh`). */
   get(): Promise<LaunchConfig>;
   /** The decision if it has already settled, else null. */
   peek(): LaunchConfig | null;
+  /** How the last read ended, or null while the first one is pending. */
+  status(): ReadStatus | null;
   /**
    * Read the file again (the app came back to the foreground, or the user asked). A file that cannot be read
    * keeps the previous decision; only a file that was read replaces it, so a later neutral or missing-key
@@ -152,22 +201,50 @@ export interface LaunchGate {
   refresh(): Promise<LaunchConfig>;
 }
 
-export function createLaunchGate(origin: string, shellVersion: string, platform = '', fetchImpl?: FetchLike, timeoutMs?: number): LaunchGate {
+export function createLaunchGate(
+  origin: string,
+  shellVersion: string,
+  platform = '',
+  fetchImpl?: FetchLike,
+  timeoutMs?: number,
+  now: () => number = Date.now,
+): LaunchGate {
   let settled: LaunchConfig | null = null;
   let pending: Promise<LaunchConfig> | null = null;
   let refreshing: Promise<LaunchConfig> | null = null;
+  let status: ReadStatus | null = null;
+  // Reads are numbered when they START. A read that settles after a later one has was answered earlier and must not
+  // overwrite it: a `get()` stuck on a slow network cannot undo the `refresh()` that came after it.
+  let started = 0;
+  let configSeq = 0;
+  let statusSeq = 0;
+  const read = () => {
+    const n = (started += 1);
+    return readLaunchConfig(origin, shellVersion, platform, fetchImpl, timeoutMs).then((config) => {
+      if (n > statusSeq) {
+        statusSeq = n;
+        status = { ok: config !== null, at: now() };
+      }
+      if (config !== null && n > configSeq) {
+        configSeq = n;
+        settled = config;
+      }
+      settled ??= OPEN_LAUNCH;
+      return settled;
+    });
+  };
   return {
     get() {
-      pending ??= loadLaunchConfig(origin, shellVersion, platform, fetchImpl, timeoutMs).then((c) => (settled = c));
+      pending ??= read();
       return pending;
     },
     peek: () => settled,
+    status: () => status,
     refresh() {
-      refreshing ??= readLaunchConfig(origin, shellVersion, platform, fetchImpl, timeoutMs)
+      refreshing ??= read()
         .then((c) => {
-          if (c !== null) settled = c;
-          pending = Promise.resolve(settled ?? OPEN_LAUNCH);
-          return pending;
+          pending = Promise.resolve(c);
+          return c;
         })
         .finally(() => {
           refreshing = null;

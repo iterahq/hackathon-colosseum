@@ -17,7 +17,7 @@
  *
  * Pure TypeScript: no React Native import.
  */
-import { originOf } from './origin';
+import { DFL_CALLBACK_PATH, originOf } from './origin';
 import { matchRoute, normalisePath, resolveShellPath } from './routes';
 
 export type LinkParams = Record<string, string | string[] | undefined>;
@@ -111,6 +111,16 @@ export function entryFromLink(link: string | null, origin: string, segments: rea
   const hash = m[3] ?? '';
   const path = resolveShellPath(joined);
   return `${path}${search === '?' || carriesRefreshToken(search) ? '' : search}${hash === '#' || carriesRefreshToken(hash) ? '' : hash}`;
+}
+
+/**
+ * True when an entry path (`entryFromLink`'s answer, relative to the app origin) is the DFL callback. That link carries
+ * `#dfl_token=…`, a bearer token: once the route has taken it as its entry the raw copy in `src/rawLink.ts` is forgotten
+ * (the WebView holds it from then on, and a restart never replays it, `restartUrl`).
+ */
+export function isCallbackEntry(entryPath: string): boolean {
+  const path = entryPath.split(/[?#]/)[0] ?? '';
+  return path.replace(/\/+$/, '').toLowerCase() === DFL_CALLBACK_PATH;
 }
 
 const REFRESH_ANYWHERE = /refresh(?:_|%5f|%255f)token/i;

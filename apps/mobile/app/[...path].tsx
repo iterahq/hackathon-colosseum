@@ -9,8 +9,8 @@
  * Also changed: `setSupportMultipleWindows={false}` added (PLAN ADR-5); `onNavigationStateChange` now only
  * records the loaded URL and `canGoBack` (LS used it to push native routes); `onLoadStart`/`onLoadEnd`
  * drive the load state instead of the bridge reset and the splash.
- * R-7 adds the launch gate back, as `src/shellGate.ts` (pure, tested) and `src/UpdateNowCard.tsx`: one read of
- * `<webOrigin>/shell-config.json` per launch; a shell below `minShellVersion` shows the card instead of the WebView, read in parallel with it.
+ * R-7 adds the launch gate back, as `src/shellGate.ts` (pure, tested) and `src/UpdateNowCard.tsx`: a read of
+ * `<webOrigin>/shell-config.json` at launch, repeated by `rereadDue` and on retry; a shell below `minShellVersion` shows the card instead of the WebView, read in parallel with it.
  * R-5 (deep links): the route reads the incoming query and fragment raw (`+native-intent.ts`, `src/rawLink.ts`, `src/deepLink.ts`), so the WebView starts on the link's query and fragment as written, e.g.
  * `/auth/dfl/callback#dfl_token=…`; the dev overlay shows the URL without query or fragment.
  * R-20 adds the DFL sign-in through the system auth session (`src/dflAuthSession.ts`, `navigationDecision` answer `auth-session`).
@@ -28,6 +28,8 @@
  * send), and the page's budget after it, which counts only what a parser accepted. A frame on another origin
  * reaches neither. A build with no backend has no native session and never offers `auth.session`.
  * On return to the foreground the session is revalidated: the page is asked once, and a copy nobody vouches for is dropped.
+ * The Android guard has a second line (`createLateGuard`, `onNavigationStateChange`): native loads the page when JS is late to answer the tap guard, so the URL of every navigation event is judged again.
+ * Android reports a route change of the web app (pushState) as a load start with `loading: false`: `classifyLoadStart` makes it a history update, so it shows no veil and resets nothing.
  * R-2 adds the back-confirm card of installed builds (src/backConfirm.ts, src/BackConfirmCard.tsx); Expo Go keeps the system back.
  *
  * The one catch-all route of the shell. Every path opens the web app in a WebView; a path that is
@@ -59,25 +61,30 @@ import { receiveShellMessage } from '../src/receiveShellMessage';
 import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
 import { backConfirmEnabled, decideBack } from '../src/backConfirm';
-import { browserUrl, displayUrl, entryFromLink, type LinkParams } from '../src/deepLink';
-import { AUTH_BUSY_NOTICE, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from '../src/dflAuthSession';
-import { lastLink } from '../src/rawLink';
+import { browserUrl, displayUrl, entryFromLink, isCallbackEntry, type LinkParams } from '../src/deepLink';
+import { AUTH_BUSY_NOTICE, AUTH_FAILED_NOTICE, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from '../src/dflAuthSession';
+import { forgetLink, lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
 import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
-import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
+import { browserMethod, createOpenReporter } from '../src/openExternal';
+import { createLaunchGate, rereadDue, rereadOnRetry, shownLaunch, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
-import { DEV_TOP_FRAME_ORIGINS, dflCallbackUrl, navigationDecision, parseWebOrigin } from '../src/origin';
+import { DEV_TOP_FRAME_ORIGINS, dflCallbackUrl, isTopFrameRequest, navigationDecision, parseWebOrigin } from '../src/origin';
 import {
   INITIAL_CHROME,
   LOAD_TIMEOUT_MS,
   blockedNotice,
   cardCopy,
+  LATE_GUARD_ERROR,
   chromeReducer,
+  classifyLoadStart,
+  createLateGuard,
   isCardVisible,
   isVeilVisible,
   noticeDue,
+  OPEN_FAILED_NOTICE,
   restartUrl,
 } from '../src/shellChromeState';
 
@@ -88,6 +95,10 @@ const BACKGROUND = '#0A0908';
 const BACK_CONFIRM = backConfirmEnabled(Constants.executionEnvironment);
 // Installed builds sign in with DFL through the system auth session (R-20); Expo Go cannot receive the return link.
 const AUTH_SESSION = authSessionEnabled(Constants.executionEnvironment);
+// Top-frame origins the WebView may load besides the app: Expo Go only (it cannot receive the DFL return link). Both guards read this.
+const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION ? DEV_TOP_FRAME_ORIGINS : [];
+// A page the system refuses to open (the browser, a mail or phone link, the auth sheet) is never a silent tap: one short notice.
+const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, OPEN_FAILED_NOTICE);
 const DFL_RETURN = dflCallbackUrl(ORIGIN);
 const DFL_SESSION = createSessionGuard();
 // Android delivers the return link twice (Expo Router and the session promise): the latch lets exactly one of them load it.
@@ -111,14 +122,22 @@ const RANDOM = (bytes: Uint8Array) => getRandomValues(bytes);
 const ShellWebView = WebView<object>;
 type ShellWebView = InstanceType<typeof ShellWebView>;
 
-// Read once per launch, in parallel with the WebView (which is already veiled). The card replaces the WebView only
-// when a config that was read says this shell is too old; it is read again on foreground and on "Tentar de novo".
+// Read at launch, in parallel with the WebView (which is already veiled). The card replaces the WebView only
+// when a config that was read says this shell is too old. It is read again on return to the foreground (the update card always;
+// otherwise when the last read failed, after 30 s, or succeeded, after 30 min: `rereadDue`) and on both retries (the update card's,
+// and the failure card's when the last read failed), so a launch offline does not dodge `minShellVersion` for the life of the process.
 const LAUNCH = createLaunchGate(ORIGIN, SHELL_VERSION, Platform.OS);
 void LAUNCH.get();
 
-function useLaunchConfig(): { launch: LaunchConfig | null; refresh: () => void } {
+function useLaunchConfig(): { launch: LaunchConfig | null; refresh: () => void; retryRead: () => boolean } {
   const [launch, setLaunch] = useState(LAUNCH.peek());
   const refresh = useCallback(() => void LAUNCH.refresh().then(setLaunch), []);
+  // True when a read was started: the failure card is up, so the page is gone and the answer may apply at once.
+  const retryRead = useCallback(() => {
+    if (!rereadOnRetry(LAUNCH.status())) return false;
+    refresh();
+    return true;
+  }, [refresh]);
   useEffect(() => {
     let live = true;
     void LAUNCH.get().then((config) => live && setLaunch(config));
@@ -128,11 +147,11 @@ function useLaunchConfig(): { launch: LaunchConfig | null; refresh: () => void }
   }, []);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && LAUNCH.peek()?.gate.kind === 'update') refresh();
+      if (state === 'active' && rereadDue(LAUNCH.peek()?.gate.kind === 'update' ? 'update' : 'run', LAUNCH.status(), Date.now())) refresh();
     });
     return () => subscription.remove();
   }, [refresh]);
-  return { launch, refresh };
+  return { launch, refresh, retryRead };
 }
 
 export default function ShellRoute() {
@@ -140,17 +159,39 @@ export default function ShellRoute() {
   // The segments come from the pathname, never from the `path` param: a link with `?path=…` cannot pick the route.
   const pathname = usePathname();
   const params = useLocalSearchParams() as LinkParams;
-  const rawEntry = entryFromLink(lastLink(), ORIGIN, pathname.split('/').filter(Boolean), params);
   // Android: when the session already loaded this return link, the router's copy of it keeps the WebShell it has (same key, no second load).
-  const entry = useRef<{ raw: string; effective: string } | null>(null);
+  // The raw link of the DFL callback (a bearer token in its fragment) is forgotten once taken as the entry (the effect below), so a render
+  // after that, on the same route and params, keeps the entry it built from the link instead of rebuilding it from the decoded params.
+  const entry = useRef<{ raw: string; effective: string; view: string } | null>(null);
+  const view = `${pathname}\n${JSON.stringify(params)}`;
+  const link = lastLink();
+  const rawEntry =
+    link === null && entry.current?.view === view
+      ? entry.current.raw
+      : entryFromLink(link, ORIGIN, pathname.split('/').filter(Boolean), params);
   if (entry.current?.raw !== rawEntry) {
     const returned = acceptAuthSessionReturn({ type: 'success', url: ORIGIN + rawEntry }, ORIGIN);
     const duplicate = returned !== null && DFL_RETURNS.arrive('router') === 'duplicate';
-    entry.current = { raw: rawEntry, effective: duplicate && entry.current !== null ? entry.current.effective : rawEntry };
+    entry.current = { raw: rawEntry, effective: duplicate && entry.current !== null ? entry.current.effective : rawEntry, view };
   }
+  entry.current.view = view;
   const entryPath = entry.current.effective;
-  const { launch, refresh } = useLaunchConfig();
-  const gate = launch?.gate;
+  // The RAW entry, not the effective one: in the Android order where the session loaded the return first, the router's copy is a
+  // `duplicate`, the effective entry stays `/login`, and the raw link was consumed all the same.
+  useEffect(() => {
+    if (isCallbackEntry(rawEntry)) forgetLink();
+  }, [rawEntry]);
+  const { launch, refresh, retryRead } = useLaunchConfig();
+  // A run -> update flip is not applied under a mounted page (`shownLaunch`): at the next launch, the next route entry, or when the page is already gone.
+  const shown = useRef<{ config: LaunchConfig | null; fresh: LaunchConfig | null; entry: string }>({ config: null, fresh: null, entry: entryPath });
+  const pageGone = useRef(false);
+  shown.current.config = shownLaunch(shown.current.config, launch, { entryChanged: shown.current.entry !== entryPath, pageGone: pageGone.current });
+  shown.current.entry = entryPath;
+  if (launch !== shown.current.fresh) {
+    shown.current.fresh = launch;
+    pageGone.current = false;
+  }
+  const gate = shown.current.config?.gate;
   if (gate?.kind === 'update') {
     return (
       <SafeAreaView style={styles.root}>
@@ -158,7 +199,9 @@ export default function ShellRoute() {
       </SafeAreaView>
     );
   }
-  return <WebShell key={entryPath} entryPath={entryPath} />;
+  return <WebShell key={entryPath} entryPath={entryPath} onRetryRead={() => {
+        if (retryRead()) pageGone.current = true;
+      }} />;
 }
 
 // The one reader of WebView messages and the router that answers them. `nativeEvent` is handed whole to `receiveShellMessage` and read nowhere else (rule 1c).
@@ -270,7 +313,7 @@ function useDflAuthSession(onReturn: (url: string) => void) {
           const returned = acceptAuthSessionReturn(result, ORIGIN);
           if (returned !== null && DFL_RETURNS.arrive('session') === 'load') onReturn(returned);
         })
-        .catch(() => undefined)
+        .catch(() => OPENS.fail(AUTH_FAILED_NOTICE))
         .finally(() => {
           if (DFL_SESSION.leave(ticket)) DFL_RETURNS.end();
         });
@@ -279,22 +322,29 @@ function useDflAuthSession(onReturn: (url: string) => void) {
   );
 }
 
-function useNavigationGuard(onAuthSession: (handoffUrl: string) => void) {
+// One blocked-navigation notice per NOTICE_GAP_MS for the tap guard and the late guard together: a page loop cannot queue modals.
+function useBlockedNotice() {
   const lastNotice = useRef<number | null>(null);
-  return useCallback((req: ShouldStartLoadRequest) => {
-    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame, undefined, undefined, __DEV__ && !AUTH_SESSION ? DEV_TOP_FRAME_ORIGINS : [], AUTH_SESSION);
-    if (decision === 'external') void Linking.openURL(req.url);
-    if (decision === 'auth-session') onAuthSession(req.url);
-    const notice = blockedNotice(decision, req.isTopFrame);
-    if (notice !== null && noticeDue(lastNotice.current, Date.now())) {
-      lastNotice.current = Date.now();
-      Alert.alert(notice);
-    }
-    return decision === 'load';
-  }, [onAuthSession]);
+  return useCallback((notice: string) => {
+    if (!noticeDue(lastNotice.current, Date.now())) return;
+    lastNotice.current = Date.now();
+    Alert.alert(notice);
+  }, []);
 }
 
-function WebShell({ entryPath }: { entryPath: string }) {
+function useNavigationGuard(onAuthSession: (handoffUrl: string) => void, showNotice: (notice: string) => void) {
+  return useCallback((req: ShouldStartLoadRequest) => {
+    const topFrame = isTopFrameRequest(req.isTopFrame);
+    const decision = navigationDecision(req.url, ORIGIN, topFrame, undefined, undefined, TOP_FRAME_ORIGINS, AUTH_SESSION);
+    if (decision === 'external') void OPENS.attempt(() => Linking.openURL(req.url));
+    if (decision === 'auth-session') onAuthSession(req.url);
+    const notice = blockedNotice(decision, topFrame);
+    if (notice !== null) showNotice(notice);
+    return decision === 'load';
+  }, [onAuthSession, showNotice]);
+}
+
+function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: () => void }) {
   const entryUrl = ORIGIN + entryPath;
   const webview = useRef<ShellWebView>(null);
   const [chrome, dispatch] = useReducer(chromeReducer, INITIAL_CHROME);
@@ -316,20 +366,55 @@ function WebShell({ entryPath }: { entryPath: string }) {
     },
     [shellBridge],
   );
-  const onShouldStart = useNavigationGuard(useDflAuthSession(loadReturned));
+  const showNotice = useBlockedNotice();
+  const onShouldStart = useNavigationGuard(useDflAuthSession(loadReturned), showNotice);
 
-  const onNavigationStateChange = useCallback((nav: WebViewNavigation) => {
-    canGoBack.current = nav.canGoBack;
-    setLoadedUrl(nav.url);
-  }, []);
+  // The second line of the Android guard: native loads the page when JS is late to answer `onShouldStartLoadWithRequest`
+  // (250 ms), so the top-frame URL of every navigation event is judged again, by the same decision. `onLoadStart` hands the
+  // same event to this callback right after itself, so this is the earliest point on both platforms (react-native-webview `WebViewShared.js`).
+  // A forbidden page is stopped and the WebView is created again on the last page the guard let through (the reducer's `load`).
+  const lateGuard = useMemo(() => createLateGuard(ORIGIN, TOP_FRAME_ORIGINS, AUTH_SESSION), []);
+  const loadStartPending = useRef(false);
+  const lastGoodUrl = useRef(entryUrl);
+  const mountKey = useRef(chrome.mountKey);
+  mountKey.current = chrome.mountKey;
+  const recoveredMount = useRef<number | null>(null);
+  const onNavigationStateChange = useCallback(
+    (nav: WebViewNavigation) => {
+      // `onLoadStart` and this callback run back to back for the same event (`WebViewShared.js` `onLoadingStart`): the start is acted on here, where `loading` is known.
+      const startsLoad = loadStartPending.current;
+      loadStartPending.current = false;
+      if (recoveredMount.current === mountKey.current) return;
+      const late = lateGuard.judge(nav.url, restartUrl(lastGoodUrl.current, ORIGIN, entryUrl));
+      if (late.kind !== 'none') {
+        webview.current?.stopLoading();
+        if (late.notice !== null) showNotice(late.notice);
+        recoveredMount.current = mountKey.current;
+        canGoBack.current = false;
+        shellBridge.reset();
+        // `stop` is the refusal: the failure card with its two buttons at once. `recover` creates the WebView again on the last page let through.
+        dispatch(late.kind === 'stop' ? { type: 'error', description: LATE_GUARD_ERROR } : { type: 'load', url: restartUrl(lastGoodUrl.current, ORIGIN, entryUrl) });
+        return;
+      }
+      // Android sends pushState (every route change of the web app) as a load start with `loading: false`: a history update, not a load (`classifyLoadStart`).
+      if (startsLoad && classifyLoadStart(Platform.OS, nav.loading, phase.current) === 'load') {
+        shellBridge.reset();
+        dispatch({ type: 'loadStart' });
+      }
+      canGoBack.current = nav.canGoBack;
+      lastGoodUrl.current = nav.url;
+      setLoadedUrl(nav.url);
+    },
+    [lateGuard, showNotice, shellBridge, entryUrl],
+  );
 
   // The page asks to keep the screen on; whatever it holds ends with the WebView.
   useEffect(() => () => shellBridge.reset(), [shellBridge]);
 
+  // Marks a load start; `onNavigationStateChange` acts on it right after (see there).
   const onLoadStart = useCallback(() => {
-    shellBridge.reset();
-    dispatch({ type: 'loadStart' });
-  }, [shellBridge]);
+    loadStartPending.current = true;
+  }, []);
 
   // Re-create the WebView on the page it was on (Retry, process death). The reducer owns the start URL,
   // so it changes only when the WebView is in fact created again.
@@ -342,7 +427,16 @@ function WebShell({ entryPath }: { entryPath: string }) {
     [loadedUrl, entryUrl, shellBridge],
   );
 
-  const openInBrowser = useCallback(() => void Linking.openURL(browserUrl(restartUrl(loadedUrl, ORIGIN, entryUrl))), [loadedUrl, entryUrl]);
+  // Android: a Custom Tab, never `Linking.openURL` (the installed app is the verified handler of its own links and would get the intent back).
+  const retry = useCallback(() => {
+    onRetryRead();
+    relaunch('retry');
+  }, [onRetryRead, relaunch]);
+
+  const openInBrowser = useCallback(() => {
+    const url = browserUrl(restartUrl(loadedUrl, ORIGIN, entryUrl));
+    void OPENS.attempt(() => (browserMethod(Platform.OS) === 'custom-tab' ? WebBrowser.openBrowserAsync(url) : Linking.openURL(url)));
+  }, [loadedUrl, entryUrl]);
 
   useEffect(() => {
     if (chrome.phase !== 'loading') return undefined;
@@ -400,7 +494,7 @@ function WebShell({ entryPath }: { entryPath: string }) {
       />
       <LoadingVeil visible={isVeilVisible(chrome)} />
       {isCardVisible(chrome) ? (
-        <OfflineCard title={copy.title} body={copy.body} onRetry={() => relaunch('retry')} onOpenBrowser={openInBrowser} />
+        <OfflineCard title={copy.title} body={copy.body} onRetry={retry} onOpenBrowser={openInBrowser} />
       ) : null}
       {backConfirmOpen ? <BackConfirmCard onStay={() => setBackConfirmOpen(false)} onLeave={() => BackHandler.exitApp()} /> : null}
       {__DEV__ ? (

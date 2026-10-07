@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isCallbackEntry } from './deepLink';
 import { AUTH_BUSY_NOTICE, RETURN_MARKER_TTL_MS, SESSION_STALE_MS, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from './dflAuthSession';
 
 const APP = 'https://app.iterahq.dev';
@@ -191,5 +192,34 @@ describe('createReturnLatch (Android: the return link arrives twice)', () => {
     latch.begin();
     latch.arrive('session');
     expect(Object.keys(latch).sort()).toEqual(['arrive', 'begin', 'end']);
+  });
+});
+
+describe('the raw callback link is consumed in either Android order', () => {
+  const O = 'https://app.iterahq.dev';
+  const rawCallback = '/auth/dfl/callback#dfl_token=a.b.c';
+
+  // The route's rule: the effect looks at the RAW entry; the latch only picks which entry is effective.
+  const route = (order: ('session' | 'router')[]) => {
+    const latch = createReturnLatch(() => 0);
+    latch.begin();
+    let effective = '/login';
+    for (const source of order) {
+      const arrival = latch.arrive(source);
+      const returned = acceptAuthSessionReturn({ type: 'success', url: O + rawCallback }, O);
+      if (source === 'router' && returned !== null && arrival === 'load') effective = rawCallback;
+    }
+    return { effective, forget: isCallbackEntry(rawCallback) };
+  };
+
+  it('router first: the router\'s copy loads, and the link is forgotten', () => {
+    expect(route(['router', 'session'])).toEqual({ effective: rawCallback, forget: true });
+  });
+
+  it('session first: the router\'s copy is a duplicate, the effective entry stays /login, and the link is forgotten all the same', () => {
+    const out = route(['session', 'router']);
+    expect(out.effective).toBe('/login');
+    expect(isCallbackEntry(out.effective)).toBe(false);
+    expect(out.forget).toBe(true);
   });
 });

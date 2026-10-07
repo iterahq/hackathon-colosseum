@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCKED_ORIGINS, DEFAULT_WEB_ORIGIN, dflCallbackUrl, isDflHandoff, navigationDecision, originOf, parseWebOrigin } from './origin';
+import { BLOCKED_ORIGINS, DEFAULT_WEB_ORIGIN, dflCallbackUrl, isDflHandoff, isTopFrameRequest, navigationDecision, originOf, parseWebOrigin } from './origin';
 import appJson from '../app.json';
 
 const O = 'https://app.iterahq.dev';
@@ -270,5 +270,21 @@ describe('navigationDecision, DFL handoff in the system auth session (R-20)', ()
     expect(dflCallbackUrl(APP)).toBe(CALLBACK);
     expect(isDflHandoff(handoff('https://staging.iterahq.dev/auth/dfl/callback'), 'https://staging.iterahq.dev')).toBe(true);
     expect(isDflHandoff(handoff(CALLBACK), 'https://staging.iterahq.dev')).toBe(false);
+  });
+});
+
+describe('isTopFrameRequest: Android does not report the frame', () => {
+  it('reads undefined as the top frame and only an explicit false as a sub-frame', () => {
+    expect(isTopFrameRequest(undefined)).toBe(true);
+    expect(isTopFrameRequest(true)).toBe(true);
+    expect(isTopFrameRequest(false)).toBe(false);
+  });
+
+  it('a request without the field is judged as a top frame, the way Android sends it', () => {
+    const stripe = 'https://checkout.stripe.com/c/pay/x';
+    expect(navigationDecision(stripe, O, isTopFrameRequest(undefined))).toBe('block');
+    expect(navigationDecision('data:text/html,x', O, isTopFrameRequest(undefined))).toBe('block');
+    expect(navigationDecision('https://example.com/', O, isTopFrameRequest(undefined))).toBe('external');
+    expect(navigationDecision('data:text/html,x', O, isTopFrameRequest(false))).toBe('load');
   });
 });

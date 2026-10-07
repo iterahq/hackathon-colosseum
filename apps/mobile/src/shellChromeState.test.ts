@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isTopFrameRequest } from './origin';
 import {
   BLOCKED_NOTICE,
   INITIAL_CHROME,
@@ -12,6 +13,11 @@ import {
   isCardVisible,
   isVeilVisible,
   noticeDue,
+  LATE_GUARD_ERROR,
+  LATE_WINDOW_MS,
+  classifyLoadStart,
+  createLateGuard,
+  MAX_LATE_RECOVERIES,
   NOTICE_GAP_MS,
   restartUrl,
   shouldHandleBack,
@@ -272,5 +278,141 @@ describe('restartUrl never restarts on the DFL callback (R-20)', () => {
     expect(restartUrl('https://app.iterahq.dev/lesson/1?a=1#b', O, E)).toBe('https://app.iterahq.dev/lesson/1?a=1#b');
     expect(restartUrl('https://app.iterahq.dev/auth/dfl/callbackx', O, E)).toBe('https://app.iterahq.dev/auth/dfl/callbackx');
     expect(restartUrl('https://app.iterahq.dev/x?next=/auth/dfl/callback', O, E)).toBe('https://app.iterahq.dev/x?next=/auth/dfl/callback');
+  });
+});
+
+describe('blockedNotice on Android, where the frame is not reported', () => {
+  it('a blocked request with no isTopFrame shows the notice; an explicit sub-frame does not', () => {
+    expect(blockedNotice('block', isTopFrameRequest(undefined))).toBe(BLOCKED_NOTICE);
+    expect(blockedNotice('block', isTopFrameRequest(false))).toBeNull();
+  });
+});
+
+describe('createLateGuard: the second line of the Android guard', () => {
+  const O = 'https://app.iterahq.dev';
+  const GOOD = `${O}/lesson/x`;
+  let t = 0;
+  const guard = (top: readonly string[] = [], authSession = true) => createLateGuard(O, top, authSession, () => t);
+  const handoff = `https://learn.devfellowship.com/auth/federate?return=${encodeURIComponent(`${O}/auth/dfl/callback`)}`;
+  const STRIPE = 'https://checkout.stripe.com/x';
+
+  it.each([O, `${O}/`, `${O}/lesson/x?y=1`, `${O}/#section`, `${O}/lesson/x#frag`, 'about:blank'])('lets %s through', (url) => {
+    expect(guard().judge(url, GOOD)).toEqual({ kind: 'none' });
+  });
+
+  it.each(['https://checkout.stripe.com/c/pay/x', 'https://billing.stripe.com/p/session/y', 'https://checkout.stripe.com./c'])('a blocked origin recovers with the notice: %s', (url) => {
+    expect(guard().judge(url, GOOD)).toEqual({ kind: 'recover', notice: BLOCKED_NOTICE });
+  });
+
+  it('an external origin recovers with no notice (the tap handler already opened it outside)', () => {
+    expect(guard().judge('https://example.com/', GOOD)).toEqual({ kind: 'recover', notice: null });
+    expect(guard().judge('mailto:a@b.c', GOOD)).toEqual({ kind: 'recover', notice: null });
+  });
+
+  it('a custom scheme and a top-frame data: URL recover with the notice', () => {
+    expect(guard().judge('itera://x', GOOD)).toEqual({ kind: 'recover', notice: BLOCKED_NOTICE });
+    expect(guard().judge('data:text/html,x', GOOD)).toEqual({ kind: 'recover', notice: BLOCKED_NOTICE });
+  });
+
+  it('the DFL handoff in an installed build is stopped (the auth sheet is the only place it opens)', () => {
+    expect(guard([], true).judge(handoff, GOOD)).toEqual({ kind: 'recover', notice: null });
+  });
+
+  it('the DFL handoff in Expo Go, where its origin is allowed in the WebView, is left alone', () => {
+    expect(guard(['https://learn.devfellowship.com'], false).judge(handoff, GOOD)).toEqual({ kind: 'none' });
+    expect(guard(['https://learn.devfellowship.com'], false).judge('https://learn.devfellowship.com/anything', GOOD)).toEqual({ kind: 'none' });
+  });
+
+  it('the fourth recovery onto the same page within a minute is the refusal', () => {
+    t = 0;
+    const g = guard();
+    for (let i = 0; i < MAX_LATE_RECOVERIES; i += 1) expect(g.judge(STRIPE, GOOD).kind).toBe('recover');
+    expect(g.judge(STRIPE, GOOD).kind).toBe('stop');
+  });
+
+  it('an app page that redirects out after it loaded still trips it: pages finishing in between reset nothing', () => {
+    t = 0;
+    const g = guard();
+    const kinds: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      kinds.push(g.judge(STRIPE, GOOD).kind); // the page loads, finishes (allowed), redirects out again, 5 s later
+      expect(g.judge(GOOD, GOOD).kind).toBe('none');
+      t += 5000;
+    }
+    expect(kinds).toEqual(['recover', 'recover', 'recover', 'stop', 'stop']);
+  });
+
+  it('a quiet period lets the count start again, and another last good page counts on its own', () => {
+    t = 0;
+    const g = guard();
+    for (let i = 0; i < 4; i += 1) g.judge(STRIPE, GOOD);
+    expect(g.judge(STRIPE, `${O}/catalog`).kind).toBe('recover');
+    t += LATE_WINDOW_MS;
+    expect(g.judge(STRIPE, GOOD).kind).toBe('recover');
+  });
+
+  it('the relaunch target is never judged a forbidden navigation', () => {
+    const entry = `${O}/lesson/x`;
+    for (const last of ['https://checkout.stripe.com/x', `${O}/auth/dfl/callback#dfl_token=t`, entry]) {
+      expect(guard().judge(restartUrl(last, O, entry), GOOD)).toEqual({ kind: 'none' });
+    }
+  });
+
+  it('the refusal puts the failure card up at once, through the reducer, from the veil and from a committed page', () => {
+    expect(classifyLoadError(LATE_GUARD_ERROR)).toBe('load');
+    for (const start of [INITIAL_CHROME, chromeReducer(INITIAL_CHROME, { type: 'loadEnd' })]) {
+      const state = chromeReducer(start, { type: 'error', description: LATE_GUARD_ERROR });
+      expect(isCardVisible(state)).toBe(true);
+      expect(isVeilVisible(state)).toBe(false);
+      expect(state.failure).toBe('load');
+      // The card's Retry creates the WebView again on a page that was let through.
+      expect(chromeReducer(state, { type: 'retry', url: `${O}/` }).startUrl).toBe(`${O}/`);
+    }
+  });
+});
+
+describe('classifyLoadStart: Android reports pushState as a load start', () => {
+  const ready = chromeReducer(INITIAL_CHROME, { type: 'loadEnd' });
+
+  it('Android: a start with loading false on a ready page is a history update', () => {
+    expect(classifyLoadStart('android', false, 'ready')).toBe('history');
+  });
+  it.each([
+    ['android', true, 'ready'],
+    ['android', false, 'loading'],
+    ['android', false, 'failed'],
+    ['ios', false, 'ready'],
+    ['ios', true, 'ready'],
+  ] as const)('%s loading=%s phase=%s is a load', (os, loading, phase) => {
+    expect(classifyLoadStart(os, loading, phase)).toBe('load');
+  });
+
+  it('the Android pushState sequence: a ready page stays ready, with no timer id change and no failure card', () => {
+    // first load: start (loading true), finish
+    let state = chromeReducer(INITIAL_CHROME, { type: 'loadStart' });
+    state = chromeReducer(state, { type: 'loadEnd' });
+    expect(state.phase).toBe('ready');
+    const loadId = state.loadId;
+    // three route changes of the SPA: doUpdateVisitedHistory -> topLoadingStart with loading false; no onPageFinished follows
+    for (let i = 0; i < 3; i += 1) {
+      if (classifyLoadStart('android', false, state.phase) === 'load') state = chromeReducer(state, { type: 'loadStart' });
+    }
+    expect(state).toEqual(chromeReducer(ready, { type: 'loadEnd' }));
+    expect(state.loadId).toBe(loadId);
+    expect(isVeilVisible(state)).toBe(false);
+    // the 15 s timer is armed only while loading, so there is none to fire; a stale one would not either
+    expect(chromeReducer(state, { type: 'timeout', loadId })).toBe(state);
+  });
+
+  it('without the rule the same sequence ends in the failure card (what Android did)', () => {
+    let state = chromeReducer(chromeReducer(INITIAL_CHROME, { type: 'loadStart' }), { type: 'loadEnd' });
+    state = chromeReducer(state, { type: 'loadStart' });
+    expect(isVeilVisible(state)).toBe(true);
+    expect(isCardVisible(chromeReducer(state, { type: 'timeout', loadId: state.loadId }))).toBe(true);
+  });
+
+  it('a real navigation from a ready page (loading true) still starts a load', () => {
+    const state = chromeReducer(ready, { type: 'loadStart' });
+    expect(state.phase).toBe('loading');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browserUrl, carriesRefreshToken, displayUrl, entryFromLink, entryPathFor, intakeLink } from './deepLink';
+import { browserUrl, carriesRefreshToken, displayUrl, entryFromLink, entryPathFor, intakeLink, isCallbackEntry } from './deepLink';
 import { DEFAULT_WEB_ORIGIN, navigationDecision } from './origin';
 
 describe('entryPathFor', () => {
@@ -195,5 +195,20 @@ describe('intakeLink (ADR-10 at the intake)', () => {
   it('a path through the unreadable branch with the text in any casing is `/`', () => {
     const hostile = { toString: () => 'x' } as unknown;
     expect(intakeLink(hostile)).toEqual({ path: '/', remember: null });
+  });
+});
+
+describe('isCallbackEntry: the link the route forgets once consumed', () => {
+  it.each(['/auth/dfl/callback', '/auth/dfl/callback#dfl_token=a.b.c&next=%2F', '/auth/dfl/callback?x=1#dfl_token=t', '/auth/dfl/callback/', '/AUTH/DFL/CALLBACK#t'])('%s is the callback', (entry) => {
+    expect(isCallbackEntry(entry)).toBe(true);
+  });
+  it.each(['/', '/login', '/auth/dfl/callbackx', '/auth/dfl', '/lesson/x?next=/auth/dfl/callback', '/lesson/x#/auth/dfl/callback', ''])('%s is not', (entry) => {
+    expect(isCallbackEntry(entry)).toBe(false);
+  });
+  it('the entry of a raw callback link is recognised, token and all', () => {
+    const link = `${DEFAULT_WEB_ORIGIN}/auth/dfl/callback#dfl_token=a.b.c&next=%252Flesson%252Fx`;
+    const entry = entryFromLink(link, DEFAULT_WEB_ORIGIN, ['auth', 'dfl', 'callback'], {});
+    expect(entry).toContain('dfl_token=');
+    expect(isCallbackEntry(entry)).toBe(true);
   });
 });

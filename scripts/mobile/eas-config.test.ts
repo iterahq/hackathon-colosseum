@@ -15,11 +15,12 @@ interface Profile {
 interface AppJson {
   expo: {
     owner: string;
+    runtimeVersion?: unknown;
     backgroundColor: string;
     ios: { bundleIdentifier: string; infoPlist: Record<string, unknown>; associatedDomains?: unknown };
     android: { package: string; adaptiveIcon: { backgroundColor: string }; intentFilters?: unknown; permissions?: unknown };
     plugins: unknown[];
-    updates: { url: string };
+    updates: { url: string; checkAutomatically?: string; fallbackToCacheTimeout?: number };
     extra: { eas: { projectId: string } };
   };
 }
@@ -45,6 +46,13 @@ describe("EAS identity (app.json)", () => {
     const projectId = expo.extra.eas.projectId as string;
     expect(projectId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     expect(expo.updates.url).toBe(`https://u.expo.dev/${projectId}`);
+  });
+
+  it("keeps over-the-air updates off on purpose: the channel exists (url, runtimeVersion) but the app never checks it", () => {
+    expect(expo.updates.checkAutomatically).toBe("NEVER");
+    expect(expo.updates.url).toMatch(/^https:\/\/u\.expo\.dev\//);
+    expect(expo.runtimeVersion).toEqual({ policy: "fingerprint" });
+    expect((expo.updates as Record<string, unknown>).codeSigningCertificate).toBeUndefined();
   });
 
   it("declares no capability the WebView shell does not use, and the associated domain of R-5 only", () => {

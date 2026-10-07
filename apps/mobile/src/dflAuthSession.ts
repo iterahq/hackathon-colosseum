@@ -39,6 +39,8 @@ export function acceptAuthSessionReturn(result: AuthSessionResult, appOrigin: st
 export const SESSION_STALE_MS = 120_000;
 /** Shown for a tap refused while a session is genuinely open. */
 export const AUTH_BUSY_NOTICE = 'Login com DFL em andamento';
+/** Shown when the system auth sheet could not open or failed (a cancel is not a failure). */
+export const AUTH_FAILED_NOTICE = 'Não foi possível entrar com DFL';
 
 export interface SessionGuard {
   /** A ticket when the session may open, null when one is genuinely open (a tap refused). A session older than `staleMs` is released first. */

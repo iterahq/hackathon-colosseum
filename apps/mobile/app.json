@@ -63,7 +63,7 @@
     "runtimeVersion": { "policy": "fingerprint" },
     "updates": {
       "url": "https://u.expo.dev/14894fdb-316a-4b24-a12b-ac3106ee9d6d",
-      "checkAutomatically": "ON_LOAD",
+      "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     },
     "extra": {

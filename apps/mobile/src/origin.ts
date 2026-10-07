@@ -13,6 +13,13 @@
  *    seventh parameter. The shell opens it in the system auth session instead of the default path.
  *  - `originOf` is the bridge's (`@iterahq/shell-bridge`), re-exported: one origin parser in the shell.
  *
+ * Sub-frame rules hold on iOS only. Android does not report the frame: the event of its normal path
+ * (`RNCWebViewClient.java` `createWebViewEvent`) has no `isTopFrame`, so `isTopFrameRequest` reads every
+ * Android request as the top frame. Only an explicit `false` (iOS) is a sub-frame.
+ * Known consequence: Android's `shouldOverrideUrlLoading` may also be called for sub-frame navigations (Android docs) and the library
+ * discards `isForMainFrame()`. A future `blob:` or `data:` iframe would be judged as a top frame and blocked, WITH the alert. Today's
+ * preview is `srcdoc` (`about:srcdoc`, answer `load`), so nothing hits this; do not add such an iframe without changing this.
+ *
  * The origin of the web content in the shell stays ONE config value: `expo.extra.webOrigin`.
  *
  * Pure TypeScript: no React Native import.
@@ -54,6 +61,14 @@ export const BLOCKED_ORIGINS: readonly string[] = ['https://checkout.stripe.com'
 function originWithoutTrailingDot(url: string): string | null {
   const o = originOf(url);
   return o === null ? null : o.replace(/\.(?=(:\d+)?$)/, '');
+}
+
+/**
+ * The one reading of the `isTopFrame` field of a navigation request: `undefined` (Android's normal path) is the
+ * top frame, and only an explicit `false` is a sub-frame. Pass the result to `navigationDecision` and to `blockedNotice`.
+ */
+export function isTopFrameRequest(isTopFrame: boolean | undefined): boolean {
+  return isTopFrame !== false;
 }
 
 export type NavigationDecision = 'load' | 'external' | 'block' | 'auth-session';

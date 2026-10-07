@@ -3,11 +3,16 @@ import {
   CONFIG_TIMEOUT_MS,
   MAX_CONFIG_BYTES,
   OPEN_LAUNCH,
+  REREAD_FAILED_MS,
+  REREAD_OK_MS,
   createLaunchGate,
   decideLaunch,
   effectiveRouteModes,
   loadLaunchConfig,
   parseForceWebview,
+  rereadDue,
+  rereadOnRetry,
+  shownLaunch,
   storeUrlFor,
   updateCardCopy,
   type ConfigResponse,
@@ -274,6 +279,137 @@ describe('createLaunchGate: refresh', () => {
     await gate.get();
     await Promise.all([gate.refresh(), gate.refresh()]);
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('createLaunchGate: failed reads are read again, and a late read never overwrites a newer one', () => {
+  const OLD = json({ minShellVersion: '0.3.0' });
+  const NEUTRAL = json({ minShellVersion: '0.0.0', updateUrl: null, forceWebview: [] });
+  const deferred = () => {
+    let resolve!: (r: ConfigResponse) => void;
+    let reject!: (e: Error) => void;
+    const promise = new Promise<ConfigResponse>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject, ok: (body: string) => resolve({ ok: true, url: `${ORIGIN}/shell-config.json`, text: async () => body }) };
+  };
+
+  it('status is null until the first read ends, ok after a read, and not ok after a failed one (offline at launch)', async () => {
+    let t = 1000;
+    const gate = createLaunchGate(ORIGIN, '0.2.0', 'ios', async () => Promise.reject(new Error('offline')), 50, () => t);
+    void gate.get();
+    expect(gate.status()).toBeNull();
+    await gate.get();
+    expect(gate.status()).toEqual({ ok: false, at: 1000 });
+    expect(gate.peek()).toBe(OPEN_LAUNCH);
+    t = 2000;
+    await gate.refresh();
+    expect(gate.status()).toEqual({ ok: false, at: 2000 });
+  });
+
+  it('an offline launch is corrected by a later read: the minimum then closes the app', async () => {
+    let online = false;
+    const gate = createLaunchGate(ORIGIN, '0.2.0', 'ios', async () => (online ? { ok: true, url: `${ORIGIN}/shell-config.json`, text: async () => OLD } : Promise.reject(new Error('offline'))), 50);
+    expect((await gate.get()).gate.kind).toBe('run');
+    expect(gate.status()?.ok).toBe(false);
+    online = true;
+    expect((await gate.refresh()).gate.kind).toBe('update');
+    expect(gate.status()?.ok).toBe(true);
+  });
+
+  it('a get() that settles after a later refresh() does not overwrite the newer decision', async () => {
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const gate = createLaunchGate(ORIGIN, '0.2.0', 'ios', () => queue.shift()!.promise, 5000);
+    const got = gate.get();
+    const refreshed = gate.refresh();
+    second.ok(NEUTRAL);
+    expect((await refreshed).gate.kind).toBe('run');
+    first.ok(OLD);
+    const late = await got;
+    expect(late.gate.kind).toBe('run');
+    expect(gate.peek()?.gate.kind).toBe('run');
+  });
+
+  it('a get() that fails after a later refresh() that succeeded changes nothing', async () => {
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const gate = createLaunchGate(ORIGIN, '0.2.0', 'ios', () => queue.shift()!.promise, 5000);
+    const got = gate.get();
+    const refreshed = gate.refresh();
+    second.ok(OLD);
+    await refreshed;
+    first.reject(new Error('offline'));
+    expect((await got).gate.kind).toBe('update');
+    expect(gate.status()?.ok).toBe(true);
+  });
+
+  it('a successful read that was slow still counts when a newer read failed', async () => {
+    const first = deferred();
+    const second = deferred();
+    const queue = [first, second];
+    const gate = createLaunchGate(ORIGIN, '0.2.0', 'ios', () => queue.shift()!.promise, 5000);
+    const got = gate.get();
+    const refreshed = gate.refresh();
+    second.reject(new Error('offline'));
+    await refreshed;
+    first.ok(OLD);
+    expect((await got).gate.kind).toBe('update');
+  });
+});
+
+describe('rereadDue and rereadOnRetry', () => {
+  const at = 1_000_000;
+  it('while the first read is pending nothing is read again', () => {
+    expect(rereadDue('run', null, at)).toBe(false);
+  });
+  it('after a failed read, the foreground reads again once REREAD_FAILED_MS has passed', () => {
+    expect(rereadDue('run', { ok: false, at }, at + REREAD_FAILED_MS - 1)).toBe(false);
+    expect(rereadDue('run', { ok: false, at }, at + REREAD_FAILED_MS)).toBe(true);
+  });
+  it('after a successful read, not on every foreground: once REREAD_OK_MS has passed', () => {
+    expect(rereadDue('run', { ok: true, at }, at + 60_000)).toBe(false);
+    expect(rereadDue('run', { ok: true, at }, at + REREAD_OK_MS - 1)).toBe(false);
+    expect(rereadDue('run', { ok: true, at }, at + REREAD_OK_MS)).toBe(true);
+  });
+  it('the update card reads on every foreground', () => {
+    expect(rereadDue('update', { ok: true, at }, at + 1)).toBe(true);
+  });
+  it('the retry of the failure card reads again only when the last read failed', () => {
+    expect(rereadOnRetry(null)).toBe(false);
+    expect(rereadOnRetry({ ok: true, at })).toBe(false);
+    expect(rereadOnRetry({ ok: false, at })).toBe(true);
+  });
+});
+
+describe('shownLaunch: the update card never tears down a mounted page', () => {
+  const RUN = decideLaunch('0.2.0', { minShellVersion: '0.0.0' });
+  const UPDATE = decideLaunch('0.2.0', { minShellVersion: '0.3.0' });
+  const same = { entryChanged: false, pageGone: false };
+
+  it('the first read applies at once (launch: no learner state yet)', () => {
+    expect(shownLaunch(null, UPDATE, same)).toBe(UPDATE);
+    expect(shownLaunch(null, RUN, same)).toBe(RUN);
+  });
+  it('a run -> update flip under a mounted page is held back', () => {
+    expect(shownLaunch(RUN, UPDATE, same)).toBe(RUN);
+  });
+  it('and applies at the next route entry', () => {
+    expect(shownLaunch(RUN, UPDATE, { entryChanged: true, pageGone: false })).toBe(UPDATE);
+  });
+  it('and at once when the page is already gone (the retry of the failure card)', () => {
+    expect(shownLaunch(RUN, UPDATE, { entryChanged: false, pageGone: true })).toBe(UPDATE);
+  });
+  it('a card that is up follows the fresh read, both ways', () => {
+    expect(shownLaunch(UPDATE, RUN, same)).toBe(RUN);
+    expect(shownLaunch(UPDATE, UPDATE, same)).toBe(UPDATE);
+  });
+  it('run -> run follows the fresh read, and no read keeps what is shown', () => {
+    expect(shownLaunch(RUN, OPEN_LAUNCH, same)).toBe(OPEN_LAUNCH);
+    expect(shownLaunch(RUN, null, same)).toBe(RUN);
   });
 });
 

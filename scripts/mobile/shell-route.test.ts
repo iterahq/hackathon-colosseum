@@ -58,9 +58,12 @@ describe('route file wiring', () => {
   it('the launch gate (R-7): read in parallel with the WebView, the card replaces it only on update, re-read on foreground and on retry', () => {
     expect(count(/createLaunchGate\(ORIGIN, SHELL_VERSION, Platform\.OS\)/)).toBe(1);
     expect(code).toMatch(/gate\?\.kind === 'update'[\s\S]*<UpdateNowCard copy=\{updateCardCopy\(gate\)\} onRetry=\{refresh\} \/>/);
-    expect(code).toMatch(/return <WebShell key=\{entryPath\} entryPath=\{entryPath\} \/>;/);
+    expect(code).toMatch(/return <WebShell key=\{entryPath\} entryPath=\{entryPath\} onRetryRead=\{\(\) => \{\s*if \(retryRead\(\)\) pageGone\.current = true;\s*\}\} \/>;/);
     expect(code).not.toMatch(/launch === null/);
-    expect(code).toMatch(/AppState\.addEventListener\('change'[\s\S]*state === 'active' && LAUNCH\.peek\(\)\?\.gate\.kind === 'update'\) refresh\(\)/);
+    expect(code).toMatch(/shownLaunch\(shown\.current\.config, launch, \{ entryChanged: shown\.current\.entry !== entryPath, pageGone: pageGone\.current \}\)/);
+    expect(code).toMatch(/AppState\.addEventListener\('change'[\s\S]*state === 'active' && rereadDue\(LAUNCH\.peek\(\)\?\.gate\.kind === 'update' \? 'update' : 'run', LAUNCH\.status\(\), Date\.now\(\)\)\) refresh\(\)/);
+    expect(code).toMatch(/if \(!rereadOnRetry\(LAUNCH\.status\(\)\)\) return false;\s*refresh\(\);/);
+    expect(code).toMatch(/onRetryRead\(\);\s*relaunch\('retry'\);/);
     expect(code).not.toMatch(/\bfetch\b/);
   });
 
@@ -76,16 +79,43 @@ describe('route file wiring', () => {
   });
 
   it('both card buttons are wired to a handler', () => {
-    expect(code).toMatch(/onRetry=\{\(\) => relaunch\('retry'\)\}/);
+    expect(code).toMatch(/onRetry=\{retry\}/);
     expect(code).toMatch(/onOpenBrowser=\{openInBrowser\}/);
+    expect(code).toMatch(/const url = browserUrl\(restartUrl\(loadedUrl, ORIGIN, entryUrl\)\);\s*void OPENS\.attempt\(\(\) => \(browserMethod\(Platform\.OS\) === 'custom-tab' \? WebBrowser\.openBrowserAsync\(url\) : Linking\.openURL\(url\)\)\);/);
   });
 
   it('both back-confirm buttons are wired to a handler', () => {
     expect(code).toMatch(/<BackConfirmCard onStay=\{\(\) => setBackConfirmOpen\(false\)\} onLeave=\{\(\) => BackHandler\.exitApp\(\)\} \/>/);
   });
 
+  it('no open call is left to fail silently: every Linking.openURL and the auth session go through the open reporter', () => {
+    expect(count(/\bLinking\.openURL\(/)).toBe(2);
+    expect(count(/\bOPENS\.attempt\(\(\) => Linking\.openURL\(req\.url\)\)/)).toBe(1);
+    expect(code).toMatch(/\.catch\(\(\) => OPENS\.fail\(AUTH_FAILED_NOTICE\)\)/);
+    expect(count(/\.catch\(\(\) => undefined\)/)).toBe(0);
+    const card = readFileSync(fileURLToPath(new URL('../../apps/mobile/src/UpdateNowCard.tsx', import.meta.url)), 'utf8');
+    expect(card).toMatch(/OPENS\.attempt\(\(\) => Linking\.openURL\(url\)\)/);
+    expect(card).not.toMatch(/\.catch\(\(\) => undefined\)/);
+  });
+
   it('a blocked navigation shows the notice', () => {
-    expect(code).toMatch(/noticeDue\(lastNotice\.current, Date\.now\(\)\)[\s\S]*Alert\.alert\(notice\)/);
+    expect(code).toMatch(/noticeDue\(lastNotice\.current, Date\.now\(\)\)\) return;[\s\S]*Alert\.alert\(notice\)/);
+    expect(code).toMatch(/if \(notice !== null\) showNotice\(notice\);/);
+  });
+
+  it('the frame is read once, by isTopFrameRequest, for the decision and for the notice (Android sends no isTopFrame)', () => {
+    expect(count(/\bisTopFrameRequest\(req\.isTopFrame\)/)).toBe(1);
+    expect(count(/\breq\.isTopFrame\b/)).toBe(1);
+    expect(code).toMatch(/navigationDecision\(req\.url, ORIGIN, topFrame, undefined, undefined, TOP_FRAME_ORIGINS, AUTH_SESSION\)/);
+    expect(code).toMatch(/blockedNotice\(decision, topFrame\)/);
+  });
+
+  it('the Android guard has a second line: the top-frame URL of every navigation event is judged again, and a forbidden page is stopped and recovered through the reducer', () => {
+    expect(code).toMatch(/createLateGuard\(ORIGIN, TOP_FRAME_ORIGINS, AUTH_SESSION\)/);
+    expect(code).toMatch(/const late = lateGuard\.judge\(nav\.url, restartUrl\(lastGoodUrl\.current, ORIGIN, entryUrl\)\);\s*if \(late\.kind !== 'none'\) \{\s*webview\.current\?\.stopLoading\(\);/);
+    expect(code).toMatch(/late\.kind === 'stop' \? \{ type: 'error', description: LATE_GUARD_ERROR \} : \{ type: 'load', url: restartUrl\(lastGoodUrl\.current, ORIGIN, entryUrl\) \}/);
+    expect(code).toMatch(/if \(recoveredMount\.current === mountKey\.current\) return;/);
+    expect(code).toMatch(/const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION \? DEV_TOP_FRAME_ORIGINS : \[\];/);
   });
 
   it('the WebView is keyed by the chrome mount key', () => {
@@ -94,8 +124,10 @@ describe('route file wiring', () => {
 });
 
 describe('route file wiring: the bridge (R-6)', () => {
-  it('the load start resets the bridge session, then dispatches the load state', () => {
-    expect(code).toMatch(/const onLoadStart = useCallback\(\(\) => \{\s*shellBridge\.reset\(\);\s*dispatch\(\{ type: 'loadStart' \}\);\s*\}, \[shellBridge\]\);/);
+  it('a load start resets the bridge session and dispatches the load state, but an Android pushState (loading false on a ready page) does neither', () => {
+    expect(code).toMatch(/const onLoadStart = useCallback\(\(\) => \{\s*loadStartPending\.current = true;\s*\}, \[\]\);/);
+    expect(code).toMatch(/if \(startsLoad && classifyLoadStart\(Platform\.OS, nav\.loading, phase\.current\) === 'load'\) \{\s*shellBridge\.reset\(\);\s*dispatch\(\{ type: 'loadStart' \}\);\s*\}/);
+    expect(count(/dispatch\(\{ type: 'loadStart' \}\)/)).toBe(1);
   });
 
   it('nothing in the route reads the payload or calls a parser or a window: only receiveShellMessage sees nativeEvent.data', () => {
@@ -186,6 +218,11 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
     expect(code).toMatch(/\.finally\(\(\) => \{\s*if \(DFL_SESSION\.leave\(ticket\)\) DFL_RETURNS\.end\(\);/);
   });
 
+  it('the raw callback link (a bearer token) is forgotten as soon as the route has taken it as its entry, and the entry survives the next render', () => {
+    expect(code).toMatch(/useEffect\(\(\) => \{\s*if \(isCallbackEntry\(rawEntry\)\) forgetLink\(\);\s*\}, \[rawEntry\]\);/);
+    expect(code).toMatch(/link === null && entry\.current\?\.view === view\s*\? entry\.current\.raw/);
+  });
+
   it('loads the returned URL only after the pure validator, and only through the reducer', () => {
     expect(code).toMatch(/const returned = acceptAuthSessionReturn\(result, ORIGIN\);\s*if \(returned !== null && DFL_RETURNS\.arrive\('session'\) === 'load'\) onReturn\(returned\);/);
     expect(code).toMatch(/dispatch\(\{ type: 'load', url \}\)/);
@@ -198,7 +235,8 @@ describe('DFL sign-in through the system auth session (R-20)', () => {
 
   it('the guard asks for the session in installed builds only and lists the dev origin in Expo Go only', () => {
     expect(code).toMatch(/const AUTH_SESSION = authSessionEnabled\(Constants\.executionEnvironment\);/);
-    expect(code).toMatch(/__DEV__ && !AUTH_SESSION \? DEV_TOP_FRAME_ORIGINS : \[\], AUTH_SESSION\)/);
+    expect(code).toMatch(/const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION \? DEV_TOP_FRAME_ORIGINS : \[\];/);
+    expect(count(/\bTOP_FRAME_ORIGINS, AUTH_SESSION\)/)).toBe(2);
   });
 
   it('the returned URL (a bearer token) is never logged: no console call reads it, and the only console calls are the two known ones', () => {
