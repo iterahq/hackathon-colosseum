@@ -75,7 +75,7 @@ export default defineConfig({
    * weekly run. `src/test/e2eHermeticMirror.test.ts` keeps the list complete.
    */
   testIgnore:
-    /(activity-baseline|lesson-reload|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|mobile-sound|laptop-height|source-stamp|capture-regions|capture-manifest|bringup-capture)\.spec\.ts$/,
+    /(activity-baseline|lesson-reload|terminal-sandbox|feedback-footer-width|program-access|mobile-touch|mobile-height|mobile-sound|mobile-keyboard|laptop-height|source-stamp|capture-regions|capture-manifest|bringup-capture)\.spec\.ts$/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: 0,

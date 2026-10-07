@@ -173,6 +173,12 @@
     min-height: 100vh;
   }
 
+  /* Set only while a field has focus under a keyboard that shrinks the visual
+     viewport alone (src/lib/keyboard-visibility-mount.ts); 0 everywhere else. */
+  html {
+    padding-bottom: var(--keyboard-inset, 0px);
+  }
+
   /* On a phone `100vh` is the screen with Safari's bars retracted, so a page
      that fits still scrolled by the height of the bars. */
   @media (width < 40rem) {
