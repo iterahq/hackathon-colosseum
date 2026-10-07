@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
-import { CODE_WITH_FAILING_CHECKS, SINGLE_CHOICE } from './support/activityFixtures';
+import {
+  CODE_WITH_FAILING_CHECKS,
+  MATCH,
+  MULTI_CHOICE,
+  ORDER,
+  SINGLE_CHOICE,
+  type ActivityFixture,
+} from './support/activityFixtures';
 import { STUB_SUPABASE_URL } from './support/harnessStub';
 import { installLessonSubstrate, lessonUrl } from './support/lessonStub';
 
@@ -161,3 +168,98 @@ test.describe('a code exercise out of lives', () => {
     expect(writes.passed).toEqual([false]);
   });
 });
+
+/**
+ * One row per kind that redraws a prior answer: how to miss it, and what on
+ * screen proves the miss came back the way the learner left it.
+ */
+const byOptionId = (page: Page, testId: string, id: string) =>
+  page.locator(`[data-testid="${testId}"][data-option-id="${id}"]`);
+
+const RESTORING_KINDS: Array<{
+  fixture: ActivityFixture;
+  miss: (page: Page) => Promise<void>;
+  /** The control that must be locked while the miss stands, and free after the retry. */
+  control: (page: Page) => ReturnType<Page['locator']>;
+  drawn: (page: Page) => Promise<void>;
+}> = [
+  {
+    fixture: MULTI_CHOICE,
+    miss: async (page) => {
+      await byOptionId(page, 'multi-choice-option', 'a').click();
+      await page.getByTestId('multi-choice-submit').click();
+    },
+    control: (page) => byOptionId(page, 'multi-choice-option', 'a'),
+    drawn: async (page) => {
+      await expect(byOptionId(page, 'multi-choice-option', 'a')).toHaveAttribute('data-selected', 'true');
+      await expect(byOptionId(page, 'multi-choice-option', 'b')).not.toHaveAttribute('data-selected', 'true');
+    },
+  },
+  {
+    fixture: MATCH,
+    miss: async (page) => {
+      await byOptionId(page, 'match-left-card', 'p1').click();
+      await byOptionId(page, 'match-right-card', 'r2').click();
+      await byOptionId(page, 'match-left-card', 'p2').click();
+      await byOptionId(page, 'match-right-card', 'r1').click();
+      await page.getByTestId('match-submit').click();
+    },
+    control: (page) => byOptionId(page, 'match-left-card', 'p1'),
+    drawn: async (page) => {
+      // Both crossed pairs are drawn again, and graded as the misses they were.
+      for (const left of ['p1', 'p2']) {
+        await expect(byOptionId(page, 'match-left-card', left)).toHaveAttribute('data-connected', 'true');
+        await expect(byOptionId(page, 'match-left-card', left)).toHaveAttribute('data-verdict', 'miss');
+      }
+    },
+  },
+  {
+    fixture: ORDER,
+    miss: async (page) => {
+      await page.getByTestId('order-item').nth(0).getByTestId('order-down').click();
+      await page.getByTestId('order-submit').click();
+    },
+    control: (page) => page.getByTestId('order-item').nth(0).getByTestId('order-down'),
+    drawn: async () => {},
+  },
+];
+
+test.describe('every kind that redraws an answer re-opens a miss as the learner left it', () => {
+  for (const { fixture, miss, control, drawn } of RESTORING_KINDS) {
+    test(`${fixture.kind}: locked on the answer after a reload, free again after the retry`, async ({ page }) => {
+      await installLessonSubstrate(page, fixture);
+      const writes = countAttemptWrites(page);
+      await page.goto(lessonUrl(fixture));
+      await expect(page.getByTestId('lesson-activity')).toBeVisible();
+
+      const before = fixture.kind === 'order' ? await orderOf(page) : null;
+      await miss(page);
+      await expect(page.getByTestId('feedback-footer')).toBeVisible();
+      const submitted = fixture.kind === 'order' ? await orderOf(page) : null;
+      // The arrangement the learner sent is one they made, not the one dealt.
+      if (submitted) expect(submitted).not.toEqual(before);
+      await expect.poll(() => answerSaved(page, fixture.id)).toBe(true);
+
+      await page.reload();
+      await expect(page.getByTestId('lesson-activity')).toBeVisible();
+      expect(await shownActivity(page)).not.toBe(fixture.id);
+      await page.getByTestId('lesson-prev').click();
+      await expect.poll(() => shownActivity(page)).toBe(fixture.id);
+
+      await expect(page.getByTestId('lesson-retry-missed')).toBeVisible();
+      await expect(control(page)).toBeDisabled();
+      await drawn(page);
+      if (submitted) expect(await orderOf(page)).toEqual(submitted);
+      expect(writes.passed).toEqual([false]);
+
+      await page.getByTestId('lesson-retry-missed').click();
+      await expect(page.getByTestId('lesson-retry-missed')).toHaveCount(0);
+      await expect(control(page)).toBeEnabled();
+    });
+  }
+});
+
+/** The ids of the `order` items, top to bottom. */
+function orderOf(page: Page): Promise<(string | null)[]> {
+  return page.getByTestId('order-item').evaluateAll((els) => els.map((el) => el.getAttribute('data-option-id')));
+}
