@@ -18,7 +18,10 @@ export function LessonStepActions({
 }) {
   const { t } = useI18n();
   return (
-    <div className="mt-4 flex gap-3">
+    // Sticky: on an activity taller than the phone the row stays within reach
+    // instead of waiting below the fold. The paddings and the negative margin
+    // cancel out, so a screen that fits keeps its height to the pixel.
+    <div className="sticky bottom-0 z-10 mt-1 -mb-3 flex gap-3 bg-background pb-3 pt-3" data-testid="lesson-step-actions">
       {onRetry && (
         <button
           type="button"

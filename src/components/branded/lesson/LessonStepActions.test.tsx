@@ -36,4 +36,12 @@ describe('LessonStepActions', () => {
     expect(screen.getByTestId('concept-continue')).toBeDisabled();
     expect(screen.getByTestId('lesson-retry-missed')).toBeEnabled();
   });
+
+  it('stays within reach on an activity taller than the phone, without adding height', () => {
+    mount({ onContinue: vi.fn() });
+    const row = screen.getByTestId('lesson-step-actions').className.split(' ');
+    for (const cls of ['sticky', 'bottom-0', 'bg-background']) expect(row).toContain(cls);
+    // 4 + 12 px above (was `mt-4`), and the 12 px below is taken back.
+    for (const cls of ['mt-1', 'pt-3', 'pb-3', '-mb-3']) expect(row).toContain(cls);
+  });
 });
