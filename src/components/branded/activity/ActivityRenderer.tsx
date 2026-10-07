@@ -129,6 +129,12 @@ type ActivityRendererProps = {
    * "seguir mesmo assim" skip on a failed practical (live only).
    */
   live?: boolean;
+  /**
+   * The learner's own prior answer, handed back down so an already-answered
+   * exercise re-opens showing what they picked and its verdict — see
+   * `priorAnswer` in `@iterahq/activities`. Read only by the kinds that restore.
+   */
+  priorAnswer?: ActivityCompleteDetail;
 };
 
 /** Tera peeks over the card of any activity whose prose names him (`mentionsTera`). */
@@ -140,7 +146,7 @@ export function ActivityRenderer(props: ActivityRendererProps) {
   );
 }
 
-function DispatchedActivity({ activity: authored, onComplete, reveal = false, live = false }: ActivityRendererProps) {
+function DispatchedActivity({ activity: authored, onComplete, reveal = false, live = false, priorAnswer }: ActivityRendererProps) {
   const { locale } = useI18n();
   const { values, mayAsk } = usePersonalization();
 
@@ -236,13 +242,13 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
     case 'video':
       return <VideoActivity activity={activity} onComplete={onComplete} />;
     case 'single_choice':
-      return <SingleChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+      return <SingleChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} priorAnswer={priorAnswer} />;
     case 'multi_choice':
-      return <MultiChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+      return <MultiChoiceActivity activity={activity} onComplete={onComplete} reveal={reveal} priorAnswer={priorAnswer} />;
     case 'match':
-      return <MatchActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+      return <MatchActivity activity={activity} onComplete={onComplete} reveal={reveal} priorAnswer={priorAnswer} />;
     case 'order':
-      return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} />;
+      return <OrderActivity activity={activity} onComplete={onComplete} reveal={reveal} priorAnswer={priorAnswer} />;
     case 'chat_sandbox':
     case 'terminal_sandbox':
       return <SandboxScenarioGuard activity={activity} onComplete={onComplete} reveal={reveal} />;
@@ -250,7 +256,7 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
     // resposta certa, então não há gabarito a expor. `hasRevealableAnswer`
     // devolve false pro kind, logo o botão do professor nem aparece.
     case 'question':
-      return <QuestionActivity activity={activity} onComplete={onComplete} />;
+      return <QuestionActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     // The scene kinds: ungraded, gesture-gated, no `reveal` (nothing to expose).
     case 'xray':
       return <XrayActivity activity={activity} onComplete={onComplete} />;
@@ -302,11 +308,11 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
       return <DocumentAiJudgeActivity activity={activity} onComplete={onComplete} />;
     // question (T14) — no `reveal`: no correct answer to expose.
     case 'question_pick_one':
-      return <QuestionPickOneActivity activity={activity} onComplete={onComplete} />;
+      return <QuestionPickOneActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     case 'question_pick_many':
-      return <QuestionPickManyActivity activity={activity} onComplete={onComplete} />;
+      return <QuestionPickManyActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     case 'question_write':
-      return <QuestionWriteActivity activity={activity} onComplete={onComplete} />;
+      return <QuestionWriteActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     // The scene-mechanics batch (2026-09-25, plan
     // `20260924-itera-scene-mechanics-kinds`) — batch A + batch B. Same
     // contract as the scene kinds above: ungraded, gesture-gated, no
@@ -335,7 +341,7 @@ function DispatchedActivity({ activity: authored, onComplete, reveal = false, li
       return <QueryActivity activity={activity} onComplete={onComplete} />;
     // The system kinds (2026-09-30) — same contract as the scene kinds.
     case 'decompose_canvas':
-      return <DecomposeCanvasActivity activity={activity} onComplete={onComplete} />;
+      return <DecomposeCanvasActivity activity={activity} onComplete={onComplete} priorAnswer={priorAnswer} />;
     case 'compose_blocks':
       return <ComposeBlocksActivity activity={activity} onComplete={onComplete} />;
     case 'state_lab':

@@ -28,6 +28,7 @@ import { scopedKey } from '@/utils/storageScope';
 import { clearCodeSnapshot, clearGuidedBlanks } from '@/services/codeSnapshot.service';
 import { clearCodeAttempts } from '@/services/codeAttempts.service';
 import { clearStoredAnswers } from '@/utils/liveAnswerStorage';
+import { clearLessonAnswers } from '@/utils/lessonAnswerStorage';
 
 const keyFor = (sessionId: string) => scopedKey('itera.live.reset', sessionId);
 
@@ -73,6 +74,8 @@ export function clearLearnerLessonState(sessionId: string, activityIds: string[]
     clearCodeAttempts(activityId);
   }
   clearStoredAnswers(sessionId, activityIds);
+  // The self-paced player's refresh protection would re-lock the same exercises.
+  clearLessonAnswers(activityIds);
 }
 
 /**

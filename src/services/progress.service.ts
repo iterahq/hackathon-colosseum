@@ -904,18 +904,24 @@ export async function reopenLessonProgress(activityIds: string[]): Promise<strin
  * Where a returning learner should land in a lesson, given the ordered activity
  * ids and their persisted statuses.
  *
- * Rule: resume at the first activity the learner has NOT yet completed. An
- * activity attempted-but-missed is NOT completed, so the learner gets another
- * pass at it rather than carrying a silent gap forward — which is also what
- * keeps the "N/total" counter honest.
+ * Rule: resume at the first activity the learner has NOT yet ANSWERED. A
+ * completed activity is answered; so is one in `answered` — the exercises this
+ * learner settled on this device, hit or miss (`lessonAnswerStorage`). A miss
+ * moves the learner on in-session, so a reload must land in the same place:
+ * re-opening it blank is what let a refresh erase the result. The miss still
+ * does not count as done — the "N/total" counter reads `completed` only — and
+ * the learner retries it deliberately, from the activity itself.
  *
- * Returns `activityIds.length` when everything is done, which the player reads
- * as "show the completion screen". Pure and total: unit-testable without a DB.
+ * Returns `activityIds.length` when everything is answered, which the player
+ * reads as "show the completion screen". Pure and total: unit-testable without a DB.
  */
 export function resumeIndexFor(
   activityIds: string[],
-  statuses: Record<string, ProgressStatus>
+  statuses: Record<string, ProgressStatus>,
+  answered: ReadonlySet<string> = new Set()
 ): number {
-  const firstUnfinished = activityIds.findIndex((id) => statuses[id] !== 'completed');
+  const firstUnfinished = activityIds.findIndex(
+    (id) => statuses[id] !== 'completed' && !answered.has(id)
+  );
   return firstUnfinished === -1 ? activityIds.length : firstUnfinished;
 }

@@ -10,6 +10,8 @@ import {
   MAX_RESPONSE_CHARS,
 } from '@/services/progress.service';
 import type { Activity } from '@/types/content';
+import { storeLessonAnswer } from '@/utils/lessonAnswerStorage';
+import { rememberStorageScope } from '@/utils/storageScope';
 
 /**
  * Regression lock for the two defects the 2026-07-28 persona E2E found (D2, D1).
@@ -71,9 +73,13 @@ let settleOnMount: { correct: boolean; response: string } | null = null;
 
 vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
   ActivityRenderer: ({
+    activity,
     onComplete,
+    priorAnswer,
   }: {
+    activity: { status?: string };
     onComplete: (c: boolean, detail?: { response?: string }) => void;
+    priorAnswer?: { response?: string };
   }) => {
     // Child effects flush BEFORE the parent's, so this fires while the player's
     // own post-render effects are still pending.
@@ -83,6 +89,11 @@ vi.mock('@/components/branded/activity/ActivityRenderer', () => ({
     }, []);
     return (
     <>
+      <span
+        data-testid="stub-state"
+        data-status={activity.status ?? ''}
+        data-prior={priorAnswer?.response ?? ''}
+      />
       <button
         data-testid="stub-correct"
         onClick={() => onComplete(true, { response: 'A opção certa' })}
@@ -178,6 +189,7 @@ async function waitForPlayerReady() {
 }
 
 beforeEach(async () => {
+  localStorage.clear();
   for (const k of Object.keys(inserts)) delete inserts[k];
   upserts.length = 0;
   progressRows = [];
@@ -343,6 +355,130 @@ describe('D1 — the lesson resumes where the learner stopped', () => {
   });
 });
 
+describe('the result stands — it is recorded at the answer and survives a reload', () => {
+  const shownId = () => screen.getByTestId('lesson-activity').getAttribute('data-activity-id');
+  const completedUpserts = () =>
+    upserts.filter((u) => u.table === 'progress' && u.payload.status === 'completed');
+
+  beforeEach(() => {
+    localStorage.clear();
+    rememberStorageScope('itera-user-1');
+  });
+
+  it('records a pass the instant it settles, before "Continuar", and only once', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    // Pre-fix nothing is written here: the write waited for the footer.
+    await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
+    expect(shownId()).toBe('a1');
+
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    expect(completedUpserts()).toHaveLength(1);
+    expect(inserts['activity_results']).toHaveLength(1);
+  });
+
+  it('records a miss the instant it settles, before "Continuar", and only once', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+
+    fireEvent.click(screen.getByTestId('stub-wrong'));
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    expect(inserts['activity_results']).toHaveLength(1);
+  });
+
+  it('does not write a second pass when the activity settles again during the review beat', async () => {
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    expect(completedUpserts()).toHaveLength(1);
+  });
+
+  it('a reload during the review beat does not re-open the exercise blank', async () => {
+    const first = renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('stub-wrong'));
+    await screen.findByTestId('feedback-footer');
+    await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+    first.unmount();
+
+    // The server only knows `in_progress` for a miss — the device knows it was answered.
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+    // Resuming must not write the attempt a second time.
+    expect(inserts['activity_results']).toHaveLength(1);
+  });
+
+  it('re-opens a missed exercise on its answer, locked, and retries only on demand', async () => {
+    const first = renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('stub-wrong'));
+    fireEvent.click(await screen.findByTestId('feedback-footer-continue'));
+    await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+    first.unmount();
+
+    progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+
+    const state = () => screen.getByTestId('stub-state');
+    expect(state().getAttribute('data-status')).toBe('done');
+    expect(state().getAttribute('data-prior')).toBe('O distrator errado');
+
+    // Locked: answering again without asking for a retry settles nothing.
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    expect(screen.queryByTestId('feedback-footer-continue')).toBeNull();
+    expect(completedUpserts()).toHaveLength(0);
+
+    fireEvent.click(screen.getByTestId('lesson-retry-missed'));
+    await waitFor(() => expect(state().getAttribute('data-status')).not.toBe('done'));
+    expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+    fireEvent.click(screen.getByTestId('stub-correct'));
+    await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
+    // Both attempts are in the log: the retry adds to the miss, never replaces it.
+    expect((inserts['activity_results'] as Array<{ passed: boolean }>).map((r) => r.passed)).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it('offers no retry on an exercise the learner passed', async () => {
+    progressRows = [{ activity_id: 'a1', status: 'completed' }];
+    renderPlayer();
+    await waitForPlayerReady();
+    fireEvent.click(screen.getByTestId('lesson-prev'));
+    await waitFor(() => expect(shownId()).toBe('a1'));
+    expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+  });
+
+  it('replays an answer whose write never landed before the tab closed', async () => {
+    storeLessonAnswer('a1', {
+      correct: true,
+      settledAt: 1_700_000_000_000,
+      saved: false,
+      response: 'A opção certa',
+    });
+    renderPlayer();
+    await waitForPlayerReady();
+    expect(shownId()).toBe('a2');
+    await waitFor(() => expect(completedUpserts()).toHaveLength(1), { timeout: 5000 });
+    expect(completedUpserts()[0].payload.activity_id).toBe('a1');
+  });
+});
+
 describe('buildAttemptFeedback — the answer-content rule', () => {
   it('keeps a short answer verbatim', () => {
     expect(buildAttemptFeedback('opção B')).toEqual({ response: 'opção B' });
@@ -390,6 +526,11 @@ describe('resumeIndexFor — the pure seek rule', () => {
 
   it('treats in_progress as unfinished', () => {
     expect(resumeIndexFor(ids, { a1: 'completed', a2: 'in_progress' })).toBe(1);
+  });
+
+  it('skips an activity answered on this device, hit or miss', () => {
+    expect(resumeIndexFor(ids, { a1: 'completed', a2: 'in_progress' }, new Set(['a2']))).toBe(2);
+    expect(resumeIndexFor(ids, {}, new Set(ids))).toBe(ids.length);
   });
 
   it('returns the length when the whole lesson is done', () => {

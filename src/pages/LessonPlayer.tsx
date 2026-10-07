@@ -46,6 +46,12 @@ import {
   resumeIndexFor,
 } from '@/services/progress.service';
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
+import {
+  clearLessonAnswers,
+  readLessonAnswers,
+  storeLessonAnswer,
+  type StoredLessonAnswer,
+} from '@/utils/lessonAnswerStorage';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
 import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
@@ -118,6 +124,20 @@ export default function LessonPlayer() {
   // review beat) and used ONLY when the author configured this activity to
   // persist — otherwise it is dropped, exactly as it was before 0027.
   const pendingResponseRef = useRef<string | null>(null);
+  // What the learner answered on this device, hit or miss, read back on load.
+  // `doneIds` (the server's `completed`) cannot say this: it holds no misses and
+  // no answer content, so a reload re-opened every answered exercise blank.
+  const [answers, setAnswers] = useState<Record<string, StoredLessonAnswer>>({});
+  // The write the current exercise fired when it SETTLED. It used to wait for
+  // the footer's "Continuar", so a refresh during the review beat erased a hit
+  // and let a miss be dodged. `advance` awaits this instead of writing again.
+  const settleWriteRef = useRef<{
+    activityId: string;
+    correct: boolean;
+    promise: Promise<boolean>;
+  } | null>(null);
+  // Bumped by "Tentar de novo" to remount a missed exercise fresh.
+  const [retryCount, setRetryCount] = useState(0);
 
   // True until the persisted progress for this lesson has been read back (or has
   // failed to read). We hold the first render behind it so the learner never
@@ -139,6 +159,9 @@ export default function LessonPlayer() {
     setSaving(false);
     setPending(null);
     setResuming(true);
+    setAnswers({});
+    setRetryCount(0);
+    settleWriteRef.current = null;
   }, [lessonId]);
 
   /**
@@ -178,7 +201,28 @@ export default function LessonPlayer() {
       if (cancelled) return;
       const done = ids.filter((id) => statuses[id] === 'completed');
       setDoneIds(new Set(done));
-      const resumeAt = resumeIndexFor(ids, statuses);
+      const stored = readLessonAnswers();
+      const local: Record<string, StoredLessonAnswer> = {};
+      for (const id of ids) {
+        const answer = stored[id];
+        if (!answer) continue;
+        local[id] = answer;
+        // The tab closed with this attempt still in flight. Replay it through
+        // the durable outbox, dated to when the learner actually answered.
+        if (!answer.saved && statuses[id] !== 'completed') {
+          void writeOrQueue({
+            kind: 'progress',
+            activityId: id,
+            passed: answer.correct,
+            response: answer.response ?? null,
+            duration: null,
+            settledAt: answer.settledAt,
+          });
+          storeLessonAnswer(id, { ...answer, saved: true });
+        }
+      }
+      setAnswers(local);
+      const resumeAt = resumeIndexFor(ids, statuses, new Set(Object.keys(local)));
       if (resumeAt >= ids.length) {
         // Everything is already done — go straight to the completion screen
         // instead of replaying a finished lesson from the top.
@@ -201,6 +245,12 @@ export default function LessonPlayer() {
   }, [lessonId, activities, isPending]);
 
   const current = activities[index];
+  // Answered before this visit — completed on the server, or settled on this
+  // device and already past its review beat. The lesson reopens it as a book.
+  const reviewing =
+    !!current && (doneIds.has(current.id) || (!!answers[current.id] && pending === null && !saving));
+  const missedBefore =
+    reviewing && !!current && !doneIds.has(current.id) && answers[current.id]?.correct === false;
 
   // Sandbox activities own a fixed-height window and read best flush to the
   // chrome — the site's default vertical breathing room just pushes the window
@@ -251,7 +301,7 @@ export default function LessonPlayer() {
   // mid-activity. The key comparison makes this idempotent — re-rendering does
   // not move an origin that is already set for the same activity.
   const originRef = useRef<{ key: string | null; at: number | null }>({ key: null, at: null });
-  const originKey = current?.id && !resuming ? current.id : null;
+  const originKey = current?.id && !resuming ? `${current.id}:${retryCount}` : null;
   if (originRef.current.key !== originKey) {
     originRef.current = { key: originKey, at: originKey === null ? null : Date.now() };
   }
@@ -306,12 +356,12 @@ export default function LessonPlayer() {
             activityId: current.id,
             startedAt: activityStartedAt,
             read: duration.read,
-            reviewing: doneIds.has(current.id),
+            reviewing,
             specSnapshot: buildSpecSnapshot(current.spec, locale),
             pedagogicalContext: buildPedagogicalContext(current),
           }
         : null,
-    [current, activityStartedAt, duration.read, doneIds, locale]
+    [current, activityStartedAt, duration.read, reviewing, locale]
   );
   const beacon = useAbandonmentBeacon(beaconTarget);
 
@@ -338,7 +388,11 @@ export default function LessonPlayer() {
     // mount effect when they read themselves as done — without this guard that
     // would raise the feedback footer over the review Continuar and write a
     // second attempt for work the learner is only re-reading.
-    if (doneIds.has(current.id)) return;
+    if (reviewing) return;
+    // A pass already settled during this review beat stands; a kind that fires
+    // again must not write a second pass (and a second XP award).
+    const settled = settleWriteRef.current;
+    if (settled?.activityId === current.id && settled.correct) return;
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
@@ -368,18 +422,34 @@ export default function LessonPlayer() {
       // descobre se passou, e era exatamente o som que faltava no self-paced.
       if (!isSceneKind(current.kind)) onSettle(correct);
       setPending({ correct, message: detail?.message, explanation: detail?.explanation });
+      // THE RESULT IS RECORDED HERE, not on "Continuar". Locally first, so a
+      // reload in the very next instant still knows this exercise was answered.
+      const activityId = current.id;
+      const answer: StoredLessonAnswer = {
+        correct,
+        settledAt: pendingSettledAtRef.current ?? Date.now(),
+        saved: false,
+        response: detail?.response,
+        actions: detail?.actions ? [...detail.actions] : undefined,
+      };
+      storeLessonAnswer(activityId, answer);
+      setAnswers((prev) => ({ ...prev, [activityId]: answer }));
+      const promise = writeSettled(current, correct).then((ok) => {
+        // A miss is always durable (server or outbox); a pass only once it landed.
+        if (ok) storeLessonAnswer(activityId, { ...answer, saved: true });
+        return ok;
+      });
+      settleWriteRef.current = { activityId, correct, promise };
       return;
     }
     void advance(correct);
   }
 
-  // Persist the settled attempt + move to the next activity / completion. This
-  // is the old `handleComplete` body; it now runs on the footer's "Continuar"
-  // for graded kinds, or immediately for non-graded ones.
-  async function advance(correct: boolean) {
-    if (!current || saving) return;
-    const isLast = index >= activities.length - 1;
-
+  // Write one settled attempt. Runs at the SETTLE for the kinds that hold on the
+  // footer, and from `advance` for the ones that move on immediately. Resolves
+  // true once the attempt is durable: a miss always is (server or outbox), a
+  // pass only when `itera.progress` actually landed.
+  function writeSettled(activity: Activity, correct: boolean): Promise<boolean> {
     if (!correct) {
       // A MISS IS DATA (E2E finding D2). This used to be the silent branch: the
       // footer said "Não foi dessa vez", the learner clicked Continuar, and the
@@ -392,10 +462,7 @@ export default function LessonPlayer() {
       // ridden up through the `detail` channel PR #193 established. A bare
       // boolean would count errors without preserving a single one of them.
       //
-      // Deliberately NOT gated like the correct branch: a failed write must not
-      // trap the learner on an activity they already saw the answer to, so we
-      // fire and move on. The learner-visible flow is unchanged; only the
-      // recording is new.
+      // Never gates the learner: a failed write goes to the durable outbox.
       const missedResponse = pendingResponseRef.current;
       const missedDuration = pendingDurationRef.current;
       const missedSettledAt = pendingSettledAtRef.current;
@@ -409,9 +476,9 @@ export default function LessonPlayer() {
       pendingActionsRef.current = null;
       // Via outbox: o acerto tem `retrySave` na tela, o erro não tinha recurso
       // nenhum — caiu a rede, o registro da tentativa sumia calado.
-      void writeOrQueue({
+      return writeOrQueue({
         kind: 'progress',
-        activityId: current.id,
+        activityId: activity.id,
         passed: false,
         response: missedResponse,
         duration: missedDuration,
@@ -421,104 +488,129 @@ export default function LessonPlayer() {
         // Um ERRO é onde a sequência vale mais: o QUE ele respondeu já está no
         // `response`; o COMO ele chegou lá é o que diz se foi chute ou tentativa.
         actions: missedActions ? [...missedActions] : undefined,
-        // O ENUNCIADO que ELE leu (migration 0037). `current.spec` já vem
+        // O ENUNCIADO que ELE leu (migration 0037). `activity.spec` já vem
         // resolvido pro locale pelo `programs.service`, e é o objeto que esta
         // tela acabou de renderizar — por isso o snapshot sai daqui e não do
         // serviço, que releria um `spec` mutável depois do fato.
-        specSnapshot: buildSpecSnapshot(current.spec, locale) ?? undefined,
+        specSnapshot: buildSpecSnapshot(activity.spec, locale) ?? undefined,
         // O QUE essa atividade exercitava (migration 0038, Fase 1 do LCPWCI).
         // Sai daqui, da tela que acabou de renderizar, e não de um join na
         // análise: a tag muda por design (ADR-5 — gramática competitiva), então
         // um join daria a gramática de hoje a uma tentativa de anos atrás.
-        pedagogicalContext: buildPedagogicalContext(current),
-      });
+        pedagogicalContext: buildPedagogicalContext(activity),
+        // Durable either way once this resolves: on the server, or in the outbox.
+      }).then(() => true);
     }
-
-    if (correct) {
-      setSaving(true);
-      // Shared per-user persistence (itera.progress + best-effort results/XP) —
-      // identical write path used by the live-class session page.
-      // READ (do not clear) the answer summary: the refs are only reset once the
-      // write has landed, so that `retrySave` can replay a failed commit with
-      // the learner's content intact.
-      const ok = await persistActivityProgress(current.id, {
-        passed: true,
-        response: pendingResponseRef.current,
-        // READ, do not clear — same rule as the response above, and for the same
-        // reason: a failed write is retried by `retrySave`, and the retry must
-        // replay the time the learner actually took, not the time they spent
-        // looking at an error.
-        duration: pendingDurationRef.current,
-        // Same rule again, and here it is not hypothetical: for a graded kind
-        // this line runs on the footer's "Continuar", so `Date.now()` inside the
-        // service would be the end of the review beat, not the answer.
-        settledAt: pendingSettledAtRef.current,
-        // READ, do not clear — same rule as everything above it.
-        actions: pendingActionsRef.current ?? undefined,
-        // The enunciado THIS learner read, in the language they read it in
-        // (migration 0037). Taken from the activity this screen just rendered:
-        // `activities.spec` is mutable and locale-collapsed at render time, so
-        // the only moment it can be captured truthfully is this one.
-        specSnapshot: buildSpecSnapshot(current.spec, locale),
-        // Mesma regra do miss acima: a tag da atividade viaja COM a tentativa,
-        // porque a gramática que a nomeia é viva por decisão (ADR-5).
-        pedagogicalContext: buildPedagogicalContext(current),
-      });
-      setSaving(false);
-      if (ok) {
-        // Persist what the learner PRODUCED, not just the fact that they
-        // finished (plan 20260728-itera-artifact-storage, Phase 1). This is the
-        // ONLY call site: routing it through the learner-facing player — rather
-        // than the activity components — is what keeps the author TEST harness
-        // write-free (canvas ADR-12), exactly like itera.progress above.
-        //
-        // WHAT gets persisted is no longer inferred from the kind: `buildArtifact`
-        // merges the AUTHORED policy (itera.activities.artifact_policy, migration
-        // 0027) with the per-kind default and returns null when this activity
-        // does not persist. An activity configured `mode: 'always'` turns a
-        // deterministic answer into a real deliverable through its template —
-        // no AI in the loop.
-        //
-        // Deliberately best-effort and NOT awaited into the gate: a storage
-        // hiccup must never strand a learner who correctly finished an activity.
-        const produced = pendingArtifactRef.current;
-        const response = pendingResponseRef.current;
+    // The settle this write belongs to. The refs are only reset once the write
+    // has landed, so `retrySave` can replay a failed commit with the learner's
+    // content intact — and only if no later settle has replaced them since.
+    const settledAt = pendingSettledAtRef.current;
+    // Shared per-user persistence (itera.progress + best-effort results/XP) —
+    // identical write path used by the live-class session page.
+    // READ (do not clear) the answer summary: the refs are only reset once the
+    // write has landed, so that `retrySave` can replay a failed commit with
+    // the learner's content intact.
+    return persistActivityProgress(activity.id, {
+      passed: true,
+      response: pendingResponseRef.current,
+      // READ, do not clear — same rule as the response above, and for the same
+      // reason: a failed write is retried by `retrySave`, and the retry must
+      // replay the time the learner actually took, not the time they spent
+      // looking at an error.
+      duration: pendingDurationRef.current,
+      // Same rule again, and here it is not hypothetical: for a graded kind
+      // this line runs on the footer's "Continuar", so `Date.now()` inside the
+      // service would be the end of the review beat, not the answer.
+      settledAt: pendingSettledAtRef.current,
+      // READ, do not clear — same rule as everything above it.
+      actions: pendingActionsRef.current ?? undefined,
+      // The enunciado THIS learner read, in the language they read it in
+      // (migration 0037). Taken from the activity this screen just rendered:
+      // `activities.spec` is mutable and locale-collapsed at render time, so
+      // the only moment it can be captured truthfully is this one.
+      specSnapshot: buildSpecSnapshot(activity.spec, locale),
+      // Mesma regra do miss acima: a tag da atividade viaja COM a tentativa,
+      // porque a gramática que a nomeia é viva por decisão (ADR-5).
+      pedagogicalContext: buildPedagogicalContext(activity),
+    }).then((ok) => {
+      if (!ok) return false;
+      // Persist what the learner PRODUCED, not just the fact that they
+      // finished (plan 20260728-itera-artifact-storage, Phase 1). This is the
+      // ONLY call site: routing it through the learner-facing player — rather
+      // than the activity components — is what keeps the author TEST harness
+      // write-free (canvas ADR-12), exactly like itera.progress above.
+      //
+      // WHAT gets persisted is no longer inferred from the kind: `buildArtifact`
+      // merges the AUTHORED policy (itera.activities.artifact_policy, migration
+      // 0027) with the per-kind default and returns null when this activity
+      // does not persist. An activity configured `mode: 'always'` turns a
+      // deterministic answer into a real deliverable through its template —
+      // no AI in the loop.
+      //
+      // Deliberately best-effort and NOT awaited into the gate: a storage
+      // hiccup must never strand a learner who correctly finished an activity.
+      const produced = pendingArtifactRef.current;
+      const response = pendingResponseRef.current;
+      if (pendingSettledAtRef.current === settledAt) {
         pendingArtifactRef.current = null;
         pendingResponseRef.current = null;
         pendingDurationRef.current = null;
         pendingSettledAtRef.current = null;
         pendingActionsRef.current = null;
+      }
 
-        const artifact = buildArtifact(current, produced, {
-          response: response ?? undefined,
-          title: activityTitleOf(current),
+      const artifact = buildArtifact(activity, produced, {
+        response: response ?? undefined,
+        title: activityTitleOf(activity),
+      });
+      if (artifact) {
+        const repoPath = buildRepoPath(artifact.filename, {
+          programSlug: placement.programSlug,
+          unitTitle: tText(placement.unitTitle ?? undefined),
+          unitOrdinal: placement.unitOrdinal,
+          lessonTitle: tText(data?.title),
+          lessonOrdinal: placement.lessonOrdinal,
+          activityOrdinal: activity.ordinal,
+          activityTitle: activityTitleOf(activity),
         });
-        if (artifact) {
-          const repoPath = buildRepoPath(artifact.filename, {
-            programSlug: placement.programSlug,
-            unitTitle: tText(placement.unitTitle ?? undefined),
-            unitOrdinal: placement.unitOrdinal,
-            lessonTitle: tText(data?.title),
-            lessonOrdinal: placement.lessonOrdinal,
-            activityOrdinal: current.ordinal,
-            activityTitle: activityTitleOf(current),
+        void saveArtifact(activity.id, artifact, { repoPath }).then((saved) => {
+          // Only announce a save that actually happened. Staying silent on
+          // failure is deliberate: `saveArtifact` is best-effort by design, and
+          // an error toast here would tell a learner who correctly finished the
+          // activity that something went wrong with work they cannot re-submit.
+          if (!saved) return;
+          toast.success(t('artifact.savedTitle'), {
+            description: artifact.filename,
+            duration: 8_000,
+            action: {
+              label: t('artifact.savedCta'),
+              onClick: () => navigate('/artifacts'),
+            },
           });
-          void saveArtifact(current.id, artifact, { repoPath }).then((saved) => {
-            // Only announce a save that actually happened. Staying silent on
-            // failure is deliberate: `saveArtifact` is best-effort by design, and
-            // an error toast here would tell a learner who correctly finished the
-            // activity that something went wrong with work they cannot re-submit.
-            if (!saved) return;
-            toast.success(t('artifact.savedTitle'), {
-              description: artifact.filename,
-              duration: 8_000,
-              action: {
-                label: t('artifact.savedCta'),
-                onClick: () => navigate('/artifacts'),
-              },
-            });
-          });
-        }
+        });
+      }
+      return true;
+    });
+  }
+
+  // Move to the next activity / completion once the settled attempt is durable.
+  // Runs on the footer's "Continuar" for graded kinds, or immediately for
+  // non-graded ones.
+  async function advance(correct: boolean) {
+    if (!current || saving) return;
+    const isLast = index >= activities.length - 1;
+    const held = settleWriteRef.current?.activityId === current.id ? settleWriteRef.current : null;
+    settleWriteRef.current = null;
+
+    if (!correct) {
+      if (!held) void writeSettled(current, false);
+    } else {
+      setSaving(true);
+      // The settle-time write, or — if it failed, or this kind never held on
+      // the footer — one made now.
+      const ok = (held ? await held.promise : false) || (await writeSettled(current, true));
+      setSaving(false);
+      if (ok) {
         setDoneIds((prev) => new Set(prev).add(current.id));
         setSaveError(false);
       } else {
@@ -569,8 +661,19 @@ export default function LessonPlayer() {
   const goToStart = () => applyPosition({ index: 0, completed: false });
   const conceptContinue = () => handleComplete(true);
 
-  /** Revisiting something already finished — the lesson reopens as a book. */
-  const reviewing = current ? doneIds.has(current.id) : false;
+  /** A miss stands until the learner chooses to try again — never by reload. */
+  function retryMissed() {
+    if (!current || !missedBefore) return;
+    const activityId = current.id;
+    clearLessonAnswers([activityId]);
+    setAnswers((prev) => {
+      const next = { ...prev };
+      delete next[activityId];
+      return next;
+    });
+    setRetryCount((n) => n + 1);
+  }
+
   // An unsettled answer (footer up, or its write in flight) only moves on through the
   // footer's Continue: leaving by hand would drop the attempt unwritten.
   const unsettled = pending !== null || saving;
@@ -685,9 +788,10 @@ export default function LessonPlayer() {
                   data-activity-id={current.id}
                 >
                   <ActivityRenderer
-                    key={current.id}
-                    activity={{ ...current, status: doneIds.has(current.id) ? 'done' : current.status }}
+                    key={`${current.id}:${retryCount}`}
+                    activity={{ ...current, status: reviewing ? 'done' : current.status }}
                     onComplete={handleComplete}
+                    priorAnswer={reviewing ? answers[current.id] : undefined}
                   />
                 </div>
               )}
@@ -714,6 +818,16 @@ export default function LessonPlayer() {
                   className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {t('activity.continue')}
+                </button>
+              )}
+              {missedBefore && (
+                <button
+                  type="button"
+                  onClick={retryMissed}
+                  data-testid="lesson-retry-missed"
+                  className="mt-3 w-full inline-flex items-center justify-center h-12 px-6 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
+                >
+                  {t('common.retry')}
                 </button>
               )}
             </>

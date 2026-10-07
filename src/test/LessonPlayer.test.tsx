@@ -550,6 +550,8 @@ describe('LessonPlayer — forward navigation to where the learner stopped', () 
     await waitFor(() => expect(shownId()).toBe('q2'));
     expect(screen.getByTestId('lesson-jump-current')).toBeTruthy();
 
+    // q2 was missed: it stands until the learner asks for another try.
+    fireEvent.click(screen.getByTestId('lesson-retry-missed'));
     fireEvent.click(screen.getByTestId('stub-miss'));
     await screen.findByTestId('feedback-footer');
     expect(nextDisabled()).toBe(true);
