@@ -50,6 +50,21 @@ PRINT_ENV_ONLY=0
 say()  { printf '[bringup] %s\n' "$*" >&2; }
 die()  { printf '[bringup] ERROR: %s\n' "$1" >&2; exit "${2:-2}"; }
 
+# One compose command, quiet when it works. When it does not, the reason is the
+# only thing worth reading: compose's own output, the state of every container
+# and the last lines each one logged.
+compose_step() {
+  local what="$1"; shift
+  local out
+  if out="$("${COMPOSE[@]}" "$@" 2>&1)"; then return 0; fi
+  {
+    printf '[bringup] compose %s failed:\n%s\n' "$*" "${out}"
+    "${COMPOSE[@]}" ps -a 2>&1
+    "${COMPOSE[@]}" logs --no-color --tail 40 2>&1
+  } >&2
+  die "compose could not start ${what}" 3
+}
+
 print_env() {
   # Deliberately `export` lines and nothing else, so `eval "$(up.sh
   # --print-env)"` is safe to run in any shell.
@@ -78,7 +93,7 @@ COMPOSE=(docker compose -f "${HERE}/docker-compose.yml")
 # 1. Postgres
 # ---------------------------------------------------------------------------
 say "starting postgres on 127.0.0.1:${ITERA_BRINGUP_DB_PORT}…"
-"${COMPOSE[@]}" up -d db >/dev/null 2>&1 || die "compose could not start postgres" 3
+compose_step "postgres" up -d db
 
 # `pg_isready` inside the container is the healthcheck; wait on the OUTSIDE
 # too, because a port that is published is not the same as a port that accepts
@@ -104,7 +119,7 @@ say "service roles can log in"
 # 2. GoTrue — before the itera migrations, because it owns `auth`
 # ---------------------------------------------------------------------------
 say "starting gotrue (it migrates the auth schema)…"
-"${COMPOSE[@]}" up -d auth >/dev/null 2>&1 || die "compose could not start gotrue" 3
+compose_step "gotrue" up -d auth
 
 # GoTrue signals readiness by writing its own tables. Waiting on the HTTP
 # endpoint would need the gateway, which we have not started yet — and the
@@ -138,7 +153,16 @@ say "schema built"
 # 4. PostgREST + the gateway
 # ---------------------------------------------------------------------------
 say "starting postgrest and the gateway on ${ITERA_BRINGUP_API_URL}…"
-"${COMPOSE[@]}" up -d rest gateway >/dev/null 2>&1 || die "compose could not start rest/gateway" 3
+compose_step "rest" up -d rest
+# The gateway is created, given its config, then started: see the note on
+# `gateway` in docker-compose.yml for why the file is copied and not mounted.
+# On a stack that is already up the copy lands in the running container, so
+# nginx is told to read it again.
+compose_step "the gateway" up --no-start gateway
+docker cp "${HERE}/nginx.conf" "$("${COMPOSE[@]}" ps -aq gateway)":/etc/nginx/conf.d/default.conf >/dev/null \
+  || die "nginx.conf could not be copied into the gateway" 3
+compose_step "the gateway" up -d gateway
+"${COMPOSE[@]}" exec -T gateway nginx -s reload >/dev/null 2>&1 || true
 
 # PostgREST caches the schema at connect time. It started before the migrations
 # on a cold stack only by accident of ordering, and on a WARM stack it is

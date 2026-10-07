@@ -155,8 +155,11 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:${ITERA_BRINGUP_API_PORT:-54330}:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    # NO bind mount for `nginx.conf`. The CI runners are containers that talk to
+    # the host's Docker daemon, so a path of the checkout does not exist where
+    # the daemon looks for it and the mount fails ("error mounting … not a
+    # directory") — this stack never started on a runner while it had one.
+    # `up.sh` copies the file into the created container instead.
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/auth/v1/health || exit 1"]
       interval: 2s
