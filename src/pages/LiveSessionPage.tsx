@@ -94,6 +94,8 @@ import { LiveLeaveConfirm } from '@/components/live/LiveLeaveConfirm';
 import { formatDuration } from '@/utils/formatDuration';
 import { readStoredAnswer, storeAnswer } from '@/utils/liveAnswerStorage';
 import { stageResponseText } from '@/utils/stageResponseText';
+import { restoreActions } from '@/utils/lessonAnswerStorage';
+import { RESTORES_FROM_ACTIONS } from '@/utils/answerRestore';
 import { wantsLearnerView } from '@/utils/liveLearnerView';
 import { readLiveEntryRole } from '@/utils/liveEntryRole';
 import { gatherStageContent } from '@/utils/stageAnswerContent';
@@ -506,6 +508,7 @@ export default function LiveSessionPage() {
         elapsedMs,
         ...verdict,
         response: stageResponseText(current.kind, detail?.response),
+        actions: restoreActions(detail?.actions),
       });
     sound.onAnswer(correct);
     // Record the attempt whether or not it was right (E2E finding D2). Before
@@ -709,6 +712,12 @@ export default function LiveSessionPage() {
   // into the footer.
   const footerGraded = isFooterGradedKind(current?.kind) || (!!current && isByocActivity(current));
   const answeredHere = Boolean(current && answered?.id === current.id);
+  // What the learner picked, handed back down after a refresh — only to the
+  // kinds that redraw it, which then show the same graded card they left.
+  const restoredAnswer =
+    current && answeredHere && !gate.editing && answered?.actions?.length && RESTORES_FROM_ACTIONS.has(current.kind)
+      ? { actions: answered.actions }
+      : undefined;
   const footerResult: FooterResult | null =
     footerGraded && answeredHere && answered
       ? {
@@ -898,8 +907,11 @@ export default function LiveSessionPage() {
                 activity={{
                   ...current,
                   status:
-                    hasAnswered && !gate.editing && answered?.correct ? 'done' : current.status,
+                    hasAnswered && !gate.editing && (answered?.correct || restoredAnswer)
+                      ? 'done'
+                      : current.status,
                 }}
+                priorAnswer={restoredAnswer}
                 readOnly={gate.readOnly}
                 attempt={attempt}
                 reveal={timeUpFor !== null && timeUpFor === current.id}

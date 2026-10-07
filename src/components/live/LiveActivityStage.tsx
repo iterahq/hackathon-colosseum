@@ -20,6 +20,8 @@ interface LiveActivityStageProps {
    * Additive: a narrower `(correct) => void` handler stays assignable.
    */
   onComplete?: (correct: boolean, detail?: ActivityCompleteDetail) => void;
+  /** The learner's own earlier answer, replayed after a refresh. */
+  priorAnswer?: ActivityCompleteDetail;
   /**
    * Fired when the learner clicks an activity's "Enviar" (the `*-submit` button)
    * — the intermediate step before the correct/wrong confirm. Caught by
@@ -55,6 +57,7 @@ export function LiveActivityStage({
   readOnly = false,
   reveal = false,
   onComplete,
+  priorAnswer,
   onSubmit,
   timerSlot,
   footer,
@@ -78,7 +81,7 @@ export function LiveActivityStage({
         onClick={handleClick}
         {...(readOnly ? { inert: true } : {})}
       >
-        <ActivityRenderer key={`${activity.id}:${attempt}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live />
+        <ActivityRenderer key={`${activity.id}:${attempt}:${priorAnswer ? 'restored' : 'live'}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live priorAnswer={priorAnswer} />
       </div>
       {footer}
     </div>

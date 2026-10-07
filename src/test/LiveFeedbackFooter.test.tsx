@@ -94,13 +94,19 @@ const settleWith = { detail: undefined as ActivityCompleteDetail | undefined };
 
 vi.mock('@/components/live/LiveActivityStage', () => ({
   LiveActivityStage: ({
+    activity,
     onComplete,
+    priorAnswer,
   }: {
+    activity: Activity;
     onComplete?: (correct: boolean, detail?: ActivityCompleteDetail) => void;
+    priorAnswer?: ActivityCompleteDetail;
   }) => (
     <button
       type="button"
       data-testid="stub-settle"
+      data-status={activity.status ?? ''}
+      data-prior={JSON.stringify(priorAnswer?.actions?.map((a) => a.payload) ?? null)}
       onClick={() => onComplete?.(false, settleWith.detail)}
     >
       settle
@@ -110,12 +116,12 @@ vi.mock('@/components/live/LiveActivityStage', () => ({
 
 import LiveSessionPage from '@/pages/LiveSessionPage';
 
-function mockLive(currentActivityId = ACTIVITY_ID) {
+function mockLive(currentActivityId = ACTIVITY_ID, kind: ActivityKind = 'chat_sandbox') {
   useLessonContent.mockReturnValue({
     data: {
       id: LESSON_ID,
       title: { pt: 'Componentes' },
-      activities: [activity(ACTIVITY_ID, 'chat_sandbox'), activity(NEXT_ID, 'chat_sandbox')],
+      activities: [activity(ACTIVITY_ID, kind), activity(NEXT_ID, kind)],
     },
     isPending: false,
   });
@@ -240,5 +246,44 @@ describe('feedback footer da aula ao vivo', () => {
     view.rerender(tree());
 
     await waitFor(() => expect(screen.queryByTestId('feedback-footer')).toBeNull());
+  });
+});
+
+describe('o que o aluno marcou sobrevive ao refresh', () => {
+  const PICKED: ActivityCompleteDetail = {
+    actions: [
+      { type: 'option_selected', at: 1000, payload: { option_id: 'b' } },
+      { type: 'answer_submitted', at: 2000, payload: { option_ids: ['b'] } },
+    ],
+  };
+
+  it('a escolha volta para a atividade, que reabre corrigida', async () => {
+    mockLive(ACTIVITY_ID, 'single_choice');
+    settleWith.detail = PICKED;
+    const first = mount();
+    await userEvent.click(await screen.findByTestId('stub-settle'));
+    await screen.findByTestId('feedback-footer');
+    first.unmount();
+
+    mount();
+    const stage = await screen.findByTestId('stub-settle');
+    // Só o envio viaja: é o que a atividade lê pra redesenhar a resposta.
+    await waitFor(() => expect(stage).toHaveAttribute('data-prior', '[{"option_ids":["b"]}]'));
+    // Um ERRO também reabre como respondido — antes voltava em branco ao lado do próprio veredito.
+    expect(stage).toHaveAttribute('data-status', 'done');
+  });
+
+  it('um kind que não redesenha a resposta fica como estava', async () => {
+    settleWith.detail = PICKED;
+    const first = mount();
+    await userEvent.click(await screen.findByTestId('stub-settle'));
+    await screen.findByTestId('feedback-footer');
+    first.unmount();
+
+    mount();
+    const stage = await screen.findByTestId('stub-settle');
+    await screen.findByTestId('feedback-footer');
+    expect(stage).toHaveAttribute('data-prior', 'null');
+    expect(stage).not.toHaveAttribute('data-status', 'done');
   });
 });

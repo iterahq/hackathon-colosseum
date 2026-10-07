@@ -1,3 +1,4 @@
+import type { RecordedAction } from '@/utils/learningTrace';
 import type { ActivityChatScreen, ActivityTerminalScreen } from '@iterahq/activities';
 import type { StageCursorPlan } from '@/utils/stageCursorRate';
 import type { AnnotationFrame, AnnotationStroke } from '@/types/liveAnnotation';
@@ -302,6 +303,12 @@ export interface StoredLiveAnswer {
    */
   message?: string;
   explanation?: string;
+  /**
+   * What the learner PICKED, as the activity handed it up — only the actions a
+   * restore reads (`restoreActions`). After a refresh the activity re-mounts,
+   * and without this it came back blank beside its own verdict.
+   */
+  actions?: RecordedAction[];
 }
 
 /**
