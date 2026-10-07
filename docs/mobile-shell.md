@@ -335,6 +335,14 @@ Credentials on a link: nothing stores or logs a URL. Found and fixed: the dev ov
 
 Android file: the fingerprint is the SHA-256 of the EAS-managed upload keystore (Expo org `iterahq`, read from the Expo API on 2026-10-07). It signs the preview APK. A build distributed by Google Play is re-signed by Play App Signing with another key: that second fingerprint must be ADDED to `assetlinks.json` when the Play Console app exists (owner: Tainan); until then a Play build does not verify.
 
+When the Play Console app exists (adds the Play App Signing key; the EAS key stays):
+
+1. Play Console -> the app -> Test and release -> App integrity -> App signing -> copy "SHA-256 certificate fingerprint" (the app signing key, not the upload key).
+2. In the repo root run `node apps/mobile/scripts/add-assetlinks-fingerprint.mjs <SHA-256>` (any case, with or without colons; a wrong value exits 1, a duplicate says "already present"; `--check` lists the current ones).
+3. Open a PR with the one-line change to `public/.well-known/assetlinks.json`; `deep-links.test.ts` pins that the EAS key stays and every entry is well formed.
+4. After the deploy, open `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://app.iterahq.dev&relation=delegate_permission/common.handle_all_urls` and look for both fingerprints.
+5. No new app build is needed: the file is served by the web, and Android re-verifies on its own schedule (reinstalling the app forces it).
+
 Not verified: any device (iOS universal link, Android App Link, cold start vs. warm start); Apple's CDN and Google fetching the files; that `redirectSystemPath` receives the raw https link on a cold and a warm start in a build (read in source only); a Supabase redirect decision for the reset e-mail (G7, prod auth config). nginx was proved with `nginx:alpine` and the config the Dockerfile writes: `apple-app-site-association` 200 `application/json`, `assetlinks.json` 200 `application/json` (with a stand-in file, routing only; the committed file was not served in that run), an unknown path under `/.well-known/` 200 `text/html` (the SPA fallback, as before).
 
 ## DFL sign-in through the system auth session (R-20, ADR-10)

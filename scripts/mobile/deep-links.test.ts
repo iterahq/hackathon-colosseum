@@ -135,19 +135,25 @@ describe('apps/mobile/app.json', () => {
   });
 });
 
+// The EAS upload key signs the preview APK; the Play App Signing key joins it (apps/mobile/scripts/add-assetlinks-fingerprint.mjs), never replaces it.
+const EAS_UPLOAD_KEY = '21:8E:E0:58:D7:3A:8E:DE:76:B4:A3:02:DB:98:05:51:34:7C:1C:13:29:08:FD:D3:98:D1:DE:5B:97:15:92:0F';
+
 describe('public/.well-known/assetlinks.json', () => {
   const file = path.join(root, 'public/.well-known/assetlinks.json');
   it('exists: the EAS upload key (preview APK); the Play App Signing key is added when the Play Console app exists', () => {
     expect(existsSync(file)).toBe(true);
   });
-  it('names the package and a SHA-256 certificate fingerprint', () => {
+  it('names the package and one to N SHA-256 certificate fingerprints, the EAS upload key always among them', () => {
     const body = JSON.parse(readFileSync(file, 'utf8')) as { relation: string[]; target: { namespace: string; package_name: string; sha256_cert_fingerprints: string[] } }[];
     expect(body).toHaveLength(1);
     expect(body[0].relation).toEqual(['delegate_permission/common.handle_all_urls']);
     expect(body[0].target.namespace).toBe('android_app');
     expect(body[0].target.package_name).toBe('com.tainanfidelis.iterahq');
-    expect(body[0].target.sha256_cert_fingerprints.length).toBeGreaterThanOrEqual(1);
-    for (const fp of body[0].target.sha256_cert_fingerprints) expect(fp).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+    const fps = body[0].target.sha256_cert_fingerprints;
+    expect(fps.length).toBeGreaterThanOrEqual(1);
+    for (const fp of fps) expect(fp).toMatch(/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
+    expect(new Set(fps).size).toBe(fps.length);
+    expect(fps).toContain(EAS_UPLOAD_KEY);
   });
 });
 

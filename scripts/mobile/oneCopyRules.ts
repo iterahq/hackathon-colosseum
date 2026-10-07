@@ -211,7 +211,9 @@ const ERROR_EVENT_FIELD = /\.nativeEvent\.(description|statusCode)\b/g;
  * `receiveShellMessage`. That function (src/receiveShellMessage.ts, with its own behaviour test) is the
  * order of the gates, the two parsers (console shape, bridge envelope) and the two windows.
  */
-const PARSER_CALL = /\breceiveShellMessage\(\s*\{\s*event:\s*[A-Za-z_$][\w$]*\.nativeEvent\s*[,}]/g;
+/** The two parsers `receiveShellMessage` calls, and their tests: "both parsers stay unit-tested" (docs/mobile-shell.md). */
+const PARSER_FILES = ["apps/mobile/src/consoleMessage.test.ts", "apps/mobile/src/bridgeMessage.ts", "apps/mobile/src/bridgeMessage.test.ts"] as const;
+const PARSER_CALL = /\breceiveShellMessage\(\s*\{\s*event:\s*[A-Za-z_$][\w$]*\.nativeEvent\s*(?:,|\}(?!\s*[.\[?]))/g;
 
 const PARSER_IMPORTS: readonly (readonly [string, string])[] = [["receiveShellMessage", "../src/receiveShellMessage"]];
 const importsFrom = (text: string, name: string, mod: string) =>
@@ -248,6 +250,7 @@ export function rule1c(repo: Repo): string[] {
       if (!/\breceiveShellMessage\b/.test(text)) out.push(`rule 1c: ${file} handles onMessage without receiveShellMessage`);
       if (!repo.paths.includes(RECEIVER_FILE)) out.push(`rule 1c: ${RECEIVER_FILE} is missing`);
       if (!repo.paths.includes(RECEIVER_TEST)) out.push(`rule 1c: ${RECEIVER_TEST} is missing (the function needs its own behaviour test)`);
+      for (const f of PARSER_FILES) if (!repo.paths.includes(f)) out.push(`rule 1c: ${f} is missing (both parsers stay unit-tested)`);
     }
   }
   return out;

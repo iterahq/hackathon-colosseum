@@ -1,6 +1,6 @@
 /**
  * The parser of the console forwarder's message (PLAN ADR-5 and ADR-8 rule 1c), the redaction rule, and the builder
- * of the forwarder script. `receiveShellMessage.ts` is the one function that hands a `nativeEvent` to it.
+ * of the forwarder script. `receiveShellMessage.ts` is the one function that hands it `event.data`.
  *
  * `parseConsoleMessage` accepts only the forwarder's `{type:'console', level, text}` shape from a
  * frame whose URL is on the app origin; anything else is dropped (returns null). The text is

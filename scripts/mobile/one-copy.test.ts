@@ -428,7 +428,7 @@ describe("review fixes: data routes into chrome (finding 4)", () => {
 describe("review fixes: onMessage payload goes through one function (finding 5; R-6; R-12; F6)", () => {
   const HANDLER = (body: string, imports = "import { receiveShellMessage } from '../src/receiveShellMessage';\n") =>
     `import { WebView } from 'react-native-webview';\n${imports}export default function S() { const f = (e) => { ${body} }; return <WebView onMessage={f} />; }\n`;
-  const RECEIVER = { "apps/mobile/src/receiveShellMessage.ts": "export const receiveShellMessage = (o: unknown) => (o ? null : null);\n", "apps/mobile/src/receiveShellMessage.test.ts": "export {};\n" };
+  const RECEIVER = { "apps/mobile/src/receiveShellMessage.ts": "export const receiveShellMessage = (o: unknown) => (o ? null : null);\n", "apps/mobile/src/receiveShellMessage.test.ts": "export {};\n", "apps/mobile/src/consoleMessage.test.ts": "export {};\n", "apps/mobile/src/bridgeMessage.ts": "export {};\n", "apps/mobile/src/bridgeMessage.test.ts": "export {};\n" };
   const CALL = "receiveShellMessage({ event: e.nativeEvent, raw: r, page: p, origin: 'o', platform: 'ios', dev: true, now: 1 })";
   it("a handler that checks type console and then uses the payload another way is flagged", () => {
     const { repo } = fixture({
@@ -466,7 +466,25 @@ describe("review fixes: onMessage payload goes through one function (finding 5; 
   });
   it("a handler without the function's file and its behaviour test is flagged", () => {
     const { repo } = fixture({ "apps/mobile/app/[...path].tsx": HANDLER(`${CALL};`) });
-    expect(rule1c(repo)).toEqual([expect.stringContaining("receiveShellMessage.ts is missing"), expect.stringContaining("receiveShellMessage.test.ts is missing")]);
+    expect(rule1c(repo)).toEqual([
+      expect.stringContaining("receiveShellMessage.ts is missing"),
+      expect.stringContaining("receiveShellMessage.test.ts is missing"),
+      expect.stringContaining("consoleMessage.test.ts is missing"),
+      expect.stringContaining("bridgeMessage.ts is missing"),
+      expect.stringContaining("bridgeMessage.test.ts is missing"),
+    ]);
+  });
+  it("a member read after the options object is flagged", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("receiveShellMessage({ event: e.nativeEvent }.event.data as never);") });
+    expect(rule1c(repo)).toEqual([expect.stringContaining("reads nativeEvent outside receiveShellMessage")]);
+  });
+  it.each(["apps/mobile/src/consoleMessage.test.ts", "apps/mobile/src/bridgeMessage.ts", "apps/mobile/src/bridgeMessage.test.ts"])("a missing %s is flagged", (f) => {
+    const { repo } = fixture({ ...RECEIVER, [f]: null, "apps/mobile/app/[...path].tsx": HANDLER(`${CALL};`) });
+    expect(rule1c(repo)).toEqual([expect.stringContaining(`${f} is missing`)]);
+  });
+  it("the call closed right after the options object is still allowed", () => {
+    const { repo } = fixture({ ...RECEIVER, "apps/mobile/app/[...path].tsx": HANDLER("receiveShellMessage({ event: e.nativeEvent });") });
+    expect(rule1c(repo)).toEqual([]);
   });
   it("a locally defined receiveShellMessage shadow is flagged", () => {
     const { repo } = fixture({
