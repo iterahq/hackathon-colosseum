@@ -117,6 +117,8 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     // A posição é o que liga a linha do veredito à lacuna na tela: sem ela,
     // "essa lacuna" com três erros na lista não diz qual.
     'code.guided.blankPosition': 'Lacuna {position}',
+    'code.guided.revealedNotice': 'Resposta do professor na tela. Seu preenchimento foi guardado.',
+    'code.guided.revealedBlank': 'resposta do professor',
     'code.reset.action': 'Recomeçar do código inicial',
     'code.reset.cancel': 'Continuar editando',
     'code.reset.confirm': 'Sim, recomeçar',
@@ -301,6 +303,8 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.guided.previewWaiting': 'Fill in the blanks to see it running.',
     'code.guided.wrongBlank': 'This blank is not right yet.',
     'code.guided.blankPosition': 'Blank {position}',
+    'code.guided.revealedNotice': "The instructor's answer is on screen. Your own work is saved.",
+    'code.guided.revealedBlank': "instructor's answer",
     'code.reset.action': 'Start over from the first code',
     'code.reset.cancel': 'Keep editing',
     'code.reset.confirm': 'Yes, start over',

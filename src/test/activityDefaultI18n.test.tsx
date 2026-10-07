@@ -16,6 +16,8 @@
  * said" are the same sentence. The moment they diverge, an un-provided render
  * stops being a faithful render and starts being a plausible-looking one.
  */
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -24,6 +26,33 @@ import { I18nProvider, useI18n } from '@/i18n';
 
 function wrapper({ children }: { children: ReactNode }) {
   return <I18nProvider>{children}</I18nProvider>;
+}
+
+const PACKAGE_SRC = path.resolve(__dirname, '../../packages/activities/src');
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(full);
+    return /\.tsx?$/.test(entry.name) && !/\.(test|stories)\./.test(entry.name) ? [full] : [];
+  });
+}
+
+const KEY_PREFIXES = ['activity.', 'terminal.', 'chat.', 'code.', 'quiz.'];
+
+/**
+ * The key-shaped string literals written inside a `t(...)` or `tr(...)` call,
+ * one level of nested parentheses and both branches of a ternary included.
+ * An alarm for literal keys only: a key built from a template, read from a
+ * map or passed in a variable is not seen.
+ */
+function requestedKeys(source: string): string[] {
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  return [...code.matchAll(/\b(?:t|tr)\(((?:[^()]|\([^()]*\))*)/g)].flatMap((call) =>
+    [...call[1].matchAll(/['"`]([a-z]+\.[A-Za-z0-9_.]+)['"`]/g)]
+      .map((literal) => literal[1])
+      .filter((key) => KEY_PREFIXES.some((prefix) => key.startsWith(prefix))),
+  );
 }
 
 describe('@iterahq/activities default dictionary', () => {
@@ -74,8 +103,7 @@ describe('@iterahq/activities default dictionary', () => {
     // reason a reader could reconstruct. Both current keys (`chat.mirror.*`) are
     // the read-only mirror's strings, and their `terminal.mirror.*` twins live
     // under `terminal.` already.
-    const ALLOWED = ['activity.', 'terminal.', 'chat.', 'code.', 'quiz.'];
-    const strays = ACTIVITY_I18N_KEYS.filter((k) => !ALLOWED.some((p) => k.startsWith(p)));
+    const strays = ACTIVITY_I18N_KEYS.filter((k) => !KEY_PREFIXES.some((p) => k.startsWith(p)));
     expect(strays).toEqual([]);
   });
 
@@ -93,5 +121,27 @@ describe('@iterahq/activities default dictionary', () => {
       if (fromApp !== fromPackage) mismatches.push(`${key}: app="${fromApp}" pkg="${fromPackage}"`);
     }
     expect(mismatches).toEqual([]);
+  });
+
+  // The three cases above compare the dictionary with the Player's. None of
+  // them notices a string a component asks for and the package never had: the
+  // Player answers it, and any other consumer prints the key.
+  it('has every literal key a package component asks for', () => {
+    const missing = sourceFiles(PACKAGE_SRC).flatMap((file) =>
+      requestedKeys(readFileSync(file, 'utf-8'))
+        .filter((key) => !(key in ACTIVITY_DICTIONARY.en))
+        .map((key) => `${key} (${path.relative(PACKAGE_SRC, file)})`),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('reads the keys of a call and nothing else', () => {
+    expect(requestedKeys("t(done ? 'activity.sent' : 'activity.send', { n })")).toEqual([
+      'activity.sent',
+      'activity.send',
+    ]);
+    expect(requestedKeys("tr(isTouch() ? 'terminal.tap' : 'terminal.type')")).toEqual(['terminal.tap', 'terminal.type']);
+    expect(requestedKeys("t('index.html', locale);\n  // t('code.gone')\n/* t('code.gone') */")).toEqual([]);
+    expect(sourceFiles(PACKAGE_SRC).length).toBeGreaterThan(100);
   });
 });
