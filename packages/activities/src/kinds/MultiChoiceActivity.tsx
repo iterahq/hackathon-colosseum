@@ -69,7 +69,7 @@ export function MultiChoiceActivity({
   // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
   // different between learners (../internal/shuffle.ts). Reference-only labels
   // (`A`, `B`, `C` for the instruction's blocks) keep the authored order.
-  const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id));
+  const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id, spec?.instruction?.text ?? ''));
   const correctIds = spec?.correct_option_ids ?? [];
   // The learner's own earlier set, replayed — in the order they clicked it,
   // which is the order `answer_submitted` recorded and the order the artifact

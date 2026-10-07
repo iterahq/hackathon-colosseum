@@ -74,7 +74,7 @@ export function SingleChoiceActivity({
   // Per-LEARNER, per-ACTIVITY order: stable across remounts for one learner,
   // different between learners (../internal/shuffle.ts). Reference-only labels
   // (`A`, `B`, `C` for the instruction's blocks) keep the authored order.
-  const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id));
+  const [options] = useState(() => learnerOptionOrder(spec?.options ?? [], scope, activity.id, spec?.instruction?.text ?? ''));
   // The learner's own earlier pick, replayed. Read ONCE, against the AUTHORED
   // ids — an option the spec does not declare restores nothing
   // (../internal/priorAnswer.ts). `null` when there is nothing to replay, which

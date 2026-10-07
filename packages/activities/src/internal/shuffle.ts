@@ -91,19 +91,47 @@ export function learnerShuffleSeed(
 const REFERENCE_LABEL = /^\(?\**\s*([A-Za-z]|\d{1,2})\s*\**[).:]?\)?$/;
 
 /**
+ * The same pointer with one naming word in front — `Lista A`, `List B`,
+ * `Opção 2`. Group 1 is the word, group 2 the marker.
+ */
+const NAMED_REFERENCE_LABEL = /^\(?\**\s*(\p{L}{2,})\s+([A-Za-z]|\d{1,2})\s*\**[).:]?\)?$/u;
+
+/**
+ * `Lista A`, `Lista B`, `Lista C`: one shared word, markers that are exactly
+ * the first letters or the first numbers, and every label written in the prompt
+ * — which is what a pointer is. The last condition keeps real answers
+ * shuffling: `Classe A` / `Classe B` / `Classe C` under "which class is this
+ * address?" names nothing the prompt shows.
+ */
+function isNamedReferenceSet(labels: readonly string[], prompt: string): boolean {
+  const parts = labels.map((label) => NAMED_REFERENCE_LABEL.exec(label));
+  if (parts.some((p) => !p)) return false;
+  const shown = prompt.toLowerCase();
+  if (!parts.every((p) => shown.includes(`${p![1]} ${p![2]}`.toLowerCase()))) return false;
+  const words = new Set(parts.map((p) => p![1]!.toLowerCase()));
+  if (words.size !== 1) return false;
+  const markers = parts.map((p) => p![2]!.toUpperCase()).sort();
+  const letters = labels.map((_, i) => String.fromCharCode(65 + i));
+  const numbers = labels.map((_, i) => String(i + 1)).sort();
+  return markers.join() === letters.join() || markers.join() === numbers.join();
+}
+
+/**
  * True when every option is only a reference label (`A`, `B`, `C` for the
- * `**A**`, `**B**`, `**C**` blocks of the instruction). Such options mean
+ * `**A**`, `**B**`, `**C**` blocks of the instruction, or `Lista A`, `Lista B`
+ * for blocks the `prompt` titles that way). Such options mean
  * nothing by position — the answer lives in the blocks, which do not move — so
  * shuffling them only prints `B, A, C` and makes the learner hunt. Options with
  * media are never references.
  */
 export function isReferenceLabelSet(
   options: readonly { label?: string | null; image_url?: string | null; audio_url?: string | null }[],
+  prompt = '',
 ): boolean {
-  return (
-    options.length >= 2 &&
-    options.every((o) => !o.image_url && !o.audio_url && typeof o.label === 'string' && REFERENCE_LABEL.test(o.label.trim()))
-  );
+  if (options.length < 2) return false;
+  if (!options.every((o) => !o.image_url && !o.audio_url && typeof o.label === 'string')) return false;
+  const labels = options.map((o) => (o.label as string).trim());
+  return labels.every((label) => REFERENCE_LABEL.test(label)) || isNamedReferenceSet(labels, prompt);
 }
 
 /**
@@ -114,8 +142,9 @@ export function learnerOptionOrder<T extends { label?: string | null; image_url?
   options: readonly T[],
   scope: string,
   activityId: string | undefined,
+  prompt = '',
 ): T[] {
-  return isReferenceLabelSet(options) ? [...options] : learnerShuffle(options, scope, activityId);
+  return isReferenceLabelSet(options, prompt) ? [...options] : learnerShuffle(options, scope, activityId);
 }
 
 /** Shuffle `items` deterministically for THIS learner and THIS activity. */
