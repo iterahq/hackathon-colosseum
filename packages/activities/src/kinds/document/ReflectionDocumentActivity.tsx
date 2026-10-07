@@ -55,7 +55,11 @@ export function ReflectionDocumentActivity({
   // an empty, editable box under "0 words" read as work that was never sent.
   const draft = useTextDraft(activity.id);
   // …and an unfinished one on what they had typed before the page went away.
-  const [text, setText] = useState(() => (isDone ? (priorText(priorAnswer) ?? '') : draft.read()));
+  // A finished one the host has no text for (a live class keeps none) falls back
+  // to the same kept copy: it is what this learner sent from this device.
+  const [text, setText] = useState(
+    () => (isDone ? priorText(priorAnswer) : undefined) ?? draft.read(),
+  );
   const write = (next: string) => {
     setText(next);
     draft.save(next);

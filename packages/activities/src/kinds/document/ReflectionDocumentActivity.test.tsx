@@ -24,6 +24,8 @@ function renderReflection(status: 'todo' | 'done', response?: string) {
 }
 
 describe('ReflectionDocumentActivity', () => {
+  beforeEach(() => localStorage.clear());
+
   it('re-opens a finished reflection on the text the learner wrote, locked', () => {
     const { input } = renderReflection('done', WRITTEN);
     expect(input.value).toBe(WRITTEN);
@@ -109,6 +111,13 @@ describe('ReflectionDocumentActivity — the text being written', () => {
     fireEvent.change(input, { target: { value: WRITTEN } });
     fireEvent.click(screen.getByRole('button'));
     expect(saved()).toBe(WRITTEN);
+  });
+
+  it('stands in for a finished reflection the host has no text for', () => {
+    localStorage.setItem(textDraftKey('reflect-1'), WRITTEN);
+    const { input } = renderReflection('done');
+    expect(input.value).toBe(WRITTEN);
+    expect(input.readOnly).toBe(true);
   });
 
   it('never overrides what a finished reflection shows', () => {
