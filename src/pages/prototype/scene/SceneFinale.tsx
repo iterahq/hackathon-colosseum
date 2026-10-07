@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { TeraAvatar } from "./TeraAvatar";
+import { TeraAvatar } from "@iterahq/activities";
 
 const CONFETTI = Array.from({ length: 28 }, (_, i) => i);
 const COLORS = ["#3FD17F", "#E07A4A", "#DB2777", "#F2C66D"];
@@ -17,7 +17,7 @@ export function SceneFinale({ onReplay }: { onReplay: () => void }) {
           transition={{ duration: 2.2 + (i % 5) * 0.3, delay: (i % 7) * 0.08, ease: "easeIn" }}
         />
       ))}
-      <TeraAvatar happy />
+      <TeraAvatar mood="happy" />
       <h2 className="text-[clamp(36px,6vw,64px)] leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, textTransform: "uppercase" }}>
         Você leu HTML <span className="text-[#3FD17F]">de verdade</span>
       </h2>

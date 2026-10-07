@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { TeraAvatar } from "./TeraAvatar";
+import { TeraAvatar } from "@iterahq/activities";
 
 export function TeraBubble({ text, happy }: { text: string; happy: boolean }) {
   return (
     <div className="flex items-end gap-3">
-      <TeraAvatar happy={happy} />
+      <TeraAvatar mood={happy ? "happy" : "neutral"} />
       <AnimatePresence mode="wait">
         <motion.div
           key={text}
