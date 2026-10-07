@@ -197,3 +197,33 @@ describe('route file wiring: auth.session (R-12)', () => {
   });
 });
 
+describe('DFL sign-in through the system auth session (R-20)', () => {
+  it('opens the handoff URL as the page built it, with the one return link, behind a one-session guard', () => {
+    expect(count(/WebBrowser\.openAuthSessionAsync\(handoffUrl, DFL_RETURN, \{ preferUniversalLinks: true \}\)/)).toBe(1);
+    expect(count(/openAuthSessionAsync/)).toBe(1);
+    expect(code).toMatch(/const ticket = DFL_SESSION\.tryEnter\(\);\s*if \(ticket === null\) \{[\s\S]*?Alert\.alert\(AUTH_BUSY_NOTICE\);/);
+    expect(code).toMatch(/\.finally\(\(\) => \{\s*if \(DFL_SESSION\.leave\(ticket\)\) DFL_RETURNS\.end\(\);/);
+  });
+
+  it('loads the returned URL only after the pure validator, and only through the reducer', () => {
+    expect(code).toMatch(/const returned = acceptAuthSessionReturn\(result, ORIGIN\);\s*if \(returned !== null && DFL_RETURNS\.arrive\('session'\) === 'load'\) onReturn\(returned\);/);
+    expect(code).toMatch(/dispatch\(\{ type: 'load', url \}\)/);
+  });
+
+  it('Android: the router\'s copy and the session\'s copy of the return link go through one latch, so one of them loads', () => {
+    expect(code).toMatch(/DFL_RETURNS\.arrive\('router'\) === 'duplicate'/);
+    expect(code).toMatch(/DFL_RETURNS\.begin\(\);/);
+  });
+
+  it('the guard asks for the session in installed builds only and lists the dev origin in Expo Go only', () => {
+    expect(code).toMatch(/const AUTH_SESSION = authSessionEnabled\(Constants\.executionEnvironment\);/);
+    expect(code).toMatch(/__DEV__ && !AUTH_SESSION \? DEV_TOP_FRAME_ORIGINS : \[\], AUTH_SESSION\)/);
+  });
+
+  it('the returned URL (a bearer token) is never logged: no console call reads it, and the only console calls are the two known ones', () => {
+    expect(count(/\bconsole\./)).toBe(2);
+    expect(code).toMatch(/console\.warn\(`\[web \$\{consoleMessage\.level\}\] \$\{consoleMessage\.text\}`\)/);
+    expect(code).toMatch(/console\.warn\(`\[bridge\] refused: \$\{out\.refused\}`\)/);
+  });
+});
+

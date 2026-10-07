@@ -5,7 +5,7 @@
  *
  * Pure TypeScript: no React Native import.
  */
-import { originOf, type NavigationDecision } from './origin';
+import { DFL_CALLBACK_PATH, originOf, type NavigationDecision } from './origin';
 
 /** Loading for this long without the document finishing shows the failure card. */
 export const LOAD_TIMEOUT_MS = 15_000;
@@ -36,6 +36,7 @@ export type ChromeEvent =
   | { type: 'httpError'; statusCode: number }
   | { type: 'timeout'; loadId: number }
   | { type: 'retry'; url?: string }
+  | { type: 'load'; url: string }
   | { type: 'processGone'; url?: string };
 
 export const INITIAL_CHROME: ChromeState = { phase: 'loading', failure: null, mountKey: 0, loadId: 0, deaths: 0, startUrl: null };
@@ -78,6 +79,9 @@ export function chromeReducer(state: ChromeState, event: ChromeEvent): ChromeSta
       return state.phase === 'loading' && event.loadId === state.loadId ? failed(state, 'timeout') : state;
     case 'retry':
       return state.phase === 'failed' ? relaunch(state, 0, event.url) : state;
+    case 'load':
+      // A page the shell chose (R-20: the DFL return), from any phase: the WebView is created again on that URL.
+      return relaunch(state, 0, event.url);
     case 'processGone':
       // The third death keeps the dead WebView and its start URL: a new `source` would make it load again under the card.
       return state.deaths + 1 >= MAX_PROCESS_DEATHS ? failed({ ...state, deaths: 0 }, 'process') : relaunch(state, state.deaths + 1, event.url);
@@ -97,10 +101,21 @@ export function cardCopy(failure: FailureKind | null): CardCopy {
   return { title: 'Não foi possível abrir a Itera', body: 'Tente de novo ou abra no navegador.' };
 }
 
-/** Where a re-created WebView starts: the page it was on when that page is on the app origin, else the entry URL. */
+/**
+ * Where a re-created WebView starts: the page it was on when that page is on the app origin, else the entry URL.
+ * Never the DFL callback (R-20): its URL may still carry the bearer token (the page scrubs it with `history.replaceState`,
+ * which iOS does not report), and a restart would replay it. That restart is the app's home path.
+ */
 export function restartUrl(lastUrl: string, origin: string, entryUrl: string): string {
   const appOrigin = originOf(origin);
-  return appOrigin !== null && originOf(lastUrl) === appOrigin ? lastUrl : entryUrl;
+  const target = appOrigin !== null && originOf(lastUrl) === appOrigin ? lastUrl : entryUrl;
+  return appOrigin !== null && isCallbackUrl(target, appOrigin) ? `${appOrigin}/` : target;
+}
+
+function isCallbackUrl(url: string, appOrigin: string): boolean {
+  if (originOf(url) !== appOrigin) return false;
+  const path = url.slice(url.indexOf('//') + 2).replace(/^[^/?#]*/, '').split(/[?#]/)[0] ?? '';
+  return path.replace(/\/+$/, '').toLowerCase() === DFL_CALLBACK_PATH;
 }
 
 /** The notice for a refused navigation: top frame only (a blocked sub-frame is not a tap of the learner). */

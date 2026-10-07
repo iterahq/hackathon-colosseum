@@ -9,6 +9,8 @@
  *    behaviour change against the LS file (PLAN ADR-5); its tests in origin.test.ts are new.
  *  - The custom-scheme bundle origin (`resolveShellOrigin`, `WebBundleStatus`, `isBundleScheme`,
  *    `bundleOrigin`) is removed: this shell has no native bundle handler (Expo Go, ADR-11).
+ *  - R-20 (PLAN ADR-10): the answer `auth-session` for exactly the DFL handoff (`isDflHandoff`), asked for through a
+ *    seventh parameter. The shell opens it in the system auth session instead of the default path.
  *  - `originOf` is the bridge's (`@iterahq/shell-bridge`), re-exported: one origin parser in the shell.
  *
  * The origin of the web content in the shell stays ONE config value: `expo.extra.webOrigin`.
@@ -54,7 +56,7 @@ function originWithoutTrailingDot(url: string): string | null {
   return o === null ? null : o.replace(/\.(?=(:\d+)?$)/, '');
 }
 
-export type NavigationDecision = 'load' | 'external' | 'block';
+export type NavigationDecision = 'load' | 'external' | 'block' | 'auth-session';
 
 /**
  * The cross-origin sub-frames the shell loads (exact origins). Empty: the web app has no
@@ -64,11 +66,50 @@ export type NavigationDecision = 'load' | 'external' | 'block';
 export const FRAME_ORIGIN_ALLOW_LIST: readonly string[] = [];
 
 /**
- * Development builds only (Expo Go): the DFL handoff page loads inside the WebView, so "Entrar com DFL"
- * can finish without a deep-link return, which Expo Go cannot receive. A store build passes nothing here
- * and the handoff goes to the system browser until the auth session of R-20 exists.
+ * Expo Go only: the DFL handoff page loads inside the WebView, so "Entrar com DFL"
+ * can finish without a deep-link return, which Expo Go cannot receive. An installed build passes nothing here
+ * and the handoff takes the system auth session (`auth-session`, R-20).
  */
 export const DEV_TOP_FRAME_ORIGINS: readonly string[] = ['https://learn.devfellowship.com'];
+
+/** The DFL handoff the web starts with `loginWithDfl` (`src/auth/dflFederation.ts`): exact origin, exact path. */
+export const DFL_HANDOFF_ORIGIN = 'https://learn.devfellowship.com';
+export const DFL_HANDOFF_PATH = '/auth/federate';
+/** The path on the app origin where the handoff returns, and where the shell's auth session ends. */
+export const DFL_CALLBACK_PATH = '/auth/dfl/callback';
+
+/** The `return` URL of the DFL handoff for an app origin: the one value the shell accepts. */
+export function dflCallbackUrl(appOrigin: string): string | null {
+  const o = originOf(appOrigin);
+  return o === null || !o.startsWith('https://') ? null : `${o}${DFL_CALLBACK_PATH}`;
+}
+
+function decodeQueryValue(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, ' '));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True for exactly the DFL handoff: https, the origin `https://learn.devfellowship.com` (a trailing dot,
+ * userinfo, another port or a longer host is not it), the path `/auth/federate`, and ONE `return`
+ * parameter equal to `<app origin>/auth/dfl/callback`. The fragment is ignored; `next` and other
+ * parameters are the web's.
+ */
+export function isDflHandoff(url: string, appOrigin: string): boolean {
+  const callback = dflCallbackUrl(appOrigin);
+  if (callback === null || url !== url.trim() || !/^https:\/\//i.test(url) || originOf(url) !== DFL_HANDOFF_ORIGIN) return false;
+  const rest = url.slice(url.indexOf('//') + 2).replace(/^[^/?#]*/, '');
+  const match = /^([^?#]*)(?:\?([^#]*))?/.exec(rest);
+  if (match === null || match[1] !== DFL_HANDOFF_PATH) return false;
+  const returns = (match[2] ?? '')
+    .split('&')
+    .filter((pair) => pair.split('=')[0] === 'return')
+    .map((pair) => decodeQueryValue(pair.slice('return='.length)));
+  return returns.length === 1 && returns[0] === callback;
+}
 
 /**
  * What the WebView does with a navigation request. `origin` is the app origin.
@@ -78,8 +119,10 @@ export const DEV_TOP_FRAME_ORIGINS: readonly string[] = ['https://learn.devfello
  * - `block` (top frame): an http(s) URL whose origin is one of `blockedOrigins` (checked first, even
  *   before the app origin).
  *   A TOP-frame `blob:` or `data:`.
- * - `external`: any other http(s) URL (the DFL sign-in handoff included, until the system auth
- *   session of R-20), plus `mailto:` and `tel:`; opened outside the shell.
+ * - `auth-session` (top frame, only when `useAuthSession` is true): the DFL handoff, `isDflHandoff`. Checked after
+ *   the blocked origins. With `useAuthSession` false (Expo Go: it cannot receive the return link) the handoff
+ *   keeps its old answer.
+ * - `external`: any other http(s) URL (the DFL sign-in handoff included, when `useAuthSession` is false), plus `mailto:` and `tel:`; opened outside the shell.
  * - `block`: everything else, including every custom scheme (`itera://`, `intent://`, ...).
  *
  * A sub-frame loads for `about:`, `blob:`, `data:`, and a URL whose origin is EXACTLY the app
@@ -92,6 +135,7 @@ export function navigationDecision(
   frameOrigins: readonly string[] = FRAME_ORIGIN_ALLOW_LIST,
   blockedOrigins: readonly string[] = BLOCKED_ORIGINS,
   topFrameOrigins: readonly string[] = [],
+  useAuthSession = false,
 ): NavigationDecision {
   const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(url.trim())?.[1].toLowerCase() ?? null;
   if (scheme === null) return 'block';
@@ -112,6 +156,7 @@ export function navigationDecision(
     const dotless = originWithoutTrailingDot(url);
     if (dotless !== null && blockedOrigins.includes(dotless)) return 'block';
     if (top === appOrigin) return 'load';
+    if (useAuthSession && appOrigin !== null && isDflHandoff(url, appOrigin)) return 'auth-session';
     return scheme === 'https' && topFrameOrigins.includes(top) ? 'load' : 'external';
   }
   if (scheme === 'mailto' || scheme === 'tel') return 'external';

@@ -235,3 +235,42 @@ describe('start URL of a re-created WebView', () => {
     expect(run([{ type: 'processGone', url: A }, { type: 'processGone' }]).startUrl).toBe(A);
   });
 });
+
+describe('load (R-20: the page the DFL session returned)', () => {
+  const R = 'https://app.iterahq.dev/auth/dfl/callback#dfl_token=t&next=%2F';
+
+  it('creates the WebView again on that URL, from the ready phase', () => {
+    const ready = run([{ type: 'loadEnd' }]);
+    const next = run([{ type: 'load', url: R }], ready);
+    expect(next.startUrl).toBe(R);
+    expect(next.mountKey).toBe(ready.mountKey + 1);
+    expect(next.phase).toBe('loading');
+  });
+  it('works from the failure card too, and clears the failure', () => {
+    const card = run([{ type: 'error', description: 'x' }]);
+    const next = run([{ type: 'load', url: R }], card);
+    expect(next.failure).toBeNull();
+    expect(next.startUrl).toBe(R);
+  });
+});
+
+describe('restartUrl never restarts on the DFL callback (R-20)', () => {
+  const E = 'https://app.iterahq.dev/login';
+  it.each([
+    'https://app.iterahq.dev/auth/dfl/callback',
+    'https://app.iterahq.dev/auth/dfl/callback#dfl_token=t&next=%2F',
+    'https://app.iterahq.dev/auth/dfl/callback?x=1#dfl_token=t',
+    'https://app.iterahq.dev/auth/dfl/callback/#dfl_token=t',
+    'https://APP.iterahq.dev/Auth/DFL/Callback#dfl_token=t',
+  ])('%s restarts on the home path', (last) => {
+    expect(restartUrl(last, O, E)).toBe('https://app.iterahq.dev/');
+  });
+  it('also when the entry URL is the callback and the last URL is elsewhere', () => {
+    expect(restartUrl('https://evil.tld/x', O, 'https://app.iterahq.dev/auth/dfl/callback#dfl_token=t')).toBe('https://app.iterahq.dev/');
+  });
+  it('leaves every other page alone, including look-alike paths', () => {
+    expect(restartUrl('https://app.iterahq.dev/lesson/1?a=1#b', O, E)).toBe('https://app.iterahq.dev/lesson/1?a=1#b');
+    expect(restartUrl('https://app.iterahq.dev/auth/dfl/callbackx', O, E)).toBe('https://app.iterahq.dev/auth/dfl/callbackx');
+    expect(restartUrl('https://app.iterahq.dev/x?next=/auth/dfl/callback', O, E)).toBe('https://app.iterahq.dev/x?next=/auth/dfl/callback');
+  });
+});

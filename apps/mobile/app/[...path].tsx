@@ -13,6 +13,7 @@
  * `<webOrigin>/shell-config.json` per launch; a shell below `minShellVersion` shows the card instead of the WebView, read in parallel with it.
  * R-5 (deep links): the route reads the incoming query and fragment raw (`+native-intent.ts`, `src/rawLink.ts`, `src/deepLink.ts`), so the WebView starts on the link's query and fragment as written, e.g.
  * `/auth/dfl/callback#dfl_token=…`; the dev overlay shows the URL without query or fragment.
+ * R-20 adds the DFL sign-in through the system auth session (`src/dflAuthSession.ts`, `navigationDecision` answer `auth-session`).
  * Added: the `DevOverlay` mount, and the Stripe origins (`BLOCKED_ORIGINS`, via the default of `blockedOrigins`) in `navigationDecision`.
  * PR-2 adds the chrome of PLAN section 4.1: the load state (src/shellChromeState.ts), the veil and the
  * failure card, `onHttpError`, `onRenderProcessGone`, the hardware back button, the "Indisponível no
@@ -43,6 +44,7 @@
 import Constants from 'expo-constants';
 import { getRandomValues } from 'expo-crypto';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as WebBrowser from 'expo-web-browser';
 import { useIsFocused, useLocalSearchParams, usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Alert, AppState, BackHandler, Linking, Platform, StyleSheet } from 'react-native';
@@ -56,6 +58,7 @@ import { DevOverlay } from '../src/DevOverlay';
 import { BackConfirmCard } from '../src/BackConfirmCard';
 import { backConfirmEnabled, decideBack } from '../src/backConfirm';
 import { browserUrl, displayUrl, entryFromLink, type LinkParams } from '../src/deepLink';
+import { AUTH_BUSY_NOTICE, acceptAuthSessionReturn, authSessionEnabled, createReturnLatch, createSessionGuard } from '../src/dflAuthSession';
 import { lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
@@ -63,7 +66,7 @@ import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeS
 import { OfflineCard } from '../src/OfflineCard';
 import { createLaunchGate, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { UpdateNowCard } from '../src/UpdateNowCard';
-import { DEV_TOP_FRAME_ORIGINS, navigationDecision, parseWebOrigin } from '../src/origin';
+import { DEV_TOP_FRAME_ORIGINS, dflCallbackUrl, navigationDecision, parseWebOrigin } from '../src/origin';
 import {
   INITIAL_CHROME,
   LOAD_TIMEOUT_MS,
@@ -81,6 +84,12 @@ const SHELL_VERSION = Constants.expoConfig?.version ?? '0.0.0';
 const BACKGROUND = '#0A0908';
 // Expo Go keeps the system back (it returns to the Expo Go home); an installed app asks first.
 const BACK_CONFIRM = backConfirmEnabled(Constants.executionEnvironment);
+// Installed builds sign in with DFL through the system auth session (R-20); Expo Go cannot receive the return link.
+const AUTH_SESSION = authSessionEnabled(Constants.executionEnvironment);
+const DFL_RETURN = dflCallbackUrl(ORIGIN);
+const DFL_SESSION = createSessionGuard();
+// Android delivers the return link twice (Expo Router and the session promise): the latch lets exactly one of them load it.
+const DFL_RETURNS = createReturnLatch(Date.now);
 // One platform lock per process, shared by every mounted WebView.
 const KEEP_AWAKE = createKeepAwakeClaims({
   activate: (tag: string) => activateKeepAwakeAsync(tag),
@@ -129,7 +138,15 @@ export default function ShellRoute() {
   // The segments come from the pathname, never from the `path` param: a link with `?path=…` cannot pick the route.
   const pathname = usePathname();
   const params = useLocalSearchParams() as LinkParams;
-  const entryPath = entryFromLink(lastLink(), ORIGIN, pathname.split('/').filter(Boolean), params);
+  const rawEntry = entryFromLink(lastLink(), ORIGIN, pathname.split('/').filter(Boolean), params);
+  // Android: when the session already loaded this return link, the router's copy of it keeps the WebShell it has (same key, no second load).
+  const entry = useRef<{ raw: string; effective: string } | null>(null);
+  if (entry.current?.raw !== rawEntry) {
+    const returned = acceptAuthSessionReturn({ type: 'success', url: ORIGIN + rawEntry }, ORIGIN);
+    const duplicate = returned !== null && DFL_RETURNS.arrive('router') === 'duplicate';
+    entry.current = { raw: rawEntry, effective: duplicate && entry.current !== null ? entry.current.effective : rawEntry };
+  }
+  const entryPath = entry.current.effective;
   const { launch, refresh } = useLaunchConfig();
   const gate = launch?.gate;
   if (gate?.kind === 'update') {
@@ -233,18 +250,52 @@ function useSessionProbe() {
   return { sessionExpiresAt, probe };
 }
 
-function useNavigationGuard() {
+// "Entrar com DFL" (R-20): the system auth sheet on the handoff URL, `return` untouched. The URL that comes back carries a
+// bearer token in its fragment: it goes to `onReturn` and nowhere else (no log, no state, no storage).
+function useDflAuthSession(onReturn: (url: string) => void) {
+  const lastBusyNotice = useRef<number | null>(null);
+  return useCallback(
+    (handoffUrl: string) => {
+      if (DFL_RETURN === null) return;
+      const ticket = DFL_SESSION.tryEnter();
+      if (ticket === null) {
+        if (noticeDue(lastBusyNotice.current, Date.now())) {
+          lastBusyNotice.current = Date.now();
+          Alert.alert(AUTH_BUSY_NOTICE);
+        }
+        return;
+      }
+      DFL_RETURNS.begin();
+      // `preferUniversalLinks`: iOS 17.4+ then ends the session on the https callback (`ASWebAuthenticationSession` `.https`); without
+      // it the library uses `callbackURLScheme: "https"`, which never matches, and the callback page would run inside the sheet.
+      // Android ignores the option (the library reads it on iOS only).
+      WebBrowser.openAuthSessionAsync(handoffUrl, DFL_RETURN, { preferUniversalLinks: true })
+        .then((result) => {
+          const returned = acceptAuthSessionReturn(result, ORIGIN);
+          if (returned !== null && DFL_RETURNS.arrive('session') === 'load') onReturn(returned);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (DFL_SESSION.leave(ticket)) DFL_RETURNS.end();
+        });
+    },
+    [onReturn],
+  );
+}
+
+function useNavigationGuard(onAuthSession: (handoffUrl: string) => void) {
   const lastNotice = useRef<number | null>(null);
   return useCallback((req: ShouldStartLoadRequest) => {
-    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame, undefined, undefined, __DEV__ ? DEV_TOP_FRAME_ORIGINS : []);
+    const decision = navigationDecision(req.url, ORIGIN, req.isTopFrame, undefined, undefined, __DEV__ && !AUTH_SESSION ? DEV_TOP_FRAME_ORIGINS : [], AUTH_SESSION);
     if (decision === 'external') void Linking.openURL(req.url);
+    if (decision === 'auth-session') onAuthSession(req.url);
     const notice = blockedNotice(decision, req.isTopFrame);
     if (notice !== null && noticeDue(lastNotice.current, Date.now())) {
       lastNotice.current = Date.now();
       Alert.alert(notice);
     }
     return decision === 'load';
-  }, []);
+  }, [onAuthSession]);
 }
 
 function WebShell({ entryPath }: { entryPath: string }) {
@@ -260,7 +311,16 @@ function WebShell({ entryPath }: { entryPath: string }) {
   const { sessionExpiresAt, probe } = useSessionProbe();
   // The console forwarder is a development aid (Expo Go is always __DEV__); the bridge channel is always on.
   const forwarder = useMemo(() => (__DEV__ ? buildConsoleForwarder(ORIGIN) : undefined), []);
-  const onShouldStart = useNavigationGuard();
+  // The page the DFL session returned: the WebView is created again on it, so `DflCallbackPage` reads the fragment as in a browser.
+  const loadReturned = useCallback(
+    (url: string) => {
+      canGoBack.current = false;
+      shellBridge.reset();
+      dispatch({ type: 'load', url });
+    },
+    [shellBridge],
+  );
+  const onShouldStart = useNavigationGuard(useDflAuthSession(loadReturned));
 
   const onNavigationStateChange = useCallback((nav: WebViewNavigation) => {
     canGoBack.current = nav.canGoBack;

@@ -57,7 +57,8 @@
           "resizeMode": "contain"
         }
       ],
-      ["expo-dev-client", { "addGeneratedScheme": false }]
+      ["expo-dev-client", { "addGeneratedScheme": false }],
+      "expo-web-browser"
     ],
     "runtimeVersion": { "policy": "fingerprint" },
     "updates": {

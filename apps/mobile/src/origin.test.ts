@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCKED_ORIGINS, DEFAULT_WEB_ORIGIN, navigationDecision, originOf, parseWebOrigin } from './origin';
+import { BLOCKED_ORIGINS, DEFAULT_WEB_ORIGIN, dflCallbackUrl, isDflHandoff, navigationDecision, originOf, parseWebOrigin } from './origin';
 import appJson from '../app.json';
 
 const O = 'https://app.iterahq.dev';
@@ -180,5 +180,95 @@ describe('navigationDecision — development top-frame origins', () => {
     expect(
       navigationDecision('https://checkout.stripe.com/c/pay', APP, true, undefined, undefined, ['https://checkout.stripe.com']),
     ).toBe('block');
+  });
+});
+
+describe('navigationDecision, DFL handoff in the system auth session (R-20)', () => {
+  const APP = 'https://app.iterahq.dev';
+  const CALLBACK = 'https://app.iterahq.dev/auth/dfl/callback';
+  const handoff = (ret: string, extra = '') => `https://learn.devfellowship.com/auth/federate?return=${encodeURIComponent(ret)}${extra}`;
+  const decide = (url: string, useAuthSession = true, blocked?: readonly string[]) =>
+    navigationDecision(url, APP, true, undefined, blocked, [], useAuthSession);
+
+  it('answers auth-session for the exact handoff the web builds', () => {
+    expect(decide(handoff(CALLBACK, '&next=%2F'))).toBe('auth-session');
+    expect(decide(`https://learn.devfellowship.com/auth/federate?next=%2F&return=${encodeURIComponent(CALLBACK)}`)).toBe('auth-session');
+    expect(decide(`${handoff(CALLBACK)}#frag`)).toBe('auth-session');
+    expect(decide(`HTTPS://LEARN.DEVFELLOWSHIP.COM/auth/federate?return=${encodeURIComponent(CALLBACK)}`)).toBe('auth-session');
+    expect(decide(`https://learn.devfellowship.com:443/auth/federate?return=${encodeURIComponent(CALLBACK)}`)).toBe('auth-session');
+  });
+
+  it('keeps today\'s answer when the session is off (Expo Go): external, or load when the origin is listed', () => {
+    expect(decide(handoff(CALLBACK), false)).toBe('external');
+    expect(navigationDecision(handoff(CALLBACK), APP, true, undefined, undefined, ['https://learn.devfellowship.com'], false)).toBe('load');
+  });
+
+  it.each([
+    ['another return', handoff('https://app.iterahq.dev/auth/reset')],
+    ['a return on another origin', handoff('https://evil.tld/auth/dfl/callback')],
+    ['a return with userinfo', handoff('https://app.iterahq.dev@evil.tld/auth/dfl/callback')],
+    ['a return with a path suffix', handoff(`${CALLBACK}/x`)],
+    ['a return with a query', handoff(`${CALLBACK}?x=1`)],
+    ['an http return', handoff('http://app.iterahq.dev/auth/dfl/callback')],
+    ['an exp:// return', handoff('exp://192.168.1.2:8081/--/auth/dfl/callback')],
+    ['a custom-scheme return', handoff('itera://auth/dfl/callback')],
+    ['no return', 'https://learn.devfellowship.com/auth/federate?next=%2F'],
+    ['two returns', `${handoff(CALLBACK)}&return=${encodeURIComponent('https://evil.tld/')}`],
+    ['two returns, the callback second', `${handoff('https://evil.tld/')}&return=${encodeURIComponent(CALLBACK)}`],
+    ['an empty return', 'https://learn.devfellowship.com/auth/federate?return='],
+    ['a malformed escape in return', 'https://learn.devfellowship.com/auth/federate?return=%E0%A4%A'],
+    ['return only in the fragment', `https://learn.devfellowship.com/auth/federate#return=${encodeURIComponent(CALLBACK)}`],
+    ['a parameter that only ends in return', `https://learn.devfellowship.com/auth/federate?xreturn=${encodeURIComponent(CALLBACK)}`],
+  ])('does not answer auth-session for %s', (_name, url) => {
+    expect(decide(url)).not.toBe('auth-session');
+  });
+
+  it.each([
+    'https://learn.devfellowship.com/auth/federate/',
+    'https://learn.devfellowship.com/auth/Federate',
+    'https://learn.devfellowship.com/auth/federate/x',
+    'https://learn.devfellowship.com/auth',
+    'https://learn.devfellowship.com/anything',
+    'https://learn.devfellowship.com//auth/federate',
+    'https://learn.devfellowship.com/auth/federated',
+  ])('another path on the DFL origin keeps today\'s answer: %s', (path) => {
+    const url = `${path}?return=${encodeURIComponent(CALLBACK)}`;
+    expect(decide(url)).toBe('external');
+  });
+
+  it.each([
+    ['a trailing dot', `https://learn.devfellowship.com./auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'external'],
+    ['a longer host', `https://learn.devfellowship.com.evil.tld/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'external'],
+    ['a subdomain', `https://x.learn.devfellowship.com/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'external'],
+    ['a port', `https://learn.devfellowship.com:8443/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'external'],
+    ['http', `http://learn.devfellowship.com/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'external'],
+    ['userinfo', `https://learn.devfellowship.com@evil.tld/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'block'],
+    ['userinfo that spells the app', `https://app.iterahq.dev@evil.tld/auth/federate?return=${encodeURIComponent(CALLBACK)}`, 'block'],
+    ['leading whitespace', ` ${handoff(CALLBACK)}`, 'external'],
+  ])('a look-alike origin is not the handoff: %s', (_name, url, want) => {
+    expect(decide(url)).toBe(want);
+  });
+
+  it('checks the blocked origins first', () => {
+    expect(decide(handoff(CALLBACK), true, ['https://learn.devfellowship.com'])).toBe('block');
+  });
+
+  it('never answers auth-session in a sub-frame', () => {
+    expect(navigationDecision(handoff(CALLBACK), APP, false, undefined, undefined, [], true)).toBe('block');
+  });
+
+  it('the app origin and everything else are unchanged with the session on', () => {
+    expect(decide('https://app.iterahq.dev/catalog')).toBe('load');
+    expect(decide('https://checkout.stripe.com/c/pay')).toBe('block');
+    expect(decide('https://example.com/x')).toBe('external');
+    expect(decide('itera://x')).toBe('block');
+  });
+
+  it('is the handoff only for an https app origin', () => {
+    expect(isDflHandoff(handoff(CALLBACK), 'http://app.iterahq.dev')).toBe(false);
+    expect(dflCallbackUrl('http://app.iterahq.dev')).toBeNull();
+    expect(dflCallbackUrl(APP)).toBe(CALLBACK);
+    expect(isDflHandoff(handoff('https://staging.iterahq.dev/auth/dfl/callback'), 'https://staging.iterahq.dev')).toBe(true);
+    expect(isDflHandoff(handoff(CALLBACK), 'https://staging.iterahq.dev')).toBe(false);
   });
 });
