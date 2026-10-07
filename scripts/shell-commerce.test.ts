@@ -75,7 +75,7 @@ const GATED: Record<string, Gate> = {
  * Every `// not-commerce: <reason>` marker of the tree, as a count per file. A marker silences a
  * WORDING hit on its line or the next one, so each new marker is one visible line here.
  */
-const NOT_COMMERCE_MARKERS: Record<string, number> = {};
+const NOT_COMMERCE_MARKERS: Record<string, number> = { "src/lib/pageTitle.ts": 2 };
 
 /** Every string that names `/subscribe` or `/signup`, per file. A new call site is a visible edit of this list. */
 const ROUTE_CALL_SITES: Record<string, number> = {

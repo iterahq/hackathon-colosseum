@@ -6,6 +6,7 @@
  */
 const STATIC_TITLES: readonly (readonly [RegExp, string])[] = [
   [/^\/login\/?$/, 'auth.login'],
+  // not-commerce: the tab title of /signup, a route the shell never renders (WebOnlyRoute) and a WebView has no title bar
   [/^\/signup\/?$/, 'auth.signUp'],
   [/^\/auth\/forgot\/?$/, 'auth.forgot.title'],
   [/^\/auth\/reset\/?$/, 'auth.reset.title'],
@@ -14,6 +15,7 @@ const STATIC_TITLES: readonly (readonly [RegExp, string])[] = [
   [/^\/catalog\/?$/, 'catalog.title'],
   [/^\/artifacts\/?$/, 'artifacts.title'],
   [/^\/profile\/?$/, 'profile.title'],
+  // not-commerce: the tab title of /subscribe, web-only in the same way
   [/^\/subscribe\/?$/, 'subscribe.title'],
 ];
 
