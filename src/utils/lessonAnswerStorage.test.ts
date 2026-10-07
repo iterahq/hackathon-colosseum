@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   clearLessonAnswers,
+  confirmLessonAnswer,
   readLessonAnswers,
   restoreActions,
   storeLessonAnswer,
@@ -69,6 +70,17 @@ describe('lessonAnswerStorage', () => {
     ]);
     storeLessonAnswer('a1', { ...miss, actions });
     expect(readLessonAnswers().a1?.actions).toHaveLength(1);
+  });
+
+  it('confirms an answer only while it is still the stored one', () => {
+    storeLessonAnswer('a1', { correct: false, settledAt: 1000, saved: false });
+    confirmLessonAnswer('a1', 999);
+    expect(readLessonAnswers().a1?.saved).toBe(false);
+    confirmLessonAnswer('a1', 1000);
+    expect(readLessonAnswers().a1?.saved).toBe(true);
+    clearLessonAnswers(['a1']);
+    confirmLessonAnswer('a1', 1000);
+    expect(readLessonAnswers()).toEqual({});
   });
 
   it('caps a long free-text answer', () => {

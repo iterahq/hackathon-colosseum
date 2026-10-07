@@ -48,10 +48,12 @@ import {
 import { useAnswerOutbox, writeOrQueue } from '@/hooks/useAnswerOutbox';
 import {
   clearLessonAnswers,
+  confirmLessonAnswer,
   readLessonAnswers,
   storeLessonAnswer,
   type StoredLessonAnswer,
 } from '@/utils/lessonAnswerStorage';
+import { clearCodeAttempts, codeBudgetSpentAt } from '@/services/codeAttempts.service';
 import { useActivityDuration } from '@/hooks/useActivityDuration';
 import { useAbandonmentBeacon } from '@/hooks/useAbandonmentBeacon';
 import { buildSpecSnapshot, type RecordedAction } from '@/utils/learningTrace';
@@ -365,6 +367,37 @@ export default function LessonPlayer() {
   );
   const beacon = useAbandonmentBeacon(beaconTarget);
 
+  // OUT OF LIVES IS A MISS, even when the learner left before pressing the
+  // exercise's own "Continuar". A `code` exercise mounted with its budget spent
+  // has no submit and no way on — a reload there used to strand the lesson for
+  // good. Recorded once, it re-opens locked like any other miss, with the retry
+  // that returns the lives.
+  const currentId = current?.id;
+  useEffect(() => {
+    if (!current || resuming || reviewing || pending !== null) return;
+    const spentAt = codeBudgetSpentAt(current.id);
+    if (spentAt === null) return;
+    const activityId = current.id;
+    const answer: StoredLessonAnswer = { correct: false, settledAt: spentAt, saved: false };
+    // The learner answered — five times. Leaving now is not abandoning.
+    beacon.markSettled(activityId);
+    storeLessonAnswer(activityId, answer);
+    setAnswers((prev) => ({ ...prev, [activityId]: answer }));
+    void writeOrQueue({
+      kind: 'progress',
+      activityId,
+      passed: false,
+      response: null,
+      duration: null,
+      settledAt: spentAt,
+      specSnapshot: buildSpecSnapshot(current.spec, locale) ?? undefined,
+      pedagogicalContext: buildPedagogicalContext(current),
+    }).then(() => confirmLessonAnswer(activityId, spentAt));
+    // Checked when an exercise comes on screen, not on every render: the budget
+    // lives in localStorage, and the exercise shows its own verdict while mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId, resuming, retryCount]);
+
   // Next lesson (canonical order) — drives the end-of-lesson CTA. Best-effort:
   // resolves to null on the last lesson or any failure (CTA falls back to Finish).
   const { data: nextLesson } = useNextLesson(lessonId);
@@ -417,13 +450,13 @@ export default function LessonPlayer() {
     // their gesture completes them, and the learner must still see the guide's
     // reaction and the stamp before moving on — advancing on the gesture would
     // cut the "name it after" beat that is the whole point of the kind.
-    if (isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind)) {
-      // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
-      // descobre se passou, e era exatamente o som que faltava no self-paced.
-      if (!isSceneKind(current.kind)) onSettle(correct);
-      setPending({ correct, message: detail?.message, explanation: detail?.explanation });
-      // THE RESULT IS RECORDED HERE, not on "Continuar". Locally first, so a
-      // reload in the very next instant still knows this exercise was answered.
+    const holds =
+      isFooterGradedKind(current.kind) || isByocActivity(current) || isSceneKind(current.kind);
+    // THE RESULT IS RECORDED HERE, not on "Continuar". Locally first, so a
+    // reload in the very next instant still knows this exercise was answered.
+    // A miss is kept for EVERY kind: a `code` exercise does not hold on the
+    // footer, and without this it re-opened out of lives, with no way forward.
+    if (holds || !correct) {
       const activityId = current.id;
       const answer: StoredLessonAnswer = {
         correct,
@@ -436,10 +469,16 @@ export default function LessonPlayer() {
       setAnswers((prev) => ({ ...prev, [activityId]: answer }));
       const promise = writeSettled(current, correct).then((ok) => {
         // A miss is always durable (server or outbox); a pass only once it landed.
-        if (ok) storeLessonAnswer(activityId, { ...answer, saved: true });
+        if (ok) confirmLessonAnswer(activityId, answer.settledAt);
         return ok;
       });
       settleWriteRef.current = { activityId, correct, promise };
+    }
+    if (holds) {
+      // O veredito é AQUI, não no "Continuar": é neste instante que o aluno
+      // descobre se passou, e era exatamente o som que faltava no self-paced.
+      if (!isSceneKind(current.kind)) onSettle(correct);
+      setPending({ correct, message: detail?.message, explanation: detail?.explanation });
       return;
     }
     void advance(correct);
@@ -666,6 +705,8 @@ export default function LessonPlayer() {
     if (!current || !missedBefore) return;
     const activityId = current.id;
     clearLessonAnswers([activityId]);
+    // A `code` exercise missed by running out of lives would re-open with none.
+    clearCodeAttempts(activityId);
     setAnswers((prev) => {
       const next = { ...prev };
       delete next[activityId];

@@ -11,6 +11,7 @@ import {
 } from '@/services/progress.service';
 import type { Activity } from '@/types/content';
 import { storeLessonAnswer } from '@/utils/lessonAnswerStorage';
+import { readCodeAttempts, saveCodeAttempts } from '@/services/codeAttempts.service';
 import { rememberStorageScope } from '@/utils/storageScope';
 
 /**
@@ -453,6 +454,76 @@ describe('the result stands — it is recorded at the answer and survives a relo
       false,
       true,
     ]);
+  });
+
+  describe('a code exercise, which does not hold on the footer', () => {
+    beforeEach(() => {
+      const data = lessonData();
+      data.activities[0] = { ...data.activities[0], kind: 'code_editor_checks' } as Activity;
+      useLessonContent.mockReturnValue({ data, isPending: false, isError: false, refetch: vi.fn() });
+    });
+
+    it('keeps a miss: it moves on, re-opens locked, and the retry returns the lives', async () => {
+      renderPlayer();
+      await waitForPlayerReady();
+      saveCodeAttempts('a1', '5');
+      fireEvent.click(screen.getByTestId('stub-wrong'));
+      await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+      expect(inserts['activity_results']).toHaveLength(1);
+
+      fireEvent.click(screen.getByTestId('lesson-prev'));
+      await waitFor(() => expect(shownId()).toBe('a1'));
+      expect(screen.getByTestId('stub-state').getAttribute('data-status')).toBe('done');
+      // Locked on the miss, the spent lives stay: only the retry returns them.
+      expect(readCodeAttempts('a1')).toBe('5');
+      fireEvent.click(screen.getByTestId('lesson-retry-missed'));
+      expect(readCodeAttempts('a1')).toBeNull();
+      await waitFor(() =>
+        expect(screen.getByTestId('stub-state').getAttribute('data-status')).not.toBe('done')
+      );
+      // The retry itself is not an attempt.
+      expect(inserts['activity_results']).toHaveLength(1);
+    });
+
+    it('does not strand a learner who reloads out of lives before pressing Continue', async () => {
+      saveCodeAttempts('a1', '5');
+      renderPlayer();
+      await waitForPlayerReady();
+      // Pre-fix: a1 on screen, no submit, no Continue, forward disabled — for good.
+      expect(shownId()).toBe('a1');
+      await screen.findByTestId('lesson-retry-missed');
+      expect(screen.getByTestId('concept-continue')).toBeTruthy();
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      expect((inserts['activity_results'][0] as { passed: boolean }).passed).toBe(false);
+
+      fireEvent.click(screen.getByTestId('concept-continue'));
+      await waitFor(() => expect(shownId()).toBe('a2'), { timeout: 5000 });
+      expect(inserts['activity_results']).toHaveLength(1);
+    });
+
+    it('records running out of lives once, not on every visit', async () => {
+      saveCodeAttempts('a1', '5');
+      const first = renderPlayer();
+      await waitForPlayerReady();
+      await waitFor(() => expect(inserts['activity_results']?.length).toBe(1), { timeout: 5000 });
+      first.unmount();
+      progressRows = [{ activity_id: 'a1', status: 'in_progress' }];
+      renderPlayer();
+      await waitForPlayerReady();
+      expect(shownId()).toBe('a2');
+      fireEvent.click(screen.getByTestId('lesson-prev'));
+      await waitFor(() => expect(shownId()).toBe('a1'));
+      expect(inserts['activity_results']).toHaveLength(1);
+    });
+
+    it('leaves an exercise with lives to spare alone', async () => {
+      saveCodeAttempts('a1', '4');
+      renderPlayer();
+      await waitForPlayerReady();
+      expect(shownId()).toBe('a1');
+      expect(screen.queryByTestId('lesson-retry-missed')).toBeNull();
+      expect(inserts['activity_results']).toBeUndefined();
+    });
   });
 
   it('offers no retry on an exercise the learner passed', async () => {

@@ -24,6 +24,7 @@ import { scopedKey } from '@/utils/storageScope';
 import { belongsToExecution, currentExecutionId } from '@/utils/activityExecution';
 import {
   CODE_ATTEMPTS_REFRESH_EVENT,
+  attemptBudget,
   grantAttempt,
   parseSpentAttempts,
   serializeSpentAttempts,
@@ -101,6 +102,23 @@ export function grantCodeAttempt(activityId: string): void {
  */
 export function revokeCodeAttempt(activityId: string): void {
   moveCodeAttempt(activityId, spendAttempt);
+}
+
+/**
+ * When this learner spent their last life on the exercise, on this device, in
+ * ms — or `null` while lives remain. The budget is stamped on every spend, so
+ * the stamp of an exhausted budget is the instant of the final miss.
+ */
+export function codeBudgetSpentAt(activityId: string): number | null {
+  if (!attemptBudget(parseSpentAttempts(readCodeAttempts(activityId))).exhausted) return null;
+  const key = keyFor(activityId);
+  try {
+    const raw = key ? localStorage.getItem(key) : null;
+    const savedAt = raw ? Date.parse((JSON.parse(raw) as { savedAt?: string }).savedAt ?? '') : NaN;
+    return Number.isFinite(savedAt) ? savedAt : Date.now();
+  } catch {
+    return Date.now();
+  }
 }
 
 export function clearCodeAttempts(activityId: string): void {

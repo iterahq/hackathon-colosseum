@@ -72,6 +72,17 @@ export function storeLessonAnswer(activityId: string, answer: StoredLessonAnswer
   }
 }
 
+/**
+ * Mark a stored answer as durable — but only if it is still THAT answer. A
+ * retry can clear it while its write is in flight, and the late confirmation
+ * must not write the miss back.
+ */
+export function confirmLessonAnswer(activityId: string, settledAt: number): void {
+  const stored = readLessonAnswers()[activityId];
+  if (!stored || stored.settledAt !== settledAt || stored.saved) return;
+  storeLessonAnswer(activityId, { ...stored, saved: true });
+}
+
 export function clearLessonAnswers(activityIds: readonly string[]): void {
   const key = keyFor();
   if (!key || activityIds.length === 0) return;
