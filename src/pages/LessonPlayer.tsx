@@ -850,26 +850,31 @@ export default function LessonPlayer() {
                   it through `handleComplete` would re-award the XP. */}
               {/* A scene kind is reading, but GATED: no "Continuar" before the
                   gesture. Its completion raises the footer instead. */}
+              {/* A missed exercise offers the retry BESIDE "Continuar", not under
+                  it: a second row cost 60 px and pushed the retry off a short
+                  phone (27 px on `order`, 125 px on `multi_choice` at 390×640). */}
               {(reviewing || (current && !isExerciseActivity(current) && !isSceneKind(current.kind))) && (
-                <button
-                  type="button"
-                  onClick={reviewing ? goForward : conceptContinue}
-                  disabled={saving}
-                  data-testid="concept-continue"
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {t('activity.continue')}
-                </button>
-              )}
-              {missedBefore && (
-                <button
-                  type="button"
-                  onClick={retryMissed}
-                  data-testid="lesson-retry-missed"
-                  className="mt-3 w-full inline-flex items-center justify-center h-12 px-6 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
-                >
-                  {t('common.retry')}
-                </button>
+                <div className="mt-4 flex gap-3">
+                  {missedBefore && (
+                    <button
+                      type="button"
+                      onClick={retryMissed}
+                      data-testid="lesson-retry-missed"
+                      className="flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
+                    >
+                      {t('common.retry')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={reviewing ? goForward : conceptContinue}
+                    disabled={saving}
+                    data-testid="concept-continue"
+                    className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 h-12 px-4 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {t('activity.continue')}
+                  </button>
+                </div>
               )}
             </>
           )
