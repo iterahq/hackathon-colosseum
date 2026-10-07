@@ -6,6 +6,7 @@ import {
   MULTI_CHOICE,
   ORDER,
   SINGLE_CHOICE,
+  TERMINAL_FREE_TEXT,
   type ActivityFixture,
 } from './support/activityFixtures';
 import { STUB_SUPABASE_URL } from './support/harnessStub';
@@ -292,6 +293,36 @@ test.describe('every kind that redraws an answer re-opens a miss as the learner 
       await expect(control(page)).toBeEnabled();
     });
   }
+});
+
+test.describe('a finished terminal exercise', () => {
+  test('re-opens settled after a reload: recap up, no first-step header, no prompt to type in', async ({ page }) => {
+    await installLessonSubstrate(page, TERMINAL_FREE_TEXT);
+    const writes = countAttemptWrites(page);
+    await page.goto(lessonUrl(TERMINAL_FREE_TEXT));
+
+    const prompt = page.getByTestId('terminal-input');
+    await prompt.fill('git checkout -b feat/perfil');
+    await prompt.press('Enter');
+    await expect(page.getByTestId('sandbox-instruction')).toHaveAttribute('data-step-idx', '1');
+    await prompt.fill('git status');
+    await prompt.press('Enter');
+    await expect(page.getByTestId('feedback-footer')).toBeVisible();
+    await expect.poll(() => writes.passed).toEqual([true]);
+    await expect.poll(() => answerSaved(page, TERMINAL_FREE_TEXT.id)).toBe(true);
+
+    await page.reload();
+    await expect(page.getByTestId('lesson-activity')).toBeVisible();
+    expect(await shownActivity(page)).not.toBe(TERMINAL_FREE_TEXT.id);
+    await page.getByTestId('lesson-prev').click();
+    await expect.poll(() => shownActivity(page)).toBe(TERMINAL_FREE_TEXT.id);
+
+    await expect(page.getByTestId('sandbox-reveal')).toBeVisible();
+    await expect(page.getByTestId('sandbox-instruction')).toHaveCount(0);
+    await expect(page.getByTestId('terminal-input')).toHaveCount(0);
+    await expect(page.getByTestId('concept-continue')).toBeVisible();
+    expect(writes.passed).toEqual([true]);
+  });
 });
 
 /** The ids of the `order` items, top to bottom. */

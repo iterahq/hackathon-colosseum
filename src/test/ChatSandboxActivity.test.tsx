@@ -317,6 +317,14 @@ describe('ChatSandboxActivity dispatcher', () => {
       const onComplete = renderActivity({ ...makeActivity(cIA), status: 'done' });
       await waitFor(() => expect(onComplete).toHaveBeenCalledWith(true, expect.anything()));
     });
+
+    it('an already-completed activity re-opens settled: recap up, no step header, nothing to send', () => {
+      renderActivity({ ...makeActivity(cIA), status: 'done' });
+      expect(screen.getByTestId('sandbox-reveal')).toBeTruthy();
+      expect(screen.queryByTestId('sandbox-instruction')).toBeNull();
+      expect(screen.queryByTestId('sandbox-send')).toBeNull();
+      expect(screen.queryByTestId('sandbox-seed-chip')).toBeNull();
+    });
   });
 
   // Regression lock (P5 clarification, plan 20260717-iterahq-activities-visual-ux-redesign):

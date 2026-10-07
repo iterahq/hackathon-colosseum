@@ -224,7 +224,7 @@ export function TerminalSandboxShell({
             ps1={ps1}
             successLines={s.successLines}
             successLabel={tr('terminal.stepCompleted')}
-            emptyHint={tr(variant === 'options' ? 'terminal.empty.options' : 'terminal.empty.freeText')}
+            emptyHint={s.done ? '' : tr(variant === 'options' ? 'terminal.empty.options' : 'terminal.empty.freeText')}
           />
           {showControls && (
             <TerminalPromptBar

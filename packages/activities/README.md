@@ -175,6 +175,12 @@ merely greyed: no option marked, no verdict, "Enviar" still on screen. That is
 deliberate — the render does not know which answer the learner gave, and
 guessing would colour the button at random.
 
+The terminal and chat sandboxes are the exception: a `done` sandbox renders
+SETTLED — no step header, no prompt, the recap and `reveal.masterLine` on
+screen — because its transcript is never stored and "step 1/2" over an empty
+window read as an exercise nobody had started. So only hand a sandbox `done`
+for a learner who actually passed it: the solving lines are shown.
+
 Give it that answer and it settles into the state the learner left it in:
 
 ```tsx

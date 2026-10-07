@@ -57,8 +57,10 @@ export function useSandboxScenario(
   const [seedInsertedSteps, setSeedInsertedSteps] = useState<Set<string>>(() => new Set());
 
   const won = isSuccess(scenario, model);
-  const done = won || reveal;
-  const readOnly = done || isDone;
+  // An activity finished earlier re-opens settled — recap up, nothing left to
+  // operate — not as a first step nobody has started.
+  const done = won || reveal || isDone;
+  const readOnly = done;
 
   const currentStep = scenario.steps.find((s) => !model.completedSteps.has(s.id)) ?? null;
   const stepIdx = currentStep ? scenario.steps.indexOf(currentStep) : scenario.steps.length;

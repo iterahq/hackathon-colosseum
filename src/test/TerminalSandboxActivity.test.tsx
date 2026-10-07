@@ -125,6 +125,31 @@ function transcript() {
   return screen.getByTestId('terminal-transcript').textContent ?? '';
 }
 
+describe('a terminal finished earlier', () => {
+  it('re-opens settled: recap up, no step header, no prompt to type in', () => {
+    render(
+      <I18nProvider>
+        <TerminalSandboxActivity
+          activity={{ ...makeActivity(TERMINAL_SPEC), status: 'done' }}
+          onComplete={captor().fn}
+        />
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('sandbox-reveal')).toBeTruthy();
+    expect(screen.queryByTestId('sandbox-instruction')).toBeNull();
+    expect(screen.queryByTestId('terminal-prompt-bar')).toBeNull();
+    expect(screen.queryByTestId('terminal-input')).toBeNull();
+    expect(screen.queryByTestId('terminal-restart')).toBeNull();
+  });
+
+  it('still opens on the first step, with its prompt, when not finished', () => {
+    mount(TERMINAL_SPEC, captor().fn);
+    expect(screen.queryByTestId('sandbox-reveal')).toBeNull();
+    expect(screen.getByTestId('sandbox-instruction')).toBeTruthy();
+    expect(screen.getByTestId('terminal-prompt-bar')).toBeTruthy();
+  });
+});
+
 describe('dispatch — sandboxKind picks the sandbox, inputMode picks the surface', () => {
   it('a terminal spec renders the terminal, not the chat', () => {
     mount(TERMINAL_SPEC, captor().fn);

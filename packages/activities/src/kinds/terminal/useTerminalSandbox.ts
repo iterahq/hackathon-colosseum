@@ -74,8 +74,10 @@ export function useTerminalSandbox(
   });
 
   const won = isTerminalSuccess(scenario, model);
-  const done = won || reveal;
-  const readOnly = done || isDone;
+  // An activity finished earlier re-opens settled — recap up, nothing left to
+  // operate — not as a first step nobody has started.
+  const done = won || reveal || isDone;
+  const readOnly = done;
 
   const currentStep = currentTerminalStep(scenario, model);
   const stepIdx = currentStep ? scenario.steps.indexOf(currentStep) : scenario.steps.length;
