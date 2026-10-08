@@ -418,10 +418,17 @@ export async function runPush({ client, meta, version, buildNumber, dryRun = fal
   let target = state.target;
   if (target && !EDITABLE_STATES.includes(target.state)) throw new InputError(`version ${version} is "${target.state}" and cannot be edited`);
   let versionId = target?.id;
-  if (!versionId) {
-    if (state.versions.some((v) => EDITABLE_STATES.includes(v.state))) {
-      throw new InputError(`another version is editable (${state.versions.find((v) => EDITABLE_STATES.includes(v.state)).versionString}); push it or remove it before creating ${version}`);
+  const draft = versionId ? null : state.versions.find((v) => EDITABLE_STATES.includes(v.state));
+  if (draft) {
+    if (draft.state !== 'PREPARE_FOR_SUBMISSION') {
+      throw new InputError(`another version is editable (${draft.versionString}, "${draft.state}"); push it or remove it before creating ${version}`);
     }
+    // App Store Connect holds one editable version. A draft that was never submitted takes the requested string.
+    await write('PATCH', `/appStoreVersions/${draft.id}`, { data: { type: 'appStoreVersions', id: draft.id, attributes: { versionString: version } } });
+    state = await gather(client, meta, dryRun ? draft.versionString : version);
+    target = state.target;
+    versionId = target.id;
+  } else if (!versionId) {
     versionId = (await write('POST', '/appStoreVersions', versionCreatePayload(meta.ascAppId, version), 'appStoreVersion')).data.id;
     target = { id: versionId, localizations: [], reviewDetail: null };
     // A new version copies the localizations of the last one and turns the appInfo editable: read both again.

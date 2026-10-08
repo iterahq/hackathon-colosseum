@@ -302,9 +302,19 @@ describe('push --dry-run', () => {
     expect(calls).toHaveLength(0);
   });
 
-  it('refuses to create a second editable version', async () => {
-    const { fetchImpl } = fakeFetch(world());
-    await expect(runPush({ client: clientOf(fetchImpl), meta, version: '0.9.0', dryRun: true, env: {}, log: () => {} })).rejects.toThrow(/another version is editable/);
+  it('renames a draft that was never submitted instead of creating a second editable version', async () => {
+    const { fetchImpl, calls } = fakeFetch(world());
+    const { plan } = await runPush({ client: clientOf(fetchImpl), meta, version: '0.9.0', dryRun: true, env: {}, log: () => {} });
+    expect(plan[0]).toBe('PATCH /appStoreVersions/v1 [versionString]');
+    expect(plan.some((l) => l.startsWith('POST /appStoreVersions'))).toBe(false);
+    expect(calls.every((c) => c.method === 'GET')).toBe(true);
+  });
+
+  it('refuses to create a second editable version next to a rejected one', async () => {
+    const w = world();
+    w[`/apps/${APP}/appStoreVersions`].data[0].attributes.appStoreState = 'REJECTED';
+    const { fetchImpl } = fakeFetch(w);
+    await expect(runPush({ client: clientOf(fetchImpl), meta, version: '0.9.0', dryRun: true, env: {}, log: () => {} })).rejects.toThrow(/another version is editable \(0\.3\.0, "REJECTED"\)/);
   });
 });
 
