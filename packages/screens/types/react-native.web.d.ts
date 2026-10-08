@@ -12,7 +12,7 @@
  */
 import type { ComponentType, ReactNode } from 'react';
 
-export type Role = 'button' | 'heading' | 'link' | 'list' | 'listitem' | 'main' | 'paragraph';
+export type Role = 'button' | 'contentinfo' | 'heading' | 'link' | 'list' | 'listitem' | 'main' | 'paragraph';
 
 interface PrimitiveProps {
   children?: ReactNode;
@@ -39,6 +39,7 @@ export interface PressableProps extends PrimitiveProps {
 
 export interface TextProps extends PrimitiveProps {
   'aria-level'?: number;
+  numberOfLines?: number;
   onPress?: () => void;
 }
 

@@ -37,7 +37,7 @@ const useShellSurface = vi.fn();
 vi.mock('@/hooks/useShellSurface', () => ({ useShellSurface: () => useShellSurface() }));
 
 // AppHeader pulls auth/membership/branding hooks; the header slot only needs to be there.
-vi.mock('@/components/branded', () => ({ AppHeader: () => <div data-testid="app-header" /> }));
+vi.mock('@/components/branded/AppHeader', () => ({ AppHeader: () => <div data-testid="app-header" /> }));
 
 const program = (over: Record<string, unknown> = {}) => ({
   id: 'p1',

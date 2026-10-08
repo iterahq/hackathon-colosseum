@@ -36,7 +36,7 @@ key_abstractions:
 entry_points:
   app: src/main.tsx
   pages:
-    - src/pages/HomePage.tsx
+    - src/pages/HomeRoute.tsx
     - src/pages/LessonPlayer.tsx
     - src/pages/LiveSessionPage.tsx
     - src/pages/live/InstructorSessionPage.tsx

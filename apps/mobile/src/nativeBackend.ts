@@ -13,6 +13,7 @@
  * Pure TypeScript: no React Native import.
  */
 import { readBackend, type Backend, type BackendAnswer, type ProbeFetch } from './backendProbe';
+import { jwtPayload } from './tokenPayload';
 
 /** The part of the bridge's `ShellSession` a reader needs. */
 export interface TokenSource {
@@ -25,6 +26,8 @@ export interface NativeBackend {
   rpc(name: string, args?: Readonly<Record<string, unknown>>): Promise<BackendAnswer>;
   /** Read rows: `resource` is a table or view, `query` its PostgREST query string. */
   rows(resource: string, query: string): Promise<BackendAnswer>;
+  /** The learner's e-mail, as the token names it; null when it names none or there is no session. The token itself never leaves this module. */
+  email(): Promise<string | null>;
   /** Tells when another learner signed in (true) or the session ended (false). A refreshed token tells nothing. */
   onSession(listener: (signedIn: boolean) => void): () => void;
 }
@@ -52,6 +55,10 @@ export function createNativeBackend(backend: Backend | null, session: TokenSourc
   return {
     rpc: (name, args = {}) => (NAME.test(name) ? read(`rpc/${name}`, JSON.stringify(args)) : Promise.resolve(REFUSED)),
     rows: (resource, query) => (NAME.test(resource) ? read(`${resource}?${query}`) : Promise.resolve(REFUSED)),
+    async email() {
+      const claim = jwtPayload((await token().catch(() => null)) ?? '')?.email;
+      return typeof claim === 'string' && claim !== '' ? claim : null;
+    },
     onSession(listener) {
       if (session === null) return () => {};
       return session.subscribe((event) => {
@@ -73,5 +80,6 @@ export function provideBackend(backend: Backend | null, session: TokenSource | n
 export const nativeBackend: NativeBackend = {
   rpc: (name, args) => provided.rpc(name, args),
   rows: (resource, query) => provided.rows(resource, query),
+  email: () => provided.email(),
   onSession: (listener) => provided.onSession(listener),
 };

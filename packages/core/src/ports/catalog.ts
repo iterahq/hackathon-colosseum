@@ -18,6 +18,8 @@ export type CatalogCardAction =
   | { readonly kind: 'enroll'; readonly pending: boolean; readonly failed: boolean }
   /** A member who is already in: the band opens the course too. */
   | { readonly kind: 'open' }
+  /** The dashboard's card of a course the learner is in: Start, or Continue under the progress line once `percent` is above 0. */
+  | { readonly kind: 'enrolled'; readonly percent: number; readonly progress: string }
   /** A visitor: no enrol button ever. `subscribe` is the host's own offer, label included; absent where the host sells nothing (the shell). */
   | { readonly kind: 'locked'; readonly subscribe?: { readonly label: string; readonly link: NavigationIntent } };
 

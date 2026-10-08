@@ -28,7 +28,7 @@ export type RouteMode = 'webview' | 'native';
  * The screens that have a native host: a route file under `app/native/` that feeds the universal screen real
  * data. Only these rows may be `native`; the row is flipped in `route-map.json` by its owner, never here.
  */
-export const NATIVE_HOSTS: Readonly<Record<string, string>> = { catalog: '/native/catalog' };
+export const NATIVE_HOSTS: Readonly<Record<string, string>> = { catalog: '/native/catalog', home: '/native/home' };
 
 export interface ShellRoute {
   path: string;

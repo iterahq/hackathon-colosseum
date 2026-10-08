@@ -5,6 +5,7 @@
 import { router } from 'expo-router';
 import { translatorOf, type LogPort, type Messages, type NavigationIntent, type Translate } from '@iterahq/shell-core';
 import { createCatalogHost } from './catalogHost';
+import { createHomeHost } from './homeHost';
 import { nativeBackend } from './nativeBackend';
 import { isNativeScreen } from './routes';
 
@@ -26,11 +27,10 @@ const hostOpen = (screen: string): boolean => __DEV__ || isNativeScreen(screen);
  * The native host of `/catalog`, over the strings the route file reads from the screen (a helper of the
  * shell imports no screen). A course opens in the WebView: `/program/:slug` is a page of the web.
  */
-export const catalogHost = (t: Translate) =>
-  createCatalogHost({
-    backend: nativeBackend,
-    t,
-    locale: 'pt',
-    enabled: hostOpen('catalog'),
-    openProgram: (slug) => router.push(`/program/${encodeURIComponent(slug)}`),
-  });
+const openProgram = (slug: string) => router.push(`/program/${encodeURIComponent(slug)}`);
+
+export const catalogHost = (t: Translate) => createCatalogHost({ backend: nativeBackend, t, locale: 'pt', enabled: hostOpen('catalog'), openProgram });
+
+/** The native host of `/`. The catalog opens on its own path: the WebView's page until that row is native too. */
+export const homeHost = (t: Translate) =>
+  createHomeHost({ backend: nativeBackend, t, locale: 'pt', enabled: hostOpen('home'), openProgram, openCatalog: () => router.push('/catalog') });

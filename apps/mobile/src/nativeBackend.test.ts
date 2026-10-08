@@ -83,6 +83,14 @@ describe('createNativeBackend', () => {
     expect(JSON.stringify(offline)).not.toContain(TOKEN);
   });
 
+  it('email is the claim of the token, and null with no session, no claim or a token that cannot be read', async () => {
+    expect(await createNativeBackend(BACKEND, source().session).email()).toBe('aluna@example.com');
+    expect(await createNativeBackend(BACKEND, source(fakeJwt({ email: undefined })).session).email()).toBeNull();
+    expect(await createNativeBackend(BACKEND, source('not-a-token').session).email()).toBeNull();
+    expect(await createNativeBackend(BACKEND, source(null).session).email()).toBeNull();
+    expect(await createNativeBackend(BACKEND, null).email()).toBeNull();
+  });
+
   it('onSession tells a new learner and a sign-out, not a refreshed token', () => {
     const { session, emit, listeners } = source();
     const seen: boolean[] = [];

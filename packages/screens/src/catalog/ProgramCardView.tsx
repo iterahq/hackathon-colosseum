@@ -1,7 +1,8 @@
 /**
  * One catalog course: the recessed band with the category tile across its edge, the coloured title, the
- * counts and the foot (enrol / open / locked). The markup and the classes are those of the web's
- * `CatalogProgramCard`, `CatalogCard` and `LockedCatalogCard`, which the catalog page no longer uses.
+ * counts and the foot (enrol / open / locked, and on the dashboard the progress of an enrolled course).
+ * The markup and the classes are those of the web's `CatalogProgramCard`, `CatalogCard`,
+ * `LockedCatalogCard` and `EnrolledProgramCard`, which this replaces.
  * `testID`s are the old `data-testid`s. A text node names its font, size, line height and colour because a
  * React Native `Text` inherits none of them. What React Native cannot draw (the hover lift, the grid
  * texture, the icon set) is left to the web classes that are no-ops there or to the host's `icon` node.
@@ -62,6 +63,30 @@ function Foot({ card, t, icon, onOpen, onEnroll }: ProgramCardViewProps) {
       </View>
     );
   }
+  if (action.kind === 'enrolled') {
+    const started = action.percent > 0;
+    return (
+      <View testID="program-card" className="gap-3">
+        {started && (
+          <View className="flex-row items-center gap-3">
+            <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <View className="h-full bg-evergreen" style={{ width: `${action.percent}%` }} />
+            </View>
+            <Text className="font-sans text-xs font-medium leading-4 text-evergreen-hi">{action.progress}</Text>
+          </View>
+        )}
+        <Pressable
+          role="button"
+          testID="program-open"
+          onPress={() => onOpen(card.slug)}
+          className={`${CTA} ${started ? 'border border-evergreen/40 bg-evergreen-soft text-evergreen-hi hover:bg-evergreen-soft/70' : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'}`}
+        >
+          <Text className={`${CTA_TEXT} ${started ? 'text-evergreen-hi' : 'text-obsidiana'}`}>{t(started ? 'program.continue' : 'program.start')}</Text>
+          {icon({ kind: 'next' })}
+        </Pressable>
+      </View>
+    );
+  }
   return (
     <View testID="catalog-card" data-program-slug={card.slug} className="gap-3">
       {action.kind === 'open' ? (
@@ -99,7 +124,7 @@ export function ProgramCardView(props: ProgramCardViewProps) {
   const { card, icon, onOpen } = props;
   const [band, setBand] = useState(112);
   const locked = card.action.kind === 'locked';
-  const opens = locked || card.action.kind === 'open';
+  const opens = locked || card.action.kind === 'open' || card.action.kind === 'enrolled';
   const counts: [CatalogIcon['kind'], string][] = [
     ['lessons', card.counts.lessons],
     ['units', card.counts.units],

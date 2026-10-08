@@ -27,7 +27,7 @@ src/
 │   ├── author/               # superfície de autoria (canvas, harness de teste)
 │   ├── admin/                # back-office (roster, programs, engagement…)
 │   ├── auth/                 # login, signup, OTP, reset, callback do DFL
-│   └── HomePage · CatalogPage · ProgramPage · ProfilePage · Artifacts · Subscribe…
+│   └── HomeRoute · CatalogRoute (hosts de tela universal) · ProgramPage · ProfilePage · Artifacts · Subscribe…
 ├── components/
 │   ├── branded/
 │   │   └── activity/         # 🎯 O ENGINE DE ACTIVITY CANÔNICO (ver abaixo)
@@ -158,7 +158,7 @@ instrutor), **`/author/activities/:activityId/test`** e **`/test-live`**
 ### 🏷️ `data-source` — carimbo de build, SÓ em build de captura
 
 `scripts/source-stamp.ts` é um plugin do Vite que escreve
-`data-source="src/pages/HomePage.tsx:42"` em cada elemento HOST que os nossos
+`data-source="src/pages/ProgramPage.tsx:42"` em cada elemento HOST que os nossos
 `.tsx` renderizam, para o mapa de UX: clicar numa região de um screenshot devolve
 o arquivo exato, sem modelo e sem clonar o repo.
 
@@ -235,7 +235,7 @@ WebView. Roda no Expo Go e, desde o R-2, em builds EAS (`expo-dev-client`, `expo
 - **Progresso**: `ProgressStatus` (`todo` · `in_progress` · `done`) em
   `src/types/content.ts`; gravação via `services/progress.service.ts`.
 - **Dados**: `componente → hook de query (useQuery) → service (async) →
-  Supabase`. Referência: `src/pages/HomePage.tsx` + `src/hooks/useContent.ts` +
+  Supabase`. Referência: `src/pages/HomeRoute.tsx` + `src/hooks/useHomeScreen.ts` + `src/hooks/useContent.ts` +
   `src/services/programs.service.ts`. Query key SEMPRE pela factory em
   `src/lib/queryKeys.ts` — nunca string solta. O componente trata `isPending` /
   `isError` (com `refetch()`) / sucesso.

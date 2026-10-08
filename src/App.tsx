@@ -54,7 +54,7 @@ const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
    learnerPageLoaders.ts imports the same modules, so both share one chunk). Inline
    import() keeps the route-map guard able to read which page each route renders. Guards stay static
    and OUTSIDE each <Suspense>, so authorization is still decided first. */
-const HomePage = lazy(() => import("./pages/HomePage"));
+const HomeRoute = lazy(() => import("./pages/HomeRoute"));
 const CatalogRoute = lazy(() => import("./pages/CatalogRoute"));
 const ProgramPage = lazy(() => import("./pages/ProgramPage"));
 const LessonPlayer = lazy(() => import("./pages/LessonPlayer"));
@@ -197,7 +197,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <RequireSubscription mode="preview">
-                        <LazyRoute><HomePage /></LazyRoute>
+                        <LazyRoute><HomeRoute /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }

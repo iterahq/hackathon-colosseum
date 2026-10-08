@@ -1,14 +1,8 @@
 export { Logo } from './Logo';
 export { AppHeader } from './AppHeader';
 export { ProgramIcon } from './ProgramIcon';
-export { CatalogProgramCard } from './CatalogProgramCard';
-export { EnrolledProgramCard } from './EnrolledProgramCard';
-export { SlashBar } from './SlashBar';
-export { LockedCatalogCard } from './LockedCatalogCard';
 export { VisitorBanner } from './VisitorBanner';
 export { LockedProgramView } from './LockedProgramView';
-export { StatsCard } from './StatsCard';
-export { BadgeGrid } from './BadgeGrid';
 export { SkillTree } from './SkillTree';
 export { LiveClassBadge } from './LiveClassBadge';
 export { LiveClassSignal } from './LiveClassSignal';

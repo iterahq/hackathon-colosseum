@@ -19,6 +19,7 @@ function fakeBackend(answers: { programs?: BackendAnswer; subscriptions?: Backen
   const backend: NativeBackend = {
     rpc,
     rows,
+    email: async () => null,
     onSession: (listener) => {
       session = listener;
       return () => {
@@ -164,6 +165,7 @@ describe('createCatalogHost: an enrollment never crosses a session change or a v
     const backend: NativeBackend = {
       rpc,
       rows: vi.fn(async () => ok([{ is_active: true }])),
+      email: async () => null,
       onSession: (listener) => {
         session.push(listener);
         return () => {

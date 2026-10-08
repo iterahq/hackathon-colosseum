@@ -46,10 +46,11 @@ const CLOSED_CHROME = [
 const APP_PATHS = 32;
 /**
  * The routes still to port. 32 paths - 14 staff - 1 not counted (`/prototipo/cena`) - 2 learner DOM zones
- * = 15 rows; one of them, `*` (the not-found screen, R-11), is universal and no longer counts: 14.
+ * = 15 rows; three of them are universal and no longer count: `*` (the not-found screen, R-11), `/catalog`
+ * (R-13) and `/` (the dashboard): 12.
  * `*` left `not_counted_routes` because rule 2 needs a route that owns `packages/screens/src/not-found/`.
  */
-const ROUTE_METER = 13;
+const ROUTE_METER = 12;
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const real = loadRepo(ROOT);
@@ -87,7 +88,7 @@ describe("one copy, the real tree", () => {
     expect(rule4(realMap)).toEqual([]);
   });
   it("the real tree has its first universal route, and the files it names exist", () => {
-    expect(realMap.routes.filter((r) => r.universal).map((r) => `${r.path} -> ${r.screen} (${r.mode})`)).toEqual(["/catalog -> catalog (webview)", "* -> not-found (webview)"]);
+    expect(realMap.routes.filter((r) => r.universal).map((r) => `${r.path} -> ${r.screen} (${r.mode})`)).toEqual(["/ -> home (webview)", "/catalog -> catalog (webview)", "* -> not-found (webview)"]);
     expect(real.paths).toContain("packages/screens/src/not-found/NotFoundScreen.tsx");
     expect(real.paths).toContain("src/pages/NotFoundRoute.tsx");
     expect(real.paths).toContain("apps/mobile/app/preview/not-found.tsx");
@@ -95,6 +96,10 @@ describe("one copy, the real tree", () => {
     expect(real.paths).toContain("src/pages/CatalogRoute.tsx");
     expect(real.paths).toContain("apps/mobile/app/preview/catalog.tsx");
     expect(real.paths).toContain("apps/mobile/app/native/catalog.tsx");
+    expect(real.paths).toContain("packages/screens/src/home/HomeScreen.tsx");
+    expect(real.paths).toContain("src/pages/HomeRoute.tsx");
+    expect(real.paths).toContain("apps/mobile/app/preview/home.tsx");
+    expect(real.paths).toContain("apps/mobile/app/native/home.tsx");
   });
   it("rule 5: the map covers the frozen manifest and every path of App.tsx", () => {
     expect(rule5(real, realMap, APP_PATHS)).toEqual([]);

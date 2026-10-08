@@ -25,7 +25,7 @@
       "name": "Descobrir (home do aluno)",
       "route": "/",
       "source_ref": {
-        "component_file": "src/pages/HomePage.tsx"
+        "component_file": "packages/screens/src/home/HomeScreen.tsx"
       },
       "screenshots": [],
       "prerequisites": {

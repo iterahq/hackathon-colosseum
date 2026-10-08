@@ -7,3 +7,25 @@ export { catalogProgramsOf, listStateOf, toCardView, type CardContext, type Cata
 export { PALETTE_V3, toneFor } from './catalog/tone';
 export { localText, type LocalText } from './text/localText';
 export { splitTitle, type SplitTitle } from './text/splitTitle';
+export type { HomeBadgeView, HomeBadgesState, HomeIcon, HomeStatsView, HomeView } from './ports/home';
+export {
+  HOME_COMPLETED_BY_PROGRAM_SELECT,
+  HOME_PROGRAMS_COUNT_SELECT,
+  HOME_PROGRAMS_SELECT,
+  HOME_XP_SELECT,
+  homeBadgesOf,
+  homeProgramsOf,
+  homeProgramsOfCounts,
+  homeStatsOf,
+  homeViewOf,
+  iconFor,
+  orderHomePrograms,
+  percentOf,
+  statsViewOf,
+  streakDaysOf,
+  toEnrolledCardView,
+  type HomeBadge,
+  type HomeProgram,
+  type HomeReads,
+  type HomeStats,
+} from './home/model';

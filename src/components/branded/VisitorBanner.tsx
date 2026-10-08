@@ -1,6 +1,6 @@
 /**
- * Visitor mode (2026-09-18) — occupies HomePage's StatsCard slot in the hero
- * row for a signed-in user with no active subscription: title + one line +
+ * Visitor mode (2026-09-18) — the `aside` slot of the universal home screen
+ * (`HomeRoute`), where a member has the welcome panel, for a signed-in user with no active subscription: title + one line +
  * CTA to /subscribe. Replaces stats the user has none of yet.
  */
 import { Link } from 'react-router-dom';
@@ -13,7 +13,7 @@ export function VisitorBanner() {
   if (useShellSurface() !== 'web') return null;
   return (
     <div
-      className="rounded-3xl border border-evergreen/30 bg-evergreen-soft/20 p-6 md:p-8 flex flex-col justify-center gap-3"
+      className="rounded-3xl border border-evergreen/30 bg-evergreen-soft/20 p-6 md:p-8 flex flex-1 flex-col justify-center gap-3"
       data-testid="visitor-banner"
     >
       <span className="inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider bg-obsidiana/70 text-evergreen-hi border border-evergreen/30">

@@ -1,4 +1,4 @@
-export const loadHomePage = () => import('./HomePage');
+export const loadHomePage = () => import('./HomeRoute');
 export const loadCatalogPage = () => import('./CatalogRoute');
 export const loadProgramPage = () => import('./ProgramPage');
 export const loadLessonPlayer = () => import('./LessonPlayer');

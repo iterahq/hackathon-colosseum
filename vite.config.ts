@@ -59,6 +59,9 @@ export default defineConfig(({ mode }) => ({
       "@iterahq/screens/catalog/messages": path.resolve(__dirname, "./packages/screens/src/catalog/messages.ts"),
       "@iterahq/screens/catalog/fixtures": path.resolve(__dirname, "./packages/screens/src/catalog/fixtures.ts"),
       "@iterahq/screens/catalog": path.resolve(__dirname, "./packages/screens/src/catalog/index.ts"),
+      "@iterahq/screens/home/messages": path.resolve(__dirname, "./packages/screens/src/home/messages.ts"),
+      "@iterahq/screens/home/fixtures": path.resolve(__dirname, "./packages/screens/src/home/fixtures.ts"),
+      "@iterahq/screens/home": path.resolve(__dirname, "./packages/screens/src/home/index.ts"),
       "@iterahq/screens/not-found/messages": path.resolve(__dirname, "./packages/screens/src/not-found/messages.ts"),
       "@iterahq/screens/not-found": path.resolve(__dirname, "./packages/screens/src/not-found/index.ts"),
       ...(swapyInstalled

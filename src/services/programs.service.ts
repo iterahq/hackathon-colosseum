@@ -9,6 +9,7 @@
  * function throws a clear error; the query hooks surface isError and the pages
  * render a clean empty/error state.
  */
+import { HOME_PROGRAMS_SELECT, HOME_XP_SELECT, homeBadgesOf, homeProgramsOf, homeStatsOf } from '@iterahq/shell-core';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { getIteraUserId } from '@/services/iteraUser';
 import { normalizeProgressStatus } from '@/utils/normalizeProgressStatus';
@@ -62,21 +63,6 @@ export function isProgramNotFoundError(e: unknown): e is ProgramNotFoundError {
 }
 
 /** Evergreen-family accents so each program card gets a stable colored glow. */
-const ACCENTS = [
-  'from-emerald-500 to-teal-700',
-  'from-menta to-verde-tech',
-  'from-green-500 to-emerald-700',
-  'from-teal-500 to-green-700',
-  'from-lime-500 to-emerald-700',
-];
-const ICONS = ['code', 'layers', 'rocket', 'cpu', 'sparkles'];
-
-function accentFor(index: number) {
-  return ACCENTS[index % ACCENTS.length];
-}
-function iconFor(index: number) {
-  return ICONS[index % ICONS.length];
-}
 
 /* ── Raw Supabase row shapes (PostgREST nested selects return loose JSON) ── */
 type Row = Record<string, unknown>;
@@ -111,10 +97,7 @@ export async function getPrograms(): Promise<Program[]> {
   const sb = client();
   const { data, error } = await sb
     .from('programs')
-    .select(
-      `id, tenant_id, slug, title_i18n, created_at,
-       units:units ( id, lessons:lessons ( id, activities:activities ( id ) ) )`
-    )
+    .select(HOME_PROGRAMS_SELECT)
     .is('archived_at', null)
     .order('created_at', { ascending: true });
 
@@ -126,26 +109,7 @@ export async function getPrograms(): Promise<Program[]> {
   const { data: done } = userId
     ? await sb.from('progress').select('activity_id').eq('user_id', userId).eq('status', 'completed')
     : { data: [] };
-  const completedIds = new Set(asRows(done).map((r) => str(r.activity_id)));
-
-  return asRows(data).map((row, i) => {
-    const units = asRows(row.units);
-    const lessons = units.flatMap((u) => asRows(u.lessons));
-    const activities = lessons.flatMap((l) => asRows(l.activities));
-    return {
-      id: str(row.id),
-      tenantId: str(row.tenant_id),
-      slug: str(row.slug),
-      title: bag(row.title_i18n),
-      createdAt: str(row.created_at),
-      unitCount: units.length,
-      lessonCount: lessons.length,
-      activityCount: activities.length,
-      completedCount: activities.filter((a) => completedIds.has(str(a.id))).length,
-      accent: accentFor(i),
-      icon: iconFor(i),
-    } satisfies Program;
-  });
+  return homeProgramsOf(data, done);
 }
 
 /** Full program tree (units → lessons → activities) by slug. */
@@ -421,7 +385,7 @@ export async function getUserStats(): Promise<UserStats> {
   const userId = await getIteraUserId();
 
   const [xp, badges, progress] = await Promise.all([
-    sb.from('xp_events').select('amount'),
+    sb.from('xp_events').select(HOME_XP_SELECT),
     sb.from('user_badges').select('badge_id'),
     // The itera.progress_status enum is ('not_started','in_progress','completed') —
     // there is NO 'done' value, so filtering on 'done' always returned zero rows
@@ -430,14 +394,7 @@ export async function getUserStats(): Promise<UserStats> {
     userId ? sb.from('progress').select('status').eq('user_id', userId).eq('status', 'completed') : { data: [] },
   ]);
 
-  const totalXp = asRows(xp.data).reduce((s, r) => s + num(r.amount), 0);
-  return {
-    totalXp,
-    // Streak needs an events table walk; show 0 until xp_events has timestamps wired.
-    streakDays: 0,
-    badgeCount: asRows(badges.data).length,
-    completedActivities: asRows(progress.data).length,
-  };
+  return homeStatsOf(xp.data, badges.data, progress.data);
 }
 
 /** Badges for the tenant, flagged earned for the current user. */
@@ -448,14 +405,7 @@ export async function getBadges(): Promise<Badge[]> {
     sb.from('badges').select('id, slug, title_i18n, icon'),
     sb.from('user_badges').select('badge_id'),
   ]);
-  const earnedSet = new Set(asRows(earned).map((r) => str(r.badge_id)));
-  return asRows(badges).map((b) => ({
-    id: str(b.id),
-    slug: str(b.slug),
-    title: bag(b.title_i18n),
-    icon: typeof b.icon === 'string' ? b.icon : null,
-    earned: earnedSet.has(str(b.id)),
-  }));
+  return homeBadgesOf(badges, earned);
 }
 
 /**

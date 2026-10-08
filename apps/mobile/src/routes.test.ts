@@ -9,7 +9,7 @@ describe('route map', () => {
       expect(r.mode === 'webview' || (r.mode === 'native' && r.universal && r.screen in NATIVE_HOSTS), r.path).toBe(true);
       expect(r.web_paths.length).toBeGreaterThan(0);
     }
-    expect(ROUTE_MAP.routes.filter((r) => r.universal).map((r) => r.path)).toEqual(['/catalog', '*']);
+    expect(ROUTE_MAP.routes.filter((r) => r.universal).map((r) => r.path)).toEqual(['/', '/catalog', '*']);
   });
 
   it('the catch-all row matches no path: an unknown path still opens the home route', () => {
@@ -37,6 +37,7 @@ describe('route map', () => {
     const flipped = { ...closed, routes: closed.routes.map((r) => (r.screen === 'catalog' ? { ...r, mode: 'native' as const } : r)) };
     expect(isNativeScreen('catalog', flipped)).toBe(true);
     expect(isNativeScreen('home', flipped)).toBe(false);
+    expect(isNativeScreen('not-found', flipped)).toBe(false);
   });
 });
 

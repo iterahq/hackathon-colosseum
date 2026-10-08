@@ -9,7 +9,6 @@ import type { CatalogProgram } from '@/types/catalog';
 import LoginPage from '@/pages/auth/LoginPage';
 import ProfilePage from '@/pages/ProfilePage';
 import { AppHeader } from '@/components/branded/AppHeader';
-import { LockedCatalogCard } from '@/components/branded/LockedCatalogCard';
 import { LockedProgramView } from '@/components/branded/LockedProgramView';
 import { VisitorBanner } from '@/components/branded/VisitorBanner';
 import { GuestEndCard } from '@/components/live/GuestEndCard';
@@ -18,7 +17,9 @@ import { GuestEndCard } from '@/components/live/GuestEndCard';
  * Plan 20261003-itera-player-mobile, row W-7: every component that names a subscription or a
  * sign-up, rendered on each surface. In a browser tab the affordance is there, as before; inside
  * the shell, and while the handshake is pending, it is absent and the text carries none of the
- * wording. `scripts/shell-commerce.test.ts` proves the list of components is complete.
+ * wording. `scripts/shell-commerce.test.ts` proves the list of components is complete. The locked card
+ * of the catalog and of the dashboard is drawn by a universal screen: its offer is built by the web hosts
+ * and is covered in `src/pages/CatalogRoute.test.tsx` and `src/pages/HomeRoute.test.tsx`.
  */
 const surface = vi.hoisted(() => ({ value: 'web' as ShellSurface }));
 vi.mock('@/hooks/useShellSurface', () => ({ useShellSurface: () => surface.value }));
@@ -72,7 +73,6 @@ const program: CatalogProgram = {
 const SURFACES: [name: string, element: ReactElement, affordance: string][] = [
   ['the login page', <LoginPage />, 'goto-signup'],
   ['the header of an account without access', <AppHeader />, 'nav-subscribe-cta'],
-  ['a locked catalog card', <LockedCatalogCard program={program} />, 'catalog-locked-cta'],
   ['a locked program', <LockedProgramView program={program} />, 'program-locked-subscribe'],
   ['the visitor banner', <VisitorBanner />, 'visitor-banner-cta'],
   ['the guest end card', <GuestEndCard />, 'guest-end-signup'],
