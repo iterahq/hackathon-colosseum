@@ -70,13 +70,19 @@ export interface ProbeResponse {
 }
 export type ProbeFetch = (
   url: string,
-  init: { method: 'POST' | 'GET'; headers: Record<string, string>; body?: string; cache: 'no-store'; signal?: AbortSignal },
+  init: { method: 'POST' | 'GET' | 'PATCH'; headers: Record<string, string>; body?: string; cache: 'no-store'; signal?: AbortSignal },
 ) => Promise<ProbeResponse>;
 
-/** One read of PostgREST, schema `itera`: `path` continues `/rest/v1/`; a `body` makes it a POST (an RPC), none a GET (rows). */
+/**
+ * One call of PostgREST, schema `itera`: `path` continues `/rest/v1/`; a `body` makes it a POST (an RPC), none a
+ * GET (rows). `patch` with a `body` is a PATCH of the rows the path selects, answered with the rows it changed
+ * (`Prefer: return=representation`). This function sends what it is given: which table, row and columns a
+ * write may name is decided by its one caller, `nativeBackend.update`.
+ */
 export interface BackendRequest {
   path: string;
   body?: string;
+  patch?: boolean;
   /** An answer longer than this is refused: it is not parsed and nothing of it is returned. The body is in memory by then (React Native's `fetch` has no stream to stop), so what bounds the download is the timeout, not this. Counted in UTF-16 units. */
   maxChars: number;
 }
@@ -127,7 +133,7 @@ export async function readBackend(
       const res = await fetchImpl(`${backend.origin}${REST_PATH}${request.path}`, {
         ...(request.body === undefined
           ? { method: 'GET', headers: { ...auth, 'Accept-Profile': 'itera' } }
-          : { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', 'Content-Profile': 'itera' }, body: request.body }),
+          : { method: request.patch ? 'PATCH' : 'POST', headers: { ...auth, 'Content-Type': 'application/json', 'Content-Profile': 'itera', ...(request.patch ? { Prefer: 'return=representation' } : {}) }, body: request.body }),
         cache: 'no-store',
         signal: controller?.signal,
       });

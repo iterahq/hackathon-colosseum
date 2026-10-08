@@ -43,9 +43,31 @@ export interface TextProps extends PrimitiveProps {
   onPress?: () => void;
 }
 
+export interface TextInputProps extends PrimitiveProps {
+  value?: string;
+  onChangeText?: (text: string) => void;
+  onSubmitEditing?: () => void;
+  placeholder?: string;
+  placeholderTextColor?: string;
+  maxLength?: number;
+  inputMode?: 'numeric' | 'text';
+}
+
+export interface ImageProps extends PrimitiveProps {
+  source: { uri: string };
+  resizeMode?: 'cover';
+}
+
+export interface ScrollViewProps extends PrimitiveProps {
+  contentContainerClassName?: string;
+  keyboardShouldPersistTaps?: 'handled';
+}
+
 export const View: ComponentType<ViewProps>;
 export const Text: ComponentType<TextProps>;
 export const Pressable: ComponentType<PressableProps>;
+export const TextInput: ComponentType<TextInputProps>;
+export const Image: ComponentType<ImageProps>;
 /** Only a slot uses it, and only off the web: there the document scrolls. */
-export const ScrollView: ComponentType<ViewProps>;
+export const ScrollView: ComponentType<ScrollViewProps>;
 export const Platform: { readonly OS: 'ios' | 'android' | 'macos' | 'windows' | 'web' };

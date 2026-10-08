@@ -20,6 +20,22 @@ export function browserMethod(os: string): BrowserMethod {
   return os === 'android' ? 'custom-tab' : 'linking';
 }
 
+/**
+ * A public page outside the app, opened from a native screen (the legal and help rows of the profile). It goes
+ * through the ONE opener of the shell: the route file that owns the reporter and the platform modules provides
+ * it (`provideExternalOpener`), with the same method per platform and the same failure notice as "Abrir no
+ * navegador". Https only. Before a route provided it there is no way out, and nothing happens.
+ */
+let externalOpener: ((url: string) => void) | null = null;
+
+export function provideExternalOpener(open: (url: string) => void): void {
+  externalOpener = open;
+}
+
+export function openExternalPage(url: string): void {
+  if (url.startsWith('https://')) externalOpener?.(url);
+}
+
 export interface OpenReporter {
   /** Run `open`; when it throws or rejects, report `notice` (rate-limited). Never rejects. */
   attempt: (open: () => Promise<unknown>, notice?: string) => Promise<void>;

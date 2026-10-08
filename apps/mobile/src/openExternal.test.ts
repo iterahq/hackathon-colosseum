@@ -71,3 +71,16 @@ describe('createOpenReporter', () => {
     }
   });
 });
+
+describe('openExternalPage (the legal and help rows of a native screen)', () => {
+  it('goes through the opener the route provided, https only', async () => {
+    const { openExternalPage, provideExternalOpener } = await import('./openExternal');
+    const opened: string[] = [];
+    provideExternalOpener((url) => opened.push(url));
+    openExternalPage('https://iterahq.dev/termos');
+    openExternalPage('http://iterahq.dev/termos');
+    openExternalPage('itera://x');
+    openExternalPage('javascript:alert(1)');
+    expect(opened).toEqual(['https://iterahq.dev/termos']);
+  });
+});

@@ -64,7 +64,7 @@ const InstructorClassPage = lazy(() => import("./pages/live/InstructorClassPage"
 const InstructorSessionPage = lazy(() => import("./pages/live/InstructorSessionPage"));
 const InstructorReportPage = lazy(() => import("./pages/live/InstructorReportPage"));
 const SubscribePage = lazy(() => import("./pages/SubscribePage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ProfileRoute = lazy(() => import("./pages/ProfileRoute"));
 const SubscribeReturnPage = lazy(() => import("./pages/SubscribeReturnPage"));
 const SignupPage = lazy(() => import("./pages/auth/SignupPage"));
 const DflCallbackPage = lazy(() => import("./pages/auth/DflCallbackPage"));
@@ -259,7 +259,7 @@ const App = () => (
                   element={
                     <RequireAuth>
                       <ShellAccessGate>
-                        <LazyRoute><ProfilePage /></LazyRoute>
+                        <LazyRoute><ProfileRoute /></LazyRoute>
                       </ShellAccessGate>
                     </RequireAuth>
                   }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ProbeFetch, ProbeResponse } from './backendProbe';
-import { createNativeBackend, nativeBackend, provideBackend, type TokenSource } from './nativeBackend';
+import { MAX_PATCH_CHARS, createNativeBackend, nativeBackend, provideBackend, type TokenSource } from './nativeBackend';
 import { PROJECT, fakeJwt } from './jwt.testkit';
 
 const ANON = fakeJwt({ role: 'anon', iss: 'supabase', ref: 'kjefmwlopzeaqgqtlbdn', sub: undefined, aud: undefined });
@@ -21,6 +21,56 @@ function source(token: string | null = TOKEN) {
 }
 
 describe('createNativeBackend', () => {
+  const ROW_ID = '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f';
+
+  it('an update is one PATCH of ONE row by its id, of allowed columns, that asks which row changed', async () => {
+    const fetchImpl = vi.fn<ProbeFetch>(async () => answer(JSON.stringify([{ id: ROW_ID }])));
+    const backend = createNativeBackend(BACKEND, source().session, fetchImpl);
+    expect(await backend.update('users', ROW_ID, { display_name: 'Ana', avatar_url: 'https://cdn.example/a.png' })).toEqual({ kind: 'ok', value: 1, status: 200 });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(`${PROJECT}/rest/v1/users?id=eq.${ROW_ID}&select=id`);
+    expect(init).toMatchObject({ method: 'PATCH', body: '{"display_name":"Ana","avatar_url":"https://cdn.example/a.png"}', cache: 'no-store' });
+    expect(init.headers).toMatchObject({ 'Content-Profile': 'itera', Prefer: 'return=representation', Authorization: `Bearer ${TOKEN}` });
+  });
+
+  it('an update that changed no row says so: 0, not a success to assume', async () => {
+    const backend = createNativeBackend(BACKEND, source().session, async () => answer('[]'));
+    expect(await backend.update('users', ROW_ID, { display_name: 'Ana' })).toEqual({ kind: 'ok', value: 0, status: 200 });
+    const odd = createNativeBackend(BACKEND, source().session, async () => answer('{"not":"rows"}'));
+    expect(await odd.update('users', ROW_ID, { display_name: 'Ana' })).toEqual({ kind: 'failed', status: 200 });
+  });
+
+  it('the row is named by a uuid and nothing else: no caller writes a filter (REVIEW-671 W1)', async () => {
+    const fetchImpl = vi.fn<ProbeFetch>(async () => answer('[]'));
+    const backend = createNativeBackend(BACKEND, source().session, fetchImpl);
+    for (const id of ['', 'select=id', 'order=id', 'limit=1', 'id=not.is.null', 'x', `${ROW_ID}&or=(id.not.is.null)`, `id=eq.${ROW_ID}`, `${ROW_ID} `]) {
+      expect(await backend.update('users', id, { display_name: 'x' })).toEqual({ kind: 'failed', status: null });
+    }
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('only the listed columns of the listed table can be written (REVIEW-671 W2)', async () => {
+    const fetchImpl = vi.fn<ProbeFetch>(async () => answer('[]'));
+    const backend = createNativeBackend(BACKEND, source().session, fetchImpl);
+    const refused = { kind: 'failed', status: null };
+    expect(await backend.update('memberships', ROW_ID, { role: 'owner' })).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, { email: 'x@y.z' })).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, { display_name: 'Ana', is_guest: true })).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, { dfl_avatar_url: 'https://evil.example' })).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, { locale: 'xx' })).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, {})).toEqual(refused);
+    expect(await backend.update('users', ROW_ID, { display_name: 7 })).toEqual(refused);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('the body of a write is bounded (REVIEW-671 W3)', async () => {
+    const fetchImpl = vi.fn<ProbeFetch>(async () => answer('[]'));
+    const backend = createNativeBackend(BACKEND, source().session, fetchImpl);
+    expect(await backend.update('users', ROW_ID, { display_name: 'x'.repeat(1024 * 1024) })).toEqual({ kind: 'failed', status: null });
+    expect(await backend.update('users', ROW_ID, { avatar_url: `https://cdn.example/${'a'.repeat(MAX_PATCH_CHARS)}` })).toEqual({ kind: 'failed', status: null });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('an RPC is one POST to the backend, schema itera, as the learner', async () => {
     const fetchImpl = vi.fn<ProbeFetch>(async () => answer('[{"id":"p1"}]'));
     const backend = createNativeBackend(BACKEND, source().session, fetchImpl);

@@ -75,7 +75,7 @@ import { LoadingVeil } from '../src/LoadingVeil';
 import { provideBackend } from '../src/nativeBackend';
 import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
-import { browserMethod, createOpenReporter } from '../src/openExternal';
+import { browserMethod, createOpenReporter, provideExternalOpener } from '../src/openExternal';
 import { createLaunchGate, rereadOnForeground, rereadOnRetry, shownLaunch, updateCardCopy, type LaunchConfig } from '../src/shellGate';
 import { BACKGROUND } from '../src/shellTheme';
 import { UpdateNowCard } from '../src/UpdateNowCard';
@@ -128,6 +128,8 @@ const AUTH_SESSION = authSessionEnabled(Constants.executionEnvironment);
 const TOP_FRAME_ORIGINS = __DEV__ && !AUTH_SESSION ? DEV_TOP_FRAME_ORIGINS : [];
 // A page the system refuses to open (the browser, a mail or phone link, the auth sheet) is never a silent tap: one short notice.
 const OPENS = createOpenReporter((notice) => Alert.alert(notice), Date.now, () => chromeStrings().openFailed);
+// A native screen opens a public page (its legal and help rows) the way this route opens the browser: one method per platform, one notice.
+provideExternalOpener((url) => void OPENS.attempt(() => (browserMethod(Platform.OS) === 'custom-tab' ? WebBrowser.openBrowserAsync(url) : Linking.openURL(url))));
 const DFL_RETURN = dflCallbackUrl(ORIGIN);
 const DFL_SESSION = createSessionGuard();
 // Android delivers the return link twice (Expo Router and the session promise): the latch lets exactly one of them load it.

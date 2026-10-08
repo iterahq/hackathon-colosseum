@@ -13,6 +13,8 @@
     "./home/messages": "./src/home/messages.ts",
     "./home/fixtures": "./src/home/fixtures.ts",
     "./home": "./src/home/index.ts",
+    "./profile/messages": "./src/profile/messages.ts",
+    "./profile": "./src/profile/index.ts",
     "./not-found/messages": "./src/not-found/messages.ts",
     "./not-found": "./src/not-found/index.ts",
     "./theme/*.css": "./theme/*.css"

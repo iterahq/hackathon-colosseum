@@ -7,7 +7,7 @@ import { I18nProvider } from '@/i18n';
 import type { ShellSurface } from '@/lib/shellSurface';
 import type { CatalogProgram } from '@/types/catalog';
 import LoginPage from '@/pages/auth/LoginPage';
-import ProfilePage from '@/pages/ProfilePage';
+import ProfileRoute from '@/pages/ProfileRoute';
 import { AppHeader } from '@/components/branded/AppHeader';
 import { LockedProgramView } from '@/components/branded/LockedProgramView';
 import { VisitorBanner } from '@/components/branded/VisitorBanner';
@@ -133,7 +133,7 @@ describe('commerce affordances per surface', () => {
 
   describe('the profile of an ENTITLED account', () => {
     it('in a browser tab shows the subscription section with billing', async () => {
-      mount(<ProfilePage />);
+      mount(<ProfileRoute />);
       await screen.findByTestId('profile-name-input');
       expect(screen.getByTestId('subscription-section')).toBeInTheDocument();
       expect(screen.getByTestId('subscription-manage-billing')).toBeInTheDocument();
@@ -141,7 +141,7 @@ describe('commerce affordances per surface', () => {
 
     it('inside the shell shows the profile without the subscription section', async () => {
       surface.value = 'shell';
-      const { container } = mount(<ProfilePage />);
+      const { container } = mount(<ProfileRoute />);
       await screen.findByTestId('profile-name-input');
       expect(screen.queryByTestId('subscription-section')).not.toBeInTheDocument();
       expect(screen.queryByTestId('subscription-manage-billing')).not.toBeInTheDocument();

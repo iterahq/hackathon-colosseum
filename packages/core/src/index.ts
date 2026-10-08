@@ -29,3 +29,14 @@ export {
   type HomeReads,
   type HomeStats,
 } from './home/model';
+export { LEGAL_AND_HELP_URLS, LEGAL_HELP_LINK_IDS, LEGAL_HELP_PAGES_LIVE, legalHelpLinks, type LegalHelpLinkId } from './config/legalHelpUrls';
+export type { PersonalizationFieldView, PersonalizationView, ProfileFormState, ProfileFormView, ProfileIcon, ProfileImage } from './ports/profile';
+export {
+  EMPTY_PROFILE_DRAFT,
+  PROFILE_NAME_MAX,
+  profileDraftReducer,
+  profileFormView,
+  type ProfileDraft,
+  type ProfileDraftEvent,
+  type ProfileFormFlags,
+} from './profile/profileDraft';

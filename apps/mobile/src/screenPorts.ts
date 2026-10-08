@@ -3,10 +3,12 @@
  * The web's are in `src/lib/universalScreenHost.ts`. Pure TypeScript: no React, no React Native.
  */
 import { router } from 'expo-router';
-import { translatorOf, type LogPort, type Messages, type NavigationIntent, type Translate } from '@iterahq/shell-core';
+import { legalHelpLinks, translatorOf, type LogPort, type Messages, type NavigationIntent, type Translate } from '@iterahq/shell-core';
 import { createCatalogHost } from './catalogHost';
 import { createHomeHost } from './homeHost';
 import { nativeBackend } from './nativeBackend';
+import { openExternalPage } from './openExternal';
+import { createProfileHost } from './profileHost';
 import { isNativeScreen } from './routes';
 
 /** The shell's UI is pt-BR; it has no locale switch. */
@@ -34,3 +36,9 @@ export const catalogHost = (t: Translate) => createCatalogHost({ backend: native
 /** The native host of `/`. The catalog opens on its own path: the WebView's page until that row is native too. */
 export const homeHost = (t: Translate) =>
   createHomeHost({ backend: nativeBackend, t, locale: 'pt', enabled: hostOpen('home'), openProgram, openCatalog: () => router.push('/catalog') });
+
+/** The native host of `/profile`. */
+export const profileHost = () => createProfileHost({ backend: nativeBackend, enabled: hostOpen('profile') });
+
+/** Privacy, terms and support: pages outside the app, opened by the shell's one opener (`openExternal.ts`). */
+export const LEGAL_HELP = legalHelpLinks(openExternalPage);

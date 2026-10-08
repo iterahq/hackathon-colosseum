@@ -367,7 +367,7 @@
       "name": "Perfil",
       "route": "/profile",
       "source_ref": {
-        "component_file": "src/pages/ProfilePage.tsx"
+        "component_file": "packages/screens/src/profile/ProfileScreen.tsx"
       },
       "screenshots": [],
       "prerequisites": {

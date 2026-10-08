@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { CatalogCardView, CatalogIcon, Translate } from '@iterahq/shell-core';
+import { FOCUS_RING } from './focusRing';
 import { SlashMark } from './SlashMark';
 import { linkProps, PARAGRAPH } from './slots/webSemantics';
 
@@ -28,7 +29,7 @@ const bandHeight = (contentWidth: number) => Math.min(136, Math.max(112, content
  * The ring a keyboard user sees. The browser's own ring is near-black here (`rgb(16,16,16)` on a dark page): the old buttons
  * only looked green for the 150 ms of their colour transition. React Native has no `:focus-visible`: the classes do nothing there.
  */
-export const FOCUS_RING = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-evergreen-hi';
+export { FOCUS_RING };
 
 const CTA = `h-10 w-full flex-row items-center justify-center gap-2 rounded-full px-5 ${FOCUS_RING}`;
 const CTA_TEXT = 'font-sans text-base font-medium leading-normal';

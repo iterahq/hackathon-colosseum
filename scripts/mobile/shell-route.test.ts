@@ -91,7 +91,9 @@ describe('route file wiring', () => {
   });
 
   it('no open call is left to fail silently: every Linking.openURL and the auth session go through the open reporter', () => {
-    expect(count(/\bLinking\.openURL\(/)).toBe(2);
+    expect(count(/\bLinking\.openURL\(/)).toBe(3);
+    // The third: the opener a native screen is given (its legal and help rows), through the same reporter and the same method per platform.
+    expect(code).toMatch(/provideExternalOpener\(\(url\) => void OPENS\.attempt\(\(\) => \(browserMethod\(Platform\.OS\) === 'custom-tab' \? WebBrowser\.openBrowserAsync\(url\) : Linking\.openURL\(url\)\)\)\);/);
     expect(count(/\bOPENS\.attempt\(\(\) => Linking\.openURL\(req\.url\)\)/)).toBe(1);
     expect(code).toMatch(/\.catch\(\(\) => OPENS\.fail\(chromeStrings\(\)\.authFailed\)\)/);
     expect(count(/\.catch\(\(\) => undefined\)/)).toBe(0);
