@@ -21,7 +21,14 @@
     "violenceRealisticProlongedGraphicOrSadistic": "NONE",
     "gunsOrOtherWeapons": "NONE",
     "gambling": false,
-    "unrestrictedWebAccess": false
+    "unrestrictedWebAccess": false,
+    "advertising": false,
+    "ageAssurance": false,
+    "healthOrWellnessTopics": false,
+    "lootBox": false,
+    "messagingAndChat": false,
+    "parentalControls": false,
+    "userGeneratedContent": false
   },
   "review": {
     "notes": "Itera is a learning app: a native Expo shell around the web player at app.iterahq.dev. The sign-in information holds a review account that already has access to all content.\n\nHow to review: sign in with the e-mail and password in the sign-in information. The home screen opens the learner's program. Open the program \"Dominio -> Agente\" from the catalog, tap the highlighted lesson on the track, and answer the exercises. Each answer shows feedback at once.\n\nAccounts: the app has no sign-up, no price and no purchase of any kind. Accounts are created on the web, outside the app: the app has no account creation flow.\n\n\"Sign in with DFL\" is a second way to sign in with an account of DevFellowship (DFL), the company that operates Itera. It opens the system sign-in sheet (ASWebAuthenticationSession) on a DFL domain. It is the company's own account system, not a third-party or social login.\n\nContent: lessons are loaded from our servers when the app opens. The app downloads no executable code and OTA updates are off.\n\nPermissions: the app asks for the camera only if the user chooses \"Take Photo\" when changing the profile photo. It asks for no microphone, location, contacts or notification permission."
