@@ -90,7 +90,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
           <SceneCodeLine element={{ id: 'press-handler', tag: 'span', text: spec.options.find((o) => o.id === spec.correct)?.code ?? '', name: '' }} />
         )}
       </div>
-      <div className={`flex flex-col gap-2 ${TOUCH_SURFACE}`} role="radiogroup" aria-label={t('activity.press')}>
+      <div className={`mt-3 flex flex-col gap-2 ${TOUCH_SURFACE}`} role="radiogroup" aria-label={t('activity.press')}>
         {(spec?.options ?? []).map((option) => (
           <button
             key={option.id}
@@ -108,7 +108,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
       </div>
       {!solved && <WrongHint {...hintProps} />}
       <div
-        className={`rounded-xl overflow-hidden border border-black/10 p-6 flex flex-col items-start gap-3 min-h-[120px] ${TOUCH_SURFACE}`}
+        className={`mt-3 rounded-xl overflow-hidden border border-black/10 p-6 flex flex-col items-start gap-3 min-h-[120px] ${TOUCH_SURFACE}`}
         style={{ background: SCENE_PAGE_BACKGROUND }}
         data-testid="press-page"
       >

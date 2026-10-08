@@ -124,6 +124,9 @@ export function gradeGuided(blanks: readonly CodeBlank[], values: GuidedValues):
   return { byBlank, correctCount, allCorrect: correctCount === blanks.length };
 }
 
+/** Room the browser's own arrow takes inside a `select`, in characters of the 13 px mono font. */
+const SELECT_ARROW_CH = 3;
+
 /**
  * How wide to draw an inline widget, in characters.
  *
@@ -135,8 +138,15 @@ export function gradeGuided(blanks: readonly CodeBlank[], values: GuidedValues):
  * length for free, which is the leak the other two variants do not have (their
  * candidates are all visible anyway).
  */
-export function blankWidthCh(blank: CodeBlank): number {
+export function blankWidthCh(blank: CodeBlank, wordBank: readonly string[] = []): number {
   if (blank.kind === 'text') return Math.max(12, (blank.placeholder ?? '').length + 2);
-  const candidates = [blank.answer, ...(blank.options ?? []), blank.placeholder ?? ''];
-  return Math.max(6, ...candidates.map((c) => c.length)) + 2;
+  // A bank hole takes ANY chip of the bank, not only its own answer: sized by the answer alone,
+  // a long chip dropped in a short hole ran over the code beside it, and the short hole gave
+  // its answer away.
+  const bank = blank.kind === 'bank' ? wordBank : [];
+  const candidates = [blank.answer, ...(blank.options ?? []), ...bank, blank.placeholder ?? ''];
+  const longest = Math.max(6, ...candidates.map((c) => c.length));
+  // A native select draws its arrow inside the box: without room for it the
+  // longest label is cut ("interrupto▾").
+  return longest + (blank.kind === 'select' ? SELECT_ARROW_CH : 0) + 2;
 }

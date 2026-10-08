@@ -6,6 +6,10 @@ export interface TreeNode {
   lesson: Lesson;
   state: NodeState;
   unitIndex: number;
+  /** Activities the learner answered and did not pass ('in_progress'). */
+  missed: number;
+  /** Activities the learner has not answered at all ('todo'). */
+  unanswered: number;
 }
 
 export interface TreeSection {

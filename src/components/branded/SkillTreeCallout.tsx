@@ -10,6 +10,7 @@ export function SkillTreeCallout({
   ctaLabel,
   activitiesDone = 0,
   activitiesTotal = 0,
+  note,
   message,
   tone,
   left,
@@ -23,6 +24,8 @@ export function SkillTreeCallout({
   ctaLabel?: string;
   activitiesDone?: number;
   activitiesTotal?: number;
+  /** One line under the progress of a lesson, e.g. what is still missing to finish it. */
+  note?: string;
   /** A note instead of a lesson: no title, progress or button. Used to say what a locked node waits for. */
   message?: string;
   tone: UnitTone;
@@ -68,6 +71,11 @@ export function SkillTreeCallout({
             />
           ))}
         </div>
+      )}
+      {message === undefined && note && (
+        <span className="text-[13px] leading-snug text-foreground/80" data-testid="tree-callout-note">
+          {note}
+        </span>
       )}
       {message === undefined && (
       <button

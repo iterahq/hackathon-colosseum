@@ -151,11 +151,48 @@ test.describe('a held press on an exercise selects nothing', () => {
     expect(css).toMatch(/-webkit-tap-highlight-color:\s*(transparent|#0000)/);
   });
 
-  test('the page still scrolls with a finger on an order card, and the grip keeps the drag', async ({ page }) => {
+  test('a finger anywhere on an order card drags it, not only on the grip', async ({ page }) => {
     await open(page, ORDER);
-    const row = page.getByTestId('order-item').first();
-    expect(await row.evaluate((el) => getComputedStyle(el).touchAction)).toBe('auto');
-    expect(await row.locator('span').first().evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
+    const rows = page.getByTestId('order-item');
+    expect(await rows.first().evaluate((el) => getComputedStyle(el).touchAction)).toBe('none');
+
+    const firstId = await rows.nth(0).getAttribute('data-option-id');
+    const from = await rows.nth(0).boundingBox();
+    const to = await rows.nth(1).boundingBox();
+    if (!from || !to) throw new Error('order: a row has no box');
+    // Right of the grip and the position badge: the label.
+    const x = from.x + from.width * 0.6;
+    const startY = from.y + from.height / 2;
+    const endY = to.y + to.height / 2 + 4;
+    const touch = (type: 'pointerdown' | 'pointermove' | 'pointerup', y: number) =>
+      page.evaluate(
+        ({ type, x, y }) => {
+          const target = type === 'pointerdown' ? document.elementFromPoint(x, y)! : window;
+          target.dispatchEvent(
+            new PointerEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              pointerId: 7,
+              pointerType: 'touch',
+              isPrimary: true,
+              clientX: x,
+              clientY: y,
+              button: 0,
+              buttons: type === 'pointerup' ? 0 : 1,
+            }),
+          );
+        },
+        { type, x, y },
+      );
+    await touch('pointerdown', startY);
+    for (let i = 1; i <= 8; i++) {
+      await touch('pointermove', startY + ((endY - startY) * i) / 8);
+      await page.waitForTimeout(30);
+    }
+    await touch('pointerup', endY);
+
+    await expect(rows.nth(1)).toHaveAttribute('data-option-id', firstId!);
   });
 });
 
@@ -303,6 +340,45 @@ test.describe('the enlarged lesson image fits the screen', () => {
     expect(await scrollTop(page)).toBe(reopenedAt);
   });
 
+  test('two fingers enlarge the image and bring it back, with the page viewport locked like in the app', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'the two-finger gesture is driven through CDP');
+    const viewport = VIEWPORTS[0];
+    await openLightbox(page, 'wide SVG diagram', viewport);
+    // What the native shell does to the page: the browser's own pinch is off.
+    await page.evaluate(() =>
+      document.querySelector('meta[name="viewport"]')!.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no'),
+    );
+    const fitted = await measure(page);
+    const cx = fitted.image.left + fitted.image.width / 2;
+    const cy = fitted.image.top + fitted.image.height / 2;
+
+    const cdp = await page.context().newCDPSession(page);
+    const fingers = (type: 'touchStart' | 'touchMove' | 'touchEnd', half?: number) =>
+      cdp.send('Input.dispatchTouchEvent', {
+        type,
+        touchPoints: half === undefined ? [] : [{ x: cx - half, y: cy, id: 0 }, { x: cx + half, y: cy, id: 1 }],
+      });
+    const pinch = async (from: number, to: number) => {
+      await fingers('touchStart', from);
+      for (let i = 1; i <= 8; i++) await fingers('touchMove', from + ((to - from) * i) / 8);
+      await fingers('touchEnd');
+    };
+
+    await pinch(30, 90);
+    await expect(lightbox(page)).toHaveAttribute('data-zoomed', 'true');
+    const enlarged = await measure(page);
+    expect(enlarged.image.width).toBeCloseTo(fitted.image.width * 3, 0);
+    expect(enlarged.pannable).toBe(true);
+    // The point between the fingers stays under them.
+    expect(Math.abs(enlarged.image.left + enlarged.image.width / 2 - cx)).toBeLessThanOrEqual(2);
+    expect(await page.evaluate(() => window.visualViewport!.scale)).toBe(1);
+    await expect(lightbox(page)).toBeVisible();
+
+    await pinch(120, 20);
+    await expect(lightbox(page)).toHaveAttribute('data-zoomed', 'false');
+    expect((await measure(page)).image.width).toBeCloseTo(fitted.image.width, 0);
+  });
+
   test('the closed page has no lightbox and no scroll lock', async ({ page }) => {
     await page.setViewportSize(VIEWPORTS[0]);
     await open(page, IMAGE_FIXTURES['wide SVG diagram']);
@@ -346,7 +422,7 @@ const uuid = (unit: number, lesson: number, activity = 0) =>
   `00000000-0000-4000-9${String(unit).padStart(3, '0')}-${String(lesson).padStart(6, '0')}${String(activity).padStart(6, '0')}`;
 
 /** Two weeks of three lessons, nothing done: each week opens at its first lesson. */
-async function openProgram(page: Page): Promise<void> {
+async function openProgram(page: Page, progress: { activity_id: string; status: string }[] = []): Promise<void> {
   const units = [1, 2].map((u) => ({
     id: uuid(u, 0),
     program_id: uuid(0, 1),
@@ -376,7 +452,7 @@ async function openProgram(page: Page): Promise<void> {
   });
   await installHarnessSubstrate(page, []);
   await page.route(`${STUB_SUPABASE_URL}/rest/v1/programs*`, (route) => route.fulfill(json(program)));
-  await page.route(`${STUB_SUPABASE_URL}/rest/v1/progress*`, (route) => route.fulfill(json([])));
+  await page.route(`${STUB_SUPABASE_URL}/rest/v1/progress*`, (route) => route.fulfill(json(progress)));
   await page.route(`${STUB_SUPABASE_URL}/rest/v1/my_subscription*`, (route) =>
     route.fulfill(json([{ status: 'active', is_active: true, current_period_end: null, seat_count: 1, cancel_at_period_end: false }])),
   );
@@ -403,6 +479,25 @@ test.describe('the program page under a finger', () => {
 
     await page.touchscreen.tap(4, 520);
     await expect(hint).toHaveCount(0);
+  });
+
+  test('a lesson finished with a miss says what is left, and the next one says why it is locked', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    // Lesson 1.1 has one activity, answered and missed: the learner reached its end.
+    await openProgram(page, [{ activity_id: uuid(1, 1, 1), status: 'in_progress' }]);
+    const nodes = page.locator('[data-testid^="tree-node-"]');
+    await expect(nodes.nth(0)).toHaveAttribute('data-testid', 'tree-node-current');
+    await expect(nodes.nth(1)).toHaveAttribute('data-testid', 'tree-node-locked');
+
+    const callout = page.getByTestId('tree-callout');
+    await expect(page.getByTestId('tree-callout-note')).toHaveText(/Falta acertar 1 tela/);
+    await expect(callout.getByRole('button')).toHaveText('Refazer o que faltou');
+    // The taller callout does not sit on the next lesson.
+    const [box, next] = [(await callout.boundingBox())!, (await nodes.nth(1).boundingBox())!];
+    expect(box.y + box.height).toBeLessThanOrEqual(next.y);
+
+    await nodes.nth(1).tap({ force: true });
+    await expect(page.getByTestId('tree-lock-hint')).toHaveText(/Acerte o que faltou no Dia 1 para liberar/);
   });
 
   test('the app header controls have a 44 px hit area', async ({ page }) => {

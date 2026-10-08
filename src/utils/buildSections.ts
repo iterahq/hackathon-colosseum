@@ -34,7 +34,10 @@ export function buildSections(program: ProgramDetail): TreeSection[] {
       } else {
         state = 'locked';
       }
-      return { lesson, state, unitIndex: index };
+      const acts = lesson.activities ?? [];
+      const missed = acts.filter((a) => a.status === 'in_progress').length;
+      const unanswered = acts.filter((a) => a.status === undefined || a.status === 'todo').length;
+      return { lesson, state, unitIndex: index, missed, unanswered };
     });
     return { unit, index, nodes, doneCount, total: lessons.length };
   });

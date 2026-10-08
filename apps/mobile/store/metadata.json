@@ -1,0 +1,45 @@
+{
+  "bundleId": "com.tainanfidelis.iterahq",
+  "ascAppId": "6819303533",
+  "primaryCategory": "EDUCATION",
+  "copyright": "2026 Itera",
+  "supportUrl": "https://iterahq.dev/support",
+  "marketingUrl": "https://iterahq.dev",
+  "privacyPolicyUrl": "https://iterahq.dev/privacy",
+  "ageRating": {
+    "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+    "contests": "NONE",
+    "gamblingSimulated": "NONE",
+    "horrorOrFearThemes": "NONE",
+    "matureOrSuggestiveThemes": "NONE",
+    "medicalOrTreatmentInformation": "NONE",
+    "profanityOrCrudeHumor": "NONE",
+    "sexualContentGraphicAndNudity": "NONE",
+    "sexualContentOrNudity": "NONE",
+    "violenceCartoonOrFantasy": "NONE",
+    "violenceRealistic": "NONE",
+    "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "gambling": false,
+    "unrestrictedWebAccess": false
+  },
+  "review": {
+    "notes": "Itera is a learning app: a native Expo shell around the web player at app.iterahq.dev. The sign-in information holds a review account that already has access to all content.\n\nHow to review: sign in with the e-mail and password in the sign-in information. The home screen opens the learner's program. Open the program \"Dominio -> Agente\" from the catalog, tap the highlighted lesson on the track, and answer the exercises. Each answer shows feedback at once.\n\nAccounts: the app has no sign-up, no price and no purchase of any kind. Accounts are created on the web, outside the app: the app has no account creation flow.\n\n\"Sign in with DFL\" is a second way to sign in with an account of DevFellowship (DFL), the company that operates Itera. It opens the system sign-in sheet (ASWebAuthenticationSession) on a DFL domain. It is the company's own account system, not a third-party or social login.\n\nContent: lessons are loaded from our servers when the app opens. The app downloads no executable code and OTA updates are off.\n\nPermissions: the app asks for the camera only if the user chooses \"Take Photo\" when changing the profile photo. It asks for no microphone, location, contacts or notification permission."
+  },
+  "locales": {
+    "pt-BR": {
+      "name": "Itera",
+      "subtitle": "Microlearning de tech e IA",
+      "promotionalText": "Lições de 5 minutos com exercícios interativos. Responda, receba o resultado na hora e avance no seu ritmo, direto do celular.",
+      "description": "Itera é microlearning de tecnologia, dados e IA para quem quer aprender no meio da rotina. Cada lição leva cerca de 5 minutos e termina em prática, não em teoria solta.\n\nComo funciona\n• Siga a trilha de um programa, dia após dia, e veja de relance o que já fez e o que vem a seguir.\n• Leia o conceito em poucas linhas, depois resolva: escolha a resposta certa, ordene passos, ligue ideias, complete um trecho de código.\n• Receba o resultado na hora, com a explicação do que acertou ou errou, e tente de novo quando precisar.\n• Acompanhe sua sequência de dias, seus pontos de experiência e as conquistas que você desbloqueia.\n\nFeito para o celular\n• Lições curtas, que cabem numa fila de café ou num trajeto de ônibus.\n• Tela sempre ligada durante a lição, para você não perder o fio.\n• Abre direto no ponto onde você parou, inclusive por links compartilhados pelo seu time.\n• Se a conexão cair, o app avisa e deixa você tentar de novo em um toque.\n\nPara você e para o seu time\nEntre com a sua conta Itera ou com a sua conta DFL. O conteúdo é autoral, escrito por quem faz o trabalho no dia a dia: dados, IA aplicada, design de produto, gestão e design de sistemas.\n\nItera: aprender é a operação.\n",
+      "keywords": "microlearning,tecnologia,IA,dados,programação,lições,exercícios,quiz,estudo,design,gestão,prática"
+    },
+    "en-US": {
+      "name": "Itera",
+      "subtitle": "Microlearning for tech & AI",
+      "promotionalText": "5-minute lessons with interactive exercises. Answer, get the result right away and move at your own pace, straight from your phone.",
+      "description": "Itera is microlearning for tech, data and AI, built for people who learn in the middle of a busy day. Each lesson takes about 5 minutes and ends in practice, not loose theory.\n\nHow it works\n• Follow a program's track day by day and see at a glance what you did and what comes next.\n• Read the concept in a few lines, then work it out: pick the right answer, put steps in order, match ideas, complete a piece of code.\n• Get the result right away, with an explanation of what you got right or wrong, and try again when you need to.\n• Keep your daily streak, your experience points and the achievements you unlock.\n\nMade for your phone\n• Short lessons that fit a coffee line or a bus ride.\n• The screen stays on during a lesson, so you never lose the thread.\n• Opens right where you left off, including from links your team shares.\n• If the connection drops, the app tells you and lets you retry in one tap.\n\nFor you and your team\nSign in with your Itera account or your DFL account. The content is authored by the people who do the work every day: data, applied AI, product design, management and systems design.\n\nItera: learning is the operation.\n",
+      "keywords": "microlearning,technology,AI,data,coding,lessons,exercises,quiz,study,design,management,practice"
+    }
+  }
+}

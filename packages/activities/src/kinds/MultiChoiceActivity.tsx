@@ -27,7 +27,7 @@ import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton }
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
 import { InlineLabel } from '../components/InlineLabel.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
-import { choiceGridClass } from '../components/choiceGrid.js';
+import { choiceGridClass, choiceRowsClass } from '../components/choiceGrid.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 function sameSet(a: string[], b: string[]): boolean {
@@ -150,7 +150,8 @@ export function MultiChoiceActivity({
         {t('activity.selectAll')}
       </p>
 
-      <div ref={optionsRef} className={`mt-3 grid gap-2.5 auto-rows-fr ${gridClass}`} data-testid="multi-choice-options">
+      {/* Cards that share a row match heights; stacked cards take the height of their own text. */}
+      <div ref={optionsRef} className={`mt-3 grid gap-2.5 ${choiceRowsClass(gridClass)} ${gridClass}`} data-testid="multi-choice-options">
         {options.map((o, i) => {
           const chosen = selected.includes(o.id);
           const state = choiceOptionState({

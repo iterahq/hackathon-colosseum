@@ -61,3 +61,13 @@ export function choiceGridClass(options: GridOption[]): string {
   if (phone === 1 && wide === 1) return '';
   return phone === wide ? PHONE[phone] : `${PHONE[phone]} ${WIDE[wide]}`;
 }
+
+/**
+ * Equal row heights for the options grid, only where cards share a row. A stacked
+ * list sizes each card by its own text: equal rows there make a one-line option
+ * as tall as a four-line one.
+ */
+export function choiceRowsClass(gridClass: string): string {
+  if (gridClass === '') return '';
+  return gridClass.startsWith(`${PHONE[1]} `) ? 'sm:auto-rows-fr' : 'auto-rows-fr';
+}

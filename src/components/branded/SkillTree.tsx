@@ -23,7 +23,7 @@ import { kindLabelKey } from './skillTreeKindLabel';
 import { SkillTreeUnitHeader } from './SkillTreeUnitHeader';
 import { SkillTreePathNode } from './SkillTreePathNode';
 import { SkillTreeCallout } from './SkillTreeCallout';
-import { lockedPrerequisiteDay } from './skillTreeLockedHint';
+import { lockedBehindMisses, lockedPrerequisiteDay, onlyMissesLeft } from './skillTreeLockedHint';
 import { useLockedHint } from './useLockedHint';
 import {
   BANNER_INSET,
@@ -132,6 +132,7 @@ export function SkillTree({
     width,
     sectionSizes: sections.map((s) => s.nodes.length),
     primaryIndex: primary,
+    calloutNote: primary !== null && onlyMissesLeft(flatNodes[primary]),
   });
   const fullPath = buildTrailPath(layout.nodes);
   const doneUpTo = primary ?? layout.nodes.length - 1;
@@ -141,7 +142,13 @@ export function SkillTree({
 
   const hintPlacement = lockedHint.openIndex === null ? null : layout.nodes[lockedHint.openIndex];
   const hintDay = lockedHint.openIndex === null ? null : lockedPrerequisiteDay(flatNodes, lockedHint.openIndex);
-  const lockedMessage = hintDay === null ? t('journey.lockedGeneric') : t('journey.lockedBehind', { n: hintDay });
+  const hintMisses = lockedHint.openIndex === null ? 0 : lockedBehindMisses(flatNodes, lockedHint.openIndex);
+  const lockedMessage =
+    hintDay === null
+      ? t('journey.lockedGeneric')
+      : hintMisses > 0
+        ? t('journey.lockedBehindMisses', { n: hintDay })
+        : t('journey.lockedBehind', { n: hintDay });
   const lockedHintWidth = Math.min(CALLOUT_MAX_WIDTH, width - CALLOUT_INSET * 2);
   const lockedHintLeft = hintPlacement
     ? Math.max(CALLOUT_INSET, Math.min(width - CALLOUT_INSET - lockedHintWidth, hintPlacement.x - lockedHintWidth / 2))
@@ -328,7 +335,14 @@ export function SkillTree({
                   total: section.total,
                 })}
                 title={tText(node.lesson.title)}
-                ctaLabel={done > 0 ? t('program.continue') : t('program.start')}
+                ctaLabel={onlyMissesLeft(node) ? t('journey.redoMissed') : done > 0 ? t('program.continue') : t('program.start')}
+                note={
+                  onlyMissesLeft(node)
+                    ? node.missed === 1
+                      ? t('journey.missedOne')
+                      : t('journey.missedMany', { n: node.missed })
+                    : undefined
+                }
                 activitiesDone={done}
                 activitiesTotal={node.lesson.activities?.length ?? 0}
                 tone={toneForUnit(section.index)}

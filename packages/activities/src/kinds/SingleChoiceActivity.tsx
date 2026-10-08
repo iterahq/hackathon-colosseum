@@ -33,7 +33,7 @@ import { ActivityShell, AnswerExplanation, answerExplanationText, SubmitButton }
 import { ChoiceOptionCard } from '../components/ChoiceOptionCard.js';
 import { InlineLabel } from '../components/InlineLabel.js';
 import { useChoiceHotkeys } from '../components/useChoiceHotkeys.js';
-import { choiceGridClass } from '../components/choiceGrid.js';
+import { choiceGridClass, choiceRowsClass } from '../components/choiceGrid.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 
 function OptionMedia({ option }: { option: ChoiceOption }) {
@@ -151,7 +151,8 @@ export function SingleChoiceActivity({
     <ActivityShell kind="single_choice" icon={ListChecks} label={t('activity.singleChoice')}>
       <InstructionPanel spec={spec?.instruction} />
 
-      <div ref={optionsRef} className={`mt-5 grid gap-2.5 auto-rows-fr ${gridClass}`} data-testid="single-choice-options">
+      {/* Cards that share a row match heights; stacked cards take the height of their own text. */}
+      <div ref={optionsRef} className={`mt-5 grid gap-2.5 ${choiceRowsClass(gridClass)} ${gridClass}`} data-testid="single-choice-options">
         {options.map((o, i) => {
           const chosen = selected === o.id;
           const state = choiceOptionState({

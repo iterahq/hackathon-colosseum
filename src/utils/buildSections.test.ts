@@ -34,6 +34,19 @@ function program(units: Unit[]): ProgramDetail {
 const states = (program: ProgramDetail) => buildSections(program).map((s) => s.nodes.map((n) => n.state));
 
 describe('buildSections', () => {
+  it('keeps the next lesson locked after a miss, and says how many answers missed', () => {
+    // A miss is 'in_progress'. The gate stays; what changed is that the tree can now SAY
+    // why a learner who reached the last screen still sees the next day locked.
+    const [section] = buildSections(
+      program([unit('u1', [lesson('l1', ['done', 'in_progress', 'in_progress']), lesson('l2', ['todo', 'todo'])])])
+    );
+    expect(section.nodes.map((n) => n.state)).toEqual(['current', 'locked']);
+    expect(section.nodes.map((n) => [n.missed, n.unanswered])).toEqual([
+      [2, 0],
+      [0, 2],
+    ]);
+  });
+
   it('opens each unit at its own first unfinished lesson', () => {
     // Breaks if the frontier goes back to being program-wide: unit 2 would read
     // ['locked', 'locked'] and the learner would lose the path into it.

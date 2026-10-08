@@ -16,6 +16,7 @@ import { blankWidthCh } from './guidedCode.js';
  */
 export function GuidedCodeBlank({
   blank,
+  wordBank,
   value,
   active,
   verdict,
@@ -25,6 +26,8 @@ export function GuidedCodeBlank({
   onChange,
 }: {
   blank: CodeBlank;
+  /** `bank` only: every chip the learner can drop here, so the hole fits the longest. */
+  wordBank?: readonly string[];
   value: string;
   /** `bank` only: this is the hole the next chip lands in. */
   active: boolean;
@@ -42,7 +45,7 @@ export function GuidedCodeBlank({
   onChange: (value: string) => void;
 }) {
   const { t } = useActivityI18n();
-  const width = `${blankWidthCh(blank)}ch`;
+  const width = `${blankWidthCh(blank, wordBank)}ch`;
   const testId = `guided-blank-${blank.id}`;
   const base = blank.placeholder ?? t('code.guided.blankLabel');
   // The verdict is a colour, and colour alone is not a verdict for anyone using a
@@ -61,7 +64,8 @@ export function GuidedCodeBlank({
           ? 'border-evergreen bg-evergreen/10 text-evergreen-hi'
           : 'border-border bg-white/5 text-neutral-100 hover:border-evergreen/60';
 
-  const shared = `mx-0.5 inline-flex h-6 items-center rounded-md border px-1.5 align-middle font-mono text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-evergreen/60 disabled:cursor-not-allowed ${tone}`;
+  // `max-w-full`: a hole wider than its line would leave the card on a narrow phone.
+  const shared = `mx-0.5 inline-flex h-6 max-w-full items-center rounded-md border px-1.5 align-middle font-mono text-[13px] leading-none outline-none transition-colors focus-visible:ring-1 focus-visible:ring-evergreen/60 disabled:cursor-not-allowed ${tone}`;
   const marks = { 'data-testid': testId, 'data-revealed': revealed ? 'true' : 'false' };
 
   if (blank.kind === 'select') {
@@ -120,7 +124,7 @@ export function GuidedCodeBlank({
       disabled={readOnly}
       onClick={() => (value ? onChange('') : onActivate())}
       style={{ width }}
-      className={`${shared} justify-center ${value ? '' : 'border-dashed'}`}
+      className={`${shared} justify-center overflow-hidden whitespace-nowrap ${value ? '' : 'border-dashed'}`}
     >
       {value || (active ? '▍' : '…')}
     </button>

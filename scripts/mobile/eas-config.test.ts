@@ -17,6 +17,7 @@ interface AppJson {
     owner: string;
     runtimeVersion?: unknown;
     backgroundColor: string;
+    locales: { pt: string };
     ios: { bundleIdentifier: string; infoPlist: Record<string, unknown>; associatedDomains?: unknown };
     android: { package: string; adaptiveIcon: { backgroundColor: string }; intentFilters?: unknown; permissions?: unknown };
     plugins: unknown[];
@@ -56,7 +57,8 @@ describe("EAS identity (app.json)", () => {
   });
 
   it("declares no capability the WebView shell does not use, and the associated domains of R-5 and R-20 only", () => {
-    expect(Object.keys(expo.ios.infoPlist)).toEqual(["ITSAppUsesNonExemptEncryption"]);
+    expect(Object.keys(expo.ios.infoPlist)).toEqual(["ITSAppUsesNonExemptEncryption", "NSCameraUsageDescription"]);
+    expect(Object.keys(JSON.parse(read(`apps/mobile/${expo.locales.pt.replace(/^\.\//, "")}`)))).toEqual(["NSCameraUsageDescription"]);
     expect(expo.ios.infoPlist.ITSAppUsesNonExemptEncryption).toBe(false);
     expect(expo.ios.associatedDomains).toEqual(["applinks:app.iterahq.dev", "webcredentials:app.iterahq.dev"]);
     expect(Array.isArray(expo.android.intentFilters)).toBe(true);

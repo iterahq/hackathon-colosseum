@@ -11,6 +11,7 @@
  * ⚠️ Mirrors `@iterahq/activity-spec` read shape locally (`BucketSpec` in
  * `../specs.js`) — see the release-gate note at the top of that section.
  */
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { Boxes } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -107,16 +108,23 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
                 onClick={() => pick(chip.id)}
                 aria-pressed={picked === chip.id}
                 disabled={solved}
-                className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-[3px] coarse:before:inset-x-0 rounded-full border px-4 py-2 text-[15px] ${picked === chip.id ? 'border-evergreen bg-evergreen/15' : 'border-border bg-card hover:border-foreground/30'}`}
+                className={`coarse:relative coarse:before:absolute coarse:before:-inset-y-[3px] coarse:before:inset-x-0 max-w-full rounded-full border px-4 py-2 text-left text-[15px] [overflow-wrap:anywhere] ${picked === chip.id ? 'border-evergreen bg-evergreen/15' : 'border-border bg-card hover:border-foreground/30'}`}
               >
                 {copy.text(chip.label)}
               </motion.button>
             ))}
           </AnimatePresence>
         </div>
+        {/* Three columns on a phone are 100 px each: a chip of code does not fit, so three buckets stack there. */}
         <div
-          className="grid gap-3"
-          style={{ gridTemplateColumns: `repeat(${Math.min(buckets.length || 1, 3)}, minmax(0, 1fr))` }}
+          className="grid gap-3 [grid-template-columns:repeat(var(--bucket-cols-phone),minmax(0,1fr))] sm:[grid-template-columns:repeat(var(--bucket-cols),minmax(0,1fr))]"
+          style={
+            {
+              '--bucket-cols': Math.min(buckets.length || 1, 3),
+              '--bucket-cols-phone': buckets.length >= 3 ? 1 : buckets.length || 1,
+            } as CSSProperties
+          }
+          data-testid="bucket-drops"
         >
           {buckets.map((bucket) => {
             const hex = TONE_HEX[bucket.tone] ?? TONE_HEX.gray;
@@ -129,18 +137,18 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
                 animate={shaking === bucket.id && !reducedMotion ? { x: [0, -6, 6, -4, 4, 0] } : {}}
                 onClick={() => drop(bucket.id)}
                 disabled={solved}
-                className={`text-left rounded-2xl border-2 p-4 min-h-[150px] flex flex-col gap-2 transition-colors ${picked ? 'border-dashed cursor-pointer' : 'border-border'}`}
+                className={`min-w-0 text-left rounded-2xl border-2 p-4 min-h-[150px] max-sm:min-h-[72px] max-sm:p-3 flex flex-col gap-2 transition-colors ${picked ? 'border-dashed cursor-pointer' : 'border-border'}`}
                 style={{ borderColor: picked ? hex : undefined, background: `${hex}0D` }}
               >
-                <span className="font-semibold uppercase text-sm" style={{ color: hex }}>
+                <span className="font-semibold uppercase text-sm [overflow-wrap:anywhere]" style={{ color: hex }}>
                   {copy.text(bucket.label)}
                 </span>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex min-w-0 flex-wrap gap-1.5">
                   {inside.map((chip) => (
                     <span
                       key={chip.id}
                       data-testid={`bucket-placed-${chip.id}`}
-                      className="rounded-full px-3 py-1 text-sm border"
+                      className="max-w-full rounded-2xl px-3 py-1 text-sm border [overflow-wrap:anywhere]"
                       style={{ borderColor: `${hex}66`, background: `${hex}22` }}
                     >
                       {copy.text(chip.label)}

@@ -5,6 +5,8 @@ export const CURRENT_SIZE = 84;
 export const LABEL_HEIGHT = 66;
 export const PRIMARY_LABEL_HEIGHT = 44;
 export const CALLOUT_HEIGHT = 172;
+/** Room for the note line of the callout (two lines of 13 px text and its gap). */
+export const CALLOUT_NOTE_HEIGHT = 44;
 export const BANNER_HEIGHT = 92;
 export const BANNER_INSET = 12;
 
@@ -59,10 +61,13 @@ export function computeTrailLayout({
   width,
   sectionSizes,
   primaryIndex,
+  calloutNote = false,
 }: {
   width: number;
   sectionSizes: number[];
   primaryIndex: number | null;
+  /** The callout carries a note line, so the trail leaves room under it. */
+  calloutNote?: boolean;
 }): TrailLayout {
   const amplitude = waveAmplitude(width);
   const banners: TrailBannerPlacement[] = [];
@@ -91,7 +96,7 @@ export function computeTrailLayout({
       });
       if (isPrimary) {
         calloutTop = top + size + NODE_HALO + PRIMARY_LABEL_HEIGHT;
-        cursor = calloutTop + CALLOUT_HEIGHT + CALLOUT_GAP + NODE_GAP;
+        cursor = calloutTop + CALLOUT_HEIGHT + (calloutNote ? CALLOUT_NOTE_HEIGHT : 0) + CALLOUT_GAP + NODE_GAP;
       } else {
         cursor = top + size + NODE_HALO + LABEL_HEIGHT + NODE_GAP;
       }

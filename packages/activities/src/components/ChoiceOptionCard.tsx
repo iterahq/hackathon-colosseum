@@ -66,7 +66,7 @@ export function ChoiceOptionCard({
         data-state={state}
         data-verdict={verdict ?? undefined}
         data-compact={compact ? 'true' : undefined}
-        className={`w-full h-full min-h-14 flex items-center py-3 text-left ${compact ? 'relative gap-2 px-2.5' : 'gap-3 px-4'} ${tactileSurface(
+        className={`relative w-full h-full min-h-14 flex items-center py-3 text-left ${compact ? 'gap-2 px-2.5' : 'gap-3 px-4'} ${tactileSurface(
           SURFACE_OF[state],
           !disabled,
         )} ${dimmed ? 'opacity-60' : ''} ${disabled ? 'cursor-default' : ''}`}
@@ -94,7 +94,14 @@ export function ChoiceOptionCard({
             </span>
           )
         ) : (
-          <VerdictMark verdict={verdict} />
+          // On a phone the mark lands on the corner too: a slot held beside the label
+          // took 36 px from a 250 px line and cost most options one more row.
+          <span
+            data-verdict-slot=""
+            className={`flex max-sm:absolute max-sm:-right-2 max-sm:-top-2 max-sm:rounded-full max-sm:bg-card ${verdict ? '' : 'max-sm:hidden'}`}
+          >
+            <VerdictMark verdict={verdict} />
+          </span>
         )}
       </button>
     </motion.div>

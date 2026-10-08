@@ -63,6 +63,7 @@ export function GuidedCodeWorkspace({
     <div className="flex flex-col" data-stage-cursor-source>
       <GuidedCodeTemplate
         lines={lines}
+        wordBank={wordBank}
         values={values}
         activeBlankId={activeBlankId}
         byBlank={byBlank}

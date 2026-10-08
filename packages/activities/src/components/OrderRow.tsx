@@ -7,11 +7,6 @@ import { tactileSurface } from './tactileSurface.js';
 import { VerdictMark } from './VerdictMark.js';
 import { InlineLabel } from './InlineLabel.js';
 
-// A fine pointer (mouse, trackpad) may drag from anywhere on the row; a touch
-// screen drags from the grip only, so a swipe on the text still scrolls the page.
-const hasFinePointer = () =>
-  typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(pointer: fine)').matches;
-
 /**
  * One draggable row of the Order list. The row follows the pointer while the
  * others slide aside; locked rows stay mounted with the same geometry.
@@ -36,7 +31,6 @@ export function OrderRow({
   const reduced = useReducedMotion();
   const controls = useDragControls();
   const [dragging, setDragging] = useState(false);
-  const fine = hasFinePointer();
   const surface = dragging ? 'lifted' : verdict === 'right' ? 'right' : verdict === 'miss' ? 'miss' : 'idle';
 
   return (
@@ -57,8 +51,11 @@ export function OrderRow({
       }}
       onPointerDown={(e: React.PointerEvent<HTMLLIElement>) => {
         // A press on a control inside the row is that control's, not a drag.
-        if (!locked && fine && !(e.target as Element).closest('audio, button, a')) controls.start(e);
+        if (!locked && !(e.target as Element).closest('audio, button, a')) controls.start(e);
       }}
+      // The whole row drags, by mouse or by finger, so a touch on it must not
+      // scroll the page. A locked row gives the scroll back.
+      style={{ touchAction: locked ? undefined : 'none' }}
       data-testid="order-item"
       // The AUTHORED item id — what `correct_order` is keyed on. The
       // rendered position is per-learner and changes as they reorder.
@@ -66,16 +63,12 @@ export function OrderRow({
       data-position={position}
       data-verdict={verdict ?? undefined}
       className={`relative flex items-center gap-2 min-[480px]:gap-2.5 py-2.5 pl-1.5 pr-3 min-[480px]:pl-2 ${tactileSurface(surface, false, true)} ${
-        locked ? '' : dragging ? 'cursor-grabbing' : fine ? 'cursor-grab' : ''
+        locked ? '' : dragging ? 'cursor-grabbing' : 'cursor-grab'
       } ${dragging ? 'z-10' : ''}`}
     >
       {/* Kept mounted when locked (dimmed) so the row keeps the exact
           geometry the learner was looking at when they submitted. */}
       <span
-        onPointerDown={(e) => {
-          if (!locked && !fine) controls.start(e);
-        }}
-        style={{ touchAction: locked || fine ? undefined : 'none' }}
         data-testid="order-grip"
         data-locked={locked}
         className={`w-6 min-[480px]:w-7 h-9 flex-shrink-0 inline-flex items-center justify-center text-muted-foreground coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-2 ${locked ? 'opacity-30' : ''}`}

@@ -101,6 +101,34 @@ describe('buildHtmlPreviewDocument — a fresh realm per render', () => {
   });
 });
 
+describe('buildHtmlPreviewDocument — says when the page draws nothing', () => {
+  const readyOf = (source: string) =>
+    new Promise<{ type: string; empty?: boolean }>((resolve) => {
+      const dom = new JSDOM('<!DOCTYPE html><body></body>', { runScripts: 'dangerously', url: 'https://learner.example/' });
+      dom.window.addEventListener('message', (e: MessageEvent) => resolve(e.data));
+      dom.window.document.open();
+      dom.window.document.write(buildHtmlPreviewDocument(source));
+      dom.window.document.close();
+    });
+
+  it('a script that only logs leaves an empty page', async () => {
+    expect(await readyOf("<script>const hora = 9; console.log(hora < 12);</script>")).toEqual({ type: 'itera:ready', empty: true });
+  });
+
+  it('an empty list waiting for a click is still an empty page', async () => {
+    expect((await readyOf('<ul id="lista"></ul><style>ul { color: red; }</style>')).empty).toBe(true);
+  });
+
+  it('text written by the script counts as drawn', async () => {
+    const source = '<p id="s"></p><script>document.querySelector("#s").textContent = "Olá, Bia";</script>';
+    expect((await readyOf(source)).empty).toBe(false);
+  });
+
+  it('a button with no text around it counts as drawn', async () => {
+    expect((await readyOf('<form><input id="meta"></form>')).empty).toBe(false);
+  });
+});
+
 describe('buildHtmlCheckDocument — isolation across STEPPED checks', () => {
   it('two stepped checks graded in SEPARATE realms do not contaminate each other', async () => {
     // A counter script identical to the one above — the exact shape that,

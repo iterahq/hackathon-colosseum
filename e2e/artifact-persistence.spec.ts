@@ -105,13 +105,13 @@ test('a reflection survives a reload AND a brand-new browser context (the localS
   await input.fill(`${marker} — texto suficientemente longo para satisfazer o mínimo de palavras da atividade de reflexão do Itera.`);
   await page.getByTestId('activity-done').click();
 
-  // The save toast is the learner-visible signal that persistence happened.
-  await expect(page.getByText(/trabalho salvo|work saved/i)).toBeVisible({ timeout: 20_000 });
-
-  // 1. Same context, hard reload.
-  await page.goto(`${BASE}/artifacts`);
-  await expect(page.getByTestId('artifact-browser')).toBeVisible();
-  await expect(page.getByText('reflection.md').first()).toBeVisible();
+  // 1. Same context, hard reload. The save is silent and finishes on its own
+  //    time, so the file list is reloaded until the file is there.
+  await expect(async () => {
+    await page.goto(`${BASE}/artifacts`);
+    await expect(page.getByTestId('artifact-browser')).toBeVisible();
+    await expect(page.getByText('reflection.md').first()).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 20_000 });
 
   // 2. A COMPLETELY FRESH context — no localStorage, no cookies carried over.
   //    This is the assertion that separates Phase 1 from the status quo.

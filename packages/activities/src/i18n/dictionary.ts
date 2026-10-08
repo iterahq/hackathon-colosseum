@@ -113,6 +113,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.guided.hint.text': 'O código já está escrito. Digite o que falta em cada lacuna.',
     'code.guided.hint.mixed': 'O código já está escrito. Complete cada lacuna do seu jeito.',
     'code.guided.previewWaiting': 'Complete as lacunas para ver o resultado rodando.',
+    'code.guided.previewEmpty': 'Esse código roda, mas não desenha nada na página.',
     'code.guided.wrongBlank': 'Essa lacuna ainda não está certa.',
     // A posição é o que liga a linha do veredito à lacuna na tela: sem ela,
     // "essa lacuna" com três erros na lista não diz qual.
@@ -301,6 +302,7 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'code.guided.hint.text': 'The code is already written. Type what is missing in each blank.',
     'code.guided.hint.mixed': 'The code is already written. Fill in each blank your own way.',
     'code.guided.previewWaiting': 'Fill in the blanks to see it running.',
+    'code.guided.previewEmpty': 'This code runs, but it draws nothing on the page.',
     'code.guided.wrongBlank': 'This blank is not right yet.',
     'code.guided.blankPosition': 'Blank {position}',
     'code.guided.revealedNotice': "The instructor's answer is on screen. Your own work is saved.",

@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeCheck } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
@@ -43,9 +44,18 @@ export function CodeChecksFeedback({
 }) {
   const { t } = useActivityI18n();
   const passedCount = results.filter((r) => r.passed).length;
+  const reduced = useReducedMotion();
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // On a phone the verdict lands under the editor, below the fold: without this
+  // the learner taps Enviar and sees only the first line of what came back.
+  useEffect(() => {
+    panelRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+  }, [reduced]);
 
   return (
     <motion.div
+      ref={panelRef}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={`mt-4 rounded-2xl border p-4 md:p-5 ${

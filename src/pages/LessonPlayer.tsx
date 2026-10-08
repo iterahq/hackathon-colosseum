@@ -58,7 +58,6 @@ import type { DurationSample } from '@/utils/activityDuration';
 import { useLessonSound } from '@/hooks/useLessonSound';
 import { saveArtifact, type ProducedArtifact } from '@/services/artifact.service';
 import { activityTitleOf, buildArtifact, buildRepoPath } from '@/services/artifactPolicy';
-import { toast } from 'sonner';
 // The kind→column-width rule is SHARED with the live-class surfaces
 // (LiveSessionPage / live/InstructorClassPage) — see the module doc for the
 // Monaco split-pane measurement behind `max-w-7xl`, and for why it must not be
@@ -72,6 +71,7 @@ import {
   stepForward,
 } from '@/utils/lessonNavigation';
 import { lessonExitPath } from '@/utils/lessonExitPath';
+import { upcomingImageUrls } from '@/lib/lessonMediaPreload';
 import type { Activity, LessonPosition } from '@/types/content';
 import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
 
@@ -233,6 +233,13 @@ export default function LessonPlayer() {
   }, [lessonId, activities, isPending, loadAnswers]);
 
   const current = activities[index];
+
+  // The images of the next screens start downloading now, so they are in the
+  // cache when the learner gets there.
+  useEffect(() => {
+    for (const url of upcomingImageUrls(activities, index)) new Image().src = url;
+  }, [activities, index]);
+
   // Answered before this visit — completed on the server, or settled on this
   // device and already past its review beat. The lesson reopens it as a book.
   // The failed save belongs to ONE activity: the retry replays that activity's
@@ -637,21 +644,10 @@ export default function LessonPlayer() {
           activityOrdinal: activity.ordinal,
           activityTitle: activityTitleOf(activity),
         });
-        void saveArtifact(activity.id, artifact, { repoPath }).then((saved) => {
-          // Only announce a save that actually happened. Staying silent on
-          // failure is deliberate: `saveArtifact` is best-effort by design, and
-          // an error toast here would tell a learner who correctly finished the
-          // activity that something went wrong with work they cannot re-submit.
-          if (!saved) return;
-          toast.success(t('artifact.savedTitle'), {
-            description: artifact.filename,
-            duration: 8_000,
-            action: {
-              label: t('artifact.savedCta'),
-              onClick: () => navigate('/artifacts'),
-            },
-          });
-        });
+        // Silent on purpose, success and failure alike: the save is best-effort,
+        // and a notice over the next activity covered what the learner was doing.
+        // The file shows up in /artifacts.
+        void saveArtifact(activity.id, artifact, { repoPath });
       }
       return true;
     });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lockedPrerequisiteDay } from './skillTreeLockedHint';
+import { lockedBehindMisses, lockedPrerequisiteDay, onlyMissesLeft } from './skillTreeLockedHint';
 import type { NodeState, TreeNode } from '@/types/skillTree';
 
 const nodes = (...states: NodeState[]): TreeNode[] =>
@@ -7,6 +7,8 @@ const nodes = (...states: NodeState[]): TreeNode[] =>
     lesson: { id: `l${i}`, unitId: 'u', ordinal: i, title: { en: `L${i}` }, activities: [] },
     state,
     unitIndex: 0,
+    missed: 0,
+    unanswered: 0,
   }));
 
 describe('lockedPrerequisiteDay', () => {
@@ -28,5 +30,28 @@ describe('lockedPrerequisiteDay', () => {
 
   it('is null for the first node', () => {
     expect(lockedPrerequisiteDay(nodes('locked'), 0)).toBeNull();
+  });
+});
+
+describe('onlyMissesLeft / lockedBehindMisses', () => {
+  const trail = (blocker: { missed: number; unanswered: number }): TreeNode[] => {
+    const [a, b] = nodes('current', 'locked');
+    return [{ ...a, ...blocker }, b];
+  };
+
+  it('is the case of a learner who reached the last screen with answers that missed', () => {
+    expect(onlyMissesLeft({ missed: 2, unanswered: 0 })).toBe(true);
+    expect(lockedBehindMisses(trail({ missed: 2, unanswered: 0 }), 1)).toBe(2);
+  });
+
+  it('is not the case while a screen was never answered, or when nothing missed', () => {
+    expect(onlyMissesLeft({ missed: 2, unanswered: 3 })).toBe(false);
+    expect(onlyMissesLeft({ missed: 0, unanswered: 0 })).toBe(false);
+    expect(lockedBehindMisses(trail({ missed: 2, unanswered: 3 }), 1)).toBe(0);
+  });
+
+  it('reads the EARLIEST unfinished lesson, the one the hint names', () => {
+    const [a, b, c] = nodes('current', 'locked', 'locked');
+    expect(lockedBehindMisses([{ ...a, missed: 1 }, { ...b, unanswered: 4 }, c], 2)).toBe(1);
   });
 });

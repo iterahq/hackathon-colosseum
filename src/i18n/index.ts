@@ -109,8 +109,6 @@ export const resources: Record<Locale, Record<string, string>> = {
     'nav.artifacts': 'Meus arquivos',
     'nav.author': 'Autoria',
     // Artefatos do aluno (plano 20260728-itera-artifact-storage, Fases 2-3).
-    'artifact.savedTitle': 'Trabalho salvo',
-    'artifact.savedCta': 'Ver meus arquivos',
     'artifacts.kicker': 'Meu repositório',
     'artifacts.title': 'Meus arquivos',
     'artifacts.subtitle':
@@ -456,6 +454,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'journey.lockedEyebrow': 'dia {day} · bloqueada',
     'journey.lockedBehind': 'Conclua o Dia {n} para liberar',
     'journey.lockedGeneric': 'Conclua a lição anterior',
+    'journey.lockedBehindMisses': 'Acerte o que faltou no Dia {n} para liberar',
+    'journey.missedOne': 'Você chegou ao fim. Falta acertar 1 tela para concluir o dia.',
+    'journey.missedMany': 'Você chegou ao fim. Falta acertar {n} telas para concluir o dia.',
+    'journey.redoMissed': 'Refazer o que faltou',
     'lesson.start': 'Iniciar atividade',
     'lesson.next': 'Próxima',
     'lesson.prev': 'Anterior',
@@ -523,6 +525,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.guided.hint.text': 'O código já está escrito. Digite o que falta em cada lacuna.',
     'code.guided.hint.mixed': 'O código já está escrito. Complete cada lacuna do seu jeito.',
     'code.guided.previewWaiting': 'Complete as lacunas para ver o resultado rodando.',
+    'code.guided.previewEmpty': 'Esse código roda, mas não desenha nada na página.',
     'code.guided.wrongBlank': 'Essa lacuna ainda não está certa.',
     // A posição é o que liga a linha do veredito à lacuna na tela: sem ela,
     // "essa lacuna" com três erros na lista não diz qual.
@@ -1128,8 +1131,6 @@ export const resources: Record<Locale, Record<string, string>> = {
     'nav.artifacts': 'My files',
     'nav.author': 'Authoring',
     // Learner artifacts (plan 20260728-itera-artifact-storage, Phases 2-3).
-    'artifact.savedTitle': 'Work saved',
-    'artifact.savedCta': 'View my files',
     'artifacts.kicker': 'My repository',
     'artifacts.title': 'My files',
     'artifacts.subtitle':
@@ -1466,6 +1467,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'journey.lockedEyebrow': 'day {day} · locked',
     'journey.lockedBehind': 'Finish Day {n} to unlock',
     'journey.lockedGeneric': 'Finish the previous lesson',
+    'journey.lockedBehindMisses': 'Get what you missed on Day {n} right to unlock',
+    'journey.missedOne': 'You reached the end. 1 screen left to get right to finish the day.',
+    'journey.missedMany': 'You reached the end. {n} screens left to get right to finish the day.',
+    'journey.redoMissed': 'Redo what you missed',
     'lesson.start': 'Start activity',
     'lesson.next': 'Next',
     'lesson.prev': 'Previous',
@@ -1523,6 +1528,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.guided.hint.text': 'The code is already written. Type what is missing in each blank.',
     'code.guided.hint.mixed': 'The code is already written. Fill in each blank your own way.',
     'code.guided.previewWaiting': 'Fill in the blanks to see it running.',
+    'code.guided.previewEmpty': 'This code runs, but it draws nothing on the page.',
     'code.guided.wrongBlank': 'This blank is not right yet.',
     'code.guided.blankPosition': 'Blank {position}',
     'code.guided.revealedNotice': "The instructor's answer is on screen. Your own work is saved.",

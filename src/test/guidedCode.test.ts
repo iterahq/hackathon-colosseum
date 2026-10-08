@@ -153,7 +153,24 @@ describe('gradeGuided', () => {
 describe('blankWidthCh', () => {
   it('sizes from the longest candidate, so the field never leaks the answer length', () => {
     const short = blankWidthCh(select('a', 'ok', ['ok', 'umaOpcaoBemLonga']));
-    expect(short).toBe('umaOpcaoBemLonga'.length + 2);
+    // + 3 for the arrow a native select draws inside its box, + 2 of padding.
+    expect(short).toBe('umaOpcaoBemLonga'.length + 3 + 2);
+  });
+
+  it('sizes a bank hole by the longest chip of the bank, whatever its own answer is', () => {
+    const bank = ['createElement', 'querySelector', 'append', 'toggle'];
+    const short = blankWidthCh({ id: 'd', kind: 'bank', answer: 'append' }, bank);
+    const long = blankWidthCh({ id: 'b', kind: 'bank', answer: 'createElement' }, bank);
+    expect(short).toBe('createElement'.length + 2);
+    expect(long).toBe(short);
+  });
+
+  it('ignores the bank for a select, which has its own options', () => {
+    expect(blankWidthCh(select('a', 'ok', ['ok', 'sim']), ['umaPecaMuitoComprida'])).toBe(6 + 3 + 2);
+  });
+
+  it('gives a bank hole no arrow room', () => {
+    expect(blankWidthCh({ id: 'a', kind: 'bank', answer: 'umaPecaComprida' })).toBe('umaPecaComprida'.length + 2);
   });
 
   it('ignores the answer in text, where nothing on screen gives its length away', () => {

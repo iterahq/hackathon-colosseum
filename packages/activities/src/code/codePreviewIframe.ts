@@ -143,8 +143,23 @@ export const CODE_PREVIEW_IFRAME_HTML = [
  * and it is written down here for the one that tries.
  */
 export function buildHtmlPreviewDocument(source: string): string {
-  return source + '<script>window.parent.postMessage({type:"itera:ready"},"*");</script>';
+  return source + `<script>window.parent.postMessage({type:"itera:ready",empty:${HTML_PREVIEW_IS_EMPTY}},"*");</script>`;
 }
+
+/**
+ * Evaluated INSIDE the preview, once the document has been parsed: true when the page
+ * draws nothing — no text outside `<script>`/`<style>` and no element that shows without text. A script that only
+ * talks to the console leaves exactly that, and the parent cannot look for itself (the
+ * frame is an opaque origin). `ready` carries it so a surface may choose not to show an
+ * empty white box; a surface that ignores the field is unaffected.
+ */
+const HTML_PREVIEW_IS_EMPTY =
+  '(function(){var b=document.body;if(!b)return true;' +
+  'if(b.querySelector("img,svg,canvas,video,audio,input,button,select,textarea,iframe,hr"))return false;' +
+  'var w=document.createTreeWalker(b,4),n;' +
+  'while((n=w.nextNode())){var p=n.parentNode&&n.parentNode.nodeName;' +
+  'if(p!=="SCRIPT"&&p!=="STYLE"&&p!=="NOSCRIPT"&&p!=="TEMPLATE"&&/\\S/.test(n.nodeValue))return false;}' +
+  'return true;})()';
 
 /**
  * The GRADED twin of `buildHtmlPreviewDocument`: same fresh-document-per-call

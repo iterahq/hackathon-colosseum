@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { InstructionImage } from './InstructionImage.js';
-import { LIGHTBOX_ZOOM_FACTOR, MediaLightbox } from './MediaLightbox.js';
+import { LIGHTBOX_PINCH_MAX, LIGHTBOX_ZOOM_FACTOR, MediaLightbox } from './MediaLightbox.js';
 
 afterEach(() => {
   cleanup();
@@ -13,6 +13,22 @@ const open = (onClose = vi.fn()) => {
   render(<MediaLightbox src="/lesson-media/a.svg" kind="image" label="Diagram" onClose={onClose} />);
   return onClose;
 };
+
+describe('InstructionImage loading', () => {
+  it('shows the description instead of a skeleton that never ends when the file does not arrive', () => {
+    render(<InstructionImage src="/lesson-media/gone.png" alt="A página antes e depois do clique" />);
+    expect(screen.getByTestId('media-skeleton')).toBeInTheDocument();
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByTestId('media-skeleton')).toBeNull();
+    expect(screen.getByTestId('instruction-image-failed')).toHaveTextContent('A página antes e depois do clique');
+  });
+
+  it('drops the skeleton once the image has loaded', () => {
+    render(<InstructionImage src="/a.png" alt="Diagram" />);
+    fireEvent.load(screen.getByRole('img'));
+    expect(screen.queryByTestId('media-skeleton')).toBeNull();
+  });
+});
 
 describe('MediaLightbox', () => {
   it('is a modal dialog mounted on body, outside any transformed card', () => {
@@ -101,11 +117,61 @@ describe('MediaLightbox', () => {
     expect(image.className).toContain('max-w-full');
   });
 
-  it('lets the frame pan and pinch', () => {
+  it('lets the frame pan, and keeps the pinch for itself instead of the browser', () => {
     open();
     const frame = screen.getByTestId('media-lightbox').className;
-    for (const name of ['overflow-auto', 'overscroll-contain', 'touch-pan-x', 'touch-pan-y', 'touch-pinch-zoom'])
-      expect(frame).toContain(name);
+    for (const name of ['overflow-auto', 'overscroll-contain', 'touch-pan-x', 'touch-pan-y']) expect(frame).toContain(name);
+    expect(frame).not.toContain('touch-pinch-zoom');
+  });
+
+  const touches = (type: string, points: [number, number][]) => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'touches', { value: points.map(([clientX, clientY]) => ({ clientX, clientY })) });
+    return event;
+  };
+
+  it('enlarges the image with two fingers, up to the limit, and fits it back when pinched in', () => {
+    const onClose = open();
+    const frame = screen.getByTestId('media-lightbox');
+    const image = screen.getByTestId('media-lightbox-media');
+    const box = { left: 16, top: 200, width: 358, height: 157 };
+    vi.spyOn(image, 'getBoundingClientRect').mockImplementation(() => box as DOMRect);
+
+    fireEvent(frame, touches('touchstart', [[100, 280], [200, 280]]));
+    const move = touches('touchmove', [[50, 280], [250, 280]]);
+    fireEvent(frame, move);
+    expect(move.defaultPrevented).toBe(true);
+    expect(frame).toHaveAttribute('data-zoomed', 'true');
+    expect(image.style.width).toBe(`${358 * 2}px`);
+    expect(image.style.height).toBe(`${157 * 2}px`);
+    expect(screen.getByTestId('media-lightbox-zoom')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent(frame, touches('touchmove', [[-900, 280], [1100, 280]]));
+    expect(image.style.width).toBe(`${358 * LIGHTBOX_PINCH_MAX}px`);
+
+    fireEvent(frame, touches('touchend', []));
+    fireEvent.click(frame);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(frame).toHaveAttribute('data-zoomed', 'true');
+
+    // A second pinch starts from the enlarged box and pinches all the way in.
+    Object.assign(box, { width: 358 * LIGHTBOX_PINCH_MAX, height: 157 * LIGHTBOX_PINCH_MAX });
+    fireEvent(frame, touches('touchstart', [[0, 280], [300, 280]]));
+    fireEvent(frame, touches('touchmove', [[140, 280], [160, 280]]));
+    expect(image.style.width).toBe('358px');
+    fireEvent(frame, touches('touchend', []));
+    expect(frame).toHaveAttribute('data-zoomed', 'false');
+    expect(image.style.width).toBe('');
+  });
+
+  it('leaves a one-finger move to the frame scroll', () => {
+    open();
+    const frame = screen.getByTestId('media-lightbox');
+    fireEvent(frame, touches('touchstart', [[100, 280]]));
+    const move = touches('touchmove', [[100, 200]]);
+    fireEvent(frame, move);
+    expect(move.defaultPrevented).toBe(false);
+    expect(frame).toHaveAttribute('data-zoomed', 'false');
   });
 
   it('offers no zoom control on a clip', () => {

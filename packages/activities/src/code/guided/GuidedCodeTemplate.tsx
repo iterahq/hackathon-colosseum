@@ -15,6 +15,7 @@ import { GuidedCodeBlank } from './GuidedCodeBlank.js';
  */
 export function GuidedCodeTemplate({
   lines,
+  wordBank,
   values,
   activeBlankId,
   byBlank,
@@ -24,6 +25,8 @@ export function GuidedCodeTemplate({
   onChange,
 }: {
   lines: GuidedLine[];
+  /** The chips of a bank exercise: a hole is as wide as the longest of them. */
+  wordBank?: readonly string[];
   values: GuidedValues;
   activeBlankId: string | null;
   /** Per-blank verdicts, or `null` while the learner is still editing. */
@@ -58,6 +61,7 @@ export function GuidedCodeTemplate({
                 <GuidedCodeBlank
                   key={segment.blank.id}
                   blank={segment.blank}
+                  wordBank={wordBank}
                   value={values[segment.blank.id] ?? ''}
                   active={activeBlankId === segment.blank.id}
                   verdict={byBlank ? (byBlank[segment.blank.id] ?? null) : null}

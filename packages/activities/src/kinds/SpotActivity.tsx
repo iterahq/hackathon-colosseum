@@ -32,6 +32,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
   const { t } = useActivityI18n();
   const spec = activity.spec as unknown as SpotSpec;
   const copy = useSceneText(spec);
+  const pageElements = spec?.page?.elements ?? [];
   const gate = useSceneGate(activity, onComplete);
   const { record, open, solved } = gate;
 
@@ -68,7 +69,7 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
       reaction={copy.reaction}
       solved={solved}
     >
-      <div className="grid md:grid-cols-2 gap-5 items-stretch" data-testid="spot-stage">
+      <div className={`grid gap-5 items-stretch ${pageElements.length ? 'md:grid-cols-2' : ''}`} data-testid="spot-stage">
         <div
           className={`min-w-0 overflow-x-auto rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 coarse:gap-0 ${TOUCH_SURFACE}`}
           style={{ background: SCENE_CODE_BACKGROUND }}
@@ -106,22 +107,25 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
             </span>
           ))}
         </div>
-        <div
-          className="rounded-xl overflow-hidden border border-black/10 min-h-[160px] max-sm:min-h-[112px]"
-          style={{ background: SCENE_PAGE_BACKGROUND }}
-          data-testid="spot-preview"
-        >
-          <SceneBrowserBar url={copy.url} />
-          <div className="flex flex-col gap-3 p-6">
-            {(spec?.page?.elements ?? []).map((el) => (
-              <ScenePageElement
-                key={el.id}
-                element={el}
-                text={el.broken_by && fixed.has(el.broken_by) ? bugsById.get(el.broken_by)?.fixed_text : undefined}
-              />
-            ))}
+        {/* `page` is optional: a bug in code that draws nothing has no page to show, and an empty browser reads as broken. */}
+        {pageElements.length > 0 && (
+          <div
+            className="rounded-xl overflow-hidden border border-black/10 min-h-[160px] max-sm:min-h-[112px]"
+            style={{ background: SCENE_PAGE_BACKGROUND }}
+            data-testid="spot-preview"
+          >
+            <SceneBrowserBar url={copy.url} />
+            <div className="flex flex-col gap-3 p-6">
+              {pageElements.map((el) => (
+                <ScenePageElement
+                  key={el.id}
+                  element={el}
+                  text={el.broken_by && fixed.has(el.broken_by) ? bugsById.get(el.broken_by)?.fixed_text : undefined}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       {!solved && <WrongHint {...hintProps} />}
     </SceneFrame>

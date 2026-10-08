@@ -175,7 +175,7 @@ Residual: the closed chrome list is edited in the same PR that adds a chrome fil
 
 EAS project `@iterahq/itera-player` (Expo org `iterahq`, id `14894fdb-316a-4b24-a12b-ac3106ee9d6d`, created with `eas init` and the org robot token; the id is not a secret). Bundle id and Android package: `com.tainanfidelis.iterahq` (Q-2; the Android package is the same id until Tainan says otherwise). Apple app record: Apple ID `6819303533`, SKU `iterahq-ios`.
 
-Files: `apps/mobile/app.json` (owner, ids, `runtimeVersion` policy `fingerprint`, `updates.url`, icon, splash, `ITSAppUsesNonExemptEncryption: false`, no usage string, because the shell uses no camera, microphone or location; the deep-link claim is R-5's: `ios.associatedDomains` (`applinks:app.iterahq.dev`, plus `webcredentials:app.iterahq.dev` for the R-20 auth session) and the Android `intentFilters`), `apps/mobile/eas.json` (profiles `development`, `preview`, `production`; `appVersionSource: remote`, so EAS numbers builds and `app.json` carries no `buildNumber` or `versionCode`; Node `20.19.4`, the major `mobile-shell.yml` runs), `.github/workflows/mobile-eas.yml`, `apps/mobile/scripts/eas-build-counter.mjs` (+ `scripts/mobile/eas-build-counter.test.ts`), `apps/mobile/scripts/make-icons.py` (draws `apps/mobile/assets/*.png` from the geometry and colours of `public/favicon.svg`: the web repo has no square 1024 px source).
+Files: `apps/mobile/app.json` (owner, ids, `runtimeVersion` policy `fingerprint`, `updates.url`, icon, splash, `ITSAppUsesNonExemptEncryption: false`, one usage string, `NSCameraUsageDescription` (Portuguese copy in `apps/mobile/locales/pt.json`), because the profile photo input of the page can offer "Take Photo"; no microphone or location string; the deep-link claim is R-5's: `ios.associatedDomains` (`applinks:app.iterahq.dev`, plus `webcredentials:app.iterahq.dev` for the R-20 auth session) and the Android `intentFilters`), `apps/mobile/eas.json` (profiles `development`, `preview`, `production`; `appVersionSource: remote`, so EAS numbers builds and `app.json` carries no `buildNumber` or `versionCode`; Node `20.19.4`, the major `mobile-shell.yml` runs), `.github/workflows/mobile-eas.yml`, `apps/mobile/scripts/eas-build-counter.mjs` (+ `scripts/mobile/eas-build-counter.test.ts`), `apps/mobile/scripts/make-icons.py` (draws `apps/mobile/assets/*.png` from the geometry and colours of `public/favicon.svg`: the web repo has no square 1024 px source).
 
 | Profile | Does | Used by |
 |---|---|---|
@@ -428,3 +428,19 @@ Not measured, needs an installed build on a phone (plan row 0.29, per OS): that 
 - Whether a DFL sign-in started in mobile Safari or Chrome, with the app installed, still completes in the browser (the other half of row 0.29).
 A "no" goes back to Tainan as a question (ADR-10): a web bounce to `itera://` would pass the token through a scheme any Android app can claim.
 
+
+## App Store submission
+
+The iOS shell goes to the App Store in this order. Everything that talks to App Store Connect runs in `.github/workflows/mobile-store-asc.yml` (manual, `main` only): the API key exists only as repo secrets. The audit, the gaps and their owners are in [`apps/mobile/APP_REVIEW.md`](../apps/mobile/APP_REVIEW.md); the listing is `apps/mobile/store/metadata.json` (single source, pt-BR and en-US) and `apps/mobile/store/screenshots/`.
+
+1. **status** (`action=status`): prints versions, builds, the listing per locale, screenshot counts and the list of what still blocks a submission. Read-only; runs without the review secrets.
+2. **Fix the gaps** of `APP_REVIEW.md` section 7: privacy policy page, support page, demo account, the 4.8 and 4.2 decisions.
+3. **Build**: the privacy manifest in `app.json` changes the native fingerprint, so one new iOS production build is needed (`mobile-eas`, `platform=ios profile=production`, then its `submit_build_id` run to send it to TestFlight; the counter applies). Wait until App Store Connect shows the build as processed.
+4. **push**: `action=push-dry-run` first (the planned writes, GETs only), then `action=push` with `version` and `build_number`. It is idempotent: it creates the editable version if none exists, upserts the localizations, categories, copyright, age rating and review detail, attaches the build and replaces the screenshots with the files on disk. Run `status` again.
+5. **submit**: `action=submit` with `confirm=com.tainanfidelis.iterahq`. It refuses while `status` still lists a blocker.
+
+Human-only steps (no API or a human decision): publish the privacy policy page; add the secrets `ASC_REVIEW_CONTACT_FIRST_NAME`, `ASC_REVIEW_CONTACT_LAST_NAME`, `ASC_REVIEW_CONTACT_EMAIL`, `ASC_REVIEW_CONTACT_PHONE`, `ASC_REVIEW_DEMO_USER`, `ASC_REVIEW_DEMO_PASSWORD`; tick the App Privacy label (boxes in `APP_REVIEW.md` section 2b); confirm content rights, availability and the free price in the UI; decide 4.8 (Sign in with Apple), 5.1.1(v) (deletion) and the 3.1.3 exception; start the build.
+
+Screenshots: `node apps/mobile/scripts/store-screenshots.mjs` (Playwright from a checkout with the root `npm ci`; `STORE_SHOTS_STORAGE_STATE` points to a signed-in storage state kept outside the repo). The lesson steps write progress for the account used: use the review account. The en-US folder reuses the pt-BR images: the lessons are in Portuguese.
+
+Tests of the CLI: `npm --prefix apps/mobile test` (the config includes `scripts/**/*.test.mjs`).
