@@ -7,6 +7,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./catalog/messages": "./src/catalog/messages.ts",
+    "./catalog/fixtures": "./src/catalog/fixtures.ts",
+    "./catalog": "./src/catalog/index.ts",
     "./not-found/messages": "./src/not-found/messages.ts",
     "./not-found": "./src/not-found/index.ts",
     "./theme/*.css": "./theme/*.css"

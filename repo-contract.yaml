@@ -263,7 +263,7 @@ environment:
     # VITE_*): the same two values as VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. No
     # service-role key and no other secret ever goes under apps/mobile.
     - name: EXPO_PUBLIC_SUPABASE_URL
-      description: Shell only. https origin of the Itera Supabase project; the one host the shell's development probe may call (apps/mobile/src/backendProbe.ts). Public.
+      description: Shell only. https origin of the Itera Supabase project; the one host the shell's backend reader may call (apps/mobile/src/backendProbe.ts: the development probe and the native hosts of the universal screens). Public.
       default: "unset (the probe reports not configured)"
     - name: EXPO_PUBLIC_SUPABASE_ANON_KEY
       description: Shell only. The anon key of that project (public; row-level security applies). A key whose role is not anon is refused.
@@ -323,7 +323,7 @@ mobile_shell_session:
   web_call_site: src/lib/shellAuthSession.ts
   native_holder: apps/mobile/src/nativeSession.ts (memory only; dropped on sign-out, user change, top-frame load, relaunch, unmount)
   not_offered: Android System WebView without WebMessageListener (the sender frame is unknown there); any build without EXPO_PUBLIC_SUPABASE_URL (no issuer to check a token against)
-  native_network: apps/mobile/src/backendProbe.ts (development probe; the https origin of EXPO_PUBLIC_SUPABASE_URL only)
+  native_network: apps/mobile/src/backendProbe.ts (readBackend: the development probe and the native hosts of the universal screens; the https origin of EXPO_PUBLIC_SUPABASE_URL only)
 
 agent_entry_point: CLAUDE.md
 

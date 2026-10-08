@@ -258,7 +258,7 @@
       "name": "Catálogo de cursos",
       "route": "/catalog",
       "source_ref": {
-        "component_file": "src/pages/CatalogPage.tsx"
+        "component_file": "packages/screens/src/catalog/CatalogScreen.tsx"
       },
       "screenshots": [],
       "prerequisites": {

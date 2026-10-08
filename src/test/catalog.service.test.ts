@@ -47,7 +47,7 @@ describe('getCatalogPrograms', () => {
       alreadyEnrolled: false,
     });
     expect(out[0].title.pt).toBe('Modele');
-    expect(out[0].accent).toBeTruthy();
+    expect(out[0].icon).toBe('code');
   });
 
   it('throws on RPC error', async () => {

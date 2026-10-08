@@ -55,7 +55,7 @@ const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
    import() keeps the route-map guard able to read which page each route renders. Guards stay static
    and OUTSIDE each <Suspense>, so authorization is still decided first. */
 const HomePage = lazy(() => import("./pages/HomePage"));
-const CatalogPage = lazy(() => import("./pages/CatalogPage"));
+const CatalogRoute = lazy(() => import("./pages/CatalogRoute"));
 const ProgramPage = lazy(() => import("./pages/ProgramPage"));
 const LessonPlayer = lazy(() => import("./pages/LessonPlayer"));
 const ArtifactsPage = lazy(() => import("./pages/ArtifactsPage"));
@@ -205,14 +205,14 @@ const App = () => (
                 {/* Self-serve catalog — browse + enroll into catalog courses
                     (round-1 finding #1). A visitor (no subscription) can still
                     browse it (mode="preview"); the enroll CTA is replaced by a
-                    "subscribe to unlock" CTA for them (CatalogPage), so enroll
+                    "subscribe to unlock" CTA for them (the catalog host), so enroll
                     is never called without an active seat. */}
                 <Route
                   path="/catalog"
                   element={
                     <RequireAuth>
                       <RequireSubscription mode="preview">
-                        <LazyRoute><CatalogPage /></LazyRoute>
+                        <LazyRoute><CatalogRoute /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }

@@ -72,6 +72,7 @@ import { nextEntry, type RouteEntry } from '../src/routeEntry';
 import { forgetLink, lastLink } from '../src/rawLink';
 import { createKeepAwakeClaims } from '../src/keepAwakeHolder';
 import { LoadingVeil } from '../src/LoadingVeil';
+import { provideBackend } from '../src/nativeBackend';
 import { createNativeSession, issuerOf, sessionStatusLine } from '../src/nativeSession';
 import { OfflineCard } from '../src/OfflineCard';
 import { browserMethod, createOpenReporter } from '../src/openExternal';
@@ -142,6 +143,8 @@ const BACKEND = parseBackend(process.env.EXPO_PUBLIC_SUPABASE_URL, process.env.E
 // One copy of the access token per process, in memory only (ADR-10). The WebView owns the session and its refresh.
 // No backend in the build = no issuer to hold a token to = no native session: `auth.session` is not offered.
 const NATIVE_SESSION = BACKEND === null ? null : createNativeSession({ issuer: issuerOf(BACKEND.origin) });
+// The native hosts of the universal screens read the backend with that copy (`src/nativeBackend.ts`).
+provideBackend(BACKEND, NATIVE_SESSION?.session ?? null);
 const RANDOM = (bytes: Uint8Array) => getRandomValues(bytes);
 
 // react-native-webview declares `class WebView<P = undefined>` in some releases. With that default

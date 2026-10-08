@@ -55,8 +55,9 @@ function cssPipelineOfMain(): Plugin {
  *    (`.css-*`, `.r-*`), which match nothing outside a screen.
  * 2. The responder system puts thirteen listeners on `document` and one on `window` when the FIRST `View`
  *    mounts, and never removes them. They are attached when a node registers with the responder system
- *    instead (a `Pressable`, a `ScrollView`). Lesson Studio also detaches them when the last node leaves;
- *    that half is not ported: no screen here registers one yet.
+ *    instead (a `Pressable`, a `ScrollView`).
+ * 3. They are detached when the last registered node leaves (the login screen has three `Pressable`s). A
+ *    touch or mouse button still down defers the detach to the event that releases it.
  */
 const RNW_EDITS: { file: RegExp; edits: [from: string | RegExp, to: string][] }[] = [
   {
@@ -71,6 +72,25 @@ const RNW_EDITS: { file: RegExp; edits: [from: string | RegExp, to: string][] }[
         "    if (requiresResponderSystem) {\n      ResponderSystem.addNode(id, node, config);",
         "    if (requiresResponderSystem) {\n      ResponderSystem.attachListeners();\n      ResponderSystem.addNode(id, node, config);",
       ],
+    ],
+  },
+  {
+    file: /react-native-web[\\/]dist[\\/]modules[\\/]useResponderEvents[\\/]ResponderSystem\.js$/,
+    edits: [
+      [
+        "  if (responderListenersMap.has(id)) {\n    responderListenersMap.delete(id);\n  }\n}",
+        "  if (responderListenersMap.has(id)) {\n    responderListenersMap.delete(id);\n  }\n  detachWhenIdle();\n}\n" +
+          "function detachWhenIdle() {\n" +
+          "  if (responderListenersMap.size !== 0 || !canUseDOM || window.__reactResponderSystemActive == null) {\n    return;\n  }\n" +
+          "  if (trackedTouchCount !== 0 || currentResponder.id != null) {\n    return;\n  }\n" +
+          "  window.removeEventListener('blur', eventListener);\n" +
+          "  documentEventsBubblePhase.forEach(eventType => {\n    document.removeEventListener(eventType, eventListener);\n  });\n" +
+          "  documentEventsCapturePhase.forEach(eventType => {\n    document.removeEventListener(eventType, eventListener, true);\n  });\n" +
+          "  window.__reactResponderSystemActive = null;\n" +
+          "  isEmulatingMouseEvents = false;\n" +
+          "}",
+      ],
+      ["function eventListener(domEvent) {\n", "function eventListener(domEvent) {\n  eventListenerOfRnw(domEvent);\n  detachWhenIdle();\n}\nfunction eventListenerOfRnw(domEvent) {\n"],
     ],
   },
 ];

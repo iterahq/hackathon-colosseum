@@ -12,15 +12,30 @@
  */
 import type { ComponentType, ReactNode } from 'react';
 
-export type Role = 'heading' | 'link';
+export type Role = 'button' | 'heading' | 'link' | 'list' | 'listitem' | 'main' | 'paragraph';
 
 interface PrimitiveProps {
   children?: ReactNode;
   className?: string;
   role?: Role;
+  testID?: string;
+  'aria-label'?: string;
+  'aria-hidden'?: boolean;
+  style?: object;
 }
 
-export type ViewProps = PrimitiveProps;
+export interface LayoutChangeEvent {
+  nativeEvent: { layout: { width: number; height: number } };
+}
+
+export interface ViewProps extends PrimitiveProps {
+  onLayout?: (event: LayoutChangeEvent) => void;
+}
+
+export interface PressableProps extends PrimitiveProps {
+  disabled?: boolean;
+  onPress?: () => void;
+}
 
 export interface TextProps extends PrimitiveProps {
   'aria-level'?: number;
@@ -29,4 +44,7 @@ export interface TextProps extends PrimitiveProps {
 
 export const View: ComponentType<ViewProps>;
 export const Text: ComponentType<TextProps>;
+export const Pressable: ComponentType<PressableProps>;
+/** Only a slot uses it, and only off the web: there the document scrolls. */
+export const ScrollView: ComponentType<ViewProps>;
 export const Platform: { readonly OS: 'ios' | 'android' | 'macos' | 'windows' | 'web' };

@@ -23,37 +23,8 @@
  * Left out on purpose: amber only in "by DFL" pieces (contradicted above,
  * kept anyway per the designer's sign-off), mint (too close to
  * evergreen-hi), green-500 (generic status) and clay (Q&A-only).
+ *
+ * The values live in `packages/core` since the catalog port (`catalog/tone.ts`): the universal screen's
+ * model and these web cards read one copy.
  */
-import type { CategoryTone } from '@/types/categoryTone';
-
-export type { CategoryTone };
-
-const TEAL: CategoryTone = { accent: '#7AD6CD', surface: '#003B37', edge: '#057A72' };
-const BLUE: CategoryTone = { accent: '#7AA2E0', surface: '#1A2B4C', edge: '#3B5C9C' };
-const LILAC: CategoryTone = { accent: '#B58FE0', surface: '#3A294D', edge: '#79569D' };
-const CORAL: CategoryTone = { accent: '#E07A7A', surface: '#4C1A1A', edge: '#9C3B3B' };
-const AMBER: CategoryTone = { accent: '#E07A4A', surface: '#4D2818', edge: '#9E5230' };
-
-/**
- * Keyed by the same category key as `categoryFor` (`ProgramIcon.tsx`) — the
- * program's `icon` field. Covers all ten keys of `ICON_CATEGORY`.
- */
-export const PALETTE_V3: Record<string, CategoryTone> = {
-  code: TEAL,
-  shield: TEAL,
-  book: TEAL,
-  layers: BLUE,
-  cloud: BLUE,
-  cpu: LILAC,
-  wand: CORAL,
-  sparkles: CORAL,
-  brain: CORAL,
-  rocket: AMBER,
-};
-
-const DEFAULT_TONE = TEAL;
-
-/** Tone for a program's `icon` key, falling back to the default (teal) tone. */
-export function toneFor(icon?: string): CategoryTone {
-  return PALETTE_V3[icon ?? ''] ?? DEFAULT_TONE;
-}
+export { PALETTE_V3, toneFor, type CatalogCardTone as CategoryTone } from '@iterahq/shell-core';

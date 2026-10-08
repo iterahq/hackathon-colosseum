@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PROBE_PATH, parseBackend, probeIteraUser, probeLine, type ProbeFetch, type ProbeResponse } from './backendProbe';
+import { PROBE_PATH, parseBackend, probeIteraUser, probeLine, readBackend, type ProbeFetch, type ProbeResponse } from './backendProbe';
 import { PROJECT, fakeJwt } from './jwt.testkit';
 
 const key = (role: string) => fakeJwt({ role, iss: 'supabase', ref: 'kjefmwlopzeaqgqtlbdn', sub: undefined, aud: undefined });
@@ -114,3 +114,23 @@ describe('probeLine', () => {
     expect(probeLine({ kind: 'not-configured' })).toContain('EXPO_PUBLIC_SUPABASE_URL');
   });
 });
+
+describe('readBackend', () => {
+  const request = { path: 'rpc/x', body: '{}', maxChars: 256 };
+
+  it('the timeout covers the wait for the token: a slow token source cannot hold the read longer', async () => {
+    const fetchImpl = vi.fn<ProbeFetch>(async () => answer('null'));
+    const started = Date.now();
+    const slow = () => new Promise<string>((resolve) => setTimeout(() => resolve(TOKEN), 300));
+    expect(await readBackend(BACKEND, slow, request, fetchImpl, 50)).toEqual({ kind: 'failed', status: null });
+    expect(Date.now() - started).toBeLessThan(200);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('an answer over the cap is refused whole: not parsed, nothing of it returned', async () => {
+    const got = await readBackend(BACKEND, async () => TOKEN, request, async () => answer(JSON.stringify('x'.repeat(400))));
+    expect(got).toEqual({ kind: 'failed', status: 200 });
+  });
+});
+

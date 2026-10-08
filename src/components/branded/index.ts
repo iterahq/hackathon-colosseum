@@ -3,7 +3,6 @@ export { AppHeader } from './AppHeader';
 export { ProgramIcon } from './ProgramIcon';
 export { CatalogProgramCard } from './CatalogProgramCard';
 export { EnrolledProgramCard } from './EnrolledProgramCard';
-export { PageTitleAccent } from './PageTitleAccent';
 export { SlashBar } from './SlashBar';
 export { LockedCatalogCard } from './LockedCatalogCard';
 export { VisitorBanner } from './VisitorBanner';

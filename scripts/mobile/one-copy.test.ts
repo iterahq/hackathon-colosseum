@@ -49,7 +49,7 @@ const APP_PATHS = 32;
  * = 15 rows; one of them, `*` (the not-found screen, R-11), is universal and no longer counts: 14.
  * `*` left `not_counted_routes` because rule 2 needs a route that owns `packages/screens/src/not-found/`.
  */
-const ROUTE_METER = 14;
+const ROUTE_METER = 13;
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const real = loadRepo(ROOT);
@@ -87,10 +87,14 @@ describe("one copy, the real tree", () => {
     expect(rule4(realMap)).toEqual([]);
   });
   it("the real tree has its first universal route, and the files it names exist", () => {
-    expect(realMap.routes.filter((r) => r.universal).map((r) => `${r.path} -> ${r.screen} (${r.mode})`)).toEqual(["* -> not-found (webview)"]);
+    expect(realMap.routes.filter((r) => r.universal).map((r) => `${r.path} -> ${r.screen} (${r.mode})`)).toEqual(["/catalog -> catalog (webview)", "* -> not-found (webview)"]);
     expect(real.paths).toContain("packages/screens/src/not-found/NotFoundScreen.tsx");
     expect(real.paths).toContain("src/pages/NotFoundRoute.tsx");
     expect(real.paths).toContain("apps/mobile/app/preview/not-found.tsx");
+    expect(real.paths).toContain("packages/screens/src/catalog/CatalogScreen.tsx");
+    expect(real.paths).toContain("src/pages/CatalogRoute.tsx");
+    expect(real.paths).toContain("apps/mobile/app/preview/catalog.tsx");
+    expect(real.paths).toContain("apps/mobile/app/native/catalog.tsx");
   });
   it("rule 5: the map covers the frozen manifest and every path of App.tsx", () => {
     expect(rule5(real, realMap, APP_PATHS)).toEqual([]);

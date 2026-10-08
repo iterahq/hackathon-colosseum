@@ -47,6 +47,7 @@ const GATED: Record<string, Gate> = {
   "src/components/profile/ManageBillingButton.tsx": { gate: "reached-through", symbols: ["ManageBillingButton"] },
   "src/utils/formatBillingDate.ts": { gate: "reached-through", symbols: ["formatBillingDate"] },
 
+  "src/hooks/useCatalogScreen.ts": { gate: "surface-branch", hits: 2 },
   "src/hooks/useBillingPortal.ts": { gate: "reached-through", symbols: ["useBillingPortal"] },
   "src/hooks/useCancelSubscription.ts": { gate: "reached-through", symbols: ["useCancelSubscription"] },
   "src/hooks/useCheckoutActivation.ts": { gate: "reached-through", symbols: ["useCheckoutActivation"] },
@@ -88,6 +89,7 @@ const ROUTE_CALL_SITES: Record<string, number> = {
   "src/components/branded/VisitorBanner.tsx": 1,
   "src/components/live/GuestEndCard.tsx": 1,
   "src/components/profile/SubscriptionSection.tsx": 1,
+  "src/hooks/useCatalogScreen.ts": 1,
   "src/pages/ProgramPage.tsx": 1,
   "src/pages/SubscribeReturnPage.tsx": 1,
   "src/pages/auth/AuthPage.tsx": 1,

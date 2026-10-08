@@ -7,22 +7,7 @@
  */
 import type { I18nText } from '@/types/content';
 
-export interface CatalogProgram {
-  id: string;
-  tenantId: string;
-  /** The owning tenant slug (e.g. 'itera') — informational. */
-  tenantSlug: string;
-  slug: string;
-  title: I18nText;
-  createdAt: string;
-  unitCount: number;
-  lessonCount: number;
-  activityCount: number;
-  /** True when the caller already holds a membership in this program's tenant. */
-  alreadyEnrolled: boolean;
-  accent?: string;
-  icon?: string;
-}
+export type { CatalogProgram } from '@iterahq/shell-core';
 
 /**
  * Syllabus of ONE catalog program, readable before enrollment, returned by

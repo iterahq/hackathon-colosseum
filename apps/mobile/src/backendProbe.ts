@@ -1,11 +1,13 @@
 /**
- * The development probe of PLAN row R-12: one read of the backend as the signed-in learner, with the
- * access token the page handed over (`nativeSession.ts`). It calls the RPC `current_itera_user_id` of
- * schema `itera`, the same call the web makes in `src/services/iteraUser.ts`, and reports the id.
- * `app/[...path].tsx` runs it under `__DEV__` only and shows the result in the dev overlay.
+ * The shell's one reader of the backend (`readBackend`): a read of PostgREST as the signed-in learner, with
+ * the access token the page handed over (`nativeSession.ts`). Two callers: the native hosts of the
+ * universal screens, through `nativeBackend.ts`, and the development probe of PLAN row R-12, which calls
+ * the RPC `current_itera_user_id` of schema `itera` (the same call the web makes in
+ * `src/services/iteraUser.ts`); `app/[...path].tsx` runs the probe under `__DEV__` only and shows the
+ * result in the dev overlay.
  *
  * This file and `shellGate.ts` are the only ones in the shell that may contain a network call
- * (one-copy rule 1b). It talks to ONE host: the https origin of `EXPO_PUBLIC_SUPABASE_URL`, with a path
+ * (one-copy rule 1b), and this one holds exactly one. It talks to ONE host: the https origin of `EXPO_PUBLIC_SUPABASE_URL`, with a path
  * that is a constant. Both `EXPO_PUBLIC_*` values are public by definition: Metro inlines them into the
  * bundle, exactly as Vite inlines the web's `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. The anon
  * key grants nothing without row-level security; a service-role key is refused here (`parseBackend`).
@@ -68,47 +70,64 @@ export interface ProbeResponse {
 }
 export type ProbeFetch = (
   url: string,
-  init: { method: 'POST'; headers: Record<string, string>; body: string; cache: 'no-store'; signal?: AbortSignal },
+  init: { method: 'POST' | 'GET'; headers: Record<string, string>; body?: string; cache: 'no-store'; signal?: AbortSignal },
 ) => Promise<ProbeResponse>;
 
+/** One read of PostgREST, schema `itera`: `path` continues `/rest/v1/`; a `body` makes it a POST (an RPC), none a GET (rows). */
+export interface BackendRequest {
+  path: string;
+  body?: string;
+  /** An answer longer than this is refused: it is not parsed and nothing of it is returned. The body is in memory by then (React Native's `fetch` has no stream to stop), so what bounds the download is the timeout, not this. Counted in UTF-16 units. */
+  maxChars: number;
+}
+
+export type BackendAnswer =
+  | { kind: 'ok'; value: unknown; status: number }
+  | { kind: 'no-session' }
+  | { kind: 'not-configured' }
+  /** `status` null: no answer from the backend (offline, a timeout, an answer that is not JSON or came from another origin). */
+  | { kind: 'failed'; status: number | null };
+
+export const REST_PATH = '/rest/v1/';
+
 /**
- * Ask the backend who the token is. `getAccessToken` is the native session's: it gives a token with life
- * left, asks the page for a fresh one otherwise, and null when there is none. Never throws, never waits
- * longer than `timeoutMs`.
+ * The one network call of the shell's native screens and of the probe: a read of the backend as the
+ * signed-in learner. `getAccessToken` is the native session's: it gives a token with life left, asks the
+ * page for a fresh one otherwise, and null when there is none. Never throws, never waits longer than
+ * `timeoutMs` (the wait for the token included), and nothing it returns carries the token or the key.
  */
-export async function probeIteraUser(
+export async function readBackend(
   backend: Backend | null,
   getAccessToken: () => Promise<string | null>,
+  request: BackendRequest,
   fetchImpl: ProbeFetch = (url, init) => fetch(url, init),
   timeoutMs = PROBE_TIMEOUT_MS,
-): Promise<ProbeResult> {
+): Promise<BackendAnswer> {
   if (backend === null) return { kind: 'not-configured' };
-  let token: string | null;
-  try {
-    token = await getAccessToken();
-  } catch {
-    token = null;
-  }
-  if (token === null) return { kind: 'no-session' };
   const controller = typeof AbortController === 'undefined' ? null : new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<ProbeResult>((resolve) => {
+  // The clock starts before the token is asked for: the wait for the page's answer counts too.
+  const timeout = new Promise<BackendAnswer>((resolve) => {
     timer = setTimeout(() => {
       controller?.abort();
       resolve({ kind: 'failed', status: null });
     }, timeoutMs);
   });
-  const read = (async (): Promise<ProbeResult> => {
+  const read = (async (): Promise<BackendAnswer> => {
+    let token: string | null;
     try {
-      const res = await fetchImpl(`${backend.origin}${PROBE_PATH}`, {
-        method: 'POST',
-        headers: {
-          apikey: backend.anonKey,
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Content-Profile': 'itera',
-        },
-        body: '{}',
+      token = await getAccessToken();
+    } catch {
+      token = null;
+    }
+    if (token === null) return { kind: 'no-session' };
+    if (controller?.signal.aborted) return { kind: 'failed', status: null };
+    const auth = { apikey: backend.anonKey, Authorization: `Bearer ${token}` };
+    try {
+      const res = await fetchImpl(`${backend.origin}${REST_PATH}${request.path}`, {
+        ...(request.body === undefined
+          ? { method: 'GET', headers: { ...auth, 'Accept-Profile': 'itera' } }
+          : { method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', 'Content-Profile': 'itera' }, body: request.body }),
         cache: 'no-store',
         signal: controller?.signal,
       });
@@ -116,10 +135,8 @@ export async function probeIteraUser(
       if (typeof res.url === 'string' && res.url !== '' && originOf(res.url) !== backend.origin) return { kind: 'failed', status: null };
       if (!res.ok) return { kind: 'failed', status: res.status };
       const text = await res.text();
-      if (text.length > MAX_BODY_CHARS) return { kind: 'failed', status: res.status };
-      const value: unknown = JSON.parse(text);
-      if (value === null) return { kind: 'no-user' };
-      return typeof value === 'string' && UUID.test(value) ? { kind: 'ok', iteraUserId: value } : { kind: 'failed', status: res.status };
+      if (text.length > request.maxChars) return { kind: 'failed', status: res.status };
+      return { kind: 'ok', value: JSON.parse(text) as unknown, status: res.status };
     } catch {
       return { kind: 'failed', status: null };
     }
@@ -129,6 +146,19 @@ export async function probeIteraUser(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Ask the backend who the token is. Never throws, never waits longer than `timeoutMs`. */
+export async function probeIteraUser(
+  backend: Backend | null,
+  getAccessToken: () => Promise<string | null>,
+  fetchImpl?: ProbeFetch,
+  timeoutMs = PROBE_TIMEOUT_MS,
+): Promise<ProbeResult> {
+  const answer = await readBackend(backend, getAccessToken, { path: PROBE_PATH.slice(REST_PATH.length), body: '{}', maxChars: MAX_BODY_CHARS }, fetchImpl, timeoutMs);
+  if (answer.kind !== 'ok') return answer;
+  if (answer.value === null) return { kind: 'no-user' };
+  return typeof answer.value === 'string' && UUID.test(answer.value) ? { kind: 'ok', iteraUserId: answer.value } : { kind: 'failed', status: answer.status };
 }
 
 /** The dev overlay line of a probe result. Never a token, a key or a response body. */

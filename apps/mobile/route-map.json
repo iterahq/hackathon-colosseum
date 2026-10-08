@@ -8,7 +8,7 @@
     {"path": "/auth/code", "screen": "auth-code", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/OtpLoginPage.tsx"]},
     {"path": "/auth/dfl/callback", "screen": "auth-dfl-callback", "mode": "webview", "universal": false, "web_paths": ["src/pages/auth/DflCallbackPage.tsx"]},
     {"path": "/", "screen": "home", "mode": "webview", "universal": false, "web_paths": ["src/pages/HomePage.tsx"]},
-    {"path": "/catalog", "screen": "catalog", "mode": "webview", "universal": false, "web_paths": ["src/pages/CatalogPage.tsx"]},
+    {"path": "/catalog", "screen": "catalog", "mode": "webview", "universal": true, "web_paths": ["src/pages/CatalogPage.tsx", "src/pages/CatalogCard.tsx"]},
     {"path": "/program/:slug", "screen": "program-slug", "mode": "webview", "universal": false, "web_paths": ["src/pages/ProgramPage.tsx"]},
     {"path": "/lesson/:lessonId", "screen": "lesson-lessonId", "mode": "webview", "universal": false, "web_paths": ["src/pages/LessonPlayer.tsx"]},
     {"path": "/artifacts", "screen": "artifacts", "mode": "webview", "universal": false, "web_paths": ["src/pages/ArtifactsPage.tsx"]},

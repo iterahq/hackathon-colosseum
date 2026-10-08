@@ -26,6 +26,15 @@ describe("editRnw, against the installed react-native-web", () => {
     expect(after).toContain("ResponderSystem.removeNode(id);");
   });
 
+  it("the responder system: the last node out detaches the listeners, at once or when the pointer is released", () => {
+    const system = installed("modules/useResponderEvents/ResponderSystem.js");
+    const after = editRnw(readFileSync(system, "utf8"), system)!;
+    expect(after).toContain("responderListenersMap.delete(id);\n  }\n  detachWhenIdle();");
+    expect(after).toContain("document.removeEventListener(eventType, eventListener, true);");
+    expect(after).toContain("function eventListener(domEvent) {\n  eventListenerOfRnw(domEvent);\n  detachWhenIdle();\n}");
+    expect(after).toContain("if (trackedTouchCount !== 0 || currentResponder.id != null) {\n    return;");
+  });
+
   it("accepts the id Vite gives a module (a query suffix), and leaves every other file alone", () => {
     expect(editRnw(readFileSync(SHEET, "utf8"), `${SHEET}?v=abc`)).toContain("var initialRules = [];");
     expect(editRnw("export default 1;", installed("exports/View/index.js"))).toBeNull();

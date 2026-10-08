@@ -56,6 +56,9 @@ export default defineConfig(({ mode }) => ({
       "@iterahq/shell-bridge/web": path.resolve(__dirname, "./packages/bridge/src/web.ts"),
       "@iterahq/shell-bridge": path.resolve(__dirname, "./packages/bridge/src/index.ts"),
       "@iterahq/shell-core": path.resolve(__dirname, "./packages/core/src/index.ts"),
+      "@iterahq/screens/catalog/messages": path.resolve(__dirname, "./packages/screens/src/catalog/messages.ts"),
+      "@iterahq/screens/catalog/fixtures": path.resolve(__dirname, "./packages/screens/src/catalog/fixtures.ts"),
+      "@iterahq/screens/catalog": path.resolve(__dirname, "./packages/screens/src/catalog/index.ts"),
       "@iterahq/screens/not-found/messages": path.resolve(__dirname, "./packages/screens/src/not-found/messages.ts"),
       "@iterahq/screens/not-found": path.resolve(__dirname, "./packages/screens/src/not-found/index.ts"),
       ...(swapyInstalled
