@@ -294,6 +294,7 @@ export { RichSpans } from './components/RichSpans.js';
 export { RichText } from './components/RichText.js';
 export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components/parts.js';
 export { HostOwnsSettledAction, useHostOwnsSettledAction } from './components/settledAction.js';
+export { HostExplainsMisses, useHostExplainsMisses } from './components/explainedMiss.js';
 // Tera, the mascot: the one component that draws him, and the mention rule a
 // host's own dispatcher wraps its kinds in so the shell knows to show him.
 export { TeraAvatar } from './components/TeraAvatar.js';

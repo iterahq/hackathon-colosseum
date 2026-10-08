@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { useState } from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { HostExplainsMisses } from '@iterahq/activities';
 import { I18nProvider } from '@/i18n';
 // The activity tree needs an i18n PORT, not just the app's provider — the
 // bilingual-explanation cases below read `locale`. See the component.
@@ -106,7 +107,9 @@ function renderActivity(activity: Activity, reveal = false, priorAnswer?: Activi
   const tree = (revealed: boolean) => (
     <I18nProvider>
       <ActivityI18nBridge>
-        <Shell activity={activity} reveal={revealed} onComplete={onComplete} priorAnswer={priorAnswer} />
+        <HostExplainsMisses>
+          <Shell activity={activity} reveal={revealed} onComplete={onComplete} priorAnswer={priorAnswer} />
+        </HostExplainsMisses>
       </ActivityI18nBridge>
     </I18nProvider>
   );
@@ -248,6 +251,20 @@ describe('the why lives in Tera\'s footer, one Tera at a time', () => {
     );
     expect(within(footer).getByTestId('feedback-footer-explanation-title')).toHaveTextContent('Entenda o porquê');
     expect(screen.queryByTestId('answer-explanation')).toBeNull();
+  });
+
+  it('a host with no feedback surface gets the explanation in the card after a miss', () => {
+    render(
+      <I18nProvider>
+        <ActivityI18nBridge>
+          <ActivityRenderer activity={makeActivity('quiz', QUIZ_SPEC)} onComplete={vi.fn()} />
+        </ActivityI18nBridge>
+      </I18nProvider>
+    );
+    fireEvent.click(screen.getByText('Nome'));
+    fireEvent.click(screen.getByTestId('quiz-submit'));
+
+    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
   });
 
   it('hands the explanation up to the host on a miss, and only on a miss', () => {

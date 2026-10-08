@@ -307,6 +307,13 @@ const RESTORING_KINDS: Array<{
   },
 ];
 
+/** The order grip is a drag handle, not a form control: its lock is an attribute. */
+async function expectLocked(control: ReturnType<Page['locator']>, kind: string, locked: boolean): Promise<void> {
+  if (kind === 'order') await expect(control).toHaveAttribute('data-locked', String(locked));
+  else if (locked) await expect(control).toBeDisabled();
+  else await expect(control).toBeEnabled();
+}
+
 test.describe('every kind that redraws an answer re-opens a miss as the learner left it', () => {
   for (const { fixture, miss, control, drawn } of RESTORING_KINDS) {
     test(`${fixture.kind}: locked on the answer after a reload, free again after the retry`, async ({ page }) => {
@@ -330,14 +337,14 @@ test.describe('every kind that redraws an answer re-opens a miss as the learner 
       await expect.poll(() => shownActivity(page)).toBe(fixture.id);
 
       await expect(page.getByTestId('lesson-retry-missed')).toBeVisible();
-      await expect(control(page)).toBeDisabled();
+      await expectLocked(control(page), fixture.kind, true);
       await drawn(page);
       if (submitted) expect(await orderOf(page)).toEqual(submitted);
       expect(writes.passed).toEqual([false]);
 
       await page.getByTestId('lesson-retry-missed').click();
       await expect(page.getByTestId('lesson-retry-missed')).toHaveCount(0);
-      await expect(control(page)).toBeEnabled();
+      await expectLocked(control(page), fixture.kind, false);
     });
   }
 });

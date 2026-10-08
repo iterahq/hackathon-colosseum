@@ -77,6 +77,7 @@ export function OrderRow({
         }}
         style={{ touchAction: locked || fine ? undefined : 'none' }}
         data-testid="order-grip"
+        data-locked={locked}
         className={`w-6 min-[480px]:w-7 h-9 flex-shrink-0 inline-flex items-center justify-center text-muted-foreground coarse:relative coarse:before:absolute coarse:before:-inset-y-1.5 coarse:before:-inset-x-2 ${locked ? 'opacity-30' : ''}`}
       >
         <GripVertical className="w-4 h-4" aria-hidden />

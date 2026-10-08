@@ -1,4 +1,5 @@
 import type { ReactNode, MouseEvent } from 'react';
+import { HostExplainsMisses } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import type { ActivityCompleteDetail } from '@/components/branded/activity/activityFeedbackKinds';
 import type { Activity } from '@/types/content';
@@ -81,7 +82,9 @@ export function LiveActivityStage({
         onClick={handleClick}
         {...(readOnly ? { inert: true } : {})}
       >
-        <ActivityRenderer key={`${activity.id}:${attempt}:${priorAnswer ? 'restored' : 'live'}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live priorAnswer={priorAnswer} />
+        <HostExplainsMisses>
+          <ActivityRenderer key={`${activity.id}:${attempt}:${priorAnswer ? 'restored' : 'live'}`} activity={activity} onComplete={onComplete ?? noop} reveal={reveal} live priorAnswer={priorAnswer} />
+        </HostExplainsMisses>
       </div>
       {footer}
     </div>

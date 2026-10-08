@@ -341,10 +341,10 @@ test.describe('quiz', () => {
     await optionByLabel(page, 'quiz-option', 'VERDADEIRO').click();
     await page.getByTestId('quiz-submit').click();
     await expectVerdict(page, false);
-    // The why renders on a WRONG submit only, inside Tera's footer; the in-card
-    // `answer-explanation` is for a review, never beside the footer.
-    await expect(page.getByTestId('feedback-footer-explanation')).toBeVisible();
-    await expect(page.getByTestId('answer-explanation')).toHaveCount(0);
+    // The why renders on a WRONG submit only. The harness draws no feedback
+    // footer for a quiz, so the activity's own card carries it.
+    await expect(page.getByTestId('answer-explanation')).toBeVisible();
+    await expect(page.getByTestId('feedback-footer-explanation')).toHaveCount(0);
   });
 
   test('🧊 FROZEN — acerto NÃO mostra a explicação', async ({ page }) => {

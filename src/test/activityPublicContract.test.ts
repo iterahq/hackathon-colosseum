@@ -355,6 +355,8 @@ const PUBLIC_RUNTIME_SURFACE = [
   'SubmitButton',
   'HostOwnsSettledAction',
   'useHostOwnsSettledAction',
+  'HostExplainsMisses',
+  'useHostExplainsMisses',
   'ActivityTextarea',
   'SandboxBubble',
   'SandboxChatLog',

@@ -26,7 +26,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { HostOwnsSettledAction } from '@iterahq/activities';
+import { HostExplainsMisses, HostOwnsSettledAction } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
 import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
@@ -855,17 +855,19 @@ export default function LessonPlayer() {
                 >
                   {/* The footer and the row below own "Continuar": a settled
                       exercise does not keep a dead button of its own above them. */}
-                  <HostOwnsSettledAction>
-                    <ActivityRenderer
-                      key={`${current.id}:${retryCount}:${redoCount}`}
-                      activity={{
-                        ...current,
-                        status: reviewing ? 'done' : practising ? 'todo' : current.status,
-                      }}
-                      onComplete={handleComplete}
-                      priorAnswer={reviewing ? answers[current.id] : undefined}
-                    />
-                  </HostOwnsSettledAction>
+                  <HostExplainsMisses>
+                    <HostOwnsSettledAction>
+                      <ActivityRenderer
+                        key={`${current.id}:${retryCount}:${redoCount}`}
+                        activity={{
+                          ...current,
+                          status: reviewing ? 'done' : practising ? 'todo' : current.status,
+                        }}
+                        onComplete={handleComplete}
+                        priorAnswer={reviewing ? answers[current.id] : undefined}
+                      />
+                    </HostOwnsSettledAction>
+                  </HostExplainsMisses>
                 </div>
               )}
 

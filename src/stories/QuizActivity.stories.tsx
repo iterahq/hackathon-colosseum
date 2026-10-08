@@ -136,8 +136,8 @@ export const Incorrect: Story = {
     await pickQuizOption(canvasElement, 'Verdadeiro');
     await submitAnswer(canvasElement, 'quiz-submit');
     await expect(within(canvasElement).getByTestId('quiz-submit')).toHaveAttribute('data-correct', 'false');
-    // The why rides up to the host's footer; the card is for a review.
-    await expect(within(canvasElement).queryByTestId('answer-explanation')).toBeNull();
+    // No host footer in a story, so the card carries the why; it also rides up.
+    await expect(within(canvasElement).getByTestId('answer-explanation')).toBeVisible();
     await expect(args.onComplete).toHaveBeenCalledWith(
       false,
       expect.objectContaining({ explanation: expect.any(String) }),

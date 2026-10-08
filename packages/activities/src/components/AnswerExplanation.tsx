@@ -39,6 +39,7 @@ import { parseInline } from '../internal/richText.js';
 import { resolveLocalizedText } from '../internal/localizedText.js';
 import { RichSpans } from './RichSpans.js';
 import { TeraAvatar } from './TeraAvatar.js';
+import { useHostExplainsMisses } from './explainedMiss.js';
 
 /**
  * The authored "porquê" as text for a MISS, or `undefined` when there is none or
@@ -72,14 +73,16 @@ export function AnswerExplanation({
   correct: boolean | undefined;
   /**
    * The learner just submitted in THIS session, so the kind already handed the
-   * explanation up through `onComplete` for the host's feedback footer. On a
-   * review (re-opened activity, no footer) it is `false` and the box shows.
+   * explanation up through `onComplete`. A host inside `HostExplainsMisses`
+   * shows it in its own feedback footer and the box stays out; on a review
+   * (re-opened activity, no footer) it is `false` and the box shows.
    */
   handedUp?: boolean;
 }) {
   const { t, locale } = useActivityI18n();
+  const explainsMisses = useHostExplainsMisses();
   const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
-  if (!shown || correct === true || text === '' || handedUp) return null;
+  if (!shown || correct === true || text === '' || (handedUp && explainsMisses)) return null;
 
   return (
     <div
