@@ -447,9 +447,23 @@ export async function runPush({ client, meta, version, buildNumber, dryRun = fal
     const info = state.appInfo.localizations.find((l) => l.locale === locale);
     const infoPayload = upsertPayload('appInfoLocalizations', info?.id, appInfoLocalizationAttrs(meta, locale), { name: 'appInfo', type: 'appInfos', id: infoId });
     if (!info) infoPayload.data.attributes.locale = locale;
-    await write(info ? 'PATCH' : 'POST', info ? `/appInfoLocalizations/${info.id}` : '/appInfoLocalizations', infoPayload, 'appInfoLocalization');
+    try {
+      await write(info ? 'PATCH' : 'POST', info ? `/appInfoLocalizations/${info.id}` : '/appInfoLocalizations', infoPayload, 'appInfoLocalization');
+    } catch (e) {
+      // An app name is unique per storefront language. A taken name keeps the one the record has; the rest is still written.
+      if (!(e instanceof AscError) || e.status !== 409 || !/DUPLICATE\.DIFFERENT_ACCOUNT/.test(e.message) || !info?.attrs?.name) throw e;
+      log(`warning: ${locale}: the name "${infoPayload.data.attributes.name}" is taken on the App Store; kept "${info.attrs.name}"`);
+      delete infoPayload.data.attributes.name;
+      await write('PATCH', `/appInfoLocalizations/${info.id}`, infoPayload, 'appInfoLocalization');
+    }
 
-    const ver = target.localizations.find((l) => l.locale === locale);
+    let ver = target.localizations.find((l) => l.locale === locale);
+    // A new appInfo localization makes App Store Connect create the version localization of that locale.
+    if (!ver && !info && !dryRun) {
+      const again = await client.get(`/appStoreVersions/${versionId}/appStoreVersionLocalizations`, { params: { limit: '50' } });
+      const made = again.data.find((l) => l.attributes.locale === locale);
+      if (made) ver = { id: made.id, locale };
+    }
     const verPayload = upsertPayload('appStoreVersionLocalizations', ver?.id, versionLocalizationAttrs(meta, locale), { name: 'appStoreVersion', type: 'appStoreVersions', id: versionId });
     if (!ver) verPayload.data.attributes.locale = locale;
     const saved = await write(ver ? 'PATCH' : 'POST', ver ? `/appStoreVersionLocalizations/${ver.id}` : '/appStoreVersionLocalizations', verPayload, 'appStoreVersionLocalization');

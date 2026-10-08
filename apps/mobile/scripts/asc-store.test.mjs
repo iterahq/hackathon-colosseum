@@ -336,6 +336,39 @@ describe('push (real writes against the fake)', () => {
   });
 });
 
+describe('push (what App Store Connect does on its own)', () => {
+  it('keeps the current name of a locale when the listing name is taken there, and writes the rest', async () => {
+    const { fetchImpl, calls } = fakeFetch(world({ complete: true }));
+    const taken = async (url, init = {}) => {
+      const named = init.method === 'PATCH' && url.endsWith('/appInfoLocalizations/aen-US') && 'name' in JSON.parse(init.body).data.attributes;
+      if (!named) return fetchImpl(url, init);
+      return { ok: false, status: 409, text: async () => JSON.stringify({ errors: [{ code: 'ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE.DIFFERENT_ACCOUNT', title: 'used', detail: 'The app name you entered is already being used.' }] }) };
+    };
+    const out = [];
+    await runPush({ client: clientOf(taken), meta, version: '0.3.0', env: {}, log: (l) => out.push(l) });
+    expect(out.join('\n')).toMatch(/en-US: the name "Itera" is taken on the App Store; kept "Itera"/);
+    const sent = calls.filter((c) => c.method === 'PATCH' && c.path === '/appInfoLocalizations/aen-US').map((c) => Object.keys(JSON.parse(c.body).data.attributes));
+    expect(sent).toEqual([['subtitle', 'privacyPolicyUrl']]);
+    expect(calls.some((c) => c.method === 'PATCH' && c.path === '/appStoreReviewDetails/rd1')).toBe(true);
+  });
+
+  it('reads the version localization App Store Connect created with a new appInfo localization, instead of creating it again', async () => {
+    const w = world();
+    const { fetchImpl, calls } = fakeFetch(w, {
+      'POST /appInfoLocalizations': (body) => {
+        const { locale } = body.data.attributes;
+        w['/appStoreVersions/v1/appStoreVersionLocalizations'].data.push({ id: `auto-${locale}`, attributes: { locale } });
+        w[`/appStoreVersionLocalizations/auto-${locale}/appScreenshotSets`] = { data: [] };
+        return { data: { id: `info-${locale}` } };
+      },
+    });
+    await runPush({ client: clientOf(fetchImpl), meta, version: '0.3.0', env: {}, log: () => {} });
+    const writes = calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path}`);
+    expect(writes).toContain('PATCH /appStoreVersionLocalizations/auto-pt-BR');
+    expect(writes).not.toContain('POST /appStoreVersionLocalizations');
+  });
+});
+
 describe('submit', () => {
   it('refuses a wrong confirmation before any call', async () => {
     const { fetchImpl, calls } = fakeFetch(world({ complete: true }));
