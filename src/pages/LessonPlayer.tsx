@@ -265,6 +265,12 @@ export default function LessonPlayer() {
     setRedoing(null);
   }, [current?.id]);
 
+  // A new activity starts at its top, and so does one opened again (retry, redo): the page scrolls
+  // as one document, so it would keep the offset the learner left the previous one at.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [current?.id, completed, retryCount, redoCount]);
+
   // ── Duration (plan 20260731-itera-eventos-aprendizagem, Phase 1) ───────────
   // The window OPENS here: the moment this activity became the one on screen for
   // this learner. It closes in `handleComplete`, when the answer settles — NOT

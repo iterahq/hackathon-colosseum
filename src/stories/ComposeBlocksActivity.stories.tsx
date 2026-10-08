@@ -53,7 +53,7 @@ export const WrongThenRight: Story = {
     await place(canvasElement, 'task_item', slot);
     await place(canvasElement, 'task_item', slot);
     await waitFor(() => expect(args.onComplete).toHaveBeenCalledTimes(1));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
   },
 };
 
@@ -62,7 +62,7 @@ export const Done: Story = {
   args: { activity: makeSystemActivity('compose_blocks', COMPOSE_BLOCKS_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.getByTestId('compose-preview')).toHaveTextContent('Minhas tarefas');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },

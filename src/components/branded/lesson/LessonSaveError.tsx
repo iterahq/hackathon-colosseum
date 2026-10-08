@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n';
+import { TACTILE_CTA } from '@iterahq/activities';
 
 /** A completion that did not save: says so, and offers the retry — never a trophy. */
 export function LessonSaveError({ onRetry, busy = false }: { onRetry: () => void; busy?: boolean }) {
@@ -14,7 +15,7 @@ export function LessonSaveError({ onRetry, busy = false }: { onRetry: () => void
         onClick={onRetry}
         disabled={busy}
         data-testid="lesson-save-retry"
-        className="shrink-0 h-9 px-4 rounded-full bg-evergreen text-obsidiana text-sm font-medium hover:bg-evergreen-hi transition-colors disabled:opacity-60"
+        className={`shrink-0 h-11 px-4 rounded-full text-sm ${TACTILE_CTA}`}
       >
         {t('lesson.retrySave')}
       </button>

@@ -1,5 +1,6 @@
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { t, type I18n, type Locale, type Quality } from '@iterahq/activity-spec/runtime';
+import { TACTILE_CTA } from '../../components/tactile.js';
 
 // Standardized rating options (Tainan 2026-07): TEXT LABELS ONLY — no emoji.
 // The two buttons are visually IDENTICAL (neutral, MultiChoice-option style)
@@ -80,7 +81,7 @@ export function SandboxEvalPanel({
             type="button"
             onClick={onRetry}
             data-testid="sandbox-eval-retry"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-evergreen px-5 py-2.5 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi"
+            className={`inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
           >
             <RotateCcw className="h-4 w-4" /> {t({ pt: 'Tentar de novo', en: 'Try again' }, locale)}
           </button>

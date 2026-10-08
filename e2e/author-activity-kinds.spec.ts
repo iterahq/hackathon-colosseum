@@ -288,7 +288,7 @@ async function login(p: Page) {
 /** Let the guards + the lazily-loaded /author chunk settle (PR #196). */
 async function settle(p: Page) {
   await p.waitForLoadState('networkidle').catch(() => {});
-  await expect(p.getByText(/^Loading…$/)).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
+  await expect(p.getByTestId('route-settling')).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
 }
 
 /** Walk /author -> unit canvases, harvesting one activity id per kind. */

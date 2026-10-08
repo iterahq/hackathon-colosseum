@@ -108,7 +108,7 @@ describe('HomeScreen: a member', () => {
 
   it('the medals: loading, none, or each with its name', () => {
     const { rerender, ...props } = setup(member({ kind: 'empty' }, { kind: 'loading' }));
-    expect(screen.getByText('Carregando…')).toBeInTheDocument();
+    expect(screen.getByTestId('badges-loading')).toHaveTextContent('');
     rerender(<HomeScreen {...props} view={member()} />);
     expect(screen.getByTestId('badges-empty')).toHaveTextContent('Conclua atividades para ganhar conquistas.');
     rerender(<HomeScreen {...props} view={member({ kind: 'empty' }, { kind: 'ready', badges: [{ id: 'b1', title: 'Primeira', earned: true }, { id: 'b2', title: 'Outra', earned: false }] })} />);

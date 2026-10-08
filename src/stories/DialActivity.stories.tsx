@@ -43,10 +43,10 @@ export const StartInsideTarget: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    await expect(canvas.queryByTestId('scene-stamp')).toBeNull();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'false');
     await expect(args.onComplete).not.toHaveBeenCalled();
     dragSlider(canvas.getByTestId('dial-slider') as HTMLInputElement, 27);
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 2000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -58,7 +58,7 @@ export const Settled: Story = {
     const canvas = within(canvasElement);
     const slider = canvas.getByTestId('dial-slider') as HTMLInputElement;
     dragSlider(slider, 28);
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 2000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
     // The slider stays live after the gate: the learner keeps exploring, with no second verdict.
     dragSlider(slider, 14);
@@ -74,7 +74,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('dial', DIAL_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     const slider = canvas.getByTestId('dial-slider') as HTMLInputElement;
     await expect(slider.value).toBe('28');
     await expect(canvas.getByTestId('dial-rule')).toHaveTextContent('p { font-size: 28px; }');

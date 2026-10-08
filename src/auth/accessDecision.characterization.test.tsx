@@ -81,7 +81,7 @@ function gateOutcome(graceOnError: boolean, mode: 'block' | 'preview'): string {
   else if (id('shell-access-unverified')) outcome = 'shell-unverified';
   else if (id('shell-settling')) outcome = 'shell-settling';
   else if (container.querySelector('h1') !== null) outcome = 'shell-no-access';
-  else if (container.textContent?.includes('Loading')) outcome = 'loader';
+  else if (id('route-settling')) outcome = 'loader';
   else outcome = `UNKNOWN:${container.innerHTML}`;
   unmount();
   warn.mockRestore();

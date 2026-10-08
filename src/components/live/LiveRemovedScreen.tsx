@@ -1,5 +1,6 @@
 import { DoorOpen } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { TACTILE_CTA } from '@iterahq/activities';
 
 /**
  * O que o aluno vê quando o professor o tira da sala.
@@ -26,7 +27,7 @@ export function LiveRemovedScreen({ onLeave }: { onLeave: () => void }) {
       <button
         type="button"
         onClick={onLeave}
-        className="h-10 px-5 rounded-full bg-evergreen text-white text-sm font-medium hover:bg-evergreen/90 transition-colors"
+        className={`inline-flex h-12 items-center justify-center rounded-full px-6 text-sm ${TACTILE_CTA}`}
         data-testid="live-removed-leave"
       >
         {t('live.removed.leave')}

@@ -75,7 +75,6 @@ export function InspectActivity({ activity, onComplete }: { activity: PortableAc
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={gate.solved}
     >
       <div ref={containerRef} className={`relative grid md:grid-cols-2 gap-8 md:gap-14 ${TOUCH_SURFACE}`} data-testid="inspect-stage">

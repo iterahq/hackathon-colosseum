@@ -62,7 +62,7 @@ export const TypedOwnName: Story = {
     await expect(canvas.getByTestId('live-type-target')).toHaveTextContent('Oi, eu sou o Samuel');
     // The gate opens only after SETTLE_MS (700ms) of no further typing — give
     // the default 1000ms assertion window enough room over that debounce.
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 3000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -72,7 +72,7 @@ export const Done: Story = {
   args: { activity: makeActivity('live_type', LIVE_TYPE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

@@ -27,6 +27,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, RotateCcw, Send } from 'lucide-react';
 import { t, type Locale } from '@iterahq/activity-spec/runtime';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import type { Activity } from '@/types/content';
@@ -304,7 +305,7 @@ export function SandboxScenarioLiveActivity({
                   type="button"
                   onClick={s.retry}
                   data-testid="byoc-retry"
-                  className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-evergreen px-5 py-2.5 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi"
+                  className={`inline-flex h-12 items-center justify-center gap-2 self-start rounded-full px-6 ${TACTILE_CTA}`}
                 >
                   <RotateCcw className="h-4 w-4" /> {tx({ pt: 'Tentar de novo', en: 'Try again' })}
                 </button>

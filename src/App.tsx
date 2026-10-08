@@ -78,6 +78,8 @@ import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
 import { PageTitle } from "./components/PageTitle";
+import { RouteSettling } from "./components/RouteSettling";
+import { RouteScrollReset } from "./components/RouteScrollReset";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
 
@@ -90,15 +92,7 @@ const queryClient = new QueryClient();
  */
 function LazyRoute({ children }: { children: ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-          Loading…
-        </div>
-      }
-    >
-      {children}
-    </Suspense>
+    <Suspense fallback={<RouteSettling />}>{children}</Suspense>
   );
 }
 
@@ -162,6 +156,7 @@ const App = () => (
               <AppWideMounts />
               <LearnerPagePrefetch />
               <PageTitle />
+              <RouteScrollReset />
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as

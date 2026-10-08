@@ -40,7 +40,7 @@ export const AllStepsVisited: Story = {
     const scrubber = canvas.getByTestId('timeline-scrubber') as HTMLInputElement;
     dragSlider(scrubber, 1);
     dragSlider(scrubber, 2);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -50,7 +50,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('timeline', TIMELINE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
@@ -79,7 +79,7 @@ export const SingleStep: Story = {
   args: { activity: makeGatedActivity('timeline', { ...TIMELINE_SPEC, steps: TIMELINE_SPEC.steps.slice(0, 1) }) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'));
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };

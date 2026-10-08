@@ -67,6 +67,7 @@ import { useShellSurface } from '@/hooks/useShellSurface';
 import { ShellAccessUnverifiedScreen } from '@/components/shell/ShellAccessUnverifiedScreen';
 import { ShellNoAccessScreen } from '@/components/shell/ShellNoAccessScreen';
 import { ShellSettling } from '@/components/shell/ShellSettling';
+import { RouteSettling } from '@/components/RouteSettling';
 
 export function RequireSubscription({
   children,
@@ -108,11 +109,7 @@ export function RequireSubscription({
 
     case 'pending':
       if (verdict.unreachableInShell) return <ShellAccessUnverifiedScreen onRetry={() => void refetchEntitlement()} />;
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-          Loading…
-        </div>
-      );
+      return <RouteSettling />;
 
     // Unauthenticated should already be caught by RequireAuth; defensively to login.
     case 'signed-out':

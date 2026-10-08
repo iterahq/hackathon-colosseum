@@ -57,7 +57,6 @@ export function StateLabActivity({ activity, onComplete }: { activity: PortableA
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className="grid gap-4 md:grid-cols-2" data-testid="state-lab-stage">

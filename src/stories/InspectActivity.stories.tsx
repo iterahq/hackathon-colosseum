@@ -49,7 +49,7 @@ export const AllFound: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await discoverAllTwins(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -65,7 +65,7 @@ export const KeyboardOnly: Story = {
       await expect(target).toHaveFocus();
       await userEvent.keyboard(index % 2 === 0 ? '{Enter}' : ' ');
     }
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };

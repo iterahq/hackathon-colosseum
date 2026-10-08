@@ -103,12 +103,11 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div
         ref={boardRef}
-        className={`relative grid grid-cols-[1fr_auto_1fr] gap-3 sm:gap-8 ${TOUCH_SURFACE}`}
+        className={`relative grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 sm:gap-8 ${TOUCH_SURFACE}`}
         data-testid="wire-board"
       >
         <div className="flex flex-col gap-2">
@@ -132,7 +131,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
                 aria-pressed={isPicked}
                 className={`text-left rounded-xl border px-3 sm:px-4 py-3 transition-colors ${done ? 'border-evergreen/60 bg-evergreen/10' : isPicked ? 'border-evergreen bg-evergreen/15' : 'border-border bg-card hover:border-foreground/30'}`}
               >
-                <span className="block text-[15px]">{copy.text(end.label)}</span>
+                <span className="block break-words text-[15px]">{copy.text(end.label)}</span>
                 {end.sub && <span className="block text-xs text-muted-foreground">{copy.text(end.sub)}</span>}
               </button>
             );
@@ -158,7 +157,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
                 disabled={solved}
                 className={`text-left rounded-xl border px-3 sm:px-4 py-3 transition-colors ${done ? 'border-evergreen/60 bg-evergreen/10' : picked ? 'border-evergreen/40 bg-card hover:bg-evergreen/10' : 'border-border bg-card'}`}
               >
-                <span className="block text-[15px]">{copy.text(end.label)}</span>
+                <span className="block break-words text-[15px]">{copy.text(end.label)}</span>
                 {end.sub && <span className="block text-xs text-muted-foreground">{copy.text(end.sub)}</span>}
               </motion.button>
             );

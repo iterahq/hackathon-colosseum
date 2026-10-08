@@ -3,6 +3,7 @@ import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeCheck } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
 import { TeraVerdict, VerdictMark } from '../components/TeraVerdict.js';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '../components/tactile.js';
 import type { CodeCheckResult } from './types.js';
 import { CodeAttemptsNotice } from './CodeAttemptsNotice.js';
 import { CodeChecksList } from './CodeChecksList.js';
@@ -59,9 +60,9 @@ export function CodeChecksFeedback({
     >
       <div className="flex items-center gap-2">
         <TeraVerdict correct={allPassed} size="bar" />
-        <VerdictMark correct={allPassed} />
+        <VerdictMark correct={allPassed} className="max-sm:hidden" />
         <p
-          className={`font-display font-semibold ${allPassed ? 'text-menta' : 'text-clay'}`}
+          className={`min-w-0 font-display font-semibold ${allPassed ? 'text-menta' : 'text-clay'}`}
           data-testid="code-checks-title"
         >
           {allPassed
@@ -70,7 +71,7 @@ export function CodeChecksFeedback({
               ? t('code.lives.finalTitle')
               : t('code.checks.someFailed')}
         </p>
-        <span className="ml-auto font-mono text-xs text-muted-foreground" data-testid="code-checks-score">
+        <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground" data-testid="code-checks-score">
           {t('code.checks.score', { passed: String(passedCount), total: String(results.length) })}
         </span>
       </div>
@@ -95,7 +96,7 @@ export function CodeChecksFeedback({
 
       {!allPassed && <CodeAttemptsNotice spent={attemptsSpent} />}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-col gap-3 pb-1 sm:flex-row">
         {/* Always offered while the result is not yet reported — the editor is
             frozen from the submit onwards, so this explicit click is the ONLY
             way back in, including after a pass. Some no orçamento zerado: um
@@ -106,10 +107,10 @@ export function CodeChecksFeedback({
           onClick={onRetry}
           disabled={settled}
           data-testid="code-checks-retry"
-          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
             allPassed
-              ? 'border border-border text-muted-foreground hover:text-foreground'
-              : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
+              ? TACTILE_SECONDARY
+              : TACTILE_CTA
           }`}
         >
           <RotateCcw className="h-4 w-4" />
@@ -131,10 +132,10 @@ export function CodeChecksFeedback({
             onClick={onContinue}
             disabled={settled}
             data-testid="code-checks-continue"
-            className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+            className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
               outOfLives
-                ? 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
-                : 'border border-border text-muted-foreground hover:text-foreground'
+                ? TACTILE_CTA
+                : TACTILE_SECONDARY
             }`}
           >
             {outOfLives ? t('activity.continue') : t('code.checks.continueAnyway')}

@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GeneratedChoiceTree, GeneratedOption } from '@iterahq/activity-spec';
 import type { Locale } from '@iterahq/activity-spec/runtime';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { localizedText } from '@/utils/localizedText';
 import { assembleContext, pickedOption, type RoundPicks } from '@/utils/byocContext';
@@ -112,7 +113,7 @@ export function ByocRounds({
         disabled={chosen === undefined}
         onClick={advance}
         data-testid="byoc-round-next"
-        className="mt-5 h-11 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
+        className={`mt-5 h-12 px-6 rounded-full ${TACTILE_CTA}`}
       >
         {t(isLast ? 'byoc.seeMyContext' : 'byoc.nextRound')}
       </button>

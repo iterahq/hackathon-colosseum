@@ -87,7 +87,6 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className={`flex flex-col gap-5 ${TOUCH_SURFACE}`} data-testid="bucket-stage">

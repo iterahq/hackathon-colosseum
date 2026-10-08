@@ -153,7 +153,6 @@ export function DecomposeCanvasActivity({
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className="flex flex-col gap-4 max-sm:gap-3" data-testid="decompose-stage">

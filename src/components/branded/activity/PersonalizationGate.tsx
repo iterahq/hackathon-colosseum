@@ -12,6 +12,7 @@
  */
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { usePersonalization } from '@/personalization/personalizationPort';
 import type { PersonalizationField } from '@/types/personalization';
@@ -75,7 +76,7 @@ export function PersonalizationGate({ fields }: { fields: PersonalizationField[]
         onClick={submit}
         disabled={!complete || saving}
         data-testid="personalization-submit"
-        className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:opacity-40"
+        className={`mt-6 inline-flex h-12 w-full items-center justify-center rounded-full px-6 ${TACTILE_CTA}`}
       >
         {saving ? t('personalization.saving') : t('personalization.submit')}
       </button>

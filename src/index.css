@@ -187,6 +187,13 @@
       min-height: 100svh;
       min-height: 100dvh;
     }
+
+    /* A phone page moves on one axis: something wider than the screen is cut,
+       it never makes the whole page pan sideways. */
+    html,
+    body {
+      overflow-x: clip;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {

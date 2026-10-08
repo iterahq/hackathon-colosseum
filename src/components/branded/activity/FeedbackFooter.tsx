@@ -168,9 +168,10 @@ export function FeedbackFooter({
               >
                 <TeraVerdict correct={correct} size="xl" avatarClassName="max-sm:h-[72px] max-sm:w-[72px]" />
               </motion.span>
-              <div className="min-h-10 min-w-0 pl-[84px] md:min-h-14 md:pl-[112px]">
+              {/* On a phone only the title sits beside Tera (he overlaps the bar by one line); the explanation runs the whole width. */}
+              <div className="min-h-10 min-w-0 md:min-h-14 md:pl-[112px]">
                 <p
-                  className={`font-display text-xl font-bold leading-tight md:text-2xl ${
+                  className={`font-display text-xl font-bold leading-tight max-sm:min-h-7 max-md:pl-[84px] md:text-2xl ${
                     correct ? 'text-menta' : 'text-destructive'
                   }`}
                   data-testid="feedback-footer-title"

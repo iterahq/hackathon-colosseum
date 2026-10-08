@@ -678,7 +678,7 @@ const DRIVES: Record<ContractKey, Drive> = {
       const list = (slots[slots.length - 1].dataset.testid ?? '').replace('compose-slot-', '');
       place('task_item', list);
       place('task_item', list);
-      await waitFor(() => expect(within(c).getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 3000 });
+      await waitFor(() => expect(within(c).getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 3000 });
     },
     why: 'a block that does not belong under that parent bounces with a hint; there is no `false`.',
   },
@@ -687,7 +687,7 @@ const DRIVES: Record<ContractKey, Drive> = {
     correct: async (c) => {
       fireEvent.click(within(c).getByTestId('state-lab-control-toggle_first'));
       fireEvent.click(within(c).getByTestId('state-lab-control-toggle_second'));
-      await waitFor(() => expect(within(c).getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 3000 });
+      await waitFor(() => expect(within(c).getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 3000 });
     },
     why: 'goals only tick; a state that misses them keeps the gate closed, never `false`.',
   },

@@ -293,6 +293,7 @@ export { RichBlock } from './components/RichBlock.js';
 export { RichSpans } from './components/RichSpans.js';
 export { RichText } from './components/RichText.js';
 export { ActivityShell, DoneButton, KindBadge, SubmitButton } from './components/parts.js';
+export { TACTILE_CTA, TACTILE_SECONDARY } from './components/tactile.js';
 export { HostOwnsSettledAction, useHostOwnsSettledAction } from './components/settledAction.js';
 export { HostExplainsMisses, useHostExplainsMisses } from './components/explainedMiss.js';
 // Tera, the mascot: the one component that draws him, and the mention rule a

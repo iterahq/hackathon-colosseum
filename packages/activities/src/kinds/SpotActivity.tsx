@@ -66,12 +66,11 @@ export function SpotActivity({ activity, onComplete }: { activity: PortableActiv
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className="grid md:grid-cols-2 gap-5 items-stretch" data-testid="spot-stage">
         <div
-          className={`rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 coarse:gap-0 ${TOUCH_SURFACE}`}
+          className={`min-w-0 overflow-x-auto rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 coarse:gap-0 ${TOUCH_SURFACE}`}
           style={{ background: SCENE_CODE_BACKGROUND }}
           data-testid="spot-editor"
         >

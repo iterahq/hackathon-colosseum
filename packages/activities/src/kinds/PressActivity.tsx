@@ -74,11 +74,10 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
       guideName={spec?.guide ? localizedText(spec.guide.name, locale) : undefined}
       prompt={localizedText(spec?.prompt ?? '', locale)}
       reaction={localizedText(spec?.reaction ?? '', locale)}
-      stamp={localizedText(spec?.stamp ?? '', locale)}
       solved={solved}
     >
       <div
-        className="rounded-xl border border-white/10 p-5 flex flex-col gap-1.5"
+        className="overflow-x-auto rounded-xl border border-white/10 p-5 flex flex-col gap-1.5"
         style={{ background: SCENE_CODE_BACKGROUND }}
         data-testid="press-editor"
       >

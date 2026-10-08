@@ -60,9 +60,10 @@ export function ProfileScreen(props: ProfileScreenProps) {
           </Text>
 
           {state.kind === 'loading' && (
-            <Text role={PARAGRAPH} testID="profile-loading" className="mt-8 font-sans text-base text-muted-foreground">
-              {t('common.loading')}
-            </Text>
+            <View testID="profile-loading" aria-busy className="mt-8 gap-4">
+              <View className="ds-shimmer h-24 w-full rounded-2xl border border-border bg-card" />
+              <View className="ds-shimmer h-40 w-full rounded-2xl border border-border bg-card" />
+            </View>
           )}
 
           {state.kind === 'error' && (

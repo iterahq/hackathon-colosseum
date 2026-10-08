@@ -45,7 +45,7 @@ export const Settled: Story = {
     // start = [confirmar, checar-saldo, debitar] → correct = [checar-saldo, debitar, confirmar]
     await userEvent.click(canvas.getByTestId('arrange-up-checar-saldo'));
     await userEvent.click(canvas.getByTestId('arrange-up-debitar'));
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 2000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -56,11 +56,11 @@ export const StartAlreadyCorrect: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    await expect(canvas.queryByTestId('scene-stamp')).toBeNull();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'false');
     await expect(args.onComplete).not.toHaveBeenCalled();
     await userEvent.click(canvas.getByTestId('arrange-down-checar-saldo'));
     await userEvent.click(canvas.getByTestId('arrange-up-checar-saldo'));
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument(), { timeout: 2000 });
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'), { timeout: 2000 });
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -70,7 +70,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('arrange', ARRANGE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     const ids = [...canvas.getByTestId('arrange-stage').querySelectorAll('li')].map((li) => li.dataset.testid);
     await expect(ids).toEqual(ARRANGE_SPEC.correct.map((id) => `arrange-item-${id}`));
     await expect(args.onComplete).not.toHaveBeenCalled();

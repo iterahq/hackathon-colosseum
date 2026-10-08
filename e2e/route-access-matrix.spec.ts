@@ -81,8 +81,8 @@ async function login(page: Page, id: IdentityKey) {
 async function landOn(page: Page, path: string): Promise<string> {
   await page.goto(`${BASE}${path}`);
   await page.waitForLoadState('networkidle').catch(() => {});
-  // The guards render "Loading…" while auth/membership resolve; wait it out.
-  await expect(page.getByText(/^Loading…$/)).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
+  // The guards render a blank placeholder (`route-settling`) while auth/membership resolve; wait it out.
+  await expect(page.getByTestId('route-settling')).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
   await page.waitForTimeout(700);
   return new URL(page.url()).pathname;
 }

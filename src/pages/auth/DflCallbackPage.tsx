@@ -126,9 +126,7 @@ export default function DflCallbackPage() {
             </button>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground" data-testid="dfl-callback-loading">
-            {t('common.loading')}
-          </p>
+          <div className="mx-auto h-5 w-40 rounded ds-shimmer" data-testid="dfl-callback-loading" aria-busy="true" />
         )}
       </div>
     </div>

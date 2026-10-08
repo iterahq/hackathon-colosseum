@@ -86,15 +86,16 @@ export function AnswerExplanation({
 
   return (
     <div
-      className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
+      className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-4 max-sm:flex-wrap max-sm:items-center max-sm:gap-x-2 max-sm:gap-y-1"
       data-testid="answer-explanation"
     >
-      <TeraAvatar mood={correct === false ? 'oops' : 'neutral'} size="sm" idle={false} className="-mt-1" />
-      <div className="min-w-0">
+      <TeraAvatar mood={correct === false ? 'oops' : 'neutral'} size="sm" idle={false} className="-mt-1 max-sm:mt-0" />
+      {/* On a phone Tera shares the title line and the text runs the whole width of the box. */}
+      <div className="min-w-0 max-sm:contents">
         <p className="font-mono text-[11px] uppercase tracking-wider text-menta">
           {t('activity.explanationTitle')}
         </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/80">
+        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/80 max-sm:mt-0 max-sm:basis-full">
           <RichSpans spans={parseInline(text)} />
         </p>
       </div>

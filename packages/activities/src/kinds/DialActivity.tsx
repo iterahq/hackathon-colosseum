@@ -78,7 +78,6 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div

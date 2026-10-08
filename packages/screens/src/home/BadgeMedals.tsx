@@ -11,7 +11,7 @@ const HEX = '[clip-path:polygon(50%_0%,100%_25%,100%_75%,50%_100%,0%_75%,0%_25%)
 const NOTE = 'py-6 text-center font-sans text-sm leading-5 text-muted-foreground';
 
 export function BadgeMedals({ state, t, icon }: { state: HomeBadgesState; t: Translate; icon: (icon: HomeIcon) => ReactNode }) {
-  if (state.kind === 'loading') return <Text className={NOTE}>{t('common.loading')}</Text>;
+  if (state.kind === 'loading') return <View testID="badges-loading" aria-busy className="ds-shimmer my-4 h-12 w-full rounded-xl" />;
   if (state.kind === 'empty') {
     return (
       <Text testID="badges-empty" className={NOTE}>

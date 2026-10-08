@@ -48,4 +48,8 @@ if (typeof window !== "undefined") {
   if (typeof document.elementFromPoint !== "function") {
     document.elementFromPoint = () => null;
   }
+
+  // jsdom ships `scrollTo` as a stub that only prints "Not implemented"; the lesson
+  // player calls it on every activity change. Inert on purpose: a test that cares spies on it.
+  window.scrollTo = () => undefined;
 }

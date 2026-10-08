@@ -137,7 +137,6 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     // ── scene kinds (xray / live_type / inspect, 2026-09-24) ──
     'activity.xray': 'Raio-X',
     'activity.scene.solved': 'Descoberto!',
-    'activity.scene.stampLabel': 'Ideia-chave',
     'activity.xray.lens': 'raio-x',
     'activity.xray.progress': '{pct}% escaneado',
     'activity.xray.done': 'escaneado',
@@ -319,7 +318,6 @@ export const ACTIVITY_DICTIONARY: Record<ActivityLocale, Record<string, string>>
     'activity.quizPrompt': 'Select the correct answer',
     'activity.xray': 'X-ray',
     'activity.scene.solved': 'Discovered!',
-    'activity.scene.stampLabel': 'Key idea',
     'activity.xray.lens': 'x-ray',
     'activity.xray.progress': '{pct}% scanned',
     'activity.xray.done': 'scanned',

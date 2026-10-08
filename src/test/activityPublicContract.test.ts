@@ -353,6 +353,8 @@ const PUBLIC_RUNTIME_SURFACE = [
   'RichSpans',
   'RichText',
   'SubmitButton',
+  'TACTILE_CTA',
+  'TACTILE_SECONDARY',
   'HostOwnsSettledAction',
   'useHostOwnsSettledAction',
   'HostExplainsMisses',

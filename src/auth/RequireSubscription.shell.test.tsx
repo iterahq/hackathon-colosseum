@@ -81,9 +81,9 @@ describe('RequireSubscription inside the shell', () => {
       entitlement.fetchStatus = 'fetching';
     });
 
-    it('waits behind "Loading…" while the first attempt is in flight', () => {
+    it('waits behind the blank placeholder while the first attempt is in flight', () => {
       renderGate();
-      expect(screen.getByText('Loading…')).toBeInTheDocument();
+      expect(screen.getByTestId('route-settling')).toBeInTheDocument();
       expect(screen.queryByTestId('shell-access-unverified')).not.toBeInTheDocument();
     });
 
@@ -106,14 +106,14 @@ describe('RequireSubscription inside the shell', () => {
       entitlement.failureCount = 2;
       entitlement.failureReason = new Error('permission denied');
       renderGate();
-      expect(screen.getByText('Loading…')).toBeInTheDocument();
+      expect(screen.getByTestId('route-settling')).toBeInTheDocument();
     });
 
     it('does not apply outside the shell', () => {
       surface.value = 'web';
       entitlement.fetchStatus = 'paused';
       renderGate();
-      expect(screen.getByText('Loading…')).toBeInTheDocument();
+      expect(screen.getByTestId('route-settling')).toBeInTheDocument();
     });
   });
 

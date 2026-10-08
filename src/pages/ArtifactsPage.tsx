@@ -36,9 +36,11 @@ export default function ArtifactsPage() {
         </motion.div>
 
         {isPending && (
-          <p className="mt-8 text-muted-foreground" data-testid="artifacts-loading">
-            {t('common.loading')}
-          </p>
+          <div className="mt-8 space-y-3" data-testid="artifacts-loading" aria-busy="true">
+            <div className="h-12 rounded-xl ds-shimmer" />
+            <div className="h-12 rounded-xl ds-shimmer" />
+            <div className="h-12 rounded-xl ds-shimmer" />
+          </div>
         )}
 
         {isError && (

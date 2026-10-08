@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { RefreshCcw } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '../components/tactile.js';
 
 /**
  * "Recomeçar do código inicial" — the escape hatch for a learner who broke the
@@ -50,7 +51,7 @@ export function CodeResetControl({
               onReset();
             }}
             data-testid="code-reset-confirm"
-            className="inline-flex h-9 items-center justify-center rounded-full bg-evergreen px-4 text-sm font-medium text-obsidiana transition-colors hover:bg-evergreen-hi"
+            className={`inline-flex h-11 items-center justify-center rounded-full px-4 text-sm ${TACTILE_CTA}`}
           >
             {t('code.reset.confirm')}
           </button>
@@ -58,7 +59,7 @@ export function CodeResetControl({
             type="button"
             onClick={() => setConfirming(false)}
             data-testid="code-reset-cancel"
-            className="inline-flex h-9 items-center justify-center rounded-full border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className={`inline-flex h-11 items-center justify-center rounded-full px-4 text-sm ${TACTILE_SECONDARY}`}
           >
             {t('code.reset.cancel')}
           </button>

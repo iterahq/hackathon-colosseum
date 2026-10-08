@@ -53,7 +53,7 @@ export const WrongThenRight: Story = {
     await group(canvasElement, ['new'], 'add');
     await userEvent.click(canvas.getByTestId('decompose-verify'));
     await waitFor(() => expect(args.onComplete).toHaveBeenCalledTimes(1));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
   },
 };
 
@@ -62,7 +62,7 @@ export const Done: Story = {
   args: { activity: makeSystemActivity('decompose_canvas', DECOMPOSE_CANVAS_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.queryByTestId('decompose-verify')).toBeNull();
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
@@ -97,7 +97,7 @@ export const DoneRestored: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await waitFor(() => expect(canvasElement.querySelectorAll('[data-region="item"]')).toHaveLength(3));
     await expect(canvasElement.querySelectorAll('[data-region="list"]')).toHaveLength(1);
     await expect(args.onComplete).not.toHaveBeenCalled();

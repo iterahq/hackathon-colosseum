@@ -15,6 +15,7 @@ import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useMembership } from '@/hooks/useMembership';
+import { RouteSettling } from '@/components/RouteSettling';
 import { isTenantAdmin, canAuthor, isInstructor, type MemberRole } from '@/services/membership.service';
 
 export function RequireRole({
@@ -34,11 +35,7 @@ export function RequireRole({
   if (!configured) return <Navigate to={fallback} replace />;
 
   if (authLoading || (session && isPending)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        Loading…
-      </div>
-    );
+    return <RouteSettling />;
   }
 
   // Unauthenticated should already be caught by RequireAuth; defensively send to login.

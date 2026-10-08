@@ -70,7 +70,6 @@ export function QueryActivity({ activity, onComplete }: { activity: PortableActi
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className="grid md:grid-cols-[1fr_1.2fr] gap-5 items-start" data-testid="query-stage">
@@ -113,7 +112,7 @@ export function QueryActivity({ activity, onComplete }: { activity: PortableActi
             {reached ? t('activity.query.goalReached') : t('activity.query.goalPending')}
           </span>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2 overflow-x-auto">
           <table className="w-full text-sm border-collapse" data-testid="query-table">
             <caption className="text-left text-xs text-muted-foreground mb-1">{table?.name}</caption>
             <thead>

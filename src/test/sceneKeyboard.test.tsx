@@ -83,7 +83,8 @@ describe('xray — keyboard path', () => {
     }
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onComplete.mock.calls[0][0]).toBe(true);
-    expect(screen.getByTestId('scene-stamp')).toBeTruthy();
+    expect(screen.getByTestId('scene-frame').getAttribute('data-solved')).toBe('true');
+    expect(screen.queryByTestId('scene-stamp')).toBeNull();
   });
 
   it('does nothing on arrows before the stage has an area to sweep', () => {

@@ -8,6 +8,7 @@ import { captureAttribution } from "./lib/attribution";
 import { mountUmami } from "./lib/analytics";
 import { mountStaleChunkReload } from "./lib/stale-chunk-reload";
 import { mountKeyboardVisibility } from "./lib/keyboard-visibility-mount";
+import { mountShellViewport } from "./lib/shell-viewport-mount";
 import "./index.css";
 
 document.documentElement.classList.add('dark');
@@ -19,5 +20,6 @@ captureAttribution(window.location.href, document.referrer || null);
 mountUmami();
 mountStaleChunkReload();
 mountKeyboardVisibility();
+mountShellViewport();
 
 createRoot(document.getElementById("root")!).render(<App />);

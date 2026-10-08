@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { LogOut } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { TACTILE_CTA } from '@iterahq/activities';
 
 /**
  * Confirmação de "sair da aula" do aluno, ancorada no próprio X do chrome.
@@ -53,7 +54,7 @@ export function LiveLeaveConfirm({
           type="button"
           onClick={onCancel}
           data-testid="live-leave-stay"
-          className="flex-1 h-9 rounded-full bg-evergreen text-sm font-medium text-obsidiana hover:bg-evergreen-hi transition-colors"
+          className={`flex-1 h-11 rounded-full text-sm ${TACTILE_CTA}`}
         >
           {t('live.leave.stay')}
         </button>

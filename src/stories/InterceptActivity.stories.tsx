@@ -40,7 +40,7 @@ export const WrongThenRight: Story = {
     await userEvent.click(canvas.getByTestId('intercept-node-celular'));
     await expect(canvas.getByTestId('scene-wrong-hint')).toHaveTextContent(/./);
     await userEvent.click(canvas.getByTestId('intercept-node-servidor'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -50,7 +50,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('intercept', INTERCEPT_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
@@ -62,7 +62,7 @@ export const MobileTouch: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByTestId('intercept-node-servidor'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };

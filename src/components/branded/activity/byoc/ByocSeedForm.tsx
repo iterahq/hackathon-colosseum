@@ -9,6 +9,7 @@ import { useState } from 'react';
 import type { Locale } from '@iterahq/activity-spec/runtime';
 import { localizedText as localized } from '@/utils/localizedText';
 import type { SeedCollection } from '@iterahq/activity-spec';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { ActivityTextarea } from '@/components/branded/activity/ActivityTextarea';
 
@@ -64,7 +65,7 @@ export function ByocSeedForm({
         onClick={() => onSubmit(trimmed)}
         disabled={disabled || trimmed.length === 0}
         data-testid="byoc-seed-submit"
-        className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
+        className={`mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full ${TACTILE_CTA}`}
       >
         {t('byoc.start')}
       </button>

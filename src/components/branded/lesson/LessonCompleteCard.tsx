@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { TeraAvatar } from '@iterahq/activities';
+import { TACTILE_CTA, TACTILE_SECONDARY, TeraAvatar } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 
 /**
@@ -40,7 +40,7 @@ export function LessonCompleteCard({
       {nextLessonId ? (
         <Link
           to={`/lesson/${nextLessonId}`}
-          className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
+          className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`}
           data-testid="lesson-next-cta"
         >
           {t('lesson.nextLesson')}
@@ -48,7 +48,7 @@ export function LessonCompleteCard({
       ) : (
         <Link
           to="/"
-          className="mt-6 flex w-full h-12 px-6 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors items-center justify-center"
+          className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`}
           data-testid="lesson-finish-cta"
         >
           {t('lesson.finishCourse')}
@@ -58,7 +58,7 @@ export function LessonCompleteCard({
         <button
           type="button"
           onClick={onReview}
-          className="mt-3 flex w-full h-12 px-6 rounded-full border border-border text-foreground font-medium hover:border-foreground/30 transition-colors items-center justify-center"
+          className={`mt-3 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_SECONDARY}`}
           data-testid="lesson-review-cta"
         >
           {t('lesson.review')}

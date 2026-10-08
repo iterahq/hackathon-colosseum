@@ -69,7 +69,7 @@ The shell draws only states that exist before the web document does (PLAN sectio
 
 | State | Shown | Event | Unit test (`apps/mobile/src/shellChromeState.test.ts`) |
 |---|---|---|---|
-| Loading | veil, monogram, thin top bar; 150 ms fade out | `onLoadStart`, `onLoadEnd` | "loading veil" |
+| Loading | veil, the launch screen's logo in place, thin top bar; 150 ms fade out | `onLoadStart`, `onLoadEnd` | "loading veil" |
 | Load failure | card "Não foi possível abrir a Itera" | `onError`, or `onHttpError` with `statusCode >= 400` (no URL comparison), or 15 s without a finished load | "load failure card", "15 s timeout" |
 | No network at start | same card, title "Sem conexão" | `onError` whose `code` (iOS `NSURLErrorDomain` -1009, -1020, -1018, -1005, -1003; Android -2) or, as the fallback, whose description (`ERR_INTERNET_DISCONNECTED`, "appears to be offline") names an offline error | "load failure card" |
 | Retry | veil again, WebView re-created on the page it was on | "Tentar de novo" | "retry" |

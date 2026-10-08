@@ -3,6 +3,7 @@ import { RotateCcw, XCircle } from 'lucide-react';
 import type { CodeBlank } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
 import { TeraVerdict, VerdictMark } from '../../components/TeraVerdict.js';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '../../components/tactile.js';
 import { CodeAttemptsNotice } from '../CodeAttemptsNotice.js';
 import type { GuidedGrade } from './types.js';
 
@@ -58,9 +59,9 @@ export function GuidedCodeFeedback({
     >
       <div className="flex items-center gap-2">
         <TeraVerdict correct={grade.allCorrect} size="bar" />
-        <VerdictMark correct={grade.allCorrect} />
+        <VerdictMark correct={grade.allCorrect} className="max-sm:hidden" />
         <p
-          className={`font-display font-semibold ${grade.allCorrect ? 'text-menta' : 'text-clay'}`}
+          className={`min-w-0 font-display font-semibold ${grade.allCorrect ? 'text-menta' : 'text-clay'}`}
           data-testid="guided-feedback-title"
         >
           {grade.allCorrect
@@ -70,7 +71,7 @@ export function GuidedCodeFeedback({
               : t('code.checks.someFailed')}
         </p>
         <span
-          className="ml-auto font-mono text-xs text-muted-foreground"
+          className="ml-auto shrink-0 font-mono text-xs text-muted-foreground"
           data-testid="guided-score"
         >
           {t('code.checks.score', {
@@ -102,7 +103,7 @@ export function GuidedCodeFeedback({
 
       {!grade.allCorrect && <CodeAttemptsNotice spent={attemptsSpent} />}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-col gap-3 pb-1 sm:flex-row">
         {/* Sem vidas o "tentar de novo" SOME em vez de ficar desabilitado: um
             botão cinza convida a clicar e a única resposta possível é o nada. */}
         {!outOfLives && (
@@ -111,10 +112,10 @@ export function GuidedCodeFeedback({
           onClick={onRetry}
           disabled={settled}
           data-testid="guided-retry"
-          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
             grade.allCorrect
-              ? 'border border-border text-muted-foreground hover:text-foreground'
-              : 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
+              ? TACTILE_SECONDARY
+              : TACTILE_CTA
           }`}
         >
           <RotateCcw className="h-4 w-4" />
@@ -126,12 +127,12 @@ export function GuidedCodeFeedback({
           onClick={onContinue}
           disabled={settled}
           data-testid="guided-continue"
-          className={`inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-6 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
             grade.allCorrect
-              ? 'bg-menta text-obsidiana hover:bg-evergreen-hi'
+              ? TACTILE_CTA
               : outOfLives
-                ? 'bg-evergreen text-obsidiana hover:bg-evergreen-hi'
-                : 'border border-border text-muted-foreground hover:text-foreground'
+                ? TACTILE_CTA
+                : TACTILE_SECONDARY
           }`}
         >
           {grade.allCorrect || outOfLives

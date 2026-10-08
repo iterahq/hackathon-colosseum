@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import { WebOnly } from '@/components/shell/WebOnly';
 
@@ -36,7 +37,7 @@ export function GuestEndCard({ onBack }: { onBack?: () => void }) {
           <Link
             to="/signup"
             data-testid="guest-end-signup"
-            className="mt-8 w-full h-12 px-6 inline-flex items-center justify-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+            className={`mt-8 w-full h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_CTA}`}
           >
             {t('live.guest.end.cta')}
           </Link>
@@ -48,7 +49,7 @@ export function GuestEndCard({ onBack }: { onBack?: () => void }) {
         <Link
           to="/login"
           data-testid="guest-end-login"
-          className="mt-3 w-full h-11 inline-flex items-center justify-center rounded-full border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className={`mt-3 w-full h-12 inline-flex items-center justify-center rounded-full text-sm ${TACTILE_SECONDARY}`}
         >
           {t('live.guest.end.login')}
         </Link>

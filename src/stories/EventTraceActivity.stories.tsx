@@ -53,7 +53,7 @@ export const Done: Story = {
   args: { activity: makeSystemActivity('event_trace', EVENT_TRACE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.getByTestId('event-trace-step-render')).toHaveAttribute('data-state', 'current');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },

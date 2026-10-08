@@ -165,6 +165,7 @@ export function CodeEditor({
     <div className="editor-container h-full" style={{ minHeight: '300px' }}>
       <Editor
         height="100%"
+        loading={<div className="h-full w-full ds-shimmer" aria-busy="true" />}
         language={language}
         path={path}
         value={value}

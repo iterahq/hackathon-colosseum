@@ -91,7 +91,7 @@ export function RichList({
               className="mt-[0.7em] h-2 w-2 shrink-0 rotate-45 rounded-[2px] bg-evergreen"
             />
           )}
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0 flex-1 break-words">
             <RichSpans spans={item} terms={terms} />
           </span>
         </motion.li>

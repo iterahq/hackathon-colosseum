@@ -525,6 +525,11 @@ function WebShell({ entryPath, onRetryRead }: { entryPath: string; onRetryRead: 
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
         allowsBackForwardNavigationGestures
+        // An app surface, not a browser page: no link peek on a long press, no phone number or address turned into a link,
+        // no zoom controls.
+        allowsLinkPreview={false}
+        dataDetectorTypes="none"
+        setBuiltInZoomControls={false}
         onLoadStart={onLoadStart}
         onLoadEnd={() => dispatch({ type: 'loadEnd' })}
         onError={(e) => dispatch({ type: 'error', description: e.nativeEvent.description, code: e.nativeEvent.code, domain: e.nativeEvent.domain, os: Platform.OS })}

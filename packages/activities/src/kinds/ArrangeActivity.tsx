@@ -69,7 +69,6 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
       guideName={undefined}
       prompt={localizedText(spec?.prompt ?? '', locale)}
       reaction={localizedText(spec?.reaction ?? '', locale)}
-      stamp={localizedText(spec?.stamp ?? '', locale)}
       solved={solved}
     >
       <ol className={`flex flex-col gap-2 ${TOUCH_SURFACE}`} data-testid="arrange-stage">

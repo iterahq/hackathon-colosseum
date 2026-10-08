@@ -42,7 +42,7 @@ export const WrongThenRight: Story = {
     await userEvent.click(canvas.getByTestId('spot-token-plain-0-0'));
     await expect(canvas.getByTestId('scene-wrong-hint')).toHaveTextContent(/./);
     await userEvent.click(canvas.getByTestId('spot-token-typo-clas'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -52,7 +52,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('spot', SPOT_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.getByTestId('spot-token-typo-clas')).toHaveTextContent('class');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
@@ -65,7 +65,7 @@ export const MobileTouch: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByTestId('spot-token-typo-clas'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };

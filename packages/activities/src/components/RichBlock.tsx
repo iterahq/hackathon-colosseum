@@ -105,7 +105,7 @@ export function RichBlock({
 
   return (
     <p
-      className={`whitespace-pre-line ${body}`}
+      className={`whitespace-pre-line break-words ${body}`}
       data-rich-block="paragraph"
       data-lead={lead ? 'true' : undefined}
     >

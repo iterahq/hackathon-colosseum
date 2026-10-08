@@ -46,7 +46,7 @@ export const WrongThenRight: Story = {
     await userEvent.click(canvas.getByTestId('wire-right-paragrafo'));
     await userEvent.click(canvas.getByTestId('wire-left-tag-a'));
     await userEvent.click(canvas.getByTestId('wire-right-link'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -56,7 +56,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('wire', WIRE_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     for (const pair of WIRE_SPEC.pairs) {
       await expect(canvas.getByTestId(`wire-left-${pair.left_id}`)).toHaveAttribute('data-wired', 'true');
     }

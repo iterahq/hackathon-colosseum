@@ -51,7 +51,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('bucket', BUCKET_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(within(canvas.getByTestId('bucket-drop-absoluta')).getByTestId('bucket-placed-px')).toBeInTheDocument();
     await expect(within(canvas.getByTestId('bucket-drop-relativa')).getByTestId('bucket-placed-vw')).toBeInTheDocument();
     await expect(canvas.queryByTestId('bucket-chip-px')).toBeNull();

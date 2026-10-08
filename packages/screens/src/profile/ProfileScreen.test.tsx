@@ -71,9 +71,9 @@ describe('ProfileScreen: the page', () => {
 });
 
 describe('ProfileScreen: the states', () => {
-  it('loading: the line and no form', () => {
+  it('loading: a skeleton with no word, and no form', () => {
     setup({ kind: 'loading' });
-    expect(screen.getByTestId('profile-loading')).toHaveTextContent('Carregando…');
+    expect(screen.getByTestId('profile-loading')).toHaveTextContent('');
     expect(screen.queryByTestId('profile-form')).not.toBeInTheDocument();
   });
 

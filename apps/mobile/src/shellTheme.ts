@@ -53,7 +53,6 @@ export const CARD_STYLES = {
 export const VEIL_STYLES = {
   fill: { backgroundColor: BACKGROUND },
   bar: { backgroundColor: ACCENT },
-  monogram: { color: INK },
 } as const;
 
 export const DEV_STYLES = {

@@ -41,6 +41,7 @@ import { ActivityTextarea } from '../../components/ActivityTextarea.js';
 import { ArtifactVisibilityNotice } from '../../components/ArtifactVisibilityNotice.js';
 import { JudgeHeatmap } from '../../components/JudgeHeatmap.js';
 import { RichText } from '../../components/RichText.js';
+import { TACTILE_CTA } from '../../components/tactile.js';
 import { ActivityShell } from '../../components/parts.js';
 import { useHostOwnsSettledAction } from '../../components/settledAction.js';
 
@@ -200,7 +201,7 @@ export function AiJudgeDocumentActivity({
         <button
           onClick={onSubmit}
           disabled={submitting || content.trim().length === 0}
-          className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi disabled:opacity-50"
+          className={`mt-4 inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
           data-testid="judge-submit"
         >
           {submitting ? 'Avaliando…' : 'Enviar para avaliação da IA'}

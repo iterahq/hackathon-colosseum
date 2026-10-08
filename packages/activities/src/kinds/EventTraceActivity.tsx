@@ -158,7 +158,6 @@ export function EventTraceActivity({ activity, onComplete }: { activity: Portabl
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className="grid gap-4 max-sm:gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]" data-testid="event-trace-stage">

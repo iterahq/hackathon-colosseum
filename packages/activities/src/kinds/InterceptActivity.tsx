@@ -75,7 +75,6 @@ export function InterceptActivity({ activity, onComplete }: { activity: Portable
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div

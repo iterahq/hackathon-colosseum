@@ -24,10 +24,10 @@ export function SandboxHint({ hint, label }: { hint: string; label: string }) {
       </button>
       {open && (
         <div
-          className="mt-2 flex items-start gap-3 rounded-2xl border border-menta/25 bg-menta/5 p-3 text-sm leading-relaxed text-muted-foreground"
+          className="mt-2 flex items-start gap-3 max-sm:block rounded-2xl border border-menta/25 bg-menta/5 p-3 text-sm leading-relaxed text-muted-foreground"
           data-testid="sandbox-hint"
         >
-          <TeraAvatar mood="neutral" size="sm" className="-mt-1" />
+          <TeraAvatar mood="neutral" size="sm" className="-mt-1 max-sm:float-left max-sm:mr-2" />
           <p className="min-w-0 flex-1">{hint}</p>
         </div>
       )}

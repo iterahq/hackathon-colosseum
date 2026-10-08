@@ -77,7 +77,6 @@ export function LiveTypeActivity({ activity, onComplete }: { activity: PortableA
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={gate.solved}
     >
       <div className="grid md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-0 items-stretch" data-testid="live-type-stage">

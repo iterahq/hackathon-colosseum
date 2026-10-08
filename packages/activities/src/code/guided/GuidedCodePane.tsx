@@ -5,6 +5,7 @@ import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../../context.js';
 import type { ActivityCompletion, PortableActivity } from '../../renderer.js';
 import { RichText } from '../../components/RichText.js';
+import { TACTILE_CTA } from '../../components/tactile.js';
 import { useHostOwnsSettledAction } from '../../components/settledAction.js';
 import { guidedVariant } from './guidedCode.js';
 import { useGuidedCode } from './useGuidedCode.js';
@@ -146,7 +147,7 @@ export function GuidedCodePane({
           onClick={guided.submit}
           disabled={isDone || guided.outOfLives}
           data-testid="guided-submit"
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-evergreen px-6 font-medium text-obsidiana transition-colors hover:bg-evergreen-hi disabled:cursor-not-allowed disabled:opacity-40"
+          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
         >
           {t('activity.submit')}
         </button>

@@ -14,6 +14,7 @@
  */
 import { AlertTriangle, RefreshCw, RotateCw } from 'lucide-react';
 import { useI18n } from '@/i18n';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 
 export type LiveContentFault =
   /** A sessão não aponta para lição nenhuma — a leitura nem chega a sair. */
@@ -61,7 +62,7 @@ export function LiveContentDiagnostic({ fault, detail, onRetry }: LiveContentDia
           type="button"
           onClick={onRetry}
           data-testid="live-fault-retry"
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-evergreen px-5 text-sm font-medium text-obsidiana transition-colors hover:bg-evergreen-hi"
+          className={`inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm ${TACTILE_CTA}`}
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {t('live.fault.retry')}
@@ -70,7 +71,7 @@ export function LiveContentDiagnostic({ fault, detail, onRetry }: LiveContentDia
           type="button"
           onClick={() => window.location.reload()}
           data-testid="live-fault-reload"
-          className="inline-flex h-10 items-center gap-2 rounded-full border border-border px-5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className={`inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 text-sm ${TACTILE_SECONDARY}`}
         >
           <RotateCw className="h-3.5 w-3.5" />
           {t('live.fault.reload')}

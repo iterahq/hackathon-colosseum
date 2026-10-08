@@ -55,7 +55,6 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
     guide: spec?.guide,
     prompt: spec?.prompt,
     reaction: spec?.reaction,
-    stamp: spec?.stamp,
     page: { elements: [] },
   });
   const elements = spec?.elements ?? [];
@@ -95,7 +94,6 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div

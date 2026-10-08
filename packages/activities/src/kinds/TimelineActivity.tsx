@@ -67,7 +67,6 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
       guideName={spec?.guide ? text(spec.guide.name) : undefined}
       prompt={text(spec?.prompt)}
       reaction={text(spec?.reaction)}
-      stamp={text(spec?.stamp)}
       solved={solved}
     >
       <div className="flex flex-col gap-3" data-testid="timeline-stage">
@@ -85,7 +84,7 @@ export function TimelineActivity({ activity, onComplete }: { activity: PortableA
           </div>
         ) : (
           <div
-            className="rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 min-h-[160px] max-sm:min-h-[112px] justify-center"
+            className="overflow-x-auto rounded-xl border border-white/10 p-5 flex flex-col gap-1.5 min-h-[160px] max-sm:min-h-[112px] justify-center"
             style={{ background: SCENE_CODE_BACKGROUND }}
           >
             {step?.frame.type === 'code' &&

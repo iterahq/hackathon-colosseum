@@ -93,20 +93,20 @@ export function WrongHint({
                 className={`fixed inset-x-0 bottom-0 z-40 border-t-2 ${hit ? 'border-evergreen/60' : 'border-clay/60'} bg-[#1C1916]/95 backdrop-blur-md`}
               >
                 <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-5 max-sm:gap-3 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] md:flex-row md:items-center md:px-6">
-                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                  <div className="flex min-w-0 flex-1 items-start gap-4 max-sm:flex-wrap max-sm:items-center max-sm:gap-x-3 max-sm:gap-y-1">
                     <motion.span
                       initial={reduced ? false : { scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={SPRING_POP}
-                      className="mt-3 shrink-0 max-sm:mt-1"
+                      className="mt-3 shrink-0 max-sm:mt-0"
                     >
                       <GuideAvatar happy={hit} oops={!hit} size="bar" className="max-sm:h-10 max-sm:w-10" />
                     </motion.span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 max-sm:contents">
                       <p className={`font-display text-xl font-bold ${hit ? 'text-evergreen-hi' : 'text-clay'}`}>
                         {t(hit ? 'activity.scene.hitTitle' : 'activity.scene.tryAgainTitle')}
                       </p>
-                      <p className="text-base text-foreground/85">{text}</p>
+                      <p className="text-base text-foreground/85 max-sm:basis-full">{text}</p>
                     </div>
                   </div>
                   <button

@@ -43,7 +43,7 @@ export const WrongThenGoalReached: Story = {
     await userEvent.click(canvas.getByTestId('press-button'));
     await userEvent.click(canvas.getByTestId('press-button'));
     await userEvent.click(canvas.getByTestId('press-button'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -53,7 +53,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('press', PRESS_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };

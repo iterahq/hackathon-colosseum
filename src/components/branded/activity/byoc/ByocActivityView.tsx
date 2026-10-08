@@ -14,6 +14,7 @@
  */
 import { Sparkles } from 'lucide-react';
 import type { ByocSpec } from '@iterahq/activity-spec';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { useI18n } from '@/i18n';
 import type { Activity } from '@/types/content';
 import type { ActivityCompleteDetail } from '../activityFeedbackKinds';
@@ -75,7 +76,7 @@ export function ByocActivityView({
             type="button"
             onClick={reset}
             data-testid="byoc-retry"
-            className="mt-4 h-11 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi"
+            className={`mt-4 h-12 px-6 rounded-full ${TACTILE_CTA}`}
           >
             {t('byoc.tryAgain')}
           </button>

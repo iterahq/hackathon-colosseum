@@ -272,6 +272,35 @@ describe('LessonPlayer — concept has no mark-done (reading, not completion)', 
   });
 });
 
+describe('LessonPlayer — a new activity starts at the top of the page', () => {
+  it('scrolls the page back to the top when the activity on screen changes', async () => {
+    useLessonContent.mockReturnValue({
+      data: {
+        id: 'lesson-1',
+        title: { pt: 'Intro' },
+        activities: [
+          { id: 'c1', lessonId: 'lesson-1', ordinal: 1, kind: 'concept', spec: { instruction: { text: 'Leia isto.' } }, rubric: null },
+          { id: 'a2', lessonId: 'lesson-1', ordinal: 2, kind: 'quiz', spec: {}, rubric: null },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    try {
+      renderPlayer();
+      const cont = await screen.findByTestId('concept-continue');
+      scrollTo.mockClear();
+      fireEvent.click(cont);
+      await waitFor(() => expect(screen.queryByTestId('concept-continue')).toBeNull(), { timeout: 5000 });
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'instant' });
+    } finally {
+      scrollTo.mockRestore();
+    }
+  });
+});
+
 describe('LessonPlayer — a BYOC layer makes its host kind graded', () => {
   /**
    * BYOC rides on `spec.byoc` over ANY kind, so the shell — not just the

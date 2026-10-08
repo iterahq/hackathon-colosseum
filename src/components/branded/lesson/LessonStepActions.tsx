@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 
 /**
  * The row under an activity that is read or reviewed: "Continuar", and — for an
@@ -31,7 +32,7 @@ export function LessonStepActions({
           type="button"
           onClick={onRetry}
           data-testid="lesson-retry-missed"
-          className="flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
+          className={`flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full ${TACTILE_SECONDARY}`}
         >
           {t('common.retry')}
         </button>
@@ -41,7 +42,7 @@ export function LessonStepActions({
           type="button"
           onClick={onRedo}
           data-testid="lesson-redo"
-          className="flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full font-semibold border border-border text-foreground transition-colors hover:bg-card"
+          className={`flex-1 min-w-0 inline-flex items-center justify-center h-12 px-4 rounded-full ${TACTILE_SECONDARY}`}
         >
           {t('lesson.redo')}
         </button>
@@ -51,7 +52,7 @@ export function LessonStepActions({
         onClick={onContinue}
         disabled={busy}
         data-testid="concept-continue"
-        className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 h-12 px-4 rounded-full font-semibold bg-evergreen text-obsidiana shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:opacity-60 disabled:cursor-not-allowed"
+        className={`flex-1 min-w-0 inline-flex items-center justify-center gap-2 h-12 px-4 rounded-full ${TACTILE_CTA}`}
       >
         {t('activity.continue')}
       </button>

@@ -8,6 +8,7 @@
  * Program → Unit → Lesson → Activity data.
  */
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 import { ChevronLeft, GitBranch, SearchX } from 'lucide-react';
 import { AppHeader, SkillTree, LockedProgramView } from '@/components/branded';
 import { useProgram } from '@/hooks';
@@ -53,7 +54,7 @@ function ProgramUnavailable({
           <WebOnly>
             <Link
               to="/subscribe"
-              className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              className={`h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_CTA}`}
               data-testid="program-unavailable-subscribe"
             >
               {t('catalog.locked.cta')}
@@ -64,7 +65,7 @@ function ProgramUnavailable({
           <button
             type="button"
             onClick={onRetry}
-            className="h-10 px-5 inline-flex items-center rounded-full border border-border text-foreground hover:bg-card transition-colors"
+            className={`h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_SECONDARY}`}
             data-testid="program-unavailable-retry"
           >
             {t('common.retry')}
@@ -72,14 +73,14 @@ function ProgramUnavailable({
         )}
         <Link
           to="/catalog"
-          className="h-10 px-5 inline-flex items-center rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+          className={`h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_CTA}`}
           data-testid="program-unavailable-catalog"
         >
           {t('program.noAccess.browse')}
         </Link>
         <Link
           to="/"
-          className="h-10 px-5 inline-flex items-center rounded-full border border-border text-foreground hover:bg-card transition-colors"
+          className={`h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_SECONDARY}`}
           data-testid="program-unavailable-home"
         >
           {t('program.noAccess.home')}
@@ -178,7 +179,7 @@ export default function ProgramPage() {
             <p className="text-muted-foreground">{t('program.notFound')}</p>
             <button
               onClick={() => refetch()}
-              className="h-10 px-5 rounded-full bg-evergreen text-obsidiana font-medium hover:bg-evergreen-hi transition-colors"
+              className={`h-12 px-6 inline-flex items-center justify-center rounded-full ${TACTILE_CTA}`}
             >
               {t('common.retry')}
             </button>

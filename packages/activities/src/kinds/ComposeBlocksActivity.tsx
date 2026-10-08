@@ -173,7 +173,6 @@ export function ComposeBlocksActivity({ activity, onComplete }: { activity: Port
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={solved}
     >
       <div className={`grid gap-4 max-sm:gap-3 md:grid-cols-2 ${TOUCH_SURFACE}`} data-testid="compose-stage">

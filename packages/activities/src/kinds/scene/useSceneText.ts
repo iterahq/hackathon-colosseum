@@ -14,7 +14,6 @@ export interface SceneTextSpec {
   guide?: { name: SceneLocalizedText };
   prompt?: SceneLocalizedText;
   reaction?: SceneLocalizedText;
-  stamp?: SceneLocalizedText;
   page?: ScenePageSpec;
 }
 
@@ -27,7 +26,6 @@ export function useSceneText(spec: SceneTextSpec | undefined) {
     guideName: spec?.guide ? text(spec.guide.name) : undefined,
     prompt: text(spec?.prompt),
     reaction: text(spec?.reaction),
-    stamp: text(spec?.stamp),
     url: spec?.page?.url_label || 'site',
   };
 }

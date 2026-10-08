@@ -12,6 +12,10 @@ import type { Transition } from 'framer-motion';
 export const TACTILE_CTA =
   'bg-evergreen text-obsidiana font-semibold shadow-[0_4px_0_#249457] transition-[transform,box-shadow,background-color] duration-100 hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457] disabled:translate-y-0 disabled:opacity-40 disabled:shadow-[0_4px_0_#249457] disabled:cursor-not-allowed';
 
+/** The quieter action beside a CTA: an outlined key with the same ledge and press. */
+export const TACTILE_SECONDARY =
+  'border-2 border-b-4 border-border bg-card font-semibold text-foreground/80 transition-[transform,border-color,color] duration-100 hover:border-foreground/25 hover:text-foreground active:translate-y-[2px] active:border-b-2 disabled:translate-y-0 disabled:border-b-4 disabled:opacity-40 disabled:cursor-not-allowed';
+
 /** A CTA after it settled: flat, no ledge, no press. */
 export const TACTILE_CTA_SETTLED = 'bg-evergreen/15 text-menta border border-evergreen/40 cursor-default';
 

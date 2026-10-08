@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { findStoredGuestCode, isGuestAccessToken } from '@/services/guestSession.service';
 import { GUEST_ROUTE_PREFIX } from '@/guest/guestRoute';
+import { RouteSettling } from '@/components/RouteSettling';
 
 export function RequireAuth({
   children,
@@ -28,11 +29,7 @@ export function RequireAuth({
 
   if (!configured) return <>{children}</>;
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        Loading…
-      </div>
-    );
+    return <RouteSettling />;
   }
   if (!session) {
     const tenant = new URLSearchParams(location.search).get('tenant');

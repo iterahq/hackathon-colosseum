@@ -60,7 +60,7 @@ export const WrongThenRight: Story = {
     await expect(canvas.getByTestId('scene-wrong-hint')).toHaveTextContent(/./);
     await expect(args.onComplete).not.toHaveBeenCalled();
     await userEvent.click(canvas.getByTestId('selector-option-p'));
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.getByTestId('selector-rule')).toHaveTextContent('p { color: #DB2777; }');
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
     // The chips stay live after the gate: comparing selectors is the point, and the verdict fired once.
@@ -77,7 +77,7 @@ export const Done: Story = {
   args: { activity: makeGatedActivity('selector', SELECTOR_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     // Opens on the chip that solved it, so the answer is on screen.
     await expect(canvas.getByTestId('selector-option-p')).toHaveAttribute('aria-pressed', 'true');
     await expect(canvas.getByTestId('selector-element-intro')).toHaveAttribute('data-lit', 'true');

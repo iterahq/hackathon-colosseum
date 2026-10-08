@@ -32,7 +32,6 @@ export const Default: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'false');
-    await expect(canvas.queryByTestId('scene-stamp')).toBeNull();
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
 };
@@ -51,7 +50,7 @@ export const Swept: Story = {
         stage.dispatchEvent(new PointerEvent('pointermove', init));
       }
     }
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'));
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
     const [, detail] = (args.onComplete as Mock).mock.calls[0];
     await expect(Array.isArray(detail.actions)).toBe(true);
@@ -77,7 +76,7 @@ export const SweptWithKeyboard: Story = {
     for (let i = 0; i < 120 && (args.onComplete as Mock).mock.calls.length === 0; i++) {
       await userEvent.keyboard(sweep[Math.floor(i / 6) % sweep.length]);
     }
-    await waitFor(() => expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument());
+    await waitFor(() => expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true'));
     await expect(args.onComplete).toHaveBeenCalledTimes(1);
   },
 };
@@ -87,7 +86,7 @@ export const Done: Story = {
   args: { activity: makeActivity('xray', XRAY_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     // The page is still there to look under — the reveal no longer fades it away.
     await expect(canvas.getByTestId('xray-page').style.opacity).not.toBe('0');
     await expect(args.onComplete).not.toHaveBeenCalled();

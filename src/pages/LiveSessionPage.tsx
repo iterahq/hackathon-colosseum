@@ -293,6 +293,14 @@ export default function LiveSessionPage() {
   const sound = useLiveSound();
   useAnswerOutbox();
 
+  // The activity the professor moves the class to starts at its top: on a phone the page is the
+  // scroller, on a sandbox kind and on a desktop it is `<main>`.
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [currentActivityId]);
+
   // Play the advance cue when the professor moves the class to a NEW activity
   // (not on first mount / leaving reception).
   const prevActivityRef = useRef<string | null>(null);
@@ -780,6 +788,7 @@ export default function LiveSessionPage() {
             aparecer — o desenho saía cortado, e sem rolagem nenhuma para chegar
             no resto. */}
         <main
+          ref={mainRef}
           className={`flex-1 min-h-0 min-w-0 px-4 md:px-8 ${
             onSandbox
               ? `overflow-y-auto pb-6 ${stagedAnswer && !ended ? 'pt-14' : 'pt-6'}`

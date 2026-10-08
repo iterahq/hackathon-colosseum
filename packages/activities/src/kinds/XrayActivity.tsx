@@ -4,8 +4,8 @@
  *
  * The page sits on top of its own source; the pointer is a lens that punches
  * through it. Every source line sits under the element it draws. Sweeping
- * `coverage_goal` of the stage opens the gate: the guide reacts and the stamp
- * names the idea. The page and the lens stay live after that, so the learner
+ * `coverage_goal` of the stage opens the gate: the guide reacts.
+ * The page and the lens stay live after that, so the learner
  * keeps looking under any part of the page. Ungraded; silent.
  */
 import { useCallback, useRef } from 'react';
@@ -54,7 +54,6 @@ export function XrayActivity({ activity, onComplete }: { activity: PortableActiv
       guideName={copy.guideName}
       prompt={copy.prompt}
       reaction={copy.reaction}
-      stamp={copy.stamp}
       solved={gate.solved}
     >
       <div

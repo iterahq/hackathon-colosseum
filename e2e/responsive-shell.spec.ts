@@ -58,7 +58,7 @@ async function login(page: Page) {
 /** Let the guards + any lazily-loaded chunk settle (PR #196). */
 async function settle(page: Page) {
   await page.waitForLoadState('networkidle').catch(() => {});
-  await expect(page.getByText(/^Loading…$/)).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
+  await expect(page.getByTestId('route-settling')).toHaveCount(0, { timeout: 45_000 }).catch(() => {});
 }
 
 test.describe('responsive shell', { tag: '@responsive' }, () => {

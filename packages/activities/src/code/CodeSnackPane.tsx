@@ -5,6 +5,7 @@ import type { CodeSpec } from '@iterahq/activity-spec';
 import { useActivityI18n } from '../context.js';
 import type { ActivityCompletion, PortableActivity } from '../renderer.js';
 import { DoneButton } from '../components/parts.js';
+import { TACTILE_CTA } from '../components/tactile.js';
 import { RichText } from '../components/RichText.js';
 import { CodeEditorSurface } from './CodeEditorSurface.js';
 import { parseEditableRegions } from './editableRegions.js';
@@ -217,7 +218,7 @@ export function CodeSnackPane({
           onClick={submit}
           disabled={phase !== 'editing' || isDone || outOfLives}
           data-testid="code-submit"
-          className="mt-6 w-full inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full font-medium bg-evergreen text-obsidiana transition-colors hover:bg-evergreen-hi disabled:opacity-40 disabled:cursor-not-allowed"
+          className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
         >
           {phase === 'submitting' && <Loader2 className="h-4 w-4 animate-spin" />}
           {phase === 'submitting' ? t('code.checks.running') : t('activity.submit')}

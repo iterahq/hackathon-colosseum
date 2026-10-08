@@ -51,7 +51,7 @@ export const Done: Story = {
   args: { activity: makeSystemActivity('state_lab', STATE_LAB_SPEC, 'done') },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('scene-stamp')).toBeInTheDocument();
+    await expect(canvas.getByTestId('scene-frame')).toHaveAttribute('data-solved', 'true');
     await expect(canvas.getByTestId('state-lab-goal-1')).toHaveAttribute('data-met', 'true');
     await expect(args.onComplete).not.toHaveBeenCalled();
   },
