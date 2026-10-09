@@ -36,7 +36,7 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
   const spec = activity.spec as unknown as ArrangeSpec;
   const itemsById = useMemo(() => new Map((spec?.items ?? []).map((item) => [item.id, item])), [spec?.items]);
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   const [order, setOrder] = useState<string[]>(() =>
     (activity.status === 'done' ? spec?.correct : spec?.start) ?? [],
   );
@@ -55,8 +55,10 @@ export function ArrangeActivity({ activity, onComplete }: { activity: PortableAc
       setOrder(next);
       setMoved(true);
       record('order_changed', { order: next });
+      // The completing move is sounded by the gate, not twice.
+      if (!next.every((id, i) => id === spec?.correct?.[i])) step('drop');
     },
-    [order, record, solved],
+    [order, record, solved, step, spec?.correct],
   );
 
   const codeStyle = spec?.item_style === 'code';

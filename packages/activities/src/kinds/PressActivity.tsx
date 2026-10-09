@@ -32,7 +32,7 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
   const { t, locale } = useActivityI18n();
   const spec = activity.spec as unknown as PressSpec;
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   const [wired, setWired] = useState(false);
   const { showHint, clearHint, hintProps } = useWrongHint();
   const [count, setCount] = useState(0);
@@ -45,12 +45,14 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
       if (optionId === spec?.correct) {
         setWired(true);
         clearHint();
+        step('connect');
         return;
       }
       record('wrong_try', { option_id: optionId });
       showHint(localizedText(spec?.wrong_hint ?? '', locale));
+      step('wrong');
     },
-    [clearHint, locale, record, showHint, solved, spec?.correct, spec?.wrong_hint, wired],
+    [step, clearHint, locale, record, showHint, solved, spec?.correct, spec?.wrong_hint, wired],
   );
 
   const press = useCallback(() => {
@@ -61,7 +63,8 @@ export function PressActivity({ activity, onComplete }: { activity: PortableActi
     if (spec?.effect.type === 'toggle_class') setToggled((v) => !v);
     if (spec?.effect.type === 'append_text') setAppended((prev) => `${prev}${localizedText(spec.effect.type === 'append_text' ? spec.effect.text : '', locale)}`);
     if (next >= (spec?.goal ?? 1)) open({ presses: next });
-  }, [count, locale, open, record, solved, spec?.effect, spec?.goal, wired]);
+    step('pick');
+  }, [step, count, locale, open, record, solved, spec?.effect, spec?.goal, wired]);
 
   const effect = spec?.effect;
   const target = effect?.type !== 'counter' ? spec?.page?.elements.find((el) => el.id === effect?.target_id) : undefined;

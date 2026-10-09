@@ -16,7 +16,7 @@
  * that section in `specs.ts`.
  */
 import type { CSSProperties } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Sliders } from 'lucide-react';
 import { useActivityI18n } from '../context.js';
 import type { ActivityCompleteHandler, PortableActivity } from '../renderer.js';
@@ -48,6 +48,9 @@ export function dialInitialValue(spec: DialSpec | undefined, done: boolean): num
   return Math.min(high, Math.max(low, snapped));
 }
 
+/** A drag fires a change per step; one tick per this window keeps it a tick, not a buzz. */
+const DIAL_STEP_CUE_MS = 90;
+
 export function DialActivity({ activity, onComplete }: { activity: PortableActivity; onComplete: ActivityCompleteHandler }) {
   const { t } = useActivityI18n();
   const spec = activity.spec as unknown as DialSpec;
@@ -55,7 +58,8 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
   const elements = spec?.page?.elements ?? [];
   const target = elements.find((el) => el.id === spec?.target_id) ?? elements[0];
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
+  const lastStepAt = useRef(0);
   const [value, setValue] = useState(() => dialInitialValue(spec, activity.status === 'done'));
   const [moved, setMoved] = useState(false);
 
@@ -111,6 +115,12 @@ export function DialActivity({ activity, onComplete }: { activity: PortableActiv
             setValue(next);
             setMoved(true);
             record('value_set', { value: next });
+            const now = Date.now();
+            const landed = next >= (spec?.target?.[0] ?? 0) && next <= (spec?.target?.[1] ?? 0);
+            if (!landed && now - lastStepAt.current >= DIAL_STEP_CUE_MS) {
+              lastStepAt.current = now;
+              step('pick');
+            }
           }}
           className="flex-1 accent-evergreen"
         />

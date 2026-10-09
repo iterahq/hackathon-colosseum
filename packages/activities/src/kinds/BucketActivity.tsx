@@ -41,7 +41,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
   const spec = activity.spec as unknown as BucketSpec;
   const copy = useSceneText(spec);
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   const reducedMotion = useReducedMotion();
 
   // A `done` activity opens with every chip in its bucket: review shows the answer, not an empty tray.
@@ -58,6 +58,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
 
   const pick = (chipId: string) => {
     if (solved) return;
+    if (picked !== chipId) step('pick');
     setPicked((current) => (current === chipId ? null : chipId));
   };
 
@@ -70,6 +71,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
       window.setTimeout(() => setShaking(null), 500);
       record('wrong_try', { chip_id: chip.id, bucket_id: bucketId });
       showHint(copy.text(chip.hint));
+      step('wrong');
       return;
     }
     const next = { ...placed, [picked]: bucketId };
@@ -78,6 +80,7 @@ export function BucketActivity({ activity, onComplete }: { activity: PortableAct
     clearHint();
     record('chip_placed', { chip_id: chip.id, bucket_id: bucketId });
     if (Object.keys(next).length === chips.length) open({ chips: Object.keys(next).length });
+    step('drop');
   };
 
   return (

@@ -58,7 +58,7 @@
 
 export { ActivityRenderer, BUILT_IN_ACTIVITY_KINDS, isBuiltInActivityKind } from './ActivityRenderer.js';
 export type { BuiltInActivityKind } from './ActivityRenderer.js';
-export { ActivityProvider, useActivityHost, useActivityI18n, useActivityStorage } from './context.js';
+export { ActivityProvider, useActivityHost, useActivityI18n, useActivitySound, useActivityStorage } from './context.js';
 
 /* ──────────────────────────── the built-in kinds ─────────────────────────── */
 // Exported individually as well as through the dispatcher: a host that lays out
@@ -369,6 +369,8 @@ export type {
   ActivityChatScreen,
   ActivityResponderResult,
   ActivitySeed,
+  ActivitySoundCue,
+  ActivitySoundPort,
   ActivityStoragePort,
   ActivityTheme,
   ActivityByocGeneration,

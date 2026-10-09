@@ -4,7 +4,7 @@ import type { SoundName } from '@/types/sound';
 import { useSoundEffects } from './useSoundEffects';
 import { useLessonMuted } from './useLessonMuted';
 
-const LESSON_CLIPS: readonly SoundName[] = ['success', 'error', 'click', 'celebration'];
+const LESSON_CLIPS: readonly SoundName[] = ['success', 'error', 'click', 'celebration', 'chime', 'submit'];
 
 /**
  * Sound cues of the self-paced lesson.

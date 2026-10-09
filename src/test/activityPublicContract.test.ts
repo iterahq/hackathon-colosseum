@@ -33,6 +33,7 @@ import type {
   ActivityJudgeVerdict,
   ActivityResponderResult,
   ActivitySeed,
+  ActivitySoundPort,
   PortableActivity,
 } from '@iterahq/activities';
 
@@ -41,6 +42,7 @@ import type { ActivityCompleteDetail } from '@/components/branded/activity/activ
 import type { GeneratedBrief, JudgeVerdict, RespondResult, Seed } from '@/api/iteraApi';
 import type { ByocGeneration } from '@/types/byoc';
 import { useI18n } from '@/i18n';
+import type { ITERA_ACTIVITY_SOUND } from '@/lib/activitySoundPort';
 
 import { ConceptActivity } from '@/components/branded/activity/ConceptActivity';
 import { VideoActivity } from '@/components/branded/activity/VideoActivity';
@@ -204,6 +206,10 @@ type _byocGeneration = Expect<Mutual<ByocGeneration, ActivityByocGeneration>>;
 
 type _i18nSatisfied = Expect<Assignable<ReturnType<typeof useI18n>, ActivityI18n>>;
 
+/* ───────────── 7. the host's sound adapter satisfies the optional port ───────────── */
+
+type _soundSatisfied = Expect<Assignable<typeof ITERA_ACTIVITY_SOUND, ActivitySoundPort>>;
+
 /* ──────────────────────────── runtime assertion ──────────────────────────── */
 
 /**
@@ -232,6 +238,7 @@ const PUBLIC_RUNTIME_SURFACE = [
   'isBuiltInActivityKind',
   'useActivityHost',
   'useActivityI18n',
+  'useActivitySound',
   'useActivityStorage',
   // built-in kinds
   'ConceptActivity',

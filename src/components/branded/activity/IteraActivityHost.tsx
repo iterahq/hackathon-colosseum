@@ -102,6 +102,7 @@ import {
   codeDraftActivityId,
 } from '@iterahq/activities/code';
 import { useI18n } from '@/i18n';
+import { ITERA_ACTIVITY_SOUND } from '@/lib/activitySoundPort';
 import { useAuth } from '@/auth/AuthContext';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import {
@@ -330,6 +331,7 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
       identity={identity}
       storage={ITERA_ACTIVITY_STORAGE}
       liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER}
+      sound={ITERA_ACTIVITY_SOUND}
       codeEditor={CodeEditor}
     >
       {children}

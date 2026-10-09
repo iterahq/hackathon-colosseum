@@ -26,7 +26,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Check, Link2, X } from 'lucide-react';
-import { useActivityI18n } from '../context.js';
+import { useActivityI18n, useActivitySound } from '../context.js';
 import type { ChoiceOption, MatchSpec } from '../specs.js';
 import { learnerShuffle } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -154,6 +154,7 @@ export function MatchActivity({
   const [submitted, setSubmitted] = useState(false);
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<ArrangementAction>(activity.id);
+  const cue = useActivitySound();
   const reduced = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef(new Map<string, HTMLElement>());
@@ -193,6 +194,7 @@ export function MatchActivity({
   function recordBroken(index: number) {
     const p = displayedPairs[index];
     if (p) trace.record('pair_broken', { left_id: p.left_id, right_id: p.right_id });
+    cue('pick');
   }
 
   function removeAt(index: number) {
@@ -212,7 +214,10 @@ export function MatchActivity({
     // Arming and DIS-arming are the same tap on the same card; only the current
     // `armedLeft` tells them apart, so it is read before the setState (and
     // outside the updater — StrictMode double-invokes those in dev).
-    if (armedLeft !== id) trace.record('pair_armed', { left_id: id });
+    if (armedLeft !== id) {
+      trace.record('pair_armed', { left_id: id });
+      cue('pick');
+    }
     setArmedLeft((cur) => (cur === id ? null : id));
   }
 
@@ -227,6 +232,7 @@ export function MatchActivity({
     }
     if (!armedLeft) return;
     trace.record('pair_made', { left_id: armedLeft, right_id: id });
+    cue('connect');
     setMade((prev) => [...prev, { left_id: armedLeft, right_id: id }]);
     setArmedLeft(null);
   }
@@ -344,6 +350,7 @@ export function MatchActivity({
       return;
     }
     trace.record('pair_made', { left_id: d.from, right_id: target });
+    cue('connect');
     setMade((prev) => [...prev, { left_id: d.from, right_id: target }]);
     setArmedLeft(null);
   }

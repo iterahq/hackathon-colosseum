@@ -33,7 +33,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
   const spec = activity.spec as unknown as WireSpec;
   const copy = useSceneText(spec);
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   const reducedMotion = useReducedMotion();
 
   // A `done` activity opens fully wired: review shows the answer, not an empty board.
@@ -73,6 +73,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
 
   const pick = (leftId: string) => {
     if (solved || wires[leftId]) return;
+    if (picked !== leftId) step('pick');
     setPicked((current) => (current === leftId ? null : leftId));
   };
 
@@ -84,6 +85,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
       window.setTimeout(() => setShaking(null), 500);
       record('wrong_try', { left_id: leftId, right_id: rightId });
       showHint(copy.text(spec?.wrong_hint));
+      step('wrong');
       setPicked(null);
       return;
     }
@@ -93,6 +95,7 @@ export function WireActivity({ activity, onComplete }: { activity: PortableActiv
     clearHint();
     record('wire_connected', { left_id: leftId, right_id: rightId });
     if (Object.keys(next).length === left.length) open({ pairs: Object.keys(next).length });
+    step('connect');
   };
 
   return (

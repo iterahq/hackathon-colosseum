@@ -59,7 +59,7 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
   });
   const elements = spec?.elements ?? [];
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   // A `done` activity opens on the chip that solved it, so the page and the rule show the answer.
   const [picked, setPicked] = useState<string | null>(() =>
     activity.status === 'done'
@@ -78,12 +78,14 @@ export function SelectorActivity({ activity, onComplete }: { activity: PortableA
       if (selectorHitsExactly(option, elements, spec?.targets ?? [])) {
         clearHint();
         open({ option });
+        step('pick');
         return;
       }
       record('wrong_try', { option });
       showHint(t('activity.selector.wrongHint'));
+      step('wrong');
     },
-    [clearHint, elements, open, record, showHint, spec?.targets, t],
+    [step, clearHint, elements, open, record, showHint, spec?.targets, t],
   );
 
   return (
