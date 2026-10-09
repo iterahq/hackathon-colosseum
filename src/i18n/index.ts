@@ -14,6 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { PASSPORT_MESSAGES } from './passportMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
 import { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found/messages';
@@ -1199,6 +1200,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.admin': 'Admin',
     'header.id.language': 'English',
     'header.id.signOut': 'Sair',
+    ...PASSPORT_MESSAGES.pt,
   },
   en: {
     'app.name': 'Itera',
@@ -2325,6 +2327,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.admin': 'Admin',
     'header.id.language': 'Português',
     'header.id.signOut': 'Sign out',
+    ...PASSPORT_MESSAGES.en,
   },
 };
 
