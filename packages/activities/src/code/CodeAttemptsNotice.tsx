@@ -10,19 +10,22 @@ import { attemptBudget, attemptNotice, CODE_ATTEMPT_BUDGET } from './attemptBudg
  * editor aberto discordam de quase tudo, e o pouco em que concordam não deveria
  * ser copiado.
  *
+ * `note` rides on the same muted line (e.g. "editor locked"), so the panel spends
+ * one row on both instead of two.
+ *
  * Só aparece DEPOIS de um envio, e é a mesma decisão do Tainan sobre a checklist
  * de checks (`CodeChecksFeedback`): um contador permanente ao lado do enunciado
  * transforma o exercício em jogo de sobrevivência antes de a pessoa ter lido a
  * primeira linha.
  */
-export function CodeAttemptsNotice({ spent }: { spent: number }) {
+export function CodeAttemptsNotice({ spent, note }: { spent: number; note?: string }) {
   const { t } = useActivityI18n();
   const { remaining, exhausted } = attemptBudget(spent);
   const notice = attemptNotice(spent);
 
   return (
     <p
-      className={`mt-3 flex items-center gap-2 text-xs ${
+      className={`mt-2 flex items-center gap-2 text-xs sm:mt-3 ${
         exhausted ? 'text-clay' : 'text-muted-foreground'
       }`}
       data-testid="code-attempts"
@@ -34,7 +37,10 @@ export function CodeAttemptsNotice({ spent }: { spent: number }) {
       ) : (
         <Heart className="h-4 w-4 shrink-0" />
       )}
-      {t(notice.key, { count: notice.count })}
+      <span>
+        {t(notice.key, { count: notice.count })}
+        {note ? ` · ${note}` : ''}
+      </span>
     </p>
   );
 }

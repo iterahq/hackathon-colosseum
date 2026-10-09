@@ -58,7 +58,7 @@ export function CodeChecksFeedback({
       ref={panelRef}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`mt-4 rounded-2xl border p-4 md:p-5 ${
+      className={`mt-3 rounded-2xl border p-3 sm:mt-4 sm:p-4 md:p-5 ${
         allPassed ? 'border-menta/40 bg-menta/10' : 'border-clay/40 bg-clay/10'
       }`}
       role="status"
@@ -93,20 +93,27 @@ export function CodeChecksFeedback({
           dizer o que sobrou: as dicas dos checks que falharam ficam na tela e o
           caminho para a próxima atividade fica aberto. */}
       {outOfLives ? (
-        <p className="mt-3 text-xs text-clay" data-testid="code-checks-out-of-lives">
+        <p className="mt-2 text-xs text-clay sm:mt-3" data-testid="code-checks-out-of-lives">
           {t('code.lives.noAnswer')}
         </p>
+      ) : null}
+
+      {/* The "editor locked" sentence rides on the attempts line (one muted row).
+          After a pass there is no attempts line, so it keeps its own. */}
+      {!allPassed ? (
+        <CodeAttemptsNotice
+          spent={attemptsSpent}
+          note={!outOfLives && !settled ? t('code.checks.frozen') : undefined}
+        />
       ) : (
         !settled && (
-          <p className="mt-3 text-xs text-muted-foreground" data-testid="code-checks-frozen">
+          <p className="mt-2 text-xs text-muted-foreground sm:mt-3" data-testid="code-checks-frozen">
             {t('code.checks.frozen')}
           </p>
         )
       )}
 
-      {!allPassed && <CodeAttemptsNotice spent={attemptsSpent} />}
-
-      <div className="mt-4 flex flex-col gap-3 pb-1 sm:flex-row">
+      <div className="mt-3 flex flex-row gap-2 pb-1 sm:mt-4 sm:gap-3">
         {/* Always offered while the result is not yet reported — the editor is
             frozen from the submit onwards, so this explicit click is the ONLY
             way back in, including after a pass. Some no orçamento zerado: um
@@ -117,7 +124,7 @@ export function CodeChecksFeedback({
           onClick={onRetry}
           disabled={settled}
           data-testid="code-checks-retry"
-          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
+          className={`inline-flex h-12 min-w-0 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm sm:flex-1 sm:gap-2 sm:px-6 sm:text-base ${
             allPassed
               ? TACTILE_SECONDARY
               : TACTILE_CTA
@@ -142,7 +149,7 @@ export function CodeChecksFeedback({
             onClick={onContinue}
             disabled={settled}
             data-testid="code-checks-continue"
-            className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
+            className={`inline-flex h-12 min-w-0 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm sm:flex-1 sm:gap-2 sm:px-6 sm:text-base ${
               outOfLives
                 ? TACTILE_CTA
                 : TACTILE_SECONDARY

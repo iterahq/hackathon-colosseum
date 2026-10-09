@@ -513,7 +513,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.score': '{passed} de {total}',
     'code.checks.retry': 'Tentar de novo',
     'code.checks.editAgain': 'Editar de novo',
-    'code.checks.frozen': 'O editor fica travado enquanto o resultado está na tela.',
+    'code.checks.frozen': 'editor travado até tentar de novo',
+    'code.checks.showPassed': 'Ver {count} que passaram',
+    'code.checks.hidePassed': 'Esconder os que passaram',
     'code.checks.continueAnyway': 'Seguir mesmo assim',
     // VIDAS: o teto de envios errados por exercício de código. Duas chaves para
     // o plural porque em português ele não é um "s" no fim de uma string
@@ -1547,7 +1549,9 @@ export const resources: Record<Locale, Record<string, string>> = {
     'code.checks.score': '{passed} of {total}',
     'code.checks.retry': 'Try again',
     'code.checks.editAgain': 'Edit again',
-    'code.checks.frozen': 'The editor stays locked while the result is on screen.',
+    'code.checks.frozen': 'editor locked until you try again',
+    'code.checks.showPassed': 'Show {count} passed',
+    'code.checks.hidePassed': 'Hide passed',
     'code.checks.continueAnyway': 'Continue anyway',
     'code.lives.remaining': '{count} attempts left',
     'code.lives.remainingOne': '1 attempt left',

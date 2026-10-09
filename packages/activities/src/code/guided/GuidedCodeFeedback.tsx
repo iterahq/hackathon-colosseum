@@ -47,7 +47,7 @@ export function GuidedCodeFeedback({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`mt-4 rounded-2xl border p-4 md:p-5 ${
+      className={`mt-3 rounded-2xl border p-3 sm:mt-4 sm:p-4 md:p-5 ${
         grade.allCorrect ? 'border-menta/40 bg-menta/10' : 'border-clay/40 bg-clay/10'
       }`}
       role="status"
@@ -82,7 +82,7 @@ export function GuidedCodeFeedback({
       </div>
 
       {wrong.length > 0 && (
-        <ul className="mt-3 space-y-1.5" data-testid="guided-feedback-wrong">
+        <ul className="mt-2 space-y-1.5 sm:mt-3" data-testid="guided-feedback-wrong">
           {wrong.map(({ blank, position }) => (
             <li
               key={blank.id}
@@ -103,7 +103,7 @@ export function GuidedCodeFeedback({
 
       {!grade.allCorrect && <CodeAttemptsNotice spent={attemptsSpent} />}
 
-      <div className="mt-4 flex flex-col gap-3 pb-1 sm:flex-row">
+      <div className="mt-3 flex flex-row gap-2 pb-1 sm:mt-4 sm:gap-3">
         {/* Sem vidas o "tentar de novo" SOME em vez de ficar desabilitado: um
             botão cinza convida a clicar e a única resposta possível é o nada. */}
         {!outOfLives && (
@@ -112,7 +112,7 @@ export function GuidedCodeFeedback({
           onClick={onRetry}
           disabled={settled}
           data-testid="guided-retry"
-          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
+          className={`inline-flex h-12 min-w-0 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm sm:flex-1 sm:gap-2 sm:px-6 sm:text-base ${
             grade.allCorrect
               ? TACTILE_SECONDARY
               : TACTILE_CTA
@@ -127,7 +127,7 @@ export function GuidedCodeFeedback({
           onClick={onContinue}
           disabled={settled}
           data-testid="guided-continue"
-          className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 sm:flex-1 ${
+          className={`inline-flex h-12 min-w-0 flex-auto items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm sm:flex-1 sm:gap-2 sm:px-6 sm:text-base ${
             grade.allCorrect
               ? TACTILE_CTA
               : outOfLives
