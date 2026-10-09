@@ -1,5 +1,6 @@
 import { APP_URL } from './credential.ts';
 
+const APP_ORIGINS = [APP_URL, 'https://hackathon.iterahq.dev'];
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -12,7 +13,7 @@ export function corsHeaders(request: Request, audience: 'public' | 'app'): Recor
   };
   if (audience === 'public') return { ...headers, 'Access-Control-Allow-Origin': '*' };
   const origin = request.headers.get('origin') ?? '';
-  const allowed = origin === APP_URL || LOCAL_ORIGIN.test(origin);
+  const allowed = APP_ORIGINS.includes(origin) || LOCAL_ORIGIN.test(origin);
   return { ...headers, 'Access-Control-Allow-Origin': allowed ? origin : APP_URL, Vary: 'Origin' };
 }
 

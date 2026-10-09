@@ -16,14 +16,8 @@ import {
   mplCore,
   updatePlugin,
 } from 'npm:@metaplex-foundation/mpl-core@1.10.0';
+import { COLLECTIONS, type CollectionKind } from './chain-names.ts';
 import type { OnchainAttribute } from './credential.ts';
-
-export type CollectionKind = 'passports' | 'medals';
-
-export const COLLECTIONS: Record<CollectionKind, { configKey: string; name: string }> = {
-  passports: { configKey: 'collection_passports', name: 'Itera Passports' },
-  medals: { configKey: 'collection_medals', name: 'Itera Medals' },
-};
 
 export const MIN_AUTHORITY_LAMPORTS = 10_000_000;
 const CONFIRM_TIMEOUT_MS = 45_000;
@@ -61,15 +55,6 @@ export function loadChain(): Chain {
   const keypair = umi.eddsa.createKeypairFromSecretKey(secret);
   umi.use(keypairIdentity(keypair));
   return { umi, authority: keypair.publicKey, seed: secret.slice(0, 32) };
-}
-
-export function isValidAddress(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value)) return false;
-  try {
-    return base58.serialize(value).length === 32;
-  } catch {
-    return false;
-  }
 }
 
 export async function authorityLamports(chain: Chain): Promise<number> {
@@ -180,8 +165,8 @@ export interface OnchainCredential {
   frozen: boolean;
   attributes: OnchainAttribute[];
   collection: string | null;
+  /** The key that can update the asset: its own authority, or its collection's. */
   update_authority: string | null;
-  collection_update_authority: string | null;
 }
 
 /** Reads the asset from chain. `null` when the address holds no Core asset. */
@@ -205,6 +190,5 @@ export async function readCredential(umi: Umi, address: string): Promise<Onchain
     attributes: (asset.attributes?.attributeList ?? []).map(({ key: name, value }) => ({ key: name, value })),
     collection,
     update_authority: asset.updateAuthority.type === 'Address' ? (asset.updateAuthority.address ?? null) : collectionAuthority,
-    collection_update_authority: collectionAuthority,
   };
 }

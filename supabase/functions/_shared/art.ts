@@ -59,10 +59,15 @@ const LABELS = {
   },
 } as const;
 
+function isControlCharacter(char: string): boolean {
+  const code = char.charCodeAt(0);
+  return (code < 0x20 && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f);
+}
+
 export function escapeXml(value: string): string {
-  return value
-    // deno-lint-ignore no-control-regex
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+  return [...value]
+    .filter((char) => !isControlCharacter(char))
+    .join('')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

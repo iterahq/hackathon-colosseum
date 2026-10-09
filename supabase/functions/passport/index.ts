@@ -1,0 +1,399 @@
+import { computeAwards, type Award, type AwardsInput } from '../_shared/awards.ts';
+import { isSolanaAddress } from '../_shared/address.ts';
+import type { Chain } from '../_shared/chain.ts';
+import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
+import {
+  CLUSTER,
+  assetName,
+  explorerUrl,
+  imageUrl,
+  metadataUrl,
+  onchainAttributes,
+  pickText,
+  tierOf,
+  type AchievementRow,
+  type CatalogEntry,
+} from '../_shared/credential.ts';
+import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
+import { corsHeaders, functionsBase, json } from '../_shared/http.ts';
+import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
+
+const TIME_ZONE = 'America/Sao_Paulo';
+const MAX_JOBS_PER_CALL = 3;
+const MINT_BUDGET_MS = 90_000;
+const STALE_CLAIM_MS = 3 * 60_000;
+const PAGE_SIZE = 1000;
+const ROW_KEY = 'user_id,achievement_key,ref_id';
+
+type Lang = 'pt' | 'en';
+type ChainSdk = typeof import('../_shared/chain.ts');
+type MintBlock = 'no_wallet' | 'authority_not_configured' | 'authority_unfunded' | 'rpc_unavailable';
+
+interface Caller {
+  iteraUserId: string;
+  wallet: string | null;
+}
+
+async function fetchAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await page(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+}
+
+/** The itera user and wallet come from the verified token, never from the request body. */
+async function resolveCaller(db: IteraClient, request: Request): Promise<Caller | Response> {
+  const cors = corsHeaders(request, 'app');
+  const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  if (!token) return json({ error: 'unauthorized' }, 401, cors);
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data.user) return json({ error: 'unauthorized' }, 401, cors);
+
+  const { data: identity, error: identityError } = await db
+    .from('identities')
+    .select('user_id')
+    .eq('provider_subject', data.user.id)
+    .limit(1)
+    .maybeSingle();
+  if (identityError) throw new Error(`identities: ${identityError.message}`);
+  if (!identity) return json({ error: 'no_itera_profile' }, 403, cors);
+
+  // identity_data is written by the auth server at sign-in; user_metadata is editable by the user.
+  const web3 = (data.user.identities ?? []).find((entry) => entry.provider === 'web3');
+  const claims = web3?.identity_data?.custom_claims as { chain?: string; address?: string } | undefined;
+  const wallet = claims?.chain === 'solana' && isSolanaAddress(claims.address) ? claims.address : null;
+  return { iteraUserId: identity.user_id, wallet };
+}
+
+function loadRows(db: IteraClient, userId: string): Promise<AchievementRow[]> {
+  return fetchAll<AchievementRow>((from, to) =>
+    db.from('user_achievements').select(ROW_COLUMNS).eq('user_id', userId).order('earned_at').order('id').range(from, to),
+  );
+}
+
+async function loadCatalog(db: IteraClient): Promise<Map<string, CatalogEntry>> {
+  const { data, error } = await db.from('achievements').select(CATALOG_COLUMNS);
+  if (error) throw new Error(`achievements: ${error.message}`);
+  return new Map((data as CatalogEntry[]).map((entry) => [entry.key, entry]));
+}
+
+/** Everything `computeAwards` reads, fetched in one round of parallel queries. */
+async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omit<AwardsInput, 'existing'>> {
+  const [progress, programs, units, lessons, activities] = await Promise.all([
+    fetchAll<AwardsInput['progress'][number]>((from, to) =>
+      db.from('progress').select('activity_id,status,completed_at').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
+    ),
+    fetchAll<{ id: string; slug: string; title_i18n: Record<string, string> }>((from, to) =>
+      db.from('programs').select('id,slug,title_i18n').is('archived_at', null).order('id').range(from, to),
+    ),
+    fetchAll<{ id: string; program_id: string; ordinal: number; title_i18n: Record<string, string> }>((from, to) =>
+      db.from('units').select('id,program_id,ordinal,title_i18n').order('id').range(from, to),
+    ),
+    fetchAll<{ id: string; unit_id: string; ordinal: number; title_i18n: Record<string, string> }>((from, to) =>
+      db.from('lessons').select('id,unit_id,ordinal,title_i18n').order('id').range(from, to),
+    ),
+    fetchAll<{ id: string; lesson_id: string }>((from, to) =>
+      db.from('activities').select('id,lesson_id').eq('status', 'published').order('id').range(from, to),
+    ),
+  ]);
+
+  return {
+    programs: programs.map((program) => ({ id: program.id, slug: program.slug, title: program.title_i18n })),
+    units: units.map((unit) => ({ id: unit.id, program_id: unit.program_id, ordinal: unit.ordinal, title: unit.title_i18n })),
+    lessons: lessons.map((lesson) => ({ id: lesson.id, unit_id: lesson.unit_id, ordinal: lesson.ordinal, title: lesson.title_i18n })),
+    activities,
+    progress,
+    timeZone: TIME_ZONE,
+  };
+}
+
+/** Writes what `computeAwards` found. Returns the ids this call created and the ones it moved. */
+async function storeAwards(db: IteraClient, userId: string, awards: Award[], existing: AchievementRow[]) {
+  const created = new Set<string>();
+  const changed = new Set<string>();
+  const insert = async (rows: Array<Record<string, unknown>>) => {
+    if (rows.length === 0) return [];
+    const { data, error } = await db
+      .from('user_achievements')
+      .upsert(rows, { onConflict: ROW_KEY, ignoreDuplicates: true })
+      .select('id,achievement_key,ref_id');
+    if (error) throw new Error(`user_achievements insert: ${error.message}`);
+    for (const row of data ?? []) created.add(row.id);
+    return data ?? [];
+  };
+  const toRow = (award: Award, extraState: Record<string, unknown> = {}) => ({
+    user_id: userId,
+    achievement_key: award.key,
+    ref_id: award.ref_id,
+    earned_at: award.earned_at,
+    state: { ...award.state, ...extraState },
+  });
+
+  if (awards.length === 0) return { created, changed };
+
+  const inserts = awards.filter((award) => award.op === 'insert');
+  await insert(inserts.filter((award) => award.key === 'trail_pass').map((award) => toRow(award)));
+
+  for (const award of awards.filter((entry) => entry.op === 'update')) {
+    const stored = existing.find((row) => row.achievement_key === award.key && row.ref_id === award.ref_id);
+    if (!stored) continue;
+    const { error } = await db
+      .from('user_achievements')
+      .update({ state: { ...stored.state, ...award.state } })
+      .eq('id', stored.id)
+      .eq('user_id', userId);
+    if (error) throw new Error(`user_achievements update: ${error.message}`);
+    changed.add(stored.id);
+  }
+
+  const { data: passports, error } = await db
+    .from('user_achievements')
+    .select('id,ref_id')
+    .eq('user_id', userId)
+    .eq('achievement_key', 'trail_pass');
+  if (error) throw new Error(`user_achievements passports: ${error.message}`);
+  const passportByUnit = new Map((passports ?? []).map((row) => [row.ref_id, row.id]));
+
+  await insert(
+    inserts
+      .filter((award) => award.key !== 'trail_pass')
+      .map((award) => {
+        const unitId = award.state.unit_id;
+        return toRow(award, typeof unitId === 'string' ? { parent_id: passportByUnit.get(unitId) ?? null } : {});
+      }),
+  );
+  return { created, changed };
+}
+
+/** Takes the rows of a job for this invocation. All or nothing: a partial claim is released. */
+async function claim(db: IteraClient, job: MintJob, wallet: string): Promise<boolean> {
+  const ids = job.rows.map((row) => row.id);
+  const staleBefore = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
+  const { data, error } = await db
+    .from('user_achievements')
+    .update({ mint_status: 'pending', mint_claimed_at: new Date().toISOString(), wallet_address: wallet })
+    .in('id', ids)
+    .or(`mint_status.in.(unclaimed,failed),and(mint_status.eq.pending,mint_claimed_at.lt."${staleBefore}")`)
+    .select('id');
+  if (error) throw new Error(`claim: ${error.message}`);
+  const claimed = (data ?? []).map((row) => row.id);
+  if (claimed.length === ids.length) return true;
+  if (claimed.length > 0) {
+    await db.from('user_achievements').update({ mint_status: 'unclaimed', mint_claimed_at: null }).in('id', claimed);
+  }
+  return false;
+}
+
+async function settle(db: IteraClient, job: MintJob, patch: (row: AchievementRow) => Record<string, unknown>) {
+  for (const row of job.rows) {
+    const { error } = await db.from('user_achievements').update(patch(row)).eq('id', row.id);
+    if (error) throw new Error(`settle: ${error.message}`);
+  }
+}
+
+async function collectionAddress(db: IteraClient, sdk: ChainSdk, chain: Chain, kind: CollectionKind, known: Record<string, string>): Promise<string> {
+  const { configKey } = COLLECTIONS[kind];
+  if (known[configKey]) return known[configKey];
+  const address = await sdk.ensureCollection(chain, kind, `${functionsBase()}/credential-meta/collection/${kind}`);
+  const now = new Date().toISOString();
+  const { error } = await db.from('onchain_config').upsert([
+    { key: configKey, value: address, updated_at: now },
+    { key: 'authority', value: chain.authority, updated_at: now },
+    { key: 'cluster', value: CLUSTER, updated_at: now },
+  ]);
+  if (error) throw new Error(`onchain_config: ${error.message}`);
+  known[configKey] = address;
+  return address;
+}
+
+async function runJob(
+  db: IteraClient,
+  sdk: ChainSdk,
+  chain: Chain,
+  job: MintJob,
+  wallet: string,
+  catalog: Map<string, CatalogEntry>,
+  config: Record<string, string>,
+): Promise<void> {
+  const anchorCatalog = catalog.get(job.anchor.achievement_key) as CatalogEntry;
+  const kind: CollectionKind = job.type === 'create_medal' ? 'medals' : 'passports';
+  const collection = await collectionAddress(db, sdk, chain, kind, config);
+  const attributes = onchainAttributes(job.anchor, anchorCatalog);
+
+  let asset = job.anchor.asset_address;
+  let signature: string | null;
+  if (job.type === 'update_passport') {
+    signature = await sdk.updateCredentialAttributes(chain, { asset: asset as string, collection, attributes });
+  } else {
+    const created = await sdk.createCredential(chain, {
+      rowId: job.anchor.id,
+      collection,
+      owner: wallet,
+      name: assetName(job.anchor, anchorCatalog),
+      uri: metadataUrl(functionsBase(), job.anchor.id),
+      attributes,
+    });
+    asset = created.asset;
+    signature = created.signature;
+    // An asset left by an interrupted call may predate the stamps it should carry now.
+    if (created.alreadyExisted && job.type === 'create_passport') {
+      signature = await sdk.updateCredentialAttributes(chain, { asset, collection, attributes });
+    }
+  }
+
+  const mintedAt = new Date().toISOString();
+  await settle(db, job, (row) => {
+    const { mint_error: _cleared, ...state } = row.state;
+    return {
+      mint_status: 'minted',
+      asset_address: asset,
+      tx_signature: signature,
+      minted_at: mintedAt,
+      wallet_address: job.anchor.wallet_address ?? wallet,
+      state: row.id === job.anchor.id ? state : { ...state, parent_id: job.anchor.id, tx: signature },
+    };
+  });
+}
+
+async function mintPending(
+  db: IteraClient,
+  caller: Caller,
+  rows: AchievementRow[],
+  catalog: Map<string, CatalogEntry>,
+): Promise<{ attempted: number; remaining: number; blocked: MintBlock | null; touched: Set<string> }> {
+  const medalKeys = new Set([...catalog.values()].filter((entry) => entry.kind === 'streak' || entry.kind === 'milestone').map((entry) => entry.key));
+  const jobs = planMintJobs(rows, medalKeys);
+  const touched = new Set<string>();
+  const outcome = (attempted: number, done: number, blocked: MintBlock | null) => ({
+    attempted,
+    remaining: jobs.length - done,
+    blocked,
+    touched,
+  });
+  if (jobs.length === 0) return outcome(0, 0, null);
+  if (!caller.wallet) return outcome(0, 0, 'no_wallet');
+
+  // Loaded on demand: most calls have nothing to mint and should not pay for the Solana SDK.
+  const sdk = await import('../_shared/chain.ts');
+  let chain: Chain;
+  try {
+    chain = sdk.loadChain();
+  } catch (error) {
+    if (error instanceof sdk.ChainNotConfiguredError) return outcome(0, 0, 'authority_not_configured');
+    throw error;
+  }
+  try {
+    if ((await sdk.authorityLamports(chain)) < sdk.MIN_AUTHORITY_LAMPORTS) return outcome(0, 0, 'authority_unfunded');
+  } catch (error) {
+    console.error('balance check failed', error);
+    return outcome(0, 0, 'rpc_unavailable');
+  }
+
+  const config = await loadConfig(db);
+
+  const startedAt = Date.now();
+  let attempted = 0;
+  let done = 0;
+  for (const job of jobs) {
+    if (attempted >= MAX_JOBS_PER_CALL || Date.now() - startedAt > MINT_BUDGET_MS) break;
+    if (!(await claim(db, job, caller.wallet))) continue;
+    attempted += 1;
+    for (const row of job.rows) touched.add(row.id);
+    try {
+      await runJob(db, sdk, chain, job, caller.wallet, catalog, config);
+      done += 1;
+    } catch (error) {
+      console.error(`mint job ${job.type} for ${job.anchor.id} failed`, error);
+      const message = String(error instanceof Error ? error.message : error).slice(0, 300);
+      await settle(db, job, (row) => ({ mint_status: 'failed', state: { ...row.state, mint_error: message } }));
+    }
+  }
+  return outcome(attempted, done, null);
+}
+
+function view(row: AchievementRow, catalog: Map<string, CatalogEntry>, lang: Lang) {
+  const entry = catalog.get(row.achievement_key) as CatalogEntry;
+  const base = functionsBase();
+  return {
+    id: row.id,
+    key: row.achievement_key,
+    kind: entry.kind,
+    tier: tierOf(row, entry),
+    title: pickText(entry.title_i18n, lang),
+    description: pickText(entry.description_i18n, lang),
+    ref_id: row.ref_id,
+    state: 'trail_title' in row.state ? { ...row.state, trail: pickText(row.state.trail_title, lang) } : row.state,
+    earned_at: row.earned_at,
+    mint_status: row.mint_status,
+    asset_address: row.asset_address,
+    tx_signature: row.tx_signature,
+    explorer_url: explorerUrl('address', row.asset_address),
+    tx_explorer_url: explorerUrl('tx', row.tx_signature),
+    metadata_url: metadataUrl(base, row.id),
+    image_url: imageUrl(base, row.id),
+  };
+}
+
+async function readLang(request: Request): Promise<Lang | null> {
+  const text = await request.text();
+  if (text.length > 1024) return null;
+  if (!text.trim()) return 'pt';
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
+  const { lang } = body as Record<string, unknown>;
+  if (lang === undefined) return 'pt';
+  return lang === 'pt' || lang === 'en' ? lang : null;
+}
+
+Deno.serve(async (request) => {
+  const cors = corsHeaders(request, 'app');
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, cors);
+
+  try {
+    const lang = await readLang(request);
+    if (!lang) return json({ error: 'invalid_body' }, 400, cors);
+
+    const db = serviceClient();
+    const caller = await resolveCaller(db, request);
+    if (caller instanceof Response) return caller;
+
+    const [before, catalog, learning] = await Promise.all([
+      loadRows(db, caller.iteraUserId),
+      loadCatalog(db),
+      loadProgressAndTree(db, caller.iteraUserId),
+    ]);
+    const awards = computeAwards({
+      ...learning,
+      existing: before.map((row) => ({ achievement_key: row.achievement_key, ref_id: row.ref_id, state: row.state })),
+    });
+    const stored = await storeAwards(db, caller.iteraUserId, awards, before);
+    let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
+
+    const mint = await mintPending(db, caller, rows, catalog);
+    if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);
+
+    const updatedIds = new Set([...stored.changed, ...mint.touched].filter((id) => !stored.created.has(id)));
+    return json(
+      {
+        awards: rows.filter((row) => stored.created.has(row.id)).map((row) => view(row, catalog, lang)),
+        updated: rows.filter((row) => updatedIds.has(row.id)).map((row) => view(row, catalog, lang)),
+        remaining: mint.remaining,
+        mint: { wallet: caller.wallet, cluster: CLUSTER, attempted: mint.attempted, blocked: mint.blocked },
+      },
+      200,
+      cors,
+    );
+  } catch (error) {
+    console.error('passport failed', error);
+    return json({ error: 'internal_error' }, 500, cors);
+  }
+});

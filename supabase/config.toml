@@ -1,4 +1,15 @@
 project_id = "nyzcbnnbffsizshiolbh"
 
-[functions.chain-probe]
+# Awards and mints for the signed-in learner. The gateway check is off because it
+# can reject this project's asymmetric-key JWTs; the function itself validates the
+# token with the auth server (`auth.getUser`) and answers 401 without a valid one.
+[functions.passport]
+verify_jwt = false
+
+# Public metadata and artwork that wallets and explorers fetch without a session.
+[functions.credential-meta]
+verify_jwt = false
+
+# Public verification of an asset read from chain.
+[functions.credential-verify]
 verify_jwt = false
