@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useI18n } from '@/i18n';
 import { levelOf } from '@/utils/headerHud';
 import { HeaderHudStat } from './HeaderHudStat';
+import { HeaderLives } from './HeaderLives';
 
 interface Props {
   xp: number | null;
@@ -23,6 +24,7 @@ export function HeaderHud({ xp, streak, achievements }: Props) {
       aria-busy={loading}
       aria-label={loading ? t('header.hud.loading') : undefined}
     >
+      <HeaderLives />
       <HeaderHudStat
         icon="flame"
         tone={streak ? '#E07A4A' : '#5E574E'}

@@ -8,7 +8,7 @@ interface Props {
   active: NavId | null;
 }
 
-/** Phone navigation: a fixed bottom tab bar with four 44px+ targets, the active one lit green with a top notch. */
+/** Phone navigation: a fixed bottom tab bar with five 44px+ targets, the active one lit green with a top notch. */
 export function HeaderTabBar({ active }: Props) {
   const { t } = useI18n();
 
@@ -18,19 +18,19 @@ export function HeaderTabBar({ active }: Props) {
       className="fixed inset-x-0 bottom-0 z-30 border-t border-[#262320] bg-[#0A0908]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       data-testid="header-tab-bar"
     >
-      <ul className="grid h-[60px] grid-cols-4">
+      <ul className="grid h-[60px] grid-cols-5">
         {HEADER_NAV.map(({ id, to, key, icon }) => {
           const on = id === active;
           return (
             <li key={id} className="relative">
-              {on && <span aria-hidden className="absolute inset-x-5 top-0 h-[3px] rounded-b-sm bg-[#3FD17F]" />}
+              {on && <span aria-hidden className="absolute inset-x-4 top-0 h-[3px] rounded-b-sm bg-[#3FD17F]" />}
               <Link
                 to={to}
                 aria-current={on ? 'page' : undefined}
                 className={`hd-focus flex h-full min-h-11 flex-col items-center justify-center gap-1 ${on ? 'text-[#3FD17F]' : 'text-[#A0978A]'}`}
               >
                 <HeaderIcon name={icon} size={22} />
-                <span className="[font:600_10px_JetBrains_Mono] uppercase tracking-[.06em]">{t(key)}</span>
+                <span className="max-w-full truncate px-0.5 [font:600_10px_JetBrains_Mono] uppercase tracking-[.04em] max-[400px]:[font-size:9px]">{t(key)}</span>
               </Link>
             </li>
           );
