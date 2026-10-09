@@ -343,6 +343,7 @@ const PUBLIC_RUNTIME_SURFACE = [
   'useActivityActionRecorder',
   // provisional: shared primitives the un-extracted kinds still compose with
   'AnswerExplanation',
+  'ExplanationDisclosure',
   'ActivityShell',
   'TeraAvatar',
   'TeraVerdict',
