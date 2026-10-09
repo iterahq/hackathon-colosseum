@@ -1,5 +1,6 @@
 import type { AchievementView } from '@/types/achievements';
 import type { SearchSource } from '@/types/headerSearch';
+import type { VideoCourse } from '@/types/videoCourses';
 import type { Trail } from '@/types/trailDashboard';
 import { trailHref } from '@/utils/courses';
 import { currentDayOf, dayName, trailName } from '@/utils/trailDashboard';
@@ -13,6 +14,7 @@ export interface HeaderSearchData {
   trails: readonly Trail[];
   featured: Trail | null;
   achievements: readonly AchievementView[];
+  videoCourses?: readonly VideoCourse[];
 }
 
 /** The learner pages the palette can open; a fixed list, so it needs no data. */
@@ -89,8 +91,16 @@ export function achievementsSource({ t, tText, achievements }: HeaderSearchData)
   };
 }
 
+export function videoCoursesSource({ t, videoCourses = [] }: HeaderSearchData): SearchSource {
+  return {
+    id: 'videos',
+    label: t('search.group.videos'),
+    entries: videoCourses.map((c) => ({ id: `video-${c.slug}`, title: c.title, subtitle: c.teacherName, href: `/course/${c.slug}`, icon: 'courses' as const })),
+  };
+}
+
 /** Every source of the header palette, in the order the groups are drawn. */
 export function buildHeaderSources(data: HeaderSearchData): SearchSource[] {
   const cont = continueSource(data);
-  return [...(cont ? [cont] : []), pagesSource(data.t), trailsSource(data), daysSource(data), achievementsSource(data)];
+  return [...(cont ? [cont] : []), pagesSource(data.t), trailsSource(data), videoCoursesSource(data), daysSource(data), achievementsSource(data)];
 }
