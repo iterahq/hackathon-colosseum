@@ -8,6 +8,7 @@ import {
   createContext,
   createElement,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -2062,6 +2063,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // A mutable sink (registered by useLocaleSync) that persists user-initiated
   // locale changes to the DB. Kept in a ref so changing it doesn't re-render.
   const persistRef = useRef<((l: Locale) => void) | null>(null);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') document.documentElement.lang = locale === 'pt' ? 'pt-BR' : 'en';
+  }, [locale]);
 
   const value = useMemo<I18nState>(() => {
     const setLocale = (l: Locale, persist = true) => {

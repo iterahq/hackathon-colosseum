@@ -17,10 +17,24 @@
  * e.g. in App. componente → hook (useQuery) → service → fetch.
  */
 import { useEffect, useRef } from 'react';
-import { useI18n } from '@/i18n';
+import { useI18n, type Locale } from '@/i18n';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/auth/AuthContext';
 import { updateMyLocale } from '@/services/profile.service';
+
+export const PENDING_LOCALE_KEY = 'itera.locale.pending';
+
+function readPending(): Locale | null {
+  if (typeof localStorage === 'undefined') return null;
+  const v = localStorage.getItem(PENDING_LOCALE_KEY);
+  return v === 'pt' || v === 'en' ? v : null;
+}
+
+function writePending(l: Locale | null): void {
+  if (typeof localStorage === 'undefined') return;
+  if (l) localStorage.setItem(PENDING_LOCALE_KEY, l);
+  else localStorage.removeItem(PENDING_LOCALE_KEY);
+}
 
 export function useLocaleSync(): void {
   const { setLocale, registerPersistSink } = useI18n();
@@ -30,9 +44,19 @@ export function useLocaleSync(): void {
   // user toggle would be reverted by a stale profile re-read).
   const hydratedFor = useRef<string | null>(null);
 
-  // 1. Register the DB persist sink for user-initiated changes.
+  const signedIn = useRef(false);
+  signedIn.current = !!session?.user?.id;
+
+  // 1. Register the DB persist sink for user-initiated changes. The sink only
+  // runs for explicit choices (hydration passes persist=false). Signed out
+  // (the sign-in screen toggle), the choice is parked as pending so hydration
+  // can apply it after sign-in instead of the stored profile value.
   useEffect(() => {
     registerPersistSink((l) => {
+      if (!signedIn.current) {
+        writePending(l);
+        return;
+      }
       // Fire-and-forget; the provider already updated state + localStorage.
       void updateMyLocale(l);
     });
@@ -48,8 +72,15 @@ export function useLocaleSync(): void {
     }
     if (hydratedFor.current === uid) return;
     if (profile?.locale) {
-      setLocale(profile.locale, false); // hydrate — do NOT echo back to the DB
+      const pending = readPending();
+      writePending(null);
       hydratedFor.current = uid;
+      if (pending && pending !== profile.locale) {
+        // The choice made while signed out wins and is saved to the profile.
+        setLocale(pending, true);
+      } else {
+        setLocale(profile.locale, false); // hydrate — do NOT echo back to the DB
+      }
     }
   }, [profile?.locale, session?.user?.id, setLocale]);
 }
