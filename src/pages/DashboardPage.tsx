@@ -12,11 +12,13 @@ import '@/components/dashboard/dashboard.css';
 import { useUserStats } from '@/hooks/useContent';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useAchievements } from '@/hooks/useAchievements';
+import { usePassportView } from '@/hooks/usePassportView';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { currentDayOf, dayName, trailName } from '@/utils/trailDashboard';
+import { trailHref } from '@/utils/courses';
+import { dayName, trailName } from '@/utils/trailDashboard';
 
 const GRID = {
   backgroundColor: '#0A0908',
@@ -45,13 +47,11 @@ export default function DashboardPage() {
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const stats = useUserStats({ enabled: !visitor });
   const achievements = useAchievements({ enabled: !visitor });
+  const passport = usePassportView();
   const catalog = useCatalog();
 
   const openLesson = (lessonId: string) => navigate(`/lesson/${lessonId}`);
-  const openTrail = (trail: Trail) => {
-    const day = currentDayOf(trail) ?? trail.days[0];
-    if (day) openLesson(day.id);
-  };
+  const openTrail = (trail: Trail) => navigate(trailHref(trail.programSlug, trail.id));
   const describeLesson = (lessonId: string): string | null => {
     for (const trail of dashboard.trails) {
       const day = trail.days.find((d) => d.id === lessonId);
@@ -84,7 +84,16 @@ export default function DashboardPage() {
         )}
         {!visitor && (
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-            <AchievementsPanel items={achievements.items} earned={achievements.earnedCount} />
+            <AchievementsPanel
+              pages={passport.pages}
+              medals={passport.medals}
+              stamps={passport.totals.stamps}
+              featuredId={passport.featuredId}
+              onOpenTrail={(id) => {
+                const trail = trails.find((x) => x.id === id);
+                if (trail) openTrail(trail);
+              }}
+            />
             <div className="flex min-w-0 flex-col gap-5">
               <WeeklyGoal done={dashboard.weekly} />
               <LiveClassesCard describeLesson={describeLesson} />

@@ -1,6 +1,6 @@
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { barFill, colorOfTrail, currentDayOf, dayName, trailName } from '@/utils/trailDashboard';
+import { barFill, colorOfTrail, currentDayOf, dayName, programLabel, trailName } from '@/utils/trailDashboard';
 import { FeaturedPath } from './FeaturedPath';
 
 interface Props {
@@ -17,6 +17,7 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
   const badge = trail.status === 'fresh' ? t('dash.hero.badgeFresh') : t('dash.hero.badge');
   const name = tText(trailName(trail.title));
   const ghost = String(currentIndex + 1).padStart(2, '0');
+  const fresh = trail.status === 'fresh';
 
   return (
     <section className="flex flex-col" data-testid="featured-trail">
@@ -27,7 +28,7 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
         <span className="flex min-w-0 items-baseline gap-3.5">
           <span className="hidden [font:700_12px_JetBrains_Mono] tracking-[.1em] md:inline">{badge}</span>
           <span className="truncate [font:700_32px/1_'Barlow_Condensed'] max-sm:text-[24px]">
-            {name} · {tText(trail.programTitle)}
+            {name} · {programLabel(tText(trail.programTitle))}
           </span>
         </span>
         <span className="shrink-0 rounded-full bg-[#0A0908] px-3 py-1.5 [font:700_13px_JetBrains_Mono] text-[#F4EDE2]">
@@ -40,8 +41,8 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute -right-5 -top-[30px] select-none [font:700_300px/0.8_'Barlow_Condensed'] text-transparent max-sm:text-[170px]"
-          style={{ WebkitTextStroke: `1.5px ${color.ghost}` }}
+          className="pointer-events-none absolute -bottom-7 right-6 hidden select-none [font:700_220px/0.8_'Barlow_Condensed'] text-transparent xl:block"
+          style={{ WebkitTextStroke: `1.5px ${color.ghost}`, opacity: 0.55 }}
         >
           {ghost}
         </span>
@@ -59,7 +60,9 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
               ))}
             </span>
             <span className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">
-              {t('dash.hero.activities', { done: trail.doneActivities, total: trail.totalActivities })}
+              {fresh && current
+                ? t('dash.hero.freshToday', { days: trail.days.length, activities: current.total })
+                : t('dash.hero.activities', { done: trail.doneActivities, total: trail.totalActivities })}
             </span>
           </span>
           <button
@@ -70,7 +73,7 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
             className="mt-2 h-[60px] w-full rounded-xl border-0 border-b-[6px] [font:700_26px_'Barlow_Condensed'] transition-transform duration-75 active:translate-y-[5px] active:border-b-[1px] sm:w-[360px]"
             style={{ background: color.c, color: color.ink, borderBottomColor: color.cd }}
           >
-            {t('dash.hero.continue')}
+            {fresh ? t('dash.hero.startDay1') : t('dash.hero.continue')}
           </button>
         </div>
         <div className="relative">

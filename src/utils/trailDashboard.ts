@@ -33,6 +33,12 @@ export function trailName(title: I18nText): I18nText {
   return out;
 }
 
+/** "Itera · Semana 1 (proposta Tainan)" -> "Itera · Semana 1": internal notes in parentheses are not for learners. */
+export const programLabel = (title: string): string => title.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** A trail name cut to `max` characters with an ellipsis. */
+export const shortName = (name: string, max = 18): string => (name.length > max ? `${name.slice(0, max - 1).trimEnd()}…` : name);
+
 /** "Dia 1 — Minha página nasce" -> "Minha página nasce": the day number is drawn by the node, not the title. */
 export function dayName(title: I18nText): I18nText {
   const out: I18nText = {};
@@ -140,4 +146,3 @@ export function barFill(done: number, total: number, slots = 12): number {
   if (total <= 0 || done <= 0) return 0;
   return Math.min(slots, Math.max(1, Math.round((done / total) * slots)));
 }
-

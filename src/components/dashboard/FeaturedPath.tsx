@@ -87,7 +87,7 @@ export function FeaturedPath({ trail, color, onOpenDay }: Props) {
                 onOpen={() => onOpenDay(day.id)}
                 style={{ left: n.cx - hit(n) / 2, top: n.cy - hit(n) / 2 }}
               />
-              <div className="pointer-events-none absolute right-0 flex flex-col gap-0.5" style={{ left: 184, top: n.cy - 18 }}>
+              <div className="pointer-events-none absolute right-0 flex flex-col gap-0.5" style={{ left: 150, top: n.cy - 18 }}>
                 <span className="[font:500_12px_JetBrains_Mono]" style={{ color: n.state === 'current' ? color.cl : '#F4EDE2' }}>
                   {t('dash.day', { n: n.day })}
                 </span>

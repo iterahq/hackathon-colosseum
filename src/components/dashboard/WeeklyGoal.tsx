@@ -26,7 +26,7 @@ export function WeeklyGoal({ done }: { done: number }) {
           );
         })}
       </div>
-      <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('dash.goal.progress', { done: Math.min(done, WEEKLY_GOAL), goal: WEEKLY_GOAL })}</span>
+      <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('dash.goal.progress', { done: Math.min(done, WEEKLY_GOAL), goal: WEEKLY_GOAL })} · {t('dash.goal.reward')}</span>
     </section>
   );
 }

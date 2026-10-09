@@ -167,7 +167,7 @@ describe('HomeRoute: a member', () => {
     expect(card).toHaveAttribute('data-status', 'locked');
     expect(card).toBeDisabled();
     expect(card).toHaveTextContent('CSS');
-    expect(card).toHaveTextContent('libera após HTML');
+    expect(card).toHaveTextContent('🔒 depois de HTML');
     expect(screen.getByTestId('trail-cards')).toHaveTextContent('2 trilhas · 0 concluídas');
   });
 
@@ -180,7 +180,7 @@ describe('HomeRoute: a member', () => {
     expect(card).toHaveAttribute('data-status', 'done');
     expect(card).toHaveTextContent('✓ 2/2');
     fireEvent.click(card);
-    expect(navigate).toHaveBeenLastCalledWith('/lesson/l1');
+    expect(navigate).toHaveBeenLastCalledWith('/program/itera-v2#trail-u-html');
   });
 
   it('the weekly goal counts the last 7 days against 20', () => {
@@ -189,37 +189,41 @@ describe('HomeRoute: a member', () => {
     expect(screen.getByTestId('weekly-goal')).toHaveTextContent('9 de 20 atividades');
   });
 
-  it('with an empty achievement catalog the design slots are locked', () => {
+  it('with an empty catalog the passport shows the featured trail with its first stamp one day away', () => {
     renderHome();
-    const slots = screen.getAllByTestId('achievement-slot');
-    expect(slots).toHaveLength(9);
-    expect(slots.every((s) => s.getAttribute('data-state') === 'locked')).toBe(true);
+    const panel = screen.getByTestId('achievements');
+    expect(panel).toHaveTextContent("Passaporte do Tera");
+    expect(within(panel).getAllByTestId('passport-card')).toHaveLength(1);
+    expect(panel).toHaveTextContent('Seu primeiro carimbo está a um dia de distância');
   });
 
-  it('achievements: earned and locked ones, and the on-chain mark with an explorer link on minted rows only', () => {
+  it('passport: one page per trail, an on-chain mark on minted rows only, medals on the shelf', () => {
+    const trailRow = (key: string, refId: string, over = {}) =>
+      achievement({ key, kind: 'trail', earned: { id: `r-${key}`, achievementKey: key, refId, earnedAt: '2026-10-08T00:00:00Z', mintStatus: 'minted', assetAddress: 'Asset111', txSignature: 'tx', ...over } });
     useAchievements.mockReturnValue({
       items: [
-        achievement({ earned: { achievementKey: 'day-1', refId: null, earnedAt: '2026-10-08T00:00:00Z', mintStatus: 'minted', assetAddress: 'Asset111', txSignature: 'tx' } }),
-        achievement({ key: 'day-2', title: { pt: 'Segunda tag' }, earned: { achievementKey: 'day-2', refId: null, earnedAt: null, mintStatus: 'pending', assetAddress: null, txSignature: null } }),
-        achievement({ key: 'trail-1', title: { pt: 'Trilha HTML' } }),
+        trailRow('trail_pass', 'u-html'),
+        achievement({ key: 'first_stamp', kind: 'milestone', title: { pt: 'Primeiro carimbo' }, earned: { id: 'm1', achievementKey: 'first_stamp', refId: null, earnedAt: null, mintStatus: 'pending', assetAddress: null, txSignature: null } }),
+        achievement({ key: 'streak_7', kind: 'streak', title: { pt: 'Sequência 7' }, sort: 2 }),
       ],
       earnedCount: 2,
       isPending: false,
       isError: false,
       refetch: vi.fn(),
     });
+    useTrailDashboard.mockReturnValue(dashboard([done('a1'), done('a2')]));
     renderHome();
     const panel = screen.getByTestId('achievements');
-    expect(panel).toHaveTextContent('2 de 3');
-    expect(within(panel).getAllByTestId('achievement-slot').map((s) => s.getAttribute('data-state'))).toEqual(['earned', 'earned', 'locked']);
-    const mark = within(panel).getByTestId('achievement-onchain');
-    expect(within(panel).getAllByTestId('achievement-onchain')).toHaveLength(1);
-    expect(mark).toHaveAttribute('href', 'https://explorer.solana.com/address/Asset111?cluster=devnet');
+    expect(within(panel).getAllByTestId('passport-card')).toHaveLength(2);
+    expect(within(panel).getAllByTestId('passport-medal').map((m) => m.getAttribute('data-earned'))).toEqual(['true', 'false']);
+    const marks = within(panel).getAllByTestId('onchain-mark');
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toHaveAttribute('href', 'https://explorer.solana.com/tx/tx?cluster=devnet');
   });
 
-  it('live classes: the empty state, then the class in progress with the way in', () => {
+  it('live classes: hidden when empty, then the class in progress with the way in', () => {
     const { unmount } = renderHome();
-    expect(screen.getByTestId('live-empty')).toHaveTextContent('Nenhuma aula agendada por enquanto.');
+    expect(screen.queryByTestId('live-classes')).not.toBeInTheDocument();
     unmount();
     useActiveLiveClass.mockReturnValue({ data: { id: 'live-1', instructorId: 'someone-else' } });
     renderHome();

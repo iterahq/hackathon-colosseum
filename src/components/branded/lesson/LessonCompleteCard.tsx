@@ -45,6 +45,16 @@ export function LessonCompleteCard({
       <p className="text-sm text-muted-foreground mt-2">
         {doneCount}/{total} {t('label.activities').toLowerCase()}
       </p>
+      <LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} />
+    </motion.div>
+  );
+}
+
+/** The next/finish and review buttons of the end-of-lesson screen; the stamp ceremony reuses them. */
+export function LessonCompleteActions({ nextLessonId, onReview }: { nextLessonId?: string; onReview?: () => void }) {
+  const { t } = useI18n();
+  return (
+    <>
       {nextLessonId ? (
         <Link
           to={`/lesson/${nextLessonId}`}
@@ -70,8 +80,8 @@ export function LessonCompleteCard({
           data-testid="lesson-review-cta"
         >
           {t('lesson.review')}
-        </button>
-      )}
-    </motion.div>
+      </button>
+    )}
+    </>
   );
 }

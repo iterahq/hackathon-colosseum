@@ -39,10 +39,11 @@ export async function getMyAchievements(): Promise<UserAchievement[]> {
   if (!userId) return [];
   const { data, error } = await getSupabase()
     .from('user_achievements')
-    .select('achievement_key, ref_id, earned_at, mint_status, asset_address, tx_signature')
+    .select('id, achievement_key, ref_id, earned_at, mint_status, asset_address, tx_signature')
     .eq('user_id', userId);
   if (error) throw new Error(error.message);
   return asRows(data).map((r) => ({
+    id: str(r.id),
     achievementKey: str(r.achievement_key),
     refId: orNull(r.ref_id),
     earnedAt: orNull(r.earned_at),

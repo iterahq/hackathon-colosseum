@@ -73,6 +73,9 @@ const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"))
 const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const OtpLoginPage = lazy(() => import("./pages/auth/OtpLoginPage"));
 const GuestLiveRoute = lazy(() => import("./pages/GuestLiveRoute"));
+const PassportPage = lazy(() => import("./pages/PassportPage"));
+const CredentialPage = lazy(() => import("./pages/CredentialPage"));
+const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
 import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
@@ -262,6 +265,20 @@ const App = () => (
                     </RequireAuth>
                   }
                 />
+                {/* Tera's passport: auth-gated like the profile, not subscription-gated. */}
+                <Route
+                  path="/passport"
+                  element={
+                    <RequireAuth>
+                      <ShellAccessGate>
+                        <LazyRoute><PassportPage /></LazyRoute>
+                      </ShellAccessGate>
+                    </RequireAuth>
+                  }
+                />
+                {/* Public credential check: anyone with the link, no session, no app shell. */}
+                <Route path="/c/:asset" element={<LazyRoute><CredentialPage /></LazyRoute>} />
+                {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see
                     services/billing.service.ts. Public-after-auth (NOT

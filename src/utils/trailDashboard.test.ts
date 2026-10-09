@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgressRow, SourceProgram } from '@/types/trailDashboard';
-import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
+import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, programLabel, shortName, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
 
 const unit = (id: string, ordinal: number, title: string, lessons: Record<string, string[]>) => ({
   id,
@@ -130,5 +130,17 @@ describe('trailPath', () => {
     const v = trailPath(['done', 'current'], { W: 170, H: 300, A: 28, r: 26, vertical: true });
     expect(v.nodes[0].cx).toBe(85 - 28);
     expect(v.nodes[1].cy).toBeGreaterThan(v.nodes[0].cy);
+  });
+});
+
+describe('display helpers', () => {
+  it('strips parenthetical notes from a program label', () => {
+    expect(programLabel('Itera · Semana 1 (proposta Tainan)')).toBe('Itera · Semana 1');
+    expect(programLabel('Itera · Semana 1')).toBe('Itera · Semana 1');
+  });
+
+  it('cuts long names with an ellipsis', () => {
+    expect(shortName('Componente, props e estado', 18)).toBe('Componente, props…');
+    expect(shortName('CSS')).toBe('CSS');
   });
 });
