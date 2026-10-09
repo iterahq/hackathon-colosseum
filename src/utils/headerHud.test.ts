@@ -50,6 +50,7 @@ describe('activeNavOf', () => {
     expect(activeNavOf('/')).toBe('trails');
     expect(activeNavOf('/catalog')).toBe('courses');
     expect(activeNavOf('/program/itera-v2')).toBe('courses');
+    expect(activeNavOf('/course/react-do-zero')).toBe('courses');
     expect(activeNavOf('/passport')).toBe('passport');
     expect(activeNavOf('/artifacts/abc')).toBe('files');
   });

@@ -57,6 +57,7 @@ const NotFoundRoute = lazy(() => import("./pages/NotFoundRoute"));
    and OUTSIDE each <Suspense>, so authorization is still decided first. */
 const HomeRoute = lazy(() => import("./pages/HomeRoute"));
 const CatalogRoute = lazy(() => import("./pages/CatalogRoute"));
+const CoursePage = lazy(() => import("./pages/CoursePage"));
 const ProgramPage = lazy(() => import("./pages/ProgramPage"));
 const LessonPlayer = lazy(() => import("./pages/LessonPlayer"));
 const ArtifactsPage = lazy(() => import("./pages/ArtifactsPage"));
@@ -214,6 +215,16 @@ const App = () => (
                     <RequireAuth>
                       <RequireSubscription mode="preview">
                         <LazyRoute><CatalogRoute /></LazyRoute>
+                      </RequireSubscription>
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/course/:slug"
+                  element={
+                    <RequireAuth>
+                      <RequireSubscription mode="preview">
+                        <LazyRoute><CoursePage /></LazyRoute>
                       </RequireSubscription>
                     </RequireAuth>
                   }

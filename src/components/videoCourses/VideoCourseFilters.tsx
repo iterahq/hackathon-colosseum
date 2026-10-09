@@ -1,18 +1,19 @@
+import { FOCUS } from '@/components/courses/courseStyles';
 import { useI18n } from '@/i18n';
-import { FILTERS, type CourseFilter } from '@/utils/courses';
-import { FOCUS } from './courseStyles';
+import type { VideoCourseFilter } from '@/types/videoCourses';
+import { VIDEO_FILTERS } from '@/utils/videoCourses';
 
 interface Props {
-  value: CourseFilter;
-  counts: Record<CourseFilter, number>;
-  onChange: (filter: CourseFilter) => void;
+  value: VideoCourseFilter;
+  counts: Record<VideoCourseFilter, number>;
+  onChange: (filter: VideoCourseFilter) => void;
 }
 
-export function CourseFilters({ value, counts, onChange }: Props) {
+export function VideoCourseFilters({ value, counts, onChange }: Props) {
   const { t } = useI18n();
   return (
-    <div role="group" aria-label={t('courses.filters')} className="flex gap-2 overflow-x-auto pb-1" data-testid="course-filters">
-      {FILTERS.map((filter) => {
+    <div role="group" aria-label={t('video.filters')} className="flex gap-2 overflow-x-auto pb-1" data-testid="course-filters">
+      {VIDEO_FILTERS.map((filter) => {
         const active = filter === value;
         return (
           <button
@@ -25,7 +26,7 @@ export function CourseFilters({ value, counts, onChange }: Props) {
               active ? 'border-[#3FD17F] bg-[#1C3A2A] text-[#F4EDE2]' : 'border-[#262320] bg-[#141210] text-[#A0978A] hover:border-[#A0978A] hover:text-[#F4EDE2]'
             }`}
           >
-            {t(`courses.filter.${filter}`)}
+            {t(`video.filter.${filter}`)}
             <span className={active ? 'text-[#3FD17F]' : 'text-[#6F675C]'}>{counts[filter]}</span>
           </button>
         );

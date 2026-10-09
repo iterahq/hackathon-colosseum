@@ -131,6 +131,11 @@ export const queryKeys = {
     mine: (userId: string) => ['achievements', 'mine', userId] as const,
     credential: (asset: string) => ['achievements', 'credential', asset] as const,
   },
+  // Video courses: the public library (with lessons) and the learner's watched lessons.
+  videoCourses: {
+    list: ['videoCourses', 'list'] as const,
+    progress: (userId: string) => ['videoCourses', 'progress', userId] as const,
+  },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {
     mine: ['artifacts', 'mine'] as const,
