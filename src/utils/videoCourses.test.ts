@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoCourse } from '@/types/videoCourses';
-import { countByFilter, courseStats, defaultLessonId, embedUrl, filterCourses, formatClock, formatTotal, initials, nextLessonId, pickFeatured, teacherCourseCount, thumbGlyph } from '@/utils/videoCourses';
+import { countByFilter, courseStats, defaultLessonId, embedUrl, filterCourses, uniqueCourses, formatClock, formatTotal, initials, nextLessonId, pickFeatured, teacherCourseCount, thumbGlyph } from '@/utils/videoCourses';
 
 const course = (slug: string, position: number, lessonIds: string[], teacherName = 'Ana Lima'): VideoCourse => ({
   id: slug,
@@ -83,5 +83,13 @@ describe('labels', () => {
     expect(thumbGlyph('Ação rápida')).toBe('ACA');
     expect(teacherCourseCount([a, b, c], 'Ana Lima')).toBe(2);
     expect(embedUrl('https://www.youtube.com/embed/x')).toBe('https://www.youtube.com/embed/x?rel=0&modestbranding=1');
+  });
+});
+
+describe('uniqueCourses', () => {
+  it('drops a repeated id or slug and keeps the first', () => {
+    const a = course('a', 1, ['x']);
+    const list = [a, { ...a }, { ...course('b', 2, ['y']), id: 'a' }, course('c', 3, ['z'])];
+    expect(uniqueCourses(list).map((c) => c.slug)).toEqual(['a', 'c']);
   });
 });
