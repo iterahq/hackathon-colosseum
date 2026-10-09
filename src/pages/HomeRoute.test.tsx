@@ -36,9 +36,11 @@ vi.mock('@/hooks/useTrailDashboard', () => ({ useTrailDashboard: (...a: unknown[
 vi.mock('@/hooks/useContent', () => ({ useUserStats: (...a: unknown[]) => useUserStats(...a) }));
 vi.mock('@/hooks/useAchievements', () => ({ useAchievements: (...a: unknown[]) => useAchievements(...a) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...a: unknown[]) => useCatalog(...a) }));
+vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => ({ courses: [] }) }));
 vi.mock('@/hooks/useLiveClass', () => ({
   useActiveLiveClass: () => useActiveLiveClass(),
   useNextScheduledClass: () => useNextScheduledClass(),
+  useEnabledTenantIds: () => ({ data: [] }),
 }));
 vi.mock('@/hooks/useIteraIdentity', () => ({ useIteraIdentity: () => ({ userId: 'u1' }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));

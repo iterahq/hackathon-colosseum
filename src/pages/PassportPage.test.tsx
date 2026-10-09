@@ -10,6 +10,11 @@ vi.mock('@/hooks/usePassportView', () => ({ usePassportView: () => view() }));
 vi.mock('@/hooks/useContent', () => ({ useUserStats: () => ({ data: { totalXp: 780, completedActivities: 20 } }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { displayName: 'Sam' } }) }));
+vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => ({ level: 'member' }) }));
+vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => ({ courses: [] }) }));
+vi.mock('@/hooks/useTrailDashboard', () => ({ useTrailDashboard: () => ({ trails: [], featured: null }) }));
+vi.mock('@/hooks/useAchievements', () => ({ useAchievements: () => ({ items: [], earnedCount: 0, isPending: false }) }));
+vi.mock('@/hooks/useLiveClass', () => ({ useEnabledTenantIds: () => ({ data: [] }) }));
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ user: { email: 'a@b.c' }, signOut: vi.fn(), signInWithSolana: vi.fn() }) }));
 
 const page = (over: Partial<PassportPageData> = {}): PassportPageData => ({

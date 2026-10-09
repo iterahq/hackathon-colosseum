@@ -14,7 +14,9 @@
  */
 import { motion } from 'framer-motion';
 import { FolderGit2 } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
+import { APP_GRID_STYLE, APP_MAIN_CLASS } from '@/consts/headerShell';
 import { ArtifactBrowser } from '@/components/artifacts/ArtifactBrowser';
 import { useMyArtifacts } from '@/hooks/useArtifacts';
 import { useI18n } from '@/i18n';
@@ -24,15 +26,15 @@ export default function ArtifactsPage() {
   const { data, isPending, isError, refetch } = useMyArtifacts();
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader active="artifacts" />
-      <main className="max-w-6xl mx-auto px-4 py-8 md:py-12" data-testid="artifacts-page">
+    <div className="dash-root min-h-screen overflow-x-clip text-[#F4EDE2]" style={APP_GRID_STYLE}>
+      <AppTopBar />
+      <main className={APP_MAIN_CLASS} data-testid="artifacts-page">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-mono text-[11px] uppercase tracking-wider border bg-evergreen-soft text-evergreen-hi border-evergreen/30">
-            <FolderGit2 className="w-3.5 h-3.5" /> {t('artifacts.kicker')}
+          <span className="inline-flex items-center gap-1.5 [font:600_11px_JetBrains_Mono] uppercase tracking-[.12em] text-[#3FD17F]">
+            <FolderGit2 className="h-3.5 w-3.5" /> {t('artifacts.kicker')}
           </span>
-          <h1 className="font-display text-3xl text-foreground mt-3">{t('artifacts.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">{t('artifacts.subtitle')}</p>
+          <h1 className="mt-2 [font:700_44px_'Barlow_Condensed'] uppercase leading-none tracking-[.02em] text-[#F4EDE2] sm:text-[56px]">{t('artifacts.title')}</h1>
+          <p className="mt-2 max-w-2xl [font:400_14px_Inter] text-[#A0978A]">{t('artifacts.subtitle')}</p>
         </motion.div>
 
         {isPending && (

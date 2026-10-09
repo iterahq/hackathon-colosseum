@@ -14,7 +14,7 @@ export function HeaderNav({ active }: Props) {
   const reduced = !!useReducedMotion();
 
   return (
-    <nav aria-label={t('header.nav.aria')} className="hidden h-full items-stretch gap-1 sm:flex">
+    <nav aria-label={t('header.nav.aria')} className="hidden h-full items-stretch gap-1 lg:flex">
       {HEADER_NAV.map(({ id, to, key }) => {
         const on = id === active;
         return (

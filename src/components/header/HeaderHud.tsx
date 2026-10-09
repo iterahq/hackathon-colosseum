@@ -55,7 +55,7 @@ export function HeaderHud({ xp, streak, achievements }: Props) {
         value={achievements}
         unit={t('header.hud.achievementsShort')}
         label={t('header.hud.achievements', { n: achievements ?? 0 })}
-        className="max-sm:hidden"
+        className="max-xl:hidden"
       />
     </div>
   );

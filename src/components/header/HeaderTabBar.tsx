@@ -15,7 +15,7 @@ export function HeaderTabBar({ active }: Props) {
   return (
     <nav
       aria-label={t('header.nav.aria')}
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#262320] bg-[#0A0908]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-[#262320] bg-[#0A0908]/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       data-testid="header-tab-bar"
     >
       <ul className="grid h-[60px] grid-cols-4">

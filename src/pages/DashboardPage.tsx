@@ -3,15 +3,13 @@ import { VisitorBanner } from '@/components/branded/VisitorBanner';
 import { AchievementsPanel } from '@/components/dashboard/AchievementsPanel';
 import { CourseCarousel } from '@/components/dashboard/CourseCarousel';
 import { DashboardEmpty } from '@/components/dashboard/DashboardEmpty';
-import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { FeaturedTrail } from '@/components/dashboard/FeaturedTrail';
 import { LiveClassesCard } from '@/components/dashboard/LiveClassesCard';
 import { TrailCards } from '@/components/dashboard/TrailCards';
 import { WeeklyGoal } from '@/components/dashboard/WeeklyGoal';
+import { AppTopBar } from '@/components/header/AppTopBar';
 import '@/components/dashboard/dashboard.css';
-import { useUserStats } from '@/hooks/useContent';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
-import { useAchievements } from '@/hooks/useAchievements';
 import { usePassportView } from '@/hooks/usePassportView';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
@@ -45,8 +43,6 @@ export default function DashboardPage() {
   const { tText } = useI18n();
   const visitor = useAccessLevel().level === 'visitor';
   const dashboard = useTrailDashboard({ enabled: !visitor });
-  const stats = useUserStats({ enabled: !visitor });
-  const achievements = useAchievements({ enabled: !visitor });
   const passport = usePassportView();
   const catalog = useCatalog();
 
@@ -65,12 +61,7 @@ export default function DashboardPage() {
 
   return (
     <div className="dash-root min-h-screen text-[#F4EDE2]" style={GRID}>
-      <DashboardTopBar
-        xp={stats.data?.totalXp ?? null}
-        achievements={visitor ? 0 : achievements.isPending ? null : achievements.earnedCount}
-        activities={stats.data?.completedActivities ?? null}
-        streak={stats.data?.streakDays ?? null}
-      />
+      <AppTopBar />
       <main className="mx-auto flex max-w-[1440px] flex-col gap-12 px-4 pb-14 pt-6 sm:px-8 xl:px-20 xl:pt-10">
         {visitor && <VisitorBanner />}
         {!visitor && dashboard.isPending && <Skeleton />}
