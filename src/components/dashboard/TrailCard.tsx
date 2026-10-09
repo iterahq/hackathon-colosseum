@@ -7,6 +7,7 @@ import { countOf } from '@/utils/plural';
 interface Props {
   trail: Trail;
   onOpen: (trail: Trail) => void;
+  className?: string;
 }
 
 /** Tag and call to action of a card, by trail status. */
@@ -24,7 +25,7 @@ function useCardWords(trail: Trail) {
   }
 }
 
-export function TrailCard({ trail, onOpen }: Props) {
+export function TrailCard({ trail, onOpen, className = '' }: Props) {
   const { t, tText } = useI18n();
   const color = colorOfTrail(trail);
   const { tag, cta } = useCardWords(trail);
@@ -44,7 +45,7 @@ export function TrailCard({ trail, onOpen }: Props) {
       disabled={locked}
       aria-disabled={locked}
       onClick={() => onOpen(trail)}
-      className="relative flex flex-col overflow-visible rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] p-0 text-left text-[#F4EDE2] transition-transform duration-75 enabled:cursor-pointer enabled:active:translate-y-[3px] disabled:cursor-default"
+      className={`relative flex flex-col overflow-visible rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] p-0 text-left text-[#F4EDE2] transition-transform duration-75 enabled:cursor-pointer enabled:active:translate-y-[3px] disabled:cursor-default ${className}`}
       style={{ borderBottomColor: locked ? '#262320' : color.c }}
     >
       <span className="h-2 rounded-t-[13px]" style={{ background: color.c }} />

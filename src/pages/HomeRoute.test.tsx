@@ -167,10 +167,18 @@ describe('HomeRoute: a member', () => {
     renderHome();
     const card = screen.getByTestId('trail-card');
     expect(card).toHaveAttribute('data-status', 'locked');
-    expect(card).toBeDisabled();
+    expect(card).toHaveAttribute('aria-disabled', 'true');
     expect(card).toHaveTextContent('CSS');
     expect(card).toHaveTextContent('🔒 depois de HTML');
     expect(screen.getByTestId('trail-cards')).toHaveTextContent('2 trilhas · 0 concluídas');
+  });
+
+  it('locked trails are folded under a closed Locked (N) disclosure, after the startable ones', () => {
+    renderHome();
+    const group = screen.getByTestId('trail-cards-locked');
+    expect(group).not.toHaveAttribute('open');
+    expect(group).toHaveTextContent('Bloqueadas (1)');
+    expect(screen.queryByTestId('trail-cards-open')).not.toBeInTheDocument();
   });
 
   it('a finished trail is a review card with its medal, and the next one opens', () => {
