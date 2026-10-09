@@ -1,7 +1,8 @@
 import { ArrowLeft, ArrowRight, Heart, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
+import { LivesHearts } from '@/components/lives/LivesHearts';
 import { useI18n } from '@/i18n';
 
-/** Decorative lives count — inert chrome (no lives backend). */
+/** Shown while there is no lives backend: an inert count, exactly as before lives existed. */
 const DECORATIVE_HEARTS = 5;
 
 /** 36 px visual box, 44 px hit area: the pseudo-element is part of the button for pointer events. */
@@ -9,8 +10,8 @@ export const HIT_SLOP = 'relative before:absolute before:-inset-1';
 
 /**
  * Immersive chrome of the lesson: full-width progress bar flush to the top
- * edge, close-X on the left, and on the right the mute toggle plus a decorative
- * hearts indicator. The toggle lives here because the self-paced player has no
+ * edge, close-X on the left, and on the right the mute toggle plus the hearts
+ * (live when `lives` is given, a decorative count otherwise). The toggle lives here because the self-paced player has no
  * sound dock — without it the chime would have no off switch.
  */
 export function LessonChrome({
@@ -23,6 +24,7 @@ export function LessonChrome({
   onForward,
   forwardDisabled = false,
   onJumpToCurrent,
+  lives,
 }: {
   progressPct: number;
   /** How far the learner has ever got. Drawn lighter, behind the solid fill, only while it is ahead. */
@@ -37,6 +39,8 @@ export function LessonChrome({
   forwardDisabled?: boolean;
   /** Pill back to the furthest activity reached. The caller only passes it when the arrow is too slow. */
   onJumpToCurrent?: () => void;
+  /** The learner's real lives. Absent or null keeps the decorative count. */
+  lives?: { current: number; max: number } | null;
 }) {
   const { t } = useI18n();
 
@@ -122,14 +126,23 @@ export function LessonChrome({
         >
           {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
-        <div
-          className="flex items-center gap-1.5 text-foreground"
-          data-testid="lesson-hearts"
-          aria-hidden="true"
-        >
-          <Heart className="w-4 h-4 fill-clay text-clay" />
-          <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
-        </div>
+        {lives ? (
+          <LivesHearts
+            current={lives.current}
+            max={lives.max}
+            label={t('lives.chrome', { current: lives.current, max: lives.max })}
+            data-testid="lesson-hearts"
+          />
+        ) : (
+          <div
+            className="flex items-center gap-1.5 text-foreground"
+            data-testid="lesson-hearts"
+            aria-hidden="true"
+          >
+            <Heart className="w-4 h-4 fill-clay text-clay" />
+            <span className="font-mono text-sm tabular-nums">{DECORATIVE_HEARTS}</span>
+          </div>
+        )}
       </div>
     </header>
   );

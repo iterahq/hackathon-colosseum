@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { TACTILE_CTA, TACTILE_SECONDARY, TeraAvatar } from '@iterahq/activities';
+import { Heart } from 'lucide-react';
+import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
+import { useLessonCompanion } from '@/components/lives/lessonCompanion';
+import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
 
 /**
@@ -30,6 +33,7 @@ export function LessonCompleteCard({
   onReview?: () => void;
 }) {
   const { t } = useI18n();
+  const { outfit } = useLessonCompanion();
 
   return (
     <motion.div
@@ -39,7 +43,7 @@ export function LessonCompleteCard({
       data-testid="lesson-complete"
     >
       <div className="mx-auto flex w-24 justify-center pt-6" data-testid="lesson-complete-tera">
-        <TeraAvatar mood="happy" size="xl" />
+        <TeraOutfit mood="happy" size="xl" outfit={outfit} />
       </div>
       <h2 className="font-display text-3xl text-foreground mt-5">{t('lesson.complete')}</h2>
       <p className="text-sm text-muted-foreground mt-2">
@@ -53,8 +57,15 @@ export function LessonCompleteCard({
 /** The next/finish and review buttons of the end-of-lesson screen; the stamp ceremony reuses them. */
 export function LessonCompleteActions({ nextLessonId, onReview }: { nextLessonId?: string; onReview?: () => void }) {
   const { t } = useI18n();
+  const { bonus } = useLessonCompanion();
   return (
     <>
+      {bonus > 0 && (
+        <p className="mt-4 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-lives-bonus">
+          <Heart aria-hidden className="h-4 w-4 fill-clay text-clay" />
+          {t('lives.bonus', { n: bonus })}
+        </p>
+      )}
       {nextLessonId ? (
         <Link
           to={`/lesson/${nextLessonId}`}

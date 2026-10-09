@@ -15,16 +15,16 @@
  *   └──────────────────────────────────────────────────────────────┘
  *
  * NO AppHeader, NO sticky sub-header — the only chrome is the full-width
- * progress bar + the close-X (top-left) + a decorative hearts indicator
- * (top-right). The X and hearts are INERT chrome (no lives backend), like a
- * bell/settings icon. The centered column holds the eyebrow, big title and
- * the activity body.
+ * progress bar + the close-X (top-left) + the hearts (top-right). The hearts
+ * are live when the lives backend answers (`LessonLives`, fail-open) and a
+ * decorative count otherwise. The centered column holds the eyebrow, big title
+ * and the activity body.
  *
  * Progress is best-effort persisted to itera.progress on completion (RLS-scoped
  * to the signed-in user); failures are swallowed so the UX never blocks. The
  * persist / XP logic below is UNCHANGED — only the presentation was rebuilt.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { HostExplainsMisses, HostOwnsSettledAction } from '@iterahq/activities';
 import { ActivityRenderer } from '@/components/branded/activity/ActivityRenderer';
@@ -34,6 +34,8 @@ import { LessonStepActions } from '@/components/branded/lesson/LessonStepActions
 import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
 import { PassportCeremonyGate } from '@/components/passport/PassportCeremonyGate';
 import { LessonTitle } from '@/components/branded/lesson/LessonTitle';
+import { LessonLives, type LessonLivesHandle, type LessonLivesView } from '@/components/lives/LessonLives';
+import { LessonCompanionContext } from '@/components/lives/lessonCompanion';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
   isFooterGradedKind,
@@ -162,6 +164,9 @@ export default function LessonPlayer() {
   // failed to read). We hold the first render behind it so the learner never
   // sees activity 1 flash before being moved to where they actually stopped.
   const [resuming, setResuming] = useState(true);
+  // Lives: a sibling layer reports its view up and takes two calls down. Null view = no lives.
+  const livesRef = useRef<LessonLivesHandle>(null);
+  const [livesView, setLivesView] = useState<LessonLivesView | null>(null);
   // Which lesson has already been sought. A refetch (window focus) re-runs the
   // resume effect, and without this it would yank a learner who stepped BACK to
   // review right back to where they had stopped.
@@ -456,6 +461,8 @@ export default function LessonPlayer() {
     // again must not write a second pass (and a second XP award).
     const settled = settleWriteRef.current;
     if (settled?.activityId === current.id && settled.correct) return;
+    // The ONE place a wrong answer settles: it costs a life, once per attempt.
+    if (!correct) livesRef.current?.lose(`${current.id}:${retryCount}`, current.id);
     // CLOSE the duration window here — this instant is when the learner settled
     // the answer, which is the thing "how long did this take" is asking about.
     pendingDurationRef.current = duration.read();
@@ -705,6 +712,7 @@ export default function LessonPlayer() {
       setFurthest((f) => Math.max(f, index + 1));
     } else {
       onFinish();
+      livesRef.current?.endLesson();
       trackFunnelOnce('first_lesson_completed');
       setCompleted(true);
       setFinished(true);
@@ -789,6 +797,9 @@ export default function LessonPlayer() {
   const canNavigateForward = !resuming && !completed && activities.length > 1;
   // Same formula as `progressPct` (position-derived), applied to the frontier.
   const frontierPct = activities.length ? Math.round((frontier / activities.length) * 100) : 0;
+  const exitPath = lessonExitPath(placement.programSlug);
+  const leaveLesson = useCallback(() => navigate(exitPath), [navigate, exitPath]);
+  const lessonCompanion = useMemo(() => ({ bonus: livesView?.bonus ?? 0, outfit: livesView?.outfit ?? null }), [livesView?.bonus, livesView?.outfit]);
 
   return (
     <div className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh bg-background flex flex-col">
@@ -797,7 +808,8 @@ export default function LessonPlayer() {
         frontierPct={frontierPct}
         muted={muted}
         onToggleMuted={toggleMuted}
-        onClose={() => navigate(lessonExitPath(placement.programSlug))}
+        onClose={leaveLesson}
+        lives={livesView}
         onBack={canGoBack ? goBack : undefined}
         onForward={canNavigateForward ? goForward : undefined}
         forwardDisabled={unsettled || !canStepForward(position, frontier, finished)}
@@ -811,6 +823,7 @@ export default function LessonPlayer() {
       <main
         data-testid="lesson-main"
         data-fit-viewport
+        inert={livesView?.gateOpen || undefined}
         className={`group/lesson flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
           isSandbox && !completed ? 'pt-4 max-sm:pt-11' : 'pt-[3.25rem] max-sm:pt-11'
         } ${pending || !isSandbox ? BAR_BOTTOM_RESERVE : 'pb-4'}`}
@@ -841,19 +854,21 @@ export default function LessonPlayer() {
               {t('lesson.noActivities')}
             </div>
           ) : completed ? (
-            <PassportCeremonyGate
-              lessonId={lessonId}
-              nextLessonId={nextLesson?.id}
-              onReview={goToStart}
-              card={
-                <LessonCompleteCard
-                  doneCount={doneIds.size}
-                  total={activities.length}
-                  nextLessonId={nextLesson?.id}
-                  onReview={goToStart}
-                />
-              }
-            />
+            <LessonCompanionContext.Provider value={lessonCompanion}>
+              <PassportCeremonyGate
+                lessonId={lessonId}
+                nextLessonId={nextLesson?.id}
+                onReview={goToStart}
+                card={
+                  <LessonCompleteCard
+                    doneCount={doneIds.size}
+                    total={activities.length}
+                    nextLessonId={nextLesson?.id}
+                    onReview={goToStart}
+                  />
+                }
+              />
+            </LessonCompanionContext.Provider>
           ) : (
             <>
               {/* Eyebrow: learner-friendly "LIÇÃO" label (green JB-Mono uppercase).
@@ -942,6 +957,15 @@ export default function LessonPlayer() {
           busy={saving}
         />
       )}
+
+      <LessonLives
+        ref={livesRef}
+        lessonId={lessonId}
+        reviewingVerdict={pending !== null || saving}
+        lessonCompleted={completed}
+        onChange={setLivesView}
+        onLeave={leaveLesson}
+      />
     </div>
   );
 }
