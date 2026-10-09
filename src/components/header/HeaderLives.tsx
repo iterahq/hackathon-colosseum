@@ -1,0 +1,58 @@
+import { Heart } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LivesBoundary } from '@/components/lives/LivesBoundary';
+import { HEART } from '@/components/shop/shopStyles';
+import { useLives } from '@/hooks/useLives';
+import { useI18n } from '@/i18n';
+import { formatCountdown } from '@/utils/lives';
+
+function Cell() {
+  const { t } = useI18n();
+  const { active, lives, secondsToNext } = useLives();
+  if (!active || !lives) return null;
+
+  const full = lives.current >= lives.max;
+  const time = formatCountdown(secondsToNext);
+  const label = full ? t('lives.hud.full', { current: lives.current, max: lives.max }) : t('lives.hud.next', { current: lives.current, max: lives.max, time });
+  const empty = lives.current <= 0;
+
+  return (
+    <Link
+      to="/shop"
+      aria-label={label}
+      title={label}
+      data-testid="header-lives"
+      data-lives={lives.current}
+      className="hd-focus flex items-center gap-1 rounded-l-[9px] pl-1.5 pr-0.5 transition-colors hover:bg-[#1B1815] sm:gap-1.5 sm:px-3"
+    >
+      <span className="relative grid place-items-center">
+        <Heart aria-hidden className="h-6 w-6 sm:h-[18px] sm:w-[18px]" strokeWidth={2.25} style={empty ? { color: '#5E574E', fill: 'transparent' } : { color: HEART, fill: HEART }} />
+        <span aria-hidden className={`absolute [font:700_11px_JetBrains_Mono] tabular-nums sm:hidden ${empty ? 'text-[#8A8276]' : 'text-[#0A0908]'}`}>
+          {lives.current}
+        </span>
+      </span>
+      <span className="flex flex-col leading-none max-sm:hidden">
+        <span className="flex items-baseline gap-1">
+          <span className={`[font:700_16px_JetBrains_Mono] tabular-nums ${empty ? 'text-[#8A8276]' : 'text-[#F4EDE2]'}`}>
+            {lives.current}
+            <span className="text-[#8A8276] max-sm:hidden">/{lives.max}</span>
+          </span>
+        </span>
+        {!full && (
+          <span className="mt-1 [font:600_9px_JetBrains_Mono] tabular-nums text-[#A0978A] max-sm:hidden" data-testid="header-lives-countdown">
+            +1 · {time}
+          </span>
+        )}
+      </span>
+    </Link>
+  );
+}
+
+/** HUD cell: the learner's lives (current/max) with the time to the next one; opens Tera's shop. Absent while lives are off. */
+export function HeaderLives() {
+  return (
+    <LivesBoundary>
+      <Cell />
+    </LivesBoundary>
+  );
+}

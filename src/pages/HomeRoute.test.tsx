@@ -26,6 +26,7 @@ const useTrailDashboard = vi.fn();
 const useUserStats = vi.fn();
 const useAchievements = vi.fn();
 const useCatalog = vi.fn();
+const useVideoCourses = vi.fn();
 const useActiveLiveClass = vi.fn();
 const useNextScheduledClass = vi.fn();
 const surface = vi.hoisted(() => ({ value: 'web' as ShellSurface }));
@@ -36,7 +37,7 @@ vi.mock('@/hooks/useTrailDashboard', () => ({ useTrailDashboard: (...a: unknown[
 vi.mock('@/hooks/useContent', () => ({ useUserStats: (...a: unknown[]) => useUserStats(...a) }));
 vi.mock('@/hooks/useAchievements', () => ({ useAchievements: (...a: unknown[]) => useAchievements(...a) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...a: unknown[]) => useCatalog(...a) }));
-vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => ({ courses: [] }) }));
+vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => useVideoCourses() }));
 vi.mock('@/hooks/useLiveClass', () => ({
   useActiveLiveClass: () => useActiveLiveClass(),
   useNextScheduledClass: () => useNextScheduledClass(),
@@ -77,17 +78,17 @@ function dashboard(progress = [done('a1')], over: Record<string, unknown> = {}) 
   return { trails, featured: pickFeatured(trails), weekly: progress.length, isPending: false, isError: false, refetch: vi.fn(), ...over };
 }
 
-const course = {
-  id: 'c1',
-  tenantId: 't',
-  tenantSlug: 'itera',
-  slug: 'fundamentos-web',
-  title: { pt: 'Fundamentos da Web' },
-  createdAt: '2020-01-01T00:00:00Z',
-  unitCount: 1,
-  lessonCount: 3,
-  activityCount: 9,
-  alreadyEnrolled: false,
+const lesson = (id: string, position: number, durationSeconds: number) => ({ id, courseId: 'v1', title: id, description: '', videoUrl: '', durationSeconds, position });
+const videoCourse = {
+  id: 'v1',
+  slug: 'git-github',
+  title: 'Git e GitHub para Iniciantes',
+  description: '',
+  thumbnailUrl: null,
+  teacherName: 'Tainan Fidelis',
+  teacherAvatarUrl: null,
+  position: 1,
+  lessons: [lesson('a', 1, 420), lesson('b', 2, 480)],
 };
 
 const achievement = (over: Partial<AchievementView> = {}): AchievementView => ({
@@ -123,6 +124,7 @@ beforeEach(() => {
   useUserStats.mockReturnValue({ data: { totalXp: 120, streakDays: 1, badgeCount: 0, completedActivities: 7 }, isPending: false });
   useAchievements.mockReturnValue({ items: [], earnedCount: 0, isPending: false, isError: false, refetch: vi.fn() });
   useCatalog.mockReturnValue({ data: [], isPending: false, isError: false, refetch: refetchCatalog });
+  useVideoCourses.mockReturnValue({ courses: [] });
   useActiveLiveClass.mockReturnValue({ data: null });
   useNextScheduledClass.mockReturnValue({ data: null });
 });
@@ -262,14 +264,14 @@ describe('HomeRoute: a member', () => {
     expect(screen.getByTestId('next-scheduled-block')).toHaveTextContent('HTML · Página nasce');
   });
 
-  it('the course carousel lists the catalog and opens the catalog for a course not enrolled', () => {
-    useCatalog.mockReturnValue({ data: [course], isPending: false, isError: false, refetch: refetchCatalog });
+  it('the course carousel lists the video courses, each opening its course, with a link to the whole library', () => {
+    useVideoCourses.mockReturnValue({ courses: [videoCourse] });
     renderHome();
     const card = screen.getByTestId('course-card');
-    expect(card).toHaveTextContent('Fundamentos da Web');
-    expect(card).toHaveTextContent('3 lições · 9 atividades');
-    fireEvent.click(card);
-    expect(navigate).toHaveBeenLastCalledWith('/catalog');
+    expect(card).toHaveTextContent('Git e GitHub para Iniciantes');
+    expect(card).toHaveTextContent('2 vídeos · 15min');
+    expect(card).toHaveAttribute('href', '/course/git-github');
+    expect(screen.getByTestId('course-carousel-all')).toHaveAttribute('href', '/catalog');
   });
 
   it('loading: skeleton blocks and no trail', () => {
@@ -313,11 +315,10 @@ describe('HomeRoute: a visitor', () => {
     expect(screen.queryByTestId('dashboard-loading')).not.toBeInTheDocument();
   });
 
-  it('a course of the carousel leads to the catalog', () => {
-    useCatalog.mockReturnValue({ data: [{ ...course, alreadyEnrolled: true }], isPending: false, isError: false, refetch: refetchCatalog });
+  it('a course of the carousel leads to its video course', () => {
+    useVideoCourses.mockReturnValue({ courses: [videoCourse] });
     renderHome();
-    fireEvent.click(screen.getByTestId('course-card'));
-    expect(navigate).toHaveBeenLastCalledWith('/catalog');
+    expect(screen.getByTestId('course-card')).toHaveAttribute('href', '/course/git-github');
   });
 
   it.each(['shell', 'pending'] as const)('on the %s surface there is no offer and no commerce wording (W-7)', (where) => {

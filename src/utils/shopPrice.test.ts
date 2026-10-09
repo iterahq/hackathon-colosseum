@@ -1,0 +1,26 @@
+import { describe, expect, it } from 'vitest';
+import { formatSol, formatUsdCents, priceLabel } from './shopPrice';
+
+describe('shop price', () => {
+  it('formats US cents', () => {
+    expect(formatUsdCents(10)).toBe('US$ 0.10');
+    expect(formatUsdCents(125)).toBe('US$ 1.25');
+    expect(formatUsdCents(-4)).toBe('US$ 0.00');
+  });
+
+  it('formats lamports as SOL without trailing zeros', () => {
+    expect(formatSol(500_000)).toBe('0.0005');
+    expect(formatSol(1_500_000_000)).toBe('1.5');
+    expect(formatSol(2_000_000_000)).toBe('2');
+    expect(formatSol(0)).toBe('0');
+  });
+
+  it("prefers the backend's label", () => {
+    expect(priceLabel(' US$ 0.10 ≈ 0.0005 SOL ', 99, 99)).toBe('US$ 0.10 ≈ 0.0005 SOL');
+  });
+
+  it('builds the label when the backend sends none', () => {
+    expect(priceLabel(null, 10, 500_000)).toBe('US$ 0.10 ≈ 0.0005 SOL');
+    expect(priceLabel('', 30, 0)).toBe('US$ 0.30');
+  });
+});

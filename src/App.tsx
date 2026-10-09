@@ -76,6 +76,7 @@ const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 const OtpLoginPage = lazy(() => import("./pages/auth/OtpLoginPage"));
 const GuestLiveRoute = lazy(() => import("./pages/GuestLiveRoute"));
 const PassportPage = lazy(() => import("./pages/PassportPage"));
+const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CredentialPage = lazy(() => import("./pages/CredentialPage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 import { Navigate } from "react-router-dom";
@@ -287,6 +288,17 @@ const App = () => (
                         <LazyRoute><PassportPage /></LazyRoute>
                       </ShellAccessGate>
                     </RequireAuth>
+                  }
+                />
+                {/* Tera's shop: lives, outfits and certification cosmetics. Auth-gated; web only (prices never show inside the shell). */}
+                <Route
+                  path="/shop"
+                  element={
+                    <WebOnlyRoute>
+                      <RequireAuth>
+                        <LazyRoute><ShopPage /></LazyRoute>
+                      </RequireAuth>
+                    </WebOnlyRoute>
                   }
                 />
                 {/* Public credential check: anyone with the link, no session, no app shell. */}

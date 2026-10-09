@@ -1,30 +1,35 @@
 import { useRef } from 'react';
-import type { CatalogProgram } from '@/types/catalog';
+import { Link } from 'react-router-dom';
+import { FOCUS, MONO_LABEL } from '@/components/courses/courseStyles';
+import { CourseThumb } from '@/components/videoCourses/CourseThumb';
 import { useI18n } from '@/i18n';
-import { TRAIL_COLORS } from '@/utils/trailDashboard';
-import { countOf } from '@/utils/plural';
+import type { VideoCourse } from '@/types/videoCourses';
+import { courseColor } from '@/utils/courses';
+import { formatTotal, sortCourses } from '@/utils/videoCourses';
 
 interface Props {
-  courses: CatalogProgram[];
-  onOpen: (course: CatalogProgram) => void;
+  courses: readonly VideoCourse[];
 }
 
-const NEW_WINDOW_MS = 30 * 86_400_000;
 const CARD = 320;
 
-const NAV_BUTTON = 'h-11 w-11 rounded-full border border-[#2E2A25] bg-[#141210] [font:700_16px_JetBrains_Mono] text-[#F4EDE2] hover:border-[#A0978A]';
+const NAV_BUTTON = 'h-11 w-11 rounded-full border border-[#2E2A25] bg-[#141210] [font:700_16px_JetBrains_Mono] text-[#F4EDE2] hover:border-[#A0978A] max-sm:hidden';
 
-export function CourseCarousel({ courses, onOpen }: Props) {
-  const { t, tText } = useI18n();
+/** Dashboard teaser of the video course library: every card opens its course, "Ver todos" opens the Cursos tab. */
+export function CourseCarousel({ courses }: Props) {
+  const { t } = useI18n();
   const track = useRef<HTMLDivElement>(null);
   const scroll = (left: number) => track.current?.scrollBy({ left, behavior: 'smooth' });
   if (courses.length === 0) return null;
 
   return (
     <section className="flex min-w-0 flex-col gap-4" data-testid="course-carousel">
-      <div className="flex items-center justify-between">
-        <h2 className="[font:700_32px_'Barlow_Condensed']">{t('dash.courses.title')}</h2>
-        <span className="flex gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="[font:700_32px_'Barlow_Condensed'] max-sm:text-[26px]">{t('dash.courses.title')}</h2>
+        <span className="flex flex-none items-center gap-2">
+          <Link to="/catalog" data-testid="course-carousel-all" className={`rounded px-1 py-2 [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
+            {t('dash.courses.seeAll')}
+          </Link>
           <button type="button" aria-label={t('dash.courses.prev')} onClick={() => scroll(-CARD)} className={NAV_BUTTON}>
             ←
           </button>
@@ -33,32 +38,24 @@ export function CourseCarousel({ courses, onOpen }: Props) {
           </button>
         </span>
       </div>
-      <div ref={track} className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth">
-        {courses.map((course, i) => {
-          const color = TRAIL_COLORS[(i + 1) % TRAIL_COLORS.length];
-          const isNew = Date.now() - Date.parse(course.createdAt) < NEW_WINDOW_MS;
+      <div ref={track} className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2">
+        {sortCourses(courses).map((course) => {
+          const seconds = course.lessons.reduce((n, l) => n + l.durationSeconds, 0);
           return (
-            <button
+            <Link
               key={course.id}
-              type="button"
+              to={`/course/${course.slug}`}
               data-testid="course-card"
-              onClick={() => onOpen(course)}
-              className="flex w-[300px] flex-none snap-start flex-col overflow-hidden rounded-[14px] border border-[#262320] bg-[#141210] p-0 text-left text-[#F4EDE2]"
+              className={`flex w-[300px] flex-none snap-start flex-col overflow-hidden rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] text-left text-[#F4EDE2] transition-transform duration-100 hover:-translate-y-1 active:translate-y-[3px] max-sm:w-[260px] ${FOCUS}`}
+              style={{ borderBottomColor: courseColor(course.slug).c }}
             >
-              <span
-                className="box-border flex h-[120px] items-end justify-between border-b-[5px] px-[18px] py-3.5"
-                style={{ background: color.c, color: color.ink, borderBottomColor: color.cd }}
-              >
-                <span className="[font:700_46px/1_JetBrains_Mono]">{course.slug.slice(0, 3)}</span>
-                {isNew && <span className="rounded-full bg-[#0A0908] px-[9px] py-1 [font:700_11px_JetBrains_Mono] text-[#F4EDE2]">{t('dash.courses.new')}</span>}
-              </span>
+              <CourseThumb title={course.title} slug={course.slug} src={course.thumbnailUrl} />
               <span className="flex flex-col gap-1.5 px-[18px] pb-[18px] pt-4">
-                <span className="line-clamp-2 [font:700_24px/1_'Barlow_Condensed']">{tText(course.title)}</span>
-                <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">
-                  {t('dash.courses.meta', { lessons: countOf(t, course.lessonCount, 'lesson'), activities: countOf(t, course.activityCount, 'activity') })}
-                </span>
+                <span className="line-clamp-2 min-h-[48px] [font:700_24px/1_'Barlow_Condensed']">{course.title}</span>
+                <span className="truncate [font:400_13px_Inter] text-[#C9BFB0]">{course.teacherName}</span>
+                <span className={`${MONO_LABEL} text-[#A0978A]`}>{t('video.meta', { n: course.lessons.length, duration: formatTotal(seconds) })}</span>
               </span>
-            </button>
+            </Link>
           );
         })}
       </div>

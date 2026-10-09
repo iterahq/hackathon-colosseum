@@ -5,4 +5,5 @@ export const HEADER_NAV: readonly HeaderNavItem[] = [
   { id: 'courses', to: '/catalog', key: 'header.nav.courses', icon: 'courses' },
   { id: 'passport', to: '/passport', key: 'header.nav.passport', icon: 'passport' },
   { id: 'files', to: '/artifacts', key: 'header.nav.files', icon: 'files' },
+  { id: 'shop', to: '/shop', key: 'header.nav.shop', icon: 'shop' },
 ];
