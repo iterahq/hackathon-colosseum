@@ -1,6 +1,6 @@
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { colorOfTrail, trailName, trailPath } from '@/utils/trailDashboard';
+import { barFill, colorOfTrail, programLabel, shortName, trailName, trailPath } from '@/utils/trailDashboard';
 import { TrailLegs, TrailNodes } from './TrailNodes';
 
 interface Props {
@@ -15,7 +15,7 @@ function useCardWords(trail: Trail) {
     case 'done':
       return { tag: t('dash.trail.done'), cta: t('dash.trail.review') };
     case 'locked':
-      return { tag: t('dash.trail.locked', { name: tText(trailName(trail.unlockedBy ?? trail.title)) }), cta: t('dash.trail.blocked') };
+      return { tag: t('dash.trail.locked', { name: shortName(tText(trailName(trail.unlockedBy ?? trail.title))) }), cta: t('dash.trail.blocked') };
     case 'fresh':
       return { tag: t('dash.trail.fresh'), cta: t('dash.trail.start') };
     default:
@@ -31,6 +31,8 @@ export function TrailCard({ trail, onOpen }: Props) {
   const done = trail.status === 'done';
   const name = tText(trailName(trail.title));
   const path = trailPath(trail.days.map((d) => d.state), { W: 250, H: 56, A: 10, r: 9 });
+  const single = trail.days.length === 1;
+  const fill = barFill(trail.doneActivities, trail.totalActivities);
   const accent = locked ? '#A0978A' : color.cl;
 
   return (
@@ -46,15 +48,28 @@ export function TrailCard({ trail, onOpen }: Props) {
     >
       <span className="h-2 rounded-t-[13px]" style={{ background: color.c }} />
       <span className="flex min-w-0 flex-col gap-2.5 px-5 py-[18px]">
-        <span className="[font:500_12px_JetBrains_Mono]" style={{ color: accent }}>
+        <span className="min-h-[18px] truncate [font:500_12px_JetBrains_Mono]" style={{ color: accent }}>
           {tag}
         </span>
         <span className="[font:700_32px/1_'Barlow_Condensed']">{name}</span>
-        <span className="line-clamp-2 [font:400_14px_Inter] text-[#A0978A]">{tText(trail.programTitle)}</span>
-        <svg viewBox="0 0 250 56" className="my-1.5 w-full max-w-[250px] overflow-visible" aria-hidden>
-          <TrailLegs path={path} color={color} variant="mini" />
-          <TrailNodes nodes={path.nodes} color={color} variant="mini" />
-        </svg>
+        <span className="line-clamp-2 [font:400_14px_Inter] text-[#A0978A]">{programLabel(tText(trail.programTitle))}</span>
+        {single ? (
+          <span className="my-1.5 flex flex-col gap-2">
+            <span className="flex w-full max-w-[250px] gap-1" aria-hidden>
+              {Array.from({ length: 12 }, (_, i) => (
+                <span key={i} className="h-1.5 flex-1 rounded-sm" style={{ background: i < fill ? color.cl : '#262320' }} />
+              ))}
+            </span>
+            <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">
+              {t('dash.trail.oneDay', { activities: trail.totalActivities })}
+            </span>
+          </span>
+        ) : (
+          <svg viewBox="0 0 250 56" className="my-1.5 w-full max-w-[250px] overflow-visible" aria-hidden>
+            <TrailLegs path={path} color={color} variant="mini" />
+            <TrailNodes nodes={path.nodes} color={color} variant="mini" />
+          </svg>
+        )}
         <span className="flex items-center justify-between [font:500_13px_JetBrains_Mono]">
           <span className="text-[#C9BFB0]">
             {trail.doneDays}/{trail.days.length}
