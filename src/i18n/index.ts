@@ -901,6 +901,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.slowBody':
       'A liberação do acesso está demorando mais que o normal. Seu pagamento está registrado; tente de novo em alguns minutos e, se continuar assim, fale com a gente.',
     'subscribe.return.recheck': 'Verificar de novo',
+    'subscribe.return.appLine': 'Baixe o app e entre com o mesmo e-mail.',
     'subscribe.return.tryAgain': 'Tentar de novo',
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mês',
@@ -1898,6 +1899,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'subscribe.return.slowBody':
       'Unlocking your access is taking longer than usual. Your payment is on record; try again in a few minutes and reach out if it persists.',
     'subscribe.return.recheck': 'Check again',
+    'subscribe.return.appLine': 'Download the app and sign in with the same e-mail.',
     'subscribe.return.tryAgain': 'Try again',
     // Subscribe price display (language-aware: pt → BRL R$100, en → USD $20).
     'subscribe.priceLabel': '{price}/mo',

@@ -50,6 +50,7 @@ const GATED: Record<string, Gate> = {
   "src/hooks/useBillingPortal.ts": { gate: "reached-through", symbols: ["useBillingPortal"] },
   "src/hooks/useCancelSubscription.ts": { gate: "reached-through", symbols: ["useCancelSubscription"] },
   "src/hooks/useCheckoutActivation.ts": { gate: "reached-through", symbols: ["useCheckoutActivation"] },
+  "src/hooks/useCheckoutLanding.ts": { gate: "reached-through", symbols: ["useCheckoutLanding"] },
   "src/hooks/useSeatPricing.ts": { gate: "reached-through", symbols: ["useSeatPricing"] },
   "src/services/billing.service.ts": {
     gate: "reached-through",

@@ -12,7 +12,7 @@
  * window meant `RequireSubscription` bounced the person who had just paid back
  * to the price tag — the worst possible moment in the funnel to look broken.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
@@ -20,6 +20,8 @@ import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useCheckoutActivation } from '@/hooks/useCheckoutActivation';
+import { useCheckoutLanding } from '@/hooks/useCheckoutLanding';
+import { SHOW_APP_DOWNLOAD_LINE } from '@/config/appDownload';
 
 export default function SubscribeReturnPage() {
   const { t } = useI18n();
@@ -28,6 +30,13 @@ export default function SubscribeReturnPage() {
 
   const success = useMemo(() => params.get('status') !== 'cancel', [params]);
   const { waiting, active, timedOut } = useCheckoutActivation(success);
+  const landing = useCheckoutLanding(success && active);
+
+  // The paid learner goes straight to the track of the program on sale; with
+  // no single program to open, the home button below stays the way in.
+  useEffect(() => {
+    if (landing.path) navigate(landing.path, { replace: true });
+  }, [landing.path, navigate]);
 
   const icon = !success ? (
     <XCircle className="w-12 h-12 text-muted-foreground mx-auto" data-testid="return-cancel" />
@@ -72,6 +81,11 @@ export default function SubscribeReturnPage() {
           <p className="text-sm text-muted-foreground mt-2">
             {t(`subscribe.return.${copy.body}`)}
           </p>
+          {success && active && SHOW_APP_DOWNLOAD_LINE && (
+            <p className="text-sm text-foreground mt-3" data-testid="return-app-line">
+              {t('subscribe.return.appLine')}
+            </p>
+          )}
 
           <div className="mt-6 flex flex-col gap-3">
             {/* O caminho pra dentro só aparece quando o gate já deixa passar —
