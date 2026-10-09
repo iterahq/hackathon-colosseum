@@ -1,6 +1,7 @@
 import { useI18n } from '@/i18n';
 import type { PassportPageData } from '@/types/achievements';
 import { credentialImageUrl } from '@/services/credential.service';
+import { tierLabel } from '@/utils/tier';
 import { shortAddress } from '@/lib/explorer';
 import { CopyButton } from './CopyButton';
 import { OnChainMark } from './OnChainMark';
@@ -34,7 +35,7 @@ export function PassportFullCard({ page }: { page: PassportPageData }) {
         <span className="[font:700_24px/1_'Barlow_Condensed'] text-[#F4EDE2]">{page.trailTitle}</span>
         <span>
           {t('passport.days', { done: page.daysDone, total: page.totalDays })}
-          {page.tier && ` · ${t('passport.tier', { tier: page.tier })}`}
+          {page.tier && ` · ${t('passport.tier', { tier: tierLabel(t, page.tier) })}`}
         </span>
         {date && <span className="text-[#A0978A]">{t('passport.earnedOn', { date })}</span>}
         {minted && (

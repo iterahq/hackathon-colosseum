@@ -129,7 +129,7 @@ export const queryKeys = {
   achievements: {
     catalog: ['achievements', 'catalog'] as const,
     mine: (userId: string) => ['achievements', 'mine', userId] as const,
-    credential: (asset: string) => ['achievements', 'credential', asset] as const,
+    credential: (asset: string, lang: string) => ['achievements', 'credential', asset, lang] as const,
   },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {

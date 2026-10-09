@@ -26,6 +26,7 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
           key: text(ach.key) ?? '',
           tier: text(ach.tier),
           title: (typeof ach.title === 'string' || (ach.title && typeof ach.title === 'object') ? ach.title : '') as string,
+          trail: text(ach.trail),
           image_url: text(ach.image_url),
           state: ach.state && typeof ach.state === 'object' ? (ach.state as Record<string, unknown>) : {},
           stamps: (Array.isArray(ach.stamps) ? (ach.stamps as Record<string, unknown>[]) : []).map((x) => ({ day: Number(x.day) })).filter((x) => x.day > 0),
@@ -35,10 +36,10 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
   };
 }
 
-export async function verifyCredential(asset: string): Promise<CredentialLookup> {
+export async function verifyCredential(asset: string, lang = 'pt'): Promise<CredentialLookup> {
   if (!url || !anonKey) throw new Error('Supabase not configured.');
   const started = Date.now();
-  const res = await fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}`, {
+  const res = await fetch(`${url}/functions/v1/credential-verify/${encodeURIComponent(asset)}?lang=${lang}`, {
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
   });
   const ms = Date.now() - started;

@@ -49,10 +49,10 @@ function VerifyOther() {
 export default function CredentialPage() {
   const { asset = '' } = useParams();
   const { t, tText, locale, toggleLocale } = useI18n();
-  const query = useCredential(asset);
+  const query = useCredential(asset, locale);
   const lookup = query.data;
   const found = lookup && lookup.status !== 'not_found' ? lookup : null;
-  const facts = found ? credentialFacts(found.data, tText) : null;
+  const facts = found ? credentialFacts(found.data, tText, locale) : null;
   const gold = facts != null && facts.totalDays > 0 && facts.daysDone === facts.totalDays;
 
   return (

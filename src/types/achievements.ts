@@ -115,6 +115,8 @@ export interface CredentialVerification {
     key: string;
     tier: string | null;
     title: string | I18nText;
+    /** The trail name already in the requested language. */
+    trail?: string | null;
     image_url: string | null;
     state: Record<string, unknown>;
     stamps: { day: number }[];

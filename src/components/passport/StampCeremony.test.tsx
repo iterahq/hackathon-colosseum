@@ -37,7 +37,7 @@ describe('StampCeremony', () => {
   });
 
   it('minted: links to the transaction and names the new medal', () => {
-    show(model('minted', { txSignature: 'sig', newMedals: [{ key: 'm', title: 'Streak 3', glyph: 'D3' }] }));
+    show(model('minted', { txSignature: 'sig', newMedals: [{ key: 'm', title: 'Streak 3', glyph: 'D3', kind: 'streak', credentialId: null }] }));
     settle();
     expect(screen.getByRole('link', { name: /Ver transação/ })).toHaveAttribute('href', 'https://explorer.solana.com/tx/sig?cluster=devnet');
     expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Nova medalha: Streak 3');
