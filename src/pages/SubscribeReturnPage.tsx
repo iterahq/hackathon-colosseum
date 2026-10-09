@@ -15,7 +15,8 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
+import { TeraLoader } from '@/components/tera/TeraLoader';
+import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
 import { trackFunnel } from '@/lib/analytics';
@@ -47,10 +48,7 @@ export default function SubscribeReturnPage() {
   const icon = !success ? (
     <XCircle className="w-12 h-12 text-muted-foreground mx-auto" data-testid="return-cancel" />
   ) : waiting ? (
-    <Loader2
-      className="w-12 h-12 text-evergreen mx-auto animate-spin"
-      data-testid="return-waiting"
-    />
+    <TeraLoader size="md" data-testid="return-waiting" />
   ) : active ? (
     <CheckCircle2 className="w-12 h-12 text-evergreen mx-auto" data-testid="return-success" />
   ) : (

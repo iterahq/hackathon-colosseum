@@ -1,0 +1,42 @@
+.tera-loader-delayed {
+  opacity: 0;
+  animation: tera-loader-in 0.2s ease-out 400ms forwards;
+}
+@keyframes tera-loader-in {
+  to { opacity: 1; }
+}
+.tera-loader-ring {
+  transform-origin: 75px 75px;
+  animation: tera-loader-spin 3.2s linear infinite;
+}
+@keyframes tera-loader-spin {
+  to { transform: rotate(120deg); }
+}
+.tera-loader-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tera-loader-pulse 1.6s ease-out infinite;
+}
+@keyframes tera-loader-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(1.31); opacity: 0; }
+}
+.tera-loader-fullscreen {
+  background-color: #0a0908;
+  background-image:
+    linear-gradient(#15130f 1px, transparent 1px),
+    linear-gradient(90deg, #15130f 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tera-loader-ring,
+  .tera-loader-pulse {
+    animation: none;
+  }
+  .tera-loader-pulse {
+    opacity: 0;
+  }
+  .tera-loader-delayed {
+    animation: tera-loader-in 0s 400ms forwards;
+  }
+}
