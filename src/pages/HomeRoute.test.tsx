@@ -180,7 +180,7 @@ describe('HomeRoute: a member', () => {
     expect(card).toHaveAttribute('data-status', 'done');
     expect(card).toHaveTextContent('✓ 2/2');
     fireEvent.click(card);
-    expect(navigate).toHaveBeenLastCalledWith('/lesson/l1');
+    expect(navigate).toHaveBeenLastCalledWith('/program/itera-v2#trail-u-html');
   });
 
   it('the weekly goal counts the last 7 days against 20', () => {
