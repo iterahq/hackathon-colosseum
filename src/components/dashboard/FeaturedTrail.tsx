@@ -1,6 +1,6 @@
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { barFill, colorOfTrail, currentDayOf, trailName } from '@/utils/trailDashboard';
+import { barFill, colorOfTrail, currentDayOf, dayName, trailName } from '@/utils/trailDashboard';
 import { FeaturedPath } from './FeaturedPath';
 
 interface Props {
@@ -51,7 +51,7 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
               {t('dash.hero.today', { day: String(currentIndex + 1).padStart(2, '0'), total: trail.days.length })}
             </span>
           )}
-          <span className="[font:700_56px/0.95_'Barlow_Condensed'] max-sm:text-[40px]">{current ? tText(current.title) : name}</span>
+          <span className="[font:700_56px/0.95_'Barlow_Condensed'] max-sm:text-[40px]">{current ? tText(dayName(current.title)) : name}</span>
           <span className="flex flex-wrap items-center gap-3">
             <span className="flex w-[260px] max-w-full gap-1">
               {Array.from({ length: 12 }, (_, i) => (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgressRow, SourceProgram } from '@/types/trailDashboard';
-import { barFill, buildTrails, currentDayOf, pickFeatured, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
+import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
 
 const unit = (id: string, ordinal: number, title: string, lessons: Record<string, string[]>) => ({
   id,
@@ -93,6 +93,13 @@ describe('trailName', () => {
   it('keeps what follows the first separator', () => {
     expect(trailName({ pt: 'Semana 2 · CSS', en: 'Week 2 · CSS' })).toEqual({ pt: 'CSS', en: 'CSS' });
     expect(trailName({ pt: 'Solo' })).toEqual({ pt: 'Solo' });
+  });
+});
+
+describe('dayName', () => {
+  it('drops the leading day number of a lesson title', () => {
+    expect(dayName({ pt: 'Dia 1 — Minha página nasce', en: 'Day 2: Tags' })).toEqual({ pt: 'Minha página nasce', en: 'Tags' });
+    expect(dayName({ pt: 'Cards' })).toEqual({ pt: 'Cards' });
   });
 });
 

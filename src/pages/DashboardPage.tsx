@@ -16,7 +16,7 @@ import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { currentDayOf, trailName } from '@/utils/trailDashboard';
+import { currentDayOf, dayName, trailName } from '@/utils/trailDashboard';
 
 const GRID = {
   backgroundColor: '#0A0908',
@@ -55,7 +55,7 @@ export default function DashboardPage() {
   const describeLesson = (lessonId: string): string | null => {
     for (const trail of dashboard.trails) {
       const day = trail.days.find((d) => d.id === lessonId);
-      if (day) return `${tText(trailName(trail.title))} · ${tText(day.title)}`;
+      if (day) return `${tText(trailName(trail.title))} · ${tText(dayName(day.title))}`;
     }
     return null;
   };

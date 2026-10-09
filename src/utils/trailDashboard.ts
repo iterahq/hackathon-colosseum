@@ -33,6 +33,15 @@ export function trailName(title: I18nText): I18nText {
   return out;
 }
 
+/** "Dia 1 — Minha página nasce" -> "Minha página nasce": the day number is drawn by the node, not the title. */
+export function dayName(title: I18nText): I18nText {
+  const out: I18nText = {};
+  for (const [lang, text] of Object.entries(title)) {
+    if (typeof text === 'string') out[lang] = text.replace(/^\s*(dia|day)\s*\d+\s*[—–:-]\s*/i, '').trim();
+  }
+  return out;
+}
+
 function programOrder(a: SourceProgram, b: SourceProgram): number {
   const first = Number(b.slug === FIRST_PROGRAM_SLUG) - Number(a.slug === FIRST_PROGRAM_SLUG);
   if (first !== 0) return first;

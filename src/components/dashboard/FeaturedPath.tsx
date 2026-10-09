@@ -1,6 +1,6 @@
 import { useI18n } from '@/i18n';
 import type { PathNode, Trail, TrailColor } from '@/types/trailDashboard';
-import { trailPath } from '@/utils/trailDashboard';
+import { dayName, trailPath } from '@/utils/trailDashboard';
 import { TrailLegs, TrailNodes } from './TrailNodes';
 
 interface Props {
@@ -52,7 +52,7 @@ export function FeaturedPath({ trail, color, onOpenDay }: Props) {
             <div key={day.id}>
               <DayButton
                 node={n}
-                title={tText(day.title)}
+                title={tText(dayName(day.title))}
                 size={hit(n)}
                 onOpen={() => onOpenDay(day.id)}
                 style={{ left: `${(n.cx / W) * 100}%`, top: `${(n.cy / H) * 100}%`, transform: 'translate(-50%,-50%)' }}
@@ -64,7 +64,7 @@ export function FeaturedPath({ trail, color, onOpenDay }: Props) {
                 <span className="[font:500_12px_JetBrains_Mono]" style={{ color: n.state === 'current' ? color.cl : '#F4EDE2' }}>
                   {t('dash.day', { n: n.day })}
                 </span>
-                <span className="[font:500_13px/1.25_Inter] text-[#A0978A]">{tText(day.title)}</span>
+                <span className="[font:500_13px/1.25_Inter] text-[#A0978A]">{tText(dayName(day.title))}</span>
               </div>
             </div>
           );
@@ -82,7 +82,7 @@ export function FeaturedPath({ trail, color, onOpenDay }: Props) {
             <div key={day.id}>
               <DayButton
                 node={n}
-                title={tText(day.title)}
+                title={tText(dayName(day.title))}
                 size={hit(n)}
                 onOpen={() => onOpenDay(day.id)}
                 style={{ left: n.cx - hit(n) / 2, top: n.cy - hit(n) / 2 }}
@@ -91,7 +91,7 @@ export function FeaturedPath({ trail, color, onOpenDay }: Props) {
                 <span className="[font:500_12px_JetBrains_Mono]" style={{ color: n.state === 'current' ? color.cl : '#F4EDE2' }}>
                   {t('dash.day', { n: n.day })}
                 </span>
-                <span className="[font:500_13px/1.25_Inter] text-[#A0978A]">{tText(day.title)}</span>
+                <span className="[font:500_13px/1.25_Inter] text-[#A0978A]">{tText(dayName(day.title))}</span>
               </div>
             </div>
           );
