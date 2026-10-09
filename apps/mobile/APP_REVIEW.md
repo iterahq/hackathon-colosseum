@@ -125,8 +125,8 @@ Expected rating: 4+.
 Text is in `store/metadata.json` `review.notes`; the demo account comes from env, never from the file; the contact is copied from the published DevFellowship app (`review.contactFromAscAppId`). Draft, to be adjusted after the owner's decisions of sections 3 and 4:
 
 - Itera is a learning app: a native shell around the web player. The review account in the Sign-in information already has access to all content.
-- The review account is a DFL account (2026-10-09): the reviewer taps "Entrar com DFL" and types the credentials in the system sheet; the e-mail and password form of the first screen refuses it (checked in a browser: HTTP 400). A first DFL sign-in enrols the account in the exempt tenant, so it passes the subscription gate.
-- Open the catalog, tap "Matricular" on the program "Dominio -> Agente", tap the first lesson and answer the exercises; each answer shows feedback.
+- The review account is an Itera e-mail and password account with a staff role in the tenant `itera` (2026-10-09), which passes the subscription gate without a subscription. Checked in a browser on production: it signs in on the first screen, opens the program from the catalog and its first lesson.
+- Open the catalog, tap "Abrir curso" on the program "Dominio -> Agente", tap the first lesson and answer the exercises; each answer shows feedback.
 - The app has no sign-up, price or purchase; accounts are created on the web.
 - "Sign in with DFL" signs in with an account of DevFellowship, the company that operates Itera, through the system sign-in sheet; it is the company's own account system.
 - The app asks for the camera only when the user picks "Take Photo" for the profile photo, and for no microphone, location, contacts or notification permission. Add the privacy policy URL of item 7 and the support URL of item 8 in the form.
