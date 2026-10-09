@@ -22,7 +22,7 @@
 import { useState } from 'react';
 import { Reorder } from 'framer-motion';
 import { ListOrdered } from 'lucide-react';
-import { useActivityI18n } from '../context.js';
+import { useActivityI18n, useActivitySound } from '../context.js';
 import type { ChoiceOption, OrderSpec } from '../specs.js';
 import { learnerShuffleAvoidingSolution } from '../internal/shuffle.js';
 import { useLearnerScope } from '../internal/useLearnerScope.js';
@@ -104,7 +104,10 @@ export function OrderActivity({
   // The `arrangement` family's action sequence (sub-plan 1, Fase A).
   const trace = useActivityActionRecorder<ArrangementAction>(activity.id);
 
+  const cue = useActivitySound();
+
   function recordMove(itemId: string, from: number, to: number) {
+    cue('drop');
     trace.record('item_moved', { item_id: itemId, from, to, via: 'drag' });
     setTouched(true);
   }
@@ -157,7 +160,10 @@ export function OrderActivity({
               position={idx}
               locked={locked}
               verdict={verdict}
-              onDragStart={() => drag.onDragStart(id)}
+              onDragStart={() => {
+                if (!locked) cue('pick');
+                drag.onDragStart(id);
+              }}
               onDragEnd={drag.onDragEnd}
             />
           );

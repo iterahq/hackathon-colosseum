@@ -6,7 +6,7 @@ const listeners = new Set<() => void>();
 // Espelho invertido do `useLiveMuted`: ao vivo o som nasce DESLIGADO porque a
 // sala é compartilhada. Na lição self-paced o aluno está sozinho, e o retorno
 // sonoro ao passar o exercício é o pedido — nasce LIGADO, só '1' cala.
-function read(): boolean {
+export function isLessonMuted(): boolean {
   try {
     return localStorage.getItem(KEY) === '1';
   } catch {
@@ -29,8 +29,8 @@ export function useLessonMuted(): [boolean, () => void] {
       listeners.add(cb);
       return () => listeners.delete(cb);
     },
-    read,
+    isLessonMuted,
     () => false
   );
-  return [muted, () => write(!read())];
+  return [muted, () => write(!isLessonMuted())];
 }

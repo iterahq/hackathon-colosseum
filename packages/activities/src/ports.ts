@@ -517,6 +517,24 @@ export interface ActivityChatScreen {
   sentCount: number;
 }
 
+/* ────────────────────────────────── sound ────────────────────────────────── */
+
+/**
+ * The moments of an interaction that deserve a short cue. A kind names the
+ * moment; the host decides which clip, how loud, and whether to stay silent.
+ * `correct` and `wrong` are for a kind that shows its own verdict; a kind whose
+ * verdict the host already sounds at settle must not call them for that event.
+ */
+export type ActivitySoundCue = 'pick' | 'connect' | 'drop' | 'correct' | 'wrong' | 'complete';
+
+/**
+ * The sound port. Optional: a kind used without it stays silent. Never throws
+ * and never awaits; at most one cue per learner action, nothing on hover.
+ */
+export interface ActivitySoundPort {
+  play: (cue: ActivitySoundCue) => void;
+}
+
 /* ─────────────────────────────── code editor ─────────────────────────────── */
 
 /**

@@ -117,3 +117,48 @@ describe('FeedbackFooter', () => {
     expect(onContinue).not.toHaveBeenCalled();
   });
 });
+
+describe('FeedbackFooter retry', () => {
+  it('offers Tentar de novo beside Continuar after a miss', () => {
+    renderFooter({ result: { correct: false }, onRetry: () => {} });
+    expect(screen.getByTestId('feedback-footer-retry').textContent).toBe('Tentar de novo');
+    expect(screen.getByTestId('feedback-footer-continue').textContent).toBe('Continuar');
+  });
+
+  it('never offers it after a correct answer', () => {
+    renderFooter({ result: { correct: true }, onRetry: () => {} });
+    expect(screen.queryByTestId('feedback-footer-retry')).toBeNull();
+  });
+
+  it('shows no retry button when none is wired (live class, harness)', () => {
+    renderFooter({ result: { correct: false } });
+    expect(screen.queryByTestId('feedback-footer-retry')).toBeNull();
+  });
+
+  it('runs retry, not continue, from the buttons', () => {
+    const onRetry = vi.fn();
+    const onContinue = vi.fn();
+    renderFooter({ result: { correct: false }, onRetry, onContinue });
+    fireEvent.click(screen.getByTestId('feedback-footer-retry'));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onContinue).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('feedback-footer-continue'));
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes Enter trigger the primary action, which is retry on a miss', () => {
+    const onRetry = vi.fn();
+    const onContinue = vi.fn();
+    renderFooter({ result: { correct: false }, onRetry, onContinue });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+
+  it('keeps both buttons at 48px height', () => {
+    renderFooter({ result: { correct: false }, onRetry: () => {} });
+    for (const id of ['feedback-footer-retry', 'feedback-footer-continue']) {
+      expect(screen.getByTestId(id).className).toContain('h-12');
+    }
+  });
+});

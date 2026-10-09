@@ -29,6 +29,7 @@ import type {
   ActivityI18n,
   ActivityIdentity,
   ActivityLiveBufferPort,
+  ActivitySoundPort,
   ActivityStoragePort,
   ActivityTheme,
 } from './ports.js';
@@ -243,6 +244,8 @@ export interface ActivityHostContext {
    * `ActivityLiveBufferPort` explains what breaks when the two are collapsed.
    */
   liveBuffer?: ActivityLiveBufferPort;
+  /** Short feedback cues for the interaction itself. Omit ⇒ the kinds are silent. */
+  sound?: ActivitySoundPort;
   /**
    * The editor the `code` kind renders (`@iterahq/activities/code`).
    *

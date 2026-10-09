@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CodeSpec } from '@iterahq/activity-spec';
-import { useActivityStorage } from '../context.js';
+import { useActivitySound, useActivityStorage } from '../context.js';
 import { seedCodeSource } from './codeSource.js';
 import { codeDraftKey } from './draftKey.js';
 import type { UseCodeSnackCallbacks } from './types.js';
@@ -163,6 +163,7 @@ export function useCodeSnack(
    * definição de "próxima tentativa".
    */
   const chargedRef = useRef(false);
+  const cue = useActivitySound();
   useEffect(() => {
     if (phase === 'editing' || phase === 'submitting') {
       chargedRef.current = false;
@@ -171,8 +172,9 @@ export function useCodeSnack(
     if (phase !== 'submitted' || results === null || allPassed || timedOut) return;
     if (chargedRef.current) return;
     chargedRef.current = true;
+    cue('wrong');
     attempts.spend();
-  }, [phase, results, allPassed, timedOut, attempts]);
+  }, [phase, results, allPassed, timedOut, attempts, cue]);
 
   /** Envio bloqueado no orçamento zerado, e não só escondido no componente. */
   const submit = useCallback(() => {
@@ -205,8 +207,9 @@ export function useCodeSnack(
   useEffect(() => {
     if (phase !== 'submitted' || !allPassed) return;
     settle();
+    cue('correct');
     onComplete(true, { response: code });
-  }, [phase, allPassed, settle, onComplete, code]);
+  }, [phase, allPassed, settle, onComplete, code, cue]);
 
   /**
    * Report the REAL outcome upward, WITH the source the learner settled on.

@@ -102,6 +102,7 @@ import {
   codeDraftActivityId,
 } from '@iterahq/activities/code';
 import { useI18n } from '@/i18n';
+import { ITERA_ACTIVITY_SOUND } from '@/lib/activitySoundPort';
 import { useAuth } from '@/auth/AuthContext';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import {
@@ -167,24 +168,63 @@ import { currentStorageScope, subscribeStorageScope } from '@/utils/storageScope
  */
 export const ITERA_ACTIVITY_STORAGE: ActivityStoragePort = {
   read: (key) => {
+    if (isBrowserPreferenceKey(key)) return readBrowserPreference(key);
     if (isTextDraftKey(key)) return readTextDraft(textDraftActivityId(key));
     if (isBlanksKey(key)) return readGuidedBlanks(codeBlanksDraftActivityId(key));
     if (isAttemptsKey(key)) return readCodeAttempts(codeAttemptsActivityId(key));
     return readCodeSnapshot(codeDraftActivityId(key))?.code ?? null;
   },
   write: (key, value) => {
+    if (isBrowserPreferenceKey(key)) return writeBrowserPreference(key, value);
     if (isTextDraftKey(key)) return saveTextDraft(textDraftActivityId(key), value);
     if (isBlanksKey(key)) return saveGuidedBlanks(codeBlanksDraftActivityId(key), value);
     if (isAttemptsKey(key)) return saveCodeAttempts(codeAttemptsActivityId(key), value);
     return saveCodeSnapshot(codeDraftActivityId(key), value);
   },
   clear: (key) => {
+    if (isBrowserPreferenceKey(key)) return clearBrowserPreference(key);
     if (isTextDraftKey(key)) return clearTextDraft(textDraftActivityId(key));
     if (isBlanksKey(key)) return clearGuidedBlanks(codeBlanksDraftActivityId(key));
     if (isAttemptsKey(key)) return clearCodeAttempts(codeAttemptsActivityId(key));
     return clearCodeSnapshot(codeDraftActivityId(key));
   },
 };
+
+/**
+ * The package's own browser preferences (`itera.activities.*`: the hover-preview
+ * switch and its one-time balloon) are not drafts. Left to the fallthrough they
+ * landed in the code-snapshot slot of an activity with no id, and every write
+ * fired the "learner has work in progress" event the live class listens to.
+ */
+const BROWSER_PREFERENCE_PREFIX = 'itera.activities.';
+
+function isBrowserPreferenceKey(key: string): boolean {
+  return key.startsWith(BROWSER_PREFERENCE_PREFIX);
+}
+
+function readBrowserPreference(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeBrowserPreference(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode / quota — a lost preference is not worth an exception */
+  }
+}
+
+function clearBrowserPreference(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* see above */
+  }
+}
 
 /**
  * Which of the slots a key names. Routed on the PREFIX and not on the
@@ -330,6 +370,7 @@ export function IteraActivityHost({ children }: { children: ReactNode }) {
       identity={identity}
       storage={ITERA_ACTIVITY_STORAGE}
       liveBuffer={ITERA_ACTIVITY_LIVE_BUFFER}
+      sound={ITERA_ACTIVITY_SOUND}
       codeEditor={CodeEditor}
     >
       {children}

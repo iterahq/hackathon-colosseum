@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CodeSpec } from '@iterahq/activity-spec';
-import { useActivityStorage } from '../../context.js';
+import { useActivitySound, useActivityStorage } from '../../context.js';
 import type { ActivityStoragePort } from '../../ports.js';
 import { codeBlanksDraftKey, codeDraftKey } from '../draftKey.js';
 import type { GuidedPhase, GuidedValues, UseGuidedCodeOptions } from './types.js';
@@ -189,14 +189,16 @@ export function useGuidedCode(
    * hook is what makes "revelar não vira acerto" unreachable rather than merely
    * unclicked. Whoever wires a new affordance later inherits the rule for free.
    */
+  const cue = useActivitySound();
   const submit = useCallback(() => {
     if (revealed || outOfLives) return;
+    cue(grade.allCorrect ? 'correct' : 'wrong');
     // A vida sai AQUI, no mesmo tick do veredito, e não num efeito que observe a
     // fase: o guiado corrige localmente e sem round trip, então um efeito só
     // acrescentaria uma janela em que a tela já diz "errou" e o saldo ainda não.
     if (!grade.allCorrect) attempts.spend();
     setPhase('submitted');
-  }, [revealed, outOfLives, grade.allCorrect, attempts]);
+  }, [revealed, outOfLives, grade.allCorrect, attempts, cue]);
 
   const retry = useCallback(() => {
     if (outOfLives) return;

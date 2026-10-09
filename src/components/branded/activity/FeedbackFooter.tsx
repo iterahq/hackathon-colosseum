@@ -86,6 +86,7 @@ import { usePublishedHeight } from '@/hooks/usePublishedHeight';
 import { parseInline } from '@/utils/richText';
 import { RichSpans } from './RichSpans';
 import type { FooterResult } from './activityFeedbackKinds';
+import { feedbackFooterActions } from './feedbackFooterActions';
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -102,24 +103,32 @@ const FOREIGN_CONTROL = 'button, a, summary, [role="button"], [role="textbox"], 
 export function FeedbackFooter({
   result,
   onContinue,
+  onRetry,
   waitHint,
   busy = false,
   continueTestId = 'feedback-footer-continue',
+  retryTestId = 'feedback-footer-retry',
 }: {
   /** The settled result to surface, or `null` to keep the footer hidden. */
   result: FooterResult | null;
   /** Advance CTA handler (async player / harness). Omit for the live wait mode. */
   onContinue?: () => void;
+  /** Offered after a miss only: opens the same exercise again, and takes over as the primary action. */
+  onRetry?: () => void;
   /** Shown in place of the CTA in the live (force-advance) mode. */
   waitHint?: ReactNode;
   /** Disables the CTA while an advance/persist is in flight. */
   busy?: boolean;
   continueTestId?: string;
+  retryTestId?: string;
 }) {
   const { t } = useI18n();
   const correct = result?.correct ?? false;
   const reducedMotion = !!useReducedMotion();
-  const enterEnabled = !!result && !!onContinue && !busy;
+  const actions = feedbackFooterActions({ correct, canContinue: !!onContinue, canRetry: !!onRetry });
+  const runPrimary = actions.primary === 'retry' ? onRetry : onContinue;
+  const primaryTestId = actions.primary === 'retry' ? retryTestId : continueTestId;
+  const enterEnabled = !!result && !!runPrimary && !busy;
   const barRef = useRef<HTMLDivElement>(null);
   usePublishedHeight(barRef, '--feedback-footer-h', !!result);
 
@@ -129,14 +138,14 @@ export function FeedbackFooter({
       if (event.key !== 'Enter' || event.repeat || event.defaultPrevented || isTypingTarget(event.target)) return;
       const target = event.target instanceof Element ? event.target : null;
       const control = target?.closest(FOREIGN_CONTROL);
-      if (control && control.getAttribute('data-testid') !== continueTestId) return;
+      if (control && control.getAttribute('data-testid') !== primaryTestId) return;
       // The footer's own focused button would also fire its click on Enter.
       event.preventDefault();
-      onContinue?.();
+      runPrimary?.();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [enterEnabled, onContinue, continueTestId]);
+  }, [enterEnabled, runPrimary, primaryTestId]);
 
   return (
     <AnimatePresence>
@@ -196,19 +205,34 @@ export function FeedbackFooter({
             </div>
 
             {onContinue ? (
-              <button
-                type="button"
-                onClick={onContinue}
-                disabled={busy}
-                data-testid={continueTestId}
-                className={`inline-flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full px-10 font-semibold transition-[background-color,box-shadow,transform] active:translate-y-[3px] disabled:opacity-60 md:w-auto ${
-                  correct
-                    ? 'bg-menta text-obsidiana shadow-[0_4px_0_#249457] hover:bg-evergreen-hi active:shadow-[0_1px_0_#249457]'
-                    : 'bg-destructive text-destructive-foreground shadow-[0_4px_0_#b3283f] hover:bg-destructive/90 active:shadow-[0_1px_0_#b3283f]'
-                }`}
-              >
-                {t('activity.continue')}
-              </button>
+              <div className="flex w-full shrink-0 gap-3 md:w-auto">
+                {actions.primary === 'retry' && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    disabled={busy}
+                    data-testid={retryTestId}
+                    className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-destructive px-6 font-semibold text-destructive-foreground shadow-[0_4px_0_#b3283f] transition-[background-color,box-shadow,transform] hover:bg-destructive/90 active:translate-y-[3px] active:shadow-[0_1px_0_#b3283f] disabled:opacity-60 md:flex-none md:px-8"
+                  >
+                    {t('common.retry')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  disabled={busy}
+                  data-testid={continueTestId}
+                  className={`inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full font-semibold transition-[background-color,box-shadow,transform] disabled:opacity-60 md:flex-none ${
+                    actions.secondary === 'continue'
+                      ? 'border-2 border-destructive/60 px-6 text-foreground hover:bg-destructive/10 md:px-8'
+                      : correct
+                        ? 'bg-menta px-10 text-obsidiana shadow-[0_4px_0_#249457] hover:bg-evergreen-hi active:translate-y-[3px] active:shadow-[0_1px_0_#249457]'
+                        : 'bg-destructive px-10 text-destructive-foreground shadow-[0_4px_0_#b3283f] hover:bg-destructive/90 active:translate-y-[3px] active:shadow-[0_1px_0_#b3283f]'
+                  }`}
+                >
+                  {t('activity.continue')}
+                </button>
+              </div>
             ) : waitHint ? (
               <div
                 className="shrink-0 text-sm md:max-w-[50%] md:text-right"

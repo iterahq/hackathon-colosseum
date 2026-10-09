@@ -33,7 +33,7 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
   const copy = useSceneText(spec);
   const elements = spec?.page?.elements ?? [];
   const gate = useSceneGate(activity, onComplete);
-  const { record, open, solved } = gate;
+  const { record, open, solved, step } = gate;
   const [connected, setConnected] = useState(true);
   const [everPulled, setEverPulled] = useState(false);
 
@@ -53,12 +53,14 @@ export function PlugActivity({ activity, onComplete }: { activity: PortableActiv
       setConnected(false);
       setEverPulled(true);
       record('cable_toggled', { connected: false });
+      step('pick');
       return;
     }
     setConnected(true);
     record('cable_toggled', { connected: true });
     if (everPulled && !solved) open({ cable: spec?.cable_name });
-  }, [connected, everPulled, open, record, solved, spec?.cable_name]);
+    step('connect');
+  }, [connected, everPulled, open, record, solved, spec?.cable_name, step]);
 
   return (
     <SceneFrame

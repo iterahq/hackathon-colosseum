@@ -75,7 +75,7 @@ describe('som da lição self-paced', () => {
   it('preloads the lesson clips when the lesson opens, not at the verdict', () => {
     renderProbe();
     expect(schedulePreload).toHaveBeenCalledTimes(1);
-    expect(schedulePreload).toHaveBeenCalledWith(['success', 'error', 'click', 'celebration']);
+    expect(schedulePreload).toHaveBeenCalledWith(['success', 'error', 'click', 'celebration', 'chime', 'submit']);
     fireEvent.click(screen.getByTestId('settle-pass'));
     expect(schedulePreload).toHaveBeenCalledTimes(1);
   });

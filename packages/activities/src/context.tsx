@@ -41,10 +41,15 @@
  * has no default. Fail-open is about the absence of the provider, not about a
  * provider that forgot a port.
  */
-import { createContext, createElement, useContext, useMemo } from 'react';
+import { createContext, createElement, useCallback, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { ActivityEvent, ActivityEventHandler } from './events.js';
-import type { ActivityI18n, ActivityLiveBufferPort, ActivityStoragePort } from './ports.js';
+import type {
+  ActivityI18n,
+  ActivityLiveBufferPort,
+  ActivitySoundCue,
+  ActivityStoragePort,
+} from './ports.js';
 import type { ActivityHostContext, ActivityProviderProps } from './renderer.js';
 import { ACTIVITY_DICTIONARY, createActivityI18n } from './i18n/dictionary.js';
 
@@ -104,6 +109,7 @@ export function ActivityProvider({ children, ...host }: ActivityProviderProps) {
       host.theme,
       host.storage,
       host.liveBuffer,
+      host.sound,
       host.onEvent,
       host.codeEditor,
       host.renderers,
@@ -178,6 +184,24 @@ const NO_LIVE_BUFFER: ActivityLiveBufferPort = { publish: () => {}, forget: () =
  */
 export function useActivityLiveBuffer(): ActivityLiveBufferPort {
   return useActivityHost().liveBuffer ?? NO_LIVE_BUFFER;
+}
+
+/**
+ * The cue player of the sound port, a stable function that is a no-op when the
+ * host injected none. Safe to call from any handler: it never throws.
+ */
+export function useActivitySound(): (cue: ActivitySoundCue) => void {
+  const sound = useActivityHost().sound;
+  return useCallback(
+    (cue) => {
+      try {
+        sound?.play(cue);
+      } catch {
+        /* sound is feedback, never a reason to break an interaction */
+      }
+    },
+    [sound],
+  );
 }
 
 /**

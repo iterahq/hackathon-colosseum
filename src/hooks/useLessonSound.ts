@@ -4,7 +4,7 @@ import type { SoundName } from '@/types/sound';
 import { useSoundEffects } from './useSoundEffects';
 import { useLessonMuted } from './useLessonMuted';
 
-const LESSON_CLIPS: readonly SoundName[] = ['success', 'error', 'click', 'celebration'];
+const LESSON_CLIPS: readonly SoundName[] = ['success', 'error', 'click', 'celebration', 'chime', 'submit'];
 
 /**
  * Sound cues of the self-paced lesson.
@@ -36,9 +36,13 @@ export function useLessonSound() {
     if (!muted) play('click', 0.2);
   }, [muted, play]);
 
+  const onRetry = useCallback(() => {
+    if (!muted) play('click', 0.15);
+  }, [muted, play]);
+
   const onFinish = useCallback(() => {
     if (!muted) play('celebration', 0.5);
   }, [muted, play]);
 
-  return { muted, toggleMuted, onSettle, onAdvance, onFinish };
+  return { muted, toggleMuted, onSettle, onAdvance, onRetry, onFinish };
 }
