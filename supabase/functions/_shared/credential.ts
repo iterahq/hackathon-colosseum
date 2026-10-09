@@ -1,5 +1,6 @@
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
+import { cosmeticsOf } from './cosmetics.ts';
 
 export const APP_URL = 'https://hackathon-colosseum.178-105-2-230.sslip.io';
 export const CLUSTER = 'devnet';
@@ -74,7 +75,7 @@ function numberOf(value: unknown): number {
 /** The on-chain asset name: short, English, stable for the life of the asset. */
 export function assetName(row: AchievementRow, catalog: CatalogEntry): string {
   if (row.achievement_key === 'trail_pass') {
-    return clip(`Tera Passport · ${pickText(row.state.trail_title, 'en')}`, 60);
+    return clip(`Tera Certification · ${pickText(row.state.trail_title, 'en')}`, 60);
   }
   return clip(`Itera Medal · ${pickText(catalog.title_i18n, 'en')}`, 60);
 }
@@ -82,6 +83,7 @@ export function assetName(row: AchievementRow, catalog: CatalogEntry): string {
 /** What the Attributes plugin of the asset should hold for this row right now. */
 export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): OnchainAttribute[] {
   if (row.achievement_key === 'trail_pass') {
+    const { ink, frame } = cosmeticsOf(row.state);
     return [
       { key: 'kind', value: 'trail_passport' },
       { key: 'program', value: String(row.state.program_slug ?? '') },
@@ -91,6 +93,8 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       { key: 'tier', value: tierOf(row, catalog) },
       { key: 'completed_at', value: typeof row.state.completed_at === 'string' ? row.state.completed_at : '' },
       { key: 'learner', value: row.user_id },
+      ...(ink ? [{ key: 'ink', value: ink }] : []),
+      ...(frame ? [{ key: 'frame', value: frame }] : []),
     ];
   }
   return [
@@ -127,6 +131,7 @@ export function artInput(row: AchievementRow, catalog: CatalogEntry, lang: Lang,
       programSlug: String(page.state.program_slug ?? ''),
       serial,
       lang,
+      ...cosmeticsOf(page.state),
     };
   }
   return {
@@ -174,6 +179,9 @@ export function buildMetadata(
     );
   }
   if (row.achievement_key === 'day_stamp') attributes.push({ trait_type: 'Day', value: numberOf(row.state.day) });
+  const cosmetics = page ? cosmeticsOf(page.state) : null;
+  if (cosmetics?.ink) attributes.push({ trait_type: 'Ink', value: cosmetics.ink });
+  if (cosmetics?.frame) attributes.push({ trait_type: 'Frame', value: cosmetics.frame });
 
   return {
     name: trail && isPassportKey(row.achievement_key) ? clip(`${title} · ${trail}`, 80) : title,
@@ -183,5 +191,27 @@ export function buildMetadata(
     external_url: `${APP_URL}/c/${row.asset_address ?? row.id}`,
     attributes,
     properties: { category: 'image', files: [{ uri: image, type: 'image/svg+xml' }] },
+  };
+}
+
+/** One entry of `passport`'s `awards` / `updated`, as the app consumes it. */
+export function awardView(row: AchievementRow, catalog: CatalogEntry, lang: Lang, functionsBase: string) {
+  return {
+    id: row.id,
+    key: row.achievement_key,
+    kind: catalog.kind,
+    tier: tierOf(row, catalog),
+    title: pickText(catalog.title_i18n, lang),
+    description: pickText(catalog.description_i18n, lang),
+    ref_id: row.ref_id,
+    state: 'trail_title' in row.state ? { ...row.state, trail: pickText(row.state.trail_title, lang) } : row.state,
+    earned_at: row.earned_at,
+    mint_status: row.mint_status,
+    asset_address: row.asset_address,
+    tx_signature: row.tx_signature,
+    explorer_url: explorerUrl('address', row.asset_address),
+    tx_explorer_url: explorerUrl('tx', row.tx_signature),
+    metadata_url: metadataUrl(functionsBase, row.id),
+    image_url: imageUrl(functionsBase, row.id),
   };
 }

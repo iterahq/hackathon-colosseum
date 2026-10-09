@@ -1,6 +1,8 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { readCredential, readOnlyUmi } from '../_shared/chain.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
+import { companionImageUrl, companionMetadataUrl, companionText } from '../_shared/companion.ts';
+import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import {
   APP_URL,
   CLUSTER,
@@ -79,6 +81,38 @@ async function loadAchievement(db: IteraClient, assetAddress: string, lang: 'pt'
   };
 }
 
+/** The companion behind an asset, in the shape of an achievement. No user id, name or email. */
+async function loadCompanionAchievement(db: IteraClient, assetAddress: string, lang: 'pt' | 'en') {
+  const snapshot = await loadCompanionSnapshot(db, assetAddress, 'asset_address');
+  if (!snapshot) return null;
+  const { data, error } = await db.from('companions').select('created_at,minted_at').eq('id', snapshot.id).single();
+  if (error) throw new Error(`companions: ${error.message}`);
+  const text = companionText(lang);
+  const base = functionsBase();
+  return {
+    key: 'companion',
+    kind: 'companion',
+    tier: 'bronze',
+    title: text.name,
+    description: text.description,
+    trail: null,
+    credential_id: snapshot.id,
+    earned_at: data.created_at,
+    minted_at: data.minted_at,
+    state: {
+      lives: snapshot.lives,
+      max_lives: snapshot.maxLives,
+      outfit: snapshot.outfit,
+      level: snapshot.stats.level,
+      xp: snapshot.stats.xp,
+      streak: snapshot.stats.streak,
+    },
+    metadata_url: companionMetadataUrl(base, snapshot.id),
+    image_url: companionImageUrl(base, snapshot.id),
+    stamps: [],
+  };
+}
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -103,7 +137,12 @@ Deno.serve(async (request) => {
     const verified = checks.collection_is_ours && checks.update_authority_is_ours;
 
     // Catalog data is only attached to an asset we issued: an address alone proves nothing.
-    const achievement = verified ? await loadAchievement(db, address, langOf(request, 'pt')) : null;
+    const lang = langOf(request, 'pt');
+    const achievement = !verified
+      ? null
+      : onchain.collection === config[COLLECTIONS.companions.configKey]
+        ? await loadCompanionAchievement(db, address, lang)
+        : await loadAchievement(db, address, lang);
     return json(
       {
         verified,

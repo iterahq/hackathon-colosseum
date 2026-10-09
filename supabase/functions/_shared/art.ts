@@ -1,9 +1,10 @@
+import type { Frame, Ink } from './cosmetics.ts';
 import { MASCOT_DATA_URI } from './mascot.ts';
 
 export type Lang = 'pt' | 'en';
 
 export interface ArtInput {
-  shape: 'passport' | 'stamp' | 'medal';
+  shape: 'passport' | 'stamp' | 'medal' | 'companion';
   tier: 'bronze' | 'silver' | 'gold';
   title: string;
   /** Trail name on a passport or stamp, achievement description line on a medal. */
@@ -21,12 +22,18 @@ export interface ArtInput {
   programSlug: string;
   serial: string;
   lang: Lang;
+  /** Passport cosmetics. Unset draws the default page. */
+  ink?: Ink | null;
+  frame?: Frame | null;
+  /** Only read by the `companion` shape. */
+  companion?: { lives: number; maxLives: number; level: number; outfit: string | null };
 }
 
 const BACKGROUND = '#0A0908';
 const PAGE = '#15120F';
 const CREAM = '#F4EDE2';
 const GREEN = '#3FD17F';
+const INK_COLORS: Record<Ink, string> = { emerald: '#34D399', violet: '#A78BFA' };
 const TIER_COLORS = {
   bronze: { light: '#E3A46E', base: '#C8834A', dark: '#7A4A24' },
   silver: { light: '#F1F3F6', base: '#C3C9D2', dark: '#737B88' },
@@ -38,24 +45,30 @@ const MAX_SLOTS = 10;
 
 const LABELS = {
   pt: {
-    brand: 'PASSAPORTE DO TERA',
+    brand: 'CERTIFICAÇÕES DO TERA',
     proof: 'PROVA DE APRENDIZADO',
     day: 'DIA',
     days: 'DIAS',
-    complete: 'TRILHA COMPLETA',
+    complete: 'CERTIFICADA',
     soulbound: 'INTRANSFERÍVEL · SOLANA',
     tier: { bronze: 'BRONZE', silver: 'PRATA', gold: 'OURO' },
     medal: 'MEDALHA',
+    companion: 'COMPANHEIRO DE ESTUDOS',
+    level: 'NÍVEL',
+    lives: 'VIDAS',
   },
   en: {
-    brand: "TERA'S PASSPORT",
+    brand: 'TERA CERTIFICATION',
     proof: 'PROOF OF LEARNING',
     day: 'DAY',
     days: 'DAYS',
-    complete: 'TRAIL COMPLETE',
+    complete: 'CERTIFIED',
     soulbound: 'SOULBOUND · SOLANA',
     tier: { bronze: 'BRONZE', silver: 'SILVER', gold: 'GOLD' },
     medal: 'MEDAL',
+    companion: 'STUDY COMPANION',
+    level: 'LEVEL',
+    lives: 'LIVES',
   },
 } as const;
 
@@ -115,11 +128,13 @@ function mascot(x: number, y: number, width: number): string {
   return `<image href="${MASCOT_DATA_URI}" x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet"/>`;
 }
 
-function defs(tier: ArtInput['tier'], accent: string): string {
+function defs(tier: ArtInput['tier'], accent: string, glowOpacity = 0.2): string {
   const metal = TIER_COLORS[tier];
+  const leaf = TIER_COLORS.gold;
   return `<defs>
 <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${metal.light}"/><stop offset="0.5" stop-color="${metal.base}"/><stop offset="1" stop-color="${metal.dark}"/></linearGradient>
-<radialGradient id="glow" cx="0.5" cy="0.38" r="0.75"><stop offset="0" stop-color="${accent}" stop-opacity="0.20"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>
+<radialGradient id="glow" cx="0.5" cy="0.38" r="0.75"><stop offset="0" stop-color="${accent}" stop-opacity="${glowOpacity}"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>
+<linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${leaf.light}"/><stop offset="0.35" stop-color="${leaf.base}"/><stop offset="0.6" stop-color="${leaf.light}"/><stop offset="1" stop-color="${leaf.dark}"/></linearGradient>
 <pattern id="grain" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(32)"><path d="M0 11h22" stroke="${CREAM}" stroke-opacity="0.035" stroke-width="1"/></pattern>
 </defs>`;
 }
@@ -173,12 +188,34 @@ function stampGrid(input: ArtInput, color: string, label: string): string {
   return slots.join('\n');
 }
 
+/** Gold-leaf frame cosmetic: a gilded double border with a leaf spray in each corner. */
+function goldLeafFrame(): string {
+  const corner = `<path d="M0 34C0 14 14 0 34 0" fill="none" stroke="url(#leaf)" stroke-width="3" stroke-linecap="round"/>
+<path d="M9 9c9-3 17 0 22 7c-9 3-17 0-22-7z" fill="url(#leaf)"/>
+<path d="M9 9c-3 9 0 17 7 22c3-9 0-17-7-22z" fill="url(#leaf)"/>
+<path d="M9 9c8 2 13 7 15 15c-8-2-13-7-15-15z" fill="url(#leaf)" fill-opacity="0.75"/>
+<circle cx="40" cy="4" r="2.4" fill="url(#leaf)"/><circle cx="4" cy="40" r="2.4" fill="url(#leaf)"/>`;
+  const corners = [
+    'translate(27 27)',
+    'translate(485 27) scale(-1 1)',
+    'translate(27 485) scale(1 -1)',
+    'translate(485 485) scale(-1 -1)',
+  ].map((transform) => `<g transform="${transform}">${corner}</g>`);
+  return `<g data-frame="gold-leaf">
+<rect x="20" y="20" width="472" height="472" rx="30" fill="none" stroke="url(#leaf)" stroke-width="6"/>
+<rect x="29" y="29" width="454" height="454" rx="23" fill="none" stroke="url(#leaf)" stroke-opacity="0.55" stroke-width="1.2"/>
+${corners.join('\n')}
+</g>`;
+}
+
 function passportSvg(input: ArtInput): string {
   const labels = LABELS[input.lang];
   const isGold = input.tier === 'gold';
-  const trail = trailColor(input.colorSeed);
+  const inkColor = input.ink ? INK_COLORS[input.ink] : null;
+  const trail = inkColor ?? trailColor(input.colorSeed);
   const ink = isGold ? 'url(#metal)' : trail;
-  const stampInk = isGold ? TIER_COLORS.gold.base : trail;
+  // A bought ink keeps colouring the stamps after the page turns gold.
+  const stampInk = isGold && !inkColor ? TIER_COLORS.gold.base : trail;
   const titleLines = wrapText(input.subtitle, 23, 3);
   const title = titleLines
     .map((line, index) => `<text x="52" y="${150 + index * 31}" font-family="${SANS}" font-weight="800" font-size="26" fill="${isGold ? TIER_COLORS.gold.light : CREAM}">${escapeXml(line)}</text>`)
@@ -188,11 +225,12 @@ function passportSvg(input: ArtInput): string {
 <text x="256" y="388" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="19" letter-spacing="3" fill="url(#metal)">★ ${labels.complete} ★</text></g>`
     : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="${escapeXml(`${input.title} · ${input.subtitle}`)}">
-${defs(input.tier, isGold ? TIER_COLORS.gold.base : trail)}
+${defs(input.tier, isGold ? TIER_COLORS.gold.base : trail, inkColor && !isGold ? 0.1 : 0.2)}
 ${frame(ink)}
+${input.frame === 'gold-leaf' ? goldLeafFrame() : ''}
 <text x="52" y="72" font-family="${SANS}" font-weight="800" font-size="15" letter-spacing="3.2" fill="${CREAM}">${labels.brand}</text>
 <text x="52" y="94" font-family="${MONO}" font-size="11.5" letter-spacing="1.6" fill="${GREEN}">${labels.proof} · ${escapeXml(input.programSlug.slice(0, 26).toUpperCase())}</text>
-<rect x="52" y="108" width="44" height="4" rx="2" fill="${ink}"/>
+<rect x="52" y="108" width="44" height="4" rx="2" fill="${inkColor ?? ink}"/>
 ${title}
 ${mascot(380, 42, 84)}
 ${stampGrid(input, stampInk, labels.day)}
@@ -200,6 +238,69 @@ ${ribbon}
 <text x="52" y="452" font-family="${SANS}" font-weight="900" font-size="30" fill="${isGold ? TIER_COLORS.gold.light : CREAM}">${input.daysDone}<tspan fill-opacity="0.45" font-weight="700">/${input.totalDays}</tspan><tspan dx="8" font-size="13" font-weight="800" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${labels.days}</tspan></text>
 <rect x="352" y="428" width="108" height="30" rx="15" fill="${isGold ? 'url(#metal)' : 'none'}" stroke="${ink}" stroke-width="2"/>
 <text x="406" y="448" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.6" fill="${isGold ? BACKGROUND : stampInk}">${labels.tier[input.tier]}</text>
+<text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
+</svg>`;
+}
+
+/**
+ * Accessories are drawn in the mascot's own 240x300 box, one function per item
+ * key, so swapping a drawing for final artwork touches one place.
+ */
+const OUTFIT_ART: Record<string, () => string> = {
+  outfit_glasses: () => `<g fill="none" stroke="${CREAM}" stroke-width="5" stroke-linecap="round">
+<circle cx="80" cy="204" r="25" fill="${BACKGROUND}" fill-opacity="0.35"/>
+<circle cx="150" cy="212" r="23" fill="${BACKGROUND}" fill-opacity="0.35"/>
+<path d="M104 203q11-7 23 3"/><path d="M56 198l-22-10"/><path d="M172 206l14-4"/></g>
+<path d="M66 194q8-9 20-7" fill="none" stroke="${CREAM}" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round"/>`,
+  outfit_crown: () => `<g transform="rotate(-9 112 118)">
+<path d="M66 138l-8-52l30 26l24-40l24 40l30-26l-8 52z" fill="url(#leaf)" stroke="${TIER_COLORS.gold.dark}" stroke-width="3" stroke-linejoin="round"/>
+<rect x="64" y="134" width="96" height="14" rx="5" fill="url(#leaf)" stroke="${TIER_COLORS.gold.dark}" stroke-width="3"/>
+<circle cx="112" cy="141" r="4.5" fill="${GREEN}"/><circle cx="84" cy="141" r="3" fill="${CREAM}"/><circle cx="140" cy="141" r="3" fill="${CREAM}"/>
+<circle cx="58" cy="86" r="5" fill="${TIER_COLORS.gold.light}"/><circle cx="112" cy="72" r="5" fill="${TIER_COLORS.gold.light}"/><circle cx="166" cy="86" r="5" fill="${TIER_COLORS.gold.light}"/></g>`,
+  outfit_headphones: () => `<path d="M40 196C34 96 190 92 186 204" fill="none" stroke="${CREAM}" stroke-width="9" stroke-linecap="round"/>
+<path d="M40 196C34 96 190 92 186 204" fill="none" stroke="${BACKGROUND}" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
+<rect x="22" y="178" width="34" height="58" rx="15" fill="${PAGE}" stroke="${CREAM}" stroke-width="4"/>
+<rect x="170" y="186" width="32" height="56" rx="15" fill="${PAGE}" stroke="${CREAM}" stroke-width="4"/>
+<rect x="33" y="194" width="12" height="26" rx="6" fill="${GREEN}"/><rect x="180" y="201" width="12" height="26" rx="6" fill="${GREEN}"/>`,
+};
+
+function heart(cx: number, cy: number, size: number, filled: boolean): string {
+  const scale = size / 24;
+  const shape = 'M12 21C5 15.5 2 12 2 8.2C2 5.2 4.3 3 7.1 3C9 3 10.9 4 12 5.6C13.1 4 15 3 16.9 3C19.7 3 22 5.2 22 8.2C22 12 19 15.5 12 21Z';
+  const paint = filled
+    ? `fill="${GREEN}" stroke="${GREEN}" stroke-width="1.6"`
+    : `fill="none" stroke="${CREAM}" stroke-opacity="0.32" stroke-width="1.6" stroke-dasharray="2.4 2.4"`;
+  return `<path d="${shape}" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${scale})" ${paint} stroke-linejoin="round"/>`;
+}
+
+function companionSvg(input: ArtInput): string {
+  const labels = LABELS[input.lang];
+  const { lives, maxLives, level, outfit } = input.companion ?? { lives: 0, maxLives: 5, level: 1, outfit: null };
+  const total = Math.max(1, Math.min(MAX_SLOTS, Math.floor(maxLives)));
+  const current = Math.max(0, Math.min(total, Math.floor(lives)));
+  const gap = 46;
+  const hearts = Array.from({ length: total }, (_, index) =>
+    heart(256 - ((total - 1) * gap) / 2 + index * gap, 392, 34, index < current),
+  ).join('\n');
+  const drawOutfit = outfit ? OUTFIT_ART[outfit] : undefined;
+  const mascotWidth = 196;
+  const mascotX = 256 - mascotWidth / 2;
+  const mascotY = 104;
+  const accessory = drawOutfit
+    ? `<g data-outfit="${escapeXml(outfit as string)}" transform="translate(${mascotX} ${mascotY}) scale(${mascotWidth / 240})">${drawOutfit()}</g>`
+    : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="${escapeXml(input.title)}">
+${defs('bronze', GREEN, 0.16)}
+${frame(GREEN)}
+<text x="52" y="72" font-family="${SANS}" font-weight="800" font-size="15" letter-spacing="3.2" fill="${CREAM}">TERA</text>
+<text x="52" y="94" font-family="${MONO}" font-size="11.5" letter-spacing="1.6" fill="${GREEN}">${labels.companion}</text>
+<rect x="52" y="108" width="44" height="4" rx="2" fill="${GREEN}"/>
+<rect x="364" y="52" width="96" height="30" rx="15" fill="none" stroke="${GREEN}" stroke-width="2"/>
+<text x="412" y="72" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.2" fill="${GREEN}">${labels.level} ${Math.max(1, Math.floor(level))}</text>
+${mascot(mascotX, mascotY, mascotWidth)}
+${accessory}
+${hearts}
+<text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current}/${total} ${labels.lives}</text>
 <text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
 </svg>`;
 }
@@ -239,5 +340,6 @@ ${mascot(400, 40, 62)}
 }
 
 export function renderArt(input: ArtInput): string {
+  if (input.shape === 'companion') return companionSvg(input);
   return input.shape === 'medal' ? medalSvg(input) : passportSvg(input);
 }
