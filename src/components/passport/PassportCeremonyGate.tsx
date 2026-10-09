@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { LessonCompleteActions } from '@/components/branded/lesson/LessonCompleteCard';
+import { useCompanion } from '@/hooks/useCompanion';
 import { usePassport } from '@/hooks/usePassport';
 import { StampCeremony } from './StampCeremony';
 
@@ -32,6 +33,7 @@ interface GateProps {
 
 function Gate({ lessonId, nextLessonId, onReview, card }: GateProps) {
   const passport = usePassport({ lessonId, active: true });
+  const { outfit } = useCompanion();
   if (!passport.model) return <>{card}</>;
   return (
     <StampCeremony
@@ -41,6 +43,7 @@ function Gate({ lessonId, nextLessonId, onReview, card }: GateProps) {
       onRetry={passport.retry}
       onLater={passport.dismiss}
       onConnect={passport.connect}
+      outfit={outfit}
     />
   );
 }

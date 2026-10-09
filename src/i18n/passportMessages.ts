@@ -2,7 +2,7 @@
 export const PASSPORT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'passport.title': 'Certificações do Tera',
-    'passport.pageLabel': 'CERTIFICAÇÃO',
+    'passport.pageLabel': 'CERTIFICAÇÕES DO TERA',
     'passport.stamp.day': 'DIA {n}',
     'passport.stamp.label': 'DIA',
     'passport.days': '{done}/{total} dias',

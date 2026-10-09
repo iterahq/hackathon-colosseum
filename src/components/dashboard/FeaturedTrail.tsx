@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
 import { barFill, colorOfTrail, currentDayOf, dayName, programLabel, trailName } from '@/utils/trailDashboard';
 import { FeaturedPath } from './FeaturedPath';
+import { HeroTera } from './HeroTera';
 import { countOf } from '@/utils/plural';
 
 interface Props {
@@ -48,11 +49,14 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
           {ghost}
         </span>
         <div className="relative flex min-w-0 flex-col gap-3.5">
-          {current && (
-            <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
-              {t('dash.hero.today', { day: String(currentIndex + 1).padStart(2, '0'), total: trail.days.length })}
-            </span>
-          )}
+          <span className="flex items-center gap-3">
+            <HeroTera />
+            {current && (
+              <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
+                {t('dash.hero.today', { day: String(currentIndex + 1).padStart(2, '0'), total: trail.days.length })}
+              </span>
+            )}
+          </span>
           <span className="[font:700_56px/0.95_'Barlow_Condensed'] max-sm:text-[40px]">{current ? tText(dayName(current.title)) : name}</span>
           <span className="flex flex-wrap items-center gap-3">
             <span className="flex w-[260px] max-w-full gap-1">
