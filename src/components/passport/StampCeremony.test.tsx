@@ -72,7 +72,7 @@ describe('StampCeremony', () => {
   it('the last day turns the page gold with confetti', () => {
     show(model('minted', { day: 5, last: true }));
     settle();
-    expect(screen.getByRole('dialog', { name: 'Trilha completa — página de ouro!' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Trilha completa — certificação dourada!' })).toBeInTheDocument();
     expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'gold');
     expect(screen.getByTestId('confetti')).toBeInTheDocument();
   });
@@ -80,6 +80,6 @@ describe('StampCeremony', () => {
   it('keeps the lesson buttons and the passport link at the bottom', () => {
     show(model('minted'));
     expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver meu passaporte →' })).toHaveAttribute('href', '/passport');
+    expect(screen.getByRole('link', { name: 'Ver minhas certificações →' })).toHaveAttribute('href', '/passport');
   });
 });

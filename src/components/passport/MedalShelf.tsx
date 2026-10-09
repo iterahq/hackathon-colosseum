@@ -7,15 +7,16 @@ interface Props {
   medals: PassportMedal[];
   color: TrailColor;
   size?: number;
+  compact?: boolean;
 }
 
 /** A 1 px shelf line with the medals standing on it; locked ones show what they ask for. */
-export function MedalShelf({ medals, color, size = 76 }: Props) {
+export function MedalShelf({ medals, color, size = 76, compact = false }: Props) {
   const { t } = useI18n();
   if (medals.length === 0) return null;
   return (
     <div className="flex flex-col" data-testid="medal-shelf" role="list" aria-label={t('passport.medals')}>
-      <div className="flex gap-3 overflow-x-auto px-1 pb-3 pt-2">
+      <div className={compact ? 'flex flex-wrap gap-2.5 pb-3 pt-1' : 'flex gap-3 overflow-x-auto px-1 pb-3 pt-2'}>
         {medals.map((m) => (
           <div key={m.key} role="listitem">
             <Medal
@@ -31,6 +32,7 @@ export function MedalShelf({ medals, color, size = 76 }: Props) {
               accent={color.c}
               accentDark={color.cd}
               size={size}
+              compact={compact}
             />
           </div>
         ))}
