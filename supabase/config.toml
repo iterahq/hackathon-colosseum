@@ -1,0 +1,4 @@
+project_id = "nyzcbnnbffsizshiolbh"
+
+[functions.chain-probe]
+verify_jwt = false
