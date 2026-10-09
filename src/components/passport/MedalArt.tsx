@@ -21,12 +21,12 @@ const KIND_PATH: Record<AchievementKind, string> = {
   day: 'M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4v4l3 2',
 };
 
-/** The round medal: backend artwork when earned (coin fallback if it fails to load), a dashed per-kind outline when locked. */
+/** The medal: backend artwork (a rounded card with the coin and Tera) when earned (coin fallback if it fails to load), a dashed per-kind outline when locked. */
 export function MedalArt({ glyph, title, kind, credentialId, earned, accent, accentDark, size, lang }: Props) {
   const [failed, setFailed] = useState(false);
   const src = earned && credentialId ? credentialImageUrl(credentialId, lang) : null;
   if (earned && src && !failed) {
-    return <img src={src} alt={title} width={size} height={size} loading="lazy" onError={() => setFailed(true)} className="rounded-full object-cover" style={{ width: size, height: size }} data-testid="medal-art" />;
+    return <img src={src} alt={title} width={size} height={size} loading="lazy" onError={() => setFailed(true)} className="rounded-[14%]" style={{ width: size, height: size }} data-testid="medal-art" />;
   }
   if (earned) {
     return (
