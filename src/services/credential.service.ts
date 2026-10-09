@@ -22,7 +22,14 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
     update_authority: text(b.update_authority),
     attributes: attrs.map((a) => ({ key: String(a.key ?? ''), value: String(a.value ?? '') })).filter((a) => a.key),
     achievement: ach
-      ? { key: text(ach.key) ?? '', tier: text(ach.tier), title: (typeof ach.title === 'string' || (ach.title && typeof ach.title === 'object') ? ach.title : '') as string }
+      ? {
+          key: text(ach.key) ?? '',
+          tier: text(ach.tier),
+          title: (typeof ach.title === 'string' || (ach.title && typeof ach.title === 'object') ? ach.title : '') as string,
+          image_url: text(ach.image_url),
+          state: ach.state && typeof ach.state === 'object' ? (ach.state as Record<string, unknown>) : {},
+          stamps: (Array.isArray(ach.stamps) ? (ach.stamps as Record<string, unknown>[]) : []).map((x) => ({ day: Number(x.day) })).filter((x) => x.day > 0),
+        }
       : null,
     minted_at: text(b.minted_at),
   };
@@ -40,3 +47,7 @@ export async function verifyCredential(asset: string): Promise<CredentialLookup>
   const data = parseCredential(await res.json(), asset);
   return { status: data.verified ? 'verified' : 'unverified', data, ms };
 }
+
+/** The server-drawn artwork of a stored row, in the viewer's language. */
+export const credentialImageUrl = (rowId: string, lang: string): string | null =>
+  url && rowId ? `${url}/functions/v1/credential-meta/${encodeURIComponent(rowId)}/image.svg?lang=${lang}` : null;

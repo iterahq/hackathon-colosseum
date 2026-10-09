@@ -15,10 +15,10 @@ function glyphOf(item: AchievementView, text: string): string {
   return (set || text.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 3)).toUpperCase();
 }
 
-/** The earned row that speaks for a trail: a trail award over a day one, then the minted, then the most recent. */
+/** The earned row that speaks for a trail: the minted, then the most recent. */
 function rowFor(trailId: string, items: readonly AchievementView[]): { row: UserAchievement; tier: string | null } | null {
-  const score = (i: AchievementView) => [i.kind === 'trail' ? 1 : 0, i.earned?.mintStatus === 'minted' ? 1 : 0, i.earned?.earnedAt ?? ''] as const;
-  const mine = items.filter((i) => i.earned && i.earned.refId === trailId && (i.kind === 'trail' || i.kind === 'day'));
+  const score = (i: AchievementView) => [0, i.earned?.mintStatus === 'minted' ? 1 : 0, i.earned?.earnedAt ?? ''] as const;
+  const mine = items.filter((i) => i.earned && i.earned.refId === trailId && i.kind === 'trail');
   mine.sort((a, b) => {
     const [x, y] = [score(a), score(b)];
     return y[0] - x[0] || y[1] - x[1] || y[2].localeCompare(x[2]);
@@ -31,6 +31,7 @@ export function buildPages(trails: readonly Trail[], items: readonly Achievement
   return trails.map((trail) => {
     const earned = rowFor(trail.id, items);
     return {
+      credentialId: earned?.row.id ?? null,
       trailId: trail.id,
       trailTitle: pick(trailName(trail.title)),
       colorIndex: trail.colorIndex,

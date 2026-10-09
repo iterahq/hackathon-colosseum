@@ -32,6 +32,7 @@ import { LessonChrome } from '@/components/branded/lesson/LessonChrome';
 import { LessonSaveError } from '@/components/branded/lesson/LessonSaveError';
 import { LessonStepActions } from '@/components/branded/lesson/LessonStepActions';
 import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
+import { PassportCeremonyGate } from '@/components/passport/PassportCeremonyGate';
 import { LessonTitle } from '@/components/branded/lesson/LessonTitle';
 import { FeedbackFooter } from '@/components/branded/activity/FeedbackFooter';
 import {
@@ -825,11 +826,18 @@ export default function LessonPlayer() {
               {t('lesson.noActivities')}
             </div>
           ) : completed ? (
-            <LessonCompleteCard
-              doneCount={doneIds.size}
-              total={activities.length}
+            <PassportCeremonyGate
+              lessonId={lessonId}
               nextLessonId={nextLesson?.id}
               onReview={goToStart}
+              card={
+                <LessonCompleteCard
+                  doneCount={doneIds.size}
+                  total={activities.length}
+                  nextLessonId={nextLesson?.id}
+                  onReview={goToStart}
+                />
+              }
             />
           ) : (
             <>

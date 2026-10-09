@@ -21,7 +21,7 @@ const trail = (id: string, doneDays: number, days: number, status: Trail['status
 const item = (key: string, kind: AchievementView['kind'], over: Partial<AchievementView> = {}): AchievementView => ({
   key, kind, tier: null, title: { pt: key }, description: { pt: `req ${key}` }, art: {}, sort: 0, earned: null, ...over,
 });
-const earned = (refId: string | null, over = {}) => ({ achievementKey: 'k', refId, earnedAt: '2026-10-09T10:00:00Z', mintStatus: 'minted' as const, assetAddress: 'A1', txSignature: 'S1', ...over });
+const earned = (refId: string | null, over = {}) => ({ id: 'row1', achievementKey: 'k', refId, earnedAt: '2026-10-09T10:00:00Z', mintStatus: 'minted' as const, assetAddress: 'A1', txSignature: 'S1', ...over });
 
 describe('buildPages', () => {
   it('joins the earned trail award by ref id', () => {
@@ -32,13 +32,9 @@ describe('buildPages', () => {
     expect(isGold(pages[1])).toBe(false);
   });
 
-  it('prefers a trail award over a day award', () => {
-    const pages = buildPages(
-      [trail('t1', 5, 5)],
-      [item('day', 'day', { earned: earned('t1', { assetAddress: 'DAY' }) }), item('trail', 'trail', { earned: earned('t1', { assetAddress: 'TRAIL' }) })],
-      pick
-    );
-    expect(pages[0].assetAddress).toBe('TRAIL');
+  it('ignores day stamps: they belong to the passport row, not to a trail', () => {
+    const pages = buildPages([trail('t1', 5, 5)], [item('day_stamp', 'day', { earned: earned('t1', { assetAddress: 'DAY' }) })], pick);
+    expect(pages[0].assetAddress).toBeNull();
   });
 
   it('marks locked pages with the predecessor name', () => {

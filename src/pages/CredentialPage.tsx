@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CredentialCard } from '@/components/passport/CredentialCard';
-import { PassportPage } from '@/components/passport/PassportPage';
+import { PassportArt } from '@/components/passport/PassportArt';
 import { useCredential } from '@/hooks/useCredential';
 import { useI18n } from '@/i18n';
 import { credentialFacts } from '@/utils/credential';
@@ -47,7 +47,7 @@ function VerifyOther() {
 /** Public, shell-less page: anyone can check a passport asset against the chain. */
 export default function CredentialPage() {
   const { asset = '' } = useParams();
-  const { t, tText, toggleLocale } = useI18n();
+  const { t, tText, locale, toggleLocale } = useI18n();
   const query = useCredential(asset);
   const lookup = query.data;
   const found = lookup && lookup.status !== 'not_found' ? lookup : null;
@@ -90,7 +90,8 @@ export default function CredentialPage() {
         )}
         {found && facts && (
           <>
-            <PassportPage
+            <PassportArt
+              src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
               title={facts.trail ?? t('passport.title')}
               color={TRAIL_COLORS[1]}
               total={Math.max(facts.totalDays, 1)}

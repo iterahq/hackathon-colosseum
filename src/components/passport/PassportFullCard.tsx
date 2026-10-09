@@ -1,9 +1,10 @@
 import { useI18n } from '@/i18n';
 import type { PassportPageData } from '@/types/achievements';
+import { credentialImageUrl } from '@/services/credential.service';
 import { shortAddress } from '@/lib/explorer';
 import { CopyButton } from './CopyButton';
 import { OnChainMark } from './OnChainMark';
-import { PassportPage } from './PassportPage';
+import { PassportArt } from './PassportArt';
 import { pageColor, pageVariant } from './pageVariant';
 
 const formatDate = (iso: string | null): string | null => {
@@ -14,13 +15,14 @@ const formatDate = (iso: string | null): string | null => {
 
 /** A 300x400 page of /passport with its facts and chain links underneath. */
 export function PassportFullCard({ page }: { page: PassportPageData }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
   const date = formatDate(page.earnedAt);
 
   return (
     <article data-testid="passport-full-card" className="flex w-full max-w-[300px] flex-col gap-3 justify-self-center">
-      <PassportPage
+      <PassportArt
+        src={page.credentialId ? credentialImageUrl(page.credentialId, locale) : null}
         title={page.trailTitle}
         color={pageColor(page)}
         total={page.totalDays}

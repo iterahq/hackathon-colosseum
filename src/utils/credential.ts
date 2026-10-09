@@ -11,24 +11,22 @@ export interface CredentialFacts {
 }
 
 const TRUE = new Set(['true', '1', 'yes', 'done', 'completed']);
+const num = (v: unknown): number => (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN);
 
-/** Reads the on-chain attributes (`day_1`..`day_n`, `trail`, `tier`) into what the page shows. */
+/** Reads the on-chain attributes (`days_done`, `day_n`, `trail`, `tier`) and the catalog row into what the page shows. */
 export function credentialFacts(c: CredentialVerification, pick: (t: I18nText) => string): CredentialFacts {
-  const days = c.attributes
-    .map((a) => ({ m: /^day_(\d+)$/.exec(a.key), done: TRUE.has(a.value.toLowerCase()) }))
-    .filter((d): d is { m: RegExpExecArray; done: boolean } => d.m != null)
-    .map((d) => ({ day: Number(d.m[1]), done: d.done }))
-    .sort((a, b) => a.day - b.day);
   const attr = (key: string) => c.attributes.find((a) => a.key === key)?.value ?? null;
+  const stamped = new Set<number>((c.achievement?.stamps ?? []).map((s) => s.day));
+  for (const a of c.attributes) {
+    const m = /^day_(\d+)$/.exec(a.key);
+    if (m && TRUE.has(a.value.toLowerCase())) stamped.add(Number(m[1]));
+  }
+  const declared = [num(attr('days_done')), num(c.achievement?.state.days_done)].find((n) => Number.isFinite(n));
+  const daysDone = Math.max(stamped.size, declared ?? 0);
+  const total = [num(attr('total_days')), num(c.achievement?.state.total_days)].find((n) => Number.isFinite(n) && n > 0) ?? 0;
+  const totalDays = Math.max(total, ...stamped, 0);
+  const days = Array.from({ length: totalDays }, (_, i) => ({ day: i + 1, done: stamped.has(i + 1) || (stamped.size === 0 && i < daysDone) }));
   const title = c.achievement?.title;
   const named = typeof title === 'string' ? title : title ? pick(title) : '';
-  const done = days.filter((d) => d.done).length;
-  return {
-    trail: attr('trail') ?? (named || null),
-    tier: c.achievement?.tier ?? attr('tier'),
-    daysDone: done,
-    totalDays: days.length,
-    days,
-    date: c.minted_at,
-  };
+  return { trail: attr('trail') ?? (named || null), tier: c.achievement?.tier ?? attr('tier'), daysDone, totalDays, days, date: c.minted_at };
 }
