@@ -69,7 +69,6 @@ function collectionImage(kind: CollectionKind): string {
     tier: kind === 'medals' ? 'gold' : 'bronze',
     title: COLLECTIONS[kind].name,
     subtitle: kind === 'passports' ? COLLECTIONS[kind].name : COLLECTION_TEXT[kind],
-    colorSeed: kind,
     daysDone: 3,
     totalDays: 5,
     stampedDays: [1, 2, 3],

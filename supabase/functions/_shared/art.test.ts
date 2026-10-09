@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escapeXml, renderArt, trailColor, wrapText, type ArtInput } from './art';
+import { escapeXml, renderArt, wrapText, type ArtInput } from './art';
 import { companionArtInput } from './companion';
 import { artInput, assetName, awardView, buildMetadata, onchainAttributes, type AchievementRow, type CatalogEntry } from './credential';
 
@@ -36,6 +36,9 @@ const passport: AchievementRow = {
 
 const art = (patch: Partial<ArtInput> = {}): ArtInput => ({ ...artInput(passport, passportCatalog, 'en', null), ...patch });
 const count = (svg: string, needle: string) => svg.split(needle).length - 1;
+const GREEN = '#3FD17F';
+const VIOLET = '#A78BFA';
+const PAGE = '#15120F';
 
 describe('renderArt', () => {
   it('draws one slot per day and fills only the stamped ones', () => {
@@ -55,8 +58,11 @@ describe('renderArt', () => {
     expect(count(svg, 'stroke-dasharray="5 6"')).toBe(0);
   });
 
-  it('gives each trail its own color and never leaks markup from titles', () => {
-    expect(trailColor('unit-a')).not.toBe(trailColor('unit-b'));
+  it('paints every trail in Itera green and never leaks markup from titles', () => {
+    const other: typeof passport = { ...passport, ref_id: '11111111-2222-4333-8444-555555555555' };
+    expect(renderArt(artInput(other, passportCatalog, 'en', null))).toBe(renderArt(art()));
+    expect(renderArt(art())).toContain(`stroke="${GREEN}" stroke-width="3.5"`);
+    expect(renderArt(art())).not.toMatch(/hsl\(/);
     const svg = renderArt(art({ subtitle: '<script>alert(1)</script> & "x"' }));
     expect(svg).not.toContain('<script');
     expect(svg).toContain('&lt;script&gt;');
@@ -75,35 +81,57 @@ describe('passport cosmetics', () => {
   it('leaves the default page alone when nothing is set', () => {
     const plain = renderArt(art());
     expect(renderArt(art({ ink: null, frame: null }))).toBe(plain);
+    expect(plain).toContain('data-ink="default"');
     expect(plain).not.toContain('data-frame');
-    expect(plain).not.toContain('#34D399');
-    expect(plain).not.toContain('#A78BFA');
+    expect(plain).not.toContain('url(#emerald)');
+    expect(plain).not.toContain(VIOLET);
   });
 
-  it('draws the stamps in the bought ink, each ink its own colour', () => {
+  it('keeps the page green under either ink: only stamps and accent change', () => {
+    const plain = renderArt(art());
     const emerald = renderArt(art({ ink: 'emerald' }));
     const violet = renderArt(art({ ink: 'violet' }));
-    expect(emerald).toContain('#34D399');
-    expect(violet).toContain('#A78BFA');
-    expect(emerald).not.toContain('#A78BFA');
-    expect(emerald).not.toContain(trailColor(passport.ref_id));
-    expect(emerald).not.toBe(violet);
+    for (const svg of [plain, emerald, violet]) expect(svg).toContain(`fill="${PAGE}" stroke="${GREEN}" stroke-width="3"`);
+    expect(new Set([plain, emerald, violet]).size).toBe(3);
+    expect(emerald).toContain('data-ink="emerald"');
+    expect(violet).toContain('data-ink="violet"');
+  });
+
+  it('draws emerald as a jewel: gradient stamps with a sheen and an inner glow', () => {
+    const emerald = renderArt(art({ ink: 'emerald' }));
+    expect(count(emerald, 'fill="url(#emerald)" stroke=')).toBe(2);
+    expect(count(emerald, 'fill="url(#sheen)"')).toBe(2);
+    expect(count(emerald, 'filter="url(#soft)"')).toBe(1);
+    expect(count(emerald, 'stroke-width="3.5"')).toBe(0);
+    expect(emerald).not.toContain(VIOLET);
+  });
+
+  it('draws violet as line stamps in violet, with no jewel treatment', () => {
+    const violet = renderArt(art({ ink: 'violet' }));
+    expect(count(violet, `stroke="${VIOLET}" stroke-width="3.5"`)).toBe(2);
+    expect(violet).not.toContain('url(#emerald)');
+    expect(violet).not.toContain('url(#soft)');
   });
 
   it('adds the gold-leaf border without touching the ink', () => {
     const framed = renderArt(art({ frame: 'gold-leaf' }));
     expect(framed).toContain('data-frame="gold-leaf"');
-    expect(framed).toContain(trailColor(passport.ref_id));
+    expect(framed).toContain('data-ink="default"');
     expect(count(renderArt(art({ ink: 'violet', frame: 'gold-leaf' })), 'data-frame')).toBe(1);
   });
 
-  it('keeps both on a gold page', () => {
+  it('keeps ink and frame on a gold page, each look its own', () => {
     const plainGold = renderArt(art(gold));
-    const dressedGold = renderArt(art({ ...gold, ink: 'emerald', frame: 'gold-leaf' }));
-    expect(dressedGold).toContain('CERTIFIED');
-    expect(dressedGold).toContain('#34D399');
-    expect(dressedGold).toContain('data-frame="gold-leaf"');
-    expect(plainGold).not.toContain('#34D399');
+    const emeraldGold = renderArt(art({ ...gold, ink: 'emerald', frame: 'gold-leaf' }));
+    const violetGold = renderArt(art({ ...gold, ink: 'violet' }));
+    expect(emeraldGold).toContain('CERTIFIED');
+    expect(count(emeraldGold, 'fill="url(#emerald)" stroke=')).toBe(5);
+    expect(emeraldGold).toContain('data-frame="gold-leaf"');
+    expect(count(violetGold, `stroke="${VIOLET}" stroke-width="3.5"`)).toBe(5);
+    expect(plainGold).not.toContain('url(#emerald)');
+    expect(plainGold).not.toContain(VIOLET);
+    expect(plainGold).not.toContain(GREEN + '" stroke-width="3.5"');
+    for (const svg of [plainGold, emeraldGold, violetGold]) expect(svg).toContain(`fill="${PAGE}" stroke="url(#metal)"`);
   });
 
   it('flows from the row state into art, metadata and on-chain attributes', () => {

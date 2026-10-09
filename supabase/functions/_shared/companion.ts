@@ -53,7 +53,6 @@ export function companionArtInput(snapshot: CompanionSnapshot, lang: Lang): ArtI
     tier: 'bronze',
     title: TEXT[lang].name,
     subtitle: '',
-    colorSeed: 'companion',
     daysDone: 0,
     totalDays: 0,
     stampedDays: [],
