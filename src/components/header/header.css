@@ -1,0 +1,38 @@
+@keyframes hdFlame {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  35% { transform: translateY(-0.5px) scaleY(1.06); }
+  70% { transform: translateY(0.5px) scaleY(0.97); }
+}
+.hd-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: hdFlame 1.6s ease-in-out infinite;
+}
+.hd-root {
+  transition: background-color 180ms ease, border-color 180ms ease, backdrop-filter 180ms ease;
+}
+.hd-press {
+  transition: transform 80ms ease, border-bottom-width 80ms ease;
+}
+.hd-press:active {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+.hd-focus:focus-visible {
+  outline: 2px solid #3FD17F;
+  outline-offset: 2px;
+}
+/* The mobile tab bar is fixed: keep the page's last row above it. */
+@media (max-width: 639px) {
+  .dash-root > main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hd-flame,
+  .hd-root,
+  .hd-press {
+    animation: none;
+    transition: none;
+  }
+}
