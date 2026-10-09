@@ -19,7 +19,7 @@ import { safeInternalPath } from '@/lib/safeInternalPath';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
 export default function AuthPage() {
-  const { session, loading, signInWithPassword, configured } = useAuth();
+  const { session, loading, signInWithPassword, signInWithSolana, configured } = useAuth();
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -49,6 +49,18 @@ export default function AuthPage() {
     setBusy(false);
     if (error) {
       setError(t('auth.error'));
+      return;
+    }
+    navigate(from, { replace: true });
+  }
+
+  async function onSolana() {
+    setBusy(true);
+    setError(null);
+    const { error, noWallet } = await signInWithSolana();
+    setBusy(false);
+    if (error) {
+      setError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
       return;
     }
     navigate(from, { replace: true });
@@ -123,6 +135,16 @@ export default function AuthPage() {
           data-testid="oauth-dfl"
         >
           {t('auth.signInWith', { provider: 'DFL' })}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 w-full"
+          disabled={busy}
+          onClick={onSolana}
+          data-testid="web3-solana"
+        >
+          {t('auth.signInWith', { provider: 'Solana' })}
         </Button>
         <Link
           to="/auth/code"

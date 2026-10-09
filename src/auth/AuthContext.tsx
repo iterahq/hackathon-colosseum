@@ -28,6 +28,7 @@ interface AuthState {
   configured: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithOAuth: (provider: 'azure' | 'keycloak') => Promise<{ error: string | null }>;
+  signInWithSolana: () => Promise<{ error: string | null; noWallet?: boolean }>;
   signOut: () => Promise<void>;
 }
 
@@ -87,6 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           options: { redirectTo: window.location.origin + '/' },
         });
         return { error: error?.message ?? null };
+      },
+      async signInWithSolana() {
+        if (!isSupabaseConfigured) return { error: 'Supabase not configured' };
+        // The injected provider (Phantom, Solflare, Backpack) is the only wallet
+        // surface: no adapter dependency, and Supabase verifies the signature.
+        if (!('solana' in window)) return { error: 'No Solana wallet found', noWallet: true };
+        try {
+          const { error } = await getSupabase().auth.signInWithWeb3({
+            chain: 'solana',
+            statement: 'Sign in to Itera',
+          });
+          return { error: error?.message ?? null };
+        } catch (e) {
+          // A rejected signature request throws from the wallet, not from Supabase.
+          return { error: e instanceof Error ? e.message : 'Wallet sign-in failed' };
+        }
       },
       async signOut() {
         if (!isSupabaseConfigured) return;
