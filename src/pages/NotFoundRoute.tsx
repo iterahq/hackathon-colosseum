@@ -1,11 +1,27 @@
-import { useLocation } from 'react-router-dom';
-import { NotFoundScreen } from '@iterahq/screens/not-found';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { useI18n } from '@/i18n';
-import { consoleLog, HOME } from '@/lib/universalScreenHost';
 
-/** Web host of the universal not-found screen: it only hands the screen its ports. */
+/** Not-found page: Tera looked everywhere. The 404 line stays in the console, where monitoring reads it. */
 export default function NotFoundRoute() {
   const { pathname } = useLocation();
   const { t } = useI18n();
-  return <NotFoundScreen path={pathname} t={t} log={consoleLog} home={HOME} />;
+  useEffect(() => {
+    console.error('404 Error: User attempted to access non-existent route:', pathname);
+  }, [pathname]);
+  return (
+    <div className="grid min-h-screen place-items-center bg-[#0A0908] px-4 text-[#F4EDE2]" data-testid="not-found">
+      <TeraNote
+        mood="oops"
+        title={t('tera.notFound.title')}
+        body={t('tera.notFound.body')}
+        action={
+          <Link to="/" className={TERA_BUTTON}>
+            {t('tera.notFound.cta')}
+          </Link>
+        }
+      />
+    </div>
+  );
 }

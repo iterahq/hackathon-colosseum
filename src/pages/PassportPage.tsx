@@ -61,7 +61,7 @@ export default function PassportPage() {
             {t('passport.pages')}
           </h2>
           {view.isPending ? (
-            <TeraLoader size="md" label={t('passport.panel.loading')} data-testid="passport-loading" />
+            <TeraLoader size="md" label={t('passport.credential.loading')} data-testid="passport-loading" />
           ) : started.length === 0 ? (
             <div className="flex flex-col items-center gap-4 text-center" data-testid="passport-empty">
               {first && <Page title={first.trailTitle} color={pageColor(first)} total={first.totalDays} done={0} variant="fresh" pulseNext />}

@@ -56,12 +56,15 @@ describe('CredentialPage (public)', () => {
     show();
     expect(screen.getByTestId('credential-card')).toHaveTextContent('Este asset não foi emitido pela Itera.');
     expect(screen.queryByText('✓ Verificado na Solana')).not.toBeInTheDocument();
+    expect(screen.getByTestId('credential-tera')).toHaveTextContent('O Tera não reconhece este asset.');
+    expect(screen.queryByTestId('passport-page')).not.toBeInTheDocument();
   });
 
   it('not found: says so and lets the visitor check another address', () => {
     useCredential.mockReturnValue({ isPending: false, isError: false, data: { status: 'not_found', ms: 20 } });
     show();
     expect(screen.getByTestId('credential-not-found')).toHaveTextContent('Nenhum asset neste endereço.');
+    expect(screen.getByTestId('credential-not-found')).toHaveTextContent('O Tera não achou nada neste endereço.');
     fireEvent.change(screen.getByLabelText('Endereço do asset'), { target: { value: 'Other' } });
     expect(screen.getByRole('button', { name: 'Verificar' })).toBeInTheDocument();
   });

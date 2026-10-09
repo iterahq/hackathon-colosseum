@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { RouteErrorBoundary } from "@/components/tera/RouteErrorBoundary";
 import { TooltipProvider } from "@devfellowship/components";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -163,6 +164,7 @@ const App = () => (
               <LearnerPagePrefetch />
               <PageTitle />
               <RouteScrollReset />
+              <RouteErrorBoundary>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 {/* Self-serve registration — public (pre-auth), same level as
@@ -540,6 +542,7 @@ const App = () => (
                 <Route path="/prototipo/cena" element={<LazyRoute><ScenePrototypePage /></LazyRoute>} />
                 <Route path="*" element={<LazyRoute><NotFoundRoute /></LazyRoute>} />
               </Routes>
+              </RouteErrorBoundary>
             </BrowserRouter>
             </IteraActivityHost>
           </TooltipProvider>

@@ -205,6 +205,7 @@ describe('HomeRoute: a member', () => {
     expect(panel).toHaveTextContent("Passaporte do Tera");
     expect(within(panel).getAllByTestId('passport-card')).toHaveLength(1);
     expect(panel).toHaveTextContent('Seu primeiro carimbo está a um dia de distância');
+    expect(within(panel).getByTestId('achievements-tera')).toHaveTextContent('Complete o dia 1 e o Tera carimba aqui.');
   });
 
   it('passport: one page per trail, an on-chain mark on minted rows only, medals on the shelf', () => {
@@ -277,6 +278,7 @@ describe('HomeRoute: a member', () => {
     useTrailDashboard.mockReturnValue({ trails: [], featured: null, weekly: 0, isPending: false, isError: false, refetch: vi.fn() });
     renderHome();
     expect(screen.getByTestId('dashboard-empty')).toHaveTextContent('Nenhuma trilha disponível ainda.');
+    expect(screen.getByTestId('dashboard-empty').querySelector('[data-tera]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Explorar cursos' }));
     expect(navigate).toHaveBeenLastCalledWith('/catalog');
   });

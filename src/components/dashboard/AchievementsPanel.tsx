@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { TeraNote } from '@/components/tera/TeraNote';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportMiniCard } from '@/components/passport/PassportMiniCard';
 import { pageColor } from '@/components/passport/pageVariant';
@@ -36,7 +37,12 @@ export function AchievementsPanel({ pages, medals, stamps, featuredId, onOpenTra
       </div>
       <div className="flex snap-x gap-4 overflow-x-auto pb-2" data-testid="passport-row">
         {empty && featured ? (
-          <PassportMiniCard page={featured} pulseNext caption={t('passport.firstStampNear')} onOpen={onOpenTrail} />
+          <>
+            <PassportMiniCard page={featured} pulseNext caption={t('passport.firstStampNear')} onOpen={onOpenTrail} />
+            <div className="min-w-0 self-center" data-testid="achievements-tera">
+              <TeraNote mood="neutral" size="bubble" title={t('passport.empty.text')} className="!items-start !pt-4 !text-left" />
+            </div>
+          </>
         ) : (
           pages.map((p) => <PassportMiniCard key={p.trailId} page={p} onOpen={onOpenTrail} />)
         )}
