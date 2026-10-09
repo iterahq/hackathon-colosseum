@@ -118,6 +118,51 @@ describe('HomeScreen: a member', () => {
   });
 });
 
+describe('HomeScreen: one program', () => {
+  const one = card(1, { kind: 'enrolled', percent: 40, progress: '40% concluído' });
+  const two = card(2, { kind: 'enrolled', percent: 0, progress: '0% concluído' });
+  const headings = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent).filter((h) => !h?.startsWith('Course'));
+
+  it('the track comes before the hero and the welcome panel, with its Continue button, across the full row', () => {
+    setup(member({ kind: 'ready', programs: [one] }, { kind: 'ready', badges: [{ id: 'b1', title: 'Primeira', earned: true }] }));
+    const grid = screen.getByTestId('programs-grid');
+    expect(grid.compareDocumentPosition(screen.getByRole('heading', { level: 1 })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(grid.compareDocumentPosition(screen.getByTestId('stats-card')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(grid).getByTestId('program-open')).toHaveTextContent('Continuar');
+    const cell = screen.getByTestId('programs-grid').firstElementChild;
+    expect(cell).toHaveClass('w-full');
+    expect(cell).not.toHaveClass('lg:w-1/3');
+    expect(cell).not.toHaveClass('md:w-1/2');
+  });
+
+  it('draws no empty section: the medals block is hidden while there are no medals', () => {
+    setup(member({ kind: 'ready', programs: [one] }));
+    expect(headings()).toEqual(['Seus programas']);
+    expect(screen.queryByTestId('badges-empty')).not.toBeInTheDocument();
+  });
+
+  it('keeps the medals once there are some', () => {
+    setup(member({ kind: 'ready', programs: [one] }, { kind: 'ready', badges: [{ id: 'b1', title: 'Primeira', earned: true }] }));
+    expect(headings()).toEqual(['Seus programas', 'Sua coleção de conquistas']);
+  });
+
+  it('two programs: the old order, the third-of-a-row cells and the empty medals note', () => {
+    setup(member({ kind: 'ready', programs: [one, two] }));
+    const grid = screen.getByTestId('programs-grid');
+    expect(screen.getByRole('heading', { level: 1 }).compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId('programs-grid').firstElementChild).toHaveClass('lg:w-1/3');
+    expect(headings()).toEqual(['Seus programas', 'Sua coleção de conquistas']);
+    expect(screen.getByTestId('badges-empty')).toBeInTheDocument();
+  });
+
+  it('a visitor with one locked program keeps the hero first and gets the full-width card', () => {
+    setup(visitor({ kind: 'ready', programs: [card(1, { kind: 'locked' })] }));
+    const cell = screen.getByTestId('programs-grid-locked').firstElementChild;
+    expect(cell).toHaveClass('w-full');
+    expect(screen.getByRole('heading', { level: 1 }).compareDocumentPosition(screen.getByTestId('programs-grid-locked')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
 describe('HomeScreen: no dead control', () => {
   it('every button of a member\'s dashboard does something: there is no "Ver todas" over the medals', () => {
     setup(member({ kind: 'ready', programs: [card(1, { kind: 'enrolled', percent: 40, progress: '40% concluído' })] }));

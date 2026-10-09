@@ -35,6 +35,8 @@ export interface HomeScreenProps {
   icon?: (icon: HomeIcon | CatalogIcon) => ReactNode;
 }
 
+const SINGLE_CELL = 'w-full p-2.5';
+
 const noIcon = () => null;
 const noop = () => {};
 
@@ -109,10 +111,12 @@ function Programs({ state, visitor, t, icon, onOpenProgram, onBrowseCatalog, onR
       </View>
     );
   }
+  // One program is the whole offer: its card takes the row instead of a third of an empty grid.
+  const single = state.programs.length === 1;
   return (
     <View testID={visitor ? 'programs-grid-locked' : 'programs-grid'} className={ROW}>
       {state.programs.map((card) => (
-        <View key={card.id} className={CELL}>
+        <View key={card.id} className={single ? SINGLE_CELL : CELL}>
           <ProgramCardView card={card} t={t} icon={icon} onOpen={onOpenProgram} onEnroll={noop} />
         </View>
       ))}
@@ -123,6 +127,14 @@ function Programs({ state, visitor, t, icon, onOpenProgram, onBrowseCatalog, onR
 export function HomeScreen({ t, view, onOpenProgram, onBrowseCatalog, onRetry, header, live, aside, icon = noIcon }: HomeScreenProps) {
   const visitor = view.kind === 'visitor';
   const programs = { state: view.programs, visitor, t, icon, onOpenProgram, onBrowseCatalog, onRetry };
+  // A member with exactly one program gets a lean home: the track and its Continue button come first, so they
+  // sit inside the first 844 px on a phone instead of below the hero and the welcome panel.
+  const single = view.kind === 'member' && view.programs.kind === 'ready' && view.programs.programs.length === 1;
+  const yourPrograms = (
+    <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>
+      <Programs {...programs} />
+    </Section>
+  );
 
   return (
     <Page {...PAGE_PROPS}>
@@ -130,6 +142,8 @@ export function HomeScreen({ t, view, onOpenProgram, onBrowseCatalog, onRetry, h
 
       <View role="main" className="flex-1">
         <View className="mx-auto w-full max-w-[1400px] gap-8 px-4 py-5 md:gap-12 md:px-6 md:py-8">
+          {single && yourPrograms}
+
           <View className="gap-6 lg:flex-row">
             {/* The share of the row is on a box with no border: a flex item never gets narrower than its own border, and the hero would take that pixel from the panel beside it. */}
             <View className="lg:flex-[1.5]">
@@ -170,15 +184,16 @@ export function HomeScreen({ t, view, onOpenProgram, onBrowseCatalog, onRetry, h
             </Section>
           ) : (
             <>
-              <Section title={t('home.yourPrograms')} subtitle={t('home.programsSubtitle')}>
-                <Programs {...programs} />
-              </Section>
+              {!single && yourPrograms}
 
-              <Section title={t('badges.title')} subtitle={t('badges.subtitle')}>
-                <View className="rounded-3xl border border-border bg-card p-6 md:p-8">
-                  <BadgeMedals state={view.badges} t={t} icon={icon} />
-                </View>
-              </Section>
+              {/* With one program the home is lean: a section with nothing to show is not drawn. */}
+              {!(single && view.badges.kind === 'empty') && (
+                <Section title={t('badges.title')} subtitle={t('badges.subtitle')}>
+                  <View className="rounded-3xl border border-border bg-card p-6 md:p-8">
+                    <BadgeMedals state={view.badges} t={t} icon={icon} />
+                  </View>
+                </Section>
+              )}
             </>
           )}
         </View>
