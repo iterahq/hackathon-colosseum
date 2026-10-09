@@ -79,6 +79,7 @@ import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
 import { PageTitle } from "./components/PageTitle";
+import { NicknameGate } from "./components/onboarding/NicknameGate";
 import { TeraLoader } from "./components/tera/TeraLoader";
 import { RouteScrollReset } from "./components/RouteScrollReset";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
@@ -155,6 +156,7 @@ const App = () => (
                   route — see AppWideMounts. They live inside the router now
                   precisely so that decision can be route-keyed. */}
               <AppWideMounts />
+              <NicknameGate />
               <LearnerPagePrefetch />
               <PageTitle />
               <RouteScrollReset />
