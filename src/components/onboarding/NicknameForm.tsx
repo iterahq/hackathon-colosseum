@@ -18,7 +18,7 @@ export function NicknameForm({ saving, happy, onSubmit, onSkip }: NicknameFormPr
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     const result = normalizeNickname(value);
-    if (!result.ok) {
+    if (result.ok === false) {
       setError(result.reason);
       return;
     }
