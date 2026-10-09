@@ -94,8 +94,10 @@ export async function updateMyProfile(patch: {
   if (patch.avatarUrl !== undefined) update.avatar_url = patch.avatarUrl;
   if (Object.keys(update).length === 0) return false;
   const sb = getSupabase();
-  const { error } = await sb.from('users').update(update).eq('id', iteraUserId);
-  return !error;
+  // RLS filters an update it rejects down to zero rows WITHOUT an error, so a
+  // missing error alone would report a save that never happened.
+  const { data, error } = await sb.from('users').update(update).eq('id', iteraUserId).select('id');
+  return !error && (data?.length ?? 0) > 0;
 }
 
 /**
