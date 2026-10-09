@@ -18,13 +18,24 @@ export interface PurchaseState {
   /** The backend's error code, when the failure came from a function (drives the friendly line). */
   code: string | null;
   explorerUrl: string | null;
+  /** Proof shown once paid. */
+  proof: PurchaseProof | null;
+}
+
+export interface PurchaseProof {
+  signature: string | null;
+  imageUrl: string | null;
+  /** The attributes the backend says it wrote on-chain. */
+  written: { attribute: string; value: string }[];
+  /** Lives after the purchase, for a refill. */
+  lives: { current: number; max: number } | null;
 }
 
 export type PurchaseEvent =
   | { type: 'start'; itemKey: string }
   | { type: 'connected' }
   | { type: 'signed' }
-  | { type: 'paid'; explorerUrl: string | null }
+  | { type: 'paid'; explorerUrl: string | null; proof?: PurchaseProof | null }
   | { type: 'cancelled' }
   | { type: 'failed'; detail: string; code?: string | null }
   | { type: 'insufficient'; detail: string }
@@ -33,7 +44,7 @@ export type PurchaseEvent =
   | { type: 'funding_failed'; detail: string; code?: string | null }
   | { type: 'reset' };
 
-export const PURCHASE_IDLE: PurchaseState = { phase: 'idle', itemKey: null, detail: null, code: null, explorerUrl: null };
+export const PURCHASE_IDLE: PurchaseState = { phase: 'idle', itemKey: null, detail: null, code: null, explorerUrl: null, proof: null };
 
 const BUSY: readonly PurchasePhase[] = ['connecting', 'signing', 'confirming', 'funding'];
 export const isPurchaseBusy = (state: PurchaseState): boolean => BUSY.includes(state.phase);
@@ -42,13 +53,13 @@ export function purchaseReducer(state: PurchaseState, event: PurchaseEvent): Pur
   switch (event.type) {
     case 'start':
       // A second click while one purchase is in flight changes nothing.
-      return isPurchaseBusy(state) ? state : { phase: 'connecting', itemKey: event.itemKey, detail: null, code: null, explorerUrl: null };
+      return isPurchaseBusy(state) ? state : { phase: 'connecting', itemKey: event.itemKey, detail: null, code: null, explorerUrl: null, proof: null };
     case 'connected':
       return state.phase === 'connecting' ? { ...state, phase: 'signing' } : state;
     case 'signed':
       return state.phase === 'signing' ? { ...state, phase: 'confirming' } : state;
     case 'paid':
-      return state.phase === 'confirming' ? { ...state, phase: 'paid', explorerUrl: event.explorerUrl } : state;
+      return state.phase === 'confirming' ? { ...state, phase: 'paid', explorerUrl: event.explorerUrl, proof: event.proof ?? null } : state;
     case 'cancelled':
       // The learner said no in the wallet: back to rest, no message.
       return isPurchaseBusy(state) ? PURCHASE_IDLE : state;

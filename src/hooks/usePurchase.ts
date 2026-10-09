@@ -76,7 +76,16 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         if (!alive.current) return;
         if (confirmation.status === 'paid') {
           settle(confirmation);
-          dispatch({ type: 'paid', explorerUrl: confirmation.explorerUrl });
+          dispatch({
+            type: 'paid',
+            explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null,
+            proof: {
+              signature: confirmation.chain?.signature ?? signature,
+              imageUrl: confirmation.imageUrl ?? null,
+              written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
+              lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,
+            },
+          });
           onPaid?.(itemKey);
         } else {
           dispatch({ type: 'failed', detail: `purchase-confirm: ${confirmation.status}`, code: confirmation.status === 'expired' ? 'intent_expired' : null });

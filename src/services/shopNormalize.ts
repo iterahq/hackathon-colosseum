@@ -137,6 +137,9 @@ export function toConfirmation(v: unknown): PurchaseConfirmation {
     companion: r.companion ? toCompanion(r.companion) : null,
     inventory: Array.isArray(r.inventory) ? toInventory(r.inventory) : null,
     explorerUrl: orNull(r.explorer_url),
+    imageUrl: orNull(r.image_url) ?? orNull(row(r.companion).image_url),
+    written: rows(r.written).map((w) => ({ asset: str(w.asset), attribute: str(w.attribute), value: String(w.value ?? '') })).filter((w) => w.attribute),
+    chain: toChain(r.chain),
   };
 }
 

@@ -90,6 +90,13 @@ export interface PurchaseIntent {
 /** `pending` is ours: the backend answered a retryable error (the transaction is not visible yet). */
 export type PurchaseStatus = 'paid' | 'pending' | 'failed' | 'expired';
 
+/** One attribute the backend wrote to a Core asset (`written` of `purchase-confirm`). */
+export interface WrittenAttribute {
+  asset: string;
+  attribute: string;
+  value: string;
+}
+
 export interface PurchaseConfirmation {
   status: PurchaseStatus;
   itemKey: string | null;
@@ -97,6 +104,10 @@ export interface PurchaseConfirmation {
   companion: CompanionState | null;
   inventory: InventoryEntry[] | null;
   explorerUrl: string | null;
+  /** Refreshed companion art (carries its own cache key), when the answer has one. */
+  imageUrl?: string | null;
+  written?: WrittenAttribute[];
+  chain?: ChainProof | null;
 }
 
 export type FaucetResult = { signature: string; blocked: null } | { signature: null; blocked: string };

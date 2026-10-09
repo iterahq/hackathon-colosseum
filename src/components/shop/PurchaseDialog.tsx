@@ -4,9 +4,12 @@ import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
 import { PURCHASE_ERROR_CODES } from '@/i18n/shopMessages';
+import { CopyButton } from '@/components/passport/CopyButton';
+import { txUrl } from '@/lib/explorer';
 import type { ShopItemKind } from '@/types/shop';
+import { changeLine, shortSignature } from '@/utils/purchaseProof';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, DEVNET_BADGE, FOCUS } from './shopStyles';
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from './shopStyles';
 
 interface Props {
   state: PurchaseState;
@@ -23,11 +26,35 @@ interface Props {
 const BUSY_LABEL = { connecting: 'purchase.connecting', signing: 'purchase.signing', confirming: 'purchase.confirming', funding: 'purchase.funding' } as const;
 
 function Detail({ text }: { text: string | null }) {
+  const { t } = useI18n();
   if (!text) return null;
   return (
-    <code data-testid="purchase-detail" className="block max-h-24 w-full overflow-auto break-words rounded-[8px] border border-[#262320] bg-[#0A0908] px-3 py-2 text-left [font:500_11px/1.5_JetBrains_Mono] text-[#A0978A]">
-      {text}
-    </code>
+    <details className="w-full text-left" data-testid="purchase-details">
+      <summary className={`cursor-pointer rounded [font:600_12px_JetBrains_Mono] text-[#A0978A] hover:text-[#F4EDE2] ${FOCUS}`}>{t('purchase.details')}</summary>
+      <code data-testid="purchase-detail" className="mt-2 block max-h-24 w-full overflow-auto break-words rounded-[8px] border border-[#262320] bg-[#0A0908] px-3 py-2 select-all [font:500_11px/1.5_JetBrains_Mono] text-[#A0978A]">
+        {text}
+      </code>
+      <CopyButton value={text} label={t('purchase.details.copy')} doneLabel={t('passport.copied')} display={t('purchase.details.copy')} />
+    </details>
+  );
+}
+
+function Proof({ state, kind, title }: { state: PurchaseState; kind: ShopItemKind; title: string }) {
+  const { t } = useI18n();
+  const { proof } = state;
+  const line = changeLine(kind, title, proof);
+  const signature = proof?.signature ?? null;
+  return (
+    <div className="flex w-full flex-col items-center gap-2" data-testid="purchase-proof">
+      {proof?.imageUrl && <img src={proof.imageUrl} alt="" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="purchase-art" />}
+      {line && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(line.key, line.params)}</p>}
+      {(signature || state.explorerUrl) && (
+        <a href={state.explorerUrl ?? txUrl(signature ?? '')} target="_blank" rel="noreferrer" data-testid="purchase-explorer" className={`rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
+          {signature ? `${shortSignature(signature)} ` : ''}
+          {t('purchase.viewTx')}
+        </a>
+      )}
+    </div>
   );
 }
 
@@ -71,7 +98,6 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className={`${CARD} relative flex w-full max-w-[420px] flex-col items-center gap-4 px-6 pb-6 pt-8 text-center`}
       >
-        <span className={`${DEVNET_BADGE} absolute right-4 top-4`}>{t('shop.devnet')}</span>
         {busy && (
           <>
             <TeraLoader size="md" label={t(BUSY_LABEL[phase as keyof typeof BUSY_LABEL])} />
@@ -84,11 +110,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
               <TeraOutfit mood="happy" size="xl" outfit={outfit} />
             </span>
             <Message title={t('purchase.paid.title')} body={paidLine} />
-            {state.explorerUrl && (
-              <a href={state.explorerUrl} target="_blank" rel="noreferrer" data-testid="purchase-explorer" className={`rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
-                {t('purchase.viewTx')}
-              </a>
-            )}
+            <Proof state={state} kind={itemKind} title={itemTitle} />
             <button type="button" autoFocus onClick={onClose} data-testid="purchase-done" className={`${BTN_PRIMARY} mt-1 w-full`}>
               {t('purchase.done')}
             </button>

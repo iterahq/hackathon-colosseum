@@ -1,6 +1,12 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'purchase.details': 'Detalhes técnicos',
+    'purchase.details.copy': 'Copiar detalhes',
+    'purchase.proof.lives': 'vidas {current}/{max} gravadas no seu Tera',
+    'purchase.proof.written': '{attribute} = {value} gravado no seu Tera',
+    'purchase.proof.outfit': '{name} gravado no seu Tera',
+    'purchase.proof.cosmetic': '{name} gravado na sua certificação',
     'passport.startedOn': 'Iniciada em {date}',
     'lives.gate.onchain': 'Seu Tera on-chain: {current}/{max} vidas',
     'lives.rule': '−1 por erro · +1 a cada 20 min, de graça · +1 por dia sem erros · tudo gravado no seu Tera na Solana',
@@ -16,6 +22,12 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'purchase.details': 'Technical details',
+    'purchase.details.copy': 'Copy details',
+    'purchase.proof.lives': 'lives {current}/{max} written to your Tera',
+    'purchase.proof.written': '{attribute} = {value} written to your Tera',
+    'purchase.proof.outfit': '{name} written to your Tera',
+    'purchase.proof.cosmetic': '{name} written to your certification',
     'passport.startedOn': 'Started on {date}',
     'lives.gate.onchain': 'Your Tera on-chain: {current}/{max} lives',
     'lives.rule': '−1 per mistake · +1 every 20 min, free · +1 per zero-mistake day · all written to your Tera on Solana',
