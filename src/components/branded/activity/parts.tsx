@@ -11,6 +11,7 @@ export {
   ActivityShell,
   AnswerExplanation,
   DoneButton,
+  ExplanationDisclosure,
   KindBadge,
   SubmitButton,
 } from '@iterahq/activities';

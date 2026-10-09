@@ -16,6 +16,7 @@ import { TACTILE_CTA, TACTILE_CTA_MISSED, TACTILE_CTA_SETTLED } from './tactile.
 import { TeraPeek, TeraPeekRoom, useTeraMentioned } from './teraPresence.js';
 
 export { AnswerExplanation, answerExplanationText } from './AnswerExplanation.js';
+export { ExplanationDisclosure } from './ExplanationDisclosure.js';
 
 /** Evergreen eyebrow badge naming the activity kind. */
 export function KindBadge({ icon: Icon, label, className = '' }: { icon: LucideIcon; label: string; className?: string }) {

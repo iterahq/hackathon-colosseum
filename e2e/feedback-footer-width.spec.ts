@@ -101,6 +101,7 @@ async function settleTerminal(page: Page): Promise<void> {
   await input.press('Enter');
 
   await expect(page.getByTestId('feedback-footer')).toBeVisible();
+  await page.getByTestId('feedback-footer-explanation-title').click();
   await expect(page.getByTestId('feedback-footer-explanation')).toBeVisible();
   // The bar slides up on a spring. Measuring mid-animation reads a transform,
   // not a layout — wait for it to come to rest.

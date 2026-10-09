@@ -268,6 +268,7 @@ export type {
 export { ActivityTextarea } from './components/ActivityTextarea.js';
 export type { ActivityTextareaProps } from './components/ActivityTextarea.js';
 export { AnswerExplanation } from './components/AnswerExplanation.js';
+export { ExplanationDisclosure } from './components/ExplanationDisclosure.js';
 export { InstructionImage } from './components/InstructionImage.js';
 // Fase D. `ArtifactVisibilityNotice` reads `identity.artifactAudience` and
 // nothing else, so it is safe for any host to compose with; `JudgeHeatmap`
