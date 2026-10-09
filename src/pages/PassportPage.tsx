@@ -49,6 +49,7 @@ export default function PassportPage() {
             <button type="button" onClick={() => void signInWithSolana()} className={`${BTN} !h-11 !border-b-[4px] !px-4 !text-[18px]`}>
               {t('passport.connect')}
             </button>
+            <span className="basis-full [font:400_12px/1.4_Inter] text-[#A0978A]">{t('lives.gate.connectHint')}</span>
           </div>
         )}
         {view.isError && (

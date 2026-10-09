@@ -1,6 +1,7 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'passport.startedOn': 'Iniciada em {date}',
     'lives.gate.onchain': 'Seu Tera on-chain: {current}/{max} vidas',
     'lives.rule': '−1 por erro · +1 a cada 20 min, de graça · +1 por dia sem erros · tudo gravado no seu Tera na Solana',
     'shop.devnetNote': 'devnet SOL · dinheiro de teste',
@@ -15,6 +16,7 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'passport.startedOn': 'Started on {date}',
     'lives.gate.onchain': 'Your Tera on-chain: {current}/{max} lives',
     'lives.rule': '−1 per mistake · +1 every 20 min, free · +1 per zero-mistake day · all written to your Tera on Solana',
     'shop.devnetNote': 'devnet SOL · test money',
