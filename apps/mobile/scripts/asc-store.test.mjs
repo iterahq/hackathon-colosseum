@@ -9,9 +9,12 @@ import {
   buildJwt,
   es256Signer,
   FORBIDDEN_BILLING,
+  contactSourceApp,
+  fetchReviewContact,
   gather,
   parseArgs,
   readScreenshots,
+  renderStatus,
   reviewDetailAttrs,
   runPush,
   runStatus,
@@ -92,6 +95,17 @@ describe('validateMetadata', () => {
     expect(validateMetadata(ok)).toEqual([]);
   });
 
+  it('wants the contact source app id to be digits', () => {
+    for (const bad of ['abc', '', 6756785447]) {
+      const m = clone(meta);
+      m.review.contactFromAscAppId = bad;
+      expect(validateMetadata(m).join('\n')).toContain('review.contactFromAscAppId');
+    }
+    const none = clone(meta);
+    delete none.review.contactFromAscAppId;
+    expect(validateMetadata(none)).toEqual([]);
+  });
+
   it('flags missing top-level fields and a non-https privacy URL', () => {
     const bad = clone(meta);
     delete bad.copyright;
@@ -106,7 +120,7 @@ describe('validateMetadata', () => {
     expect(meta.bundleId).toBe(appJson.ios.bundleIdentifier);
     expect(meta.marketingUrl).toBe('https://iterahq.dev');
     expect(Object.keys(meta.locales).sort()).toEqual(['en-US', 'pt-BR']);
-    expect(Object.keys(meta.review)).toEqual(['notes']);
+    expect(Object.keys(meta.review).sort()).toEqual(['contactFromAscAppId', 'notes']);
   });
 });
 
@@ -402,5 +416,148 @@ describe('submit', () => {
     const writes = calls.filter((c) => c.method !== 'GET').map((c) => `${c.method} ${c.path}`);
     expect(writes).toEqual(['POST /reviewSubmissions', 'POST /reviewSubmissionItems', 'PATCH /reviewSubmissions/rs1']);
     expect(JSON.parse(calls.at(-1).body).data.attributes).toEqual({ submitted: true });
+  });
+});
+
+// ---------------------------------------------------------------------- review contact reuse
+
+const SRC = '6756785447';
+const FAKE_CONTACT = { contactFirstName: 'Zelda-fake', contactLastName: 'Quux-fake', contactEmail: 'zq-fake@example.invalid', contactPhone: '+15550001234' };
+const FAKE_SRC_ONLY = { demoAccountName: 'src-demo-user-fake', demoAccountPassword: 'src-demo-pass-fake', notes: 'src-notes-fake' };
+const ALL_FAKE = [...Object.values(FAKE_CONTACT), ...Object.values(FAKE_SRC_ONLY)];
+const leaks = (text) => ALL_FAKE.filter((v) => text.includes(v));
+
+function sourceRoutes(over = {}) {
+  return {
+    [`/apps/${SRC}/appStoreVersions`]: { data: [
+      { id: 'old', attributes: { createdDate: '2026-01-01T00:00:00Z' } },
+      { id: 'new', attributes: { createdDate: '2026-02-01T00:00:00Z' } },
+    ] },
+    '/appStoreVersions/new/appStoreReviewDetail': { data: { id: 'srd', attributes: { ...FAKE_CONTACT, ...FAKE_SRC_ONLY } } },
+    '/appStoreVersions/old/appStoreReviewDetail': { data: { id: 'srd0', attributes: { contactFirstName: 'Old-fake' } } },
+    ...over,
+  };
+}
+
+const reviewWrite = (calls) => calls.find((c) => c.method !== 'GET' && c.path.startsWith('/appStoreReviewDetails'));
+
+async function pushWith({ env = {}, routes = {}, dryRun = false, contactFrom = SRC, base = {} } = {}) {
+  const { fetchImpl, calls } = fakeFetch({ ...world({ complete: true }), ...sourceRoutes(), ...routes, ...base });
+  const logs = [];
+  const result = await runPush({ client: clientOf(fetchImpl), meta, version: '0.3.0', env, dryRun, contactFrom, log: (l) => logs.push(l) });
+  return { calls, logs, result };
+}
+
+describe('review contact reuse', () => {
+  it('resolves the source: flag, then env, then the file', () => {
+    const m = { review: { contactFromAscAppId: 'M' } };
+    expect(contactSourceApp({ reviewContactFrom: 'F' }, { ASC_REVIEW_CONTACT_FROM_APP: 'E' }, m)).toBe('F');
+    expect(contactSourceApp({}, { ASC_REVIEW_CONTACT_FROM_APP: 'E' }, m)).toBe('E');
+    expect(contactSourceApp({}, { ASC_REVIEW_CONTACT_FROM_APP: ' ' }, m)).toBe('M');
+    expect(contactSourceApp({}, {}, { review: {} })).toBe('');
+    expect(meta.review.contactFromAscAppId).toBe(SRC);
+    expect(parseArgs(['push', '--review-contact-from', SRC])).toEqual({ action: 'push', dryRun: false, reviewContactFrom: SRC });
+  });
+
+  it('takes the newest version with a review detail and asks for the four contact fields only', async () => {
+    const { fetchImpl, calls } = fakeFetch(sourceRoutes({ '/appStoreVersions/new/appStoreReviewDetail': null }));
+    const c = await fetchReviewContact(clientOf(fetchImpl), SRC);
+    expect(c).toEqual({ found: true, values: { ...FAKE_CONTACT, contactFirstName: 'Old-fake', contactLastName: '', contactEmail: '', contactPhone: '' } });
+    expect(calls.filter((x) => x.path.endsWith('/appStoreReviewDetail')).map((x) => x.path)).toEqual(['/appStoreVersions/new/appStoreReviewDetail', '/appStoreVersions/old/appStoreReviewDetail']);
+    for (const x of calls.filter((y) => y.path.endsWith('/appStoreReviewDetail'))) {
+      expect(new URL(x.url).searchParams.get('fields[appStoreReviewDetails]')).toBe('contactFirstName,contactLastName,contactEmail,contactPhone');
+    }
+    expect(calls.every((x) => x.method === 'GET')).toBe(true);
+  });
+
+  it('prefers the newest version that has a detail', async () => {
+    const { fetchImpl } = fakeFetch(sourceRoutes());
+    expect((await fetchReviewContact(clientOf(fetchImpl), SRC)).values).toEqual(FAKE_CONTACT);
+  });
+
+  it('copies the four fields on push when the env is empty, and never the demo account or the notes', async () => {
+    const { calls, logs } = await pushWith();
+    const w = reviewWrite(calls);
+    const attrs = JSON.parse(w.body).data.attributes;
+    expect(attrs).toMatchObject(FAKE_CONTACT);
+    expect(attrs.notes).toBe(meta.review.notes);
+    expect(attrs.demoAccountName).toBeUndefined();
+    expect(leaks(w.body).filter((v) => !Object.values(FAKE_CONTACT).includes(v))).toEqual([]);
+    expect(logs).toContain(`review contact: copied from app ${SRC} (4 fields)`);
+  });
+
+  it('lets an explicit env value win per field', async () => {
+    const { calls, logs } = await pushWith({ env: { ASC_REVIEW_CONTACT_EMAIL: 'override@example.invalid', ASC_REVIEW_CONTACT_PHONE: '+19990000000' } });
+    const attrs = JSON.parse(reviewWrite(calls).body).data.attributes;
+    expect(attrs).toMatchObject({ contactEmail: 'override@example.invalid', contactPhone: '+19990000000', contactFirstName: FAKE_CONTACT.contactFirstName, contactLastName: FAKE_CONTACT.contactLastName });
+    expect(logs).toContain(`review contact: copied from app ${SRC} (2 fields)`);
+  });
+
+  it('does not read the source when the env gives all four', async () => {
+    const env = { ASC_REVIEW_CONTACT_FIRST_NAME: 'A', ASC_REVIEW_CONTACT_LAST_NAME: 'B', ASC_REVIEW_CONTACT_EMAIL: 'a@example.invalid', ASC_REVIEW_CONTACT_PHONE: '+1' };
+    const { calls, logs } = await pushWith({ env });
+    expect(calls.some((c) => c.path.includes(SRC))).toBe(false);
+    expect(logs.some((l) => l.startsWith('review contact'))).toBe(false);
+  });
+
+  it('never prints a copied value, in a log line or in the dry-run plan', async () => {
+    const real = await pushWith();
+    expect(real.logs.length).toBeGreaterThan(0);
+    expect(leaks(real.logs.join('\n') + JSON.stringify(real.result.plan))).toEqual([]);
+    const dry = await pushWith({ dryRun: true });
+    expect(dry.calls.every((c) => c.method === 'GET')).toBe(true);
+    expect(dry.calls.some((c) => c.path === '/appStoreVersions/new/appStoreReviewDetail')).toBe(true);
+    expect(dry.logs).toContain(`review contact: copied from app ${SRC} (4 fields)`);
+    expect(dry.result.plan.some((p) => p.startsWith('PATCH /appStoreReviewDetails/rd1 [notes, contactFirstName, contactLastName, contactEmail, contactPhone'))).toBe(true);
+    expect(leaks(dry.logs.join('\n') + JSON.stringify(dry.result.plan))).toEqual([]);
+    const partial = await pushWith({ routes: { '/appStoreVersions/new/appStoreReviewDetail': { data: { attributes: { ...FAKE_CONTACT, contactPhone: '' } } } } });
+    expect(partial.logs.join('\n')).toMatch(/ASC_REVIEW_CONTACT_PHONE is not set and app 6756785447 has none: contactPhone skipped/);
+    expect(leaks(partial.logs.join('\n'))).toEqual([]);
+  });
+
+  it('warns and goes on when the source has no review detail', async () => {
+    const { calls, logs } = await pushWith({ routes: { '/appStoreVersions/new/appStoreReviewDetail': null, '/appStoreVersions/old/appStoreReviewDetail': null } });
+    expect(logs).toContain(`warning: review contact: app ${SRC} has no review detail`);
+    expect(JSON.parse(reviewWrite(calls).body).data.attributes.contactEmail).toBeUndefined();
+    const empty = await pushWith({ routes: { [`/apps/${SRC}/appStoreVersions`]: { data: [] } } });
+    expect(empty.logs.some((l) => /has no review detail/.test(l))).toBe(true);
+  });
+
+  it('warns and goes on when the source app cannot be read', async () => {
+    const { calls, logs } = await pushWith({ base: { [`/apps/${SRC}/appStoreVersions`]: null } });
+    expect(logs).toContain(`warning: review contact: app ${SRC} is unreadable (HTTP 404)`);
+    expect(reviewWrite(calls)).toBeDefined();
+  });
+
+  it('behaves as before without a source', () => {
+    const r = reviewDetailAttrs(meta, {});
+    expect(r.contactNote).toBeNull();
+    expect(r.warnings).toHaveLength(5);
+  });
+
+  it('status prints booleans per field and no value', async () => {
+    const routes = { ...world({ complete: true }), ...sourceRoutes({ '/appStoreVersions/new/appStoreReviewDetail': { data: { attributes: { ...FAKE_CONTACT, ...FAKE_SRC_ONLY, contactPhone: '' } } } }) };
+    const out = [];
+    const spy = process.stdout.write.bind(process.stdout);
+    process.stdout.write = (s) => (out.push(String(s)), true);
+    try {
+      await runStatus({ client: clientOf(fakeFetch(routes).fetchImpl), meta, version: '0.3.0', env: NO_ENV, contactFrom: SRC });
+    } finally {
+      process.stdout.write = spy;
+    }
+    const text = out.join('');
+    expect(text).toContain(`Review contact source (app ${SRC}): FirstName yes, LastName yes, Email yes, Phone no`);
+    expect(leaks(text)).toEqual([]);
+  });
+
+  it('status survives an unreadable source and omits the line without one', async () => {
+    const world0 = world({ complete: true });
+    const st = await gather(clientOf(fakeFetch(world0).fetchImpl), meta, '0.3.0', SRC);
+    expect(renderStatus(st, meta, blockingChecklist(st, meta))).toContain(`Review contact source (app ${SRC}): unreadable (HTTP 404)`);
+    expect(blockingChecklist(st, meta)).toEqual([]);
+    const none = await gather(clientOf(fakeFetch(world0).fetchImpl), meta, '0.3.0');
+    expect(renderStatus(none, meta, [])).not.toContain('Review contact source');
+    const noDetail = await gather(clientOf(fakeFetch({ ...world0, [`/apps/${SRC}/appStoreVersions`]: { data: [] } }).fetchImpl), meta, '0.3.0', SRC);
+    expect(renderStatus(noDetail, meta, [])).toContain(`Review contact source (app ${SRC}): no review detail`);
   });
 });

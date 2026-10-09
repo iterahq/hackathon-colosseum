@@ -122,7 +122,7 @@ Expected rating: 4+.
 
 ## 6. Notes for the review submission (draft)
 
-Text is in `store/metadata.json` `review.notes`; contact and demo account come from env, never from the file. Draft, to be adjusted after the owner's decisions of sections 3 and 4:
+Text is in `store/metadata.json` `review.notes`; the demo account comes from env, never from the file; the contact is copied from the published DevFellowship app (`review.contactFromAscAppId`). Draft, to be adjusted after the owner's decisions of sections 3 and 4:
 
 - Itera is a learning app: a native shell around the web player. The review account in the Sign-in information already has access to all content.
 - Open the catalog, then the program "Dominio -> Agente", tap the highlighted lesson and answer the exercises; each answer shows feedback.
@@ -137,7 +137,7 @@ Text is in `store/metadata.json` `review.notes`; contact and demo account come f
 |---|---|---|
 | No privacy policy page (`https://iterahq.dev/privacy` was the home page) | Merge and deploy the landing PR (`/privacy`), then re-check the URL | human reads the legal text and merges |
 | Support URL has no contact | Same landing PR (`/support`); `supportUrl` already points to it | human merges |
-| Demo account that passes the subscription gate | Create it, add `ASC_REVIEW_DEMO_USER` and `ASC_REVIEW_DEMO_PASSWORD` and the four `ASC_REVIEW_CONTACT_*` secrets | human |
+| Demo account that passes the subscription gate | Create it, add `ASC_REVIEW_DEMO_USER` and `ASC_REVIEW_DEMO_PASSWORD` (the contact is copied by `push` from the published app; the four `ASC_REVIEW_CONTACT_*` secrets are optional per-field overrides) | human |
 | App Privacy label | Tick the boxes of section 2b in App Store Connect | human |
 | Native fingerprint changed by the privacy manifest | One new iOS production build (counter first), then `push` with `build_number` | human starts the build |
 | 4.8: "Entrar com DFL" under an individual team | Add Sign in with Apple, or drop the DFL button in the shell, or accept the exception risk | Tainan |

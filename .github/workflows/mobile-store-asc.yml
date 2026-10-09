@@ -3,8 +3,10 @@
 # and nothing else, so a workflow with another prefix would make the PR "web-touching".
 #
 # Manual only, main only. The key file is written in the step that needs it (umask 077) and removed in an
-# always() step; the secrets are set on those steps only. The review contact and the demo account are secrets
-# that may not exist yet: `status` runs without them and `push` skips the fields with a warning.
+# always() step; the secrets are set on those steps only. The demo account is a secret that may not exist yet:
+# `status` runs without it and `push` skips the fields with a warning. The review contact is copied by `push` from
+# the published app named in store/metadata.json (review.contactFromAscAppId); the ASC_REVIEW_CONTACT_* secrets
+# are optional per-field overrides.
 #
 #   status        read-only: versions, builds, the listing per locale, what still blocks a submission
 #   push-dry-run  the planned writes, GETs only
@@ -12,8 +14,8 @@
 #   submit        needs `confirm` = the bundle id and an empty blocking list; sends the version to review
 #
 # Secrets (repo): ASC_API_KEY_P8, ASC_API_KEY_ID, ASC_API_ISSUER_ID (already used by mobile-eas.yml);
-# ASC_REVIEW_CONTACT_FIRST_NAME, ASC_REVIEW_CONTACT_LAST_NAME, ASC_REVIEW_CONTACT_EMAIL, ASC_REVIEW_CONTACT_PHONE,
-# ASC_REVIEW_DEMO_USER, ASC_REVIEW_DEMO_PASSWORD (owner: a human adds them).
+# ASC_REVIEW_DEMO_USER, ASC_REVIEW_DEMO_PASSWORD (owner: a human adds them); optional overrides of the copied
+# contact: ASC_REVIEW_CONTACT_FIRST_NAME, ASC_REVIEW_CONTACT_LAST_NAME, ASC_REVIEW_CONTACT_EMAIL, ASC_REVIEW_CONTACT_PHONE.
 name: mobile-store-asc
 
 on:

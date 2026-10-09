@@ -5,12 +5,18 @@
  * run by `.github/workflows/mobile-store-asc.yml`: the API key exists only as repo secrets.
  *
  *   node scripts/asc-store.mjs status [--version 0.3.0]
- *   node scripts/asc-store.mjs push --version 0.3.0 [--build-number 4] [--dry-run]
+ *   node scripts/asc-store.mjs push --version 0.3.0 [--build-number 4] [--review-contact-from 6756785447] [--dry-run]
  *   node scripts/asc-store.mjs submit --version 0.3.0 --confirm com.tainanfidelis.iterahq
  *
  * Env: ASC_API_KEY_PATH (the .p8), ASC_API_KEY_ID, ASC_API_ISSUER_ID. Optional, for `push`:
  * ASC_REVIEW_CONTACT_FIRST_NAME / _LAST_NAME / _EMAIL / _PHONE and ASC_REVIEW_DEMO_USER / _PASSWORD; a
  * missing one skips its field with a warning. The token, the key and the demo credentials are never printed.
+ *
+ * Review contact reuse (`push`, and one `status` line): the four contact fields (never the demo account or the notes)
+ * are copied from the App Review detail of an already published app of the same account. The source app id, first
+ * match wins: `--review-contact-from <ascAppId>` > ASC_REVIEW_CONTACT_FROM_APP > `metadata.review.contactFromAscAppId`.
+ * Per field, an explicit ASC_REVIEW_CONTACT_* value beats the copied one. A copied value is never printed: the logs
+ * name the source app id and a field count only.
  *
  * Exit codes: 0 done; 1 the API refused; 2 bad input or the checklist still blocks (submit).
  * Pure logic (JWT, validation, payloads, checklist) is exported and tested in asc-store.test.mjs.
@@ -72,6 +78,8 @@ export function validateMetadata(meta) {
   }
   if (!meta?.ageRating || typeof meta.ageRating !== 'object') errors.push('ageRating is missing');
   if (typeof meta?.review?.notes !== 'string' || !meta.review.notes.trim()) errors.push('review.notes is missing');
+  const from = meta?.review?.contactFromAscAppId;
+  if (from !== undefined && !(typeof from === 'string' && /^\d+$/.test(from))) errors.push('review.contactFromAscAppId must be a string of digits (an App Store Connect app id)');
   const locales = meta?.locales && typeof meta.locales === 'object' ? Object.entries(meta.locales) : [];
   if (locales.length === 0) errors.push('locales is empty');
   const texts = [];
@@ -134,20 +142,37 @@ export function upsertPayload(type, existingId, attributes, parent) {
 
 export const ageRatingPayload = (id, ageRating) => ({ data: { type: 'ageRatingDeclarations', id, attributes: { ...ageRating } } });
 
-/** Pure: review detail attributes from the file and the env. `warnings` lists what was skipped; values are never echoed. */
-export function reviewDetailAttrs(meta, env) {
+export const CONTACT_ENV = {
+  contactFirstName: 'ASC_REVIEW_CONTACT_FIRST_NAME',
+  contactLastName: 'ASC_REVIEW_CONTACT_LAST_NAME',
+  contactEmail: 'ASC_REVIEW_CONTACT_EMAIL',
+  contactPhone: 'ASC_REVIEW_CONTACT_PHONE',
+};
+export const CONTACT_KEYS = Object.keys(CONTACT_ENV);
+
+/** Where the review contact is copied from: the flag, then the environment, then the file. Empty string when none. */
+export const contactSourceApp = (opts, env, meta) =>
+  [opts?.reviewContactFrom, env?.ASC_REVIEW_CONTACT_FROM_APP, meta?.review?.contactFromAscAppId].map((v) => String(v ?? '').trim()).find(Boolean) ?? '';
+
+/**
+ * Pure: review detail attributes from the file, the env and `copied`, the contact values of another app (an explicit
+ * env value wins per field). `warnings` lists what was skipped and `contactNote` says where the contact came from;
+ * neither ever carries a value.
+ */
+export function reviewDetailAttrs(meta, env, copied = {}, copiedFromAppId = '') {
   const attrs = { notes: meta.review.notes };
   const warnings = [];
-  const contact = [
-    ['contactFirstName', 'ASC_REVIEW_CONTACT_FIRST_NAME'],
-    ['contactLastName', 'ASC_REVIEW_CONTACT_LAST_NAME'],
-    ['contactEmail', 'ASC_REVIEW_CONTACT_EMAIL'],
-    ['contactPhone', 'ASC_REVIEW_CONTACT_PHONE'],
-  ];
-  for (const [attr, name] of contact) {
+  let copiedCount = 0;
+  for (const attr of CONTACT_KEYS) {
+    const name = CONTACT_ENV[attr];
+    const copiedValue = typeof copied[attr] === 'string' ? copied[attr].trim() : '';
     if (env[name]) attrs[attr] = env[name];
-    else warnings.push(`${name} is not set: ${attr} skipped`);
+    else if (copiedValue) {
+      attrs[attr] = copiedValue;
+      copiedCount += 1;
+    } else warnings.push(`${name} is not set${copiedFromAppId ? ` and app ${copiedFromAppId} has none` : ''}: ${attr} skipped`);
   }
+  const contactNote = copiedCount ? `review contact: copied from app ${copiedFromAppId} (${copiedCount} fields)` : null;
   if (env.ASC_REVIEW_DEMO_USER && env.ASC_REVIEW_DEMO_PASSWORD) {
     attrs.demoAccountRequired = true;
     attrs.demoAccountName = env.ASC_REVIEW_DEMO_USER;
@@ -155,7 +180,7 @@ export function reviewDetailAttrs(meta, env) {
   } else {
     warnings.push('ASC_REVIEW_DEMO_USER / ASC_REVIEW_DEMO_PASSWORD are not set: the demo account skipped');
   }
-  return { attrs, warnings };
+  return { attrs, warnings, contactNote };
 }
 
 export const screenshotReservePayload = (setId, fileName, fileSize) => ({
@@ -272,10 +297,27 @@ export class AscClient {
 
 const isPlaceholder = (id) => typeof id === 'string' && id.startsWith('(new ');
 
+// ------------------------------------------------------------------ review contact of another app (read only)
+
+/**
+ * The App Review contact of a published app: the contact of its newest iOS version that has an appStoreReviewDetail.
+ * Only the four contact attributes are requested (sparse fieldset), so the source's demo account and notes are never
+ * received. GETs only. The values go to the caller; this function logs nothing.
+ */
+export async function fetchReviewContact(client, sourceAppId) {
+  const versions = (await client.get(`/apps/${sourceAppId}/appStoreVersions`, { params: { 'filter[platform]': 'IOS', limit: '50' } })).data;
+  const newestFirst = [...versions].sort((a, b) => String(b.attributes?.createdDate ?? '').localeCompare(String(a.attributes?.createdDate ?? '')));
+  for (const v of newestFirst) {
+    const res = await client.get(`/appStoreVersions/${v.id}/appStoreReviewDetail`, { params: { 'fields[appStoreReviewDetails]': CONTACT_KEYS.join(',') }, allow404: true });
+    if (res?.data) return { found: true, values: Object.fromEntries(CONTACT_KEYS.map((k) => [k, String(res.data.attributes?.[k] ?? '').trim()])) };
+  }
+  return { found: false, values: {} };
+}
+
 // ------------------------------------------------------------------ gather (read only)
 
 /** Reads everything `status`, `push` and `submit` need. Only GETs. `versionString` picks the target version. */
-export async function gather(client, meta, versionString) {
+export async function gather(client, meta, versionString, contactFrom = '') {
   const appId = meta.ascAppId;
   const app = (await client.get(`/apps/${appId}`)).data;
   const state = { app: { id: app.id, name: app.attributes.name, bundleId: app.attributes.bundleId } };
@@ -318,6 +360,17 @@ export async function gather(client, meta, versionString) {
 
   const wanted = versionString ? state.versions.find((v) => v.versionString === versionString) : state.versions.find((v) => EDITABLE_STATES.includes(v.state));
   state.target = wanted ? await gatherVersion(client, wanted) : null;
+
+  // Booleans per field only: the copied contact never leaves fetchReviewContact. A failure here never fails `status`.
+  state.contactSource = null;
+  if (contactFrom) {
+    try {
+      const c = await fetchReviewContact(client, contactFrom);
+      state.contactSource = { appId: contactFrom, found: c.found, fields: Object.fromEntries(CONTACT_KEYS.map((k) => [k, Boolean(c.values[k])])) };
+    } catch (e) {
+      state.contactSource = { appId: contactFrom, error: e instanceof AscError ? `HTTP ${e.status}` : 'unreadable' };
+    }
+  }
   return state;
 }
 
@@ -363,7 +416,13 @@ export function renderStatus(state, meta, blocking) {
   if (state.builds.length === 0) L.push('| none | | |');
   L.push('', `Primary category: ${state.appInfo?.primaryCategory ?? 'not set'}. Price schedule: ${state.hasPriceSchedule ? 'present' : 'missing'}. Age rating: ${state.ageRating ? 'present' : 'missing'}.`);
   const t = state.target;
-  L.push(`Target version: ${t ? `${t.versionString} (${t.state}), build ${t.build?.version ?? 'none attached'}` : 'none'}. Review detail: ${t?.reviewDetail ? 'present' : 'missing'}.`, '');
+  L.push(`Target version: ${t ? `${t.versionString} (${t.state}), build ${t.build?.version ?? 'none attached'}` : 'none'}. Review detail: ${t?.reviewDetail ? 'present' : 'missing'}.`);
+  if (state.contactSource) {
+    const c = state.contactSource;
+    const detail = c.error ? `unreadable (${c.error})` : !c.found ? 'no review detail' : CONTACT_KEYS.map((k) => `${k.replace('contact', '')} ${c.fields[k] ? 'yes' : 'no'}`).join(', ');
+    L.push(`Review contact source (app ${c.appId}): ${detail}`);
+  }
+  L.push('');
   L.push('| locale | name | subtitle | privacy URL | description | keywords | support URL | promo | screenshots |', '|---|---|---|---|---|---|---|---|---|');
   for (const locale of Object.keys(meta.locales)) {
     const info = state.appInfo?.localizations.find((l) => l.locale === locale)?.attrs;
@@ -384,8 +443,8 @@ function emit(text, env) {
   if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, text);
 }
 
-export async function runStatus({ client, meta, version, env = process.env }) {
-  const state = await gather(client, meta, version);
+export async function runStatus({ client, meta, version, env = process.env, contactFrom = '' }) {
+  const state = await gather(client, meta, version, contactFrom);
   const blocking = blockingChecklist(state, meta);
   emit(renderStatus(state, meta, blocking), env);
   return { state, blocking };
@@ -397,7 +456,7 @@ export async function runStatus({ client, meta, version, env = process.env }) {
  * Idempotent: ensures the editable version, then upserts every field of the file. With `dryRun` it sends
  * GETs only and returns the list of writes it would make. `fetchImpl` carries the asset-upload PUTs too.
  */
-export async function runPush({ client, meta, version, buildNumber, dryRun = false, env = process.env, screenshotsDir = DEFAULT_SCREENSHOTS, log = console.log }) {
+export async function runPush({ client, meta, version, buildNumber, dryRun = false, env = process.env, contactFrom = '', screenshotsDir = DEFAULT_SCREENSHOTS, log = console.log }) {
   const errors = validateMetadata(meta);
   if (errors.length) throw new InputError(`metadata is invalid:\n- ${errors.join('\n- ')}`);
   if (!version) throw new InputError('--version is required for push');
@@ -407,7 +466,20 @@ export async function runPush({ client, meta, version, buildNumber, dryRun = fal
     if (found.length === 0) log(`warning: no ${DISPLAY_TYPE} screenshots on disk for ${locale}: its screenshots are left as they are`);
     shots[locale] = found;
   }
-  const review = reviewDetailAttrs(meta, env);
+  // The source is read (GETs only, also in a dry run) only when the env does not already give all four contact values.
+  let copied = {};
+  if (contactFrom && !CONTACT_KEYS.every((k) => env[CONTACT_ENV[k]])) {
+    try {
+      const src = await fetchReviewContact(client, contactFrom);
+      if (!src.found) log(`warning: review contact: app ${contactFrom} has no review detail`);
+      copied = src.values;
+    } catch (e) {
+      if (!(e instanceof AscError)) throw e;
+      log(`warning: review contact: app ${contactFrom} is unreadable (HTTP ${e.status})`);
+    }
+  }
+  const review = reviewDetailAttrs(meta, env, copied, contactFrom);
+  if (review.contactNote) log(review.contactNote);
   for (const w of review.warnings) log(`warning: ${w}`);
 
   const plan = [];
@@ -543,7 +615,7 @@ export function parseArgs(argv) {
   for (let i = 0; i < rest.length; i += 1) {
     const a = rest[i];
     if (a === '--dry-run') opts.dryRun = true;
-    else if (['--version', '--build-number', '--confirm', '--metadata'].includes(a)) opts[a.slice(2).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = rest[(i += 1)];
+    else if (['--version', '--build-number', '--confirm', '--metadata', '--review-contact-from'].includes(a)) opts[a.slice(2).replace(/-(\w)/g, (_, c) => c.toUpperCase())] = rest[(i += 1)];
     else throw new InputError(`unknown argument ${a}`);
   }
   return opts;
@@ -551,14 +623,15 @@ export function parseArgs(argv) {
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
-  if (!['status', 'push', 'submit'].includes(opts.action)) throw new InputError('usage: asc-store.mjs <status|push|submit> [--version V] [--build-number N] [--dry-run] [--confirm BUNDLE_ID]');
+  if (!['status', 'push', 'submit'].includes(opts.action)) throw new InputError('usage: asc-store.mjs <status|push|submit> [--version V] [--build-number N] [--review-contact-from APP_ID] [--dry-run] [--confirm BUNDLE_ID]');
   const meta = JSON.parse(readFileSync(opts.metadata ?? DEFAULT_METADATA, 'utf8'));
   const { ASC_API_KEY_PATH, ASC_API_KEY_ID, ASC_API_ISSUER_ID } = process.env;
   if (!ASC_API_KEY_PATH || !ASC_API_KEY_ID || !ASC_API_ISSUER_ID) throw new InputError('ASC_API_KEY_PATH, ASC_API_KEY_ID and ASC_API_ISSUER_ID are required');
   const signer = es256Signer(readFileSync(ASC_API_KEY_PATH, 'utf8'));
   const client = new AscClient({ tokenFn: () => buildJwt({ keyId: ASC_API_KEY_ID, issuerId: ASC_API_ISSUER_ID, sign: signer }) });
-  if (opts.action === 'status') await runStatus({ client, meta, version: opts.version });
-  else if (opts.action === 'push') await runPush({ client, meta, version: opts.version, buildNumber: opts.buildNumber, dryRun: opts.dryRun });
+  const contactFrom = contactSourceApp(opts, process.env, meta);
+  if (opts.action === 'status') await runStatus({ client, meta, version: opts.version, contactFrom });
+  else if (opts.action === 'push') await runPush({ client, meta, version: opts.version, buildNumber: opts.buildNumber, dryRun: opts.dryRun, contactFrom });
   else await runSubmit({ client, meta, version: opts.version, confirm: opts.confirm });
 }
 
