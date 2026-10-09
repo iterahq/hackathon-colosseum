@@ -2,50 +2,63 @@
  * Tera's accessories as plain SVG shapes, drawn in the coordinate space of his face art
  * (240 x 368, the same box as `guideFaces`): the ring is a circle centred at (120, 248), r 118,
  * his near eye sits at (100, 258) and the far one at (198, 254). Nothing here redraws Tera.
- * The backend copies these shapes into its on-chain art, so this module has no imports.
+ *
+ * The look follows the on-chain art (`supabase/functions/_shared/art.ts`, `OUTFIT_ART`): cream
+ * wire glasses, a cream band with dark cups and a green slot, a gold-leaf crown with a green gem.
+ * That art uses another crop of the face (240 x 300), so the numbers differ and the design is the same.
+ * No imports, so either side can copy the other.
  */
 export const OUTFIT_VIEW_BOX = '0 0 240 368';
 export const OUTFIT_BOX = { width: 240, height: 368 } as const;
+/** The dark halo drawn around every accessory so it reads on any face: 2px, thinner on small faces. */
 export const OUTFIT_OUTLINE = '#0A0908';
 
 export type OutfitKey = 'outfit_glasses' | 'outfit_crown' | 'outfit_headphones';
 
 export interface OutfitShape {
   d: string;
-  fill: string;
-  /** Shapes are outlined in `OUTFIT_OUTLINE` unless this is false. */
-  outline?: boolean;
-  opacity?: number;
+  fill?: string;
+  fillOpacity?: number;
+  stroke?: string;
+  /** In box units (the box is 240 wide). */
+  strokeWidth?: number;
+  strokeOpacity?: number;
+  transform?: string;
 }
 
 export const OUTFIT_KEYS: readonly OutfitKey[] = ['outfit_glasses', 'outfit_headphones', 'outfit_crown'];
 
+const CROWN_TILT = 'rotate(-9 144.8 137.6)';
+
 export const OUTFITS: Record<OutfitKey, readonly OutfitShape[]> = {
   outfit_glasses: [
-    // temple arm, then the bridge, then the two lenses and their glints
-    { d: 'M66 250 L20 232 L18 242 L64 262 Z', fill: '#F4EDE2' },
-    { d: 'M134 250 Q150 238 166 249 L166 259 Q150 249 134 260 Z', fill: '#F4EDE2' },
-    { d: 'M100 222 a36 36 0 1 0 0.01 0 Z M100 232 a26 26 0 1 1 -0.01 0 Z', fill: '#F4EDE2' },
-    { d: 'M198 220 a34 34 0 1 0 0.01 0 Z M198 230 a24 24 0 1 1 -0.01 0 Z', fill: '#F4EDE2' },
-    { d: 'M100 232 a26 26 0 1 0 0.01 0 Z', fill: '#3FD17F', outline: false, opacity: 0.22 },
-    { d: 'M198 230 a24 24 0 1 0 0.01 0 Z', fill: '#3FD17F', outline: false, opacity: 0.22 },
-    { d: 'M84 244 L96 238 L90 250 Z', fill: '#F4EDE2', outline: false, opacity: 0.8 },
+    // two lenses, the bridge, the two temple arms, a glint
+    { d: 'M69 258a31 31 0 1 0 62 0a31 31 0 1 0 -62 0Z', fill: '#0A0908', fillOpacity: 0.3, stroke: '#F4EDE2', strokeWidth: 7 },
+    { d: 'M170 255a28 28 0 1 0 56 0a28 28 0 1 0 -56 0Z', fill: '#0A0908', fillOpacity: 0.3, stroke: '#F4EDE2', strokeWidth: 7 },
+    { d: 'M131 255q19 -11 39 2', stroke: '#F4EDE2', strokeWidth: 7 },
+    { d: 'M69 251l-40 -16', stroke: '#F4EDE2', strokeWidth: 7 },
+    { d: 'M226 251l10 -3', stroke: '#F4EDE2', strokeWidth: 7 },
+    { d: 'M82 245q10 -12 25 -10', stroke: '#F4EDE2', strokeWidth: 4, strokeOpacity: 0.6 },
   ],
   outfit_headphones: [
-    // band over the head, then the two cups and their pads
-    { d: 'M22 236 C22 150 78 112 128 112 C182 112 224 152 226 226 L210 228 C206 164 172 130 128 130 C86 130 40 160 38 236 Z', fill: '#F4EDE2' },
-    { d: 'M8 222 h26 a10 10 0 0 1 10 10 v52 a10 10 0 0 1 -10 10 h-26 a6 6 0 0 1 -6 -6 v-60 a6 6 0 0 1 6 -6 Z', fill: '#3FD17F' },
-    { d: 'M206 212 h24 a6 6 0 0 1 6 6 v58 a6 6 0 0 1 -6 6 h-24 a10 10 0 0 1 -10 -10 v-50 a10 10 0 0 1 10 -10 Z', fill: '#3FD17F' },
-    { d: 'M14 240 h10 v36 h-10 Z', fill: '#0A0908', outline: false, opacity: 0.35 },
-    { d: 'M216 230 h10 v34 h-10 Z', fill: '#0A0908', outline: false, opacity: 0.35 },
+    // the band over the head with its seam, the two cups, their green slots
+    { d: 'M28 240C20 108 232 102 226 232', stroke: '#F4EDE2', strokeWidth: 12 },
+    { d: 'M28 240C20 108 232 102 226 232', stroke: '#0A0908', strokeWidth: 4, strokeOpacity: 0.35 },
+    { d: 'M25 214h4a19 19 0 0 1 19 19v36a19 19 0 0 1 -19 19h-4a19 19 0 0 1 -19 -19v-36a19 19 0 0 1 19 -19Z', fill: '#141210', stroke: '#F4EDE2', strokeWidth: 5 },
+    { d: 'M219 206h2a17 17 0 0 1 17 17v36a17 17 0 0 1 -17 17h-2a17 17 0 0 1 -17 -17v-36a17 17 0 0 1 17 -17Z', fill: '#141210', stroke: '#F4EDE2', strokeWidth: 5 },
+    { d: 'M27 234h0a7 7 0 0 1 7 7v20a7 7 0 0 1 -7 7h0a7 7 0 0 1 -7 -7v-20a7 7 0 0 1 7 -7Z', fill: '#3FD17F' },
+    { d: 'M220 224h0a7 7 0 0 1 7 7v20a7 7 0 0 1 -7 7h0a7 7 0 0 1 -7 -7v-20a7 7 0 0 1 7 -7Z', fill: '#3FD17F' },
   ],
   outfit_crown: [
-    // tilted on the brow, in front of the crest: body, base band, three gems
-    { d: 'M40 196 L30 134 L62 160 L84 116 L108 152 L140 118 L150 178 Z', fill: '#F2C66D' },
-    { d: 'M38 198 L150 180 L153 196 L41 214 Z', fill: '#F2C66D' },
-    { d: 'M86 138 l11 15 l-11 14 l-11 -14 Z', fill: '#3FD17F' },
-    { d: 'M50 160 l7 9 l-7 9 l-7 -9 Z', fill: '#F4EDE2' },
-    { d: 'M130 146 l7 9 l-7 9 l-7 -9 Z', fill: '#F4EDE2' },
+    // tilted on the brow in front of the crest: body, band, the gem and two studs, three pearls
+    { d: 'M80.4 165.6 L69.2 92.8 L111.2 129.2 L144.8 73.2 L178.4 129.2 L220.4 92.8 L209.2 165.6 Z', fill: '#F2C66D', stroke: '#B8913A', strokeWidth: 4, transform: CROWN_TILT },
+    { d: 'M84.6 160h120.4a7 7 0 0 1 7 7v5.6a7 7 0 0 1 -7 7h-120.4a7 7 0 0 1 -7 -7v-5.6a7 7 0 0 1 7 -7Z', fill: '#F2C66D', stroke: '#B8913A', strokeWidth: 4, transform: CROWN_TILT },
+    { d: 'M138.8 169.8a6 6 0 1 0 12 0a6 6 0 1 0 -12 0Z', fill: '#3FD17F', transform: CROWN_TILT },
+    { d: 'M101.6 169.8a4 4 0 1 0 8 0a4 4 0 1 0 -8 0Z', fill: '#F4EDE2', transform: CROWN_TILT },
+    { d: 'M180 169.8a4 4 0 1 0 8 0a4 4 0 1 0 -8 0Z', fill: '#F4EDE2', transform: CROWN_TILT },
+    { d: 'M62.2 92.8a7 7 0 1 0 14 0a7 7 0 1 0 -14 0Z', fill: '#FBE7A8', transform: CROWN_TILT },
+    { d: 'M137.8 73.2a7 7 0 1 0 14 0a7 7 0 1 0 -14 0Z', fill: '#FBE7A8', transform: CROWN_TILT },
+    { d: 'M213.4 92.8a7 7 0 1 0 14 0a7 7 0 1 0 -14 0Z', fill: '#FBE7A8', transform: CROWN_TILT },
   ],
 };
 

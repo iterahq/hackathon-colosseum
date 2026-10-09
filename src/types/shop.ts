@@ -18,6 +18,8 @@ export interface CompanionState {
   level: number;
   xp: number;
   streak: number;
+  /** The on-chain art, exactly as the backend returns it (its `v` parameter is the cache key). */
+  imageUrl: string | null;
 }
 
 export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame';
@@ -65,6 +67,7 @@ export interface PurchaseIntent {
   intentId: string;
   /** The serialized transaction MESSAGE: what the wallet signs. */
   messageBase58: string;
+  messageBase64: string;
   transactionBase58: string;
   transactionBase64: string;
   priceLamports: number;

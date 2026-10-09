@@ -79,7 +79,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
           dispatch({ type: 'paid', explorerUrl: confirmation.explorerUrl });
           onPaid?.(itemKey);
         } else {
-          dispatch({ type: 'failed', detail: `purchase-confirm: ${confirmation.status}` });
+          dispatch({ type: 'failed', detail: `purchase-confirm: ${confirmation.status}`, code: confirmation.status === 'expired' ? 'intent_expired' : null });
         }
       } catch (e) {
         if (!alive.current) return;
@@ -87,9 +87,12 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         const reason = e instanceof WalletSignError ? e.reason : 'failed';
         const detail = e instanceof WalletSignError ? e.detail : textOf(e);
         if (reason === 'cancelled') dispatch({ type: 'cancelled' });
-        else if (reason === 'no_wallet' || code === 'no_wallet') dispatch({ type: 'no_wallet' });
+        else if (reason === 'no_wallet') dispatch({ type: 'no_wallet' });
         else if (reason === 'insufficient' || code === 'insufficient_funds') dispatch({ type: 'insufficient', detail });
-        else dispatch({ type: 'failed', detail });
+        else {
+          if (code) console.warn('[purchase]', detail);
+          dispatch({ type: 'failed', detail, code });
+        }
       } finally {
         running.current = false;
       }
@@ -105,10 +108,10 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
     try {
       const result = await requestFaucet();
       if (!alive.current) return;
-      if (result.blocked !== null) return dispatch({ type: 'funding_failed', detail: `wallet-faucet: ${result.blocked}` });
+      if (result.blocked !== null) return dispatch({ type: 'funding_failed', detail: `wallet-faucet: ${result.blocked}`, code: result.blocked });
       await wait(FUNDING_SETTLE_MS);
     } catch (e) {
-      if (alive.current) dispatch({ type: 'funding_failed', detail: textOf(e) });
+      if (alive.current) dispatch({ type: 'funding_failed', detail: textOf(e), code: e instanceof ShopCallError ? e.code : null });
       return;
     }
     if (!alive.current) return;

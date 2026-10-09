@@ -13,8 +13,9 @@ interface Props {
   className?: string;
 }
 
-/** Outline in screen pixels: 2px, thinner on the two smallest faces so the accessory does not swallow them. */
-const OUTLINE: Record<TeraSize, number> = { xs: 1, sm: 1.25, bar: 1.5, bubble: 2, xl: 2 };
+/** Dark halo in screen pixels: 2px, thinner on the smallest faces so the accessory does not swallow them. */
+const OUTLINE: Record<TeraSize, number> = { xs: 0.5, sm: 0.75, bar: 1, bubble: 1, xl: 1 };
+const halo = (px: number) => `drop-shadow(0 0 ${px}px ${OUTFIT_OUTLINE}) drop-shadow(0 0 ${px}px ${OUTFIT_OUTLINE})`;
 
 /**
  * The LEARNER'S Tera: the untouched `TeraAvatar` with the equipped accessory drawn as an SVG layer
@@ -35,21 +36,22 @@ export function TeraOutfit({ mood, size = 'bubble', idle = true, outfit, preview
           aria-hidden="true"
           viewBox={OUTFIT_VIEW_BOX}
           className="pointer-events-none absolute bottom-0 left-0 w-full overflow-visible"
-          style={{ transformOrigin: '50% 67.4%' }}
+          style={{ transformOrigin: '50% 67.4%', filter: halo(OUTLINE[size]) }}
           animate={animate}
           transition={mood === 'happy' ? { duration: 0.6 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
         >
-          {OUTFITS[key].map((shape) => (
+          {OUTFITS[key].map((shape, i) => (
             <path
-              key={shape.d}
+              key={i}
               d={shape.d}
-              fill={shape.fill}
-              fillRule="evenodd"
-              opacity={shape.opacity}
-              stroke={shape.outline === false ? 'none' : OUTFIT_OUTLINE}
-              strokeWidth={OUTLINE[size]}
+              fill={shape.fill ?? 'none'}
+              fillOpacity={shape.fillOpacity}
+              stroke={shape.stroke ?? 'none'}
+              strokeWidth={shape.strokeWidth}
+              strokeOpacity={shape.strokeOpacity}
+              strokeLinecap="round"
               strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
+              transform={shape.transform}
             />
           ))}
         </motion.svg>

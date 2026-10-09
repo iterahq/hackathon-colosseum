@@ -13,6 +13,7 @@ describe('purchaseReducer', () => {
       phase: 'paid',
       itemKey: 'life_refill',
       detail: null,
+      code: null,
       explorerUrl: 'https://x/tx',
     });
   });
@@ -23,7 +24,9 @@ describe('purchaseReducer', () => {
 
   it('keeps what the wallet said when it fails', () => {
     const failed = run([start, { type: 'connected' }, { type: 'failed', detail: '-32603: boom' }]);
-    expect(failed).toMatchObject({ phase: 'failed', itemKey: 'life_refill', detail: '-32603: boom' });
+    expect(failed).toMatchObject({ phase: 'failed', itemKey: 'life_refill', detail: '-32603: boom', code: null });
+    const refused = run([start, { type: 'connected' }, { type: 'signed' }, { type: 'failed', detail: 'purchase-confirm: payment_mismatch (detail: memo)', code: 'payment_mismatch' }]);
+    expect(refused).toMatchObject({ phase: 'failed', code: 'payment_mismatch' });
     expect(isPurchaseBusy(failed)).toBe(false);
   });
 
@@ -32,9 +35,10 @@ describe('purchaseReducer', () => {
     expect(short.phase).toBe('insufficient');
     const funding = purchaseReducer(short, { type: 'funding' });
     expect(funding.phase).toBe('funding');
-    expect(purchaseReducer(funding, { type: 'funding_failed', detail: 'wallet-faucet: rate_limited' })).toMatchObject({
+    expect(purchaseReducer(funding, { type: 'funding_failed', detail: 'wallet-faucet: faucet_unavailable', code: 'faucet_unavailable' })).toMatchObject({
       phase: 'insufficient',
-      detail: 'wallet-faucet: rate_limited',
+      detail: 'wallet-faucet: faucet_unavailable',
+      code: 'faucet_unavailable',
     });
   });
 

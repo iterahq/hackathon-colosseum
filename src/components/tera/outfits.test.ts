@@ -35,6 +35,7 @@ describe('outfit shapes', () => {
       expect(OUTFITS[key].length).toBeGreaterThan(0);
       for (const shape of OUTFITS[key]) {
         const start = /^M(-?[\d.]+) (-?[\d.]+)/.exec(shape.d);
+        expect(shape.fill ?? shape.stroke, `${key}: a shape needs a fill or a stroke`).toBeTruthy();
         expect(start, `${key}: ${shape.d}`).not.toBeNull();
         expect(Number(start?.[1])).toBeLessThanOrEqual(OUTFIT_BOX.width);
         expect(Number(start?.[2])).toBeLessThanOrEqual(OUTFIT_BOX.height);

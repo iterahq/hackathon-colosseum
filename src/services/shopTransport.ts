@@ -1,7 +1,7 @@
 /**
- * The one door to the lives / shop / companion edge functions. A function that is not deployed
- * (404) falls back to the local mock in dev and preview only; production never mocks, so a missing
- * backend surfaces as an error and every caller fails open.
+ * The one door to the lives / shop / companion edge functions. The local mock answers only when
+ * `?mockShop=1` is in the URL of a dev or preview build; everything else is the real backend, and a
+ * missing or failing function surfaces as an error so every caller fails open.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { mockShopCall } from '@/services/shopMock';
@@ -15,7 +15,9 @@ export class ShopCallError extends Error {
     /** The backend's `{ error: <code> }`, e.g. `insufficient_funds`, `tx_not_found`. */
     readonly code: string | null = null,
     /** The backend says the same call may succeed if repeated. */
-    readonly retryable = false
+    readonly retryable = false,
+    /** The backend's `detail` field, verbatim (e.g. `payer | destination | amount | memo`). */
+    readonly detail: string | null = null
   ) {
     super(message);
   }
@@ -52,14 +54,15 @@ export function mockForced(): boolean {
   }
 }
 
-async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean }> {
+async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean; detail: string | null }> {
   const context = (error as { context?: Response }).context;
   const status = typeof context?.status === 'number' ? context.status : null;
   try {
-    const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown } | undefined;
-    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true };
+    const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown; detail?: unknown } | undefined;
+    const detail = typeof json?.detail === 'string' ? json.detail : json?.detail == null ? null : JSON.stringify(json.detail);
+    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true, detail };
   } catch {
-    return { status, code: null, retryable: false };
+    return { status, code: null, retryable: false, detail: null };
   }
 }
 
@@ -70,7 +73,6 @@ export async function callShop(fn: ShopFunction, { method = 'POST', body = {}, q
   const { data, error } = await getSupabase().functions.invoke(search ? `${fn}?${search}` : fn, method === 'GET' ? { method } : { method, body });
   if (!error) return { data, mocked: false };
   const detail = await errorBody(error);
-  // A deployed function answers its own 404s with `{ error: <code> }`; only the gateway's "function not found" has none.
-  if (detail.status === 404 && detail.code === null && mockAllowed()) return { data: mockShopCall(fn, body, query), mocked: true };
-  throw new ShopCallError(detail.code ? `${fn}: ${detail.code}` : error.message, detail.status, detail.code, detail.retryable);
+  const text = detail.code ? `${fn}: ${detail.code}${detail.detail ? ` (detail: ${detail.detail})` : ''}` : error.message;
+  throw new ShopCallError(text, detail.status, detail.code, detail.retryable, detail.detail);
 }

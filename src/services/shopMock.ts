@@ -140,6 +140,7 @@ function purchaseIntent(body: Body) {
   return {
     intent_id: id,
     message_base58: 'MockMessage1111111111111111111111',
+    message_base64: 'TW9jaw==',
     transaction_base58: 'MockTransaction11111111111111111',
     transaction_base64: 'TW9jaw==',
     price_lamports: item.lamports,

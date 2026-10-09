@@ -48,6 +48,7 @@ export function toCompanion(v: unknown): CompanionState {
     level: num(r.level, 1),
     xp: num(r.xp),
     streak: num(r.streak),
+    imageUrl: orNull(r.image_url),
   };
 }
 
@@ -107,6 +108,7 @@ export function toIntent(v: unknown): PurchaseIntent {
   return {
     intentId,
     messageBase58: str(r.message_base58),
+    messageBase64: str(r.message_base64),
     transactionBase58: str(r.transaction_base58),
     transactionBase64: str(r.transaction_base64),
     priceLamports,

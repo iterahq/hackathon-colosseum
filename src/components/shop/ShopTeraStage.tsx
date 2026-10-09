@@ -49,7 +49,11 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
           </div>
         )}
         {companion && (
-          <div className="flex w-full flex-col gap-2 rounded-[12px] border border-[#262320] bg-[#0F0D0B] p-4 max-sm:items-center" data-testid="shop-companion">
+          <div className="flex w-full items-center gap-4 rounded-[12px] border border-[#262320] bg-[#0F0D0B] p-4 max-sm:flex-col" data-testid="shop-companion">
+            {companion.imageUrl && asset && (
+              <img src={companion.imageUrl} alt="" loading="lazy" width={84} height={84} className="h-[84px] w-[84px] flex-none rounded-[10px] border border-[#262320]" data-testid="shop-companion-art" />
+            )}
+            <div className="flex min-w-0 flex-1 flex-col gap-2 max-sm:items-center">
             <span className="flex flex-wrap items-center gap-2">
               <span className={`${MONO_LABEL} text-[#F4EDE2]`}>{t('shop.companion.title')}</span>
               <span className={DEVNET_BADGE}>{t('shop.devnet')}</span>
@@ -72,6 +76,7 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
             ) : (
               <span className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('shop.companion.unminted')}</span>
             )}
+            </div>
           </div>
         )}
       </div>

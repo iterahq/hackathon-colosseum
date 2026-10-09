@@ -290,15 +290,15 @@ const App = () => (
                     </RequireAuth>
                   }
                 />
-                {/* Tera's shop: lives, outfits and certification cosmetics; auth-gated like the passport. */}
+                {/* Tera's shop: lives, outfits and certification cosmetics. Auth-gated; web only (prices never show inside the shell). */}
                 <Route
                   path="/shop"
                   element={
-                    <RequireAuth>
-                      <ShellAccessGate>
+                    <WebOnlyRoute>
+                      <RequireAuth>
                         <LazyRoute><ShopPage /></LazyRoute>
-                      </ShellAccessGate>
-                    </RequireAuth>
+                      </RequireAuth>
+                    </WebOnlyRoute>
                   }
                 />
                 {/* Public credential check: anyone with the link, no session, no app shell. */}

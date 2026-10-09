@@ -27,7 +27,6 @@ export async function confirmPurchase(intentId: string, signature: string, lang:
   } catch (e) {
     if (!(e instanceof ShopCallError)) throw e;
     if (e.retryable) return UNSETTLED;
-    if (e.code === 'intent_already_paid') return { ...UNSETTLED, status: 'paid' };
     if (e.code === 'intent_expired') return { ...UNSETTLED, status: 'expired' };
     throw e;
   }

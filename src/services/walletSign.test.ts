@@ -5,6 +5,7 @@ import { WalletSignError, classifyWalletError, signAndSendPurchase } from './wal
 const intent: PurchaseIntent = {
   intentId: 'i1',
   messageBase58: 'MSG58',
+  messageBase64: 'BAUG',
   transactionBase58: 'TX58',
   transactionBase64: 'AQID',
   priceLamports: 500_000,
@@ -16,6 +17,11 @@ const intent: PurchaseIntent = {
 
 const install = (provider: Record<string, unknown>) => {
   (window as unknown as { solana?: unknown }).solana = { connect: vi.fn(), ...provider };
+};
+
+const quiet = () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
 };
 
 afterEach(() => {
@@ -42,6 +48,7 @@ describe('classifyWalletError', () => {
 
 describe('signAndSendPurchase', () => {
   it('sends the transaction MESSAGE through the request form', async () => {
+    quiet();
     const request = vi.fn().mockResolvedValue({ signature: 'SIG' });
     install({ request });
     await expect(signAndSendPurchase(intent)).resolves.toBe('SIG');
@@ -52,19 +59,36 @@ describe('signAndSendPurchase', () => {
     await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'no_wallet' });
   });
 
-  it('never takes the fallback after a rejection', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('prefers window.phantom.solana and accepts a bare string signature', async () => {
+    const request = vi.fn().mockResolvedValue('SIGSTR');
+    (window as unknown as { phantom?: unknown }).phantom = { solana: { connect: vi.fn(), request } };
+    install({ request: vi.fn().mockRejectedValue(new Error('wrong provider')) });
+    await expect(signAndSendPurchase(intent)).resolves.toBe('SIGSTR');
+    delete (window as unknown as { phantom?: unknown }).phantom;
+  });
+
+  it('stops at a rejection: cancelled, no second attempt', async () => {
+    quiet();
     const signAndSendTransaction = vi.fn();
     install({ request: vi.fn().mockRejectedValue({ code: 4001, message: 'User rejected the request.' }), signAndSendTransaction });
-    await expect(signAndSendPurchase(intent)).rejects.toBeInstanceOf(WalletSignError);
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'cancelled' });
     expect(signAndSendTransaction).not.toHaveBeenCalled();
   });
 
-  it('tries the object form only when the wallet does not support the request form', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('falls back to the duck-typed transaction object when the request form fails', async () => {
+    quiet();
     const signAndSendTransaction = vi.fn().mockResolvedValue({ signature: 'SIG2' });
-    install({ request: vi.fn().mockRejectedValue({ code: -32601, message: 'Method not found' }), signAndSendTransaction });
+    install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'Unexpected error' }), signAndSendTransaction });
     await expect(signAndSendPurchase(intent)).resolves.toBe('SIG2');
-    expect(Array.from(signAndSendTransaction.mock.calls[0][0].serialize())).toEqual([1, 2, 3]);
+    const tx = signAndSendTransaction.mock.calls[0][0];
+    expect(Array.from(tx.serializeMessage())).toEqual([4, 5, 6]);
+    expect(Array.from(tx.serialize())).toEqual([1, 2, 3]);
+    expect(tx.signatures).toEqual([]);
+  });
+
+  it('reports what every attempt said when both fail', async () => {
+    quiet();
+    install({ request: vi.fn().mockRejectedValue({ code: -32603, message: 'A' }), signAndSendTransaction: vi.fn().mockRejectedValue(new Error('B')) });
+    await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'failed', detail: 'request → -32603: A | object → B' });
   });
 });

@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
+import { PURCHASE_ERROR_CODES } from '@/i18n/shopMessages';
 import type { ShopItemKind } from '@/types/shop';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, DEVNET_BADGE, FOCUS } from './shopStyles';
@@ -56,6 +57,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
 
   if (!open) return null;
   const { phase } = state;
+  const friendly = state.code && PURCHASE_ERROR_CODES.has(state.code) ? t(`purchase.error.${state.code}`) : null;
   const paidLine = itemKind === 'life' ? t('purchase.paid.life') : itemKind === 'outfit' ? t('purchase.paid.outfit', { name: itemTitle }) : t('purchase.paid.item', { name: itemTitle });
 
   return (
@@ -97,8 +99,8 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
             <span className="flex h-[150px] items-end justify-center">
               <TeraOutfit mood="oops" size="xl" outfit={outfit} />
             </span>
-            {phase === 'failed' && <Message title={t('purchase.failed.title')} body={t('purchase.failed.body')} />}
-            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={t('purchase.insufficient.body')} />}
+            {phase === 'failed' && <Message title={t('purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
+            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={friendly ?? t('purchase.insufficient.body')} />}
             {phase === 'no_wallet' && <Message title={t('purchase.noWallet.title')} body={t('purchase.noWallet.body')} />}
             {phase !== 'no_wallet' && <Detail text={state.detail} />}
             <div className="mt-1 flex w-full flex-col gap-2.5">
