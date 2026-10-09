@@ -1,0 +1,27 @@
+@keyframes itPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+@keyframes itDash {
+  to { stroke-dashoffset: -20; }
+}
+.dash-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: itPulse 1.8s ease-out infinite;
+}
+.dash-flow {
+  animation: itDash 0.8s linear infinite;
+}
+.dash-root * {
+  scrollbar-width: none;
+}
+.dash-root *::-webkit-scrollbar {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-pulse,
+  .dash-flow {
+    animation: none;
+  }
+}

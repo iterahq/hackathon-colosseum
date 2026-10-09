@@ -61,6 +61,8 @@ export interface TrailColor {
   cs: string;
   cd: string;
   ink: string;
+  /** Stroke of the big outlined number behind the featured trail. */
+  ghost: string;
 }
 
 export interface PathOptions {
