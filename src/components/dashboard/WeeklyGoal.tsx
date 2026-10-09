@@ -18,7 +18,7 @@ export function WeeklyGoal({ done }: { done: number }) {
             <span
               key={i}
               className={`box-border grid h-11 flex-1 place-items-center rounded-[10px] [font:700_14px_JetBrains_Mono] ${
-                reached ? 'bg-[#0066FF] text-[#F4EDE2]' : 'border-2 border-dashed border-[#2E2A25] text-[#8A8276]'
+                reached ? 'bg-[#3FD17F] text-[#0A0908]' : 'border-2 border-dashed border-[#2E2A25] text-[#8A8276]'
               }`}
             >
               {reached ? '✓' : (i + 1) * step}

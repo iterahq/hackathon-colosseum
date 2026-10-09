@@ -8,16 +8,23 @@ import type { ProgressRow, SourceProgram, Trail, TrailColor, TrailDay, TrailStat
 
 export { trailPath } from '@/utils/trailPath';
 
-export const TRAIL_COLORS: readonly TrailColor[] = [
-  { c: '#0066FF', cl: '#6AA5FF', cs: '#13233F', cd: '#0047B3', ink: '#F4EDE2', ghost: '#1B3C70' },
-  { c: '#3FD17F', cl: '#62D996', cs: '#1C3A2A', cd: '#1F8A4F', ink: '#0A0908', ghost: '#1D4F36' },
+const GREEN: TrailColor = { c: '#3FD17F', cl: '#62D996', cs: '#1C3A2A', cd: '#1F8A4F', ink: '#0A0908', ghost: '#1D4F36' };
+
+/**
+ * Green is the brand colour and the only fill a trail gets. The list keeps its
+ * length so a stored `colorIndex` stays valid.
+ */
+export const TRAIL_COLORS: readonly TrailColor[] = [GREEN, GREEN, GREEN, GREEN, GREEN];
+
+/** Other colours are for thin edges and icons only (course covers, categories). */
+export const ACCENT_COLORS: readonly TrailColor[] = [
+  GREEN,
   { c: '#E07A4A', cl: '#F0A278', cs: '#3A2318', cd: '#A4532D', ink: '#0A0908', ghost: '#5E301D' },
   { c: '#F2C66D', cl: '#F2C66D', cs: '#3A311B', cd: '#B8913A', ink: '#0A0908', ghost: '#5C4A22' },
   { c: '#E0A86F', cl: '#E0A86F', cs: '#3A2A1A', cd: '#A87440', ink: '#0A0908', ghost: '#5A3F25' },
 ];
 
-/** Green: the primary accent of the learner surfaces. */
-export const PRIMARY_COLOR: TrailColor = TRAIL_COLORS[1];
+export const PRIMARY_COLOR: TrailColor = GREEN;
 
 export const colorOfTrail = (trail: Pick<Trail, 'colorIndex'>): TrailColor => TRAIL_COLORS[trail.colorIndex % TRAIL_COLORS.length];
 

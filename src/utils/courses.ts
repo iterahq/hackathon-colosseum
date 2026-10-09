@@ -1,14 +1,14 @@
 /** Shared helpers of the program page and its dashboard links: accent color, glyph and trail deep links. */
-import { TRAIL_COLORS } from '@/utils/trailDashboard';
+import { ACCENT_COLORS } from '@/utils/trailDashboard';
 
 /** Stable accent of a course: the program page and the video courses agree without sharing a list. */
 export function courseColorIndex(slug: string): number {
   let sum = 0;
   for (const ch of slug) sum += ch.charCodeAt(0);
-  return sum % TRAIL_COLORS.length;
+  return sum % ACCENT_COLORS.length;
 }
 
-export const courseColor = (slug: string) => TRAIL_COLORS[courseColorIndex(slug)];
+export const courseColor = (slug: string) => ACCENT_COLORS[courseColorIndex(slug)];
 
 /** Three-letter mono glyph of a course. */
 export const glyphOf = (slug: string): string => slug.replace(/[^a-z0-9]/gi, '').slice(0, 3).toUpperCase() || '···';
