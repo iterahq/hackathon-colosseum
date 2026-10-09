@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ProgressRow, SourceProgram } from '@/types/trailDashboard';
-import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, programLabel, shortName, trailHref, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
+import { barFill, buildTrails, dayName, currentDayOf, pickFeatured, programLabel, shortName, trailName, trailPath, weeklyCount } from '@/utils/trailDashboard';
 
 const unit = (id: string, ordinal: number, title: string, lessons: Record<string, string[]>) => ({
   id,
@@ -142,11 +142,5 @@ describe('display helpers', () => {
   it('cuts long names with an ellipsis', () => {
     expect(shortName('Componente, props e estado', 18)).toBe('Componente, props…');
     expect(shortName('CSS')).toBe('CSS');
-  });
-});
-
-describe('trailHref', () => {
-  it('links to the trail section of its program', () => {
-    expect(trailHref({ programSlug: 'itera-v2', id: 'u-1' })).toBe('/program/itera-v2#trail-u-1');
   });
 });

@@ -17,7 +17,8 @@ import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
-import { dayName, trailHref, trailName } from '@/utils/trailDashboard';
+import { trailHref } from '@/utils/courses';
+import { dayName, trailName } from '@/utils/trailDashboard';
 
 const GRID = {
   backgroundColor: '#0A0908',
@@ -50,7 +51,7 @@ export default function DashboardPage() {
   const catalog = useCatalog();
 
   const openLesson = (lessonId: string) => navigate(`/lesson/${lessonId}`);
-  const openTrail = (trail: Trail) => navigate(trailHref(trail));
+  const openTrail = (trail: Trail) => navigate(trailHref(trail.programSlug, trail.id));
   const describeLesson = (lessonId: string): string | null => {
     for (const trail of dashboard.trails) {
       const day = trail.days.find((d) => d.id === lessonId);

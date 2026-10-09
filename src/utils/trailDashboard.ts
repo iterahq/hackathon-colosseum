@@ -146,7 +146,3 @@ export function barFill(done: number, total: number, slots = 12): number {
   if (total <= 0 || done <= 0) return 0;
   return Math.min(slots, Math.max(1, Math.round((done / total) * slots)));
 }
-
-
-/** Where a trail card goes: the trail's section on its program page. */
-export const trailHref = (trail: Pick<Trail, 'programSlug' | 'id'>): string => `/program/${encodeURIComponent(trail.programSlug)}#trail-${encodeURIComponent(trail.id)}`;
