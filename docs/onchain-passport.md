@@ -173,10 +173,10 @@ Not verified, blocked by funding (the authority has 0 SOL):
   writes of `asset_address`/`tx_signature`, and `credential-verify` returning `verified: true`.
 - Transaction confirmation polling and the duration of a 3-transaction call in the edge runtime.
 
-Once funded: `node scripts/hackathon/passport-e2e.mjs wallet --lessons 2`, then again with
-`--lessons 1` is not possible for the same throwaway user (each run creates a new one); to see a
-stamp update, sign in with a real wallet in the app, or call `passport` again for an existing
-wallet user after completing another lesson.
+Once funded, `node scripts/hackathon/passport-e2e.mjs wallet --lessons 2` covers collection
+creation, a passport created with two stamps, the `first_stamp` medal and `credential-verify`.
+Each run creates a new wallet user, so the stamp **update** on an existing asset has to be
+exercised from the app: sign in with a wallet, complete a day, complete another.
 
 ## Known limits
 
