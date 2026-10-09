@@ -12,6 +12,7 @@ import '@/components/dashboard/dashboard.css';
 import { useUserStats } from '@/hooks/useContent';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useAchievements } from '@/hooks/useAchievements';
+import { usePassportView } from '@/hooks/usePassportView';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const stats = useUserStats({ enabled: !visitor });
   const achievements = useAchievements({ enabled: !visitor });
+  const passport = usePassportView();
   const catalog = useCatalog();
 
   const openLesson = (lessonId: string) => navigate(`/lesson/${lessonId}`);
@@ -84,7 +86,16 @@ export default function DashboardPage() {
         )}
         {!visitor && (
           <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-            <AchievementsPanel items={achievements.items} earned={achievements.earnedCount} />
+            <AchievementsPanel
+              pages={passport.pages}
+              medals={passport.medals}
+              stamps={passport.totals.stamps}
+              featuredId={passport.featuredId}
+              onOpenTrail={(id) => {
+                const trail = trails.find((x) => x.id === id);
+                if (trail) openTrail(trail);
+              }}
+            />
             <div className="flex min-w-0 flex-col gap-5">
               <WeeklyGoal done={dashboard.weekly} />
               <LiveClassesCard describeLesson={describeLesson} />

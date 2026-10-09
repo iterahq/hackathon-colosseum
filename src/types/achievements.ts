@@ -87,3 +87,21 @@ export interface PassportMedal {
   assetAddress: string | null;
   txSignature: string | null;
 }
+
+/** Body of `GET /functions/v1/credential-verify/<asset>`. */
+export interface CredentialVerification {
+  verified: boolean;
+  asset: string;
+  owner: string | null;
+  frozen: boolean;
+  collection: string | null;
+  update_authority: string | null;
+  attributes: { key: string; value: string }[];
+  achievement: { key: string; tier: string | null; title: string | I18nText } | null;
+  minted_at: string | null;
+}
+
+/** What the public page draws: the verification, or the reason there is none. */
+export type CredentialLookup =
+  | { status: 'verified' | 'unverified'; data: CredentialVerification; ms: number }
+  | { status: 'not_found'; ms: number };
