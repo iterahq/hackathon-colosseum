@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, Loader2, X } from 'lucide-react';
+import { TeraLoader } from '@/components/tera/TeraLoader';
+import { Check, X } from 'lucide-react';
 import { Button, Label, PasswordInput } from '@devfellowship/components';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { useAuth } from '@/auth/AuthContext';
@@ -60,7 +61,7 @@ export default function ResetPasswordPage() {
     <AuthShell title={t('auth.reset.title')} subtitle={t('auth.reset.subtitle')} testId="reset-page">
       {loading ? (
         <div className="flex justify-center py-6">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <TeraLoader size="sm" />
         </div>
       ) : done ? (
         <div className="flex flex-col gap-2 text-center" data-testid="reset-success">

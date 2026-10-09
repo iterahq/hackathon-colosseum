@@ -79,7 +79,7 @@ import { EmbedBridgeMount } from "./auth/EmbedBridgeMount";
 import { AppWideMounts } from "./components/AppWideMounts";
 import { LearnerPagePrefetch } from "./components/LearnerPagePrefetch";
 import { PageTitle } from "./components/PageTitle";
-import { RouteSettling } from "./components/RouteSettling";
+import { TeraLoader } from "./components/tera/TeraLoader";
 import { RouteScrollReset } from "./components/RouteScrollReset";
 import { LiveEntryRoleGate } from "./components/live/LiveEntryRoleGate";
 import { GUEST_ROUTE_PATH } from "./guest/guestRoute";
@@ -93,7 +93,7 @@ const queryClient = new QueryClient();
  */
 function LazyRoute({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<RouteSettling />}>{children}</Suspense>
+    <Suspense fallback={<TeraLoader fullScreen delayed />}>{children}</Suspense>
   );
 }
 
@@ -105,7 +105,7 @@ function LazyRoute({ children }: { children: ReactNode }) {
  */
 function LazyPanel({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<div className="py-16 text-center text-muted-foreground">Loading…</div>}>
+    <Suspense fallback={<TeraLoader delayed className="py-16" />}>
       {children}
     </Suspense>
   );

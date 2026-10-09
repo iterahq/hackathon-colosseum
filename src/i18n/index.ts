@@ -818,6 +818,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     // mas invisível para quem procura o que a atividade diz, e impossível de
     // revisar sem abrir o JSX. Ver `terminalI18n.test.ts`, que impede a volta.
     'terminal.ps1': 'aluno@itera:~$',
+    'tera.loading.preparing': 'o Tera está preparando…',
+    'tera.loading.wings': 'o Tera está aquecendo as asas…',
+    'tera.loading.stamping': 'o Tera está carimbando…',
+    'tera.loading.almost': 'quase lá…',
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'ver dica',
     // Espelho read-only do terminal no palco da aula ao vivo. O vazio do
@@ -1919,6 +1923,10 @@ export const resources: Record<Locale, Record<string, string>> = {
     'activity.reveal.hide': 'Hide answer',
     // Terminal sandbox chrome — see the pt block for the rationale.
     'terminal.ps1': 'student@itera:~$',
+    'tera.loading.preparing': 'Tera is getting things ready…',
+    'tera.loading.wings': 'Tera is warming up his wings…',
+    'tera.loading.stamping': 'Tera is stamping…',
+    'tera.loading.almost': 'almost there…',
     'terminal.windowTitle': 'bash — sandbox',
     'terminal.hint': 'see hint',
     'terminal.mirror.completed': 'scenario completed',
