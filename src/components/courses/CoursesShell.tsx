@@ -23,6 +23,7 @@ export function CoursesShell({ children }: { children: ReactNode }) {
         xp={stats.data?.totalXp ?? null}
         achievements={visitor ? 0 : achievements.isPending ? null : achievements.earnedCount}
         activities={stats.data?.completedActivities ?? null}
+        streak={stats.data?.streakDays ?? null}
       />
       <main className="mx-auto flex max-w-[1440px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:px-20 xl:pt-10">{children}</main>
     </div>

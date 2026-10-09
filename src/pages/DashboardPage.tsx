@@ -69,6 +69,7 @@ export default function DashboardPage() {
         xp={stats.data?.totalXp ?? null}
         achievements={visitor ? 0 : achievements.isPending ? null : achievements.earnedCount}
         activities={stats.data?.completedActivities ?? null}
+        streak={stats.data?.streakDays ?? null}
       />
       <main className="mx-auto flex max-w-[1440px] flex-col gap-12 px-4 pb-14 pt-6 sm:px-8 xl:px-20 xl:pt-10">
         {visitor && <VisitorBanner />}
