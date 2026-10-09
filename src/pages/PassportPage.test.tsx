@@ -16,7 +16,7 @@ const page = (over: Partial<PassportPageData> = {}): PassportPageData => ({
   credentialId: null, trailId: 't1', trailTitle: 'HTML', colorIndex: 1, daysDone: 4, totalDays: 5, tier: 'bronze', mintStatus: 'unclaimed',
   assetAddress: null, txSignature: null, earnedAt: '2026-10-09T10:00:00Z', locked: false, lockedBy: null, ...over,
 });
-const medal = (over: Partial<PassportMedal> = {}): PassportMedal => ({ key: 'm', title: 'Streak 3', description: '3 dias seguidos', glyph: 'D3', earned: true, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, ...over });
+const medal = (over: Partial<PassportMedal> = {}): PassportMedal => ({ key: 'm', kind: 'streak', credentialId: 'row-m', title: 'Streak 3', description: '3 dias seguidos', glyph: 'D3', earned: true, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, ...over });
 const base = { earnedCount: 3, totals: { pages: 1, stamps: 4, medals: 1 }, featuredId: 't1', walletAddress: null, isPending: false, isError: false, refetch: vi.fn() };
 
 const show = () => render(<I18nProvider><MemoryRouter><PassportPage /></MemoryRouter></I18nProvider>);
@@ -27,7 +27,7 @@ describe('PassportPage', () => {
   it('shows the hero totals, the no-wallet banner and a page with its facts', () => {
     view.mockReturnValue({ ...base, pages: [page()], medals: [medal()] });
     show();
-    expect(screen.getByTestId('passport-hero')).toHaveTextContent('1 páginas · 4 carimbos · 1 medalhas');
+    expect(screen.getByTestId('passport-hero')).toHaveTextContent('1 página · 4 carimbos · 1 medalha');
     expect(screen.getByTestId('passport-wallet')).toHaveTextContent('sem carteira');
     expect(screen.getByTestId('passport-no-wallet')).toHaveTextContent('Conecte uma carteira');
     expect(screen.getByTestId('passport-full-card')).toHaveTextContent('09/10/2026');

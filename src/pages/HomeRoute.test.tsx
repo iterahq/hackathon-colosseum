@@ -130,7 +130,9 @@ describe('HomeRoute: a member', () => {
 
   it('draws the top bar with the counts and makes the member reads', () => {
     renderHome();
-    expect(screen.getByText('120 XP · 0 conquistas · 7 atividades')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('sequência de 1 dias').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('120 XP · nível 1 · 120 de 200 para o próximo').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('0 conquistas').length).toBeGreaterThan(0);
     expect(useTrailDashboard).toHaveBeenCalledWith({ enabled: true });
     expect(useUserStats).toHaveBeenCalledWith({ enabled: true });
     expect(useAchievements).toHaveBeenCalledWith({ enabled: true });
@@ -165,10 +167,18 @@ describe('HomeRoute: a member', () => {
     renderHome();
     const card = screen.getByTestId('trail-card');
     expect(card).toHaveAttribute('data-status', 'locked');
-    expect(card).toBeDisabled();
+    expect(card).toHaveAttribute('aria-disabled', 'true');
     expect(card).toHaveTextContent('CSS');
     expect(card).toHaveTextContent('🔒 depois de HTML');
     expect(screen.getByTestId('trail-cards')).toHaveTextContent('2 trilhas · 0 concluídas');
+  });
+
+  it('locked trails are folded under a closed Locked (N) disclosure, after the startable ones', () => {
+    renderHome();
+    const group = screen.getByTestId('trail-cards-locked');
+    expect(group).not.toHaveAttribute('open');
+    expect(group).toHaveTextContent('Bloqueadas (1)');
+    expect(screen.queryByTestId('trail-cards-open')).not.toBeInTheDocument();
   });
 
   it('a finished trail is a review card with its medal, and the next one opens', () => {
@@ -195,6 +205,7 @@ describe('HomeRoute: a member', () => {
     expect(panel).toHaveTextContent("Passaporte do Tera");
     expect(within(panel).getAllByTestId('passport-card')).toHaveLength(1);
     expect(panel).toHaveTextContent('Seu primeiro carimbo está a um dia de distância');
+    expect(within(panel).getByTestId('achievements-tera')).toHaveTextContent('Complete o dia 1 e o Tera carimba aqui.');
   });
 
   it('passport: one page per trail, an on-chain mark on minted rows only, medals on the shelf', () => {
@@ -267,6 +278,7 @@ describe('HomeRoute: a member', () => {
     useTrailDashboard.mockReturnValue({ trails: [], featured: null, weekly: 0, isPending: false, isError: false, refetch: vi.fn() });
     renderHome();
     expect(screen.getByTestId('dashboard-empty')).toHaveTextContent('Nenhuma trilha disponível ainda.');
+    expect(screen.getByTestId('dashboard-empty').querySelector('[data-tera]')).not.toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Explorar cursos' }));
     expect(navigate).toHaveBeenLastCalledWith('/catalog');
   });

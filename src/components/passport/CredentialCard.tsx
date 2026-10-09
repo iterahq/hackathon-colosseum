@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
+import { tierLabel } from '@/utils/tier';
 import { credentialFacts } from '@/utils/credential';
 import { CopyButton } from './CopyButton';
 
@@ -29,11 +30,11 @@ function Check() {
 
 /** The verification card of /c/:asset: the verdict, the facts read from the chain and the explorer link. */
 export function CredentialCard({ lookup }: { lookup: Found }) {
-  const { t, tText } = useI18n();
+  const { t, tText, locale } = useI18n();
   const reduce = useReducedMotion();
   const { data } = lookup;
   const ok = lookup.status === 'verified';
-  const f = credentialFacts(data, tText);
+  const f = credentialFacts(data, tText, locale);
   const date = f.date ? new Date(f.date).toLocaleDateString(undefined, { timeZone: 'UTC' }) : null;
 
   return (
@@ -64,7 +65,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
         )}
         {f.trail && <Row label={t('passport.credential.trail')}>{f.trail}</Row>}
         {f.totalDays > 0 && <Row label={t('passport.credential.days')}>{f.daysDone}/{f.totalDays}</Row>}
-        {f.tier && <Row label={t('passport.credential.tier')}>{f.tier}</Row>}
+        {f.tier && <Row label={t('passport.credential.tier')}>{tierLabel(t, f.tier)}</Row>}
         {date && <Row label={t('passport.credential.date')}>{date}</Row>}
         <Row label={t('passport.credential.asset')}>{shortAddress(data.asset)}</Row>
         {data.owner && <Row label={t('passport.credential.owner')}>{shortAddress(data.owner)}</Row>}

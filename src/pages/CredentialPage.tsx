@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { TeraNote } from '@/components/tera/TeraNote';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CredentialCard } from '@/components/passport/CredentialCard';
 import { PassportArt } from '@/components/passport/PassportArt';
@@ -49,10 +50,10 @@ function VerifyOther() {
 export default function CredentialPage() {
   const { asset = '' } = useParams();
   const { t, tText, locale, toggleLocale } = useI18n();
-  const query = useCredential(asset);
+  const query = useCredential(asset, locale);
   const lookup = query.data;
   const found = lookup && lookup.status !== 'not_found' ? lookup : null;
-  const facts = found ? credentialFacts(found.data, tText) : null;
+  const facts = found ? credentialFacts(found.data, tText, locale) : null;
   const gold = facts != null && facts.totalDays > 0 && facts.daysDone === facts.totalDays;
 
   return (
@@ -77,6 +78,7 @@ export default function CredentialPage() {
         )}
         {lookup?.status === 'not_found' && (
           <div className={`${NOTE} w-full`} data-testid="credential-not-found">
+            <TeraNote mood="oops" title={t('tera.credential.notFound')} className="!pt-2 pb-4" />
             <p className="[font:700_26px_'Barlow_Condensed'] text-[#F4EDE2]">{t('passport.credential.notFound')}</p>
             <p className="mt-1 [font:500_12px_JetBrains_Mono] break-all text-[#A0978A]">{asset}</p>
             <p className="mt-4 [font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.credential.verifyOther')}</p>
@@ -85,15 +87,18 @@ export default function CredentialPage() {
         )}
         {found && facts && (
           <>
-            <PassportArt
-              src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
-              title={facts.trail ?? t('passport.title')}
-              color={TRAIL_COLORS[1]}
-              total={Math.max(facts.totalDays, 1)}
-              done={facts.daysDone}
-              variant={gold ? 'gold' : 'active'}
-              ribbon={t('passport.ribbon')}
-            />
+            {found.status === 'verified' && (
+              <PassportArt
+                src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
+                title={facts.trail ?? t('passport.title')}
+                color={TRAIL_COLORS[1]}
+                total={Math.max(facts.totalDays, 1)}
+                done={facts.daysDone}
+                variant={gold ? 'gold' : 'active'}
+                ribbon={t('passport.ribbon')}
+              />
+            )}
+            {found.status === 'unverified' && <TeraNote mood="oops" size="bubble" title={t('tera.credential.unverified')} className="!pt-2" data-testid="credential-tera" />}
             <CredentialCard lookup={found} />
           </>
         )}

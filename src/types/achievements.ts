@@ -90,6 +90,9 @@ export interface PassportPageData {
 /** A medal as the UI draws it. */
 export interface PassportMedal {
   key: string;
+  kind: AchievementKind;
+  /** `user_achievements.id` of the earned row; the backend artwork is keyed by it. */
+  credentialId: string | null;
   title: string;
   description: string;
   glyph: string;
@@ -112,6 +115,8 @@ export interface CredentialVerification {
     key: string;
     tier: string | null;
     title: string | I18nText;
+    /** The trail name already in the requested language. */
+    trail?: string | null;
     image_url: string | null;
     state: Record<string, unknown>;
     stamps: { day: number }[];

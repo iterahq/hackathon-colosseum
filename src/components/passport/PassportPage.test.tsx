@@ -34,11 +34,11 @@ describe('OnChainMark and Medal', () => {
   });
 
   it('shows the requirement while locked and the mark when minted', () => {
-    const { rerender } = wrap(<Medal glyph="D3" title="Streak 3" caption="3 days in a row" earned={false} accent="#3FD17F" accentDark="#1F8A4F" />);
+    const { rerender } = wrap(<Medal kind="streak" credentialId={null} glyph="D3" title="Streak 3" caption="3 days in a row" earned={false} accent="#3FD17F" accentDark="#1F8A4F" />);
     expect(screen.getByText('3 days in a row')).toBeInTheDocument();
     rerender(
       <I18nProvider>
-        <Medal glyph="D3" title="Streak 3" caption="x" earned minted assetAddress="A1" accent="#3FD17F" accentDark="#1F8A4F" />
+        <Medal kind="streak" credentialId={null} glyph="D3" title="Streak 3" caption="x" earned minted assetAddress="A1" accent="#3FD17F" accentDark="#1F8A4F" />
       </I18nProvider>
     );
     expect(screen.getByTestId('onchain-mark')).toBeInTheDocument();

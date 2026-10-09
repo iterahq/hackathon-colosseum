@@ -2,12 +2,16 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useI18n } from '@/i18n';
 import { chainUrl } from '@/lib/explorer';
 import type { CeremonyStatus } from '@/types/achievements';
+import type { CeremonyMedal } from '@/utils/ceremony';
+import { MedalArt } from './MedalArt';
 
 interface Props {
   status: CeremonyStatus;
   txSignature: string | null;
   assetAddress: string | null;
-  medalTitles: string[];
+  medals: CeremonyMedal[];
+  accent: string;
+  accentDark: string;
   locked: boolean;
   onRetry?: () => void;
   onLater?: () => void;
@@ -29,8 +33,8 @@ function Spinner() {
 }
 
 /** Under the page: what the chain is doing, and the one or two actions that fit that state. */
-export function CeremonyStatusRow({ status, txSignature, assetAddress, medalTitles, locked, onRetry, onLater, onConnect }: Props) {
-  const { t } = useI18n();
+export function CeremonyStatusRow({ status, txSignature, assetAddress, medals, accent, accentDark, locked, onRetry, onLater, onConnect }: Props) {
+  const { t, locale } = useI18n();
   const reduce = useReducedMotion();
   const href = chainUrl(txSignature, assetAddress);
   const line = 'text-center [font:600_16px/1.3_Inter]';
@@ -63,9 +67,10 @@ export function CeremonyStatusRow({ status, txSignature, assetAddress, medalTitl
           )}
         </>
       )}
-      {medalTitles.map((title) => (
-        <span key={title} className="[font:700_14px_JetBrains_Mono] text-[#F2C66D]">
-          {t('passport.ceremony.newMedal', { title })}
+      {medals.map((m) => (
+        <span key={m.key} className="flex items-center gap-2.5 [font:700_14px_JetBrains_Mono] text-[#F2C66D]" data-testid="ceremony-medal">
+          <MedalArt glyph={m.glyph} title={m.title} kind={m.kind} credentialId={m.credentialId} earned accent={accent} accentDark={accentDark} size={40} lang={locale} />
+          {t('passport.ceremony.newMedal', { title: m.title })}
         </span>
       ))}
       {status === 'pending' && <span className={`${line} text-[#C9BFB0]`}>{t('passport.ceremony.pending')}</span>}

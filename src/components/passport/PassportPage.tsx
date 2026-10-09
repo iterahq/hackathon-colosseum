@@ -38,6 +38,7 @@ export function PassportPage({ title, color, total, done, variant = 'active', wi
   const header = gold ? '#B8913A' : locked ? '#262320' : color.c;
   const headerInk = gold ? '#0A0908' : locked ? '#A0978A' : color.ink;
   const slots = passportSlots(total, done);
+  const compact = width < 220;
   const dashes = Math.min(12, Math.max(1, total));
   const lit = Math.round((Math.min(done, total) / Math.max(1, total)) * dashes);
   const label = `${title}: ${t('passport.days', { done, total })}`;
@@ -79,14 +80,14 @@ export function PassportPage({ title, color, total, done, variant = 'active', wi
         <g transform={`translate(25 ${gold ? 150 : 140})`}>
           {slots.map((s) => {
             const dropping = dropDay === s.day;
-            if (s.filled && !dropping) return <Stamp key={s.day} cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} gold={gold} />;
+            if (s.filled && !dropping) return <Stamp key={s.day} cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} gold={gold} compact={compact} />;
             return (
               <g key={s.day}>
                 <circle cx={s.cx} cy={s.cy} r={s.r} fill="none" stroke={stroke} strokeWidth="2" strokeDasharray="5 4" className={pulseNext && s.next ? 'dash-pulse' : undefined} />
                 <text x={s.cx} y={s.cy + 4} textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize={Math.max(8, s.r * 0.4)} fill={stroke}>
                   {s.day}
                 </text>
-                {dropping && <Stamp cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} dropAfterMs={dropAfterMs ?? 0} gold={gold} />}
+                {dropping && <Stamp cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} dropAfterMs={dropAfterMs ?? 0} gold={gold} compact={compact} />}
               </g>
             );
           })}

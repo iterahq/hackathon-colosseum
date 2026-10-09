@@ -98,23 +98,6 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
             animate={step >= 2 ? { x: 0, opacity: 1 } : { x: -40, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.25 }}
           />
-          <span className="absolute -bottom-6 -right-4 flex gap-2" data-testid="ceremony-medals">
-            {step >= 6 &&
-              model.newMedals.map((m, i) => (
-                <motion.span
-                  key={m.key}
-                  role="img"
-                  aria-label={m.title}
-                  initial={reduce ? false : { scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: reduce ? 0 : 0.3, delay: reduce ? 0 : i * 0.15 }}
-                  className="box-border grid h-14 w-14 -rotate-6 place-items-center rounded-full border-b-[5px] [font:700_13px_JetBrains_Mono] text-[#0A0908]"
-                  style={{ background: color.c, borderBottomColor: color.cd }}
-                >
-                  {m.glyph}
-                </motion.span>
-              ))}
-          </span>
         </motion.div>
         <div className="mt-6 min-h-[110px] w-full">
           {step >= 6 && (
@@ -122,7 +105,9 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
               status={model.status}
               txSignature={model.txSignature}
               assetAddress={model.assetAddress}
-              medalTitles={model.newMedals.map((m) => m.title)}
+              medals={model.newMedals}
+              accent={color.c}
+              accentDark={color.cd}
               locked={locked}
               onRetry={onRetry}
               onLater={onLater}

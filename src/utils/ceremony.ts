@@ -1,11 +1,14 @@
 /** Pure model of the stamp ceremony: what a `passport` response means for the lesson just finished. */
-import type { CeremonyStatus, PassportAward, PassportResult } from '@/types/achievements';
+import type { AchievementKind, CeremonyStatus, PassportAward, PassportResult } from '@/types/achievements';
 import type { I18nText } from '@/types/content';
 
 export interface CeremonyMedal {
   key: string;
   title: string;
   glyph: string;
+  kind: AchievementKind;
+  /** `user_achievements.id`, which keys the backend artwork. */
+  credentialId: string | null;
 }
 
 export interface CeremonyModel {
@@ -77,7 +80,7 @@ export function ceremonyFromResult(result: PassportResult, lessonId: string, lan
     last: totalDays > 0 && num(source.state.days_done) >= totalDays,
     newMedals: (result.awards ?? [])
       .filter((r) => MEDAL_KINDS.has(r.kind))
-      .map((r) => ({ key: r.key, title: text(r.title, lang), glyph: text(r.title, lang).slice(0, 3).toUpperCase() })),
+      .map((r) => ({ key: r.key, kind: r.kind, credentialId: r.id || null, title: text(r.title, lang), glyph: text(r.title, lang).slice(0, 3).toUpperCase() })),
     txSignature: pass?.tx_signature ?? null,
     assetAddress: pass?.asset_address ?? null,
   };

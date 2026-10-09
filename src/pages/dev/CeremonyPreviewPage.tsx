@@ -18,7 +18,7 @@ export default function CeremonyPreviewPage() {
     trailTitle: 'HTML',
     status,
     last,
-    newMedals: status === 'minted' ? [{ key: 'streak_3', title: 'Streak 3', glyph: 'D3' }] : [],
+    newMedals: status === 'minted' ? [{ key: 'streak_3', title: 'Streak 3', glyph: 'D3', kind: 'streak', credentialId: null }] : [],
     txSignature: status === 'minted' ? '5fixtureSignature' : null,
     assetAddress: status === 'minted' ? 'FixtureAsset1111' : null,
   };

@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { PASSPORT_MESSAGES } from './passportMessages';
+import { TERA_MESSAGES } from './teraMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
 import { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found/messages';
@@ -467,16 +468,16 @@ export const resources: Record<Locale, Record<string, string>> = {
     'dash.hero.activities': '{done} de {total} atividades',
     'dash.hero.continue': 'Continuar',
     'dash.hero.startDay1': 'Começar o dia 1',
-    'dash.hero.freshToday': '{days} dias · {activities} atividades hoje',
+    'dash.hero.freshToday': '{days} · {activities} hoje',
     'dash.day': 'Dia {n}',
     'dash.dayAria': 'Dia {n} · {title}',
     'dash.trails.title': 'Suas trilhas',
-    'dash.trails.summary': '{total} trilhas · {done} concluídas',
+    'dash.trails.summary': '{total} · {done}',
     'dash.trail.done': 'concluída',
     'dash.trail.inProgress': 'em andamento',
     'dash.trail.fresh': 'nova · por começar',
     'dash.trail.locked': '🔒 depois de {name}',
-    'dash.trail.oneDay': '1 dia · {activities} atividades',
+    'dash.trail.oneDay': '1 dia · {activities}',
     'dash.trail.review': 'rever →',
     'dash.trail.start': 'Começar →',
     'dash.trail.continue': 'Continuar →',
@@ -499,7 +500,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'dash.courses.prev': 'Anterior',
     'dash.courses.next': 'Próximo',
     'dash.courses.new': 'NOVO',
-    'dash.courses.meta': '{lessons} lições · {activities} atividades',
+    'dash.courses.meta': '{lessons} · {activities}',
     'dash.empty.title': 'Nenhuma trilha disponível ainda.',
     'dash.empty.cta': 'Explorar cursos',
     'dash.error': 'Não foi possível carregar suas trilhas.',
@@ -1212,6 +1213,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.language': 'English',
     'header.id.signOut': 'Sair',
     ...PASSPORT_MESSAGES.pt,
+    ...TERA_MESSAGES.pt,
   },
   en: {
     'app.name': 'Itera',
@@ -1647,16 +1649,16 @@ export const resources: Record<Locale, Record<string, string>> = {
     'dash.hero.activities': '{done} of {total} activities',
     'dash.hero.continue': 'Continue',
     'dash.hero.startDay1': 'Start day 1',
-    'dash.hero.freshToday': '{days} days · {activities} activities today',
+    'dash.hero.freshToday': '{days} · {activities} today',
     'dash.day': 'Day {n}',
     'dash.dayAria': 'Day {n} · {title}',
     'dash.trails.title': 'Your trails',
-    'dash.trails.summary': '{total} trails · {done} done',
+    'dash.trails.summary': '{total} · {done}',
     'dash.trail.done': 'done',
     'dash.trail.inProgress': 'in progress',
     'dash.trail.fresh': 'new · not started',
     'dash.trail.locked': '🔒 after {name}',
-    'dash.trail.oneDay': '1 day · {activities} activities',
+    'dash.trail.oneDay': '1 day · {activities}',
     'dash.trail.review': 'review →',
     'dash.trail.start': 'Start →',
     'dash.trail.continue': 'Continue →',
@@ -1679,7 +1681,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'dash.courses.prev': 'Previous',
     'dash.courses.next': 'Next',
     'dash.courses.new': 'NEW',
-    'dash.courses.meta': '{lessons} lessons · {activities} activities',
+    'dash.courses.meta': '{lessons} · {activities}',
     'dash.empty.title': 'No trail available yet.',
     'dash.empty.cta': 'Explore courses',
     'dash.error': 'Could not load your trails.',
@@ -2350,6 +2352,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.language': 'Português',
     'header.id.signOut': 'Sign out',
     ...PASSPORT_MESSAGES.en,
+    ...TERA_MESSAGES.en,
   },
 };
 

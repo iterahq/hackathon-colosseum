@@ -29,3 +29,18 @@ describe('credentialFacts', () => {
     expect(credentialFacts(c, pick)).toMatchObject({ trail: 'Semana HTML', totalDays: 0 });
   });
 });
+
+describe('credentialFacts language', () => {
+  it('prefers the localized trail of the response over the on-chain attribute', () => {
+    const c = parseCredential({ verified: true, attributes: [{ key: 'trail', value: 'Week 1 · HTML' }], achievement: { key: 'k', tier: 'gold', title: 'x', trail: 'Semana 1 · HTML' } }, 'A');
+    expect(credentialFacts(c, pick, 'pt').trail).toBe('Semana 1 · HTML');
+  });
+
+  it('falls back to the state bag in the current language, then the attribute', () => {
+    const state = { trail_title: { pt: 'Semana 1 · HTML', en: 'Week 1 · HTML' } };
+    const bag = parseCredential({ verified: true, attributes: [{ key: 'trail', value: 'raw' }], achievement: { key: 'k', tier: null, title: 'x', state } }, 'A');
+    expect(credentialFacts(bag, pick, 'en').trail).toBe('Week 1 · HTML');
+    const raw = parseCredential({ verified: true, attributes: [{ key: 'trail', value: 'raw' }], achievement: { key: 'k', tier: null, title: 'x' } }, 'A');
+    expect(credentialFacts(raw, pick, 'pt').trail).toBe('raw');
+  });
+});

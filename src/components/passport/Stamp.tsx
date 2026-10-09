@@ -11,12 +11,14 @@ interface Props {
   /** Drop the stamp in with this delay (ms) instead of showing it already placed. */
   dropAfterMs?: number;
   gold?: boolean;
+  /** Small pages: the day in big type instead of the face. */
+  compact?: boolean;
 }
 
 const TILT = -8;
 
 /** One stamped slot: a tilted accent disc with the day and Tera's face. */
-export function Stamp({ cx, cy, r, day, color, dropAfterMs, gold }: Props) {
+export function Stamp({ cx, cy, r, day, color, dropAfterMs, gold, compact }: Props) {
   const { t } = useI18n();
   const reduce = useReducedMotion();
   const drop = dropAfterMs != null && !reduce;
@@ -35,7 +37,16 @@ export function Stamp({ cx, cy, r, day, color, dropAfterMs, gold }: Props) {
       transition={drop ? { delay: (dropAfterMs ?? 0) / 1000, duration: 0.22, ease: [0.2, 0.9, 0.3, 1.3] } : { duration: 0 }}
     >
       <circle cx={cx} cy={cy} r={r} fill={fill} stroke={ring} strokeWidth={2} />
-      {r >= 14 ? (
+      {compact && r >= 14 ? (
+        <>
+          <text x={cx} y={cy - r * 0.2} textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontWeight={700} fontSize={r * 0.42} fill={ink}>
+            {t('passport.stamp.label')}
+          </text>
+          <text x={cx} y={cy + r * 0.62} textAnchor="middle" fontFamily="'Barlow Condensed', sans-serif" fontWeight={700} fontSize={r * 1.0} fill={ink}>
+            {day}
+          </text>
+        </>
+      ) : r >= 14 ? (
         <>
           <text x={cx} y={cy - r * 0.18} textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontWeight={700} fontSize={r * 0.34} fill={ink}>
             {t('passport.stamp.day', { n: day })}

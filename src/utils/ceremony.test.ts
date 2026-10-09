@@ -39,7 +39,7 @@ describe('ceremonyFromResult', () => {
 
   it('lists the medals earned by this call', () => {
     const medal = row({ id: 'm', key: 'first_stamp', kind: 'milestone', title: { pt: 'Primeiro carimbo' } as never });
-    expect(ceremonyFromResult(result({ awards: [stamp, medal] }), 'l2', 'pt')?.newMedals).toEqual([{ key: 'first_stamp', title: 'Primeiro carimbo', glyph: 'PRI' }]);
+    expect(ceremonyFromResult(result({ awards: [stamp, medal] }), 'l2', 'pt')?.newMedals).toEqual([{ key: 'first_stamp', kind: 'milestone', credentialId: expect.anything(), title: 'Primeiro carimbo', glyph: 'PRI' }]);
   });
 });
 
