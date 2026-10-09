@@ -2,6 +2,13 @@
 
 Hackathon only: Supabase project `nyzcbnnbffsizshiolbh`, Solana **devnet**.
 
+> **Display name (2026-10-09):** the product is shown as "Certificações do Tera" / "Tera's
+> Certifications" and one trail's page as a "Certificação" / "Certification". Only text changed
+> (art, metadata, catalog titles, the asset name of new mints, the collection name "Itera
+> Certifications"). Keys, tables, routes and attribute keys (`trail_pass`, `kind: trail_passport`)
+> keep the word passport, and so does this document. Purchases, the companion, lives and the
+> operator sync of `passport` are in [`onchain-purchases.md`](onchain-purchases.md).
+
 ## Architecture
 
 ```
