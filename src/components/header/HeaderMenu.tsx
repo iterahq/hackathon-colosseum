@@ -91,7 +91,9 @@ export function HeaderMenu({ name, email, wallet, roles, onClose, onExplainer, o
             {t(roles.roleKey)}
           </span>
         </div>
-        <HeaderLocale size="lg" className="shrink-0 sm:hidden" />
+        <div className="shrink-0 sm:hidden">
+          <HeaderLocale size="lg" />
+        </div>
       </div>
 
       <MenuSection label={t('header.menu.account')} first>
@@ -111,7 +113,6 @@ export function HeaderMenu({ name, email, wallet, roles, onClose, onExplainer, o
           {t('header.id.profile')}
         </Link>
         <Link to="/passport" role="menuitem" className={MENU_ITEM} onClick={onClose}>
-          <HeaderIcon name="passport" size={16} />
           {t('header.id.passport')}
         </Link>
         <button type="button" role="menuitem" onClick={onExplainer} className={MENU_ITEM}>

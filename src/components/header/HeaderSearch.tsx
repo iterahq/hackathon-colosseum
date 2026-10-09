@@ -40,12 +40,13 @@ export function HeaderSearch() {
         onClick={() => setOpen(true)}
         aria-label={t('header.search.open')}
         aria-haspopup="dialog"
+        title={`${t('header.search.open')} (${isMac() ? '⌘K' : 'Ctrl K'})`}
         data-testid="header-search"
-        className="hd-press hd-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] text-[#A0978A] hover:text-[#F4EDE2] lg:w-full lg:max-w-[240px] lg:justify-start lg:gap-2 lg:px-4"
+        className="hd-press hd-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] text-[#A0978A] hover:text-[#F4EDE2] min-[1440px]:w-full min-[1440px]:max-w-[240px] min-[1440px]:justify-start min-[1440px]:gap-2 min-[1440px]:px-2.5"
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="hidden flex-1 text-left [font:500_13px_JetBrains_Mono] lg:block">{t('header.search.trigger')}</span>
-        <kbd className="hidden rounded border border-[#2E2A25] px-1.5 py-0.5 [font:600_10px_JetBrains_Mono] lg:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
+        <span className="hidden min-w-0 flex-1 truncate text-left [font:500_13px_JetBrains_Mono] min-[1440px]:block">{t('header.search.trigger')}</span>
+        <kbd className="hidden shrink-0 whitespace-nowrap rounded border border-[#2E2A25] px-1 py-0.5 [font:600_10px_JetBrains_Mono] min-[1440px]:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
       </button>
       <HeaderSearchDialog open={open} onOpenChange={setOpen} index={index} />
     </>

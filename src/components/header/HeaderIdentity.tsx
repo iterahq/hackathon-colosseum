@@ -55,7 +55,7 @@ export function HeaderIdentity() {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         data-testid="header-identity"
-        className="hd-press hd-focus flex h-11 items-center gap-2 rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] pl-1 pr-1.5 text-[#F4EDE2] sm:pr-3"
+        className="hd-press hd-focus flex h-11 items-center gap-2 rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] pl-1 pr-1 text-[#F4EDE2] min-[1440px]:pr-3"
       >
         {wallet ? (
           <span className="relative grid h-8 w-8 place-items-center rounded-full bg-[#1C1916] text-[#F4EDE2]">
@@ -65,7 +65,7 @@ export function HeaderIdentity() {
         ) : (
           <span className="grid h-8 w-8 place-items-center rounded-full bg-[#3FD17F] [font:700_12px_JetBrains_Mono] text-[#0A0908]">{initials}</span>
         )}
-        <span className="hidden max-w-[140px] flex-col items-start leading-none sm:flex">
+        <span className="hidden max-w-[140px] flex-col items-start leading-none min-[1440px]:flex">
           {wallet ? (
             <>
               <span className="[font:700_13px_JetBrains_Mono]">{shortAddress(wallet.address)}</span>
@@ -75,7 +75,7 @@ export function HeaderIdentity() {
             <span className="truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]">{name}</span>
           )}
         </span>
-        <HeaderIcon name="chevron" size={14} className={`hidden text-[#A0978A] transition-transform sm:block ${open ? 'rotate-180' : ''}`} />
+        <HeaderIcon name="chevron" size={14} className={`hidden text-[#A0978A] transition-transform min-[1440px]:block ${open ? 'rotate-180' : ''}`} />
       </button>
       <AnimatePresence>
         {open && (

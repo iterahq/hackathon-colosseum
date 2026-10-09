@@ -39,17 +39,19 @@ export function DashboardTopBar({ xp, achievements, streak = null }: Props) {
         }`}
       >
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-8 xl:px-20">
-          <div className="flex h-full min-w-0 items-center gap-3 sm:gap-6">
+          <div className="flex h-full min-w-0 items-center gap-3 sm:gap-5">
             <Link to="/" className="hd-focus flex shrink-0 items-center rounded-sm [font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]" aria-label="Itera">
               ITERA<span className="text-[#3FD17F]">/</span>
             </Link>
             <HeaderNav active={active} />
           </div>
-          <div className="flex min-w-0 flex-1 justify-end lg:justify-center lg:px-2">
+          <div className="flex min-w-0 flex-1 justify-end min-[1440px]:justify-center">
             <HeaderSearch />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <HeaderLocale className="hidden sm:inline-flex" />
+            <div className="hidden sm:block">
+              <HeaderLocale />
+            </div>
             <HeaderHud xp={xp} streak={streak} achievements={achievements} />
             <HeaderIdentity />
           </div>
