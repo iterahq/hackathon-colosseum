@@ -54,9 +54,9 @@ describe('PassportPage', () => {
     expect(screen.getByRole('button', { name: 'Ir pro dia 1' })).toBeInTheDocument();
   });
 
-  it('loading: three pulsing cards', () => {
+  it('loading: the Tera loader', () => {
     view.mockReturnValue({ ...base, pages: [], medals: [], isPending: true });
     show();
-    expect(screen.getByTestId('passport-loading').children).toHaveLength(3);
+    expect(screen.getByTestId('passport-loading')).toBeInTheDocument();
   });
 });

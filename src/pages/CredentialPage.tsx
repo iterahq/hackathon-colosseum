@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CredentialCard } from '@/components/passport/CredentialCard';
 import { PassportArt } from '@/components/passport/PassportArt';
 import { useCredential } from '@/hooks/useCredential';
@@ -65,13 +66,7 @@ export default function CredentialPage() {
         </button>
       </header>
       <main className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-6 px-4 pb-14 pt-4 sm:pt-8">
-        {query.isPending && (
-          <div className="flex w-full flex-col items-center gap-4" data-testid="credential-loading" role="status">
-            <div className="aspect-[3/4] w-[300px] max-w-full animate-pulse rounded-2xl bg-[#141210]" />
-            <div className="h-[200px] w-full animate-pulse rounded-[14px] bg-[#141210]" />
-            <span className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">{t('passport.credential.loading')}</span>
-          </div>
-        )}
+        {query.isPending && <TeraLoader size="md" label={t('passport.credential.loading')} data-testid="credential-loading" />}
         {query.isError && (
           <div className={`${NOTE} w-full`} data-testid="credential-failed" role="alert">
             {t('passport.credential.failed')}

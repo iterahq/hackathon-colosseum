@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
+import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { PassportFullCard } from '@/components/passport/PassportFullCard';
@@ -60,11 +61,7 @@ export default function PassportPage() {
             {t('passport.pages')}
           </h2>
           {view.isPending ? (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3" data-testid="passport-loading">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="aspect-[3/4] w-full max-w-[300px] animate-pulse justify-self-center rounded-2xl bg-[#141210]" />
-              ))}
-            </div>
+            <TeraLoader size="md" label={t('passport.panel.loading')} data-testid="passport-loading" />
           ) : started.length === 0 ? (
             <div className="flex flex-col items-center gap-4 text-center" data-testid="passport-empty">
               {first && <Page title={first.trailTitle} color={pageColor(first)} total={first.totalDays} done={0} variant="fresh" pulseNext />}
