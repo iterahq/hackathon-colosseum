@@ -47,11 +47,14 @@ ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_ANON_KEY
 ARG VITE_OTEL_ENABLED=false
 ARG VITE_ITERA_API_BASE
+# Hackathon: without this the app falls back to the production api.iterahq.dev.
+ARG VITE_ITERA_API_URL
 ARG VITE_UMAMI_WEBSITE_ID
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_OTEL_ENABLED=$VITE_OTEL_ENABLED \
     VITE_ITERA_API_BASE=$VITE_ITERA_API_BASE \
+    VITE_ITERA_API_URL=$VITE_ITERA_API_URL \
     VITE_UMAMI_WEBSITE_ID=$VITE_UMAMI_WEBSITE_ID
 # Belt-and-suspenders cache-bust: a changing GIT_SHA busts the build layer
 # cache on every commit (defends against BuildKit content-hash cross-commit matches).

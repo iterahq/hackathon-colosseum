@@ -1,3 +1,19 @@
+> # ⚠️ HACKATHON REPO — `iterahq/hackathon-colosseum`
+>
+> This is **NOT** `iterahq/itera-player`. It is an independent copy made on
+> 2026-10-09 for the Colosseum hackathon (Solana wallet login + on-chain
+> achievement credentials).
+>
+> - **Supabase project:** `nyzcbnnbffsizshiolbh` ("Itera hackathon project", org
+>   "Hackathon Itera"). Verify the project ref before ANY database action.
+> - **Never** connect to, migrate or deploy against the Itera production project
+>   `kjefmwlopzeaqgqtlbdn`, `app.iterahq.dev` or `api.iterahq.dev`.
+> - **Never** push to or open pull requests against `iterahq/itera-player`. The
+>   `upstream-readonly` remote is fetch-only.
+> - There is no CI here on purpose. Verify locally before merging.
+> - Everything below this banner is inherited from itera-player and may describe
+>   workflows, gates and environments that do not exist in this repo.
+
 # itera-player
 
 Learner-facing player app for **Itera** — a re-skin of `devfellowship/dfl-iterate`
