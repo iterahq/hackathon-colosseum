@@ -12,7 +12,7 @@ describe('LessonLives', () => {
     );
     expect(container).toBeEmptyDOMElement();
     expect(onChange.mock.calls.every(([view]) => view === null)).toBe(true);
-    expect(warn).toHaveBeenCalledWith('[lives] disabled for this lesson:', expect.any(String));
+    expect(warn).toHaveBeenCalledWith('[lives] disabled on this surface:', expect.any(String));
     warn.mockRestore();
     error.mockRestore();
   });

@@ -1,12 +1,12 @@
 import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { LivesBoundary } from '@/components/lives/LivesBoundary';
 import { HEART } from '@/components/shop/shopStyles';
 import { useLives } from '@/hooks/useLives';
 import { useI18n } from '@/i18n';
 import { formatCountdown } from '@/utils/lives';
 
-/** HUD cell: the learner's lives (current/max) with the time to the next one; opens Tera's shop. Absent while lives are off. */
-export function HeaderLives() {
+function Cell() {
   const { t } = useI18n();
   const { active, lives, secondsToNext } = useLives();
   if (!active || !lives) return null;
@@ -45,5 +45,14 @@ export function HeaderLives() {
         )}
       </span>
     </Link>
+  );
+}
+
+/** HUD cell: the learner's lives (current/max) with the time to the next one; opens Tera's shop. Absent while lives are off. */
+export function HeaderLives() {
+  return (
+    <LivesBoundary>
+      <Cell />
+    </LivesBoundary>
   );
 }

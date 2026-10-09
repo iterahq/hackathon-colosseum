@@ -3,13 +3,14 @@
  * here throws (no auth, no query client, a broken backend) the boundary renders nothing, the view
  * stays null and the lesson is exactly what it was before lives existed.
  */
-import { Component, useCallback, useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { useLives } from '@/hooks/useLives';
 import { usePurchase } from '@/hooks/usePurchase';
 import { useShop } from '@/hooks/useShop';
 import { showLivesGate } from '@/utils/lives';
+import { LivesBoundary } from './LivesBoundary';
 import { OutOfLivesGate } from './OutOfLivesGate';
 
 export interface LessonLivesHandle {
@@ -107,19 +108,6 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
       )}
     </RefillPrice>
   );
-}
-
-class LivesBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  componentDidCatch(error: Error) {
-    console.warn('[lives] disabled for this lesson:', error.message);
-  }
-  render() {
-    return this.state.failed ? null : this.props.children;
-  }
 }
 
 export function LessonLives(props: Props) {
