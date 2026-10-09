@@ -6,8 +6,8 @@
  * full-screen image, and closes with no delay on leave, press or Escape. The
  * one exception to "leave closes": a pointer heading for the switch on the
  * open preview (`hoverTravel`) keeps it open until it gets there, turns
- * away, or pauses. The learner's switch is global and shared through
- * `mediaHoverPreference`.
+ * away, or pauses. The learner's switch is global, OFF until turned on, and
+ * shared through `mediaHoverPreference`.
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEventHandler } from 'react';
@@ -43,7 +43,7 @@ export function useMediaHoverPreview() {
   const enabled = useSyncExternalStore(
     subscribeMediaHoverPreference,
     () => readMediaHoverPreference(storage),
-    () => true,
+    () => false,
   );
   const setEnabled = useCallback((next: boolean) => writeMediaHoverPreference(storage, next), [storage]);
 

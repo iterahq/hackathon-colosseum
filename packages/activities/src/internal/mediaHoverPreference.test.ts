@@ -25,20 +25,24 @@ function memoryStorage(initial: Record<string, string> = {}): ActivityStoragePor
 beforeEach(() => resetMediaHoverPreference());
 
 describe('media hover preference', () => {
-  it('is on until the learner turns it off', () => {
-    expect(readMediaHoverPreference(memoryStorage())).toBe(true);
+  it('is off until the learner turns it on', () => {
+    expect(readMediaHoverPreference(memoryStorage())).toBe(false);
     resetMediaHoverPreference();
+    expect(readMediaHoverPreference(memoryStorage({ [MEDIA_HOVER_PREFERENCE_KEY]: 'on' }))).toBe(true);
+  });
+
+  it('keeps an earlier explicit "off" off', () => {
     expect(readMediaHoverPreference(memoryStorage({ [MEDIA_HOVER_PREFERENCE_KEY]: 'off' }))).toBe(false);
   });
 
-  it('persists "off" and clears the key when turned back on', () => {
+  it('persists the choice either way, explicitly', () => {
     const storage = memoryStorage();
+    writeMediaHoverPreference(storage, true);
+    expect(storage.data[MEDIA_HOVER_PREFERENCE_KEY]).toBe('on');
+    expect(readMediaHoverPreference(storage)).toBe(true);
     writeMediaHoverPreference(storage, false);
     expect(storage.data[MEDIA_HOVER_PREFERENCE_KEY]).toBe('off');
     expect(readMediaHoverPreference(storage)).toBe(false);
-    writeMediaHoverPreference(storage, true);
-    expect(storage.data[MEDIA_HOVER_PREFERENCE_KEY]).toBeUndefined();
-    expect(readMediaHoverPreference(storage)).toBe(true);
   });
 
   it('tells every subscriber when one toggle flips', () => {
@@ -68,8 +72,8 @@ describe('media hover preference', () => {
         throw new Error('quota');
       },
     };
-    expect(readMediaHoverPreference(broken)).toBe(true);
-    expect(() => writeMediaHoverPreference(broken, false)).not.toThrow();
     expect(readMediaHoverPreference(broken)).toBe(false);
+    expect(() => writeMediaHoverPreference(broken, true)).not.toThrow();
+    expect(readMediaHoverPreference(broken)).toBe(true);
   });
 });

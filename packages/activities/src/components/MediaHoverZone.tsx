@@ -1,13 +1,17 @@
 /**
  * MediaHoverZone — wraps an image card with the hover preview and its switch.
  * The card keeps its own click (lightbox); hovering it opens the preview,
- * leaving or pressing closes it. On a touch screen nothing is added.
+ * leaving or pressing closes it. It is off until the learner turns the switch on,
+ * and the first image of a fresh browser carries a one-time balloon about it.
+ * On a touch screen nothing is added.
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Size } from '../internal/mediaPreviewFit.js';
 import { MediaHoverPreview } from './MediaHoverPreview.js';
+import { MediaHoverCoach } from './MediaHoverCoach.js';
 import { MediaHoverToggle } from './MediaHoverToggle.js';
+import { useMediaHoverCoach } from './useMediaHoverCoach.js';
 import { useMediaHoverPreview } from './useMediaHoverPreview.js';
 
 const THUMB_SWITCH = 'absolute right-2 top-2 z-10 h-7 w-7';
@@ -27,6 +31,7 @@ export function MediaHoverZone({
   const { enabled, setEnabled, disable, finePointer, open, handlers, thumbRef, switchRef } =
     useMediaHoverPreview();
   const [rendered, setRendered] = useState<Size | null>(null);
+  const coach = useMediaHoverCoach(finePointer, enabled);
 
   return (
     <div
@@ -48,12 +53,16 @@ export function MediaHoverZone({
       {finePointer && (
         <MediaHoverToggle
           enabled={enabled}
-          onChange={setEnabled}
+          onChange={(next) => {
+            coach.dismiss();
+            setEnabled(next);
+          }}
           className={`${THUMB_SWITCH} ${
-            enabled ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100' : 'opacity-60 group-hover:opacity-100'
+            enabled ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100' : 'opacity-100'
           } ${toggleClassName}`}
         />
       )}
+      {coach.visible && <MediaHoverCoach onDismiss={coach.dismiss} />}
       <MediaHoverPreview src={src} open={open} rendered={rendered} onDisable={disable} switchRef={switchRef} />
     </div>
   );

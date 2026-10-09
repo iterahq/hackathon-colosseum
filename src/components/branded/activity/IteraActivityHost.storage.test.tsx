@@ -111,3 +111,17 @@ describe('WithoutTextDrafts — a screen that only shows the activity', () => {
     expect(readCodeSnapshot('act-1')?.code).toBe('const a = 1');
   });
 });
+
+describe('ITERA_ACTIVITY_STORAGE — the package preferences stay out of the draft slots', () => {
+  it('keeps an itera.activities.* key as a plain browser value and fires no snapshot event', () => {
+    const onSnapshot = vi.fn();
+    window.addEventListener('itera:code-snapshot-saved', onSnapshot);
+    ITERA_ACTIVITY_STORAGE.write('itera.activities.mediaHoverPreview', 'on');
+    expect(localStorage.getItem('itera.activities.mediaHoverPreview')).toBe('on');
+    expect(ITERA_ACTIVITY_STORAGE.read('itera.activities.mediaHoverPreview')).toBe('on');
+    expect(onSnapshot).not.toHaveBeenCalled();
+    ITERA_ACTIVITY_STORAGE.clear('itera.activities.mediaHoverPreview');
+    expect(localStorage.getItem('itera.activities.mediaHoverPreview')).toBeNull();
+    window.removeEventListener('itera:code-snapshot-saved', onSnapshot);
+  });
+});
