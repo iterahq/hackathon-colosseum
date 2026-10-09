@@ -130,7 +130,9 @@ describe('HomeRoute: a member', () => {
 
   it('draws the top bar with the counts and makes the member reads', () => {
     renderHome();
-    expect(screen.getByText('120 XP · 0 conquistas · 7 atividades')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('sequência de 1 dias').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('120 XP · nível 1 · 120 de 200 para o próximo').length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText('0 conquistas').length).toBeGreaterThan(0);
     expect(useTrailDashboard).toHaveBeenCalledWith({ enabled: true });
     expect(useUserStats).toHaveBeenCalledWith({ enabled: true });
     expect(useAchievements).toHaveBeenCalledWith({ enabled: true });
