@@ -25,3 +25,12 @@ describe('passportSlots', () => {
     }
   });
 });
+
+describe('passportSlots spacing', () => {
+  it('never lets neighbouring stamps touch', () => {
+    for (const n of [2, 3, 5, 7, 10, 12]) {
+      const s = passportSlots(n, 0);
+      for (let i = 1; i < n; i++) expect(Math.hypot(s[i].cx - s[i - 1].cx, s[i].cy - s[i - 1].cy)).toBeGreaterThan(s[i].r * 2 + 2);
+    }
+  });
+});
