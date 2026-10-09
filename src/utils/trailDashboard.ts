@@ -16,6 +16,9 @@ export const TRAIL_COLORS: readonly TrailColor[] = [
   { c: '#E0A86F', cl: '#E0A86F', cs: '#3A2A1A', cd: '#A87440', ink: '#0A0908', ghost: '#5A3F25' },
 ];
 
+/** Green: the primary accent of the learner surfaces. */
+export const PRIMARY_COLOR: TrailColor = TRAIL_COLORS[1];
+
 export const colorOfTrail = (trail: Pick<Trail, 'colorIndex'>): TrailColor => TRAIL_COLORS[trail.colorIndex % TRAIL_COLORS.length];
 
 const FIRST_PROGRAM_SLUG = 'itera-v2';

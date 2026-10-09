@@ -1,53 +1,67 @@
 import { Link } from 'react-router-dom';
-import { TeraNote } from '@/components/tera/TeraNote';
 import { MedalShelf } from '@/components/passport/MedalShelf';
-import { PassportMiniCard } from '@/components/passport/PassportMiniCard';
-import { pageColor } from '@/components/passport/pageVariant';
+import { OnChainMark } from '@/components/passport/OnChainMark';
+import { PassportPage } from '@/components/passport/PassportPage';
+import { pageColor, pageVariant } from '@/components/passport/pageVariant';
 import { useI18n } from '@/i18n';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
-import { TRAIL_COLORS } from '@/utils/trailDashboard';
+import { PRIMARY_COLOR } from '@/utils/trailDashboard';
 import { countOf } from '@/utils/plural';
+import { isGold } from '@/utils/passport';
 
 interface Props {
   pages: PassportPageData[];
   medals: PassportMedal[];
   stamps: number;
-  featuredId: string | null;
   onOpenTrail: (trailId: string) => void;
 }
 
-/** "Tera's Passport" on the dashboard: one mini page per trail, then the medal shelf. */
-export function AchievementsPanel({ pages, medals, stamps, featuredId, onOpenTrail }: Props) {
+function Thumb({ page, onOpen }: { page: PassportPageData; onOpen: (trailId: string) => void }) {
+  const { t } = useI18n();
+  const variant = pageVariant(page);
+  const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
+  const art = <PassportPage title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysDone} variant={variant} width={96} ribbon={t('passport.ribbon')} />;
+  return (
+    <div data-testid="passport-card" data-variant={variant} className="flex w-24 flex-col items-start gap-1.5 [font:500_11px_JetBrains_Mono]">
+      {variant === 'locked' ? (
+        art
+      ) : (
+        <button type="button" onClick={() => onOpen(page.trailId)} className="rounded-xl bg-transparent p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3FD17F]">
+          {art}
+        </button>
+      )}
+      <span style={{ color: variant === 'gold' ? '#F2C66D' : '#C9BFB0' }}>{variant === 'locked' ? '🔒' : t('passport.days', { done: page.daysDone, total: page.totalDays })}</span>
+      {minted && <OnChainMark txSignature={page.txSignature} assetAddress={page.assetAddress} />}
+    </div>
+  );
+}
+
+/** "Tera's Certifications", compact: one thumbnail per trail, the counts, a single-row medal shelf. */
+export function AchievementsPanel({ pages, medals, stamps, onOpenTrail }: Props) {
   const { t } = useI18n();
   const earnedMedals = medals.filter((m) => m.earned).length;
-  const empty = stamps === 0;
-  const featured = pages.find((p) => p.trailId === featuredId) ?? pages.find((p) => !p.locked) ?? null;
-  const shelfColor = featured ? pageColor(featured) : TRAIL_COLORS[1];
+  const completed = pages.filter(isGold).length;
 
   return (
-    <section className="flex min-w-0 flex-col gap-5 rounded-[14px] border border-[#262320] bg-[#141210] px-5 py-6 sm:px-7" data-testid="achievements">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="[font:700_32px_'Barlow_Condensed']">{t('passport.title')}</h2>
-        <span className="flex items-baseline gap-4 [font:500_13px_JetBrains_Mono] text-[#A0978A]">
-          <span>{t('passport.counts', { stamped: countOf(t, stamps, 'stamp'), medals: countOf(t, earnedMedals, 'medal') })}</span>
-          <Link to="/passport" className="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-            {t('passport.seeAll')}
-          </Link>
-        </span>
+    <section className="flex min-w-0 flex-1 flex-col justify-between gap-5 rounded-[14px] border border-[#262320] bg-[#141210] px-5 py-[22px]" data-testid="achievements">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="m-0 [font:700_26px_'Barlow_Condensed']">{t('passport.title')}</h2>
+          <span className="[font:500_13px_JetBrains_Mono] text-[#C9BFB0]">{t('dash.certs.progress', { n: completed, total: pages.length })}</span>
+        </div>
+        <Link to="/passport" className="inline-flex min-h-[44px] items-center self-start [font:500_13px_JetBrains_Mono] text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+          {t('passport.seeAll')}
+        </Link>
       </div>
-      <div className="flex snap-x gap-4 overflow-x-auto pb-2" data-testid="passport-row">
-        {empty && featured ? (
-          <>
-            <PassportMiniCard page={featured} pulseNext caption={t('passport.firstStampNear')} onOpen={onOpenTrail} />
-            <div className="min-w-0 self-center" data-testid="achievements-tera">
-              <TeraNote mood="neutral" size="bubble" title={t('passport.empty.text')} className="!items-start !pt-4 !text-left" />
-            </div>
-          </>
-        ) : (
-          pages.map((p) => <PassportMiniCard key={p.trailId} page={p} onOpen={onOpenTrail} />)
-        )}
+      <div className="flex flex-wrap gap-x-3 gap-y-4" data-testid="passport-row">
+        {pages.map((p) => (
+          <Thumb key={p.trailId} page={p} onOpen={onOpenTrail} />
+        ))}
       </div>
-      <MedalShelf medals={medals} color={shelfColor} />
+      <div className="flex flex-col gap-1">
+        <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.counts', { stamped: countOf(t, stamps, 'stamp'), medals: countOf(t, earnedMedals, 'medal') })}</span>
+        <MedalShelf medals={medals} color={PRIMARY_COLOR} size={44} compact />
+      </div>
     </section>
   );
 }

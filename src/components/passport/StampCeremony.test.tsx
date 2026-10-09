@@ -80,6 +80,6 @@ describe('StampCeremony', () => {
   it('keeps the lesson buttons and the passport link at the bottom', () => {
     show(model('minted'));
     expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver meu passaporte →' })).toHaveAttribute('href', '/passport');
+    expect(screen.getByRole('link', { name: 'Ver minhas certificações →' })).toHaveAttribute('href', '/passport');
   });
 });

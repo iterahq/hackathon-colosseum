@@ -57,7 +57,6 @@ export default function DashboardPage() {
   };
 
   const { trails, featured } = dashboard;
-  const rest = trails.filter((t) => t.id !== featured?.id);
 
   return (
     <div className="dash-root min-h-screen text-[#F4EDE2]" style={GRID}>
@@ -70,23 +69,20 @@ export default function DashboardPage() {
           <DashboardEmpty kind="empty" onAction={() => navigate('/catalog')} />
         )}
         {featured && <FeaturedTrail trail={featured} onOpenLesson={openLesson} />}
-        {rest.length > 0 && (
-          <TrailCards trails={rest} total={trails.length} finished={trails.filter((t) => t.status === 'done').length} onOpen={openTrail} />
-        )}
-        {!visitor && (
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-            <AchievementsPanel
-              pages={passport.pages}
-              medals={passport.medals}
-              stamps={passport.totals.stamps}
-              featuredId={passport.featuredId}
-              onOpenTrail={(id) => {
-                const trail = trails.find((x) => x.id === id);
-                if (trail) openTrail(trail);
-              }}
-            />
-            <div className="flex min-w-0 flex-col gap-5">
+        {!visitor && trails.length > 0 && (
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="dashboard-main">
+            <TrailCards trails={trails} pages={passport.pages} finished={trails.filter((t) => t.status === 'done').length} onOpen={openTrail} />
+            <div className="flex min-w-0 flex-col gap-5" data-testid="dashboard-side">
               <WeeklyGoal done={dashboard.weekly} />
+              <AchievementsPanel
+                pages={passport.pages}
+                medals={passport.medals}
+                stamps={passport.totals.stamps}
+                onOpenTrail={(id) => {
+                  const trail = trails.find((x) => x.id === id);
+                  if (trail) openTrail(trail);
+                }}
+              />
               <LiveClassesCard describeLesson={describeLesson} />
             </div>
           </div>

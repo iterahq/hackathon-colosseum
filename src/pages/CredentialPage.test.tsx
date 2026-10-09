@@ -48,7 +48,7 @@ describe('CredentialPage (public)', () => {
     expect(card).toHaveTextContent('2/5');
     expect(card).toHaveTextContent('lido da chain em 412 ms');
     expect(screen.getByRole('link', { name: /Ver na Solana Explorer/ })).toHaveAttribute('href', 'https://explorer.solana.com/address/Asset1111111111?cluster=devnet');
-    expect(screen.getByRole('link', { name: 'Quero meu passaporte' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Quero minha certificação' })).toHaveAttribute('href', '/');
   });
 
   it('unverified: amber warning, no verified title', () => {

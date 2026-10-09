@@ -165,33 +165,45 @@ describe('HomeRoute: a member', () => {
     expect(upcoming.every((b) => b.hasAttribute('disabled'))).toBe(true);
   });
 
-  it('the other trail is a locked card until the previous one is done', () => {
+  it('the other trail is a visible, muted locked card until the previous one is done', () => {
     renderHome();
-    const card = screen.getByTestId('trail-card');
-    expect(card).toHaveAttribute('data-status', 'locked');
-    expect(card).toHaveAttribute('aria-disabled', 'true');
-    expect(card).toHaveTextContent('CSS');
-    expect(card).toHaveTextContent('🔒 depois de HTML');
+    const cards = screen.getAllByTestId('trail-card');
+    expect(cards.map((c) => c.getAttribute('data-status'))).toEqual(['in_progress', 'locked']);
+    const locked = cards[1];
+    expect(locked).toHaveAttribute('aria-disabled', 'true');
+    expect(locked).toHaveTextContent('CSS');
+    expect(locked).toHaveTextContent('depois de HTML');
+    expect(within(locked).getByTestId('trail-card-action')).toBeDisabled();
     expect(screen.getByTestId('trail-cards')).toHaveTextContent('2 trilhas · 0 concluídas');
   });
 
-  it('locked trails are folded under a closed Locked (N) disclosure, after the startable ones', () => {
+  it('every trail is always on screen: no disclosure, no hidden or collapsible group', () => {
     renderHome();
-    const group = screen.getByTestId('trail-cards-locked');
-    expect(group).not.toHaveAttribute('open');
-    expect(group).toHaveTextContent('Bloqueadas (1)');
-    expect(screen.queryByTestId('trail-cards-open')).not.toBeInTheDocument();
+    const section = screen.getByTestId('trail-cards');
+    expect(section.querySelector('details')).toBeNull();
+    expect(section).not.toHaveTextContent('Bloqueadas');
+    expect(screen.queryByTestId('trail-cards-locked')).not.toBeInTheDocument();
+    expect(within(section).getAllByTestId('trail-days')).toHaveLength(2);
   });
 
-  it('a finished trail is a review card with its medal, and the next one opens', () => {
+  it('the active trail card continues the trail', () => {
+    renderHome();
+    const card = screen.getAllByTestId('trail-card')[0];
+    expect(card).toHaveTextContent('Continuar trilha');
+    expect(card).toHaveTextContent('Certificação');
+    fireEvent.click(within(card).getByTestId('trail-card-action'));
+    expect(navigate).toHaveBeenLastCalledWith('/program/itera-v2#trail-u-html');
+  });
+
+  it('a finished trail is a review card with a golden certification, and the next one opens', () => {
     useTrailDashboard.mockReturnValue(dashboard([done('a1'), done('a2'), done('a3')]));
     renderHome();
     const hero = screen.getByTestId('featured-trail');
     expect(hero).toHaveTextContent('CSS');
-    const card = screen.getByTestId('trail-card');
-    expect(card).toHaveAttribute('data-status', 'done');
-    expect(card).toHaveTextContent('✓ 2/2');
-    fireEvent.click(card);
+    const card = screen.getAllByTestId('trail-card').find((c) => c.getAttribute('data-status') === 'done')!;
+    expect(card).toHaveTextContent('Rever trilha');
+    expect(card).toHaveTextContent('Certificação dourada');
+    fireEvent.click(within(card).getByTestId('trail-card-action'));
     expect(navigate).toHaveBeenLastCalledWith('/program/itera-v2#trail-u-html');
   });
 
@@ -201,16 +213,16 @@ describe('HomeRoute: a member', () => {
     expect(screen.getByTestId('weekly-goal')).toHaveTextContent('9 de 20 atividades');
   });
 
-  it('with an empty catalog the passport shows the featured trail with its first stamp one day away', () => {
+  it('the certifications panel is compact: title, n of total, the link and one thumbnail per trail', () => {
     renderHome();
     const panel = screen.getByTestId('achievements');
-    expect(panel).toHaveTextContent("Passaporte do Tera");
-    expect(within(panel).getAllByTestId('passport-card')).toHaveLength(1);
-    expect(panel).toHaveTextContent('Seu primeiro carimbo está a um dia de distância');
-    expect(within(panel).getByTestId('achievements-tera')).toHaveTextContent('Complete o dia 1 e o Tera carimba aqui.');
+    expect(panel).toHaveTextContent('Certificações do Tera');
+    expect(panel).toHaveTextContent('0 de 2');
+    expect(within(panel).getByRole('link', { name: 'Ver certificações →' })).toHaveAttribute('href', '/passport');
+    expect(within(panel).getAllByTestId('passport-card')).toHaveLength(2);
   });
 
-  it('passport: one page per trail, an on-chain mark on minted rows only, medals on the shelf', () => {
+  it('certifications: one page per trail, an on-chain mark on minted rows only, medals on the shelf', () => {
     const trailRow = (key: string, refId: string, over = {}) =>
       achievement({ key, kind: 'trail', earned: { id: `r-${key}`, achievementKey: key, refId, earnedAt: '2026-10-08T00:00:00Z', mintStatus: 'minted', assetAddress: 'Asset111', txSignature: 'tx', ...over } });
     useAchievements.mockReturnValue({

@@ -32,7 +32,7 @@ describe('PassportPage', () => {
   it('shows the hero totals, the no-wallet banner and a page with its facts', () => {
     view.mockReturnValue({ ...base, pages: [page()], medals: [medal()] });
     show();
-    expect(screen.getByTestId('passport-hero')).toHaveTextContent('1 página · 4 carimbos · 1 medalha');
+    expect(screen.getByTestId('passport-hero')).toHaveTextContent('1 certificação · 4 carimbos · 1 medalha');
     expect(screen.getByTestId('passport-wallet')).toHaveTextContent('sem carteira');
     expect(screen.getByTestId('passport-no-wallet')).toHaveTextContent('Conecte uma carteira');
     expect(screen.getByTestId('passport-full-card')).toHaveTextContent('09/10/2026');
