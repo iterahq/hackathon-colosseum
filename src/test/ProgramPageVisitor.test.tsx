@@ -20,10 +20,9 @@ const useCatalog = vi.fn();
 vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
 vi.mock('@/hooks', () => ({ useProgram: (...args: unknown[]) => useProgram(...args) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...args: unknown[]) => useCatalog(...args) }));
-vi.mock('@/components/branded', () => ({
-  AppHeader: () => <div data-testid="app-header" />,
-  ProgramIcon: () => <div data-testid="program-icon" />,
-  SkillTree: () => <div data-testid="skill-tree" />,
+// The shell pulls auth, membership and stats hooks for the top bar; the page only needs its children.
+vi.mock('@/components/courses/CoursesShell', () => ({ CoursesShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
+vi.mock('@/components/branded/LockedProgramView', () => ({
   LockedProgramView: ({ program }: { program: { title: { pt?: string } } }) => (
     <div data-testid="program-locked">{program.title.pt}</div>
   ),
@@ -104,7 +103,7 @@ describe('ProgramPage — visitor mode', () => {
   it('a member (non-visitor) still uses useProgram normally', () => {
     useAccessLevel.mockReturnValue({ level: 'member', entitlementError: false });
     useProgram.mockReturnValue({
-      data: { id: 'p1', title: { pt: 'X' }, icon: 'code', units: [] },
+      data: { id: 'p1', slug: 'x', title: { pt: 'X' }, createdAt: '', icon: 'code', units: [] },
       isPending: false,
       isError: false,
       error: null,

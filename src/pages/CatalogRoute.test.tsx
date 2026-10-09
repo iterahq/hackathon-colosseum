@@ -4,56 +4,41 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nProvider } from '@/i18n';
 import CatalogRoute from '@/pages/CatalogRoute';
+import type { Course } from '@/utils/courses';
 
-/**
- * The web host of the universal catalog screen: discovery + enroll surface (round-1 finding #1). The
- * catalog hooks are mocked and the REAL screen renders, so what is asserted is what a learner sees and
- * what each control does. The cases of the two old tests (`CatalogCard.test.tsx`, `CatalogPage.test.tsx`)
- * live here; the screen's own states and callbacks are in `packages/screens/src/catalog/CatalogScreen.test.tsx`.
- */
+/** The "Cursos" page: the courses hook is stubbed and the real cards, filters and enroll flow render. */
 
 const navigate = vi.fn();
-vi.mock('react-router-dom', async (orig) => ({
-  ...(await orig<typeof import('react-router-dom')>()),
-  useNavigate: () => navigate,
-}));
+vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => navigate }));
 
-// The enroll mutation is the REAL one (`useEnroll`, TanStack): only the catalog read and the RPC are stubbed.
 const enrollInProgram = vi.fn();
-const useCatalog = vi.fn();
-vi.mock('@/hooks/useCatalog', async (orig) => ({
-  ...(await orig<typeof import('@/hooks/useCatalog')>()),
-  useCatalog: () => useCatalog(),
-}));
-vi.mock('@/services/catalog.service', () => ({
-  getCatalogPrograms: vi.fn(),
-  enrollInProgram: (programId: string) => enrollInProgram(programId),
-}));
+vi.mock('@/hooks/useCatalog', async (orig) => ({ ...(await orig<typeof import('@/hooks/useCatalog')>()) }));
+vi.mock('@/services/catalog.service', () => ({ getCatalogPrograms: vi.fn(), enrollInProgram: (id: string) => enrollInProgram(id) }));
 
-const useAccessLevel = vi.fn();
-vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
+const useCourses = vi.fn();
+vi.mock('@/hooks/useCourses', () => ({ useCourses: () => useCourses() }));
+vi.mock('@/components/courses/CoursesShell', () => ({ CoursesShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
 
-const useShellSurface = vi.fn();
-vi.mock('@/hooks/useShellSurface', () => ({ useShellSurface: () => useShellSurface() }));
-
-// AppHeader pulls auth/membership/branding hooks; the header slot only needs to be there.
-vi.mock('@/components/branded/AppHeader', () => ({ AppHeader: () => <div data-testid="app-header" /> }));
-
-const program = (over: Record<string, unknown> = {}) => ({
-  id: 'p1',
-  tenantId: 't',
-  tenantSlug: 'itera',
-  slug: 'modele-dados-com-ia',
-  title: { pt: 'Modele seus dados com IA' },
-  createdAt: '',
-  unitCount: 1,
-  lessonCount: 2,
-  activityCount: 8,
-  alreadyEnrolled: false,
+const course = (over: Partial<Course> = {}): Course => ({
+  id: 'c1',
+  slug: 'itera-v2',
+  title: { pt: 'Itera v2 — Básico' },
+  origin: 'catalog',
+  enrolled: true,
+  units: 2,
+  lessons: 5,
+  activities: 10,
+  doneLessons: 0,
+  doneActivities: 0,
+  state: 'new',
+  lastProgressAt: null,
+  dots: ['current', 'locked'],
+  resumeLessonId: null,
   ...over,
 });
 
-const ready = (...programs: ReturnType<typeof program>[]) => useCatalog.mockReturnValue({ data: programs, isPending: false, isError: false });
+const ready = (courses: Course[], extra: Record<string, unknown> = {}) =>
+  useCourses.mockReturnValue({ courses, visitor: false, isPending: false, isError: false, refetch: vi.fn(), ...extra });
 
 function renderPage() {
   return render(
@@ -63,178 +48,81 @@ function renderPage() {
           <CatalogRoute />
         </I18nProvider>
       </QueryClientProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
 beforeEach(() => {
   navigate.mockReset();
   enrollInProgram.mockReset();
-  useAccessLevel.mockReturnValue({ level: 'member', entitlementError: false });
-  useShellSurface.mockReturnValue('web');
 });
 
 describe('CatalogRoute', () => {
-  it('lists the flagship catalog course with an Enroll button, under the app header', () => {
-    ready(program());
+  it('shows the prompt line, the headline and the featured in-progress course with Continuar', () => {
+    ready([course({ id: 'a', slug: 'a', state: 'new' }), course({ id: 'b', slug: 'b', state: 'in_progress', doneActivities: 4, resumeLessonId: 'l9', lastProgressAt: 5 })]);
     renderPage();
-    expect(screen.getByTestId('app-header')).toBeInTheDocument();
-    expect(screen.getByText(/Modele seus dados com IA/i)).toBeInTheDocument();
-    expect(screen.getByTestId('catalog-enroll')).toBeInTheDocument();
-    expect(screen.queryByTestId('catalog-open')).not.toBeInTheDocument();
+    expect(screen.getByText('> cursos · 2 disponíveis')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cursos' })).toBeInTheDocument();
+    expect(screen.getByTestId('featured-course-cta')).toHaveTextContent('Continuar');
+    expect(screen.getByTestId('featured-course-cta')).toHaveAttribute('href', '/lesson/l9');
   });
 
-  it('counts are singular-aware ("1 lição", not "1 lições")', () => {
-    ready(program({ lessonCount: 1, unitCount: 3, activityCount: 1 }));
+  it('filters the grid by state and shows counts on the chips', () => {
+    ready([course({ id: 'a', slug: 'a' }), course({ id: 'b', slug: 'b', state: 'done', doneActivities: 10 }), course({ id: 'c', slug: 'c', state: 'in_progress', doneActivities: 1, lastProgressAt: 1 })]);
     renderPage();
-    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['1 lição', '3 unidades', '1 atividade']);
+    expect(screen.getAllByTestId('course-card')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: /Concluídos/ })).toHaveTextContent('1');
+    fireEvent.click(screen.getByRole('button', { name: /Concluídos/ }));
+    expect(screen.getAllByTestId('course-card').map((c) => c.dataset.state)).toEqual(['done']);
+    fireEvent.click(screen.getByRole('button', { name: /Em andamento/ }));
+    expect(screen.getAllByTestId('course-card').map((c) => c.dataset.state)).toEqual(['in_progress']);
   });
 
-  it('enrolls then navigates to the course', async () => {
+  it('every card links to its program and carries its origin tag', () => {
+    ready([course({ origin: 'cohort' })]);
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Itera v2 — Básico' })).toHaveAttribute('href', '/program/itera-v2');
+    expect(screen.getByTestId('course-card')).toHaveTextContent('sua turma');
+  });
+
+  it('enrolls in a course the learner has not joined, then opens it', async () => {
     enrollInProgram.mockResolvedValueOnce({ tenantId: 't', role: 'learner', enrolled: true });
-    ready(program());
+    ready([course({ enrolled: false })]);
     renderPage();
-    fireEvent.click(screen.getByTestId('catalog-enroll'));
-    await waitFor(() => expect(enrollInProgram).toHaveBeenCalledWith('p1'));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/program/modele-dados-com-ia'));
+    fireEvent.click(screen.getAllByTestId('course-enroll')[0]);
+    await waitFor(() => expect(enrollInProgram).toHaveBeenCalledWith('c1'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/program/itera-v2'));
   });
 
-  it('stays on the page when enrollment fails', async () => {
+  it('shows the error on that course and stays when enrollment fails', async () => {
     enrollInProgram.mockRejectedValueOnce(new Error('rpc'));
-    ready(program());
+    ready([course({ enrolled: false })]);
     renderPage();
-    fireEvent.click(screen.getByTestId('catalog-enroll'));
-    await waitFor(() => expect(enrollInProgram).toHaveBeenCalledWith('p1'));
+    fireEvent.click(screen.getAllByTestId('course-enroll')[0]);
+    await screen.findByTestId('course-enroll-error');
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('an already-enrolled course shows Open (not Enroll), and Open and the thumbnail go to the course', () => {
-    ready(program({ title: { pt: 'Modele' }, alreadyEnrolled: true }));
+  it('never offers Enroll to a visitor', () => {
+    ready([course({ enrolled: false })], { visitor: true });
     renderPage();
-    expect(screen.getByTestId('catalog-open')).toBeInTheDocument();
-    expect(screen.queryByTestId('catalog-enroll')).toBeNull();
-    fireEvent.click(screen.getByTestId('catalog-open'));
-    fireEvent.click(screen.getByRole('button', { name: 'Modele' }));
-    expect(navigate.mock.calls).toEqual([['/program/modele-dados-com-ia'], ['/program/modele-dados-com-ia']]);
+    expect(screen.queryByTestId('course-enroll')).toBeNull();
+    expect(screen.getByTestId('featured-course-cta')).toHaveAttribute('href', '/program/itera-v2');
   });
 
-  it('shows the pending label and disables the button of the course being enrolled, only', async () => {
-    enrollInProgram.mockReturnValue(new Promise(() => {}));
-    ready(program(), program({ id: 'p2', slug: 'two', title: { pt: 'Dois' } }));
-    renderPage();
-    fireEvent.click(screen.getAllByTestId('catalog-enroll')[0]);
-    await waitFor(() => expect(screen.getAllByTestId('catalog-enroll')[0]).toHaveTextContent(/Matriculando/i));
-    const [first, second] = screen.getAllByTestId('catalog-enroll');
-    expect(first).toHaveAttribute('aria-disabled', 'true');
-    expect(second).toHaveTextContent('Matricular');
-    fireEvent.click(first);
-    expect(enrollInProgram).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows the inline error when enrollment fails, on that course only, and a new try clears it', async () => {
-    enrollInProgram.mockRejectedValueOnce(new Error('rpc')).mockReturnValue(new Promise(() => {}));
-    ready(program(), program({ id: 'p2', slug: 'two', title: { pt: 'Dois' } }));
-    renderPage();
-    fireEvent.click(screen.getAllByTestId('catalog-enroll')[1]);
-    await screen.findByTestId('catalog-enroll-error');
-    expect(screen.getAllByTestId('catalog-enroll-error')).toHaveLength(1);
-    expect(screen.getAllByTestId('catalog-card')[1]).toContainElement(screen.getByTestId('catalog-enroll-error'));
-    expect(screen.getAllByTestId('catalog-enroll')[1]).toHaveTextContent('Matricular');
-    fireEvent.click(screen.getAllByTestId('catalog-enroll')[1]);
-    await waitFor(() => expect(screen.queryByTestId('catalog-enroll-error')).not.toBeInTheDocument());
-  });
-
-  it('two enrollments at once: the first stays pending while the second runs, and its failure is shown on its own card', async () => {
-    let failFirst: (reason: Error) => void = () => {};
-    enrollInProgram.mockImplementation((id: string) => (id === 'p1' ? new Promise((_, reject) => (failFirst = reject)) : new Promise(() => {})));
-    ready(program(), program({ id: 'p2', slug: 'two', title: { pt: 'Dois' } }));
-    renderPage();
-    fireEvent.click(screen.getAllByTestId('catalog-enroll')[0]);
-    await waitFor(() => expect(screen.getAllByTestId('catalog-enroll')[0]).toHaveTextContent(/Matriculando/i));
-    fireEvent.click(screen.getAllByTestId('catalog-enroll')[1]);
-    await waitFor(() => expect(screen.getAllByTestId('catalog-enroll')[1]).toHaveTextContent(/Matriculando/i));
-    const [first, second] = screen.getAllByTestId('catalog-enroll');
-    expect(first).toHaveTextContent(/Matriculando/i);
-    expect(first).toHaveAttribute('aria-disabled', 'true');
-    expect(second).toHaveAttribute('aria-disabled', 'true');
-    failFirst(new Error('rpc'));
-    await screen.findByTestId('catalog-enroll-error');
-    expect(screen.getAllByTestId('catalog-card')[0]).toContainElement(screen.getByTestId('catalog-enroll-error'));
-    expect(screen.getAllByTestId('catalog-enroll')[0]).toHaveTextContent('Matricular');
-    expect(screen.getAllByTestId('catalog-enroll')[1]).toHaveTextContent(/Matriculando/i);
-    expect(navigate).not.toHaveBeenCalled();
-  });
-
-  it('renders the empty state when no catalog courses', () => {
-    useCatalog.mockReturnValue({ data: [], isPending: false, isError: false });
-    renderPage();
-    expect(screen.getByTestId('catalog-empty')).toBeInTheDocument();
-  });
-
-  it('renders the error and retry when the read failed', () => {
+  it('renders loading, empty and error states', () => {
     const refetch = vi.fn();
-    useCatalog.mockReturnValue({ data: undefined, isPending: false, isError: true, refetch });
+    ready([], { isPending: true });
+    const { unmount } = renderPage();
+    expect(screen.getByTestId('courses-loading')).toBeInTheDocument();
+    unmount();
+    ready([]);
+    const second = renderPage();
+    expect(screen.getByTestId('courses-empty')).toBeInTheDocument();
+    second.unmount();
+    ready([], { isError: true, refetch });
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
     expect(refetch).toHaveBeenCalledOnce();
-  });
-
-  describe('a first read that cannot reach the server', () => {
-    it('shows the error and a retry at once while the browser is offline', () => {
-      const refetch = vi.fn();
-      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'paused', failureCount: 0, failureReason: null, refetch });
-      renderPage();
-      expect(screen.getByTestId('catalog-error')).toHaveTextContent('Não foi possível carregar o catálogo.');
-      fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
-      expect(refetch).toHaveBeenCalledOnce();
-    });
-
-    it('shows the error after the first attempt died on the network, retries still running', () => {
-      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'fetching', failureCount: 1, failureReason: new Error('TypeError: Failed to fetch'), refetch: vi.fn() });
-      renderPage();
-      expect(screen.getByTestId('catalog-error')).toBeInTheDocument();
-    });
-
-    it('keeps the shimmer while any other error is being retried', () => {
-      useCatalog.mockReturnValue({ data: undefined, isPending: true, isError: false, fetchStatus: 'fetching', failureCount: 1, failureReason: new Error('boom'), refetch: vi.fn() });
-      const { container } = renderPage();
-      expect(screen.queryByTestId('catalog-error')).toBeNull();
-      expect(container.querySelectorAll('.ds-shimmer')).toHaveLength(3);
-    });
-  });
-
-  describe('visitor mode (no active subscription)', () => {
-    beforeEach(() => {
-      useAccessLevel.mockReturnValue({ level: 'visitor', entitlementError: false });
-      ready(program());
-    });
-
-    it('shows the locked CTA instead of Enroll, and an enroll is never possible', () => {
-      renderPage();
-      expect(screen.getByText(/Modele seus dados com IA/i)).toBeInTheDocument();
-      expect(screen.getByTestId('program-card-lock')).toBeInTheDocument();
-      expect(screen.getByTestId('catalog-locked-cta')).toHaveTextContent('Assine para desbloquear');
-      expect(screen.queryByTestId('catalog-enroll')).not.toBeInTheDocument();
-      expect(enrollInProgram).not.toHaveBeenCalled();
-    });
-
-    it('the CTA is a link to /subscribe that the router follows, and the thumbnail opens the course', () => {
-      renderPage();
-      const cta = screen.getByTestId('catalog-locked-cta');
-      expect(cta).toHaveAttribute('href', '/subscribe');
-      fireEvent.click(cta);
-      expect(navigate).toHaveBeenLastCalledWith('/subscribe');
-      fireEvent.click(screen.getByRole('button', { name: 'Modele seus dados com IA' }));
-      expect(navigate).toHaveBeenLastCalledWith('/program/modele-dados-com-ia');
-    });
-
-    it.each(['shell', 'pending'])('inside the shell (%s) no price, plan or sign-up wording and no link to /subscribe is drawn', (surface) => {
-      useShellSurface.mockReturnValue(surface);
-      const { container } = renderPage();
-      expect(screen.getByTestId('program-card-lock')).toBeInTheDocument();
-      expect(screen.queryByTestId('catalog-locked-cta')).toBeNull();
-      expect(container.querySelector('a')).toBeNull();
-      expect(container.textContent).not.toMatch(/assin|subscri|plano|preço/i);
-    });
   });
 });
