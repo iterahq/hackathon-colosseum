@@ -38,11 +38,6 @@ function Cell() {
             <span className="text-[#8A8276] max-sm:hidden">/{lives.max}</span>
           </span>
         </span>
-        {!full && (
-          <span className="mt-1 [font:600_9px_JetBrains_Mono] tabular-nums text-[#A0978A] max-sm:hidden" data-testid="header-lives-countdown">
-            +1 · {time}
-          </span>
-        )}
       </span>
     </Link>
   );

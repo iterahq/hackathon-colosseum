@@ -31,12 +31,21 @@ export interface InventoryEntry {
   equipped: boolean;
 }
 
+/** Proof that a state change reached the chain (`chain` of `lives` / `purchase-confirm`). */
+export interface ChainProof {
+  explorerUrl: string;
+  signature: string | null;
+  lives: number | null;
+}
+
 export interface CompanionSnapshot {
   lives: LivesState;
   companion: CompanionState;
   inventory: InventoryEntry[];
   /** The learner's wallet address; null for e-mail users. */
   wallet: string | null;
+  /** The last on-chain mirror seen in this session, when the backend reports one. */
+  chain?: ChainProof | null;
   /** Answered by the local mock adapter, not by the backend. */
   mocked: boolean;
 }
@@ -46,6 +55,7 @@ export interface LivesUpdate {
   lives: LivesState;
   companion: CompanionState | null;
   bonus: number;
+  chain?: ChainProof | null;
 }
 
 export interface ShopItem {

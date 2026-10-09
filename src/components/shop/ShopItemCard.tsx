@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
-import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, DEVNET_BADGE, MONO_LABEL } from './shopStyles';
+import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, CARD, MONO_LABEL } from './shopStyles';
 
 interface Props {
   item: ShopItem;
@@ -57,7 +57,6 @@ export function ShopItemCard({ item, art, children, busy, buyDisabled = false, a
               <span className="[font:700_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-price">
                 {item.priceLabel}
               </span>
-              <span className={DEVNET_BADGE}>{t('shop.devnet')}</span>
             </span>
           )}
           {state === 'buy' && (

@@ -1,5 +1,6 @@
 /** Wire (snake_case, loosely typed) -> app types for the lives / shop / companion functions. One file to fix when a shape moves. */
 import type {
+  ChainProof,
   CompanionSnapshot,
   CompanionState,
   FaucetResult,
@@ -67,13 +68,20 @@ export function toSnapshot(v: unknown, mocked: boolean): CompanionSnapshot {
   return { lives, companion: toCompanion(r.companion), inventory: toInventory(r.inventory), wallet: walletOfWire(r.wallet), mocked };
 }
 
+export function toChain(v: unknown): ChainProof | null {
+  const r = row(v);
+  const explorerUrl = str(r.explorer_url);
+  if (!explorerUrl) return null;
+  return { explorerUrl, signature: str(r.tx_signature) || null, lives: typeof r.lives === 'number' ? r.lives : null };
+}
+
 export function toLivesUpdate(v: unknown): LivesUpdate {
   const r = row(v);
   const lives = toLives(r.lives);
   if (!lives) throw new Error('lives: no lives block in the answer');
   // `bonus` is a verdict (`granted | already_granted | mistakes | lesson_incomplete | full`): only `granted` adds a life.
   const bonus = r.bonus === 'granted' ? 1 : num(r.bonus);
-  return { lives, companion: r.companion ? toCompanion(r.companion) : null, bonus };
+  return { lives, companion: r.companion ? toCompanion(r.companion) : null, bonus, chain: toChain(r.chain) };
 }
 
 export function toShopItems(v: unknown): ShopItem[] {

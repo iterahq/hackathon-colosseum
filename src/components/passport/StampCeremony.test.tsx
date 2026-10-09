@@ -58,7 +58,7 @@ describe('StampCeremony', () => {
     const onConnect = vi.fn();
     show(model('no_wallet'), { onConnect });
     settle();
-    fireEvent.click(screen.getByRole('button', { name: 'Conectar carteira' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar com carteira' }));
     expect(onConnect).toHaveBeenCalledOnce();
   });
 

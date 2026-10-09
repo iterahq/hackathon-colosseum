@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
+import { LivesRule } from '@/components/lives/LivesRule';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
 import type { CompanionState, LivesState } from '@/types/shop';
 import { formatCountdown } from '@/utils/lives';
-import { CARD, DEVNET_BADGE, FOCUS, MONO_LABEL } from './shopStyles';
+import { CARD, FOCUS, MONO_LABEL } from './shopStyles';
 
 interface Props {
   companion: CompanionState | null;
@@ -39,13 +40,22 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
         <div>
           <h1 className="[font:700_48px/1_'Barlow_Condensed'] max-sm:text-[38px]">{t('shop.title')}</h1>
           <p className="mt-2 max-w-[520px] [font:400_15px/1.5_Inter] text-[#C9BFB0]">{t('shop.subtitle')}</p>
+          <p className="mt-2 [font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A]" data-testid="shop-devnet-note">
+            {t('shop.devnetNote')}
+          </p>
         </div>
         {lives && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 max-sm:justify-center">
             <LivesHearts current={lives.current} max={lives.max} size={22} label={t('lives.chrome', { current: lives.current, max: lives.max })} className="gap-1" />
-            <span className="[font:600_12px_JetBrains_Mono] tabular-nums text-[#A0978A]">
-              {lives.current >= lives.max ? t('shop.lives.full') : t('shop.lives.next', { time: formatCountdown(secondsToNext) })}
+            <span className="[font:700_16px_JetBrains_Mono] tabular-nums text-[#F4EDE2]" data-testid="shop-lives-count" title={lives.current >= lives.max ? t('shop.lives.full') : t('shop.lives.next', { time: formatCountdown(secondsToNext) })}>
+              {lives.current}/{lives.max}
             </span>
+            {lives.current < lives.max && (
+              <span className="[font:600_12px_JetBrains_Mono] tabular-nums text-[#A0978A]" data-testid="shop-lives-next">
+                {t('shop.lives.next', { time: formatCountdown(secondsToNext) })}
+              </span>
+            )}
+            <LivesRule className="basis-full max-sm:text-center" />
           </div>
         )}
         {companion && (
@@ -56,7 +66,6 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
             <div className="flex min-w-0 flex-1 flex-col gap-2 max-sm:items-center">
             <span className="flex flex-wrap items-center gap-2">
               <span className={`${MONO_LABEL} text-[#F4EDE2]`}>{t('shop.companion.title')}</span>
-              <span className={DEVNET_BADGE}>{t('shop.devnet')}</span>
             </span>
             <span className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">
               {t('shop.companion.level', { level: companion.level })} · {companion.xp} XP · {t('shop.companion.streak', { n: companion.streak })}

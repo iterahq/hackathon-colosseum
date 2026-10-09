@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { BTN_PRIMARY, BTN_SECONDARY, DEVNET_BADGE, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
+import { BTN_PRIMARY, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
 import { formatCountdown } from '@/utils/lives';
 import { LivesHearts } from './LivesHearts';
+import { LivesRule } from './LivesRule';
 
 interface Props {
   lives: { current: number; max: number };
@@ -14,6 +15,8 @@ interface Props {
   /** False for e-mail users: they see "Conectar carteira" instead of the purchase. */
   hasWallet: boolean;
   outfit: string | null;
+  /** Explorer link of the on-chain Tera (the last mirror, else the asset); null renders nothing. */
+  chainUrl?: string | null;
   busy: boolean;
   onRefill: () => void;
   onConnect: () => void;
@@ -21,7 +24,7 @@ interface Props {
 }
 
 /** The out-of-lives pause: full screen over the lesson, which stays mounted underneath exactly where it was. */
-export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, outfit, busy, onRefill, onConnect, onLeave }: Props) {
+export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, outfit, chainUrl = null, busy, onRefill, onConnect, onLeave }: Props) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const time = formatCountdown(secondsToNext);
@@ -49,6 +52,7 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, ou
           {t('lives.gate.title')}
         </h1>
         <p className="max-w-[360px] [font:400_16px/1.5_Inter] text-[#C9BFB0]">{t('lives.gate.body')}</p>
+        <LivesRule />
         <div className="flex flex-col items-center gap-1" aria-live="off">
           <span className="[font:600_11px_JetBrains_Mono] uppercase tracking-[.1em] text-[#A0978A]">{t('lives.gate.next')}</span>
           <span data-testid="lives-gate-countdown" className="[font:700_44px/1_JetBrains_Mono] tabular-nums text-[#F4EDE2]">
@@ -59,7 +63,6 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, ou
           {hasWallet ? (
             <button type="button" autoFocus disabled={busy} onClick={onRefill} data-testid="lives-gate-refill" className={`${BTN_PRIMARY} w-full flex-wrap gap-x-2 gap-y-0 py-2 [font:700_16px_Inter]`}>
               <span>{priceLabel ? t('lives.gate.refill', { price: priceLabel }) : t('lives.gate.refillPlain')}</span>
-              <span className={`${DEVNET_BADGE} !border-[#0A0908]/45 !text-[#0A0908]`}>{t('shop.devnet')}</span>
             </button>
           ) : (
             <>
@@ -69,13 +72,18 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, ou
               <p className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('lives.gate.connectHint')}</p>
             </>
           )}
-          <button type="button" onClick={onLeave} title={t('lives.gate.leave')} data-testid="lives-gate-wait" className={`${BTN_SECONDARY} w-full`}>
+          <button type="button" onClick={onLeave} title={t('lives.gate.leave')} data-testid="lives-gate-wait" className={`mx-auto rounded px-2 py-2 [font:600_14px_Inter] text-[#A0978A] underline underline-offset-4 hover:text-[#F4EDE2] ${FOCUS}`}>
             {t('lives.gate.wait', { time })}
           </button>
         </div>
-        <Link to="/shop" className={`rounded px-1 py-2 [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
+        <Link to="/shop" className={`rounded px-1 py-1 [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
           {t('lives.gate.shop')} →
         </Link>
+        {chainUrl && (
+          <a href={chainUrl} target="_blank" rel="noopener noreferrer" data-testid="lives-gate-chain" className={`rounded px-1 [font:500_12px_JetBrains_Mono] text-[#A0978A] hover:text-[#3FD17F] ${FOCUS}`}>
+            {t('lives.gate.onchain', { current: lives.current, max: lives.max })} ↗
+          </a>
+        )}
       </motion.div>
     </div>
   );
