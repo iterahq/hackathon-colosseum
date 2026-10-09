@@ -1,5 +1,7 @@
 import { renderArt } from '../_shared/art.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
+import { companionArtInput, companionMetadata } from '../_shared/companion.ts';
+import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import { APP_URL, artInput, buildMetadata, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
@@ -41,26 +43,32 @@ async function loadCredential(db: IteraClient, rowId: string): Promise<Credentia
   return { row: credential, catalog: catalog as CatalogEntry, passport };
 }
 
+const COLLECTION_TEXT: Record<CollectionKind, string> = {
+  passports: "Tera's Certifications: one soulbound page per learner and trail, stamped by Tera for every completed day.",
+  medals: 'Soulbound medals for learning milestones at Itera.',
+  companions: 'Tera, the soulbound study companion: lives, level and outfit mirror the learning at Itera.',
+};
+
+function isCollectionKind(value: string | undefined): value is CollectionKind {
+  return value !== undefined && Object.hasOwn(COLLECTIONS, value);
+}
+
 function collectionMetadata(kind: CollectionKind) {
-  const isPassports = kind === 'passports';
   return {
     name: COLLECTIONS[kind].name,
     symbol: 'ITERA',
-    description: isPassports
-      ? "Tera's Passport: one soulbound page per learner and trail, stamped by Tera for every completed day."
-      : 'Soulbound medals for learning milestones at Itera.',
+    description: COLLECTION_TEXT[kind],
     image: `${functionsBase()}/credential-meta/collection/${kind}/image.svg`,
     external_url: APP_URL,
   };
 }
 
 function collectionImage(kind: CollectionKind): string {
-  const isPassports = kind === 'passports';
   return renderArt({
-    shape: isPassports ? 'passport' : 'medal',
-    tier: isPassports ? 'bronze' : 'gold',
+    shape: kind === 'passports' ? 'passport' : kind === 'medals' ? 'medal' : 'companion',
+    tier: kind === 'medals' ? 'gold' : 'bronze',
     title: COLLECTIONS[kind].name,
-    subtitle: isPassports ? 'Itera Passports' : 'Soulbound medals for learning milestones.',
+    subtitle: kind === 'passports' ? COLLECTIONS[kind].name : COLLECTION_TEXT[kind],
     colorSeed: kind,
     daysDone: 3,
     totalDays: 5,
@@ -71,6 +79,7 @@ function collectionImage(kind: CollectionKind): string {
     programSlug: 'itera',
     serial: 'COLLECTION',
     lang: 'en',
+    companion: { lives: 5, maxLives: 5, level: 1, outfit: null },
   });
 }
 
@@ -97,9 +106,21 @@ Deno.serve(async (request) => {
     const cached = { ...cors, 'Cache-Control': CACHE };
 
     if (first === 'collection') {
-      if ((second !== 'passports' && second !== 'medals') || rest.length > 0) return json({ error: 'not_found' }, 404, cors);
+      if (!isCollectionKind(second) || rest.length > 0) return json({ error: 'not_found' }, 404, cors);
       if (third === undefined) return json(collectionMetadata(second), 200, cached);
       return third === 'image.svg' ? svg(collectionImage(second), cors) : json({ error: 'not_found' }, 404, cors);
+    }
+
+    if (first === 'companion') {
+      const wantsCompanionImage = third === 'image.svg';
+      if (!second || !isUuid(second) || rest.length > 0 || (third !== undefined && !wantsCompanionImage)) {
+        return json({ error: 'not_found' }, 404, cors);
+      }
+      const snapshot = await loadCompanionSnapshot(serviceClient(), second);
+      if (!snapshot) return json({ error: 'not_found' }, 404, cors);
+      const companionLang = langOf(request, 'en');
+      if (wantsCompanionImage) return svg(renderArt(companionArtInput(snapshot, companionLang)), cors);
+      return json(companionMetadata(snapshot, companionLang, functionsBase()), 200, cached);
     }
 
     const wantsImage = second === 'image.svg';

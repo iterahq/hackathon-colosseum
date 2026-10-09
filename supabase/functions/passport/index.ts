@@ -1,5 +1,6 @@
 import { computeAwards, type Award, type AwardsInput } from '../_shared/awards.ts';
 import { isSolanaAddress } from '../_shared/address.ts';
+import { walletOf } from '../_shared/caller.ts';
 import type { Chain } from '../_shared/chain.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import {
@@ -15,11 +16,12 @@ import {
   type CatalogEntry,
 } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
-import { corsHeaders, functionsBase, json } from '../_shared/http.ts';
+import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const MAX_JOBS_PER_CALL = 3;
+const MAX_OPERATOR_JOBS = 10;
 const MINT_BUDGET_MS = 90_000;
 const STALE_CLAIM_MS = 3 * 60_000;
 const PAGE_SIZE = 1000;
@@ -66,6 +68,38 @@ async function resolveCaller(db: IteraClient, request: Request): Promise<Caller 
   const claims = web3?.identity_data?.custom_claims as { chain?: string; address?: string } | undefined;
   const wallet = claims?.chain === 'solana' && isSolanaAddress(claims.address) ? claims.address : null;
   return { iteraUserId: identity.user_id, wallet };
+}
+
+async function sha256(text: string): Promise<Uint8Array> {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+}
+
+/**
+ * Operator call: the bearer is the service-role key itself. Compared in constant
+ * time, and refused when a browser sent it (an `Origin` header is present).
+ */
+async function isOperator(request: Request): Promise<boolean> {
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const token = bearerToken(request);
+  if (!key || !token || request.headers.has('origin')) return false;
+  const [given, expected] = await Promise.all([sha256(token), sha256(key)]);
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) difference |= given[index] ^ expected[index];
+  return difference === 0;
+}
+
+/** The learner an operator named, with the wallet of that learner's own web3 identity. */
+async function resolveNamedUser(db: IteraClient, iteraUserId: string): Promise<Caller | null> {
+  const { data, error } = await db.from('identities').select('provider_subject').eq('user_id', iteraUserId);
+  if (error) throw new Error(`identities: ${error.message}`);
+  if (!data || data.length === 0) return null;
+  for (const { provider_subject: subject } of data) {
+    if (!isUuid(subject)) continue;
+    const { data: account } = await db.auth.admin.getUserById(subject);
+    const wallet = walletOf(account?.user?.identities);
+    if (wallet) return { iteraUserId, wallet };
+  }
+  return { iteraUserId, wallet: null };
 }
 
 function loadRows(db: IteraClient, userId: string): Promise<AchievementRow[]> {
@@ -263,6 +297,7 @@ async function mintPending(
   caller: Caller,
   rows: AchievementRow[],
   catalog: Map<string, CatalogEntry>,
+  maxJobs: number,
 ): Promise<{ attempted: number; remaining: number; blocked: MintBlock | null; touched: Set<string> }> {
   const medalKeys = new Set([...catalog.values()].filter((entry) => entry.kind === 'streak' || entry.kind === 'milestone').map((entry) => entry.key));
   const jobs = planMintJobs(rows, medalKeys);
@@ -298,7 +333,7 @@ async function mintPending(
   let attempted = 0;
   let done = 0;
   for (const job of jobs) {
-    if (attempted >= MAX_JOBS_PER_CALL || Date.now() - startedAt > MINT_BUDGET_MS) break;
+    if (attempted >= maxJobs || Date.now() - startedAt > MINT_BUDGET_MS) break;
     if (!(await claim(db, job, caller.wallet))) continue;
     attempted += 1;
     for (const row of job.rows) touched.add(row.id);
@@ -337,10 +372,17 @@ function view(row: AchievementRow, catalog: Map<string, CatalogEntry>, lang: Lan
   };
 }
 
-async function readLang(request: Request): Promise<Lang | null> {
+interface Body {
+  lang: Lang;
+  /** Operator calls only: the learner to sync and how many transactions to send. */
+  userId: string | null;
+  maxJobs: number | null;
+}
+
+async function readBody(request: Request): Promise<Body | null> {
   const text = await request.text();
   if (text.length > 1024) return null;
-  if (!text.trim()) return 'pt';
+  if (!text.trim()) return { lang: 'pt', userId: null, maxJobs: null };
   let body: unknown;
   try {
     body = JSON.parse(text);
@@ -348,9 +390,13 @@ async function readLang(request: Request): Promise<Lang | null> {
     return null;
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-  const { lang } = body as Record<string, unknown>;
-  if (lang === undefined) return 'pt';
-  return lang === 'pt' || lang === 'en' ? lang : null;
+  const { lang = 'pt', user_id: userId = null, max_jobs: maxJobs = null } = body as Record<string, unknown>;
+  if (lang !== 'pt' && lang !== 'en') return null;
+  return {
+    lang,
+    userId: typeof userId === 'string' ? userId : null,
+    maxJobs: typeof maxJobs === 'number' ? maxJobs : null,
+  };
 }
 
 Deno.serve(async (request) => {
@@ -359,11 +405,25 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, cors);
 
   try {
-    const lang = await readLang(request);
-    if (!lang) return json({ error: 'invalid_body' }, 400, cors);
+    const body = await readBody(request);
+    if (!body) return json({ error: 'invalid_body' }, 400, cors);
+    const { lang } = body;
 
     const db = serviceClient();
-    const caller = await resolveCaller(db, request);
+    let caller: Caller | Response;
+    let maxJobs = MAX_JOBS_PER_CALL;
+    if (body.userId !== null && (await isOperator(request))) {
+      const jobs = body.maxJobs ?? MAX_JOBS_PER_CALL;
+      if (!isUuid(body.userId) || !Number.isInteger(jobs) || jobs < 1 || jobs > MAX_OPERATOR_JOBS) {
+        return json({ error: 'invalid_body' }, 400, cors);
+      }
+      const named = await resolveNamedUser(db, body.userId);
+      if (!named) return json({ error: 'no_itera_profile' }, 403, cors);
+      caller = named;
+      maxJobs = jobs;
+    } else {
+      caller = await resolveCaller(db, request);
+    }
     if (caller instanceof Response) return caller;
 
     const [before, catalog, learning] = await Promise.all([
@@ -378,7 +438,7 @@ Deno.serve(async (request) => {
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
 
-    const mint = await mintPending(db, caller, rows, catalog);
+    const mint = await mintPending(db, caller, rows, catalog, maxJobs);
     if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);
 
     const updatedIds = new Set([...stored.changed, ...mint.touched].filter((id) => !stored.created.has(id)));

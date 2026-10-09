@@ -13,3 +13,24 @@ verify_jwt = false
 # Public verification of an asset read from chain.
 [functions.credential-verify]
 verify_jwt = false
+
+# Purchase rail, companion and lives. Same rule as `passport`: the gateway check
+# is off and each function validates the bearer token itself (`auth.getUser`).
+[functions.purchase-intent]
+verify_jwt = false
+
+[functions.purchase-confirm]
+verify_jwt = false
+
+# Readable without a session; a valid token only adds `owned` / `equipped`.
+[functions.shop-items]
+verify_jwt = false
+
+[functions.wallet-faucet]
+verify_jwt = false
+
+[functions.companion]
+verify_jwt = false
+
+[functions.lives]
+verify_jwt = false
