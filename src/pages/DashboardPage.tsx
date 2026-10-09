@@ -11,8 +11,8 @@ import { AppTopBar } from '@/components/header/AppTopBar';
 import '@/components/dashboard/dashboard.css';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { usePassportView } from '@/hooks/usePassportView';
-import { useCatalog } from '@/hooks/useCatalog';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
+import { useVideoCourses } from '@/hooks/useVideoCourses';
 import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
 import { trailHref } from '@/utils/courses';
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const visitor = useAccessLevel().level === 'visitor';
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const passport = usePassportView();
-  const catalog = useCatalog();
+  const video = useVideoCourses();
 
   const openLesson = (lessonId: string) => navigate(`/lesson/${lessonId}`);
   const openTrail = (trail: Trail) => navigate(trailHref(trail.programSlug, trail.id));
@@ -87,10 +87,7 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-        <CourseCarousel
-          courses={catalog.data ?? []}
-          onOpen={(course) => navigate(course.alreadyEnrolled && !visitor ? `/program/${course.slug}` : '/catalog')}
-        />
+        <CourseCarousel courses={video.courses} />
       </main>
     </div>
   );
