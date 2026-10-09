@@ -39,7 +39,8 @@ export function DashboardTopBar({ xp, achievements, activities }: Props) {
   const label = profile?.displayName || user?.email || '';
 
   return (
-    <header className="relative z-20 flex h-16 items-center justify-between gap-3 border-b border-[#262320] bg-[#0A0908] px-4 sm:px-8 xl:px-20">
+    <header className="relative z-20 border-b border-[#262320] bg-[#0A0908]">
+    <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-8 xl:px-20">
       <div className="flex min-w-0 items-center gap-3 sm:gap-8">
         <span className="[font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]">
           ITERA<span className="text-[#3FD17F]">/</span>
@@ -98,6 +99,7 @@ export function DashboardTopBar({ xp, achievements, activities }: Props) {
           </div>
         )}
       </div>
+    </div>
     </header>
   );
 }
