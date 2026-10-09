@@ -144,8 +144,11 @@ export default function AuthPage() {
           onClick={onSolana}
           data-testid="web3-solana"
         >
-          {t('auth.signInWith', { provider: 'Solana' })}
+          {t('auth.wallet.cta')}
         </Button>
+        <p className="-mt-1 text-center text-xs text-muted-foreground" data-testid="web3-solana-why">
+          {t('auth.wallet.why')}
+        </p>
         <Link
           to="/auth/code"
           className="text-center text-xs text-muted-foreground touch-hit underline-offset-2 hover:underline"

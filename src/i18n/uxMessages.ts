@@ -1,6 +1,8 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'auth.wallet.cta': 'Continuar com Phantom · sem e-mail, sem cartão',
+    'auth.wallet.why': 'Sua carteira é sua conta, seu certificado e seu inventário.',
     'purchase.details': 'Detalhes técnicos',
     'purchase.details.copy': 'Copiar detalhes',
     'purchase.proof.lives': 'vidas {current}/{max} gravadas no seu Tera',
@@ -22,6 +24,8 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'auth.wallet.cta': 'Continue with Phantom · no email, no card',
+    'auth.wallet.why': 'Your wallet is your account, your certificate and your inventory.',
     'purchase.details': 'Technical details',
     'purchase.details.copy': 'Copy details',
     'purchase.proof.lives': 'lives {current}/{max} written to your Tera',
