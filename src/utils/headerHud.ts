@@ -36,7 +36,7 @@ export function walletOf(user: Pick<User, 'identities'> | null | undefined): Wal
 /** Which top-level nav item owns a pathname; null outside the learner area. */
 export function activeNavOf(pathname: string): NavId | null {
   if (pathname === '/') return 'trails';
-  if (pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/program/')) return 'courses';
+  if (pathname === '/catalog' || pathname.startsWith('/catalog/') || pathname.startsWith('/program/') || pathname.startsWith('/course/')) return 'courses';
   if (pathname === '/passport' || pathname.startsWith('/passport/')) return 'passport';
   if (pathname === '/artifacts' || pathname.startsWith('/artifacts/')) return 'files';
   return null;
