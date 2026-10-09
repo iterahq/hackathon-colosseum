@@ -125,6 +125,21 @@ describe('CodeWithOptions (bank)', () => {
     expect(blank('hook')).not.toHaveTextContent('useState');
   });
 
+  it('tapping a wrong hole after a submit gives the chip back and resumes editing', () => {
+    renderGuided(CODE_OPTIONS_SPEC);
+    click(chip('onClick'));
+    click(chip('useState'));
+    click(screen.getByTestId('guided-submit'));
+    expect(screen.getByTestId('guided-feedback')).toHaveAttribute('data-all-correct', 'false');
+    expect(blank('hook')).toBeEnabled();
+
+    click(blank('hook'));
+    expect(chip('onClick')).toHaveAttribute('data-spent', 'false');
+    expect(blank('hook')).not.toHaveTextContent('onClick');
+    expect(screen.queryByTestId('guided-feedback')).toBeNull();
+    expect(screen.getByTestId('guided-submit')).toBeEnabled();
+  });
+
   it('submitting with empty gaps is graded as wrong, never blocked', () => {
     const onComplete = renderGuided(CODE_OPTIONS_SPEC);
     expect(screen.getByTestId('guided-submit')).toBeEnabled();

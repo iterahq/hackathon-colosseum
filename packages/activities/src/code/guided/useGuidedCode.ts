@@ -135,6 +135,9 @@ export function useGuidedCode(
   const setValue = useCallback((blankId: string, value: string) => {
     touchedRef.current = true;
     setValues((prev) => ({ ...prev, [blankId]: value }));
+    // Fixing a hole IS the retry. On a phone the retry button sits below the
+    // preview, so a wrong hole that ignored the tap read as a broken exercise.
+    setPhase((prev) => (prev === 'submitted' ? 'editing' : prev));
   }, []);
 
   useEffect(() => {
@@ -235,7 +238,9 @@ export function useGuidedCode(
     showsAnswer,
     attemptsSpent: attempts.spent,
     attemptsRemaining: attempts.remaining,
-    readOnly: showsAnswer || phase !== 'editing',
+    // A wrong verdict leaves the holes live (see `setValue`); a right one and a
+    // settled one stay frozen, because there is nothing left to fix.
+    readOnly: showsAnswer || phase === 'settled' || (phase === 'submitted' && grade.allCorrect),
     submit,
     retry,
     resetAll,
