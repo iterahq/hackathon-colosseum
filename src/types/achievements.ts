@@ -122,6 +122,8 @@ export interface CredentialVerification {
     stamps: { day: number }[];
   } | null;
   minted_at: string | null;
+  /** Parsed companion state, when the function sends it. */
+  companion?: Record<string, unknown> | null;
 }
 
 /** What the public page draws: the verification, or the reason there is none. */

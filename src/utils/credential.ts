@@ -35,3 +35,40 @@ export function credentialFacts(c: CredentialVerification, pick: (t: I18nText) =
   const trail = c.achievement?.trail || (typeof localized === 'string' && localized ? localized : null) || attr('trail') || named || null;
   return { trail, tier: c.achievement?.tier ?? attr('tier'), daysDone, totalDays, days, date: c.minted_at };
 }
+
+export interface CompanionFacts {
+  lives: number | null;
+  maxLives: number;
+  outfit: string | null;
+  level: number | null;
+  xp: number | null;
+  streak: number | null;
+  image: string | null;
+}
+
+/** Reads a companion asset: the parsed `achievement.state` first, the on-chain `attributes` as fallback. */
+export function companionFacts(c: CredentialVerification): CompanionFacts {
+  const attr = (key: string) => c.attributes.find((a) => a.key === key)?.value ?? null;
+  const state = c.achievement?.state ?? {};
+  const parsed = c.companion ?? {};
+  const pick = (key: string): number | null => {
+    const n = [num(parsed[key]), num(state[key]), num(attr(key))].find((v) => Number.isFinite(v));
+    return n ?? null;
+  };
+  const outfit = [parsed.outfit, state.outfit, attr('outfit')].find((v) => typeof v === 'string' && v && v !== 'none');
+  const maxLives = pick('max_lives') ?? 5;
+  return {
+    lives: pick('lives'),
+    maxLives: maxLives > 0 ? maxLives : 5,
+    outfit: typeof outfit === 'string' ? outfit : null,
+    level: pick('level'),
+    xp: pick('xp'),
+    streak: pick('streak'),
+    image: c.achievement?.image_url ?? null,
+  };
+}
+
+export const isCompanion = (c: CredentialVerification): boolean => c.achievement?.key === 'companion';
+
+/** A Solana address is base58, 32 to 44 characters; anything else is never echoed back as a heading. */
+export const looksLikeAddress = (s: string): boolean => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s);

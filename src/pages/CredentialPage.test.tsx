@@ -51,6 +51,20 @@ describe('CredentialPage (public)', () => {
     expect(screen.getByRole('link', { name: 'Quero minha certificação' })).toHaveAttribute('href', '/');
   });
 
+  it('companion: lives, outfit, level, xp, streak and the art; no trail rows', () => {
+    const companion = verified({ attributes: [{ key: 'streak', value: '3' }], achievement: { key: 'companion', title: 'Tera', image_url: 'https://x.test/img.svg', state: { lives: 3, max_lives: 5, outfit: 'outfit_crown', level: 4, xp: 780 }, stamps: [] } });
+    useCredential.mockReturnValue({ isPending: false, isError: false, data: companion });
+    show();
+    const card = screen.getByTestId('credential-card');
+    expect(card).toHaveTextContent('Vidas3/5');
+    expect(card).toHaveTextContent('Coroa');
+    expect(card).toHaveTextContent('Nível4');
+    expect(card).toHaveTextContent('Sequência3');
+    expect(card).toHaveTextContent('Intransferívelsim');
+    expect(screen.getByTestId('credential-companion-art')).toBeInTheDocument();
+    expect(card).not.toHaveTextContent('Trilha');
+  });
+
   it('unverified: amber warning, no verified title', () => {
     useCredential.mockReturnValue({ isPending: false, isError: false, data: { ...verified({ verified: false, achievement: null }), status: 'unverified' } });
     show();

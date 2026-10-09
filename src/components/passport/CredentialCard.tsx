@@ -4,7 +4,7 @@ import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
 import { tierLabel } from '@/utils/tier';
-import { credentialFacts } from '@/utils/credential';
+import { companionFacts, credentialFacts, isCompanion } from '@/utils/credential';
 import { CopyButton } from './CopyButton';
 
 type Found = Extract<CredentialLookup, { data: unknown }>;
@@ -35,6 +35,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
   const { data } = lookup;
   const ok = lookup.status === 'verified';
   const f = credentialFacts(data, tText, locale);
+  const companion = isCompanion(data) ? companionFacts(data) : null;
   const date = f.date ? new Date(f.date).toLocaleDateString(undefined, { timeZone: 'UTC' }) : null;
 
   return (
@@ -63,14 +64,25 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
             <CopyButton value={data.owner} label={t('passport.copyAddress')} doneLabel={t('passport.copied')} display="" />
           </Row>
         )}
-        {f.trail && <Row label={t('passport.credential.trail')}>{f.trail}</Row>}
-        {f.totalDays > 0 && <Row label={t('passport.credential.days')}>{f.daysDone}/{f.totalDays}</Row>}
-        {f.tier && <Row label={t('passport.credential.tier')}>{tierLabel(t, f.tier)}</Row>}
-        {date && <Row label={t('passport.credential.date')}>{date}</Row>}
+        {companion ? (
+          <>
+            {companion.lives != null && <Row label={t('passport.credential.lives')}>{companion.lives}/{companion.maxLives}</Row>}
+            <Row label={t('passport.credential.outfit')}>{companion.outfit ? t(`ux.outfit.${companion.outfit}`) : t('passport.credential.noOutfit')}</Row>
+            {companion.level != null && <Row label={t('passport.credential.level')}>{companion.level}</Row>}
+            {companion.xp != null && <Row label={t('passport.credential.xp')}>{companion.xp}</Row>}
+            {companion.streak != null && <Row label={t('passport.credential.streak')}>{companion.streak}</Row>}
+          </>
+        ) : (
+          <>
+            {f.trail && <Row label={t('passport.credential.trail')}>{f.trail}</Row>}
+            {f.totalDays > 0 && <Row label={t('passport.credential.days')}>{f.daysDone}/{f.totalDays}</Row>}
+            {f.tier && <Row label={t('passport.credential.tier')}>{tierLabel(t, f.tier)}</Row>}
+            {date && <Row label={t('passport.credential.date')}>{date}</Row>}
+          </>
+        )}
         <Row label={t('passport.credential.asset')}>{shortAddress(data.asset)}</Row>
-        {data.owner && <Row label={t('passport.credential.owner')}>{shortAddress(data.owner)}</Row>}
         <Row label={t('passport.credential.soulbound')}>{data.frozen ? t('passport.credential.yes') : t('passport.credential.no')}</Row>
-        {f.days.length > 0 && (
+        {!companion && f.days.length > 0 && (
           <Row label={t('passport.credential.attributes')}>
             {f.days.map((d) => (
               <span key={d.day} className="rounded border border-[#2E2A25] px-1.5 py-0.5 text-[11px]" style={{ color: d.done ? '#3FD17F' : '#A0978A' }}>

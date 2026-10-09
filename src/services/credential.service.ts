@@ -33,6 +33,7 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
         }
       : null,
     minted_at: text(b.minted_at),
+    companion: b.companion && typeof b.companion === 'object' ? (b.companion as Record<string, unknown>) : null,
   };
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCredential } from '@/services/credential.service';
-import { credentialFacts } from '@/utils/credential';
+import { companionFacts, credentialFacts, looksLikeAddress } from '@/utils/credential';
 
 const pick = (t: Record<string, string>) => t.pt ?? '';
 
@@ -42,5 +42,23 @@ describe('credentialFacts language', () => {
     expect(credentialFacts(bag, pick, 'en').trail).toBe('Week 1 · HTML');
     const raw = parseCredential({ verified: true, attributes: [{ key: 'trail', value: 'raw' }], achievement: { key: 'k', tier: null, title: 'x' } }, 'A');
     expect(credentialFacts(raw, pick, 'pt').trail).toBe('raw');
+  });
+});
+
+describe('companionFacts', () => {
+  const base = { verified: true, asset: 'a', owner: 'o', frozen: true, collection: null, update_authority: null, minted_at: null } as const;
+  it('reads state first, attributes as fallback', () => {
+    const f = companionFacts({ ...base, attributes: [{ key: 'lives', value: '2' }, { key: 'streak', value: '4' }, { key: 'outfit', value: 'outfit_crown' }], achievement: { key: 'companion', tier: null, title: '', image_url: 'x.svg', state: { lives: 3, level: 4, xp: 780 }, stamps: [] } });
+    expect(f).toMatchObject({ lives: 3, maxLives: 5, level: 4, xp: 780, streak: 4, outfit: 'outfit_crown', image: 'x.svg' });
+  });
+  it('treats none as no outfit', () => {
+    expect(companionFacts({ ...base, attributes: [{ key: 'outfit', value: 'none' }], achievement: null }).outfit).toBeNull();
+  });
+});
+
+describe('looksLikeAddress', () => {
+  it('accepts base58 addresses only', () => {
+    expect(looksLikeAddress('Dk35TCfPRrZymFnpP6MfQ55Zg9LEe7BDojStY1ZfQM45')).toBe(true);
+    expect(looksLikeAddress('garbage')).toBe(false);
   });
 });
