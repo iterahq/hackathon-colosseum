@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '@/i18n';
-import { LessonTitle, TITLE_POPOVER_MS } from './LessonTitle';
+import { LessonTitle, PHONE_STRIP, TITLE_POPOVER_MS } from './LessonTitle';
 
 const TEXT = 'A very long lesson title that does not fit on one line of a phone';
 
@@ -66,5 +66,15 @@ describe('LessonTitle', () => {
     renderTitle();
     fireEvent.click(screen.getByTestId('lesson-title-more'));
     expect(screen.getByRole('heading', { level: 1, name: TEXT })).toBeInTheDocument();
+  });
+
+  it('is a single 20 px line on a phone and still carries the full text', () => {
+    setWidths(200, 200);
+    renderTitle();
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading).toHaveAccessibleName(TEXT);
+    expect(heading.className).toContain('truncate');
+    for (const cls of PHONE_STRIP.split(' ')) expect(heading.className).toContain(cls);
+    expect(PHONE_STRIP).toContain('max-sm:leading-5');
   });
 });

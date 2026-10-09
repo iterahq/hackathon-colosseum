@@ -87,10 +87,12 @@ const BAR_BOTTOM_RESERVE =
 /**
  * Tera peeks over the top-right corner of the card (56 px wide, 16 px in; 80 px
  * and 24 px from `md`) and his crest rises into the title line. The title gives
- * up that width only on the screens where he is there.
+ * up that width only on the screens where he is there — and on a phone he is not
+ * there at all (the title strip is one 20 px line under the chrome), so he stays
+ * in the feedback and guide surfaces.
  */
 const TITLE_CLEARS_TERA =
-  'group-has-[[data-tera-peek]]/lesson:pr-[76px] md:group-has-[[data-tera-peek]]/lesson:pr-[108px]';
+  'sm:group-has-[[data-tera-peek]]/lesson:pr-[76px] md:group-has-[[data-tera-peek]]/lesson:pr-[108px]';
 
 export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -786,7 +788,7 @@ export default function LessonPlayer() {
         data-testid="lesson-main"
         data-fit-viewport
         className={`group/lesson flex-1 w-full mx-auto ${maxWidthClass} px-4 md:px-6 ${
-          isSandbox && !completed ? 'pt-4 max-sm:pt-[3.25rem]' : 'pt-[3.25rem]'
+          isSandbox && !completed ? 'pt-4 max-sm:pt-11' : 'pt-[3.25rem] max-sm:pt-11'
         } ${pending || !isSandbox ? BAR_BOTTOM_RESERVE : 'pb-4'}`}
       >
         {/* `resuming` shares the content skeleton on purpose: reading back where
@@ -839,7 +841,7 @@ export default function LessonPlayer() {
               <div className={TITLE_CLEARS_TERA}>
                 <LessonTitle
                   text={tText(data.title)}
-                  className="font-display font-bold text-xl md:text-2xl text-foreground truncate pb-1 -mb-1 max-sm:text-lg"
+                  className="font-display font-bold text-xl md:text-2xl text-foreground truncate pb-1 -mb-1"
                 />
               </div>
 

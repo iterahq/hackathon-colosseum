@@ -28,12 +28,14 @@ export function useTeraMentioned(): boolean {
  * Tera peeking over the card's top-right corner, outside the text column.
  * His crest rises above the card, so whatever the host draws right above it
  * (the lesson title) keeps clear of him by matching `[data-tera-peek]`.
+ * Not drawn below `sm`: on a phone the title strip is a single short line and
+ * he would sit over it; he still shows in the verdict and guide surfaces.
  */
 export function TeraPeek() {
   const reduced = useReducedMotion();
   return (
     <motion.span
-      className="pointer-events-none absolute -top-3 right-4 block h-14 w-14 md:-top-6 md:right-6 md:h-20 md:w-20"
+      className="pointer-events-none absolute max-sm:hidden -top-3 right-4 block h-14 w-14 md:-top-6 md:right-6 md:h-20 md:w-20"
       data-testid="tera-presence"
       data-tera-peek=""
       aria-hidden="true"
@@ -56,7 +58,7 @@ export function TeraPeekRoom() {
     <span
       aria-hidden="true"
       data-testid="tera-presence-room"
-      className="float-right block h-8 w-[60px] md:h-10 md:w-[76px]"
+      className="float-right block max-sm:hidden h-8 w-[60px] md:h-10 md:w-[76px]"
     />
   );
 }

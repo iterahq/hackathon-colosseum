@@ -65,7 +65,7 @@ export function LessonChrome({
         />
       </div>
 
-      <div className="absolute top-2.5 left-3 md:left-4 h-9 flex items-center gap-2">
+      <div className="absolute top-2.5 max-sm:top-1.5 left-3 md:left-4 h-9 flex items-center gap-2">
         <button
           onClick={onClose}
           aria-label={t('common.back')}
@@ -111,7 +111,7 @@ export function LessonChrome({
         )}
       </div>
 
-      <div className="absolute top-2.5 right-3 md:right-4 h-9 flex items-center gap-2">
+      <div className="absolute top-2.5 max-sm:top-1.5 right-3 md:right-4 h-9 flex items-center gap-2">
         <button
           type="button"
           onClick={onToggleMuted}

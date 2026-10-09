@@ -27,6 +27,12 @@ describe('Tera on the activity card', () => {
     expect(screen.getByTestId('tera-presence')).toHaveAttribute('data-tera-peek');
   });
 
+  it('does not draw him, nor his room, on a phone', () => {
+    shell('O Tera escreveu 3 linhas.');
+    expect(screen.getByTestId('tera-presence').className).toContain('max-sm:hidden');
+    expect(screen.getByTestId('tera-presence-room').className).toContain('max-sm:hidden');
+  });
+
   it('draws neither him nor his room when the activity does not mention him', () => {
     shell('Qual linha está quebrada?');
     expect(screen.queryByTestId('tera-presence')).toBeNull();

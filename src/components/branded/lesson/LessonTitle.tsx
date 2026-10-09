@@ -4,6 +4,9 @@ import { useTransientOpen } from './useTransientOpen';
 
 export const TITLE_POPOVER_MS = 3000;
 
+/** On a phone the title is a 20 px line directly under the chrome row (chrome + title <= 64 px). */
+export const PHONE_STRIP = 'max-sm:text-sm max-sm:leading-5';
+
 /**
  * The lesson title: one truncated line. Hover has the `title`; a finger has
  * nothing, so when (and only when) the line is cut, a button laid over it shows
@@ -18,7 +21,7 @@ export function LessonTitle({ text, className }: { text: string; className: stri
 
   return (
     <div ref={containerRef} className="relative">
-      <h1 ref={ref} title={clipped ? text : undefined} className={className} data-testid="lesson-title">
+      <h1 ref={ref} title={clipped ? text : undefined} className={`${className} ${PHONE_STRIP}`} data-testid="lesson-title">
         {text}
       </h1>
       {clipped && (
