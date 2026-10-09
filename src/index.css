@@ -273,6 +273,24 @@
     animation: none;
   }
 }
+/* Barra de 2px no topo da tela de espera: invisível nos primeiros 400 ms (carga
+   rápida não mostra nada), depois aparece e pulsa. Só CSS, chapada, sem gradiente. */
+.ds-settling-bar {
+  opacity: 0;
+  background-color: var(--color-evergreen);
+  animation:
+    ds-settling-in 0.2s ease-out 400ms forwards,
+    brand-pulse 1.6s ease-in-out 600ms infinite;
+}
+@keyframes ds-settling-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-settling-bar {
+    animation: ds-settling-in 0s 400ms forwards;
+  }
+}
 
 /* Dark scrollbars (evergreen-tinted) */
 .dark ::-webkit-scrollbar {

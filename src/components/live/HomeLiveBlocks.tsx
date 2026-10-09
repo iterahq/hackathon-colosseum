@@ -3,6 +3,7 @@ import { Radio } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
+import { useShellSurface } from '@/hooks/useShellSurface';
 import { liveLearnerHref } from '@/utils/liveLearnerView';
 import { NextScheduledClassBlock } from './NextScheduledClassBlock';
 
@@ -31,9 +32,11 @@ function LiveClassBlock() {
   const { t } = useI18n();
   const identity = useIteraIdentity();
   const { data: active } = useActiveLiveClass();
+  const surface = useShellSurface();
 
   if (!active) return null;
 
+  const inShell = surface === 'shell';
   const isInstructor = active.instructorId === identity.userId;
   const target = isInstructor ? '/live/instructor' : `/live/${active.id}`;
   const ctaLabel = isInstructor ? t('live.block.returnCta') : t('live.block.joinCta');
@@ -52,11 +55,16 @@ function LiveClassBlock() {
             <p className="font-mono text-[11px] uppercase tracking-wider text-red-500 font-bold">
               {t('live.badge.label')}
             </p>
-            <p className="text-sm text-muted-foreground mt-0.5 truncate">{t('live.block.subtitle')}</p>
+            {inShell ? (
+              <p className="text-sm text-muted-foreground mt-0.5">{t('shell.liveUnavailable.body', { host: window.location.host })}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">{t('live.block.subtitle')}</p>
+            )}
           </div>
         </div>
 
         {/* right: CTA */}
+        {surface === 'web' && (
         <div className="shrink-0 flex items-center gap-2">
           {/* O professor às vezes quer VER a aula como o aluno vê (conferir um
               exercício, acompanhar de outro dispositivo). Sem isso o redirect
@@ -81,6 +89,7 @@ function LiveClassBlock() {
             {ctaLabel}
           </button>
         </div>
+        )}
       </div>
     </section>
   );

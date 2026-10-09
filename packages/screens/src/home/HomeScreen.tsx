@@ -70,7 +70,7 @@ interface ProgramsProps extends Pick<HomeScreenProps, 't' | 'onOpenProgram' | 'o
 function Programs({ state, visitor, t, icon, onOpenProgram, onBrowseCatalog, onRetry }: ProgramsProps) {
   if (state.kind === 'loading') {
     return (
-      <View className={ROW}>
+      <View testID="programs-loading" aria-busy className={ROW}>
         {[0, 1, 2].map((i) => (
           <View key={i} className={CELL}>
             <View className="ds-shimmer aspect-16/13 w-full rounded-2xl border border-border bg-card" />

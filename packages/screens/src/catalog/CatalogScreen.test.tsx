@@ -49,6 +49,7 @@ describe('CatalogScreen: the list states', () => {
   it('loading: three shimmering blocks and nothing else', () => {
     const { container } = setup({ kind: 'loading' });
     expect(container.querySelectorAll('.ds-shimmer')).toHaveLength(3);
+    expect(screen.getByTestId('catalog-loading')).toHaveAttribute('aria-busy', 'true');
     expect(screen.queryByTestId('catalog-error')).toBeNull();
     expect(screen.queryByTestId('catalog-grid')).toBeNull();
   });

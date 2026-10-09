@@ -18,6 +18,7 @@ import { ShellBridgeMount } from "./lib/shellBridge";
 import { KeepAwakeRouteMount } from "./lib/shellKeepAwake";
 import { ShellAuthSessionMount } from "./lib/shellAuthSession";
 import { WebOnlyRoute } from "./components/shell/WebOnlyRoute";
+import { ShellLiveUnavailableRoute } from "./components/shell/ShellLiveUnavailableRoute";
 import { ShellAccessGate } from "./components/shell/ShellAccessGate";
 /* ── Code-split surfaces (lazy) ───────────────────────────────────────────
    /admin/* and /author/* are staff surfaces: role-gated, and never rendered in
@@ -286,6 +287,7 @@ const App = () => (
                     </WebOnlyRoute>
                   }
                 />
+                {/* Live class is not supported in the native shell: these routes show a notice there. */}
                 {/* Live-class / real-time cohort mode (plan 20260702-…).
                     Professor control surface — instructor-gated. Static
                     `/live/instructor` is declared BEFORE the dynamic
@@ -295,11 +297,13 @@ const App = () => (
                 <Route
                   path="/live/instructor"
                   element={
-                    <RequireAuth>
-                      <RequireRole role="instructor">
-                        <LazyRoute><InstructorClassPage /></LazyRoute>
-                      </RequireRole>
-                    </RequireAuth>
+                    <ShellLiveUnavailableRoute>
+                      <RequireAuth>
+                        <RequireRole role="instructor">
+                          <LazyRoute><InstructorClassPage /></LazyRoute>
+                        </RequireRole>
+                      </RequireAuth>
+                    </ShellLiveUnavailableRoute>
                   }
                 />
                 {/* Post-class report — instructor-gated, reads the durable
@@ -309,11 +313,13 @@ const App = () => (
                 <Route
                   path="/live/instructor/report/:sessionId"
                   element={
-                    <RequireAuth>
-                      <RequireRole role="instructor">
-                        <LazyRoute><InstructorReportPage /></LazyRoute>
-                      </RequireRole>
-                    </RequireAuth>
+                    <ShellLiveUnavailableRoute>
+                      <RequireAuth>
+                        <RequireRole role="instructor">
+                          <LazyRoute><InstructorReportPage /></LazyRoute>
+                        </RequireRole>
+                      </RequireAuth>
+                    </ShellLiveUnavailableRoute>
                   }
                 />
                 {/* Instructor view of ONE session — deep-linkable, reloadable
@@ -323,11 +329,13 @@ const App = () => (
                 <Route
                   path="/live/instructor/:sessionId"
                   element={
-                    <RequireAuth>
-                      <RequireRole role="instructor">
-                        <LazyRoute><InstructorSessionPage /></LazyRoute>
-                      </RequireRole>
-                    </RequireAuth>
+                    <ShellLiveUnavailableRoute>
+                      <RequireAuth>
+                        <RequireRole role="instructor">
+                          <LazyRoute><InstructorSessionPage /></LazyRoute>
+                        </RequireRole>
+                      </RequireAuth>
+                    </ShellLiveUnavailableRoute>
                   }
                 />
                 {/* Student live-session surface — reuses the activity components in
@@ -348,13 +356,15 @@ const App = () => (
                 <Route
                   path="/live/:sessionId"
                   element={
-                    <RequireAuth>
-                      <RequireSubscription graceOnError>
-                        <LiveEntryRoleGate>
-                          <LazyRoute><LiveSessionPage /></LazyRoute>
-                        </LiveEntryRoleGate>
-                      </RequireSubscription>
-                    </RequireAuth>
+                    <ShellLiveUnavailableRoute>
+                      <RequireAuth>
+                        <RequireSubscription graceOnError>
+                          <LiveEntryRoleGate>
+                            <LazyRoute><LiveSessionPage /></LazyRoute>
+                          </LiveEntryRoleGate>
+                        </RequireSubscription>
+                      </RequireAuth>
+                    </ShellLiveUnavailableRoute>
                   }
                 />
                 {/* GUEST live surface (plan 20260728-itera-guest-link-aula-sincrona,
@@ -368,7 +378,7 @@ const App = () => (
                     It renders the SAME LiveSessionPage in guest mode; content
                     comes from itera-api because the guest holds ZERO memberships
                     (ADR-2/B5) and therefore reads no lesson rows at all. */}
-                <Route path={GUEST_ROUTE_PATH} element={<LazyRoute><GuestLiveRoute /></LazyRoute>} />
+                <Route path={GUEST_ROUTE_PATH} element={<ShellLiveUnavailableRoute><LazyRoute><GuestLiveRoute /></LazyRoute></ShellLiveUnavailableRoute>} />
 
                 {/* Tenant-admin observability (plan #6) — role-gated, READ-ONLY,
                     single-tenant. NO authoring routes exist here by design

@@ -31,7 +31,7 @@ const noIcon = () => null;
 
 function Skeleton() {
   return (
-    <View className={ROW}>
+    <View testID="catalog-loading" aria-busy className={ROW}>
       {[0, 1, 2].map((i) => (
         <View key={i} className={CELL}>
           <View className="ds-shimmer aspect-[16/12] w-full rounded-2xl border border-border bg-card" />

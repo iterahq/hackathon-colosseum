@@ -160,7 +160,7 @@ export default function ProgramPage() {
 
       <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         {loading ? (
-          <div className="space-y-4" data-testid="program-loading">
+          <div className="space-y-4" data-testid="program-loading" aria-busy="true">
             <div className="h-40 rounded-3xl ds-shimmer" />
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-16 rounded-2xl ds-shimmer" />

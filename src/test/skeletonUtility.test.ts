@@ -34,6 +34,12 @@ describe('ds-shimmer', () => {
     expect(css).toMatch(/prefers-reduced-motion[\s\S]*?\.ds-shimmer[\s\S]*?animation:\s*none/);
   });
 
+  it('ds-settling-bar starts invisible and waits before it appears', () => {
+    const body = rule('ds-settling-bar');
+    expect(body).toMatch(/opacity:\s*0\b/);
+    expect(body).toMatch(/animation:[\s\S]*\b400ms\b/);
+  });
+
   it('nenhum consumidor usa uma classe `ds-*` sem CSS', () => {
     const used = new Set<string>();
     for (const source of Object.values(sources)) {

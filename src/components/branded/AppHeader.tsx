@@ -335,47 +335,49 @@ export function AppHeader({
                     >
                       <GraduationCap className="w-4 h-4" /> {t('nav.catalog')}
                     </button>
-                    {showAdmin && (
-                      <button
-                        onClick={() => {
-                          setOpen(false);
-                          navigate('/admin');
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 ${
-                          active === 'admin' ? 'text-menta' : ''
-                        }`}
-                        data-testid="nav-admin"
-                      >
-                        <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
-                      </button>
-                    )}
-                    {/* A superfície de autoria existia só por URL digitada. */}
-                    {showAdmin && (
-                      <button
-                        onClick={() => {
-                          setOpen(false);
-                          navigate('/author');
-                        }}
-                        data-testid="nav-author"
-                        className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
-                      >
-                        <PencilRuler className="w-4 h-4" /> {t('nav.author')}
-                      </button>
-                    )}
-                    {/* Instructor/admin shortcut to start a live class — only visible
-                        when the user holds a staff role in a live_class_enabled tenant. */}
-                    {canStartLiveClass && (
-                      <button
-                        onClick={() => {
-                          setOpen(false);
-                          navigate('/live/instructor');
-                        }}
-                        data-testid="nav-start-live-class"
-                        className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 text-evergreen-hi"
-                      >
-                        <Video className="w-4 h-4" /> {t('live.instructor.start.cta')}
-                      </button>
-                    )}
+                    <WebOnly>
+                      {showAdmin && (
+                        <button
+                          onClick={() => {
+                            setOpen(false);
+                            navigate('/admin');
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 ${
+                            active === 'admin' ? 'text-menta' : ''
+                          }`}
+                          data-testid="nav-admin"
+                        >
+                          <ShieldCheck className="w-4 h-4" /> {t('admin.nav.roster')}
+                        </button>
+                      )}
+                      {/* A superfície de autoria existia só por URL digitada. */}
+                      {showAdmin && (
+                        <button
+                          onClick={() => {
+                            setOpen(false);
+                            navigate('/author');
+                          }}
+                          data-testid="nav-author"
+                          className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60"
+                        >
+                          <PencilRuler className="w-4 h-4" /> {t('nav.author')}
+                        </button>
+                      )}
+                      {/* Instructor/admin shortcut to start a live class — only visible
+                          when the user holds a staff role in a live_class_enabled tenant. */}
+                      {canStartLiveClass && (
+                        <button
+                          onClick={() => {
+                            setOpen(false);
+                            navigate('/live/instructor');
+                          }}
+                          data-testid="nav-start-live-class"
+                          className="w-full flex items-center gap-3 px-3 h-10 rounded-xl text-sm transition-colors hover:bg-obsidiana/60 text-evergreen-hi"
+                        >
+                          <Video className="w-4 h-4" /> {t('live.instructor.start.cta')}
+                        </button>
+                      )}
+                    </WebOnly>
                     {/* Language preference — saved to the user PROFILE
                         (itera.users.locale, DB-backed via useLocaleSync). A
                         two-option selector (Português / Inglês), not just a

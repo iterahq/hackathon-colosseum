@@ -74,6 +74,7 @@ describe('HomeScreen: a member', () => {
   it('loading: three shimmering blocks', () => {
     const { container } = setup(member({ kind: 'loading' }));
     expect(container.querySelectorAll('.ds-shimmer')).toHaveLength(3);
+    expect(screen.getByTestId('programs-loading')).toHaveAttribute('aria-busy', 'true');
   });
 
   it('error: the message and Retry', () => {

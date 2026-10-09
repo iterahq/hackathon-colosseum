@@ -18,6 +18,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
+import { useShellSurface } from '@/hooks/useShellSurface';
 import { useI18n } from '@/i18n';
 import { toast } from '@/components/ui/sonner';
 
@@ -51,11 +52,13 @@ export function LiveClassSignal() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
+  const surface = useShellSurface();
   const signaledRef = useRef<string | null>(null);
 
   const activeId = active?.id ?? null;
 
   useEffect(() => {
+    if (surface === 'pending') return;
     const onLiveRoute = location.pathname.startsWith('/live/');
     const { fire, nextSignaledId } = computeLiveSignal({
       activeId,
@@ -64,16 +67,23 @@ export function LiveClassSignal() {
     });
     signaledRef.current = nextSignaledId;
     if (fire && activeId) {
-      toast(t('live.signal.title'), {
-        description: t('live.signal.body'),
-        duration: 12_000,
-        action: {
-          label: t('live.signal.cta'),
-          onClick: () => navigate(`/live/${activeId}`),
-        },
-      });
+      if (surface === 'shell') {
+        toast(t('live.signal.title'), {
+          description: t('shell.liveUnavailable.body', { host: window.location.host }),
+          duration: 12_000,
+        });
+      } else {
+        toast(t('live.signal.title'), {
+          description: t('live.signal.body'),
+          duration: 12_000,
+          action: {
+            label: t('live.signal.cta'),
+            onClick: () => navigate(`/live/${activeId}`),
+          },
+        });
+      }
     }
-  }, [activeId, location.pathname, navigate, t]);
+  }, [activeId, location.pathname, navigate, surface, t]);
 
   return null;
 }

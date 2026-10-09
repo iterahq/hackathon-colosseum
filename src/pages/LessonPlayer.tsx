@@ -794,7 +794,7 @@ export default function LessonPlayer() {
             activity 1 for a frame before seeking to activity 11 is precisely the
             flicker this gate exists to prevent. */}
         {isPending || resuming ? (
-          <div className="space-y-4" data-testid="lesson-loading">
+          <div className="space-y-4" data-testid="lesson-loading" aria-busy="true">
             <div className="h-5 w-1/3 rounded ds-shimmer" />
             <div className="h-9 w-2/3 rounded-lg ds-shimmer" />
             <div className="h-48 rounded-3xl ds-shimmer" />
