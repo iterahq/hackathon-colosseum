@@ -13,6 +13,7 @@ const item = (key: string, kind: ShopItem['kind'], patch: Partial<ShopItem> = {}
   art: {},
   owned: false,
   equipped: false,
+  ownedRefs: [],
   ...patch,
 });
 

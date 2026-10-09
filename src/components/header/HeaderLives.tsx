@@ -23,16 +23,20 @@ export function HeaderLives() {
       title={label}
       data-testid="header-lives"
       data-lives={lives.current}
-      className="hd-focus flex items-center gap-1.5 rounded-l-[9px] px-2.5 transition-colors hover:bg-[#1B1815] sm:px-3"
+      className="hd-focus flex items-center gap-1 rounded-l-[9px] pl-1.5 pr-0.5 transition-colors hover:bg-[#1B1815] sm:gap-1.5 sm:px-3"
     >
-      <Heart aria-hidden width={18} height={18} strokeWidth={2.25} style={empty ? { color: '#5E574E', fill: 'transparent' } : { color: HEART, fill: HEART }} />
-      <span className="flex flex-col leading-none">
+      <span className="relative grid place-items-center">
+        <Heart aria-hidden className="h-6 w-6 sm:h-[18px] sm:w-[18px]" strokeWidth={2.25} style={empty ? { color: '#5E574E', fill: 'transparent' } : { color: HEART, fill: HEART }} />
+        <span aria-hidden className={`absolute [font:700_11px_JetBrains_Mono] tabular-nums sm:hidden ${empty ? 'text-[#8A8276]' : 'text-[#0A0908]'}`}>
+          {lives.current}
+        </span>
+      </span>
+      <span className="flex flex-col leading-none max-sm:hidden">
         <span className="flex items-baseline gap-1">
           <span className={`[font:700_16px_JetBrains_Mono] tabular-nums ${empty ? 'text-[#8A8276]' : 'text-[#F4EDE2]'}`}>
             {lives.current}
             <span className="text-[#8A8276] max-sm:hidden">/{lives.max}</span>
           </span>
-          <span className="[font:500_10px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A] max-xl:hidden">{t('lives.hud.unit')}</span>
         </span>
         {!full && (
           <span className="mt-1 [font:600_9px_JetBrains_Mono] tabular-nums text-[#A0978A] max-sm:hidden" data-testid="header-lives-countdown">

@@ -94,17 +94,15 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
       if (!active) return 0;
       const mistakes = readMistakes(lessonId);
       writeMistakes(lessonId, null);
-      const before = queryClient.getQueryData<CompanionSnapshot>(key)?.lives.current ?? null;
       try {
         const update = await reportLessonEnd(lessonId, mistakes);
         apply(update);
-        if (update.bonus > 0) return update.bonus;
-        return mistakes === 0 && before !== null && update.lives.current > before ? update.lives.current - before : 0;
+        return update.bonus;
       } catch {
         return 0;
       }
     },
-    [active, apply, queryClient, key]
+    [active, apply]
   );
 
   return { active, lives, secondsToNext: seconds, lose, endLesson, wallet: companion.wallet, outfit: companion.outfit, refetch };

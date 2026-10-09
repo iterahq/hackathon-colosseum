@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import { toConfirmation, toFaucet, toIntent, toLives, toLivesUpdate, toShopItems, toSnapshot } from './shopNormalize';
+
+describe('shop wire normalisers (shapes as deployed 2026-10-09)', () => {
+  it('reads the companion answer of an e-mail user', () => {
+    const snapshot = toSnapshot(
+      {
+        lives: { current: 5, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: 1200 },
+        companion: { id: 'c1', asset_address: null, mint_status: 'unclaimed', explorer_url: null, outfit: null, level: 4, xp: 780, streak: 5 },
+        inventory: [],
+        wallet: null,
+      },
+      false
+    );
+    expect(snapshot.lives).toEqual({ current: 5, max: 5, nextRegenAt: null, regenSeconds: 1200 });
+    expect(snapshot.companion).toMatchObject({ assetAddress: null, mintStatus: 'unclaimed', level: 4, streak: 5 });
+    expect(snapshot.wallet).toBeNull();
+  });
+
+  it('treats regen_seconds as time left and regen_interval_seconds as the tick', () => {
+    const lives = toLives({ current: 3, max: 5, next_regen_at: '2026-10-09T12:20:00.000Z', regen_seconds: 400, regen_interval_seconds: 1200 });
+    expect(lives).toEqual({ current: 3, max: 5, nextRegenAt: '2026-10-09T12:20:00.000Z', regenSeconds: 1200 });
+  });
+
+  it('refuses an answer with no lives counter, so callers fail open', () => {
+    expect(toLives({})).toBeNull();
+    expect(() => toSnapshot({ companion: {} }, false)).toThrow();
+  });
+
+  it('counts a bonus only when the verdict is "granted"', () => {
+    const lives = { current: 4, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: 1200 };
+    expect(toLivesUpdate({ lives, companion: {}, bonus: 'granted' }).bonus).toBe(1);
+    for (const bonus of ['already_granted', 'mistakes', 'lesson_incomplete', 'full', undefined]) expect(toLivesUpdate({ lives, bonus }).bonus).toBe(0);
+  });
+
+  it('reads shop items, keeping the backend price label and the per-certification ownership', () => {
+    const [ink] = toShopItems([
+      { key: 'ink_emerald', kind: 'ink', title: 'Tinta', description: 'd', price_usd_cents: 20, price_lamports: 1100000, price_label: 'US$ 0.20 ≈ 0.0011 SOL', art: { color: '#34D399' }, owned: false, equipped: false, owned_refs: ['unit-1'] },
+      { kind: 'ink' },
+    ]);
+    expect(ink).toMatchObject({ key: 'ink_emerald', priceLabel: 'US$ 0.20 ≈ 0.0011 SOL', ownedRefs: ['unit-1'] });
+    expect(toShopItems([{ kind: 'ink' }])).toEqual([]);
+  });
+
+  it('reads an intent and insists on its id', () => {
+    expect(toIntent({ intent_id: 'i1', message_base58: 'M', transaction_base58: 'T', transaction_base64: 'B', price_lamports: 550000, price_usd_cents: 10, price_label: 'L', cluster: 'devnet' })).toMatchObject({
+      intentId: 'i1',
+      messageBase58: 'M',
+      priceLabel: 'L',
+    });
+    expect(() => toIntent({})).toThrow();
+  });
+
+  it('reads a paid confirmation whose item is an object', () => {
+    const paid = toConfirmation({ status: 'paid', item: { key: 'outfit_crown', kind: 'outfit', title: 'Coroa' }, inventory: [{ item_key: 'outfit_crown', kind: 'outfit', qty: 1, equipped: true }], explorer_url: 'https://e/tx' });
+    expect(paid).toMatchObject({ status: 'paid', itemKey: 'outfit_crown', explorerUrl: 'https://e/tx', lives: null });
+    expect(paid.inventory).toEqual([{ itemKey: 'outfit_crown', kind: 'outfit', qty: 1, equipped: true }]);
+    expect(toConfirmation({}).status).toBe('failed');
+  });
+
+  it('reads both faucet answers', () => {
+    expect(toFaucet({ signature: 'S', lamports: 1 })).toEqual({ signature: 'S', blocked: null });
+    expect(toFaucet({ blocked: 'already_claimed' })).toEqual({ signature: null, blocked: 'already_claimed' });
+  });
+});

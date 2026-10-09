@@ -12,7 +12,10 @@ export class ShopCallError extends Error {
   constructor(
     message: string,
     readonly status: number | null,
-    readonly code: string | null = null
+    /** The backend's `{ error: <code> }`, e.g. `insufficient_funds`, `tx_not_found`. */
+    readonly code: string | null = null,
+    /** The backend says the same call may succeed if repeated. */
+    readonly retryable = false
   ) {
     super(message);
   }
@@ -49,15 +52,14 @@ export function mockForced(): boolean {
   }
 }
 
-async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; message: string | null }> {
+async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean }> {
   const context = (error as { context?: Response }).context;
   const status = typeof context?.status === 'number' ? context.status : null;
   try {
-    const json = (await context?.clone().json()) as { error?: unknown; code?: unknown; message?: unknown } | undefined;
-    const text = typeof json?.error === 'string' ? json.error : typeof json?.message === 'string' ? json.message : null;
-    return { status, code: typeof json?.code === 'string' ? json.code : null, message: text };
+    const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown } | undefined;
+    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true };
   } catch {
-    return { status, code: null, message: null };
+    return { status, code: null, retryable: false };
   }
 }
 
@@ -68,6 +70,7 @@ export async function callShop(fn: ShopFunction, { method = 'POST', body = {}, q
   const { data, error } = await getSupabase().functions.invoke(search ? `${fn}?${search}` : fn, method === 'GET' ? { method } : { method, body });
   if (!error) return { data, mocked: false };
   const detail = await errorBody(error);
-  if (detail.status === 404 && mockAllowed()) return { data: mockShopCall(fn, body, query), mocked: true };
-  throw new ShopCallError(detail.message ?? error.message, detail.status, detail.code);
+  // A deployed function answers its own 404s with `{ error: <code> }`; only the gateway's "function not found" has none.
+  if (detail.status === 404 && detail.code === null && mockAllowed()) return { data: mockShopCall(fn, body, query), mocked: true };
+  throw new ShopCallError(detail.code ? `${fn}: ${detail.code}` : error.message, detail.status, detail.code, detail.retryable);
 }

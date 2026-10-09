@@ -22,6 +22,8 @@ export function useCompanion({ enabled = true }: { enabled?: boolean } = {}) {
     enabled: enabled && configured && Boolean(session),
     retry: false,
     staleTime: 30_000,
+    // A wallet user's Tera is minted in the background on the first call: watch until it lands.
+    refetchInterval: (q) => (q.state.data?.companion.mintStatus === 'pending' ? 5000 : false),
   });
   const wallet = query.data?.wallet ?? walletOf(session?.user)?.address ?? null;
 

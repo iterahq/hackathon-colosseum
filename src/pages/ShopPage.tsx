@@ -46,9 +46,10 @@ export default function ShopPage() {
   const equip = useEquipOutfit();
   const [preview, setPreview] = useState<string | null>(null);
   const purchase = usePurchase({ onPaid: () => setPreview(null) });
-  const certs = usePassportView().pages.filter((page) => page.credentialId);
+  // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
+  const certs = usePassportView().pages.filter((page) => page.mintStatus === 'minted');
   const [target, setTarget] = useState('');
-  const targetId = target || certs[0]?.credentialId || '';
+  const targetId = target || certs[0]?.trailId || '';
 
   const items = useMemo(() => withCompanionState(shop.data ?? [], companion.data), [shop.data, companion.data]);
   const shelves = useMemo(() => shelvesOf(items), [items]);
@@ -58,6 +59,12 @@ export default function ShopPage() {
   const buying = byKey(purchase.state.itemKey);
   const shownKey = preview ?? companion.outfit;
   const buy = (item: ShopItem, refId?: string) => (hasWallet ? void purchase.buy(item.key, refId) : void signInWithSolana().then(() => companion.refetch()));
+
+  const tryOn = (key: string) => {
+    setPreview(preview === key ? null : key);
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    document.querySelector('[data-testid="shop-stage"]')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+  };
 
   const card = (item: ShopItem, extra?: { children?: ReactNode; buyDisabled?: boolean; refId?: string }) => (
     <ShopItemCard
@@ -70,7 +77,7 @@ export default function ShopPage() {
       onBuy={() => buy(item, extra?.refId)}
       onEquip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(item.key)) : undefined}
       onUnequip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(null)) : undefined}
-      onPreview={item.kind === 'outfit' ? () => setPreview(preview === item.key ? null : item.key) : undefined}
+      onPreview={item.kind === 'outfit' ? () => tryOn(item.key) : undefined}
     >
       {extra?.children}
     </ShopItemCard>
@@ -128,14 +135,14 @@ export default function ShopPage() {
                       className="min-h-11 max-w-full rounded-[10px] border-2 border-[#2E2A25] bg-[#141210] px-3 [font:600_14px_Inter] text-[#F4EDE2]"
                     >
                       {certs.map((page) => (
-                        <option key={page.credentialId} value={page.credentialId ?? ''}>
+                        <option key={page.trailId} value={page.trailId}>
                           {page.trailTitle}
                         </option>
                       ))}
                     </select>
                   </label>
                 )}
-                <div className={GRID}>{shelves.certs.map((item) => card(item, { buyDisabled: !targetId, refId: targetId || undefined }))}</div>
+                <div className={GRID}>{shelves.certs.map((item) => card({ ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) }, { buyDisabled: !targetId, refId: targetId || undefined }))}</div>
               </Shelf>
             )}
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}

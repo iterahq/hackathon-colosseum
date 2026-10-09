@@ -59,7 +59,7 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, hasWallet, ou
           {hasWallet ? (
             <button type="button" autoFocus disabled={busy} onClick={onRefill} data-testid="lives-gate-refill" className={`${BTN_PRIMARY} w-full flex-wrap gap-x-2 gap-y-0 py-2 [font:700_16px_Inter]`}>
               <span>{priceLabel ? t('lives.gate.refill', { price: priceLabel }) : t('lives.gate.refillPlain')}</span>
-              <span className={`${DEVNET_BADGE} border-[#249457] text-[#0A0908]/70`}>{t('shop.devnet')}</span>
+              <span className={`${DEVNET_BADGE} !border-[#0A0908]/45 !text-[#0A0908]`}>{t('shop.devnet')}</span>
             </button>
           ) : (
             <>

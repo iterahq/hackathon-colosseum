@@ -16,7 +16,7 @@ export function withCompanionState(items: readonly ShopItem[], snapshot: Compani
   const owned = new Set(snapshot.inventory.map((entry) => entry.itemKey));
   return items.map((item) => {
     if (item.kind === 'outfit') return { ...item, owned: item.owned || owned.has(item.key), equipped: snapshot.companion.outfit === item.key };
-    return owned.has(item.key) ? { ...item, owned: true } : item;
+    return item;
   });
 }
 

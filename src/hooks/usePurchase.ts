@@ -5,8 +5,10 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { confirmPurchase, createPurchaseIntent, requestFaucet } from '@/services/shop.service';
+import { ShopCallError } from '@/services/shopTransport';
 import { WalletSignError, connectWallet, signAndSendPurchase } from '@/services/walletSign';
 import type { CompanionSnapshot, PurchaseConfirmation } from '@/types/shop';
 import { PURCHASE_IDLE, isPurchaseBusy, purchaseReducer } from '@/utils/purchaseMachine';
@@ -19,6 +21,7 @@ const textOf = (e: unknown): string => (e instanceof Error ? e.message : String(
 
 export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } = {}) {
   const { session } = useAuth();
+  const { locale } = useI18n();
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(purchaseReducer, PURCHASE_IDLE);
   const userId = session?.user?.id ?? 'anon';
@@ -65,10 +68,10 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         if (!alive.current) return;
         dispatch({ type: 'signed' });
         const deadline = Date.now() + POLL_LIMIT_MS;
-        let confirmation = await confirmPurchase(intent.intentId, signature);
+        let confirmation = await confirmPurchase(intent.intentId, signature, locale);
         while (confirmation.status === 'pending' && Date.now() < deadline && alive.current) {
           await wait(POLL_MS);
-          confirmation = await confirmPurchase(intent.intentId, signature);
+          confirmation = await confirmPurchase(intent.intentId, signature, locale);
         }
         if (!alive.current) return;
         if (confirmation.status === 'paid') {
@@ -80,17 +83,18 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         }
       } catch (e) {
         if (!alive.current) return;
+        const code = e instanceof ShopCallError ? e.code : null;
         const reason = e instanceof WalletSignError ? e.reason : 'failed';
         const detail = e instanceof WalletSignError ? e.detail : textOf(e);
         if (reason === 'cancelled') dispatch({ type: 'cancelled' });
-        else if (reason === 'no_wallet') dispatch({ type: 'no_wallet' });
-        else if (reason === 'insufficient' || /insufficient/i.test(detail)) dispatch({ type: 'insufficient', detail });
+        else if (reason === 'no_wallet' || code === 'no_wallet') dispatch({ type: 'no_wallet' });
+        else if (reason === 'insufficient' || code === 'insufficient_funds') dispatch({ type: 'insufficient', detail });
         else dispatch({ type: 'failed', detail });
       } finally {
         running.current = false;
       }
     },
-    [onPaid, settle]
+    [locale, onPaid, settle]
   );
 
   /** Devnet only: ask the faucet for test SOL, then run the same purchase again. */

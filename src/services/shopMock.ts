@@ -16,8 +16,9 @@ interface MockState {
   outfit: string | null;
   wallet: string | null;
   attempts: string[];
-  intents: Record<string, { item: string; polls: number }>;
+  intents: Record<string, { item: string; polls: number; ref: string | null }>;
   asset: string | null;
+  refs: Record<string, string[]>;
 }
 
 type Body = Record<string, unknown>;
@@ -25,7 +26,7 @@ const KEY = 'itera.mockShop.v1';
 const MOCK_ASSET = 'TeRaMockCompanion1111111111111111111111111';
 let seeded = false;
 
-const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null });
+const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null, refs: {} });
 
 function read(): MockState {
   try {
@@ -67,7 +68,13 @@ function load(): MockState {
   return lives.current === state.current ? state : write({ ...state, current: lives.current, nextRegenAt: lives.nextRegenAt });
 }
 
-const livesWire = (s: MockState) => ({ current: s.current, max: DEFAULT_MAX_LIVES, next_regen_at: s.nextRegenAt, regen_seconds: s.regenSeconds });
+const livesWire = (s: MockState) => ({
+  current: s.current,
+  max: DEFAULT_MAX_LIVES,
+  next_regen_at: s.nextRegenAt,
+  regen_seconds: s.nextRegenAt ? Math.max(0, Math.ceil((Date.parse(s.nextRegenAt) - Date.now()) / 1000)) : 0,
+  regen_interval_seconds: s.regenSeconds,
+});
 const companionWire = (s: MockState) => ({
   asset_address: s.asset,
   mint_status: s.asset ? 'minted' : 'unclaimed',
@@ -103,7 +110,7 @@ function lives(body: Body) {
   }
   const perfect = body.action === 'lesson_end' && Number(body.mistakes) === 0 && s.current < DEFAULT_MAX_LIVES;
   if (perfect) s = write({ ...s, current: s.current + 1, nextRegenAt: s.current + 1 >= DEFAULT_MAX_LIVES ? null : s.nextRegenAt });
-  return { lives: livesWire(s), companion: companionWire(s), bonus: perfect ? 1 : 0 };
+  return { lives: livesWire(s), companion: companionWire(s), bonus: perfect ? 'granted' : Number(body.mistakes) > 0 ? 'mistakes' : 'full' };
 }
 
 function shopItems(lang: string) {
@@ -120,6 +127,7 @@ function shopItems(lang: string) {
     art: i.art,
     owned: s.owned.includes(i.key),
     equipped: s.outfit === i.key,
+    owned_refs: s.refs[i.key] ?? [],
   }));
 }
 
@@ -128,7 +136,7 @@ function purchaseIntent(body: Body) {
   const item = MOCK_ITEMS.find((i) => i.key === body.item_key);
   if (!item) throw new Error('mock: unknown item');
   const id = `mock-${Date.now().toString(36)}`;
-  write({ ...s, intents: { [id]: { item: item.key, polls: 0 } } });
+  write({ ...s, intents: { [id]: { item: item.key, polls: 0, ref: typeof body.ref_id === 'string' ? body.ref_id : null } } });
   return {
     intent_id: id,
     message_base58: 'MockMessage1111111111111111111111',
@@ -152,14 +160,13 @@ function purchaseConfirm(body: Body) {
     write({ ...s, intents: { [id]: { ...intent, polls: intent.polls + 1 } } });
     return { status: 'pending', item: intent.item, inventory: inventoryWire(s), explorer_url: null };
   }
-  s =
-    intent.item === 'life_refill'
-      ? { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null }
-      : { ...s, owned: [...new Set([...s.owned, intent.item])], outfit: intent.item.startsWith('outfit_') ? intent.item : s.outfit };
+  if (intent.item === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
+  else if (intent.item.startsWith('outfit_')) s = { ...s, owned: [...new Set([...s.owned, intent.item])], outfit: intent.item };
+  else if (intent.ref) s = { ...s, refs: { ...s.refs, [intent.item]: [...new Set([...(s.refs[intent.item] ?? []), intent.ref])] } };
   s = write({ ...s, asset: s.asset ?? MOCK_ASSET });
   return {
     status: 'paid',
-    item: intent.item,
+    item: { key: intent.item, kind: MOCK_ITEMS.find((i) => i.key === intent.item)?.kind ?? 'outfit' },
     lives: livesWire(s),
     companion: companionWire(s),
     inventory: inventoryWire(s),

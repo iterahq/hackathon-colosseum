@@ -26,8 +26,8 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
   return (
     <section className={`${CARD} flex flex-col items-center gap-6 border-b-[5px] border-b-[#2E2A25] p-5 sm:flex-row sm:items-stretch sm:gap-8 sm:p-7`} data-testid="shop-stage">
       <div className="flex flex-none flex-col items-center gap-3">
-        <span className="relative flex h-[230px] w-[230px] items-end justify-center overflow-hidden rounded-[18px] border border-[#262320] bg-[#0F0D0B] pb-7">
-          <span className="block origin-bottom scale-[1.55]">
+        <span className="relative flex h-[230px] w-[230px] items-end justify-center overflow-hidden rounded-[18px] border border-[#262320] bg-[#0F0D0B] pb-6">
+          <span className="block origin-bottom scale-[1.3]">
             <TeraOutfit mood="neutral" size="xl" outfit={companion?.outfit} preview={showing.preview ? showing.key : undefined} />
           </span>
         </span>

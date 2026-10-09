@@ -57,6 +57,8 @@ export interface ShopItem {
   art: Record<string, unknown>;
   owned: boolean;
   equipped: boolean;
+  /** Inks and frames are bought per certification: the trail (unit) ids this one was bought for. */
+  ownedRefs: string[];
 }
 
 export interface PurchaseIntent {
@@ -72,6 +74,7 @@ export interface PurchaseIntent {
   cluster: string;
 }
 
+/** `pending` is ours: the backend answered a retryable error (the transaction is not visible yet). */
 export type PurchaseStatus = 'paid' | 'pending' | 'failed' | 'expired';
 
 export interface PurchaseConfirmation {

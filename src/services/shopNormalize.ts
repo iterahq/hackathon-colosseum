@@ -31,12 +31,11 @@ export function toLives(v: unknown): LivesState | null {
   const r = row(v);
   if (typeof r.current !== 'number') return null;
   const max = Math.max(1, num(r.max, DEFAULT_MAX_LIVES));
-  return {
-    current: Math.min(max, Math.max(0, Math.floor(r.current))),
-    max,
-    nextRegenAt: orNull(r.next_regen_at),
-    regenSeconds: num(r.regen_seconds, DEFAULT_REGEN_SECONDS),
-  };
+  const current = Math.min(max, Math.max(0, Math.floor(r.current)));
+  // `regen_seconds` is the time LEFT to the next life; the length of a tick is `regen_interval_seconds`.
+  const left = num(r.regen_seconds);
+  const nextRegenAt = current >= max ? null : (orNull(r.next_regen_at) ?? (left > 0 ? new Date(Date.now() + left * 1000).toISOString() : null));
+  return { current, max, nextRegenAt, regenSeconds: num(r.regen_interval_seconds, DEFAULT_REGEN_SECONDS) };
 }
 
 export function toCompanion(v: unknown): CompanionState {
@@ -71,7 +70,8 @@ export function toLivesUpdate(v: unknown): LivesUpdate {
   const r = row(v);
   const lives = toLives(r.lives);
   if (!lives) throw new Error('lives: no lives block in the answer');
-  const bonus = num(r.bonus, num(r.granted, r.perfect_day === true ? 1 : 0));
+  // `bonus` is a verdict (`granted | already_granted | mistakes | lesson_incomplete | full`): only `granted` adds a life.
+  const bonus = r.bonus === 'granted' ? 1 : num(r.bonus);
   return { lives, companion: r.companion ? toCompanion(r.companion) : null, bonus };
 }
 
@@ -92,6 +92,7 @@ export function toShopItems(v: unknown): ShopItem[] {
         art: row(r.art),
         owned: r.owned === true,
         equipped: r.equipped === true,
+        ownedRefs: Array.isArray(r.owned_refs) ? r.owned_refs.filter((ref): ref is string => typeof ref === 'string') : [],
       };
     })
     .filter((item) => item.key);

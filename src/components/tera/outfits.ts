@@ -43,9 +43,9 @@ export const OUTFITS: Record<OutfitKey, readonly OutfitShape[]> = {
     // tilted on the brow, in front of the crest: body, base band, three gems
     { d: 'M40 196 L30 134 L62 160 L84 116 L108 152 L140 118 L150 178 Z', fill: '#F2C66D' },
     { d: 'M38 198 L150 180 L153 196 L41 214 Z', fill: '#F2C66D' },
-    { d: 'M84 136 l8 12 l-8 10 l-8 -10 Z', fill: '#3FD17F' },
-    { d: 'M48 154 l6 8 l-6 8 l-6 -8 Z', fill: '#F4EDE2' },
-    { d: 'M132 140 l6 8 l-6 8 l-6 -8 Z', fill: '#F4EDE2' },
+    { d: 'M86 138 l11 15 l-11 14 l-11 -14 Z', fill: '#3FD17F' },
+    { d: 'M50 160 l7 9 l-7 9 l-7 -9 Z', fill: '#F4EDE2' },
+    { d: 'M130 146 l7 9 l-7 9 l-7 -9 Z', fill: '#F4EDE2' },
   ],
 };
 
