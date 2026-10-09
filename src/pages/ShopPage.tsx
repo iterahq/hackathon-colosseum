@@ -91,6 +91,7 @@ export default function ShopPage() {
           companion={companion.data?.companion ?? null}
           lives={lives}
           secondsToNext={secondsToNext}
+          wallet={companion.wallet}
           showing={{ key: shownKey, name: byKey(shownKey)?.title ?? null, preview: preview !== null && preview !== companion.outfit }}
         />
         {!hasWallet && !companion.isPending && (

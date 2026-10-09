@@ -12,6 +12,8 @@ interface Props {
   companion: CompanionState | null;
   lives: LivesState | null;
   secondsToNext: number;
+  /** The learner's wallet, for the public profile link. */
+  wallet?: string | null;
   /** Name of the outfit on show, and whether it is only being tried on. */
   showing: { name: string | null; preview: boolean; key: string | null };
 }
@@ -19,7 +21,7 @@ interface Props {
 const LINK = `rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`;
 
 /** The top of the shop: the learner's Tera, big, wearing what is equipped or being tried on, with his on-chain facts. */
-export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Props) {
+export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, showing }: Props) {
   const { t } = useI18n();
   const asset = companion?.assetAddress ?? null;
   const wearing = showing.name ? t(showing.preview ? 'shop.previewing' : 'shop.wearing', { name: showing.name }) : t('shop.wearingNone');
@@ -81,6 +83,11 @@ export function ShopTeraStage({ companion, lives, secondsToNext, showing }: Prop
                 <Link to={`/c/${asset}`} className={LINK} data-testid="shop-companion-public">
                   {t('shop.companion.public')}
                 </Link>
+                {wallet && (
+                  <Link to={`/u/${wallet}`} className={LINK} data-testid="shop-profile-link">
+                    {t('profile.open')}
+                  </Link>
+                )}
               </span>
             ) : (
               <span className="[font:400_13px/1.4_Inter] text-[#A0978A]">{t('shop.companion.unminted')}</span>

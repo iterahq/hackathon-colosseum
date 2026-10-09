@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
@@ -85,6 +85,11 @@ export default function PassportPage() {
           </h2>
           <MedalShelf medals={view.medals} color={color} size={96} />
         </section>
+        {view.walletAddress && (
+          <Link to={`/u/${view.walletAddress}`} className="self-start [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]" data-testid="passport-profile-link">
+            {t('profile.open')}
+          </Link>
+        )}
         {shared.length > 0 && (
           <section className="flex flex-col gap-3" aria-labelledby="passport-share">
             <h2 id="passport-share" className={H2}>

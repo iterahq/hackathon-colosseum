@@ -64,7 +64,7 @@ export function companionFacts(c: CredentialVerification): CompanionFacts {
     level: pick('level'),
     xp: pick('xp'),
     streak: pick('streak'),
-    image: c.achievement?.image_url ?? null,
+    image: (typeof parsed.image_url === 'string' && parsed.image_url) || c.achievement?.image_url || null,
   };
 }
 

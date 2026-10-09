@@ -48,7 +48,7 @@ function VerifyOther() {
 
 function CompanionImage({ src, lang }: { src: string | null; lang: string }) {
   if (!src) return null;
-  return <img src={`${src}${src.includes('?') ? '&' : '?'}lang=${lang}`} alt="" className="w-full max-w-[360px] rounded-2xl border border-[#262320]" data-testid="credential-companion-art" />;
+  return <img src={src.includes('lang=') ? src : `${src}${src.includes('?') ? '&' : '?'}lang=${lang}`} alt="" className="w-full max-w-[360px] rounded-2xl border border-[#262320]" data-testid="credential-companion-art" />;
 }
 
 /** Public, shell-less page: anyone can check a passport asset against the chain. */

@@ -1,6 +1,16 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'profile.title': 'Perfil do aluno',
+    'profile.verified': '{n} verificados na Solana',
+    'profile.companion': 'Tera',
+    'profile.certs': 'Certificações do Tera',
+    'profile.medals': 'Medalhas',
+    'profile.noCerts': 'Nenhuma certificação ainda.',
+    'profile.empty': 'Esta carteira ainda não tem nada emitido pela Itera.',
+    'profile.invalid': 'Isso não parece uma carteira Solana.',
+    'profile.copyLink': 'Copiar link',
+    'profile.open': 'Perfil público →',
     'auth.wallet.cta': 'Continuar com Phantom · sem e-mail, sem cartão',
     'auth.wallet.why': 'Sua carteira é sua conta, seu certificado e seu inventário.',
     'purchase.details': 'Detalhes técnicos',
@@ -24,6 +34,16 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'profile.title': 'Learner profile',
+    'profile.verified': '{n} verified on Solana',
+    'profile.companion': 'Tera',
+    'profile.certs': "Tera's Certifications",
+    'profile.medals': 'Medals',
+    'profile.noCerts': 'No certifications yet.',
+    'profile.empty': 'This wallet has nothing issued by Itera yet.',
+    'profile.invalid': 'That does not look like a Solana wallet.',
+    'profile.copyLink': 'Copy link',
+    'profile.open': 'Public profile →',
     'auth.wallet.cta': 'Continue with Phantom · no email, no card',
     'auth.wallet.why': 'Your wallet is your account, your certificate and your inventory.',
     'purchase.details': 'Technical details',
