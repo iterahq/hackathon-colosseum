@@ -196,7 +196,7 @@ function world({ complete = false, editable = true } = {}) {
     [`/apps/${APP}/appInfos`]: { data: [{ id: 'i1', attributes: { appStoreState: 'PREPARE_FOR_SUBMISSION' } }] },
     '/appInfos/i1/appInfoLocalizations': { data: complete ? [loc('pt-BR', 'a'), loc('en-US', 'a')] : [] },
     '/appInfos/i1/primaryCategory': { data: complete ? { id: 'EDUCATION' } : null },
-    '/appInfos/i1/ageRatingDeclaration': { data: { id: 'ar1', attributes: complete ? { gambling: false, contests: 'NONE' } : { gambling: null, contests: 'NONE' } } },
+    '/appInfos/i1/ageRatingDeclaration': { data: { id: 'ar1', attributes: complete ? { ...meta.ageRating, kidsAgeBand: null, ageRatingOverride: null } : { ...meta.ageRating, gambling: null, kidsAgeBand: null } } },
     [`/apps/${APP}/appPriceSchedule`]: complete ? { data: { id: 'ps' } } : null,
     '/appStoreVersions/v1/appStoreVersionLocalizations': { data: complete ? [loc('pt-BR', 'b'), loc('en-US', 'b')] : [] },
     '/appStoreVersions/v1/build': { data: complete ? { id: 'b1', attributes: { version: '4' } } : null },
@@ -259,6 +259,7 @@ describe('status', () => {
     expect(result.blocking).toEqual(
       expect.arrayContaining(['no build is attached to the version', 'copyright is empty', 'primary category is not set', 'pt-BR: no app info localization', 'review detail is missing', 'price schedule is not set (a free app still needs the free price point)']),
     );
+    expect(result.blocking).toContain('age rating declaration has unanswered questions: gambling');
     expect(text).toContain('| 0.3.0 | PREPARE_FOR_SUBMISSION |');
     expect(text).not.toContain('TOKEN-NOT-PRINTED');
   });
@@ -326,6 +327,7 @@ describe('push (real writes against the fake)', () => {
     expect(methods).toContain('DELETE /appScreenshots/old-bpt-BR');
     expect(methods).toContain('PATCH /appStoreVersions/v1/relationships/build');
     expect(methods).toContain('PATCH /appStoreReviewDetails/rd1');
+    expect(methods.indexOf('PATCH /appStoreVersions/v1/relationships/build')).toBeLessThan(methods.indexOf('PATCH /appStoreReviewDetails/rd1'));
     expect(methods).toContain('PATCH /appInfoLocalizations/apt-BR');
     const puts = calls.filter((c) => c.method === 'PUT');
     expect(puts).toHaveLength(10);

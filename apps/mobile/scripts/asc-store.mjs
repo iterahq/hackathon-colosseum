@@ -201,7 +201,11 @@ export function blockingChecklist(state, meta) {
   }
   const ar = state.ageRating;
   if (!ar) out.push('age rating declaration not found');
-  else if (Object.values(ar).some((v) => v === null || v === undefined)) out.push('age rating declaration has unanswered questions');
+  else {
+    // The declaration also carries optional attributes (overrides, kids age band) that stay null on a complete answer.
+    const open = Object.keys(meta.ageRating ?? {}).filter((k) => ar[k] === null || ar[k] === undefined);
+    if (open.length) out.push(`age rating declaration has unanswered questions: ${open.join(', ')}`);
+  }
   const rd = t?.reviewDetail;
   if (t && !rd) out.push('review detail is missing');
   else if (rd) {
@@ -475,16 +479,17 @@ export async function runPush({ client, meta, version, buildNumber, dryRun = fal
   if (state.ageRating?.id) await write('PATCH', `/ageRatingDeclarations/${state.ageRating.id}`, ageRatingPayload(state.ageRating.id, meta.ageRating));
   else log('warning: no age rating declaration found; it is not created by this script');
 
-  const rd = target.reviewDetail;
-  const rdPayload = upsertPayload('appStoreReviewDetails', rd?.id, review.attrs, { name: 'appStoreVersion', type: 'appStoreVersions', id: versionId });
-  await write(rd ? 'PATCH' : 'POST', rd ? `/appStoreReviewDetails/${rd.id}` : '/appStoreReviewDetails', rdPayload, 'appStoreReviewDetail');
-
   if (buildNumber) {
     const build = state.builds.find((b) => b.version === String(buildNumber) && (!b.preVersion || b.preVersion === version));
     if (!build) throw new InputError(`no build ${buildNumber} of version ${version} found`);
     if (build.processingState !== 'VALID') throw new InputError(`build ${buildNumber} is "${build.processingState}", not VALID`);
     await write('PATCH', `/appStoreVersions/${versionId}/relationships/build`, { data: { type: 'builds', id: build.id } });
   }
+
+  // Last on purpose: App Store Connect refuses a review detail without a contact, and that must not hold back the build.
+  const rd = target.reviewDetail;
+  const rdPayload = upsertPayload('appStoreReviewDetails', rd?.id, review.attrs, { name: 'appStoreVersion', type: 'appStoreVersions', id: versionId });
+  await write(rd ? 'PATCH' : 'POST', rd ? `/appStoreReviewDetails/${rd.id}` : '/appStoreReviewDetails', rdPayload, 'appStoreReviewDetail');
 
   log(`${dryRun ? 'dry run, planned' : 'done,'} ${plan.length} write call(s):`);
   for (const p of plan) log(`  ${p}`);
