@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Loader2, CreditCard } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
+import { trackFunnel } from '@/lib/analytics';
 import {
   AlreadySubscribedError,
   createCheckout,
@@ -31,6 +32,7 @@ export default function SubscribePage() {
   const { data: entitlement } = useEntitlement();
 
   async function handleSubscribe() {
+    trackFunnel('subscribe_clicked');
     setError(null);
     setLoading(true);
     try {

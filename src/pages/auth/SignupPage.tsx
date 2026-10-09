@@ -11,7 +11,7 @@
  * and the landing route — a fresh account has no entitlement, so it goes
  * straight to /subscribe instead of `from`.
  */
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
@@ -21,6 +21,7 @@ import { SignupEmailForm } from '@/components/auth/SignupEmailForm';
 import { SignupCodeForm } from '@/components/auth/SignupCodeForm';
 import { SubscribeTrustLine } from '@/components/subscribe/SubscribeTrustLine';
 import { useI18n } from '@/i18n';
+import { trackFunnel } from '@/lib/analytics';
 import { sendSignupCode, verifySignupCode } from '@/services/otpAuth.service';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
@@ -33,6 +34,10 @@ export default function SignupPage() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    trackFunnel('signup_started');
+  }, []);
 
   // A guest session must NOT count here — same trap as AuthPage: it persists and
   // keeps refreshing, so a learner who once joined a live class by link would be
@@ -79,6 +84,7 @@ export default function SignupPage() {
       setError(t('auth.otp.error'));
       return;
     }
+    trackFunnel('signup_completed');
     // Always /subscribe: the account exists now, the entitlement does not.
     navigate('/subscribe', { replace: true });
   }

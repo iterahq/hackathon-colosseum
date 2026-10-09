@@ -71,6 +71,7 @@ import {
   stepForward,
 } from '@/utils/lessonNavigation';
 import { lessonExitPath } from '@/utils/lessonExitPath';
+import { trackFunnelOnce } from '@/lib/analytics';
 import { upcomingImageUrls } from '@/lib/lessonMediaPreload';
 import type { Activity, LessonPosition } from '@/types/content';
 import { isScenarioKind, isSceneKind } from '@/utils/activityFamilies';
@@ -235,6 +236,12 @@ export default function LessonPlayer() {
   }, [lessonId, activities, isPending, loadAnswers]);
 
   const current = activities[index];
+
+  // Funnel: the first activity this browser ever opens (once-only flag lives in trackFunnelOnce).
+  const onScreenId = resuming ? undefined : current?.id;
+  useEffect(() => {
+    if (onScreenId) trackFunnelOnce('first_activity_opened');
+  }, [onScreenId]);
 
   // The images of the next screens start downloading now, so they are in the
   // cache when the learner gets there.
@@ -697,6 +704,7 @@ export default function LessonPlayer() {
       setFurthest((f) => Math.max(f, index + 1));
     } else {
       onFinish();
+      trackFunnelOnce('first_lesson_completed');
       setCompleted(true);
       setFinished(true);
     }

@@ -18,6 +18,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Loader2, Clock } from 'lucide-react';
 import { AppHeader } from '@/components/branded';
 import { useI18n } from '@/i18n';
+import { trackFunnel } from '@/lib/analytics';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { useCheckoutActivation } from '@/hooks/useCheckoutActivation';
 import { useCheckoutLanding } from '@/hooks/useCheckoutLanding';
@@ -31,6 +32,11 @@ export default function SubscribeReturnPage() {
   const success = useMemo(() => params.get('status') !== 'cancel', [params]);
   const { waiting, active, timedOut } = useCheckoutActivation(success);
   const landing = useCheckoutLanding(success && active);
+
+  const reached = success && active;
+  useEffect(() => {
+    if (reached) trackFunnel('checkout_returned_success');
+  }, [reached]);
 
   // The paid learner goes straight to the track of the program on sale; with
   // no single program to open, the home button below stays the way in.
