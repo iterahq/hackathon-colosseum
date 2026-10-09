@@ -37,7 +37,6 @@ export function VideoPlayer({ course, lesson, watched, hasNext, saveFailed, onTo
         />
       </div>
       <h1 className="[font:700_40px/1_'Barlow_Condensed'] max-sm:text-[30px]">{lesson.title}</h1>
-      <p className="max-w-[70ch] whitespace-pre-line [font:400_16px/1.55_Inter] text-[#A0978A]">{lesson.description || t('video.noDescription')}</p>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -60,6 +59,7 @@ export function VideoPlayer({ course, lesson, watched, hasNext, saveFailed, onTo
           {hasNext ? t('video.next') : t('video.finished')}
         </button>
       </div>
+      <p className="max-w-[70ch] whitespace-pre-line [font:400_16px/1.55_Inter] text-[#A0978A]">{lesson.description || t('video.noDescription')}</p>
       {saveFailed && (
         <span role="alert" className="[font:500_12px_JetBrains_Mono] text-[#E07A4A]">
           {t('video.saveError')}
