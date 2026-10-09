@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { PASSPORT_MESSAGES } from './passportMessages';
+import { SHOP_MESSAGES } from './shopMessages';
 import { TERA_MESSAGES } from './teraMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
@@ -1216,6 +1217,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.signOut': 'Sair',
     ...PASSPORT_MESSAGES.pt,
     ...TERA_MESSAGES.pt,
+    ...SHOP_MESSAGES.pt,
     'header.search.open': 'Abrir a busca',
     'header.search.trigger': 'Buscar…',
     'header.lang.aria': 'Idioma',
@@ -2395,6 +2397,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.signOut': 'Sign out',
     ...PASSPORT_MESSAGES.en,
     ...TERA_MESSAGES.en,
+    ...SHOP_MESSAGES.en,
     'header.search.open': 'Open search',
     'header.search.trigger': 'Search…',
     'header.lang.aria': 'Language',

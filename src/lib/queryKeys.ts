@@ -136,6 +136,14 @@ export const queryKeys = {
     list: ['videoCourses', 'list'] as const,
     progress: (userId: string) => ['videoCourses', 'progress', userId] as const,
   },
+  // Tera companion (lives, outfit, inventory) and the shop list; both per learner, the list also per language.
+  companion: {
+    mine: (userId: string) => ['companion', userId] as const,
+  },
+  shop: {
+    all: ['shop'] as const,
+    items: (userId: string, locale: string) => ['shop', 'items', userId, { locale }] as const,
+  },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {
     mine: ['artifacts', 'mine'] as const,
