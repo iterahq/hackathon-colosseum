@@ -72,7 +72,7 @@ describe('StampCeremony', () => {
   it('the last day turns the page gold with confetti', () => {
     show(model('minted', { day: 5, last: true }));
     settle();
-    expect(screen.getByRole('dialog', { name: 'Trilha completa — página de ouro!' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Trilha completa — certificação dourada!' })).toBeInTheDocument();
     expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'gold');
     expect(screen.getByTestId('confetti')).toBeInTheDocument();
   });
