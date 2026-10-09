@@ -42,7 +42,7 @@ export async function verifyCredential(asset: string): Promise<CredentialLookup>
     headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
   });
   const ms = Date.now() - started;
-  if (res.status === 404) return { status: 'not_found', ms };
+  if (res.status === 404 || res.status === 400) return { status: 'not_found', ms };
   if (!res.ok) throw new Error(`credential-verify failed (${res.status})`);
   const data = parseCredential(await res.json(), asset);
   return { status: data.verified ? 'verified' : 'unverified', data, ms };
