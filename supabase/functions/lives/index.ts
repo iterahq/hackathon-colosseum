@@ -1,5 +1,6 @@
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
-import { TIME_ZONE, changeLives, companionResponse, ensureCompanion, inBackground, loadStats, syncMirror } from '../_shared/companion-store.ts';
+import { TIME_ZONE, changeLives, companionResponse, ensureCompanion, inBackground, loadStats, mirrorWithin, syncMirror } from '../_shared/companion-store.ts';
+import { chainBlock, type ChainWrite } from '../_shared/credential.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { grantLife, lessonBonus, lessonBonusAttemptId, loseLife, regenerate, type LessonBonus } from '../_shared/lives.ts';
@@ -7,6 +8,8 @@ import { localParts } from '../_shared/awards.ts';
 
 const MAX_MISTAKES = 10_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** How long the answer waits for the chain when the last life is lost. */
+const MIRROR_BUDGET_MS = 4_000;
 
 /** Records the event once per (learner, attempt id). False when it was already there. */
 async function recordOnce(db: IteraClient, event: { user_id: string; attempt_id: string; kind: string; activity_id?: string }): Promise<boolean> {
@@ -73,13 +76,27 @@ Deno.serve(async (request) => {
     if (!body) return json({ error: 'invalid_body' }, 400, cors);
     const userId = caller.iteraUserId;
     let bonus: LessonBonus | undefined;
+    let chain: ChainWrite | null = null;
+    let mirrorStarted = false;
 
     if (body.action === 'lose') {
       const { attempt_id: attemptId, activity_id: activityId } = body;
       if (typeof attemptId !== 'string' || !/^[\w.:-]{1,120}$/.test(attemptId) || typeof activityId !== 'string' || !isUuid(activityId)) {
         return json({ error: 'invalid_body' }, 400, cors);
       }
-      await once(db, userId, `lose:${attemptId}`, 'lose', activityId, () => changeLives(db, userId, loseLife));
+      let lostTheLast = false;
+      const applied = await once(db, userId, `lose:${attemptId}`, 'lose', activityId, () =>
+        changeLives(db, userId, (state, now) => {
+          const next = loseLife(state, now);
+          lostTheLast = next.lives === 0 && regenerate(state, now).lives > 0;
+          return next;
+        }),
+      );
+      // Running out of lives is written to the asset; an ordinary mistake is not.
+      if (applied && lostTheLast && caller.wallet) {
+        mirrorStarted = true;
+        chain = await mirrorWithin(db, userId, MIRROR_BUDGET_MS);
+      }
     } else if (body.action === 'lesson_end') {
       const { lesson_id: lessonId, mistakes } = body;
       if (typeof lessonId !== 'string' || !isUuid(lessonId) || !Number.isInteger(mistakes) || (mistakes as number) < 0 || (mistakes as number) > MAX_MISTAKES) {
@@ -105,14 +122,23 @@ Deno.serve(async (request) => {
         bonus = 'already_granted';
       }
       // The lesson end is one of the moments the asset catches up with the database.
-      if (caller.wallet) inBackground(syncMirror(db, userId));
+      if (caller.wallet) {
+        mirrorStarted = true;
+        inBackground(syncMirror(db, userId));
+      }
     } else {
       return json({ error: 'invalid_body' }, 400, cors);
     }
 
     const now = new Date();
     const [row, stats] = await Promise.all([ensureCompanion(db, userId), loadStats(db, userId, now)]);
-    return json({ ...companionResponse(row, stats, now), ...(bonus ? { bonus } : {}) }, 200, cors);
+    // A mirror that failed or ran out of budget earlier is retried here, off the response path.
+    if (caller.wallet && row.mirror_due && !mirrorStarted) inBackground(syncMirror(db, userId));
+    return json(
+      { ...companionResponse(row, stats, now), ...(bonus ? { bonus } : {}), ...(chain ? { chain: chainBlock(chain) } : {}) },
+      200,
+      cors,
+    );
   } catch (error) {
     console.error('lives failed', error);
     return json({ error: 'internal_error' }, 500, cors);

@@ -43,6 +43,33 @@ export function companionAttributes(snapshot: CompanionSnapshot): OnchainAttribu
   ];
 }
 
+export interface CompanionValues {
+  lives: number;
+  max_lives: number;
+  outfit: string | null;
+  level: number;
+  xp: number;
+  streak: number;
+}
+
+/** The companion as its asset's attributes say it. A missing or malformed number reads as 0. */
+export function companionFromAttributes(attributes: OnchainAttribute[]): CompanionValues {
+  const values = new Map(attributes.map(({ key, value }) => [key, value]));
+  const integer = (key: string) => {
+    const parsed = Number.parseInt(values.get(key) ?? '', 10);
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+  };
+  const outfit = values.get('outfit');
+  return {
+    lives: integer('lives'),
+    max_lives: integer('max_lives'),
+    outfit: isOutfit(outfit) ? outfit : null,
+    level: integer('level'),
+    xp: integer('xp'),
+    streak: integer('streak'),
+  };
+}
+
 export function sameAttributes(a: OnchainAttribute[] | null, b: OnchainAttribute[]): boolean {
   return a !== null && a.length === b.length && a.every((entry, index) => entry.key === b[index].key && entry.value === b[index].value);
 }

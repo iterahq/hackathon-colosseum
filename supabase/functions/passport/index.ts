@@ -15,6 +15,7 @@ import {
   type AchievementRow,
   type CatalogEntry,
 } from '../_shared/credential.ts';
+import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
@@ -102,10 +103,12 @@ async function resolveNamedUser(db: IteraClient, iteraUserId: string): Promise<C
   return { iteraUserId, wallet: null };
 }
 
-function loadRows(db: IteraClient, userId: string): Promise<AchievementRow[]> {
-  return fetchAll<AchievementRow>((from, to) =>
+/** The learner's rows. A passport wears what was paid for, whatever its stored state says. */
+async function loadRows(db: IteraClient, userId: string): Promise<AchievementRow[]> {
+  const rows = await fetchAll<AchievementRow>((from, to) =>
     db.from('user_achievements').select(ROW_COLUMNS).eq('user_id', userId).order('earned_at').order('id').range(from, to),
   );
+  return restoreCosmetics(db, rows);
 }
 
 async function loadCatalog(db: IteraClient): Promise<Map<string, CatalogEntry>> {
@@ -255,7 +258,9 @@ async function runJob(
   const anchorCatalog = catalog.get(job.anchor.achievement_key) as CatalogEntry;
   const kind: CollectionKind = job.type === 'create_medal' ? 'medals' : 'passports';
   const collection = await collectionAddress(db, sdk, chain, kind, config);
-  const attributes = onchainAttributes(job.anchor, anchorCatalog);
+  // Read again right before the write: a cosmetic bought while this call ran must not be wiped by the stamp.
+  const [anchor] = await restoreCosmetics(db, [job.anchor]);
+  const attributes = onchainAttributes(anchor, anchorCatalog);
 
   let asset = job.anchor.asset_address;
   let signature: string | null;
@@ -280,7 +285,7 @@ async function runJob(
 
   const mintedAt = new Date().toISOString();
   await settle(db, job, (row) => {
-    const { mint_error: _cleared, ...state } = row.state;
+    const { mint_error: _cleared, ...state } = row.id === anchor.id ? anchor.state : row.state;
     return {
       mint_status: 'minted',
       asset_address: asset,

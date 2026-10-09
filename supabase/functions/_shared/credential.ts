@@ -107,6 +107,37 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
   ];
 }
 
+/** One confirmed write of an asset's Attributes plugin. */
+export interface ChainWrite {
+  asset: string;
+  signature: string;
+  at: string;
+  attributes: OnchainAttribute[];
+  /** The attributes this write changed, compared with the last ones written. */
+  changed: OnchainAttribute[];
+}
+
+export function changedAttributes(previous: OnchainAttribute[] | null, next: OnchainAttribute[]): OnchainAttribute[] {
+  const before = new Map((previous ?? []).map(({ key, value }) => [key, value]));
+  return next.filter(({ key, value }) => key !== 'learner' && before.get(key) !== value);
+}
+
+/** The optional `chain` block of a response. `lives` only when the asset carries that attribute. */
+export function chainBlock(write: ChainWrite) {
+  const lives = Number.parseInt(write.attributes.find(({ key }) => key === 'lives')?.value ?? '', 10);
+  return {
+    tx_signature: write.signature,
+    explorer_url: explorerUrl('tx', write.signature),
+    ...(Number.isInteger(lives) ? { lives } : {}),
+    mirrored_at: write.at,
+  };
+}
+
+/** Machine-readable summary of a write: one entry per attribute that changed. */
+export function writtenList(write: ChainWrite): Array<{ asset: string; attribute: string; value: string }> {
+  return write.changed.map(({ key, value }) => ({ asset: write.asset, attribute: key, value }));
+}
+
 /**
  * `passport` is the trail_pass row a stamp or a completion belongs to: their
  * artwork is the passport page itself, so it always shows the current stamps.

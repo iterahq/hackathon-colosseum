@@ -1,7 +1,7 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
 import { companionResponse, ensureCompanion, loadInventory, loadStats } from '../_shared/companion-store.ts';
-import { awardView, explorerUrl, pickText, type CatalogEntry } from '../_shared/credential.ts';
+import { awardView, chainBlock, explorerUrl, pickText, writtenList, type CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { intentPhase, missingTransactionVerdict, verifyPayment, type ParsedTransaction } from '../_shared/purchase-verify.ts';
@@ -53,6 +53,10 @@ async function paidResponse(db: IteraClient, intent: PurchaseRow, item: ShopItem
     const view = awardView(outcome.passport, catalog as CatalogEntry, lang, functionsBase());
     response.passport = view;
     response.image_url = `${view.image_url}?lang=${lang}&v=${now.getTime()}`;
+  }
+  if (outcome.chain) {
+    response.chain = chainBlock(outcome.chain);
+    response.written = writtenList(outcome.chain);
   }
   return response;
 }

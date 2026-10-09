@@ -1,7 +1,8 @@
 import { GLOBAL_REF } from './awards.ts';
 import { changeLives, ensureCompanion, syncMirror } from './companion-store.ts';
-import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics, type CosmeticPurchase } from './cosmetics.ts';
-import { onchainAttributes, type AchievementRow, type CatalogEntry } from './credential.ts';
+import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics.ts';
+import { trailCosmeticPurchases } from './cosmetics-store.ts';
+import { changedAttributes, onchainAttributes, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { refillLives, regenerate } from './lives.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
@@ -56,6 +57,8 @@ export interface ApplyContext extends ShopContext {
 export interface ApplyOutcome {
   companion: boolean;
   passport: AchievementRow | null;
+  /** The asset write this call made, when it made one. */
+  chain: ChainWrite | null;
 }
 
 export interface ItemHandler {
@@ -98,19 +101,6 @@ async function loadPassport({ db, userId, refId }: ShopContext): Promise<Achieve
   return data as AchievementRow | null;
 }
 
-/** Every paid cosmetic of the learner for this trail, as the pure rule reads them. */
-async function paidCosmetics({ db, userId, refId }: ShopContext): Promise<CosmeticPurchase[]> {
-  const { data, error } = await db
-    .from('purchases')
-    .select('paid_at,shop_items(kind,effect)')
-    .eq('user_id', userId)
-    .eq('ref_id', refId)
-    .eq('status', 'paid');
-  if (error) throw new Error(`purchases: ${error.message}`);
-  const rows = (data ?? []) as unknown as Array<{ paid_at: string | null; shop_items: { kind: string; effect: Record<string, unknown> } | null }>;
-  return rows.map((row) => ({ kind: row.shop_items?.kind ?? '', value: row.shop_items?.effect?.value, paid_at: row.paid_at ?? '' }));
-}
-
 /** A passport cosmetic: stored on the `trail_pass` row and written to the asset's attributes. */
 const passportCosmetic = (kind: 'ink' | 'frame'): ItemHandler => ({
   async canBuy(context) {
@@ -121,10 +111,10 @@ const passportCosmetic = (kind: 'ink' | 'frame'): ItemHandler => ({
   },
   async apply(context) {
     const { db, purchase } = context;
-    const [passport, purchases] = await Promise.all([loadPassport(context), paidCosmetics(context)]);
+    const [passport, purchases] = await Promise.all([loadPassport(context), trailCosmeticPurchases(db, context.userId, context.refId)]);
     if (!passport || passport.mint_status !== 'minted' || !passport.asset_address) throw new Error('passport is not minted');
     const wanted = cosmeticsFromPurchases(purchases);
-    if (purchase.applied_at && sameCosmetics(cosmeticsOf(passport.state), wanted)) return { companion: false, passport };
+    if (purchase.applied_at && sameCosmetics(cosmeticsOf(passport.state), wanted)) return { companion: false, passport, chain: null };
 
     const updated: AchievementRow = { ...passport, state: { ...passport.state, cosmetics: wanted } };
     const { error } = await db.from('user_achievements').update({ state: updated.state }).eq('id', passport.id);
@@ -137,13 +127,21 @@ const passportCosmetic = (kind: 'ink' | 'frame'): ItemHandler => ({
     if (catalogError) throw new Error(`achievements: ${catalogError.message}`);
     if (!config.collection_passports) throw new Error('passports collection is not configured');
     const sdk = await import('./chain.ts');
-    await sdk.updateCredentialAttributes(sdk.loadChain(), {
+    const attributes = onchainAttributes(updated, catalog as CatalogEntry);
+    const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), {
       asset: passport.asset_address,
       collection: config.collection_passports,
-      attributes: onchainAttributes(updated, catalog as CatalogEntry),
+      attributes,
     });
     await grant(context);
-    return { companion: false, passport: updated };
+    const chain: ChainWrite = {
+      asset: passport.asset_address,
+      signature,
+      at: new Date().toISOString(),
+      attributes,
+      changed: changedAttributes(onchainAttributes(passport, catalog as CatalogEntry), attributes),
+    };
+    return { companion: false, passport: updated, chain };
   },
 });
 
@@ -169,8 +167,8 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
           );
         if (error) throw new Error(`life_events: ${error.message}`);
       }
-      await syncMirror(db, userId);
-      return { companion: true, passport: null };
+      const mirror = await syncMirror(db, userId);
+      return { companion: true, passport: null, chain: mirror.write };
     },
   },
   outfit: {
@@ -180,7 +178,7 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
     },
     async apply(context) {
       await grant(context);
-      return { companion: true, passport: null };
+      return { companion: true, passport: null, chain: null };
     },
   },
   ink: passportCosmetic('ink'),

@@ -2,6 +2,7 @@ import { renderArt } from '../_shared/art.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import { companionArtInput, companionMetadata } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
+import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { APP_URL, artInput, buildMetadata, type AchievementRow, type CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
@@ -18,7 +19,7 @@ async function loadCredential(db: IteraClient, rowId: string): Promise<Credentia
   const { data: row, error } = await db.from('user_achievements').select(ROW_COLUMNS).eq('id', rowId).maybeSingle();
   if (error) throw new Error(`user_achievements: ${error.message}`);
   if (!row) return null;
-  const credential = row as AchievementRow;
+  const [credential] = await restoreCosmetics(db, [row as AchievementRow]);
 
   const { data: catalog, error: catalogError } = await db
     .from('achievements')
@@ -38,7 +39,7 @@ async function loadCredential(db: IteraClient, rowId: string): Promise<Credentia
       .eq('ref_id', unitId)
       .maybeSingle();
     if (parentError) throw new Error(`user_achievements parent: ${parentError.message}`);
-    passport = parent as AchievementRow | null;
+    passport = parent ? (await restoreCosmetics(db, [parent as AchievementRow]))[0] : null;
   }
   return { row: credential, catalog: catalog as CatalogEntry, passport };
 }
