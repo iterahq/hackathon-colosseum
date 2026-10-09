@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { Radio } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { useActiveLiveClass } from '@/hooks/useLiveClass';
 import { useIteraIdentity } from '@/hooks/useIteraIdentity';
@@ -11,11 +10,11 @@ import { NextScheduledClassBlock } from './NextScheduledClassBlock';
  * The live part of the dashboard, the `live` slot of the universal home screen on the web: the class in
  * progress, or else the next scheduled one. Each block renders nothing when it has nothing to say.
  */
-export function HomeLiveBlocks() {
+export function HomeLiveBlocks({ describeLesson }: { describeLesson?: (lessonId: string) => string | null }) {
   return (
     <>
       <LiveClassBlock />
-      <NextScheduledClassBlock />
+      <NextScheduledClassBlock describeLesson={describeLesson} />
     </>
   );
 }
@@ -43,38 +42,27 @@ function LiveClassBlock() {
   const ctaTestId = isInstructor ? 'live-class-return' : 'live-class-join';
 
   return (
-    <section data-testid="live-class-block">
-      <div className="rounded-3xl border border-clay/50 bg-clay/5 p-6 flex items-center justify-between gap-4">
-        {/* left: pulse indicator + label + subtitle */}
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="relative shrink-0">
-            <span className="block w-3 h-3 rounded-full bg-red-500 animate-ping absolute" />
-            <span className="block w-3 h-3 rounded-full bg-red-500" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-red-500 font-bold">
-              {t('live.badge.label')}
-            </p>
-            {inShell ? (
-              <p className="text-sm text-muted-foreground mt-0.5">{t('shell.liveUnavailable.body', { host: window.location.host })}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-0.5 truncate">{t('live.block.subtitle')}</p>
-            )}
-          </div>
-        </div>
-
-        {/* right: CTA */}
-        {surface === 'web' && (
-        <div className="shrink-0 flex items-center gap-2">
-          {/* O professor às vezes quer VER a aula como o aluno vê (conferir um
-              exercício, acompanhar de outro dispositivo). Sem isso o redirect
-              do /live/:id o devolve pro console toda vez. */}
+    <section data-testid="live-class-block" className="flex flex-col gap-3 border-t border-[#262320] pt-3">
+      <span className="flex items-center gap-2 [font:700_12px_JetBrains_Mono] tracking-[.08em] text-[#E0A86F]">
+        <span className="relative block h-2.5 w-2.5">
+          <span className="absolute inset-0 animate-ping rounded-full bg-[#E5484D]" />
+          <span className="absolute inset-0 rounded-full bg-[#E5484D]" />
+        </span>
+        {t('dash.live.now')}
+      </span>
+      {inShell ? (
+        <p className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('shell.liveUnavailable.body', { host: window.location.host })}</p>
+      ) : (
+        <p className="truncate [font:600_15px_Inter] text-[#F4EDE2]">{t('live.block.subtitle')}</p>
+      )}
+      {surface === 'web' && (
+        <div className="flex flex-wrap items-center gap-2">
           {isInstructor && (
             <button
               type="button"
               onClick={() => navigate(liveLearnerHref(active.id))}
               data-testid="live-class-join-as-learner"
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-border text-sm font-medium text-foreground hover:border-red-500/50 transition-colors"
+              className="h-11 rounded-xl border border-[#2E2A25] px-4 [font:500_13px_JetBrains_Mono] text-[#F4EDE2] hover:border-[#E0A86F]"
             >
               {t('live.block.joinAsLearner')}
             </button>
@@ -83,14 +71,12 @@ function LiveClassBlock() {
             type="button"
             onClick={() => navigate(target)}
             data-testid={ctaTestId}
-            className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+            className="h-14 flex-1 rounded-xl border-0 border-b-[5px] border-b-[#A87440] bg-[#E0A86F] px-4 [font:700_24px_'Barlow_Condensed'] text-[#0A0908] transition-transform duration-75 active:translate-y-1 active:border-b-[1px]"
           >
-            <Radio className="w-4 h-4" />
             {ctaLabel}
           </button>
         </div>
-        )}
-      </div>
+      )}
     </section>
   );
 }

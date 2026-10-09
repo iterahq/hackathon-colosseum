@@ -121,6 +121,15 @@ export const queryKeys = {
   personalization: {
     mine: ['personalization', 'mine'] as const,
   },
+  // Learner home dashboard: the program tree + progress behind the trails (language-neutral bags).
+  dashboard: {
+    trails: (userId: string) => ['dashboard', 'trails', userId] as const,
+  },
+  // On-chain achievements: the catalog, and the learner's earned rows.
+  achievements: {
+    catalog: ['achievements', 'catalog'] as const,
+    mine: (userId: string) => ['achievements', 'mine', userId] as const,
+  },
   // Learner-produced work (plan 20260728-itera-artifact-storage, Phase 2/3).
   artifacts: {
     mine: ['artifacts', 'mine'] as const,
