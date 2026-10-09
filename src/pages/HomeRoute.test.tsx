@@ -39,6 +39,7 @@ vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...a: unknown[]) => useCatal
 vi.mock('@/hooks/useLiveClass', () => ({
   useActiveLiveClass: () => useActiveLiveClass(),
   useNextScheduledClass: () => useNextScheduledClass(),
+  useEnabledTenantIds: () => ({ data: [] }),
 }));
 vi.mock('@/hooks/useIteraIdentity', () => ({ useIteraIdentity: () => ({ userId: 'u1' }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));

@@ -2,23 +2,25 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
-import { useMembership } from '@/hooks/useMembership';
 import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/i18n';
-import { isTenantAdmin } from '@/services/membership.service';
 import { initialsOf, shortAddress, walletOf } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
 import { HeaderMenu } from './HeaderMenu';
+import { HeaderPassportExplainer } from './HeaderPassportExplainer';
+import { useHeaderRoles } from './useHeaderRoles';
 
 /** The identity pill: initials for an email account, a green-dotted short address for a wallet; opens the account menu. */
 export function HeaderIdentity() {
-  const { t, toggleLocale } = useI18n();
+  const { t } = useI18n();
   const { user, signOut } = useAuth();
   const { pathname } = useLocation();
   const { data: profile } = useProfile();
-  const { data: memberships } = useMembership();
+  const roles = useHeaderRoles();
   const [open, setOpen] = useState(false);
+  const [explainer, setExplainer] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
 
   const wallet = walletOf(user);
   const name = profile?.displayName || user?.email || (wallet ? shortAddress(wallet.address) : '');
@@ -31,7 +33,9 @@ export function HeaderIdentity() {
       if (!root.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      button.current?.focus();
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -44,6 +48,7 @@ export function HeaderIdentity() {
   return (
     <div ref={root} className="relative">
       <button
+        ref={button}
         type="button"
         aria-label={t('header.id.menu')}
         aria-haspopup="menu"
@@ -78,13 +83,17 @@ export function HeaderIdentity() {
             name={name}
             email={user?.email ?? null}
             wallet={wallet}
-            admin={isTenantAdmin(memberships ?? [])}
+            roles={roles}
             onClose={() => setOpen(false)}
-            onToggleLocale={toggleLocale}
+            onExplainer={() => {
+              setOpen(false);
+              setExplainer(true);
+            }}
             onSignOut={() => void signOut()}
           />
         )}
       </AnimatePresence>
+      <HeaderPassportExplainer open={explainer} onOpenChange={setExplainer} />
     </div>
   );
 }

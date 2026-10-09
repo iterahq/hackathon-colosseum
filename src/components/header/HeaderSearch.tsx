@@ -1,0 +1,53 @@
+import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useAccessLevel } from '@/hooks/useAccessLevel';
+import { useAchievements } from '@/hooks/useAchievements';
+import { useTrailDashboard } from '@/hooks/useTrailDashboard';
+import { useI18n } from '@/i18n';
+import { buildIndex } from '@/utils/globalSearch';
+import { buildHeaderSources } from '@/utils/headerSearchSources';
+import { HeaderSearchDialog } from './HeaderSearchDialog';
+
+const isMac = () => typeof navigator !== 'undefined' && /mac|iphone|ipad/i.test(navigator.platform);
+
+/** The header's search control and its Cmd/Ctrl+K shortcut; the index is built from data the page already loads. */
+export function HeaderSearch() {
+  const { t, tText } = useI18n();
+  const visitor = useAccessLevel().level === 'visitor';
+  const dashboard = useTrailDashboard({ enabled: !visitor });
+  const achievements = useAchievements({ enabled: !visitor });
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const { trails, featured } = dashboard;
+  const items = achievements.items;
+  const index = useMemo(() => buildIndex(buildHeaderSources({ t, tText, trails, featured, achievements: items })), [t, tText, trails, featured, items]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={t('header.search.open')}
+        aria-haspopup="dialog"
+        data-testid="header-search"
+        className="hd-press hd-focus flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#262320] border-b-[3px] border-b-[#2E2A25] bg-[#141210] text-[#A0978A] hover:text-[#F4EDE2] lg:w-full lg:max-w-[240px] lg:justify-start lg:gap-2 lg:px-4"
+      >
+        <Search className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="hidden flex-1 text-left [font:500_13px_JetBrains_Mono] lg:block">{t('header.search.trigger')}</span>
+        <kbd className="hidden rounded border border-[#2E2A25] px-1.5 py-0.5 [font:600_10px_JetBrains_Mono] lg:block">{isMac() ? '⌘K' : 'Ctrl K'}</kbd>
+      </button>
+      <HeaderSearchDialog open={open} onOpenChange={setOpen} index={index} />
+    </>
+  );
+}

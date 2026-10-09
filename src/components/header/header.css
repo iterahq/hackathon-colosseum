@@ -36,3 +36,19 @@
     transition: none;
   }
 }
+@keyframes hdPop {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes hdFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.hd-pop { animation: hdPop 160ms ease-out; }
+.hd-fade { animation: hdFade 140ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .hd-pop,
+  .hd-fade {
+    animation: none;
+  }
+}
