@@ -26,10 +26,7 @@
  * `DocumentActivity` is where that probe lives, so this component may assume it
  * has a judge — but it still guards each call, because a port can reject.
  *
- * ⚠️ THE FOUR PORTUGUESE LITERALS ARE THE SAME DEBT `JudgeHeatmap` CARRIES, for
- * the same reason: they were inline in the Player, and inventing dictionary
- * keys the Player does not have is exactly what `activityDefaultI18n.test.tsx`
- * forbids. Translating them is a follow-up with its own PR, noted in README.md.
+ * Every user-visible string goes through the package `t` (`activity.document.*`).
  */
 import { useEffect, useState } from 'react';
 import { FileText } from 'lucide-react';
@@ -148,8 +145,7 @@ export function AiJudgeDocumentActivity({
       {seeds.length > 0 && !brief && (
         <div className="mt-5">
           <p className="text-sm text-muted-foreground mb-2">
-            Escolha um domínio — a IA vai gerar um cenário e um modelo (com falha) pra você
-            criticar:
+            {t('activity.document.pickDomain')}
           </p>
           <div className="flex flex-wrap gap-2">
             {seeds.map((s) => (
@@ -164,7 +160,7 @@ export function AiJudgeDocumentActivity({
               </button>
             ))}
           </div>
-          {generating && <p className="text-xs text-muted-foreground mt-2">Gerando cenário…</p>}
+          {generating && <p className="text-xs text-muted-foreground mt-2">{t('activity.document.generating')}</p>}
         </div>
       )}
 
@@ -174,7 +170,7 @@ export function AiJudgeDocumentActivity({
           data-testid="generated-brief"
         >
           <p className="font-mono text-[11px] uppercase tracking-wider text-menta mb-2">
-            Cenário gerado · {brief.domain}
+            {t('activity.document.generated', { domain: brief.domain })}
           </p>
           <p className="text-sm text-foreground">{brief.scenario}</p>
           <pre className="mt-3 font-mono text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">
@@ -187,7 +183,7 @@ export function AiJudgeDocumentActivity({
       <ActivityTextarea
         value={content}
         onChange={setContent}
-        placeholder="Escreva seu data-spec.md: por que você modelou assim + as correções concretas que fez…"
+        placeholder={t('activity.document.placeholder')}
         rows={8}
         className="mt-5 font-mono"
         data-testid="judge-submission-input"
@@ -204,7 +200,7 @@ export function AiJudgeDocumentActivity({
           className={`mt-4 inline-flex h-12 items-center justify-center gap-2 rounded-full px-6 ${TACTILE_CTA}`}
           data-testid="judge-submit"
         >
-          {submitting ? 'Avaliando…' : 'Enviar para avaliação da IA'}
+          {submitting ? t('activity.document.evaluating') : t('activity.document.submit')}
         </button>
       )}
 

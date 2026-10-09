@@ -229,7 +229,7 @@ export function AppHeader({
             onClick={toggleLocale}
             className={`${TOUCH_SLOP} sm:hidden flex items-center gap-1.5 px-3 h-9 rounded-full border border-border text-xs font-medium hover:border-verde-tech transition-colors`}
             data-testid="locale-toggle-mobile"
-            aria-label="Toggle language"
+            aria-label={t('header.toggleLanguage')}
           >
             <Languages className="w-3.5 h-3.5" />
             {locale === 'pt' ? 'PT' : 'EN'}

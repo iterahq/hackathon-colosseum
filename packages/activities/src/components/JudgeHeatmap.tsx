@@ -4,21 +4,12 @@
  * score + textual feedback. NOT a hard gate (ADR judge-fluid-heatmap-confirmed):
  * a low score still records the result and shows guidance; it does not block.
  *
- * ⚠️ THE FOUR PORTUGUESE LITERALS BELOW ARE DELIBERATE, AND THEY ARE A DEBT.
- * "Em revisão" / "pendente" / "aprovado" / "continue iterando" were inline
- * literals in the Player before this file crossed into the package, and they
- * stay inline here. Turning them into dictionary keys on the way in would have
- * meant adding keys to `i18n/dictionary.ts` that the Player's own
- * `src/i18n/index.ts` does not have — which `activityDefaultI18n.test.tsx`
- * correctly reads as the package inventing strings, and which is the one thing
- * that file forbids. Fixing it properly is a two-repo change (add the keys to
- * the Player's dictionary, then here) and it is a translation task, not an
- * extraction task; doing it in the same PR would mix "did the move change
- * behaviour?" with "did the translation change behaviour?". Recorded in
- * README.md rather than silently carried.
+ * Every user-visible string goes through the package `t` (`activity.judge.*`),
+ * mirrored verbatim in the Player's dictionary.
  */
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Clock, Sparkles } from 'lucide-react';
+import { useActivityI18n } from '../context.js';
 import type { ActivityJudgeVerdict } from '../ports.js';
 
 function scoreTone(score: number | null): { ring: string; text: string } {
@@ -29,6 +20,7 @@ function scoreTone(score: number | null): { ring: string; text: string } {
 }
 
 export function JudgeHeatmap({ verdict }: { verdict: ActivityJudgeVerdict }) {
+  const { t } = useActivityI18n();
   const pending = verdict.status === 'pending' || !verdict.judge_available;
   const tone = scoreTone(verdict.score);
 
@@ -43,12 +35,12 @@ export function JudgeHeatmap({ verdict }: { verdict: ActivityJudgeVerdict }) {
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="w-4 h-4 text-menta" />
         <span className="font-mono text-[11px] uppercase tracking-wider text-evergreen-hi">
-          AI Judge
+          {t('activity.judge.title')}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {pending ? (
             <span className="inline-flex items-center gap-1.5 text-muted-foreground text-sm">
-              <Clock className="w-4 h-4" /> Em revisão
+              <Clock className="w-4 h-4" /> {t('activity.judge.inReview')}
             </span>
           ) : (
             <span
@@ -97,7 +89,12 @@ export function JudgeHeatmap({ verdict }: { verdict: ActivityJudgeVerdict }) {
       {/* Do NOT expose the underlying LLM model/provider id to end users.
           Generic "AI Judge" label only — never render verdict.model here. */}
       <p className="mt-3 text-[11px] text-muted-foreground/70">
-        AI Judge · {pending ? 'pendente' : verdict.passed ? 'aprovado' : 'continue iterando'}
+        {t('activity.judge.title')} ·{' '}
+        {pending
+          ? t('activity.judge.pending')
+          : verdict.passed
+            ? t('activity.judge.passed')
+            : t('activity.judge.keepIterating')}
       </p>
     </motion.div>
   );

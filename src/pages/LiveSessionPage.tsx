@@ -744,7 +744,7 @@ export default function LiveSessionPage() {
       <span className={answered.correct ? 'text-menta' : 'text-clay'}>
         {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
         <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-          · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+          · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000, t) })}
         </span>
       </span>
     </span>
@@ -960,7 +960,7 @@ export default function LiveSessionPage() {
                         <span>
                           {answered.correct ? t('live.done.waitForNext') : t('live.wrong.waitForNext')}{' '}
                           <span className="text-muted-foreground" data-testid="live-answered-elapsed">
-                            · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000) })}
+                            · {t('live.elapsed.you', { time: formatDuration(answered.elapsedMs / 1000, t) })}
                           </span>
                         </span>
                       </div>

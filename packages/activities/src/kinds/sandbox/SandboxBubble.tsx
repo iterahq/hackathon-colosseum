@@ -1,6 +1,7 @@
 import { Bot } from 'lucide-react';
 import { RichSpans } from '../../components/RichSpans.js';
 import { parseInline } from '../../internal/richText.js';
+import { useActivityI18n } from '../../context.js';
 
 /**
  * A single sandbox chat bubble. User → right/evergreen; assistant → left/surface
@@ -27,6 +28,7 @@ export function SandboxBubble({
   streaming?: boolean;
   dots?: boolean;
 }) {
+  const { t } = useActivityI18n();
   const mine = role === 'user';
   return (
     <div
@@ -46,7 +48,7 @@ export function SandboxBubble({
         }`}
       >
         {dots ? (
-          <span className="inline-flex items-center gap-1 py-1" data-testid="sandbox-typing" aria-label="digitando">
+          <span className="inline-flex items-center gap-1 py-1" data-testid="sandbox-typing" aria-label={t('activity.sandbox.typing')}>
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-menta [animation-delay:-0.3s]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-menta [animation-delay:-0.15s]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-menta" />

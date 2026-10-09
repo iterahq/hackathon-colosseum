@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { getIteraUserId } from '@/services/iteraUser';
 import { useProfile } from '@/hooks/useProfile';
+import { useI18n } from '@/i18n';
 import { useAuth } from '@/auth/AuthContext';
 import type { IteraIdentity } from '@/types/iteraIdentity';
 
@@ -14,6 +15,7 @@ export type { IteraIdentity } from '@/types/iteraIdentity';
 export function useIteraIdentity(): IteraIdentity {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { t } = useI18n();
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +33,7 @@ export function useIteraIdentity(): IteraIdentity {
   }, [user?.id]);
 
   const name =
-    profile?.displayName ?? user?.email?.split('@')[0] ?? 'Aluno';
+    profile?.displayName ?? user?.email?.split('@')[0] ?? t('role.learner');
 
   return { userId, name, avatarUrl: profile?.avatarUrl ?? null, loading };
 }

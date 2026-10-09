@@ -72,6 +72,7 @@ function CardBody({ option }: { option: ChoiceOption }) {
  * together — shape and color, so not color-alone.
  */
 function PairBadge({ n, state, side }: { n: number; state: 'neutral' | 'correct' | 'incorrect'; side: 'left' | 'right' }) {
+  const { t } = useActivityI18n();
   const base = `absolute -top-2 ${
     side === 'left' ? '-left-2' : '-right-2'
   } z-10 inline-flex items-center gap-1 h-6 min-w-6 px-1.5 rounded-full text-xs font-mono font-semibold`;
@@ -80,7 +81,7 @@ function PairBadge({ n, state, side }: { n: number; state: 'neutral' | 'correct'
       <span className={`${base} bg-evergreen text-obsidiana`} data-testid="match-badge" data-state="correct">
         <Check className="w-3 h-3" strokeWidth={3} aria-hidden />
         {n}
-        <span className="sr-only"> — correct</span>
+        <span className="sr-only"> {t('activity.match.correct')}</span>
       </span>
     );
   }
@@ -93,7 +94,7 @@ function PairBadge({ n, state, side }: { n: number; state: 'neutral' | 'correct'
       >
         <X className="w-3 h-3" strokeWidth={2.5} aria-hidden />
         {n}
-        <span className="sr-only"> — incorrect</span>
+        <span className="sr-only"> {t('activity.match.incorrect')}</span>
       </span>
     );
   }
