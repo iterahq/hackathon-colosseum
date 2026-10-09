@@ -25,6 +25,7 @@ export function usePassportView() {
 
   return {
     ...model,
+    earnedCount: achievements.earnedCount,
     featuredId: featured?.id ?? null,
     walletAddress: walletOf(user),
     isPending: dashboard.isPending || (!visitor && achievements.isPending),

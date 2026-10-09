@@ -29,7 +29,7 @@ export function Stamp({ cx, cy, r, day, color, dropAfterMs, gold }: Props) {
   return (
     <motion.g
       data-testid="passport-stamp"
-      style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+      style={{ transformOrigin: `${cx}px ${cy}px` }}
       initial={drop ? { scale: 2.2, opacity: 0, rotate: -20 } : { scale: 1, opacity: 1, rotate: TILT }}
       animate={{ scale: 1, opacity: 1, rotate: TILT }}
       transition={drop ? { delay: (dropAfterMs ?? 0) / 1000, duration: 0.22, ease: [0.2, 0.9, 0.3, 1.3] } : { duration: 0 }}

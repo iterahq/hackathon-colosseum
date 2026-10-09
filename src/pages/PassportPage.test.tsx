@@ -17,7 +17,7 @@ const page = (over: Partial<PassportPageData> = {}): PassportPageData => ({
   assetAddress: null, txSignature: null, earnedAt: '2026-10-09T10:00:00Z', locked: false, lockedBy: null, ...over,
 });
 const medal = (over: Partial<PassportMedal> = {}): PassportMedal => ({ key: 'm', title: 'Streak 3', description: '3 dias seguidos', glyph: 'D3', earned: true, mintStatus: 'unclaimed', assetAddress: null, txSignature: null, ...over });
-const base = { totals: { pages: 1, stamps: 4, medals: 1 }, featuredId: 't1', walletAddress: null, isPending: false, isError: false, refetch: vi.fn() };
+const base = { earnedCount: 3, totals: { pages: 1, stamps: 4, medals: 1 }, featuredId: 't1', walletAddress: null, isPending: false, isError: false, refetch: vi.fn() };
 
 const show = () => render(<I18nProvider><MemoryRouter><PassportPage /></MemoryRouter></I18nProvider>);
 

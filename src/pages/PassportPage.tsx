@@ -39,7 +39,7 @@ export default function PassportPage() {
 
   return (
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={GRID}>
-      <DashboardTopBar xp={stats.data?.totalXp ?? null} achievements={null} activities={stats.data?.completedActivities ?? null} />
+      <DashboardTopBar xp={stats.data?.totalXp ?? null} achievements={view.isPending ? null : view.earnedCount} activities={stats.data?.completedActivities ?? null} />
       <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:pt-10">
         <PassportHero wallet={view.walletAddress} pages={view.totals.pages} stamps={view.totals.stamps} medals={view.totals.medals} />
         {!view.walletAddress && (

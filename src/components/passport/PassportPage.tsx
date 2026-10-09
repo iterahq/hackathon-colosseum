@@ -37,8 +37,7 @@ export function PassportPage({ title, color, total, done, variant = 'active', wi
   const ink = locked ? '#A0978A' : '#0A0908';
   const header = gold ? '#B8913A' : locked ? '#262320' : color.c;
   const headerInk = gold ? '#0A0908' : locked ? '#A0978A' : color.ink;
-  const shown = dropDay != null ? Math.min(done, dropDay - 1) : done;
-  const slots = passportSlots(total, shown);
+  const slots = passportSlots(total, done);
   const dashes = Math.min(12, Math.max(1, total));
   const lit = Math.round((Math.min(done, total) / Math.max(1, total)) * dashes);
   const label = `${title}: ${t('passport.days', { done, total })}`;
@@ -80,7 +79,7 @@ export function PassportPage({ title, color, total, done, variant = 'active', wi
         <g transform={`translate(25 ${gold ? 150 : 140})`}>
           {slots.map((s) => {
             const dropping = dropDay === s.day;
-            if (s.filled) return <Stamp key={s.day} cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} gold={gold} />;
+            if (s.filled && !dropping) return <Stamp key={s.day} cx={s.cx} cy={s.cy} r={s.r} day={s.day} color={color} gold={gold} />;
             return (
               <g key={s.day}>
                 <circle cx={s.cx} cy={s.cy} r={s.r} fill="none" stroke={stroke} strokeWidth="2" strokeDasharray="5 4" className={pulseNext && s.next ? 'dash-pulse' : undefined} />

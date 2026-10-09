@@ -16,7 +16,7 @@ describe('PassportPage', () => {
     expect(screen.getByTestId('passport-counter')).toHaveTextContent('3/5');
   });
 
-  it('leaves the dropping slot empty until the stamp lands', () => {
+  it('renders the dropping stamp once, over its slot', () => {
     wrap(<PassportPage title="HTML" color={TRAIL_COLORS[1]} total={5} done={2} dropDay={2} dropAfterMs={600} />);
     expect(screen.getAllByTestId('passport-stamp')).toHaveLength(2);
   });

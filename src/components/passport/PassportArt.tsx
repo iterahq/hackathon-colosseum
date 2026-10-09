@@ -11,17 +11,16 @@ export function PassportArt({ src, ...page }: Props) {
   const alt = `${page.title}: ${page.done}/${page.total}`;
   if (!src || state === 'failed') return <PassportPage {...page} />;
   return (
-    <div className="relative max-w-full shrink-0" style={{ width, aspectRatio: '3 / 4' }}>
-      {state === 'loading' && <PassportPage {...page} className="absolute inset-0 h-full w-full" />}
+    <div className="relative max-w-full shrink-0" style={{ width }}>
+      {state === 'loading' && <PassportPage {...page} />}
       <img
         src={src}
         alt={alt}
         width={width}
-        height={(width * 4) / 3}
         data-testid="passport-art"
         onLoad={() => setState('ready')}
         onError={() => setState('failed')}
-        className={`h-full w-full rounded-2xl ${state === 'ready' ? '' : 'absolute inset-0 opacity-0'}`}
+        className={`h-auto w-full rounded-2xl ${state === 'ready' ? '' : 'absolute left-0 top-0 opacity-0'}`}
       />
     </div>
   );
