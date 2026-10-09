@@ -344,6 +344,9 @@ test.describe('quiz', () => {
     // The why renders on a WRONG submit only. The harness draws no feedback
     // footer for a quiz, so the activity's own card carries it.
     await expect(page.getByTestId('answer-explanation')).toBeVisible();
+    await expect(page.getByTestId('answer-explanation-text')).toHaveCount(0);
+    await page.getByTestId('answer-explanation').getByRole('button').click();
+    await expect(page.getByTestId('answer-explanation-text')).toBeVisible();
     await expect(page.getByTestId('feedback-footer-explanation')).toHaveCount(0);
   });
 

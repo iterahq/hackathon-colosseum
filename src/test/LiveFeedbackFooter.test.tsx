@@ -200,16 +200,19 @@ describe('feedback footer da aula ao vivo', () => {
 
     const footer = await screen.findByTestId('feedback-footer');
     expect(footer).toHaveAttribute('data-correct', 'false');
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
+    await userEvent.click(screen.getByTestId('feedback-footer-explanation-title'));
     expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(RECAP_TEXT);
   });
 
   it('a explicação sobrevive ao refresh, junto da resposta', async () => {
     const first = mount();
     await userEvent.click(await screen.findByTestId('stub-settle'));
-    await screen.findByTestId('feedback-footer-explanation');
+    await screen.findByTestId('feedback-footer-explanation-title');
     first.unmount();
 
     mount();
+    await userEvent.click(await screen.findByTestId('feedback-footer-explanation-title'));
     await waitFor(() =>
       expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(RECAP_TEXT)
     );
@@ -239,7 +242,7 @@ describe('feedback footer da aula ao vivo', () => {
   it('a explicação não vaza pro próximo exercício quando o professor avança', async () => {
     const view = mount();
     await userEvent.click(await screen.findByTestId('stub-settle'));
-    await screen.findByTestId('feedback-footer-explanation');
+    await screen.findByTestId('feedback-footer-explanation-title');
 
     // O professor força o avanço: o mesmo componente, outra atividade corrente.
     mockLive(NEXT_ID);

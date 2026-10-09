@@ -79,7 +79,7 @@
  * gated.
  */
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { TeraVerdict, VerdictMark } from '@iterahq/activities';
+import { ExplanationDisclosure, TeraVerdict, VerdictMark } from '@iterahq/activities';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useI18n } from '@/i18n';
 import { usePublishedHeight } from '@/hooks/usePublishedHeight';
@@ -130,6 +130,12 @@ export function FeedbackFooter({
   const primaryTestId = actions.primary === 'retry' ? retryTestId : continueTestId;
   const enterEnabled = !!result && !!runPrimary && !busy;
   const barRef = useRef<HTMLDivElement>(null);
+  const lastResult = useRef(result);
+  const missId = useRef(0);
+  if (result !== lastResult.current) {
+    lastResult.current = result;
+    missId.current += 1;
+  }
   usePublishedHeight(barRef, '--feedback-footer-h', !!result);
 
   useEffect(() => {
@@ -189,17 +195,19 @@ export function FeedbackFooter({
                   {result.message ?? (correct ? t('activity.correct') : t('activity.incorrect'))}
                 </p>
                 {result.explanation && (
-                  <>
-                    <p
-                      className="mt-1 font-mono text-[11px] uppercase tracking-wider text-foreground/70"
-                      data-testid="feedback-footer-explanation-title"
-                    >
-                      {t('activity.explanationTitle')}
-                    </p>
-                    <p className="mt-1 text-base text-foreground/85" data-testid="feedback-footer-explanation">
+                  <ExplanationDisclosure
+                    key={missId.current}
+                    label={t('activity.explanationTitle')}
+                    className="mt-0.5"
+                    buttonClassName="text-foreground/70 hover:text-foreground"
+                    contentClassName="mt-1 max-h-[32vh] pr-1"
+                    buttonTestId="feedback-footer-explanation-title"
+                    contentTestId="feedback-footer-explanation"
+                  >
+                    <p className="text-base text-foreground/85">
                       <RichSpans spans={parseInline(result.explanation)} />
                     </p>
-                  </>
+                  </ExplanationDisclosure>
                 )}
               </div>
             </div>

@@ -153,6 +153,15 @@ describe('quiz honors `reveal` like every other graded kind', () => {
   });
 });
 
+function whyCard(id: 'feedback-footer-explanation' | 'answer-explanation') {
+  const toggle =
+    id === 'answer-explanation'
+      ? within(screen.getByTestId('answer-explanation')).getByRole('button')
+      : screen.getByTestId('feedback-footer-explanation-title');
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle);
+  return screen.getByTestId(id);
+}
+
 describe('the authored explanation surfaces on a wrong answer only', () => {
   it('quiz: shown after a wrong submission', () => {
     renderActivity(makeActivity('quiz', QUIZ_SPEC));
@@ -161,7 +170,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Nome'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
   });
 
   it('quiz: NOT shown after a correct submission', () => {
@@ -187,7 +196,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
   });
 
   it('multi_choice: same beat, from the one shared primitive', () => {
@@ -195,7 +204,7 @@ describe('the authored explanation surfaces on a wrong answer only', () => {
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(MULTI_CHOICE_SPEC.explanation);
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(MULTI_CHOICE_SPEC.explanation);
   });
 
   it('single_choice: nothing extra when the spec carries no explanation', () => {
@@ -245,6 +254,9 @@ describe('the why lives in Tera\'s footer, one Tera at a time', () => {
     const footer = screen.getByTestId('feedback-footer');
     expect(document.querySelectorAll('[data-tera]')).toHaveLength(1);
     expect(footer.querySelectorAll('[data-tera]')).toHaveLength(1);
+    expect(screen.queryByTestId('feedback-footer-explanation')).toBeNull();
+    expect(screen.getByTestId('feedback-footer-explanation-title')).toHaveAttribute('aria-expanded', 'false');
+    whyCard('feedback-footer-explanation');
     expect(screen.getAllByTestId('feedback-footer-explanation')).toHaveLength(1);
     expect(within(footer).getByTestId('feedback-footer-explanation')).toHaveTextContent(
       SINGLE_CHOICE_SPEC.explanation
@@ -264,7 +276,8 @@ describe('the why lives in Tera\'s footer, one Tera at a time', () => {
     fireEvent.click(screen.getByText('Nome'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
+    expect(screen.queryByTestId('answer-explanation-text')).toBeNull();
+    expect(whyCard('answer-explanation')).toHaveTextContent(QUIZ_SPEC.explanation);
   });
 
   it('hands the explanation up to the host on a miss, and only on a miss', () => {
@@ -290,7 +303,7 @@ describe('the why lives in Tera\'s footer, one Tera at a time', () => {
     } as unknown as ActivityCompleteDetail;
     renderActivity({ ...makeActivity('single_choice', SINGLE_CHOICE_SPEC), status: 'done' }, false, prior);
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
+    expect(whyCard('answer-explanation')).toHaveTextContent(SINGLE_CHOICE_SPEC.explanation);
     expect(screen.queryByTestId('feedback-footer')).toBeNull();
     expect(document.querySelectorAll('[data-tera]')).toHaveLength(1);
   });
@@ -303,7 +316,7 @@ describe('a reveal with no submission always gets the why', () => {
   ])('%s', (kind, spec) => {
     renderActivity(makeActivity(kind as ActivityKind, spec), true);
 
-    expect(screen.getByTestId('answer-explanation')).toHaveTextContent(spec.explanation);
+    expect(whyCard('answer-explanation')).toHaveTextContent(spec.explanation);
   });
 });
 
@@ -391,7 +404,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('VERDADEIRO'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    const card = screen.getByTestId('feedback-footer-explanation');
+    const card = whyCard('feedback-footer-explanation');
     expect(card).toHaveTextContent(expected);
     expect(card).not.toHaveTextContent(notExpected);
   });
@@ -403,7 +416,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Um-para-um'));
     fireEvent.click(screen.getByTestId('quiz-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(
       'each Order belongs to ONE Customer'
     );
   });
@@ -434,7 +447,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Alfa'));
     fireEvent.click(screen.getByTestId('single-choice-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(expected);
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(expected);
   });
 
   /**
@@ -460,7 +473,7 @@ describe('a bilingual explanation reaches the learner in their own language', ()
     fireEvent.click(screen.getByText('Beta'));
     fireEvent.click(screen.getByTestId('multi-choice-submit'));
 
-    expect(screen.getByTestId('feedback-footer-explanation')).toHaveTextContent(
+    expect(whyCard('feedback-footer-explanation')).toHaveTextContent(
       'Só a redação em português existe nesta linha.'
     );
   });

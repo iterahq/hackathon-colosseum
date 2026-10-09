@@ -34,9 +34,10 @@
  * dependendo de qual componente renderizou.
  */
 import type { Locale } from '@iterahq/activity-spec/runtime';
-import { useActivityI18n } from '../context.js';
+import { useActivityI18n, useActivitySound } from '../context.js';
 import { parseInline } from '../internal/richText.js';
 import { resolveLocalizedText } from '../internal/localizedText.js';
+import { ExplanationDisclosure } from './ExplanationDisclosure.js';
 import { RichSpans } from './RichSpans.js';
 import { TeraAvatar } from './TeraAvatar.js';
 import { useHostExplainsMisses } from './explainedMiss.js';
@@ -81,24 +82,27 @@ export function AnswerExplanation({
 }) {
   const { t, locale } = useActivityI18n();
   const explainsMisses = useHostExplainsMisses();
+  const playSound = useActivitySound();
   const text = (resolveLocalizedText(spec?.explanation, locale) ?? '').trim();
   if (!shown || correct === true || text === '' || (handedUp && explainsMisses)) return null;
 
   return (
-    <div
-      className="mt-4 flex items-start gap-3 rounded-2xl border border-border bg-card p-4 max-sm:flex-wrap max-sm:items-center max-sm:gap-x-2 max-sm:gap-y-1"
-      data-testid="answer-explanation"
-    >
-      <TeraAvatar mood={correct === false ? 'oops' : 'neutral'} size="sm" idle={false} className="-mt-1 max-sm:mt-0" />
-      {/* On a phone Tera shares the title line and the text runs the whole width of the box. */}
-      <div className="min-w-0 max-sm:contents">
-        <p className="font-mono text-[11px] uppercase tracking-wider text-menta">
-          {t('activity.explanationTitle')}
-        </p>
-        <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/80 max-sm:mt-0 max-sm:basis-full">
-          <RichSpans spans={parseInline(text)} />
-        </p>
-      </div>
+    <div className="mt-4 rounded-2xl border border-border bg-card px-4 py-1" data-testid="answer-explanation">
+      <ExplanationDisclosure
+        label={t('activity.explanationTitle')}
+        buttonClassName="text-menta"
+        contentTestId="answer-explanation-text"
+        onToggle={(open) => {
+          if (open) playSound('pick');
+        }}
+      >
+        <div className="flex items-start gap-3 pb-3 pt-1">
+          <TeraAvatar mood={correct === false ? 'oops' : 'neutral'} size="sm" idle={false} className="-mt-1" />
+          <p className="min-w-0 whitespace-pre-wrap text-sm text-foreground/80">
+            <RichSpans spans={parseInline(text)} />
+          </p>
+        </div>
+      </ExplanationDisclosure>
     </div>
   );
 }
