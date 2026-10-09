@@ -71,6 +71,8 @@ export interface PassportState {
   days_done: number;
   total_days: number;
   stamped_lesson_ids: string[];
+  /** 1-based positions of the stamped lessons inside the trail. */
+  stamped_days: number[];
   tier: Tier;
   completed_at: string | null;
 }
@@ -196,6 +198,7 @@ export function computeAwards(input: AwardsInput): Award[] {
       .sort(byOrdinalThenId);
     const dayOf = new Map(countedLessons.map((lesson, index) => [lesson.id, index + 1]));
     const doneIds = new Set(unitDone.map((entry) => entry.lesson.id));
+    const stampedLessons = countedLessons.filter((lesson) => doneIds.has(lesson.id));
     const isComplete = unitDone.length === countedLessons.length;
     const completedAt = isComplete ? unitDone[unitDone.length - 1].completedAt : null;
     if (completedAt) completedUnits.set(unitId, completedAt);
@@ -207,7 +210,8 @@ export function computeAwards(input: AwardsInput): Award[] {
       trail_title: unit.title,
       days_done: unitDone.length,
       total_days: countedLessons.length,
-      stamped_lesson_ids: countedLessons.filter((lesson) => doneIds.has(lesson.id)).map((lesson) => lesson.id),
+      stamped_lesson_ids: stampedLessons.map((lesson) => lesson.id),
+      stamped_days: stampedLessons.map((lesson) => dayOf.get(lesson.id) as number),
       tier: isComplete ? 'gold' : 'bronze',
       completed_at: completedAt,
     };

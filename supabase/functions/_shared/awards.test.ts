@@ -79,6 +79,7 @@ describe('computeAwards', () => {
     expect(find(awards, 'trail_pass')?.state).toMatchObject({
       days_done: 2,
       stamped_lesson_ids: ['l1', 'l3'],
+      stamped_days: [1, 3],
       tier: 'bronze',
     });
   });
