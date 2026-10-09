@@ -1,7 +1,12 @@
+import { useI18n } from '@/i18n';
+import type { AchievementKind } from '@/types/achievements';
+import { MedalArt } from './MedalArt';
 import { OnChainMark } from './OnChainMark';
 
 interface Props {
   glyph: string;
+  kind: AchievementKind;
+  credentialId: string | null;
   title: string;
   /** What it takes to earn it; shown as a caption while locked. */
   caption: string;
@@ -14,20 +19,12 @@ interface Props {
   minted?: boolean;
 }
 
-/** A 76 px coin with a glyph: the accent coin tilted when earned, a dashed outline while locked. */
-export function Medal({ glyph, title, caption, earned, accent, accentDark, size = 76, txSignature = null, assetAddress = null, minted = false }: Props) {
+/** A medal and its caption: the backend art when earned, a dashed outline while locked. */
+export function Medal({ glyph, kind, credentialId, title, caption, earned, accent, accentDark, size = 76, txSignature = null, assetAddress = null, minted = false }: Props) {
+  const { locale } = useI18n();
   return (
     <div data-testid="passport-medal" data-earned={earned} className="flex w-[104px] shrink-0 flex-col items-center gap-2 text-center">
-      <span
-        role="img"
-        aria-label={title}
-        className={`box-border grid place-items-center rounded-full [font:700_15px_JetBrains_Mono] ${
-          earned ? '-rotate-6 border-b-[5px] text-[#0A0908]' : 'border-2 border-dashed border-[#2E2A25] text-[#8A8276]'
-        }`}
-        style={{ width: size, height: size, ...(earned ? { background: accent, borderBottomColor: accentDark } : {}), opacity: earned ? 1 : 0.35 }}
-      >
-        {glyph}
-      </span>
+      <MedalArt glyph={glyph} title={title} kind={kind} credentialId={credentialId} earned={earned} accent={accent} accentDark={accentDark} size={size} lang={locale} />
       <span className="[font:600_13px/1.2_Inter]" style={{ color: earned ? '#F4EDE2' : '#A0978A' }}>
         {title}
       </span>

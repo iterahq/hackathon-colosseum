@@ -90,6 +90,9 @@ export interface PassportPageData {
 /** A medal as the UI draws it. */
 export interface PassportMedal {
   key: string;
+  kind: AchievementKind;
+  /** `user_achievements.id` of the earned row; the backend artwork is keyed by it. */
+  credentialId: string | null;
   title: string;
   description: string;
   glyph: string;

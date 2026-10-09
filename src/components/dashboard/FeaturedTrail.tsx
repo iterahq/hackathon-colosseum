@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
 import { barFill, colorOfTrail, currentDayOf, dayName, programLabel, trailName } from '@/utils/trailDashboard';
 import { FeaturedPath } from './FeaturedPath';
+import { countOf } from '@/utils/plural';
 
 interface Props {
   trail: Trail;
@@ -61,7 +62,7 @@ export function FeaturedTrail({ trail, onOpenLesson }: Props) {
             </span>
             <span className="[font:500_13px_JetBrains_Mono] text-[#A0978A]">
               {fresh && current
-                ? t('dash.hero.freshToday', { days: trail.days.length, activities: current.total })
+                ? t('dash.hero.freshToday', { days: countOf(t, trail.days.length, 'day'), activities: countOf(t, current.total, 'activity') })
                 : t('dash.hero.activities', { done: trail.doneActivities, total: trail.totalActivities })}
             </span>
           </span>

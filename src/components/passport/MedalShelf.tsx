@@ -20,6 +20,8 @@ export function MedalShelf({ medals, color, size = 76 }: Props) {
           <div key={m.key} role="listitem">
             <Medal
               glyph={m.glyph}
+              kind={m.kind}
+              credentialId={m.credentialId}
               title={m.title}
               caption={m.description}
               earned={m.earned}

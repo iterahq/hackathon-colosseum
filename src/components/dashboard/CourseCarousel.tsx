@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { CatalogProgram } from '@/types/catalog';
 import { useI18n } from '@/i18n';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
+import { countOf } from '@/utils/plural';
 
 interface Props {
   courses: CatalogProgram[];
@@ -54,7 +55,7 @@ export function CourseCarousel({ courses, onOpen }: Props) {
               <span className="flex flex-col gap-1.5 px-[18px] pb-[18px] pt-4">
                 <span className="line-clamp-2 [font:700_24px/1_'Barlow_Condensed']">{tText(course.title)}</span>
                 <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">
-                  {t('dash.courses.meta', { lessons: course.lessonCount, activities: course.activityCount })}
+                  {t('dash.courses.meta', { lessons: countOf(t, course.lessonCount, 'lesson'), activities: countOf(t, course.activityCount, 'activity') })}
                 </span>
               </span>
             </button>

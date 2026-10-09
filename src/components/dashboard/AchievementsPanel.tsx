@@ -5,6 +5,7 @@ import { pageColor } from '@/components/passport/pageVariant';
 import { useI18n } from '@/i18n';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
+import { countOf } from '@/utils/plural';
 
 interface Props {
   pages: PassportPageData[];
@@ -27,7 +28,7 @@ export function AchievementsPanel({ pages, medals, stamps, featuredId, onOpenTra
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="[font:700_32px_'Barlow_Condensed']">{t('passport.title')}</h2>
         <span className="flex items-baseline gap-4 [font:500_13px_JetBrains_Mono] text-[#A0978A]">
-          <span>{t('passport.counts', { stamped: stamps, medals: earnedMedals })}</span>
+          <span>{t('passport.counts', { stamped: countOf(t, stamps, 'stamp'), medals: countOf(t, earnedMedals, 'medal') })}</span>
           <Link to="/passport" className="inline-flex min-h-[44px] items-center text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
             {t('passport.seeAll')}
           </Link>

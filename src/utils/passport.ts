@@ -57,6 +57,8 @@ export function buildMedals(items: readonly AchievementView[], pick: Pick): Pass
       const title = pick(i.title);
       return {
         key: i.key,
+        kind: i.kind,
+        credentialId: i.earned?.id ?? null,
         title,
         description: pick(i.description),
         glyph: glyphOf(i, title),

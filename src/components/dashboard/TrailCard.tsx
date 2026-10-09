@@ -2,6 +2,7 @@ import { useI18n } from '@/i18n';
 import type { Trail } from '@/types/trailDashboard';
 import { barFill, colorOfTrail, programLabel, shortName, trailName, trailPath } from '@/utils/trailDashboard';
 import { TrailLegs, TrailNodes } from './TrailNodes';
+import { countOf } from '@/utils/plural';
 
 interface Props {
   trail: Trail;
@@ -61,7 +62,7 @@ export function TrailCard({ trail, onOpen }: Props) {
               ))}
             </span>
             <span className="[font:500_12px_JetBrains_Mono] text-[#A0978A]">
-              {t('dash.trail.oneDay', { activities: trail.totalActivities })}
+              {t('dash.trail.oneDay', { activities: countOf(t, trail.totalActivities, 'activity') })}
             </span>
           </span>
         ) : (

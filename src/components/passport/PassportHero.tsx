@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n';
+import { countOf } from '@/utils/plural';
 import { shortAddress } from '@/lib/explorer';
 
 interface Props {
@@ -21,7 +22,7 @@ export function PassportHero({ wallet, pages, stamps, medals }: Props) {
         <span className="rounded-full bg-[#0A0908] px-3 py-1.5 text-[#F4EDE2]" data-testid="passport-wallet">
           {wallet ? shortAddress(wallet) : t('passport.wallet.none')}
         </span>
-        <span>{t('passport.hero.totals', { pages, stamps, medals })}</span>
+        <span>{t('passport.hero.totals', { pages: countOf(t, pages, 'page'), stamps: countOf(t, stamps, 'stamp'), medals: countOf(t, medals, 'medal') })}</span>
       </span>
     </header>
   );
