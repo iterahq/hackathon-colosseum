@@ -100,7 +100,7 @@ export default function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { t, tText, locale } = useI18n();
-  const { muted, toggleMuted, onSettle, onAdvance, onFinish } = useLessonSound();
+  const { muted, toggleMuted, onSettle, onAdvance, onRetry, onFinish } = useLessonSound();
   useAnswerOutbox();
   const { data, isPending, isError, refetch } = useLessonContent(lessonId);
   usePageTitle(tText(data?.title));
@@ -749,6 +749,21 @@ export default function LessonPlayer() {
     retryAnswer(current.id);
   }
 
+  /**
+   * "Tentar de novo" on the miss footer: the same reopen as the one behind the
+   * back arrow, taken before leaving. The miss is already written, so this only
+   * drops the held write — the next settle must write its own — and re-mounts.
+   */
+  function retryPending() {
+    if (!current || !pending || pending.correct || practising || saving) return;
+    settleWriteRef.current = null;
+    setPending(null);
+    onRetry();
+    retryAnswer(current.id);
+  }
+  const canRetryPending =
+    !!current && !!pending && !pending.correct && !practising && isFooterGradedKind(current.kind);
+
   /** Open a finished exercise again, blank and with its `code` lives back. */
   function startRedo() {
     if (!current || !canRedo) return;
@@ -920,7 +935,12 @@ export default function LessonPlayer() {
       {/* ── Global fixed answer-feedback footer (Duolingo pattern) ──
           Slides up green/red after a graded submit; "Continuar" advances. */}
       {!completed && (
-        <FeedbackFooter result={pending} onContinue={handleContinue} busy={saving} />
+        <FeedbackFooter
+          result={pending}
+          onContinue={handleContinue}
+          onRetry={canRetryPending ? retryPending : undefined}
+          busy={saving}
+        />
       )}
     </div>
   );
