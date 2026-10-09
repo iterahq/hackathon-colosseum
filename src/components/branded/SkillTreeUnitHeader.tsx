@@ -42,7 +42,7 @@ export function SkillTreeUnitHeader({
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="font-mono text-[11px] uppercase tracking-wider opacity-75">{weekLabel}</span>
-        <span className="font-display text-2xl font-bold leading-none line-clamp-2">{title}</span>
+        <span className="font-display text-2xl font-bold leading-[1.15] line-clamp-2">{title}</span>
       </div>
       <span
         className="whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold"
