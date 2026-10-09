@@ -3,7 +3,7 @@
  * here throws (no auth, no query client, a broken backend) the boundary renders nothing, the view
  * stays null and the lesson is exactly what it was before lives existed.
  */
-import { useCallback, useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useAuth } from '@/auth/AuthContext';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { useLives } from '@/hooks/useLives';
@@ -54,12 +54,15 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
   const purchase = usePurchase();
   const [bonus, setBonus] = useState(0);
   const [connecting, setConnecting] = useState(false);
+  const visit = useRef(Date.now().toString(36));
   useEffect(() => setBonus(0), [lessonId]);
 
   useImperativeHandle(
     ref,
     () => ({
-      lose: (attemptId, activityId) => lose(attemptId, activityId, lessonId),
+      // The player's attempt counter restarts with the page, so the visit is part of the id:
+      // without it a retry after a reload would repeat an id the server already charged.
+      lose: (attemptId, activityId) => lose(`${attemptId}:${visit.current}`, activityId, lessonId),
       endLesson: () => {
         if (lessonId) void endLesson(lessonId).then(setBonus);
       },
