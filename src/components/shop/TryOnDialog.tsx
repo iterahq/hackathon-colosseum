@@ -11,6 +11,7 @@ import { supplyText } from '@/utils/avatarShop';
 import { itemAction } from './itemAction';
 import { PayButtons } from './CrystalPay';
 import { ShopExplainer } from './ShopExplainer';
+import { includesLine, isOffSeason, returnLine } from './avatarRows';
 import { outfitDrawable } from './ShopLook';
 import { TryOnStage } from './TryOnStage';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS, MONO_LABEL, RARITY_EDGE } from './shopStyles';
@@ -102,6 +103,13 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
               <h2 className="[font:700_34px/1_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="tryon-name">{title}</h2>
               {lore?.epithet && <p className="mt-1 [font:600_14px/1.3_Inter] text-[#C9BFB0]" data-testid="tryon-epithet">{lore.epithet}</p>}
             </div>
+            {offer?.season && (
+              <p className={`[font:600_13px/1.4_Inter] ${isOffSeason(item) ? 'text-[#E0A86F]' : 'text-[#F2C66D]'}`} data-testid="tryon-season">
+                {offer.season.label}
+                {isOffSeason(item) ? ` · ${returnLine(item, locale, t)}` : ''}
+              </p>
+            )}
+            {includesLine(item, t) && <p className="[font:600_13px/1.4_Inter] text-[#C9BFB0]" data-testid="tryon-includes">{includesLine(item, t)}</p>}
             <p className="[font:400_15px/1.5_Inter] text-[#C9BFB0]" data-testid="tryon-story">{lore?.story || item.description}</p>
             {lore?.quote && <p className="border-l-2 border-[#2E2A25] pl-3 [font:500_14px/1.45_Inter] italic text-[#A0978A]">{lore.quote}</p>}
             {item.kind === 'outfit' && !outfitDrawable(avatar) && <p className="[font:500_13px/1.45_Inter] text-[#E0A86F]" data-testid="tryon-outfit-note">{t(avatar.allowsOutfit ? 'tryon.outfitBase' : 'tryon.outfitNote')}</p>}

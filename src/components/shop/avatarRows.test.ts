@@ -21,7 +21,7 @@ describe('rowsOf', () => {
   });
   it('carries the crystal price of the tier', () => {
     expect(rowsOf(items).rows[3].priceCrystals).toBe(2500);
-    expect(rowsOf(items).rows[2].priceCrystals).toBeNull();
+    expect(rowsOf(items).rows[2].priceCrystals).toBe(10000);
   });
 });
 

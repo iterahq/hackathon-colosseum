@@ -27,7 +27,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     lamports: 500_000,
     crystals: 30,
     title: { pt: 'Recarga de vidas', en: 'Life refill' },
-    description: { pt: 'Enche as 5 vidas do Tera na hora.', en: "Fills Tera's 5 lives right away." },
+    description: { pt: 'Enche as vidas do Tera na hora.', en: "Fills Tera's lives right away." },
     art: {},
   },
   {

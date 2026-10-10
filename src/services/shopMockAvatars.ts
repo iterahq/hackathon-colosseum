@@ -17,9 +17,9 @@ const TIERS: Record<Rarity, Tier> = {
   common: { name: { pt: 'Tera', en: 'Tera' }, label: { pt: 'Comum', en: 'Common' }, cents: 20, crystals: 150, max: null },
   rare: { name: { pt: 'Super Tera', en: 'Super Tera' }, label: { pt: 'Raro', en: 'Rare' }, cents: 100, crystals: 600, max: 500 },
   epic: { name: { pt: 'Mega Tera', en: 'Mega Tera' }, label: { pt: 'Muito raro', en: 'Epic' }, cents: 1000, crystals: 2500, max: 100 },
-  legendary: { name: { pt: 'Tera Lendário', en: 'Legendary Tera' }, label: { pt: 'Lendário', en: 'Legendary' }, cents: 10000, crystals: null, max: 25 },
-  mythic: { name: { pt: 'Tera Mítico', en: 'Mythic Tera' }, label: { pt: 'Mítico', en: 'Mythic' }, cents: 100000, crystals: null, max: 5 },
-  primordial: { name: { pt: 'Tera Primordial', en: 'Primordial Tera' }, label: { pt: 'Único', en: 'One of one' }, cents: 500000, crystals: null, max: 1 },
+  legendary: { name: { pt: 'Tera Lendário', en: 'Legendary Tera' }, label: { pt: 'Lendário', en: 'Legendary' }, cents: 10000, crystals: 10000, max: 25 },
+  mythic: { name: { pt: 'Tera Mítico', en: 'Mythic Tera' }, label: { pt: 'Mítico', en: 'Mythic' }, cents: 100000, crystals: 50000, max: 5 },
+  primordial: { name: { pt: 'Tera Primordial', en: 'Primordial Tera' }, label: { pt: 'Único', en: 'One of one' }, cents: 500000, crystals: 250000, max: 1 },
 };
 
 /** key, rarity, group, minted, pt title, en title */

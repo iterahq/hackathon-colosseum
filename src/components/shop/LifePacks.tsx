@@ -27,7 +27,7 @@ export function LifePacks({ items, actions, full }: { items: ShopItem[]; actions
   const best = bestValueKey(items);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="life-packs">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="life-packs">
       {items.map((item) => {
         const pack = item.lifePack;
         // A pack adds lives above the maximum; only the refill is pointless at full lives.
