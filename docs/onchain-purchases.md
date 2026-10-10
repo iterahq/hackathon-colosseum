@@ -359,6 +359,26 @@ two independent transactions, and the older value could land last. `syncMirror`
   that write put on chain; absent when the call deferred or had nothing to write (for example a
   `lose` whose mirror started after the refill already landed in the database).
 
+### Mirror limits (who the authority pays for)
+
+Every mirror is a transaction signed and paid by the mint authority, so each one passes
+`mirrorPolicy` (`_shared/mirror.ts`, migrations `0136`, `0137`) before it is sent:
+
+- **Cooldown**: at least 30 s between two ordinary mirrors of one companion (an equip, a lesson end,
+  a retry). Inside the window nothing is sent: the row is flagged `mirror_due` and ONE invocation
+  waits for the window to end and writes the state the database has then, so any number of changes
+  coalesce into one transaction. If that invocation dies, the next `companion` / `lives` call writes.
+- **Not held by the cooldown**: a purchase (`life_refill`, a gift received, an outfit put on within
+  10 minutes of being bought or claimed) and the loss of the last life. They are the two moments the
+  product shows on chain and they still land within seconds.
+- **Daily cap**: 60 on-chain writes per companion per UTC day (`companions.mirror_day`,
+  `mirror_writes`), counted for every reason. Past it the database stays right, nothing is sent, the
+  answer carries no `chain`, and the asset catches up on the first call of the next day.
+- Contract unchanged: `chain` was already optional everywhere. What a client can now see: after an
+  equip that was not just bought, or a lesson end, the asset may be up to 30 s behind.
+
+Proof on devnet: `node scripts/hackathon/security-attacks.mjs d` (8 equip changes in 22 s = 2 writes).
+
 ### `POST /wallet-faucet`
 
 Works for a sign-in wallet and for a linked one.

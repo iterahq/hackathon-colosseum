@@ -11,11 +11,26 @@ import {
   syncMirror,
 } from '../_shared/companion-store.ts';
 import { isOutfit } from '../_shared/cosmetics.ts';
-import { serviceClient } from '../_shared/db.ts';
+import { serviceClient, type IteraClient } from '../_shared/db.ts';
+import { PURCHASE_EQUIP_WINDOW_MS, type MirrorReason } from '../_shared/mirror.ts';
 import { reconcileGiftsWithin } from '../_shared/gift-reconcile.ts';
 import { corsHeaders, json, readJsonObject } from '../_shared/http.ts';
 
 const GIFT_RECONCILE_BUDGET_MS = 4_000;
+
+/** The learner paid for (or claimed) this outfit within the last few minutes. */
+async function boughtRecently(db: IteraClient, userId: string, itemKey: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('purchases')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('item_key', itemKey)
+    .eq('status', 'paid')
+    .gte('paid_at', new Date(Date.now() - PURCHASE_EQUIP_WINDOW_MS).toISOString())
+    .limit(1);
+  if (error) throw new Error(`purchases recent: ${error.message}`);
+  return (data ?? []).length > 0;
+}
 
 /** `undefined`: no equip requested. `false`: malformed. Otherwise the outfit to wear (`null` takes it off). */
 function equipOf(body: Record<string, unknown>): string | null | undefined | false {
@@ -44,11 +59,14 @@ Deno.serve(async (request) => {
     await reconcileGiftsWithin(db, { toUserId: userId }, GIFT_RECONCILE_BUDGET_MS);
     let row = await ensureCompanion(db, userId);
     let mirrorWanted = row.mirror_due;
+    let mirrorReason: MirrorReason = 'routine';
 
     if (equip !== undefined && equip !== row.outfit) {
       if (equip !== null) {
         const owned = isOutfit(equip) && (await loadInventory(db, userId, row.outfit)).some((entry) => entry.item_key === equip);
         if (!owned) return json({ error: 'not_owned' }, 409, cors);
+        // Putting on what was just bought (or claimed) is part of the purchase: it skips the mirror cooldown.
+        if (await boughtRecently(db, userId, equip)) mirrorReason = 'purchase';
       }
       row = await setOutfit(db, userId, equip);
       mirrorWanted = true;
@@ -59,7 +77,7 @@ Deno.serve(async (request) => {
       row = { ...row, mint_status: 'pending' };
       inBackground(mintCompanion(db, userId, caller.wallet));
     } else if (mirrorWanted && row.mint_status === 'minted') {
-      inBackground(syncMirror(db, userId));
+      inBackground(syncMirror(db, userId, 0, mirrorReason));
     }
 
     const now = new Date();

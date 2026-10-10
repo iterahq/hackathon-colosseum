@@ -13,14 +13,14 @@ import { changedAttributes, explorerUrl, type ChainWrite, type OnchainAttribute 
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 import { deriveStats, giftLife, livesView, regenerate, type CompanionStats, type LivesState, type XpEvent } from './lives.ts';
-import { MIRROR_STALE_MS, afterPass, waitDecision } from './mirror.ts';
+import { MIRROR_STALE_MS, afterPass, cooldownLeftMs, mirrorPolicy, utcDay, waitDecision, writesToday, type MirrorReason } from './mirror.ts';
 
 export const TIME_ZONE = 'America/Sao_Paulo';
 const STALE_CLAIM_MS = 3 * 60_000;
 const CAS_ATTEMPTS = 5;
 const XP_PAGE = 1000;
 const COLUMNS =
-  'user_id,id,lives,max_lives,last_regen_at,outfit,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirrored_at,mirror_due,version';
+  'user_id,id,lives,max_lives,last_regen_at,outfit,wallet_address,asset_address,mint_status,mint_claimed_at,tx_signature,minted_at,mirrored,mirrored_at,mirror_due,mirror_day,mirror_writes,version';
 
 export interface CompanionRow {
   user_id: string;
@@ -38,6 +38,9 @@ export interface CompanionRow {
   mirrored: OnchainAttribute[] | null;
   mirrored_at: string | null;
   mirror_due: boolean;
+  /** The UTC day `mirror_writes` counts for. */
+  mirror_day: string | null;
+  mirror_writes: number;
   version: number;
 }
 
@@ -314,6 +317,8 @@ export interface MirrorResult {
 }
 
 const MIRROR_RETRY_MS = 400;
+/** Added to the rest of the cooldown before the one deferred retry, so it lands just past the window. */
+const COOLDOWN_GRACE_MS = 500;
 
 /** Takes the mirror for this invocation. The token is the claim; `null` when another invocation holds it. */
 async function claimMirror(db: IteraClient, userId: string): Promise<string | null> {
@@ -365,8 +370,16 @@ async function releaseMirror(db: IteraClient, userId: string, token: string): Pr
  * row dirty, so the last confirmed write is the latest state. A caller that
  * cannot take the mirror within `waitMs` sends nothing. Never throws: a failed
  * write is flagged `mirror_due` and retried by the next call.
+ *
+ * Every write is paid by the authority, so each one passes `mirrorPolicy`
+ * first: an ordinary mirror inside the cooldown, or any mirror past the daily
+ * cap, sends nothing, flags the row `mirror_due` and answers `deferred`. The
+ * next eligible call writes the latest state, so changes inside the window
+ * coalesce into one transaction. An ordinary (`routine`) mirror is always run
+ * off the response path: held by the cooldown, the first one waits for the
+ * window to end and tries once more (`afterCooldown`).
  */
-export async function syncMirror(db: IteraClient, userId: string, waitMs = 0): Promise<MirrorResult> {
+export async function syncMirror(db: IteraClient, userId: string, waitMs = 0, reason: MirrorReason = 'routine', afterCooldown = false): Promise<MirrorResult> {
   let token: string | null = null;
   let write: ChainWrite | null = null;
   try {
@@ -381,12 +394,39 @@ export async function syncMirror(db: IteraClient, userId: string, waitMs = 0): P
       const now = new Date();
       const attributes = companionAttributes(snapshotOf(row, await loadStats(db, userId, now), now));
       if (!sameAttributes(row.mirrored, attributes)) {
+        const counted = { countedDay: row.mirror_day, countedWrites: row.mirror_writes, now };
+        const verdict = mirrorPolicy({ reason, lastWriteAt: row.mirrored_at, ...counted });
+        if (verdict !== 'write') {
+          // Not now: the database is right, the asset catches up on the next eligible call.
+          await db.from('companions').update({ mirror_claimed_at: null, mirror_due: true, mirror_dirty: false, mirror_error: verdict }).eq('user_id', userId).eq('mirror_claimed_at', token);
+          token = null;
+          // One ordinary mirror held by the cooldown comes back when the window ends, so the asset does
+          // not wait for somebody's next visit. `mirror_retry_at` is taken by compare-and-set: one waiter
+          // per window, however many requests were held.
+          if (verdict === 'cooldown' && !afterCooldown) {
+            const waitMs = cooldownLeftMs(row.mirrored_at, now) + COOLDOWN_GRACE_MS;
+            const { data: waiter } = await db
+              .from('companions')
+              .update({ mirror_retry_at: new Date(now.getTime() + waitMs).toISOString() })
+              .eq('user_id', userId)
+              .or(`mirror_retry_at.is.null,mirror_retry_at.lt."${now.toISOString()}"`)
+              .select('user_id');
+            if ((waiter ?? []).length > 0) {
+              await new Promise((resolve) => setTimeout(resolve, waitMs));
+              return syncMirror(db, userId, 0, reason, true);
+            }
+          }
+          return { synced: false, write, deferred: true };
+        }
         const [sdk, config] = await Promise.all([import('./chain.ts'), loadConfig(db)]);
         const collection = config[COLLECTIONS.companions.configKey];
         if (!collection) throw new Error('companions collection is not configured');
         const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
         write = { asset: row.asset_address, signature, at: new Date().toISOString(), attributes, changed: changedAttributes(row.mirrored, attributes) };
-        const { error } = await db.from('companions').update({ mirrored: attributes, mirrored_at: write.at }).eq('user_id', userId);
+        const { error } = await db
+          .from('companions')
+          .update({ mirrored: attributes, mirrored_at: write.at, mirror_day: utcDay(now), mirror_writes: writesToday(counted) + 1 })
+          .eq('user_id', userId);
         if (error) throw new Error(`companions mirror: ${error.message}`);
       }
 
@@ -422,8 +462,8 @@ export async function syncMirror(db: IteraClient, userId: string, waitMs = 0): P
  * must not wait for a slow chain. Past the budget the write keeps going in the
  * background, the row is flagged `mirror_due` and the answer is `null`.
  */
-export async function mirrorWithin(db: IteraClient, userId: string, budgetMs: number): Promise<ChainWrite | null> {
-  const work = syncMirror(db, userId, budgetMs / 2);
+export async function mirrorWithin(db: IteraClient, userId: string, budgetMs: number, reason: MirrorReason = 'routine'): Promise<ChainWrite | null> {
+  const work = syncMirror(db, userId, budgetMs / 2, reason);
   inBackground(work);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<null>((resolve) => {

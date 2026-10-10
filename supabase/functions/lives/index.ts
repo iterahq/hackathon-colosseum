@@ -100,7 +100,7 @@ Deno.serve(async (request) => {
       // Running out of lives is written to the asset; an ordinary mistake is not.
       if (applied && caller.wallet && livesBefore > 0 && livesLeft === 0) {
         mirrorStarted = true;
-        chain = await mirrorWithin(db, userId, MIRROR_BUDGET_MS);
+        chain = await mirrorWithin(db, userId, MIRROR_BUDGET_MS, 'reached_zero');
       } else if (applied && caller.wallet && livesLeft <= WARM_UP_LIVES) {
         inBackground(import('../_shared/chain.ts'));
       }

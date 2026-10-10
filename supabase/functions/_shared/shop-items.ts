@@ -175,7 +175,7 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
         if (error) throw new Error(`life_events: ${error.message}`);
       }
       // The refill is the proof the buyer waits for: take the mirror even if a write is in flight.
-      const mirror = await syncMirror(db, userId, REFILL_MIRROR_WAIT_MS);
+      const mirror = await syncMirror(db, userId, REFILL_MIRROR_WAIT_MS, 'purchase');
       return { companion: true, passport: null, chain: mirror.write };
     },
   },

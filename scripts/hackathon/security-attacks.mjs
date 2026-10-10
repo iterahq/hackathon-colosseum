@@ -12,11 +12,11 @@
 // they spend. The script stops before a section when the mint authority would go below 0.62 SOL or
 // the treasury below 0.25 SOL. Leaves throwaway wallet users behind; never touches the owner's
 // wallet account or the demo e-mail user.
-import { createPrivateKey, sign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { compactU16, base58Decode, base58Encode, buildTransferMessage, transferData, MEMO_PROGRAM, SYSTEM_PROGRAM } from '../../supabase/functions/_shared/solana-tx.ts';
-import { FUNCTIONS, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sleep, sol, summary, until } from './social-e2e.lib.mjs';
+import { FUNCTIONS, PROTECTED_WALLET, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sleep, sol, summary, until } from './social-e2e.lib.mjs';
 
 const AUTHORITY = 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B';
 const AUTHORITY_FLOOR = 620_000_000n;
@@ -30,6 +30,46 @@ function loadTreasury() {
   const secret = Uint8Array.from(JSON.parse(readFileSync(file, 'utf8')));
   const privateKey = createPrivateKey({ key: Buffer.concat([PKCS8_PREFIX, Buffer.from(secret.slice(0, 32))]), format: 'der', type: 'pkcs8' });
   return { privateKey, address: base58Encode(secret.slice(32)) };
+}
+
+const SIWS_HOST = 'hackathon.iterahq.dev';
+const KEY_DIR = process.env.SECURITY_ATTACKS_KEY_DIR ?? '/tmp/itera-security-attacks-keys';
+
+/**
+ * A wallet learner whose throwaway key is kept in `KEY_DIR`, so a section that had to mint (the
+ * companion of section D) can be run again without paying for a second mint. Same shape as `newLearner`.
+ */
+async function keptLearner(apikey, label, name) {
+  mkdirSync(KEY_DIR, { recursive: true, mode: 0o700 });
+  const file = `${KEY_DIR}/${name}.json`;
+  let privateKey;
+  if (existsSync(file)) {
+    privateKey = createPrivateKey({ key: Buffer.from(JSON.parse(readFileSync(file, 'utf8')).pkcs8, 'base64'), format: 'der', type: 'pkcs8' });
+  } else {
+    ({ privateKey } = generateKeyPairSync('ed25519'));
+    writeFileSync(file, JSON.stringify({ pkcs8: privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64') }), { mode: 0o600 });
+  }
+  const address = base58Encode(createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).subarray(-32));
+  if (address === PROTECTED_WALLET) throw new Error('refusing the protected wallet');
+  const message = [`${SIWS_HOST} wants you to sign in with your Solana account:`, address, '', 'Sign in to Itera Hackathon', '', `URI: https://${SIWS_HOST}/login`, 'Version: 1', `Issued At: ${new Date().toISOString()}`].join('\n');
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=web3`, { method: 'POST', headers: { apikey, 'Content-Type': 'application/json' }, body: JSON.stringify({ chain: 'solana', message, signature: sign(null, Buffer.from(message), privateKey).toString('base64url') }) });
+  const session = await response.json();
+  if (!response.ok || !session.access_token) throw new Error(`sign-in failed: HTTP ${response.status} ${JSON.stringify(session).slice(0, 200)}`);
+  const userId = psql(`select user_id from itera.identities where provider_subject = :'subject' limit 1;`, { subject: session.user.id });
+  const headers = { apikey, 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` };
+  const call = async (functionName, body = {}) => {
+    const answer = await fetch(`${FUNCTIONS}/${functionName}`, { method: 'POST', headers, body: JSON.stringify(body) });
+    return { status: answer.status, body: await answer.json() };
+  };
+  console.log(`${label}: wallet ${address} · itera user ${userId} (key kept in ${file})`);
+  return { privateKey, address, userId, call, headers, label, authUserId: session.user.id };
+}
+
+/** Sends back to the treasury what a throwaway wallet has left (all of it but the fee). */
+async function sweepToTreasury(context, wallet) {
+  const left = await balance(wallet.address);
+  if (left <= 5_000n) return;
+  await signAndSend(wallet, buildTransferMessage({ payer: wallet.address, recipient: context.treasury.address, lamports: left - 5_000n, memo: 'security-attacks: sweep', recentBlockhash: await latestBlockhash() }));
 }
 
 const latestBlockhash = async () => (await rpc('getLatestBlockhash', [{ commitment: 'confirmed' }])).value.blockhash;
@@ -310,6 +350,67 @@ async function circuitRobustness(context) {
   check('J the first purchase confirms normally afterwards and reports its confirmed transfer', applied.status === 200 && applied.body.circuit?.status === 'sent' && applied.body.circuit.tx_signature === firstCircuit && applied.body.inventory?.some((entry) => entry.item_key === 'outfit_glasses'), JSON.stringify(applied.body.circuit ?? null));
 }
 
+const assetWrites = async (asset) => (await rpc('getSignaturesForAddress', [asset, { limit: 100, commitment: 'confirmed' }])).filter((entry) => entry.err === null).length;
+async function chainAttributes(asset) {
+  const body = await (await fetch(`${FUNCTIONS}/credential-verify/${asset}?t=${Date.now()}`)).json();
+  return Object.fromEntries((body.attributes ?? []).map(({ key, value }) => [key, value]));
+}
+const mirrorRow = (userId) => psql(`select mirror_due || '|' || mirror_writes || '|' || coalesce(mirror_error, '') || '|' || lives from itera.companions where user_id = :'user_id'::uuid;`, { user_id: userId }).split('|');
+
+// --- D. Finding 4: unbounded authority-paid writes --------------------------------------------------
+// Spends: ONE companion mint (about 0.004 SOL of the authority) and four attribute writes (5 000
+// lamports each); one refill paid by a throwaway wallet funded from the treasury.
+async function mirrorBounds(context) {
+  const learner = await keptLearner(context.apikey, 'D learner', 'd-learner');
+  // A second run reuses the companion; its state is put back to a clean start (lives 5, no outfit, mirrored long ago).
+  psql(`update itera.companions set lives = max_lives, last_regen_at = now(), outfit = null, version = version + 1, mirror_writes = 0, mirror_retry_at = null where user_id = :'user_id'::uuid;`, { user_id: learner.userId });
+  psql(`insert into itera.user_inventory (user_id, item_key, ref_id, qty) values (:'user_id'::uuid, 'outfit_glasses', '00000000-0000-0000-0000-000000000000', 1), (:'user_id'::uuid, 'outfit_headphones', '00000000-0000-0000-0000-000000000000', 1) on conflict do nothing;`, { user_id: learner.userId });
+  await learner.call('companion');
+  const minted = await until(() => learner.call('companion'), (answer) => answer.body.companion?.mint_status === 'minted', 40, 2000);
+  const asset = minted.body.companion?.asset_address;
+  check('D setup: a minted companion that owns two outfits (seeded, not bought)', Boolean(asset), JSON.stringify(minted.body.companion ?? null).slice(0, 120));
+  // The refill (550 000 + fee) plus the rent-exempt minimum a funded account must keep; what is left is swept back at the end.
+  const need = 555_000n + 890_880n - (await balance(learner.address));
+  if (need > 0n) await fundFromTreasury(context, learner.address, need);
+  await sleep(31_000);
+  const writesBefore = await assetWrites(asset);
+
+  // 1. The loop of the review: alternate two owned outfits as fast as the function answers.
+  const loopStartedAt = Date.now();
+  const toggles = ['outfit_glasses', 'outfit_headphones', 'outfit_glasses', 'outfit_headphones', 'outfit_glasses', 'outfit_headphones', 'outfit_glasses', 'outfit_headphones'];
+  for (const outfit of toggles) await learner.call('companion', { equip: { outfit } });
+  await sleep(6_000);
+  const duringLoop = (await assetWrites(asset)) - writesBefore;
+  const flagged = mirrorRow(learner.userId);
+  check(`D ${toggles.length} equip changes in ${((Date.now() - loopStartedAt) / 1000).toFixed(0)} s: ONE on-chain write, the rest held (row flagged mirror_due)`, duringLoop === 1 && flagged[0] === 'true', `${duringLoop} write(s), mirror_due=${flagged[0]} (${flagged[2]})`);
+  const caughtUp = await until(() => chainAttributes(asset), (attributes) => attributes.outfit === 'outfit_headphones', 25, 2000);
+  const afterWindow = (await assetWrites(asset)) - writesBefore;
+  check('D when the 30 s window ends the LATEST state is written, once (coalesced)', caughtUp.outfit === 'outfit_headphones' && afterWindow === 2 && mirrorRow(learner.userId)[0] === 'false', `${afterWindow} writes in total, outfit ${caughtUp.outfit}`);
+
+  // 2. The two moments of the demo skip the cooldown.
+  psql(`update itera.companions set lives = 1, last_regen_at = now(), version = version + 1 where user_id = :'user_id'::uuid;`, { user_id: learner.userId });
+  const { activities } = lessonActivities(2);
+  const zero = await learner.call('lives', { action: 'lose', attempt_id: `sec-${Date.now()}`, activity_id: activities[0].id });
+  const zeroOnChain = await until(() => chainAttributes(asset), (attributes) => attributes.lives === '0', 10, 1500);
+  check('D lives reaching 0 right after another write: mirrored at once', zero.body.lives?.current === 0 && zeroOnChain.lives === '0', `chain ${JSON.stringify(zero.body.chain ?? null).slice(0, 80)} · on chain lives ${zeroOnChain.lives}`);
+  const intent = await learner.call('purchase-intent', { item_key: 'life_refill' });
+  const signature = await signAndSend(learner, Buffer.from(intent.body.message_base64, 'base64'));
+  const refill = await until(() => learner.call('purchase-confirm', { intent_id: intent.body.intent_id, signature, lang: 'en' }), (answer) => answer.body.error !== 'tx_not_found', 6, 1500);
+  const fullOnChain = await until(() => chainAttributes(asset), (attributes) => attributes.lives === '5', 10, 1500);
+  check('D a refill bought seconds later: mirrored at once (lives 5 on chain)', refill.status === 200 && refill.body.lives?.current === 5 && fullOnChain.lives === '5', `chain ${JSON.stringify(refill.body.chain ?? null).slice(0, 80)} · on chain lives ${fullOnChain.lives}`);
+  const counted = Number(mirrorRow(learner.userId)[1]);
+  check('D every write was counted for the day (4)', counted === 4 && (await assetWrites(asset)) - writesBefore === 4, `counter ${counted}`);
+
+  // 3. The daily cap stops even those.
+  psql(`update itera.companions set mirror_writes = 60, mirror_day = (now() at time zone 'utc')::date, lives = 1, last_regen_at = now(), version = version + 1 where user_id = :'user_id'::uuid;`, { user_id: learner.userId });
+  const capped = await learner.call('lives', { action: 'lose', attempt_id: `sec-cap-${Date.now()}`, activity_id: activities[0].id });
+  await sleep(5_000);
+  const afterCap = mirrorRow(learner.userId);
+  check('D past 60 writes in a day: the database is right (lives 0), nothing is sent, the row waits', capped.body.lives?.current === 0 && !('chain' in capped.body) && afterCap[0] === 'true' && afterCap[2] === 'daily_cap' && afterCap[3] === '0' && (await chainAttributes(asset)).lives === '5' && (await assetWrites(asset)) - writesBefore === 4, afterCap.join(' '));
+  psql(`update itera.companions set mirror_writes = 4 where user_id = :'user_id'::uuid;`, { user_id: learner.userId });
+  await sweepToTreasury(context, learner);
+}
+
 function json(sql, variables = {}) {
   return JSON.parse(psql(sql, variables) || 'null') ?? [];
 }
@@ -363,6 +464,7 @@ const SECTIONS = {
   b: ['B. forgeable XP (finding 3)', forgeXp],
   c: ['C. client-written progress (finding 1, mitigations)', fakeProgress],
   j: ['J. Circuito off the response path + idempotent retry', circuitRobustness],
+  d: ['D. unbounded authority-paid writes (finding 4)', mirrorBounds],
   owner: ['Owner account, read-only dry check', ownerDryCheck],
 };
 

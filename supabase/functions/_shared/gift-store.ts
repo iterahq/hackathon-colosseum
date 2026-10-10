@@ -204,7 +204,8 @@ export async function deliverGift(db: IteraClient, row: GiftRow, signature: stri
 
   let write: ChainWrite | null = null;
   if (!gift.mirror_signature) {
-    write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs)).write;
+    // A paid gift: its write skips the mirror cooldown, as a purchase does, and counts toward the recipient's daily cap.
+    write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs, 'purchase')).write;
     if (write) gift = await patch({ mirror_signature: write.signature });
   }
   return { gift, write };
