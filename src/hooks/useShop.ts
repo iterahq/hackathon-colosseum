@@ -6,7 +6,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { claimShopItem, getShopItems } from '@/services/shop.service';
 import type { CompanionSnapshot } from '@/types/shop';
 
-export function useShop() {
+export function useShop(options: { enabled?: boolean } = {}) {
   const { session, configured } = useAuth();
   const { locale } = useI18n();
   const userId = session?.user?.id ?? 'anon';
@@ -14,7 +14,9 @@ export function useShop() {
   return useQuery({
     queryKey: queryKeys.shop.items(userId, locale),
     queryFn: () => getShopItems(locale),
-    enabled: configured && Boolean(session),
+    enabled: configured && Boolean(session) && (options.enabled ?? true),
+    // The list takes 1 to 2 s to build and every purchase, claim and equip invalidates it, so a page opens on the cached one.
+    staleTime: 60_000,
     retry: 1,
   });
 }

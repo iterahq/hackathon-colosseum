@@ -1,16 +1,20 @@
 import { useAuth } from '@/auth/AuthContext';
 import { useCompanion } from '@/hooks/useCompanion';
+import { useShop } from '@/hooks/useShop';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 import { LivesBoundary } from './LivesBoundary';
 
 function Warm() {
   const { session } = useAuth();
   // The first call of a wallet user mints the Tera in the background; polling runs inside the hook.
-  useCompanion({ enabled: !isGuestAccessToken(session?.access_token) });
+  const learner = !isGuestAccessToken(session?.access_token);
+  useCompanion({ enabled: learner });
+  // The shop list is slow to build and both the shop and the profile wait on it: fetched here, they open with it in cache.
+  useShop({ enabled: learner });
   return null;
 }
 
-/** Calls `companion` once per session on app load so the asset exists before the shop opens. Renders nothing and never blocks. */
+/** Calls `companion` and `shop-items` once per session on app load so the asset and the shop list exist before the shop opens. Renders nothing and never blocks. */
 export function CompanionBootstrap() {
   return (
     <LivesBoundary>
