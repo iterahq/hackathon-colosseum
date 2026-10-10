@@ -2,8 +2,9 @@
  * Local stand-in for the lives / shop / companion functions, used only in dev and preview while the
  * backend is not deployed (or when `?mockShop=1` forces it). Speaks the WIRE shape of the contract,
  * so the same normalisers parse it. State lives in localStorage; URL knobs: `mockLives=<n>`,
- * `mockWallet=<address>`, `mockRegen=<seconds>`, `mockOwned=<key,key>`, `mockOutfit=<key>`, `mockReset=1`.
+ * `mockWallet=<address>`, `mockRegen=<seconds>`, `mockOwned=<key,key>`, `mockOutfit=<key>`, `mockAvatar=<key>`, `mockRefs=<item:ref,item:ref>`, `mockReset=1`.
  */
+import { isFreeMockAvatar, isMockAvatar, mockAvatarBlock, mockAvatarItems, mockAvatarPrice } from '@/services/shopMockAvatars';
 import { MOCK_ITEMS } from '@/services/shopMockData';
 import { DEFAULT_MAX_LIVES, DEFAULT_REGEN_SECONDS, loseLife, regenerate } from '@/utils/lives';
 import { priceLabel } from '@/utils/shopPrice';
@@ -19,6 +20,7 @@ interface MockState {
   intents: Record<string, { item: string; polls: number; ref: string | null }>;
   asset: string | null;
   refs: Record<string, string[]>;
+  avatar: string;
 }
 
 type Body = Record<string, unknown>;
@@ -26,7 +28,7 @@ const KEY = 'itera.mockShop.v1';
 const MOCK_ASSET = 'TeRaMockCompanion1111111111111111111111111';
 let seeded = false;
 
-const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null, refs: {} });
+const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null, refs: {}, avatar: 'tera_normal' });
 
 function read(): MockState {
   try {
@@ -59,6 +61,15 @@ function seedFromUrl(state: MockState): MockState {
   if (q.get('mockWallet')) next = { ...next, wallet: q.get('mockWallet'), asset: MOCK_ASSET };
   if (q.get('mockOwned')) next = { ...next, owned: (q.get('mockOwned') ?? '').split(',').filter(Boolean) };
   if (q.has('mockOutfit')) next = { ...next, outfit: q.get('mockOutfit') || null };
+  if (q.get('mockAvatar')) next = { ...next, avatar: q.get('mockAvatar') ?? next.avatar };
+  if (q.get('mockRefs')) {
+    const refs: Record<string, string[]> = {};
+    for (const pair of (q.get('mockRefs') ?? '').split(',')) {
+      const [item, ref] = pair.split(':');
+      if (item && ref) refs[item] = [...(refs[item] ?? []), ref];
+    }
+    next = { ...next, refs };
+  }
   return write(next);
 }
 
@@ -85,17 +96,19 @@ const companionWire = (s: MockState) => ({
   streak: 3,
 });
 const inventoryWire = (s: MockState) =>
-  s.owned.map((key) => ({ item_key: key, kind: MOCK_ITEMS.find((i) => i.key === key)?.kind ?? 'outfit', qty: 1, equipped: s.outfit === key }));
-const snapshot = (s: MockState) => ({ lives: livesWire(s), companion: companionWire(s), inventory: inventoryWire(s), wallet: s.wallet });
+  s.owned.map((key) => ({ item_key: key, kind: isMockAvatar(key) ? 'avatar' : (MOCK_ITEMS.find((i) => i.key === key)?.kind ?? 'outfit'), qty: 1, equipped: s.outfit === key || s.avatar === key }));
+const langOf = (v: unknown) => (v === 'en' ? 'en' : 'pt');
+const snapshot = (s: MockState, lang: unknown = 'pt') => ({ lives: livesWire(s), companion: companionWire(s), avatar: mockAvatarBlock(langOf(lang), s), inventory: inventoryWire(s), wallet: s.wallet });
 
 function companion(body: Body) {
   let s = load();
-  const equip = body.equip as { outfit?: string | null } | undefined;
+  const equip = body.equip as { outfit?: string | null; avatar?: string } | undefined;
   if (equip && 'outfit' in equip) {
     const outfit = equip.outfit ?? null;
     if (outfit === null || s.owned.includes(outfit)) s = write({ ...s, outfit });
   }
-  return snapshot(s);
+  if (equip?.avatar && (isFreeMockAvatar(equip.avatar) || s.owned.includes(equip.avatar))) s = write({ ...s, avatar: equip.avatar });
+  return snapshot(s, body.lang);
 }
 
 function lives(body: Body) {
@@ -115,8 +128,8 @@ function lives(body: Body) {
 
 function shopItems(lang: string) {
   const s = load();
-  const l = lang === 'en' ? 'en' : 'pt';
-  return MOCK_ITEMS.map((i) => ({
+  const l = langOf(lang);
+  const catalog = MOCK_ITEMS.map((i) => ({
     key: i.key,
     kind: i.kind,
     title: i.title[l],
@@ -129,11 +142,13 @@ function shopItems(lang: string) {
     equipped: s.outfit === i.key,
     owned_refs: s.refs[i.key] ?? [],
   }));
+  return [...catalog, ...mockAvatarItems(l, s)];
 }
 
 function purchaseIntent(body: Body) {
   const s = load();
-  const item = MOCK_ITEMS.find((i) => i.key === body.item_key);
+  const key = String(body.item_key ?? '');
+  const item = MOCK_ITEMS.find((i) => i.key === key) ?? (isMockAvatar(key) ? { key, ...mockAvatarPrice(key) } : null);
   if (!item) throw new Error('mock: unknown item');
   const id = `mock-${Date.now().toString(36)}`;
   write({ ...s, intents: { [id]: { item: item.key, polls: 0, ref: typeof body.ref_id === 'string' ? body.ref_id : null } } });
@@ -162,12 +177,14 @@ function purchaseConfirm(body: Body) {
     return { status: 'pending', item: intent.item, inventory: inventoryWire(s), explorer_url: null };
   }
   if (intent.item === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
+  else if (isMockAvatar(intent.item)) s = { ...s, owned: [...new Set([...s.owned, intent.item])] };
   else if (intent.item.startsWith('outfit_')) s = { ...s, owned: [...new Set([...s.owned, intent.item])], outfit: intent.item };
   else if (intent.ref) s = { ...s, refs: { ...s.refs, [intent.item]: [...new Set([...(s.refs[intent.item] ?? []), intent.ref])] } };
   s = write({ ...s, asset: s.asset ?? MOCK_ASSET });
   return {
     status: 'paid',
-    item: { key: intent.item, kind: MOCK_ITEMS.find((i) => i.key === intent.item)?.kind ?? 'outfit' },
+    item: { key: intent.item, kind: isMockAvatar(intent.item) ? 'avatar' : (MOCK_ITEMS.find((i) => i.key === intent.item)?.kind ?? 'outfit') },
+    avatar: isMockAvatar(intent.item) ? { key: intent.item, asset_address: s.asset, image_url: mockAvatarBlock('pt', { ...s, avatar: intent.item }).image_url } : undefined,
     lives: livesWire(s),
     companion: companionWire(s),
     inventory: inventoryWire(s),
