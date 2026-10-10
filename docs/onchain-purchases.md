@@ -35,8 +35,10 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
   the purchased values back into the row it hands out. A row whose copy was overwritten by a
   concurrent write still shows them, a stamp still sends them to chain, and the next `passport`
   write stores them again.
-- Wallet and user always come from the verified token (`auth.identities` custom claims), never from
-  the request body. Lamports are integers end to end (`bigint` in code, `bigint` columns).
+- Wallet and user always come from the verified token, never from the request body. One helper
+  (`resolveWallet` in `_shared/caller.ts`) decides the wallet for every function: the web3 sign-in
+  identity when the learner has one, otherwise the wallet linked by a verified signature
+  (`link-wallet`, below), otherwise none. Lamports are integers end to end (`bigint` in code, `bigint` columns).
 
 ## Tables (schema `itera`, RLS on, only the service role writes)
 
@@ -48,9 +50,13 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 | `companions` | lives, `last_regen_at`, `outfit`, mint columns, `mirrored`, `mirror_due`, public `id` | own row |
 | `life_events` | idempotency: unique `(user_id, attempt_id)` | own rows |
 | `devnet_airdrops` | one faucet claim per wallet | nobody |
+| `user_wallets` | the wallet an e-mail account linked: `user_id` (pk), `wallet` (unique), `linked_at` | own row |
+| `wallet_link_challenges` | the message a wallet is asked to sign: `wallet`, `nonce`, `message`, `expires_at`, `used_at` | nobody |
 
 Migrations `0115_purchase_rail.sql`, `0116_companion_lives.sql`, `0117_certification_naming.sql`,
-`0118_price_labels_profile_indexes.sql`.
+`0118_price_labels_profile_indexes.sql`, `0119_wallet_link.sql`, `0120_companion_mirrored_at.sql`,
+`0121_wallet_identity_search_path.sql`. `itera.wallet_identity_user(address)` (service role only)
+answers which learner signs in with a wallet; it is the only code that reads `auth.identities`.
 
 ## Items
 
@@ -184,6 +190,100 @@ Body `{ "intent_id": "…", "signature": "<base58>", "lang": "pt" | "en" }`.
   `last_valid_block_height`, then `intent_expired`. A transaction that did land can be confirmed up
   to 24 h after `expires_at`.
 
+### `POST /purchase-submit` (a wallet that only signs)
+
+For a wallet that supports `signTransaction` but not `signAndSendTransaction`: the browser gets the
+signature, the server broadcasts and then runs the **same settlement code** as `purchase-confirm`
+(`_shared/purchase-settle.ts`).
+
+Body `{ "intent_id": "…", "signed_transaction": "<base64 or base58>", "lang": "pt" | "en" }`, where
+`signed_transaction` is the fully signed serialized transaction. Answer: exactly the
+`purchase-confirm` response.
+
+```ts
+const tx = Transaction.from(base64ToBytes(intent.transaction_base64));   // @solana/web3.js
+const signed = await provider.signTransaction(tx);                       // Phantom: window.phantom.solana
+await submit({ intent_id: intent.intent_id, signed_transaction: bytesToBase64(signed.serialize()) });
+```
+
+Without `@solana/web3.js`: sign `intent.message_base64` bytes with a raw ed25519 signer and send
+`[0x01, ...signature(64), ...message]`.
+
+Checked **before** anything is broadcast, in this order:
+
+1. the text decodes to a whole legacy transaction (`400 invalid_transaction`: not base64/base58, a
+   bare message, truncated, trailing bytes, a versioned message, more than 1232 bytes);
+2. the first signature is the fee payer's ed25519 signature over the message (`422 signature_invalid`);
+3. the intent is the caller's, payable and its signature is on no other purchase (the
+   `purchase-confirm` errors);
+4. `verifyPayment`, the function `purchase-confirm` applies to the landed transaction, applied to the
+   signed message: fee payer and source = the caller's wallet, a System transfer to the treasury of
+   at least the intent's lamports, a Memo equal to the intent id; other instructions (compute
+   budget) are tolerated (`422 payment_mismatch` with `detail`).
+
+Then `sendTransaction`; "already processed" counts as sent. The node refusing it answers
+`422 { "error": "broadcast_failed", "detail": "<node message, at most 200 chars>" }` (a dead
+blockhash: ask `purchase-intent` again and sign the new message). After a successful broadcast the
+answer is whatever `purchase-confirm` would give for that signature; when it is an error
+(`tx_not_found` while the transaction propagates, `rpc_unavailable`) it also carries
+`"signature": "<base58>"`: post the same body again, or call `purchase-confirm` with it.
+Idempotent: the same body again returns the same paid answer and re-applies nothing.
+
+Errors: those of `purchase-confirm`, plus `invalid_transaction`, `signature_invalid`,
+`broadcast_failed`.
+
+### `POST /link-wallet` (an e-mail account binds a wallet)
+
+An account that signed up with e-mail has no wallet: its certifications stay `unclaimed`, its
+companion is off chain and `purchase-intent` answers `no_wallet`. It can bind **one** Solana wallet
+by signing a message. No auth identity is created and the session does not change.
+
+| Body | Answer |
+|---|---|
+| `{ "action": "status" }` | `{ "wallet": "<address>" \| null, "source": "identity" \| "linked" \| null }` |
+| `{ "action": "challenge", "address": "<wallet>" }` | `{ "challenge_id": "<uuid>", "message": "…", "expires_at": "<ISO, +5 min>" }` |
+| `{ "action": "verify", "challenge_id": "<uuid>", "signature": "<base58 or base64>" }` | `{ "wallet": "<address>", "linked_at": "<ISO>", "pending_mints": 4 }` |
+
+```ts
+const provider = window.phantom.solana;
+const { publicKey } = await provider.connect();
+const { challenge_id, message } = await linkWallet({ action: 'challenge', address: publicKey.toBase58() });
+const { signature } = await provider.signMessage(new TextEncoder().encode(message), 'utf8');   // Uint8Array(64)
+await linkWallet({ action: 'verify', challenge_id, signature: bs58.encode(signature) });      // or base64
+```
+
+The message is what the wallet shows, signed byte for byte:
+
+```
+Itera — link this wallet to your account
+Wallet: <address>
+Account: <first 8 characters of the itera user id>
+Nonce: <32 hex characters>
+Issued At: 2026-10-10T12:00:00.000Z
+Expires At: 2026-10-10T12:05:00.000Z
+```
+
+- `verify` checks a real ed25519 signature (WebCrypto `Ed25519`, in the edge runtime) of the stored
+  message by the address the challenge was issued for. The address is never read from the `verify`
+  body. `pending_mints` counts the learner's `unclaimed` rows; nothing is minted here.
+- After a link the existing flows work unchanged: the next `passport` call mints the unclaimed rows
+  to the linked wallet (call it while `remaining > 0`), `companion` mints the companion, purchases
+  and the faucet see the wallet, `learner-profile/<wallet>` lists everything.
+- One open challenge per learner: asking again deletes the previous one. A challenge is single use.
+- **No unlinking and no re-linking in this version.** A wrong wallet is removed by an operator:
+  `delete from itera.user_wallets where user_id = '<id>';` (assets already minted stay where they are).
+
+| Error | When |
+|---|---|
+| `400 invalid_body` | unknown `action`, a `verify` without a uuid `challenge_id` or a text `signature` |
+| `400 invalid_address` | `address` is not a Solana public key |
+| `409 already_wallet_account` | the caller signs in with a wallet: nothing to link (`challenge`, `verify`) |
+| `409 already_linked` | the caller already has a linked wallet |
+| `409 wallet_in_use` | the wallet is another learner's linked wallet, or any account's sign-in wallet |
+| `404 challenge_not_found` | unknown, replaced by a newer one, or issued to another learner |
+| `410 challenge_expired` | older than five minutes, or already used |
+| `422 signature_invalid` | not the wallet's signature of that message |
+
 ### `POST /companion`
 
 Body `{}` or `{ "equip": { "outfit": "outfit_crown" | null } }`.
@@ -230,6 +330,7 @@ or `{ "action": "lesson_end", "lesson_id": "<uuid>", "mistakes": 0 }` → `{ liv
 
 ### `POST /wallet-faucet`
 
+Works for a sign-in wallet and for a linked one.
 `{ "signature": "…", "lamports": 10000000, "explorer_url": "…" }`, or HTTP 200
 `{ "blocked": "already_claimed" | "not_needed" | "not_devnet" | "no_wallet" }`. Once per wallet,
 only when the balance cannot pay the cheapest active item. Paid by the treasury, never by the mint
@@ -240,18 +341,31 @@ authority; capped at 200 claims and refused (`503 faucet_unavailable`) when the 
 - `GET /credential-verify/<asset>`: same shape; `achievement.key = "companion"`,
   `achievement.state = { lives, max_lives, outfit, level, xp, streak }` (the database), plus
   `companion: { lives, max_lives, outfit, level, xp, streak, image_url, metadata_url }` parsed from
-  the on-chain attributes.
+  the on-chain attributes and `snapshot: { source: "chain", mirrored_at: "<ISO>" | null }`
+  (`mirrored_at`: the last successful write of the asset; `null` for a companion last mirrored
+  before 2026-10-10).
+- **The public view is one snapshot, the chain's.** `companion.image_url` and
+  `achievement.image_url` of a companion are `…/image.svg?source=chain&v=<lives>-<max>-<level>-<outfit>`,
+  art that draws the values the asset holds, so the picture and the numbers next to it agree.
+  Lives regenerate in the database and reach the chain only at the mirror moments, so the signed-in
+  card (`POST /companion`, live database values, art URL without `source`) can be ahead of it.
 - `GET /learner-profile/<wallet>` lists the companion with the wallet's certifications and medals
-  (contract in [`onchain-passport.md`](onchain-passport.md)).
+  (contract in [`onchain-passport.md`](onchain-passport.md)); its `companion.image_url` is the same
+  `source=chain` art and it carries `companion.mirrored_at`.
 - `GET /credential-meta/companion/<companion id>` and `…/image.svg` (`?lang=pt|en`): metadata and
   art (Tera, a hearts row, the outfit, the level). Keyed by the companion id; no name or email.
+  Without a parameter the art draws the database row, as before. With `?source=chain` it reads the
+  asset (one `getMultipleAccounts` call) and draws its `lives`, `max_lives`, `level` and `outfit`;
+  when the node cannot be reached it falls back to the last mirrored attributes, then to the row.
+  The parameter and the values are part of the URL, so the one-minute cache holds one entry per
+  snapshot.
 - `GET /credential-meta/<row id>` gains `Ink` / `Frame` in `attributes` when set.
 
 ### Operator sync on `passport`
 
 `POST /passport` with the function's service key as Bearer (this project: the `sb_secret_…` key),
 **no `Origin` header**, and `{ "user_id": "<itera user id>", "max_jobs": 1..10, "lang" }` runs the
-normal flow for that learner (wallet from the learner's own web3 identity) and returns the normal
+normal flow for that learner (wallet from the learner's own web3 identity, else the linked wallet) and returns the normal
 response. The key is compared in constant time. Any other request behaves exactly as before.
 
 ```bash
@@ -285,7 +399,7 @@ Secrets (project-wide): `SOLANA_TREASURY_SECRET` (read only by `wallet-faucet`),
 `~/.config/itera-hackathon/devnet-treasury.json`.
 
 ```bash
-for f in shop-items purchase-intent purchase-confirm companion lives wallet-faucet credential-meta credential-verify learner-profile passport; do
+for f in shop-items purchase-intent purchase-confirm purchase-submit link-wallet companion lives wallet-faucet credential-meta credential-verify learner-profile passport; do
   supabase functions deploy $f --project-ref nyzcbnnbffsizshiolbh --use-api
 done
 ```
@@ -298,7 +412,17 @@ source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN HA
 node scripts/hackathon/purchase-e2e.mjs               # devnet, a throwaway keypair plays the wallet (~0.03 SOL)
 ```
 
-The script only **reads** the demo e-mail user (companion, a `lesson_end` for a lesson that does not
+```bash
+node scripts/hackathon/link-wallet-e2e.mjs [--keep]   # devnet, ~0.05 SOL of the authority
+```
+
+`link-wallet-e2e.mjs` creates two e-mail learners (admin API) and one wallet learner, runs the whole
+linked-wallet story (unclaimed rows, challenge, verify, mint, companion, a purchase through
+`purchase-submit`, `learner-profile`, the chain snapshot of the companion) with every refusal on the
+way, and deletes the three users at the end. It reads `link-wallet status` of the demo e-mail user
+once and never opens a challenge for it.
+
+`purchase-e2e.mjs` only **reads** the demo e-mail user (companion, a `lesson_end` for a lesson that does not
 exist, the two wallet-only refusals) and checks its companion row is unchanged afterwards.
 
 ## Verified vs not (2026-10-09)
@@ -312,6 +436,13 @@ answer, `chain` / `written` on a refill and on an ink, the parsed `companion` of
 `credential-verify`, the price rule on all seven items, a row stripped of `state.cosmetics` that
 still shows, stamps and gets back its ink and frame, and `learner-profile` (84 checks).
 
+Verified on devnet by `link-wallet-e2e.mjs` (2026-10-10, 89 checks): WebCrypto `Ed25519`
+verification in the edge runtime (base58 and base64 signatures accepted, five kinds of wrong
+signature refused), challenge isolation between learners, replay, `wallet_in_use` for a sign-in
+wallet and for a wallet linked meanwhile, RLS on both tables, minting to a linked wallet, and
+`purchase-submit` (base64 and base58, six refusals before broadcast, a node refusal, idempotency,
+reuse).
+
 Not verified:
 
 - **A real Phantom.** No browser wallet signed these messages. The message is legacy; whether a
@@ -321,6 +452,15 @@ Not verified:
 - Behaviour under the public devnet RPC's rate limit with many concurrent learners.
 
 ## Known limits
+
+- A wallet linked to an e-mail account can later be used to **sign in** (Supabase creates a new
+  wallet account; nothing in `link-wallet` can stop a sign-in). The two accounts then resolve to the
+  same address: both mint to it and `learner-profile` lists the assets of both (one companion, the
+  older). The reverse, linking a wallet that already is an account, is refused.
+- `link-wallet` has no unlink and no rate limit; a learner holds at most one challenge row.
+- Two background mirrors of the same companion started within a second (two `lesson_end` calls in a
+  row) can land out of order, leaving the older lives on chain until the next mirror moment. The
+  public view shows that on-chain value, with its `mirrored_at`.
 
 - A `passport` call and a cosmetic purchase racing on the same row can still drop the
   `state.cosmetics` **copy** (`passport` writes the state it read at the start). Nothing reads the
