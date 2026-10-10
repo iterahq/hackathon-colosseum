@@ -50,7 +50,7 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 | `user_inventory` | `(user_id, item_key, ref_id)` → `qty` | own rows |
 | `companions` | lives, `last_regen_at`, `outfit`, mint columns, `mirrored`, `mirror_due`, public `id` | own row |
 | `life_events` | idempotency: unique `(user_id, attempt_id)` | own rows |
-| `devnet_airdrops` | one faucet claim per wallet | nobody |
+| `devnet_airdrops` | one faucet claim per wallet and per learner: `wallet` (pk), `user_id` (unique), `lamports`, `tx_signature`, `created_at`, `confirmed_at` | nobody |
 | `user_wallets` | the wallet an e-mail account linked: `user_id` (pk), `wallet` (unique), `linked_at` | own row |
 | `wallet_link_challenges` | the message a wallet is asked to sign: `wallet`, `nonce`, `message`, `expires_at`, `used_at` | nobody |
 
@@ -295,6 +295,14 @@ Expires At: 2026-10-10T12:05:00.000Z
 | `410 challenge_expired` | older than five minutes, or already used |
 | `422 signature_invalid` | not the wallet's signature of that message |
 
+**A linked wallet that later signs in on its own is the same learner** (migration `0141`, security
+review finding 9). When wallet W, linked by e-mail account A, signs in with Solana, the provisioning
+trigger finds W in `user_wallets` and attaches the new sign-in to A (one more row in
+`itera.identities`): no second learner, no new tenant. Both sessions then resolve the same learner
+and the same wallet (`link-wallet` `status` says `source: "identity"` for the wallet session and
+`"linked"` for the e-mail one), and a gift to W finds one learner. The link was only ever written
+after W signed a challenge for A. Proof: `node scripts/hackathon/security-attacks.mjs i`.
+
 ### `POST /companion`
 
 Body `{}` or `{ "equip": { "outfit": "outfit_crown" | null } }`.
@@ -383,9 +391,24 @@ Proof on devnet: `node scripts/hackathon/security-attacks.mjs d` (8 equip change
 
 Works for a sign-in wallet and for a linked one.
 `{ "signature": "…", "lamports": 10000000, "explorer_url": "…" }`, or HTTP 200
-`{ "blocked": "already_claimed" | "not_needed" | "not_devnet" | "no_wallet" }`. Once per wallet,
-only when the balance cannot pay the cheapest active item. Paid by the treasury, never by the mint
-authority; capped at 200 claims and refused (`503 faucet_unavailable`) when the treasury is low.
+`{ "blocked": "already_claimed" | "not_needed" | "not_devnet" | "no_wallet" }`, or
+`503 { "error": "faucet_unavailable" | "rpc_unavailable" }` (`rpc_unavailable` may carry `signature`
+when the transfer was handed to the node and not seen confirmed). Only when the balance cannot pay
+the cheapest active item. Paid by the treasury, never by the mint authority. Rules in
+`_shared/faucet.ts` (migration `0140`, security review finding 7):
+
+- **One claim per learner AND per wallet** (`devnet_airdrops`: `wallet` primary key, `user_id` unique).
+- **A transfer that timed out is never paid twice.** The row is the lock; the signature is stored the
+  moment the node accepts the transaction and the row is kept from then on. A claim not seen
+  confirmed answers `already_claimed` for 3 minutes (longer than a blockhash lives); after that the
+  next call asks the chain about the stored signature: landed means claimed, and only when the chain
+  has nothing is the drop sent again, once. The lock is released only when nothing was sent.
+- **Daily budget**: 0.3 SOL in any 24 hours (thirty drops), then `503 faucet_unavailable`; also capped
+  at 200 claims in all and refused when the treasury is low.
+- The memo is `faucet:<wallet>`. It used to carry the internal learner id.
+
+Wallets are free, so a determined visitor can still take the whole daily budget with thirty
+accounts: the budget is the bound, not the per-learner rule.
 
 ### Companion in the public functions
 
@@ -663,8 +686,8 @@ Not verified:
   lives regenerate.
 - `apply` for a life refill is at-least-once: a crash between the refill and its bookkeeping can
   refill twice.
-- The faucet is one claim per wallet, and wallets are free: the cap and the treasury balance are the
-  only bounds.
+- The faucet is one claim per learner and per wallet, and wallets are free: the daily budget (0.3 SOL)
+  and the treasury balance are the real bounds.
 - No rate limit on any function.
 
 ## Earned or bought: the golden laurel (`shop-claim`)

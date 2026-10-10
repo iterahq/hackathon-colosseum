@@ -572,6 +572,129 @@ async function actionEndpoint(context) {
   await sweepToTreasury(context, payer);
 }
 
+const claimRow = (wallet) => psql(`select coalesce((select (confirmed_at is not null) || '|' || coalesce(tx_signature, '') from itera.devnet_airdrops where wallet = :'wallet'), '');`, { wallet }).split('|');
+async function memoOf(signature) {
+  const transaction = await until(() => rpc('getTransaction', [signature, { encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0 }]), Boolean, 10, 1500);
+  return (transaction?.transaction?.message?.instructions ?? []).find((entry) => entry.program === 'spl-memo')?.parsed ?? null;
+}
+
+// --- G. Finding 7: the devnet faucet (and the memo of finding 8) ----------------------------------------
+// Spends: two drops of 0.01 SOL from the treasury, both swept back (four network fees in all).
+async function faucet(context) {
+  const insertClaim = (wallet, userId, extra) => psql(`insert into itera.devnet_airdrops (wallet, user_id, lamports, tx_signature, created_at, confirmed_at) values (:'wallet', :'user_id'::uuid, 10000000, ${extra});`, { wallet, user_id: userId });
+
+  // 1. The ordinary claim, once.
+  const first = await newLearner(context.apikey, 'G claimer');
+  const claim = await first.call('wallet-faucet');
+  const received = await until(() => balance(first.address), (value) => value >= 10_000_000n, 20, 1000);
+  const memo = claim.body.signature ? await memoOf(claim.body.signature) : null;
+  check('G first claim: 0.01 SOL, recorded as confirmed', claim.status === 200 && typeof claim.body.signature === 'string' && received === 10_000_000n && claimRow(first.address).join('|') === `true|${claim.body.signature}`, JSON.stringify(claim.body).slice(0, 120));
+  check('H the faucet memo names the wallet, not the internal learner id', memo === `faucet:${first.address}` && !String(memo).includes(first.userId), String(memo));
+  const again = await first.call('wallet-faucet');
+  check('G second claim of the same learner and wallet: already_claimed', again.body.blocked === 'already_claimed', JSON.stringify(again.body));
+
+  // 2. One claim per learner AND per wallet.
+  const sameLearner = await newLearner(context.apikey, 'G learner who claimed with another wallet');
+  insertClaim(freshAddress(), sameLearner.userId, `'seeded', now(), now()`);
+  const perLearner = await sameLearner.call('wallet-faucet');
+  const sameWallet = await newLearner(context.apikey, 'G wallet claimed under another learner');
+  const other = await newLearner(context.apikey, 'G the other learner');
+  insertClaim(sameWallet.address, other.userId, `'seeded', now(), now()`);
+  const perWallet = await sameWallet.call('wallet-faucet');
+  check('G a learner who already claimed with another wallet, and a wallet claimed under another learner: both refused, nothing sent', perLearner.body.blocked === 'already_claimed' && perWallet.body.blocked === 'already_claimed' && (await balance(sameLearner.address)) === 0n && (await balance(sameWallet.address)) === 0n, `${JSON.stringify(perLearner.body)} ${JSON.stringify(perWallet.body)}`);
+
+  // 3. A transfer that timed out after it was broadcast is never paid a second time.
+  const landed = await newLearner(context.apikey, 'G timed out but landed');
+  insertClaim(landed.address, landed.userId, `'${claim.body.signature}', now() - interval '5 minutes', null`);
+  const afterTimeout = await landed.call('wallet-faucet');
+  check('G a claim left unconfirmed whose signature IS on chain: recognised, lock kept, not paid again', afterTimeout.body.blocked === 'already_claimed' && claimRow(landed.address)[0] === 'true' && (await balance(landed.address)) === 0n, JSON.stringify(afterTimeout.body));
+  const inFlight = await newLearner(context.apikey, 'G just broadcast');
+  insertClaim(inFlight.address, inFlight.userId, `'${base58Encode(randomBytes(64))}', now() - interval '30 seconds', null`);
+  const tooSoon = await inFlight.call('wallet-faucet');
+  check('G a claim broadcast 30 s ago, not yet seen: the lock holds', tooSoon.body.blocked === 'already_claimed' && claimRow(inFlight.address)[0] === 'false' && (await balance(inFlight.address)) === 0n, JSON.stringify(tooSoon.body));
+  const lost = await newLearner(context.apikey, 'G broadcast never landed');
+  insertClaim(lost.address, lost.userId, `'${base58Encode(randomBytes(64))}', now() - interval '5 minutes', null`);
+  const resent = await lost.call('wallet-faucet');
+  const lostBalance = await until(() => balance(lost.address), (value) => value >= 10_000_000n, 20, 1000);
+  check('G a claim whose signature never landed (5 minutes old): sent once now', resent.status === 200 && typeof resent.body.signature === 'string' && lostBalance === 10_000_000n && claimRow(lost.address).join('|') === `true|${resent.body.signature}`, JSON.stringify(resent.body).slice(0, 120));
+
+  // 4. The global budget: 0.3 SOL in 24 hours.
+  psql(`update itera.devnet_airdrops set lamports = 300000000 where wallet = :'wallet';`, { wallet: first.address });
+  const late = await newLearner(context.apikey, 'G after the budget');
+  const overBudget = await late.call('wallet-faucet');
+  psql(`update itera.devnet_airdrops set lamports = 10000000 where wallet = :'wallet';`, { wallet: first.address });
+  check('G past the daily budget: 503 faucet_unavailable, no lock left behind', overBudget.status === 503 && overBudget.body.error === 'faucet_unavailable' && claimRow(late.address)[0] === '' && (await balance(late.address)) === 0n, JSON.stringify(overBudget.body));
+  psql(`delete from itera.devnet_airdrops where tx_signature = 'seeded' or wallet in (:'a', :'b');`, { a: landed.address, b: inFlight.address });
+
+  await sweepToTreasury(context, first);
+  await sweepToTreasury(context, lost);
+}
+
+// --- H. Finding 8: internal ids in public places -------------------------------------------------------
+// Spends: one attribute write of the companion kept from section D (5 000 lamports). Run `d` first.
+async function internalIds(context) {
+  const learner = await keptLearner(context.apikey, 'H learner (the companion of section D)', 'd-learner');
+  const row = psql(`select coalesce(asset_address, '') || '|' || mint_status from itera.companions where user_id = :'user_id'::uuid;`, { user_id: learner.userId }).split('|');
+  if (row[1] !== 'minted') throw new Error('section H needs the minted companion of section D: run `d` first');
+  const asset = row[0];
+  const before = await chainAttributes(asset);
+  // An ordinary mirror: the row is put one life away from what the chain holds and the cap of section D is lifted.
+  psql(`update itera.companions set lives = case when :lives = 4 then 3 else 4 end, last_regen_at = now(), version = version + 1, mirror_due = true, mirror_writes = 0, mirror_retry_at = null, mirrored_at = now() - interval '5 minutes' where user_id = :'user_id'::uuid;`, { user_id: learner.userId, lives: Number(before.lives) });
+  await learner.call('companion');
+  const after = await until(() => chainAttributes(asset), (attributes) => attributes.learner === learner.address, 20, 2000);
+  const verify = await (await fetch(`${FUNCTIONS}/credential-verify/${asset}?t=${Date.now()}`)).text();
+  check('H a companion mirrored now: `learner` is the owner wallet, the internal id is nowhere in the public answer', after.learner === learner.address && !verify.includes(learner.userId), `learner before ${String(before.learner).slice(0, 12)}… after ${String(after.learner).slice(0, 12)}…`);
+  const untouched = psql(`select coalesce((select asset_address || '|' || user_id from itera.companions where mint_status = 'minted' and minted_at < '2026-10-10T04:40:00Z' and user_id <> :'user_id'::uuid and mirrored_at < '2026-10-10T04:40:00Z' order by minted_at desc limit 1), '');`, { user_id: learner.userId }).split('|');
+  if (untouched[0]) {
+    const old = await chainAttributes(untouched[0]);
+    check('H an asset written before this change is NOT rewritten: it still carries what it had', old.learner === untouched[1], `${untouched[0].slice(0, 8)}… learner ${String(old.learner).slice(0, 12)}…`);
+  }
+}
+
+/** A session for a wallet whose key this script holds: Sign in with Solana, as any wallet does. */
+async function signInWith(apikey, privateKey) {
+  const address = base58Encode(createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).subarray(-32));
+  const message = [`${SIWS_HOST} wants you to sign in with your Solana account:`, address, '', 'Sign in to Itera Hackathon', '', `URI: https://${SIWS_HOST}/login`, 'Version: 1', `Issued At: ${new Date().toISOString()}`].join('\n');
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=web3`, { method: 'POST', headers: { apikey, 'Content-Type': 'application/json' }, body: JSON.stringify({ chain: 'solana', message, signature: sign(null, Buffer.from(message), privateKey).toString('base64url') }) });
+  const session = await response.json();
+  if (!response.ok || !session.access_token) return { status: response.status, error: session, address };
+  const headers = { apikey, 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` };
+  const call = async (name, body = {}) => {
+    const answer = await fetch(`${FUNCTIONS}/${name}`, { method: 'POST', headers, body: JSON.stringify(body) });
+    return { status: answer.status, body: await answer.json() };
+  };
+  return { status: response.status, address, authUserId: session.user.id, userId: psql(`select user_id from itera.identities where provider_subject = :'subject' limit 1;`, { subject: session.user.id }), call, headers };
+}
+
+// --- I. Finding 9: a linked wallet later signs in directly -----------------------------------------------
+// Spends nothing on chain.
+async function linkedWalletSignsIn(context) {
+  const account = await emailLearner(context, 'i-email-account');
+  const { privateKey } = generateKeyPairSync('ed25519');
+  const wallet = base58Encode(createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).subarray(-32));
+  const challenge = await account.call('link-wallet', { action: 'challenge', address: wallet });
+  const linked = await account.call('link-wallet', { action: 'verify', challenge_id: challenge.body.challenge_id, signature: base58Encode(sign(null, Buffer.from(challenge.body.message ?? ''), privateKey)) });
+  check('I setup: an e-mail account links a wallet by signing the challenge', linked.status === 200 && linked.body.wallet === wallet, JSON.stringify(linked.body).slice(0, 120));
+  const usersBefore = psql(`select count(*) from itera.users;`);
+  const code = (await account.call('referral', { action: 'status' })).body.code;
+
+  // The review's case: the linked wallet now signs in on its own.
+  const direct = await signInWith(context.apikey, privateKey);
+  check('I the linked wallet signs in with Solana: accepted, and it is the SAME learner (no second one is created)', direct.status === 200 && direct.userId === account.userId && psql(`select count(*) from itera.users;`) === usersBefore, `sign-in ${direct.status} · learner ${direct.userId} vs ${account.userId}`);
+  if (direct.status !== 200) return;
+  const viaWallet = await direct.call('link-wallet', { action: 'status' });
+  const viaEmail = await account.call('link-wallet', { action: 'status' });
+  const sameCode = (await direct.call('referral', { action: 'status' })).body.code;
+  check('I both sessions resolve the same wallet and the same learner in the functions', viaWallet.body.wallet === wallet && viaEmail.body.wallet === wallet && sameCode === code, `${JSON.stringify(viaWallet.body)} ${JSON.stringify(viaEmail.body)} code ${sameCode === code}`);
+  const resolved = psql(`select itera.wallet_identity_user(:'wallet')::text || '|' || (select user_id::text from itera.user_wallets where wallet = :'wallet');`, { wallet });
+  const get = await fetch(`${FUNCTIONS}/action-gift?to=${wallet}`);
+  await get.json();
+  const companions = psql(`select count(*) || '|' || coalesce(min(user_id::text), '') from itera.companions where user_id in (select user_id from itera.identities where provider_subject in (:'a', :'b'));`, { a: direct.authUserId, b: account.authUserId });
+  check('I a gift to that wallet finds ONE learner whichever way it is looked up (sign-in identity = linked account)', resolved === `${account.userId}|${account.userId}` && get.status === 200 && companions === `1|${account.userId}`, `${resolved} companions ${companions}`);
+  const fresh = await newLearner(context.apikey, 'I a wallet nobody linked');
+  check('I a wallet that is not linked still gets its own new learner', fresh.userId !== account.userId && Boolean(fresh.userId));
+}
+
 function json(sql, variables = {}) {
   return JSON.parse(psql(sql, variables) || 'null') ?? [];
 }
@@ -628,6 +751,9 @@ const SECTIONS = {
   d: ['D. unbounded authority-paid writes (finding 4)', mirrorBounds],
   e: ['E. referral farming (finding 5)', referralFarming],
   f: ['F. public Action endpoint cost (finding 6)', actionEndpoint],
+  g: ['G. devnet faucet (finding 7)', faucet],
+  h: ['H. internal ids in public places (finding 8)', internalIds],
+  i: ['I. a linked wallet later signs in directly (finding 9)', linkedWalletSignsIn],
   owner: ['Owner account, read-only dry check', ownerDryCheck],
 };
 
