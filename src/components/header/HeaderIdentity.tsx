@@ -15,7 +15,7 @@ import { HeaderMenu } from './HeaderMenu';
 import { HeaderPassportExplainer } from './HeaderPassportExplainer';
 import { useHeaderRoles } from './useHeaderRoles';
 
-/** The identity pill: initials for an email account, a green-dotted short address for a wallet; opens the account menu. */
+/** The identity pill: the chosen name (with the short address under it for a wallet), else the short address; opens the account menu. */
 export function HeaderIdentity() {
   const { t } = useI18n();
   const { user, signOut } = useAuth();
@@ -30,7 +30,7 @@ export function HeaderIdentity() {
 
   const link = useWalletLink();
   const wallet = walletOf(user) ?? (link.wallet ? { address: link.wallet, chain: 'solana', network: 'devnet' } : null);
-  const chosen = profile?.displayName && !isGenericName(profile.displayName, user?.email) ? profile.displayName : '';
+  const chosen = profile?.displayName && !isGenericName(profile.displayName) ? profile.displayName : '';
   const name = chosen || (wallet ? '' : user?.email || '');
   const avatar = useLearnerAvatar();
 
@@ -70,13 +70,16 @@ export function HeaderIdentity() {
           {wallet && <span className="absolute -bottom-px -right-px h-2.5 w-2.5 rounded-full border-2 border-[#141210] bg-[#3FD17F]" aria-hidden />}
         </span>
         <span className="hidden max-w-[140px] flex-col items-start leading-none min-[1440px]:flex">
-          {wallet ? (
+          {chosen || !wallet ? (
+            <>
+              <span className="truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]">{name}</span>
+              {wallet && <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{shortAddress(wallet.address)}</span>}
+            </>
+          ) : (
             <>
               <span className="[font:700_13px_JetBrains_Mono]">{shortAddress(wallet.address)}</span>
               <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{wallet.network ?? wallet.chain}</span>
             </>
-          ) : (
-            <span className="truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]">{name}</span>
           )}
         </span>
         <HeaderIcon name="chevron" size={14} className={`hidden text-[#A0978A] transition-transform min-[1440px]:block ${open ? 'rotate-180' : ''}`} />
