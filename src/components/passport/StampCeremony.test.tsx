@@ -5,6 +5,10 @@ import { I18nProvider } from '@/i18n';
 import { StampCeremony } from '@/components/passport/StampCeremony';
 import type { CeremonyStatus } from '@/types/achievements';
 import type { CeremonyModel } from '@/utils/ceremony';
+vi.mock('@/hooks/useLearnerAvatar', async () => {
+  const { DEFAULT_AVATAR } = await import('@/types/avatar');
+  return { useLearnerAvatar: () => DEFAULT_AVATAR };
+});
 
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play: vi.fn() }) }));
 

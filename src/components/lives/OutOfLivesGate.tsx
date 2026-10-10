@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { BTN_PRIMARY, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { useI18n } from '@/i18n';
 import { formatCountdown } from '@/utils/lives';
 import { LivesHearts } from './LivesHearts';
@@ -53,7 +53,7 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, pricePending 
         className="m-auto flex w-full max-w-[440px] flex-col items-center gap-5 text-center"
       >
         <span className="relative flex h-[190px] w-[190px] items-end justify-center rounded-full border-2 border-[#262320] bg-[#141210] pb-9">
-          <TeraOutfit mood="oops" size="xl" outfit={outfit} />
+          <LearnerMascot mood="oops" outfit={outfit} />
         </span>
         <LivesHearts current={lives.current} max={lives.max} size={26} label={t('lives.chrome', lives)} className="gap-1.5" data-testid="lives-gate-hearts" />
         <h1 id="lives-gate-title" className="[font:700_40px/1_'Barlow_Condensed'] max-sm:text-[34px]">

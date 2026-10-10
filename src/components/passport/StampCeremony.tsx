@@ -7,7 +7,7 @@ import { useI18n } from '@/i18n';
 import type { CeremonyModel } from '@/utils/ceremony';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
 import { CeremonyStatusRow } from './CeremonyStatusRow';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { Confetti } from './Confetti';
 import { PassportPage } from './PassportPage';
 import { useCeremonyClock } from './useCeremonyClock';
@@ -103,7 +103,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
             animate={step >= 2 ? { x: 0, opacity: 1 } : { x: -40, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.25 }}
           >
-            <TeraOutfit mood={step >= 3 ? 'happy' : 'neutral'} size="xl" outfit={outfit} />
+            <LearnerMascot mood={step >= 3 ? 'happy' : 'neutral'} outfit={outfit} />
           </motion.span>
         </motion.div>
         <div className="mt-6 min-h-[110px] w-full">

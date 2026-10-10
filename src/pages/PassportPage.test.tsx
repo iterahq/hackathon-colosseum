@@ -16,6 +16,8 @@ vi.mock('@/hooks/useVideoCourses', () => ({ useVideoCourses: () => ({ courses: [
 vi.mock('@/hooks/useTrailDashboard', () => ({ useTrailDashboard: () => ({ trails: [], featured: null }) }));
 vi.mock('@/hooks/useAchievements', () => ({ useAchievements: () => ({ items: [], earnedCount: 0, isPending: false }) }));
 vi.mock('@/hooks/useLiveClass', () => ({ useEnabledTenantIds: () => ({ data: [] }) }));
+vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => ({ data: undefined }) }));
+vi.mock('@/hooks/useCrystals', () => ({ useCrystals: () => ({ data: undefined }) }));
 vi.mock('@/auth/AuthContext', () => ({ useAuth: () => ({ user: { email: 'a@b.c' }, signOut: vi.fn(), signInWithSolana: vi.fn() }) }));
 
 const page = (over: Partial<PassportPageData> = {}): PassportPageData => ({

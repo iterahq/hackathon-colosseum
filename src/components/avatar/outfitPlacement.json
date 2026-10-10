@@ -1,0 +1,33 @@
+{
+  "doc": "Transform of an outfit layer canvas (288x416 webp in public/mascot/outfits) onto the 512x512 expression avatar image. x,y: top-left of the layer canvas in avatar pixels (may be negative); scale: layer pixel -> avatar pixel; rotation: degrees clockwise about the layer centre. Front layer file per mood: neutral '-front', happy '-front-happy', oops '-front-oops'. Layer order: back (laurel only), avatar, front. Source of truth: this file is imported by src/components/avatar/AvatarLook.tsx.",
+  "avatarCanvas": 512,
+  "layerCanvas": {
+    "width": 288,
+    "height": 416
+  },
+  "moods": {
+    "tera_feliz": "happy",
+    "tera_sorriso": "happy",
+    "tera_piscada": "happy",
+    "tera_triste": "oops",
+    "tera_sob_pressao": "oops",
+    "tera_surpreso": "oops"
+  },
+  "default": {
+    "x": 34.816,
+    "y": -131.072,
+    "scale": 1.536,
+    "rotation": 0
+  },
+  "overrides": {
+    "outfit_glasses": {
+      "*": {
+        "x": 46.9344,
+        "y": -81.2928,
+        "scale": 1.3824,
+        "rotation": 0
+      }
+    }
+  },
+  "disabled": []
+}

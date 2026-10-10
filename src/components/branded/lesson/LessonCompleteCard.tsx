@@ -4,7 +4,7 @@ import { Heart } from 'lucide-react';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { useLessonCompanion } from '@/components/lives/lessonCompanion';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { useI18n } from '@/i18n';
 
 /**
@@ -49,7 +49,7 @@ export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, m
       data-state={incomplete ? 'incomplete' : 'complete'}
     >
       <div className="mx-auto flex w-24 justify-center pt-6" data-testid="lesson-complete-tera">
-        <TeraOutfit mood={incomplete ? 'neutral' : 'happy'} size="xl" outfit={outfit} />
+        <LearnerMascot mood={incomplete ? 'neutral' : 'happy'} outfit={outfit} />
       </div>
       <h2 className="font-display text-3xl text-foreground mt-5" data-testid="lesson-complete-title">
         {incomplete ? (missing === 1 ? t('lessonEnd.missing.one') : t('lessonEnd.missing.many', { n: missing })) : t('lesson.complete')}

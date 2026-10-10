@@ -3,6 +3,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { LessonCompleteActions, LessonCompleteCard, PHONE_FILL } from './LessonCompleteCard';
+vi.mock('@/hooks/useLearnerAvatar', async () => {
+  const { DEFAULT_AVATAR } = await import('@/types/avatar');
+  return { useLearnerAvatar: () => DEFAULT_AVATAR };
+});
 
 function renderCard(props: Partial<Parameters<typeof LessonCompleteCard>[0]> = {}) {
   return render(

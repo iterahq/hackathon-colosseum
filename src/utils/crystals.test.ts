@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compactCount, isGeneratedTeraName, spendItemOf } from '@/utils/crystals';
+import { compactCount, isGeneratedTeraName, ledgerLabel, spendItemOf } from '@/utils/crystals';
 
 describe('crystals utils', () => {
   it('compacts a balance', () => {
@@ -21,4 +21,18 @@ describe('crystals utils', () => {
     expect(isGeneratedTeraName('Teresa Silva 482')).toBe(false);
     expect(isGeneratedTeraName('Tera Curioso 48')).toBe(false);
   });
+});
+
+describe('ledgerLabel', () => {
+  const dict: Record<string, string> = { 'crystals.reason.spend': 'Compra', 'crystals.reason.lesson_clean': 'Lição sem perder vida', 'crystals.reason.unknown': 'Movimento', 'crystals.reason.spendLife': 'Compra · 1 vida' };
+  const t = (key: string) => dict[key] ?? key;
+  const title = (key: string) => (key === 'bg_ember' ? 'Fundo Brasa' : null);
+
+  it('names an earn reason', () => expect(ledgerLabel('lesson_clean', null, t, title)).toBe('Lição sem perder vida'));
+  it('names a spend by its item', () => {
+    expect(ledgerLabel('spend', 'bg_ember:abc', t, title)).toBe('Compra · Fundo Brasa');
+    expect(ledgerLabel('spend', 'life:abc', t, title)).toBe('Compra · 1 vida');
+    expect(ledgerLabel('spend', 'mystery:abc', t, title)).toBe('Compra');
+  });
+  it('falls back to a neutral word', () => expect(ledgerLabel('e2e_seed', 'examples', t, title)).toBe('Movimento'));
 });
