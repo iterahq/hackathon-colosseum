@@ -1,4 +1,5 @@
 /** Wire (snake_case, loosely typed) -> app types for the lives / shop / companion functions. One file to fix when a shape moves. */
+import { DEFAULT_AVATAR, type AvatarGroup, type AvatarOffer, type AvatarRarity, type LearnerAvatar } from '@/types/avatar';
 import type {
   ChainProof,
   CompanionSnapshot,
@@ -26,7 +27,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const orNull = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
-const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame'];
+const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame', 'avatar'];
 const kindOf = (v: unknown): ShopItemKind => (KINDS.includes(v as ShopItemKind) ? (v as ShopItemKind) : 'outfit');
 const STATUSES: readonly PurchaseStatus[] = ['paid', 'pending', 'failed', 'expired'];
 
@@ -58,6 +59,43 @@ export function toCompanion(v: unknown): CompanionState {
   };
 }
 
+const RARITIES: readonly AvatarRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic'];
+const GROUPS: readonly AvatarGroup[] = ['expression', 'base', 'special', 'event', 'accessory'];
+const rarityOf = (v: unknown): AvatarRarity => (RARITIES.includes(v as AvatarRarity) ? (v as AvatarRarity) : 'common');
+
+/** The default avatar when the block is absent or has no image: every learner always has a face. */
+export function toAvatar(v: unknown): LearnerAvatar {
+  const r = row(v);
+  const imageUrl = str(r.image_url);
+  if (!str(r.key) || !imageUrl) return DEFAULT_AVATAR;
+  return {
+    key: str(r.key),
+    title: str(r.title) || DEFAULT_AVATAR.title,
+    rarity: rarityOf(r.rarity),
+    tierName: str(r.tier_name) || DEFAULT_AVATAR.tierName,
+    imageUrl,
+    thumbUrl: str(r.thumb_url) || imageUrl,
+    assetAddress: orNull(r.asset_address),
+  };
+}
+
+function toAvatarOffer(r: Row): AvatarOffer | null {
+  const imageUrl = str(r.image_url);
+  if (!imageUrl) return null;
+  const supply = row(r.supply);
+  return {
+    rarity: rarityOf(r.rarity),
+    rarityLabel: str(r.rarity_label),
+    tierName: str(r.tier_name),
+    group: GROUPS.includes(r.group as AvatarGroup) ? (r.group as AvatarGroup) : 'base',
+    free: r.free === true,
+    imageUrl,
+    thumbUrl: str(r.thumb_url) || imageUrl,
+    supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
+    assetAddress: orNull(r.asset_address),
+  };
+}
+
 export function toInventory(v: unknown): InventoryEntry[] {
   return rows(v)
     .map((r) => ({ itemKey: str(r.item_key), kind: kindOf(r.kind), qty: num(r.qty, 1), equipped: r.equipped === true }))
@@ -70,7 +108,7 @@ export function toSnapshot(v: unknown, mocked: boolean): CompanionSnapshot {
   const r = row(v);
   const lives = toLives(r.lives);
   if (!lives) throw new Error('companion: no lives block in the answer');
-  return { lives, companion: toCompanion(r.companion), inventory: toInventory(r.inventory), wallet: walletOfWire(r.wallet), mocked };
+  return { lives, companion: toCompanion(r.companion), avatar: toAvatar(r.avatar), inventory: toInventory(r.inventory), wallet: walletOfWire(r.wallet), mocked };
 }
 
 export function toChain(v: unknown): ChainProof | null {
@@ -114,6 +152,7 @@ export function toShopItems(v: unknown): ShopItem[] {
         equipped: r.equipped === true,
         ownedRefs: Array.isArray(r.owned_refs) ? r.owned_refs.filter((ref): ref is string => typeof ref === 'string') : [],
         unlock: toUnlock(r.unlock),
+        avatar: r.kind === 'avatar' ? toAvatarOffer(r) : null,
       };
     })
     .filter((item) => item.key);
