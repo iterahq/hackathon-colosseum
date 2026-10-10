@@ -515,6 +515,17 @@ intent. An unpaid gift is marked `expired` two minutes after its blockhash died.
   `failed` row is retried by the inviter's next `passport` call, as any medal. Every step is
   idempotent and `rewarded` is written last.
 
+- **Caps** (migration `0138`, security review finding 5): one inviter earns at most **5** invite
+  rewards in 24 hours and **50** in all. An invite takes one of the inviter's slots
+  (`itera.claim_referral_reward`, atomic per inviter) before anything is given. With no slot nothing is
+  given to either side, the invite stays `pending`, and the invited learner's `passport` answer
+  carries the optional `referral: { "rewarded": false, "reason": "cap" }`; a later call, once a slot
+  is free, rewards it (`referral: { "rewarded": true }` on the call that does). The invited learner's
+  own stamps and medals are never held back.
+- **The first day must be real enough to be stamped**: the reward hangs on `first_stamp`, and a day
+  that fails the plausibility floor (see "Trust model" in `docs/onchain-passport.md`) earns none.
+  Proof: `node scripts/hackathon/security-attacks.mjs e` (no on-chain cost).
+
 ### Known limits (gift and referral)
 
 - Two payers racing for the last free slot can both pay; the second life is lost at the cap (6).

@@ -12,11 +12,11 @@
 // they spend. The script stops before a section when the mint authority would go below 0.62 SOL or
 // the treasury below 0.25 SOL. Leaves throwaway wallet users behind; never touches the owner's
 // wallet account or the demo e-mail user.
-import { createPrivateKey, createPublicKey, generateKeyPairSync, sign } from 'node:crypto';
+import { createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { compactU16, base58Decode, base58Encode, buildTransferMessage, transferData, MEMO_PROGRAM, SYSTEM_PROGRAM } from '../../supabase/functions/_shared/solana-tx.ts';
-import { FUNCTIONS, PROTECTED_WALLET, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sleep, sol, summary, until } from './social-e2e.lib.mjs';
+import { FUNCTIONS, PROJECT_REF, PROTECTED_WALLET, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sleep, sol, summary, until } from './social-e2e.lib.mjs';
 
 const AUTHORITY = 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B';
 const AUTHORITY_FLOOR = 620_000_000n;
@@ -411,6 +411,108 @@ async function mirrorBounds(context) {
   await sweepToTreasury(context, learner);
 }
 
+const EMAIL_DOMAIN = 'e2e.hackathon.invalid';
+
+async function serviceKey(context) {
+  if (context.serviceKey) return context.serviceKey;
+  const response = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys?reveal=true`, { headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}` } });
+  if (!response.ok) throw new Error(`could not read the project API keys (HTTP ${response.status})`);
+  const keys = await response.json();
+  context.serviceKey = keys.find((entry) => entry.name === 'service_role')?.api_key ?? keys.find((entry) => entry.type === 'secret')?.api_key;
+  if (!context.serviceKey) throw new Error('the project has no service key');
+  return context.serviceKey;
+}
+
+/** A throwaway e-mail learner (admin API): no wallet, so nothing it earns is ever minted. Deleted by `dropEmailLearners`. */
+async function emailLearner(context, label) {
+  const key = await serviceKey(context);
+  const email = `sec-${label}-${randomBytes(5).toString('hex')}@${EMAIL_DOMAIN}`;
+  const password = randomBytes(18).toString('base64url');
+  const created = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, { method: 'POST', headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, email_confirm: true }) });
+  const user = await created.json();
+  if (!created.ok || !user.id) throw new Error(`could not create the e-mail user (HTTP ${created.status})`);
+  (context.emailUsers ??= []).push(user.id);
+  const signedIn = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: context.apikey, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const session = await signedIn.json();
+  if (!signedIn.ok || !session.access_token) throw new Error(`e-mail sign-in failed: HTTP ${signedIn.status}`);
+  const userId = psql(`select user_id from itera.identities where provider_subject = :'subject' limit 1;`, { subject: user.id });
+  const headers = { apikey: context.apikey, 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` };
+  const call = async (name, body = {}) => {
+    const answer = await fetch(`${FUNCTIONS}/${name}`, { method: 'POST', headers, body: JSON.stringify(body) });
+    return { status: answer.status, body: await answer.json() };
+  };
+  console.log(`${label}: e-mail learner · itera user ${userId}`);
+  return { userId, authUserId: user.id, call, headers, label, email, password };
+}
+
+async function dropEmailLearners(context) {
+  const key = await serviceKey(context);
+  for (const id of context.emailUsers ?? []) await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: 'DELETE', headers: { apikey: key, Authorization: `Bearer ${key}` } });
+  context.emailUsers = [];
+}
+
+/** A day completed by an operator (psql): trusted rows, exactly what the other e2e scripts seed. */
+function seedDay(userId, lesson) {
+  psql(
+    `insert into itera.progress (user_id, activity_id, status, completed_at)
+     select :'user_id'::uuid, a.id, 'completed', now() from itera.activities a where a.status = 'published' and a.lesson_id = :'lesson'::uuid
+     on conflict (user_id, activity_id) do update set status = 'completed', completed_at = excluded.completed_at;`,
+    { user_id: userId, lesson },
+  );
+}
+
+const referralRow = (invitedId) => psql(`select coalesce((select status || '|' || (reward_claimed_at is not null) from itera.referrals where invited_user_id = :'id'::uuid), '');`, { id: invitedId });
+const medalCount = (userId, key) => Number(psql(`select count(*) from itera.user_achievements where user_id = :'user_id'::uuid and achievement_key = :'key';`, { user_id: userId, key }));
+
+// --- E. Finding 5: referral farming ------------------------------------------------------------------
+// Spends nothing on chain: the learners that earn something are e-mail accounts (no wallet, no mint).
+async function referralFarming(context) {
+  const { lesson, activities } = lessonActivities(1);
+  const inviter = await emailLearner(context, 'e-inviter');
+  const code = (await inviter.call('referral', { action: 'status' })).body.code;
+  await inviter.call('companion');
+
+  // The inviter already earned four invite rewards today (seeded): one slot is left.
+  const earlier = [];
+  for (let index = 0; index < 4; index += 1) earlier.push(await newLearner(context.apikey, `E earlier invite ${index + 1}`));
+  for (const learner of earlier) {
+    psql(`insert into itera.referrals (invited_user_id, inviter_user_id, code, status, rewarded_at, reward_claimed_at) values (:'invited'::uuid, :'inviter'::uuid, :'code', 'rewarded', now(), now());`, { invited: learner.userId, inviter: inviter.userId, code });
+  }
+
+  // 1. A sock puppet: claims the code and fabricates its first day in one request.
+  const puppet = await newLearner(context.apikey, 'E sock puppet');
+  const puppetClaim = await puppet.call('referral', { action: 'claim', code });
+  await upsertProgress(puppet, activities.map((activity) => ({ user_id: puppet.userId, activity_id: activity.id, status: 'completed', completed_at: new Date().toISOString() })));
+  const puppetPassport = await puppet.call('passport', { lang: 'en', lesson_id: lesson });
+  check('E a sock puppet with a fabricated first day: no stamp, so no invite reward for anyone', puppetClaim.body.claimed === true && puppetPassport.body.awards.length === 0 && puppetPassport.body.day_pending_review?.reason === 'too_fast' && !('referral' in puppetPassport.body) && referralRow(puppet.userId) === 'pending|false' && medalCount(inviter.userId, 'friend_brought') === 0 && livesOf(inviter.userId) === '5', `${JSON.stringify(puppetPassport.body.day_pending_review ?? null)} ${referralRow(puppet.userId)}`);
+
+  // 2. The fifth honest friend of the day takes the last slot.
+  const fifth = await emailLearner(context, 'e-friend-5');
+  await fifth.call('referral', { action: 'claim', code });
+  seedDay(fifth.userId, lesson);
+  const fifthPassport = await fifth.call('passport', { lang: 'en' });
+  const fifthKeys = (fifthPassport.body.awards ?? []).map((award) => award.key);
+  check('E the fifth friend of the day: both sides rewarded (medals + life), `referral: { rewarded: true }`', fifthPassport.body.referral?.rewarded === true && fifthKeys.includes('first_stamp') && fifthKeys.includes('invited') && referralRow(fifth.userId) === 'rewarded|true' && medalCount(inviter.userId, 'friend_brought') === 1 && livesOf(inviter.userId) === '6', `${fifthKeys.join(',')} ${JSON.stringify(fifthPassport.body.referral ?? null)} inviter lives ${livesOf(inviter.userId)}`);
+
+  // 3. The sixth is over the daily cap.
+  const sixth = await emailLearner(context, 'e-friend-6');
+  await sixth.call('referral', { action: 'claim', code });
+  seedDay(sixth.userId, lesson);
+  const sixthPassport = await sixth.call('passport', { lang: 'en' });
+  const sixthKeys = (sixthPassport.body.awards ?? []).map((award) => award.key);
+  check('E the sixth friend of the day: `referral: { rewarded: false, reason: "cap" }`, no medal and no life on either side, own stamp kept', sixthPassport.body.referral?.rewarded === false && sixthPassport.body.referral.reason === 'cap' && sixthKeys.includes('first_stamp') && !sixthKeys.includes('invited') && referralRow(sixth.userId) === 'pending|false' && medalCount(inviter.userId, 'friend_brought') === 1 && medalCount(sixth.userId, 'invited') === 0 && livesOf(inviter.userId) === '6', `${sixthKeys.join(',')} ${JSON.stringify(sixthPassport.body.referral ?? null)}`);
+  const sixthAgain = await sixth.call('passport', { lang: 'en' });
+  check('E asking again changes nothing while the cap holds', sixthAgain.body.referral?.reason === 'cap' && medalCount(inviter.userId, 'friend_brought') === 1 && referralRow(sixth.userId) === 'pending|false');
+  const lifetime = psql(`select itera.claim_referral_reward(:'invited'::uuid, 100, 5);`, { invited: sixth.userId });
+  check('E the lifetime cap is the same gate (asked directly with a lifetime of 5): cap', lifetime === 'cap' && referralRow(sixth.userId) === 'pending|false', lifetime);
+
+  // 4. A day later the slot is free and the honest sixth friend is rewarded after all.
+  psql(`update itera.referrals set reward_claimed_at = now() - interval '25 hours' where inviter_user_id = :'inviter'::uuid and reward_claimed_at is not null;`, { inviter: inviter.userId });
+  const nextDay = await sixth.call('passport', { lang: 'en' });
+  check('E a day later the pending invite is rewarded: nothing honest is lost', nextDay.body.referral?.rewarded === true && referralRow(sixth.userId) === 'rewarded|true' && medalCount(inviter.userId, 'friend_brought') === 2 && medalCount(sixth.userId, 'invited') === 1, JSON.stringify(nextDay.body.referral ?? null));
+  await dropEmailLearners(context);
+}
+
 function json(sql, variables = {}) {
   return JSON.parse(psql(sql, variables) || 'null') ?? [];
 }
@@ -465,6 +567,7 @@ const SECTIONS = {
   c: ['C. client-written progress (finding 1, mitigations)', fakeProgress],
   j: ['J. Circuito off the response path + idempotent retry', circuitRobustness],
   d: ['D. unbounded authority-paid writes (finding 4)', mirrorBounds],
+  e: ['E. referral farming (finding 5)', referralFarming],
   owner: ['Owner account, read-only dry check', ownerDryCheck],
 };
 
@@ -480,7 +583,11 @@ async function main() {
     const [title, run] = SECTIONS[name];
     console.log(`\n=== ${title} ===`);
     await guard(context, title);
-    await run(context);
+    try {
+      await run(context);
+    } finally {
+      if (context.emailUsers?.length) await dropEmailLearners(context);
+    }
     await balances(context, `after ${title}`);
   }
   const after = await balances(context, 'end');

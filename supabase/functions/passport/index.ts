@@ -20,6 +20,7 @@ import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_share
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
+import { referralNote } from '../_shared/referral.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const MAX_JOBS_PER_CALL = 3;
@@ -471,9 +472,11 @@ Deno.serve(async (request) => {
 
     // The invite reward is paid on the invited learner's first completed day, and only then.
     let inviterToSettle: string | null = null;
+    let referral: ReturnType<typeof referralNote> = null;
     if (rows.some((row) => row.achievement_key === 'first_stamp')) {
       const reward = await rewardReferral(db, caller.iteraUserId);
-      if (reward) {
+      referral = referralNote(reward);
+      if (reward?.rewarded) {
         for (const id of reward.createdRowIds) stored.created.add(id);
         rows = await loadRows(db, caller.iteraUserId);
         inviterToSettle = reward.inviterUserId;
@@ -495,6 +498,7 @@ Deno.serve(async (request) => {
         mint: { wallet: caller.wallet, cluster: CLUSTER, attempted: mint.attempted, blocked: mint.blocked },
         ...(body.lessonId ? { day_incomplete: dayIncomplete(learning, body.lessonId) } : {}),
         ...(pendingReview ? { day_pending_review: pendingReview } : {}),
+        ...(referral ? { referral } : {}),
       },
       200,
       cors,

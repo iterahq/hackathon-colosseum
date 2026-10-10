@@ -1,6 +1,35 @@
 /** A referral is only accepted from an account this young: an existing learner cannot be "invited". */
 export const CLAIM_WINDOW_MS = 10 * 60_000;
 export const CODE_LENGTH = 8;
+/** Invite rewards (a medal minted by the authority and a life) one inviter can earn in 24 hours, and for ever. */
+export const REWARDS_PER_DAY = 5;
+export const REWARDS_LIFETIME = 50;
+
+/** What `itera.claim_referral_reward` answers (migration 0138). */
+export type RewardSlot = 'ok' | 'cap' | 'none';
+
+export function asRewardSlot(value: unknown): RewardSlot {
+  if (value === 'ok' || value === 'cap' || value === 'none') return value;
+  throw new Error(`claim_referral_reward: unexpected answer ${JSON.stringify(value)}`);
+}
+
+type SlotRpc = (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+
+/**
+ * Asks for one of the inviter's reward slots for this invited learner's
+ * pending invite, with the caps of this file. Atomic in the database.
+ */
+export async function takeRewardSlot(rpc: SlotRpc, invitedUserId: string): Promise<RewardSlot> {
+  const { data, error } = await rpc('claim_referral_reward', { p_invited: invitedUserId, p_daily: REWARDS_PER_DAY, p_lifetime: REWARDS_LIFETIME });
+  if (error) throw new Error(`claim_referral_reward: ${error.message}`);
+  return asRewardSlot(data);
+}
+
+/** What `passport` says about the caller's own invite when it looked at it. Nothing about anyone else. */
+export function referralNote(outcome: { rewarded: boolean } | null): { rewarded: true } | { rewarded: false; reason: 'cap' } | null {
+  if (!outcome) return null;
+  return outcome.rewarded ? { rewarded: true } : { rewarded: false, reason: 'cap' };
+}
 /** No vowels and no look-alikes: a code never spells a word and survives being read aloud. */
 const ALPHABET = 'bcdfghjkmnpqrstvwxz23456789';
 
