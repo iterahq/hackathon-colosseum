@@ -281,7 +281,9 @@ async function main() {
     const response = await anonymous(name);
     check(`${name}: no token -> 401`, response.status === 401 && response.body.error === 'unauthorized', response.status);
   }
-  const publicShop = await anonymous('shop-items', { method: 'GET', query: '?lang=en' });
+  // Avatars (kind `avatar`) are listed after these items and have their own script, `avatar-e2e.mjs`.
+  const fullShop = await anonymous('shop-items', { method: 'GET', query: '?lang=en' });
+  const publicShop = { status: fullShop.status, body: (fullShop.body ?? []).filter((item) => item.kind !== 'avatar') };
   check('shop-items: public, 8 active items, nothing owned', publicShop.status === 200 && publicShop.body.length === 8 && publicShop.body.every((item) => !item.owned && !item.equipped), publicShop.body.map?.((item) => item.kind).join(','));
   const mispriced = (publicShop.body ?? []).filter((item) => item.price_lamports !== item.price_usd_cents * LAMPORTS_PER_CENT || item.price_label !== priceLabel(item.price_usd_cents));
   check('shop-items: cents, lamports and label agree at one pinned rate for every item', publicShop.body.length === 8 && mispriced.length === 0, mispriced.map((item) => `${item.key}: ${item.price_label}`).join('; '));
@@ -418,7 +420,7 @@ async function main() {
   check('companion art: differs once the crown is on', crownArt !== bareArt && crownArt.includes('data-outfit="outfit_crown"'));
   const shop = await call('shop-items', { method: 'GET', query: '?lang=en' });
   const shopCrown = shop.body.find?.((item) => item.key === 'outfit_crown');
-  check('shop-items: with a token -> crown owned and equipped, the rest not', shopCrown?.owned === true && shopCrown.equipped === true && shop.body.filter((item) => item.owned).length === 1);
+  check('shop-items: with a token -> crown owned and equipped, the rest not', shopCrown?.owned === true && shopCrown.equipped === true && shop.body.filter((item) => item.owned && item.kind !== 'avatar').length === 1);
 
   // --- lesson_end -----------------------------------------------------------------------------
   const early = await call('lives', { body: { action: 'lesson_end', lesson_id: day1.lessonId, mistakes: 0 } });

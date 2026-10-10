@@ -9,7 +9,7 @@ import { settlePayment, settledElsewhere } from './payments.ts';
 import { intentPhase, missingTransactionVerdict, verifyPayment, type ParsedTransaction, type PaymentExpectation, type PaymentVerdict } from './purchase-verify.ts';
 import { RpcError, blockHeight, rpc } from './rpc.ts';
 import { giftView } from './gift-store.ts';
-import { ITEM_COLUMNS, ITEM_HANDLERS, PURCHASE_COLUMNS, type ApplyOutcome, type PurchaseRow, type ShopItem } from './shop-items.ts';
+import { ApplyRefusal, ITEM_COLUMNS, ITEM_HANDLERS, PURCHASE_COLUMNS, purchasedAvatarView, type ApplyOutcome, type PurchaseRow, type ShopItem } from './shop-items.ts';
 import { isItemKind } from './shop-rules.ts';
 
 const LOOKUP_ATTEMPTS = 6;
@@ -56,6 +56,7 @@ async function paidResponse(db: IteraClient, intent: PurchaseRow, item: ShopItem
     response.image_url = `${view.image_url}?lang=${lang}&v=${now.getTime()}`;
   }
   if (outcome.gift) response.gift = await giftView(db, outcome.gift);
+  if (outcome.avatar) response.avatar = purchasedAvatarView(outcome.avatar, lang);
   if (outcome.chain) {
     response.chain = chainBlock(outcome.chain);
     response.written = writtenList(outcome.chain);
@@ -152,6 +153,15 @@ export async function settlePurchase(db: IteraClient, caller: Caller, input: Set
     const { error } = await db.from('purchases').update({ applied_at: new Date().toISOString(), error: null }).eq('id', intent.id);
     if (error) throw new Error(`purchases applied: ${error.message}`);
   } catch (error) {
+    if (error instanceof ApplyRefusal) {
+      // Paid, and the thing is gone for good: flagged for a refund by the operator, said plainly to the buyer.
+      console.error(`purchase ${intent.id} refund due: ${error.code}`);
+      await db
+        .from('purchases')
+        .update({ error: error.code, applied_at: null, refund_due_at: intent.refund_due_at ?? new Date().toISOString() })
+        .eq('id', intent.id);
+      return { status: 409, body: { error: error.code, status: 'paid', refund_due: true, intent_id: intent.id, explorer_url: explorerUrl('tx', intent.tx_signature) } };
+    }
     console.error(`purchase ${intent.id} effect failed`, error);
     const message = String(error instanceof Error ? error.message : error).slice(0, 300);
     await db.from('purchases').update({ error: message, applied_at: null }).eq('id', intent.id);

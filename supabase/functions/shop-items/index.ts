@@ -1,3 +1,5 @@
+import { loadAvatarCatalog, loadAvatarRows, loadSupply, supabaseUrl } from '../_shared/avatar-store.ts';
+import { shopAvatarFields, type AvatarAssetRow, type AvatarCatalog, type AvatarSupply } from '../_shared/avatars.ts';
 import { resolveCaller } from '../_shared/caller.ts';
 import { ensureCompanion, loadInventory, loadStats, type InventoryEntry } from '../_shared/companion-store.ts';
 import { pickText } from '../_shared/credential.ts';
@@ -21,11 +23,27 @@ Deno.serve(async (request) => {
     // A missing or foreign token (the anon key a client sends by default) just means "nobody signed in".
     let inventory: InventoryEntry[] = [];
     let level: number | null = null;
+    let wornAvatar: string | null = null;
+    let avatarRows: AvatarAssetRow[] = [];
+    const hasAvatars = ((data ?? []) as ShopItem[]).some((item) => item.kind === 'avatar');
+    // Avatars: the catalog with its tiers, and how many units of each are gone. Never fatal for the other shelves.
+    let avatars: { catalog: AvatarCatalog; supply: Map<string, AvatarSupply> } | null = null;
+    if (hasAvatars) {
+      try {
+        // Read fresh: the shop is where a newly inserted avatar has to show up at once.
+        const [catalog, supply] = await Promise.all([loadAvatarCatalog(db, true), loadSupply(db)]);
+        avatars = { catalog, supply };
+      } catch (failure) {
+        console.error('shop-items: avatars unavailable', failure instanceof Error ? failure.message : failure);
+      }
+    }
     if (bearerToken(request)) {
       const caller = await resolveCaller(db, request);
       if (typeof caller !== 'string') {
         const companion = await ensureCompanion(db, caller.iteraUserId);
         inventory = await loadInventory(db, caller.iteraUserId, companion.outfit);
+        wornAvatar = companion.avatar;
+        if (avatars) avatarRows = await loadAvatarRows(db, caller.iteraUserId);
         // The level is only read when some item on sale can also be earned.
         if (((data ?? []) as ShopItem[]).some((item) => unlockLevelOf(item.effect) !== null)) {
           level = (await loadStats(db, caller.iteraUserId, new Date())).level;
@@ -36,8 +54,15 @@ Deno.serve(async (request) => {
     // A gift is bought on someone's profile, not in the shop list: it is listed only when asked for (`?with=gift`).
     const withGift = new URL(request.url).searchParams.get('with') === 'gift';
     const items = ((data ?? []) as ShopItem[])
-      .filter((item) => isItemKind(item.kind) && (item.kind !== 'gift' || withGift))
+      .filter((item) => isItemKind(item.kind) && (item.kind !== 'gift' || withGift) && (item.kind !== 'avatar' || avatars?.catalog.items.has(item.key)))
       .map((item) => {
+        if (item.kind === 'avatar' && avatars) {
+          const avatar = avatars.catalog.items.get(item.key);
+          if (avatar) {
+            const own = avatarRows.find((row) => row.item_key === item.key) ?? null;
+            return { ...shopAvatarFields(avatars.catalog, avatar, lang, supabaseUrl(), { supply: avatars.supply.get(item.key), own, equippedKey: wornAvatar }), art: item.art, owned_refs: [] };
+          }
+        }
         const held = inventory.filter((entry) => entry.item_key === item.key);
         const unlock = unlockView(item.effect, level);
         return {

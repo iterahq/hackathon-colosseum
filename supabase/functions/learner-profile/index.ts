@@ -1,4 +1,6 @@
 import { isSolanaAddress } from '../_shared/address.ts';
+import { AVATAR_ASSET_COLUMNS, avatarBlock, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
+import { fallbackAvatarView, type AvatarAssetRow, type AvatarCatalog } from '../_shared/avatars.ts';
 import { readAssets } from '../_shared/chain-read.ts';
 import { walletCircuit } from '../_shared/circuit-store.ts';
 import { loadStats } from '../_shared/companion-store.ts';
@@ -7,10 +9,26 @@ import type { AchievementRow, CatalogEntry } from '../_shared/credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 import { regenerate } from '../_shared/lives.ts';
-import { PROFILE_ASSET_LIMIT, buildProfile, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
+import { PROFILE_ASSET_LIMIT, buildProfile, profileAvatars, type OnchainAsset, type ProfileCompanion } from '../_shared/profile.ts';
 import { RpcError } from '../_shared/rpc.ts';
 
-const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,version,mirrored_at';
+const COMPANION_COLUMNS = 'id,user_id,asset_address,lives,max_lives,last_regen_at,outfit,avatar,version,mirrored_at';
+const AVATAR_LIMIT = 30;
+
+/** The collectibles minted to this wallet and the catalog they belong to. Never fatal: the rest of the profile does not depend on it. */
+async function loadWalletAvatars(db: ReturnType<typeof serviceClient>, wallet: string): Promise<{ catalog: AvatarCatalog; rows: AvatarAssetRow[] } | null> {
+  try {
+    const [catalog, rows] = await Promise.all([
+      loadAvatarCatalog(db),
+      db.from('avatar_assets').select(AVATAR_ASSET_COLUMNS).eq('wallet', wallet).eq('mint_status', 'minted').not('asset_address', 'is', null).order('minted_at').limit(AVATAR_LIMIT),
+    ]);
+    if (rows.error) throw new Error(rows.error.message);
+    return { catalog, rows: (rows.data ?? []) as AvatarAssetRow[] };
+  } catch (error) {
+    console.error('learner-profile: avatars unavailable', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
@@ -22,7 +40,8 @@ Deno.serve(async (request) => {
     if (!isSolanaAddress(wallet) || rest.length > 0) return json({ error: 'invalid_address' }, 400, cors);
 
     const db = serviceClient();
-    const [config, achievements, companions, catalogRows] = await Promise.all([
+    const [walletAvatars, config, achievements, companions, catalogRows] = await Promise.all([
+      loadWalletAvatars(db, wallet),
       loadConfig(db),
       // Stamps and completions live inside their certification's asset: they own none.
       db
@@ -50,8 +69,12 @@ Deno.serve(async (request) => {
     if (catalogRows.error) throw new Error(`achievements: ${catalogRows.error.message}`);
 
     const companionRow = companions.data?.[0] ?? null;
-    const assets = [...(achievements.data ?? []).map((row) => row.asset_address as string), ...(companionRow ? [companionRow.asset_address as string] : [])];
-    const collections = [config.collection_passports, config.collection_medals, config.collection_companions].filter(Boolean);
+    const assets = [
+      ...(achievements.data ?? []).map((row) => row.asset_address as string),
+      ...(companionRow ? [companionRow.asset_address as string] : []),
+      ...(walletAvatars?.rows ?? []).map((row) => row.asset_address as string),
+    ];
+    const collections = [config.collection_passports, config.collection_medals, config.collection_companions, config.collection_avatars].filter(Boolean);
     const now = new Date();
 
     let onchain: Map<string, OnchainAsset>;
@@ -92,7 +115,14 @@ Deno.serve(async (request) => {
       onchain,
     });
     // What this wallet's own purchases sent to the key that pays for stamps (the Circuito).
-    return json({ ...profile, circuit: await walletCircuit(db, wallet) }, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
+    // The picture this learner wears (the default for a wallet with no companion) and the collectibles minted to the wallet.
+    const lang = langOf(request, 'pt');
+    const [avatar, circuit] = await Promise.all([
+      companionRow ? avatarBlock(db, companionRow.user_id, companionRow.avatar, lang) : avatarBlock(db, '00000000-0000-0000-0000-000000000000', null, lang).catch(() => fallbackAvatarView(supabaseUrl())),
+      walletCircuit(db, wallet),
+    ]);
+    const avatars = walletAvatars ? profileAvatars({ wallet, lang, supabaseUrl: supabaseUrl(), config, catalog: walletAvatars.catalog, rows: walletAvatars.rows, onchain }) : [];
+    return json({ ...profile, avatar, avatars, circuit }, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
   } catch (error) {
     console.error('learner-profile failed', error);
     return json({ error: 'internal_error' }, 500, cors);

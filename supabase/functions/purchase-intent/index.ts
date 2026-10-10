@@ -19,6 +19,9 @@ const INELIGIBLE_STATUS: Record<IneligibleCode, number> = {
   self_gift: 409,
   recipient_full: 409,
   gift_limit: 429,
+  free_item: 409,
+  sold_out: 409,
+  reservation_limit: 429,
 };
 const UNIQUE_VIOLATION = '23505';
 
@@ -93,6 +96,8 @@ Deno.serve(async (request) => {
     const item = found as ShopItem | null;
     if (!item || !isItemKind(item.kind)) return json({ error: 'item_not_found' }, 404, cors);
     if (!item.active) return json({ error: 'item_inactive' }, 409, cors);
+    // An item with no price is not for sale (a free avatar): everyone has it already.
+    if ((item.price_lamports as number | null) === null) return json({ error: 'free_item' }, 409, cors);
     if (!Number.isSafeInteger(item.price_lamports) || item.price_lamports <= 0) throw new Error(`shop_items: bad price for ${item.key}`);
 
     // A gift names its recipient by wallet address; the purchase is then scoped to that learner.
@@ -139,6 +144,12 @@ Deno.serve(async (request) => {
       lastValidBlockHeight: chain.lastValidBlockHeight,
       expiresAt: expiresAt(new Date(), chain.height, chain.lastValidBlockHeight),
     });
+    // Only now, with the price known to be in the wallet, is anything scarce taken for this intent.
+    const held = await ITEM_HANDLERS[item.kind].afterIntent?.({ db, userId: caller.iteraUserId, item, refId: normalizedRef }, intent);
+    if (held && !held.ok) {
+      await db.from('purchases').update({ status: 'expired' }).eq('id', intent.id).eq('status', 'pending');
+      return json({ error: held.error }, INELIGIBLE_STATUS[held.error], cors);
+    }
     if (recipientWallet) {
       await openGift(db, {
         id: intent.id,

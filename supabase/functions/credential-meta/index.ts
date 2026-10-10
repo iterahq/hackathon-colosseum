@@ -1,4 +1,8 @@
-import { renderArt } from '../_shared/art.ts';
+import { renderArt, type CompanionAvatarArt } from '../_shared/art.ts';
+import { companionAvatarArt } from '../_shared/avatar-image.ts';
+import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
+import { avatarMetadata, type AvatarAssetRow } from '../_shared/avatars.ts';
+import { parsePreview, previewArtInput } from '../_shared/preview.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
 import { companionArtInput, companionFromAttributes, companionMetadata, withChainValues, type CompanionSnapshot } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
@@ -8,6 +12,7 @@ import { CATALOG_COLUMNS, ROW_COLUMNS, serviceClient, type IteraClient } from '.
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter } from '../_shared/http.ts';
 
 const CACHE = 'public, max-age=60';
+const PREVIEW_CACHE = 'public, max-age=300';
 
 interface Credential {
   row: AchievementRow;
@@ -65,6 +70,7 @@ const COLLECTION_TEXT: Record<CollectionKind, string> = {
   passports: "Tera's Certifications: one soulbound page per learner and trail, stamped by Tera for every completed day.",
   medals: 'Soulbound medals for learning milestones at Itera.',
   companions: 'Tera, the soulbound study companion: lives, level and outfit mirror the learning at Itera.',
+  avatars: 'Collectible Tera avatars: profile pictures in a rarity pyramid, numbered and transferable (not soulbound).',
 };
 
 function isCollectionKind(value: string | undefined): value is CollectionKind {
@@ -100,13 +106,23 @@ function collectionImage(kind: CollectionKind): string {
   });
 }
 
-function svg(body: string, cors: Record<string, string>): Response {
+/** The picture a companion card draws for an avatar key. Never throws: no picture means the built-in Tera. */
+async function avatarArt(db: IteraClient, key: string | null | undefined): Promise<CompanionAvatarArt | null> {
+  try {
+    return await companionAvatarArt(await loadAvatarCatalog(db), key, supabaseUrl());
+  } catch (error) {
+    console.error('companion art: avatar unavailable', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
+function svg(body: string, cors: Record<string, string>, cache = CACHE): Response {
   return new Response(body, {
     status: 200,
     headers: {
       ...cors,
       'Content-Type': 'image/svg+xml; charset=utf-8',
-      'Cache-Control': CACHE,
+      'Cache-Control': cache,
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'none'; img-src data:; style-src 'unsafe-inline'",
     },
@@ -128,17 +144,47 @@ Deno.serve(async (request) => {
       return third === 'image.svg' ? svg(collectionImage(second), cors) : json({ error: 'not_found' }, 404, cors);
     }
 
+    // "Try before you buy": the same art as the real endpoints, from the query alone. No user data, no write.
+    if (first === 'preview.svg') {
+      if (second !== undefined) return json({ error: 'not_found' }, 404, cors);
+      const db = serviceClient();
+      let keys = new Set<string>();
+      try {
+        keys = new Set([...(await loadAvatarCatalog(db)).items.values()].filter((item) => item.active).map((item) => item.key));
+      } catch (error) {
+        console.error('preview: avatar catalog unavailable', error instanceof Error ? error.message : error);
+      }
+      const preview = parsePreview(new URL(request.url).searchParams, keys);
+      if (!preview) return json({ error: 'invalid_type' }, 400, cors);
+      const avatar = preview.type === 'companion' ? await avatarArt(db, preview.avatar) : null;
+      return svg(renderArt(previewArtInput(preview, avatar)), cors, PREVIEW_CACHE);
+    }
+
+    // A minted collectible avatar, keyed by its row id: catalog entry and serial, nothing about the owner.
+    if (first === 'avatar') {
+      if (!second || !isUuid(second) || third !== undefined) return json({ error: 'not_found' }, 404, cors);
+      const db = serviceClient();
+      const { data, error } = await db.from('avatar_assets').select(AVATAR_ASSET_COLUMNS).eq('id', second).neq('mint_status', 'reserved').maybeSingle();
+      if (error) throw new Error(`avatar_assets: ${error.message}`);
+      const catalog = await loadAvatarCatalog(db);
+      const item = data ? catalog.items.get((data as AvatarAssetRow).item_key) : undefined;
+      if (!data || !item) return json({ error: 'not_found' }, 404, cors);
+      return json(avatarMetadata(catalog, item, data as AvatarAssetRow, langOf(request, 'en'), supabaseUrl()), 200, cached);
+    }
+
     if (first === 'companion') {
       const wantsCompanionImage = third === 'image.svg';
       if (!second || !isUuid(second) || rest.length > 0 || (third !== undefined && !wantsCompanionImage)) {
         return json({ error: 'not_found' }, 404, cors);
       }
-      const snapshot = await loadCompanionSnapshot(serviceClient(), second);
+      const companionDb = serviceClient();
+      const snapshot = await loadCompanionSnapshot(companionDb, second);
       if (!snapshot) return json({ error: 'not_found' }, 404, cors);
       const companionLang = langOf(request, 'en');
       if (wantsCompanionImage) {
         const fromChain = new URL(request.url).searchParams.get('source') === 'chain';
-        return svg(renderArt(companionArtInput(fromChain ? await chainSnapshot(snapshot) : snapshot, companionLang)), cors);
+        const drawn = fromChain ? await chainSnapshot(snapshot) : snapshot;
+        return svg(renderArt(companionArtInput(drawn, companionLang, await avatarArt(companionDb, drawn.avatar))), cors);
       }
       return json(companionMetadata(snapshot, companionLang, functionsBase()), 200, cached);
     }

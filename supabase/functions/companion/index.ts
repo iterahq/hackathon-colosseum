@@ -7,9 +7,12 @@ import {
   loadInventory,
   loadStats,
   mintCompanion,
+  setAvatar,
   setOutfit,
   syncMirror,
 } from '../_shared/companion-store.ts';
+import { avatarBlock, loadAvatarCatalog, ownedAvatarKeys } from '../_shared/avatar-store.ts';
+import { equipVerdict, isAvatarKey, isFreeAvatar } from '../_shared/avatars.ts';
 import { isOutfit } from '../_shared/cosmetics.ts';
 import { serviceClient, type IteraClient } from '../_shared/db.ts';
 import { PURCHASE_EQUIP_WINDOW_MS, type MirrorReason } from '../_shared/mirror.ts';
@@ -36,9 +39,19 @@ async function boughtRecently(db: IteraClient, userId: string, itemKey: string):
 function equipOf(body: Record<string, unknown>): string | null | undefined | false {
   if (body.equip === undefined) return undefined;
   if (!body.equip || typeof body.equip !== 'object' || Array.isArray(body.equip)) return false;
-  const { outfit } = body.equip as Record<string, unknown>;
+  const { outfit, avatar } = body.equip as Record<string, unknown>;
+  // `{ equip: { avatar } }` alone leaves the outfit as it is.
+  if (outfit === undefined) return avatar === undefined ? false : undefined;
   if (outfit === null) return null;
   return typeof outfit === 'string' && outfit.length <= 64 ? outfit : false;
+}
+
+/** `undefined`: no avatar change requested. `false`: malformed. Otherwise the avatar key to wear. */
+function equipAvatarOf(body: Record<string, unknown>): string | undefined | false {
+  if (!body.equip || typeof body.equip !== 'object' || Array.isArray(body.equip)) return undefined;
+  const { avatar } = body.equip as Record<string, unknown>;
+  if (avatar === undefined) return undefined;
+  return isAvatarKey(avatar) ? avatar : false;
 }
 
 Deno.serve(async (request) => {
@@ -52,7 +65,9 @@ Deno.serve(async (request) => {
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
     const body = await readJsonObject(request);
     const equip = body ? equipOf(body) : false;
-    if (!body || equip === false) return json({ error: 'invalid_body' }, 400, cors);
+    const equipAvatar = body ? equipAvatarOf(body) : false;
+    if (!body || equip === false || equipAvatar === false) return json({ error: 'invalid_body' }, 400, cors);
+    const lang = body.lang === 'en' ? 'en' : 'pt';
 
     const userId = caller.iteraUserId;
     // A gift whose confirm never arrived lands here, before the lives are read.
@@ -72,6 +87,18 @@ Deno.serve(async (request) => {
       mirrorWanted = true;
     }
 
+    // A free avatar is everyone's; a collectible needs the learner's own paid row (on-chain transfers are not tracked).
+    if (equipAvatar !== undefined && equipAvatar !== row.avatar) {
+      const item = (await loadAvatarCatalog(db)).items.get(equipAvatar);
+      const owned = item && !isFreeAvatar(item) ? new Set((await ownedAvatarKeys(db, userId)).keys()) : new Set<string>();
+      const verdict = equipVerdict(item, owned);
+      // An avatar that is not in the catalog is, to the caller, one they do not have.
+      if (!verdict.ok) return json({ error: 'not_owned' }, 409, cors);
+      if (item && !isFreeAvatar(item) && (await boughtRecently(db, userId, equipAvatar))) mirrorReason = 'purchase';
+      row = await setAvatar(db, userId, equipAvatar);
+      mirrorWanted = true;
+    }
+
     // The mint outlives the response: the caller sees `pending` now and polls.
     if (caller.wallet && row.mint_status !== 'minted' && (await claimMint(db, userId, caller.wallet))) {
       row = { ...row, mint_status: 'pending' };
@@ -81,8 +108,12 @@ Deno.serve(async (request) => {
     }
 
     const now = new Date();
-    const [stats, inventory] = await Promise.all([loadStats(db, userId, now), loadInventory(db, userId, row.outfit)]);
-    return json({ ...companionResponse(row, stats, now), inventory, wallet: caller.wallet }, 200, cors);
+    const [stats, inventory, avatar] = await Promise.all([
+      loadStats(db, userId, now),
+      loadInventory(db, userId, row.outfit),
+      avatarBlock(db, userId, row.avatar, lang),
+    ]);
+    return json({ ...companionResponse(row, stats, now), avatar, inventory, wallet: caller.wallet }, 200, cors);
   } catch (error) {
     console.error('companion failed', error);
     return json({ error: 'internal_error' }, 500, cors);

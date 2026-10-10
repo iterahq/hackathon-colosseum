@@ -104,7 +104,8 @@ Deno.serve(async (request) => {
 
     const [load, cheapest, config] = await Promise.all([
       faucetLoad(db, now),
-      db.from('shop_items').select('price_lamports').eq('active', true).order('price_lamports').limit(1).maybeSingle(),
+      // The cheapest item that is FOR SALE: a free avatar has no price and is not what a drop is for.
+      db.from('shop_items').select('price_lamports').eq('active', true).not('price_lamports', 'is', null).order('price_lamports').limit(1).maybeSingle(),
       loadConfig(db),
     ]);
     if (cheapest.error) throw new Error('faucet lookups failed');
