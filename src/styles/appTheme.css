@@ -1,0 +1,47 @@
+/*
+ * The learner's theme. Only active once a non-default colour is applied (`utils/appTheme.ts` sets
+ * `data-app-bg` / `data-app-icon` on <html>). The app paints its canvas as the hard-coded Itera
+ * obsidian `#0A0908` and its surfaces as fixed darks derived from it, so these rules re-point those
+ * class names (the same technique as `itera-brand-override.css`) to `--app-canvas`.
+ * Trails, buttons, progress and the certification ink stay Itera green: nothing here touches them.
+ */
+html[data-app-bg] {
+  --app-surface: color-mix(in srgb, var(--app-canvas) 94%, white);
+  --app-surface-2: color-mix(in srgb, var(--app-canvas) 97%, white);
+  --app-surface-3: color-mix(in srgb, var(--app-canvas) 91%, white);
+  --app-line: color-mix(in srgb, var(--app-canvas) 86%, white);
+  --app-grid: color-mix(in srgb, var(--app-canvas) 96%, white);
+}
+html[data-app-bg],
+html[data-app-bg] body,
+html[data-app-bg] #root {
+  background-color: var(--app-canvas) !important;
+}
+html[data-app-bg] [class*='bg-[#0A0908]'],
+html[data-app-bg] [style*='background-color: rgb(10, 9, 8)'] {
+  background-color: var(--app-canvas) !important;
+}
+html[data-app-bg] [class*='bg-[#0A0908]/'] {
+  background-color: color-mix(in srgb, var(--app-canvas) 80%, transparent) !important;
+}
+html[data-app-bg] [class*='bg-[#141210]'] {
+  background-color: var(--app-surface) !important;
+}
+html[data-app-bg] [class*='bg-[#0F0D0B]'] {
+  background-color: var(--app-surface-2) !important;
+}
+html[data-app-bg] [class*='bg-[#1B1815]']:not([class*='hover:bg-[#1B1815]']),
+html[data-app-bg] [class*='hover:bg-[#1B1815]']:hover {
+  background-color: var(--app-surface-3) !important;
+}
+html[data-app-bg] [class*='border-[#262320]'] {
+  border-color: var(--app-line) !important;
+}
+html[data-app-bg] [style*='linear-gradient(rgb(21, 19, 15)'] {
+  background-image: linear-gradient(var(--app-grid) 1px, transparent 1px), linear-gradient(90deg, var(--app-grid) 1px, transparent 1px) !important;
+}
+
+/* The "I/" mark: the slash takes the learner's icon colour. */
+html[data-app-icon] a[aria-label='Itera'] > span {
+  color: var(--app-icon) !important;
+}

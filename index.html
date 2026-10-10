@@ -29,6 +29,27 @@
         }
       })();
     </script>
+    <script>
+      // The learner's theme (background, icon colour) from the last visit, applied before the first paint
+      // so the app never flashes the default canvas. `src/utils/appTheme.ts` keeps this cache and does the rest.
+      (function () {
+        try {
+          var t = JSON.parse(localStorage.getItem('itera.theme.v1') || 'null');
+          var hex = /^#[0-9a-f]{6}$/i;
+          if (!t || !hex.test(t.background) || !hex.test(t.icon)) return;
+          var r = document.documentElement;
+          if (t.background.toLowerCase() !== '#0a0908') {
+            r.style.setProperty('--app-canvas', t.background);
+            r.setAttribute('data-app-bg', '1');
+            r.style.backgroundColor = t.background;
+          }
+          if (t.icon.toLowerCase() !== '#3fd17f') {
+            r.style.setProperty('--app-icon', t.icon);
+            r.setAttribute('data-app-icon', '1');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>Itera Hackathon | Colosseum</title>
     <meta name="description" content="Aprenda fazendo. Microatividades que elevam suas habilidades — do não-programador ao dev." />
     <meta name="author" content="Itera" />

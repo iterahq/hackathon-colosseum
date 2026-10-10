@@ -10,6 +10,9 @@ import { mountStaleChunkReload } from "./lib/stale-chunk-reload";
 import { mountKeyboardVisibility } from "./lib/keyboard-visibility-mount";
 import { mountShellViewport } from "./lib/shell-viewport-mount";
 import "./index.css";
+import { applyCachedTheme } from "./utils/appTheme";
+
+applyCachedTheme();
 
 document.documentElement.classList.add('dark');
 
