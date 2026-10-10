@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { equipAvatar } from '@/services/companion.service';
-import type { LearnerAvatar } from '@/types/avatar';
+import { DEFAULT_AVATAR, type LearnerAvatar } from '@/types/avatar';
 import type { CompanionSnapshot } from '@/types/shop';
 
 /** Equips a free or owned avatar: shown at once everywhere the learner's picture is drawn, rolled back if the backend refuses. */
@@ -27,7 +27,9 @@ export function useEquipAvatar() {
     },
     onSuccess: (snapshot) => {
       const previous = queryClient.getQueryData<CompanionSnapshot>(key);
-      queryClient.setQueryData<CompanionSnapshot>(key, { ...snapshot, wallet: snapshot.wallet ?? previous?.wallet ?? null, chain: previous?.chain });
+      // An answer without an avatar block would fall back to the default Tera: the one the learner picked stays.
+      const answered = snapshot.avatar === DEFAULT_AVATAR && previous ? { ...snapshot, avatar: previous.avatar } : snapshot;
+      queryClient.setQueryData<CompanionSnapshot>(key, { ...answered, wallet: snapshot.wallet ?? previous?.wallet ?? null, chain: previous?.chain });
     },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.shop.all }),
   });

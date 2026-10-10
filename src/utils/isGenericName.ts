@@ -1,3 +1,5 @@
+import { isGeneratedTeraName } from '@/utils/crystals';
+
 /**
  * A learner's name is "generic" (so the pre-class name+avatar gate should show)
  * when it isn't a real name the person chose: empty, the default placeholder,
@@ -22,4 +24,13 @@ export function isGenericName(name: string | null | undefined, email?: string | 
   const localRaw = (email ?? '').split('@')[0].trim();
   if (localRaw && n === localRaw) return true;
   return false;
+}
+
+/**
+ * Should we ASK this learner what to call them? A wallet-shaped or otherwise generic name, or the friendly
+ * "Tera <Word> <3 digits>" that provisioning generates. Not the same as what we DISPLAY: a generated
+ * name is shown as the name (never the wallet); only `isGenericName` names fall back.
+ */
+export function shouldAskForName(name: string | null | undefined, email?: string | null): boolean {
+  return isGenericName(name, email) || isGeneratedTeraName((name ?? '').trim());
 }

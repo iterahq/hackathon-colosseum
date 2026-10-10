@@ -6,7 +6,9 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
+import { useCrystals, useSpendCrystals } from '@/hooks/useCrystals';
 import { useLives } from '@/hooks/useLives';
+import { LIFE_CRYSTALS } from '@/types/crystals';
 import { usePurchase } from '@/hooks/usePurchase';
 import { useShop } from '@/hooks/useShop';
 import { showLivesGate } from '@/utils/lives';
@@ -25,6 +27,8 @@ export interface LessonLivesView {
   max: number;
   /** Lives granted for a zero-mistake day, once the server said so. */
   bonus: number;
+  /** Crystals credited since the lesson ended (the difference of the balance, read from `GET /crystals`). */
+  crystals: number;
   outfit: string | null;
   /** The out-of-lives pause (or its purchase) is covering the lesson. */
   gateOpen: boolean;
@@ -55,12 +59,18 @@ function ShopPrefetch() {
 }
 
 function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onLeave }: Props) {
-  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, chain, assetUrl } = useLives();
+  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, chain, assetUrl, refetch } = useLives();
   const purchase = usePurchase();
+  const crystals = useCrystals();
+  const spendCrystals = useSpendCrystals();
+  const refetchCrystals = crystals.refetch;
   const [bonus, setBonus] = useState(0);
+  const [earned, setEarned] = useState(0);
+  const balance = useRef<number | null>(null);
+  balance.current = crystals.data?.balance ?? balance.current;
   const [linking, setLinking] = useState(false);
   const visit = useRef(Date.now().toString(36));
-  useEffect(() => setBonus(0), [lessonId]);
+  useEffect(() => (setBonus(0), setEarned(0)), [lessonId]);
 
   useImperativeHandle(
     ref,
@@ -69,10 +79,21 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
       // without it a retry after a reload would repeat an id the server already charged.
       lose: (attemptId, activityId) => lose(`${attemptId}:${visit.current}`, activityId, lessonId),
       endLesson: () => {
-        if (lessonId) void endLesson(lessonId).then(setBonus);
+        if (!lessonId) return;
+        const before = balance.current;
+        void endLesson(lessonId).then(async (granted) => {
+          setBonus(granted);
+          // The lesson-end answer carries no crystal credit: re-read the balance and show the difference.
+          // A second read catches what the day stamp credits a moment later.
+          for (const wait of [0, 2500]) {
+            if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+            const after = (await refetchCrystals()).data?.balance;
+            if (before !== null && typeof after === 'number' && after > before) setEarned(after - before);
+          }
+        });
       },
     }),
-    [lose, endLesson, lessonId]
+    [lose, endLesson, lessonId, refetchCrystals]
   );
 
   const out = showLivesGate({ active, lives: lives?.current ?? null, reviewingVerdict, lessonCompleted });
@@ -82,8 +103,8 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
   const max = lives?.max ?? null;
 
   useEffect(() => {
-    onChange(active && current !== null && max !== null ? { current, max, bonus, outfit, gateOpen } : null);
-  }, [active, current, max, bonus, outfit, gateOpen, onChange]);
+    onChange(active && current !== null && max !== null ? { current, max, bonus, crystals: earned, outfit, gateOpen } : null);
+  }, [active, current, max, bonus, earned, outfit, gateOpen, onChange]);
   useEffect(() => () => onChange(null), [onChange]);
 
 
@@ -105,6 +126,11 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
               onRefill={() => void purchase.buy(REFILL)}
               onConnect={() => setLinking(true)}
               onLeave={onLeave}
+              crystals={
+                crystals.data
+                  ? { price: crystals.data.prices.life ?? LIFE_CRYSTALS, balance: crystals.data.balance, busy: spendCrystals.isPending, failed: spendCrystals.isError, onBuy: () => spendCrystals.mutate({ itemKey: 'life', qty: 1 }, { onSuccess: () => void refetch() }) }
+                  : null
+              }
             />
           )}
           {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}

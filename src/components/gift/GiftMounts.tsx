@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { BTN_PRIMARY, CARD, FOCUS } from '@/components/shop/shopStyles';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { isGuestRoutePath } from '@/guest/guestRoute';
 import { useCompanion } from '@/hooks/useCompanion';
 import { useGiftInbox, useMarkGiftsSeen } from '@/hooks/useGift';
@@ -61,7 +61,7 @@ function GiftMoment() {
     <div className="fixed inset-0 z-[65] flex items-center justify-center bg-[#0A0908]/85 p-4 backdrop-blur-sm" data-testid="gift-moment">
       <div role="dialog" aria-modal="true" aria-labelledby="gift-moment-title" className={`${CARD} flex w-full max-w-[400px] flex-col items-center gap-4 border-[#3FD17F] px-6 pb-6 pt-8 text-center`}>
         <span className="flex h-[150px] items-end justify-center">
-          <TeraOutfit mood="happy" size="xl" outfit={companion.outfit} />
+          <LearnerMascot mood="happy" outfit={companion.outfit} />
         </span>
         <h2 id="gift-moment-title" className="[font:700_30px/1.05_'Barlow_Condensed'] text-[#F4EDE2]" data-testid="gift-moment-title">
           {gifts.length === 1 ? t('gift.received.title', { name: giftLabel(first.fromName, first.fromWallet) }) : t('gift.received.many', { n: gifts.length })}

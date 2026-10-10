@@ -9,6 +9,7 @@ import { useWalletLink } from '@/hooks/useWalletLink';
 import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { equipOutfit, getCompanion } from '@/services/companion.service';
+import { DEFAULT_AVATAR } from '@/types/avatar';
 import type { CompanionSnapshot } from '@/types/shop';
 import { walletOf } from '@/utils/headerHud';
 
@@ -57,7 +58,16 @@ export function useEquipOutfit() {
     onError: (_error, _outfit, context) => {
       if (context?.previous) queryClient.setQueryData(key, context.previous);
     },
-    onSuccess: (snapshot) => queryClient.setQueryData(key, snapshot),
+    onSuccess: (snapshot) => {
+      // The answer may carry no avatar block (the normalizer then falls back to the default Tera): keep what is on screen.
+      const previous = queryClient.getQueryData<CompanionSnapshot>(key);
+      queryClient.setQueryData<CompanionSnapshot>(key, {
+        ...snapshot,
+        avatar: snapshot.avatar === DEFAULT_AVATAR && previous ? previous.avatar : snapshot.avatar,
+        wallet: snapshot.wallet ?? previous?.wallet ?? null,
+        chain: snapshot.chain ?? previous?.chain,
+      });
+    },
     onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.shop.all }),
   });
 }

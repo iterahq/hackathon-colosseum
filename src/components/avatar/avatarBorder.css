@@ -1,0 +1,22 @@
+@keyframes lb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes lb-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.lb-spin {
+  animation: lb-spin 6s linear infinite;
+}
+.lb-pulse {
+  animation: lb-pulse 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-spin,
+  .lb-pulse {
+    animation: none;
+  }
+}

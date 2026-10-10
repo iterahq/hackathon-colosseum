@@ -10,6 +10,7 @@ import type { CertTarget, ShopActions, WardrobeGroupSpec } from '@/types/shopVie
 import { loreOf } from '@/content/teraLore';
 import { avatarOf } from '@/utils/avatarShop';
 import { WardrobeCert } from './WardrobeCert';
+import { buildThemeGroups, type ThemeInput } from './themeGroups';
 import { WardrobeItem } from './WardrobeItem';
 
 type Translate = (key: string, params?: Record<string, string | number>) => string;
@@ -23,6 +24,10 @@ interface Input {
   t: Translate;
   /** Opens the shop on a section, optionally aimed at one certification. */
   onShop: (section: string, trailId?: string) => void;
+  /** Equip progress per item key: `pending` shows a small mark in the tile, `failed` says so in the button. */
+  marks?: Record<string, 'pending' | 'failed'>;
+  /** Borders, backgrounds and icon colours (Phoenix Crystals); the groups are left out when absent. */
+  theme?: ThemeInput | null;
 }
 
 const GRID = 'grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(132px,1fr))]';
@@ -40,7 +45,7 @@ const empty = (text: string, cta: string, onClick: () => void): ReactNode => (
  * THE list of wardrobe groups. A new thing to choose (a background, an icon colour) is one more
  * entry here: `{ id, title, hint, count, content }`. The chips and sections draw themselves.
  */
-export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, onShop }: Input): WardrobeGroupSpec[] {
+export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, onShop, marks = {}, theme = null }: Input): WardrobeGroupSpec[] {
   const avatars = items.filter((i) => i.kind === 'avatar' && i.owned && i.avatar).sort((a, b) => Number(a.avatar?.free) - Number(b.avatar?.free));
   const outfits = items.filter((i) => i.kind === 'outfit' && i.owned);
   const cosmetics = items.filter((i) => i.kind === 'ink' || i.kind === 'frame');
@@ -55,7 +60,7 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
         <div className={GRID}>
           {avatars.map((item) => {
             const face = avatarOf(item);
-            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={loreOf(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} action={itemAction(item, actions, t)} />;
+            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={loreOf(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} action={itemAction(item, actions, t)} status={marks[item.key] ?? null} failedLabel={t('wardrobe.equipFailed')} />;
           })}
         </div>
       ),
@@ -71,11 +76,12 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
         ) : (
           <div className={GRID}>
             {outfits.map((item) => (
-              <WardrobeItem key={item.key} itemKey={item.key} art={<TeraOutfit mood="neutral" size="bubble" idle={false} outfit={item.key} />} title={item.title} action={itemAction(item, actions, t)} />
+              <WardrobeItem key={item.key} itemKey={item.key} art={<TeraOutfit mood="neutral" size="bubble" idle={false} outfit={item.key} />} title={item.title} action={itemAction(item, actions, t)} status={marks[item.key] ?? null} failedLabel={t('wardrobe.equipFailed')} />
             ))}
           </div>
         ),
     },
+    ...(theme ? buildThemeGroups(theme, avatar, locale, t) : []),
     {
       id: 'certs',
       title: t('wardrobe.group.certs'),

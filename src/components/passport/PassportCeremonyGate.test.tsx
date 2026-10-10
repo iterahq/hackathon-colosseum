@@ -4,6 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { PassportCeremonyGate, PassportPrefetch } from '@/components/passport/PassportCeremonyGate';
 import type { LessonEndView } from '@/types/lessonEnd';
+vi.mock('@/hooks/useLearnerAvatar', async () => {
+  const { DEFAULT_AVATAR } = await import('@/types/avatar');
+  return { useLearnerAvatar: () => DEFAULT_AVATAR };
+});
 
 const state = vi.hoisted(() => ({ view: null as unknown, broken: true, seen: [] as unknown[] }));
 

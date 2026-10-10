@@ -825,7 +825,7 @@ export default function LessonPlayer() {
   const frontierPct = activities.length ? Math.round((frontier / activities.length) * 100) : 0;
   const exitPath = lessonExitPath(placement.programSlug);
   const leaveLesson = useCallback(() => navigate(exitPath), [navigate, exitPath]);
-  const lessonCompanion = useMemo(() => ({ bonus: livesView?.bonus ?? 0, outfit: livesView?.outfit ?? null }), [livesView?.bonus, livesView?.outfit]);
+  const lessonCompanion = useMemo(() => ({ bonus: livesView?.bonus ?? 0, crystals: livesView?.crystals ?? 0, outfit: livesView?.outfit ?? null }), [livesView?.bonus, livesView?.crystals, livesView?.outfit]);
 
   return (
     <div className="min-h-screen max-sm:min-h-svh max-sm:supports-[min-height:100dvh]:min-h-dvh bg-background flex flex-col">

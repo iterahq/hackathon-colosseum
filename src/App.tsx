@@ -9,6 +9,7 @@ import { ObservabilityProvider } from "@devfellowship/observability";
 import LoginPage from "./pages/auth/LoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { CompanionBootstrap } from "@/components/lives/CompanionBootstrap";
+import { AppThemeSync } from "@/components/theme/AppThemeSync";
 import { GiftMounts } from "@/components/gift/GiftMounts";
 import { PersonalizationProvider } from "./personalization/PersonalizationProvider";
 // The app side of ADR-3: injects i18n + the learner identity into
@@ -171,6 +172,7 @@ const App = () => (
               <NicknameGate />
               <LearnerPagePrefetch />
               <CompanionBootstrap />
+              <AppThemeSync />
               <GiftMounts />
               <PageTitle />
               <RouteScrollReset />

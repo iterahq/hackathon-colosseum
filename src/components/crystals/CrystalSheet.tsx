@@ -4,7 +4,7 @@ import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { CRYSTAL_LORE } from '@/content/teraLore';
 import { useI18n } from '@/i18n';
 import type { CrystalsSnapshot } from '@/types/crystals';
-import { spendItemOf } from '@/utils/crystals';
+import { ledgerLabel } from '@/utils/crystals';
 
 interface Props {
   open: boolean;
@@ -18,17 +18,7 @@ const SECTION = '[font:600_10px_JetBrains_Mono] uppercase tracking-[.12em] text-
 export function CrystalSheet({ open, onOpenChange, data }: Props) {
   const { t, locale } = useI18n();
   const lore = CRYSTAL_LORE(locale);
-  const labelOf = (reason: string, refId: string | null) => {
-    const rule = data.earnRules.find((r) => r.reason === reason);
-    if (rule) return rule.label;
-    if (reason === 'spend') {
-      const key = spendItemOf(refId);
-      const item = data.themeItems.find((i) => i.key === key);
-      return item ? `${t('crystals.reason.spend')} · ${item.title}` : t('crystals.reason.spend');
-    }
-    if (reason === 'refund') return t('crystals.reason.refund');
-    return reason.replace(/_/g, ' ');
-  };
+  const labelOf = (reason: string, refId: string | null) => ledgerLabel(reason, refId, t, (key) => data.themeItems.find((i) => i.key === key)?.title ?? null);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

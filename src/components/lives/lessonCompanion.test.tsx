@@ -4,6 +4,10 @@ import { MemoryRouter } from 'react-router-dom';
 import { LessonCompleteCard } from '@/components/branded/lesson/LessonCompleteCard';
 import { I18nProvider } from '@/i18n';
 import { LessonCompanionContext } from './lessonCompanion';
+vi.mock('@/hooks/useLearnerAvatar', async () => {
+  const { DEFAULT_AVATAR } = await import('@/types/avatar');
+  return { useLearnerAvatar: () => DEFAULT_AVATAR };
+});
 
 const renderCard = (value?: { bonus: number; outfit: string | null }) =>
   render(

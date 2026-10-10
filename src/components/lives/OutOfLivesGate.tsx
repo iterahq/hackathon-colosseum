@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
+import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { BTN_PRIMARY, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { useI18n } from '@/i18n';
 import { formatCountdown } from '@/utils/lives';
 import { LivesHearts } from './LivesHearts';
@@ -23,13 +24,15 @@ interface Props {
   onRefill: () => void;
   onConnect: () => void;
   onLeave: () => void;
+  /** Buy one life with crystals; the button shows only when the balance allows it. */
+  crystals?: { price: number; balance: number; busy: boolean; failed: boolean; onBuy: () => void } | null;
 }
 
 /** Room for "· US$ 0.10 ≈ 0.00055 SOL": on a phone the price takes its own line from the first paint. */
 const PRICE_BOX = 'min-h-6 min-w-[13.5rem]';
 
 /** The out-of-lives pause: full screen over the lesson, which stays mounted underneath exactly where it was. */
-export function OutOfLivesGate({ lives, secondsToNext, priceLabel, pricePending = false, hasWallet, outfit, chainUrl = null, busy, onRefill, onConnect, onLeave }: Props) {
+export function OutOfLivesGate({ lives, secondsToNext, priceLabel, pricePending = false, hasWallet, outfit, chainUrl = null, busy, onRefill, onConnect, onLeave, crystals = null }: Props) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const time = formatCountdown(secondsToNext);
@@ -50,7 +53,7 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, pricePending 
         className="m-auto flex w-full max-w-[440px] flex-col items-center gap-5 text-center"
       >
         <span className="relative flex h-[190px] w-[190px] items-end justify-center rounded-full border-2 border-[#262320] bg-[#141210] pb-9">
-          <TeraOutfit mood="oops" size="xl" outfit={outfit} />
+          <LearnerMascot mood="oops" outfit={outfit} />
         </span>
         <LivesHearts current={lives.current} max={lives.max} size={26} label={t('lives.chrome', lives)} className="gap-1.5" data-testid="lives-gate-hearts" />
         <h1 id="lives-gate-title" className="[font:700_40px/1_'Barlow_Condensed'] max-sm:text-[34px]">
@@ -65,8 +68,17 @@ export function OutOfLivesGate({ lives, secondsToNext, priceLabel, pricePending 
           </span>
         </div>
         <div className="mt-1 flex w-full flex-col gap-3">
+          {crystals && crystals.balance >= crystals.price && (
+            <>
+              <button type="button" autoFocus disabled={crystals.busy} aria-busy={crystals.busy || undefined} onClick={crystals.onBuy} data-testid="lives-gate-crystal" className={`${BTN_PRIMARY} w-full gap-2 [font:700_16px_Inter]`}>
+                <CrystalGlyph size={18} />
+                {t('lives.gate.buyCrystals', { n: crystals.price })}
+              </button>
+              <p role="alert" className="min-h-[1.25rem] [font:600_13px_Inter] text-[#E0A86F]">{crystals.failed ? t('lives.gate.buyFailed') : ''}</p>
+            </>
+          )}
           {hasWallet ? (
-            <button type="button" autoFocus disabled={busy || pricePending} aria-busy={pricePending || undefined} onClick={onRefill} data-testid="lives-gate-refill" className={`${BTN_PRIMARY} w-full flex-wrap gap-x-2 gap-y-0 py-2 [font:700_16px_Inter] disabled:opacity-100`}>
+            <button type="button" autoFocus={!(crystals && crystals.balance >= crystals.price)} disabled={busy || pricePending} aria-busy={pricePending || undefined} onClick={onRefill} data-testid="lives-gate-refill" className={`${BTN_PRIMARY} w-full flex-wrap gap-x-2 gap-y-0 py-2 [font:700_16px_Inter] disabled:opacity-100`}>
               <span className="whitespace-nowrap">{t('lives.gate.refillPlain')}</span>
               {/* The price keeps one box, loaded or not, so the button never changes size. */}
               {(priceLabel || pricePending) && (

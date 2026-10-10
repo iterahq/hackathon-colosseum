@@ -2,8 +2,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
+import { CrystalGlyph } from '@/components/crystals/CrystalGlyph';
 import { useLessonCompanion } from '@/components/lives/lessonCompanion';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { LearnerMascot } from '@/components/avatar/LearnerMascot';
 import { useI18n } from '@/i18n';
 
 /**
@@ -48,7 +49,7 @@ export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, m
       data-state={incomplete ? 'incomplete' : 'complete'}
     >
       <div className="mx-auto flex w-24 justify-center pt-6" data-testid="lesson-complete-tera">
-        <TeraOutfit mood={incomplete ? 'neutral' : 'happy'} size="xl" outfit={outfit} />
+        <LearnerMascot mood={incomplete ? 'neutral' : 'happy'} outfit={outfit} />
       </div>
       <h2 className="font-display text-3xl text-foreground mt-5" data-testid="lesson-complete-title">
         {incomplete ? (missing === 1 ? t('lessonEnd.missing.one') : t('lessonEnd.missing.many', { n: missing })) : t('lesson.complete')}
@@ -102,7 +103,7 @@ function LessonIncompleteActions({ nextLessonId, onRedoMissing }: { nextLessonId
  */
 export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: { nextLessonId?: string; onReview?: () => void; gold?: boolean }) {
   const { t } = useI18n();
-  const { bonus } = useLessonCompanion();
+  const { bonus, crystals = 0 } = useLessonCompanion();
   const onward = `flex w-full h-12 px-6 rounded-full items-center justify-center ${gold ? `mt-3 ${TACTILE_SECONDARY}` : `mt-6 ${TACTILE_CTA}`}`;
   return (
     <>
@@ -110,6 +111,12 @@ export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: 
         <p className="mt-4 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-lives-bonus">
           <Heart aria-hidden className="h-4 w-4 fill-clay text-clay" />
           {t('lives.bonus', { n: bonus })}
+        </p>
+      )}
+      {crystals > 0 && (
+        <p className="mt-3 flex items-center justify-center gap-1.5 font-mono text-sm font-semibold text-foreground" data-testid="lesson-crystals-earned">
+          <CrystalGlyph size={16} className="text-evergreen-hi" />
+          {crystals === 1 ? t('crystals.earned.one') : t('crystals.earned', { n: crystals })}
         </p>
       )}
       {gold && (

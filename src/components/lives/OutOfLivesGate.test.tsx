@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { OutOfLivesGate } from './OutOfLivesGate';
+vi.mock('@/hooks/useLearnerAvatar', async () => {
+  const { DEFAULT_AVATAR } = await import('@/types/avatar');
+  return { useLearnerAvatar: () => DEFAULT_AVATAR };
+});
 
 const show = (chainUrl?: string | null, price: { priceLabel: string | null; pricePending?: boolean } = { priceLabel: 'US$ 0.10' }) =>
   render(
