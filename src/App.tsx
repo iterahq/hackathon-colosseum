@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ObservabilityProvider } from "@devfellowship/observability";
 import LoginPage from "./pages/auth/LoginPage";
 import { AuthProvider } from "./auth/AuthContext";
+import { CompanionBootstrap } from "@/components/lives/CompanionBootstrap";
 import { PersonalizationProvider } from "./personalization/PersonalizationProvider";
 // The app side of ADR-3: injects i18n + the learner identity into
 // `@iterahq/activities`, which cannot import either. See the file.
@@ -165,6 +166,7 @@ const App = () => (
               <AppWideMounts />
               <NicknameGate />
               <LearnerPagePrefetch />
+              <CompanionBootstrap />
               <PageTitle />
               <RouteScrollReset />
               <RouteErrorBoundary>

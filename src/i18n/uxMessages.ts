@@ -3,7 +3,7 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
     'profile.title': 'Perfil do aluno',
     'profile.verified': '{n} verificados na Solana',
-    'profile.companion': 'Tera',
+    'profile.companion': 'Tera · on-chain',
     'profile.certs': 'Certificações do Tera',
     'profile.medals': 'Medalhas',
     'profile.noCerts': 'Nenhuma certificação ainda.',
@@ -36,7 +36,7 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   en: {
     'profile.title': 'Learner profile',
     'profile.verified': '{n} verified on Solana',
-    'profile.companion': 'Tera',
+    'profile.companion': 'Tera · on-chain',
     'profile.certs': "Tera's Certifications",
     'profile.medals': 'Medals',
     'profile.noCerts': 'No certifications yet.',
