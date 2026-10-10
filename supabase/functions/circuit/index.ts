@@ -44,7 +44,8 @@ Deno.serve(async (request) => {
         ...(mine ? { wallet: mine } : {}),
       },
       200,
-      { ...cors, 'Cache-Control': 'public, max-age=15' },
+      // A wallet's own share is read right after its purchase: that answer is never cached.
+      { ...cors, 'Cache-Control': wallet ? 'no-store' : 'public, max-age=15' },
     );
   } catch (error) {
     console.error('circuit failed', error);

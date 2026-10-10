@@ -146,6 +146,15 @@ export function makeTenant(label, staff, learners = []) {
   return tenantId;
 }
 
+/** A PERSONAL tenant (`plg-…`), as sign-up provisions one, with `owner` as its owner. Flagged `is_test`. */
+export function makePersonalTenant(owner, members = []) {
+  const slug = `plg-${Date.now().toString(16).padStart(12, '0').slice(-12)}`;
+  const tenantId = psql(`insert into itera.tenants (slug, name, is_test, live_class_enabled) values (:'slug', 'social-e2e personal', true, true) returning id;`, { slug }).split('\n')[0];
+  psql(`insert into itera.memberships (user_id, tenant_id, role) values (:'user_id'::uuid, :'tenant'::uuid, 'owner');`, { user_id: owner.userId, tenant: tenantId });
+  for (const member of members) psql(`insert into itera.memberships (user_id, tenant_id, role) values (:'user_id'::uuid, :'tenant'::uuid, 'learner');`, { user_id: member.userId, tenant: tenantId });
+  return tenantId;
+}
+
 /**
  * The cast every teacher feature shares, created once per run: an instructor and four learners in
  * one test tenant, and an instructor of ANOTHER tenant who is only a learner in the shared one.
@@ -159,6 +168,9 @@ export async function cast(context) {
   const outsider = await newLearner(apikey, 'instructor of another tenant');
   const tenantId = makeTenant('class', instructor, learners);
   const otherTenantId = makeTenant('other', outsider);
-  context.cast = { instructor, learners, outsider, tenantId, otherTenantId };
+  // A fifth person owns only a personal tenant, with learner 1 added to it: what any free account can set up.
+  const freeAccount = await newLearner(apikey, 'owner of a personal tenant');
+  const personalTenantId = makePersonalTenant(freeAccount, [learners[0], learners[1]]);
+  context.cast = { instructor, learners, outsider, tenantId, otherTenantId, freeAccount, personalTenantId };
   return context.cast;
 }

@@ -39,7 +39,7 @@ const rowsFor = (id) => psql(`select count(*) from itera.endorsements where user
 const attributesOf = (body) => Object.fromEntries((body.attributes ?? []).map(({ key, value }) => [key, value]));
 
 export async function endorse(context) {
-  const { instructor, learners, outsider, tenantId } = await cast(context);
+  const { instructor, learners, outsider, tenantId, freeAccount } = await cast(context);
   const [first, second, third] = learners;
 
   completeDay(first.userId, 0);
@@ -58,6 +58,8 @@ export async function endorse(context) {
   check('NEGATIVE the learner endorses their own certification, claiming a role in the body: 403', byOwner.status === 403, JSON.stringify(byOwner.body));
   const byOutsider = await outsider.call('endorse', { user_achievement_id: certification });
   check('NEGATIVE an instructor of ANOTHER tenant: 403 forbidden', byOutsider.status === 403 && byOutsider.body.error === 'forbidden', JSON.stringify(byOutsider.body));
+  const byFreeAccount = await freeAccount.call('endorse', { user_achievement_id: certification });
+  check('NEGATIVE the owner of a PERSONAL tenant the learner was added to: 403 forbidden', byFreeAccount.status === 403 && byFreeAccount.body.error === 'forbidden', JSON.stringify(byFreeAccount.body));
   const ownCertification = bareCertification(instructor.userId);
   const self = await instructor.call('endorse', { user_achievement_id: ownCertification });
   check('NEGATIVE an instructor endorses their OWN certification: 403 self_endorsement', self.status === 403 && self.body.error === 'self_endorsement', JSON.stringify(self.body));

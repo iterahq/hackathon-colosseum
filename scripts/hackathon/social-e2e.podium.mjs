@@ -2,12 +2,12 @@
 import { FUNCTIONS, cast, check, psql, publicGet, until } from './social-e2e.lib.mjs';
 
 /** A user row with no sign-in at all: plays the link visitor (guest) and the learner without a wallet. */
-function bareUser(label) {
+export function bareUser(label) {
   return psql(`insert into itera.users (email, display_name) values (:'email', :'name') returning id;`, { email: `social-e2e-${label}-${Date.now().toString(36)}@example.invalid`, name: `e2e ${label}` }).split('\n')[0];
 }
 
 /** An ended class session with the minimum rows the report ranking reads. `scores`: [userId, correct, wrong, elapsedMs]. */
-function buildSession({ tenantId, instructorId, scores, status = 'ended' }) {
+export function buildSession({ tenantId, instructorId, scores, status = 'ended' }) {
   const lesson = psql(
     `select l.id from itera.lessons l where (select count(*) from itera.activities a where a.lesson_id = l.id and a.status = 'published') >= 3 order by l.id limit 1;`,
   );
@@ -31,7 +31,7 @@ function buildSession({ tenantId, instructorId, scores, status = 'ended' }) {
 const medalRows = (session) => psql(`select count(*) from itera.user_achievements where ref_id = :'session'::uuid;`, { session });
 
 export async function podium(context) {
-  const { instructor, learners, outsider, tenantId } = await cast(context);
+  const { instructor, learners, outsider, tenantId, freeAccount, personalTenantId } = await cast(context);
   const [first, second, , fourth] = learners;
   const guest = bareUser('guest');
   const walletless = bareUser('no-wallet');
@@ -56,6 +56,10 @@ export async function podium(context) {
   check('NEGATIVE an instructor of ANOTHER tenant: 403 forbidden', byOutsider.status === 403 && byOutsider.body.error === 'forbidden', JSON.stringify(byOutsider.body));
   const forged = await fourth.call('class-podium', { session_id: session, role: 'instructor', tenant_id: tenantId, is_instructor: true });
   check('NEGATIVE a role claimed in the body is ignored: 403', forged.status === 403);
+  // A free account owns its personal tenant and could stage a "class" there with its own accounts.
+  const staged = buildSession({ tenantId: personalTenantId, instructorId: freeAccount.userId, scores: [[first.userId, 3, 0, 900], [second.userId, 2, 1, 900]] });
+  const byFreeAccount = await freeAccount.call('class-podium', { session_id: staged.session });
+  check('NEGATIVE the owner of a PERSONAL tenant records a class staged there: 403, nothing minted', byFreeAccount.status === 403 && byFreeAccount.body.error === 'forbidden' && medalRows(staged.session) === '0', JSON.stringify(byFreeAccount.body));
   const malformed = await instructor.call('class-podium', { session_id: 'nope' });
   check('class-podium with a malformed session id: 400', malformed.status === 400 && malformed.body.error === 'invalid_body');
   const unknown = await instructor.call('class-podium', { session_id: '00000000-0000-4000-8000-00000000dead' });

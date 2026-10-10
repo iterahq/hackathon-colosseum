@@ -76,3 +76,13 @@ copies the invite link in the shop; user 2 lands with `?ref`, signs in, finishes
 (every activity of day 1 but the closing reveal is seeded) and both get the medal and the life (UI,
 database, chain); user 2 gifts a life on `/u/<user 1>` and user 1 sees the gift moment on the next
 load. Screenshots at 1440x900 and 390x844. The paying wallet is funded by the authority (0.004 SOL).
+
+## Social on-chain (laurel, podium, endorsement, Circuito)
+
+`scripts/hackathon/social-browser.mjs --base http://localhost:8080 --out /tmp/hk-social` drives a
+learner and an instructor (two contexts, two throwaway wallets) against a local dev server: the
+laurel card below and at level 5 (xp seeded with psql), claim and equip; the instructor's report
+with "Gravar pódio na Solana" on a session seeded as rows, then the medal on the learner's shelf and
+`/u`; "Certificações dos alunos" -> confirm dialog -> endorsement, then `/c/<asset>` in a context
+with no session; a purchase with the Circuito line and the strip before and after. `--only` picks
+flows, `--shot-start` continues the screenshot numbering. About 0.03 SOL of the authority per full run.
