@@ -1,7 +1,7 @@
 import type { AvatarBorder } from '@/types/crystals';
 
 /** The learner's profile picture: a free icon or an NFT avatar. `avatar` of `companion` / `learner-profile`, kind `avatar` of `shop-items`. */
-export type AvatarRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
+export type AvatarRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'primordial';
 export type AvatarGroup = 'expression' | 'base' | 'special' | 'event' | 'accessory';
 
 export interface LearnerAvatar {
@@ -22,6 +22,22 @@ export interface LearnerAvatar {
   border?: AvatarBorder | null;
 }
 
+/** The season an avatar is sold in; outside its window it is listed, not buyable. */
+export interface AvatarSeason {
+  key: string;
+  label: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  available: boolean;
+}
+
+/** One thing that comes with an avatar (its border, glasses...). */
+export interface AvatarInclude {
+  key: string;
+  kind: string;
+  title: string;
+}
+
 /** The avatar fields a shop item of kind `avatar` carries on top of the common ones. */
 export interface AvatarOffer {
   rarity: AvatarRarity;
@@ -36,6 +52,9 @@ export interface AvatarOffer {
   supply: { minted: number; max: number | null };
   assetAddress: string | null;
   allowsOutfit: boolean;
+  /** Null for an avatar sold all year. */
+  season?: AvatarSeason | null;
+  includes?: AvatarInclude[];
 }
 
 export const DEFAULT_AVATAR_KEY = 'tera_normal';

@@ -4,10 +4,15 @@ import type { LivesState, ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions } from '@/types/shopView';
 import type { ShopShelves } from '@/utils/shop';
 import { AvatarPyramid } from './AvatarPyramid';
+import { featuredOf, rowsOf } from './avatarRows';
+import { LifePacks } from './LifePacks';
 import { ShopArt } from './ShopArt';
+import { ShopBordersSlot } from './ShopBordersSlot';
+import { ShopFeatured } from './ShopFeatured';
 import { ShopItemCard } from './ShopItemCard';
+import { SECTION_ID, ShopTabs, type ShopSection } from './ShopTabs';
 import { ShopUnlockLine } from './ShopUnlockLine';
-import { H2, MONO_LABEL } from './shopStyles';
+import { MONO_LABEL } from './shopStyles';
 
 interface Props {
   shelves: ShopShelves;
@@ -18,48 +23,60 @@ interface Props {
   onTarget: (trailId: string) => void;
   /** Key of the item whose claim was refused. */
   claimFailed: string | null;
+  /** The section on show; the page owns it so the wardrobe can link into a shelf. */
+  active: ShopSection;
+  onActive: (section: ShopSection) => void;
+  /** Profile borders for sale, fed by the crystals slice; empty today. */
+  borders?: readonly ShopItem[];
+  renderBorder?: (item: ShopItem) => ReactNode;
 }
 
-const GRID = 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3';
+const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4';
 
-function Shelf({ id, title, hint, children }: { id: string; title: string; hint?: string; children: ReactNode }) {
+function Shelf({ id, hint, children }: { id: string; hint?: string; children: ReactNode }) {
   return (
-    <section className="flex scroll-mt-24 flex-col gap-4" id={id} aria-labelledby={`${id}-title`} data-testid={id}>
-      <div>
-        <h2 id={`${id}-title`} className={H2}>
-          {title}
-        </h2>
-        {hint && <p className="mt-1 max-w-[640px] [font:400_14px/1.45_Inter] text-[#A0978A]">{hint}</p>}
-      </div>
+    <section className="flex scroll-mt-16 flex-col gap-3" id={id} role="tabpanel" aria-labelledby={`${id}-tab`} data-testid={id}>
+      {hint && <p className="max-w-[640px] [font:400_13px/1.45_Inter] text-[#A0978A]">{hint}</p>}
       {children}
     </section>
   );
 }
 
-/** The shelves of the shop, in the order a learner reads them: Tera's looks, outfits, certifications, lives. */
-export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed }: Props) {
+/** The shop: a sticky row of category chips and the one section it points to (avatars, lives, borders, outfits, certifications). */
+export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed, active, onActive, borders = [], renderBorder }: Props) {
   const { t } = useI18n();
   const full = lives ? lives.current >= lives.max : false;
+  const featured = featuredOf(rowsOf(shelves.avatars).rows);
   const card = (item: ShopItem, extra: { children?: ReactNode; buyDisabled?: boolean; tryable?: boolean } = {}) => (
-    <ShopItemCard key={item.key} item={item} art={<ShopArt item={item} lives={lives} />} actions={actions} buyDisabled={extra.buyDisabled} tryable={extra.tryable}>
+    <ShopItemCard key={item.key} item={item} art={<ShopArt item={item} lives={lives} />} actions={actions} buyDisabled={extra.buyDisabled} tryable={extra.tryable} compact>
       {extra.children}
     </ShopItemCard>
   );
+  const sections: ShopSection[] = [
+    ...(shelves.avatars.length > 0 ? (['avatars'] as const) : []),
+    ...(shelves.lives.length > 0 ? (['lives'] as const) : []),
+    ...(borders.length > 0 ? (['borders'] as const) : []),
+    ...(shelves.outfits.length > 0 ? (['outfits'] as const) : []),
+    ...(shelves.certs.length > 0 ? (['certs'] as const) : []),
+  ];
+  const shown = sections.includes(active) ? active : sections[0];
 
   return (
     <>
-      {shelves.avatars.length > 0 && (
-        <Shelf id="shop-avatars" title={t('shop.section.avatars')} hint={t('shop.section.avatarsHint')}>
+      <ShopTabs sections={sections} active={shown} onChange={onActive} />
+      {shown === 'avatars' && (
+        <Shelf id={SECTION_ID.avatars}>
+          {featured && <ShopFeatured item={featured} actions={actions} />}
           <AvatarPyramid items={shelves.avatars} actions={actions} />
         </Shelf>
       )}
-      {shelves.outfits.length > 0 && (
-        <Shelf id="shop-outfits" title={t('shop.section.clothes')} hint={t('shop.section.clothesHint')}>
+      {shown === 'outfits' && (
+        <Shelf id={SECTION_ID.outfits} hint={t('shop.section.clothesHint')}>
           <div className={GRID}>{shelves.outfits.map((item) => card(item, { children: item.unlock && !item.owned ? <ShopUnlockLine unlock={item.unlock} failed={claimFailed === item.key} /> : undefined }))}</div>
         </Shelf>
       )}
-      {shelves.certs.length > 0 && (
-        <Shelf id="shop-certs" title={t('shop.section.certs')} hint={certs.length > 0 ? t('shop.section.certsHint') : t('shop.certs.none')}>
+      {shown === 'certs' && (
+        <Shelf id={SECTION_ID.certs} hint={certs.length > 0 ? t('shop.section.certsHint') : t('shop.certs.none')}>
           {certs.length > 0 && (
             <div className="flex flex-col gap-2">
               <label className="flex flex-wrap items-center gap-3">
@@ -78,21 +95,14 @@ export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, 
           <div className={GRID}>{shelves.certs.map((item) => card(item, { buyDisabled: !targetId }))}</div>
         </Shelf>
       )}
-      {shelves.lives.length > 0 && (
-        <Shelf id="shop-lives" title={t('shop.section.lives')} hint={t('shop.section.livesHint')}>
-          <div className={GRID}>
-            {shelves.lives.map((item) =>
-              card(item, {
-                buyDisabled: full,
-                tryable: false,
-                children: full ? (
-                  <p className="[font:600_13px/1.4_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">
-                    {t('shop.lives.fullReason')}
-                  </p>
-                ) : undefined,
-              })
-            )}
-          </div>
+      {shown === 'lives' && (
+        <Shelf id={SECTION_ID.lives} hint={t('shop.section.livesHint')}>
+          <LifePacks items={shelves.lives} actions={actions} full={full} />
+        </Shelf>
+      )}
+      {shown === 'borders' && (
+        <Shelf id={SECTION_ID.borders}>
+          <ShopBordersSlot items={borders} render={renderBorder} />
         </Shelf>
       )}
     </>

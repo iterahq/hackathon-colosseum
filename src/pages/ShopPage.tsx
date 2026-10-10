@@ -7,6 +7,7 @@ import { AppTopBar } from '@/components/header/AppTopBar';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopFront } from '@/components/shop/ShopFront';
+import { sectionOfId, type ShopSection } from '@/components/shop/ShopTabs';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
 import { TryOnDialog } from '@/components/shop/TryOnDialog';
 import { BTN_PRIMARY, BTN_SMALL, CARD, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
@@ -48,6 +49,7 @@ export default function ShopPage() {
   const purchase = usePurchase({ onPaid: () => setTrying(null) });
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
+  const [section, setSection] = useState<ShopSection>('avatars');
   // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
   const pages = usePassportView().pages;
   const certs = useMemo<CertTarget[]>(() => pages.filter((p) => p.mintStatus === 'minted').map((p) => ({ trailId: p.trailId, title: p.trailTitle, daysDone: p.daysDone, totalDays: p.totalDays, tier: p.tier, credentialId: p.credentialId, assetAddress: p.assetAddress })), [pages]);
@@ -84,11 +86,13 @@ export default function ShopPage() {
     else query.delete('tab');
     setParams(query, { replace: true });
   };
-  const openShelf = (section: string, trailId?: string) => {
+  const openShelf = (section_: string, trailId?: string) => {
     if (trailId) setTarget(trailId);
     openTab('shop');
+    const wanted = sectionOfId(section_);
+    if (wanted) setSection(wanted);
     const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    window.setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }), 60);
+    window.setTimeout(() => document.getElementById(section_)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }), 60);
   };
 
   return (
@@ -125,7 +129,7 @@ export default function ShopPage() {
         {shop.isSuccess && wardrobe && <Wardrobe items={joined} actions={actions} avatar={avatar} outfit={companion.outfit} certs={certs} failed={equipAvatar.isError || equipOutfit.isError} onShop={openShelf} />}
         {shop.isSuccess && !wardrobe && (
           <>
-            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} />
+            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} />
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
             <section className="flex flex-col gap-4 border-t border-[#262320] pt-8" aria-label={t('shop.section.more')}>
               <CircuitStrip wallet={companion.wallet} />
@@ -134,7 +138,7 @@ export default function ShopPage() {
           </>
         )}
       </main>
-      {tried && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}
+      {tried && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && !tried.lifePack && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}
       {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}
       <PurchaseDialog
         state={purchase.state}

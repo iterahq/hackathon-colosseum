@@ -1,11 +1,12 @@
 /** Wire (snake_case, loosely typed) -> app types for the lives / shop / companion functions. One file to fix when a shape moves. */
-import { DEFAULT_AVATAR, type AvatarGroup, type AvatarOffer, type AvatarRarity, type LearnerAvatar } from '@/types/avatar';
+import { DEFAULT_AVATAR, type AvatarGroup, type AvatarInclude, type AvatarOffer, type AvatarRarity, type AvatarSeason, type LearnerAvatar } from '@/types/avatar';
 import type {
   ChainProof,
   CompanionSnapshot,
   CompanionState,
   FaucetResult,
   InventoryEntry,
+  LifePack,
   LivesState,
   LivesUpdate,
   PurchaseConfirmation,
@@ -27,7 +28,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const orNull = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
-const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame', 'avatar'];
+const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame', 'avatar', 'border'];
 const kindOf = (v: unknown): ShopItemKind => (KINDS.includes(v as ShopItemKind) ? (v as ShopItemKind) : 'outfit');
 const STATUSES: readonly PurchaseStatus[] = ['paid', 'pending', 'failed', 'expired'];
 
@@ -59,7 +60,7 @@ export function toCompanion(v: unknown): CompanionState {
   };
 }
 
-const RARITIES: readonly AvatarRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic'];
+const RARITIES: readonly AvatarRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic', 'primordial'];
 const GROUPS: readonly AvatarGroup[] = ['expression', 'base', 'special', 'event', 'accessory'];
 const rarityOf = (v: unknown): AvatarRarity => (RARITIES.includes(v as AvatarRarity) ? (v as AvatarRarity) : 'common');
 
@@ -89,6 +90,29 @@ export function toAvatar(v: unknown): LearnerAvatar {
   };
 }
 
+export function toSeason(v: unknown): AvatarSeason | null {
+  const r = row(v);
+  const key = str(r.key);
+  if (!key) return null;
+  return { key, label: str(r.label) || key, startsAt: orNull(r.starts_at), endsAt: orNull(r.ends_at), available: r.available !== false };
+}
+
+export function toIncludes(v: unknown): AvatarInclude[] {
+  return rows(v)
+    .map((r) => ({ key: str(r.key), kind: str(r.kind), title: str(r.title) }))
+    .filter((i) => i.key && i.title);
+}
+
+/** `effect` of a life pack; null for anything else. */
+export function toLifePack(v: unknown): LifePack | null {
+  const r = row(v);
+  const addLives = typeof r.add_lives === 'number' && r.add_lives > 0 ? r.add_lives : null;
+  const unlimitedDays = typeof r.unlimited_days === 'number' && r.unlimited_days > 0 ? r.unlimited_days : null;
+  return addLives || unlimitedDays ? { addLives, unlimitedDays } : null;
+}
+
+const crystalsOf = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+
 function toAvatarOffer(r: Row): AvatarOffer | null {
   const imageUrl = str(r.image_url);
   if (!imageUrl) return null;
@@ -105,6 +129,8 @@ function toAvatarOffer(r: Row): AvatarOffer | null {
     supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),
+    season: toSeason(r.season),
+    includes: toIncludes(r.includes),
   };
 }
 
@@ -159,6 +185,8 @@ export function toShopItems(v: unknown): ShopItem[] {
         priceUsdCents,
         priceLamports,
         priceLabel: priceLabel(orNull(r.price_label), priceUsdCents, priceLamports),
+        priceCrystals: crystalsOf(r.price_crystals),
+        lifePack: r.kind === 'life' ? toLifePack(r.effect) : null,
         art: row(r.art),
         owned: r.owned === true,
         equipped: r.equipped === true,

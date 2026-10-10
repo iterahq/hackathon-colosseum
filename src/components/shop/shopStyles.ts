@@ -23,4 +23,4 @@ export const H2 = "[font:700_32px/1.05_'Barlow_Condensed']";
 /** A quiet text key: the second thing a card offers, never competing with the green one. */
 export const BTN_TEXT = `inline-flex min-h-11 items-center justify-center rounded-[10px] px-2 [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline disabled:opacity-50 ${FOCUS}`;
 /** Rarity is a thin edge and a small label, never a fill. Same hues as the `LearnerAvatar` ring. */
-export const RARITY_EDGE = { common: '#5E574E', rare: '#3FD17F', epic: '#62D996', legendary: '#F2C66D', mythic: '#F4EDE2' } as const;
+export const RARITY_EDGE = { common: '#5E574E', rare: '#3FD17F', epic: '#62D996', legendary: '#F2C66D', mythic: '#F4EDE2', primordial: '#F2C66D' } as const;

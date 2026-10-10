@@ -138,6 +138,8 @@ function shopItems(lang: string) {
     price_lamports: i.lamports,
     price_label: priceLabel(null, i.cents, i.lamports),
     art: i.art,
+    ...(i.effect ? { effect: i.effect } : {}),
+    price_crystals: i.crystals ?? null,
     owned: s.owned.includes(i.key),
     equipped: s.outfit === i.key,
     owned_refs: s.refs[i.key] ?? [],
@@ -176,7 +178,9 @@ function purchaseConfirm(body: Body) {
     write({ ...s, intents: { [id]: { ...intent, polls: intent.polls + 1 } } });
     return { status: 'pending', item: intent.item, inventory: inventoryWire(s), explorer_url: null };
   }
-  if (intent.item === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
+  const pack = MOCK_ITEMS.find((i) => i.key === intent.item)?.effect;
+  if (typeof pack?.add_lives === 'number') s = { ...s, current: s.current + pack.add_lives };
+  else if (intent.item === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
   else if (isMockAvatar(intent.item)) s = { ...s, owned: [...new Set([...s.owned, intent.item])] };
   else if (intent.item.startsWith('outfit_')) s = { ...s, owned: [...new Set([...s.owned, intent.item])], outfit: intent.item };
   else if (intent.ref) s = { ...s, refs: { ...s.refs, [intent.item]: [...new Set([...(s.refs[intent.item] ?? []), intent.ref])] } };

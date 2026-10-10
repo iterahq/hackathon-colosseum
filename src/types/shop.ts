@@ -28,7 +28,7 @@ export interface CompanionState {
   imageUrl: string | null;
 }
 
-export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar';
+export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar' | 'border';
 
 export interface InventoryEntry {
   itemKey: string;
@@ -74,6 +74,10 @@ export interface ShopItem {
   priceUsdCents: number;
   priceLamports: number;
   priceLabel: string;
+  /** Crystal price, shown as a second line; null when the item cannot be bought with crystals. */
+  priceCrystals?: number | null;
+  /** Set on a life pack (`effect.add_lives` / `effect.unlimited_days`). */
+  lifePack?: LifePack | null;
   art: Record<string, unknown>;
   owned: boolean;
   equipped: boolean;
@@ -83,6 +87,12 @@ export interface ShopItem {
   unlock?: ShopUnlock | null;
   /** Present on items of kind `avatar`. */
   avatar?: AvatarOffer | null;
+}
+
+/** What a life pack gives: lives added (they may go above the maximum) or days without losing any. */
+export interface LifePack {
+  addLives: number | null;
+  unlimitedDays: number | null;
 }
 
 export interface ShopUnlock {

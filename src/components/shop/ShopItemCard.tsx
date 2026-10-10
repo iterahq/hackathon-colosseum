@@ -16,12 +16,14 @@ interface Props {
   buyDisabled?: boolean;
   /** This kind has something to try on (a refill has not). */
   tryable?: boolean;
+  /** Dense grid cell: a short picture, a two-line description. */
+  compact?: boolean;
 }
 
 const TEST_ID = { buy: 'shop-buy', equip: 'shop-equip', unequip: 'shop-unequip', claim: 'shop-claim', inuse: 'shop-inuse', soldout: 'shop-soldout', applied: 'shop-applied' } as const;
 
 /** One thing on the shelf: art, title, the backend's price, ONE green action, "try on" beside it and a "?" that says what it changes. */
-export function ShopItemCard({ item, art, actions, children, buyDisabled = false, tryable = true }: Props) {
+export function ShopItemCard({ item, art, actions, children, buyDisabled = false, tryable = true, compact = false }: Props) {
   const { t } = useI18n();
   const [explaining, setExplaining] = useState(false);
   const explainerId = useId();
@@ -38,7 +40,7 @@ export function ShopItemCard({ item, art, actions, children, buyDisabled = false
           disabled={!tryable}
           aria-label={tryable ? `${t('shop.preview')}: ${item.title}` : undefined}
           data-testid="shop-art"
-          className={`flex h-[132px] w-full items-center justify-center border-b border-[#262320] bg-[#0F0D0B] disabled:cursor-default ${FOCUS}`}
+          className={`flex ${compact ? 'h-[88px]' : 'h-[132px]'} w-full items-center justify-center border-b border-[#262320] bg-[#0F0D0B] disabled:cursor-default ${FOCUS}`}
         >
           {art}
         </button>
@@ -60,16 +62,17 @@ export function ShopItemCard({ item, art, actions, children, buyDisabled = false
           ?
         </button>
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="[font:700_24px/1.05_'Barlow_Condensed'] text-[#F4EDE2]">{item.title}</h3>
+      <div className={`flex flex-1 flex-col ${compact ? 'gap-1.5 p-3' : 'gap-2 p-4'}`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <h3 className={`${compact ? "[font:700_20px/1.05_'Barlow_Condensed']" : "[font:700_24px/1.05_'Barlow_Condensed']"} text-[#F4EDE2]`}>{item.title}</h3>
           {action.id === 'buy' && (
             <span className="flex-none text-right [font:700_12px/1.3_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-price">
               {item.priceLabel}
             </span>
           )}
         </div>
-        <p className="[font:400_14px/1.45_Inter] text-[#C9BFB0]">{item.description}</p>
+        <p className={compact ? 'line-clamp-2 [font:400_12px/1.4_Inter] text-[#C9BFB0]' : '[font:400_14px/1.45_Inter] text-[#C9BFB0]'}>{item.description}</p>
+        {item.priceCrystals != null && action.id === 'buy' && <span className="[font:600_11px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="shop-price-crystals">{t('shop.crystals', { n: item.priceCrystals })}</span>}
         {children}
         <div id={explainerId} hidden={!explaining}>
           {explaining && <ShopExplainer item={item} />}

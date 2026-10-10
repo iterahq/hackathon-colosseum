@@ -9,6 +9,9 @@ export interface MockItem {
   title: { pt: string; en: string };
   description: { pt: string; en: string };
   art: Record<string, unknown>;
+  /** Wire `effect` of a life pack. */
+  effect?: Record<string, unknown>;
+  crystals?: number;
 }
 
 export const MOCK_ITEMS: readonly MockItem[] = [
@@ -20,6 +23,61 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Recarga de vidas', en: 'Life refill' },
     description: { pt: 'Enche as 5 vidas do Tera na hora.', en: "Fills Tera's 5 lives right away." },
     art: {},
+  },
+  {
+    key: 'lives_10',
+    kind: 'life',
+    cents: 30,
+    lamports: 1650000,
+    title: { pt: '10 vidas', en: '10 lives' },
+    description: { pt: 'Soma 10 vidas, mesmo acima do máximo.', en: 'Adds 10 lives, even above the maximum.' },
+    art: {},
+    effect: { add_lives: 10 },
+    crystals: 40,
+  },
+  {
+    key: 'lives_30',
+    kind: 'life',
+    cents: 80,
+    lamports: 4400000,
+    title: { pt: '30 vidas', en: '30 lives' },
+    description: { pt: 'Soma 30 vidas, mesmo acima do máximo.', en: 'Adds 30 lives, even above the maximum.' },
+    art: {},
+    effect: { add_lives: 30 },
+    crystals: 100,
+  },
+  {
+    key: 'lives_50',
+    kind: 'life',
+    cents: 120,
+    lamports: 6600000,
+    title: { pt: '50 vidas', en: '50 lives' },
+    description: { pt: 'Soma 50 vidas, mesmo acima do máximo.', en: 'Adds 50 lives, even above the maximum.' },
+    art: {},
+    effect: { add_lives: 50 },
+    crystals: 150,
+  },
+  {
+    key: 'lives_100',
+    kind: 'life',
+    cents: 200,
+    lamports: 11000000,
+    title: { pt: '100 vidas', en: '100 lives' },
+    description: { pt: 'Soma 100 vidas, mesmo acima do máximo.', en: 'Adds 100 lives, even above the maximum.' },
+    art: {},
+    effect: { add_lives: 100 },
+    crystals: 250,
+  },
+  {
+    key: 'lives_infinite',
+    kind: 'life',
+    cents: 1000,
+    lamports: 55_000_000,
+    title: { pt: 'Vidas infinitas', en: 'Infinite lives' },
+    description: { pt: 'Nenhuma vida se perde por 30 dias.', en: 'No life is lost for 30 days.' },
+    art: {},
+    effect: { unlimited_days: 30 },
+    crystals: 1000,
   },
   {
     key: 'outfit_glasses',

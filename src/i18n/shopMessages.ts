@@ -1,3 +1,4 @@
+import { SHOP_LAYOUT_MESSAGES } from './shopLayoutMessages';
 import { WARDROBE_MESSAGES } from './wardrobeMessages';
 
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
@@ -108,6 +109,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.noWallet.title': 'Nenhuma carteira encontrada',
     'purchase.noWallet.body': 'Instale a Phantom ou outra carteira Solana neste navegador e tente de novo.',
     ...WARDROBE_MESSAGES.pt,
+    ...SHOP_LAYOUT_MESSAGES.pt,
   },
   en: {
     'header.nav.shop': 'Shop',
@@ -212,5 +214,6 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.noWallet.title': 'No wallet found',
     'purchase.noWallet.body': 'Install Phantom or another Solana wallet in this browser and try again.',
     ...WARDROBE_MESSAGES.en,
+    ...SHOP_LAYOUT_MESSAGES.en,
   },
 };

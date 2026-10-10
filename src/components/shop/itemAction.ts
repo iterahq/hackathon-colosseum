@@ -1,6 +1,7 @@
 import type { ShopItem } from '@/types/shop';
 import type { ItemAction, ShopActions } from '@/types/shopView';
 import { avatarState } from '@/utils/avatarShop';
+import { isOffSeason } from './avatarRows';
 
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
@@ -15,6 +16,7 @@ export function itemAction(item: ShopItem, actions: ShopActions, t: Translate, {
     if (state === 'equipped') return inUse;
     if (state === 'free' || state === 'owned') return equip;
     if (state === 'soldout') return { id: 'soldout', label: t('shop.avatar.soldOut'), disabled: true, primary: false };
+    if (isOffSeason(item)) return { id: 'soldout', label: t('shop.season.out'), disabled: true, primary: false };
     return buy;
   }
   if (item.kind === 'outfit') {
