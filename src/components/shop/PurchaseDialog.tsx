@@ -31,6 +31,9 @@ interface Props {
 }
 
 const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set([...SHOP_ERROR_CODES, ...GIFT_ERROR_CODES]);
+/** The test faucet pays 0.01 SOL: it only helps when the whole purchase is about that small. */
+const FAUCET_MAX_LAMPORTS = 20_000_000;
+
 const BUSY_LABEL = { connecting: 'purchase.connecting', signing: 'purchase.signing', confirming: 'purchase.confirming', funding: 'purchase.funding' } as const;
 
 function Detail({ text }: { text: string | null }) {
@@ -109,6 +112,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
   const friendly = state.code && PURCHASE_ERROR_CODES.has(state.code) ? t(`purchase.error.${state.code}`) : null;
   const gift = state.proof?.gift ?? null;
   const copy = gift ? giftCopy(gift) : paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
+  const faucetHelps = !state.neededLamports || state.neededLamports <= FAUCET_MAX_LAMPORTS;
   const needed = state.neededLamports ? t('purchase.insufficient.need', { amount: lamportsToSol(state.neededLamports) }) : null;
 
   return (
@@ -151,7 +155,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
               <TeraOutfit mood="oops" size="xl" outfit={outfit} />
             </span>
             {phase === 'failed' && <Message title={t('purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
-            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={needed ?? friendly ?? t('purchase.insufficient.body')} />}
+            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={faucetHelps ? (needed ?? friendly ?? t('purchase.insufficient.body')) : `${needed ?? ''} ${t('purchase.insufficient.showcase')}`.trim()} />}
             {phase === 'no_wallet' && <Message title={t('purchase.noWallet.title')} body={t('purchase.noWallet.body')} />}
             {showTechnicalDetail(phase, state.code, PURCHASE_ERROR_CODES) && <Detail text={state.detail} />}
             <div className="mt-1 flex w-full flex-col gap-2.5">
@@ -160,7 +164,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
                   {t('purchase.retry')}
                 </button>
               )}
-              {phase === 'insufficient' && (
+              {phase === 'insufficient' && faucetHelps && (
                 <button type="button" autoFocus onClick={onFund} data-testid="purchase-faucet" className={`${BTN_PRIMARY} w-full`}>
                   {t('purchase.faucet')}
                 </button>

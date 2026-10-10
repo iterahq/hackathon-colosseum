@@ -16,8 +16,8 @@ const TIERS: Record<Rarity, Tier> = {
   common: { name: { pt: 'Tera', en: 'Tera' }, label: { pt: 'Comum', en: 'Common' }, cents: 20, max: null },
   rare: { name: { pt: 'Super Tera', en: 'Super Tera' }, label: { pt: 'Raro', en: 'Rare' }, cents: 50, max: 500 },
   epic: { name: { pt: 'Mega Tera', en: 'Mega Tera' }, label: { pt: 'Muito raro', en: 'Very rare' }, cents: 100, max: 100 },
-  legendary: { name: { pt: 'Tera Lendário', en: 'Legendary Tera' }, label: { pt: 'Lendário', en: 'Legendary' }, cents: 300, max: 25 },
-  mythic: { name: { pt: 'Tera Mítico', en: 'Mythic Tera' }, label: { pt: 'Mítico', en: 'Mythic' }, cents: 1000, max: 5 },
+  legendary: { name: { pt: 'Tera Lendário', en: 'Legendary Tera' }, label: { pt: 'Lendário', en: 'Legendary' }, cents: 10000, max: 25 },
+  mythic: { name: { pt: 'Tera Mítico', en: 'Mythic Tera' }, label: { pt: 'Mítico', en: 'Mythic' }, cents: 100000, max: 5 },
 };
 
 /** key, rarity, group, minted, pt title, en title */

@@ -45,6 +45,13 @@ describe('PurchaseDialog', () => {
     show({ ...PURCHASE_IDLE, phase: 'insufficient', detail: 'purchase-intent: insufficient_funds', neededLamports: 1_445_880 });
     expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('cerca de 0.00145 SOL');
     expect(screen.queryByTestId('purchase-details')).not.toBeInTheDocument();
+    expect(screen.getByTestId('purchase-faucet')).toBeInTheDocument();
+  });
+
+  it('insufficient on a showcase piece: calm line, no faucet', () => {
+    show({ ...PURCHASE_IDLE, phase: 'insufficient', detail: 'purchase-intent: insufficient_funds', neededLamports: 5_500_000_000 });
+    expect(screen.queryByTestId('purchase-faucet')).not.toBeInTheDocument();
+    expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('vitrine');
   });
 
   it('paid without proof: no art and no change line', () => {
