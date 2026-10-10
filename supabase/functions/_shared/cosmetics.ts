@@ -53,3 +53,21 @@ export function cosmeticsFromPurchases(purchases: CosmeticPurchase[]): Cosmetics
 export function sameCosmetics(a: Cosmetics, b: Cosmetics): boolean {
   return a.ink === b.ink && a.frame === b.frame;
 }
+
+/**
+ * What a passport wears. Paid purchases are the durable truth; `state.cosmetics`
+ * is a copy that a concurrent write of the row can drop, so it only fills in
+ * what no purchase explains.
+ */
+export function resolveCosmetics(state: Record<string, unknown>, purchases: CosmeticPurchase[]): Cosmetics {
+  const stored = cosmeticsOf(state);
+  const paid = cosmeticsFromPurchases(purchases);
+  return { ink: paid.ink ?? stored.ink, frame: paid.frame ?? stored.frame };
+}
+
+/** The row with `state.cosmetics` put back from the purchases. Untouched when they already agree. */
+export function withCosmetics<Row extends { state: Record<string, unknown> }>(row: Row, purchases: CosmeticPurchase[]): Row {
+  const cosmetics = resolveCosmetics(row.state, purchases);
+  if (sameCosmetics(cosmetics, cosmeticsOf(row.state))) return row;
+  return { ...row, state: { ...row.state, cosmetics } };
+}

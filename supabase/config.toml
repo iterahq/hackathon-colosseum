@@ -34,3 +34,7 @@ verify_jwt = false
 
 [functions.lives]
 verify_jwt = false
+
+# Public profile of a wallet: the Itera assets it holds, each checked on chain.
+[functions.learner-profile]
+verify_jwt = false

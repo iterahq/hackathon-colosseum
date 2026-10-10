@@ -1,7 +1,7 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { readCredential, readOnlyUmi } from '../_shared/chain.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
-import { companionImageUrl, companionMetadataUrl, companionText } from '../_shared/companion.ts';
+import { companionFromAttributes, companionImageUrl, companionMetadataUrl, companionText } from '../_shared/companion.ts';
 import { loadCompanionSnapshot } from '../_shared/companion-store.ts';
 import {
   APP_URL,
@@ -138,11 +138,20 @@ Deno.serve(async (request) => {
 
     // Catalog data is only attached to an asset we issued: an address alone proves nothing.
     const lang = langOf(request, 'pt');
+    const isCompanion = verified && onchain.collection === config[COLLECTIONS.companions.configKey];
     const achievement = !verified
       ? null
-      : onchain.collection === config[COLLECTIONS.companions.configKey]
+      : isCompanion
         ? await loadCompanionAchievement(db, address, lang)
         : await loadAchievement(db, address, lang);
+    // What the chain says about a companion, parsed; `achievement.state` is the database's view.
+    const companion = isCompanion
+      ? {
+          ...companionFromAttributes(onchain.attributes),
+          image_url: achievement?.image_url ?? null,
+          metadata_url: achievement?.metadata_url ?? null,
+        }
+      : undefined;
     return json(
       {
         verified,
@@ -157,6 +166,7 @@ Deno.serve(async (request) => {
         update_authority: onchain.update_authority,
         attributes: onchain.attributes,
         achievement,
+        ...(companion ? { companion } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),
         owner_explorer_url: explorerUrl('address', onchain.owner),

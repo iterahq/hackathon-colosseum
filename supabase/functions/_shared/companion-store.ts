@@ -8,7 +8,8 @@ import {
   type CompanionSnapshot,
 } from './companion.ts';
 import { cosmeticsOf } from './cosmetics.ts';
-import { explorerUrl, type OnchainAttribute } from './credential.ts';
+import { restoreCosmetics } from './cosmetics-store.ts';
+import { changedAttributes, explorerUrl, type ChainWrite, type OnchainAttribute } from './credential.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 import { deriveStats, livesView, regenerate, type CompanionStats, type LivesState, type XpEvent } from './lives.ts';
@@ -182,7 +183,11 @@ export async function loadInventory(db: IteraClient, userId: string, outfit: str
       .eq('user_id', userId)
       .eq('achievement_key', 'trail_pass');
     if (passportError) throw new Error(`user_achievements: ${passportError.message}`);
-    for (const passport of passports ?? []) cosmeticsByTrail.set(passport.ref_id, cosmeticsOf(passport.state));
+    const worn = await restoreCosmetics(
+      db,
+      (passports ?? []).map((passport) => ({ user_id: userId, achievement_key: 'trail_pass', ref_id: passport.ref_id, state: passport.state })),
+    );
+    for (const passport of worn) cosmeticsByTrail.set(passport.ref_id, cosmeticsOf(passport.state));
   }
 
   return rows.map((row) => {
@@ -269,35 +274,71 @@ export async function mintCompanion(db: IteraClient, userId: string, wallet: str
   }
 }
 
+export interface MirrorResult {
+  /** Chain and database agree after this call. */
+  synced: boolean;
+  /** The transaction this call sent; `null` when there was nothing to write or it failed. */
+  write: ChainWrite | null;
+}
+
 /**
  * Writes the companion's current attributes to its asset when they differ from
  * the last ones written. Never throws: a failed write is flagged `mirror_due`
- * and retried by the next call. Returns whether chain and database now agree.
+ * and retried by the next call.
  */
-export async function syncMirror(db: IteraClient, userId: string): Promise<boolean> {
+export async function syncMirror(db: IteraClient, userId: string): Promise<MirrorResult> {
   try {
     const row = await loadCompanion(db, userId);
-    if (!row || row.mint_status !== 'minted' || !row.asset_address) return false;
+    if (!row || row.mint_status !== 'minted' || !row.asset_address) return { synced: false, write: null };
     const now = new Date();
     const attributes = companionAttributes(snapshotOf(row, await loadStats(db, userId, now), now));
+    let write: ChainWrite | null = null;
     if (!sameAttributes(row.mirrored, attributes)) {
-      const sdk = await import('./chain.ts');
-      const collection = (await loadConfig(db))[COLLECTIONS.companions.configKey];
+      const [sdk, config] = await Promise.all([import('./chain.ts'), loadConfig(db)]);
+      const collection = config[COLLECTIONS.companions.configKey];
       if (!collection) throw new Error('companions collection is not configured');
-      await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
+      const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
+      write = {
+        asset: row.asset_address,
+        signature,
+        at: new Date().toISOString(),
+        attributes,
+        changed: changedAttributes(row.mirrored, attributes),
+      };
     } else if (!row.mirror_due) {
-      return true;
+      return { synced: true, write: null };
     }
     const { error } = await db
       .from('companions')
       .update({ mirrored: attributes, mirror_due: false, mirror_error: null })
       .eq('user_id', userId);
     if (error) throw new Error(`companions mirror: ${error.message}`);
-    return true;
+    return { synced: true, write };
   } catch (error) {
-    console.error(`companion mirror for ${userId} failed`, error);
+    console.error('companion mirror failed', error);
     const message = String(error instanceof Error ? error.message : error).slice(0, 300);
     await db.from('companions').update({ mirror_due: true, mirror_error: message }).eq('user_id', userId);
-    return false;
+    return { synced: false, write: null };
   }
+}
+
+/**
+ * The mirror with a time budget, for a request that should carry the proof but
+ * must not wait for a slow chain. Past the budget the write keeps going in the
+ * background, the row is flagged `mirror_due` and the answer is `null`.
+ */
+export async function mirrorWithin(db: IteraClient, userId: string, budgetMs: number): Promise<ChainWrite | null> {
+  const work = syncMirror(db, userId);
+  inBackground(work);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), budgetMs);
+  });
+  const result = await Promise.race([work, late]);
+  clearTimeout(timer);
+  if (result === null) {
+    await db.from('companions').update({ mirror_due: true }).eq('user_id', userId);
+    return null;
+  }
+  return result.write;
 }

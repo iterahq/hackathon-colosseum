@@ -50,15 +50,18 @@ latest `completed_at`. Days and hours are computed in `America/Sao_Paulo`.
 | `supabase/functions/_shared/mint-plan.ts` | pure: which transactions the unminted rows need |
 | `supabase/functions/_shared/credential.ts` | pure: names, on-chain attributes, metadata JSON |
 | `supabase/functions/_shared/art.ts` | pure: SVG artwork |
-| `supabase/functions/_shared/chain.ts` | Umi + mpl-core (the only module that touches Solana) |
-| `supabase/functions/{passport,credential-meta,credential-verify}/index.ts` | the three functions |
+| `supabase/functions/_shared/chain.ts` | Umi + mpl-core: every write, and the single-asset read of `credential-verify` |
+| `supabase/functions/_shared/chain-read.ts` | many assets in one `getMultipleAccounts` call (mpl-core deserializers, no Umi client) |
+| `supabase/functions/_shared/profile.ts` | pure: `isVerified` and the `learner-profile` response |
+| `supabase/functions/{passport,credential-meta,credential-verify,learner-profile}/index.ts` | the four functions |
 | `db/migrations/0113_onchain_passport.sql` | catalog seed, `onchain_config`, `mint_claimed_at`, service-role grants |
 | `scripts/hackathon/passport-e2e.mjs` | end-to-end script |
 
 ## Function contracts
 
 Base URL: `https://nyzcbnnbffsizshiolbh.supabase.co/functions/v1`. CORS: `passport` allows the web
-app origins and localhost; the two public functions allow any origin.
+app origins and localhost; the three public functions (`credential-meta`, `credential-verify`,
+`learner-profile`) allow any origin.
 
 ### `POST /passport` (user JWT required, checked in code)
 
@@ -103,6 +106,13 @@ current `state` (so a passport image gains stamps over time). `?lang=pt|en` (def
 `/credential-meta/collection/<passports|medals>` and `…/image.svg` serve the collections.
 Unknown or malformed id: `404 { "error": "not_found" }`.
 
+Artwork colour rule: Itera is green. A certification page is charcoal with a green border and green
+line stamps on **every** trail (there is no per-trail colour); a completed page is gold. The paid
+looks sit on top of that page and never repaint it: `ink = emerald` draws the stamps as jewels
+(solid emerald gradient, a sheen, a soft emerald glow inside the border), `ink = violet` draws
+violet line stamps and a violet accent bar, `frame = gold-leaf` adds the gilded border. An ink keeps
+its stamps on a gold page. The stamp group carries `data-ink="default|emerald|violet"`.
+
 ### `GET /credential-verify/<asset address>` (public)
 
 Reads the asset from chain and attaches the catalog row only when it is ours.
@@ -130,6 +140,48 @@ authority is our authority. A foreign asset answers 200 with `verified: false` a
 `?lang=pt|en` (default `pt`). No email or name is ever returned; the `learner` attribute is the
 itera user id.
 
+For a **companion** asset the answer also carries an optional top-level
+`companion: { lives, max_lives, outfit, level, xp, streak, image_url, metadata_url }` parsed from the
+on-chain attributes (numbers as numbers, `outfit` the item key or `null`). `achievement.state` stays
+the database's view of the same companion. Certification and medal assets have no `companion` key.
+
+### `GET /learner-profile/<wallet address>` (public)
+
+Every Itera asset a wallet holds. **What exists** comes from our tables (rows with
+`mint_status = 'minted'` recorded for that wallet; stamps and completions own no asset and are not
+listed). **Whether each one is valid** comes from chain: all assets and the three collections are
+read in one `getMultipleAccounts` call, at most 50 assets.
+
+```json
+{
+  "wallet": "<address>", "cluster": "devnet", "verified_count": 4,
+  "companion": { "asset": "…", "verified": true, "lives": 4, "max_lives": 5, "outfit": "outfit_crown",
+                 "level": 1, "xp": 0, "streak": 0, "image_url": "…", "explorer_url": "…" },
+  "certifications": [{ "asset": "…", "verified": true, "trail": "Semana 1 · HTML",
+                       "trail_title": { "pt": "Semana 1 · HTML", "en": "Week 1 · HTML" },
+                       "days_done": 5, "total_days": 5, "tier": "gold", "ink": "violet", "frame": "gold-leaf",
+                       "completed_at": "…", "earned_at": "…", "image_url": "…", "page_url": "…/c/<asset>",
+                       "explorer_url": "…" }],
+  "medals": [{ "asset": "…", "verified": true, "key": "first_stamp", "title": "Primeiro carimbo",
+               "tier": "bronze", "earned_at": "…", "image_url": "…", "explorer_url": "…" }],
+  "issuer": { "authority": "…", "collections": ["<passports>", "<medals>", "<companions>"] }
+}
+```
+
+- `verified`: on chain the asset is owned by that wallet, sits in the collection of ours that its
+  kind belongs to, that collection's update authority is our authority, and it is frozen. An asset
+  that fails any of these stays in the list with `verified: false`. `verified_count` counts the rest.
+- `companion` is `null` when the wallet has none. Its numbers are the on-chain attributes (the
+  database's only when the asset cannot be read); lives regenerate off chain between mirror moments.
+- `ink` is `"emerald" | "violet" | null`, `frame` is `"gold-leaf" | null`, both derived from the paid
+  purchases. `trail` is the title in `?lang=pt|en` (default `pt`), as is a medal's `title`.
+- The `image_url`s carry `lang` and a version, so the one-minute art cache never serves a stale page.
+- A wallet with nothing answers `200` with `companion: null` and empty lists. A malformed address
+  (or anything after it in the path): `400 { "error": "invalid_address" }`. `502 upstream_unavailable`
+  when the RPC cannot be reached, `405`, `500 internal_error`. Cached 20 s.
+- No email, no display name, no itera user id: the response is built from asset addresses, the
+  credential row ids inside the image URLs and catalog text. The `learner` attribute is not echoed.
+
 ## Secrets and deploy
 
 Edge-function secrets (project-wide): `SOLANA_AUTHORITY_SECRET` (64-byte key as a JSON array or
@@ -140,6 +192,7 @@ base58) and `SOLANA_RPC_URL` (`https://api.devnet.solana.com`). `SUPABASE_URL` a
 supabase functions deploy passport --project-ref nyzcbnnbffsizshiolbh --use-api
 supabase functions deploy credential-meta --project-ref nyzcbnnbffsizshiolbh --use-api
 supabase functions deploy credential-verify --project-ref nyzcbnnbffsizshiolbh --use-api
+supabase functions deploy learner-profile --project-ref nyzcbnnbffsizshiolbh --use-api
 ```
 
 Imports are plain `npm:` specifiers (`@metaplex-foundation/umi@1.6.0`,
@@ -149,7 +202,7 @@ the Solana SDK only when there is something to mint.
 ## Tests
 
 ```bash
-npx vitest run --config vitest.supabase.config.ts      # pure modules, 26 tests
+npx vitest run --config vitest.supabase.config.ts      # pure modules, 101 tests
 source ~/.config/itera-hackathon/supabase.env && export SUPABASE_ACCESS_TOKEN HACKATHON_DB_PASSWORD HACKATHON_DEMO_EMAIL HACKATHON_DEMO_PASSWORD
 node scripts/hackathon/passport-e2e.mjs demo   [--lessons N] [--reset]   # email user, no wallet
 node scripts/hackathon/passport-e2e.mjs wallet [--lessons N]             # throwaway wallet user, exercises the mint
@@ -187,7 +240,9 @@ exercised from the app: sign in with a wallet, complete a day, complete another.
 
 ## Known limits
 
-- No rate limit on the public functions; `credential-verify` makes RPC calls per request (20 s cache).
+- No rate limit on the public functions; `credential-verify` makes RPC calls per request and
+  `learner-profile` one (both cached 20 s).
+- `learner-profile` lists at most 50 assets per wallet, oldest first.
 - The public devnet RPC is rate limited; a provider URL in `SOLANA_RPC_URL` is advisable for a demo.
 - `earned_at` is set when a row is first written and does not move if progress is edited later.
 - A row stuck in `pending` (invocation killed mid-mint) is retaken after 3 minutes.
