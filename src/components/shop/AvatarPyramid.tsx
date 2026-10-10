@@ -10,6 +10,9 @@ import { FOCUS, MONO_LABEL, RARITY_EDGE } from './shopStyles';
 
 const ARROW = `hidden h-9 w-9 flex-none items-center justify-center rounded-full border border-[#2E2A25] bg-[#141210] [font:700_16px_Inter] text-[#F4EDE2] hover:border-[#5E574E] disabled:opacity-30 sm:flex ${FOCUS}`;
 
+/** A row is as wide as its tiles; short rows share a line, and on a phone every row takes the full width. */
+const rowSize = (tiles: number) => ({ flex: `${tiles} 1 ${Math.min(tiles, 8) * 112 + 36}px` });
+
 /** A horizontal strip: scroll-snap for touch and trackpad, arrows for the mouse, and tiles that scroll into view when focused. */
 function Carousel({ label, children }: { label: string; children: ReactNode }) {
   const { t } = useI18n();
@@ -71,11 +74,11 @@ export function AvatarPyramid({ items, actions }: { items: ShopItem[]; actions: 
   const { rows, free } = rowsOf(items);
 
   return (
-    <div className="flex flex-col gap-3" data-testid="avatar-pyramid">
+    <div className="flex flex-wrap gap-3" data-testid="avatar-pyramid">
       {rows.map((row) => {
         const lore = row.rarity === 'primordial' ? null : TIER_LORE(row.rarity as LoreTier, locale).text;
         return (
-          <section key={row.rarity} data-testid="avatar-tier" data-rarity={row.rarity} aria-label={row.tierName} className="rounded-[14px] border border-[#262320] border-l-2 bg-[#141210] px-3 pb-2 pt-3 sm:px-4" style={{ borderLeftColor: RARITY_EDGE[row.rarity] }}>
+          <section key={row.rarity} data-testid="avatar-tier" data-rarity={row.rarity} aria-label={row.tierName} className="min-w-0 max-w-full rounded-[14px] border border-[#262320] border-l-2 bg-[#141210] px-3 pb-2 pt-3 sm:px-4" style={{ borderLeftColor: RARITY_EDGE[row.rarity], ...rowSize(row.items.length) }}>
             <header className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5" title={lore ?? undefined}>
               <h3 className="[font:700_22px/1_'Barlow_Condensed'] text-[#F4EDE2]">{row.tierName}</h3>
               <span className={`${MONO_LABEL} !text-[10px]`} style={{ color: RARITY_EDGE[row.rarity] }}>{row.rarityLabel}</span>
@@ -90,7 +93,7 @@ export function AvatarPyramid({ items, actions }: { items: ShopItem[]; actions: 
         );
       })}
       {free.length > 0 && (
-        <section data-testid="avatar-free" aria-label={t('shop.avatar.free')} className="rounded-[14px] border border-dashed border-[#2E2A25] px-3 pb-2 pt-3 sm:px-4">
+        <section data-testid="avatar-free" aria-label={t('shop.avatar.free')} className="min-w-0 max-w-full rounded-[14px] border border-dashed border-[#2E2A25] px-3 pb-2 pt-3 sm:px-4" style={rowSize(free.length)}>
           <header className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
             <h3 className="[font:700_22px/1_'Barlow_Condensed'] text-[#F4EDE2]">{t('shop.avatar.free')}</h3>
             <span className="[font:400_13px_Inter] text-[#A0978A]">{t('shop.avatar.freeHint')}</span>

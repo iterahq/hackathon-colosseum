@@ -28,20 +28,20 @@ export function AvatarTile({ item, actions, reserveIncludes = false }: { item: S
   const label = action.id === 'buy' ? shortPrice(item.priceLabel) : action.label;
 
   return (
-    <article data-testid="avatar-tile" data-item={item.key} data-state={state} data-rarity={item.avatar.rarity} data-season={off ? 'out' : season ? 'in' : undefined} className="flex w-[112px] flex-none snap-start flex-col items-center gap-1">
+    <article data-testid="avatar-tile" data-item={item.key} data-state={state} data-rarity={item.avatar.rarity} data-season={off ? 'out' : season ? 'in' : undefined} className="flex w-[100px] flex-none snap-start flex-col items-center gap-1">
       <button type="button" onClick={() => actions.tryOn(item)} aria-label={`${t('shop.preview')}: ${name}`} data-testid="avatar-tryon" className={`group flex w-full flex-col items-center gap-1 rounded-[12px] px-1 pt-1 ${FOCUS}`}>
         <span className="relative">
-          <LearnerAvatar avatar={avatar} size="lg" thumb className={`transition-transform group-hover:scale-105 motion-reduce:transition-none ${dim ? 'opacity-45 grayscale' : ''}`} />
+          <LearnerAvatar avatar={avatar} size="lg" thumb className={`!h-[72px] !w-[72px] transition-transform group-hover:scale-105 motion-reduce:transition-none ${dim ? 'opacity-45 grayscale' : ''}`} />
           {state === 'equipped' && <span aria-hidden className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-[#141210] bg-[#3FD17F] [font:700_12px_Inter] text-[#0A0908]">✓</span>}
           {season && (
-            <span data-testid="avatar-season" className={`absolute -left-2 -top-1 max-w-[80px] truncate rounded-full border bg-[#141210] px-1.5 py-[1px] ${MONO_LABEL} !text-[9px] ${off ? 'border-[#2E2A25] text-[#A0978A]' : 'border-[#F2C66D] text-[#F2C66D]'}`}>
+            <span data-testid="avatar-season" className={`absolute -left-2 -top-1 max-w-[72px] truncate rounded-full border bg-[#141210] px-1.5 py-[1px] ${MONO_LABEL} !text-[9px] ${off ? 'border-[#2E2A25] text-[#A0978A]' : 'border-[#F2C66D] text-[#F2C66D]'}`}>
               {season.label}
             </span>
           )}
         </span>
         <span className="line-clamp-1 w-full text-center [font:700_18px/1.1_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>
         <span className={`${MONO_LABEL} line-clamp-1 w-full text-center !text-[10px] text-[#A0978A] group-hover:text-[#3FD17F]`} data-testid="avatar-state">
-          {line || t('shop.preview')}
+          {line || '\u00a0'}
         </span>
       </button>
       {(includes || reserveIncludes) && (

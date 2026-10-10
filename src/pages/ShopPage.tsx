@@ -98,9 +98,9 @@ export default function ShopPage() {
   return (
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
-      <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-24 pt-5 sm:px-8 xl:pt-8">
-        <Link to="/world" className="self-start [font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
-        <div role="tablist" aria-label={t('shop.tabs')} className="flex w-full gap-1 self-start rounded-[14px] border border-[#262320] bg-[#141210] p-1 sm:w-auto" data-testid="shop-tabs">
+      <main className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 pb-16 pt-3 sm:px-8 xl:pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <div role="tablist" aria-label={t('shop.tabs')} className="flex w-full gap-1 rounded-[14px] border border-[#262320] bg-[#141210] p-1 sm:w-auto" data-testid="shop-tabs">
           {(['shop', 'wardrobe'] as const).map((tab) => {
             const selected = (tab === 'wardrobe') === wardrobe;
             return (
@@ -109,6 +109,8 @@ export default function ShopPage() {
               </button>
             );
           })}
+        </div>
+          <Link to="/world" className="[font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
         </div>
         {!wardrobe && <ShopTeraStage companion={companion.data?.companion ?? null} lives={lives} secondsToNext={secondsToNext} wallet={companion.wallet} avatar={avatar} outfitName={byKey(companion.outfit)?.title ?? null} />}
         {!hasWallet && !companion.isPending && (

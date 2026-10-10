@@ -1,4 +1,3 @@
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { cosmeticOf } from '@/services/artPreview';
 import { credentialImageUrl } from '@/services/credential.service';
 import { useI18n } from '@/i18n';
@@ -7,6 +6,7 @@ import type { ShopItem } from '@/types/shop';
 import type { CertTarget } from '@/types/shopView';
 import { avatarOf } from '@/utils/avatarShop';
 import { CertificationPreview } from './CertificationPreview';
+import { ShopLook, outfitDrawable } from './ShopLook';
 
 interface Props {
   item: ShopItem;
@@ -26,10 +26,12 @@ export function TryOnStage({ item, on, avatar, target }: Props) {
     return <img src={shown.imageUrl} alt={shown.title} width={224} height={224} className={`${BIG_FACE} rounded-[16px] bg-[#0F0D0B] object-contain`} data-testid="tryon-avatar-art" />;
   }
   if (item.kind === 'outfit') {
+    // The learner's own avatar stays on stage; an outfit is drawn only where the art can carry it.
+    if (!outfitDrawable(avatar)) return <span className="flex h-52 w-52 items-center justify-center"><ShopLook avatar={avatar} /></span>;
     return (
       <span className="flex h-52 items-end justify-center pb-5">
         <span className="block origin-bottom scale-[1.45]">
-          <TeraOutfit mood={on ? 'happy' : 'neutral'} size="xl" outfit={null} preview={on ? item.key : null} />
+          <ShopLook avatar={avatar} mood={on ? 'happy' : 'neutral'} outfit={null} preview={on ? item.key : null} />
         </span>
       </span>
     );

@@ -1,6 +1,7 @@
 /** Strings of the compact shop: category chips, carousel rows, seasons, includes, crystal price line and life packs. */
 export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'tryon.outfitBase': 'A prévia de roupa só funciona no Tera base. Troque de ícone para ver a peça.',
     'shop.nav.label': 'Seções da loja',
     'shop.nav.avatars': 'Avatares',
     'shop.nav.lives': 'Vidas',
@@ -28,6 +29,7 @@ export const SHOP_LAYOUT_MESSAGES: Record<'pt' | 'en', Record<string, string>> =
     'shop.borders.title': 'Bordas de perfil',
   },
   en: {
+    'tryon.outfitBase': 'Outfit previews only work on the base Tera. Switch icons to see the piece.',
     'shop.nav.label': 'Shop sections',
     'shop.nav.avatars': 'Avatars',
     'shop.nav.lives': 'Lives',

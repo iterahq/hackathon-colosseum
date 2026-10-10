@@ -10,6 +10,7 @@ import { loreOf } from '@/content/teraLore';
 import { supplyText } from '@/utils/avatarShop';
 import { itemAction } from './itemAction';
 import { ShopExplainer } from './ShopExplainer';
+import { outfitDrawable } from './ShopLook';
 import { TryOnStage } from './TryOnStage';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS, MONO_LABEL, RARITY_EDGE } from './shopStyles';
 
@@ -102,7 +103,7 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
             </div>
             <p className="[font:400_15px/1.5_Inter] text-[#C9BFB0]" data-testid="tryon-story">{lore?.story || item.description}</p>
             {lore?.quote && <p className="border-l-2 border-[#2E2A25] pl-3 [font:500_14px/1.45_Inter] italic text-[#A0978A]">{lore.quote}</p>}
-            {item.kind === 'outfit' && !avatar.allowsOutfit && <p className="[font:500_13px/1.45_Inter] text-[#E0A86F]" data-testid="tryon-outfit-note">{t('tryon.outfitNote')}</p>}
+            {item.kind === 'outfit' && !outfitDrawable(avatar) && <p className="[font:500_13px/1.45_Inter] text-[#E0A86F]" data-testid="tryon-outfit-note">{t(avatar.allowsOutfit ? 'tryon.outfitBase' : 'tryon.outfitNote')}</p>}
             <ShopExplainer item={item} />
           </div>
           <div className="flex flex-none flex-col gap-2 border-t border-[#262320] p-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:flex-row-reverse sm:px-6">
