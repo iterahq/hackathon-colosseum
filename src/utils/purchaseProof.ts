@@ -32,6 +32,7 @@ export function paidCopy(kind: ShopItemKind, { itemTitle, targetTitle }: PaidCon
     const body = Number.isFinite(current) && current !== undefined ? { key: 'purchase.paid.life', params: { current, max } } : { key: 'purchase.paid.lifeBare', params: {} };
     return { body, note: wroteLives ? { key: 'purchase.note.life', params: {} } : null };
   }
+  if (kind === 'avatar') return { body: { key: 'purchase.paid.avatar', params: { name: itemTitle } }, note: null };
   if (kind === 'outfit') return { body: { key: 'purchase.paid.outfit', params: { name: itemTitle } }, note: null };
   const wroteCosmetic = written.some((w) => w.attribute !== 'lives');
   return {

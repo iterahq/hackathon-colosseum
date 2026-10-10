@@ -44,22 +44,8 @@ export function avatarState(item: ShopItem): AvatarState {
 export function avatarOf(item: ShopItem): LearnerAvatar | null {
   const offer = item.avatar;
   if (!offer) return null;
-  return { key: item.key, title: item.title, rarity: offer.rarity, tierName: offer.tierName, imageUrl: offer.imageUrl, thumbUrl: offer.thumbUrl, assetAddress: offer.assetAddress };
+  return { key: item.key, title: item.title, rarity: offer.rarity, tierName: offer.tierName, imageUrl: offer.imageUrl, thumbUrl: offer.thumbUrl, assetAddress: offer.assetAddress, allowsOutfit: offer.allowsOutfit };
 }
 
-/**
- * Only the free expression icons take an outfit on top: a painted avatar is a whole head and
- * nothing is drawn over it. Reads the backend's `allows_outfit` when present, the group otherwise.
- */
-export function offerAllowsOutfit(item: ShopItem | null | undefined): boolean {
-  if (!item?.avatar) return true;
-  const flag = (item.avatar as { allowsOutfit?: unknown }).allowsOutfit;
-  return typeof flag === 'boolean' ? flag : item.avatar.group === 'expression';
-}
-
-/** Same rule for the avatar in use, resolved through the shop list when the block itself does not say. */
-export function avatarAllowsOutfit(avatar: LearnerAvatar, items: readonly ShopItem[]): boolean {
-  const flag = (avatar as { allowsOutfit?: unknown }).allowsOutfit;
-  if (typeof flag === 'boolean') return flag;
-  return offerAllowsOutfit(items.find((i) => i.kind === 'avatar' && i.key === avatar.key));
-}
+/** "12/25", or the word for an unlimited tier. */
+export const supplyText = (supply: { minted: number; max: number | null }, unlimited: string): string => (supply.max == null ? unlimited : `${supply.minted}/${supply.max}`);

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { LivesRule } from '@/components/lives/LivesRule';
 import { LivesHearts } from '@/components/lives/LivesHearts';
-import { TeraOutfit } from '@/components/tera/TeraOutfit';
+import { ArtZoom } from '@/components/artviewer';
+import { LookStage } from '@/components/wardrobe/LookStage';
 import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
+import type { LearnerAvatar } from '@/types/avatar';
 import type { CompanionState, LivesState } from '@/types/shop';
 import { formatCountdown } from '@/utils/lives';
 import { CARD, FOCUS, MONO_LABEL } from './shopStyles';
@@ -14,26 +16,23 @@ interface Props {
   secondsToNext: number;
   /** The learner's wallet, for the public profile link. */
   wallet?: string | null;
-  /** Name of the outfit on show, and whether it is only being tried on. */
-  showing: { name: string | null; preview: boolean; key: string | null };
+  avatar: LearnerAvatar;
+  /** Name of the outfit Tera wears. */
+  outfitName: string | null;
 }
 
 const LINK = `rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`;
 
 /** The top of the shop: the learner's Tera, big, wearing what is equipped or being tried on, with his on-chain facts. */
-export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, showing }: Props) {
+export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, avatar, outfitName }: Props) {
   const { t } = useI18n();
   const asset = companion?.assetAddress ?? null;
-  const wearing = showing.name ? t(showing.preview ? 'shop.previewing' : 'shop.wearing', { name: showing.name }) : t('shop.wearingNone');
+  const wearing = !avatar.allowsOutfit ? avatar.title : outfitName ? t('shop.wearing', { name: outfitName }) : t('shop.wearingNone');
 
   return (
     <section className={`${CARD} flex flex-col items-center gap-6 border-b-[5px] border-b-[#2E2A25] p-5 sm:flex-row sm:items-stretch sm:gap-8 sm:p-7`} data-testid="shop-stage">
       <div className="flex flex-none flex-col items-center gap-3">
-        <span className="relative flex h-[230px] w-[230px] items-end justify-center overflow-hidden rounded-[18px] border border-[#262320] bg-[#0F0D0B] pb-6">
-          <span className="block origin-bottom scale-[1.3]">
-            <TeraOutfit mood="neutral" size="xl" outfit={companion?.outfit} preview={showing.preview ? showing.key : undefined} />
-          </span>
-        </span>
+        <LookStage avatar={avatar} outfit={companion?.outfit ?? null} />
         <span className={`${MONO_LABEL} text-[#A0978A]`} data-testid="shop-wearing">
           {wearing}
         </span>
@@ -65,7 +64,9 @@ export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, 
         {companion && (
           <div className="flex w-full items-center gap-4 rounded-[12px] border border-[#262320] bg-[#0F0D0B] p-4 max-sm:flex-col" data-testid="shop-companion">
             {companion.imageUrl && asset && (
-              <img src={companion.imageUrl} alt="" loading="lazy" width={84} height={84} className="h-[84px] w-[84px] flex-none rounded-[10px] border border-[#262320]" data-testid="shop-companion-art" />
+              <ArtZoom title={t('shop.companion.title')} line={t('viewer.companion.line')} src={companion.imageUrl} asset={asset} explorerUrl={companion.explorerUrl} className="flex-none !rounded-[10px]">
+                <img src={companion.imageUrl} alt="" loading="lazy" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="shop-companion-art" />
+              </ArtZoom>
             )}
             <div className="flex min-w-0 flex-1 flex-col gap-2 max-sm:items-center">
             <span className="flex flex-wrap items-center gap-2">

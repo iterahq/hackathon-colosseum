@@ -1,109 +1,112 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
+import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { InviteCard } from '@/components/gift/InviteCard';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
-import { ShopArt } from '@/components/shop/ShopArt';
-import { ShopItemCard } from '@/components/shop/ShopItemCard';
+import { ShopFront } from '@/components/shop/ShopFront';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
-import { ShopUnlockLine } from '@/components/shop/ShopUnlockLine';
-import { BTN_PRIMARY, BTN_SMALL, CARD, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
+import { TryOnDialog } from '@/components/shop/TryOnDialog';
+import { BTN_PRIMARY, BTN_SMALL, CARD, FOCUS, SHOP_GRID } from '@/components/shop/shopStyles';
+import { Wardrobe } from '@/components/wardrobe/Wardrobe';
 import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { useCompanion, useEquipOutfit } from '@/hooks/useCompanion';
+import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useLives } from '@/hooks/useLives';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { usePassportView } from '@/hooks/usePassportView';
 import { usePurchase } from '@/hooks/usePurchase';
 import { useClaimItem, useShop } from '@/hooks/useShop';
+import { useEquipAvatar } from '@/hooks/useShopWardrobe';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
+import type { CertTarget, ShopActions } from '@/types/shopView';
+import { avatarOf } from '@/utils/avatarShop';
 import { shelvesOf, withCompanionState } from '@/utils/shop';
 
-const H2 = "[font:700_32px_'Barlow_Condensed']";
-const GRID = 'grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3';
+const TAB = `min-h-11 flex-1 rounded-[10px] px-5 [font:700_15px_Inter] sm:flex-none ${FOCUS}`;
+const isCosmetic = (item: ShopItem) => item.kind === 'ink' || item.kind === 'frame';
 
-function Shelf({ id, title, hint, children }: { id: string; title: string; hint?: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-4" aria-labelledby={id} data-testid={id}>
-      <div>
-        <h2 id={id} className={H2}>
-          {title}
-        </h2>
-        {hint && <p className="mt-1 [font:400_14px_Inter] text-[#A0978A]">{hint}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** /shop — "Loja do Tera": lives, Tera's outfits and certification cosmetics, paid from the learner's wallet. */
+/** /shop — "Loja do Tera": try, buy, choose and understand. Two tabs: the shop and the wardrobe ("Personalizar", `?tab=wardrobe`). */
 export default function ShopPage() {
   const { t } = useI18n();
   usePageTitle(t('shop.title'));
+  const [params, setParams] = useSearchParams();
+  const wardrobe = params.get('tab') === 'wardrobe';
   const shop = useShop();
   const companion = useCompanion();
+  const avatar = useLearnerAvatar();
   const { lives, secondsToNext } = useLives();
-  const equip = useEquipOutfit();
+  const equipOutfit = useEquipOutfit();
+  const equipAvatar = useEquipAvatar();
   const claim = useClaimItem();
-  const [preview, setPreview] = useState<string | null>(null);
-  const purchase = usePurchase({ onPaid: () => setPreview(null) });
-  // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
-  const certs = usePassportView().pages.filter((page) => page.mintStatus === 'minted');
+  const [trying, setTrying] = useState<string | null>(null);
+  const purchase = usePurchase({ onPaid: () => setTrying(null) });
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
+  // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
+  const pages = usePassportView().pages;
+  const certs = useMemo<CertTarget[]>(() => pages.filter((p) => p.mintStatus === 'minted').map((p) => ({ trailId: p.trailId, title: p.trailTitle, daysDone: p.daysDone, totalDays: p.totalDays, tier: p.tier, credentialId: p.credentialId, assetAddress: p.assetAddress })), [pages]);
   const targetId = target || certs[0]?.trailId || '';
+  const targetCert = certs.find((c) => c.trailId === targetId) ?? null;
 
-  const items = useMemo(() => withCompanionState(shop.data ?? [], companion.data), [shop.data, companion.data]);
+  const joined = useMemo(() => withCompanionState(shop.data ?? [], companion.data), [shop.data, companion.data]);
+  // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
+  const items = useMemo(() => joined.map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
   const shelves = useMemo(() => shelvesOf(items), [items]);
-  const byKey = (key: string | null): ShopItem | undefined => items.find((i) => i.key === key);
+  const byKey = (key: string | null) => items.find((i) => i.key === key);
   const hasWallet = Boolean(companion.wallet);
-  const busy = purchase.busy || equip.isPending || claim.isPending;
   const buying = byKey(purchase.state.itemKey);
-  const shownKey = preview ?? companion.outfit;
-  const buy = (item: ShopItem, refId?: string) => (hasWallet ? void purchase.buy(item.key, refId) : setLinking(true));
+  const tried = byKey(trying);
+  const bought = buying ? avatarOf(buying) : null;
 
-  const tryOn = (key: string) => {
-    setPreview(preview === key ? null : key);
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    document.querySelector('[data-testid="shop-stage"]')?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+  const actions: ShopActions = {
+    busy: purchase.busy || equipOutfit.isPending || equipAvatar.isPending || claim.isPending,
+    hasWallet,
+    buy: (item) => (hasWallet ? void purchase.buy(item.key, isCosmetic(item) ? targetId || undefined : undefined) : setLinking(true)),
+    claim: (item) => claim.mutate(item.key),
+    equip: (item) => {
+      const face = avatarOf(item);
+      if (face) equipAvatar.mutate(face);
+      else equipOutfit.mutate(item.key);
+    },
+    unequip: () => equipOutfit.mutate(null),
+    tryOn: (item) => setTrying(item.key),
   };
 
-  const card = (item: ShopItem, extra?: { children?: ReactNode; buyDisabled?: boolean; refId?: string }) => (
-    <ShopItemCard
-      key={item.key}
-      item={item}
-      art={<ShopArt item={item} lives={lives} />}
-      busy={busy}
-      buyDisabled={extra?.buyDisabled}
-      active={item.kind === 'outfit' && shownKey === item.key}
-      onBuy={() => buy(item, extra?.refId)}
-      onClaim={item.unlock?.unlocked && !item.owned ? () => claim.mutate(item.key) : undefined}
-      onEquip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(item.key)) : undefined}
-      onUnequip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(null)) : undefined}
-      onPreview={item.kind === 'outfit' ? () => tryOn(item.key) : undefined}
-    >
-      {extra?.children}
-    </ShopItemCard>
-  );
+  const openTab = (next: 'shop' | 'wardrobe') => {
+    const query = new URLSearchParams(params);
+    if (next === 'wardrobe') query.set('tab', 'wardrobe');
+    else query.delete('tab');
+    setParams(query, { replace: true });
+  };
+  const openShelf = (section: string, trailId?: string) => {
+    if (trailId) setTarget(trailId);
+    openTab('shop');
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => document.getElementById(section)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }), 60);
+  };
 
   return (
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
-      <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:pt-10">
+      <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-24 pt-5 sm:px-8 xl:pt-8">
         <Link to="/world" className="self-start [font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
-        <ShopTeraStage
-          companion={companion.data?.companion ?? null}
-          lives={lives}
-          secondsToNext={secondsToNext}
-          wallet={companion.wallet}
-          showing={{ key: shownKey, name: byKey(shownKey)?.title ?? null, preview: preview !== null && preview !== companion.outfit }}
-        />
-        <CircuitStrip wallet={companion.wallet} />
-        <InviteCard />
+        <div role="tablist" aria-label={t('shop.tabs')} className="flex w-full gap-1 self-start rounded-[14px] border border-[#262320] bg-[#141210] p-1 sm:w-auto" data-testid="shop-tabs">
+          {(['shop', 'wardrobe'] as const).map((tab) => {
+            const selected = (tab === 'wardrobe') === wardrobe;
+            return (
+              <button key={tab} type="button" role="tab" aria-selected={selected} onClick={() => openTab(tab)} data-testid={`shop-tab-${tab}`} className={`${TAB} ${selected ? 'bg-[#262320] text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'}`}>
+                {t(`shop.tab.${tab}`)}
+              </button>
+            );
+          })}
+        </div>
+        {!wardrobe && <ShopTeraStage companion={companion.data?.companion ?? null} lives={lives} secondsToNext={secondsToNext} wallet={companion.wallet} avatar={avatar} outfitName={byKey(companion.outfit)?.title ?? null} />}
         {!hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">
             <span className="[font:500_14px_Inter] text-[#C9BFB0]">{t('shop.connectHint')}</span>
@@ -119,61 +122,28 @@ export default function ShopPage() {
             </button>
           </div>
         )}
-        {shop.isSuccess && (
+        {shop.isSuccess && wardrobe && <Wardrobe items={joined} actions={actions} avatar={avatar} outfit={companion.outfit} certs={certs} failed={equipAvatar.isError || equipOutfit.isError} onShop={openShelf} />}
+        {shop.isSuccess && !wardrobe && (
           <>
-            {shelves.certs.length > 0 && (
-              <Shelf id="shop-certs" title={t('shop.section.certs')} hint={certs.length > 0 ? t('shop.section.certsHint') : t('shop.certs.none')}>
-                {certs.length > 0 && (
-                  <label className="flex flex-wrap items-center gap-3">
-                    <span className={`${MONO_LABEL} text-[#A0978A]`}>{t('shop.certs.target')}</span>
-                    <select
-                      value={targetId}
-                      onChange={(e) => setTarget(e.target.value)}
-                      data-testid="shop-cert-target"
-                      className="min-h-11 max-w-full rounded-[10px] border-2 border-[#2E2A25] bg-[#141210] px-3 [font:600_14px_Inter] text-[#F4EDE2]"
-                    >
-                      {certs.map((page) => (
-                        <option key={page.trailId} value={page.trailId}>
-                          {page.trailTitle}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <div className={GRID}>{shelves.certs.map((item) => card({ ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) }, { buyDisabled: !targetId, refId: targetId || undefined }))}</div>
-              </Shelf>
-            )}
-            {shelves.outfits.length > 0 && (
-              <Shelf id="shop-outfits" title={t('shop.section.outfits')}>
-                <div className={GRID}>{shelves.outfits.map((item) => card(item, { children: item.unlock && !item.owned ? <ShopUnlockLine unlock={item.unlock} failed={claim.isError && claim.variables === item.key} /> : undefined }))}</div>
-              </Shelf>
-            )}
-            {shelves.lives.length > 0 && (
-              <Shelf id="shop-lives" title={t('shop.section.lives')}>
-                <div className={GRID}>{shelves.lives.map((item) => {
-                    const full = lives ? lives.current >= lives.max : false;
-                    return card(item, {
-                      buyDisabled: full,
-                      children: full ? (
-                        <p className="[font:600_13px/1.4_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">
-                          {t('shop.lives.fullReason')}
-                        </p>
-                      ) : undefined,
-                    });
-                  })}</div>
-              </Shelf>
-            )}
+            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} />
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
+            <section className="flex flex-col gap-4 border-t border-[#262320] pt-8" aria-label={t('shop.section.more')}>
+              <CircuitStrip wallet={companion.wallet} />
+              <InviteCard />
+            </section>
           </>
         )}
       </main>
+      {tried && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}
       {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}
       <PurchaseDialog
         state={purchase.state}
         itemTitle={buying?.title ?? ''}
         itemKind={buying?.kind ?? 'outfit'}
-        targetTitle={certs.find((page) => page.trailId === targetId)?.trailTitle ?? null}
+        targetTitle={targetCert?.title ?? null}
         outfit={buying?.kind === 'outfit' ? buying.key : companion.outfit}
+        art={bought ? <LearnerAvatar avatar={bought} size="xl" /> : undefined}
+        action={bought && purchase.state.phase === 'paid' && avatar.key !== bought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(bought), purchase.reset()) } : null}
         onRetry={purchase.retry}
         onFund={() => void purchase.fund()}
         onClose={purchase.reset}

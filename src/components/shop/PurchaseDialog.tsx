@@ -21,6 +21,10 @@ interface Props {
   targetTitle?: string | null;
   /** The outfit Tera wears in the success moment. */
   outfit: string | null;
+  /** What the success moment shows instead of Tera (a bought avatar). */
+  art?: ReactNode;
+  /** The next step offered on success ("equip now"); "continue" becomes the quiet key. */
+  action?: { label: string; onClick: () => void } | null;
   onRetry: () => void;
   onFund: () => void;
   onClose: () => void;
@@ -87,7 +91,7 @@ function Message({ title, body, children }: { title: string; body?: string; chil
 }
 
 /** Every phase of a wallet purchase in one modal card. Renders nothing at rest; a wallet rejection never opens it. */
-export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null, outfit, onRetry, onFund, onClose }: Props) {
+export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null, outfit, art, action = null, onRetry, onFund, onClose }: Props) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const busy = isPurchaseBusy(state);
@@ -126,12 +130,17 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
         )}
         {phase === 'paid' && (
           <>
-            <span className="flex h-[150px] items-end justify-center">
-              <TeraOutfit mood="happy" size="xl" outfit={outfit} />
+            <span className="flex h-[150px] items-end justify-center" data-testid="purchase-stage">
+              {art ?? <TeraOutfit mood="happy" size="xl" outfit={outfit} />}
             </span>
             <Message title={gift ? t('gift.paid.title', { name: gift.name }) : t('purchase.paid.title')} body={t(copy.body.key, copy.body.params)} />
             <Proof state={state} copy={copy} />
-            <button type="button" autoFocus onClick={onClose} data-testid="purchase-done" className={`${BTN_PRIMARY} mt-1 w-full`}>
+            {action && (
+              <button type="button" autoFocus onClick={action.onClick} data-testid="purchase-next" className={`${BTN_PRIMARY} mt-1 w-full`}>
+                {action.label}
+              </button>
+            )}
+            <button type="button" autoFocus={!action} onClick={onClose} data-testid="purchase-done" className={`${action ? BTN_SECONDARY : `${BTN_PRIMARY} mt-1`} w-full`}>
               {t('purchase.done')}
             </button>
           </>
