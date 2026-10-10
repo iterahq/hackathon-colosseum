@@ -82,7 +82,8 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
         <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
           {t('passport.ceremony.step', { n: day, total: Math.max(totalDays, day), trail: model.trailTitle })}
         </span>
-        <h1 className="text-center [font:700_36px/1_'Barlow_Condensed'] max-sm:text-[30px]">{headline}</h1>
+        {/* Two lines of room: the page below does not move when the short "stamping" line becomes the long gold one. */}
+        <h1 className="flex min-h-[72px] items-center text-center [font:700_36px/1_'Barlow_Condensed'] max-sm:min-h-[60px] max-sm:text-[30px]">{headline}</h1>
         <motion.div
           className="relative"
           initial={reduce ? false : { scale: 0.9, opacity: 0 }}
@@ -127,7 +128,7 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
             />
           )}
         </div>
-        <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked} {...(locked ? ({ inert: '' } as object) : {})} style={{ opacity: locked ? 0.5 : 1 }}>
+        <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked} inert={locked || undefined} style={{ opacity: locked ? 0.5 : 1 }}>
           {actions}
         </div>
         <Link to="/passport" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
