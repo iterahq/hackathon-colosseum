@@ -112,8 +112,10 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
               imageUrl: confirmation.imageUrl ?? null,
               written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
               lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,
+              circuitStamps: confirmation.circuit?.stampsFunded ?? null,
             },
           });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.circuit.all });
           onPaid?.(itemKey);
         } else {
           dispatch({ type: 'failed', detail: `purchase-confirm: ${confirmation.status}`, code: confirmation.status === 'expired' ? 'intent_expired' : null });
@@ -137,7 +139,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         running.current = false;
       }
     },
-    [locale, onPaid, settle]
+    [locale, onPaid, queryClient, settle]
   );
 
   /** Devnet only: ask the faucet for test SOL, then run the same purchase again. */

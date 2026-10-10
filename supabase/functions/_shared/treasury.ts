@@ -59,3 +59,33 @@ export async function sendFromTreasury(input: { recipient: string; lamports: big
   }
   throw new Error(`transfer ${sent} was not confirmed in time`);
 }
+
+/** The mint authority's address, read from the authority's own secret (bytes 32..64 are the public key). */
+export function authorityAddress(): string {
+  const raw = Deno.env.get('SOLANA_AUTHORITY_SECRET')?.trim();
+  if (!raw) throw new TreasuryNotConfiguredError('SOLANA_AUTHORITY_SECRET is not set');
+  let secret: Uint8Array | null;
+  try {
+    secret = raw.startsWith('[') ? Uint8Array.from(JSON.parse(raw)) : base58Decode(raw, 64);
+  } catch {
+    secret = null;
+  }
+  if (!secret || secret.length !== 64) throw new TreasuryNotConfiguredError('SOLANA_AUTHORITY_SECRET must be a 64-byte secret key');
+  return base58Encode(secret.slice(32));
+}
+
+export async function treasuryAddress(): Promise<string> {
+  return (await loadTreasury()).address;
+}
+
+/**
+ * Treasury -> mint authority, the only route of the Circuito. There is no
+ * recipient parameter on purpose: the destination is the authority key this
+ * project signs mints with, whatever the caller holds.
+ */
+export async function sendToAuthority(input: { lamports: bigint; memo: string }): Promise<string> {
+  const recipient = authorityAddress();
+  if (recipient === (await treasuryAddress())) throw new TreasuryNotConfiguredError('treasury and authority are the same key');
+  if (input.lamports <= 0n) throw new Error('nothing to send');
+  return sendFromTreasury({ recipient, lamports: input.lamports, memo: input.memo });
+}

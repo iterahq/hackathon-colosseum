@@ -73,3 +73,7 @@ verify_jwt = false
 # The token and the caller's memberships (instructor/owner of the learner's tenant) are checked in code.
 [functions.endorse]
 verify_jwt = false
+
+# Public counter of the Circuito (treasury -> mint authority transfers). Read only, no token.
+[functions.circuit]
+verify_jwt = false

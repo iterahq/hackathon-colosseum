@@ -64,6 +64,7 @@ function Proof({ state, copy }: { state: PurchaseState; copy: ReturnType<typeof 
     <div className="flex w-full flex-col items-center gap-2" data-testid="purchase-proof">
       {proof?.imageUrl && <img src={proof.imageUrl} alt="" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="purchase-art" />}
       {copy.note && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(copy.note.key, copy.note.params)}</p>}
+      {proof?.circuitStamps ? <p className="[font:600_13px/1.4_Inter] text-[#3FD17F]" data-testid="purchase-circuit">{t('circuit.purchase', { n: proof.circuitStamps })}</p> : null}
       {signature && <ProofRow label={t('purchase.row.payment')} signature={signature} href={state.explorerUrl ?? txUrl(signature)} testId="purchase-explorer" />}
       {chain && <ProofRow label={gift ? t('gift.row.chain', { name: gift.name }) : t('purchase.row.chain')} signature={chain.signature} href={chain.explorerUrl} testId="purchase-chain-explorer" />}
       {gift && !chain && gift.companionExplorerUrl && (

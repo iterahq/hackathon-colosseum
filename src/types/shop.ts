@@ -1,4 +1,5 @@
 /** Shapes of the lives / shop / companion backend, normalised to camelCase by the services. */
+import type { PurchaseCircuit } from '@/types/circuit';
 import type { GiftReceipt } from '@/types/gift';
 
 export interface LivesState {
@@ -121,6 +122,8 @@ export interface PurchaseConfirmation {
   chain?: ChainProof | null;
   /** Present when the purchase was a gift: who got the life and where it was written. */
   gift?: GiftReceipt | null;
+  /** What this purchase paid forward (the Circuito), once its transfer is confirmed. */
+  circuit?: PurchaseCircuit | null;
 }
 
 export type FaucetResult = { signature: string; blocked: null } | { signature: null; blocked: string };

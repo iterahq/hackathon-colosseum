@@ -344,7 +344,9 @@ async function main() {
   const refill = await buy(call, wallet, 'life_refill');
   check('purchase-intent: flat contract fields', ['intent_id', 'message_base58', 'transaction_base58', 'transaction_base64', 'price_lamports', 'price_usd_cents', 'price_label', 'last_valid_block_height', 'expires_at', 'treasury', 'memo', 'cluster'].every((field) => field in (refill.intent.body ?? {})) && refill.intent.body.memo === refill.intent.body.intent_id && refill.intent.body.price_lamports === 550000, JSON.stringify(Object.keys(refill.intent.body ?? {})));
   check('life_refill: confirm -> paid, lives 5/5', refill.confirm?.status === 200 && refill.confirm.body.status === 'paid' && refill.confirm.body.lives?.current === 5 && refill.confirm.body.item.key === 'life_refill', JSON.stringify(refill.confirm?.body).slice(0, 200));
-  check('life_refill: the treasury received exactly the price', (await balance(treasury)) - treasuryBeforeRefill === 550_000n);
+  // Since the Circuito, half of a paid purchase leaves the treasury for the mint authority (plus that transfer's fee).
+  const refillGain = (await balance(treasury)) - treasuryBeforeRefill;
+  check('life_refill: the treasury received exactly the price (less the circuit share once it left)', refillGain === 550_000n || refillGain === 550_000n - 275_000n - 5_000n, `${refillGain} lamports`);
   const refillBody = refill.confirm?.body ?? {};
   check('life_refill: confirm carries `chain` (lives 5) and `written` for the companion asset', isSignatureText(refillBody.chain?.tx_signature) && refillBody.chain.lives === 5 && refillBody.chain.explorer_url.includes(refillBody.chain.tx_signature) && refillBody.written?.some((entry) => entry.asset === companion.asset_address && entry.attribute === 'lives' && entry.value === '5') && refillBody.companion?.image_url?.includes('?v='), JSON.stringify({ chain: refillBody.chain, written: refillBody.written }));
   verify = await verifyUntil(companion.asset_address, (current) => current.lives === '5');

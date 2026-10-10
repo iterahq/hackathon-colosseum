@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import '@/components/dashboard/dashboard.css';
 import { InviteCard } from '@/components/gift/InviteCard';
 import { AppTopBar } from '@/components/header/AppTopBar';
+import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArt } from '@/components/shop/ShopArt';
 import { ShopItemCard } from '@/components/shop/ShopItemCard';
@@ -99,6 +100,7 @@ export default function ShopPage() {
           wallet={companion.wallet}
           showing={{ key: shownKey, name: byKey(shownKey)?.title ?? null, preview: preview !== null && preview !== companion.outfit }}
         />
+        <CircuitStrip wallet={companion.wallet} />
         <InviteCard />
         {!hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">

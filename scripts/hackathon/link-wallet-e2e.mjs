@@ -476,7 +476,9 @@ async function main(keys) {
   check('purchase-submit: explorer_url carries the transaction\'s own signature', paid.body.explorer_url?.includes(signature), paid.body.explorer_url);
   check('purchase-submit: the ink is written on chain (`chain`, `written`, passport, image_url)', paid.body.written?.some((entry) => entry.attribute === 'ink' && entry.value === 'emerald' && entry.asset === pass.asset_address) && typeof paid.body.chain?.tx_signature === 'string' && paid.body.passport?.id === pass.id && typeof paid.body.image_url === 'string', JSON.stringify(paid.body.written));
   const treasuryGain = (await until(() => balance(treasury), (value) => value > treasuryBefore, 10, 1000)) - treasuryBefore;
-  check('purchase-submit: the treasury received exactly the price', treasuryGain === BigInt(intent.body.price_lamports), `${treasuryGain} lamports`);
+  // Since the Circuito, half of a paid purchase leaves the treasury for the mint authority (plus that transfer's fee).
+  const price = BigInt(intent.body.price_lamports);
+  check('purchase-submit: the treasury received exactly the price (less the circuit share once it left)', treasuryGain === price || treasuryGain === price - price / 2n - 5_000n, `${treasuryGain} lamports`);
   verify = await until(() => verifyAsset(pass.asset_address), (response) => attributesOf(response).ink === 'emerald', 20, 1500);
   check('credential-verify: ink = emerald on the certification', attributesOf(verify).ink === 'emerald' && verify.body.owner === linked.address, JSON.stringify(attributesOf(verify)));
 

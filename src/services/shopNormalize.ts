@@ -16,6 +16,7 @@ import type {
 } from '@/types/shop';
 import { DEFAULT_MAX_LIVES, DEFAULT_REGEN_SECONDS } from '@/utils/lives';
 import { priceLabel } from '@/utils/shopPrice';
+import { toPurchaseCircuit } from '@/services/circuit.service';
 import { toGift } from '@/services/gift.service';
 
 type Row = Record<string, unknown>;
@@ -152,6 +153,7 @@ export function toConfirmation(v: unknown): PurchaseConfirmation {
     written: rows(r.written).map((w) => ({ asset: str(w.asset), attribute: str(w.attribute), value: String(w.value ?? '') })).filter((w) => w.attribute),
     chain: toChain(r.chain),
     gift: toGift(r.gift),
+    circuit: toPurchaseCircuit(r.circuit),
   };
 }
 

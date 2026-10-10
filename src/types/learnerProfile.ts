@@ -1,3 +1,4 @@
+import type { CircuitShare } from '@/types/circuit';
 /** Public learner profile (`learner-profile` edge function), normalised to camelCase. */
 export interface ProfileCompanion {
   asset: string;
@@ -47,6 +48,8 @@ export interface LearnerProfile {
   companion: ProfileCompanion | null;
   certifications: ProfileCertification[];
   medals: ProfileMedal[];
+  /** What this wallet's own shop purchases paid forward (the Circuito). */
+  circuit: CircuitShare;
 }
 
 export type ProfileLookup = { status: 'ok'; profile: LearnerProfile } | { status: 'invalid' };

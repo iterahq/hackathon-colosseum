@@ -108,7 +108,7 @@ export async function newLearner(apikey, label) {
   };
   const rest = async (query) => (await fetch(`${SUPABASE_URL}/rest/v1/${query}`, { headers: { ...headers, 'Accept-Profile': 'itera' } })).json();
   console.log(`${label}: wallet ${address} · itera user ${userId}`);
-  return { privateKey, address, userId, call, get, rest, label };
+  return { privateKey, address, userId, call, get, rest, label, headers };
 }
 
 export async function publicGet(path) {

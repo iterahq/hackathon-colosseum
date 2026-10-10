@@ -13,10 +13,11 @@
 // Never touches the owner's wallet account or the demo e-mail user.
 import { anonKey, balance, loadAuthority, psql, sol, summary } from './social-e2e.lib.mjs';
 import { laurel } from './social-e2e.laurel.mjs';
+import { circuit } from './social-e2e.circuit.mjs';
 import { endorse } from './social-e2e.endorse.mjs';
 import { podium } from './social-e2e.podium.mjs';
 
-const FEATURES = { laurel, podium, endorse };
+const FEATURES = { laurel, podium, endorse, circuit };
 
 async function main() {
   const flag = process.argv.indexOf('--only');
