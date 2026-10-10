@@ -96,10 +96,14 @@ function LessonIncompleteActions({ nextLessonId, onRedoMissing }: { nextLessonId
   );
 }
 
-/** The next/finish and review buttons of the end-of-lesson screen; the stamp ceremony reuses them. */
-export function LessonCompleteActions({ nextLessonId, onReview }: { nextLessonId?: string; onReview?: () => void }) {
+/**
+ * The next/finish and review buttons of the end-of-lesson screen; the stamp ceremony reuses them.
+ * `gold`: the trail just ended, so the certifications come first and next/finish steps down to secondary.
+ */
+export function LessonCompleteActions({ nextLessonId, onReview, gold = false }: { nextLessonId?: string; onReview?: () => void; gold?: boolean }) {
   const { t } = useI18n();
   const { bonus } = useLessonCompanion();
+  const onward = `flex w-full h-12 px-6 rounded-full items-center justify-center ${gold ? `mt-3 ${TACTILE_SECONDARY}` : `mt-6 ${TACTILE_CTA}`}`;
   return (
     <>
       {bonus > 0 && (
@@ -108,20 +112,17 @@ export function LessonCompleteActions({ nextLessonId, onReview }: { nextLessonId
           {t('lives.bonus', { n: bonus })}
         </p>
       )}
+      {gold && (
+        <Link to="/passport" className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`} data-testid="lesson-certifications-cta">
+          {t('lessonEnd.seeCertifications')}
+        </Link>
+      )}
       {nextLessonId ? (
-        <Link
-          to={`/lesson/${nextLessonId}`}
-          className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`}
-          data-testid="lesson-next-cta"
-        >
+        <Link to={`/lesson/${nextLessonId}`} className={onward} data-testid="lesson-next-cta">
           {t('lesson.nextLesson')}
         </Link>
       ) : (
-        <Link
-          to="/"
-          className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`}
-          data-testid="lesson-finish-cta"
-        >
+        <Link to="/" className={onward} data-testid="lesson-finish-cta">
           {t('lesson.finishCourse')}
         </Link>
       )}
@@ -133,8 +134,8 @@ export function LessonCompleteActions({ nextLessonId, onReview }: { nextLessonId
           data-testid="lesson-review-cta"
         >
           {t('lesson.review')}
-      </button>
-    )}
+        </button>
+      )}
     </>
   );
 }

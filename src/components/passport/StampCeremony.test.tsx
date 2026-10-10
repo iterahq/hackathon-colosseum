@@ -99,9 +99,12 @@ describe('StampCeremony', () => {
     expect(screen.getByTestId('passport-counter')).toHaveTextContent('4/5');
     expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'active');
     expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+    // `passport` takes ~6 s: the way out stays shut for as long as the ceremony prepares, not for 2 s.
+    act(() => void vi.advanceTimersByTime(15_000));
     expect(screen.getByTestId('ceremony-actions')).toHaveAttribute('aria-disabled', 'true');
-    act(() => void vi.advanceTimersByTime(600));
-    expect(screen.getByTestId('ceremony-actions')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByTestId('ceremony-actions-waiting')).toBeDisabled();
+    expect(screen.getByTestId('ceremony-actions-waiting')).toHaveTextContent('Carimbando…');
+    expect(screen.queryByRole('button', { name: 'next' })).not.toBeInTheDocument();
     expect(screen.getByTestId('passport-counter')).toHaveTextContent('4/5');
     view.unmount();
   });
@@ -127,10 +130,26 @@ describe('StampCeremony', () => {
     expect(screen.getByRole('dialog', { name: 'Trilha completa — certificação dourada!' })).toBeInTheDocument();
     expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'gold');
     expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Carimbado na Solana');
+    expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
+    expect(screen.queryByTestId('ceremony-actions-waiting')).not.toBeInTheDocument();
+  });
+
+  it.each(['minted', 'no_wallet', 'failed', 'pending'] as const)('%s resolves the ceremony and opens the lesson buttons', (status) => {
+    show(model(status));
+    expect(screen.queryByRole('button', { name: 'next' })).not.toBeInTheDocument();
+    settle();
+    expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
+  });
+
+  it('a retry in flight (minting again) shuts the way out until it resolves', () => {
+    show(model('minting'));
+    act(() => void vi.advanceTimersByTime(10_000));
+    expect(screen.getByTestId('ceremony-actions-waiting')).toBeDisabled();
   });
 
   it('keeps the lesson buttons and the passport link at the bottom', () => {
     show(model('minted'));
+    settle();
     expect(screen.getByRole('button', { name: 'next' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Ver minhas certificações →' })).toHaveAttribute('href', '/passport');
   });

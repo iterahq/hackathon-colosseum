@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { TACTILE_CTA } from '@iterahq/activities';
 import { usePassportSound } from '@/hooks/usePassportSound';
 import { useI18n } from '@/i18n';
 import type { CeremonyModel } from '@/utils/ceremony';
@@ -16,7 +17,7 @@ interface Props {
   /** The server has not answered yet: the page and Tera wait in the minting state and nothing is claimed. */
   preparing?: boolean;
   colorIndex: number;
-  /** The lesson's own next/finish buttons, kept at the bottom. */
+  /** The lesson's own next/finish buttons, kept at the bottom and replaced by a muted "stamping" button until the ceremony resolves. */
   actions?: ReactNode;
   onRetry?: () => void;
   onLater?: () => void;
@@ -39,13 +40,14 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
   const step = useCeremonyClock(reduce, 0, preparing);
   const prepared = useRef(preparing);
   if (preparing) prepared.current = true;
-  const [locked, setLocked] = useState(model.status === 'minting');
   const played = useRef(new Set<string>());
   const color = TRAIL_COLORS[colorIndex % TRAIL_COLORS.length];
   const { day, daysDone, totalDays } = model;
   const last = model.last && !preparing;
   const gold = last && step >= 5;
   const settled = step >= 6 && !preparing;
+  // The way out opens only once the server answered and the stamp is down: a click before that would skip it.
+  const locked = !settled || model.status === 'minting';
   const once = (key: string, fn: () => void) => {
     if (played.current.has(key)) return;
     played.current.add(key);
@@ -60,13 +62,6 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
     if (step >= 6 && model.status === 'minted') once('chime', () => sound('chime', 0.4));
     if (step >= 6 && model.status === 'failed') once('error', () => sound('error', 0.3));
   });
-
-  useEffect(() => {
-    if (model.status !== 'minting') return setLocked(false);
-    setLocked(true);
-    const id = window.setTimeout(() => setLocked(false), 2000);
-    return () => window.clearTimeout(id);
-  }, [model.status]);
 
   const headline = preparing
     ? t('passport.ceremony.headline.preparing', { n: day })
@@ -128,12 +123,20 @@ export function StampCeremony({ model, preparing = false, colorIndex, actions, o
             />
           )}
         </div>
-        <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked} inert={locked || undefined} style={{ opacity: locked ? 0.5 : 1 }}>
-          {actions}
+        <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked}>
+          {locked ? (
+            <button type="button" disabled data-testid="ceremony-actions-waiting" className={`mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-full px-6 opacity-50 ${TACTILE_CTA}`}>
+              {t('passport.ceremony.stamping')}
+            </button>
+          ) : (
+            actions
+          )}
         </div>
-        <Link to="/passport" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
-          {t('passport.ceremony.seePassport')}
-        </Link>
+        {!(last && !locked) && (
+          <Link to="/passport" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+            {t('passport.ceremony.seePassport')}
+          </Link>
+        )}
       </div>
     </div>
   );

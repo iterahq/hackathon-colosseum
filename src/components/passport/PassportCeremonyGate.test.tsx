@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { I18nProvider } from '@/i18n';
 import { PassportCeremonyGate, PassportPrefetch } from '@/components/passport/PassportCeremonyGate';
@@ -61,7 +61,7 @@ describe('PassportCeremonyGate', () => {
     expect(state.seen[0]).toEqual({ lessonId: 'l5', fresh: true, done: 15, total: 16 });
   });
 
-  it('a whole day finished now: the ceremony is the first thing on screen, never the card', () => {
+  it('a whole day finished now: the ceremony is the first thing on screen, never the card', async () => {
     const view = show({ kind: 'preparing', preview: PREVIEW }, { fresh: true });
     expect(screen.queryByTestId('lesson-complete')).not.toBeInTheDocument();
     const ceremony = screen.getByTestId('stamp-ceremony');
@@ -75,6 +75,10 @@ describe('PassportCeremonyGate', () => {
     expect(screen.getByTestId('stamp-ceremony')).toBe(ceremony);
     expect(ceremony).toHaveAttribute('data-phase', 'resolved');
     expect(screen.queryByTestId('lesson-complete')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ceremony-actions-waiting')).toHaveTextContent('Carimbando…');
+    expect(screen.queryByTestId('lesson-next-cta')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('lesson-certifications-cta')).toHaveAttribute('href', '/passport'), { timeout: 4000 });
+    expect(screen.getByTestId('lesson-next-cta')).toHaveAttribute('href', '/lesson/next');
   });
 
   it('an unfinished day: no ceremony, the card says what is missing and leads back to it', () => {

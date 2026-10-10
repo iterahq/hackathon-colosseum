@@ -24,5 +24,5 @@ export default function CeremonyPreviewPage() {
     txSignature: status === 'minted' ? '5fixtureSignature' : null,
     assetAddress: status === 'minted' ? 'FixtureAsset1111' : null,
   };
-  return <StampCeremony key={`${status}-${last}-${preparing}`} model={model} preparing={preparing} colorIndex={1} actions={<LessonCompleteActions nextLessonId="preview" />} />;
+  return <StampCeremony key={`${status}-${last}-${preparing}`} model={model} preparing={preparing} colorIndex={1} actions={<LessonCompleteActions nextLessonId="preview" gold={last && !preparing} />} />;
 }

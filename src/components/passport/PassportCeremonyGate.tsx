@@ -56,7 +56,7 @@ function Gate({ lessonId, nextLessonId, onReview, doneCount, total, fresh = fals
       model={preparing ? preparingModel(view.preview) : view.model}
       preparing={preparing}
       colorIndex={passport.colorIndex}
-      actions={<LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} />}
+      actions={<LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} gold={!preparing && view.model.last} />}
       onRetry={passport.retry}
       onLater={passport.dismiss}
       onConnect={passport.connect}
