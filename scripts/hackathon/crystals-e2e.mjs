@@ -56,11 +56,11 @@ async function main() {
   check('GET /crystals without a session is 401', anonymous.status === 401, anonymous.status);
   const fresh = await ana.get('crystals');
   check('a new learner has 0 crystals and an empty ledger', fresh.status === 200 && fresh.body.balance === 0 && fresh.body.ledger.length === 0, JSON.stringify(fresh.body).slice(0, 120));
-  check('prices carry the single life (5) and the backgrounds (75)', fresh.body.prices?.life === 5 && fresh.body.prices?.bg_midnight === 75 && fresh.body.prices?.life_refill === 20);
+  check('prices carry the single life (5), the backgrounds (75) and the refill (30)', fresh.body.prices?.life === 5 && fresh.body.prices?.bg_midnight === 75 && fresh.body.prices?.life_refill === 30);
   check('prices leave out what is not sold for crystals', !('life_gift' in fresh.body.prices) && !('bg_obsidian' in fresh.body.prices));
   check('ten earn rules, labelled', fresh.body.earn_rules?.length === 10 && fresh.body.earn_rules.every((rule) => rule.label && rule.crystals > 0));
   check('theme is always there: the defaults', fresh.body.theme?.background?.key === 'bg_obsidian' && fresh.body.theme.background.color === '#0A0908' && fresh.body.theme?.icon?.key === 'icon_green');
-  check('twelve theme items, the two defaults owned and equipped', fresh.body.theme_items?.length === 12 && fresh.body.theme_items.filter((item) => item.owned && item.equipped && item.default).length === 2);
+  check('theme items: 6 backgrounds, 6 icon colours, 25 borders; the three defaults owned and equipped', fresh.body.theme_items?.length === 37 && fresh.body.theme_items.filter((item) => item.owned && item.equipped && item.default).length === 3 && fresh.body.theme.border?.key === 'border_none' && fresh.body.accept === 'both');
 
   console.log('\n== earn ==');
   check('a grant credits once', grant(ana, 120, `${RUN}-a`) === '120|true');
@@ -83,19 +83,20 @@ async function main() {
   setLives(ana, 3);
   const one = await spend(ana, { item_key: 'life' });
   check('one life costs 5 and adds one life', one.status === 200 && one.body.balance === 118 && one.body.lives?.current === 4 && one.body.item?.qty === 1, JSON.stringify(one.body).slice(0, 160));
+  setLives(ana, 9);
   const many = await spend(ana, { item_key: 'life', qty: 5 });
-  check('asking for 5 with room for 1 sells 1 and charges 5', many.status === 200 && many.body.balance === 113 && many.body.lives?.current === 5 && many.body.item?.qty === 1, JSON.stringify(many.body).slice(0, 160));
+  check('asking for 5 with room for 1 sells 1 and charges 5', many.status === 200 && many.body.balance === 113 && many.body.lives?.current === 10 && many.body.item?.qty === 1, JSON.stringify(many.body).slice(0, 160));
   check('a malformed qty is 400', (await spend(ana, { item_key: 'life', qty: 9 })).status === 400);
   setLives(ana, 1);
   const refill = await spend(ana, { item_key: 'life_refill' });
-  check('the refill costs 20 and fills to 5', refill.status === 200 && refill.body.balance === 93 && refill.body.lives?.current === 5, JSON.stringify(refill.body).slice(0, 160));
+  check('the refill costs 30 and fills to 10', refill.status === 200 && refill.body.balance === 83 && refill.body.lives?.current === 10, JSON.stringify(refill.body).slice(0, 160));
 
   console.log('\n== spend: background, equip ==');
   const bought = await spend(ana, { item_key: 'bg_midnight' });
-  check('a background costs 75', bought.status === 200 && bought.body.balance === 18 && bought.body.item?.kind === 'background', JSON.stringify(bought.body).slice(0, 200));
+  check('a background costs 75', bought.status === 200 && bought.body.balance === 8 && bought.body.item?.kind === 'background', JSON.stringify(bought.body).slice(0, 200));
   check('buying does not equip', bought.body.theme?.background?.key === 'bg_obsidian');
   const again = await spend(ana, { item_key: 'bg_midnight' });
-  check('buying it again is 409 already_owned, nothing debited', again.status === 409 && again.body.error === 'already_owned' && ledgerSum(ana) === 18, JSON.stringify(again.body));
+  check('buying it again is 409 already_owned, nothing debited', again.status === 409 && again.body.error === 'already_owned' && ledgerSum(ana) === 8, JSON.stringify(again.body));
   const worn = await ana.call('crystals/equip', { background: 'bg_midnight' });
   check('equip wears the owned background', worn.status === 200 && worn.body.theme?.background?.key === 'bg_midnight' && worn.body.theme.background.color === '#0B1020' && worn.body.theme.icon.key === 'icon_green', JSON.stringify(worn.body));
   const notOwned = await ana.call('crystals/equip', { icon: 'icon_gold' });
@@ -110,7 +111,7 @@ async function main() {
   console.log('\n== spend: outfit, refusals ==');
   grant(ana, 100, `${RUN}-b`);
   const outfit = await spend(ana, { item_key: 'outfit_glasses' });
-  check('an outfit costs 100 and lands in the inventory', outfit.status === 200 && outfit.body.balance === 18 && outfit.body.inventory?.some((entry) => entry.item_key === 'outfit_glasses') && outfit.body.companion, JSON.stringify(outfit.body).slice(0, 200));
+  check('an outfit costs 100 and lands in the inventory', outfit.status === 200 && outfit.body.balance === 8 && outfit.body.inventory?.some((entry) => entry.item_key === 'outfit_glasses') && outfit.body.companion, JSON.stringify(outfit.body).slice(0, 200));
   const gift = await spend(ana, { item_key: 'life_gift' });
   check('a gift is 400 not_for_crystals', gift.status === 400 && gift.body.error === 'not_for_crystals', JSON.stringify(gift.body));
   check('a free default is 400 not_for_crystals', (await spend(ana, { item_key: 'bg_obsidian' })).body.error === 'not_for_crystals');
@@ -118,8 +119,8 @@ async function main() {
   const noPassport = await spend(ana, { item_key: 'ink_violet', ref_id: crypto.randomUUID() });
   check('an ink without a minted certification is 409 passport_required', noPassport.status === 409 && noPassport.body.error === 'passport_required', JSON.stringify(noPassport.body));
   const short = await spend(ana, { item_key: 'bg_grape' });
-  check('18 crystals do not buy a 75 background: 402 with balance and price', short.status === 402 && short.body.error === 'insufficient_crystals' && short.body.balance === 18 && short.body.price === 75, JSON.stringify(short.body));
-  check('nothing was debited by the refusals', ledgerSum(ana) === 18);
+  check('8 crystals do not buy a 75 background: 402 with balance and price', short.status === 402 && short.body.error === 'insufficient_crystals' && short.body.balance === 8 && short.body.price === 75, JSON.stringify(short.body));
+  check('nothing was debited by the refusals', ledgerSum(ana) === 8);
 
   console.log('\n== races ==');
   const broke = await spend(bia, { item_key: 'bg_grape' });
@@ -137,10 +138,76 @@ async function main() {
   check('…one life added, balance 0, never negative', livesOf(bia) === 4 && ledgerSum(bia) === 0 && (await bia.get('crystals')).body.balance === 0, livesOf(bia));
 
   grant(bia, 10, `${RUN}-e`);
+  setLives(bia, 9);
   const lastSlot = await Promise.all([spend(bia, { item_key: 'life' }), spend(bia, { item_key: 'life' })]);
   check('two lives at once with room for one: one sold, one refused 409 not_needed', statuses(lastSlot) === '200,409', statuses(lastSlot));
-  check('…no crystal lost: 5 lives, 5 crystals left', livesOf(bia) === 5 && ledgerSum(bia) === 5 && (await bia.get('crystals')).body.balance === 5, `${livesOf(bia)} lives, ${ledgerSum(bia)} crystals`);
+  check('…no crystal lost: 10 lives, 5 crystals left', livesOf(bia) === 10 && ledgerSum(bia) === 5 && (await bia.get('crystals')).body.balance === 5, `${livesOf(bia)} lives, ${ledgerSum(bia)} crystals`);
   check('every balance equals the sum of its ledger', psql(`select count(*) from itera.crystal_accounts a where a.balance <> (select coalesce(sum(delta), 0) from itera.crystal_ledger l where l.user_id = a.user_id);`) === '0');
+
+
+  console.log('\n== shop v3: lives packs, infinite lives ==');
+  const cy = await newLearner(apikey, 'cy');
+  grant(cy, 1200, `${RUN}-cy`);
+  const listing = await cy.get('shop-items');
+  const listed = (key) => listing.body.find?.((entry) => entry.key === key);
+  check('GET /shop-items lists the packs with effect and crystal price', listed('lives_30')?.effect?.add_lives === 30 && listed('lives_30')?.price_crystals === 100 && listed('lives_infinite')?.effect?.unlimited_days === 30 && listed('life_refill')?.price_crystals === 30, JSON.stringify(listed('lives_30') ?? null).slice(0, 200));
+  check('every listed item carries price_crystals and the two resolved currency flags', listing.body.every((entry) => 'price_crystals' in entry && typeof entry.sol_enabled === 'boolean' && typeof entry.crystals_enabled === 'boolean'));
+  check('backgrounds and for-sale borders are listed for SOL; signature borders are sold in neither currency', listed('bg_midnight')?.sol_enabled === true && listed('border_bronze')?.sol_enabled === true && listed('border_sol')?.sol_enabled === false && listed('border_sol')?.crystals_enabled === false && listed('border_sol')?.included_with === 'special_dourado');
+  const room = await spend(cy, { item_key: 'lives_10' });
+  check('a 10-lives pack on a full learner ADDS 10 above the maximum (20 of 10)', room.status === 200 && room.body.lives?.current === 20 && room.body.lives?.max === 10 && room.body.lives?.bonus === 10 && room.body.balance === 1160 && room.body.lives?.unlimited_until === null, JSON.stringify(room.body.lives));
+  check('the plain refill is still refused above the maximum (409 not_needed)', (await spend(cy, { item_key: 'life_refill' })).body.error === 'not_needed');
+  const activity = psql(`select id from itera.activities where status = 'published' limit 1;`);
+  const lost = await cy.call('lives', { action: 'lose', attempt_id: `${RUN}-l1`, activity_id: activity });
+  check('with a reserve a mistake takes one of the 20', lost.status === 200 && lost.body.lives?.current === 19, JSON.stringify(lost.body.lives));
+  const infinite = await spend(cy, { item_key: 'lives_infinite' });
+  const unlimitedAt = Date.parse(infinite.body.lives?.unlimited_until ?? '');
+  check('infinite lives: 1000 crystals, unlimited_until about 30 days ahead', infinite.status === 200 && infinite.body.balance === 160 && Math.abs(unlimitedAt - (Date.now() + 30 * 86400000)) < 120000, JSON.stringify(infinite.body.lives));
+  const costless = await cy.call('lives', { action: 'lose', attempt_id: `${RUN}-l2`, activity_id: activity });
+  check('during infinite lives a mistake costs nothing', costless.status === 200 && costless.body.lives?.current === 19 && costless.body.lives?.unlimited_until === infinite.body.lives.unlimited_until, JSON.stringify(costless.body.lives));
+  check('the companion answer carries unlimited_until too', (await cy.call('companion', {})).body.lives?.unlimited_until === infinite.body.lives.unlimited_until);
+
+  console.log('\n== shop v3: avatars with crystals, includes, borders, seasons ==');
+  const seeded = Number(psql(`select balance from itera.crystal_accounts where user_id = :'user_id'::uuid;`, { user_id: cy.userId }));
+  grant(cy, 150 + 2500 + 100 - seeded, `${RUN}-cy2`);
+  const common = await spend(cy, { item_key: 'base_estudioso' });
+  check('a common avatar for 150 crystals answers with the minted asset and includes nothing', common.status === 200 && common.body.avatar?.key === 'base_estudioso' && common.body.avatar.asset_address && common.body.avatar.serial >= 1 && common.body.avatar.includes?.length === 0, JSON.stringify(common.body).slice(0, 240));
+  const avatarRow = psql(`select mint_status || '|' || coalesce(asset_address, '') || '|' || (purchase_id is not null) from itera.avatar_assets where user_id = :'user_id'::uuid and item_key = 'base_estudioso';`, { user_id: cy.userId });
+  check('…there is an avatar_assets row, minted, with an asset and a paid crystal purchase behind it', avatarRow.startsWith('minted|') && avatarRow.endsWith('|true') && avatarRow.split('|')[1] === common.body.avatar.asset_address, avatarRow);
+  check('…the same avatar again is 409 already_owned, nothing debited', (await spend(cy, { item_key: 'base_estudioso' })).body.error === 'already_owned');
+  const epic = await spend(cy, { item_key: 'special_prata' });
+  check('an epic avatar for 2 500 crystals is minted and grants its signature border', epic.status === 200 && epic.body.avatar?.tier_name === 'Mega Tera' && epic.body.avatar.includes?.[0]?.key === 'border_luan' && epic.body.avatar.asset_address, JSON.stringify(epic.body.avatar ?? epic.body).slice(0, 240));
+  const ownedBorder = (await cy.get('crystals')).body.theme_items.find((item) => item.key === 'border_luan');
+  check('…the border is owned, not equipped, not for sale, and says what it comes with', ownedBorder?.owned === true && ownedBorder.equipped === false && ownedBorder.for_sale === false && ownedBorder.included_with === 'special_prata', JSON.stringify(ownedBorder ?? null));
+  const wornBorder = await cy.call('crystals/equip', { border: 'border_luan' });
+  check('…and it can be equipped', wornBorder.status === 200 && wornBorder.body.theme?.border?.key === 'border_luan' && wornBorder.body.theme.border.border?.style === 'gradient', JSON.stringify(wornBorder.body));
+  const wearing = await cy.call('companion', { equip: { avatar: 'special_prata' } });
+  check('companion.avatar.border shows the equipped border', wearing.status === 200 && wearing.body.avatar?.key === 'special_prata' && wearing.body.avatar.border?.style === 'gradient' && wearing.body.avatar.border.colors?.length === 2, JSON.stringify(wearing.body.avatar ?? wearing.body).slice(0, 240));
+  check('a border not owned cannot be equipped (409 not_owned)', (await cy.call('crystals/equip', { border: 'border_bronze' })).body.error === 'not_owned');
+  const unworn = await cy.call('crystals/equip', { border: 'border_none' });
+  check('the default border takes it off: companion.avatar.border is null again', unworn.status === 200 && (await cy.call('companion', {})).body.avatar?.border === null);
+  check('the signature border is not for sale in crystals (400 not_for_crystals)', (await spend(cy, { item_key: 'border_sol' })).body.error === 'not_for_crystals');
+  check('the gift is crystals-disabled (400 not_for_crystals)', (await spend(cy, { item_key: 'life_gift' })).body.error === 'not_for_crystals');
+  const thin = await spend(cy, { item_key: 'special_dourado' });
+  check('an epic avatar needs 2 500: 402 with the price', thin.status === 402 && thin.body.price === 2500, JSON.stringify(thin.body));
+  const legend = await spend(cy, { item_key: 'base_guerreiro' });
+  check('a legendary avatar is sold for crystals too (10 000): 402 with the price', legend.status === 402 && legend.body.price === 10000, JSON.stringify(legend.body));
+  const bronze = await spend(cy, { item_key: 'border_bronze' });
+  check('a for-sale border costs 100 crystals and does not equip itself', bronze.status === 200 && bronze.body.item?.kind === 'border' && bronze.body.theme?.border?.key === 'border_none', JSON.stringify(bronze.body).slice(0, 200));
+
+  console.log('\n== shop v3: seasons and the SOL rail ==');
+  const natal = await spend(cy, { item_key: 'event_natal' });
+  check('a seasonal avatar out of its window is refused for crystals: 409 out_of_season', natal.status === 409 && natal.body.error === 'out_of_season', JSON.stringify(natal.body));
+  const intent = await cy.call('purchase-intent', { item_key: 'event_verao' });
+  check('…and for SOL: purchase-intent 409 out_of_season (before any funds check)', intent.status === 409 && intent.body.error === 'out_of_season', JSON.stringify(intent.body));
+  const listedNatal = (await cy.get('shop-items')).body.find((entry) => entry.key === 'event_natal');
+  check('…the list still shows it, with its season and the next window', listedNatal?.season?.key === 'natal' && listedNatal.season.available === false && listedNatal.season.starts_at.endsWith('-12-01T00:00:00.000Z') && listedNatal.includes?.[0]?.key === 'border_pinho', JSON.stringify(listedNatal?.season ?? null));
+  const solBorder = await cy.call('purchase-intent', { item_key: 'border_circuit' });
+  check('a for-sale border is on the SOL rail (this wallet has no SOL: 402 insufficient_funds)', solBorder.status === 402, JSON.stringify(solBorder.body));
+  const solSignature = await cy.call('purchase-intent', { item_key: 'border_sol' });
+  check('a signature border is not sold for SOL: 409 currency_disabled', solSignature.status === 409 && solSignature.body.error === 'currency_disabled', JSON.stringify(solSignature.body));
+  const solBg = await cy.call('purchase-intent', { item_key: 'bg_grape' });
+  check('a background is on the SOL rail now (402 insufficient_funds for an empty wallet)', solBg.status === 402, JSON.stringify(solBg.body));
+  check('the balance equals the ledger after the avatars', (await cy.get('crystals')).body.balance === ledgerSum(cy));
 
   if (withChain) {
     console.log('\n== token mirror ==');
@@ -161,9 +228,9 @@ async function main() {
 
     setLives(ana, 4);
     const burnt = await spend(ana, { item_key: 'life' });
-    check('a spend after the mirror answers at once', burnt.status === 200 && burnt.body.balance === 13, JSON.stringify(burnt.body).slice(0, 100));
-    const after = await until(() => ana.get('crystals'), (answer) => answer.body.mirrored === true && answer.body.balance === 13, 40, 3000);
-    check('…and the 5 crystals are burnt by the permanent delegate, the learner signing nothing', (await tokenAmount(after.body.token_account)) === 13, `chain ${await tokenAmount(after.body.token_account)}`);
+    check('a spend after the mirror answers at once', burnt.status === 200 && burnt.body.balance === 3, JSON.stringify(burnt.body).slice(0, 100));
+    const after = await until(() => ana.get('crystals'), (answer) => answer.body.mirrored === true && answer.body.balance === 3, 40, 3000);
+    check('…and the 5 crystals are burnt by the permanent delegate, the learner signing nothing', (await tokenAmount(after.body.token_account)) === 3, `chain ${await tokenAmount(after.body.token_account)}`);
   }
 
   console.log('\n== protected accounts ==');

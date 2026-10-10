@@ -1189,3 +1189,45 @@ npx vitest run --config vitest.supabase.config.ts supabase/functions/_shared/cry
 node scripts/hackathon/crystals-e2e.mjs            # devnet, two throwaway learners, about 0.005 SOL of the authority
 node scripts/hackathon/crystals-e2e.mjs --no-chain # the ledger and the routes only
 ```
+
+## Shop v3 (migrations 0163-0168)
+
+Hackathon project only. Every price, window, include and switch below is a row, reversible by UPDATE.
+
+### The currency switch (data only)
+Every item is sold for SOL and for crystals. Which one prevails is decided later:
+- Global: `itera.onchain_config` key `shop_accept` = `both` (default) | `sol` | `crystals`.
+- Per item: `shop_items.sol_enabled` / `crystals_enabled` (default true; `life_gift` has crystals off; the free things and the signature borders have both off).
+- The rule is ONE function, `_shared/shop-accept.ts` `currencyOffered`: a currency is offered only if the global value allows it AND the item flag is true. `purchase-intent` answers `409 currency_disabled`; `POST /crystals/spend` answers `400 not_for_crystals`.
+- `GET /shop-items`: every item carries `sol_enabled` / `crystals_enabled`, already resolved with the global value. `GET /crystals` carries `accept` and only lists in `prices` what crystals can buy now.
+
+```sql
+-- the shop takes only SOL / only crystals
+update itera.onchain_config set value = 'sol'      where key = 'shop_accept';
+update itera.onchain_config set value = 'crystals' where key = 'shop_accept';
+-- back to both
+update itera.onchain_config set value = 'both'     where key = 'shop_accept';
+```
+
+### Rarity and prices (0163)
+Six tiers (`itera.avatar_tiers`): common (Tera) US$ 0.20 / 150 crystals, open · rare (Super Tera) US$ 1 / 600, cap 500 · epic (Mega Tera) US$ 10 / 2 500, cap 100 · legendary US$ 100 / 10 000, cap 25 · mythic US$ 1 000 / 100 000, cap 5 · primordial (one of one) US$ 5 000 / 500 000, cap 1. 1 crystal = 1 US cent of list price. Ígnio (`special_vermelho_lava`) is inactive (same picture as Ardo); `brand_phoenix_full` exists but is inactive until its art is published. Existing owners keep what they own.
+
+### Seasons (0164, `_shared/seasons.ts`)
+`effect.season = { key, from: "MM-DD", to: "MM-DD", label: { pt, en } }`, every year, UTC; a window may wrap the new year. `halloween` 1-31 Oct, `natal` 1-31 Dec, `verao` 21 Dec - 20 Mar. Out of the window an avatar is listed (`season.available: false`, with the next `starts_at` / `ends_at`) but `purchase-intent` and `POST /crystals/spend` answer `409 out_of_season`. Owners can still wear it.
+
+### Borders (0165) and includes (0166)
+- New kind `border`; `effect.border = { style: solid|gradient|conic|dashed|double, colors: ["#RRGGBB", ...], glow, animated }`. The front end draws it over the art's own ring. Default `border_none` (free). For sale: `border_bronze` 100, `border_emerald` 150, `border_pixel` 200, `border_circuit` 250, `border_crystal` 300, `border_laurel` 400 crystals (SOL = crystals / 500 in US$, min 0.20). 18 signature borders, no price: they come with their avatar.
+- Owned through `user_inventory` (global ref). Worn: `itera.learner_themes.border_key`, set by `POST /crystals/equip { border }`. `GET /crystals` `theme.border` and `theme_items` (kind border: `border`, `owned`, `equipped`, `for_sale`, `included_with`). `companion.avatar.border` and `learner-profile.avatar.border`: `{ style, colors, glow, animated } | null`.
+- `effect.includes = [keys]` on an avatar row; the avatar object lists `includes: [{ key, kind, title }]`. The `apply` of the avatar (SOL purchase and crystal purchase alike) grants them with the same idempotent upsert as the mint. Caju also includes `outfit_glasses`.
+
+### Avatars with crystals
+`POST /crystals/spend { item_key: <avatar> }` runs the SAME item `apply` as the SOL rail (`_shared/shop-items.ts`): the `avatar_assets` row, the serial (cap and holds respected: `409 sold_out`), the mint, the includes; the answer carries `avatar` like `purchase-confirm`. A learner with no wallet gets `403 no_wallet` before any debit. If the last unit goes between the check and the apply, the crystals are credited back (`reason: refund`) and the answer is `409 sold_out { refunded: true }`.
+
+### Lives (0167, `_shared/lives.ts`)
+`MAX_LIVES` and the column default are 10; existing rows were raised to 10 with their lives untouched (a learner who was full got a fresh regeneration clock). Packs (kind `life`, `effect.add_lives` N) ADD lives and may pass the maximum: that reserve is never trimmed and regeneration only runs below the maximum. `lives_infinite` (`effect.unlimited_days` 30) sets `companions.unlimited_until`; while it is in the future `loseLife` costs nothing (days stack if bought again). `lives` / `companion` answers gain `unlimited_until`. Prices (SOL / crystals): `life_refill` US$ 0.20 / 30, `lives_10` 0.30 / 40, `lives_30` 0.80 / 100, `lives_50` 1.20 / 150, `lives_100` 2.00 / 250, `lives_infinite` 10 / 1 000. `crystal_spend` writes `unlimited_until` in the same transaction as the debit.
+
+### Backgrounds and icon colours on the SOL rail
+`background` and `app_icon` are in the item registry (`ITEM_KINDS`, `ITEM_HANDLERS`) with the same apply the crystals path uses, and `GET /shop-items` lists them (and the borders) with `color` / `border`, `for_sale`, `included_with`.
+
+### Tests
+`seasons.test.ts`, `shop-accept.test.ts`, extended `lives.test.ts`, `crystals.test.ts`, `avatars.test.ts`, `shop-rules.test.ts`; live: `node scripts/hackathon/crystals-e2e.mjs`.

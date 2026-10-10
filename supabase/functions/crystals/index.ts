@@ -14,6 +14,7 @@ import {
   loadCrystalItems,
   loadCrystalPurchase,
   loadLedger,
+  loadChoice,
   loadTheme,
   ownedThemeKeys,
   saveThemeChoice,
@@ -36,6 +37,7 @@ import {
   priceOf,
   pricesOf,
   spendRef,
+  themeOf,
   themeColor,
   type ThemeSlot,
 } from '../_shared/crystals.ts';
@@ -67,8 +69,8 @@ async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Re
     // Which avatar a border comes with. Never fatal for the sheet.
     loadAvatarCatalog(db).then(includedWithMap, () => new Map<string, string>()),
   ]);
-  const owned = await ownedThemeKeys(db, userId, items);
-  const theme = await loadTheme(db, userId, items, owned, lang);
+  const [owned, chosen] = await Promise.all([ownedThemeKeys(db, userId, items), loadChoice(db, userId)]);
+  const theme = themeOf(items, chosen, owned, lang);
   const token = tokenView(account, config[CRYSTAL_MINT_CONFIG_KEY] ?? null, caller.wallet);
   if (caller.wallet && !token.mirrored) inBackground(mirrorCrystals(db, userId, caller.wallet));
 

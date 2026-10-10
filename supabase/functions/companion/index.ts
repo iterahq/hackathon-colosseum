@@ -61,9 +61,9 @@ Deno.serve(async (request) => {
 
   try {
     const db = serviceClient();
-    const caller = await resolveCaller(db, request);
+    // The body is read while the caller is resolved: neither waits for the other.
+    const [caller, body] = await Promise.all([resolveCaller(db, request), readJsonObject(request)]);
     if (typeof caller === 'string') return json({ error: caller }, callerFailureStatus(caller), cors);
-    const body = await readJsonObject(request);
     const equip = body ? equipOf(body) : false;
     const equipAvatar = body ? equipAvatarOf(body) : false;
     if (!body || equip === false || equipAvatar === false) return json({ error: 'invalid_body' }, 400, cors);

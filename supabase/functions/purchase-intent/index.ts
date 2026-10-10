@@ -98,14 +98,14 @@ Deno.serve(async (request) => {
     const item = found as ShopItem | null;
     if (!item || !isItemKind(item.kind)) return json({ error: 'item_not_found' }, 404, cors);
     if (!item.active) return json({ error: 'item_inactive' }, 409, cors);
-    // An item with no price is not for sale (a free avatar): everyone has it already.
-    // A border with no price (the default, or a signature one that only comes with its avatar) is not for sale either.
-    if ((item.price_lamports as number | null) === null) return json({ error: item.kind === 'border' ? 'not_for_sale' : 'free_item' }, 409, cors);
-    if (!Number.isSafeInteger(item.price_lamports) || item.price_lamports <= 0) throw new Error(`shop_items: bad price for ${item.key}`);
-
+    // A free avatar is everyone's already.
+    if (item.kind === 'avatar' && (item.price_lamports as number | null) === null) return json({ error: 'free_item' }, 409, cors);
     // The shop switch: SOL is taken for this item only if the global value and the item's own flag both say so.
     const config = await loadConfig(db);
     if (!currencyOffered(parseAccept(config[SHOP_ACCEPT_KEY]), item, 'sol')) return json({ error: 'currency_disabled' }, 409, cors);
+    // Anything else with no price is not for sale.
+    if ((item.price_lamports as number | null) === null) return json({ error: item.kind === 'border' ? 'not_for_sale' : 'free_item' }, 409, cors);
+    if (!Number.isSafeInteger(item.price_lamports) || item.price_lamports <= 0) throw new Error(`shop_items: bad price for ${item.key}`);
 
     // A gift names its recipient by wallet address; the purchase is then scoped to that learner.
     let normalizedRef = refId.toLowerCase();

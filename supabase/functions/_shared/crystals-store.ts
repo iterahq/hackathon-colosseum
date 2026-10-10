@@ -170,7 +170,7 @@ export async function ownedThemeKeys(db: IteraClient, userId: string, items: Pri
   return new Set((data ?? []).map((row) => row.item_key as string));
 }
 
-async function loadChoice(db: IteraClient, userId: string): Promise<Partial<Record<ThemeSlot, string | null>>> {
+export async function loadChoice(db: IteraClient, userId: string): Promise<Partial<Record<ThemeSlot, string | null>>> {
   const { data, error } = await db.from('learner_themes').select('background_key,icon_key,border_key').eq('user_id', userId).maybeSingle();
   if (error) throw new Error(`learner_themes: ${error.message}`);
   return { background: data?.background_key ?? null, icon: data?.icon_key ?? null, border: data?.border_key ?? null };
