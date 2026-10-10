@@ -6,7 +6,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
 import { EndorseDialog } from '@/components/live/endorse/EndorseDialog';
 import { StudentCertificationRow } from '@/components/live/endorse/StudentCertificationRow';
 import { useEndorse, useStudentCertifications } from '@/hooks/useEndorsements';
@@ -23,7 +24,7 @@ export default function InstructorCertificationsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader active="discover" />
+      <div className="dash-root"><AppTopBar /></div>
       <main className="flex-1 max-w-[900px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         <Link to="/live/instructor" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
           <ArrowLeft className="w-4 h-4" />

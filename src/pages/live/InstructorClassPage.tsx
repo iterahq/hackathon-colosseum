@@ -31,7 +31,8 @@ import {
   Square,
   X,
 } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
 import { useI18n } from '@/i18n';
 import { useMembership } from '@/hooks/useMembership';
 import { instructorTenantId } from '@/services/membership.service';
@@ -112,7 +113,7 @@ export default function InstructorClassPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader active="discover" />
+      <div className="dash-root"><AppTopBar /></div>
       <main className="flex-1 max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         {/* Hero */}
         <div className="flex items-center gap-3 mb-2">

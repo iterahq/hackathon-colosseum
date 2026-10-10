@@ -5,7 +5,8 @@
  */
 import { Link } from 'react-router-dom';
 import { PencilRuler, FolderTree, ChevronRight } from 'lucide-react';
-import { AppHeader } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
+import '@/components/dashboard/dashboard.css';
 import { useI18n } from '@/i18n';
 import { useAuthorPrograms } from '@/hooks/useAuthorCanvas';
 import type { I18nText } from '@/types/content';
@@ -19,7 +20,7 @@ export default function AuthorHomePage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <AppHeader />
+      <div className="dash-root"><AppTopBar /></div>
       <main className="flex-1 max-w-[1100px] w-full mx-auto px-4 md:px-6 py-6 md:py-10">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-xl bg-verde-floresta/60 border border-border flex items-center justify-center text-menta">

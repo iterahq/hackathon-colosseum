@@ -1,3 +1,4 @@
+import type { LearnerAvatar } from '@/types/avatar';
 import type { CircuitShare } from '@/types/circuit';
 /** Public learner profile (`learner-profile` edge function), normalised to camelCase. */
 export interface ProfileCompanion {
@@ -42,8 +43,22 @@ export interface ProfileMedal {
   explorerUrl: string | null;
 }
 
+export interface ProfileAvatarNft {
+  key: string;
+  title: string;
+  tierName: string;
+  serial: number | null;
+  verified: boolean;
+  imageUrl: string;
+  explorerUrl: string | null;
+}
+
 export interface LearnerProfile {
+  /** NFT avatars the wallet owns; empty when the backend sends none. */
+  avatars: ProfileAvatarNft[];
   wallet: string;
+  /** The picture the learner wears; the default one when the backend sent none. */
+  avatar: LearnerAvatar;
   verifiedCount: number;
   companion: ProfileCompanion | null;
   certifications: ProfileCertification[];

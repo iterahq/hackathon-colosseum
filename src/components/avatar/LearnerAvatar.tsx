@@ -1,4 +1,5 @@
-import type { AvatarRarity, LearnerAvatar as Avatar } from '@/types/avatar';
+import { useState } from 'react';
+import { DEFAULT_AVATAR, type AvatarRarity, type LearnerAvatar as Avatar } from '@/types/avatar';
 
 const SIZES = { xs: 'h-7 w-7', sm: 'h-9 w-9', md: 'h-12 w-12', lg: 'h-20 w-20', xl: 'h-32 w-32' } as const;
 export type LearnerAvatarSize = keyof typeof SIZES;
@@ -25,9 +26,12 @@ export function LearnerAvatar({
   thumb?: boolean;
   className?: string;
 }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const wanted = thumb && size !== 'lg' && size !== 'xl' ? avatar.thumbUrl : avatar.imageUrl;
   return (
     <img
-      src={thumb && size !== 'lg' && size !== 'xl' ? avatar.thumbUrl : avatar.imageUrl}
+      src={failed === wanted ? DEFAULT_AVATAR.imageUrl : wanted}
+      onError={() => setFailed(wanted)}
       alt=""
       draggable={false}
       data-avatar={avatar.key}
