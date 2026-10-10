@@ -55,7 +55,7 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 
 Migrations `0115_purchase_rail.sql`, `0116_companion_lives.sql`, `0117_certification_naming.sql`,
 `0118_price_labels_profile_indexes.sql`, `0119_wallet_link.sql`, `0120_companion_mirrored_at.sql`,
-`0121_wallet_identity_search_path.sql`. `itera.wallet_identity_user(address)` (service role only)
+`0121_wallet_identity_search_path.sql`, `0122_companion_mirror_claim.sql`. `itera.wallet_identity_user(address)` (service role only)
 answers which learner signs in with a wallet; it is the only code that reads `auth.identities`.
 
 ## Items
@@ -328,6 +328,26 @@ or `{ "action": "lesson_end", "lesson_id": "<uuid>", "mistakes": 0 }` → `{ liv
   lesson per day), `full`. It also mirrors lives, level, xp and streak to the asset in the
   background; a failed write is retried by the next mirror moment.
 
+### Mirror ordering (one writer per companion)
+
+Two mirror moments close together (the last life, then a refill a few seconds later) used to send
+two independent transactions, and the older value could land last. `syncMirror`
+(`_shared/companion-store.ts`, decisions in `_shared/mirror.ts`) now serializes them:
+
+- A mirror first claims the row (`mirror_claimed_at`, compare-and-set; a claim older than 60 s is
+  taken over). The holder reads the row **immediately before** building each transaction, so it
+  never writes a value captured earlier.
+- A caller that finds the mirror taken sends nothing. It sets `mirror_dirty` (and `mirror_due`) and
+  returns; the holder, after its transaction is confirmed, can only release the claim while
+  `mirror_dirty` is false, otherwise it reads the row and writes again (at most 3 passes). The last
+  confirmed write is therefore the latest database state.
+- `life_refill` waits up to 6 s, and the last-life `lose` up to 2.5 s, for a mirror in flight to
+  finish and then takes the claim itself, so its answer still carries `chain`. Background mirrors
+  (`lesson_end`, equip) defer at once.
+- `chain` in an answer is unchanged: present only when that call confirmed a write, with the lives
+  that write put on chain; absent when the call deferred or had nothing to write (for example a
+  `lose` whose mirror started after the refill already landed in the database).
+
 ### `POST /wallet-faucet`
 
 Works for a sign-in wallet and for a linked one.
@@ -422,6 +442,14 @@ linked-wallet story (unclaimed rows, challenge, verify, mint, companion, a purch
 way, and deletes the three users at the end. It reads `link-wallet status` of the demo e-mail user
 once and never opens a challenge for it.
 
+```bash
+node scripts/hackathon/mirror-order-e2e.mjs [--keep]  # devnet, ~0.035 SOL of the authority
+```
+
+`mirror-order-e2e.mjs` loses the last life and pays the refill three times back to back and three
+times concurrently, then equips an outfit right after a `lesson_end`, and each time requires the
+asset to reach the database's values within 30 s and hold them for 10 s.
+
 `purchase-e2e.mjs` only **reads** the demo e-mail user (companion, a `lesson_end` for a lesson that does not
 exist, the two wallet-only refusals) and checks its companion row is unchanged afterwards.
 
@@ -458,9 +486,6 @@ Not verified:
   same address: both mint to it and `learner-profile` lists the assets of both (one companion, the
   older). The reverse, linking a wallet that already is an account, is refused.
 - `link-wallet` has no unlink and no rate limit; a learner holds at most one challenge row.
-- Two background mirrors of the same companion started within a second (two `lesson_end` calls in a
-  row) can land out of order, leaving the older lives on chain until the next mirror moment. The
-  public view shows that on-chain value, with its `mirrored_at`.
 
 - A `passport` call and a cosmetic purchase racing on the same row can still drop the
   `state.cosmetics` **copy** (`passport` writes the state it read at the start). Nothing reads the
