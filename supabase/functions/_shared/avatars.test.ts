@@ -22,6 +22,7 @@ import {
   type AvatarItem,
   type ReservationStore,
 } from './avatars';
+import { loreOf } from './lore';
 import { companionArtInput, companionAttributes, companionChainImageUrl, companionFromAttributes, type CompanionSnapshot } from './companion';
 import { profileAvatars, isCollectibleVerified } from './profile';
 import { eligibility } from './shop-rules';
@@ -46,6 +47,7 @@ const item = (key: string, patch: Partial<AvatarItem> = {}): AvatarItem => ({
 const FREE = item(DEFAULT_AVATAR_KEY, { title_i18n: { pt: 'Normal', en: 'Normal' }, price_lamports: null, price_usd_cents: 0, price_label: 'Free', rarity: 'common', avatar_group: 'expression', supply_cap: null });
 const HAPPY = item('tera_feliz', { ...FREE, key: 'tera_feliz', image_key: 'tera_feliz', title_i18n: { pt: 'Feliz', en: 'Happy' } });
 const LEADER = item('base_lider');
+const NO_LORE = item('base_sem_lore', { title_i18n: { pt: 'Sem lore', en: 'No lore' } });
 const MYTHIC = item('event_space', { title_i18n: { pt: 'Space', en: 'Space' }, rarity: 'mythic', avatar_group: 'event', supply_cap: 5, price_lamports: 5_500_000_000, price_usd_cents: 100_000, price_label: 'US$ 1,000.00 ≈ 5.5 SOL' });
 const catalog: AvatarCatalog = {
   items: new Map([FREE, HAPPY, LEADER, MYTHIC].map((entry) => [entry.key, entry])),
@@ -99,6 +101,44 @@ const NOW = new Date('2026-10-10T12:00:00.000Z');
 const UNTIL = new Date('2026-10-10T12:03:00.000Z');
 const ask = (userId: string, target: AvatarItem, paid = false, now = NOW) => ({ userId, item: target, purchaseId: `intent-${userId}`, paid, until: new Date(now.getTime() + 180_000), now });
 
+describe('lore in names, metadata and views', () => {
+  it('composes the metadata with lore: English story, transferable line, Epithet and Quote', () => {
+    const lore = loreOf('base_lider');
+    const meta = avatarMetadata(catalog, LEADER, { serial: 7, asset_address: 'Asset111' }, 'pt', SUPABASE);
+    expect(meta.name).toBe('Dom · Super Tera #7');
+    expect(meta.description.startsWith(lore?.story.en as string)).toBe(true);
+    expect(meta.description).toMatch(/NOT soulbound/);
+    expect(meta.attributes).toContainEqual({ trait_type: 'Epithet', value: 'Crown of no one' });
+    expect(meta.attributes).toContainEqual({ trait_type: 'Quote', value: lore?.quote.en });
+    expect(meta.attributes).toContainEqual({ trait_type: 'Transferable', value: 'yes' });
+  });
+
+  it('keeps today\'s metadata when the avatar has no lore', () => {
+    const meta = avatarMetadata(catalog, NO_LORE, { serial: 2, asset_address: null }, 'en', SUPABASE);
+    expect(meta.name).toBe('Super Tera · No lore #2');
+    expect(meta.description).toBe(avatarMetadata(catalog, NO_LORE, { serial: 2, asset_address: null }, 'en', SUPABASE).description);
+    expect(meta.description).toMatch(/^A collectible avatar of Tera/);
+    expect(meta.attributes.map((a) => a.trait_type)).not.toContain('Epithet');
+    expect(avatarMetadata(catalog, NO_LORE, { serial: 2, asset_address: null }, 'pt', SUPABASE).name).toBe('Super Tera · Sem lore #2');
+  });
+
+  it('puts a resolved lore block in the shop entry, the avatar view and the profile list, null without lore', () => {
+    const facts = { supply: undefined, own: null, equippedKey: null };
+    expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, facts).lore).toMatchObject({ name: 'Dom', epithet: 'Coroa de ninguém' });
+    expect(shopAvatarFields(catalog, LEADER, 'en', SUPABASE, facts).lore?.epithet).toBe('Crown of no one');
+    expect(shopAvatarFields(catalog, NO_LORE, 'pt', SUPABASE, facts).lore).toBeNull();
+    expect(avatarView(catalog, LEADER, 'en', SUPABASE, null).lore?.name).toBe('Dom');
+    expect(avatarView(catalog, NO_LORE, 'en', SUPABASE, null).lore).toBeNull();
+  });
+
+  it('derives chip_url beside image_url and thumb_url', () => {
+    const chip = `${SUPABASE}/storage/v1/object/public/tera-avatars/base_lider_chip.webp`;
+    expect(avatarImageUrl(SUPABASE, LEADER, 'chip')).toBe(chip);
+    expect(avatarView(catalog, LEADER, 'en', SUPABASE, null).chip_url).toBe(chip);
+    expect(shopAvatarFields(catalog, LEADER, 'en', SUPABASE, { supply: undefined, own: null, equippedKey: null }).chip_url).toBe(chip);
+  });
+});
+
 describe('catalog and tiers', () => {
   it('derives the public URLs from the key alone', () => {
     expect(avatarImageUrl(SUPABASE, LEADER)).toBe(`${SUPABASE}/storage/v1/object/public/tera-avatars/base_lider.webp`);
@@ -107,7 +147,8 @@ describe('catalog and tiers', () => {
   });
 
   it('names the asset with tier, title and serial', () => {
-    expect(avatarAssetName(catalog, LEADER, 7)).toBe('Super Tera · Líder #7');
+    expect(avatarAssetName(catalog, LEADER, 7)).toBe('Dom · Super Tera #7');
+    expect(avatarAssetName(catalog, NO_LORE, 7)).toBe('Super Tera · Sem lore #7');
     expect(avatarAttributes(catalog, MYTHIC, 3)).toEqual([
       { key: 'kind', value: 'avatar' },
       { key: 'key', value: 'event_space' },
@@ -128,7 +169,7 @@ describe('catalog and tiers', () => {
 
   it('says in the metadata that a collectible is transferable, and carries no owner', () => {
     const meta = avatarMetadata(catalog, LEADER, { serial: 7, asset_address: 'Asset111' }, 'en', SUPABASE);
-    expect(meta.name).toBe('Super Tera · Leader #7');
+    expect(meta.name).toBe('Dom · Super Tera #7');
     expect(meta.description).toMatch(/NOT soulbound/);
     expect(meta.image).toBe(`${SUPABASE}/storage/v1/object/public/tera-avatars/base_lider.webp`);
     expect(meta.attributes).toContainEqual({ trait_type: 'Transferable', value: 'yes' });

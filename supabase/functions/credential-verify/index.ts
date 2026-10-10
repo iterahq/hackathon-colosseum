@@ -1,4 +1,5 @@
 import { isSolanaAddress } from '../_shared/address.ts';
+import { loreView } from '../_shared/lore.ts';
 import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
 import { avatarFromAttributes, avatarImageUrl, avatarMetadataUrl, tierName, type AvatarAssetRow } from '../_shared/avatars.ts';
 import { readCredential, readOnlyUmi } from '../_shared/chain.ts';
@@ -157,6 +158,7 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
     tier: item.rarity,
     title: `${tier} · ${pickText(item.title_i18n, lang)} #${row.serial}`,
     description: pickText(item.description_i18n, lang),
+    lore: loreView(item.key, lang),
     trail: null,
     credential_id: row.id,
     earned_at: row.minted_at,
@@ -165,6 +167,7 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
     metadata_url: avatarMetadataUrl(functionsBase(), row.id),
     image_url: image,
     thumb_url: avatarImageUrl(supabaseUrl(), item, '128'),
+    chip_url: avatarImageUrl(supabaseUrl(), item, 'chip'),
     stamps: [],
   };
 }
@@ -229,7 +232,7 @@ Deno.serve(async (request) => {
         attributes: onchain.attributes,
         achievement,
         ...(endorsements ? { endorsements } : {}),
-        ...(avatar ? { avatar, image_url: avatarAchievement?.image_url ?? null } : {}),
+        ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
         ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),

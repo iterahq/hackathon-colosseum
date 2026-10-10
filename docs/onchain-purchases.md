@@ -677,6 +677,25 @@ bucket `tera-avatars`; every URL is derived from `image_key`. A free avatar is t
 `shop-items` reads the catalog on every call, the other functions within a minute. Only `expression`
 avatars take an outfit (see the art rule below).
 
+### Lore
+
+The names and stories of the Tera avatars live in `supabase/functions/_shared/tera-lore.json`
+(`avatars.<key>` has `name`, `epithet`, `story`, `quote` in `pt` and `en`). The frontend keeps a mirror at
+`src/content/teraLore.ts`: whoever edits either copy must update the other. Migration `0143_avatar_lore.sql`
+copies `name` / `epithet` into `shop_items.title_i18n` / `description_i18n` of the avatar rows, so `title`
+carries the lore name everywhere. Reader: `_shared/lore.ts` (`loreOf`, `loreText`, `loreView`), tolerant of a
+key without lore (`null`).
+
+- Every avatar object (`shop-items`, `companion.avatar`, `learner-profile.avatar` / `avatars[]`,
+  `credential-verify.avatar` and `achievement`) gains `lore: { name, epithet, story, quote } | null`, in `?lang=`
+  (default pt), `null` when the key has no lore.
+- Avatar objects also carry `chip_url` (`…/<key>_chip.webp`, a 128 px circular crop), derived in `avatarImageUrl(…, "chip")`.
+- NFT metadata (`credential-meta/avatar/<id>`): `name` = `<lore name en> · <tier en> #<serial>`, `description` =
+  the English story plus the transferable-collectible sentence, attributes `Epithet` and `Quote` (en). The
+  on-chain asset name given at mint uses the same composition; assets minted earlier keep their name.
+- Add lore for a new avatar: edit the JSON (and the frontend mirror), run
+  `node scripts/hackathon/gen-avatar-lore-migration.mjs <NNNN_name>.sql` and apply the generated migration.
+
 ### `GET /shop-items`: avatar entries
 
 Listed after the older items (`sort` 1000 and up; sorting by rarity is the frontend's job).

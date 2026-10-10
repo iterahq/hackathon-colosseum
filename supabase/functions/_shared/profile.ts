@@ -1,3 +1,4 @@
+import { loreView } from './lore.ts';
 import { avatarImageUrl, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
 import { endorsementsOf } from './endorsement.ts';
 import type { Lang } from './art.ts';
@@ -104,6 +105,7 @@ export function profileAvatars(input: {
       {
         key: item.key,
         title: pickText(item.title_i18n, lang),
+        lore: loreView(item.key, lang),
         rarity: item.rarity,
         tier_name: tierName(catalog, item, lang),
         serial: row.serial,
@@ -112,6 +114,7 @@ export function profileAvatars(input: {
         verified: isCollectibleVerified(input.onchain.get(row.asset_address), { wallet, collection: config.collection_avatars, authority: config.authority }),
         image_url: avatarImageUrl(input.supabaseUrl, item),
         thumb_url: avatarImageUrl(input.supabaseUrl, item, '128'),
+        chip_url: avatarImageUrl(input.supabaseUrl, item, 'chip'),
         page_url: `${APP_URL}/c/${row.asset_address}`,
         explorer_url: explorerUrl('address', row.asset_address),
       },
