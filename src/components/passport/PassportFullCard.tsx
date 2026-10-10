@@ -9,9 +9,10 @@ import { PassportArt } from './PassportArt';
 import { pageColor, pageVariant } from './pageVariant';
 import { isGold } from '@/utils/passport';
 
-const formatDate = (iso: string | null): string | null => {
+const formatDate = (iso: string | null, locale: string): string | null => {
   const at = iso ? new Date(iso) : null;
   if (!at || Number.isNaN(at.getTime())) return null;
+  if (locale === 'en') return at.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
   return `${String(at.getUTCDate()).padStart(2, '0')}/${String(at.getUTCMonth() + 1).padStart(2, '0')}/${at.getUTCFullYear()}`;
 };
 
@@ -19,7 +20,7 @@ const formatDate = (iso: string | null): string | null => {
 export function PassportFullCard({ page }: { page: PassportPageData }) {
   const { t, locale } = useI18n();
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
-  const date = formatDate(page.earnedAt);
+  const date = formatDate(page.earnedAt, locale);
 
   return (
     <article data-testid="passport-full-card" className="flex w-full max-w-[300px] flex-col gap-3 justify-self-center">
