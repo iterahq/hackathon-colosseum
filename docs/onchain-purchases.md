@@ -662,15 +662,27 @@ memo `circuit:<purchase id>`.
 - **Once per purchase**: `purchases.circuit_status` goes `null -> pending` by compare-and-set before
   anything is sent, then `sent` (`circuit_lamports`, `circuit_signature` unique, `circuit_at`),
   `skipped` (`circuit_reason`: `treasury_floor` when the treasury would end below 0.2 SOL after the
-  transfer and its fee, `nothing_to_send`) or `failed`. A row is never taken twice and a `failed`
-  transfer is **not** retried (it may have been broadcast). A free claim and an unpaid intent move
-  nothing. An in-app gift is one purchase row, so it moves once; a blink gift (`gifts` table only)
-  is not part of the Circuito.
-- `purchase-confirm` / `purchase-submit` gain an optional
-  `circuit: { status: "sent" | "pending" | "skipped" | "failed", lamports, stamps_funded, tx_signature, explorer_url }`.
-  The call waits at most 6 s for the transfer; past that it says `pending` and the transfer finishes in
-  the background. A repeated confirm returns the stored state. `stamps_funded = floor(lamports / 5000)`
-  (5 000 lamports = the fee of one stamp).
+  transfer and its fee, `nothing_to_send`, `before_circuit` for purchases older than the feature) or
+  `failed`. A free claim and an unpaid intent move nothing. An in-app gift is one purchase row, so it
+  moves once; a blink gift (`gifts` table only) is not part of the Circuito.
+- **After the answer, never in it** (migration `0135`): `purchase-confirm` / `purchase-submit` do not
+  wait for the transfer. They gain an optional
+  `circuit: { status: "sent" | "pending" | "skipped" | "failed", lamports, stamps_funded, tx_signature, explorer_url }`
+  read from the row alone. On the first confirm that is `pending` with the share the purchase **will**
+  move (`lamports = floor(purchases.lamports / 2)`, `stamps_funded = floor(lamports / 5000)`,
+  `tx_signature: null`); the transfer runs right after the response (`EdgeRuntime.waitUntil`) and lands
+  3 to 6 s later. A repeated confirm then answers `sent` with the transaction. `skipped` / `failed`
+  carry zeros.
+- **Retry, without paying twice** (`retryCircuits` in `_shared/circuit-store.ts`): after every purchase
+  answer and on every `GET /circuit`, at most two older purchases are taken up again: a transfer that
+  never ran (`circuit_status` null a minute after the purchase was paid) and one left `pending` or
+  `failed` for three minutes (longer than a blockhash lives, so an unseen transaction can no longer
+  land). The signature is stored the moment the node accepts the transaction; before sending again
+  the retry asks the chain about that signature **and** looks for any treasury transaction with the
+  memo `circuit:<purchase id>`. Found: it is recorded as `sent`. Still in flight: left alone. Only when
+  the chain has nothing is a new transfer sent, and if the chain cannot be asked nothing is sent.
+  Destination and amount are unchanged: the authority key inside `sendToAuthority`, half of the paid
+  row. Purchases older than 7 days are left alone. Proof: `node scripts/hackathon/security-attacks.mjs j`.
 - `GET /circuit` (public, no token, CORS `*`, cached 15 s; `?wallet=<address>` adds that wallet's
   share and is not cached):
   `{ total_lamports, total_usd_cents, purchases, stamps_funded, cluster, treasury, authority, treasury_explorer_url, authority_explorer_url, recent: [{ at, lamports, tx_signature, explorer_url }] (10), wallet?: { lamports, stamps_funded } }`.
@@ -678,7 +690,8 @@ memo `circuit:<purchase id>`.
 - `GET /learner-profile/<wallet>` gains `circuit: { lamports, stamps_funded }` for that wallet's own purchases.
 - UI: a strip in the shop header ("Suas compras já pagaram N carimbos de outros alunos · no total a
   loja pagou M ↗"), a line on `/u/<wallet>`, and "+N carimbos pagos pra outros alunos" in the success
-  dialog (only when the transfer is confirmed).
+  dialog (for a `sent` or a `pending` share: the number is fixed by the paid purchase; the strip's
+  totals count confirmed transfers only, so they follow a few seconds later).
 - Effect on the treasury: a purchase now nets `price - floor(price / 2) - 5 000` lamports.
   `purchase-e2e.mjs` and `link-wallet-e2e.mjs` accept either reading of their "treasury received" check.
 

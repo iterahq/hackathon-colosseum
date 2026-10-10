@@ -243,6 +243,73 @@ async function fakeProgress(context) {
   console.log('C RESIDUAL (not fixed, by design of this build): a client that also writes fake attempts and waits 20 s IS stamped. Grading is client-side.');
 }
 
+const circuitRow = (id) => psql(`select coalesce(circuit_status, '') || '|' || coalesce(circuit_lamports, 0) || '|' || coalesce(circuit_signature, '') from itera.purchases where id = :'id'::uuid;`, { id }).split('|');
+const circuitSettled = (id, tries = 30) => until(async () => circuitRow(id), ([status]) => status === 'sent' || status === 'skipped', tries, 2000);
+/** Successful treasury transactions carrying a purchase's circuit memo: must be exactly one, whatever is retried. */
+async function circuitTransfers(context, purchaseId) {
+  const recent = await rpc('getSignaturesForAddress', [context.treasury.address, { limit: 200, commitment: 'confirmed' }]);
+  return recent.filter((entry) => entry.err === null && (entry.memo ?? '').includes(`circuit:${purchaseId}`)).map((entry) => entry.signature);
+}
+const pokeCircuit = () => fetch(`${FUNCTIONS}/circuit?t=${Date.now()}`).then((response) => response.status);
+
+// --- J. Circuito: off the response path, with a safe retry ------------------------------------------
+// Spends: two purchases of a throwaway wallet funded by the treasury (the money comes back) and
+// their two circuit transfers treasury -> authority. No mint.
+async function circuitRobustness(context) {
+  const PRICE = 1_100_000n;
+  const SHARE = 550_000;
+  const buyer = await newLearner(context.apikey, 'J buyer');
+  await fundFromTreasury(context, buyer.address, 2n * (PRICE + 5_000n));
+
+  // 1. A purchase that was marked paid and whose function died before the transfer ("never ran").
+  const first = await buyer.call('purchase-intent', { item_key: 'outfit_glasses' });
+  const firstSignature = await signAndSend(buyer, Buffer.from(first.body.message_base64, 'base64'));
+  const firstId = first.body.intent_id;
+  const settled = psql(`select itera.settle_payment('purchase', :'id'::uuid, :'signature', 1100000);`, { id: firstId, signature: firstSignature });
+  const neverRanAt = Date.now();
+  check('J setup: a paid purchase whose transfer never ran', settled === 'settled' && circuitRow(firstId)[0] === '', `${settled} "${circuitRow(firstId)[0]}"`);
+
+  // 2. A normal purchase: the answer must not wait for the transfer.
+  const second = await buyer.call('purchase-intent', { item_key: 'outfit_headphones' });
+  const secondSignature = await signAndSend(buyer, Buffer.from(second.body.message_base64, 'base64'));
+  const secondId = second.body.intent_id;
+  await sleep(2_500);
+  const startedAt = Date.now();
+  const confirmed = await until(() => buyer.call('purchase-confirm', { intent_id: secondId, signature: secondSignature, lang: 'en' }), (answer) => answer.body.error !== 'tx_not_found', 6, 1500);
+  const elapsed = Date.now() - startedAt;
+  const answer = confirmed.body.circuit;
+  console.log(`J purchase-confirm answered in ${elapsed} ms · circuit ${JSON.stringify(answer ?? null)}`);
+  check('J purchase-confirm: paid, with the share stated from the paid row and no transaction yet', confirmed.status === 200 && confirmed.body.status === 'paid' && answer?.status === 'pending' && answer.lamports === SHARE && answer.stamps_funded === 110 && answer.tx_signature === null, JSON.stringify(answer ?? null));
+  // A cold function start alone can take 2-3 s; the transfer itself needs 3-6 s more, which this must not include.
+  check('J purchase-confirm did not wait for the transfer (under 5 s, cold start included)', elapsed < 5_000, `${elapsed} ms`);
+  const [status, lamports, signature] = await circuitSettled(secondId);
+  check('J the transfer ran after the response: sent, half of the row', status === 'sent' && Number(lamports) === SHARE && signature.length > 40, `${status} ${lamports}`);
+  const replay = await buyer.call('purchase-confirm', { intent_id: secondId, signature: secondSignature });
+  check('J repeating the confirm: the confirmed transfer, nothing new', replay.body.circuit?.status === 'sent' && replay.body.circuit.tx_signature === signature && (await circuitTransfers(context, secondId)).length === 1, JSON.stringify(replay.body.circuit ?? null));
+
+  // 3. The retry takes the purchase whose transfer never ran (a minute after it was paid).
+  await sleep(Math.max(0, 63_000 - (Date.now() - neverRanAt)));
+  await pokeCircuit();
+  const [firstStatus, firstLamports, firstCircuit] = await circuitSettled(firstId);
+  const firstOnChain = await circuitTransfers(context, firstId);
+  check('J retry (on a `circuit` call): the transfer that never ran is sent, once', firstStatus === 'sent' && Number(firstLamports) === SHARE && firstOnChain.length === 1 && firstOnChain[0] === firstCircuit, `${firstStatus} ${firstLamports} on chain ${firstOnChain.length}`);
+
+  // 4. A transfer that landed but whose record was lost: found on chain by its memo, NOT sent again.
+  psql(`update itera.purchases set circuit_status = 'failed', circuit_signature = null, circuit_lamports = null, circuit_reason = 'security-attacks: record lost', circuit_at = now() - interval '10 minutes' where id = :'id'::uuid;`, { id: secondId });
+  await pokeCircuit();
+  const recovered = await circuitSettled(secondId, 15);
+  check('J retry of a `failed` transfer that is on chain: recorded with the SAME transaction, not sent twice', recovered[0] === 'sent' && recovered[2] === signature && Number(recovered[1]) === SHARE && (await circuitTransfers(context, secondId)).length === 1, `${recovered[0]} same=${recovered[2] === signature}`);
+
+  // 5. A claim left `pending` with its signature saved at broadcast time: the chain is asked about that signature.
+  psql(`update itera.purchases set circuit_status = 'pending', circuit_at = now() - interval '10 minutes' where id = :'id'::uuid;`, { id: firstId });
+  await pokeCircuit();
+  const resumed = await circuitSettled(firstId, 15);
+  check('J retry of a stale `pending` claim whose signature landed: recorded, not sent twice', resumed[0] === 'sent' && resumed[2] === firstCircuit && (await circuitTransfers(context, firstId)).length === 1, `${resumed[0]} same=${resumed[2] === firstCircuit}`);
+
+  const applied = await buyer.call('purchase-confirm', { intent_id: firstId, signature: firstSignature });
+  check('J the first purchase confirms normally afterwards and reports its confirmed transfer', applied.status === 200 && applied.body.circuit?.status === 'sent' && applied.body.circuit.tx_signature === firstCircuit && applied.body.inventory?.some((entry) => entry.item_key === 'outfit_glasses'), JSON.stringify(applied.body.circuit ?? null));
+}
+
 function json(sql, variables = {}) {
   return JSON.parse(psql(sql, variables) || 'null') ?? [];
 }
@@ -295,6 +362,7 @@ const SECTIONS = {
   a: ['A. pay once, get two (finding 2)', payOnceGetTwo],
   b: ['B. forgeable XP (finding 3)', forgeXp],
   c: ['C. client-written progress (finding 1, mitigations)', fakeProgress],
+  j: ['J. Circuito off the response path + idempotent retry', circuitRobustness],
   owner: ['Owner account, read-only dry check', ownerDryCheck],
 };
 

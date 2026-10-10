@@ -26,11 +26,15 @@ export function toCircuitCounter(v: unknown): CircuitCounter {
   };
 }
 
-/** Null unless the transfer of this purchase is confirmed: the dialog only claims what happened. */
+/**
+ * What this purchase pays forward. `sent`: the transfer is confirmed. `pending`: the share is
+ * fixed by the paid purchase and its transfer runs right after the answer (no link yet).
+ * Null for a share of zero, a skipped or a failed transfer.
+ */
 export function toPurchaseCircuit(v: unknown): PurchaseCircuit | null {
   const r = row(v);
-  if (r.status !== 'sent' || num(r.stamps_funded) === 0) return null;
-  return { status: 'sent', stampsFunded: num(r.stamps_funded), explorerUrl: orNull(r.explorer_url) };
+  if ((r.status !== 'sent' && r.status !== 'pending') || num(r.stamps_funded) === 0) return null;
+  return { status: r.status, stampsFunded: num(r.stamps_funded), explorerUrl: orNull(r.explorer_url) };
 }
 
 export async function getCircuit(wallet: string | null): Promise<CircuitCounter> {

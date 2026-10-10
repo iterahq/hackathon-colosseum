@@ -1,7 +1,7 @@
 import { isSolanaAddress } from './address.ts';
 import type { Caller } from './caller.ts';
-import { circuitWithin } from './circuit-store.ts';
-import { companionResponse, ensureCompanion, loadInventory, loadStats } from './companion-store.ts';
+import { circuitPlan, settleCircuits } from './circuit-store.ts';
+import { companionResponse, ensureCompanion, inBackground, loadInventory, loadStats } from './companion-store.ts';
 import { awardView, chainBlock, explorerUrl, pickText, writtenList, type CatalogEntry } from './credential.ts';
 import { CATALOG_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
@@ -14,8 +14,6 @@ import { isItemKind } from './shop-rules.ts';
 
 const LOOKUP_ATTEMPTS = 6;
 const LOOKUP_PAUSE_MS = 1_000;
-/** How long a paid answer waits for the Circuito transfer before saying `pending`. */
-const CIRCUIT_BUDGET_MS = 6_000;
 
 export type Lang = 'pt' | 'en';
 
@@ -160,7 +158,10 @@ export async function settlePurchase(db: IteraClient, caller: Caller, input: Set
     return { status: 502, body: { error: 'apply_failed', status: 'paid', retryable: true, explorer_url: explorerUrl('tx', intent.tx_signature) } };
   }
 
-  // The item is applied: the purchase now pays its share forward. Once per purchase, whatever is repeated.
-  const [body, circuit] = await Promise.all([paidResponse(db, intent, item, outcome, lang), circuitWithin(db, intent.id, CIRCUIT_BUDGET_MS)]);
+  // The item is applied: the purchase now pays its share forward, once per purchase, whatever is repeated.
+  // The answer does not wait for that transfer: it states the share from the paid row, and the transfer
+  // (and the retry of older ones that failed or never ran) runs after the response.
+  const [body, circuit] = await Promise.all([paidResponse(db, intent, item, outcome, lang), circuitPlan(db, intent.id)]);
+  inBackground(settleCircuits(db, intent.id));
   return { status: 200, body: circuit ? { ...body, circuit } : body };
 }
