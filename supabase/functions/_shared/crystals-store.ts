@@ -104,6 +104,117 @@ export async function earnCrystals(db: IteraClient, earnings: Earning[]): Promis
   for (const userId of paid) inBackground(import('./crystals-mirror.ts').then((mirror) => mirror.mirrorCrystals(db, userId)));
 }
 
+const PAGE = 1000;
+const IN_CHUNK = 150;
+
+/** Every row of a filtered read, a page at a time: PostgREST caps one answer (1 000 by default), so no single read is trusted to be whole. */
+export async function readAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>, label: string): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) throw new Error(`${label}: ${error.message}`);
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
+
+const chunks = <T>(list: readonly T[], size: number): T[][] => Array.from({ length: Math.ceil(list.length / size) }, (_, index) => list.slice(index * size, (index + 1) * size));
+
+/** The `lose` events of the learner on these activities only (the ones of the stamped lessons being checked). */
+export async function loadLossesOn(db: IteraClient, userId: string, activityIds: readonly string[]): Promise<Array<{ activity_id: string | null; created_at: string }>> {
+  const found: Array<{ activity_id: string | null; created_at: string }> = [];
+  for (const ids of chunks(activityIds, IN_CHUNK)) {
+    found.push(
+      ...(await readAll<{ activity_id: string | null; created_at: string }>(
+        (from, to) => db.from('life_events').select('activity_id,created_at').eq('user_id', userId).eq('kind', 'lose').in('activity_id', ids).order('created_at').order('id').range(from, to),
+        'life_events',
+      )),
+    );
+  }
+  return found;
+}
+
+/** The ledger keys (`reason|ref`) the caller already has for exactly these reasons and refs. */
+export async function loadPaidKeys(db: IteraClient, userId: string, entitled: ReadonlyArray<{ reason: string; refId: string }>): Promise<Set<string>> {
+  const paid = new Set<string>();
+  const reasons = [...new Set(entitled.map((earning) => earning.reason))];
+  const refs = [...new Set(entitled.map((earning) => earning.refId))];
+  for (const some of chunks(refs, IN_CHUNK)) {
+    const rows = await readAll<{ reason: string; ref_id: string }>(
+      (from, to) => db.from('crystal_ledger').select('reason,ref_id').eq('user_id', userId).in('reason', reasons).in('ref_id', some).order('created_at').order('id').range(from, to),
+      'crystal_ledger',
+    );
+    for (const row of rows) paid.add(`${row.reason}|${row.ref_id}`);
+  }
+  return paid;
+}
+
+export interface RefundedPurchase {
+  id: string;
+  memo: string;
+}
+
+/** Refunded crystal purchases whose refund ledger row is missing, with what the debit took (`-delta` of the spend row keyed by the purchase memo). */
+export function refundsDue(
+  refunded: readonly RefundedPurchase[],
+  refundedIds: ReadonlySet<string>,
+  debits: ReadonlyMap<string, number>,
+): Array<{ purchaseId: string; amount: number }> {
+  return refunded.flatMap((purchase) => {
+    const amount = debits.get(purchase.memo);
+    return refundedIds.has(purchase.id) || !amount || amount >= 0 ? [] : [{ purchaseId: purchase.id, amount: -amount }];
+  });
+}
+
+/**
+ * A refund is two steps: the purchase is marked `refunded` first, then the crystals
+ * come back. If the second one failed, this pays it: any refunded crystal purchase
+ * with no `refund` ledger row (keyed by the purchase id, so it is idempotent). Never throws.
+ */
+export async function reconcileRefunds(db: IteraClient, userId: string): Promise<number> {
+  try {
+    const refunded = await readAll<RefundedPurchase>(
+      (from, to) => db.from('purchases').select('id,memo').eq('user_id', userId).eq('source', 'crystals').eq('status', 'refunded').order('created_at').order('id').range(from, to),
+      'purchases refunded',
+    );
+    if (refunded.length === 0) return 0;
+    const credited = new Set<string>();
+    for (const some of chunks(refunded.map((purchase) => purchase.id), IN_CHUNK)) {
+      for (const row of await readAll<{ ref_id: string }>((from, to) => db.from('crystal_ledger').select('ref_id').eq('user_id', userId).eq('reason', 'refund').in('ref_id', some).order('id').range(from, to), 'crystal_ledger refunds')) {
+        credited.add(row.ref_id);
+      }
+    }
+    const debits = new Map<string, number>();
+    for (const some of chunks(refunded.map((purchase) => purchase.memo), IN_CHUNK)) {
+      for (const row of await readAll<{ ref_id: string; delta: number }>((from, to) => db.from('crystal_ledger').select('ref_id,delta').eq('user_id', userId).eq('reason', SPEND_REASON).in('ref_id', some).order('id').range(from, to), 'crystal_ledger debits')) {
+        debits.set(row.ref_id, row.delta);
+      }
+    }
+    let paid = 0;
+    for (const due of refundsDue(refunded, credited, debits)) {
+      const { isNew } = await grantCrystals(db, userId, due.amount, 'refund', due.purchaseId);
+      if (isNew) paid += 1;
+    }
+    if (paid > 0) inBackground(import('./crystals-mirror.ts').then((mirror) => mirror.mirrorCrystals(db, userId)));
+    return paid;
+  } catch (error) {
+    console.error(`crystals: refund reconcile for ${userId} failed`, error);
+    return 0;
+  }
+}
+
+/**
+ * Refunds a crystal purchase in two steps, in this order: the row becomes `refunded` (checked: if that fails
+ * nothing was credited and the purchase is still paid), then the crystals are credited back, idempotent on the purchase id.
+ * If the credit fails the row is `refunded` with no credit; `reconcileRefunds` pays it on the next call.
+ */
+export async function refundCrystalPurchase(db: IteraClient, userId: string, purchaseId: string, amount: number, code: string): Promise<{ balance: number }> {
+  const { error } = await db.from('purchases').update({ status: 'refunded', refunded_at: new Date().toISOString(), error: code }).eq('id', purchaseId).eq('user_id', userId);
+  if (error) throw new Error(`purchases refunded: ${error.message}`);
+  const { balance } = await grantCrystals(db, userId, amount, 'refund', purchaseId);
+  return { balance };
+}
+
 /** Most grants one reconcile makes; the rest wait for the next call. */
 const RECONCILE_BATCH = 40;
 
@@ -124,15 +235,15 @@ export async function reconcileCrystals(
     const stamps = rows.filter((row) => row.achievement_key === 'day_stamp').map((row) => ({ lessonId: row.ref_id, earnedAt: row.earned_at }));
     let clean = new Set<string>();
     if (stamps.length > 0) {
-      const { data, error } = await db.from('life_events').select('activity_id,created_at').eq('user_id', userId).eq('kind', 'lose').limit(10_000);
-      if (error) throw new Error(`life_events: ${error.message}`);
-      clean = cleanLessonIds(stamps, activities, (data ?? []) as Array<{ activity_id: string | null; created_at: string }>, TIME_ZONE);
+      const stamped = new Set(stamps.map((stamp) => stamp.lessonId));
+      const losses = await loadLossesOn(db, userId, activities.filter((activity) => stamped.has(activity.lesson_id)).map((activity) => activity.id));
+      clean = cleanLessonIds(stamps, activities, losses, TIME_ZONE);
     }
     const entitled = earningsOfRows(rows, clean);
+    // A refund whose credit failed earlier is paid on the same pass.
+    await reconcileRefunds(db, userId);
     if (entitled.length === 0) return 0;
-    const { data: ledger, error: ledgerError } = await db.from('crystal_ledger').select('reason,ref_id').eq('user_id', userId).limit(50_000);
-    if (ledgerError) throw new Error(`crystal_ledger: ${ledgerError.message}`);
-    const paid = new Set((ledger ?? []).map((entry) => `${entry.reason}|${entry.ref_id}`));
+    const paid = await loadPaidKeys(db, userId, entitled);
     let granted = 0;
     let capped = false;
     for (const earning of missingEarnings(entitled, paid).slice(0, RECONCILE_BATCH)) {

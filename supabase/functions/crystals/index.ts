@@ -9,7 +9,8 @@ import { CRYSTAL_HANDLERS } from '../_shared/crystals-items.ts';
 import { crystalMetadataUrl, mirrorCrystals, tokenView } from '../_shared/crystals-mirror.ts';
 import {
   countRefundedCrystalPurchases,
-  grantCrystals,
+  refundCrystalPurchase,
+  reconcileRefunds,
   loadAccount,
   loadCrystalItem,
   loadCrystalItems,
@@ -62,6 +63,8 @@ const TOKEN_ART =
 /** Everything the crystals sheet shows. Starts the token mirror when the chain is behind. */
 async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Record<string, unknown>> {
   const userId = caller.iteraUserId;
+  // A refund whose credit failed earlier is paid before the balance is read.
+  await reconcileRefunds(db, userId);
   const [account, ledger, items, config, includedWith] = await Promise.all([
     loadAccount(db, userId),
     loadLedger(db, userId),
@@ -205,9 +208,15 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   } catch (error) {
     if (error instanceof ApplyRefusal) {
       // Paid, but the last unit went to somebody else (or the learner already holds it): the crystals come back at once.
-      const { balance } = await grantCrystals(db, userId, price, 'refund', purchase.id);
-      await db.from('purchases').update({ status: 'refunded', refunded_at: new Date().toISOString(), error: error.code }).eq('id', purchase.id);
-      return { status: 409, body: { error: error.code === 'sold_out_after_payment' ? 'sold_out' : 'already_owned', refunded: true, balance } };
+      const refusal = error.code === 'sold_out_after_payment' ? 'sold_out' : 'already_owned';
+      try {
+        // The row is marked refunded first (checked), then the crystals come back; a credit that fails is paid by `reconcileRefunds`.
+        const { balance } = await refundCrystalPurchase(db, userId, purchase.id, price, error.code);
+        return { status: 409, body: { error: refusal, refunded: true, balance } };
+      } catch (refundFailure) {
+        console.error(`crystal purchase ${purchase.id} refund failed`, refundFailure);
+        return { status: 502, body: { error: 'refund_pending', retryable: true, balance: (await loadAccount(db, userId)).balance } };
+      }
     }
     console.error(`crystal purchase ${purchase.id} effect failed`, error);
     const message = String(error instanceof Error ? error.message : error).slice(0, 300);
