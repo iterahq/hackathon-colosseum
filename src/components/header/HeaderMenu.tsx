@@ -117,14 +117,6 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExpl
               {avatar.tierName}
             </span>
           )}
-          <span
-            data-testid="header-role"
-            className={`mt-2 inline-block rounded-full border px-2 py-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] ${
-              roles.privileged ? 'border-[#3FD17F]/40 text-[#3FD17F]' : 'border-[#2E2A25] text-[#A0978A]'
-            }`}
-          >
-            {t(roles.roleKey)}
-          </span>
         </div>
         <div className="shrink-0 sm:hidden">
           <HeaderLocale size="lg" />

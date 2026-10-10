@@ -38,15 +38,16 @@ export function DashboardTopBar(_props: Props) {
           scrolled ? 'border-[#2E2A25] bg-[#0A0908]/80 shadow-[0_12px_30px_rgba(0,0,0,.35)] backdrop-blur-md' : 'border-[#262320] bg-[#0A0908]'
         }`}
       >
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-8 xl:px-20">
+        <div className="relative mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-8 xl:px-20">
           <div className="flex h-full min-w-0 items-center gap-3 sm:gap-5">
             <Link to="/" className="hd-focus flex shrink-0 items-center rounded-sm [font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]" aria-label="Itera">
               ITERA<span className="text-[#3FD17F]">/</span>
             </Link>
             <HeaderNav active={active} />
           </div>
-          <div className="flex min-w-0 flex-1 justify-end min-[1440px]:justify-center">
-            <HeaderSearch />
+          <div className="flex min-w-0 flex-1 justify-end">
+            {/* From 1440 px the field sits on the middle of the page, not of the free space between the two groups. */}
+            <HeaderSearch className="min-[1440px]:absolute min-[1440px]:left-[calc(50%-90px)] min-[1440px]:top-3 min-[1440px]:w-[180px]" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="hidden sm:block">

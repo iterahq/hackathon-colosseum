@@ -52,6 +52,7 @@ export function HeaderIdentity() {
   }, [open]);
 
   return (
+    <div className="flex items-center gap-2">
     <div ref={root} className="relative">
       <button
         ref={button}
@@ -100,6 +101,15 @@ export function HeaderIdentity() {
         )}
       </AnimatePresence>
       <HeaderPassportExplainer open={explainer} onOpenChange={setExplainer} />
+    </div>
+    <span
+      data-testid="header-role"
+      className={`hidden rounded-full border px-2 py-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] min-[1440px]:inline-block ${
+        roles.privileged ? 'border-[#3FD17F]/40 text-[#3FD17F]' : 'border-[#2E2A25] text-[#A0978A]'
+      }`}
+    >
+      {t(roles.roleKey)}
+    </span>
     </div>
   );
 }
