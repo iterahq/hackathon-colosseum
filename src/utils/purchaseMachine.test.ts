@@ -15,6 +15,7 @@ describe('purchaseReducer', () => {
       detail: null,
       code: null,
       explorerUrl: 'https://x/tx',
+      proof: null,
     });
   });
 

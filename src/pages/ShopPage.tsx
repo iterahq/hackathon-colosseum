@@ -6,7 +6,7 @@ import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArt } from '@/components/shop/ShopArt';
 import { ShopItemCard } from '@/components/shop/ShopItemCard';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
-import { BTN_PRIMARY, BTN_SMALL, CARD, DEVNET_BADGE, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
+import { BTN_PRIMARY, BTN_SMALL, CARD, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { useCompanion, useEquipOutfit } from '@/hooks/useCompanion';
 import { useLives } from '@/hooks/useLives';
@@ -91,9 +91,9 @@ export default function ShopPage() {
           companion={companion.data?.companion ?? null}
           lives={lives}
           secondsToNext={secondsToNext}
+          wallet={companion.wallet}
           showing={{ key: shownKey, name: byKey(shownKey)?.title ?? null, preview: preview !== null && preview !== companion.outfit }}
         />
-        {companion.data?.mocked && <span className={`${DEVNET_BADGE} -mt-6 self-start`}>{t('shop.mock')}</span>}
         {!hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">
             <span className="[font:500_14px_Inter] text-[#C9BFB0]">{t('shop.connectHint')}</span>
@@ -113,16 +113,6 @@ export default function ShopPage() {
         )}
         {shop.isSuccess && (
           <>
-            {shelves.lives.length > 0 && (
-              <Shelf id="shop-lives" title={t('shop.section.lives')}>
-                <div className={GRID}>{shelves.lives.map((item) => card(item, { buyDisabled: lives ? lives.current >= lives.max : false }))}</div>
-              </Shelf>
-            )}
-            {shelves.outfits.length > 0 && (
-              <Shelf id="shop-outfits" title={t('shop.section.outfits')}>
-                <div className={GRID}>{shelves.outfits.map((item) => card(item))}</div>
-              </Shelf>
-            )}
             {shelves.certs.length > 0 && (
               <Shelf id="shop-certs" title={t('shop.section.certs')} hint={certs.length > 0 ? t('shop.section.certsHint') : t('shop.certs.none')}>
                 {certs.length > 0 && (
@@ -143,6 +133,16 @@ export default function ShopPage() {
                   </label>
                 )}
                 <div className={GRID}>{shelves.certs.map((item) => card({ ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) }, { buyDisabled: !targetId, refId: targetId || undefined }))}</div>
+              </Shelf>
+            )}
+            {shelves.outfits.length > 0 && (
+              <Shelf id="shop-outfits" title={t('shop.section.outfits')}>
+                <div className={GRID}>{shelves.outfits.map((item) => card(item))}</div>
+              </Shelf>
+            )}
+            {shelves.lives.length > 0 && (
+              <Shelf id="shop-lives" title={t('shop.section.lives')}>
+                <div className={GRID}>{shelves.lives.map((item) => card(item, { buyDisabled: lives ? lives.current >= lives.max : false }))}</div>
               </Shelf>
             )}
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}

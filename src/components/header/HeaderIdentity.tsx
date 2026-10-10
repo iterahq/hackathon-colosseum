@@ -2,6 +2,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { useHeaderStats } from '@/hooks/useHeaderStats';
 import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/i18n';
 import { initialsOf, shortAddress, walletOf } from '@/utils/headerHud';
@@ -17,6 +18,7 @@ export function HeaderIdentity() {
   const { pathname } = useLocation();
   const { data: profile } = useProfile();
   const roles = useHeaderRoles();
+  const stats = useHeaderStats();
   const [open, setOpen] = useState(false);
   const [explainer, setExplainer] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -84,6 +86,7 @@ export function HeaderIdentity() {
             email={user?.email ?? null}
             wallet={wallet}
             roles={roles}
+            stats={stats}
             onClose={() => setOpen(false)}
             onExplainer={() => {
               setOpen(false);

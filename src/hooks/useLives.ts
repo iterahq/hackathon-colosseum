@@ -66,7 +66,7 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
 
   const apply = useCallback(
     (update: LivesUpdate) =>
-      queryClient.setQueryData<CompanionSnapshot>(key, (prev) => (prev ? { ...prev, lives: update.lives, companion: update.companion ?? prev.companion } : prev)),
+      queryClient.setQueryData<CompanionSnapshot>(key, (prev) => (prev ? { ...prev, lives: update.lives, companion: update.companion ?? prev.companion, chain: update.chain ?? prev.chain } : prev)),
     [queryClient, key]
   );
 
@@ -105,5 +105,5 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
     [active, apply]
   );
 
-  return { active, lives, secondsToNext: seconds, lose, endLesson, wallet: companion.wallet, outfit: companion.outfit, refetch };
+  return { active, lives, secondsToNext: seconds, lose, endLesson, wallet: companion.wallet, outfit: companion.outfit, refetch, chain: companion.data?.chain ?? null, assetUrl: companion.data?.companion.explorerUrl ?? null };
 }

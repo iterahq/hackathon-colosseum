@@ -2,8 +2,8 @@ import { useI18n } from '@/i18n';
 import type { PassportPageData } from '@/types/achievements';
 import { shortName } from '@/utils/trailDashboard';
 import { OnChainMark } from './OnChainMark';
-import { PassportPage } from './PassportPage';
-import { pageColor, pageVariant } from './pageVariant';
+import { PassportArt } from './PassportArt';
+import { pageArtSrc, pageColor, pageVariant } from './pageVariant';
 
 interface Props {
   page: PassportPageData;
@@ -14,7 +14,7 @@ interface Props {
 
 /** A 180x240 page of the dashboard row with what the learner needs to know under it. */
 export function PassportMiniCard({ page, pulseNext, caption, onOpen }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const variant = pageVariant(page);
   const locked = variant === 'locked';
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
@@ -22,7 +22,8 @@ export function PassportMiniCard({ page, pulseNext, caption, onOpen }: Props) {
 
   const body = (
     <>
-      <PassportPage
+      <PassportArt
+        src={pageArtSrc(page, locale)}
         title={page.trailTitle}
         color={color}
         total={page.totalDays}

@@ -36,6 +36,12 @@ describe('StampCeremony', () => {
     expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Carimbando na Solana…');
   });
 
+  it('dresses the ceremony Tera in the equipped outfit and names the feature on the card', () => {
+    show(model('minting'), { outfit: 'outfit_crown' });
+    expect(screen.getByTestId('tera-outfit')).toHaveAttribute('data-outfit', 'outfit_crown');
+    expect(screen.getByText('CERTIFICAÇÕES DO TERA')).toBeInTheDocument();
+  });
+
   it('minted: links to the transaction and names the new medal', () => {
     show(model('minted', { txSignature: 'sig', newMedals: [{ key: 'm', title: 'Streak 3', glyph: 'D3', kind: 'streak', credentialId: null }] }));
     settle();
@@ -58,7 +64,7 @@ describe('StampCeremony', () => {
     const onConnect = vi.fn();
     show(model('no_wallet'), { onConnect });
     settle();
-    fireEvent.click(screen.getByRole('button', { name: 'Conectar carteira' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar com carteira' }));
     expect(onConnect).toHaveBeenCalledOnce();
   });
 

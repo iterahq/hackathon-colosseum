@@ -50,3 +50,12 @@ export const initialsOf = (name: string): string =>
     .slice(0, 2)
     .map((p) => p[0].toUpperCase())
     .join('');
+
+/** The name to greet: the learner's nickname, or null when it is missing or just a (shortened) wallet address. */
+export function greetingName(displayName: string | null | undefined): string | null {
+  const name = displayName?.trim() ?? '';
+  if (!name) return null;
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(name)) return null;
+  if (/^[1-9A-HJ-NP-Za-km-z]{3,8}(…|\.{2,3})[1-9A-HJ-NP-Za-km-z]{3,8}$/.test(name)) return null;
+  return name;
+}

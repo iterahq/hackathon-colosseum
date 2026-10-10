@@ -7,6 +7,7 @@ import { CopyButton } from './CopyButton';
 import { OnChainMark } from './OnChainMark';
 import { PassportArt } from './PassportArt';
 import { pageColor, pageVariant } from './pageVariant';
+import { isGold } from '@/utils/passport';
 
 const formatDate = (iso: string | null): string | null => {
   const at = iso ? new Date(iso) : null;
@@ -37,7 +38,7 @@ export function PassportFullCard({ page }: { page: PassportPageData }) {
           {t('passport.days', { done: page.daysDone, total: page.totalDays })}
           {page.tier && ` · ${t('passport.tier', { tier: tierLabel(t, page.tier) })}`}
         </span>
-        {date && <span className="text-[#A0978A]">{t('passport.earnedOn', { date })}</span>}
+        {date && <span className="text-[#A0978A]">{t(isGold(page) ? 'passport.earnedOn' : 'passport.startedOn', { date })}</span>}
         {minted && (
           <span className="flex flex-wrap items-center gap-2 pt-1">
             <OnChainMark txSignature={page.txSignature} assetAddress={page.assetAddress} />

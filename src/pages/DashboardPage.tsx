@@ -7,6 +7,7 @@ import { FeaturedTrail } from '@/components/dashboard/FeaturedTrail';
 import { LiveClassesCard } from '@/components/dashboard/LiveClassesCard';
 import { TrailCards } from '@/components/dashboard/TrailCards';
 import { WeeklyGoal } from '@/components/dashboard/WeeklyGoal';
+import { WelcomeStrip } from '@/components/dashboard/WelcomeStrip';
 import { AppTopBar } from '@/components/header/AppTopBar';
 import '@/components/dashboard/dashboard.css';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
@@ -68,6 +69,7 @@ export default function DashboardPage() {
         {!visitor && !dashboard.isPending && !dashboard.isError && trails.length === 0 && (
           <DashboardEmpty kind="empty" onAction={() => navigate('/catalog')} />
         )}
+        {!visitor && <WelcomeStrip trail={featured ?? null} />}
         {featured && <FeaturedTrail trail={featured} onOpenLesson={openLesson} />}
         {!visitor && trails.length > 0 && (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="dashboard-main">

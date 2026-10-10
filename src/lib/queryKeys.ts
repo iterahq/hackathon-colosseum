@@ -130,6 +130,7 @@ export const queryKeys = {
     catalog: ['achievements', 'catalog'] as const,
     mine: (userId: string) => ['achievements', 'mine', userId] as const,
     credential: (asset: string, lang: string) => ['achievements', 'credential', asset, lang] as const,
+    profile: (wallet: string, lang: string) => ['achievements', 'profile', wallet, lang] as const,
   },
   // Video courses: the public library (with lessons) and the learner's watched lessons.
   videoCourses: {

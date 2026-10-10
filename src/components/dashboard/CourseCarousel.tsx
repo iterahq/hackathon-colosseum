@@ -5,7 +5,7 @@ import { CourseThumb } from '@/components/videoCourses/CourseThumb';
 import { useI18n } from '@/i18n';
 import type { VideoCourse } from '@/types/videoCourses';
 import { courseColor } from '@/utils/courses';
-import { formatTotal, sortCourses } from '@/utils/videoCourses';
+import { formatTotal, sortCourses, uniqueCourses } from '@/utils/videoCourses';
 
 interface Props {
   courses: readonly VideoCourse[];
@@ -39,7 +39,7 @@ export function CourseCarousel({ courses }: Props) {
         </span>
       </div>
       <div ref={track} className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2">
-        {sortCourses(courses).map((course) => {
+        {sortCourses(uniqueCourses(courses)).map((course) => {
           const seconds = course.lessons.reduce((n, l) => n + l.durationSeconds, 0);
           return (
             <Link

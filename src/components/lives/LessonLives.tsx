@@ -50,7 +50,7 @@ function RefillPrice({ children }: { children: (label: string | null, title: str
 
 function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onLeave }: Props) {
   const { signInWithSolana } = useAuth();
-  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, refetch } = useLives();
+  const { active, lives, secondsToNext, lose, endLesson, wallet, outfit, refetch, chain, assetUrl } = useLives();
   const purchase = usePurchase();
   const [bonus, setBonus] = useState(0);
   const [connecting, setConnecting] = useState(false);
@@ -100,6 +100,7 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
               priceLabel={priceLabel}
               hasWallet={Boolean(wallet)}
               outfit={outfit}
+              chainUrl={chain?.explorerUrl ?? assetUrl}
               busy={purchase.busy || connecting}
               onRefill={() => void purchase.buy(REFILL)}
               onConnect={() => void connect()}

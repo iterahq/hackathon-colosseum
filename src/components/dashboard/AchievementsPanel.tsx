@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { MedalShelf } from '@/components/passport/MedalShelf';
 import { OnChainMark } from '@/components/passport/OnChainMark';
-import { PassportPage } from '@/components/passport/PassportPage';
-import { pageColor, pageVariant } from '@/components/passport/pageVariant';
+import { PassportArt } from '@/components/passport/PassportArt';
+import { pageArtSrc, pageColor, pageVariant } from '@/components/passport/pageVariant';
 import { useI18n } from '@/i18n';
 import type { PassportMedal, PassportPageData } from '@/types/achievements';
 import { PRIMARY_COLOR } from '@/utils/trailDashboard';
@@ -17,10 +17,10 @@ interface Props {
 }
 
 function Thumb({ page, onOpen }: { page: PassportPageData; onOpen: (trailId: string) => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const variant = pageVariant(page);
   const minted = page.mintStatus === 'minted' && Boolean(page.assetAddress || page.txSignature);
-  const art = <PassportPage title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysDone} variant={variant} width={96} ribbon={t('passport.ribbon')} />;
+  const art = <PassportArt src={pageArtSrc(page, locale)} title={page.trailTitle} color={pageColor(page)} total={page.totalDays} done={page.daysDone} variant={variant} width={96} ribbon={t('passport.ribbon')} />;
   return (
     <div data-testid="passport-card" data-variant={variant} className="flex w-24 flex-col items-start gap-1.5 [font:500_11px_JetBrains_Mono]">
       {variant === 'locked' ? (

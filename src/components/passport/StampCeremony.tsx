@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n';
 import type { CeremonyModel } from '@/utils/ceremony';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
 import { CeremonyStatusRow } from './CeremonyStatusRow';
+import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { Confetti } from './Confetti';
 import { PassportPage } from './PassportPage';
 import { useCeremonyClock } from './useCeremonyClock';
@@ -18,6 +19,8 @@ interface Props {
   onRetry?: () => void;
   onLater?: () => void;
   onConnect?: () => void;
+  /** The learner's equipped outfit (item key). */
+  outfit?: string | null;
 }
 
 const GRID = {
@@ -27,7 +30,7 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, onConnect }: Props) {
+export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, onConnect, outfit = null }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
@@ -87,17 +90,15 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
             dropAfterMs={600}
             ribbon={t('passport.ribbon')}
           />
-          <motion.img
-            src={step >= 3 ? '/mascot/tera-happy.webp' : '/mascot/tera-neutral.webp'}
-            alt=""
-            width={96}
-            height={96}
+          <motion.span
             data-testid="ceremony-tera"
-            className="absolute -bottom-8 -left-6 h-24 w-24 object-contain"
+            className="absolute -bottom-8 -left-6"
             initial={reduce ? false : { x: -40, opacity: 0 }}
             animate={step >= 2 ? { x: 0, opacity: 1 } : { x: -40, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.25 }}
-          />
+          >
+            <TeraOutfit mood={step >= 3 ? 'happy' : 'neutral'} size="xl" outfit={outfit} />
+          </motion.span>
         </motion.div>
         <div className="mt-6 min-h-[110px] w-full">
           {step >= 6 && (

@@ -19,7 +19,7 @@ export function PassportHero({ wallet, pages, stamps, medals }: Props) {
     >
       <h1 className="[font:700_32px/1_'Barlow_Condensed'] max-sm:text-[26px]">{t('passport.hero.title')}</h1>
       <span className="flex flex-wrap items-center gap-3 [font:700_13px_JetBrains_Mono]">
-        <span className="rounded-full bg-[#0A0908] px-3 py-1.5 text-[#F4EDE2]" data-testid="passport-wallet">
+        <span className={`rounded-full px-3 py-1.5 ${wallet ? 'bg-[#0A0908] text-[#F4EDE2]' : 'border border-[#0A0908]/35 bg-[#F4EDE2]/90 text-[#3A352F]'}`} data-testid="passport-wallet">
           {wallet ? shortAddress(wallet) : t('passport.wallet.none')}
         </span>
         <span>{t('passport.hero.totals', { pages: countOf(t, pages, 'page'), stamps: countOf(t, stamps, 'stamp'), medals: countOf(t, medals, 'medal') })}</span>

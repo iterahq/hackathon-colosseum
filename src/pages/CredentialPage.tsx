@@ -6,7 +6,7 @@ import { CredentialCard } from '@/components/passport/CredentialCard';
 import { PassportArt } from '@/components/passport/PassportArt';
 import { useCredential } from '@/hooks/useCredential';
 import { useI18n } from '@/i18n';
-import { credentialFacts } from '@/utils/credential';
+import { companionFacts, credentialFacts, isCompanion, looksLikeAddress } from '@/utils/credential';
 import { TRAIL_COLORS } from '@/utils/trailDashboard';
 
 const GRID = {
@@ -46,6 +46,11 @@ function VerifyOther() {
   );
 }
 
+function CompanionImage({ src, lang }: { src: string | null; lang: string }) {
+  if (!src) return null;
+  return <img src={src.includes('lang=') ? src : `${src}${src.includes('?') ? '&' : '?'}lang=${lang}`} alt="" className="w-full max-w-[360px] rounded-2xl border border-[#262320]" data-testid="credential-companion-art" />;
+}
+
 /** Public, shell-less page: anyone can check a passport asset against the chain. */
 export default function CredentialPage() {
   const { asset = '' } = useParams();
@@ -80,14 +85,17 @@ export default function CredentialPage() {
           <div className={`${NOTE} w-full`} data-testid="credential-not-found">
             <TeraNote mood="oops" title={t('tera.credential.notFound')} className="!pt-2 pb-4" />
             <p className="[font:700_26px_'Barlow_Condensed'] text-[#F4EDE2]">{t('passport.credential.notFound')}</p>
-            <p className="mt-1 [font:500_12px_JetBrains_Mono] break-all text-[#A0978A]">{asset}</p>
+            {looksLikeAddress(asset) && <p className="mt-1 [font:500_12px_JetBrains_Mono] break-all text-[#A0978A]">{asset}</p>}
             <p className="mt-4 [font:500_12px_JetBrains_Mono] text-[#A0978A]">{t('passport.credential.verifyOther')}</p>
             <VerifyOther />
           </div>
         )}
         {found && facts && (
           <>
-            {found.status === 'verified' && (
+            {found.status === 'verified' && isCompanion(found.data) && (
+              <CompanionImage src={companionFacts(found.data).image} lang={locale} />
+            )}
+            {found.status === 'verified' && !isCompanion(found.data) && (
               <PassportArt
                 src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
                 title={facts.trail ?? t('passport.title')}

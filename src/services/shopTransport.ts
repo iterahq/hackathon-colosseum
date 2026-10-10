@@ -1,6 +1,6 @@
 /**
  * The one door to the lives / shop / companion edge functions. The local mock answers only when
- * `?mockShop=1` is in the URL of a dev or preview build; everything else is the real backend, and a
+ * `?mockShop=1` is in the URL of a dev server; everything else is the real backend, and a
  * missing or failing function surfaces as an error so every caller fails open.
  */
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -29,12 +29,9 @@ interface CallOptions {
   query?: Record<string, string>;
 }
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-/** Dev server, a non-production build, or a preview served from this machine. */
+/** The mock exists only in a dev server: a production build never honours `?mockShop=1`. */
 export function mockAllowed(): boolean {
-  if (import.meta.env.DEV || import.meta.env.MODE !== 'production') return true;
-  return typeof window !== 'undefined' && LOCAL_HOSTS.has(window.location.hostname);
+  return import.meta.env.DEV === true;
 }
 
 export function mockForced(): boolean {

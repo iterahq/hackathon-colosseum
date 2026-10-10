@@ -46,6 +46,17 @@ export function courseStats(course: VideoCourse, progress: VideoProgress): Cours
 export const sortCourses = (courses: readonly VideoCourse[]): VideoCourse[] =>
   [...courses].sort((a, b) => a.position - b.position || a.title.localeCompare(b.title));
 
+/** One tile per course: a repeated id or slug never renders twice. */
+export function uniqueCourses(courses: readonly VideoCourse[]): VideoCourse[] {
+  const seen = new Set<string>();
+  return courses.filter((c) => {
+    if (seen.has(c.id) || seen.has(c.slug)) return false;
+    seen.add(c.id);
+    seen.add(c.slug);
+    return true;
+  });
+}
+
 /** The course the learner is in the middle of (most recently watched), else the first by position. */
 export function pickFeatured(courses: readonly VideoCourse[], progress: VideoProgress): VideoCourse | null {
   const ordered = sortCourses(courses);
