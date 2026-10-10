@@ -40,7 +40,7 @@ export function DashboardTopBar(_props: Props) {
         }`}
       >
         <div className="relative mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 sm:px-8 xl:px-20">
-          <div className="flex h-full min-w-0 items-center gap-3 sm:gap-5">
+          <div className="flex h-full min-w-0 items-center gap-3 sm:gap-4">
             <Link to="/" className="hd-focus flex shrink-0 items-center rounded-sm [font:700_28px_'Barlow_Condensed'] tracking-[.02em] text-[#F4EDE2]" aria-label="Itera">
               ITERA<span className="text-[#3FD17F]">/</span>
             </Link>
@@ -48,7 +48,7 @@ export function DashboardTopBar(_props: Props) {
           </div>
           <div className="flex min-w-0 flex-1 justify-end">
             {/* From 1440 px the field sits on the middle of the page, not of the free space between the two groups. */}
-            <HeaderSearch className="min-[1440px]:absolute min-[1440px]:left-[calc(50%-90px)] min-[1440px]:top-3 min-[1440px]:w-[180px]" />
+            <HeaderSearch className="min-[1440px]:absolute min-[1440px]:left-[calc(50%-120px)] min-[1440px]:top-3 min-[1440px]:w-[240px]" />
           </div>
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="hidden sm:block">

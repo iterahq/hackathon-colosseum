@@ -19,7 +19,7 @@ export function HeaderIdentity() {
   const { t } = useI18n();
   const { user, signOut } = useAuth();
   const { pathname } = useLocation();
-  const { data: profile } = useProfile();
+  const { data: profile, isPending: profilePending } = useProfile();
   const roles = useHeaderRoles();
   const [open, setOpen] = useState(false);
   const [explainer, setExplainer] = useState(false);
@@ -52,7 +52,6 @@ export function HeaderIdentity() {
   }, [open]);
 
   return (
-    <div className="flex items-center gap-2">
     <div ref={root} className="relative">
       <button
         ref={button}
@@ -69,7 +68,9 @@ export function HeaderIdentity() {
           {wallet && <span className="absolute -bottom-px -right-px h-2.5 w-2.5 rounded-full border-2 border-[#141210] bg-[#3FD17F]" aria-hidden />}
         </span>
         <span className="hidden max-w-[140px] flex-col items-start leading-none min-[1440px]:flex">
-          {chosen || !wallet ? (
+          {profilePending ? (
+            <span className="h-3 w-20 animate-pulse rounded-full bg-[#262320] motion-reduce:animate-none" aria-hidden data-testid="header-identity-loading" />
+          ) : chosen || !wallet ? (
             <>
               <span className="truncate [font:700_15px_'Barlow_Condensed'] tracking-[.02em]">{name}</span>
               {wallet && <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{shortAddress(wallet.address)}</span>}
@@ -80,6 +81,14 @@ export function HeaderIdentity() {
               <span className="mt-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">{wallet.network ?? wallet.chain}</span>
             </>
           )}
+        </span>
+        <span
+          data-testid="header-role"
+          className={`hidden rounded-full border px-1.5 py-0.5 [font:600_9px_JetBrains_Mono] uppercase leading-none tracking-[.1em] min-[1440px]:inline-block ${
+            roles.privileged ? 'border-[#3FD17F]/40 text-[#3FD17F]' : 'border-[#2E2A25] text-[#A0978A]'
+          }`}
+        >
+          {t(roles.roleKey)}
         </span>
         <HeaderIcon name="chevron" size={14} className={`hidden text-[#A0978A] transition-transform min-[1440px]:block ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -101,15 +110,6 @@ export function HeaderIdentity() {
         )}
       </AnimatePresence>
       <HeaderPassportExplainer open={explainer} onOpenChange={setExplainer} />
-    </div>
-    <span
-      data-testid="header-role"
-      className={`hidden rounded-full border px-2 py-0.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] min-[1440px]:inline-block ${
-        roles.privileged ? 'border-[#3FD17F]/40 text-[#3FD17F]' : 'border-[#2E2A25] text-[#A0978A]'
-      }`}
-    >
-      {t(roles.roleKey)}
-    </span>
     </div>
   );
 }

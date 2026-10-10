@@ -14,7 +14,7 @@ export function HeaderNav({ active }: Props) {
   const reduced = !!useReducedMotion();
 
   return (
-    <nav aria-label={t('header.nav.aria')} className="hidden h-full items-stretch gap-1 lg:flex">
+    <nav aria-label={t('header.nav.aria')} className="hidden h-full items-stretch lg:flex">
       {HEADER_NAV.map(({ id, to, key }) => {
         const on = id === active;
         return (
@@ -22,7 +22,7 @@ export function HeaderNav({ active }: Props) {
             key={id}
             to={to}
             aria-current={on ? 'page' : undefined}
-            className={`hd-focus relative inline-flex min-h-11 items-center px-3 [font:700_17px_'Barlow_Condensed'] uppercase tracking-[.08em] transition-colors ${
+            className={`hd-focus relative inline-flex min-h-11 items-center px-2.5 [font:700_16px_'Barlow_Condensed'] uppercase tracking-[.06em] transition-colors ${
               on ? 'text-[#F4EDE2]' : 'text-[#A0978A] hover:text-[#F4EDE2]'
             }`}
           >

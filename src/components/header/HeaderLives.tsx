@@ -8,7 +8,11 @@ import { formatCountdown } from '@/utils/lives';
 
 function Cell() {
   const { t } = useI18n();
-  const { active, lives, secondsToNext } = useLives();
+  const { active, lives, secondsToNext, loading } = useLives();
+  // Same footprint as the chip, so the header does not jump when the lives arrive.
+  if (active && !lives && loading) {
+    return <span aria-hidden data-testid="header-lives-loading" className="block h-11 w-[84px] animate-pulse rounded-full border border-[#262320] bg-[#141210] motion-reduce:animate-none" />;
+  }
   if (!active || !lives) return null;
 
   const full = lives.current >= lives.max;
