@@ -1,4 +1,5 @@
 /** Wire (snake_case, loosely typed) -> app types for the `crystals` function. */
+import { toItemBorder } from '@/services/shopNormalize';
 import { DEFAULT_THEME, type AvatarBorder, type BorderStyle, type CrystalsSnapshot, type SpendResult, type Theme, type ThemeChoice, type ThemeItem, type ThemeSlot } from '@/types/crystals';
 
 type Row = Record<string, unknown>;
@@ -10,13 +11,11 @@ const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Numb
 const STYLES: readonly BorderStyle[] = ['solid', 'gradient', 'conic', 'dashed', 'double'];
 const HEX = /^#[0-9a-f]{3,8}$/i;
 
-/** A border from the wire; null when absent or when it has no usable colour. */
+/** A border from the wire (parsed by the shop's own parser); null when absent or without a usable colour. */
 export function toBorder(v: unknown): AvatarBorder | null {
-  const r = row(v);
-  const colors = Array.isArray(r.colors) ? r.colors.filter((c): c is string => typeof c === 'string' && HEX.test(c)) : [];
-  if (colors.length === 0) return null;
-  const style = STYLES.includes(r.style as BorderStyle) ? (r.style as BorderStyle) : 'solid';
-  return { style, colors, glow: r.glow === true, animated: r.animated === true };
+  const b = toItemBorder(v ?? (row(v).colors ? v : null));
+  if (!b || b.colors.length === 0) return null;
+  return { style: STYLES.includes(b.style as BorderStyle) ? (b.style as BorderStyle) : 'solid', colors: b.colors, glow: b.glow, animated: b.animated };
 }
 
 const choice = (v: unknown, fallback: ThemeChoice): ThemeChoice => {

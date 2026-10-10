@@ -65,3 +65,12 @@ export function AvatarBorderOverlay({ border }: { border: AvatarBorder }) {
     </span>
   );
 }
+
+/** A border alone on a dark disc, `size` px: for swatches in the shop and the wardrobe; animates like the real one. */
+export function BorderRing({ border, size = 56 }: { border: AvatarBorder; size?: number }) {
+  return (
+    <span className="relative inline-block shrink-0 rounded-full bg-[#141210]" style={{ width: size, height: size }} data-testid="border-ring">
+      <AvatarBorderOverlay border={border} />
+    </span>
+  );
+}

@@ -33,7 +33,7 @@ export function WardrobeItem({ itemKey, art, title, sub, action, status = null, 
         data-testid="wardrobe-action"
         className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} relative mt-auto !min-h-10 w-full !px-2 ![font:700_13px_Inter] ${action.id === 'inuse' ? '!border-[#3FD17F] !text-[#3FD17F] !opacity-100' : ''} ${status === 'failed' ? '!border-[#E0A86F] !text-[#E0A86F]' : ''}`}
       >
-        <span className="truncate">{status === 'failed' ? failedLabel : action.label}</span>
+        <span className="line-clamp-2 text-center leading-tight">{status === 'failed' ? failedLabel : action.label}</span>
         {status === 'pending' && <span aria-hidden data-testid="wardrobe-progress" className="absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />}
       </button>
     </article>
