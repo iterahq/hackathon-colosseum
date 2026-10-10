@@ -622,6 +622,21 @@ node scripts/hackathon/purchase-e2e.mjs               # devnet, a throwaway keyp
 node scripts/hackathon/link-wallet-e2e.mjs [--keep]   # devnet, ~0.05 SOL of the authority
 ```
 
+```bash
+# The attacks of the security review, reproduced against the live functions, one section per finding.
+# Throwaway wallets are funded from the TREASURY key and what they pay flows back to it; the script
+# prints both balances around every section and stops before the authority would go below 0.62 SOL
+# or the treasury below 0.25 SOL. Cost per section: a, b, e, f, g, i, j, owner: network fees only;
+# c: 0.013 SOL of the authority (the mints of one honest day); d: 0.004 (one companion mint, reused
+# on later runs); h: one attribute write, needs d first. `owner` is a read-only dry check.
+node scripts/hackathon/security-attacks.mjs [a b c d e f g h i j owner]
+```
+
+`purchase-e2e.mjs` and `gift-e2e.mjs` fund their wallets from the treasury too (not from the mint
+authority) and refuse to start below the same floors. Without `HACKATHON_DEMO_EMAIL` /
+`HACKATHON_DEMO_PASSWORD` in the environment `purchase-e2e.mjs` skips its five wallet-less checks
+and never signs the demo user in.
+
 `link-wallet-e2e.mjs` creates two e-mail learners (admin API) and one wallet learner, runs the whole
 linked-wallet story (unclaimed rows, challenge, verify, mint, companion, a purchase through
 `purchase-submit`, `learner-profile`, the chain snapshot of the companion) with every refusal on the

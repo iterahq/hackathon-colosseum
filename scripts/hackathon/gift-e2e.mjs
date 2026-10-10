@@ -6,12 +6,14 @@
 //   node scripts/hackathon/gift-e2e.mjs
 //
 // Environment (source ~/.config/itera-hackathon/supabase.env): HACKATHON_DB_PASSWORD,
-// SUPABASE_ACCESS_TOKEN (or HACKATHON_ANON_KEY), HACKATHON_AUTHORITY_KEYFILE (default
-// ~/.config/itera-hackathon/devnet-authority.json): funds the two paying wallets.
+// SUPABASE_ACCESS_TOKEN (or HACKATHON_ANON_KEY), HACKATHON_TREASURY_KEYFILE (default
+// ~/.config/itera-hackathon/devnet-treasury.json): funds the two paying wallets, whose payments
+// flow back to the treasury. HACKATHON_AUTHORITY_KEYFILE is only read for its address.
 //
-// Spends about 0.03 SOL of the authority (funding, two companions, one certification, four
-// medals, attribute updates). Leaves four throwaway wallet users behind. Never touches the
-// owner's wallet account or the demo e-mail user.
+// Spends about 0.03 SOL of the authority (two companions, one certification, the medals,
+// attribute updates) and under 0.01 SOL of the treasury. Refuses to start when the authority
+// would end below 0.62 SOL or the treasury below 0.25 SOL. Leaves four throwaway wallet users
+// behind. Never touches the owner's wallet account or the demo e-mail user.
 import { execFileSync } from 'node:child_process';
 import { createPrivateKey, generateKeyPairSync, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -31,6 +33,11 @@ const GIFT_LAMPORTS = 550_000n;
 const PROTECTED_WALLET = 'CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW';
 /** Longer than the server's "this gift may still be confirming" window (15 s). */
 const RECONCILE_WAIT_MS = 17_000;
+/** The run stops before it starts when it could take the mint authority or the treasury below these. */
+const AUTHORITY_FLOOR = 620_000_000n;
+const TREASURY_FLOOR = 250_000_000n;
+const AUTHORITY_BUDGET = 50_000_000n;
+const TREASURY_BUDGET = 20_000_000n;
 
 const results = [];
 function check(name, pass, detail = '') {
@@ -80,12 +87,15 @@ function newWallet() {
   return { privateKey, address: base58Encode(publicKey.export({ type: 'spki', format: 'der' }).subarray(-32)) };
 }
 
-function loadAuthority() {
-  const file = process.env.HACKATHON_AUTHORITY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-authority.json`;
+function loadKeyfile(file) {
   const secret = Uint8Array.from(JSON.parse(readFileSync(file, 'utf8')));
   const privateKey = createPrivateKey({ key: Buffer.concat([PKCS8_PREFIX, Buffer.from(secret.slice(0, 32))]), format: 'der', type: 'pkcs8' });
   return { privateKey, address: base58Encode(secret.slice(32)) };
 }
+
+const loadAuthority = () => loadKeyfile(process.env.HACKATHON_AUTHORITY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-authority.json`);
+/** The key that funds the paying wallets: what they pay flows back to this same account. */
+const loadTreasuryKey = () => loadKeyfile(process.env.HACKATHON_TREASURY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-treasury.json`);
 
 /** Signs a serialized legacy message and submits it, as a wallet's `signAndSendTransaction` does. */
 async function signAndSend(signer, message) {
@@ -95,9 +105,9 @@ async function signAndSend(signer, message) {
   return sent;
 }
 
-async function fund(authority, recipient, lamports) {
+async function fund(funder, recipient, lamports) {
   const { blockhash } = (await rpc('getLatestBlockhash', [{ commitment: 'confirmed' }])).value;
-  return signAndSend(authority, buildTransferMessage({ payer: authority.address, recipient, lamports, memo: 'gift-e2e: funding', recentBlockhash: blockhash }));
+  return signAndSend(funder, buildTransferMessage({ payer: funder.address, recipient, lamports, memo: 'gift-e2e: funding', recentBlockhash: blockhash }));
 }
 
 async function anonKey() {
@@ -221,14 +231,18 @@ async function main() {
   const treasury = psql(`select value from itera.onchain_config where key = 'treasury';`);
   const before = { authority: await balance(authority.address), treasury: await balance(treasury) };
   console.log(`authority ${authority.address} ${sol(before.authority)} SOL · treasury ${treasury} ${sol(before.treasury)} SOL`);
+  if (before.authority - AUTHORITY_BUDGET < AUTHORITY_FLOOR) throw new Error(`STOP: the mint authority (${sol(before.authority)} SOL) cannot spend ${sol(AUTHORITY_BUDGET)} SOL and stay above ${sol(AUTHORITY_FLOOR)} SOL`);
+  if (before.treasury - TREASURY_BUDGET < TREASURY_FLOOR) throw new Error(`STOP: the treasury (${sol(before.treasury)} SOL) cannot spend ${sol(TREASURY_BUDGET)} SOL and stay above ${sol(TREASURY_FLOOR)} SOL`);
+  const treasuryKey = loadTreasuryKey();
+  if (treasuryKey.address !== treasury) throw new Error('the treasury keyfile is not the configured treasury');
 
   const inviter = await newLearner(apikey, 'A (inviter, recipient)');
   const invited = await newLearner(apikey, 'B (invited, in-app payer)');
   const old = await newLearner(apikey, 'E (aged account)');
   const stranger = newWallet();
   console.log(`C (blink payer, not a learner): wallet ${stranger.address}`);
-  await fund(authority, invited.address, 5_000_000n);
-  await fund(authority, stranger.address, 3_500_000n);
+  await fund(treasuryKey, invited.address, 5_000_000n);
+  await fund(treasuryKey, stranger.address, 3_500_000n);
 
   for (const learner of [inviter, invited]) await learner.call('companion');
   const minted = async (learner) => (await until(() => learner.call('companion'), (answer) => answer.body.companion?.mint_status === 'minted', 30, 2000)).body;

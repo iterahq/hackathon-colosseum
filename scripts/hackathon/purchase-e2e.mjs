@@ -8,11 +8,15 @@
 // Environment (source ~/.config/itera-hackathon/supabase.env):
 //   HACKATHON_DB_PASSWORD, SUPABASE_ACCESS_TOKEN (or HACKATHON_ANON_KEY),
 //   HACKATHON_DEMO_EMAIL + HACKATHON_DEMO_PASSWORD (the wallet-less checks),
-//   HACKATHON_AUTHORITY_KEYFILE (default ~/.config/itera-hackathon/devnet-authority.json): funds the wallet.
+//   HACKATHON_TREASURY_KEYFILE (default ~/.config/itera-hackathon/devnet-treasury.json): funds the wallet
+//   (what the wallet then pays goes back to the treasury),
+//   HACKATHON_AUTHORITY_KEYFILE (default ~/.config/itera-hackathon/devnet-authority.json): only read for its address,
+//   unless the treasury float has to be topped up.
 //
-// Spends about 0.02 SOL of the authority (wallet funding + one companion mint +
-// attribute updates). Leaves one throwaway wallet user behind. The demo e-mail
-// user is only read: nothing here changes its lives or progress.
+// Spends about 0.025 SOL of the authority (one companion mint, one certification, its medals and
+// attribute updates) and about 0.015 SOL of the treasury. Refuses to start when the authority would
+// end below 0.62 SOL or the treasury below 0.25 SOL. Leaves one throwaway wallet user behind. The
+// demo e-mail user is only read: nothing here changes its lives or progress.
 import { execFileSync } from 'node:child_process';
 import { createPrivateKey, generateKeyPairSync, randomBytes, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -34,6 +38,11 @@ const PROGRAM_SLUG = 'itera-v2';
 const PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
 const WALLET_TOP_UP = 12_000_000n;
 const TREASURY_FLOAT = 100_000_000n;
+/** The run stops before it starts when it could take the mint authority or the treasury below these. */
+const AUTHORITY_FLOOR = 620_000_000n;
+const TREASURY_FLOOR = 250_000_000n;
+const AUTHORITY_BUDGET = 45_000_000n;
+const TREASURY_BUDGET = 30_000_000n;
 
 const results = [];
 const timings = new Map();
@@ -100,11 +109,14 @@ function newWallet() {
   return { privateKey, address: base58Encode(publicKey.export({ type: 'spki', format: 'der' }).subarray(-32)) };
 }
 
-function loadAuthority() {
-  const file = process.env.HACKATHON_AUTHORITY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-authority.json`;
+function loadKeyfile(file) {
   const secret = Uint8Array.from(JSON.parse(readFileSync(file, 'utf8')));
   return { ...keypair(secret.slice(0, 32)), address: base58Encode(secret.slice(32)) };
 }
+
+const loadAuthority = () => loadKeyfile(process.env.HACKATHON_AUTHORITY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-authority.json`);
+/** The key that funds the throwaway wallet: its payments flow back to this same account. */
+const loadTreasuryKey = () => loadKeyfile(process.env.HACKATHON_TREASURY_KEYFILE ?? `${homedir()}/.config/itera-hackathon/devnet-treasury.json`);
 
 /** Signs a serialized message and submits it, as `signAndSendTransaction` does. Returns the signature. */
 async function signAndSend(signer, message) {
@@ -251,6 +263,10 @@ async function main() {
   const treasury = psql(`select value from itera.onchain_config where key = 'treasury';`);
   const before = { authority: await balance(authority.address), treasury: await balance(treasury) };
   console.log(`authority ${authority.address} ${sol(before.authority)} SOL · treasury ${treasury} ${sol(before.treasury)} SOL`);
+  if (before.authority - AUTHORITY_BUDGET < AUTHORITY_FLOOR) throw new Error(`STOP: the mint authority (${sol(before.authority)} SOL) cannot spend ${sol(AUTHORITY_BUDGET)} SOL and stay above ${sol(AUTHORITY_FLOOR)} SOL`);
+  if (before.treasury - TREASURY_BUDGET < TREASURY_FLOOR) throw new Error(`STOP: the treasury (${sol(before.treasury)} SOL) cannot spend ${sol(TREASURY_BUDGET)} SOL and stay above ${sol(TREASURY_FLOOR)} SOL`);
+  const treasuryKey = loadTreasuryKey();
+  if (treasuryKey.address !== treasury) throw new Error('the treasury keyfile is not the configured treasury');
   if (before.treasury < TREASURY_FLOAT / 2n) {
     await transfer(authority, treasury, TREASURY_FLOAT, 'e2e: treasury float');
     console.log(`treasury float: +${sol(TREASURY_FLOAT)} SOL from the authority`);
@@ -298,7 +314,7 @@ async function main() {
   check('wallet-faucet: the wallet received it', funded === 10_000_000n, `${sol(funded)} SOL`);
   const faucetAgain = await call('wallet-faucet');
   check('wallet-faucet: second call -> already_claimed', faucetAgain.body.blocked === 'already_claimed', JSON.stringify(faucetAgain.body));
-  await transfer(authority, wallet.address, WALLET_TOP_UP, 'e2e: wallet top-up');
+  await transfer(treasuryKey, wallet.address, WALLET_TOP_UP, 'e2e: wallet top-up');
 
   // --- companion: lazy row, background mint, public verification ------------------------------
   const first = await call('companion');
@@ -309,8 +325,9 @@ async function main() {
   let verify = await verifyAsset(companion.asset_address);
   let attributes = attributesOf(verify);
   check('companion asset: verified, soulbound, owned by the wallet', verify.body.verified === true && verify.body.frozen === true && verify.body.owner === wallet.address && verify.body.checks.collection_is_ours);
-  check('companion asset: attributes mirror the database', attributes.kind === 'companion' && attributes.lives === '5' && attributes.max_lives === '5' && attributes.outfit === 'none' && attributes.level === '1' && attributes.learner === userId, JSON.stringify(attributes));
-  check('credential-verify: achievement.key = companion, no user id in it', verify.body.achievement?.key === 'companion' && !JSON.stringify(verify.body.achievement).includes(userId));
+  // `learner` is the owner wallet: the internal learner id is no longer written on chain (security review, finding 8).
+  check('companion asset: attributes mirror the database, `learner` is the owner wallet', attributes.kind === 'companion' && attributes.lives === '5' && attributes.max_lives === '5' && attributes.outfit === 'none' && attributes.level === '1' && attributes.learner === wallet.address, JSON.stringify(attributes));
+  check('credential-verify: achievement.key = companion, no user id anywhere in the answer', verify.body.achievement?.key === 'companion' && !verify.text.includes(userId));
   const companionMeta = await publicGet(`credential-meta/companion/${companion.id}`);
   const bareArt = (await publicGet(`credential-meta/companion/${companion.id}/image.svg`)).text;
   check('credential-meta: companion metadata and art', companionMeta.status === 200 && companionMeta.body.name === 'Tera companion' && bareArt.startsWith('<svg') && bareArt.includes('5/5 LIVES'));
@@ -347,6 +364,11 @@ async function main() {
   // Since the Circuito, half of a paid purchase leaves the treasury for the mint authority (plus that transfer's fee).
   const refillGain = (await balance(treasury)) - treasuryBeforeRefill;
   check('life_refill: the treasury received exactly the price (less the circuit share once it left)', refillGain === 550_000n || refillGain === 550_000n - 275_000n - 5_000n, `${refillGain} lamports`);
+  // The Circuito no longer runs inside the answer: it states the share and the transfer follows.
+  const refillCircuit = refill.confirm?.body.circuit;
+  check('life_refill: confirm carries the circuit share (pending with the planned amount, or already sent)', (refillCircuit?.status === 'pending' || refillCircuit?.status === 'sent') && refillCircuit.lamports === 275_000 && refillCircuit.stamps_funded === 55, JSON.stringify(refillCircuit ?? null));
+  const refillSent = await until(async () => psql(`select coalesce(circuit_status, '') || '|' || coalesce(circuit_lamports, 0) from itera.purchases where id = :'id'::uuid;`, { id: refill.intent.body.intent_id }), (value) => value.startsWith('sent') || value.startsWith('skipped'), 20, 1500);
+  check('life_refill: the circuit transfer landed after the answer, half of the row', refillSent === 'sent|275000', refillSent);
   const refillBody = refill.confirm?.body ?? {};
   check('life_refill: confirm carries `chain` (lives 5) and `written` for the companion asset', isSignatureText(refillBody.chain?.tx_signature) && refillBody.chain.lives === 5 && refillBody.chain.explorer_url.includes(refillBody.chain.tx_signature) && refillBody.written?.some((entry) => entry.asset === companion.asset_address && entry.attribute === 'lives' && entry.value === '5') && refillBody.companion?.image_url?.includes('?v='), JSON.stringify({ chain: refillBody.chain, written: refillBody.written }));
   verify = await verifyUntil(companion.asset_address, (current) => current.lives === '5');
@@ -415,7 +437,8 @@ async function main() {
   const bonusAgain = await call('lives', { body: { action: 'lesson_end', lesson_id: day1.lessonId, mistakes: 0 } });
   check('lesson_end: the same lesson on the same day only once', bonusAgain.body.bonus === 'already_granted' && bonusAgain.body.lives.current === 4, `${bonusAgain.body.bonus} ${bonusAgain.body.lives.current}`);
   verify = await verifyUntil(companion.asset_address, (current) => current.lives === '4');
-  check('lesson_end: lives mirrored on chain', attributesOf(verify).lives === '4', attributesOf(verify).lives);
+  // A lesson end is an ordinary mirror: inside the 30 s cooldown it is held and written when the window ends.
+  check('lesson_end: lives mirrored on chain (at the latest when the mirror cooldown ends)', attributesOf(verify).lives === '4', attributesOf(verify).lives);
 
   // --- passport cosmetics ---------------------------------------------------------------------
   const passportCall = await until(() => call('passport', { body: { lang: 'en' } }), (response) => response.status !== 200 || response.body.remaining === 0, 5, 1000);
@@ -430,6 +453,7 @@ async function main() {
   check('ink_emerald: confirm -> passport item with the cosmetic and a refreshed image_url', emerald.confirm?.status === 200 && emerald.confirm.body.passport?.key === 'trail_pass' && emerald.confirm.body.passport.state.cosmetics?.ink === 'emerald' && emerald.confirm.body.image_url?.includes(passId), JSON.stringify(emerald.confirm?.body).slice(0, 200));
   verify = await verifyAsset(passAsset);
   check('ink_emerald: attribute ink = emerald on chain, the others kept', attributesOf(verify).ink === 'emerald' && attributesOf(verify).days_done === '1' && attributesOf(verify).kind === 'trail_passport', JSON.stringify(attributesOf(verify)));
+  check('certification asset: `learner` is the owner wallet, no user id on chain', attributesOf(verify).learner === wallet.address && !JSON.stringify(verify.body.attributes).includes(userId), attributesOf(verify).learner);
   const emeraldArt = (await publicGet(emerald.confirm.body.image_url.replace(`${FUNCTIONS}/`, ''))).text;
   check('ink_emerald: confirm carries `chain` and `written` for the certification asset', isSignatureText(emerald.confirm.body.chain?.tx_signature) && !('lives' in emerald.confirm.body.chain) && emerald.confirm.body.written?.length === 1 && emerald.confirm.body.written[0].asset === passAsset && emerald.confirm.body.written[0].attribute === 'ink' && emerald.confirm.body.written[0].value === 'emerald', JSON.stringify(emerald.confirm.body.written ?? null));
   check('art: the default page is Itera green; emerald is the jewel ink', plainArt.includes('data-ink="default"') && plainArt.includes('stroke="#3FD17F" stroke-width="3.5"') && !plainArt.includes('hsl(') && emeraldArt !== plainArt && emeraldArt.includes('data-ink="emerald"') && emeraldArt.includes('url(#emerald)'));
