@@ -94,6 +94,12 @@ Body (optional): `{ "lang": "pt" | "en", "lesson_id": "<uuid>" }` (default `pt`)
   `null` when every published activity of that lesson is completed by the caller (or the lesson
   is unknown or has no activities), else `{ "lesson_id": "…", "done": 13, "total": 16 }`. Same
   completion rule as the awards (`dayIncomplete` in `_shared/awards.ts`); nothing else changes.
+- `day_pending_review` (optional; the key is absent in the normal case):
+  `{ "lesson_id": "…", "reason": "too_fast" | "missing_results" }` when a lesson has every activity
+  completed but fails the plausibility floor (see "Trust model"). That lesson awards nothing in this
+  call: no stamp, no medal, no mint. With a `lesson_id` in the body it speaks about that lesson only;
+  without one, about the first such lesson. The UI needs no change: with no award the end of the lesson
+  is the plain completion card.
 - `awards`: rows created by this call. `updated`: older rows this call changed (a passport that
   gained a stamp, a row that got minted). Same shape.
 - At most 3 transactions per call; `remaining` is how many are still due. Call again while `> 0`
@@ -259,6 +265,49 @@ exercised from the app: sign in with a wallet, complete a day, complete another.
 - `earned_at` is set when a row is first written and does not move if progress is edited later.
 - A row stuck in `pending` (invocation killed mid-mint) is retaken after 3 minutes.
 
+## Trust model
+
+Read this before saying what a certification proves.
+
+**Grading is client-side in this build.** The player decides in the browser whether an answer is
+right and then writes two rows with the learner's own session: `itera.progress` (the activity is
+`completed`) and `itera.activity_results` (the attempt). Row level security only says "these are your
+rows". The `passport` function reads those rows and mints. So a learner who talks to the database
+directly, without the player, can write that they completed a day they never opened.
+
+**What the chain proves:** that the Itera issuer (one authority key, one collection) wrote this
+credential to this wallet at this time, that it is frozen (cannot be transferred or edited by the
+holder), and what Itera's database said about that learner's progress when it was written. Anyone can
+check that without trusting our site.
+
+**What it does not prove:** that the person learned anything, or even that a person used the player.
+It proves a database row existed, and the row is written by the learner's client.
+
+**What this build does about it** (migration `0134`, `_shared/plausibility.ts`; cheap and honest, not a fix):
+
+- A completion written by a client gets the **server's clock**, whatever date the client sends, and
+  cannot be re-dated afterwards. Streaks, the weekly goal, `early_bird` and `night_owl` can no longer
+  be fabricated with invented dates. The service role and an operator in psql are not restricted.
+- A lesson counts for certification only if it passes a **plausibility floor**: the completions of the
+  whole lesson span at least 20 s for a lesson of 15 or more activities (less for shorter ones:
+  about 1.4 s per activity), and every completion recorded by a client has a passed attempt in
+  `activity_results`. A day "completed" in one burst of requests awards nothing and the answer carries
+  `day_pending_review`. Lessons with no client-recorded completion (operator seeding, rows older than
+  the guard) are not judged, and a stamp already awarded is never taken back.
+- XP is worth a fixed 10 per activity, once, only for a completed activity (migration `0133`).
+
+**What still works for an attacker, today:** write the progress rows *and* fake attempt rows, one
+activity every couple of seconds, wait 20 s, call `passport`. The day is stamped and the authority
+pays for the mint. The floor only removes the one-request version of the attack and makes fabricated
+calendars impossible. The weekly-goal medal counts activities, not whole lessons, and is not behind
+the floor. Proof of both halves on devnet: `node scripts/hackathon/security-attacks.mjs c`.
+
+**What mainnet would require:** completion written only by the server, after the server graded the
+answer (an edge function or RPC that takes `(activity_id, answer)`; `INSERT`/`UPDATE` on `progress`
+and `activity_results` revoked from clients); answer keys that never reach the browser; rate limits
+per account and per wallet on everything the authority pays for; and separate custody for the
+authority and treasury keys (they are function secrets next to the service-role key today).
+
 ## End of a lesson (UI)
 
 `src/utils/lessonEnd.ts` decides the screen from two facts, in this order: what the player knows
@@ -272,6 +321,7 @@ wins over the local count.
 | Day finished whole in this visit, lesson is a day of a trail | the ceremony at once in its minting state (previous stamps, nothing claimed), then what the server confirmed |
 | `passport` error or 20 s without an answer | plain card + "Seu dia está salvo; o carimbo on-chain entra na próxima vez." |
 | Lesson reopened already whole, lesson outside a trail, guest | plain card; a ceremony only if the server stamps the lesson in that call |
+| Day whole but `day_pending_review` (the plausibility floor refused it) | plain card: the server awarded nothing, so there is no ceremony to show. No message accuses the learner |
 
 Gold is shown only when the returned `trail_pass` says `days_done >= total_days` or tier `gold`.
 

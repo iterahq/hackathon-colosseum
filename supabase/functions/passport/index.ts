@@ -1,4 +1,4 @@
-import { computeAwards, dayIncomplete, type Award, type AwardsInput } from '../_shared/awards.ts';
+import { computeAwards, dayIncomplete, dayPendingReview, type Award, type AwardsInput } from '../_shared/awards.ts';
 import { linkedWalletOf, resolveWallet, walletOf } from '../_shared/caller.ts';
 import type { Chain } from '../_shared/chain.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
@@ -120,9 +120,13 @@ async function loadCatalog(db: IteraClient): Promise<Map<string, CatalogEntry>> 
 
 /** Everything `computeAwards` reads, fetched in one round of parallel queries. */
 async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omit<AwardsInput, 'existing'>> {
-  const [progress, programs, units, lessons, activities] = await Promise.all([
+  const [progress, passed, programs, units, lessons, activities] = await Promise.all([
     fetchAll<AwardsInput['progress'][number]>((from, to) =>
-      db.from('progress').select('activity_id,status,completed_at').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
+      db.from('progress').select('activity_id,status,completed_at,written_by_client').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
+    ),
+    // The plausibility floor reads which activities have a passed attempt.
+    fetchAll<{ activity_id: string }>((from, to) =>
+      db.from('activity_results').select('activity_id').eq('user_id', userId).eq('passed', true).order('activity_id').order('id').range(from, to),
     ),
     fetchAll<{ id: string; slug: string; title_i18n: Record<string, string> }>((from, to) =>
       db.from('programs').select('id,slug,title_i18n').is('archived_at', null).order('id').range(from, to),
@@ -144,6 +148,7 @@ async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omi
     lessons: lessons.map((lesson) => ({ id: lesson.id, unit_id: lesson.unit_id, ordinal: lesson.ordinal, title: lesson.title_i18n })),
     activities,
     progress,
+    passedActivityIds: new Set(passed.map((row) => row.activity_id)),
     timeZone: TIME_ZONE,
   };
 }
@@ -457,10 +462,10 @@ Deno.serve(async (request) => {
       loadCatalog(db),
       loadProgressAndTree(db, caller.iteraUserId),
     ]);
-    const awards = computeAwards({
-      ...learning,
-      existing: before.map((row) => ({ achievement_key: row.achievement_key, ref_id: row.ref_id, state: row.state })),
-    });
+    const existing = before.map((row) => ({ achievement_key: row.achievement_key, ref_id: row.ref_id, state: row.state }));
+    const awards = computeAwards({ ...learning, existing });
+    // A completed day that fails the plausibility floor awards nothing; the answer says so in neutral terms.
+    const pendingReview = dayPendingReview({ ...learning, existing }, body.lessonId);
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
 
@@ -489,6 +494,7 @@ Deno.serve(async (request) => {
         remaining: mint.remaining,
         mint: { wallet: caller.wallet, cluster: CLUSTER, attempted: mint.attempted, blocked: mint.blocked },
         ...(body.lessonId ? { day_incomplete: dayIncomplete(learning, body.lessonId) } : {}),
+        ...(pendingReview ? { day_pending_review: pendingReview } : {}),
       },
       200,
       cors,

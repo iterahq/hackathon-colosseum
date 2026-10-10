@@ -1,3 +1,4 @@
+import { lessonPlausibility, type ReviewReason } from './plausibility.ts';
 import { WEEKLY_GOAL, weeklyGoalHits } from './weekly-goal.ts';
 
 export const GLOBAL_REF = '00000000-0000-0000-0000-000000000000';
@@ -48,6 +49,8 @@ export interface ProgressRow {
   activity_id: string;
   status: string;
   completed_at: string | null;
+  /** The completion was recorded by a client role (migration 0134). Absent or false: not judged by the floor. */
+  written_by_client?: boolean | null;
 }
 
 export interface ExistingAward {
@@ -63,6 +66,8 @@ export interface AwardsInput {
   /** Only the activities that count towards completing a lesson. */
   activities: ActivityNode[];
   progress: ProgressRow[];
+  /** Activities the learner has a passed attempt for (`activity_results`). Read by the plausibility floor. */
+  passedActivityIds?: Iterable<string>;
   existing: ExistingAward[];
   /** IANA zone that decides calendar days and hours, e.g. `America/Sao_Paulo`. */
   timeZone: string;
@@ -159,19 +164,59 @@ export function dayIncomplete(input: Pick<AwardsInput, 'activities' | 'progress'
   return done === counted.length ? null : { lesson_id: lessonId, done, total: counted.length };
 }
 
-/** A lesson is done when every counted activity is completed; it happened when the last one was. */
-function completedLessons(input: AwardsInput): CompletedLesson[] {
+export interface PendingReview {
+  lesson_id: string;
+  reason: ReviewReason;
+}
+
+type ReviewInput = Pick<AwardsInput, 'lessons' | 'activities' | 'progress' | 'passedActivityIds' | 'existing'>;
+
+/**
+ * A lesson is done when every counted activity is completed; it happened when
+ * the last one was. A lesson that fails the plausibility floor is `pending`
+ * instead and awards nothing, unless its stamp was already awarded: a stored
+ * row is never taken back.
+ */
+function reviewLessons(input: ReviewInput): { done: CompletedLesson[]; pending: PendingReview[] } {
   const completedAtByActivity = completedAtOf(input.progress);
+  const byClient = new Set(input.progress.filter((row) => row.written_by_client === true).map((row) => row.activity_id));
+  const passed = new Set(input.passedActivityIds ?? []);
+  const stamped = new Set(input.existing.filter((row) => row.achievement_key === 'day_stamp').map((row) => row.ref_id));
   const activitiesByLesson = groupBy(input.activities, (activity) => activity.lesson_id);
   const done: CompletedLesson[] = [];
+  const pending: PendingReview[] = [];
   for (const lesson of input.lessons) {
     const activities = activitiesByLesson.get(lesson.id) ?? [];
     if (activities.length === 0) continue;
     const times = activities.map((activity) => completedAtByActivity.get(activity.id));
     if (times.some((time) => time === undefined)) continue;
+    if (!stamped.has(lesson.id)) {
+      const reason = lessonPlausibility(
+        activities.map((activity, index) => ({
+          activityId: activity.id,
+          completedAt: times[index] as string,
+          writtenByClient: byClient.has(activity.id),
+          hasPassedResult: passed.has(activity.id),
+        })),
+      );
+      if (reason) {
+        pending.push({ lesson_id: lesson.id, reason });
+        continue;
+      }
+    }
     done.push({ lesson, completedAt: (times as string[]).sort().at(-1) as string });
   }
-  return done.sort(byTimeThenId);
+  return { done: done.sort(byTimeThenId), pending };
+}
+
+/**
+ * The fully completed lesson that awards nothing yet, for a neutral notice:
+ * the named lesson when it is one, else the first such lesson. `null` when none.
+ */
+export function dayPendingReview(input: ReviewInput, lessonId: string | null): PendingReview | null {
+  const { pending } = reviewLessons(input);
+  if (lessonId) return pending.find((entry) => entry.lesson_id === lessonId) ?? null;
+  return pending[0] ?? null;
 }
 
 /** The lesson that closed the first run of `length` consecutive local days, if any. */
@@ -199,7 +244,7 @@ function sameJson(a: unknown, b: unknown): boolean {
  * only what the stored rows are missing. Pure: same input, same output.
  */
 export function computeAwards(input: AwardsInput): Award[] {
-  const done = completedLessons(input);
+  const { done } = reviewLessons(input);
   const existing = new Map(input.existing.map((row) => [awardId(row.achievement_key, row.ref_id), row]));
   // The weekly goal counts activities, not whole days: it can land before any lesson is complete.
   const weekly: Award[] = weeklyGoalHits([...completedAtOf(input.progress).values()], input.timeZone)
