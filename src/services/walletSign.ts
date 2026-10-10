@@ -5,7 +5,7 @@
  * NOT YET PROVEN AGAINST A REAL PHANTOM. Three attempts, each logged (`[wallet] attempt <name>`), and
  * whatever the provider answers is carried in `WalletSignError.detail` so the failed state shows it.
  */
-import { assembleSignedTransaction, base64Decode, base64Encode, normalizeSignOnlyAnswer } from '@/services/walletEncoding';
+import { assembleSignedTransaction, base64Decode, base64Encode, bytesOf, normalizeSignOnlyAnswer } from '@/services/walletEncoding';
 import type { PurchaseIntent } from '@/types/shop';
 
 interface SolanaProvider {
@@ -13,6 +13,7 @@ interface SolanaProvider {
   connect(options?: { onlyIfTrusted?: boolean }): Promise<unknown>;
   request(args: { method: string; params?: unknown }): Promise<unknown>;
   signAndSendTransaction?(transaction: unknown): Promise<unknown>;
+  signMessage?(message: Uint8Array, display?: string): Promise<unknown>;
 }
 
 export type WalletSignFailure = 'no_wallet' | 'cancelled' | 'insufficient' | 'failed';
@@ -136,4 +137,20 @@ export async function signAndSendPurchase(intent: PurchaseIntent): Promise<Walle
     }
   }
   throw new WalletSignError('failed', failures.join(' | '));
+}
+
+/** Asks the wallet to sign a text (no transaction, no fee); resolves with the base64 of the 64 signature bytes. */
+export async function signTextMessage(text: string): Promise<string> {
+  const provider = getWalletProvider();
+  if (!provider) throw new WalletSignError('no_wallet', 'No Solana wallet found in this browser.');
+  if (!provider.signMessage) throw new WalletSignError('failed', 'This wallet cannot sign messages.');
+  try {
+    const answer = await provider.signMessage(new TextEncoder().encode(text), 'utf8');
+    const bytes = bytesOf((answer as { signature?: unknown } | null)?.signature ?? answer);
+    if (!bytes) throw new WalletSignError('failed', 'The wallet answered without a signature.');
+    return base64Encode(bytes);
+  } catch (e) {
+    console.warn('[wallet]', 'signMessage', codeOf(e), messageOf(e));
+    throw classifyWalletError(e);
+  }
 }

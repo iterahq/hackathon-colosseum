@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/AuthContext';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import '@/components/dashboard/dashboard.css';
+import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { MedalShelf } from '@/components/passport/MedalShelf';
@@ -30,7 +30,6 @@ const H2 = "[font:700_32px_'Barlow_Condensed']";
 export default function PassportPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { signInWithSolana } = useAuth();
   const stats = useUserStats();
   const view = usePassportView();
   const started = view.pages.filter((p) => p.daysDone > 0).sort((a, b) => Number(isGold(b)) - Number(isGold(a)));
@@ -46,10 +45,8 @@ export default function PassportPage() {
         {!view.walletAddress && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-4" data-testid="passport-no-wallet">
             <span className="[font:500_14px_Inter] text-[#C9BFB0]">{t('passport.noWallet.banner')}</span>
-            <button type="button" onClick={() => void signInWithSolana()} className={`${BTN} !h-11 !border-b-[4px] !px-4 !text-[18px]`}>
-              {t('passport.connect')}
-            </button>
-            <span className="basis-full [font:400_12px/1.4_Inter] text-[#A0978A]">{t('lives.gate.connectHint')}</span>
+            <LinkWalletButton className={`${BTN} !h-11 !border-b-[4px] !px-4 !text-[18px]`} />
+            <span className="basis-full [font:400_12px/1.4_Inter] text-[#A0978A]">{t('wallet.link.hint')}</span>
           </div>
         )}
         {view.isError && (

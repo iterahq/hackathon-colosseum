@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PurchaseIntent } from '@/types/shop';
 import { base64Decode, base64Encode } from './walletEncoding';
-import { WalletSignError, classifyWalletError, signAndSendPurchase } from './walletSign';
+import { WalletSignError, classifyWalletError, signAndSendPurchase, signTextMessage } from './walletSign';
 
 const intent: PurchaseIntent = {
   intentId: 'i1',
@@ -129,5 +129,22 @@ describe('signAndSendPurchase', () => {
     quiet();
     install({ request: vi.fn().mockImplementation(async ({ method }: { method: string }) => { throw method === 'signTransaction' ? { code: 4001, message: 'User rejected' } : new Error('x'); }) });
     await expect(signAndSendPurchase(intent)).rejects.toMatchObject({ reason: 'cancelled' });
+  });
+});
+
+describe('signTextMessage', () => {
+  it('signs the utf8 bytes and returns base64 of the signature', async () => {
+    const signMessage = vi.fn().mockResolvedValue({ signature: new Uint8Array(64).fill(1), publicKey: 'x' });
+    install({ request: vi.fn(), signMessage });
+    const out = await signTextMessage('hello');
+    expect(Array.from(signMessage.mock.calls[0][0] as Uint8Array)).toEqual(Array.from(new TextEncoder().encode('hello')));
+    expect(signMessage.mock.calls[0][1]).toBe('utf8');
+    expect(base64Decode(out)).toHaveLength(64);
+  });
+
+  it('maps a rejection to cancelled', async () => {
+    quiet();
+    install({ request: vi.fn(), signMessage: vi.fn().mockRejectedValue({ code: 4001, message: 'User rejected' }) });
+    await expect(signTextMessage('x')).rejects.toMatchObject({ reason: 'cancelled' });
   });
 });

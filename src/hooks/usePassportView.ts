@@ -1,16 +1,15 @@
 /** Everything the passport surfaces draw: pages per trail, the medal shelf, totals and the wallet. */
 import { useMemo } from 'react';
-import { useAuth } from '@/auth/AuthContext';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useTrailDashboard } from '@/hooks/useTrailDashboard';
 import { useI18n } from '@/i18n';
 import { buildMedals, buildPages, totals } from '@/utils/passport';
-import { walletOf } from '@/utils/wallet';
+import { useWalletLink } from '@/hooks/useWalletLink';
 
 export function usePassportView() {
   const { tText } = useI18n();
-  const { user } = useAuth();
+  const link = useWalletLink();
   const visitor = useAccessLevel().level === 'visitor';
   const dashboard = useTrailDashboard({ enabled: !visitor });
   const achievements = useAchievements({ enabled: !visitor });
@@ -27,7 +26,7 @@ export function usePassportView() {
     ...model,
     earnedCount: achievements.earnedCount,
     featuredId: featured?.id ?? null,
-    walletAddress: walletOf(user),
+    walletAddress: link.wallet,
     isPending: dashboard.isPending || (!visitor && achievements.isPending),
     isError: dashboard.isError || achievements.isError,
     refetch: () => {

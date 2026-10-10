@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { useHeaderStats } from '@/hooks/useHeaderStats';
 import { useProfile } from '@/hooks/useProfile';
+import { useWalletLink } from '@/hooks/useWalletLink';
 import { useI18n } from '@/i18n';
 import { initialsOf, shortAddress, walletOf } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
@@ -24,7 +25,8 @@ export function HeaderIdentity() {
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
 
-  const wallet = walletOf(user);
+  const link = useWalletLink();
+  const wallet = walletOf(user) ?? (link.wallet ? { address: link.wallet, chain: 'solana', network: 'devnet' } : null);
   const name = profile?.displayName || user?.email || (wallet ? shortAddress(wallet.address) : '');
   const initials = initialsOf(profile?.displayName || user?.email || '') || '·';
 
