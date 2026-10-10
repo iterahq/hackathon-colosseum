@@ -80,6 +80,7 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, stats, onClose,
               <span className="mt-1 block truncate [font:700_15px_JetBrains_Mono] text-[#F4EDE2]" title={wallet.address}>
                 {shortAddress(wallet.address, 6, 6)}
               </span>
+              {name && <span className="block truncate [font:700_15px_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>}
             </>
           ) : (
             <>

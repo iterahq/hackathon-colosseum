@@ -26,6 +26,7 @@ export function useProfileAvatars() {
       imageUrl: item.avatar!.imageUrl,
       thumbUrl: item.avatar!.thumbUrl,
       assetAddress: item.avatar!.assetAddress,
+      allowsOutfit: item.avatar!.allowsOutfit,
     }));
   const list = options.some((o) => o.key === current.key) ? options : [current.key === DEFAULT_AVATAR.key ? DEFAULT_AVATAR : current, ...options];
 

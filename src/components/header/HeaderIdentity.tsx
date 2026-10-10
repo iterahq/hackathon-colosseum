@@ -8,6 +8,7 @@ import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useProfile } from '@/hooks/useProfile';
 import { useWalletLink } from '@/hooks/useWalletLink';
 import { useI18n } from '@/i18n';
+import { isGenericName } from '@/utils/isGenericName';
 import { shortAddress, walletOf } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
 import { HeaderMenu } from './HeaderMenu';
@@ -29,7 +30,8 @@ export function HeaderIdentity() {
 
   const link = useWalletLink();
   const wallet = walletOf(user) ?? (link.wallet ? { address: link.wallet, chain: 'solana', network: 'devnet' } : null);
-  const name = profile?.displayName || user?.email || (wallet ? shortAddress(wallet.address) : '');
+  const chosen = profile?.displayName && !isGenericName(profile.displayName, user?.email) ? profile.displayName : '';
+  const name = chosen || (wallet ? '' : user?.email || '');
   const avatar = useLearnerAvatar();
 
   useEffect(() => setOpen(false), [pathname]);

@@ -33,4 +33,11 @@ describe('isGenericName', () => {
     expect(isGenericName('User Silva')).toBe(false);
     expect(isGenericName('Userson')).toBe(false);
   });
+
+  it('flags wallet-shaped names, short and full', () => {
+    expect(isGenericName('CQzi…DAhW')).toBe(true);
+    expect(isGenericName('2rAa...nqA')).toBe(true);
+    expect(isGenericName('HAF2UUMRqo7nwTm7H38EuwfnXJbSC9YTGJTw6CK8jL6')).toBe(true);
+    expect(isGenericName('Ana...Clara!')).toBe(false);
+  });
 });

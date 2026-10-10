@@ -9,6 +9,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/i18n';
 import { DEFAULT_AVATAR_KEY } from '@/types/avatar';
 import type { Trail } from '@/types/trailDashboard';
+import { isGenericName } from '@/utils/isGenericName';
 import { greetingName } from '@/utils/headerHud';
 import { currentDayOf, trailName } from '@/utils/trailDashboard';
 
@@ -20,8 +21,9 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   const stats = useHeaderStats();
   const avatar = useLearnerAvatar();
   const companion = useCompanion();
-  const outfitTera = Boolean(companion.data) && avatar.key === DEFAULT_AVATAR_KEY && (avatar as { allowsOutfit?: boolean }).allowsOutfit !== false;
-  const nickname = greetingName(useProfile().data?.displayName);
+  const outfitTera = Boolean(companion.data) && avatar.key === DEFAULT_AVATAR_KEY && avatar.allowsOutfit;
+  const displayName = useProfile().data?.displayName;
+  const nickname = isGenericName(displayName) ? null : greetingName(displayName);
   const current = trail ? currentDayOf(trail) : null;
   const day = trail && current ? String(trail.days.indexOf(current) + 1).padStart(2, '0') : null;
 

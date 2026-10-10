@@ -16,6 +16,9 @@ export function isGenericName(name: string | null | undefined, email?: string | 
   // The email local-part fallback — matched case-SENSITIVELY: the fallback uses
   // the raw local part verbatim, so a real "Ana" (email ana@) is NOT flagged,
   // while the raw "samuelstefanodocarmo" fallback is.
+  // A wallet address, full or shortened (`CQzi…DAhW`, `2rAa...nqA`), is never a name.
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(n)) return true;
+  if (/^[1-9A-HJ-NP-Za-km-z]{3,8}(…|\.{2,3})[1-9A-HJ-NP-Za-km-z]{3,8}$/.test(n)) return true;
   const localRaw = (email ?? '').split('@')[0].trim();
   if (localRaw && n === localRaw) return true;
   return false;

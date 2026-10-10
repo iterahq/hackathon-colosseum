@@ -7,6 +7,7 @@ import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TERA_BUTTON, TeraNote } from '@/components/tera/TeraNote';
 import { useLearnerProfile } from '@/hooks/useLearnerProfile';
 import { useI18n } from '@/i18n';
+import { loreOf } from '@/lib/teraLoreSafe';
 import { shortAddress } from '@/lib/explorer';
 import { looksLikeAddress } from '@/utils/credential';
 
@@ -60,6 +61,9 @@ export default function LearnerProfilePage() {
                 <LearnerAvatar avatar={profile.avatar} size="lg" thumb={false} />
                 <div className="min-w-0">
                   <h1 className="truncate [font:700_34px/1_'Barlow_Condensed'] max-sm:text-[28px]" title={profile.wallet}>{shortAddress(profile.wallet)}</h1>
+                  {loreOf(profile.avatar.key, locale) && (
+                    <p className="mt-1 [font:500_13px_Inter] text-[#C9BFB0]" data-testid="profile-avatar-name">{loreOf(profile.avatar.key, locale)?.name} · {loreOf(profile.avatar.key, locale)?.epithet}</p>
+                  )}
                   <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
                 </div>
               </div>
