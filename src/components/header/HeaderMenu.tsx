@@ -10,7 +10,6 @@ import { shortAddress } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
 import { HeaderLocale } from './HeaderLocale';
 import { MENU_ITEM, MENU_LEGAL, MenuLegalRow, MenuSection } from './HeaderMenuParts';
-import type { HeaderStats } from '@/hooks/useHeaderStats';
 import type { HeaderRoles } from './useHeaderRoles';
 
 interface Props {
@@ -19,7 +18,6 @@ interface Props {
   email: string | null;
   wallet: WalletIdentity | null;
   roles: HeaderRoles;
-  stats?: HeaderStats;
   onClose: () => void;
   onExplainer: () => void;
   onSignOut: () => void;
@@ -29,7 +27,7 @@ const explorerUrl = (address: string, network: string | null) =>
   `https://explorer.solana.com/address/${encodeURIComponent(address)}${network ? `?cluster=${encodeURIComponent(network)}` : ''}`;
 
 /** The account sheet: who is signed in, then account, help, staff areas and sign out, each under a mono label. */
-export function HeaderMenu({ name, avatar, email, wallet, roles, stats, onClose, onExplainer, onSignOut }: Props) {
+export function HeaderMenu({ name, avatar, email, wallet, roles, onClose, onExplainer, onSignOut }: Props) {
   const { t } = useI18n();
   const reduced = !!useReducedMotion();
   const [copied, setCopied] = useState(false);
@@ -71,21 +69,46 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, stats, onClose,
       <div className="flex items-start justify-between gap-3 border-b border-[#262320] px-4 py-3">
         <LearnerAvatar avatar={avatar} size="md" thumb={false} />
         <div className="min-w-0 flex-1">
+          {name && <span className="block truncate [font:700_17px_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>}
           {wallet ? (
-            <>
-              <span className="flex items-center gap-1.5 [font:600_10px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">
+            <div className="mt-1" data-testid="header-menu-wallet">
+              <span className="flex items-center gap-1.5 [font:600_9px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#3FD17F]" aria-hidden />
-                {t('header.id.wallet', { network: wallet.network ?? wallet.chain })}
+                {t('header.id.wallet', { network: wallet.network || 'devnet' })}
               </span>
-              <span className="mt-1 block truncate [font:700_15px_JetBrains_Mono] text-[#F4EDE2]" title={wallet.address}>
-                {shortAddress(wallet.address, 6, 6)}
+              <span className="mt-0.5 flex items-center gap-0.5">
+                <span className="truncate [font:500_11px_JetBrains_Mono] text-[#A0978A]" title={wallet.address}>
+                  {shortAddress(wallet.address, 6, 6)}
+                </span>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={copy}
+                  aria-label={copied ? t('header.id.copied') : t('header.id.copy')}
+                  title={copied ? t('header.id.copied') : t('header.id.copy')}
+                  className="hd-focus grid h-7 w-7 shrink-0 place-items-center rounded-[6px] text-[#A0978A] hover:bg-[#1C1916] hover:text-[#F4EDE2]"
+                  data-testid="header-menu-copy"
+                >
+                  <HeaderIcon name="copy" size={14} className={copied ? 'text-[#3FD17F]' : undefined} />
+                </button>
+                <a
+                  href={explorerUrl(wallet.address, wallet.network)}
+                  target="_blank"
+                  rel="noreferrer"
+                  role="menuitem"
+                  aria-label={t('header.id.explorer')}
+                  title={t('header.id.explorer')}
+                  onClick={onClose}
+                  className="hd-focus grid h-7 w-7 shrink-0 place-items-center rounded-[6px] text-[#A0978A] hover:bg-[#1C1916] hover:text-[#F4EDE2]"
+                  data-testid="header-menu-explorer"
+                >
+                  <HeaderIcon name="external" size={14} />
+                </a>
               </span>
-              {name && <span className="block truncate [font:700_15px_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>}
-            </>
+            </div>
           ) : (
             <>
               <span className="[font:600_10px_JetBrains_Mono] uppercase tracking-[.1em] text-[#A0978A]">{t('header.id.email')}</span>
-              <span className="mt-1 block truncate [font:700_17px_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>
               {email && email !== name && <span className="block truncate [font:400_12px_Inter] text-[#A0978A]">{email}</span>}
             </>
           )}
@@ -108,40 +131,19 @@ export function HeaderMenu({ name, avatar, email, wallet, roles, stats, onClose,
         </div>
       </div>
 
-      {stats && (
-        <p className="border-b border-[#262320] px-4 py-2 [font:500_11px_JetBrains_Mono] text-[#A0978A]" data-testid="header-menu-stats">
-          {t('header.menu.stats', { streak: stats.streak ?? 0, xp: stats.xp ?? 0, level: stats.level ?? 1, achievements: stats.achievements ?? 0 })}
-        </p>
-      )}
-
       <MenuSection label={t('header.menu.account')} first>
-        {wallet && (
-          <>
-            <button type="button" role="menuitem" onClick={copy} className={MENU_ITEM}>
-              <HeaderIcon name="copy" size={16} />
-              {copied ? t('header.id.copied') : t('header.id.copy')}
-            </button>
-            <a href={explorerUrl(wallet.address, wallet.network)} target="_blank" rel="noreferrer" role="menuitem" className={MENU_ITEM} onClick={onClose}>
-              <HeaderIcon name="external" size={16} />
-              {t('header.id.explorer')}
-            </a>
-          </>
-        )}
         <Link to="/profile" role="menuitem" className={MENU_ITEM} onClick={onClose}>
           {t('header.id.profile')}
-        </Link>
-        <Link to="/passport" role="menuitem" className={MENU_ITEM} onClick={onClose}>
-          {t('header.id.passport')}
         </Link>
         <Link to="/shop#invite" role="menuitem" className={MENU_ITEM} onClick={onClose} data-testid="header-menu-invite">
           {t('invite.menu')}
         </Link>
-        <button type="button" role="menuitem" onClick={onExplainer} className={MENU_ITEM}>
-          {t('header.id.howPassport')}
-        </button>
       </MenuSection>
 
       <MenuSection label={t('header.menu.help')}>
+        <button type="button" role="menuitem" onClick={onExplainer} className={MENU_ITEM}>
+          {t('header.id.howPassport')}
+        </button>
         <a href={LEGAL_AND_HELP_URLS.support} target="_blank" rel="noreferrer" role="menuitem" className={MENU_ITEM} onClick={onClose}>
           <HeaderIcon name="external" size={16} />
           {t('header.id.help')}

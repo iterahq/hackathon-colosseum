@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
-import { useHeaderStats } from '@/hooks/useHeaderStats';
 import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useProfile } from '@/hooks/useProfile';
 import { useWalletLink } from '@/hooks/useWalletLink';
@@ -22,7 +21,6 @@ export function HeaderIdentity() {
   const { pathname } = useLocation();
   const { data: profile } = useProfile();
   const roles = useHeaderRoles();
-  const stats = useHeaderStats();
   const [open, setOpen] = useState(false);
   const [explainer, setExplainer] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -92,7 +90,6 @@ export function HeaderIdentity() {
             email={user?.email ?? null}
             wallet={wallet}
             roles={roles}
-            stats={stats}
             onClose={() => setOpen(false)}
             onExplainer={() => {
               setOpen(false);
