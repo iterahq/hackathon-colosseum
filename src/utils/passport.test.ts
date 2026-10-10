@@ -51,6 +51,13 @@ describe('buildMedals and totals', () => {
     expect(medals).toHaveLength(8);
   });
 
+  it('shows an earned medal even past the shelf, and hides an unearned one there', () => {
+    const base = Array.from({ length: 8 }, (_, i) => item(`m${i}`, 'milestone', { sort: i }));
+    const podium = item('podium_1', 'milestone', { sort: 120, earned: earned(null) });
+    const locked = item('podium_2', 'milestone', { sort: 121 });
+    expect(buildMedals([...base, podium, locked], pick).map((m) => m.key)).toEqual([...base.map((m) => m.key), 'podium_1']);
+  });
+
   it('counts stamps, started pages and earned medals', () => {
     const pages = buildPages([trail('t1', 4, 5), trail('t2', 0, 3)], [], pick);
     const medals = buildMedals([item('m', 'streak', { earned: earned(null) })], pick);

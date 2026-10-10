@@ -2,6 +2,7 @@
  * Public read of an on-chain credential through the `credential-verify` edge function. No session needed:
  * the anon key is the only credential sent. If the function's body changes, adapt it here only.
  */
+import { toPublicEndorsements } from '@/services/endorsement.service';
 import type { CredentialLookup, CredentialVerification } from '@/types/achievements';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -33,6 +34,7 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
         }
       : null,
     minted_at: text(b.minted_at),
+    endorsements: toPublicEndorsements(b.endorsements),
     snapshot: b.snapshot && typeof b.snapshot === 'object' ? { source: text((b.snapshot as Record<string, unknown>).source) ?? 'chain', mirrored_at: text((b.snapshot as Record<string, unknown>).mirrored_at) } : null,
     companion: b.companion && typeof b.companion === 'object' ? (b.companion as Record<string, unknown>) : null,
   };

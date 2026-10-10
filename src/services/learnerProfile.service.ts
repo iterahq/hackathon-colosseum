@@ -1,4 +1,5 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
+import { toCircuitShare } from '@/services/circuit.service';
 import type { LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -64,6 +65,7 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
         imageUrl: text(r.image_url),
         explorerUrl: text(r.explorer_url),
       })),
+    circuit: toCircuitShare(b.circuit),
   };
 }
 

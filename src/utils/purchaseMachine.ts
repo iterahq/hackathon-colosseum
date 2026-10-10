@@ -32,6 +32,8 @@ export interface PurchaseProof {
   imageUrl: string | null;
   /** The attributes the backend says it wrote on-chain. */
   written: { attribute: string; value: string }[];
+  /** Stamps of other learners this purchase paid for (the Circuito), when its transfer is confirmed. */
+  circuitStamps?: number | null;
   /** Lives after the purchase, for a refill. */
   lives: { current: number; max: number } | null;
   /** A gift: the recipient as shown, and their lives after it. */

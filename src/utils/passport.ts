@@ -52,7 +52,8 @@ export function buildMedals(items: readonly AchievementView[], pick: Pick): Pass
   return items
     .filter((i) => MEDAL_KINDS.has(i.kind))
     .sort((a, b) => a.sort - b.sort)
-    .slice(0, MEDAL_SHELF)
+    // The shelf shows a fixed set of goals; past it, only what was actually earned (a podium, an invite).
+    .filter((i, index) => index < MEDAL_SHELF || Boolean(i.earned))
     .map((i) => {
       const title = pick(i.title);
       return {

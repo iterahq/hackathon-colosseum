@@ -71,6 +71,11 @@ export default function LearnerProfilePage() {
               </div>
             </section>
             <ProfileGift wallet={profile.wallet} />
+            {profile.circuit.stampsFunded > 0 && (
+              <p className="rounded-[14px] border border-[#262320] bg-[#141210] px-4 py-3 [font:500_14px/1.45_Inter] text-[#C9BFB0]" data-testid="profile-circuit">
+                <span className="text-[#3FD17F]">{t('circuit.name')}</span> · {t('circuit.profile', { n: profile.circuit.stampsFunded.toLocaleString() })}
+              </p>
+            )}
             {empty ? (
               <div data-testid="profile-empty">
                 <TeraNote mood="neutral" title={t('profile.emptyTitle')} body={t('profile.empty')} />

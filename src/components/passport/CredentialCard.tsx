@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
 import type { CredentialLookup } from '@/types/achievements';
@@ -81,6 +82,22 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
             {f.tier && <Row label={t('passport.credential.tier')}>{tierLabel(t, f.tier)}</Row>}
             {date && <Row label={t('passport.credential.date')}>{date}</Row>}
           </>
+        )}
+        {!companion && (data.endorsements ?? []).length > 0 && (
+          <Row label={t('endorse.public.label')}>
+            {(data.endorsements ?? []).map((e) => (
+              <span key={e.wallet} className="inline-flex items-center gap-1.5" data-testid="credential-endorsement">
+                <Link to={`/u/${e.wallet}`} title={e.wallet} className="inline-flex min-h-6 items-center text-[#3FD17F] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
+                  {shortAddress(e.wallet)}
+                </Link>
+                {e.explorerUrl && (
+                  <a href={e.explorerUrl} target="_blank" rel="noopener noreferrer" aria-label={t('endorse.public.tx')} title={t('endorse.public.tx')} className="inline-flex min-h-6 min-w-6 items-center justify-center text-[#A0978A] hover:text-[#F4EDE2]">
+                    ↗
+                  </a>
+                )}
+              </span>
+            ))}
+          </Row>
         )}
         <Row label={t('passport.credential.asset')}>{shortAddress(data.asset)}</Row>
         <Row label={t('passport.credential.soulbound')}>{data.frozen ? t('passport.credential.yes') : t('passport.credential.no')}</Row>

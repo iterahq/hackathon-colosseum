@@ -17,7 +17,7 @@ import {
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, json, langOf, pathAfter } from '../_shared/http.ts';
 
-const ASSET_KEYS = ['trail_pass', 'first_stamp', 'streak_3', 'streak_7', 'program_complete', 'early_bird', 'night_owl'];
+const ASSET_KEYS = ['trail_pass', 'first_stamp', 'streak_3', 'streak_7', 'program_complete', 'early_bird', 'night_owl', 'podium_1', 'podium_2', 'podium_3', 'weekly_goal'];
 const PUBLIC_STATE_FIELDS = [
   'trail_title',
   'program_slug',
@@ -29,6 +29,10 @@ const PUBLIC_STATE_FIELDS = [
   'completed_at',
   'day',
   'lesson_title',
+  'position',
+  'class_title',
+  'class_date',
+  'week',
 ];
 
 function publicState(state: Record<string, unknown>): Record<string, unknown> {
@@ -55,6 +59,8 @@ async function loadAchievement(db: IteraClient, assetAddress: string, lang: 'pt'
   if (catalogError) throw new Error(`achievements: ${catalogError.message}`);
   const entry = catalog as CatalogEntry;
   const base = functionsBase();
+  // The art gains a seal with each endorsement: the count versions its URL past the one-minute cache.
+  const endorsed = owner.achievement_key === 'trail_pass' ? (await loadEndorsements(db, owner.id)).length : 0;
 
   return {
     key: owner.achievement_key,
@@ -68,7 +74,7 @@ async function loadAchievement(db: IteraClient, assetAddress: string, lang: 'pt'
     minted_at: owner.minted_at,
     state: publicState(owner.state),
     metadata_url: metadataUrl(base, owner.id),
-    image_url: imageUrl(base, owner.id),
+    image_url: `${imageUrl(base, owner.id)}${endorsed > 0 ? `?v=e${endorsed}` : ''}`,
     stamps: all
       .filter((row) => row.achievement_key === 'day_stamp')
       .map((row) => ({
@@ -79,6 +85,18 @@ async function loadAchievement(db: IteraClient, assetAddress: string, lang: 'pt'
         tx_explorer_url: explorerUrl('tx', row.tx_signature),
       })),
   };
+}
+
+/** The endorsements confirmed on chain for a certification row, oldest slot first. */
+async function loadEndorsements(db: IteraClient, rowId: string) {
+  const { data, error } = await db.from('endorsements').select('wallet,tx_signature,created_at,slot').eq('user_achievement_id', rowId).not('tx_signature', 'is', null).order('slot');
+  if (error) throw new Error(`endorsements: ${error.message}`);
+  return (data ?? []).map((entry) => ({
+    wallet: entry.wallet as string,
+    at: new Date(entry.created_at as string).toISOString(),
+    tx_signature: entry.tx_signature as string,
+    explorer_url: explorerUrl('tx', entry.tx_signature as string),
+  }));
 }
 
 /**
@@ -147,6 +165,8 @@ Deno.serve(async (request) => {
     const companionRow = chainValues ? await loadCompanionAchievement(db, address, lang, chainValues) : null;
     const achievement = !verified ? null : chainValues ? (companionRow?.achievement ?? null) : await loadAchievement(db, address, lang);
     // What the chain says about a companion, parsed; `achievement.state` is the database's view.
+    // Teacher endorsements of a certification: wallets and transactions only, never a name or a note.
+    const endorsements = achievement && achievement.key === 'trail_pass' ? await loadEndorsements(db, achievement.credential_id) : undefined;
     const companion = chainValues
       ? { ...chainValues, image_url: achievement?.image_url ?? null, metadata_url: achievement?.metadata_url ?? null }
       : undefined;
@@ -164,6 +184,7 @@ Deno.serve(async (request) => {
         update_authority: onchain.update_authority,
         attributes: onchain.attributes,
         achievement,
+        ...(endorsements ? { endorsements } : {}),
         ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),

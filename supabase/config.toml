@@ -59,3 +59,21 @@ verify_jwt = false
 # Invite code, claim and status. Same rule as `passport`: the token is checked in code.
 [functions.referral]
 verify_jwt = false
+
+# Takes an item the learner earned (level unlock) without payment. Token checked in code.
+[functions.shop-claim]
+verify_jwt = false
+
+# Live-class podium medals: an instructor/owner of the session's tenant records the top three.
+# The token and the caller's memberships are checked in code.
+[functions.class-podium]
+verify_jwt = false
+
+# Teacher endorsement of a learner's certification, written on chain by the authority.
+# The token and the caller's memberships (instructor/owner of the learner's tenant) are checked in code.
+[functions.endorse]
+verify_jwt = false
+
+# Public counter of the Circuito (treasury -> mint authority transfers). Read only, no token.
+[functions.circuit]
+verify_jwt = false

@@ -153,6 +153,17 @@ export const queryKeys = {
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
   },
+  circuit: {
+    all: ['circuit'] as const,
+    counter: (wallet: string) => ['circuit', wallet] as const,
+  },
+  endorsements: {
+    all: ['endorsements'] as const,
+    students: (userId: string, locale: string) => ['endorsements', 'students', userId, { locale }] as const,
+  },
+  classPodium: {
+    chain: (sessionId: string) => ['classPodium', 'chain', sessionId] as const,
+  },
   shop: {
     all: ['shop'] as const,
     items: (userId: string, locale: string) => ['shop', 'items', userId, { locale }] as const,

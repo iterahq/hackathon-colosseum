@@ -1,5 +1,6 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { readAssets } from '../_shared/chain-read.ts';
+import { walletCircuit } from '../_shared/circuit-store.ts';
 import { loadStats } from '../_shared/companion-store.ts';
 import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import type { AchievementRow, CatalogEntry } from '../_shared/credential.ts';
@@ -90,7 +91,8 @@ Deno.serve(async (request) => {
       companion,
       onchain,
     });
-    return json(profile, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
+    // What this wallet's own purchases sent to the key that pays for stamps (the Circuito).
+    return json({ ...profile, circuit: await walletCircuit(db, wallet) }, 200, { ...cors, 'Cache-Control': 'public, max-age=20' });
   } catch (error) {
     console.error('learner-profile failed', error);
     return json({ error: 'internal_error' }, 500, cors);

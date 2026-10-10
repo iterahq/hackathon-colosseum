@@ -19,7 +19,7 @@
  * lands here with a `liveNotice` in the router state → a dismissible banner.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Play,
   GraduationCap,
@@ -126,9 +126,16 @@ export default function InstructorClassPage() {
             {t('live.instructor.title')}
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground mb-8 max-w-2xl">
+        <p className="text-sm text-muted-foreground mb-3 max-w-2xl">
           {t('live.instructor.subtitle')}
         </p>
+        <Link
+          to="/live/instructor/certifications"
+          data-testid="instructor-certifications-link"
+          className="mb-8 inline-flex min-h-11 items-center text-sm font-medium text-menta hover:underline"
+        >
+          {t('endorse.link')} →
+        </Link>
 
         {notice && (
           <div

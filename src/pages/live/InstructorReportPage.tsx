@@ -15,6 +15,7 @@ import { activityLabel } from '@/utils/activityLabel';
 import { ReportSummary } from '@/components/live/report/ReportSummary';
 import { ReportActivities } from '@/components/live/report/ReportActivities';
 import { ReportRanking } from '@/components/live/report/ReportRanking';
+import { ReportPodiumChain } from '@/components/live/report/ReportPodiumChain';
 
 export default function InstructorReportPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -82,6 +83,7 @@ export default function InstructorReportPage() {
             <ReportSummary totals={report.totals} />
             <ReportActivities stats={report.perActivity} labels={labels} />
             <ReportRanking participants={report.participants} />
+            <ReportPodiumChain sessionId={session.id} ended={session.status === 'ended'} />
           </>
         )}
       </main>

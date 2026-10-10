@@ -1,3 +1,5 @@
+import { WEEKLY_GOAL, weeklyGoalHits } from './weekly-goal.ts';
+
 export const GLOBAL_REF = '00000000-0000-0000-0000-000000000000';
 
 export type AchievementKey =
@@ -11,7 +13,8 @@ export type AchievementKey =
   | 'early_bird'
   | 'night_owl'
   | 'friend_brought'
-  | 'invited';
+  | 'invited'
+  | 'weekly_goal';
 
 export type Tier = 'bronze' | 'silver' | 'gold';
 export type I18nText = Record<string, string>;
@@ -197,7 +200,18 @@ function sameJson(a: unknown, b: unknown): boolean {
  */
 export function computeAwards(input: AwardsInput): Award[] {
   const done = completedLessons(input);
-  if (done.length === 0) return [];
+  const existing = new Map(input.existing.map((row) => [awardId(row.achievement_key, row.ref_id), row]));
+  // The weekly goal counts activities, not whole days: it can land before any lesson is complete.
+  const weekly: Award[] = weeklyGoalHits([...completedAtOf(input.progress).values()], input.timeZone)
+    .filter((hit) => !existing.has(awardId('weekly_goal', hit.ref_id)))
+    .map((hit) => ({
+      key: 'weekly_goal',
+      ref_id: hit.ref_id,
+      earned_at: hit.earned_at,
+      state: { week: hit.week, count: hit.count, goal: WEEKLY_GOAL, time_zone: input.timeZone },
+      op: 'insert',
+    }));
+  if (done.length === 0) return weekly;
 
   const programById = new Map(input.programs.map((program) => [program.id, program]));
   const unitById = new Map(input.units.map((unit) => [unit.id, unit]));
@@ -205,7 +219,6 @@ export function computeAwards(input: AwardsInput): Award[] {
   const unitsByProgram = groupBy(input.units, (unit) => unit.program_id);
   const activityLessonIds = new Set(input.activities.map((activity) => activity.lesson_id));
   const doneByUnit = groupBy(done, (entry) => entry.lesson.unit_id);
-  const existing = new Map(input.existing.map((row) => [awardId(row.achievement_key, row.ref_id), row]));
 
   const entitled: Omit<Award, 'op'>[] = [];
   const completedUnits = new Map<string, string>();
@@ -329,5 +342,5 @@ export function computeAwards(input: AwardsInput): Award[] {
       if (moved) awards.push({ ...award, op: 'update' });
     }
   }
-  return awards;
+  return [...awards, ...weekly];
 }

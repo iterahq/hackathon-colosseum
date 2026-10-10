@@ -1,10 +1,11 @@
 import { resolveCaller } from '../_shared/caller.ts';
-import { ensureCompanion, loadInventory, type InventoryEntry } from '../_shared/companion-store.ts';
+import { ensureCompanion, loadInventory, loadStats, type InventoryEntry } from '../_shared/companion-store.ts';
 import { pickText } from '../_shared/credential.ts';
 import { serviceClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, json, langOf } from '../_shared/http.ts';
 import { ITEM_COLUMNS, type ShopItem } from '../_shared/shop-items.ts';
 import { isItemKind } from '../_shared/shop-rules.ts';
+import { unlockLevelOf, unlockView } from '../_shared/unlock.ts';
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'app', 'GET, OPTIONS');
@@ -19,11 +20,16 @@ Deno.serve(async (request) => {
 
     // A missing or foreign token (the anon key a client sends by default) just means "nobody signed in".
     let inventory: InventoryEntry[] = [];
+    let level: number | null = null;
     if (bearerToken(request)) {
       const caller = await resolveCaller(db, request);
       if (typeof caller !== 'string') {
         const companion = await ensureCompanion(db, caller.iteraUserId);
         inventory = await loadInventory(db, caller.iteraUserId, companion.outfit);
+        // The level is only read when some item on sale can also be earned.
+        if (((data ?? []) as ShopItem[]).some((item) => unlockLevelOf(item.effect) !== null)) {
+          level = (await loadStats(db, caller.iteraUserId, new Date())).level;
+        }
       }
     }
 
@@ -33,7 +39,9 @@ Deno.serve(async (request) => {
       .filter((item) => isItemKind(item.kind) && (item.kind !== 'gift' || withGift))
       .map((item) => {
         const held = inventory.filter((entry) => entry.item_key === item.key);
+        const unlock = unlockView(item.effect, level);
         return {
+          ...(unlock ? { unlock } : {}),
           key: item.key,
           kind: item.kind,
           title: pickText(item.title_i18n, lang),

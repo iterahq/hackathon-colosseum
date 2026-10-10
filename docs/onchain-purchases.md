@@ -612,3 +612,65 @@ Not verified:
 - The faucet is one claim per wallet, and wallets are free: the cap and the treasury balance are the
   only bounds.
 - No rate limit on any function.
+
+## Earned or bought: the golden laurel (`shop-claim`)
+
+Migration `0126_laurel_unlock_claim.sql`. `outfit_laurel` keeps its price and is **also** free once
+the learner's level reaches 5. The rule lives on the item (`shop_items.effect.unlock.level`) and is
+read by `_shared/unlock.ts`; the level is the companion's (`floor(xp / 200) + 1` from
+`itera.xp_events`, `loadStats`), computed on the server.
+
+- `GET /shop-items`: an item that can be earned carries
+  `unlock: { level: 5, current_level: <number | null>, unlocked: <boolean> }` (`current_level` is
+  `null` without a session). Every other field and every other item is unchanged.
+- `POST /shop-claim` (Bearer user token, app CORS) `{ "item_key": "outfit_laurel", "lang"? }` ->
+  `200 { status: "claimed", already_owned, item: { key, kind, title }, unlock, lives, companion, inventory, wallet }`.
+  It grants the `user_inventory` row a purchase grants and records a `purchases` row with
+  `source = 'claim'`, `status = 'paid'`, `lamports = 0`, `memo = 'claim:<key>'`, so both paths end in
+  the same inventory and the same history. Idempotent: owning the item (bought or claimed) answers
+  `200` with `already_owned: true` and writes nothing; one claim row per learner and item (unique index).
+  Errors: `409 locked` (+ `unlock`), `409 not_claimable` (the item has no unlock rule), `404 item_not_found`,
+  `409 item_inactive`, `400 invalid_body`, `401 unauthorized`.
+- The claim sends no transaction. Wearing it is the usual `companion { equip }`, which mirrors the
+  `outfit` attribute like any bought outfit. E-mail learners can claim too (off chain).
+- The level is only as trustworthy as the xp ledger: until `award_activity_xp` stops accepting an
+  arbitrary amount (security review, finding 3) a client can raise its own level, and with it this unlock.
+
+## Circuito: the shop pays for other learners' stamps
+
+Migration `0130_circuit.sql`. The server pays the network fee of every stamp, so a learner never pays
+to earn a credential. The Circuito funds that: each **paid** purchase moves 50 % of its lamports from
+the treasury to the mint authority, in a plain System transfer signed by the treasury key with the
+memo `circuit:<purchase id>`.
+
+- **Amount**: `floor(purchases.lamports / 2)`, read from the paid row (the price stored at intent
+  time). **Destination**: the authority's public key, taken from `SOLANA_AUTHORITY_SECRET` inside
+  `sendToAuthority` (`_shared/treasury.ts`), which has no recipient parameter. Nothing in a request
+  reaches either.
+- **Once per purchase**: `purchases.circuit_status` goes `null -> pending` by compare-and-set before
+  anything is sent, then `sent` (`circuit_lamports`, `circuit_signature` unique, `circuit_at`),
+  `skipped` (`circuit_reason`: `treasury_floor` when the treasury would end below 0.2 SOL after the
+  transfer and its fee, `nothing_to_send`) or `failed`. A row is never taken twice and a `failed`
+  transfer is **not** retried (it may have been broadcast). A free claim and an unpaid intent move
+  nothing. An in-app gift is one purchase row, so it moves once; a blink gift (`gifts` table only)
+  is not part of the Circuito.
+- `purchase-confirm` / `purchase-submit` gain an optional
+  `circuit: { status: "sent" | "pending" | "skipped" | "failed", lamports, stamps_funded, tx_signature, explorer_url }`.
+  The call waits at most 6 s for the transfer; past that it says `pending` and the transfer finishes in
+  the background. A repeated confirm returns the stored state. `stamps_funded = floor(lamports / 5000)`
+  (5 000 lamports = the fee of one stamp).
+- `GET /circuit` (public, no token, CORS `*`, cached 15 s; `?wallet=<address>` adds that wallet's
+  share and is not cached):
+  `{ total_lamports, total_usd_cents, purchases, stamps_funded, cluster, treasury, authority, treasury_explorer_url, authority_explorer_url, recent: [{ at, lamports, tx_signature, explorer_url }] (10), wallet?: { lamports, stamps_funded } }`.
+  `total_usd_cents` uses the shop's pinned rate. `400 invalid_address` for a malformed `wallet`, `405`.
+- `GET /learner-profile/<wallet>` gains `circuit: { lamports, stamps_funded }` for that wallet's own purchases.
+- UI: a strip in the shop header ("Suas compras já pagaram N carimbos de outros alunos · no total a
+  loja pagou M ↗"), a line on `/u/<wallet>`, and "+N carimbos pagos pra outros alunos" in the success
+  dialog (only when the transfer is confirmed).
+- Effect on the treasury: a purchase now nets `price - floor(price / 2) - 5 000` lamports.
+  `purchase-e2e.mjs` and `link-wallet-e2e.mjs` accept either reading of their "treasury received" check.
+
+```bash
+node scripts/hackathon/social-e2e.mjs [--only laurel,podium,endorse,circuit]   # devnet, < 0.04 SOL of the authority per pass, 101 checks
+node scripts/hackathon/social-browser.mjs --base http://localhost:8080 --out /tmp/hk-social   # fake Phantom, local dev server
+```

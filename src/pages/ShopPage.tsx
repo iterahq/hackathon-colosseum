@@ -2,10 +2,12 @@ import { useMemo, useState, type ReactNode } from 'react';
 import '@/components/dashboard/dashboard.css';
 import { InviteCard } from '@/components/gift/InviteCard';
 import { AppTopBar } from '@/components/header/AppTopBar';
+import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopArt } from '@/components/shop/ShopArt';
 import { ShopItemCard } from '@/components/shop/ShopItemCard';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
+import { ShopUnlockLine } from '@/components/shop/ShopUnlockLine';
 import { BTN_PRIMARY, BTN_SMALL, CARD, MONO_LABEL, SHOP_GRID } from '@/components/shop/shopStyles';
 import { LinkWalletDialog } from '@/components/wallet/LinkWalletDialog';
 import { LinkWalletButton } from '@/components/wallet/LinkWalletButton';
@@ -15,7 +17,7 @@ import { useLives } from '@/hooks/useLives';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { usePassportView } from '@/hooks/usePassportView';
 import { usePurchase } from '@/hooks/usePurchase';
-import { useShop } from '@/hooks/useShop';
+import { useClaimItem, useShop } from '@/hooks/useShop';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import { shelvesOf, withCompanionState } from '@/utils/shop';
@@ -45,6 +47,7 @@ export default function ShopPage() {
   const companion = useCompanion();
   const { lives, secondsToNext } = useLives();
   const equip = useEquipOutfit();
+  const claim = useClaimItem();
   const [preview, setPreview] = useState<string | null>(null);
   const purchase = usePurchase({ onPaid: () => setPreview(null) });
   // An ink or a frame goes on ONE certification: a trail whose certification is already minted.
@@ -57,7 +60,7 @@ export default function ShopPage() {
   const shelves = useMemo(() => shelvesOf(items), [items]);
   const byKey = (key: string | null): ShopItem | undefined => items.find((i) => i.key === key);
   const hasWallet = Boolean(companion.wallet);
-  const busy = purchase.busy || equip.isPending;
+  const busy = purchase.busy || equip.isPending || claim.isPending;
   const buying = byKey(purchase.state.itemKey);
   const shownKey = preview ?? companion.outfit;
   const buy = (item: ShopItem, refId?: string) => (hasWallet ? void purchase.buy(item.key, refId) : setLinking(true));
@@ -77,6 +80,7 @@ export default function ShopPage() {
       buyDisabled={extra?.buyDisabled}
       active={item.kind === 'outfit' && shownKey === item.key}
       onBuy={() => buy(item, extra?.refId)}
+      onClaim={item.unlock?.unlocked && !item.owned ? () => claim.mutate(item.key) : undefined}
       onEquip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(item.key)) : undefined}
       onUnequip={item.kind === 'outfit' ? () => (setPreview(null), equip.mutate(null)) : undefined}
       onPreview={item.kind === 'outfit' ? () => tryOn(item.key) : undefined}
@@ -96,6 +100,7 @@ export default function ShopPage() {
           wallet={companion.wallet}
           showing={{ key: shownKey, name: byKey(shownKey)?.title ?? null, preview: preview !== null && preview !== companion.outfit }}
         />
+        <CircuitStrip wallet={companion.wallet} />
         <InviteCard />
         {!hasWallet && !companion.isPending && (
           <div className={`${CARD} flex flex-wrap items-center justify-between gap-3 p-4`} data-testid="shop-no-wallet">
@@ -138,7 +143,7 @@ export default function ShopPage() {
             )}
             {shelves.outfits.length > 0 && (
               <Shelf id="shop-outfits" title={t('shop.section.outfits')}>
-                <div className={GRID}>{shelves.outfits.map((item) => card(item))}</div>
+                <div className={GRID}>{shelves.outfits.map((item) => card(item, { children: item.unlock && !item.owned ? <ShopUnlockLine unlock={item.unlock} failed={claim.isError && claim.variables === item.key} /> : undefined }))}</div>
               </Shelf>
             )}
             {shelves.lives.length > 0 && (

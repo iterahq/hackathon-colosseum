@@ -62,4 +62,14 @@ describe('shop wire normalisers (shapes as deployed 2026-10-09)', () => {
     expect(toFaucet({ signature: 'S', lamports: 1 })).toEqual({ signature: 'S', blocked: null });
     expect(toFaucet({ blocked: 'already_claimed' })).toEqual({ signature: null, blocked: 'already_claimed' });
   });
+
+  it('reads the level unlock of an item that is also earned', () => {
+    const [laurel, crown] = toShopItems([
+      { key: 'outfit_laurel', kind: 'outfit', price_usd_cents: 50, price_lamports: 2750000, unlock: { level: 5, current_level: 3, unlocked: false } },
+      { key: 'outfit_crown', kind: 'outfit', price_usd_cents: 30, price_lamports: 1650000 },
+    ]);
+    expect(laurel.unlock).toEqual({ level: 5, currentLevel: 3, unlocked: false });
+    expect(crown.unlock).toBeNull();
+    expect(toShopItems([{ key: 'x', unlock: { level: 5, current_level: null, unlocked: false } }])[0].unlock?.currentLevel).toBeNull();
+  });
 });

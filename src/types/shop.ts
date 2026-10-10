@@ -1,4 +1,5 @@
 /** Shapes of the lives / shop / companion backend, normalised to camelCase by the services. */
+import type { PurchaseCircuit } from '@/types/circuit';
 import type { GiftReceipt } from '@/types/gift';
 
 export interface LivesState {
@@ -73,6 +74,15 @@ export interface ShopItem {
   equipped: boolean;
   /** Inks and frames are bought per certification: the trail (unit) ids this one was bought for. */
   ownedRefs: string[];
+  /** Present on an item that is also earned: free to claim once the learner reaches `level`. */
+  unlock?: ShopUnlock | null;
+}
+
+export interface ShopUnlock {
+  level: number;
+  /** Null when nobody is signed in. */
+  currentLevel: number | null;
+  unlocked: boolean;
 }
 
 export interface PurchaseIntent {
@@ -112,6 +122,8 @@ export interface PurchaseConfirmation {
   chain?: ChainProof | null;
   /** Present when the purchase was a gift: who got the life and where it was written. */
   gift?: GiftReceipt | null;
+  /** What this purchase paid forward (the Circuito), once its transfer is confirmed. */
+  circuit?: PurchaseCircuit | null;
 }
 
 export type FaucetResult = { signature: string; blocked: null } | { signature: null; blocked: string };

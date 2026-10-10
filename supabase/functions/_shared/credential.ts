@@ -1,6 +1,8 @@
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
 import { cosmeticsOf } from './cosmetics.ts';
+import { endorsementAttributes, endorsementsOf } from './endorsement.ts';
+import { podiumPositionOf } from './podium.ts';
 
 export const APP_URL = 'https://hackathon-colosseum.178-105-2-230.sslip.io';
 export const CLUSTER = 'devnet';
@@ -68,6 +70,19 @@ function clip(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
+function textOf(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/** The line under a medal's title: the class and day of a podium, the week of a weekly goal, else the catalog text. */
+function medalSubtitle(row: AchievementRow, catalog: CatalogEntry, lang: Lang): string {
+  if (podiumPositionOf(row.achievement_key) !== null) {
+    return [pickText(row.state.class_title, lang), textOf(row.state.class_date)].filter(Boolean).join(' · ') || pickText(catalog.description_i18n, lang);
+  }
+  const description = pickText(catalog.description_i18n, lang);
+  return row.achievement_key === 'weekly_goal' && textOf(row.state.week) ? `${description.replace(/\.$/, '')} · ${textOf(row.state.week)}` : description;
+}
+
 function numberOf(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
@@ -95,6 +110,24 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       { key: 'learner', value: row.user_id },
       ...(ink ? [{ key: 'ink', value: ink }] : []),
       ...(frame ? [{ key: 'frame', value: frame }] : []),
+      ...endorsementAttributes(endorsementsOf(row.state)),
+    ];
+  }
+  const position = podiumPositionOf(row.achievement_key);
+  if (position !== null || row.achievement_key === 'weekly_goal') {
+    // The newer medals say what was earned and when, and carry no internal id of the learner.
+    return [
+      { key: 'kind', value: `${catalog.kind}_medal` },
+      { key: 'achievement', value: row.achievement_key },
+      { key: 'tier', value: tierOf(row, catalog) },
+      { key: 'completed_at', value: row.earned_at },
+      ...(position !== null
+        ? [
+            { key: 'position', value: String(position) },
+            { key: 'class', value: clip(pickText(row.state.class_title, 'en'), 80) },
+            { key: 'class_date', value: textOf(row.state.class_date) },
+          ]
+        : [{ key: 'week', value: textOf(row.state.week) }]),
     ];
   }
   return [
@@ -162,13 +195,15 @@ export function artInput(row: AchievementRow, catalog: CatalogEntry, lang: Lang,
       serial,
       lang,
       ...cosmeticsOf(page.state),
+      endorsed: endorsementsOf(page.state).length,
     };
   }
   return {
     shape: 'medal',
     tier: tierOf(row, catalog),
     title: pickText(catalog.title_i18n, lang),
-    subtitle: pickText(catalog.description_i18n, lang),
+    subtitle: medalSubtitle(row, catalog, lang),
+    podium: podiumPositionOf(row.achievement_key),
     daysDone: 0,
     totalDays: 0,
     stampedDays: [],
@@ -208,9 +243,20 @@ export function buildMetadata(
     );
   }
   if (row.achievement_key === 'day_stamp') attributes.push({ trait_type: 'Day', value: numberOf(row.state.day) });
+  const position = podiumPositionOf(row.achievement_key);
+  if (position !== null) {
+    attributes.push(
+      { trait_type: 'Position', value: position },
+      { trait_type: 'Class', value: clip(pickText(row.state.class_title, lang), 80) },
+      { trait_type: 'Class date', value: textOf(row.state.class_date) },
+    );
+  }
+  if (row.achievement_key === 'weekly_goal') attributes.push({ trait_type: 'Week', value: textOf(row.state.week) });
   const cosmetics = page ? cosmeticsOf(page.state) : null;
   if (cosmetics?.ink) attributes.push({ trait_type: 'Ink', value: cosmetics.ink });
   if (cosmetics?.frame) attributes.push({ trait_type: 'Frame', value: cosmetics.frame });
+  const endorsed = page ? endorsementsOf(page.state).length : 0;
+  if (endorsed > 0) attributes.push({ trait_type: 'Endorsements', value: endorsed });
 
   return {
     name: trail && isPassportKey(row.achievement_key) ? clip(`${title} · ${trail}`, 80) : title,

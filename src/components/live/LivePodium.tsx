@@ -5,6 +5,7 @@ import { LiveAvatar } from '@/components/live/LiveAvatar';
 import { LiveGuestBadge } from '@/components/live/LiveGuestBadge';
 import { formatMmss } from '@/utils/formatMmss';
 import type { ClassRanking } from '@/types/liveClass';
+import type { PodiumChainPlace } from '@/types/classPodium';
 
 // Left→right render order of the top three: 2nd, 1st, 3rd.
 const PODIUM_ORDER = [1, 0, 2];
@@ -17,16 +18,20 @@ export function LivePodium({
   ranking,
   selfUserId,
   guestUserIds,
+  chain,
 }: {
   ranking: ClassRanking;
   selfUserId?: string;
   /** Durable guest list (itera.class_guests), merged over the presence flag. */
   guestUserIds?: string[];
+  /** Places of this class already recorded on Solana (`class-podium`), matched by learner. */
+  chain?: readonly PodiumChainPlace[];
 }) {
   const { t } = useI18n();
   const top = ranking.ranked.slice(0, 3);
   const rest = ranking.ranked.slice(3);
   const guests = new Set(guestUserIds ?? []);
+  const minted = new Map((chain ?? []).filter((place) => place.minted).map((place) => [place.userId, place.explorerUrl]));
   // A guest CAN win the podium (ADR-9 accepts it); the badge is what keeps that
   // honest next to a real student with the same self-declared name (ADR-11).
   const isGuest = (userId: string, flagged?: boolean) => flagged === true || guests.has(userId);
@@ -86,6 +91,17 @@ export function LivePodium({
                 <span className="font-mono text-xs tabular-nums text-clay">
                   {t('live.podium.score', { n: String(entry.correctCount) })}
                 </span>
+                {minted.has(entry.userId) && (
+                  <a
+                    href={minted.get(entry.userId) ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="live-podium-onchain"
+                    className="mt-0.5 inline-flex min-h-6 items-center text-center font-mono text-[10px] font-medium text-menta hover:underline"
+                  >
+                    ◎ {t('live.podium.onChain')}
+                  </a>
+                )}
                 <span className="font-mono text-[10px] tabular-nums text-muted-foreground" data-testid="live-podium-time">
                   {formatMmss(entry.totalMs / 1000)}
                 </span>

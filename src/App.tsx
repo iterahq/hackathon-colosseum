@@ -68,6 +68,7 @@ const LiveSessionPage = lazy(() => import("./pages/LiveSessionPage"));
 const InstructorClassPage = lazy(() => import("./pages/live/InstructorClassPage"));
 const InstructorSessionPage = lazy(() => import("./pages/live/InstructorSessionPage"));
 const InstructorReportPage = lazy(() => import("./pages/live/InstructorReportPage"));
+const InstructorCertificationsPage = lazy(() => import("./pages/live/InstructorCertificationsPage"));
 const SubscribePage = lazy(() => import("./pages/SubscribePage"));
 const ProfileRoute = lazy(() => import("./pages/ProfileRoute"));
 const SubscribeReturnPage = lazy(() => import("./pages/SubscribeReturnPage"));
@@ -372,6 +373,19 @@ const App = () => (
                         </RequireRole>
                       </RequireAuth>
                     </ShellLiveUnavailableRoute>
+                  }
+                />
+                {/* Students' certifications and the teacher endorsement — instructor-gated
+                    here, and again by the `endorse` function from the memberships.
+                    Static segment, declared before the dynamic `:sessionId`. */}
+                <Route
+                  path="/live/instructor/certifications"
+                  element={
+                    <RequireAuth>
+                      <RequireRole role="instructor">
+                        <LazyRoute><InstructorCertificationsPage /></LazyRoute>
+                      </RequireRole>
+                    </RequireAuth>
                   }
                 />
                 {/* Instructor view of ONE session — deep-linkable, reloadable

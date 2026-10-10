@@ -275,3 +275,85 @@ wins over the local count.
 
 Gold is shown only when the returned `trail_pass` says `days_done >= total_days` or tier `gold`.
 
+
+## Social on-chain: podium medals, weekly goal, teacher endorsement
+
+Migrations `0127_podium_weekly_medals.sql`, `0128_weekly_goal_shelf_order.sql`,
+`0129_endorsements.sql`, `0131_service_role_reads_tenants.sql`. Purchases-side features of the same
+work (earned laurel, Circuito) are in [`onchain-purchases.md`](onchain-purchases.md).
+
+### Who is a teacher (`_shared/staff.ts`)
+
+`resolveCaller` carries no role. `class-podium` and `endorse` read the caller's rows of
+`itera.memberships` (joined to `tenants.slug`) and apply pure predicates: a role of `instructor`,
+`tenant_admin` or `owner` (the set of `itera.current_instructor_tenant_ids()`), in the tenant the
+action is about. A **personal** tenant (`plg-<uid>`, owned by whoever signed up) confers nothing, as
+in the app's `membership.service`: otherwise any free account would be a teacher. Nothing in a
+request body is read for this.
+
+### Live-class podium medals (`POST /class-podium`)
+
+Keys `podium_1` (gold), `podium_2` (silver), `podium_3` (bronze): kind `milestone`, `ref_id` = the
+class session, `state = { position, class_title (i18n), class_date (São Paulo day), correct, answered }`.
+On chain: `kind`, `achievement`, `tier`, `completed_at`, `position`, `class`, `class_date`, and **no**
+`learner` attribute. Art: the place over the three steps (`_shared/art-podium.ts`), Itera green, the
+metal only in the ring.
+
+- Body `{ "session_id": "<uuid>", "lang"? }`, Bearer user token. Only staff of the session's tenant:
+  `403 forbidden` otherwise. `404 session_not_found`, `409 session_not_ended`, `400 invalid_body`.
+- The ranking is computed on the server from `class_attendance` + `class_answers` with the rule of the
+  instructor report (`src/utils/buildClassReport.ts`: most correct, then most answered, then fastest,
+  then name; `_shared/podium.ts`). Guests (`class_guests`, `users.is_guest`) and the session's
+  instructor are skipped and the next learner takes the place; someone who answered nothing takes none.
+- The first call fixes the podium in `itera.class_podiums` (one row per session); later calls read
+  it, so answers written afterwards change nothing and a session mints three medals at most, ever
+  (one medal per place and session is also a unique index). Rows are created `unclaimed` and minted
+  through `passport` (operator call, the one mint path), one learner at a time; a learner without a
+  wallet stays `unclaimed` as usual.
+- Answer: `{ session_id, recorded_at, already_recorded, class: { title, date }, places: [{ position, key, title, user_id, name, correct, answered, wallet, mint_status, asset_address, explorer_url, tx_explorer_url, image_url }] }`.
+- `{ "session_id", "view": true }`: for anyone who attended the class or belongs to its tenant:
+  `{ session_id, recorded, places: [{ position, user_id, mint_status, asset_address, explorer_url, mine }] }`
+  (the ids the class ranking already shares; no name, no wallet). `itera.class_podiums` has no client policy.
+- UI: "Gravar pódio na Solana" on `/live/instructor/report/<session>` with the result list; the medal
+  on the shelf and on `/u/<wallet>`; "medalha on-chain" under a name on the learner's podium screen.
+
+### Weekly goal medal (`weekly_goal`)
+
+The dashboard promised "ao bater: medalha da semana" and no such medal existed. Now: kind `milestone`,
+awarded by `computeAwards` once per ISO week of `America/Sao_Paulo` when the learner has completed 20
+activities within the seven days ending at a completion (the dashboard's count; `_shared/weekly-goal.ts`).
+`ref_id` = `7765656b-<year>-40<week>-8000-000000000000`, `state = { week: "2026-W41", count, goal, time_zone }`,
+on chain `week` and no `learner`. It can land before any day is whole. The shelf lists the first eight
+goals of the catalog and, past them, only medals already earned.
+
+### Teacher endorsement of a certification (`POST /endorse`)
+
+- `{ "user_achievement_id": "<trail_pass row id>", "note"?, "lang"? }`, Bearer user token. The caller
+  must be staff of a tenant the learner belongs to (`403 forbidden`), must not be the learner
+  (`403 self_endorsement`) and must have a wallet, sign-in or linked (`403 no_wallet`).
+  `404 certification_not_found`, `409 not_minted`, `400 invalid_note` (over 140 characters),
+  `409 endorsements_full`, `502 chain_write_failed` (the row is withdrawn; try again).
+- The server writes the certification asset's attributes: `endorsed_by_<slot>` = the instructor's
+  **full** wallet address and `endorsed_at_<slot>`, slots 1 to 3. One endorsement per instructor per
+  certification, three per certification: at most three endorsement writes per asset, ever. A repeat
+  answers `200` with `already_endorsed: true` and sends nothing.
+- `itera.endorsements` (`user_achievement_id`, `instructor_user_id`, `wallet`, `note` <= 140, `slot`,
+  `tx_signature`): no client policy. The note is plain text, stays in the table and is never written
+  to the asset or drawn. The endorsements ride in the row's `state.endorsements` through
+  `restoreCosmetics`, so a later stamp or ink keeps them on chain.
+- Answer: `{ status: "endorsed", already_endorsed, asset, endorsement: { wallet, at, tx_signature, explorer_url, slot }, endorsements: [...], image_url, page_url, explorer_url }`.
+  `{ "action": "list" }` -> `{ wallet, certifications: [{ user_achievement_id, learner_name, trail, days_done, total_days, tier, asset_address, page_url, image_url, endorsements, endorsed_by_me }] }` (staff only).
+- `GET /credential-verify/<certification asset>` gains `endorsements: [{ wallet, at, tx_signature, explorer_url }]`
+  (no names) and its `achievement.image_url` carries `?v=e<count>` once endorsed; `learner-profile`
+  certifications gain `endorsements` (when > 0) and the count in the art version. The art draws a small seal.
+- UI: `/live/instructor/certifications` ("Certificações dos alunos") with "Endossar" and a confirm
+  dialog; "Endossada por" on `/c/<asset>` linking each wallet to `/u/<wallet>`.
+
+### Known limits (social)
+
+- A teacher of a real (non-personal) tenant is trusted: they can record one podium per ended session
+  of their tenant and endorse their learners. Sessions and answers are written by clients under RLS.
+- The weekly goal and the level behind the laurel are computed from rows a client can write
+  (security review, findings 1 and 3); they inherit those findings until they are fixed.
+- The learner's podium screen ranks the people the live room saw; the on-chain mark shows there only
+  after a class that was really run and recorded.

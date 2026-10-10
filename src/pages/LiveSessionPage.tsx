@@ -105,6 +105,7 @@ import { TERMINAL_LIVE_EVENT } from '@/services/terminalLiveBuffer.service';
 import { CHAT_LIVE_EVENT } from '@/services/chatLiveBuffer.service';
 import { isGenericName } from '@/utils/isGenericName';
 import { useMembership } from '@/hooks/useMembership';
+import { usePodiumChain } from '@/hooks/useClassPodium';
 import { isInstructor as isStaffInstructor } from '@/services/membership.service';
 import { useProfile } from '@/hooks/useProfile';
 import { useGuestMode } from '@/guest/GuestModeContext';
@@ -638,6 +639,7 @@ export default function LiveSessionPage() {
     : 0;
 
   const ended = status === 'ended';
+  const podiumChain = usePodiumChain(sessionId, ended && !guest);
   // `rankByScore` percorre o ROSTER, não `answers`: um colega ausente da
   // presença deste cliente não entra no pódio nem com a resposta dele em mãos.
   // Era a segunda causa do defeito relatado — o professor já rankeava por
@@ -869,7 +871,7 @@ export default function LiveSessionPage() {
             className="rounded-3xl border border-border bg-card p-8 md:p-10 max-w-xl mx-auto"
             data-testid="live-ended"
           >
-            <LivePodium ranking={podiumRanking} selfUserId={identity.userId ?? undefined} />
+            <LivePodium ranking={podiumRanking} selfUserId={identity.userId ?? undefined} chain={podiumChain.data} />
             <button
               onClick={leave}
               data-testid="live-ended-cta"
