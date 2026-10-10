@@ -14,7 +14,7 @@ describe('appTheme', () => {
   it('converts a hex colour to the hsl triplet', () => {
     expect(hexToHslTriplet('#000000')).toBe('0 0% 0%');
     expect(hexToHslTriplet('#FFFFFF')).toBe('0 0% 100%');
-    expect(hexToHslTriplet('#0B1020')).toBe('225 49% 8%');
+    expect(hexToHslTriplet('#0B1020')).toBe('226 49% 8%');
   });
 
   it('paints a custom theme and clears it on the defaults', () => {
