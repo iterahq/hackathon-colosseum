@@ -143,6 +143,32 @@ export async function createCredential(
   return { asset: asset.publicKey, signature, alreadyExisted: false };
 }
 
+/**
+ * Mints a COLLECTIBLE to the buyer: same derived address and Attributes plugin
+ * as a credential, but no freeze plugin at all, so the owner can transfer it.
+ */
+export async function createCollectible(
+  chain: Chain,
+  input: CreateCredentialInput,
+): Promise<{ asset: string; signature: string | null; alreadyExisted: boolean }> {
+  const asset = await derivedSigner(chain, `asset:${input.rowId}`);
+  if (await chain.umi.rpc.accountExists(asset.publicKey)) {
+    return { asset: asset.publicKey, signature: await latestSignature(chain, asset.publicKey), alreadyExisted: true };
+  }
+  const signature = await sendAndConfirm(
+    chain,
+    create(chain.umi, {
+      asset,
+      collection: { publicKey: publicKey(input.collection) },
+      owner: publicKey(input.owner),
+      name: input.name,
+      uri: input.uri,
+      plugins: [{ type: 'Attributes', attributeList: input.attributes }],
+    }),
+  );
+  return { asset: asset.publicKey, signature, alreadyExisted: false };
+}
+
 export function updateCredentialAttributes(
   chain: Chain,
   input: { asset: string; collection: string; attributes: OnchainAttribute[] },

@@ -1,4 +1,5 @@
-import type { ArtInput, Lang } from './art.ts';
+import type { ArtInput, CompanionAvatarArt, Lang } from './art.ts';
+import { DEFAULT_AVATAR_KEY, isAvatarKey } from './avatars.ts';
 import { isOutfit } from './cosmetics.ts';
 import { APP_URL, type OnchainAttribute } from './credential.ts';
 import type { CompanionStats } from './lives.ts';
@@ -14,6 +15,8 @@ export interface CompanionSnapshot {
   lives: number;
   maxLives: number;
   outfit: string | null;
+  /** The avatar the learner wears (an item key). Unset reads as the default. */
+  avatar?: string | null;
   stats: CompanionStats;
   assetAddress: string | null;
   /** The attributes last written on chain and when; `null` before the first mirror or when unknown. */
@@ -39,7 +42,9 @@ export function companionImageUrl(functionsBase: string, companionId: string): s
  * database row. The values are part of the URL, so a cached image is never stale.
  */
 export function companionChainImageUrl(functionsBase: string, companionId: string, values: CompanionValues, lang?: Lang): string {
-  const version = `${values.lives}-${values.max_lives}-${values.level}-${values.outfit ?? 'none'}`;
+  // The default avatar leaves the URL exactly as it was before avatars existed.
+  const worn = values.avatar && values.avatar !== DEFAULT_AVATAR_KEY ? `-${values.avatar}` : '';
+  const version = `${values.lives}-${values.max_lives}-${values.level}-${values.outfit ?? 'none'}${worn}`;
   return `${companionImageUrl(functionsBase, companionId)}?source=chain${lang ? `&lang=${lang}` : ''}&v=${version}`;
 }
 
@@ -48,8 +53,12 @@ export function companionChainImageUrl(functionsBase: string, companionId: strin
  * `learner` is the owner's wallet (public already: it owns the asset). The
  * internal learner id was written there before and stays on assets minted
  * then until their next ordinary write; it is never written again.
+ * `avatar` is written only while the learner wears something other than the
+ * default (absent = `tera_normal`), so a companion that never changed its
+ * avatar is not rewritten because avatars exist.
  */
 export function companionAttributes(snapshot: CompanionSnapshot): OnchainAttribute[] {
+  const avatar = isAvatarKey(snapshot.avatar) && snapshot.avatar !== DEFAULT_AVATAR_KEY ? snapshot.avatar : null;
   return [
     { key: 'kind', value: 'companion' },
     { key: 'lives', value: String(snapshot.lives) },
@@ -59,6 +68,7 @@ export function companionAttributes(snapshot: CompanionSnapshot): OnchainAttribu
     { key: 'xp', value: String(snapshot.stats.xp) },
     { key: 'streak', value: String(snapshot.stats.streak) },
     { key: 'learner', value: snapshot.wallet ?? '' },
+    ...(avatar ? [{ key: 'avatar', value: avatar }] : []),
   ];
 }
 
@@ -69,6 +79,8 @@ export interface CompanionValues {
   level: number;
   xp: number;
   streak: number;
+  /** The avatar key the asset names; absent when it names none (the default avatar). */
+  avatar?: string;
 }
 
 /** The companion as its asset's attributes say it. A missing or malformed number reads as 0. */
@@ -79,6 +91,7 @@ export function companionFromAttributes(attributes: OnchainAttribute[]): Compani
     return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
   };
   const outfit = values.get('outfit');
+  const avatar = values.get('avatar');
   return {
     lives: integer('lives'),
     max_lives: integer('max_lives'),
@@ -86,6 +99,8 @@ export function companionFromAttributes(attributes: OnchainAttribute[]): Compani
     level: integer('level'),
     xp: integer('xp'),
     streak: integer('streak'),
+    // Named only when the asset names one: a companion on the default avatar reads exactly as before.
+    ...(isAvatarKey(avatar) && avatar !== DEFAULT_AVATAR_KEY ? { avatar } : {}),
   };
 }
 
@@ -96,6 +111,7 @@ export function withChainValues(snapshot: CompanionSnapshot, values: CompanionVa
     lives: values.lives,
     maxLives: values.max_lives,
     outfit: values.outfit,
+    avatar: values.avatar ?? DEFAULT_AVATAR_KEY,
     stats: { ...snapshot.stats, level: values.level, xp: values.xp, streak: values.streak },
   };
 }
@@ -104,7 +120,7 @@ export function sameAttributes(a: OnchainAttribute[] | null, b: OnchainAttribute
   return a !== null && a.length === b.length && a.every((entry, index) => entry.key === b[index].key && entry.value === b[index].value);
 }
 
-export function companionArtInput(snapshot: CompanionSnapshot, lang: Lang): ArtInput {
+export function companionArtInput(snapshot: CompanionSnapshot, lang: Lang, avatar: CompanionAvatarArt | null = null): ArtInput {
   return {
     shape: 'companion',
     tier: 'bronze',
@@ -124,6 +140,7 @@ export function companionArtInput(snapshot: CompanionSnapshot, lang: Lang): ArtI
       maxLives: snapshot.maxLives,
       level: snapshot.stats.level,
       outfit: isOutfit(snapshot.outfit) ? snapshot.outfit : null,
+      avatar,
     },
   };
 }

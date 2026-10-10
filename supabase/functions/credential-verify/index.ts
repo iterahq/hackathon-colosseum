@@ -1,4 +1,6 @@
 import { isSolanaAddress } from '../_shared/address.ts';
+import { AVATAR_ASSET_COLUMNS, loadAvatarCatalog, supabaseUrl } from '../_shared/avatar-store.ts';
+import { avatarFromAttributes, avatarImageUrl, avatarMetadataUrl, tierName, type AvatarAssetRow } from '../_shared/avatars.ts';
 import { readCredential, readOnlyUmi } from '../_shared/chain.ts';
 import { COLLECTIONS } from '../_shared/chain-names.ts';
 import { companionChainImageUrl, companionFromAttributes, companionMetadataUrl, companionText, type CompanionValues } from '../_shared/companion.ts';
@@ -135,6 +137,38 @@ async function loadCompanionAchievement(db: IteraClient, assetAddress: string, l
   return { achievement, mirroredAt: snapshot.mirroredAt };
 }
 
+/**
+ * The collectible avatar behind an asset, in the shape of an achievement: the
+ * catalog entry and the serial, nothing about who bought it. `null` when the
+ * asset is not one we minted.
+ */
+async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang: 'pt' | 'en') {
+  const { data, error } = await db.from('avatar_assets').select(AVATAR_ASSET_COLUMNS).eq('asset_address', assetAddress).maybeSingle();
+  if (error) throw new Error(`avatar_assets: ${error.message}`);
+  const row = data as AvatarAssetRow | null;
+  const catalog = await loadAvatarCatalog(db);
+  const item = row ? catalog.items.get(row.item_key) : undefined;
+  if (!row || !item) return null;
+  const image = avatarImageUrl(supabaseUrl(), item);
+  const tier = tierName(catalog, item, lang);
+  return {
+    key: 'avatar',
+    kind: 'avatar',
+    tier: item.rarity,
+    title: `${tier} · ${pickText(item.title_i18n, lang)} #${row.serial}`,
+    description: pickText(item.description_i18n, lang),
+    trail: null,
+    credential_id: row.id,
+    earned_at: row.minted_at,
+    minted_at: row.minted_at,
+    state: { key: item.key, group: item.avatar_group, rarity: item.rarity, tier_name: tier, serial: row.serial, supply_cap: item.supply_cap },
+    metadata_url: avatarMetadataUrl(functionsBase(), row.id),
+    image_url: image,
+    thumb_url: avatarImageUrl(supabaseUrl(), item, '128'),
+    stamps: [],
+  };
+}
+
 Deno.serve(async (request) => {
   const cors = corsHeaders(request, 'public');
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -163,7 +197,17 @@ Deno.serve(async (request) => {
     const isCompanion = verified && onchain.collection === config[COLLECTIONS.companions.configKey];
     const chainValues = isCompanion ? companionFromAttributes(onchain.attributes) : null;
     const companionRow = chainValues ? await loadCompanionAchievement(db, address, lang, chainValues) : null;
-    const achievement = !verified ? null : chainValues ? (companionRow?.achievement ?? null) : await loadAchievement(db, address, lang);
+    // A collectible avatar: ours like the rest, but transferable (`checks.soulbound` is false by design).
+    const isAvatar = verified && Boolean(config[COLLECTIONS.avatars.configKey]) && onchain.collection === config[COLLECTIONS.avatars.configKey];
+    const avatarAchievement = isAvatar ? await loadAvatarAchievement(db, address, lang) : null;
+    const avatar = isAvatar ? avatarFromAttributes(onchain.attributes) : null;
+    const achievement = !verified
+      ? null
+      : isAvatar
+        ? avatarAchievement
+        : chainValues
+          ? (companionRow?.achievement ?? null)
+          : await loadAchievement(db, address, lang);
     // What the chain says about a companion, parsed; `achievement.state` is the database's view.
     // Teacher endorsements of a certification: wallets and transactions only, never a name or a note.
     const endorsements = achievement && achievement.key === 'trail_pass' ? await loadEndorsements(db, achievement.credential_id) : undefined;
@@ -185,6 +229,7 @@ Deno.serve(async (request) => {
         attributes: onchain.attributes,
         achievement,
         ...(endorsements ? { endorsements } : {}),
+        ...(avatar ? { avatar, image_url: avatarAchievement?.image_url ?? null } : {}),
         ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),

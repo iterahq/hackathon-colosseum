@@ -1,8 +1,10 @@
+import { avatarImageUrl, isFreeAvatar, isOwnedRow, isSoldOut, reservationUntil, tierName, type AvatarAssetRow } from './avatars.ts';
+import { loadAvatarCatalog, loadAvatarRow, loadSupply, mintAvatar, reserve, supabaseUrl } from './avatar-store.ts';
 import { GLOBAL_REF } from './awards.ts';
 import { changeLives, ensureCompanion, syncMirror } from './companion-store.ts';
 import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics.ts';
 import { trailCosmeticPurchases } from './cosmetics-store.ts';
-import { changedAttributes, onchainAttributes, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
+import { changedAttributes, explorerUrl, onchainAttributes, pickText, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
 import { deliverGift, loadGift, recipientFacts, type GiftRow } from './gift-store.ts';
 import { refillLives, regenerate } from './lives.ts';
@@ -10,11 +12,12 @@ import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } f
 
 export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort';
 export const PURCHASE_COLUMNS =
-  'id,user_id,item_key,ref_id,lamports,price_usd_cents,status,wallet,tx_signature,memo,last_valid_block_height,expires_at,paid_at,applied_at';
+  'id,user_id,item_key,ref_id,lamports,price_usd_cents,status,wallet,tx_signature,memo,last_valid_block_height,expires_at,paid_at,applied_at,refund_due_at';
 
 export interface ShopItem {
   key: string;
   kind: string;
+  /** Missing (`null` in the table) only on an item that is not for sale: a free avatar. `purchase-intent` refuses those first. */
   price_lamports: number;
   price_usd_cents: number;
   price_label: string;
@@ -41,6 +44,8 @@ export interface PurchaseRow {
   expires_at: string;
   paid_at: string | null;
   applied_at: string | null;
+  /** Paid, but the thing could not be given (see `ApplyRefusal`): the operator owes a refund. */
+  refund_due_at?: string | null;
 }
 
 export interface ShopContext {
@@ -62,10 +67,28 @@ export interface ApplyOutcome {
   chain: ChainWrite | null;
   /** A gift this purchase delivered: the answer then describes the recipient, not the payer. */
   gift?: GiftRow;
+  /** A collectible avatar this purchase minted (or had minted already). */
+  avatar?: { key: string; title_i18n: Record<string, string>; tier_name_i18n: Record<string, string>; asset_address: string | null; image_url: string; thumb_url: string; serial: number };
+}
+
+/**
+ * The payment is good but the item can no longer be given, for ever (the last
+ * unit of a limited avatar went to somebody else). Not retryable: the purchase
+ * is flagged `refund_due_at` and the buyer is told so, never left to guess.
+ */
+export class ApplyRefusal extends Error {
+  constructor(public readonly code: 'sold_out_after_payment' | 'already_owned_after_payment') {
+    super(code);
+  }
 }
 
 export interface ItemHandler {
   canBuy(context: ShopContext): Promise<Eligibility>;
+  /**
+   * Runs once the intent row exists and the wallet is known to hold the price:
+   * where a kind takes what is scarce (an avatar's serial). A refusal retires the intent.
+   */
+  afterIntent?(context: ShopContext, intent: PurchaseRow): Promise<Eligibility>;
   /** Idempotent: applying a paid purchase again leaves the same state. Throws when the effect is still due. */
   apply(context: ApplyContext): Promise<ApplyOutcome>;
 }
@@ -206,4 +229,67 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       return { companion: false, passport: null, chain: delivery.write, gift: delivery.gift };
     },
   },
+  // A collectible avatar: one per learner, a serial out of a (possibly limited) supply, minted to the buyer's wallet.
+  avatar: {
+    async canBuy({ db, userId, item, refId }) {
+      if (refId !== GLOBAL_REF) return eligibility('avatar', { ...NO_FACTS, refId });
+      const avatar = (await loadAvatarCatalog(db, true)).items.get(item.key);
+      if (!avatar || isFreeAvatar(avatar)) return eligibility('avatar', { ...NO_FACTS, refId, free: true });
+      const [own, supply] = await Promise.all([loadAvatarRow(db, userId, item.key), loadSupply(db)]);
+      const holding = own?.mint_status === 'reserved' && own.reserved_until !== null && Date.parse(own.reserved_until) > Date.now();
+      return eligibility('avatar', { ...NO_FACTS, refId, owned: isOwnedRow(own), soldOut: !holding && isSoldOut(avatar, supply.get(item.key)) });
+    },
+    // The serial is held from here until the intent's window ends (plus a grace), so the buyer who pays gets a unit.
+    async afterIntent({ db, userId, item }, intent) {
+      const avatar = (await loadAvatarCatalog(db)).items.get(item.key);
+      if (!avatar) return { ok: false, error: 'free_item' };
+      const result = await reserve(db, { userId, item: avatar, purchaseId: intent.id, paid: false, until: reservationUntil(intent.expires_at), now: new Date() });
+      if (result.status === 'reserved') return { ok: true };
+      return { ok: false, error: result.status === 'owned' ? 'already_owned' : result.status };
+    },
+    async apply({ db, userId, item, purchase }) {
+      if (purchase.refund_due_at) throw new ApplyRefusal('sold_out_after_payment');
+      const catalog = await loadAvatarCatalog(db);
+      const avatar = catalog.items.get(item.key);
+      if (!avatar || isFreeAvatar(avatar)) throw new Error(`avatar ${item.key} is not for sale`);
+      let own: AvatarAssetRow | null = await loadAvatarRow(db, userId, item.key);
+      if (!own || own.mint_status === 'reserved') {
+        // Paid: the hold becomes the learner's unit. A hold that lapsed and was handed on is taken again if any unit is left.
+        const now = new Date();
+        const result = await reserve(db, { userId, item: avatar, purchaseId: purchase.id, paid: true, until: now, now });
+        if (result.status !== 'reserved' && result.status !== 'owned') throw new ApplyRefusal('sold_out_after_payment');
+        own = result.row;
+      }
+      if (own.purchase_id !== purchase.id) throw new ApplyRefusal('already_owned_after_payment');
+      const minted = await mintAvatar(db, catalog, avatar, own, purchase.wallet);
+      return {
+        companion: false,
+        passport: null,
+        chain: null,
+        avatar: {
+          key: avatar.key,
+          title_i18n: avatar.title_i18n,
+          tier_name_i18n: { pt: tierName(catalog, avatar, 'pt'), en: tierName(catalog, avatar, 'en') },
+          asset_address: minted.asset_address,
+          image_url: avatarImageUrl(supabaseUrl(), avatar),
+          thumb_url: avatarImageUrl(supabaseUrl(), avatar, '128'),
+          serial: minted.serial,
+        },
+      };
+    },
+  },
 };
+
+/** The `avatar` block of a paid answer. */
+export function purchasedAvatarView(avatar: NonNullable<ApplyOutcome['avatar']>, lang: 'pt' | 'en') {
+  return {
+    key: avatar.key,
+    title: pickText(avatar.title_i18n, lang),
+    tier_name: pickText(avatar.tier_name_i18n, lang),
+    asset_address: avatar.asset_address,
+    explorer_url: explorerUrl('address', avatar.asset_address),
+    image_url: avatar.image_url,
+    thumb_url: avatar.thumb_url,
+    serial: avatar.serial,
+  };
+}

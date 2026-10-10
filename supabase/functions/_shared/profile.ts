@@ -1,3 +1,4 @@
+import { avatarImageUrl, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
 import { endorsementsOf } from './endorsement.ts';
 import type { Lang } from './art.ts';
 import { companionChainImageUrl, companionFromAttributes, companionImageUrl, type CompanionValues } from './companion.ts';
@@ -64,6 +65,58 @@ export function isVerified(
     asset.update_authority === expected.authority &&
     asset.frozen
   );
+}
+
+/**
+ * A collectible is valid for a wallet when the chain says that wallet holds it
+ * NOW, in our avatars collection, under our authority. It is not frozen, so one
+ * that was transferred away stays in our tables and reads `false` here.
+ */
+export function isCollectibleVerified(
+  asset: OnchainAsset | undefined,
+  expected: { wallet: string; collection: string | undefined; authority: string | undefined },
+): boolean {
+  return (
+    asset !== undefined &&
+    Boolean(expected.collection) &&
+    Boolean(expected.authority) &&
+    asset.owner === expected.wallet &&
+    asset.collection === expected.collection &&
+    asset.update_authority === expected.authority
+  );
+}
+
+/** The `avatars` list of a profile: the collectibles our tables say were minted to this wallet. */
+export function profileAvatars(input: {
+  wallet: string;
+  lang: Lang;
+  supabaseUrl: string;
+  config: Record<string, string>;
+  catalog: AvatarCatalog;
+  rows: AvatarAssetRow[];
+  onchain: Map<string, OnchainAsset>;
+}) {
+  const { wallet, lang, catalog, config } = input;
+  return input.rows.flatMap((row) => {
+    const item = catalog.items.get(row.item_key);
+    if (!item || !row.asset_address) return [];
+    return [
+      {
+        key: item.key,
+        title: pickText(item.title_i18n, lang),
+        rarity: item.rarity,
+        tier_name: tierName(catalog, item, lang),
+        serial: row.serial,
+        supply_cap: item.supply_cap,
+        asset: row.asset_address,
+        verified: isCollectibleVerified(input.onchain.get(row.asset_address), { wallet, collection: config.collection_avatars, authority: config.authority }),
+        image_url: avatarImageUrl(input.supabaseUrl, item),
+        thumb_url: avatarImageUrl(input.supabaseUrl, item, '128'),
+        page_url: `${APP_URL}/c/${row.asset_address}`,
+        explorer_url: explorerUrl('address', row.asset_address),
+      },
+    ];
+  });
 }
 
 const numberOf = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);

@@ -1,6 +1,6 @@
 import { GLOBAL_REF } from './awards.ts';
 
-export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift'] as const;
+export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift', 'avatar'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
 export type IneligibleCode =
@@ -10,7 +10,10 @@ export type IneligibleCode =
   | 'passport_required'
   | 'self_gift'
   | 'recipient_full'
-  | 'gift_limit';
+  | 'gift_limit'
+  | 'free_item'
+  | 'sold_out'
+  | 'reservation_limit';
 
 /** A learner receives at most this many gifts in any 24 hours. */
 export const GIFT_DAILY_LIMIT = 5;
@@ -29,6 +32,9 @@ export interface EligibilityFacts {
   giftsReceivedToday?: number;
   /** Lives above the maximum the recipient may hold. */
   bonusLives?: number;
+  /** Only read for an avatar: it has no price, or its limited supply is all taken. */
+  free?: boolean;
+  soldOut?: boolean;
 }
 
 export function isItemKind(kind: string): kind is ItemKind {
@@ -57,5 +63,11 @@ export function eligibility(kind: ItemKind, facts: EligibilityFacts): Eligibilit
       if (facts.payerId === facts.refId) return refuse('self_gift');
       if ((facts.giftsReceivedToday ?? 0) >= GIFT_DAILY_LIMIT) return refuse('gift_limit');
       return facts.lives < facts.maxLives + (facts.bonusLives ?? 0) ? { ok: true } : refuse('recipient_full');
+    case 'avatar':
+      // A free avatar is everyone's already; a collectible is one per learner while units remain.
+      if (!isGlobal) return refuse('invalid_ref');
+      if (facts.free) return refuse('free_item');
+      if (facts.owned) return refuse('already_owned');
+      return facts.soldOut ? refuse('sold_out') : { ok: true };
   }
 }

@@ -30,8 +30,23 @@ export interface ArtInput {
   /** A live-class podium medal: the place (1 to 3) drawn instead of the glyph. */
   podium?: number | null;
   /** Only read by the `companion` shape. */
-  companion?: { lives: number; maxLives: number; level: number; outfit: string | null };
+  companion?: { lives: number; maxLives: number; level: number; outfit: string | null; avatar?: CompanionAvatarArt | null };
 }
+
+/**
+ * The avatar a companion card shows. `image` is the published picture inlined as
+ * a data URI (an SVG used as an image cannot load external files); `null` draws
+ * the built-in Tera instead: the default avatar, or a picture that could not be fetched.
+ */
+export interface CompanionAvatarArt {
+  key: string;
+  image: string | null;
+  /** Outfits are painted over the plain Tera faces only; a collectible is a finished painting. */
+  allowsOutfit: boolean;
+}
+
+/** Where a fetched avatar picture sits on the card: a square centred on the built-in Tera's spot. */
+const AVATAR_BOX = { x: 140, y: 120, size: 232 } as const;
 
 const BACKGROUND = '#0A0908';
 const PAGE = '#15120F';
@@ -267,11 +282,19 @@ ${input.endorsed && input.endorsed > 0 ? endorsementSeal(input.endorsed, isGold 
  * his face, then the `front` layer. The layers are the files of `public/mascot/outfits/`, inlined
  * (`outfit-art.ts`); they cover the face box plus a bleed on every side.
  */
-function companionTera(centerX: number, bottom: number, width: number, outfit: string | null): string {
+function companionTera(centerX: number, bottom: number, width: number, outfit: string | null, avatar?: CompanionAvatarArt | null): string {
   const scale = width / TERA_FACE.width;
   const x = centerX - width / 2;
   const y = bottom - TERA_FACE.height * scale;
-  const layers = outfit && Object.prototype.hasOwnProperty.call(OUTFIT_LAYERS, outfit) ? OUTFIT_LAYERS[outfit] : undefined;
+  const wearsOutfit = !avatar || avatar.allowsOutfit;
+  const layers = wearsOutfit && outfit && Object.prototype.hasOwnProperty.call(OUTFIT_LAYERS, outfit) ? OUTFIT_LAYERS[outfit] : undefined;
+  if (avatar?.image && /^data:image\/(webp|png);base64,[A-Za-z0-9+/=]+$/.test(avatar.image)) {
+    const picture = `<image data-avatar="${escapeXml(avatar.key)}" href="${avatar.image}" x="${AVATAR_BOX.x}" y="${AVATAR_BOX.y}" width="${AVATAR_BOX.size}" height="${AVATAR_BOX.size}" preserveAspectRatio="xMidYMid meet"/>`;
+    if (!layers) return picture;
+    const over = (href: string, part: string) =>
+      `<image data-outfit-layer="${part}" href="${href}" x="${x - TERA_FACE.bleed * scale}" y="${y - TERA_FACE.bleed * scale}" width="${width + 2 * TERA_FACE.bleed * scale}" height="${TERA_FACE.height * scale + 2 * TERA_FACE.bleed * scale}"/>`;
+    return `<g data-outfit="${escapeXml(outfit as string)}">${layers.back ? over(layers.back, 'back') : ''}${picture}${over(layers.front, 'front')}</g>`;
+  }
   const bleed = TERA_FACE.bleed * scale;
   const layer = (href: string, part: string) =>
     `<image data-outfit-layer="${part}" href="${href}" x="${x - bleed}" y="${y - bleed}" width="${width + 2 * bleed}" height="${TERA_FACE.height * scale + 2 * bleed}"/>`;
@@ -292,7 +315,7 @@ function heart(cx: number, cy: number, size: number, filled: boolean, bonus = fa
 
 function companionSvg(input: ArtInput): string {
   const labels = LABELS[input.lang];
-  const { lives, maxLives, level, outfit } = input.companion ?? { lives: 0, maxLives: 5, level: 1, outfit: null };
+  const { lives, maxLives, level, outfit, avatar } = input.companion ?? { lives: 0, maxLives: 5, level: 1, outfit: null, avatar: null };
   const total = Math.max(1, Math.min(MAX_SLOTS, Math.floor(maxLives)));
   const current = Math.max(0, Math.min(total, Math.floor(lives)));
   const gap = 46;
@@ -310,7 +333,7 @@ ${frame(GREEN)}
 <rect x="52" y="108" width="44" height="4" rx="2" fill="${GREEN}"/>
 <rect x="364" y="52" width="96" height="30" rx="15" fill="none" stroke="${GREEN}" stroke-width="2"/>
 <text x="412" y="72" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.2" fill="${GREEN}">${labels.level} ${Math.max(1, Math.floor(level))}</text>
-${companionTera(256, 356, 168, outfit)}
+${companionTera(256, 356, 168, outfit, avatar)}
 ${hearts}
 <text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current + bonus}/${total} ${labels.lives}</text>
 <text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
