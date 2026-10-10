@@ -66,16 +66,50 @@ async function main() {
   check('a grant credits once', grant(ana, 120, `${RUN}-a`) === '120|true');
   check('the same grant again credits nothing', grant(ana, 120, `${RUN}-a`) === '120|false');
   const lesson = psql(`select l.id || '|' || min(a.id::text) from itera.lessons l join itera.activities a on a.lesson_id = l.id and a.status = 'published' group by l.id having count(*) = 1 order by l.id limit 1;`).split('|');
-  psql(`insert into itera.progress (user_id, activity_id, status, completed_at) values (:'user_id'::uuid, :'activity'::uuid, 'completed', now()) on conflict do nothing;`, { user_id: ana.userId, activity: lesson[1] });
+  // H1: progress written through PostgREST by the learner (what anybody can do) plus a lesson_end that claims no mistakes.
+  const forgedWrite = await fetch(`${FUNCTIONS.replace('/functions/v1', '')}/rest/v1/progress`, {
+    method: 'POST',
+    headers: { ...ana.headers, 'Content-Profile': 'itera', Prefer: 'return=minimal' },
+    body: JSON.stringify({ user_id: ana.userId, activity_id: lesson[1], status: 'completed', completed_at: new Date().toISOString() }),
+  });
+  const forgedFlag = psql(`select written_by_client from itera.progress where user_id = :'user_id'::uuid and activity_id = :'activity'::uuid;`, { user_id: ana.userId, activity: lesson[1] });
   const ended = await ana.call('lives', { action: 'lesson_end', lesson_id: lesson[0], mistakes: 0 });
   check('lesson end answers as before', ended.status === 200 && ended.body.lives, JSON.stringify(ended.body).slice(0, 120));
   await ana.call('lives', { action: 'lesson_end', lesson_id: lesson[0], mistakes: 0 });
+  const forgedPassport = await ana.call('passport', {});
   const earned = await ana.get('crystals');
-  check('the lesson-end hook paid a clean lesson 3 crystals, once', earned.body.balance === 123 && ledgerCount(ana, 'lesson_clean', lesson[0]) === 1, earned.body.balance);
-  check('the ledger lists the movements, newest first', earned.body.ledger.length === 2 && earned.body.ledger.some((entry) => entry.reason === 'lesson_clean' && entry.delta === 3));
+  check('a FORGED lesson (client-written progress, mistakes: 0) earns nothing through lives or passport', earned.body.balance === 120 && ledgerCount(ana, 'lesson_clean', '%') === 0 && ledgerCount(ana, 'lesson_completed', '%') === 0, `write ${forgedWrite.status}, written_by_client ${forgedFlag}, passport ${forgedPassport.status}, balance ${earned.body.balance}`);
+  grant(ana, 3, `${RUN}-a2`);
+  check('the ledger lists the movements, newest first', (await ana.get('crystals')).body.ledger.length === 2);
+
+  console.log('\n== earn: an honest day through passport (H2) ==');
+  const dee = await newLearner(apikey, 'dee');
+  // The first lesson of the program (a stamped day needs a lesson inside a trail); progress as operator seeding, like passport-e2e.
+  const dayLesson = psql(`select l.id from itera.lessons l join itera.units u on u.id = l.unit_id join itera.programs p on p.id = u.program_id where p.slug = 'itera-v2' order by u.ordinal, l.ordinal, l.id limit 1;`);
+  const dayActivity = psql(`select min(id::text) from itera.activities where lesson_id = :'lesson'::uuid and status = 'published';`, { lesson: dayLesson });
+  psql(`insert into itera.progress (user_id, activity_id, status, completed_at) select :'user_id'::uuid, a.id, 'completed', now() from itera.activities a where a.lesson_id = :'lesson'::uuid and a.status = 'published' on conflict do nothing;`, { user_id: dee.userId, lesson: dayLesson });
+  const day = await dee.call('passport', {});
+  const paidDay = await dee.get('crystals');
+  const reasons = (learner) => psql(`select coalesce(string_agg(reason || ':' || delta, ',' order by reason), '') from itera.crystal_ledger where user_id = :'user_id'::uuid;`, { user_id: learner.userId });
+  check('one honest day pays the day (10), the lesson (2) and the clean lesson (3), once', day.status === 200 && paidDay.body.balance === 15 && reasons(dee) === 'day_completed:10,lesson_clean:3,lesson_completed:2', `${day.status} ${reasons(dee)}`);
+  await dee.call('passport', {});
+  await dee.call('passport', {});
+  check('a second and a third passport call pay nothing more', (await dee.get('crystals')).body.balance === 15 && reasons(dee) === 'day_completed:10,lesson_clean:3,lesson_completed:2');
+  psql(`delete from itera.crystal_ledger where user_id = :'user_id'::uuid and reason = 'day_completed';
+        update itera.crystal_accounts set balance = balance - 10 where user_id = :'user_id'::uuid;`, { user_id: dee.userId });
+  await dee.call('passport', {});
+  check('an award whose payment is missing is paid by the next call (reconcile), not twice', (await dee.get('crystals')).body.balance === 15 && ledgerCount(dee, 'day_completed', '%') === 1);
+  psql(`insert into itera.life_events (user_id, attempt_id, activity_id, kind) values (:'user_id'::uuid, 'e2e-lose', :'activity'::uuid, 'lose');`, { user_id: dee.userId, activity: dayActivity });
+  check('a lost life recorded by the server on that lesson is what makes a lesson not clean (nothing is re-paid)', (await dee.call('passport', {})).status === 200 && (await dee.get('crystals')).body.balance === 15);
   const unfinished = psql(`select l.id from itera.lessons l join itera.activities a on a.lesson_id = l.id and a.status = 'published' group by l.id having count(*) > 3 order by l.id limit 1;`);
   await ana.call('lives', { action: 'lesson_end', lesson_id: unfinished, mistakes: 0 });
-  check('a lesson that is not complete pays nothing', ledgerCount(ana, 'lesson_clean', '%') === 1);
+  check('a lesson that is not complete pays nothing', ledgerCount(ana, 'lesson_clean', '%') === 0);
+  if (process.argv.includes('--only-earn')) {
+    const { total, failed } = summary();
+    console.log(`\n${total - failed.length}/${total} checks passed (earn section only)`);
+    console.log(failed.map((entry) => `  FAILED: ${entry}`).join('\n'));
+    process.exit(failed.length > 0 ? 1 : 0);
+  }
 
   console.log('\n== spend: lives ==');
   const full = await spend(ana, { item_key: 'life' });
@@ -193,6 +227,22 @@ async function main() {
   check('a legendary avatar is sold for crystals too (10 000): 402 with the price', legend.status === 402 && legend.body.price === 10000, JSON.stringify(legend.body));
   const bronze = await spend(cy, { item_key: 'border_bronze' });
   check('a for-sale border costs 100 crystals and does not equip itself', bronze.status === 200 && bronze.body.item?.kind === 'border' && bronze.body.theme?.border?.key === 'border_none', JSON.stringify(bronze.body).slice(0, 200));
+
+  console.log('\n== refunded crystal purchase (M1) ==');
+  const mia = await newLearner(apikey, 'mia');
+  grant(mia, 150, `${RUN}-mia`);
+  // The state a refund leaves behind: the debit, the credit back, and a purchase row marked refunded and never applied.
+  psql(
+    `insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, -150, 'spend', 'base_criativo:00000000-0000-0000-0000-000000000000');
+     insert into itera.crystal_ledger (user_id, delta, reason, ref_id) values (:'u'::uuid, 150, 'refund', gen_random_uuid()::text);
+     insert into itera.purchases (user_id, item_key, ref_id, lamports, price_usd_cents, status, source, wallet, memo, expires_at, paid_at, refunded_at, error)
+     values (:'u'::uuid, 'base_criativo', '00000000-0000-0000-0000-000000000000', 0, 0, 'refunded', 'crystals', :'w', 'base_criativo:00000000-0000-0000-0000-000000000000', now(), now(), now(), 'sold_out_after_payment');`,
+    { u: mia.userId, w: mia.address },
+  );
+  const retry = await spend(mia, { item_key: 'base_criativo' });
+  check('after a refund the same request is a NEW debit (150), not a free re-apply', retry.status === 200 && retry.body.avatar?.key === 'base_criativo' && retry.body.balance === 0, JSON.stringify(retry.body).slice(0, 200));
+  check('…the refunded row stays refunded and unapplied, a second paid row exists, and 2 debits are in the ledger', psql(`select count(*) filter (where status = 'refunded' and applied_at is null) || '|' || count(*) filter (where status = 'paid' and applied_at is not null) from itera.purchases where user_id = :'u'::uuid and item_key = 'base_criativo';`, { u: mia.userId }) === '1|1' && ledgerCount(mia, 'spend', 'base_criativo:%') === 2);
+  check('…and the balance equals the ledger (0)', (await mia.get('crystals')).body.balance === ledgerSum(mia) && ledgerSum(mia) === 0);
 
   console.log('\n== shop v3: seasons and the SOL rail ==');
   const natal = await spend(cy, { item_key: 'event_natal' });
