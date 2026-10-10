@@ -181,9 +181,6 @@ export function isThemeEntry(item: Pick<PricedItem, 'kind' | 'effect'>): boolean
   return themeColor(item) !== null;
 }
 
-/** What `GET /crystals` says about who gets an item for free with an avatar: `{ item key: avatar key }`. */
-export type IncludedWith = ReadonlyMap<string, string>;
-
 const pickTitle = (item: Pick<PricedItem, 'title_i18n'>, lang: 'pt' | 'en'): string => item.title_i18n?.[lang] ?? item.title_i18n?.pt ?? '';
 
 /** The theme a learner sees: what they chose while it is still theirs to wear, otherwise the default. */

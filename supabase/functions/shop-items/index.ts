@@ -93,6 +93,8 @@ Deno.serve(async (request) => {
         const unlock = unlockView(item.effect, level);
         return {
           ...(unlock ? { unlock } : {}),
+          // A life pack says what it does: `{ add_lives: N }` or `{ unlimited_days: N }` (the plain refill: `{}`).
+          ...(item.kind === 'life' ? { effect: item.effect } : {}),
           key: item.key,
           kind: item.kind,
           title: pickText(item.title_i18n, lang),

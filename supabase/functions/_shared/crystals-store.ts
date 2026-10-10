@@ -123,7 +123,7 @@ export interface SpendInput {
   /** Written as a paid `purchases` row in the same transaction. */
   purchase?: { item_key: string; ref_id: string; wallet: string };
   /** The companion row after the purchase, written in the same transaction if it is still at `version`. */
-  lives?: { version: number; lives: number; last_regen_at: string };
+  lives?: { version: number; lives: number; last_regen_at: string; unlimited_until?: string };
 }
 
 /** The debit and what it buys, in one database transaction (`itera.crystal_spend`). */

@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MAX_LIVES,
   REGEN_INTERVAL_SECONDS,
+  applyLifePack,
   deriveStats,
   giftLife,
   grantLife,
+  isUnlimited,
   lessonBonus,
   lessonBonusAttemptId,
+  lifePackOf,
   livesView,
   loseLife,
   refillLives,
@@ -41,7 +45,8 @@ describe('regeneration', () => {
 
   it('survives a clock that went backwards and a stored value out of range', () => {
     expect(regenerate(state(2), after(-600)).lives).toBe(2);
-    expect(regenerate(state(9), T0).lives).toBe(6);
+    // A reserve above the maximum is never trimmed.
+    expect(regenerate(state(9), T0).lives).toBe(9);
     expect(regenerate(state(-3), T0).lives).toBe(0);
   });
 });
@@ -71,7 +76,7 @@ describe('losing and gaining', () => {
   });
 
   it('shows a full bar with no countdown', () => {
-    expect(livesView(state(5), T0)).toEqual({ current: 5, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: REGEN_INTERVAL_SECONDS, bonus: 0 });
+    expect(livesView(state(5), T0)).toEqual({ current: 5, max: 5, next_regen_at: null, regen_seconds: 0, regen_interval_seconds: REGEN_INTERVAL_SECONDS, bonus: 0, unlimited_until: null });
   });
 });
 
@@ -135,7 +140,8 @@ describe('bonus life', () => {
 
   it('survives regeneration, a lesson bonus and a refill, and reports itself', () => {
     expect(regenerate(state(6), after(REGEN_INTERVAL_SECONDS * 9)).lives).toBe(6);
-    expect(regenerate(state(9), T0).lives).toBe(6);
+    // A reserve above the maximum is never trimmed.
+    expect(regenerate(state(9), T0).lives).toBe(9);
     expect(grantLife(state(6), T0).lives).toBe(6);
     expect(refillLives(state(6), T0).lives).toBe(6);
     expect(refillLives(state(2), T0).lives).toBe(5);
@@ -147,5 +153,61 @@ describe('bonus life', () => {
     const afterMistake = loseLife(state(6), T0);
     expect(afterMistake.lives).toBe(5);
     expect(regenerate(afterMistake, after(REGEN_INTERVAL_SECONDS * 3)).lives).toBe(5);
+  });
+});
+
+describe('life packs', () => {
+  it('the site maximum is 10', () => expect(MAX_LIVES).toBe(10));
+
+  it('reads the pack an item describes', () => {
+    expect(lifePackOf({ add_lives: 30 })).toEqual({ addLives: 30 });
+    expect(lifePackOf({ unlimited_days: 30 })).toEqual({ unlimitedDays: 30 });
+    expect(lifePackOf({})).toBeNull();
+    expect(lifePackOf({ add_lives: 0 })).toBeNull();
+    expect(lifePackOf({ add_lives: 1.5 })).toBeNull();
+    expect(lifePackOf({ add_lives: 'ten' })).toBeNull();
+    expect(lifePackOf(undefined)).toBeNull();
+  });
+
+  it('adds lives on top, passing the maximum', () => {
+    expect(applyLifePack(state(3), { addLives: 10 }, T0).lives).toBe(13);
+    const full = applyLifePack({ ...state(10), maxLives: 10 }, { addLives: 100 }, T0);
+    expect(full.lives).toBe(110);
+    expect(livesView(full, T0)).toMatchObject({ current: 110, max: 10, bonus: 100, regen_seconds: 0, next_regen_at: null });
+  });
+
+  it('counts the lives regenerated so far before adding', () => {
+    expect(applyLifePack(state(3), { addLives: 10 }, after(REGEN_INTERVAL_SECONDS * 2)).lives).toBe(15);
+  });
+
+  it('regenerates only below the maximum: the reserve is spent first, then regeneration resumes', () => {
+    let current = applyLifePack({ ...state(10), maxLives: 10 }, { addLives: 10 }, T0);
+    expect(regenerate(current, after(REGEN_INTERVAL_SECONDS * 9)).lives).toBe(20);
+    for (let index = 0; index < 11; index += 1) current = loseLife(current, T0);
+    expect(current.lives).toBe(9);
+    expect(regenerate(current, new Date(T0.getTime() + REGEN_INTERVAL_SECONDS * 1000)).lives).toBe(10);
+  });
+
+  it('a gift or a refill never trims a reserve', () => {
+    expect(giftLife(state(30), T0).lives).toBe(30);
+    expect(refillLives(state(30), T0).lives).toBe(30);
+  });
+
+  it('infinite lives: a mistake costs nothing while it runs, then costs a life again', () => {
+    const bought = applyLifePack(state(4), { unlimitedDays: 30 }, T0);
+    expect(bought.unlimitedUntil).toBe('2026-11-08T15:00:00.000Z');
+    expect(isUnlimited(bought, T0)).toBe(true);
+    expect(loseLife(bought, after(60)).lives).toBe(4);
+    expect(livesView(bought, T0).unlimited_until).toBe('2026-11-08T15:00:00.000Z');
+    const later = new Date('2026-11-08T15:00:01.000Z');
+    expect(isUnlimited(bought, later)).toBe(false);
+    expect(loseLife(bought, later).lives).toBe(4); // regenerated to the maximum (5) over the 30 days, then one lost
+    expect(livesView(bought, later).unlimited_until).toBeNull();
+  });
+
+  it('infinite days stack on a pack that is still running', () => {
+    const once = applyLifePack(state(4), { unlimitedDays: 30 }, T0);
+    const twice = applyLifePack(once, { unlimitedDays: 30 }, after(3600));
+    expect(twice.unlimitedUntil).toBe('2026-12-08T15:00:00.000Z');
   });
 });

@@ -1,6 +1,6 @@
 import { GLOBAL_REF } from '../_shared/awards.ts';
 import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/caller.ts';
-import { companionResponse, ensureCompanion, inBackground, loadInventory, loadStats, syncMirror } from '../_shared/companion-store.ts';
+import { companionResponse, ensureCompanion, inBackground, livesOf, loadInventory, loadStats, syncMirror } from '../_shared/companion-store.ts';
 import { cosmeticsOf } from '../_shared/cosmetics.ts';
 import { chainBlock, pickText } from '../_shared/credential.ts';
 import { loadAvatarCatalog } from '../_shared/avatar-store.ts';
@@ -8,6 +8,7 @@ import { includedWithMap } from '../_shared/avatars.ts';
 import { CRYSTAL_HANDLERS } from '../_shared/crystals-items.ts';
 import { crystalMetadataUrl, mirrorCrystals, tokenView } from '../_shared/crystals-mirror.ts';
 import {
+  grantCrystals,
   loadAccount,
   loadCrystalItem,
   loadCrystalItems,
@@ -40,8 +41,8 @@ import {
 } from '../_shared/crystals.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { corsHeaders, functionsBase, isUuid, json, langOf, pathAfter, readJsonObject } from '../_shared/http.ts';
-import { refillLives, regenerate } from '../_shared/lives.ts';
-import type { ApplyOutcome } from '../_shared/shop-items.ts';
+import { applyLifePack, lifePackOf, refillLives, regenerate } from '../_shared/lives.ts';
+import { ApplyRefusal, purchasedAvatarView, type ApplyOutcome } from '../_shared/shop-items.ts';
 import type { IneligibleCode } from '../_shared/shop-rules.ts';
 
 type Lang = 'pt' | 'en';
@@ -133,7 +134,7 @@ async function spendOnLives(db: IteraClient, caller: Caller, qty: number): Promi
   throw new Error('crystals: too many concurrent updates of the companion');
 }
 
-/** The full refill, same rule as the paid one, with the lives written inside the debit. */
+/** The full refill or a life pack, same rules as the paid ones, with the lives written inside the debit. */
 async function spendOnRefill(db: IteraClient, caller: Caller, item: CrystalItem, price: number, lang: Lang): Promise<Answer> {
   const userId = caller.iteraUserId;
   const ref = spendRef(item.key, GLOBAL_REF, true, crypto.randomUUID());
@@ -142,13 +143,15 @@ async function spendOnRefill(db: IteraClient, caller: Caller, item: CrystalItem,
     if (!verdict.ok) return { status: INELIGIBLE_STATUS[verdict.error] ?? 409, body: { error: verdict.error } };
     const [row, account] = await Promise.all([ensureCompanion(db, userId), loadAccount(db, userId)]);
     if (account.balance < price) return insufficient(account.balance, price);
-    const next = refillLives({ lives: row.lives, maxLives: row.max_lives, lastRegenAt: row.last_regen_at }, new Date());
+    const now = new Date();
+    const pack = lifePackOf(item.effect);
+    const next = pack ? applyLifePack(livesOf(row), pack, now) : refillLives(livesOf(row), now);
     const spent = await spendCrystals(db, {
       userId,
       amount: price,
       ref,
       purchase: { item_key: item.key, ref_id: GLOBAL_REF, wallet: caller.wallet ?? '' },
-      lives: { version: row.version, lives: next.lives, last_regen_at: next.lastRegenAt },
+      lives: { version: row.version, lives: next.lives, last_regen_at: next.lastRegenAt, ...(pack && next.unlimitedUntil ? { unlimited_until: next.unlimitedUntil } : {}) },
     });
     if (spent.status === 'insufficient') return insufficient(spent.balance, price);
     if (spent.status === 'ok') return livesAnswer(db, caller, spent.balance, { key: item.key, kind: item.kind, title: pickText(item.title_i18n, lang), price });
@@ -168,6 +171,8 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   if (!handler) return { status: 400, body: { error: 'not_for_crystals' } };
   const context = { db, userId, item, refId };
   const ref = spendRef(item.key, refId, false, '');
+  // The collectible is minted to a wallet: a learner without one is told before anything is charged.
+  if (item.kind === 'avatar' && !caller.wallet) return { status: 403, body: { error: 'no_wallet' } };
 
   let purchase = await loadCrystalPurchase(db, userId, ref);
   if (!purchase || purchase.applied_at) {
@@ -189,6 +194,12 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
     const { error } = await db.from('purchases').update({ applied_at: new Date().toISOString(), error: null }).eq('id', purchase.id);
     if (error) throw new Error(`purchases applied: ${error.message}`);
   } catch (error) {
+    if (error instanceof ApplyRefusal) {
+      // Paid, but the last unit went to somebody else (or the learner already holds it): the crystals come back at once.
+      const { balance } = await grantCrystals(db, userId, price, 'refund', purchase.id);
+      await db.from('purchases').update({ status: 'refunded', refunded_at: new Date().toISOString(), error: error.code }).eq('id', purchase.id);
+      return { status: 409, body: { error: error.code === 'sold_out_after_payment' ? 'sold_out' : 'already_owned', refunded: true, balance } };
+    }
     console.error(`crystal purchase ${purchase.id} effect failed`, error);
     const message = String(error instanceof Error ? error.message : error).slice(0, 300);
     await db.from('purchases').update({ error: message, applied_at: null }).eq('id', purchase.id);
@@ -207,6 +218,7 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   }
   if (outcome.passport) Object.assign(body, { ref_id: refId, cosmetics: cosmeticsOf(outcome.passport.state) });
   if (outcome.chain) body.chain = chainBlock(outcome.chain);
+  if (outcome.avatar) body.avatar = purchasedAvatarView(outcome.avatar, lang);
   if (THEME_KINDS.includes(item.kind)) body.theme = await loadTheme(db, userId, await loadCrystalItems(db), undefined, lang);
   return { status: 200, body };
 }

@@ -1,7 +1,7 @@
 import { localParts } from './awards.ts';
 
-export const MAX_LIVES = 5;
-/** A gift or an invite reward may sit this many lives above the maximum, so it is never wasted. */
+export const MAX_LIVES = 10;
+/** A gift or an invite reward may sit this many lives above the maximum, so it is never wasted. (A pack may go further: see `addLives`.) */
 export const BONUS_LIVES = 1;
 export const REGEN_INTERVAL_SECONDS = 20 * 60;
 export const XP_PER_LEVEL = 200;
@@ -12,6 +12,8 @@ export interface LivesState {
   maxLives: number;
   /** Start of the regeneration interval that is running. Irrelevant while full. */
   lastRegenAt: string;
+  /** While in the future a mistake costs no life. `undefined` and `null`: not unlimited. */
+  unlimitedUntil?: string | null;
 }
 
 export interface LivesView {
@@ -21,13 +23,24 @@ export interface LivesView {
   /** Seconds until the next life comes back; 0 when full. */
   regen_seconds: number;
   regen_interval_seconds: number;
-  /** Lives above `max` (a gift or an invite reward): 0 or 1. They never regenerate. */
+  /** Lives above `max` (a gift, an invite reward, a pack): a reserve. It never regenerates and is spent before anything else. */
   bonus: number;
+  /** The end of the infinite-lives pack, while it runs; otherwise `null`. */
+  unlimited_until: string | null;
 }
 
-/** Adds the lives that came back since `lastRegenAt`: one per interval, up to the maximum. */
+/** Whether the infinite-lives pack is running at `now`. */
+export function isUnlimited(state: Pick<LivesState, 'unlimitedUntil'>, now: Date): boolean {
+  return Boolean(state.unlimitedUntil) && Date.parse(state.unlimitedUntil as string) > now.getTime();
+}
+
+/**
+ * Adds the lives that came back since `lastRegenAt`: one per interval, up to the
+ * maximum. Lives above the maximum (a gift, a pack) are a reserve: they stay, and
+ * nothing regenerates while the learner is at or above the maximum.
+ */
 export function regenerate(state: LivesState, now: Date): LivesState {
-  const lives = Math.max(0, Math.min(state.lives, state.maxLives + BONUS_LIVES));
+  const lives = Math.max(0, state.lives);
   if (lives >= state.maxLives) return { ...state, lives, lastRegenAt: now.toISOString() };
   const startedAt = Math.min(new Date(state.lastRegenAt).getTime(), now.getTime());
   const gained = Math.floor((now.getTime() - startedAt) / REGEN_INTERVAL_MS);
@@ -36,9 +49,10 @@ export function regenerate(state: LivesState, now: Date): LivesState {
   return { ...state, lives: next, lastRegenAt: lastRegenAt.toISOString() };
 }
 
-/** A wrong answer: one life, never below zero. The caller makes it once per attempt id. */
+/** A wrong answer: one life, never below zero; none while the infinite pack runs. The caller makes it once per attempt id. */
 export function loseLife(state: LivesState, now: Date): LivesState {
   const current = regenerate(state, now);
+  if (isUnlimited(current, now)) return current;
   return { ...current, lives: Math.max(0, current.lives - 1) };
 }
 
@@ -51,11 +65,31 @@ export function grantLife(state: LivesState, now: Date): LivesState {
 /** A life given by someone else (a gift, an invite reward): may go one above the maximum. */
 export function giftLife(state: LivesState, now: Date): LivesState {
   const current = regenerate(state, now);
-  return { ...current, lives: Math.min(current.maxLives + BONUS_LIVES, current.lives + 1) };
+  return { ...current, lives: Math.max(current.lives, Math.min(current.maxLives + BONUS_LIVES, current.lives + 1)) };
 }
 
 export function refillLives(state: LivesState, now: Date): LivesState {
-  return { ...state, lives: Math.max(state.maxLives, Math.min(state.lives, state.maxLives + BONUS_LIVES)), lastRegenAt: now.toISOString() };
+  return { ...state, lives: Math.max(state.maxLives, state.lives), lastRegenAt: now.toISOString() };
+}
+
+/** What a life pack of the shop does: add lives (above the maximum too), or switch losing off for some days. */
+export type LifePack = { addLives: number } | { unlimitedDays: number };
+
+/** The pack an item's `effect` describes; `null` for the plain refill (and anything malformed). */
+export function lifePackOf(effect: Record<string, unknown> | null | undefined): LifePack | null {
+  const add = effect?.add_lives;
+  if (typeof add === 'number' && Number.isInteger(add) && add > 0 && add <= 1000) return { addLives: add };
+  const days = effect?.unlimited_days;
+  if (typeof days === 'number' && Number.isInteger(days) && days > 0 && days <= 365) return { unlimitedDays: days };
+  return null;
+}
+
+/** A pack bought: `addLives` adds on top of what regeneration brought (the reserve may pass the maximum); unlimited days stack. */
+export function applyLifePack(state: LivesState, pack: LifePack, now: Date): LivesState {
+  const current = regenerate(state, now);
+  if ('addLives' in pack) return { ...current, lives: current.lives + pack.addLives };
+  const from = isUnlimited(current, now) ? Date.parse(current.unlimitedUntil as string) : now.getTime();
+  return { ...current, unlimitedUntil: new Date(from + pack.unlimitedDays * 24 * 60 * 60 * 1000).toISOString() };
 }
 
 export function livesView(state: LivesState, now: Date): LivesView {
@@ -69,6 +103,7 @@ export function livesView(state: LivesState, now: Date): LivesView {
     regen_seconds: full ? 0 : Math.max(0, Math.ceil((nextAt - now.getTime()) / 1000)),
     regen_interval_seconds: REGEN_INTERVAL_SECONDS,
     bonus: Math.max(0, current.lives - current.maxLives),
+    unlimited_until: isUnlimited(current, now) ? (current.unlimitedUntil as string) : null,
   };
 }
 

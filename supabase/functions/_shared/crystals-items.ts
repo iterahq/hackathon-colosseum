@@ -34,4 +34,6 @@ export const CRYSTAL_HANDLERS: Record<string, ItemHandler | undefined> = {
   background: themeItem,
   app_icon: themeItem,
   border: themeItem,
+  // A collectible avatar goes through the SAME apply as a paid one: the `avatar_assets` row, the serial, the mint, what it includes.
+  avatar: ITEM_HANDLERS.avatar,
 };

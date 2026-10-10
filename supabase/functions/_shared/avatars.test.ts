@@ -21,6 +21,8 @@ import {
   type AvatarCatalog,
   type AvatarItem,
   type ReservationStore,
+  includedWithMap,
+  includesOf,
 } from './avatars';
 import { loreOf } from './lore';
 import { companionArtInput, companionAttributes, companionChainImageUrl, companionFromAttributes, type CompanionSnapshot } from './companion';
@@ -196,6 +198,26 @@ describe('catalog and tiers', () => {
     });
     expect(shopAvatarFields(catalog, seasonal, 'pt', SUPABASE, { ...base, now: new Date('2026-12-24T00:00:00Z') }).season).toMatchObject({ label: 'Natal', available: true });
     expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, base).season).toBeNull();
+  });
+
+  it('lists what an avatar includes, with titles, and which avatar a border comes with', () => {
+    const caju = item('event_verao', { effect: { includes: ['border_caju', 'outfit_glasses', 'Not A Key', 'border_caju'] } });
+    const withIncluded: AvatarCatalog = {
+      ...catalog,
+      items: new Map([...catalog.items, [caju.key, caju]]),
+      included: new Map([
+        ['border_caju', { key: 'border_caju', kind: 'border', title_i18n: { pt: 'Borda Caju', en: 'Caju border' } }],
+        ['outfit_glasses', { key: 'outfit_glasses', kind: 'outfit', title_i18n: { pt: 'Óculos', en: 'Glasses' } }],
+      ]),
+    };
+    expect(includesOf(caju.effect)).toEqual(['border_caju', 'outfit_glasses']);
+    expect(shopAvatarFields(withIncluded, caju, 'pt', SUPABASE, { supply: undefined, own: null, equippedKey: null }).includes).toEqual([
+      { key: 'border_caju', kind: 'border', title: 'Borda Caju' },
+      { key: 'outfit_glasses', kind: 'outfit', title: 'Óculos' },
+    ]);
+    expect(shopAvatarFields(catalog, LEADER, 'pt', SUPABASE, { supply: undefined, own: null, equippedKey: null }).includes).toEqual([]);
+    expect(includedWithMap(withIncluded).get('border_caju')).toBe('event_verao');
+    expect(includedWithMap(withIncluded).get('border_bronze')).toBeUndefined();
   });
 
   it('is sold out when every unit is paid or held, except for the learner holding one', () => {
