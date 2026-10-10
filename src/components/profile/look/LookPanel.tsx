@@ -17,7 +17,7 @@ interface Props {
   onOutfit: (key: string | null) => void;
 }
 
-const GRID = 'grid grid-cols-4 gap-1 sm:grid-cols-5 lg:grid-cols-6';
+const GRID = 'grid grid-cols-4 gap-1 sm:grid-cols-[repeat(auto-fill,minmax(72px,1fr))]';
 
 function Row({ label, children }: { label?: string; children: ReactNode }) {
   return (

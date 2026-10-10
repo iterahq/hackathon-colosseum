@@ -25,7 +25,7 @@ export function LookChip({ label, title, on, disabled, rarity, testId, onPick, c
       data-testid={testId}
       disabled={disabled}
       onClick={() => !on && onPick()}
-      className={`flex min-h-11 w-full flex-col items-center gap-1 rounded-xl border p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3FD17F] disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-[#3FD17F] bg-[#3FD17F]/10' : 'border-transparent hover:border-[#3A352F] hover:bg-[#1B1815]'}`}
+      className={`flex min-h-11 w-full flex-col items-center gap-1 rounded-xl border p-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3FD17F] disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'border-[#3FD17F] bg-[#3FD17F]/10' : 'border-transparent hover:border-[#3A352F] hover:bg-[#1B1815]'}`}
     >
       <span className="relative flex h-14 w-14 items-center justify-center sm:h-16 sm:w-16">
         {children}
@@ -34,7 +34,7 @@ export function LookChip({ label, title, on, disabled, rarity, testId, onPick, c
             <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 6.5l2.2 2.2 4.8-5" /></svg>
           </span>
         )}
-        {rarity && !on && <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full" style={{ background: RARITY_DOT[rarity] ?? NEUTRAL_DOT }} />}
+        {rarity && rarity !== 'common' && !on && <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full" style={{ background: RARITY_DOT[rarity] ?? NEUTRAL_DOT }} />}
       </span>
       <span className="max-w-full truncate font-mono text-[10px] text-[#C9BFB0] sm:text-[11px]">{label}</span>
     </button>
