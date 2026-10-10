@@ -17,8 +17,8 @@ interface Props {
   streak?: number | null;
 }
 
-/** The learner's top bar: wordmark, route tabs, the game HUD and the identity pill; a bottom tab bar on phones. */
-export function DashboardTopBar({ xp, achievements, streak = null }: Props) {
+/** The learner's top bar: wordmark, route tabs, search, the lives chip and the identity pill; a bottom tab bar on phones. Callers may still pass their numbers: they live in the welcome strip and the account menu now. */
+export function DashboardTopBar(_props: Props) {
   const { pathname } = useLocation();
   const active = activeNavOf(pathname);
   const [scrolled, setScrolled] = useState(false);
@@ -52,7 +52,7 @@ export function DashboardTopBar({ xp, achievements, streak = null }: Props) {
             <div className="hidden sm:block">
               <HeaderLocale />
             </div>
-            <HeaderHud xp={xp} streak={streak} achievements={achievements} />
+            <HeaderHud />
             <HeaderIdentity />
           </div>
         </div>

@@ -8,6 +8,7 @@ import { shortAddress } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
 import { HeaderLocale } from './HeaderLocale';
 import { MENU_ITEM, MENU_LEGAL, MenuLegalRow, MenuSection } from './HeaderMenuParts';
+import type { HeaderStats } from '@/hooks/useHeaderStats';
 import type { HeaderRoles } from './useHeaderRoles';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
   email: string | null;
   wallet: WalletIdentity | null;
   roles: HeaderRoles;
+  stats?: HeaderStats;
   onClose: () => void;
   onExplainer: () => void;
   onSignOut: () => void;
@@ -24,7 +26,7 @@ const explorerUrl = (address: string, network: string | null) =>
   `https://explorer.solana.com/address/${encodeURIComponent(address)}${network ? `?cluster=${encodeURIComponent(network)}` : ''}`;
 
 /** The account sheet: who is signed in, then account, help, staff areas and sign out, each under a mono label. */
-export function HeaderMenu({ name, email, wallet, roles, onClose, onExplainer, onSignOut }: Props) {
+export function HeaderMenu({ name, email, wallet, roles, stats, onClose, onExplainer, onSignOut }: Props) {
   const { t } = useI18n();
   const reduced = !!useReducedMotion();
   const [copied, setCopied] = useState(false);
@@ -95,6 +97,12 @@ export function HeaderMenu({ name, email, wallet, roles, onClose, onExplainer, o
           <HeaderLocale size="lg" />
         </div>
       </div>
+
+      {stats && (
+        <p className="border-b border-[#262320] px-4 py-2 [font:500_11px_JetBrains_Mono] text-[#A0978A]" data-testid="header-menu-stats">
+          {t('header.menu.stats', { streak: stats.streak ?? 0, xp: stats.xp ?? 0, level: stats.level ?? 1, achievements: stats.achievements ?? 0 })}
+        </p>
+      )}
 
       <MenuSection label={t('header.menu.account')} first>
         {wallet && (

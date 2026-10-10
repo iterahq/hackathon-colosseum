@@ -67,3 +67,14 @@ describe('initialsOf', () => {
     expect(initialsOf('')).toBe('');
   });
 });
+
+describe('greetingName', () => {
+  it('never greets with a wallet address', async () => {
+    const { greetingName } = await import('@/utils/headerHud');
+    expect(greetingName('Samuel')).toBe('Samuel');
+    expect(greetingName('  ')).toBeNull();
+    expect(greetingName(null)).toBeNull();
+    expect(greetingName('CQzi…DAhW')).toBeNull();
+    expect(greetingName('CQziGuEV4i8yGBHwQQJMpe6tACSMR5jWUWjmYSGVDAhW')).toBeNull();
+  });
+});

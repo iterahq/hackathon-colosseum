@@ -1,6 +1,14 @@
 /** Strings added by the UX pass: companion facts, lives rule, proof of purchase, login reason. */
 export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   pt: {
+    'dash.welcome': 'Bem-vindo de volta',
+    'dash.welcome.named': 'Bem-vindo de volta, {name}',
+    'dash.welcome.prompt': '> dia {day} de {total} · {trail}',
+    'dash.welcome.streak': '{n} dias seguidos',
+    'dash.welcome.xp': '{xp} XP · nível {level}',
+    'dash.welcome.achievements': '{n} conquistas',
+    'header.menu.stats': '{streak} dias seguidos · {xp} XP · nível {level} · {achievements} conquistas',
+    'header.search.trigger.wide': 'Buscar trilhas, cursos, dias…',
     'profile.title': 'Perfil do aluno',
     'profile.verified': '{n} verificados na Solana',
     'profile.companion': 'Tera · on-chain',
@@ -34,6 +42,14 @@ export const UX_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'ux.outfit.outfit_headphones': 'Fones',
   },
   en: {
+    'dash.welcome': 'Welcome back',
+    'dash.welcome.named': 'Welcome back, {name}',
+    'dash.welcome.prompt': '> day {day} of {total} · {trail}',
+    'dash.welcome.streak': '{n}-day streak',
+    'dash.welcome.xp': '{xp} XP · level {level}',
+    'dash.welcome.achievements': '{n} achievements',
+    'header.menu.stats': '{streak}-day streak · {xp} XP · level {level} · {achievements} achievements',
+    'header.search.trigger.wide': 'Search trails, courses, days…',
     'profile.title': 'Learner profile',
     'profile.verified': '{n} verified on Solana',
     'profile.companion': 'Tera · on-chain',

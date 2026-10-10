@@ -132,11 +132,15 @@ beforeEach(() => {
 describe('HomeRoute: a member', () => {
   beforeEach(member);
 
-  it('draws the top bar with the counts and makes the member reads', () => {
+  it('draws the numbers in the welcome strip, not in the header, and makes the member reads', () => {
     renderHome();
-    expect(screen.getAllByLabelText('sequência de 1 dias').length).toBeGreaterThan(0);
-    expect(screen.getAllByLabelText('120 XP · nível 1 · 120 de 200 para o próximo').length).toBeGreaterThan(0);
-    expect(screen.getAllByLabelText('0 conquistas').length).toBeGreaterThan(0);
+    const strip = screen.getByTestId('welcome-strip');
+    expect(within(strip).getByTestId('welcome-title')).toHaveTextContent('Bem-vindo de volta');
+    expect(strip).toHaveTextContent('1 dias seguidos');
+    expect(strip).toHaveTextContent('120 XP · nível 1');
+    expect(strip).toHaveTextContent('0 conquistas');
+    expect(strip).toHaveTextContent('> dia 01 de 2 · HTML');
+    expect(within(screen.getByTestId('header-hud')).queryByLabelText('sequência de 1 dias')).not.toBeInTheDocument();
     expect(useTrailDashboard).toHaveBeenCalledWith({ enabled: true });
     expect(useUserStats).toHaveBeenCalledWith({ enabled: true });
     expect(useAchievements).toHaveBeenCalledWith({ enabled: true });
