@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { InviteCard } from '@/components/gift/InviteCard';
 import { AppTopBar } from '@/components/header/AppTopBar';
@@ -93,6 +94,7 @@ export default function ShopPage() {
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
       <main className="mx-auto flex max-w-[1100px] flex-col gap-10 px-4 pb-14 pt-6 sm:px-8 xl:pt-10">
+        <Link to="/world" className="self-start [font:600_13px_Inter] text-[#A0978A] hover:text-[#F4EDE2]" data-testid="shop-world-link">{t('world.shopLink')}</Link>
         <ShopTeraStage
           companion={companion.data?.companion ?? null}
           lives={lives}

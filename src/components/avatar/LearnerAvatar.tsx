@@ -4,7 +4,7 @@ const SIZES = { xs: 'h-7 w-7', sm: 'h-9 w-9', md: 'h-12 w-12', lg: 'h-20 w-20', 
 export type LearnerAvatarSize = keyof typeof SIZES;
 
 /** Green is the brand ring; rarer tiers get a thin metal edge, never a large colour fill. */
-const RING: Record<AvatarRarity, string> = {
+export const RING: Record<AvatarRarity, string> = {
   common: 'ring-[#262320]',
   rare: 'ring-[#3FD17F]',
   epic: 'ring-[#62D996]',

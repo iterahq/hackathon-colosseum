@@ -21,6 +21,7 @@ import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
 import { SOCIAL_MESSAGES } from './socialMessages';
 import { TERA_MESSAGES } from './teraMessages';
+import { WORLD_MESSAGES } from './worldMessages';
 import { CATALOG_MESSAGES } from '@iterahq/screens/catalog/messages';
 import { HOME_MESSAGES } from '@iterahq/screens/home/messages';
 import { NOT_FOUND_MESSAGES } from '@iterahq/screens/not-found/messages';
@@ -1224,6 +1225,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.signOut': 'Sair',
     ...PASSPORT_MESSAGES.pt,
     ...TERA_MESSAGES.pt,
+    ...WORLD_MESSAGES.pt,
     ...SHOP_MESSAGES.pt,
     ...UX_MESSAGES.pt,
     ...LINK_MESSAGES.pt,
@@ -2411,6 +2413,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     'header.id.signOut': 'Sign out',
     ...PASSPORT_MESSAGES.en,
     ...TERA_MESSAGES.en,
+    ...WORLD_MESSAGES.en,
     ...SHOP_MESSAGES.en,
     ...UX_MESSAGES.en,
     ...LINK_MESSAGES.en,
