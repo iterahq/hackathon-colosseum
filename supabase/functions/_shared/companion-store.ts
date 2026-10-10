@@ -13,6 +13,7 @@ import { changedAttributes, explorerUrl, type ChainWrite, type OnchainAttribute 
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 import { deriveStats, livesView, regenerate, type CompanionStats, type LivesState, type XpEvent } from './lives.ts';
+import { MIRROR_STALE_MS, afterPass, waitDecision } from './mirror.ts';
 
 export const TIME_ZONE = 'America/Sao_Paulo';
 const STALE_CLAIM_MS = 3 * 60_000;
@@ -281,48 +282,113 @@ export async function mintCompanion(db: IteraClient, userId: string, wallet: str
 export interface MirrorResult {
   /** Chain and database agree after this call. */
   synced: boolean;
-  /** The transaction this call sent; `null` when there was nothing to write or it failed. */
+  /** The last write this call confirmed; `null` when it wrote nothing. Its attributes are what the asset holds. */
   write: ChainWrite | null;
+  /** Another invocation holds the mirror and was told to write again; this call sent nothing. */
+  deferred: boolean;
+}
+
+const MIRROR_RETRY_MS = 400;
+
+/** Takes the mirror for this invocation. The token is the claim; `null` when another invocation holds it. */
+async function claimMirror(db: IteraClient, userId: string): Promise<string | null> {
+  const now = new Date();
+  const token = now.toISOString();
+  const staleBefore = new Date(now.getTime() - MIRROR_STALE_MS).toISOString();
+  const { data, error } = await db
+    .from('companions')
+    .update({ mirror_claimed_at: token, mirror_dirty: false })
+    .eq('user_id', userId)
+    .or(`mirror_claimed_at.is.null,mirror_claimed_at.lt."${staleBefore}"`)
+    .select('user_id');
+  if (error) throw new Error(`companions mirror claim: ${error.message}`);
+  return (data ?? []).length > 0 ? token : null;
+}
+
+/** The claim, waited for up to `waitMs`. Giving up marks the row dirty so the holder writes again. */
+async function claimOrDefer(db: IteraClient, userId: string, waitMs: number): Promise<string | null> {
+  const startedAt = Date.now();
+  for (;;) {
+    const token = await claimMirror(db, userId);
+    if (token) return token;
+    if (waitDecision(startedAt, Date.now(), waitMs) === 'defer') break;
+    await new Promise((resolve) => setTimeout(resolve, MIRROR_RETRY_MS));
+  }
+  const { error } = await db.from('companions').update({ mirror_dirty: true, mirror_due: true }).eq('user_id', userId);
+  if (error) throw new Error(`companions mirror defer: ${error.message}`);
+  // The holder may have let go between the refusal and the mark: then nobody would read it.
+  return claimMirror(db, userId);
+}
+
+/** Lets go of the mirror, unless a caller deferred since the pass began. True when released. */
+async function releaseMirror(db: IteraClient, userId: string, token: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('companions')
+    .update({ mirror_claimed_at: null, mirror_due: false, mirror_error: null })
+    .eq('user_id', userId)
+    .eq('mirror_claimed_at', token)
+    .eq('mirror_dirty', false)
+    .select('user_id');
+  if (error) throw new Error(`companions mirror release: ${error.message}`);
+  return (data ?? []).length > 0;
 }
 
 /**
- * Writes the companion's current attributes to its asset when they differ from
- * the last ones written. Never throws: a failed write is flagged `mirror_due`
- * and retried by the next call.
+ * Brings the companion's asset to the database's current values. One invocation
+ * per companion writes at a time: it reads the row immediately before each
+ * write, and writes again while callers that found it busy keep marking the
+ * row dirty, so the last confirmed write is the latest state. A caller that
+ * cannot take the mirror within `waitMs` sends nothing. Never throws: a failed
+ * write is flagged `mirror_due` and retried by the next call.
  */
-export async function syncMirror(db: IteraClient, userId: string): Promise<MirrorResult> {
+export async function syncMirror(db: IteraClient, userId: string, waitMs = 0): Promise<MirrorResult> {
+  let token: string | null = null;
+  let write: ChainWrite | null = null;
   try {
-    const row = await loadCompanion(db, userId);
-    if (!row || row.mint_status !== 'minted' || !row.asset_address) return { synced: false, write: null };
-    const now = new Date();
-    const attributes = companionAttributes(snapshotOf(row, await loadStats(db, userId, now), now));
-    let write: ChainWrite | null = null;
-    if (!sameAttributes(row.mirrored, attributes)) {
-      const [sdk, config] = await Promise.all([import('./chain.ts'), loadConfig(db)]);
-      const collection = config[COLLECTIONS.companions.configKey];
-      if (!collection) throw new Error('companions collection is not configured');
-      const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
-      write = {
-        asset: row.asset_address,
-        signature,
-        at: new Date().toISOString(),
-        attributes,
-        changed: changedAttributes(row.mirrored, attributes),
-      };
-    } else if (!row.mirror_due) {
-      return { synced: true, write: null };
+    const minted = await loadCompanion(db, userId);
+    if (!minted || minted.mint_status !== 'minted' || !minted.asset_address) return { synced: false, write: null, deferred: false };
+    token = await claimOrDefer(db, userId, waitMs);
+    if (!token) return { synced: false, write: null, deferred: true };
+
+    for (let pass = 1; ; pass += 1) {
+      const row = await loadCompanion(db, userId);
+      if (!row || !row.asset_address) throw new Error('companions: row missing during mirror');
+      const now = new Date();
+      const attributes = companionAttributes(snapshotOf(row, await loadStats(db, userId, now), now));
+      if (!sameAttributes(row.mirrored, attributes)) {
+        const [sdk, config] = await Promise.all([import('./chain.ts'), loadConfig(db)]);
+        const collection = config[COLLECTIONS.companions.configKey];
+        if (!collection) throw new Error('companions collection is not configured');
+        const signature = await sdk.updateCredentialAttributes(sdk.loadChain(), { asset: row.asset_address, collection, attributes });
+        write = { asset: row.asset_address, signature, at: new Date().toISOString(), attributes, changed: changedAttributes(row.mirrored, attributes) };
+        const { error } = await db.from('companions').update({ mirrored: attributes, mirrored_at: write.at }).eq('user_id', userId);
+        if (error) throw new Error(`companions mirror: ${error.message}`);
+      }
+
+      const released = await releaseMirror(db, userId, token);
+      const step = afterPass({ dirty: !released, pass });
+      if (step === 'release') return { synced: true, write, deferred: false };
+      if (step === 'yield') break;
+      // Another pass: keep the claim fresh and start counting deferrals again.
+      const renewed = new Date().toISOString();
+      const { data, error } = await db
+        .from('companions')
+        .update({ mirror_claimed_at: renewed, mirror_dirty: false })
+        .eq('user_id', userId)
+        .eq('mirror_claimed_at', token)
+        .select('user_id');
+      if (error) throw new Error(`companions mirror renew: ${error.message}`);
+      if ((data ?? []).length === 0) return { synced: false, write, deferred: false };
+      token = renewed;
     }
-    const { error } = await db
-      .from('companions')
-      .update({ mirrored: attributes, mirror_due: false, mirror_error: null, ...(write ? { mirrored_at: write.at } : {}) })
-      .eq('user_id', userId);
-    if (error) throw new Error(`companions mirror: ${error.message}`);
-    return { synced: true, write };
+    await db.from('companions').update({ mirror_claimed_at: null, mirror_due: true }).eq('user_id', userId).eq('mirror_claimed_at', token);
+    return { synced: false, write, deferred: false };
   } catch (error) {
     console.error('companion mirror failed', error);
     const message = String(error instanceof Error ? error.message : error).slice(0, 300);
     await db.from('companions').update({ mirror_due: true, mirror_error: message }).eq('user_id', userId);
-    return { synced: false, write: null };
+    if (token) await db.from('companions').update({ mirror_claimed_at: null }).eq('user_id', userId).eq('mirror_claimed_at', token);
+    return { synced: false, write, deferred: false };
   }
 }
 
@@ -332,7 +398,7 @@ export async function syncMirror(db: IteraClient, userId: string): Promise<Mirro
  * background, the row is flagged `mirror_due` and the answer is `null`.
  */
 export async function mirrorWithin(db: IteraClient, userId: string, budgetMs: number): Promise<ChainWrite | null> {
-  const work = syncMirror(db, userId);
+  const work = syncMirror(db, userId, budgetMs / 2);
   inBackground(work);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<null>((resolve) => {
