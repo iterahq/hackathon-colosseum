@@ -1,5 +1,6 @@
 import { GLOBAL_REF } from './awards.ts';
 import { grantLifeOnce } from './companion-store.ts';
+import { earnCrystals } from './crystals-store.ts';
 import type { IteraClient } from './db.ts';
 import { CODE_LENGTH, claimVerdict, codeFromBytes, isReferralCode, takeRewardSlot, type ClaimRefusal, type ReferralEntry } from './referral.ts';
 
@@ -109,6 +110,12 @@ export async function rewardReferral(db: IteraClient, invitedUserId: string): Pr
   await Promise.all([
     grantLifeOnce(db, invitedUserId, 'referral:invited', 'referral'),
     grantLifeOnce(db, inviterUserId, `referral:${invitedUserId}`, 'referral'),
+  ]);
+
+  // Phoenix Crystals on top of the medal and the life: once per invite for each side. Never throws.
+  await earnCrystals(db, [
+    { userId: inviterUserId, reason: 'invite_friend', refId: invitedUserId },
+    { userId: invitedUserId, reason: 'invited', refId: GLOBAL_REF },
   ]);
 
   const { error: settleError } = await db

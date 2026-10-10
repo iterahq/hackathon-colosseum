@@ -67,13 +67,13 @@ export async function authorityLamports(chain: Chain): Promise<number> {
  * label (a row id, a collection name). A retry after a lost response finds the
  * account already there instead of minting a duplicate.
  */
-async function derivedSigner(chain: Chain, label: string): Promise<KeypairSigner> {
+export async function derivedSigner(chain: Chain, label: string): Promise<KeypairSigner> {
   const material = new Uint8Array([...chain.seed, ...new TextEncoder().encode(`itera-passport:${label}`)]);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', material));
   return createSignerFromKeypair(chain.umi, chain.umi.eddsa.createKeypairFromSeed(digest));
 }
 
-async function sendAndConfirm(chain: Chain, builder: TransactionBuilder): Promise<string> {
+export async function sendAndConfirm(chain: Chain, builder: TransactionBuilder): Promise<string> {
   const { umi } = chain;
   const transaction = await builder.setLatestBlockhash(umi).then((ready) => ready.buildAndSign(umi));
   const signature = await umi.rpc.sendTransaction(transaction, { commitment: 'confirmed' });

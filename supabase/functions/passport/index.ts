@@ -19,6 +19,7 @@ import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClie
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
+import { earnCrystals, earningsOfAwards } from '../_shared/crystals-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
 import { referralNote } from '../_shared/referral.ts';
 
@@ -475,6 +476,8 @@ Deno.serve(async (request) => {
     const pendingReview = dayPendingReview({ ...learning, existing }, body.lessonId);
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
+    // Phoenix Crystals: what the stamps this call created pay. Never fails the call.
+    await earnCrystals(db, earningsOfAwards(caller.iteraUserId, rows.filter((row) => stored.created.has(row.id))));
 
     // The invite reward is paid on the invited learner's first completed day, and only then.
     let inviterToSettle: string | null = null;
