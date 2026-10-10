@@ -113,7 +113,7 @@ as `passport`. Errors are `{ "error": "<code>" }`. Common: `401 unauthorized`,
 
 Active items only. Without a valid user token `owned`/`equipped` are `false`. `owned_refs` lists the
 `ref_id`s the caller holds the item for (trails, for ink and frame). `kind` is
-`life | outfit | ink | frame`.
+`life | outfit | ink | frame | avatar` (the avatar entries carry more fields: see "Tera avatars").
 
 ### `POST /purchase-intent`
 
@@ -578,6 +578,253 @@ node scripts/hackathon/gift-e2e.mjs                                         # de
 node scripts/hackathon/gift-browser.mjs --base http://localhost:8080 --out /tmp/hk-gift   # two wallets, fake Phantom, local dev server
 ```
 
+## Tera avatars (profile pictures: free icons and collectible NFTs)
+
+Migration `0142_nft_avatars.sql`. Pure rules in `_shared/avatars.ts` and `_shared/preview.ts`, database
+and mint in `_shared/avatar-store.ts`, picture fetch in `_shared/avatar-image.ts`. Everything here is
+additive: the items, the certification path and the lives behave as before.
+
+Every learner always has an avatar (there is no photo upload). The default is `tera_normal`. Ten
+expressions are free and everyone's; the other 33 are **collectibles**: Metaplex Core assets in the
+collection "Itera Avatars" (`onchain_config.collection_avatars`,
+`Gy4mSSquMaH278zLbGvCvaLS2RTPoZvAFTfHsw7qHAvr`), numbered, sold from the wallet through the purchase
+rail, and **not frozen**: unlike a certification or the companion, the owner can transfer one.
+
+### Data
+
+| Table | What | Learner can read |
+|---|---|---|
+| `shop_items` (kind `avatar`) | the catalog. Extra columns `rarity`, `avatar_group`, `supply_cap` (`null` = open edition), `image_key`. `price_lamports` is `NULL` for a free avatar | everyone |
+| `avatar_tiers` | the rarity ladder: `rarity`, `rank`, `tier_name_i18n`, `label_i18n` | everyone |
+| `avatar_assets` | one row per (learner, avatar): `serial`, `purchase_id`, `mint_status` (`reserved` / `pending` / `minted` / `failed`), `reserved_until`, `wallet`, `asset_address` (unique), `tx_signature`, `minted_at`. Unique `(user_id, item_key)` and `(item_key, serial)` | own rows |
+| `avatar_supply` (view) | per avatar: `minted` (paid units) and `held` (paid + unpaid holds still inside their window) | nobody |
+| `companions.avatar` | the avatar worn, default `tera_normal` | own row |
+| `purchases.refund_due_at` | a paid purchase whose unit was gone | own rows |
+
+| rarity | tier name (pt / en) | label (pt / en) |
+|---|---|---|
+| `common` | Tera / Tera | Comum / Common |
+| `rare` | Super Tera / Super Tera | Raro / Rare |
+| `epic` | Mega Tera / Mega Tera | Muito raro / Very rare |
+| `legendary` | Tera Lendário / Legendary Tera | Lendário / Legendary |
+| `mythic` | Tera Mítico / Mythic Tera | Impossível / Impossible |
+
+Prices use the shop's one pinned rate (1 US cent = 55 000 lamports). The top of the pyramid is
+US$ 1,000.00 = 5 500 000 000 lamports: above int32, so lamports stay `bigint` in the database and
+`bigint` / safe-integer numbers in code, and the ceiling of `shop_items.price_lamports` went from 1 SOL
+to 100 SOL. `insufficient_funds` is the normal answer for the expensive tiers. The faucet still
+looks at the cheapest item **for sale** (`life_refill`), so its behaviour did not change.
+
+| key | title (pt / en) | group | rarity | price | supply |
+|---|---|---|---|---|---|
+| `tera_normal` | Normal / Normal | expression | common | free | open |
+| `tera_feliz` | Feliz / Happy | expression | common | free | open |
+| `tera_determinado` | Determinado / Determined | expression | common | free | open |
+| `tera_piscada` | Piscada / Wink | expression | common | free | open |
+| `tera_surpreso` | Surpreso / Surprised | expression | common | free | open |
+| `tera_focado` | Focado / Focused | expression | common | free | open |
+| `tera_triste` | Triste / Sad | expression | common | free | open |
+| `tera_sorriso` | Sorriso ligeiro / Slight smile | expression | common | free | open |
+| `tera_sob_pressao` | Sob pressão / Under pressure | expression | common | free | open |
+| `tera_curioso` | Curioso / Curious | expression | common | free | open |
+| `base_iniciante` | Iniciante / Beginner | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_focado` | Focado / Focused | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_estudioso` | Estudioso / Studious | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_determinado` | Determinado / Determined | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_disciplinado` | Disciplinado / Disciplined | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_focado_no_objetivo` | Focado no objetivo / Goal-driven | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_criativo` | Criativo / Creative | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `base_analitico` | Analítico / Analytical | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `acc_cyber_chip` | Cyber-chip / Cyber-chip | accessory | rare | US$ 0.50 ≈ 0.00275 SOL | open |
+| `acc_oculos_tech` | Óculos tech / Tech glasses | accessory | rare | US$ 0.50 ≈ 0.00275 SOL | open |
+| `acc_capuz_web3` | Capuz Web3 / Web3 hoodie | accessory | rare | US$ 0.50 ≈ 0.00275 SOL | open |
+| `acc_chain_link` | Chain-link / Chain-link | accessory | rare | US$ 0.50 ≈ 0.00275 SOL | open |
+| `acc_programador` | Programador / Coder | accessory | rare | US$ 0.50 ≈ 0.00275 SOL | open |
+| `base_lider` | Líder / Leader | base | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `base_mistico` | Místico / Mystic | base | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `base_natural` | Natural / Natural | base | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `base_livre` | Livre / Free spirit | base | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `base_guerreiro` | Guerreiro / Warrior | base | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `base_sombrio` | Sombrio / Shadow | base | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `base_sabedoria` | Sabedoria / Wisdom | base | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `base_evoluido` | Evoluído / Evolved | base | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `event_halloween` | Halloween / Halloween | event | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `event_natal` | Natal / Holiday | event | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `event_verao` | Verão / Summer | event | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `special_dourado` | Dourado / Golden | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_prata` | Prata / Silver | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_verde_neon` | Verde neon / Neon green | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_azul_eletrico` | Azul elétrico / Electric blue | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_roxo_estelar` | Roxo estelar / Stellar purple | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_vermelho_lava` | Vermelho lava / Lava red | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_preto_cosmico` | Preto cósmico / Cosmic black | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+| `special_arco_iris` | Arco-íris / Rainbow | special | mythic | US$ 1,000.00 ≈ 5.5 SOL | 5 |
+| `event_space` | Space / Space | event | mythic | US$ 1,000.00 ≈ 5.5 SOL | 5 |
+
+### Adding an avatar = one insert + one uploaded image
+
+```sql
+insert into itera.shop_items
+  (key, kind, price_lamports, price_usd_cents, price_label, title_i18n, description_i18n, active, sort, rarity, avatar_group, supply_cap, image_key)
+values
+  ('special_aurora', 'avatar', 100 * 55000, 100, 'US$ 1.00 ≈ 0.0055 SOL',
+   '{"pt": "Aurora", "en": "Aurora"}', '{"pt": "…", "en": "…"}', true, 1700, 'rare', 'special', 250, 'special_aurora');
+```
+
+Upload `special_aurora.webp` (512 px), `special_aurora_128.webp` and `special_aurora.png` to the public
+bucket `tera-avatars`; every URL is derived from `image_key`. A free avatar is the same insert with
+`price_lamports = null`, `price_usd_cents = 0`. A new tier is one row in `avatar_tiers`. No deploy:
+`shop-items` reads the catalog on every call, the other functions within a minute. Only `expression`
+avatars take an outfit (see the art rule below).
+
+### `GET /shop-items`: avatar entries
+
+Listed after the older items (`sort` 1000 and up; sorting by rarity is the frontend's job).
+
+```json
+{ "key": "base_lider", "kind": "avatar", "title": "Líder", "description": "…",
+  "rarity": "rare", "rarity_label": "Raro", "tier_name": "Super Tera", "group": "base", "free": false,
+  "price_usd_cents": 100, "price_lamports": 5500000, "price_label": "US$ 1.00 ≈ 0.0055 SOL",
+  "image_url": "https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars/base_lider.webp",
+  "thumb_url": "…/base_lider_128.webp",
+  "supply": { "minted": 6, "max": 500 }, "sold_out": false,
+  "owned": false, "equipped": false, "asset_address": null, "allows_outfit": false,
+  "sort": 1300, "art": {}, "owned_refs": [] }
+```
+
+- A free avatar: `free: true`, `owned: true` for everyone (also without a token), `price_lamports: 0`,
+  `price_label` "Grátis" / "Free", `supply: { minted: 0, max: null }`.
+- `supply.minted` counts paid units. `sold_out` is true when paid units plus live unpaid holds reach
+  the cap (never for the learner who is holding one, or who owns it).
+- `owned` / `equipped` / `asset_address` need a token. `asset_address` stays `null` until the mint.
+
+### Buying: serial, supply and the reservation
+
+An avatar is the item kind `avatar` of the registry (`ITEM_HANDLERS.avatar`), through the unchanged
+`purchase-intent` -> `purchase-confirm` / `purchase-submit` path: same ledger (`itera.payments`, one
+payment settles one thing), same wallet rule (never from the body), same Circuito share.
+
+- **`canBuy`**: `409 free_item` (a free avatar is never sold or minted), `409 already_owned` (one per
+  learner), `409 sold_out`, `400 invalid_ref` (an avatar takes no `ref_id`).
+- **The serial is reserved at intent time.** Only after the wallet is known to hold the price
+  (`402 insufficient_funds` reserves nothing) the intent takes the lowest free serial as an
+  `avatar_assets` row with `mint_status = 'reserved'` and `reserved_until` = the intent's `expires_at`
+  + 2 minutes. Asking for the intent again keeps the same row and moves the window. An unpaid hold
+  past its window is deleted by the next buyer of that avatar and its serial is handed out again, so
+  a serial never exceeds the cap.
+- **Race safety** is the unique index `(item_key, serial)`: the serial is proposed in TypeScript
+  (`reserveAvatar`, `lowestFreeSerial`) and the insert decides. Of two buyers of the last unit one
+  insert wins; the other reads again, finds no serial at or below the cap and gets `409 sold_out`
+  **before paying**. A cap of 5 can never hold a sixth row.
+- **Hoarding**: one learner holds at most 2 unpaid units of limited avatars (`429 reservation_limit`).
+- **`apply`** (at confirm): the hold becomes the learner's (`pending`), then the asset is minted to
+  the wallet that paid, name `<tier> · <title> #<serial>` in Portuguese (`Super Tera · Líder #7`),
+  URI `credential-meta/avatar/<avatar_assets id>`, Attributes `kind=avatar`, `key`, `rarity`, `tier`,
+  `serial`, `supply_cap` (`open` for an open edition), and **no freeze plugin**. The asset address is
+  derived from the row id, one invocation mints at a time, and a repeated confirm returns the same
+  asset: pay once, exactly one asset. The first avatar ever also created the collection.
+- **Paid, but the unit is gone.** Only possible when a learner pays after their hold lapsed AND the
+  last unit was handed on meanwhile (a transaction that landed but was confirmed late). The confirm
+  first tries to take a unit again; when none is left the purchase stays `paid`, gets
+  `refund_due_at` and `error = 'sold_out_after_payment'`, and the answer is
+  `409 { "error": "sold_out_after_payment", "status": "paid", "refund_due": true, "intent_id", "explorer_url" }`.
+  It is never retried into a mint and sends no Circuito share. Nothing refunds automatically:
+
+```sql
+select id, user_id, item_key, wallet, lamports, tx_signature, refund_due_at from itera.purchases where refund_due_at is not null;
+```
+
+- The paid answer gains
+  `avatar: { key, title, tier_name, asset_address, explorer_url, image_url, thumb_url, serial }`
+  (no `lives` / `companion` block). The first confirm waits for the mint (5 to 15 s);
+  `502 apply_failed` is retryable as for any item.
+
+### Equip
+
+`POST /companion { "lang": "pt" | "en", "equip": { "avatar": "<key>" } }` (the body may also carry
+`outfit`; `avatar` alone leaves the outfit as it is). A free avatar can be worn by anyone, a
+collectible only by the learner whose **paid** `avatar_assets` row it is; anything else (an unknown
+key, an unpaid hold) is `409 not_owned`. **Ownership is our table: transfers on chain are not
+tracked in this version**, so a learner who sent the asset away can still wear it here, and whoever
+received it cannot. `learner-profile` does tell the truth about the chain (below).
+
+Every `companion` answer carries, for wallet and e-mail learners alike:
+
+```json
+"avatar": { "key": "tera_normal", "title": "Normal", "rarity": "common", "tier_name": "Tera", "group": "expression",
+            "image_url": "…/tera_normal.webp", "thumb_url": "…/tera_normal_128.webp",
+            "asset_address": null, "allows_outfit": true }
+```
+
+A stored key that left the catalog reads as the default. The avatar is mirrored to the companion
+asset by the existing serialized mirror (same claim, cooldown and daily cap; an avatar put on within
+10 minutes of buying it skips the cooldown like an outfit). The attribute `avatar` is written **only
+while a non-default avatar is worn**: absent means `tera_normal`, so no companion is rewritten just
+because avatars exist. `companion.image_url` gains `-<key>` in its `v` for a non-default avatar.
+
+### Art: the card shows the equipped avatar
+
+`credential-meta/companion/<id>/image.svg` fetches the avatar's picture from the bucket, inlines it
+as a data URI (an SVG used as an image cannot load external files) and draws it where Tera stands.
+The 512 px file is used when it is at most 110 KB, otherwise the 128 px thumb, so the card stays
+under about 250 KB. Pictures are cached in memory by URL (10 minutes; a missing one is retried after
+30 s). When neither file can be had the card draws the built-in Tera. The **default avatar always
+draws the built-in Tera**, with no fetch: that card is byte for byte the one from before avatars.
+
+**Outfit rule, `allows_outfit`:** the painted outfit layers are drawn only over an avatar of group
+`expression`. `base`, `special`, `event` and `accessory` avatars are finished paintings: no outfit
+layer is drawn, whatever the learner has equipped (the outfit stays equipped and returns with an
+expression avatar). The field is on `avatar` and on every shop entry so the frontend applies the
+same rule.
+
+### Preview: `GET /credential-meta/preview.svg` (public, no token, cached 5 minutes)
+
+The same SVG the real endpoints draw, from the query alone: no user data, no write.
+
+- `?type=certification&trail=<text, 40 chars>&days=<0..total>&total=<1..12>&tier=bronze|gold&ink=emerald|violet&frame=gold-leaf&lang=pt|en`
+- `?type=companion&avatar=<key>&outfit=<outfit key | none>&lives=<0..5>&level=<1..99>&lang=pt|en`
+
+Every value is validated and clamped; an unknown one falls back to its default (no ink, no frame,
+the default avatar, `pt`; `tier` defaults to gold on a full page). `avatar` is checked against the
+active catalog before any URL is built. The only refusal is an unknown `type`:
+`400 { "error": "invalid_type" }`.
+
+### Avatars in the public functions
+
+- `GET /credential-meta/avatar/<avatar_assets id>` (`?lang=pt|en`, default `en`): Metaplex JSON,
+  `image` = the published 512 px webp (the png is in `properties.files`), attributes Avatar, Group,
+  Rarity, Tier, Serial, Supply, Transferable; the description says the NFT is **not** soulbound.
+  `GET /credential-meta/collection/avatars` (+ `/image.svg`) serves the collection.
+- `GET /credential-verify/<avatar asset>`: `achievement.key = "avatar"` (`kind: "avatar"`, `tier` =
+  the rarity, `state: { key, group, rarity, tier_name, serial, supply_cap }`), top-level
+  `avatar: { key, rarity, tier_name, serial, supply_cap | null }` parsed from the on-chain
+  attributes and `image_url`. `frozen: false` and `checks.soulbound: false` are correct for a
+  collectible; `verified` is unchanged (our collection, our authority). `issuer.collections` has four
+  addresses now.
+- `GET /learner-profile/<wallet>` gains `avatar` (the block above, for the learner whose companion
+  the wallet holds; the default otherwise) and
+  `avatars: [{ key, title, rarity, tier_name, serial, supply_cap, asset, verified, image_url, thumb_url, page_url, explorer_url }]`:
+  the collectibles our tables say were minted to that wallet (30 at most). `verified` = in the Avatars
+  collection, under our authority, and **owned by that wallet now**, so an avatar transferred away
+  shows `verified: false`. Avatars are not counted in `verified_count`. `companion.avatar` (a key)
+  is present only for a non-default avatar.
+
+### Known limits (avatars)
+
+- On-chain transfers are not tracked for equip (above), and the new holder gets no row.
+- An unpaid hold keeps a unit off sale for its window (about 3 minutes); accounts are free, so the
+  last units of a tiny edition can be held by a few funded wallets that never pay. The price must be
+  in the wallet to take a hold, and each learner holds two at most.
+- Refunds are manual (`refund_due_at`).
+- The outfit layers were painted for the built-in Tera. Over another expression avatar they are
+  drawn at the same place and may not sit exactly on the picture.
+- Redeploying `lives`, `passport`, `gifts`, `action-gift` or `purchase-*` from a tree without this
+  code would mirror companions without the `avatar` attribute.
+
+```bash
+node scripts/hackathon/avatar-e2e.mjs      # devnet, ~0.012 SOL of the authority, ~0.007 of the treasury, 64 checks
+```
+
 ## Adding an item kind
 
 1. Add the kind to `ITEM_KINDS` and its rule to `eligibility` in `_shared/shop-rules.ts` (pure, with
@@ -605,7 +852,7 @@ Secrets (project-wide): `SOLANA_TREASURY_SECRET` (read only by `wallet-faucet`),
 `~/.config/itera-hackathon/devnet-treasury.json`.
 
 ```bash
-for f in shop-items purchase-intent purchase-confirm purchase-submit link-wallet companion lives wallet-faucet credential-meta credential-verify learner-profile passport action-gift gifts referral; do
+for f in shop-items purchase-intent purchase-confirm purchase-submit link-wallet companion lives wallet-faucet credential-meta credential-verify learner-profile passport action-gift gifts referral shop-claim; do
   supabase functions deploy $f --project-ref nyzcbnnbffsizshiolbh --use-api
 done
 ```

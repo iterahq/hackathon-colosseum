@@ -22,7 +22,7 @@ async function fetchDataUri(url: string, maxBytes: number): Promise<string | nul
   if (known && Date.now() - known.at < (known.data ? KEEP_MS : RETRY_MISSING_MS)) return known.data;
   let data: string | null = null;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), redirect: 'error' });
     const type = (response.headers.get('content-type') ?? '').split(';')[0].trim();
     if (response.ok && (type === 'image/webp' || type === 'image/png')) {
       const bytes = new Uint8Array(await response.arrayBuffer());

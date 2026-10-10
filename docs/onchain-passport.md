@@ -202,6 +202,11 @@ read in one `getMultipleAccounts` call, at most 50 assets.
 - No email, no display name, no itera user id: the response is built from asset addresses, the
   credential row ids inside the image URLs and catalog text. The `learner` attribute is not echoed.
 
+Collectible avatars (a fourth collection, "Itera Avatars", whose assets are **not** frozen) add
+`credential-meta/avatar/<id>`, `credential-meta/preview.svg`, an `avatar` block on `credential-verify`
+and `avatar` / `avatars` on `learner-profile`: see "Tera avatars" in
+[`onchain-purchases.md`](onchain-purchases.md).
+
 ## Secrets and deploy
 
 Edge-function secrets (project-wide): `SOLANA_AUTHORITY_SECRET` (64-byte key as a JSON array or

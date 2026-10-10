@@ -77,7 +77,8 @@ export function allowsOutfit(group: string | null | undefined): boolean {
 }
 
 export function avatarImageUrl(supabaseUrl: string, item: Pick<AvatarItem, 'key' | 'image_key'>, variant: '512' | '128' | 'png' = '512'): string {
-  const key = item.image_key || item.key;
+  // Only a plain key ever becomes part of a URL, whatever the catalog row holds.
+  const key = isAvatarKey(item.image_key) ? item.image_key : item.key;
   const file = variant === '128' ? `${key}_128.webp` : variant === 'png' ? `${key}.png` : `${key}.webp`;
   return `${supabaseUrl}/storage/v1/object/public/${AVATAR_BUCKET}/${file}`;
 }
