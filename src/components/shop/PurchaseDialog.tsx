@@ -7,7 +7,7 @@ import { PURCHASE_ERROR_CODES } from '@/i18n/shopMessages';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { txUrl } from '@/lib/explorer';
 import type { ShopItemKind } from '@/types/shop';
-import { changeLine, shortSignature } from '@/utils/purchaseProof';
+import { lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from './shopStyles';
 
@@ -16,6 +16,8 @@ interface Props {
   /** Title and kind of the item being bought, for the success line. */
   itemTitle: string;
   itemKind: ShopItemKind;
+  /** Name of the certification an ink or frame was applied to. */
+  targetTitle?: string | null;
   /** The outfit Tera wears in the success moment. */
   outfit: string | null;
   onRetry: () => void;
@@ -39,21 +41,28 @@ function Detail({ text }: { text: string | null }) {
   );
 }
 
-function Proof({ state, kind, title }: { state: PurchaseState; kind: ShopItemKind; title: string }) {
+function ProofRow({ label, signature, href, testId }: { label: string; signature: string; href: string; testId: string }) {
+  return (
+    <div className="flex w-full items-center justify-between gap-3 [font:600_12px_JetBrains_Mono] text-[#A0978A]" data-testid={`${testId}-row`}>
+      <span>{label}</span>
+      <a href={href} target="_blank" rel="noreferrer" data-testid={testId} className={`rounded text-[#3FD17F] hover:underline ${FOCUS}`}>
+        {shortSignature(signature)} ↗
+      </a>
+    </div>
+  );
+}
+
+function Proof({ state, copy }: { state: PurchaseState; copy: ReturnType<typeof paidCopy> }) {
   const { t } = useI18n();
   const { proof } = state;
-  const line = changeLine(kind, title, proof);
   const signature = proof?.signature ?? null;
+  const chain = proof?.chain && proof.chain.signature !== signature ? proof.chain : null;
   return (
     <div className="flex w-full flex-col items-center gap-2" data-testid="purchase-proof">
       {proof?.imageUrl && <img src={proof.imageUrl} alt="" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="purchase-art" />}
-      {line && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(line.key, line.params)}</p>}
-      {(signature || state.explorerUrl) && (
-        <a href={state.explorerUrl ?? txUrl(signature ?? '')} target="_blank" rel="noreferrer" data-testid="purchase-explorer" className={`rounded [font:700_13px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
-          {signature ? `${shortSignature(signature)} ` : ''}
-          {t('purchase.viewTx')}
-        </a>
-      )}
+      {copy.note && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(copy.note.key, copy.note.params)}</p>}
+      {signature && <ProofRow label={t('purchase.row.payment')} signature={signature} href={state.explorerUrl ?? txUrl(signature)} testId="purchase-explorer" />}
+      {chain && <ProofRow label={t('purchase.row.chain')} signature={chain.signature} href={chain.explorerUrl} testId="purchase-chain-explorer" />}
     </div>
   );
 }
@@ -69,7 +78,7 @@ function Message({ title, body, children }: { title: string; body?: string; chil
 }
 
 /** Every phase of a wallet purchase in one modal card. Renders nothing at rest; a wallet rejection never opens it. */
-export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, onFund, onClose }: Props) {
+export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null, outfit, onRetry, onFund, onClose }: Props) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const busy = isPurchaseBusy(state);
@@ -85,7 +94,8 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
   if (!open) return null;
   const { phase } = state;
   const friendly = state.code && PURCHASE_ERROR_CODES.has(state.code) ? t(`purchase.error.${state.code}`) : null;
-  const paidLine = itemKind === 'life' ? t('purchase.paid.life') : itemKind === 'outfit' ? t('purchase.paid.outfit', { name: itemTitle }) : t('purchase.paid.item', { name: itemTitle });
+  const copy = paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
+  const needed = state.neededLamports ? t('purchase.insufficient.need', { amount: lamportsToSol(state.neededLamports) }) : null;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0A0908]/85 p-4 backdrop-blur-sm" data-testid="purchase-dialog" data-phase={phase}>
@@ -109,8 +119,8 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
             <span className="flex h-[150px] items-end justify-center">
               <TeraOutfit mood="happy" size="xl" outfit={outfit} />
             </span>
-            <Message title={t('purchase.paid.title')} body={paidLine} />
-            <Proof state={state} kind={itemKind} title={itemTitle} />
+            <Message title={t('purchase.paid.title')} body={t(copy.body.key, copy.body.params)} />
+            <Proof state={state} copy={copy} />
             <button type="button" autoFocus onClick={onClose} data-testid="purchase-done" className={`${BTN_PRIMARY} mt-1 w-full`}>
               {t('purchase.done')}
             </button>
@@ -122,9 +132,9 @@ export function PurchaseDialog({ state, itemTitle, itemKind, outfit, onRetry, on
               <TeraOutfit mood="oops" size="xl" outfit={outfit} />
             </span>
             {phase === 'failed' && <Message title={t('purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
-            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={friendly ?? t('purchase.insufficient.body')} />}
+            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={needed ?? friendly ?? t('purchase.insufficient.body')} />}
             {phase === 'no_wallet' && <Message title={t('purchase.noWallet.title')} body={t('purchase.noWallet.body')} />}
-            {phase !== 'no_wallet' && <Detail text={state.detail} />}
+            {showTechnicalDetail(phase, state.code, PURCHASE_ERROR_CODES) && <Detail text={state.detail} />}
             <div className="mt-1 flex w-full flex-col gap-2.5">
               {phase === 'failed' && (
                 <button type="button" autoFocus onClick={onRetry} data-testid="purchase-retry" className={`${BTN_PRIMARY} w-full`}>

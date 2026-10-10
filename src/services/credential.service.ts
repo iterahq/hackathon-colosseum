@@ -51,6 +51,29 @@ export async function verifyCredential(asset: string, lang = 'pt'): Promise<Cred
   return { status: data.verified ? 'verified' : 'unverified', data, ms };
 }
 
-/** The server-drawn artwork of a stored row, in the viewer's language. */
-export const credentialImageUrl = (rowId: string, lang: string): string | null =>
-  url && rowId ? `${url}/functions/v1/credential-meta/${encodeURIComponent(rowId)}/image.svg?lang=${lang}` : null;
+const ART_BUMP_KEY = 'itera.credentialArtBump';
+
+/** Bumped when a purchase changes the art (ink, frame): the art is cached per URL for 60 s. */
+let artBump: string = (() => {
+  try {
+    return globalThis.sessionStorage?.getItem(ART_BUMP_KEY) ?? '';
+  } catch {
+    return '';
+  }
+})();
+
+export function bumpCredentialArt(now: number = Date.now()): void {
+  artBump = String(now);
+  try {
+    globalThis.sessionStorage?.setItem(ART_BUMP_KEY, artBump);
+  } catch {
+    /* storage unavailable: the in-memory value still applies */
+  }
+}
+
+/** The server-drawn artwork of a stored row, in the viewer's language; `version` is data that changes with the art (days stamped, tier). */
+export function credentialImageUrl(rowId: string, lang: string, version?: string | number | null): string | null {
+  if (!url || !rowId) return null;
+  const v = [version, artBump].filter((part) => part !== undefined && part !== null && part !== '').join('-');
+  return `${url}/functions/v1/credential-meta/${encodeURIComponent(rowId)}/image.svg?lang=${lang}${v ? `&v=${encodeURIComponent(v)}` : ''}`;
+}

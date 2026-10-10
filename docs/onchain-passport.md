@@ -67,7 +67,7 @@ app origins and localhost; the three public functions (`credential-meta`, `crede
 
 ### `POST /passport` (user JWT required, checked in code)
 
-Body (optional): `{ "lang": "pt" | "en" }` (default `pt`). Safe to call repeatedly.
+Body (optional): `{ "lang": "pt" | "en", "lesson_id": "<uuid>" }` (default `pt`). Safe to call repeatedly.
 
 ```json
 {
@@ -90,6 +90,10 @@ Body (optional): `{ "lang": "pt" | "en" }` (default `pt`). Safe to call repeated
 }
 ```
 
+- `day_incomplete` (only when the body carries a valid `lesson_id`; the key is absent otherwise):
+  `null` when every published activity of that lesson is completed by the caller (or the lesson
+  is unknown or has no activities), else `{ "lesson_id": "…", "done": 13, "total": 16 }`. Same
+  completion rule as the awards (`dayIncomplete` in `_shared/awards.ts`); nothing else changes.
 - `awards`: rows created by this call. `updated`: older rows this call changed (a passport that
   gained a stamp, a row that got minted). Same shape.
 - At most 3 transactions per call; `remaining` is how many are still due. Call again while `> 0`

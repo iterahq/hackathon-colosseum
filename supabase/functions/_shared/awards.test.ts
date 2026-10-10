@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeAwards, GLOBAL_REF, localParts, type Award, type AwardsInput, type ProgressRow } from './awards';
+import { computeAwards, dayIncomplete, GLOBAL_REF, localParts, type Award, type AwardsInput, type ProgressRow } from './awards';
 
 const TZ = 'America/Sao_Paulo';
 const PROGRAM = 'p1';
@@ -197,5 +197,30 @@ describe('localParts', () => {
   it('reads the date and hour in the given zone', () => {
     expect(localParts('2026-10-06T02:30:00.000Z', TZ)).toEqual({ date: '2026-10-05', hour: 23 });
     expect(localParts('2026-10-06T03:00:00.000Z', TZ)).toEqual({ date: '2026-10-06', hour: 0 });
+  });
+});
+
+describe('dayIncomplete', () => {
+  const input = (progress: ProgressRow[]) => ({ activities: tree().activities, progress });
+
+  it('is null when every activity of the lesson is completed', () => {
+    expect(dayIncomplete(input(finish('l1', '2026-10-05T15:00:00Z')), 'l1')).toBeNull();
+  });
+
+  it('counts completed against published activities', () => {
+    const progress = finish('l1', '2026-10-05T15:00:00Z').slice(0, 1);
+    expect(dayIncomplete(input(progress), 'l1')).toEqual({ lesson_id: 'l1', done: 1, total: 2 });
+  });
+
+  it('ignores other lessons and non-completed rows', () => {
+    const progress: ProgressRow[] = [
+      ...finish('l2', '2026-10-05T15:00:00Z'),
+      { activity_id: 'l1-a', status: 'in_progress', completed_at: null },
+    ];
+    expect(dayIncomplete(input(progress), 'l1')).toEqual({ lesson_id: 'l1', done: 0, total: 2 });
+  });
+
+  it('is null for an unknown lesson', () => {
+    expect(dayIncomplete(input([]), 'nope')).toBeNull();
   });
 });

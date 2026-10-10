@@ -19,7 +19,9 @@ export class ShopCallError extends Error {
     /** The backend's `detail` field, verbatim (e.g. `payer | destination | amount | memo`). */
     readonly detail: string | null = null,
     /** Present when the backend already broadcast the transaction: confirm with it instead of failing. */
-    readonly signature: string | null = null
+    readonly signature: string | null = null,
+    /** The whole JSON body of the error answer, for callers that need a field such as `required_lamports`. */
+    readonly body: Record<string, unknown> | null = null
   ) {
     super(message);
   }
@@ -53,15 +55,16 @@ export function mockForced(): boolean {
   }
 }
 
-async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean; detail: string | null; signature: string | null }> {
+async function errorBody(error: unknown): Promise<{ status: number | null; code: string | null; retryable: boolean; detail: string | null; signature: string | null; body: Record<string, unknown> | null }> {
   const context = (error as { context?: Response }).context;
   const status = typeof context?.status === 'number' ? context.status : null;
   try {
     const json = (await context?.clone().json()) as { error?: unknown; retryable?: unknown; detail?: unknown; signature?: unknown } | undefined;
     const detail = typeof json?.detail === 'string' ? json.detail : json?.detail == null ? null : JSON.stringify(json.detail);
-    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true, detail, signature: typeof json?.signature === 'string' ? json.signature : null };
+    const body = json && typeof json === 'object' ? (json as Record<string, unknown>) : null;
+    return { status, code: typeof json?.error === 'string' ? json.error : null, retryable: json?.retryable === true, detail, signature: typeof json?.signature === 'string' ? json.signature : null, body };
   } catch {
-    return { status, code: null, retryable: false, detail: null, signature: null };
+    return { status, code: null, retryable: false, detail: null, signature: null, body: null };
   }
 }
 
@@ -73,5 +76,5 @@ export async function callShop(fn: ShopFunction, { method = 'POST', body = {}, q
   if (!error) return { data, mocked: false };
   const detail = await errorBody(error);
   const text = detail.code ? `${fn}: ${detail.code}${detail.detail ? ` (detail: ${detail.detail})` : ''}` : error.message;
-  throw new ShopCallError(text, detail.status, detail.code, detail.retryable, detail.detail, detail.signature);
+  throw new ShopCallError(text, detail.status, detail.code, detail.retryable, detail.detail, detail.signature, detail.body);
 }

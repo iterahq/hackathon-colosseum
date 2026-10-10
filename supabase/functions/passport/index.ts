@@ -1,4 +1,4 @@
-import { computeAwards, type Award, type AwardsInput } from '../_shared/awards.ts';
+import { computeAwards, dayIncomplete, type Award, type AwardsInput } from '../_shared/awards.ts';
 import { linkedWalletOf, resolveWallet, walletOf } from '../_shared/caller.ts';
 import type { Chain } from '../_shared/chain.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
@@ -379,12 +379,14 @@ interface Body {
   /** Operator calls only: the learner to sync and how many transactions to send. */
   userId: string | null;
   maxJobs: number | null;
+  /** Optional: report whether this lesson is fully completed (`day_incomplete`). */
+  lessonId: string | null;
 }
 
 async function readBody(request: Request): Promise<Body | null> {
   const text = await request.text();
   if (text.length > 1024) return null;
-  if (!text.trim()) return { lang: 'pt', userId: null, maxJobs: null };
+  if (!text.trim()) return { lang: 'pt', userId: null, maxJobs: null, lessonId: null };
   let body: unknown;
   try {
     body = JSON.parse(text);
@@ -392,12 +394,13 @@ async function readBody(request: Request): Promise<Body | null> {
     return null;
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return null;
-  const { lang = 'pt', user_id: userId = null, max_jobs: maxJobs = null } = body as Record<string, unknown>;
+  const { lang = 'pt', user_id: userId = null, max_jobs: maxJobs = null, lesson_id: lessonId = null } = body as Record<string, unknown>;
   if (lang !== 'pt' && lang !== 'en') return null;
   return {
     lang,
     userId: typeof userId === 'string' ? userId : null,
     maxJobs: typeof maxJobs === 'number' ? maxJobs : null,
+    lessonId: typeof lessonId === 'string' && isUuid(lessonId) ? lessonId : null,
   };
 }
 
@@ -450,6 +453,7 @@ Deno.serve(async (request) => {
         updated: rows.filter((row) => updatedIds.has(row.id)).map((row) => view(row, catalog, lang)),
         remaining: mint.remaining,
         mint: { wallet: caller.wallet, cluster: CLUSTER, attempted: mint.attempted, blocked: mint.blocked },
+        ...(body.lessonId ? { day_incomplete: dayIncomplete(learning, body.lessonId) } : {}),
       },
       200,
       cors,

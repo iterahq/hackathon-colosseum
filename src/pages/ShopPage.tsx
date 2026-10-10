@@ -141,7 +141,17 @@ export default function ShopPage() {
             )}
             {shelves.lives.length > 0 && (
               <Shelf id="shop-lives" title={t('shop.section.lives')}>
-                <div className={GRID}>{shelves.lives.map((item) => card(item, { buyDisabled: lives ? lives.current >= lives.max : false }))}</div>
+                <div className={GRID}>{shelves.lives.map((item) => {
+                    const full = lives ? lives.current >= lives.max : false;
+                    return card(item, {
+                      buyDisabled: full,
+                      children: full ? (
+                        <p className="[font:600_13px/1.4_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">
+                          {t('shop.lives.fullReason')}
+                        </p>
+                      ) : undefined,
+                    });
+                  })}</div>
               </Shelf>
             )}
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
@@ -153,6 +163,7 @@ export default function ShopPage() {
         state={purchase.state}
         itemTitle={buying?.title ?? ''}
         itemKind={buying?.kind ?? 'outfit'}
+        targetTitle={certs.find((page) => page.trailId === targetId)?.trailTitle ?? null}
         outfit={buying?.kind === 'outfit' ? buying.key : companion.outfit}
         onRetry={purchase.retry}
         onFund={() => void purchase.fund()}

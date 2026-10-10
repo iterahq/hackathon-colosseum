@@ -24,7 +24,7 @@ export function PassportFullCard({ page }: { page: PassportPageData }) {
   return (
     <article data-testid="passport-full-card" className="flex w-full max-w-[300px] flex-col gap-3 justify-self-center">
       <PassportArt
-        src={page.credentialId ? credentialImageUrl(page.credentialId, locale) : null}
+        src={page.credentialId ? credentialImageUrl(page.credentialId, locale, `${page.daysDone}-${page.tier ?? ''}`) : null}
         title={page.trailTitle}
         color={pageColor(page)}
         total={page.totalDays}
