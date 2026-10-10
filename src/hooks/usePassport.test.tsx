@@ -58,7 +58,7 @@ describe('usePassport', () => {
     env.call.mockReturnValue(new Promise<PassportResult>((resolve) => (answer = resolve)));
     const { result } = mount();
     expect(result.current.view).toEqual({ kind: 'preparing', preview: { day: 5, totalDays: 5, stampedBefore: 4, trailTitle: 'HTML', colorIndex: 1 } });
-    expect(env.call).toHaveBeenCalledWith('pt', 'l5');
+    expect(env.call).toHaveBeenCalledWith('pt', 'l5', 1);
     await act(async () => answer(gold));
     expect(result.current.view).toMatchObject({ kind: 'ceremony', model: { last: true, status: 'minted', daysDone: 5, trailTitle: 'HTML' } });
   });
@@ -77,7 +77,7 @@ describe('usePassport', () => {
     expect(result.current.view).toEqual({ kind: 'incomplete', missing: 1, done: 15, total: 16 });
   });
 
-  it('an error or a 20 s silence falls back to the card with the honest line', async () => {
+  it('an error or a long silence falls back to the card with the honest line', async () => {
     env.call.mockRejectedValue(new Error('boom'));
     const failed = mount();
     await flush();

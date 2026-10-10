@@ -20,19 +20,20 @@ function dayIncomplete(raw: unknown): DayIncomplete | null | undefined {
 }
 
 /** `lessonId` is the lesson just finished: the answer then says whether that day is whole (`day_incomplete`). */
-export async function callPassport(lang: string, lessonId?: string): Promise<PassportResult> {
+export async function callPassport(lang: string, lessonId?: string, maxJobs?: number): Promise<PassportResult> {
   if (!isSupabaseConfigured) throw new PassportCallError('Supabase not configured.', null);
-  const { data, error } = await getSupabase().functions.invoke('passport', { body: lessonId ? { lang, lesson_id: lessonId } : { lang } });
+  const body = { lang, ...(lessonId ? { lesson_id: lessonId } : {}), ...(maxJobs ? { max_jobs: maxJobs } : {}) };
+  const { data, error } = await getSupabase().functions.invoke('passport', { body });
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
     throw new PassportCallError(error.message, typeof status === 'number' ? status : null);
   }
-  const body = (data ?? {}) as Partial<PassportResult>;
+  const answer = (data ?? {}) as Partial<PassportResult>;
   return {
-    awards: Array.isArray(body.awards) ? body.awards : [],
-    updated: Array.isArray(body.updated) ? body.updated : [],
-    remaining: typeof body.remaining === 'number' ? body.remaining : 0,
-    mint: body.mint,
-    day_incomplete: dayIncomplete(body.day_incomplete),
+    awards: Array.isArray(answer.awards) ? answer.awards : [],
+    updated: Array.isArray(answer.updated) ? answer.updated : [],
+    remaining: typeof answer.remaining === 'number' ? answer.remaining : 0,
+    mint: answer.mint,
+    day_incomplete: dayIncomplete(answer.day_incomplete),
   };
 }
