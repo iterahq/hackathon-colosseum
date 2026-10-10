@@ -9,6 +9,8 @@ export const COMPANION_ASSET_NAME = 'Tera Companion';
 export interface CompanionSnapshot {
   id: string;
   userId: string;
+  /** The wallet that owns the asset. It is what the on-chain `learner` attribute says: never the internal id. */
+  wallet?: string | null;
   lives: number;
   maxLives: number;
   outfit: string | null;
@@ -41,7 +43,12 @@ export function companionChainImageUrl(functionsBase: string, companionId: strin
   return `${companionImageUrl(functionsBase, companionId)}?source=chain${lang ? `&lang=${lang}` : ''}&v=${version}`;
 }
 
-/** The Attributes plugin of the companion asset: a mirror of the database. */
+/**
+ * The Attributes plugin of the companion asset: a mirror of the database.
+ * `learner` is the owner's wallet (public already: it owns the asset). The
+ * internal learner id was written there before and stays on assets minted
+ * then until their next ordinary write; it is never written again.
+ */
 export function companionAttributes(snapshot: CompanionSnapshot): OnchainAttribute[] {
   return [
     { key: 'kind', value: 'companion' },
@@ -51,7 +58,7 @@ export function companionAttributes(snapshot: CompanionSnapshot): OnchainAttribu
     { key: 'level', value: String(snapshot.stats.level) },
     { key: 'xp', value: String(snapshot.stats.xp) },
     { key: 'streak', value: String(snapshot.stats.streak) },
-    { key: 'learner', value: snapshot.userId },
+    { key: 'learner', value: snapshot.wallet ?? '' },
   ];
 }
 

@@ -1,6 +1,7 @@
 import { isSolanaAddress } from '../_shared/address.ts';
 import { circuitTotals } from '../_shared/circuit.ts';
-import { walletCircuit } from '../_shared/circuit-store.ts';
+import { retryCircuits, walletCircuit } from '../_shared/circuit-store.ts';
+import { inBackground } from '../_shared/companion-store.ts';
 import { explorerUrl } from '../_shared/credential.ts';
 import { loadConfig, serviceClient } from '../_shared/db.ts';
 import { corsHeaders, json } from '../_shared/http.ts';
@@ -32,6 +33,8 @@ Deno.serve(async (request) => {
       if (!data || data.length < PAGE) break;
     }
     const [config, mine] = await Promise.all([loadConfig(db), wallet ? walletCircuit(db, wallet) : null]);
+    // Off the response path: transfers that failed or never ran are taken up again (at most two per call).
+    inBackground(retryCircuits(db));
     return json(
       {
         ...circuitTotals(sent),

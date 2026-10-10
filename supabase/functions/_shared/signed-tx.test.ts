@@ -112,6 +112,25 @@ describe('a signed transaction judged before it is broadcast', () => {
     expect(verdictOf(signed(build({ memo: 'another-intent' })))).toMatchObject({ error: 'payment_mismatch', detail: 'memo' });
   });
 
+  it('refuses, before broadcast, one transfer carrying the memos of two intents', () => {
+    const other = '7d0f3c1e-2a4b-4c5d-8e6f-9a0b1c2d3e4f';
+    const transfer = transferData(PRICE);
+    const memos = [MEMO, other].map((text) => new TextEncoder().encode(text));
+    const twoMemos = Uint8Array.from([
+      1, 0, 2,
+      ...compactU16(4),
+      ...key(payer.address), ...key(TREASURY), ...key(SYSTEM), ...key(MEMO_PROGRAM),
+      ...key(BLOCKHASH),
+      ...compactU16(3),
+      2, 2, 0, 1, transfer.length, ...transfer,
+      3, 0, memos[0].length, ...memos[0],
+      3, 0, memos[1].length, ...memos[1],
+    ]);
+    const parsed = asParsedTransaction(decodeSignedTransaction(base64Encode(signed(twoMemos)))!);
+    expect(verifyPayment(parsed, expected)).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+    expect(verifyPayment(parsed, { ...expected, memo: other, lamports: 550_000n })).toEqual({ ok: false, error: 'payment_mismatch', detail: 'memo' });
+  });
+
   it('does not read a transfer out of other System instructions or a memo out of invalid UTF-8', () => {
     const parsed = asParsedTransaction(decodeSignedTransaction(base64Encode(signed(messageWithPriorityFee())))!);
     expect(parsed.transaction.message.instructions.map((instruction) => instruction.program)).toEqual([undefined, undefined, 'system', 'spl-memo']);

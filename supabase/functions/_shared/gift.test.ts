@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as slots from './gift';
 import {
   ACTION_VERSION,
   SOLANA_DEVNET_CHAIN_ID,
@@ -160,5 +161,62 @@ describe('action payloads', () => {
   it('every error has a message in both languages', () => {
     expect(actionError('self_gift', 'pt').message).toMatch(/você mesmo/);
     expect(actionError('self_gift', 'en').message).toMatch(/yourself/);
+  });
+});
+
+describe('gift Action slots (decided before any node call)', () => {
+  const now = new Date('2026-10-10T12:00:00.000Z');
+  const inMs = (ms: number) => new Date(now.getTime() + ms).toISOString();
+  const facts = (patch: Partial<slots.ActionSlotFacts> = {}): slots.ActionSlotFacts => ({ own: null, openOthers: 0, unpaidToday: 0, now, ...patch });
+  const own = (patch: Partial<NonNullable<slots.ActionSlotFacts['own']>> = {}) => ({ status: 'pending', expires_at: inMs(60_000), blockhash: 'HASH', ...patch });
+
+  it('opens a new intent while the recipient has a free slot', () => {
+    expect(slots.actionSlot(facts())).toBe('open');
+    expect(slots.actionSlot(facts({ openOthers: slots.MAX_OPEN_ACTION_GIFTS - 1, unpaidToday: 30 }))).toBe('open');
+  });
+
+  it('refuses a new payer when 10 intents are open for the recipient, or 60 unpaid ones were opened today', () => {
+    expect(slots.MAX_OPEN_ACTION_GIFTS).toBe(10);
+    expect(slots.actionSlot(facts({ openOthers: 10 }))).toBe('too_many');
+    expect(slots.actionSlot(facts({ openOthers: 250 }))).toBe('too_many');
+    expect(slots.actionSlot(facts({ unpaidToday: slots.MAX_UNPAID_ACTION_GIFTS_PER_DAY }))).toBe('too_many');
+  });
+
+  it('hands the same transaction to the same payer while its blockhash lives (no node call, no new row)', () => {
+    expect(slots.actionSlot(facts({ own: own() }))).toBe('reuse');
+    expect(slots.actionSlot(facts({ own: own({ expires_at: inMs(slots.REUSE_MIN_LEFT_MS) }) }))).toBe('reuse');
+    expect(slots.actionSlot(facts({ own: own(), openOthers: 10, unpaidToday: 60 }))).toBe('reuse');
+  });
+
+  it('refreshes the payer\'s own intent when its blockhash is about to die: it already holds a slot', () => {
+    expect(slots.actionSlot(facts({ own: own({ expires_at: inMs(slots.REUSE_MIN_LEFT_MS - 1) }) }))).toBe('refresh');
+    expect(slots.actionSlot(facts({ own: own({ expires_at: inMs(-30_000) }), openOthers: 10 }))).toBe('refresh');
+  });
+
+  it('answers a payer whose attempt seconds ago gave no transaction without asking the node again', () => {
+    const justHeld = own({ blockhash: null, expires_at: inMs(slots.SLOT_HOLD_MS - 2_000) });
+    expect(slots.actionSlot(facts({ own: justHeld }))).toBe('wait');
+    const heldAWhileAgo = own({ blockhash: null, expires_at: inMs(slots.SLOT_HOLD_MS - slots.RETRY_AFTER_MS) });
+    expect(slots.actionSlot(facts({ own: heldAWhileAgo }))).toBe('refresh');
+  });
+
+  it('makes a payer whose intent died take a free slot again, like anyone else', () => {
+    const dead = own({ expires_at: inMs(-10 * 60_000) });
+    expect(slots.actionSlot(facts({ own: dead }))).toBe('refresh');
+    expect(slots.actionSlot(facts({ own: dead, openOthers: 10 }))).toBe('too_many');
+    expect(slots.actionSlot(facts({ own: own({ status: 'expired' }), openOthers: 10 }))).toBe('too_many');
+    expect(slots.actionSlot(facts({ own: own({ status: 'expired' }), unpaidToday: 60 }))).toBe('refresh');
+  });
+
+  it('counts an intent as open only while its window, plus the margin, is alive', () => {
+    expect(slots.occupiesSlot({ status: 'pending', expires_at: inMs(1_000) }, now)).toBe(true);
+    expect(slots.occupiesSlot({ status: 'pending', expires_at: inMs(-60_000) }, now)).toBe(true);
+    expect(slots.occupiesSlot({ status: 'pending', expires_at: inMs(-3 * 60_000) }, now)).toBe(false);
+    expect(slots.occupiesSlot({ status: 'expired', expires_at: inMs(60_000) }, now)).toBe(false);
+    expect(slots.occupiesSlot({ status: 'delivered', expires_at: inMs(60_000) }, now)).toBe(false);
+  });
+
+  it('never closes an unpaid row blindly while the callback could still settle it', () => {
+    expect(slots.BLIND_EXPIRY_MS).toBeGreaterThan(24 * 60 * 60 * 1000);
   });
 });

@@ -33,8 +33,31 @@ async function loadTreasury(): Promise<Treasury> {
   return { address: base58Encode(secret.slice(32)), key };
 }
 
-/** Sends lamports from the treasury and waits for confirmation. Returns the signature. */
-export async function sendFromTreasury(input: { recipient: string; lamports: bigint; memo: string }): Promise<string> {
+/**
+ * The transfer was handed to the node and then failed or was not seen
+ * confirmed. It may still land: the caller must not send it again without
+ * asking the chain about `signature` first.
+ */
+export class TransferBroadcastError extends Error {
+  constructor(readonly signature: string, message: string) {
+    super(message);
+  }
+}
+
+export interface TreasuryTransfer {
+  recipient: string;
+  lamports: bigint;
+  memo: string;
+  /** Called with the signature as soon as the node accepted the transaction, before it is confirmed. */
+  onBroadcast?: (signature: string) => Promise<void>;
+}
+
+/**
+ * Sends lamports from the treasury and waits for confirmation. Returns the
+ * signature. Throws `TransferBroadcastError` for any failure after the node
+ * accepted the transaction; any other error means nothing was sent.
+ */
+export async function sendFromTreasury(input: TreasuryTransfer): Promise<string> {
   const treasury = await loadTreasury();
   const { blockhash } = await latestBlockhash();
   const message = buildTransferMessage({
@@ -49,15 +72,37 @@ export async function sendFromTreasury(input: { recipient: string; lamports: big
     base64Encode(serializeTransaction(message, signature)),
     { encoding: 'base64', preflightCommitment: 'confirmed' },
   ]);
-  const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const statuses = await rpc<{ value: Array<{ err: unknown; confirmationStatus?: string } | null> }>('getSignatureStatuses', [[sent]]);
-    const status = statuses.value[0];
-    if (status?.err) throw new Error(`transfer ${sent} failed`);
-    if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return sent;
-    await new Promise((resolve) => setTimeout(resolve, CONFIRM_POLL_MS));
+  try {
+    await input.onBroadcast?.(sent);
+    const deadline = Date.now() + CONFIRM_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      const statuses = await rpc<{ value: Array<{ err: unknown; confirmationStatus?: string } | null> }>('getSignatureStatuses', [[sent]]);
+      const status = statuses.value[0];
+      if (status?.err) throw new Error(`transfer ${sent} failed`);
+      if (status?.confirmationStatus === 'confirmed' || status?.confirmationStatus === 'finalized') return sent;
+      await new Promise((resolve) => setTimeout(resolve, CONFIRM_POLL_MS));
+    }
+    throw new Error(`transfer ${sent} was not confirmed in time`);
+  } catch (error) {
+    throw new TransferBroadcastError(sent, error instanceof Error ? error.message : String(error));
   }
-  throw new Error(`transfer ${sent} was not confirmed in time`);
+}
+
+export type SignatureFate = 'landed' | 'failed' | 'in_flight' | 'unknown';
+
+/**
+ * What became of a transaction the treasury sent earlier. `unknown`: the node
+ * has no record of it, which after the blockhash window means it never will.
+ */
+export async function signatureFate(signature: string): Promise<SignatureFate> {
+  const statuses = await rpc<{ value: Array<{ err: unknown; confirmationStatus?: string } | null> }>('getSignatureStatuses', [
+    [signature],
+    { searchTransactionHistory: true },
+  ]);
+  const status = statuses.value[0];
+  if (!status) return 'unknown';
+  if (status.err) return 'failed';
+  return status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized' ? 'landed' : 'in_flight';
 }
 
 /** The mint authority's address, read from the authority's own secret (bytes 32..64 are the public key). */
@@ -83,9 +128,9 @@ export async function treasuryAddress(): Promise<string> {
  * recipient parameter on purpose: the destination is the authority key this
  * project signs mints with, whatever the caller holds.
  */
-export async function sendToAuthority(input: { lamports: bigint; memo: string }): Promise<string> {
+export async function sendToAuthority(input: { lamports: bigint; memo: string; onBroadcast?: (signature: string) => Promise<void> }): Promise<string> {
   const recipient = authorityAddress();
   if (recipient === (await treasuryAddress())) throw new TreasuryNotConfiguredError('treasury and authority are the same key');
   if (input.lamports <= 0n) throw new Error('nothing to send');
-  return sendFromTreasury({ recipient, lamports: input.lamports, memo: input.memo });
+  return sendFromTreasury({ recipient, lamports: input.lamports, memo: input.memo, onBroadcast: input.onBroadcast });
 }

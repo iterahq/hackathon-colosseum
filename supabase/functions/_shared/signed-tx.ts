@@ -1,9 +1,7 @@
 import type { ParsedTransaction } from './purchase-verify.ts';
-import { MEMO_PROGRAM, SIGNATURE_BYTES, SYSTEM_PROGRAM, base58Bytes, base58Encode, base64Decode } from './solana-tx.ts';
+import { MEMO_PROGRAMS, SIGNATURE_BYTES, SYSTEM_PROGRAM, base58Bytes, base58Encode, base64Decode } from './solana-tx.ts';
 
 const KEY_BYTES = 32;
-const MEMO_V1_PROGRAM = 'Memo1UhkJRfHyvLMcVucJwxXeuD728EZVfJf9bBYHJ';
-const MEMO_PROGRAMS = new Set([MEMO_PROGRAM, MEMO_V1_PROGRAM]);
 /** The largest packet a Solana node accepts. */
 export const MAX_TRANSACTION_BYTES = 1232;
 const SYSTEM_TRANSFER = 2;
@@ -105,7 +103,7 @@ export function transactionSignature(transaction: SignedTransaction): string {
   return base58Encode(transaction.signatures[0]);
 }
 
-function parsedInstruction(instruction: SignedTransaction['instructions'][number]): { program?: string; parsed?: unknown } {
+function parsedInstruction(instruction: SignedTransaction['instructions'][number]): { program?: string; programId?: string; parsed?: unknown } {
   if (instruction.programId === SYSTEM_PROGRAM && instruction.data.length === 12 && instruction.accounts.length >= 2) {
     const view = new DataView(instruction.data.buffer, instruction.data.byteOffset, instruction.data.byteLength);
     if (view.getUint32(0, true) === SYSTEM_TRANSFER) {
@@ -120,12 +118,13 @@ function parsedInstruction(instruction: SignedTransaction['instructions'][number
   }
   if (MEMO_PROGRAMS.has(instruction.programId)) {
     try {
-      return { program: 'spl-memo', parsed: new TextDecoder('utf-8', { fatal: true }).decode(instruction.data) };
+      return { program: 'spl-memo', programId: instruction.programId, parsed: new TextDecoder('utf-8', { fatal: true }).decode(instruction.data) };
     } catch {
-      return {};
+      // Still a memo instruction: it counts against the "exactly one memo" rule.
+      return { programId: instruction.programId };
     }
   }
-  return {};
+  return { programId: instruction.programId };
 }
 
 /**

@@ -287,7 +287,8 @@ describe('credential metadata', () => {
   });
 
   it('builds the on-chain attribute list for a passport', () => {
-    expect(Object.fromEntries(onchainAttributes(passport, passportCatalog).map(({ key, value }) => [key, value]))).toEqual({
+    const minted = { ...passport, wallet_address: 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B' };
+    expect(Object.fromEntries(onchainAttributes(minted, passportCatalog).map(({ key, value }) => [key, value]))).toEqual({
       kind: 'trail_passport',
       program: 'itera-v2',
       trail: 'Week 1 · HTML',
@@ -295,7 +296,7 @@ describe('credential metadata', () => {
       total_days: '5',
       tier: 'bronze',
       completed_at: '',
-      learner: passport.user_id,
+      learner: 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B',
     });
   });
 });

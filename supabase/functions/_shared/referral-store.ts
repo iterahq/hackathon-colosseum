@@ -1,7 +1,7 @@
 import { GLOBAL_REF } from './awards.ts';
 import { grantLifeOnce } from './companion-store.ts';
 import type { IteraClient } from './db.ts';
-import { CODE_LENGTH, claimVerdict, codeFromBytes, isReferralCode, type ClaimRefusal, type ReferralEntry } from './referral.ts';
+import { CODE_LENGTH, claimVerdict, codeFromBytes, isReferralCode, takeRewardSlot, type ClaimRefusal, type ReferralEntry } from './referral.ts';
 
 const UNIQUE_VIOLATION = '23505';
 const CODE_ATTEMPTS = 5;
@@ -60,17 +60,23 @@ export async function claimReferral(db: IteraClient, callerId: string, code: unk
   return { claimed: true };
 }
 
-export interface ReferralReward {
-  inviterUserId: string;
-  /** The `invited` medal row of the invited learner, when this call created it. */
-  createdRowIds: string[];
-}
+export type ReferralReward =
+  | {
+      rewarded: true;
+      inviterUserId: string;
+      /** The `invited` medal row of the invited learner, when this call created it. */
+      createdRowIds: string[];
+    }
+  /** The inviter is at the daily or lifetime cap: nothing was given, the invite stays pending. */
+  | { rewarded: false; reason: 'cap' };
 
 /**
  * Pays an invite once the invited learner has finished a first day: a medal
- * and a life for each side. Every step is idempotent and the referral is marked
- * `rewarded` last, so a call that died halfway is completed by the next one.
- * `null` when the learner has no invite waiting.
+ * and a life for each side. The invite first takes one of the inviter's reward
+ * slots (`REWARDS_PER_DAY`, `REWARDS_LIFETIME`, atomically per inviter); with
+ * no slot nothing is given and the invite stays `pending`. Every step is
+ * idempotent and the referral is marked `rewarded` last, so a call that died
+ * halfway is completed by the next one. `null` when the learner has no invite waiting.
  */
 export async function rewardReferral(db: IteraClient, invitedUserId: string): Promise<ReferralReward | null> {
   const { data: referral, error } = await db
@@ -82,6 +88,10 @@ export async function rewardReferral(db: IteraClient, invitedUserId: string): Pr
   if (error) throw new Error(`referrals: ${error.message}`);
   if (!referral) return null;
   const inviterUserId = referral.inviter_user_id as string;
+
+  const verdict = await takeRewardSlot((name, args) => db.rpc(name, args), invitedUserId);
+  if (verdict === 'none') return null;
+  if (verdict === 'cap') return { rewarded: false, reason: 'cap' };
   const now = new Date().toISOString();
 
   const { data: created, error: awardError } = await db
@@ -107,5 +117,5 @@ export async function rewardReferral(db: IteraClient, invitedUserId: string): Pr
     .eq('invited_user_id', invitedUserId)
     .eq('status', 'pending');
   if (settleError) throw new Error(`referrals settle: ${settleError.message}`);
-  return { inviterUserId, createdRowIds: (created ?? []).filter((row) => row.user_id === invitedUserId).map((row) => row.id) };
+  return { rewarded: true, inviterUserId, createdRowIds: (created ?? []).filter((row) => row.user_id === invitedUserId).map((row) => row.id) };
 }

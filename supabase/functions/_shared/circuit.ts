@@ -44,6 +44,59 @@ export function circuitDecision(facts: { status: string; source: string; purchas
   return { action: 'send', lamports };
 }
 
+/** A transfer that never started is picked up by the retry once its purchase is this old. */
+export const NEVER_RAN_AFTER_MS = 60_000;
+/**
+ * A transfer that was claimed (`pending`) or `failed` is looked at again after
+ * this long. Well past the life of a blockhash (about 90 s): a transaction not
+ * on chain by then can never land, so sending a new one cannot pay twice.
+ */
+export const RESEND_AFTER_MS = 3 * 60_000;
+/** The retry leaves alone purchases older than this. */
+export const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface CircuitRetryFacts {
+  status: string;
+  source: string;
+  circuitStatus: string | null;
+  paidAt: string | null;
+  circuitAt: string | null;
+}
+
+/** Whether the retry should take this purchase's transfer now. `sent` and `skipped` are final. */
+export function circuitRetryDue(facts: CircuitRetryFacts, now: Date): boolean {
+  if (facts.status !== 'paid' || facts.source !== 'payment' || !facts.paidAt) return false;
+  const age = now.getTime() - new Date(facts.paidAt).getTime();
+  if (!(age >= 0) || age > RETRY_WINDOW_MS) return false;
+  if (facts.circuitStatus === null) return age >= NEVER_RAN_AFTER_MS;
+  if (facts.circuitStatus !== 'pending' && facts.circuitStatus !== 'failed') return false;
+  if (!facts.circuitAt) return true;
+  return now.getTime() - new Date(facts.circuitAt).getTime() >= RESEND_AFTER_MS;
+}
+
+export type ResumeStep = { action: 'record'; signature: string } | { action: 'wait' } | { action: 'send' };
+
+/**
+ * What to do with a transfer that was claimed before, given what the chain
+ * says. `stored`: the fate of the signature saved at broadcast time (`null`
+ * when none was saved). `byMemo`: a successful treasury transaction carrying
+ * this purchase's memo, when the chain has one. A transfer found on chain is
+ * recorded, never sent again; one still in flight is left alone.
+ */
+export function resumeStep(facts: { storedSignature: string | null; stored: 'landed' | 'failed' | 'in_flight' | 'unknown' | null; byMemo: string | null }): ResumeStep {
+  if (facts.storedSignature && facts.stored === 'landed') return { action: 'record', signature: facts.storedSignature };
+  if (facts.byMemo) return { action: 'record', signature: facts.byMemo };
+  if (facts.stored === 'in_flight') return { action: 'wait' };
+  return { action: 'send' };
+}
+
+/** What a paid purchase will move, known from the row alone: the line the buyer reads before the transfer lands. */
+export function plannedCircuit(facts: { status: string; source: string; purchaseLamports: bigint }): { lamports: bigint; stampsFunded: number } | null {
+  if (facts.status !== 'paid' || facts.source !== 'payment') return null;
+  const lamports = circuitShare(facts.purchaseLamports);
+  return lamports > 0n ? { lamports, stampsFunded: stampsFunded(lamports) } : null;
+}
+
 export interface CircuitTotals {
   total_lamports: number;
   total_usd_cents: number;

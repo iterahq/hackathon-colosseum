@@ -1,4 +1,4 @@
-import { computeAwards, dayIncomplete, type Award, type AwardsInput } from '../_shared/awards.ts';
+import { computeAwards, dayIncomplete, dayPendingReview, type Award, type AwardsInput } from '../_shared/awards.ts';
 import { linkedWalletOf, resolveWallet, walletOf } from '../_shared/caller.ts';
 import type { Chain } from '../_shared/chain.ts';
 import { COLLECTIONS, type CollectionKind } from '../_shared/chain-names.ts';
@@ -20,6 +20,7 @@ import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_share
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
 import { inBackground, syncMirror } from '../_shared/companion-store.ts';
 import { rewardReferral } from '../_shared/referral-store.ts';
+import { referralNote } from '../_shared/referral.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const MAX_JOBS_PER_CALL = 3;
@@ -120,9 +121,13 @@ async function loadCatalog(db: IteraClient): Promise<Map<string, CatalogEntry>> 
 
 /** Everything `computeAwards` reads, fetched in one round of parallel queries. */
 async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omit<AwardsInput, 'existing'>> {
-  const [progress, programs, units, lessons, activities] = await Promise.all([
+  const [progress, passed, programs, units, lessons, activities] = await Promise.all([
     fetchAll<AwardsInput['progress'][number]>((from, to) =>
-      db.from('progress').select('activity_id,status,completed_at').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
+      db.from('progress').select('activity_id,status,completed_at,written_by_client').eq('user_id', userId).eq('status', 'completed').order('activity_id').range(from, to),
+    ),
+    // The plausibility floor reads which activities have a passed attempt.
+    fetchAll<{ activity_id: string }>((from, to) =>
+      db.from('activity_results').select('activity_id').eq('user_id', userId).eq('passed', true).order('activity_id').order('id').range(from, to),
     ),
     fetchAll<{ id: string; slug: string; title_i18n: Record<string, string> }>((from, to) =>
       db.from('programs').select('id,slug,title_i18n').is('archived_at', null).order('id').range(from, to),
@@ -144,6 +149,7 @@ async function loadProgressAndTree(db: IteraClient, userId: string): Promise<Omi
     lessons: lessons.map((lesson) => ({ id: lesson.id, unit_id: lesson.unit_id, ordinal: lesson.ordinal, title: lesson.title_i18n })),
     activities,
     progress,
+    passedActivityIds: new Set(passed.map((row) => row.activity_id)),
     timeZone: TIME_ZONE,
   };
 }
@@ -260,7 +266,8 @@ async function runJob(
   const kind: CollectionKind = job.type === 'create_medal' ? 'medals' : 'passports';
   const collection = await collectionAddress(db, sdk, chain, kind, config);
   // Read again right before the write: a cosmetic bought while this call ran must not be wiped by the stamp.
-  const [anchor] = await restoreCosmetics(db, [job.anchor]);
+  // The row in memory may predate the claim that stored the wallet: the asset names the wallet it is minted to.
+  const [anchor] = await restoreCosmetics(db, [{ ...job.anchor, wallet_address: job.anchor.wallet_address ?? wallet }]);
   const attributes = onchainAttributes(anchor, anchorCatalog);
 
   let asset = job.anchor.asset_address;
@@ -457,18 +464,20 @@ Deno.serve(async (request) => {
       loadCatalog(db),
       loadProgressAndTree(db, caller.iteraUserId),
     ]);
-    const awards = computeAwards({
-      ...learning,
-      existing: before.map((row) => ({ achievement_key: row.achievement_key, ref_id: row.ref_id, state: row.state })),
-    });
+    const existing = before.map((row) => ({ achievement_key: row.achievement_key, ref_id: row.ref_id, state: row.state }));
+    const awards = computeAwards({ ...learning, existing });
+    // A completed day that fails the plausibility floor awards nothing; the answer says so in neutral terms.
+    const pendingReview = dayPendingReview({ ...learning, existing }, body.lessonId);
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
 
     // The invite reward is paid on the invited learner's first completed day, and only then.
     let inviterToSettle: string | null = null;
+    let referral: ReturnType<typeof referralNote> = null;
     if (rows.some((row) => row.achievement_key === 'first_stamp')) {
       const reward = await rewardReferral(db, caller.iteraUserId);
-      if (reward) {
+      referral = referralNote(reward);
+      if (reward?.rewarded) {
         for (const id of reward.createdRowIds) stored.created.add(id);
         rows = await loadRows(db, caller.iteraUserId);
         inviterToSettle = reward.inviterUserId;
@@ -489,6 +498,8 @@ Deno.serve(async (request) => {
         remaining: mint.remaining,
         mint: { wallet: caller.wallet, cluster: CLUSTER, attempted: mint.attempted, blocked: mint.blocked },
         ...(body.lessonId ? { day_incomplete: dayIncomplete(learning, body.lessonId) } : {}),
+        ...(pendingReview ? { day_pending_review: pendingReview } : {}),
+        ...(referral ? { referral } : {}),
       },
       200,
       cors,

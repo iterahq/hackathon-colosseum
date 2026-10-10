@@ -2,6 +2,9 @@ const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 export const SYSTEM_PROGRAM = '11111111111111111111111111111111';
 export const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+export const MEMO_V1_PROGRAM = 'Memo1UhkJRfHyvLMcVucJwxXeuD728EZVfJf9bBYHJ';
+/** Every program a node reports as `spl-memo`. */
+export const MEMO_PROGRAMS: ReadonlySet<string> = new Set([MEMO_PROGRAM, MEMO_V1_PROGRAM]);
 export const SIGNATURE_BYTES = 64;
 const KEY_BYTES = 32;
 const MAX_U64 = (1n << 64n) - 1n;

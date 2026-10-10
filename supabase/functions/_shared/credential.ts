@@ -95,7 +95,11 @@ export function assetName(row: AchievementRow, catalog: CatalogEntry): string {
   return clip(`Itera Medal · ${pickText(catalog.title_i18n, 'en')}`, 60);
 }
 
-/** What the Attributes plugin of the asset should hold for this row right now. */
+/**
+ * What the Attributes plugin of the asset should hold for this row right now.
+ * `learner` is the wallet the asset was minted to, never the internal learner
+ * id (which older assets still carry until their next ordinary write).
+ */
 export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): OnchainAttribute[] {
   if (row.achievement_key === 'trail_pass') {
     const { ink, frame } = cosmeticsOf(row.state);
@@ -107,7 +111,7 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       { key: 'total_days', value: String(numberOf(row.state.total_days)) },
       { key: 'tier', value: tierOf(row, catalog) },
       { key: 'completed_at', value: typeof row.state.completed_at === 'string' ? row.state.completed_at : '' },
-      { key: 'learner', value: row.user_id },
+      { key: 'learner', value: row.wallet_address ?? '' },
       ...(ink ? [{ key: 'ink', value: ink }] : []),
       ...(frame ? [{ key: 'frame', value: frame }] : []),
       ...endorsementAttributes(endorsementsOf(row.state)),
@@ -136,7 +140,7 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
     { key: 'program', value: String(row.state.program_slug ?? '') },
     { key: 'tier', value: tierOf(row, catalog) },
     { key: 'completed_at', value: row.earned_at },
-    { key: 'learner', value: row.user_id },
+    { key: 'learner', value: row.wallet_address ?? '' },
   ];
 }
 

@@ -13,9 +13,11 @@ describe('circuit normalisers', () => {
     expect(toCircuitShare({ lamports: -5, stamps_funded: 'x' })).toEqual({ lamports: 0, stampsFunded: 0 });
   });
 
-  it('claims stamps for a purchase only when its transfer was sent', () => {
+  it('reads the share of a purchase when its transfer was sent or is about to be', () => {
     expect(toPurchaseCircuit({ status: 'sent', lamports: 550_000, stamps_funded: 110, explorer_url: 'https://e/tx' })).toEqual({ status: 'sent', stampsFunded: 110, explorerUrl: 'https://e/tx' });
-    for (const status of ['pending', 'skipped', 'failed']) expect(toPurchaseCircuit({ status, stamps_funded: 110 })).toBeNull();
+    expect(toPurchaseCircuit({ status: 'pending', lamports: 550_000, stamps_funded: 110, explorer_url: null })).toEqual({ status: 'pending', stampsFunded: 110, explorerUrl: null });
+    expect(toPurchaseCircuit({ status: 'pending', lamports: 0, stamps_funded: 0 })).toBeNull();
+    for (const status of ['skipped', 'failed']) expect(toPurchaseCircuit({ status, stamps_funded: 110 })).toBeNull();
     expect(toPurchaseCircuit(undefined)).toBeNull();
   });
 });

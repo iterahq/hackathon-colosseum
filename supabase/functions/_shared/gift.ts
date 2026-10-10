@@ -86,6 +86,59 @@ export function isAbandoned(gift: GiftTiming, now: Date, marginMs = EXPIRY_MARGI
   return gift.status === 'pending' && now.getTime() > new Date(gift.expires_at).getTime() + marginMs;
 }
 
+/** Open Action intents one recipient may have at a time, counted before any node call. */
+export const MAX_OPEN_ACTION_GIFTS = 10;
+/** Unpaid Action intents one recipient may collect in 24 hours. */
+export const MAX_UNPAID_ACTION_GIFTS_PER_DAY = 60;
+/** A transaction is handed out again only while its blockhash has at least this long to live. */
+export const REUSE_MIN_LEFT_MS = 20_000;
+/** How long a slot is held while the node is asked for a blockhash (replaced by the real window right after). */
+export const SLOT_HOLD_MS = 90_000;
+/** Past its grace window even the callback refuses a gift: only then is an unpaid row closed without asking the chain. */
+export const BLIND_EXPIRY_MS = CONFIRM_GRACE_MS + 60 * 60_000;
+
+/** An intent still occupies one of the recipient's slots while its window (plus the margin) is alive. */
+export function occupiesSlot(gift: GiftTiming, now: Date, marginMs = EXPIRY_MARGIN_MS): boolean {
+  return gift.status === 'pending' && now.getTime() <= new Date(gift.expires_at).getTime() + marginMs;
+}
+
+/** After an attempt that produced no transaction (no funds, node down) the same payer is answered from the database for this long. */
+export const RETRY_AFTER_MS = 15_000;
+
+export interface ActionSlotFacts {
+  /** The unpaid intent this payer already has for this recipient, if any. */
+  own: (GiftTiming & { blockhash: string | null }) | null;
+  /** Open intents of OTHER payers for this recipient (`occupiesSlot`). */
+  openOthers: number;
+  /** Unpaid Action intents opened for this recipient in the last 24 hours, this payer's included. */
+  unpaidToday: number;
+  now: Date;
+}
+
+/**
+ * What a POST to the gift Action may do, decided from the database alone,
+ * before any call to the Solana node:
+ * - `reuse`: the payer's own intent has a live blockhash; the same transaction is returned and the node is not asked.
+ * - `wait`: the payer's last attempt, seconds ago, produced no transaction; it is answered again without the node.
+ * - `refresh`: the payer's own intent gets a new blockhash (it holds a slot, or takes a free one again).
+ * - `open`: a new intent, which takes one of the recipient's free slots.
+ * - `too_many`: the recipient's slots are taken, or too many unpaid intents were opened today. Refused.
+ * Only `refresh` and `open` reach the node, and each of them holds one of the recipient's few slots.
+ */
+export function actionSlot(facts: ActionSlotFacts): 'reuse' | 'wait' | 'refresh' | 'open' | 'too_many' {
+  const { own, now } = facts;
+  if (own && own.status === 'pending') {
+    const left = new Date(own.expires_at).getTime() - now.getTime();
+    if (own.blockhash && left >= REUSE_MIN_LEFT_MS) return 'reuse';
+    // A slot held without a transaction was taken `SLOT_HOLD_MS` before it expires.
+    if (!own.blockhash && left > SLOT_HOLD_MS - RETRY_AFTER_MS) return 'wait';
+  }
+  if (own && occupiesSlot(own, now)) return 'refresh';
+  if (facts.openOthers >= MAX_OPEN_ACTION_GIFTS) return 'too_many';
+  if (!own && facts.unpaidToday >= MAX_UNPAID_ACTION_GIFTS_PER_DAY) return 'too_many';
+  return own ? 'refresh' : 'open';
+}
+
 export function giftActionUrl(functionsBase: string, wallet: string, lang?: Lang): string {
   return `${functionsBase}/action-gift?to=${wallet}${lang ? `&lang=${lang}` : ''}`;
 }
@@ -113,6 +166,7 @@ const TEXT = {
       self_gift: 'Não dá para dar uma vida para você mesmo.',
       recipient_full: 'O Tera desta pessoa já está com todas as vidas e a vida bônus.',
       gift_limit: 'Esta pessoa já recebeu o máximo de vidas de presente por hoje.',
+      too_many_pending: 'Há presentes demais em aberto para esta pessoa agora. Tente de novo em alguns minutos.',
       insufficient_funds: 'Saldo insuficiente em devnet para pagar a vida e a taxa.',
       gift_not_found: 'Este presente não existe.',
       gift_expired: 'Este presente expirou. Abra o link de novo.',
@@ -142,6 +196,7 @@ const TEXT = {
       self_gift: 'You cannot gift a life to yourself.',
       recipient_full: "This learner's Tera already has every life and the bonus life.",
       gift_limit: 'This learner already received the maximum of gifted lives for today.',
+      too_many_pending: 'Too many gifts are open for this learner right now. Try again in a few minutes.',
       insufficient_funds: 'Not enough devnet SOL to pay for the life and the fee.',
       gift_not_found: 'This gift does not exist.',
       gift_expired: 'This gift expired. Open the link again.',

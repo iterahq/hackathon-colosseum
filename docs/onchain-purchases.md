@@ -46,10 +46,11 @@ shop_items ─► purchase-intent ─► wallet signs + sends ─► purchase-co
 |---|---|---|
 | `shop_items` | catalog: `key`, `kind`, `price_lamports`, `price_usd_cents`, `price_label`, i18n texts, `effect`, `art`, `active`, `sort` | everyone |
 | `purchases` | one row per intent: `status` (`pending`/`paid`/`expired`; `refunded`/`failed` unused), `lamports`, `price_usd_cents`, `wallet`, `tx_signature` (unique), `memo`, `last_valid_block_height`, `expires_at`, `paid_at`, `applied_at`, `error` | own rows |
+| `payments` | the ledger of every settled payment, purchases **and** gifts: `tx_signature` (pk), `kind` (`purchase`/`gift`), `ref_id` (the intent it settled), `lamports`, `created_at`. Written only by `itera.settle_payment` (migration `0132`), in the same database transaction that marks the intent paid | nobody |
 | `user_inventory` | `(user_id, item_key, ref_id)` → `qty` | own rows |
 | `companions` | lives, `last_regen_at`, `outfit`, mint columns, `mirrored`, `mirror_due`, public `id` | own row |
 | `life_events` | idempotency: unique `(user_id, attempt_id)` | own rows |
-| `devnet_airdrops` | one faucet claim per wallet | nobody |
+| `devnet_airdrops` | one faucet claim per wallet and per learner: `wallet` (pk), `user_id` (unique), `lamports`, `tx_signature`, `created_at`, `confirmed_at` | nobody |
 | `user_wallets` | the wallet an e-mail account linked: `user_id` (pk), `wallet` (unique), `linked_at` | own row |
 | `wallet_link_challenges` | the message a wallet is asked to sign: `wallet`, `nonce`, `message`, `expires_at`, `used_at` | nobody |
 
@@ -176,10 +177,18 @@ Body `{ "intent_id": "…", "signature": "<base58>", "lang": "pt" | "en" }`.
   attributes the transaction changed, `value` being the on-chain string. An outfit writes nothing at
   purchase (it is written on equip), and a repeated confirm of an applied intent sends no
   transaction: both answer without `chain` and `written`.
-- All of these must hold: the intent is the caller's and not expired; the signature is on no other
-  purchase; the transaction is confirmed with no error; its fee payer and the source of the transfer
-  are the caller's wallet; a System transfer to the treasury of at least the intent's lamports; a
-  memo equal to the intent id. Extra instructions (a wallet's priority fee) are tolerated.
+- All of these must hold: the intent is the caller's and not expired; the signature settled nothing
+  else (no other purchase **and no gift**: one ledger, `itera.payments`); the transaction is confirmed
+  with no error; its fee payer is the caller's wallet; System transfers **from the fee payer** to the
+  treasury add up to at least the intent's lamports; and the transaction carries **exactly one** memo
+  instruction, equal to the intent id. A transaction with two memos (the ids of two intents) pays
+  nothing: `422 payment_mismatch`, `detail: memo`. Other extra instructions (a wallet's priority
+  fee) are tolerated.
+- One payment, one thing: `itera.settle_payment(kind, ref_id, signature, lamports)` locks the intent,
+  writes the ledger entry and marks the intent paid in one database transaction. The same signature
+  offered to any other purchase or gift answers `409 signature_reused`. The in-app gift shares one id
+  between its purchase and its gift row, so both point at one ledger entry. Proof on devnet:
+  `node scripts/hackathon/security-attacks.mjs a`.
 - Idempotent: the same intent and signature again returns the same paid result and re-applies
   nothing.
 - Errors: `404 intent_not_found` (also for another learner's intent), `410 intent_expired`,
@@ -286,6 +295,14 @@ Expires At: 2026-10-10T12:05:00.000Z
 | `410 challenge_expired` | older than five minutes, or already used |
 | `422 signature_invalid` | not the wallet's signature of that message |
 
+**A linked wallet that later signs in on its own is the same learner** (migration `0141`, security
+review finding 9). When wallet W, linked by e-mail account A, signs in with Solana, the provisioning
+trigger finds W in `user_wallets` and attaches the new sign-in to A (one more row in
+`itera.identities`): no second learner, no new tenant. Both sessions then resolve the same learner
+and the same wallet (`link-wallet` `status` says `source: "identity"` for the wallet session and
+`"linked"` for the e-mail one), and a gift to W finds one learner. The link was only ever written
+after W signed a challenge for A. Proof: `node scripts/hackathon/security-attacks.mjs i`.
+
 ### `POST /companion`
 
 Body `{}` or `{ "equip": { "outfit": "outfit_crown" | null } }`.
@@ -350,13 +367,48 @@ two independent transactions, and the older value could land last. `syncMirror`
   that write put on chain; absent when the call deferred or had nothing to write (for example a
   `lose` whose mirror started after the refill already landed in the database).
 
+### Mirror limits (who the authority pays for)
+
+Every mirror is a transaction signed and paid by the mint authority, so each one passes
+`mirrorPolicy` (`_shared/mirror.ts`, migrations `0136`, `0137`) before it is sent:
+
+- **Cooldown**: at least 30 s between two ordinary mirrors of one companion (an equip, a lesson end,
+  a retry). Inside the window nothing is sent: the row is flagged `mirror_due` and ONE invocation
+  waits for the window to end and writes the state the database has then, so any number of changes
+  coalesce into one transaction. If that invocation dies, the next `companion` / `lives` call writes.
+- **Not held by the cooldown**: a purchase (`life_refill`, a gift received, an outfit put on within
+  10 minutes of being bought or claimed) and the loss of the last life. They are the two moments the
+  product shows on chain and they still land within seconds.
+- **Daily cap**: 60 on-chain writes per companion per UTC day (`companions.mirror_day`,
+  `mirror_writes`), counted for every reason. Past it the database stays right, nothing is sent, the
+  answer carries no `chain`, and the asset catches up on the first call of the next day.
+- Contract unchanged: `chain` was already optional everywhere. What a client can now see: after an
+  equip that was not just bought, or a lesson end, the asset may be up to 30 s behind.
+
+Proof on devnet: `node scripts/hackathon/security-attacks.mjs d` (8 equip changes in 22 s = 2 writes).
+
 ### `POST /wallet-faucet`
 
 Works for a sign-in wallet and for a linked one.
 `{ "signature": "…", "lamports": 10000000, "explorer_url": "…" }`, or HTTP 200
-`{ "blocked": "already_claimed" | "not_needed" | "not_devnet" | "no_wallet" }`. Once per wallet,
-only when the balance cannot pay the cheapest active item. Paid by the treasury, never by the mint
-authority; capped at 200 claims and refused (`503 faucet_unavailable`) when the treasury is low.
+`{ "blocked": "already_claimed" | "not_needed" | "not_devnet" | "no_wallet" }`, or
+`503 { "error": "faucet_unavailable" | "rpc_unavailable" }` (`rpc_unavailable` may carry `signature`
+when the transfer was handed to the node and not seen confirmed). Only when the balance cannot pay
+the cheapest active item. Paid by the treasury, never by the mint authority. Rules in
+`_shared/faucet.ts` (migration `0140`, security review finding 7):
+
+- **One claim per learner AND per wallet** (`devnet_airdrops`: `wallet` primary key, `user_id` unique).
+- **A transfer that timed out is never paid twice.** The row is the lock; the signature is stored the
+  moment the node accepts the transaction and the row is kept from then on. A claim not seen
+  confirmed answers `already_claimed` for 3 minutes (longer than a blockhash lives); after that the
+  next call asks the chain about the stored signature: landed means claimed, and only when the chain
+  has nothing is the drop sent again, once. The lock is released only when nothing was sent.
+- **Daily budget**: 0.3 SOL in any 24 hours (thirty drops), then `503 faucet_unavailable`; also capped
+  at 200 claims in all and refused when the treasury is low.
+- The memo is `faucet:<wallet>`. It used to carry the internal learner id.
+
+Wallets are free, so a determined visitor can still take the whole daily budget with thirty
+accounts: the budget is the bound, not the per-learner rule.
 
 ### Companion in the public functions
 
@@ -431,7 +483,7 @@ mistake takes, and survives a refill and a lesson bonus. On chain the companion 
   a repeated confirm has no `chain` but keeps `gift.mirror_explorer_url`. `name` is the nickname of
   a wallet learner, `null` for anyone else (an e-mail account's name is never returned).
 - The life is given exactly once per intent (`life_events`, attempt `gift:<intent id>`), and one
-  payment settles one gift (`tx_signature` unique on both tables).
+  payment settles one thing across purchases and gifts (the `payments` ledger, see `purchase-confirm`).
 
 ### `POST /gifts` (Bearer user token, app CORS)
 
@@ -450,7 +502,7 @@ X-Accept-Action-Version, X-Accept-Blockchain-Ids`) on **every** answer, `OPTIONS
 | Call | Answer |
 |---|---|
 | `GET /action-gift?to=<wallet>` or `GET /action-gift/<wallet>` | `ActionGetResponse`: `{ type: "action", icon: <the recipient's companion art>, title: "Give <name>'s Tera a life", description, label: "Gift a life", links: { actions: [{ type: "transaction", label: "Gift a life · 0.00055 SOL", href: <this url> }] } }`; `disabled: true` + `error` while the recipient is full or over the daily limit. `400` malformed wallet, `404` unknown wallet |
-| `POST` (same url) `{ "account": "<payer wallet>" }` | `ActionPostResponse`: `{ type: "transaction", transaction: <base64 unsigned legacy transaction: System transfer account -> treasury of 550 000 lamports + Memo(gift id)>, message, links: { next: { type: "post", href: "…/action-gift/confirm?gift=<id>&lang=…" } } }`. `400` bad account, self-gift, recipient full, insufficient funds; `429` daily limit; `503` node down |
+| `POST` (same url) `{ "account": "<payer wallet>" }` | `ActionPostResponse`: `{ type: "transaction", transaction: <base64 unsigned legacy transaction: System transfer account -> treasury of 550 000 lamports + Memo(gift id)>, message, links: { next: { type: "post", href: "…/action-gift/confirm?gift=<id>&lang=…" } } }`. `400` bad account (not a real ed25519 public key), self-gift, recipient full, insufficient funds; `429` daily limit, or too many open intents for this recipient; `503` node down |
 | `POST /action-gift/confirm?gift=<id>` `{ "account", "signature" }` | `CompletedAction`: `{ type: "completed", icon, title: "Life delivered ✓", description, label }`. Same checks as `purchase-confirm` (payer, treasury, amount, memo, read from chain). `404` gift / transaction not visible yet (call again), `410` expired, `422` wrong payer or payment, `409` signature reused. Idempotent |
 
 - The payer needs no Itera account. A repeated `POST` for the same payer and recipient refreshes
@@ -486,11 +538,36 @@ intent. An unpaid gift is marked `expired` two minutes after its blockhash died.
   `failed` row is retried by the inviter's next `passport` call, as any medal. Every step is
   idempotent and `rewarded` is written last.
 
+- **Caps** (migration `0138`, security review finding 5): one inviter earns at most **5** invite
+  rewards in 24 hours and **50** in all. An invite takes one of the inviter's slots
+  (`itera.claim_referral_reward`, atomic per inviter) before anything is given. With no slot nothing is
+  given to either side, the invite stays `pending`, and the invited learner's `passport` answer
+  carries the optional `referral: { "rewarded": false, "reason": "cap" }`; a later call, once a slot
+  is free, rewards it (`referral: { "rewarded": true }` on the call that does). The invited learner's
+  own stamps and medals are never held back.
+- **The first day must be real enough to be stamped**: the reward hangs on `first_stamp`, and a day
+  that fails the plausibility floor (see "Trust model" in `docs/onchain-passport.md`) earns none.
+  Proof: `node scripts/hackathon/security-attacks.mjs e` (no on-chain cost).
+
 ### Known limits (gift and referral)
 
 - Two payers racing for the last free slot can both pay; the second life is lost at the cap (6).
   The daily limit counts paid gifts, so the same race can go one over it.
-- Anyone can open pending Action gifts for any pair of wallets: one row per (payer, recipient).
+- The Action takes no token, so its cost is bounded per recipient, not per caller (migration `0139`,
+  `actionSlot` in `_shared/gift.ts`; security review finding 6). Everything below is decided from the
+  database, before the Solana node is asked anything:
+  - `account` must be a real ed25519 public key (on the curve, not a small-order point): the System
+    address, off-curve bytes and program-derived addresses answer `400`.
+  - at most **10** open Action intents per recipient and **60** unpaid ones in 24 hours; past either
+    a new payer gets `429` with an `ActionError` ("Too many gifts are open for this learner right
+    now…") and no row is written. An intent takes its slot before the node is asked, so an unfunded
+    payer also uses one (and frees it when its window ends, about 3.5 minutes).
+  - the same payer asking again gets the **same transaction** while its blockhash has 20 s or more to
+    live (no node call, one row); an attempt that gave no transaction is answered from the database
+    for 15 s.
+  - an unpaid intent older than the callback's grace window (24 h) is marked `expired`.
+  There is still no per-IP limit: someone can keep one recipient's ten slots taken and stop blinks to
+  that learner (the in-app gift is not affected). Proof: `node scripts/hackathon/security-attacks.mjs f`.
 - `learner-profile` is cached for 20 s, so a profile can show the lives from before a gift for that long.
 - The invite reward needs the invited learner's `passport` call (the app makes it at lesson end).
 
@@ -544,6 +621,21 @@ node scripts/hackathon/purchase-e2e.mjs               # devnet, a throwaway keyp
 ```bash
 node scripts/hackathon/link-wallet-e2e.mjs [--keep]   # devnet, ~0.05 SOL of the authority
 ```
+
+```bash
+# The attacks of the security review, reproduced against the live functions, one section per finding.
+# Throwaway wallets are funded from the TREASURY key and what they pay flows back to it; the script
+# prints both balances around every section and stops before the authority would go below 0.62 SOL
+# or the treasury below 0.25 SOL. Cost per section: a, b, e, f, g, i, j, owner: network fees only;
+# c: 0.013 SOL of the authority (the mints of one honest day); d: 0.004 (one companion mint, reused
+# on later runs); h: one attribute write, needs d first. `owner` is a read-only dry check.
+node scripts/hackathon/security-attacks.mjs [a b c d e f g h i j owner]
+```
+
+`purchase-e2e.mjs` and `gift-e2e.mjs` fund their wallets from the treasury too (not from the mint
+authority) and refuse to start below the same floors. Without `HACKATHON_DEMO_EMAIL` /
+`HACKATHON_DEMO_PASSWORD` in the environment `purchase-e2e.mjs` skips its five wallet-less checks
+and never signs the demo user in.
 
 `link-wallet-e2e.mjs` creates two e-mail learners (admin API) and one wallet learner, runs the whole
 linked-wallet story (unclaimed rows, challenge, verify, mint, companion, a purchase through
@@ -609,8 +701,8 @@ Not verified:
   lives regenerate.
 - `apply` for a life refill is at-least-once: a crash between the refill and its bookkeeping can
   refill twice.
-- The faucet is one claim per wallet, and wallets are free: the cap and the treasury balance are the
-  only bounds.
+- The faucet is one claim per learner and per wallet, and wallets are free: the daily budget (0.3 SOL)
+  and the treasury balance are the real bounds.
 - No rate limit on any function.
 
 ## Earned or bought: the golden laurel (`shop-claim`)
@@ -633,8 +725,11 @@ read by `_shared/unlock.ts`; the level is the companion's (`floor(xp / 200) + 1`
   `409 item_inactive`, `400 invalid_body`, `401 unauthorized`.
 - The claim sends no transaction. Wearing it is the usual `companion { equip }`, which mirrors the
   `outfit` attribute like any bought outfit. E-mail learners can claim too (off chain).
-- The level is only as trustworthy as the xp ledger: until `award_activity_xp` stops accepting an
-  arbitrary amount (security review, finding 3) a client can raise its own level, and with it this unlock.
+- The level is only as trustworthy as the xp ledger. Since migration `0133` `award_activity_xp` gives
+  at most 10 xp, once per activity, and only for an activity the caller holds a `completed` progress
+  row for (security review, finding 3: the amount used to be the client's). What remains is finding 1:
+  the progress row itself is written by the client, so a learner can still reach level 5 without
+  learning anything, 10 xp at a time. See "Trust model" in `docs/onchain-passport.md`.
 
 ## Circuito: the shop pays for other learners' stamps
 
@@ -650,15 +745,27 @@ memo `circuit:<purchase id>`.
 - **Once per purchase**: `purchases.circuit_status` goes `null -> pending` by compare-and-set before
   anything is sent, then `sent` (`circuit_lamports`, `circuit_signature` unique, `circuit_at`),
   `skipped` (`circuit_reason`: `treasury_floor` when the treasury would end below 0.2 SOL after the
-  transfer and its fee, `nothing_to_send`) or `failed`. A row is never taken twice and a `failed`
-  transfer is **not** retried (it may have been broadcast). A free claim and an unpaid intent move
-  nothing. An in-app gift is one purchase row, so it moves once; a blink gift (`gifts` table only)
-  is not part of the Circuito.
-- `purchase-confirm` / `purchase-submit` gain an optional
-  `circuit: { status: "sent" | "pending" | "skipped" | "failed", lamports, stamps_funded, tx_signature, explorer_url }`.
-  The call waits at most 6 s for the transfer; past that it says `pending` and the transfer finishes in
-  the background. A repeated confirm returns the stored state. `stamps_funded = floor(lamports / 5000)`
-  (5 000 lamports = the fee of one stamp).
+  transfer and its fee, `nothing_to_send`, `before_circuit` for purchases older than the feature) or
+  `failed`. A free claim and an unpaid intent move nothing. An in-app gift is one purchase row, so it
+  moves once; a blink gift (`gifts` table only) is not part of the Circuito.
+- **After the answer, never in it** (migration `0135`): `purchase-confirm` / `purchase-submit` do not
+  wait for the transfer. They gain an optional
+  `circuit: { status: "sent" | "pending" | "skipped" | "failed", lamports, stamps_funded, tx_signature, explorer_url }`
+  read from the row alone. On the first confirm that is `pending` with the share the purchase **will**
+  move (`lamports = floor(purchases.lamports / 2)`, `stamps_funded = floor(lamports / 5000)`,
+  `tx_signature: null`); the transfer runs right after the response (`EdgeRuntime.waitUntil`) and lands
+  3 to 6 s later. A repeated confirm then answers `sent` with the transaction. `skipped` / `failed`
+  carry zeros.
+- **Retry, without paying twice** (`retryCircuits` in `_shared/circuit-store.ts`): after every purchase
+  answer and on every `GET /circuit`, at most two older purchases are taken up again: a transfer that
+  never ran (`circuit_status` null a minute after the purchase was paid) and one left `pending` or
+  `failed` for three minutes (longer than a blockhash lives, so an unseen transaction can no longer
+  land). The signature is stored the moment the node accepts the transaction; before sending again
+  the retry asks the chain about that signature **and** looks for any treasury transaction with the
+  memo `circuit:<purchase id>`. Found: it is recorded as `sent`. Still in flight: left alone. Only when
+  the chain has nothing is a new transfer sent, and if the chain cannot be asked nothing is sent.
+  Destination and amount are unchanged: the authority key inside `sendToAuthority`, half of the paid
+  row. Purchases older than 7 days are left alone. Proof: `node scripts/hackathon/security-attacks.mjs j`.
 - `GET /circuit` (public, no token, CORS `*`, cached 15 s; `?wallet=<address>` adds that wallet's
   share and is not cached):
   `{ total_lamports, total_usd_cents, purchases, stamps_funded, cluster, treasury, authority, treasury_explorer_url, authority_explorer_url, recent: [{ at, lamports, tx_signature, explorer_url }] (10), wallet?: { lamports, stamps_funded } }`.
@@ -666,7 +773,8 @@ memo `circuit:<purchase id>`.
 - `GET /learner-profile/<wallet>` gains `circuit: { lamports, stamps_funded }` for that wallet's own purchases.
 - UI: a strip in the shop header ("Suas compras já pagaram N carimbos de outros alunos · no total a
   loja pagou M ↗"), a line on `/u/<wallet>`, and "+N carimbos pagos pra outros alunos" in the success
-  dialog (only when the transfer is confirmed).
+  dialog (for a `sent` or a `pending` share: the number is fixed by the paid purchase; the strip's
+  totals count confirmed transfers only, so they follow a few seconds later).
 - Effect on the treasury: a purchase now nets `price - floor(price / 2) - 5 000` lamports.
   `purchase-e2e.mjs` and `link-wallet-e2e.mjs` accept either reading of their "treasury received" check.
 

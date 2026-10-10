@@ -79,6 +79,7 @@ describe('companion mirror', () => {
   const snapshot: CompanionSnapshot = {
     id: '70f5eb27-e08d-4270-aa56-3d609395da79',
     userId: '1c6ab4d7-804f-45fa-8b68-e9a8a108e26c',
+    wallet: 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B',
     lives: 3,
     maxLives: 5,
     outfit: 'outfit_crown',
@@ -97,7 +98,7 @@ describe('companion mirror', () => {
       level: '4',
       xp: '780',
       streak: '2',
-      learner: snapshot.userId,
+      learner: snapshot.wallet,
     });
     expect(companionAttributes({ ...snapshot, outfit: null })[3]).toEqual({ key: 'outfit', value: 'none' });
     expect(companionAttributes({ ...snapshot, outfit: 'outfit_unknown' })[3]).toEqual({ key: 'outfit', value: 'none' });

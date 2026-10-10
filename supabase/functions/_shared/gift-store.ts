@@ -4,11 +4,12 @@ import { explorerUrl, type ChainWrite } from './credential.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { cleanName, giftPhase } from './gift.ts';
 import { BONUS_LIVES, regenerate } from './lives.ts';
+import { settlePayment, settledElsewhere } from './payments.ts';
 import { missingTransactionVerdict, verifyPayment, type ParsedTransaction } from './purchase-verify.ts';
 import { RpcError, blockHeight, rpc } from './rpc.ts';
 
 export const GIFT_COLUMNS =
-  'id,source,from_wallet,from_user_id,to_user_id,to_wallet,lamports,status,tx_signature,mirror_signature,last_valid_block_height,expires_at,created_at,paid_at,delivered_at,seen_at';
+  'id,source,from_wallet,from_user_id,to_user_id,to_wallet,lamports,status,tx_signature,mirror_signature,last_valid_block_height,blockhash,expires_at,created_at,paid_at,delivered_at,seen_at,error';
 const UNIQUE_VIOLATION = '23505';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LOOKUP_ATTEMPTS = 6;
@@ -26,11 +27,15 @@ export interface GiftRow {
   tx_signature: string | null;
   mirror_signature: string | null;
   last_valid_block_height: number | null;
+  /** The blockhash of the transaction last built for this intent (Action path). */
+  blockhash: string | null;
   expires_at: string;
   created_at: string;
   paid_at: string | null;
   delivered_at: string | null;
   seen_at: string | null;
+  /** Why the last attempt to build the Action transaction gave none (`insufficient_funds`), when it did not. */
+  error: string | null;
 }
 
 export type GiftFailure =
@@ -128,8 +133,11 @@ export interface GiftTerms {
   toUserId: string;
   toWallet: string;
   lamports: number;
-  lastValidBlockHeight: number;
+  /** `null` while a slot is only held and the node was not asked yet. */
+  lastValidBlockHeight: number | null;
   expiresAt: string;
+  /** The blockhash the returned transaction uses, kept so the same transaction can be handed out again. */
+  blockhash?: string | null;
 }
 
 /**
@@ -144,6 +152,7 @@ export async function openGift(db: IteraClient, terms: GiftTerms): Promise<GiftR
     to_wallet: terms.toWallet,
     last_valid_block_height: terms.lastValidBlockHeight,
     expires_at: terms.expiresAt,
+    blockhash: terms.blockhash ?? null,
   };
   if (terms.id) {
     const { data: refreshed, error: refreshError } = await db
@@ -183,16 +192,11 @@ export interface Delivery {
 export async function deliverGift(db: IteraClient, row: GiftRow, signature: string, mirrorWaitMs: number): Promise<Delivery> {
   let gift = row;
   if (gift.status === 'pending' || gift.status === 'expired') {
-    const { data, error } = await db
-      .from('gifts')
-      .update({ status: 'paid', tx_signature: signature, paid_at: new Date().toISOString(), error: null })
-      .eq('id', gift.id)
-      .in('status', ['pending', 'expired'])
-      .select(GIFT_COLUMNS)
-      .maybeSingle();
-    if (error?.code === UNIQUE_VIOLATION) throw new GiftError('signature_reused');
-    if (error) throw new Error(`gifts pay: ${error.message}`);
-    gift = (data as GiftRow | null) ?? ((await loadGift(db, gift.id)) as GiftRow);
+    // The shared ledger: a signature that settled a purchase or another gift is refused here,
+    // and the in-app gift (same id as its purchase) reuses its purchase's entry.
+    const ledger = await settlePayment(db, 'gift', gift.id, signature, gift.lamports);
+    if (ledger !== 'settled') throw new GiftError(ledger === 'not_found' ? 'gift_not_found' : 'signature_reused');
+    gift = (await loadGift(db, gift.id)) as GiftRow;
   }
   if (gift.tx_signature !== signature) throw new GiftError('signature_reused');
 
@@ -208,7 +212,8 @@ export async function deliverGift(db: IteraClient, row: GiftRow, signature: stri
 
   let write: ChainWrite | null = null;
   if (!gift.mirror_signature) {
-    write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs)).write;
+    // A paid gift: its write skips the mirror cooldown, as a purchase does, and counts toward the recipient's daily cap.
+    write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs, 'purchase')).write;
     if (write) gift = await patch({ mirror_signature: write.signature });
   }
   return { gift, write };
@@ -239,6 +244,7 @@ export async function settleActionGift(db: IteraClient, giftId: string, account:
   const phase = giftPhase(gift, new Date());
   if (phase === 'expired') throw new GiftError('gift_expired');
   if (phase === 'payable') {
+    if (await settledElsewhere(db, signature, gift.id)) throw new GiftError('signature_reused');
     const { treasury } = await loadConfig(db);
     if (!isSolanaAddress(treasury)) throw new GiftError('unavailable');
     let transaction: ParsedTransaction | null;

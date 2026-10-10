@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLAIM_WINDOW_MS, CODE_LENGTH, claimVerdict, codeFromBytes, inviteLink, isReferralCode, referralStatus } from './referral';
+import { CLAIM_WINDOW_MS, CODE_LENGTH, REWARDS_LIFETIME, REWARDS_PER_DAY, asRewardSlot, claimVerdict, codeFromBytes, inviteLink, isReferralCode, referralNote, referralStatus, takeRewardSlot } from './referral';
 
 const NOW = new Date('2026-10-10T12:00:00.000Z');
 const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
@@ -68,5 +68,39 @@ describe('status', () => {
 
   it('is empty for a learner who invited nobody', () => {
     expect(referralStatus('bcdf2345', 'https://site.example', [])).toMatchObject({ invited: [], rewarded_count: 0, pending_count: 0 });
+  });
+});
+
+describe('invite reward cap', () => {
+  const INVITED = '0b0e1f7a-58e5-4f0c-9d55-7a1f6f1e2c3d';
+  const rpcAnswering = (data: unknown, error: { message: string } | null = null) => {
+    const calls: unknown[] = [];
+    const rpc = (name: string, args: Record<string, unknown>) => {
+      calls.push([name, args]);
+      return Promise.resolve({ data, error });
+    };
+    return { rpc, calls };
+  };
+
+  it('caps at 5 rewards a day and 50 for ever, and passes exactly those to the slot function', async () => {
+    expect(REWARDS_PER_DAY).toBe(5);
+    expect(REWARDS_LIFETIME).toBe(50);
+    const { rpc, calls } = rpcAnswering('ok');
+    expect(await takeRewardSlot(rpc, INVITED)).toBe('ok');
+    expect(calls).toEqual([['claim_referral_reward', { p_invited: INVITED, p_daily: 5, p_lifetime: 50 }]]);
+  });
+
+  it('reads `cap` and `none`, and never treats an unknown answer or an error as a slot', async () => {
+    expect(await takeRewardSlot(rpcAnswering('cap').rpc, INVITED)).toBe('cap');
+    expect(await takeRewardSlot(rpcAnswering('none').rpc, INVITED)).toBe('none');
+    await expect(takeRewardSlot(rpcAnswering(null).rpc, INVITED)).rejects.toThrow('unexpected answer');
+    await expect(takeRewardSlot(rpcAnswering('ok', { message: 'down' }).rpc, INVITED)).rejects.toThrow('down');
+    expect(() => asRewardSlot('yes')).toThrow();
+  });
+
+  it('tells the invited learner only whether their own invite was rewarded', () => {
+    expect(referralNote(null)).toBeNull();
+    expect(referralNote({ rewarded: true })).toEqual({ rewarded: true });
+    expect(referralNote({ rewarded: false })).toEqual({ rewarded: false, reason: 'cap' });
   });
 });
