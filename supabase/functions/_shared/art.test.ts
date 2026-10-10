@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { escapeXml, renderArt, wrapText, type ArtInput } from './art';
+import { OUTFIT_LAYERS, TERA_FACE_DATA_URI } from './outfit-art';
 import { companionArtInput, companionChainImageUrl, companionFromAttributes, withChainValues } from './companion';
 import { artInput, assetName, awardView, buildMetadata, onchainAttributes, type AchievementRow, type CatalogEntry } from './credential';
 
@@ -222,10 +223,28 @@ describe('companion art', () => {
   it('draws the equipped outfit by key and nothing for an unknown one', () => {
     const bare = draw();
     expect(bare).not.toContain('data-outfit');
-    const outfits = ['outfit_glasses', 'outfit_crown', 'outfit_headphones'].map((outfit) => draw({ outfit }));
-    outfits.forEach((svg, index) => expect(svg).toContain(`data-outfit="${['outfit_glasses', 'outfit_crown', 'outfit_headphones'][index]}"`));
-    expect(new Set([bare, ...outfits]).size).toBe(4);
+    const keys = ['outfit_glasses', 'outfit_crown', 'outfit_headphones', 'outfit_laurel'];
+    const outfits = keys.map((outfit) => draw({ outfit }));
+    outfits.forEach((svg, index) => expect(svg).toContain(`data-outfit="${keys[index]}"`));
+    expect(new Set([bare, ...outfits]).size).toBe(5);
     expect(draw({ outfit: 'outfit_"><script>' })).toBe(bare);
+    expect(draw({ outfit: 'toString' })).toBe(bare);
+  });
+
+  it('layers the outfit like the app: back under the face, front over it, all inlined', () => {
+    const svg = draw({ outfit: 'outfit_laurel' });
+    const back = svg.indexOf('data-outfit-layer="back"');
+    const face = svg.indexOf(TERA_FACE_DATA_URI.slice(0, 80));
+    const front = svg.indexOf('data-outfit-layer="front"');
+    expect(back).toBeGreaterThan(-1);
+    expect(back).toBeLessThan(face);
+    expect(face).toBeLessThan(front);
+    expect(draw({ outfit: 'outfit_crown' })).not.toContain('data-outfit-layer="back"');
+    expect(svg).not.toMatch(/href="https?:/);
+  });
+
+  it('keeps every companion drawing under 250 KB', () => {
+    for (const outfit of [null, ...Object.keys(OUTFIT_LAYERS)]) expect(draw({ outfit }).length, String(outfit)).toBeLessThan(250_000);
   });
 
   it('carries no user id', () => {

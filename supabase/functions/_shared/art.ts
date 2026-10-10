@@ -1,5 +1,6 @@
 import type { Frame, Ink } from './cosmetics.ts';
 import { MASCOT_DATA_URI } from './mascot.ts';
+import { OUTFIT_LAYERS, TERA_FACE, TERA_FACE_DATA_URI } from './outfit-art.ts';
 
 export type Lang = 'pt' | 'en';
 
@@ -256,26 +257,22 @@ ${ribbon}
 }
 
 /**
- * Accessories are drawn in the mascot's own 240x300 box, one function per item
- * key, so swapping a drawing for final artwork touches one place.
+ * The companion is drawn exactly as the app draws the learner's Tera: the outfit's `back` layer,
+ * his face, then the `front` layer. The layers are the files of `public/mascot/outfits/`, inlined
+ * (`outfit-art.ts`); they cover the face box plus a bleed on every side.
  */
-const OUTFIT_ART: Record<string, () => string> = {
-  outfit_glasses: () => `<g fill="none" stroke="${CREAM}" stroke-width="5" stroke-linecap="round">
-<circle cx="80" cy="204" r="25" fill="${BACKGROUND}" fill-opacity="0.35"/>
-<circle cx="150" cy="212" r="23" fill="${BACKGROUND}" fill-opacity="0.35"/>
-<path d="M104 203q11-7 23 3"/><path d="M56 198l-22-10"/><path d="M172 206l14-4"/></g>
-<path d="M66 194q8-9 20-7" fill="none" stroke="${CREAM}" stroke-opacity="0.6" stroke-width="3" stroke-linecap="round"/>`,
-  outfit_crown: () => `<g transform="rotate(-9 112 118)">
-<path d="M66 138l-8-52l30 26l24-40l24 40l30-26l-8 52z" fill="url(#leaf)" stroke="${TIER_COLORS.gold.dark}" stroke-width="3" stroke-linejoin="round"/>
-<rect x="64" y="134" width="96" height="14" rx="5" fill="url(#leaf)" stroke="${TIER_COLORS.gold.dark}" stroke-width="3"/>
-<circle cx="112" cy="141" r="4.5" fill="${GREEN}"/><circle cx="84" cy="141" r="3" fill="${CREAM}"/><circle cx="140" cy="141" r="3" fill="${CREAM}"/>
-<circle cx="58" cy="86" r="5" fill="${TIER_COLORS.gold.light}"/><circle cx="112" cy="72" r="5" fill="${TIER_COLORS.gold.light}"/><circle cx="166" cy="86" r="5" fill="${TIER_COLORS.gold.light}"/></g>`,
-  outfit_headphones: () => `<path d="M40 196C34 96 190 92 186 204" fill="none" stroke="${CREAM}" stroke-width="9" stroke-linecap="round"/>
-<path d="M40 196C34 96 190 92 186 204" fill="none" stroke="${BACKGROUND}" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
-<rect x="22" y="178" width="34" height="58" rx="15" fill="${PAGE}" stroke="${CREAM}" stroke-width="4"/>
-<rect x="170" y="186" width="32" height="56" rx="15" fill="${PAGE}" stroke="${CREAM}" stroke-width="4"/>
-<rect x="33" y="194" width="12" height="26" rx="6" fill="${GREEN}"/><rect x="180" y="201" width="12" height="26" rx="6" fill="${GREEN}"/>`,
-};
+function companionTera(centerX: number, bottom: number, width: number, outfit: string | null): string {
+  const scale = width / TERA_FACE.width;
+  const x = centerX - width / 2;
+  const y = bottom - TERA_FACE.height * scale;
+  const layers = outfit && Object.prototype.hasOwnProperty.call(OUTFIT_LAYERS, outfit) ? OUTFIT_LAYERS[outfit] : undefined;
+  const bleed = TERA_FACE.bleed * scale;
+  const layer = (href: string, part: string) =>
+    `<image data-outfit-layer="${part}" href="${href}" x="${x - bleed}" y="${y - bleed}" width="${width + 2 * bleed}" height="${TERA_FACE.height * scale + 2 * bleed}"/>`;
+  const face = `<image href="${TERA_FACE_DATA_URI}" x="${x}" y="${y}" width="${width}" height="${TERA_FACE.height * scale}"/>`;
+  if (!layers) return face;
+  return `<g data-outfit="${escapeXml(outfit as string)}">${layers.back ? layer(layers.back, 'back') : ''}${face}${layer(layers.front, 'front')}</g>`;
+}
 
 function heart(cx: number, cy: number, size: number, filled: boolean): string {
   const scale = size / 24;
@@ -295,13 +292,6 @@ function companionSvg(input: ArtInput): string {
   const hearts = Array.from({ length: total }, (_, index) =>
     heart(256 - ((total - 1) * gap) / 2 + index * gap, 392, 34, index < current),
   ).join('\n');
-  const drawOutfit = outfit ? OUTFIT_ART[outfit] : undefined;
-  const mascotWidth = 196;
-  const mascotX = 256 - mascotWidth / 2;
-  const mascotY = 104;
-  const accessory = drawOutfit
-    ? `<g data-outfit="${escapeXml(outfit as string)}" transform="translate(${mascotX} ${mascotY}) scale(${mascotWidth / 240})">${drawOutfit()}</g>`
-    : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="${escapeXml(input.title)}">
 ${defs('bronze', GREEN, 0.16)}
 ${frame(GREEN)}
@@ -310,8 +300,7 @@ ${frame(GREEN)}
 <rect x="52" y="108" width="44" height="4" rx="2" fill="${GREEN}"/>
 <rect x="364" y="52" width="96" height="30" rx="15" fill="none" stroke="${GREEN}" stroke-width="2"/>
 <text x="412" y="72" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.2" fill="${GREEN}">${labels.level} ${Math.max(1, Math.floor(level))}</text>
-${mascot(mascotX, mascotY, mascotWidth)}
-${accessory}
+${companionTera(256, 356, 168, outfit)}
 ${hearts}
 <text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current}/${total} ${labels.lives}</text>
 <text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
