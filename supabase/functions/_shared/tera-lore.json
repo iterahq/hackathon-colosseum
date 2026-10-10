@@ -85,7 +85,7 @@
       "epithet": { "pt": "Bico aberto", "en": "Beak open" },
       "story": { "pt": "Quando o código faz uma coisa que nem você esperava, o bico abre e os olhos ficam enormes. Em Brasa isso se chama descobrir.", "en": "When the code does something even you did not expect, his beak drops and his eyes go huge. In Brasa they call that discovering." },
       "quote": { "pt": "Espera. Funcionou. Funcionou mesmo.", "en": "Wait. It worked. It really worked." },
-      "relations": [],
+      "relations": ["code_stack_overflow"],
       "art_note": "Wide round eyes, open beak with tongue; label SURPRESO (both expression sheets)."
     },
     "tera_focado": {
@@ -133,7 +133,7 @@
       "epithet": { "pt": "O primeiro a sair do ovo", "en": "First out of the ember" },
       "story": { "pt": "Pipo nasceu de uma brasa que estalou cedo demais, antes de esquentar direito. Tem o topete pequeno e o maior entusiasmo de Brasa. Alvo, o mais velho de todos, cuida dele e diz que topete pequeno acende mais rápido.", "en": "Pipo hatched from an ember that cracked too early, before it was properly warm. He has the smallest crest in Brasa and the biggest excitement. Alvo, the eldest of them all, looks after him and says small crests light faster." },
       "quote": { "pt": "Eu não sei. Ainda.", "en": "I don't know. Yet." },
-      "relations": ["base_sabedoria", "special_verde_neon", "brand_tera_hero"],
+      "relations": ["base_sabedoria", "special_verde_neon", "brand_tera_hero", "code_conquistando", "rarity_comum"],
       "art_note": "Plain green Tera with a bright lime crest, same look as the mascot; label INICIANTE, COMUM."
     },
     "base_focado": {
@@ -141,7 +141,7 @@
       "epithet": { "pt": "Metade do par", "en": "Half the pair" },
       "story": { "pt": "Nilo e Tilo nasceram da mesma brasa, que rachou em dois. Nilo é o azul: fone no ouvido, uma coisa por vez, nunca duas. Quando alguém fala com ele no meio da atividade, ele ergue uma pena e termina a linha primeiro.", "en": "Nilo and Tilo hatched from the same ember, which split in two. Nilo is the blue one: headphones on, one thing at a time, never two. If you talk to him mid-activity, he raises one feather and finishes the line first." },
       "quote": { "pt": "Espera. Já tô acabando.", "en": "Hold on. Almost done." },
-      "relations": ["base_estudioso", "special_azul_eletrico"],
+      "relations": ["base_estudioso", "special_azul_eletrico", "color_azul"],
       "art_note": "Blue Tera with black headphones; label FOCADO, COMUM. Same headphones as Estudioso, which is why they are twins."
     },
     "base_estudioso": {
@@ -149,7 +149,7 @@
       "epithet": { "pt": "A outra metade", "en": "The other half" },
       "story": { "pt": "Tilo é o roxo e o gêmeo que anota tudo. O fone dele toca a explicação de novo, até entrar. Nilo diz que ele é lento, e Tilo diz que lento é quem precisa refazer a trilha.", "en": "Tilo is the purple one, the twin who writes everything down. His headphones replay the explanation until it sticks. Nilo says he is slow, and Tilo says slow is whoever has to redo the trail." },
       "quote": { "pt": "Repete. Mais uma vez.", "en": "Play it again. One more time." },
-      "relations": ["base_focado", "special_azul_eletrico"],
+      "relations": ["base_focado", "special_azul_eletrico", "color_roxo", "lang_python"],
       "art_note": "Purple Tera with black headphones; label ESTUDIOSO, COMUM."
     },
     "base_determinado": {
@@ -165,7 +165,7 @@
       "epithet": { "pt": "Mesma hora, todo dia", "en": "Same time, every day" },
       "story": { "pt": "Ciro é cinza, sem brilho, e pisa na Pedra do Dia sempre no mesmo horário. Nunca foi o mais rápido de Brasa. Tem mais pegadas no Muro que qualquer outro comum.", "en": "Ciro is grey, no glow, and he steps on the Day Stone at the exact same hour every day. He was never the fastest in Brasa. He has more footprints on the Wall than any other common Tera." },
       "quote": { "pt": "Não precisa ser muito. Precisa ser hoje.", "en": "It doesn't have to be much. It has to be today." },
-      "relations": [],
+      "relations": ["lang_rust"],
       "art_note": "Silver-grey Tera, white crest, stern face; label DISCIPLINADO, COMUM."
     },
     "base_focado_no_objetivo": {
@@ -181,7 +181,7 @@
       "epithet": { "pt": "Flor no topete", "en": "Flower in the crest" },
       "story": { "pt": "Zuri é rosa e carrega uma flor que achou na Cinzeira, de todos os lugares. Resolve a atividade do jeito errado de propósito, só pra ver o que acontece. Dex revira os olhos e depois copia.", "en": "Zuri is pink and carries a flower he found in the Ashfield, of all places. He solves activities the wrong way on purpose, just to see what happens. Dex rolls his eyes, then copies him." },
       "quote": { "pt": "Vamos fazer ao contrário.", "en": "Let's do it backwards." },
-      "relations": ["base_analitico", "event_verao"],
+      "relations": ["base_analitico", "event_verao", "lang_javascript"],
       "art_note": "Pink Tera with a small white-pink flower at the side of the crest; label CRIATIVO, COMUM."
     },
     "base_analitico": {
@@ -189,7 +189,7 @@
       "epithet": { "pt": "Conta antes de pular", "en": "Counts before he jumps" },
       "story": { "pt": "Dex tem penas de ponta e olhos que medem tudo. Antes de tentar, lê a atividade duas vezes e aponta onde vai dar errado, e costuma acertar. Zuri é a única coisa em Brasa que ele não consegue prever.", "en": "Dex has sharp-edged feathers and eyes that measure everything. Before trying, he reads the activity twice and points out where it will break, and he is usually right. Zuri is the one thing in Brasa he cannot predict." },
       "quote": { "pt": "Mostra o erro. Eu acho o motivo.", "en": "Show me the error. I'll find the reason." },
-      "relations": ["base_criativo"],
+      "relations": ["base_criativo", "lang_python"],
       "art_note": "Teal Tera with angular, sharp-edged feathers; label ANALÍTICO, COMUM."
     },
     "base_lider": {
@@ -197,7 +197,7 @@
       "epithet": { "pt": "Coroa de ninguém", "en": "Crown of no one" },
       "story": { "pt": "Dom é dourado e usa uma coroa que não ganhou de ninguém: fez ela da primeira pegada dele na Pedra, que saiu torta e ele achou bonita. Quando um grupo novo sai do Ninho, é ele quem voa na frente, pra verem onde pousa. Odeia ser chamado de rei. Aceita ser chamado de primeiro a cair.", "en": "Dom is golden and wears a crown nobody gave him: he made it from his first footprint on the Stone, which came out crooked and he liked it anyway. When a new group leaves the Nest, he flies in front so they can see where he lands. He hates being called king. He answers to first to fall." },
       "quote": { "pt": "Olha onde eu piso. Depois pisa melhor.", "en": "Watch where I step. Then step better." },
-      "relations": ["special_dourado"],
+      "relations": ["special_dourado", "code_conquistando", "rarity_lendario"],
       "art_note": "Golden Tera with a small gold crown on the crest; label LÍDER, RARO."
     },
     "base_mistico": {
@@ -205,7 +205,7 @@
       "epithet": { "pt": "Lê no escuro", "en": "Reads in the dark" },
       "story": { "pt": "Vesper usa um capuz roxo que Nuno teceu pra ele, e fala pouco. Vive na beira da Cinzeira, onde as chamas voltam, e diz que dá pra ler o que cada uma aprendeu na cor da fumaça. Breu é a única companhia que ele aguenta por mais de uma hora.", "en": "Vesper wears a purple hood Nuno wove for him, and he does not say much. He lives at the edge of the Ashfield, where flames come back, and claims you can read what each one learned in the colour of its smoke. Breu is the only company he can stand for more than an hour." },
       "quote": { "pt": "Toda chama que volta, volta sabendo algo.", "en": "Every flame that comes back comes back knowing something." },
-      "relations": ["acc_capuz_web3", "base_sombrio"],
+      "relations": ["acc_capuz_web3", "base_sombrio", "acc_capuz_verde", "rarity_epico"],
       "art_note": "Dark purple Tera in a dark purple hood with a red inner trim, plain amber eyes (no glow); label MÍSTICO, RARO."
     },
     "base_natural": {
@@ -229,7 +229,7 @@
       "epithet": { "pt": "Chip na testa", "en": "Chip on his brow" },
       "story": { "pt": "Tico trabalha na Forja e foi o primeiro a prender um chip na testa. O chip guarda a última coisa que ele estava fazendo, pra ele não perder o fio quando a chama apaga. Lenz diz que é trapaça e Tico diz que é memória. A ideia veio de Volt, numa frase que ele nem terminou.", "en": "Tico works at the Forge and was the first to clip a chip onto his forehead. The chip holds the last thing he was doing, so he does not lose the thread when his flame goes out. Lenz calls it cheating and Tico calls it memory. The idea came from Volt, in a sentence he never finished." },
       "quote": { "pt": "Salva antes de apagar.", "en": "Save before you burn out." },
-      "relations": ["acc_oculos_tech", "special_azul_eletrico", "acc_programador"],
+      "relations": ["acc_oculos_tech", "special_azul_eletrico", "acc_programador", "code_deployando", "acc_cibernetico"],
       "art_note": "Green Tera with a blue microchip at the top of the head; label CYBER-CHIP on sheet D appears twice (the second tile is plain, no chip). Sheet C has CIBERNÉTICO with a red robotic eye lens, a different look."
     },
     "acc_oculos_tech": {
@@ -237,7 +237,7 @@
       "epithet": { "pt": "Vê a linha errada", "en": "Sees the wrong line" },
       "story": { "pt": "Lenz fez os próprios óculos na Forja: lentes verdes que mostram onde o fogo vai falhar antes de falhar. Empresta pra quem pede e nunca pra quem exige. Quando olha pro Muro das Pegadas, vê quais marcas tremeram na hora de pisar.", "en": "Lenz built his own glasses at the Forge: green lenses that show where the fire will fail before it does. He lends them to anyone who asks and never to anyone who demands. When he looks at the Wall of Footprints, he can see which marks shook as they landed." },
       "quote": { "pt": "Tira o óculos e olha de novo.", "en": "Take the glasses off and look again." },
-      "relations": ["acc_cyber_chip", "acc_programador"],
+      "relations": ["acc_cyber_chip", "acc_programador", "acc_cibernetico", "acc_oculos_codificador", "lang_rust"],
       "art_note": "Green Tera with cyan-green visor glasses; label ÓCULOS TECH on sheet D (the second tile is plain) and ÓCULOS CODIFICADOR on sheet C."
     },
     "acc_capuz_web3": {
@@ -245,7 +245,7 @@
       "epithet": { "pt": "Tece capuz", "en": "Weaves hoods" },
       "story": { "pt": "Nuno costura capuzes com fio de fumaça da Cinzeira. Cada capuz esconde o topete, e um Tera de capuz pode errar sem ninguém ver. Fez o de Vesper e dois pra si mesmo, iguais, porque nunca se decide. Jura que o de Susto não foi ele.", "en": "Nuno stitches hoods out of smoke thread from the Ashfield. Each hood hides the crest, so a hooded Tera can get it wrong without anyone watching. He made Vesper's and two for himself, identical, because he can never decide. He swears Susto's hood was not his work." },
       "quote": { "pt": "Errar escondido ainda conta.", "en": "Getting it wrong in private still counts." },
-      "relations": ["base_mistico", "event_halloween"],
+      "relations": ["base_mistico", "event_halloween", "acc_capuz_verde"],
       "art_note": "Green Tera in a dark olive-green hood that hides the crest, plain amber eyes; label CAPUZ WEB3. Four tiles: two on sheet D (one is plain, no hood), one on sheet C; crops/acc_capuz_web3_alt.png is the second angle."
     },
     "acc_chain_link": {
@@ -253,7 +253,7 @@
       "epithet": { "pt": "Liga sem prender", "en": "Links without locking" },
       "story": { "pt": "Elo anda enrolado em correntes que ele mesmo forjou, e nenhuma está trancada. Cada elo liga uma pegada à seguinte no Muro, pra ninguém dizer que uma marca não veio depois da outra. Diz que corrente boa é a que dá pra seguir de olho fechado.", "en": "Elo walks around wrapped in chains he forged himself, and none of them is locked. Each link ties one footprint on the Wall to the next, so nobody can claim a mark did not come after the one before. He says a good chain is one you can follow with your eyes closed." },
       "quote": { "pt": "Uma depois da outra. Sempre.", "en": "One after the other. Always." },
-      "relations": [],
+      "relations": ["lang_solidity"],
       "art_note": "Green Tera wrapped in grey metal chains; label CHAIN-LINK on sheet D (two tiles, one plain and one with chains)."
     },
     "acc_programador": {
@@ -261,7 +261,7 @@
       "epithet": { "pt": "Escreve com fogo", "en": "Writes with fire" },
       "story": { "pt": "Kodo carrega dois sinais de luz num pano preto no pescoço, um que abre e um que fecha, e põe tudo que vê entre eles. Foi ele quem ensinou a Forja a escrever instruções pro fogo. Chama as brasas de variável e o Ninho de função, e ninguém entende. Funciona.", "en": "Kodo carries two light signs on a black cloth at his neck, one that opens and one that closes, and puts everything he sees between them. He is the one who taught the Forge to write instructions for fire. He calls embers variables and the Nest a function, and nobody gets it. It works." },
       "quote": { "pt": "Escreve, roda, lê o erro, escreve.", "en": "Write, run, read the error, write." },
-      "relations": ["acc_cyber_chip", "acc_oculos_tech", "event_space", "brand_tera_hero"],
+      "relations": ["acc_cyber_chip", "acc_oculos_tech", "event_space", "brand_tera_hero", "code_stack_overflow", "acc_oculos_codificador", "rarity_raro"],
       "art_note": "Dark green Tera with a black mask-like cloth over the lower face and neck showing a glowing green </>; label PROGRAMADOR (sheet D only)."
     },
     "acc_fogueira": {
@@ -301,7 +301,7 @@
       "epithet": { "pt": "Todas as cores", "en": "Every colour" },
       "story": { "pt": "Kaio nasceu verde, comum, igual a todo mundo. Apagou e voltou azul, apagou e voltou roxo. Cada volta deixou uma cor no topete, e hoje ele tem todas. Dizem que Prisma olhou pra ele uma vez, lá do alto, e piscou.", "en": "Kaio hatched green, common, like everyone else. He burned out and came back blue, burned out and came back purple. Every return left a colour in his crest, and now he has them all. They say Prisma looked down at him once, from way up, and winked." },
       "quote": { "pt": "Cada erro me deu uma cor.", "en": "Every mistake gave me a colour." },
-      "relations": ["special_arco_iris"],
+      "relations": ["special_arco_iris", "rarity_epico"],
       "art_note": "Dark-faced Tera with a rainbow crest (blue, pink, yellow, green) and purple ring; label EVOLUÍDO, ÉPICO. Looks like a dimmer cousin of the Arco-Íris mythic."
     },
     "event_halloween": {
@@ -333,7 +333,7 @@
       "epithet": { "pt": "A primeira cor", "en": "The first colour" },
       "story": { "pt": "Sol foi a primeira cor a sair da Primeira Chama, e a mais quente. Mora no ponto mais alto do Alto, e de manhã é o topete dele que o vale vê primeiro. Foi ele quem esquentou a Pedra do Dia pela primeira vez, pra pegada esfriar e ficar. Diz que não tem nada de especial em ser o primeiro; alguém tinha de ser. Dom copia a coroa dele, e Sol finge que não nota.", "en": "Sol was the first colour to come out of the First Flame, and the hottest. He lives at the highest point of the Heights, and in the morning his crest is the first thing the valley sees. He was the one who warmed the Day Stone for the first time, so footprints would cool and stay. He says there is nothing special about being first; somebody had to be. Dom copies his crown, and Sol pretends not to notice." },
       "quote": { "pt": "Esquenta a pedra. O resto é pisar.", "en": "Warm the stone. The rest is stepping on it." },
-      "relations": ["base_lider", "special_prata"],
+      "relations": ["base_lider", "special_prata", "color_dourado", "rarity_lendario"],
       "art_note": "Gold Tera in a laurel-like golden ring with sparkles; label DOURADO, LENDÁRIO."
     },
     "special_prata": {
@@ -341,7 +341,7 @@
       "epithet": { "pt": "Sentou na pedra", "en": "Sat on the stone" },
       "story": { "pt": "Luan é prata e fala baixo. Alvo diz que ele era o passarinho cinza da lenda, o que sentou cinco dias na pedra fria. Luan nem confirma nem nega. Mora no Muro das Pegadas e passa a noite conferindo se nenhuma marca sumiu. Nenhuma sumiu, nunca. Ele confere mesmo assim.", "en": "Luan is silver and speaks softly. Alvo says he was the grey bird in the legend, the one who sat five days on the cold stone. Luan neither confirms nor denies it. He lives by the Wall of Footprints and spends the night checking that no mark has gone missing. None ever has. He checks anyway." },
       "quote": { "pt": "Fica. Cinco dias. Depois a gente vê.", "en": "Stay. Five days. Then we'll see." },
-      "relations": ["base_sabedoria", "event_natal", "special_dourado", "brand_phoenix_full"],
+      "relations": ["base_sabedoria", "event_natal", "special_dourado", "brand_phoenix_full", "lang_solidity"],
       "art_note": "Silver-white Tera in a silver ring with sparkles; label PRATA, LENDÁRIO."
     },
     "special_verde_neon": {
@@ -349,7 +349,7 @@
       "epithet": { "pt": "Verde que grita", "en": "Loud green" },
       "story": { "pt": "Vigo é a cor do Ninho inteiro, só que mais forte, tanto que à noite a Forja apaga as lâmpadas e ele ilumina sozinho. Todo Tera verde comum desce de uma faísca dele. Gosta de aparecer no primeiro dia de quem começa, de longe, só pra ver o topete novo acender. Depois vai embora sem dizer que estava lá.", "en": "Vigo is the colour of the whole Nest, only stronger, so strong that at night the Forge turns off its lamps and lets him do the lighting. Every common green Tera comes from one of his sparks. He likes to show up on someone's first day, from a distance, just to watch the new crest light up. Then he leaves without saying he was there." },
       "quote": { "pt": "Essa cor aí veio de mim. Agora é sua.", "en": "This colour came from me. Now it is yours." },
-      "relations": ["base_iniciante"],
+      "relations": ["base_iniciante", "rarity_comum"],
       "art_note": "Intense neon-green Tera with glowing green ring; label VERDE NEON, LENDÁRIO."
     },
     "special_azul_eletrico": {
@@ -357,7 +357,7 @@
       "epithet": { "pt": "Raio parado", "en": "Standing lightning" },
       "story": { "pt": "Volt é azul com faíscas que estalam quando ele pensa rápido. É ele quem leva recado entre o Alto e a Forja, e foi dele a ideia do chip de Tico. Nunca termina uma frase devagar. Nilo e Tilo acham que ele também é dois. Ele nunca negou.", "en": "Volt is blue with sparks that crackle when he thinks fast. He carries messages between the Heights and the Forge, and Tico's chip was his idea. He never finishes a sentence slowly. Nilo and Tilo are convinced he is two birds as well. He has never denied it." },
       "quote": { "pt": "Tenta agora. Pensa depois. Depois tenta de novo.", "en": "Try now. Think later. Then try again." },
-      "relations": ["acc_cyber_chip", "base_focado", "base_estudioso"],
+      "relations": ["acc_cyber_chip", "base_focado", "base_estudioso", "code_deployando", "lang_javascript"],
       "art_note": "Electric-blue Tera with lightning sparks in the ring; label AZUL ELÉTRICO, LENDÁRIO."
     },
     "special_roxo_estelar": {
@@ -365,7 +365,7 @@
       "epithet": { "pt": "Olha pra cima", "en": "Looks up" },
       "story": { "pt": "Astro é roxo com pontos de luz que mudam de lugar, e passa as noites deitado no Alto olhando o céu. Foi o primeiro a ver a oitava faísca subir e o último a parar de procurar Nulo. Mantém um mapa de onde cada um dos sete está. Uma casa fica em branco.", "en": "Astro is purple with points of light that keep moving, and he spends his nights lying on the Heights watching the sky. He was the first to see the eighth spark go up and the last to stop searching for Nulo. He keeps a map of where each of the seven is. One square stays blank." },
       "quote": { "pt": "Ele tá lá em cima. Em algum lugar.", "en": "He's up there. Somewhere." },
-      "relations": ["special_preto_cosmico", "special_arco_iris", "event_space"],
+      "relations": ["special_preto_cosmico", "special_arco_iris", "event_space", "code_404"],
       "art_note": "Purple Tera with star sparkles and purple ring; label ROXO ESTELAR, LENDÁRIO."
     },
     "special_vermelho_lava": {
@@ -381,7 +381,7 @@
       "epithet": { "pt": "O que ninguém acha", "en": "The one no one finds" },
       "story": { "pt": "Nulo é preto com roxo, a sétima cor, e ninguém o vê há muito tempo. Uns dizem que foi atrás da oitava faísca. Outros dizem que está no vale, atrás de você, e some quando você vira. Astro deixou a casa dele no mapa em branco. Nebu saiu de Brasa pra procurá-lo. Quem tem o Nulo no perfil costuma dizer que ele apareceu sozinho.", "en": "Nulo is black with purple, the seventh colour, and nobody has seen him in a long time. Some say he went after the eighth spark. Others say he is right here in the valley, behind you, and gone when you turn around. Astro left his square on the map blank. Nebu left Brasa to look for him. People who have Nulo on their profile tend to say he showed up on his own." },
       "quote": { "pt": "Você não me viu.", "en": "You didn't see me." },
-      "relations": ["special_roxo_estelar", "event_space"],
+      "relations": ["special_roxo_estelar", "event_space", "code_404"],
       "art_note": "Black Tera with purple highlights, dark ring with faint stars; label PRETO CÓSMICO, LENDÁRIO."
     },
     "special_arco_iris": {
@@ -405,7 +405,7 @@
       "epithet": { "pt": "Vai com você, todo dia", "en": "Goes with you, every day" },
       "story": { "pt": "Esse é o Tera original, o que sai do ovo quando você tenta alguma coisa pela primeira vez e fica do seu lado até o fim. Tem o topete mais aceso de Brasa e um sinal de prompt no peito, o primeiro sinal de luz que a Forja fez; Kodo copiou a ideia depois. Conhece todos os outros Teras pelo nome e sabe o que cada um faz melhor. Eles são os amigos, primos e vizinhos dele, e cada um chega quando faz falta.", "en": "This is the original Tera, the one who hatches when you try something for the first time and stays at your side to the end. He has the brightest crest in Brasa and a prompt sign on his chest, the first light sign the Forge ever made; Kodo copied the idea later. He knows every other Tera by name and what each one does best. They are his friends, cousins and neighbours, and each one shows up when needed." },
       "quote": { "pt": "Eu sou o seu Tera. Eu fico.", "en": "I am your Tera. I stay." },
-      "relations": ["tera_normal", "base_iniciante", "acc_programador", "brand_phoenix_full"],
+      "relations": ["tera_normal", "base_iniciante", "acc_programador", "brand_phoenix_full", "color_azul", "color_roxo", "color_dourado"],
       "art_note": "Large circular portrait on sheet A (mv2103zn): green Tera with a tall lime flame crest, amber eyes, small closed smile, glowing > prompt sign on the chest, neon green ring. Crop: crops/brand_tera_hero.png."
     },
     "brand_phoenix_full": {
@@ -415,6 +415,150 @@
       "quote": { "pt": "Já apaguei mais vezes que todos vocês. Ainda estou aqui.", "en": "I have gone out more times than all of you. I am still here." },
       "relations": ["brand_tera_hero", "special_arco_iris", "special_prata"],
       "art_note": "Full-body phoenix at the bottom left of sheet A (mv2103zn): green with lime-glowing spread wings, long flowing tail feathers, > on the chest, small floating leaf-flames. Sheet C (mv215zq4) has a near-identical FÊNIX VERDE with a golden </> on the chest. Crop: crops/brand_phoenix_full.png."
+    },
+    "code_deployando": {
+      "name": { "pt": "Zarpa", "en": "Zarpa" },
+      "epithet": { "pt": "Acabou de apertar o botão", "en": "Just pressed the button" },
+      "story": { "pt": "Zarpa é o Tera de quem acabou de apertar o botão. Sobrancelha baixa, meio sorriso, olho no que acabou de sair. Aprendeu na Forja que o fogo só conta quando alguém de fora consegue ver. Nunca confessa que o coração bate forte nessa hora. Tico guarda o último passo dele no chip, por via das dúvidas.", "en": "Zarpa is the Tera of someone who just pressed the button. Low brow, half a smile, eyes on whatever just left. He learned at the Forge that a fire only counts once someone outside can see it. He never admits his heart pounds at that moment. Tico keeps his last step in the chip, just in case." },
+      "quote": { "pt": "Foi. Agora é com o mundo.", "en": "It is out. Now it is the world's." },
+      "relations": ["acc_cyber_chip", "special_azul_eletrico"],
+      "art_note": "Sheet C code face DEPLOYANDO: green Tera, low confident brows, amber eyes, small lopsided smile, lime crest, plain green ring, no accessory."
+    },
+    "code_conquistando": {
+      "name": { "pt": "Bravo", "en": "Bravo" },
+      "epithet": { "pt": "Grito de vitória", "en": "Victory yell" },
+      "story": { "pt": "Bravo é o que acontece quando o teste finalmente passa. Olhos fechados, bico escancarado, topete pra cima, um grito que Brasa inteira ouve. Pipo tenta imitar e sai um piado. Dom diz que ninguém grita melhor depois de um dia ruim. O grito dura dez segundos. Depois Bravo pergunta qual é o próximo.", "en": "Bravo is what happens when the test finally passes. Eyes shut, beak wide open, crest up, a yell all of Brasa can hear. Pipo tries to copy it and a chirp comes out. Dom says nobody yells better after a bad day. The yell lasts ten seconds. Then Bravo asks what is next." },
+      "quote": { "pt": "Passou! Passou! De novo, só pra ver.", "en": "It passed! It passed! Again, just to see." },
+      "relations": ["base_iniciante", "base_lider"],
+      "art_note": "Sheet C code face CONQUISTANDO: green Tera with both eyes closed in a laugh, beak wide open showing a pink tongue, tall lime crest, plain green ring."
+    },
+    "code_stack_overflow": {
+      "name": { "pt": "Pilha", "en": "Pile" },
+      "epithet": { "pt": "Chamou a si mesmo", "en": "Called itself" },
+      "story": { "pt": "Pilha empilhou tanta coisa que a conta virou. Olhos redondos, bico escancarado, gotinhas voando do topete. Em Brasa isso acontece com quem chama a mesma chama de dentro dela mesma: a chama chama a chama, que chama a chama, e o vale vira eco. Ninguém se machuca. Kodo diz que a cura é simples: parar, respirar e olhar de onde tudo começou.", "en": "Pile stacked so many things that the sum tipped over. Round eyes, beak thrown open, little drops flying off the crest. In Brasa this happens to anyone who calls a flame from inside that same flame: the flame calls the flame, which calls the flame, and the valley turns into an echo. Nobody gets hurt. Kodo says the cure is simple: stop, breathe, and look at where it all began." },
+      "quote": { "pt": "Eu me chamei de novo. E de novo. E de novo.", "en": "I called myself again. And again. And again." },
+      "relations": ["tera_surpreso", "acc_programador"],
+      "art_note": "Sheet C code face STACK OVERFLOW: green Tera with huge round white eyes and tiny amber pupils, beak open in a startled grin, small sweat marks flying off the crest, plain green ring."
+    },
+    "code_404": {
+      "name": { "pt": "Cadê", "en": "Where" },
+      "epithet": { "pt": "Procurou e não achou", "en": "Looked and found nothing" },
+      "story": { "pt": "Cadê foi procurar uma coisa na Cinzeira e voltou de mãos vazias, com cara de quem tinha certeza de que estava ali. Confere o endereço, confere de novo, e a coisa continua não existindo. Nulo é o único que acha graça. Astro anota num canto do mapa: procurou, não achou, tudo bem.", "en": "Where went looking for something in the Ashfield and came back empty-handed, with the face of someone who was sure it was there. He checks the address, checks again, and the thing still does not exist. Nulo is the only one who finds it funny. Astro writes in a corner of the map: looked, did not find, that is fine." },
+      "quote": { "pt": "Eu juro que estava aqui.", "en": "I swear it was right here." },
+      "relations": ["special_preto_cosmico", "special_roxo_estelar"],
+      "art_note": "Sheet C code face 404 FOUND: green Tera with wide round eyes and small pupils, beak drooping down, blank puzzled look, plain green ring."
+    },
+    "color_azul": {
+      "name": { "pt": "Maré", "en": "Tide" },
+      "epithet": { "pt": "O original em azul", "en": "The original in blue" },
+      "story": { "pt": "Maré é o Tera original numa tarde azul. Mesmo rosto, mesmo olhar de sobrancelha baixa, só que o topete esfria do verde pro ciano, como espuma. A Forja deixou uma lâmpada de ciano acesa por engano e a cor ficou. Nilo é primo e finge não ver a semelhança.", "en": "Tide is the original Tera on a blue afternoon. Same face, same low-browed look, only the crest cools from green to cyan, like foam. The Forge left a cyan lamp on by mistake and the colour stuck. Nilo is a cousin and pretends not to see the likeness." },
+      "quote": { "pt": "Mesmo fogo. Outra hora do dia.", "en": "Same fire. Another hour of the day." },
+      "relations": ["brand_tera_hero", "base_focado"],
+      "art_note": "Sheet A colour variation: the default Tera recoloured blue, cyan thin ring, crest fading from blue to teal, amber eyes, small smile."
+    },
+    "color_roxo": {
+      "name": { "pt": "Uva", "en": "Grape" },
+      "epithet": { "pt": "O original ao anoitecer", "en": "The original at dusk" },
+      "story": { "pt": "Uva é o original depois do pôr do sol: roxo fundo, topete rosado, anel violeta. Escolhe a trilha da noite e não se explica. Tilo dá aula pra ele, e os dois anotam no mesmo caderno. Dizem que a cor veio de uma brasa que apagou perto da Cinzeira e voltou com o fim da tarde dentro.", "en": "Grape is the original after sunset: deep purple, pink crest, violet ring. He picks the night trail and does not explain himself. Tilo tutors him, and the two write in the same notebook. They say the colour came from an ember that went out near the Ashfield and came back with the end of the afternoon inside it." },
+      "quote": { "pt": "Eu estudo melhor quando escurece.", "en": "I study better once it gets dark." },
+      "relations": ["brand_tera_hero", "base_estudioso"],
+      "art_note": "Sheet A colour variation: the default Tera recoloured deep purple, violet thin ring, pink-lilac crest, amber eyes, small smile."
+    },
+    "color_dourado": {
+      "name": { "pt": "Mel", "en": "Honey" },
+      "epithet": { "pt": "O original em dourado", "en": "The original in gold" },
+      "story": { "pt": "Mel é o original com o fogo parado no dourado. Anel amarelo, olhar sério, topete que parece derretido. Não tem coroa nem lenda: Sol ri e diz que é só a mesma chama com paciência. Mel gosta de ouvir, de ficar e de passar uma tarde inteira numa atividade só.", "en": "Honey is the original with his fire held still in gold. Yellow ring, serious look, a crest that seems melted. No crown, no legend: Sol laughs and says it is just the same flame with patience. Honey likes to listen, to stay, and to spend a whole afternoon on a single activity." },
+      "quote": { "pt": "Calma. A chama também sabe esperar.", "en": "Easy. A flame knows how to wait too." },
+      "relations": ["brand_tera_hero", "special_dourado"],
+      "art_note": "Sheet A colour variation: the default Tera recoloured amber gold, thin gold ring, melted-looking gold crest, stern amber eyes."
+    },
+    "acc_cibernetico": {
+      "name": { "pt": "Sensor", "en": "Sensor" },
+      "epithet": { "pt": "Um olho de lente vermelha", "en": "One eye, a red lens" },
+      "story": { "pt": "Sensor trocou um olho na Forja por uma lente vermelha e agora vê o que mexeu no fogo antes de ele mexer. Continua um Tera: o outro olho é de bicho e se emociona fácil. Tico fez a peça, e Lenz achou demais e pediu emprestada. Quando a lente acende, Sensor avisa baixinho que tem alguma coisa torta ali.", "en": "Sensor traded one eye at the Forge for a red lens and now sees what touched the fire before it moved. He is still a Tera: the other eye is a bird's and gets emotional easily. Tico built the part, and Lenz thought it was too much and asked to borrow it. When the lens lights up, Sensor says quietly that something is crooked over there." },
+      "quote": { "pt": "Um olho confere. O outro confia.", "en": "One eye checks. The other trusts." },
+      "relations": ["acc_oculos_tech", "acc_cyber_chip"],
+      "art_note": "Sheet C CIBERNÉTICO: green Tera with a grey metal plate on one cheek and a glowing red robotic eye lens; the other eye is a normal amber eye; lime crest, plain green ring."
+    },
+    "acc_oculos_codificador": {
+      "name": { "pt": "Bit", "en": "Bit" },
+      "epithet": { "pt": "Lê a linha até ela ceder", "en": "Reads the line until it gives" },
+      "story": { "pt": "Bit usa óculos de armação grossa e lentes que brilham em ciano, com uma linha de fogo girando dentro de cada uma. Lê sem piscar. É o Tera que diz já volto e some uma tarde procurando o ponto e vírgula que faltava. Lenz faz as lentes e reclama que Bit nunca devolve o pano de limpar.", "en": "Bit wears thick-framed glasses with cyan glowing lenses, a line of fire curling inside each one. He reads without blinking. He is the Tera who says be right back and vanishes for an afternoon hunting for the missing semicolon. Lenz makes the lenses and complains that Bit never returns the cleaning cloth." },
+      "quote": { "pt": "Faltava só um caractere.", "en": "Just one character was missing." },
+      "relations": ["acc_oculos_tech", "acc_programador"],
+      "art_note": "Sheet C glasses variant: green Tera with thick black-framed glasses, cyan glowing lenses with a curl pattern inside, lime crest, plain green ring."
+    },
+    "acc_capuz_verde": {
+      "name": { "pt": "Musgo", "en": "Moss" },
+      "epithet": { "pt": "Sombra de capuz", "en": "Hood shadow" },
+      "story": { "pt": "Musgo veste um capuz verde-oliva que sombreia o topete, e só os olhos aparecem, âmbar e calmos. Tem a paciência de pedra velha. Aprendeu a coser com Nuno e a ficar quieto com Vesper. Quem senta ao lado dele aprende a esperar a chama voltar.", "en": "Moss wears an olive-green hood that shades his crest, and only his eyes show, amber and calm. He has the patience of an old stone. He learned to sew from Nuno and to keep still from Vesper. Whoever sits next to him learns to wait for the flame to come back." },
+      "quote": { "pt": "Fica quieto. A chama conhece o caminho.", "en": "Stay still. The flame knows the way." },
+      "relations": ["acc_capuz_web3", "base_mistico"],
+      "art_note": "Sheet C hood: green Tera inside a large olive-green hood with a green glow edge, face in soft shadow, calm amber eyes, no visible crest, no ring (a different painting from the web3 hood)."
+    },
+    "lang_javascript": {
+      "name": { "pt": "Jota", "en": "Jay" },
+      "epithet": { "pt": "Roda em qualquer galho", "en": "Runs on any branch" },
+      "story": { "pt": "Jota é amarelo-gema e sorri de lado, com o selo JS no peito. Roda em qualquer galho de Brasa sem pedir licença e aceita quase tudo que passam pra ele, mesmo quando não devia. É rápido, solto e meio mal-educado com os tipos das coisas. Zuri gosta dele por isso. Volt diz que é o único que acompanha o ritmo.", "en": "Jay is gem-yellow and smirks sideways, with the JS badge on his chest. He runs on any branch in Brasa without asking and accepts almost anything you hand him, even when he should not. He is fast, loose, and a bit rude about what kind of thing is what. Zuri likes him for it. Volt says he is the only one who keeps up." },
+      "quote": { "pt": "Roda. Se quebrar, a gente vê depois.", "en": "It runs. If it breaks, we will see later." },
+      "relations": ["special_azul_eletrico", "base_criativo"],
+      "art_note": "Sheet C language variant: yellow-gold Tera with a gold ring, sly sideways smirk, brown eyes, round yellow JS badge at the lower right."
+    },
+    "lang_python": {
+      "name": { "pt": "Jibóia", "en": "Boa" },
+      "epithet": { "pt": "Escreve limpo, lê em voz alta", "en": "Writes clean, reads aloud" },
+      "story": { "pt": "Jibóia é azul com topete amarelo e um selo de duas cobrinhas enroladas. Escreve devagar e limpo, com o recuo certo, e lê em voz alta pra ver se uma pessoa entenderia. Dex confere o trabalho dele e quase nunca acha o que reclamar. Tilo copia as anotações. Jibóia diz que quem escreve claro erra menos, e o resto é caderno.", "en": "Boa is blue with a yellow crest and a badge of two coiled snakes. He writes slowly and clean, with the right indentation, and reads it aloud to check that a person would understand. Dex checks his work and almost never finds anything to complain about. Tilo copies his notes. Boa says whoever writes clearly errs less, and the rest is notebook." },
+      "quote": { "pt": "Se eu consigo ler, você também consegue.", "en": "If I can read it, you can too." },
+      "relations": ["base_analitico", "base_estudioso"],
+      "art_note": "Sheet C language variant: blue Tera with a blue glow ring, yellow crest and yellow beak, calm focused eyes, round blue badge with a two-snake Python mark at the lower right."
+    },
+    "lang_solidity": {
+      "name": { "pt": "Pacto", "en": "Pact" },
+      "epithet": { "pt": "O que escreve, fica", "en": "What is written, stays" },
+      "story": { "pt": "Pacto é rosa-choque, tem olhos azuis e um selo de losangos no peito. Só escreve o que não dá pra desescrever: quando ele assina, a linha fica no Muro pra sempre, e o erro também. Por isso confere cinco vezes antes de pisar. Elo costura as correntes das promessas dele, e Luan confere de noite que nenhuma sumiu.", "en": "Pact is hot pink, with blue eyes and a diamond-shaped badge on his chest. He only writes what cannot be unwritten: when he signs, the line stays on the Wall forever, and so does the mistake. That is why he checks five times before stepping. Elo stitches the chains of his promises, and Luan checks at night that none has gone missing." },
+      "quote": { "pt": "Depois de assinado, não volta. Releia.", "en": "Once signed, it does not come back. Read it again." },
+      "relations": ["acc_chain_link", "special_prata"],
+      "art_note": "Sheet C language variant: hot-pink Tera with a pink glow ring, steely blue eyes and a stern brow, pink crest, round pink badge with a stacked diamond mark at the lower right."
+    },
+    "lang_rust": {
+      "name": { "pt": "Ferrugem", "en": "Rust" },
+      "epithet": { "pt": "Dono de cada brasa", "en": "Owner of every ember" },
+      "story": { "pt": "Ferrugem é laranja-queimado e leva no peito uma engrenagem com um R. Não deixa ninguém pegar uma brasa sem dizer de quem ela é e quando devolve. Parece chato, e é. Também é por isso que o fogo dele nunca vaza. Lenz empresta os óculos pra ele conferir, e Ciro respeita a hora de cada coisa.", "en": "Rust is burnt orange and wears a gear with an R on his chest. He lets nobody take an ember without saying whose it is and when it comes back. It sounds tedious, and it is. It is also why his fire never leaks. Lenz lends him the glasses to check with, and Ciro respects the hour of every single thing." },
+      "quote": { "pt": "Empresta, mas diz quando devolve.", "en": "Borrow it, but say when it comes back." },
+      "relations": ["acc_oculos_tech", "base_disciplinado"],
+      "art_note": "Sheet C language variant: orange-red Tera with an orange glow ring, stern brows, brown eyes, orange crest, dark round badge with a gear-ringed R at the lower right."
+    },
+    "rarity_comum": {
+      "name": { "pt": "Jade", "en": "Jade" },
+      "epithet": { "pt": "Primeiro dos Teras", "en": "First of the Teras" },
+      "story": { "pt": "Jade é o primeiro Tera comum, o que a Forja desenhou quando precisou mostrar o que é um Tera: anel verde liso, topete lima, o sinal > no peito. Veio do fogo grande do Ninho, como a maioria de Brasa, e foi dos primeiros a sair voando com alguém. Não tem pedra no anel, ainda. Pipo olha pra ele como quem olha pra um irmão mais velho.", "en": "Jade is the first common Tera, the one the Forge drew when it needed to show what a Tera is: a plain green ring, a lime crest, the > sign on the chest. He came from the big fire of the Nest, like most of Brasa, and was one of the first to fly off with someone. There is no gem in his ring yet. Pipo looks at him the way you look at an older brother." },
+      "quote": { "pt": "Todo mundo começa aqui. Não é pouco.", "en": "Everyone starts here. It is not little." },
+      "relations": ["base_iniciante", "rarity_raro", "special_verde_neon"],
+      "art_note": "Sheet A rarity ladder, step 1: green Tera with a plain thin bright-green ring and no gems, lime crest, amber eyes, glowing > on the chest."
+    },
+    "rarity_raro": {
+      "name": { "pt": "Safira", "en": "Sapphire" },
+      "epithet": { "pt": "Primeira com pedras no anel", "en": "First with gems in her ring" },
+      "story": { "pt": "Safira é a primeira Super Tera. O anel azul ganhou três pedras, uma de cada lado e uma embaixo, lapidadas na Forja quando ela chegou rolando de longe do Ninho. Aprendeu o ofício de ver o que falta no fogo dos outros. Kodo ensina, Jade acompanha, e ela diz que pedra no anel é só lembrete de onde já rolou.", "en": "Sapphire is the first Super Tera. Her blue ring gained three gems, one on each side and one below, cut at the Forge when she came rolling in from far beyond the Nest. She learned the craft of seeing what is missing in other fires. Kodo teaches, Jade tags along, and she says a gem in the ring is just a reminder of where she has rolled." },
+      "quote": { "pt": "Rolei longe. Voltei com três pedras.", "en": "I rolled far. I came back with three gems." },
+      "relations": ["rarity_comum", "rarity_epico", "acc_programador"],
+      "art_note": "Sheet A rarity ladder, step 2: teal-green Tera with a cyan-blue ring set with three diamond gems (left, right, bottom), a few small water-like drops above, glowing > on the chest."
+    },
+    "rarity_epico": {
+      "name": { "pt": "Ametista", "en": "Amethyst" },
+      "epithet": { "pt": "Fogo que mudou de forma", "en": "Fire that changed shape" },
+      "story": { "pt": "Ametista é o primeiro Mega Tera. Apagou e voltou tantas vezes que o fogo mudou de forma e de cor, e o anel ganhou pedras nos quatro cantos e uma ponta no alto. Cada pedra é uma volta. Kaio diz que também tem cores assim, só que mais espalhadas. Vesper escuta e nunca comenta.", "en": "Amethyst is the first Mega Tera. She went out and came back so many times that her fire changed shape and colour, and her ring gained gems at four corners and a spike on top. Each gem is a return. Kaio says he has colours like that too, only more scattered. Vesper listens and never comments." },
+      "quote": { "pt": "Contei as pedras. Não contei as voltas.", "en": "I counted the gems. I never counted the returns." },
+      "relations": ["rarity_raro", "rarity_lendario", "base_evoluido", "base_mistico"],
+      "art_note": "Sheet A rarity ladder, step 3: purple Tera with a glowing violet ring set with diamond gems at four points and a spike crest on top, small sparks around, pink-lilac crest, glowing > on the chest."
+    },
+    "rarity_lendario": {
+      "name": { "pt": "Âmbar", "en": "Amber" },
+      "epithet": { "pt": "Gota de Sol esfriada", "en": "A cooled drop of Sol" },
+      "story": { "pt": "Âmbar é o emblema dos Lendários: uma gota do calor de Sol que escorreu do Alto, endureceu em volta de um Tera e virou ouro. Tem o anel dourado com pedras, a coroa por cima e faíscas ao redor. Dom jura que a coroa dele é mais bonita, e Âmbar concorda por educação. Sol finge que não nota que ele existe.", "en": "Amber is the emblem of the Legendary: a drop of Sol's heat that ran down from the Heights, hardened around a Tera and turned to gold. He has a golden ring with gems, a crown on top and sparks all around. Dom swears his own crown is prettier, and Amber agrees to be polite. Sol pretends not to notice he exists." },
+      "quote": { "pt": "O calor é emprestado. A coroa é minha.", "en": "The warmth is borrowed. The crown is mine." },
+      "relations": ["rarity_epico", "special_dourado", "base_lider"],
+      "art_note": "Sheet A rarity ladder, step 4: gold Tera with a glowing gold ring with gems at four points, a crown-shaped spike on top, floating sparkles, golden crest, calm eyes, glowing > on the chest."
     }
   }
 }

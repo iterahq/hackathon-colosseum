@@ -660,6 +660,31 @@ looks at the cheapest item **for sale** (`life_refill`), so its behaviour did no
 | `special_preto_cosmico` | Preto cósmico / Cosmic black | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
 | `special_arco_iris` | Arco-íris / Rainbow | special | mythic | US$ 1,000.00 ≈ 5.5 SOL | 5 |
 | `event_space` | Space / Space | event | mythic | US$ 1,000.00 ≈ 5.5 SOL | 5 |
+| `code_deployando` | Zarpa / Zarpa | base | common | free | open |
+| `code_conquistando` | Bravo / Bravo | base | common | free | open |
+| `code_stack_overflow` | Pilha / Pile | base | common | free | open |
+| `code_404` | Cadê / Where | base | common | free | open |
+| `color_azul` | Maré / Tide | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `color_roxo` | Uva / Grape | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `color_dourado` | Mel / Honey | base | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `acc_cibernetico` | Sensor / Sensor | accessory | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `acc_oculos_codificador` | Bit / Bit | accessory | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `acc_capuz_verde` | Musgo / Moss | accessory | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `lang_javascript` | Jota / Jay | special | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `lang_python` | Jibóia / Boa | special | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `lang_solidity` | Pacto / Pact | special | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `lang_rust` | Ferrugem / Rust | special | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `rarity_raro` | Safira / Sapphire | special | rare | US$ 1.00 ≈ 0.0055 SOL | 500 |
+| `rarity_comum` | Jade / Jade | special | common | US$ 0.20 ≈ 0.0011 SOL | open |
+| `rarity_epico` | Ametista / Amethyst | special | epic | US$ 10.00 ≈ 0.055 SOL | 100 |
+| `rarity_lendario` | Âmbar / Amber | special | legendary | US$ 100.00 ≈ 0.55 SOL | 25 |
+
+Batch 2 (migration `0144_avatars_batch_2.sql`) adds the 18 rows above. The four `code_*` faces are free, group
+`base` (finished paintings, so no outfit layer). The eight `tera_*` free faces listed first now point at the
+sheet-A art (`image_key` `tera_a_*`, same keys, titles and lore); `tera_sob_pressao` and `tera_curioso` keep
+their own art. The prices and caps of the table above are the original pyramid; the live tiers are in
+`itera.shop_items` (common 20 cents, rare 100 cents with cap 500, epic 1000 cents with cap 100, legendary 10000
+cents with cap 25, mythic 100000 cents with cap 5).
 
 ### Adding an avatar = one insert + one uploaded image
 
