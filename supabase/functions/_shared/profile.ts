@@ -1,3 +1,4 @@
+import { loreView } from './lore.ts';
 import { avatarImageUrl, tierName, type AvatarAssetRow, type AvatarCatalog } from './avatars.ts';
 import { endorsementsOf } from './endorsement.ts';
 import type { Lang } from './art.ts';
@@ -104,6 +105,7 @@ export function profileAvatars(input: {
       {
         key: item.key,
         title: pickText(item.title_i18n, lang),
+        lore: loreView(item.key, lang),
         rarity: item.rarity,
         tier_name: tierName(catalog, item, lang),
         serial: row.serial,

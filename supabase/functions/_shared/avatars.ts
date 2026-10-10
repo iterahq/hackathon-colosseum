@@ -1,5 +1,6 @@
 import type { Lang } from './art.ts';
 import { APP_URL, pickText, type OnchainAttribute } from './credential.ts';
+import { loreOf, loreText, loreView } from './lore.ts';
 
 /** The avatar every learner wears until they pick another one. Never minted, never sold. */
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
@@ -119,6 +120,7 @@ export function avatarView(catalog: AvatarCatalog, item: AvatarItem, lang: Lang,
     thumb_url: avatarImageUrl(supabaseUrl, item, '128'),
     asset_address: assetAddress,
     allows_outfit: allowsOutfit(item.avatar_group),
+    lore: loreView(item.key, lang),
   };
 }
 
@@ -135,6 +137,7 @@ export function fallbackAvatarView(supabaseUrl: string) {
     thumb_url: avatarImageUrl(supabaseUrl, item, '128'),
     asset_address: null,
     allows_outfit: true,
+    lore: null,
   };
 }
 
@@ -182,13 +185,24 @@ export function shopAvatarFields(
     equipped: facts.equippedKey === item.key,
     asset_address: facts.own?.asset_address ?? null,
     allows_outfit: allowsOutfit(item.avatar_group),
+    lore: loreView(item.key, lang),
     sort: item.sort,
   };
 }
 
-/** The asset name: `<tier> · <title> #<serial>`, e.g. `Super Tera · Líder #7`. Stable for the life of the asset. */
+/**
+ * The name of an asset: `<lore name (en)> · <tier (en)> #<serial>`, e.g. `Tera, leader · Super Tera #7`.
+ * An avatar without lore keeps the older `<tier> · <title> #<serial>` in the given language.
+ */
+export function avatarDisplayName(catalog: AvatarCatalog, item: AvatarItem, serial: number, lang: Lang): string {
+  const lore = loreOf(item.key);
+  if (lore) return `${loreText(lore.name, 'en')} · ${tierName(catalog, item, 'en')} #${serial}`;
+  return `${tierName(catalog, item, lang)} · ${pickText(item.title_i18n, lang)} #${serial}`;
+}
+
+/** The on-chain name given at mint time. Stable for the life of the asset (never renamed). */
 export function avatarAssetName(catalog: AvatarCatalog, item: AvatarItem, serial: number): string {
-  return `${tierName(catalog, item, 'pt')} · ${pickText(item.title_i18n, 'pt')} #${serial}`;
+  return avatarDisplayName(catalog, item, serial, 'pt');
 }
 
 export function avatarAttributes(catalog: AvatarCatalog, item: AvatarItem, serial: number): OnchainAttribute[] {
@@ -240,10 +254,13 @@ const META_TEXT = {
 /** Metaplex-standard JSON of a minted avatar. Carries the catalog entry and the serial: no personal data. */
 export function avatarMetadata(catalog: AvatarCatalog, item: AvatarItem, row: Pick<AvatarAssetRow, 'serial' | 'asset_address'>, lang: Lang, supabaseUrl: string) {
   const image = avatarImageUrl(supabaseUrl, item);
+  const lore = loreOf(item.key);
+  // With lore the NFT speaks English: the story, then the transferability line.
+  const story = lore ? loreText(lore.story, 'en') : '';
   return {
-    name: `${tierName(catalog, item, lang)} · ${pickText(item.title_i18n, lang)} #${row.serial}`,
+    name: avatarDisplayName(catalog, item, row.serial, lang),
     symbol: 'ITERA',
-    description: META_TEXT[lang],
+    description: lore && story ? `${story}\n\n${META_TEXT.en}` : META_TEXT[lang],
     image,
     external_url: row.asset_address ? `${APP_URL}/c/${row.asset_address}` : APP_URL,
     attributes: [
@@ -255,6 +272,7 @@ export function avatarMetadata(catalog: AvatarCatalog, item: AvatarItem, row: Pi
       { trait_type: 'Serial', value: row.serial },
       { trait_type: 'Supply', value: item.supply_cap === null ? 'open' : item.supply_cap },
       { trait_type: 'Transferable', value: 'yes' },
+      ...(lore ? [{ trait_type: 'Epithet', value: loreText(lore.epithet, 'en') }, { trait_type: 'Quote', value: loreText(lore.quote, 'en') }] : []),
     ],
     properties: {
       category: 'image',
