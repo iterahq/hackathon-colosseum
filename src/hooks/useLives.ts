@@ -105,5 +105,5 @@ export function useLives({ harness = false, enabled = true }: { harness?: boolea
     [active, apply]
   );
 
-  return { active, lives, secondsToNext: seconds, lose, endLesson, wallet: companion.wallet, outfit: companion.outfit, refetch, chain: companion.data?.chain ?? null, assetUrl: companion.data?.companion.explorerUrl ?? null };
+  return { active, lives, secondsToNext: seconds, lose, endLesson, wallet: companion.wallet, outfit: companion.outfit, refetch, chain: companion.data?.chain ?? null, assetUrl: companion.data?.companion.explorerUrl ?? null, loading: companion.isPending && companion.fetchStatus !== 'idle' };
 }
