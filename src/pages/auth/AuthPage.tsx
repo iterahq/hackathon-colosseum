@@ -16,6 +16,7 @@ import { AuthShell } from '@/components/auth/AuthShell';
 import { WebOnly } from '@/components/shell/WebOnly';
 import { useI18n } from '@/i18n';
 import { safeInternalPath } from '@/lib/safeInternalPath';
+import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
 import { isGuestAccessToken } from '@/services/guestSession.service';
 
 export default function AuthPage() {
@@ -60,6 +61,11 @@ export default function AuthPage() {
     const { error, noWallet } = await signInWithSolana();
     setBusy(false);
     if (error) {
+      if (noWallet && isTouchBrowser()) {
+        setError(t('auth.solana.openInPhantom'));
+        window.location.assign(phantomBrowseUrl(window.location.href, window.location.origin));
+        return;
+      }
       setError(t(noWallet ? 'auth.solana.noWallet' : 'auth.solana.error'));
       return;
     }

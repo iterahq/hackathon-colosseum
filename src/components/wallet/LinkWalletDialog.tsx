@@ -6,6 +6,14 @@ import { isLinkBusy, useLinkWallet, type LinkState } from '@/hooks/useLinkWallet
 import { useI18n } from '@/i18n';
 import { LINK_ERROR_CODES, LINK_FINAL_ERRORS } from '@/i18n/linkMessages';
 import { addressUrl, shortAddress } from '@/lib/explorer';
+import { isTouchBrowser, phantomBrowseUrl } from '@/utils/phantomDeepLink';
+
+/** On a phone the page has to be reopened inside Phantom; on a desktop the extension has to be installed. */
+function walletInstallHref(): string {
+  return isTouchBrowser()
+    ? phantomBrowseUrl(window.location.href, window.location.origin)
+    : 'https://phantom.app';
+}
 
 const BUSY_KEY = { connecting: 'wallet.link.connecting', signing: 'wallet.link.signing', verifying: 'wallet.link.verifying' } as const;
 
@@ -43,7 +51,7 @@ function Body({ state, start, onClose }: { state: LinkState; start: () => void; 
     return (
       <>
         <Heading title={t('wallet.link.noWallet.title')} body={t('wallet.link.noWallet.body')} />
-        <a href="https://phantom.app" target="_blank" rel="noreferrer" data-testid="link-wallet-install" className={`${BTN_PRIMARY} w-full`}>
+        <a href={walletInstallHref()} target="_blank" rel="noreferrer" data-testid="link-wallet-install" className={`${BTN_PRIMARY} w-full`}>
           {t('wallet.link.noWallet.install')}
         </a>
         <button type="button" onClick={onClose} className={`${BTN_SECONDARY} w-full`}>{t('wallet.link.close')}</button>
