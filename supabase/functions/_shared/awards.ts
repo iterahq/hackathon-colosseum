@@ -9,7 +9,9 @@ export type AchievementKey =
   | 'streak_7'
   | 'program_complete'
   | 'early_bird'
-  | 'night_owl';
+  | 'night_owl'
+  | 'friend_brought'
+  | 'invited';
 
 export type Tier = 'bronze' | 'silver' | 'gold';
 export type I18nText = Record<string, string>;

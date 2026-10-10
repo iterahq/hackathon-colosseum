@@ -274,11 +274,12 @@ function companionTera(centerX: number, bottom: number, width: number, outfit: s
   return `<g data-outfit="${escapeXml(outfit as string)}">${layers.back ? layer(layers.back, 'back') : ''}${face}${layer(layers.front, 'front')}</g>`;
 }
 
-function heart(cx: number, cy: number, size: number, filled: boolean): string {
+function heart(cx: number, cy: number, size: number, filled: boolean, bonus = false): string {
   const scale = size / 24;
   const shape = 'M12 21C5 15.5 2 12 2 8.2C2 5.2 4.3 3 7.1 3C9 3 10.9 4 12 5.6C13.1 4 15 3 16.9 3C19.7 3 22 5.2 22 8.2C22 12 19 15.5 12 21Z';
+  const color = bonus ? TIER_COLORS.gold.base : GREEN;
   const paint = filled
-    ? `fill="${GREEN}" stroke="${GREEN}" stroke-width="1.6"`
+    ? `fill="${color}" stroke="${color}" stroke-width="1.6"`
     : `fill="none" stroke="${CREAM}" stroke-opacity="0.32" stroke-width="1.6" stroke-dasharray="2.4 2.4"`;
   return `<path d="${shape}" transform="translate(${cx - size / 2} ${cy - size / 2}) scale(${scale})" ${paint} stroke-linejoin="round"/>`;
 }
@@ -289,8 +290,11 @@ function companionSvg(input: ArtInput): string {
   const total = Math.max(1, Math.min(MAX_SLOTS, Math.floor(maxLives)));
   const current = Math.max(0, Math.min(total, Math.floor(lives)));
   const gap = 46;
-  const hearts = Array.from({ length: total }, (_, index) =>
-    heart(256 - ((total - 1) * gap) / 2 + index * gap, 392, 34, index < current),
+  // A gifted life sits one above the maximum: it gets a heart of its own, in gold, after the row.
+  const bonus = Math.floor(lives) > total ? 1 : 0;
+  const slots = total + bonus;
+  const hearts = Array.from({ length: slots }, (_, index) =>
+    heart(256 - ((slots - 1) * gap) / 2 + index * gap, 392, 34, index < current + bonus, index >= total),
   ).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="${escapeXml(input.title)}">
 ${defs('bronze', GREEN, 0.16)}
@@ -302,7 +306,7 @@ ${frame(GREEN)}
 <text x="412" y="72" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.2" fill="${GREEN}">${labels.level} ${Math.max(1, Math.floor(level))}</text>
 ${companionTera(256, 356, 168, outfit)}
 ${hearts}
-<text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current}/${total} ${labels.lives}</text>
+<text x="256" y="438" text-anchor="middle" font-family="${SANS}" font-weight="800" font-size="13" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${current + bonus}/${total} ${labels.lives}</text>
 <text x="256" y="474" text-anchor="middle" font-family="${MONO}" font-size="9" letter-spacing="1.8" fill="${CREAM}" fill-opacity="0.42">${labels.soulbound} · ${escapeXml(input.serial)}</text>
 </svg>`;
 }

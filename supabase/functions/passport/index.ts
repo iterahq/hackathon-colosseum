@@ -18,6 +18,8 @@ import { restoreCosmetics } from '../_shared/cosmetics-store.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
 import { bearerToken, corsHeaders, functionsBase, isUuid, json } from '../_shared/http.ts';
 import { planMintJobs, type MintJob } from '../_shared/mint-plan.ts';
+import { inBackground, syncMirror } from '../_shared/companion-store.ts';
+import { rewardReferral } from '../_shared/referral-store.ts';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const MAX_JOBS_PER_CALL = 3;
@@ -351,6 +353,18 @@ async function mintPending(
   return outcome(attempted, done, null);
 }
 
+/**
+ * The inviter's half of an invite reward, off the response path of the invited
+ * learner's call: the new medal is minted to the inviter's wallet when there is
+ * one, and the life reaches the companion asset.
+ */
+async function settleInviter(db: IteraClient, inviterId: string, catalog: Map<string, CatalogEntry>): Promise<void> {
+  const inviter = await resolveNamedUser(db, inviterId);
+  if (!inviter?.wallet) return;
+  await mintPending(db, inviter, await loadRows(db, inviterId), catalog, MAX_JOBS_PER_CALL);
+  await syncMirror(db, inviterId);
+}
+
 function view(row: AchievementRow, catalog: Map<string, CatalogEntry>, lang: Lang) {
   const entry = catalog.get(row.achievement_key) as CatalogEntry;
   const base = functionsBase();
@@ -442,6 +456,17 @@ Deno.serve(async (request) => {
     });
     const stored = await storeAwards(db, caller.iteraUserId, awards, before);
     let rows = awards.length > 0 ? await loadRows(db, caller.iteraUserId) : before;
+
+    // The invite reward is paid on the invited learner's first completed day, and only then.
+    if (rows.some((row) => row.achievement_key === 'first_stamp')) {
+      const reward = await rewardReferral(db, caller.iteraUserId);
+      if (reward) {
+        for (const id of reward.createdRowIds) stored.created.add(id);
+        rows = await loadRows(db, caller.iteraUserId);
+        inBackground(settleInviter(db, reward.inviterUserId, catalog));
+        if (caller.wallet) inBackground(syncMirror(db, caller.iteraUserId));
+      }
+    }
 
     const mint = await mintPending(db, caller, rows, catalog, maxJobs);
     if (mint.touched.size > 0) rows = await loadRows(db, caller.iteraUserId);

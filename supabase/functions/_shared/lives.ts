@@ -1,6 +1,8 @@
 import { localParts } from './awards.ts';
 
 export const MAX_LIVES = 5;
+/** A gift or an invite reward may sit this many lives above the maximum, so it is never wasted. */
+export const BONUS_LIVES = 1;
 export const REGEN_INTERVAL_SECONDS = 20 * 60;
 export const XP_PER_LEVEL = 200;
 const REGEN_INTERVAL_MS = REGEN_INTERVAL_SECONDS * 1000;
@@ -19,11 +21,13 @@ export interface LivesView {
   /** Seconds until the next life comes back; 0 when full. */
   regen_seconds: number;
   regen_interval_seconds: number;
+  /** Lives above `max` (a gift or an invite reward): 0 or 1. They never regenerate. */
+  bonus: number;
 }
 
 /** Adds the lives that came back since `lastRegenAt`: one per interval, up to the maximum. */
 export function regenerate(state: LivesState, now: Date): LivesState {
-  const lives = Math.max(0, Math.min(state.lives, state.maxLives));
+  const lives = Math.max(0, Math.min(state.lives, state.maxLives + BONUS_LIVES));
   if (lives >= state.maxLives) return { ...state, lives, lastRegenAt: now.toISOString() };
   const startedAt = Math.min(new Date(state.lastRegenAt).getTime(), now.getTime());
   const gained = Math.floor((now.getTime() - startedAt) / REGEN_INTERVAL_MS);
@@ -41,11 +45,17 @@ export function loseLife(state: LivesState, now: Date): LivesState {
 /** A lesson finished without mistakes gives one life back, up to the maximum. */
 export function grantLife(state: LivesState, now: Date): LivesState {
   const current = regenerate(state, now);
-  return { ...current, lives: Math.min(current.maxLives, current.lives + 1) };
+  return { ...current, lives: Math.max(current.lives, Math.min(current.maxLives, current.lives + 1)) };
+}
+
+/** A life given by someone else (a gift, an invite reward): may go one above the maximum. */
+export function giftLife(state: LivesState, now: Date): LivesState {
+  const current = regenerate(state, now);
+  return { ...current, lives: Math.min(current.maxLives + BONUS_LIVES, current.lives + 1) };
 }
 
 export function refillLives(state: LivesState, now: Date): LivesState {
-  return { ...state, lives: state.maxLives, lastRegenAt: now.toISOString() };
+  return { ...state, lives: Math.max(state.maxLives, Math.min(state.lives, state.maxLives + BONUS_LIVES)), lastRegenAt: now.toISOString() };
 }
 
 export function livesView(state: LivesState, now: Date): LivesView {
@@ -58,6 +68,7 @@ export function livesView(state: LivesState, now: Date): LivesView {
     next_regen_at: full ? null : new Date(nextAt).toISOString(),
     regen_seconds: full ? 0 : Math.max(0, Math.ceil((nextAt - now.getTime()) / 1000)),
     regen_interval_seconds: REGEN_INTERVAL_SECONDS,
+    bonus: Math.max(0, current.lives - current.maxLives),
   };
 }
 

@@ -3,6 +3,7 @@ import { GLOBAL_REF } from '../_shared/awards.ts';
 import { callerFailureStatus, resolveCaller } from '../_shared/caller.ts';
 import { CLUSTER } from '../_shared/credential.ts';
 import { loadConfig, serviceClient, type IteraClient } from '../_shared/db.ts';
+import { openGift, walletUser } from '../_shared/gift-store.ts';
 import { corsHeaders, isUuid, json, readJsonObject } from '../_shared/http.ts';
 import { expiresAt, fundsCheck } from '../_shared/purchase-verify.ts';
 import { RpcError, balanceOf, blockHeight, latestBlockhash } from '../_shared/rpc.ts';
@@ -15,6 +16,9 @@ const INELIGIBLE_STATUS: Record<IneligibleCode, number> = {
   not_needed: 409,
   already_owned: 409,
   passport_required: 409,
+  self_gift: 409,
+  recipient_full: 409,
+  gift_limit: 429,
 };
 const UNIQUE_VIOLATION = '23505';
 
@@ -91,7 +95,16 @@ Deno.serve(async (request) => {
     if (!item.active) return json({ error: 'item_inactive' }, 409, cors);
     if (!Number.isSafeInteger(item.price_lamports) || item.price_lamports <= 0) throw new Error(`shop_items: bad price for ${item.key}`);
 
-    const normalizedRef = refId.toLowerCase();
+    // A gift names its recipient by wallet address; the purchase is then scoped to that learner.
+    let normalizedRef = refId.toLowerCase();
+    let recipientWallet: string | null = null;
+    if (item.kind === 'gift') {
+      if (!isSolanaAddress(body.recipient)) return json({ error: 'invalid_ref' }, 400, cors);
+      const recipient = await walletUser(db, body.recipient);
+      if (!recipient) return json({ error: 'recipient_not_found' }, 404, cors);
+      normalizedRef = recipient.userId;
+      recipientWallet = body.recipient;
+    }
     const verdict = await ITEM_HANDLERS[item.kind].canBuy({ db, userId: caller.iteraUserId, item, refId: normalizedRef });
     if (!verdict.ok) return json({ error: verdict.error }, INELIGIBLE_STATUS[verdict.error], cors);
 
@@ -126,6 +139,19 @@ Deno.serve(async (request) => {
       lastValidBlockHeight: chain.lastValidBlockHeight,
       expiresAt: expiresAt(new Date(), chain.height, chain.lastValidBlockHeight),
     });
+    if (recipientWallet) {
+      await openGift(db, {
+        id: intent.id,
+        source: 'app',
+        fromWallet: caller.wallet,
+        fromUserId: caller.iteraUserId,
+        toUserId: normalizedRef,
+        toWallet: recipientWallet,
+        lamports: item.price_lamports,
+        lastValidBlockHeight: chain.lastValidBlockHeight,
+        expiresAt: intent.expires_at,
+      });
+    }
     const message = buildTransferMessage({
       payer: caller.wallet,
       recipient: treasury,
@@ -149,6 +175,7 @@ Deno.serve(async (request) => {
         treasury,
         memo: intent.memo,
         cluster: CLUSTER,
+        ...(recipientWallet ? { recipient: { wallet: recipientWallet } } : {}),
       },
       200,
       cors,

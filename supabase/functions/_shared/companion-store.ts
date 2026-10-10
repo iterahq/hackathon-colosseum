@@ -12,7 +12,7 @@ import { restoreCosmetics } from './cosmetics-store.ts';
 import { changedAttributes, explorerUrl, type ChainWrite, type OnchainAttribute } from './credential.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
-import { deriveStats, livesView, regenerate, type CompanionStats, type LivesState, type XpEvent } from './lives.ts';
+import { deriveStats, giftLife, livesView, regenerate, type CompanionStats, type LivesState, type XpEvent } from './lives.ts';
 import { MIRROR_STALE_MS, afterPass, waitDecision } from './mirror.ts';
 
 export const TIME_ZONE = 'America/Sao_Paulo';
@@ -81,6 +81,31 @@ export async function changeLives(
     if (data) return data as CompanionRow;
   }
   throw new Error('companions: too many concurrent updates');
+}
+
+/**
+ * One life from someone else (a gift, an invite reward), exactly once per
+ * attempt id: the event row is the lock, dropped again if the change fails.
+ * May fill the bonus slot. False when the attempt was already applied.
+ */
+export async function grantLifeOnce(db: IteraClient, userId: string, attemptId: string, kind: 'gift' | 'referral'): Promise<boolean> {
+  await ensureCompanion(db, userId);
+  const { data, error } = await db
+    .from('life_events')
+    .upsert(
+      { user_id: userId, attempt_id: attemptId, kind, applied_at: new Date().toISOString() },
+      { onConflict: 'user_id,attempt_id', ignoreDuplicates: true },
+    )
+    .select('id');
+  if (error) throw new Error(`life_events: ${error.message}`);
+  if ((data ?? []).length === 0) return false;
+  try {
+    await changeLives(db, userId, giftLife);
+    return true;
+  } catch (failure) {
+    await db.from('life_events').delete().eq('user_id', userId).eq('attempt_id', attemptId);
+    throw failure;
+  }
 }
 
 export async function setOutfit(db: IteraClient, userId: string, outfit: string | null): Promise<CompanionRow> {

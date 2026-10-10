@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GLOBAL_REF } from './awards';
 import { companionAttributes, companionMetadata, sameAttributes, type CompanionSnapshot } from './companion';
 import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics';
-import { eligibility, isItemKind, type EligibilityFacts } from './shop-rules';
+import { GIFT_DAILY_LIMIT, eligibility, isItemKind, type EligibilityFacts } from './shop-rules';
 
 const TRAIL = '9624052c-4efb-49ca-8bbf-f63d0e5d6c2d';
 const facts = (patch: Partial<EligibilityFacts> = {}): EligibilityFacts => ({
@@ -15,6 +15,18 @@ const facts = (patch: Partial<EligibilityFacts> = {}): EligibilityFacts => ({
 });
 
 describe('eligibility', () => {
+  it('sells a gift for another learner, up to the bonus life and the daily limit', () => {
+    const gift = (patch: Partial<EligibilityFacts> = {}) => facts({ refId: TRAIL, payerId: 'payer', bonusLives: 1, giftsReceivedToday: 0, ...patch });
+    expect(eligibility('gift', gift())).toEqual({ ok: true });
+    expect(eligibility('gift', gift({ lives: 5 }))).toEqual({ ok: true });
+    expect(eligibility('gift', gift({ lives: 6 }))).toEqual({ ok: false, error: 'recipient_full' });
+    expect(eligibility('gift', gift({ payerId: TRAIL }))).toEqual({ ok: false, error: 'self_gift' });
+    expect(eligibility('gift', gift({ giftsReceivedToday: GIFT_DAILY_LIMIT - 1 }))).toEqual({ ok: true });
+    expect(eligibility('gift', gift({ giftsReceivedToday: GIFT_DAILY_LIMIT }))).toEqual({ ok: false, error: 'gift_limit' });
+    expect(eligibility('gift', gift({ refId: GLOBAL_REF }))).toEqual({ ok: false, error: 'invalid_ref' });
+    expect(eligibility('gift', gift({ payerId: null }))).toEqual({ ok: true });
+  });
+
   it('sells a life refill only below the maximum', () => {
     expect(eligibility('life', facts())).toEqual({ ok: true });
     expect(eligibility('life', facts({ lives: 5 }))).toEqual({ ok: false, error: 'not_needed' });

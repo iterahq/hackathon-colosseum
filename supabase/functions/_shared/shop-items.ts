@@ -4,6 +4,7 @@ import { cosmeticsFromPurchases, cosmeticsOf, sameCosmetics } from './cosmetics.
 import { trailCosmeticPurchases } from './cosmetics-store.ts';
 import { changedAttributes, onchainAttributes, type AchievementRow, type CatalogEntry, type ChainWrite } from './credential.ts';
 import { CATALOG_COLUMNS, ROW_COLUMNS, loadConfig, type IteraClient } from './db.ts';
+import { deliverGift, loadGift, recipientFacts, type GiftRow } from './gift-store.ts';
 import { refillLives, regenerate } from './lives.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
 
@@ -59,6 +60,8 @@ export interface ApplyOutcome {
   passport: AchievementRow | null;
   /** The asset write this call made, when it made one. */
   chain: ChainWrite | null;
+  /** A gift this purchase delivered: the answer then describes the recipient, not the payer. */
+  gift?: GiftRow;
 }
 
 export interface ItemHandler {
@@ -69,6 +72,8 @@ export interface ItemHandler {
 
 /** How long a refill waits for a mirror already in flight before leaving the write to its holder. */
 const REFILL_MIRROR_WAIT_MS = 6_000;
+/** Same patience for a gift: the payer is shown the write of the recipient's companion. */
+const GIFT_MIRROR_WAIT_MS = 6_000;
 const NO_FACTS: Omit<EligibilityFacts, 'refId'> = { lives: 0, maxLives: 0, owned: false, passportMinted: false };
 
 async function owns({ db, userId, item, refId }: ShopContext): Promise<boolean> {
@@ -186,4 +191,19 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
   },
   ink: passportCosmetic('ink'),
   frame: passportCosmetic('frame'),
+  // `refId` is the recipient's user id; `purchase-intent` resolved it from the wallet address it was given.
+  gift: {
+    async canBuy({ db, userId, refId }) {
+      if (refId === GLOBAL_REF || refId === userId) return eligibility('gift', { ...NO_FACTS, refId, payerId: userId });
+      const facts = await recipientFacts(db, refId, new Date());
+      return eligibility('gift', { ...NO_FACTS, ...facts, refId, payerId: userId });
+    },
+    async apply({ db, purchase }) {
+      const gift = await loadGift(db, purchase.id);
+      if (!gift) throw new Error('gift row is missing for this purchase');
+      if (!purchase.tx_signature) throw new Error('gift purchase has no payment signature');
+      const delivery = await deliverGift(db, gift, purchase.tx_signature, GIFT_MIRROR_WAIT_MS);
+      return { companion: false, passport: null, chain: delivery.write, gift: delivery.gift };
+    },
+  },
 };

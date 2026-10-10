@@ -12,7 +12,10 @@ import {
 } from '../_shared/companion-store.ts';
 import { isOutfit } from '../_shared/cosmetics.ts';
 import { serviceClient } from '../_shared/db.ts';
+import { reconcileGiftsWithin } from '../_shared/gift-reconcile.ts';
 import { corsHeaders, json, readJsonObject } from '../_shared/http.ts';
+
+const GIFT_RECONCILE_BUDGET_MS = 4_000;
 
 /** `undefined`: no equip requested. `false`: malformed. Otherwise the outfit to wear (`null` takes it off). */
 function equipOf(body: Record<string, unknown>): string | null | undefined | false {
@@ -37,6 +40,8 @@ Deno.serve(async (request) => {
     if (!body || equip === false) return json({ error: 'invalid_body' }, 400, cors);
 
     const userId = caller.iteraUserId;
+    // A gift whose confirm never arrived lands here, before the lives are read.
+    await reconcileGiftsWithin(db, { toUserId: userId }, GIFT_RECONCILE_BUDGET_MS);
     let row = await ensureCompanion(db, userId);
     let mirrorWanted = row.mirror_due;
 
