@@ -130,6 +130,13 @@ describe('lore in names, metadata and views', () => {
     expect(avatarView(catalog, LEADER, 'en', SUPABASE, null).lore?.name).toBe('Dom');
     expect(avatarView(catalog, NO_LORE, 'en', SUPABASE, null).lore).toBeNull();
   });
+
+  it('derives chip_url beside image_url and thumb_url', () => {
+    const chip = `${SUPABASE}/storage/v1/object/public/tera-avatars/base_lider_chip.webp`;
+    expect(avatarImageUrl(SUPABASE, LEADER, 'chip')).toBe(chip);
+    expect(avatarView(catalog, LEADER, 'en', SUPABASE, null).chip_url).toBe(chip);
+    expect(shopAvatarFields(catalog, LEADER, 'en', SUPABASE, { supply: undefined, own: null, equippedKey: null }).chip_url).toBe(chip);
+  });
 });
 
 describe('catalog and tiers', () => {

@@ -114,6 +114,7 @@ export function profileAvatars(input: {
         verified: isCollectibleVerified(input.onchain.get(row.asset_address), { wallet, collection: config.collection_avatars, authority: config.authority }),
         image_url: avatarImageUrl(input.supabaseUrl, item),
         thumb_url: avatarImageUrl(input.supabaseUrl, item, '128'),
+        chip_url: avatarImageUrl(input.supabaseUrl, item, 'chip'),
         page_url: `${APP_URL}/c/${row.asset_address}`,
         explorer_url: explorerUrl('address', row.asset_address),
       },

@@ -167,6 +167,7 @@ async function loadAvatarAchievement(db: IteraClient, assetAddress: string, lang
     metadata_url: avatarMetadataUrl(functionsBase(), row.id),
     image_url: image,
     thumb_url: avatarImageUrl(supabaseUrl(), item, '128'),
+    chip_url: avatarImageUrl(supabaseUrl(), item, 'chip'),
     stamps: [],
   };
 }
@@ -231,7 +232,7 @@ Deno.serve(async (request) => {
         attributes: onchain.attributes,
         achievement,
         ...(endorsements ? { endorsements } : {}),
-        ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang) }, image_url: avatarAchievement?.image_url ?? null } : {}),
+        ...(avatar ? { avatar: { ...avatar, lore: loreView(avatar.key, lang) }, image_url: avatarAchievement?.image_url ?? null, chip_url: avatarAchievement?.chip_url ?? null } : {}),
         ...(companion ? { companion, snapshot: { source: 'chain', mirrored_at: companionRow?.mirroredAt ?? null } } : {}),
         minted_at: achievement?.minted_at ?? null,
         explorer_url: explorerUrl('address', address),

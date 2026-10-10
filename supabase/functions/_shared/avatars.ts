@@ -77,10 +77,10 @@ export function allowsOutfit(group: string | null | undefined): boolean {
   return group === OUTFIT_GROUP;
 }
 
-export function avatarImageUrl(supabaseUrl: string, item: Pick<AvatarItem, 'key' | 'image_key'>, variant: '512' | '128' | 'png' = '512'): string {
+export function avatarImageUrl(supabaseUrl: string, item: Pick<AvatarItem, 'key' | 'image_key'>, variant: '512' | '128' | 'chip' | 'png' = '512'): string {
   // Only a plain key ever becomes part of a URL, whatever the catalog row holds.
   const key = isAvatarKey(item.image_key) ? item.image_key : item.key;
-  const file = variant === '128' ? `${key}_128.webp` : variant === 'png' ? `${key}.png` : `${key}.webp`;
+  const file = variant === '128' ? `${key}_128.webp` : variant === 'chip' ? `${key}_chip.webp` : variant === 'png' ? `${key}.png` : `${key}.webp`;
   return `${supabaseUrl}/storage/v1/object/public/${AVATAR_BUCKET}/${file}`;
 }
 
@@ -118,6 +118,7 @@ export function avatarView(catalog: AvatarCatalog, item: AvatarItem, lang: Lang,
     group: item.avatar_group,
     image_url: avatarImageUrl(supabaseUrl, item),
     thumb_url: avatarImageUrl(supabaseUrl, item, '128'),
+    chip_url: avatarImageUrl(supabaseUrl, item, 'chip'),
     asset_address: assetAddress,
     allows_outfit: allowsOutfit(item.avatar_group),
     lore: loreView(item.key, lang),
@@ -135,6 +136,7 @@ export function fallbackAvatarView(supabaseUrl: string) {
     group: OUTFIT_GROUP,
     image_url: avatarImageUrl(supabaseUrl, item),
     thumb_url: avatarImageUrl(supabaseUrl, item, '128'),
+    chip_url: avatarImageUrl(supabaseUrl, item, 'chip'),
     asset_address: null,
     allows_outfit: true,
     lore: null,
@@ -179,6 +181,7 @@ export function shopAvatarFields(
     price_label: free ? (lang === 'pt' ? 'Grátis' : 'Free') : item.price_label,
     image_url: avatarImageUrl(supabaseUrl, item),
     thumb_url: avatarImageUrl(supabaseUrl, item, '128'),
+    chip_url: avatarImageUrl(supabaseUrl, item, 'chip'),
     supply: { minted: free ? 0 : (facts.supply?.minted ?? 0), max: item.supply_cap },
     sold_out: !free && !owned && !holding && isSoldOut(item, facts.supply),
     owned,

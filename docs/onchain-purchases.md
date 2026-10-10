@@ -689,6 +689,7 @@ key without lore (`null`).
 - Every avatar object (`shop-items`, `companion.avatar`, `learner-profile.avatar` / `avatars[]`,
   `credential-verify.avatar` and `achievement`) gains `lore: { name, epithet, story, quote } | null`, in `?lang=`
   (default pt), `null` when the key has no lore.
+- Avatar objects also carry `chip_url` (`…/<key>_chip.webp`, a 128 px circular crop), derived in `avatarImageUrl(…, "chip")`.
 - NFT metadata (`credential-meta/avatar/<id>`): `name` = `<lore name en> · <tier en> #<serial>`, `description` =
   the English story plus the transferable-collectible sentence, attributes `Epithet` and `Quote` (en). The
   on-chain asset name given at mint uses the same composition; assets minted earlier keep their name.
