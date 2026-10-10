@@ -20,6 +20,7 @@ const useCatalog = vi.fn();
 vi.mock('@/hooks/useAccessLevel', () => ({ useAccessLevel: () => useAccessLevel() }));
 vi.mock('@/hooks', () => ({ useProgram: (...args: unknown[]) => useProgram(...args) }));
 vi.mock('@/hooks/useCatalog', () => ({ useCatalog: (...args: unknown[]) => useCatalog(...args) }));
+vi.mock('@/components/header/AppTopBar', () => ({ AppTopBar: () => <div data-testid="app-header" /> }));
 vi.mock('@/components/branded', () => ({
   AppHeader: () => <div data-testid="app-header" />,
   ProgramIcon: () => <div data-testid="program-icon" />,

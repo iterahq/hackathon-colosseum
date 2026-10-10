@@ -10,13 +10,15 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { TACTILE_CTA, TACTILE_SECONDARY } from '@iterahq/activities';
 import { ChevronLeft, GitBranch, SearchX } from 'lucide-react';
-import { AppHeader, SkillTree, LockedProgramView } from '@/components/branded';
+import { SkillTree, LockedProgramView } from '@/components/branded';
+import { AppTopBar } from '@/components/header/AppTopBar';
 import { useProgram } from '@/hooks';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useAccessLevel } from '@/hooks/useAccessLevel';
 import { isProgramNotFoundError } from '@/services/programs.service';
 import { useI18n } from '@/i18n';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import '@/components/dashboard/dashboard.css';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { WebOnly } from '@/components/shell/WebOnly';
 
@@ -129,12 +131,12 @@ export default function ProgramPage() {
   const lessonCount = program?.units.reduce((n, unit) => n + (unit.lessons?.length ?? 0), 0) ?? 0;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-x-clip">
-      <AppHeader active="discover" />
+    <div className="dash-root min-h-screen bg-background flex flex-col overflow-x-clip">
+      <AppTopBar />
 
       {/* Sticky course sub-header (back · branch · title). No heart/fire/XP. */}
       {program && (
-        <div className="sticky top-14 md:top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="sticky top-16 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="max-w-[1200px] mx-auto px-4 md:px-6 h-14 flex items-center gap-3">
             <Link
               to="/"
