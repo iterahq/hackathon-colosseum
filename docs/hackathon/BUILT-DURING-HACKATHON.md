@@ -9,9 +9,9 @@ done during the competition is judged).
 - Last inherited commit: `1f5b925b` (2026-10-09 16:49 -0300), "feat: funnel events (DFL-00D3F) (#699)".
 - First hackathon commit: `34336b3` (2026-10-09 17:44 -0300), "chore: bootstrap hackathon copy (drop CI, isolation
   banner, API base build arg) (#1)". Its parent is the copy point.
-- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `7612e12`, 2026-10-10 07:55 -0300): 53 commits,
+- Range: `git log 1f5b925b..origin/main`. At the time of writing (main at `cc178d0`, 2026-10-10 08:00 -0300): 55 commits,
   one per merged PR (squash merges), all by one git author account.
-- Diff against the copy point: 605 files changed, 501 added, 84 modified, 20 deleted; 45,544 lines added and 5,004 removed.
+- Diff against the copy point: 618 files changed, 514 added, 84 modified, 20 deleted; 46,364 lines added and 5,004 removed.
 - Before the copy point the repository history has 721 commits. The history of the original product is included in
   this repository.
 
@@ -85,6 +85,8 @@ Merged pull requests (`gh pr list --state merged`, titles as merged; times are i
 | #53 | perf: warm the shop list at sign-in | Shop list prefetch and cache. |
 | #54 | feat(profile): Meu Tera section | Profile section for faces, looks, accessories. |
 | #55 | fix: certification art no longer flashes another design on language change | Art swap fix. |
+| #56 | Crystals in the header: balance chip and sheet on every learner page | Front-end balance chip and sheet for the Phoenix Crystals currency. The currency backend (PR #43) is not on `main`. |
+| #57 | fix(header): balanced top bar | Header layout. |
 
 Open and not on `main`: #43 "Phoenix Crystals: earned currency, backgrounds and icon colours, names for wallet learners".
 

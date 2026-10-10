@@ -145,11 +145,11 @@ in `supabase/functions/_shared/`.
 **Existed before (inherited from `itera-player`, not part of the judged work):** the lesson player and the activity
 engine, the lesson and trail content, e-mail authentication, the Supabase schema up to migration 0109, the live-class
 feature, the instructor and admin screens, subscription billing code (Stripe), the mobile shell, and the monorepo
-tooling. Of the 2,480 tracked files at the last commit, roughly 1,990 are TypeScript; the copy point already
+tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
 contained about 2,000 files. The inherited product is large and is not claimed.
 
-**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-10, 53 commits after the copy point, merged PRs #1 to
-#55; +45.5k / -5.0k lines in 605 files against the copy point; 100 new files under `supabase/functions/` and 34 new
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-10, 55 commits after the copy point, merged PRs #1 to
+#57; +46.4k / -5.0k lines in 618 files against the copy point; 100 new files under `supabase/functions/` and 34 new
 migrations 0110 to 0143):
 
 - Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
@@ -168,7 +168,7 @@ migrations 0110 to 0143):
 - Security: hardening pass against a written review (pay-once-get-two, forgeable XP, client-written progress, unbounded
   authority-paid writes, referral farming, public Action cost, faucet limits, internal ids in public data).
 
-In progress and **not on `main`**: "Phoenix Crystals", an earned non-purchasable currency (open PR #43).
+In progress and **not on `main`**: "Phoenix Crystals", an earned non-purchasable currency (open PR #43). Only its header balance chip (PR #56) is on `main`, and it has no backend behind it there.
 
 The full list of PRs, migrations and functions is in
 [`docs/hackathon/BUILT-DURING-HACKATHON.md`](docs/hackathon/BUILT-DURING-HACKATHON.md).

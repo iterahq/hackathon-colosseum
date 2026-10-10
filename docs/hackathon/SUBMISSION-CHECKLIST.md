@@ -42,10 +42,10 @@ Rascunhos prontos em `/home/samuel/hackathon-pitch.md`, seção 4 (em inglês): 
 
 - [ ] Conferir os limites de tamanho e os campos reais do formulário **(confirmar no site do Colosseum)**.
 - [ ] Preencher os números que faltam (ver seção 6) e rodar `grep '\[\[' /home/samuel/hackathon-pitch.md` sem resultado.
-- [ ] Ajustar o texto "PRs #1 a #36" do rascunho: o intervalo atual é #1 a #55 (53 commits; ver
+- [ ] Ajustar o texto "PRs #1 a #36" do rascunho: o intervalo atual é #1 a #57 (55 commits; ver
   `docs/hackathon/BUILT-DURING-HACKATHON.md`). A contagem de funções (20) e de migrations (41) do rascunho também está
   desatualizada: no código são 19 funções e 34 migrations (0110 a 0143).
-- [ ] Não afirmar que o "Cristal de Fênix" existe enquanto o PR #43 não estiver em `main`.
+- [ ] Não afirmar que o "Cristal de Fênix" existe enquanto o PR #43 não estiver em `main` (só o chip de saldo do PR #56 está lá, sem backend).
 
 ## 4. Vídeos
 
