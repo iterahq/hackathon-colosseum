@@ -198,22 +198,18 @@ export async function deliverGift(db: IteraClient, row: GiftRow, signature: stri
 
   await grantLifeOnce(db, gift.to_user_id, `gift:${gift.id}`, 'gift');
 
-  let write: ChainWrite | null = null;
-  if (!gift.mirror_signature) write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs)).write;
-
-  if (gift.status !== 'delivered' || write) {
-    const { data, error } = await db
-      .from('gifts')
-      .update({
-        status: 'delivered',
-        delivered_at: gift.delivered_at ?? new Date().toISOString(),
-        mirror_signature: gift.mirror_signature ?? write?.signature ?? null,
-      })
-      .eq('id', gift.id)
-      .select(GIFT_COLUMNS)
-      .single();
+  // Delivered as soon as the life is there: the chain write below can take seconds and repairs itself.
+  const patch = async (values: Record<string, unknown>): Promise<GiftRow> => {
+    const { data, error } = await db.from('gifts').update(values).eq('id', gift.id).select(GIFT_COLUMNS).single();
     if (error) throw new Error(`gifts deliver: ${error.message}`);
-    gift = data as GiftRow;
+    return data as GiftRow;
+  };
+  if (gift.status !== 'delivered') gift = await patch({ status: 'delivered', delivered_at: new Date().toISOString() });
+
+  let write: ChainWrite | null = null;
+  if (!gift.mirror_signature) {
+    write = (await syncMirror(db, gift.to_user_id, mirrorWaitMs)).write;
+    if (write) gift = await patch({ mirror_signature: write.signature });
   }
   return { gift, write };
 }
