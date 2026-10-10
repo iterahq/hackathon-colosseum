@@ -3,11 +3,12 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { useI18n } from '@/i18n';
-import { PURCHASE_ERROR_CODES } from '@/i18n/shopMessages';
+import { GIFT_ERROR_CODES } from '@/i18n/giftMessages';
+import { PURCHASE_ERROR_CODES as SHOP_ERROR_CODES } from '@/i18n/shopMessages';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { txUrl } from '@/lib/explorer';
 import type { ShopItemKind } from '@/types/shop';
-import { lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
+import { giftCopy, lamportsToSol, paidCopy, shortSignature, showTechnicalDetail } from '@/utils/purchaseProof';
 import { isPurchaseBusy, type PurchaseState } from '@/utils/purchaseMachine';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from './shopStyles';
 
@@ -25,6 +26,7 @@ interface Props {
   onClose: () => void;
 }
 
+const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set([...SHOP_ERROR_CODES, ...GIFT_ERROR_CODES]);
 const BUSY_LABEL = { connecting: 'purchase.connecting', signing: 'purchase.signing', confirming: 'purchase.confirming', funding: 'purchase.funding' } as const;
 
 function Detail({ text }: { text: string | null }) {
@@ -57,12 +59,18 @@ function Proof({ state, copy }: { state: PurchaseState; copy: ReturnType<typeof 
   const { proof } = state;
   const signature = proof?.signature ?? null;
   const chain = proof?.chain && proof.chain.signature !== signature ? proof.chain : null;
+  const gift = proof?.gift ?? null;
   return (
     <div className="flex w-full flex-col items-center gap-2" data-testid="purchase-proof">
       {proof?.imageUrl && <img src={proof.imageUrl} alt="" width={84} height={84} className="h-[84px] w-[84px] rounded-[10px] border border-[#262320]" data-testid="purchase-art" />}
       {copy.note && <p className="[font:500_13px/1.4_Inter] text-[#C9BFB0]" data-testid="purchase-change">{t(copy.note.key, copy.note.params)}</p>}
       {signature && <ProofRow label={t('purchase.row.payment')} signature={signature} href={state.explorerUrl ?? txUrl(signature)} testId="purchase-explorer" />}
-      {chain && <ProofRow label={t('purchase.row.chain')} signature={chain.signature} href={chain.explorerUrl} testId="purchase-chain-explorer" />}
+      {chain && <ProofRow label={gift ? t('gift.row.chain', { name: gift.name }) : t('purchase.row.chain')} signature={chain.signature} href={chain.explorerUrl} testId="purchase-chain-explorer" />}
+      {gift && !chain && gift.companionExplorerUrl && (
+        <a href={gift.companionExplorerUrl} target="_blank" rel="noreferrer" data-testid="purchase-gift-companion" className={`rounded [font:600_12px_JetBrains_Mono] text-[#3FD17F] hover:underline ${FOCUS}`}>
+          {t('gift.row.companion')} ↗
+        </a>
+      )}
     </div>
   );
 }
@@ -94,7 +102,8 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
   if (!open) return null;
   const { phase } = state;
   const friendly = state.code && PURCHASE_ERROR_CODES.has(state.code) ? t(`purchase.error.${state.code}`) : null;
-  const copy = paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
+  const gift = state.proof?.gift ?? null;
+  const copy = gift ? giftCopy(gift) : paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
   const needed = state.neededLamports ? t('purchase.insufficient.need', { amount: lamportsToSol(state.neededLamports) }) : null;
 
   return (
@@ -119,7 +128,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
             <span className="flex h-[150px] items-end justify-center">
               <TeraOutfit mood="happy" size="xl" outfit={outfit} />
             </span>
-            <Message title={t('purchase.paid.title')} body={t(copy.body.key, copy.body.params)} />
+            <Message title={gift ? t('gift.paid.title', { name: gift.name }) : t('purchase.paid.title')} body={t(copy.body.key, copy.body.params)} />
             <Proof state={state} copy={copy} />
             <button type="button" autoFocus onClick={onClose} data-testid="purchase-done" className={`${BTN_PRIMARY} mt-1 w-full`}>
               {t('purchase.done')}

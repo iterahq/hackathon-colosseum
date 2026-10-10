@@ -15,6 +15,7 @@ import type {
 } from '@/types/shop';
 import { DEFAULT_MAX_LIVES, DEFAULT_REGEN_SECONDS } from '@/utils/lives';
 import { priceLabel } from '@/utils/shopPrice';
+import { toGift } from '@/services/gift.service';
 
 type Row = Record<string, unknown>;
 const row = (v: unknown): Row => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Row) : {});
@@ -32,7 +33,9 @@ export function toLives(v: unknown): LivesState | null {
   const r = row(v);
   if (typeof r.current !== 'number') return null;
   const max = Math.max(1, num(r.max, DEFAULT_MAX_LIVES));
-  const current = Math.min(max, Math.max(0, Math.floor(r.current)));
+  // A gifted life may sit one above the maximum: the backend says so in `bonus`.
+  const bonus = Math.min(1, Math.max(0, Math.floor(num(r.bonus))));
+  const current = Math.min(max + bonus, Math.max(0, Math.floor(r.current)));
   // `regen_seconds` is the time LEFT to the next life; the length of a tick is `regen_interval_seconds`.
   const left = num(r.regen_seconds);
   const nextRegenAt = current >= max ? null : (orNull(r.next_regen_at) ?? (left > 0 ? new Date(Date.now() + left * 1000).toISOString() : null));
@@ -140,6 +143,7 @@ export function toConfirmation(v: unknown): PurchaseConfirmation {
     imageUrl: orNull(r.image_url) ?? orNull(row(r.companion).image_url),
     written: rows(r.written).map((w) => ({ asset: str(w.asset), attribute: str(w.attribute), value: String(w.value ?? '') })).filter((w) => w.attribute),
     chain: toChain(r.chain),
+    gift: toGift(r.gift),
   };
 }
 

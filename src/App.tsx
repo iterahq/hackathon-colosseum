@@ -9,6 +9,7 @@ import { ObservabilityProvider } from "@devfellowship/observability";
 import LoginPage from "./pages/auth/LoginPage";
 import { AuthProvider } from "./auth/AuthContext";
 import { CompanionBootstrap } from "@/components/lives/CompanionBootstrap";
+import { GiftMounts } from "@/components/gift/GiftMounts";
 import { PersonalizationProvider } from "./personalization/PersonalizationProvider";
 // The app side of ADR-3: injects i18n + the learner identity into
 // `@iterahq/activities`, which cannot import either. See the file.
@@ -80,6 +81,7 @@ const PassportPage = lazy(() => import("./pages/PassportPage"));
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CredentialPage = lazy(() => import("./pages/CredentialPage"));
 const LearnerProfilePage = lazy(() => import("./pages/LearnerProfilePage"));
+const GiftPage = lazy(() => import("./pages/GiftPage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
 import { Navigate } from "react-router-dom";
 import { I18nProvider } from "./i18n";
@@ -167,6 +169,7 @@ const App = () => (
               <NicknameGate />
               <LearnerPagePrefetch />
               <CompanionBootstrap />
+              <GiftMounts />
               <PageTitle />
               <RouteScrollReset />
               <RouteErrorBoundary>
@@ -307,6 +310,7 @@ const App = () => (
                 {/* Public credential check: anyone with the link, no session, no app shell. */}
                 <Route path="/c/:asset" element={<LazyRoute><CredentialPage /></LazyRoute>} />
                 <Route path="/u/:wallet" element={<LazyRoute><LearnerProfilePage /></LazyRoute>} />
+                <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
                 {/* Self-serve subscribe surface (PLG). Calls itera-api
                     POST /plg/checkout (user-JWT, Stripe SANDBOX) — see

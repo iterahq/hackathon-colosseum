@@ -34,6 +34,8 @@ export interface PurchaseProof {
   written: { attribute: string; value: string }[];
   /** Lives after the purchase, for a refill. */
   lives: { current: number; max: number } | null;
+  /** A gift: the recipient as shown, and their lives after it. */
+  gift?: { name: string; lives: number | null; max: number; companionExplorerUrl: string | null } | null;
 }
 
 export type PurchaseEvent =

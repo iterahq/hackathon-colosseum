@@ -5,7 +5,7 @@ import type { Trail } from '@/types/trailDashboard';
 import { trailName } from '@/utils/trailDashboard';
 
 const MEDAL_KINDS = new Set(['streak', 'milestone']);
-const MEDAL_SHELF = 6;
+const MEDAL_SHELF = 8;
 
 export type Pick = (text: I18nText) => string;
 

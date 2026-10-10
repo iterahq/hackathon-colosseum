@@ -101,6 +101,16 @@ RUN printf 'server {\n\
     add_header Cache-Control "no-cache" always;\n\
     try_files $uri =404;\n\
   }\n\
+  # Solana Actions: blink clients on other origins fetch this file to map /gift/<wallet> to the action URL,\n\
+  # so it must answer with open CORS. A missing file is a 404, not index.html.\n\
+  location = /actions.json {\n\
+    default_type application/json;\n\
+    add_header Access-Control-Allow-Origin "*" always;\n\
+    add_header Access-Control-Allow-Methods "GET, OPTIONS" always;\n\
+    add_header Access-Control-Allow-Headers "Content-Type, Authorization, Content-Encoding, Accept-Encoding" always;\n\
+    add_header Cache-Control "no-cache" always;\n\
+    try_files $uri =404;\n\
+  }\n\
   # R-5: the files an OS fetches to verify universal links / App Links. Exact paths, 200 with JSON, never the\n\
   # SPA fallback and never a redirect (both OSes refuse a redirect). The iOS file has no extension, so nginx\n\
   # would type it octet-stream: default_type says JSON. Not compressed. A missing file is a 404.\n\

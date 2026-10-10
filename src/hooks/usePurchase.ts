@@ -13,6 +13,7 @@ import { txUrl } from '@/lib/explorer';
 import { bumpCredentialArt } from '@/services/credential.service';
 import { WalletSignError, connectWallet, signAndSendPurchase } from '@/services/walletSign';
 import type { CompanionSnapshot, PurchaseConfirmation } from '@/types/shop';
+import { giftLabel } from '@/utils/gift';
 import { PURCHASE_IDLE, isPurchaseBusy, purchaseReducer } from '@/utils/purchaseMachine';
 
 const POLL_MS = 1500;
@@ -28,7 +29,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(purchaseReducer, PURCHASE_IDLE);
   const userId = session?.user?.id ?? 'anon';
-  const last = useRef<{ itemKey: string; refId?: string } | null>(null);
+  const last = useRef<{ itemKey: string; refId?: string; recipient?: string } | null>(null);
   const running = useRef(false);
   const alive = useRef(true);
   useEffect(() => {
@@ -58,14 +59,14 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
   );
 
   const buy = useCallback(
-    async (itemKey: string, refId?: string) => {
+    async (itemKey: string, refId?: string, recipient?: string) => {
       if (running.current) return;
       running.current = true;
-      last.current = { itemKey, refId };
+      last.current = { itemKey, refId, recipient };
       dispatch({ type: 'start', itemKey });
       try {
         await connectWallet();
-        const intent = await createPurchaseIntent(itemKey, refId);
+        const intent = await createPurchaseIntent(itemKey, refId, recipient);
         if (!alive.current) return;
         dispatch({ type: 'connected' });
         const signed = await signAndSendPurchase(intent);
@@ -97,13 +98,17 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         if (confirmation.status === 'paid') {
           settle(confirmation);
           const payment = broadcast ?? signatureOf(confirmation.explorerUrl);
-          const mirror = confirmation.chain?.signature ?? null;
+          const gift = confirmation.gift ?? null;
+          // A repeated confirm of a gift carries no `chain`: the stored write is in the gift block.
+          const mirror = confirmation.chain?.signature ?? gift?.mirrorSignature ?? null;
+          const mirrorUrl = confirmation.chain?.explorerUrl || gift?.mirrorExplorerUrl || (mirror ? txUrl(mirror) : '');
           dispatch({
             type: 'paid',
             explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null,
             proof: {
               signature: payment,
-              chain: confirmation.chain && mirror && mirror !== payment ? { signature: mirror, explorerUrl: confirmation.chain.explorerUrl || txUrl(mirror) } : null,
+              chain: mirror && mirror !== payment ? { signature: mirror, explorerUrl: mirrorUrl } : null,
+              gift: gift ? { name: giftLabel(gift.toName, gift.toWallet), lives: gift.recipientLives, max: gift.recipientMax, companionExplorerUrl: gift.companionExplorerUrl } : null,
               imageUrl: confirmation.imageUrl ?? null,
               written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
               lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,
@@ -151,13 +156,13 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
     }
     if (!alive.current) return;
     dispatch({ type: 'cancelled' });
-    void buy(again.itemKey, again.refId);
+    void buy(again.itemKey, again.refId, again.recipient);
   }, [buy]);
 
   const retry = useCallback(() => {
     const again = last.current;
     dispatch({ type: 'reset' });
-    if (again) void buy(again.itemKey, again.refId);
+    if (again) void buy(again.itemKey, again.refId, again.recipient);
   }, [buy]);
 
   return { state, busy: isPurchaseBusy(state), buy, fund, retry, reset: useCallback(() => dispatch({ type: 'reset' }), []) };

@@ -40,6 +40,12 @@ export function paidCopy(kind: ShopItemKind, { itemTitle, targetTitle }: PaidCon
   };
 }
 
+/** The success lines of a gift: whose Tera got the life, and that a life above the maximum became a bonus. */
+export function giftCopy(gift: NonNullable<PurchaseProof['gift']>): PaidCopy {
+  const body = gift.lives === null ? { key: 'gift.paid.bodyBare', params: { name: gift.name } } : { key: 'gift.paid.body', params: { name: gift.name, current: gift.lives, max: gift.max } };
+  return { body, note: gift.lives !== null && gift.lives > gift.max ? { key: 'gift.paid.bonus', params: {} } : null };
+}
+
 /** Codes a learner can act on without a technical trace. */
 const TECHNICAL_CODES: ReadonlySet<string> = new Set(['payment_mismatch', 'broadcast_failed', 'rpc_unavailable']);
 

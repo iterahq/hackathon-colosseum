@@ -44,11 +44,11 @@ describe('buildPages', () => {
 });
 
 describe('buildMedals and totals', () => {
-  it('keeps streak and milestone items, sorted, at most six', () => {
-    const items = [item('b', 'streak', { sort: 2 }), item('a', 'milestone', { sort: 1 }), item('d', 'day'), ...Array.from({ length: 6 }, (_, i) => item(`x${i}`, 'streak', { sort: 10 + i }))];
+  it('keeps streak and milestone items, sorted, at most eight', () => {
+    const items = [item('b', 'streak', { sort: 2 }), item('a', 'milestone', { sort: 1 }), item('d', 'day'), ...Array.from({ length: 8 }, (_, i) => item(`x${i}`, 'streak', { sort: 10 + i }))];
     const medals = buildMedals(items, pick);
     expect(medals.map((m) => m.key).slice(0, 2)).toEqual(['a', 'b']);
-    expect(medals).toHaveLength(6);
+    expect(medals).toHaveLength(8);
   });
 
   it('counts stamps, started pages and earned medals', () => {

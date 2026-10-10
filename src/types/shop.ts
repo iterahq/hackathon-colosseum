@@ -1,4 +1,6 @@
 /** Shapes of the lives / shop / companion backend, normalised to camelCase by the services. */
+import type { GiftReceipt } from '@/types/gift';
+
 export interface LivesState {
   current: number;
   max: number;
@@ -108,6 +110,8 @@ export interface PurchaseConfirmation {
   imageUrl?: string | null;
   written?: WrittenAttribute[];
   chain?: ChainProof | null;
+  /** Present when the purchase was a gift: who got the life and where it was written. */
+  gift?: GiftReceipt | null;
 }
 
 export type FaucetResult = { signature: string; blocked: null } | { signature: null; blocked: string };
