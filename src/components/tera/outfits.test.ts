@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { OUTFITS, OUTFIT_BOX, OUTFIT_KEYS, outfitOf, selectOutfit } from './outfits';
+import { existsSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { OUTFITS, OUTFIT_BLEED, OUTFIT_BOX, OUTFIT_FACES, OUTFIT_KEYS, OUTFIT_LAYER, frontSources, outfitOf, selectOutfit } from './outfits';
 
 describe('outfitOf', () => {
   it('accepts shop item keys and bare names', () => {
     expect(outfitOf('outfit_glasses')).toBe('outfit_glasses');
     expect(outfitOf('crown')).toBe('outfit_crown');
     expect(outfitOf(' Outfit_Headphones ')).toBe('outfit_headphones');
+    expect(outfitOf('outfit_laurel')).toBe('outfit_laurel');
   });
 
   it('draws nothing for none, unknown or non-outfit keys', () => {
@@ -29,17 +32,29 @@ describe('selectOutfit', () => {
   });
 });
 
-describe('outfit shapes', () => {
-  it('has a path set for every outfit, all inside the face box', () => {
+describe('outfit layers', () => {
+  const shipped = (src: string) => existsSync(join(process.cwd(), 'public', src));
+
+  it('ships every layer an outfit names, small enough for a 32px avatar to afford', () => {
     for (const key of OUTFIT_KEYS) {
-      expect(OUTFITS[key].length).toBeGreaterThan(0);
-      for (const shape of OUTFITS[key]) {
-        const start = /^M(-?[\d.]+) (-?[\d.]+)/.exec(shape.d);
-        expect(shape.fill ?? shape.stroke, `${key}: a shape needs a fill or a stroke`).toBeTruthy();
-        expect(start, `${key}: ${shape.d}`).not.toBeNull();
-        expect(Number(start?.[1])).toBeLessThanOrEqual(OUTFIT_BOX.width);
-        expect(Number(start?.[2])).toBeLessThanOrEqual(OUTFIT_BOX.height);
+      const art = OUTFITS[key];
+      const sources = [...frontSources(key), ...(art.back ? [art.back] : [])];
+      expect(sources.length).toBeGreaterThan(0);
+      for (const src of sources) {
+        expect(src.startsWith('/mascot/outfits/')).toBe(true);
+        expect(shipped(src), src).toBe(true);
+        expect(statSync(join(process.cwd(), 'public', src)).size, src).toBeLessThan(40_000);
       }
     }
+  });
+
+  it('has a front for every face, and one image when the accessory never meets the crest', () => {
+    for (const key of OUTFIT_KEYS) for (const face of OUTFIT_FACES) expect(OUTFITS[key].front[face]).toBeTruthy();
+    expect(frontSources('outfit_crown')).toHaveLength(3);
+    expect(frontSources('outfit_laurel')).toHaveLength(1);
+  });
+
+  it('sizes a layer as the face box plus the bleed on every side', () => {
+    expect(OUTFIT_LAYER).toEqual({ width: OUTFIT_BOX.width + 2 * OUTFIT_BLEED, height: OUTFIT_BOX.height + 2 * OUTFIT_BLEED });
   });
 });

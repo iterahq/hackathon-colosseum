@@ -1,6 +1,6 @@
 export const INKS = ['emerald', 'violet'] as const;
 export const FRAMES = ['gold-leaf'] as const;
-export const OUTFITS = ['outfit_glasses', 'outfit_crown', 'outfit_headphones'] as const;
+export const OUTFITS = ['outfit_glasses', 'outfit_crown', 'outfit_headphones', 'outfit_laurel'] as const;
 
 export type Ink = (typeof INKS)[number];
 export type Frame = (typeof FRAMES)[number];
