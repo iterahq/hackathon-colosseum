@@ -1,3 +1,5 @@
+import type { AvatarBorder } from '@/types/crystals';
+
 /** The learner's profile picture: a free icon or an NFT avatar. `avatar` of `companion` / `learner-profile`, kind `avatar` of `shop-items`. */
 export type AvatarRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 export type AvatarGroup = 'expression' | 'base' | 'special' | 'event' | 'accessory';
@@ -16,6 +18,8 @@ export interface LearnerAvatar {
   assetAddress: string | null;
   /** Only the free expression icons take the outfit layer on top; a painted avatar is shown as it is. */
   allowsOutfit: boolean;
+  /** The learner's profile border, drawn over the art's own ring; null or absent keeps the ring as it is. */
+  border?: AvatarBorder | null;
 }
 
 /** The avatar fields a shop item of kind `avatar` carries on top of the common ones. */

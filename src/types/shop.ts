@@ -9,6 +9,8 @@ export interface LivesState {
   /** ISO time of the next +1; null while full. */
   nextRegenAt: string | null;
   regenSeconds: number;
+  /** ISO time until which no life is lost (the infinite pack); absent or null otherwise. */
+  unlimitedUntil?: string | null;
 }
 
 export type OutfitKey = 'outfit_glasses' | 'outfit_crown' | 'outfit_headphones' | 'outfit_laurel';
