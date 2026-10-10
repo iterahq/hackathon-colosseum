@@ -1,3 +1,5 @@
+import { WARDROBE_MESSAGES } from './wardrobeMessages';
+
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
 export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction']);
 
@@ -22,7 +24,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.subtitle': 'Tudo aqui é pago pela sua carteira Solana e fica no seu Tera, on-chain.',
     'shop.devnet': 'devnet',
     'shop.section.lives': 'Vidas',
-    'shop.section.outfits': 'Visual do Tera',
+    'shop.section.outfits': 'Roupas',
     'shop.section.certs': 'Certificações',
     'shop.section.certsHint': 'Tintas e molduras para as suas certificações.',
     'shop.certs.target': 'Aplicar em',
@@ -81,6 +83,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.insufficient.body': 'Sua carteira não tem SOL de teste suficiente. Pegue um pouco, é grátis na devnet.',
     'purchase.insufficient.need': 'Saldo insuficiente na devnet: esta compra precisa de cerca de {amount} SOL, taxas incluídas.',
     'purchase.faucet': 'Pegar SOL de teste',
+    'purchase.insufficient.showcase': 'Esta peça é de vitrine: experimente à vontade.',
     'purchase.funding': 'Enviando SOL de teste…',
     'purchase.error.invalid_ref': 'Este item precisa de uma certificação válida para ser aplicado.',
     'purchase.error.shop_not_configured': 'A loja está fechada agora. Tente mais tarde.',
@@ -104,6 +107,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Conecte uma carteira Solana para comprar.',
     'purchase.noWallet.title': 'Nenhuma carteira encontrada',
     'purchase.noWallet.body': 'Instale a Phantom ou outra carteira Solana neste navegador e tente de novo.',
+    ...WARDROBE_MESSAGES.pt,
   },
   en: {
     'header.nav.shop': 'Shop',
@@ -124,7 +128,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'shop.subtitle': 'Everything here is paid from your Solana wallet and stays with your Tera, on-chain.',
     'shop.devnet': 'devnet',
     'shop.section.lives': 'Lives',
-    'shop.section.outfits': "Tera's look",
+    'shop.section.outfits': 'Outfits',
     'shop.section.certs': 'Certifications',
     'shop.section.certsHint': 'Inks and frames for your certifications.',
     'shop.certs.target': 'Apply to',
@@ -183,6 +187,7 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.insufficient.body': "Your wallet doesn't have enough test SOL. Grab some, it's free on devnet.",
     'purchase.insufficient.need': 'Not enough devnet balance: this purchase needs about {amount} SOL, fees included.',
     'purchase.faucet': 'Get test SOL',
+    'purchase.insufficient.showcase': 'This is a showcase piece: try it on as much as you like.',
     'purchase.funding': 'Sending test SOL…',
     'purchase.error.invalid_ref': 'This item needs a valid certification to apply to.',
     'purchase.error.shop_not_configured': 'The shop is closed right now. Try again later.',
@@ -206,5 +211,6 @@ export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'purchase.error.no_wallet': 'Connect a Solana wallet to buy.',
     'purchase.noWallet.title': 'No wallet found',
     'purchase.noWallet.body': 'Install Phantom or another Solana wallet in this browser and try again.',
+    ...WARDROBE_MESSAGES.en,
   },
 };

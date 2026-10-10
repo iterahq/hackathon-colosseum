@@ -2,6 +2,7 @@
 import type { CompanionSnapshot, ShopItem } from '@/types/shop';
 
 export interface ShopShelves {
+  avatars: ShopItem[];
   lives: ShopItem[];
   outfits: ShopItem[];
   certs: ShopItem[];
@@ -16,12 +17,14 @@ export function withCompanionState(items: readonly ShopItem[], snapshot: Compani
   const owned = new Set(snapshot.inventory.map((entry) => entry.itemKey));
   return items.map((item) => {
     if (item.kind === 'outfit') return { ...item, owned: item.owned || owned.has(item.key), equipped: snapshot.companion.outfit === item.key };
+    if (item.kind === 'avatar') return { ...item, owned: item.owned || item.avatar?.free === true || owned.has(item.key), equipped: snapshot.avatar.key === item.key };
     return item;
   });
 }
 
 export function shelvesOf(items: readonly ShopItem[]): ShopShelves {
   return {
+    avatars: items.filter((i) => i.kind === 'avatar' && Boolean(i.avatar)),
     lives: items.filter((i) => i.kind === 'life'),
     outfits: items.filter((i) => i.kind === 'outfit'),
     certs: items.filter((i) => i.kind === 'ink' || i.kind === 'frame'),

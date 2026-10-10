@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { ArtZoom } from '@/components/artviewer';
 import { LivesHearts } from '@/components/lives/LivesHearts';
 import { useI18n } from '@/i18n';
 import { addressUrl, shortAddress } from '@/lib/explorer';
@@ -51,7 +52,8 @@ export function CertificationsSection({ items }: { items: ProfileCertification[]
   return (
     <ul className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr))]" data-testid="profile-certs">
       {items.map((c) => (
-        <li key={c.asset}>
+        <li key={c.asset} className="relative">
+          {c.imageUrl && <ArtZoom title={c.trail} line={t('viewer.cert.line', { done: c.daysDone, total: c.totalDays })} src={c.imageUrl} asset={c.asset} aspect={3 / 4} className="absolute right-5 top-5 z-10" />}
           <Link to={c.pageUrl?.startsWith('/c/') ? c.pageUrl : `/c/${c.asset}`} className={`${CARD} flex h-full flex-col gap-3 p-3 hover:border-[#3FD17F] ${LINK}`} data-testid="profile-cert">
             {c.imageUrl && <img src={c.imageUrl} alt={`${c.trail}: ${c.daysDone}/${c.totalDays}`} loading="lazy" className="h-auto w-full rounded-xl" />}
             <span className="flex flex-col gap-1 px-1 pb-1">

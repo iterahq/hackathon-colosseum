@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArtZoom } from '@/components/artviewer';
 import { TeraNote } from '@/components/tera/TeraNote';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { CredentialCard } from '@/components/passport/CredentialCard';
@@ -46,9 +47,14 @@ function VerifyOther() {
   );
 }
 
-function CompanionImage({ src, lang }: { src: string | null; lang: string }) {
+function CompanionImage({ src, lang, title, asset }: { src: string | null; lang: string; title: string; asset: string }) {
   if (!src) return null;
-  return <img src={src.includes('lang=') ? src : `${src}${src.includes('?') ? '&' : '?'}lang=${lang}`} alt="" className="w-full max-w-[360px] rounded-2xl border border-[#262320]" data-testid="credential-companion-art" />;
+  const full = src.includes('lang=') ? src : `${src}${src.includes('?') ? '&' : '?'}lang=${lang}`;
+  return (
+    <ArtZoom title={title} src={full} asset={asset} className="w-full max-w-[360px]">
+      <img src={full} alt="" className="w-full rounded-2xl border border-[#262320]" data-testid="credential-companion-art" />
+    </ArtZoom>
+  );
 }
 
 /** Public, shell-less page: anyone can check a passport asset against the chain. */
@@ -93,18 +99,20 @@ export default function CredentialPage() {
         {found && facts && (
           <>
             {found.status === 'verified' && isCompanion(found.data) && (
-              <CompanionImage src={companionFacts(found.data).image} lang={locale} />
+              <CompanionImage src={companionFacts(found.data).image} lang={locale} title={t('shop.companion.title')} asset={found.data.asset} />
             )}
             {found.status === 'verified' && !isCompanion(found.data) && (
-              <PassportArt
-                src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
-                title={facts.trail ?? t('passport.title')}
-                color={TRAIL_COLORS[1]}
-                total={Math.max(facts.totalDays, 1)}
-                done={facts.daysDone}
-                variant={gold ? 'gold' : 'active'}
-                ribbon={t('passport.ribbon')}
-              />
+              <ArtZoom title={facts.trail ?? t('passport.title')} line={t('viewer.cert.line', { done: facts.daysDone, total: facts.totalDays })} src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null} asset={found.data.asset} aspect={3 / 4}>
+                <PassportArt
+                  src={found.data.achievement?.image_url ? `${found.data.achievement.image_url}${found.data.achievement.image_url.includes('?') ? '&' : '?'}lang=${locale}` : null}
+                  title={facts.trail ?? t('passport.title')}
+                  color={TRAIL_COLORS[1]}
+                  total={Math.max(facts.totalDays, 1)}
+                  done={facts.daysDone}
+                  variant={gold ? 'gold' : 'active'}
+                  ribbon={t('passport.ribbon')}
+                />
+              </ArtZoom>
             )}
             {found.status === 'unverified' && <TeraNote mood="oops" size="bubble" title={t('tera.credential.unverified')} className="!pt-2" data-testid="credential-tera" />}
             <CredentialCard lookup={found} />

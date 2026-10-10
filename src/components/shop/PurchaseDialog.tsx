@@ -21,12 +21,19 @@ interface Props {
   targetTitle?: string | null;
   /** The outfit Tera wears in the success moment. */
   outfit: string | null;
+  /** What the success moment shows instead of Tera (a bought avatar). */
+  art?: ReactNode;
+  /** The next step offered on success ("equip now"); "continue" becomes the quiet key. */
+  action?: { label: string; onClick: () => void } | null;
   onRetry: () => void;
   onFund: () => void;
   onClose: () => void;
 }
 
 const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set([...SHOP_ERROR_CODES, ...GIFT_ERROR_CODES]);
+/** The test faucet pays 0.01 SOL: it only helps when the whole purchase is about that small. */
+const FAUCET_MAX_LAMPORTS = 20_000_000;
+
 const BUSY_LABEL = { connecting: 'purchase.connecting', signing: 'purchase.signing', confirming: 'purchase.confirming', funding: 'purchase.funding' } as const;
 
 function Detail({ text }: { text: string | null }) {
@@ -87,7 +94,7 @@ function Message({ title, body, children }: { title: string; body?: string; chil
 }
 
 /** Every phase of a wallet purchase in one modal card. Renders nothing at rest; a wallet rejection never opens it. */
-export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null, outfit, onRetry, onFund, onClose }: Props) {
+export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null, outfit, art, action = null, onRetry, onFund, onClose }: Props) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
   const busy = isPurchaseBusy(state);
@@ -105,6 +112,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
   const friendly = state.code && PURCHASE_ERROR_CODES.has(state.code) ? t(`purchase.error.${state.code}`) : null;
   const gift = state.proof?.gift ?? null;
   const copy = gift ? giftCopy(gift) : paidCopy(itemKind, { itemTitle, targetTitle }, state.proof);
+  const faucetHelps = !state.neededLamports || state.neededLamports <= FAUCET_MAX_LAMPORTS;
   const needed = state.neededLamports ? t('purchase.insufficient.need', { amount: lamportsToSol(state.neededLamports) }) : null;
 
   return (
@@ -126,12 +134,17 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
         )}
         {phase === 'paid' && (
           <>
-            <span className="flex h-[150px] items-end justify-center">
-              <TeraOutfit mood="happy" size="xl" outfit={outfit} />
+            <span className="flex h-[150px] items-end justify-center" data-testid="purchase-stage">
+              {art ?? <TeraOutfit mood="happy" size="xl" outfit={outfit} />}
             </span>
             <Message title={gift ? t('gift.paid.title', { name: gift.name }) : t('purchase.paid.title')} body={t(copy.body.key, copy.body.params)} />
             <Proof state={state} copy={copy} />
-            <button type="button" autoFocus onClick={onClose} data-testid="purchase-done" className={`${BTN_PRIMARY} mt-1 w-full`}>
+            {action && (
+              <button type="button" autoFocus onClick={action.onClick} data-testid="purchase-next" className={`${BTN_PRIMARY} mt-1 w-full`}>
+                {action.label}
+              </button>
+            )}
+            <button type="button" autoFocus={!action} onClick={onClose} data-testid="purchase-done" className={`${action ? BTN_SECONDARY : `${BTN_PRIMARY} mt-1`} w-full`}>
               {t('purchase.done')}
             </button>
           </>
@@ -142,7 +155,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
               <TeraOutfit mood="oops" size="xl" outfit={outfit} />
             </span>
             {phase === 'failed' && <Message title={t('purchase.failed.title')} body={friendly ?? t('purchase.failed.body')} />}
-            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={needed ?? friendly ?? t('purchase.insufficient.body')} />}
+            {phase === 'insufficient' && <Message title={t('purchase.insufficient.title')} body={faucetHelps ? (needed ?? friendly ?? t('purchase.insufficient.body')) : `${needed ?? ''} ${t('purchase.insufficient.showcase')}`.trim()} />}
             {phase === 'no_wallet' && <Message title={t('purchase.noWallet.title')} body={t('purchase.noWallet.body')} />}
             {showTechnicalDetail(phase, state.code, PURCHASE_ERROR_CODES) && <Detail text={state.detail} />}
             <div className="mt-1 flex w-full flex-col gap-2.5">
@@ -151,7 +164,7 @@ export function PurchaseDialog({ state, itemTitle, itemKind, targetTitle = null,
                   {t('purchase.retry')}
                 </button>
               )}
-              {phase === 'insufficient' && (
+              {phase === 'insufficient' && faucetHelps && (
                 <button type="button" autoFocus onClick={onFund} data-testid="purchase-faucet" className={`${BTN_PRIMARY} w-full`}>
                   {t('purchase.faucet')}
                 </button>
