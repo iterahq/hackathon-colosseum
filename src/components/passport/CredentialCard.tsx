@@ -37,7 +37,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
   const ok = lookup.status === 'verified';
   const f = credentialFacts(data, tText, locale);
   const companion = isCompanion(data) ? companionFacts(data) : null;
-  const date = f.date ? new Date(f.date).toLocaleDateString(undefined, { timeZone: 'UTC' }) : null;
+  const date = f.date ? new Date(f.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'pt-BR', { timeZone: 'UTC' }) : null;
 
   return (
     <motion.section
@@ -88,7 +88,7 @@ export function CredentialCard({ lookup }: { lookup: Found }) {
           <Row label={t('passport.credential.attributes')}>
             {f.days.map((d) => (
               <span key={d.day} className="rounded border border-[#2E2A25] px-1.5 py-0.5 text-[11px]" style={{ color: d.done ? '#3FD17F' : '#A0978A' }}>
-                day_{d.day} {d.done ? '✓' : '○'}
+                {t('passport.credential.dayN', { n: d.day })} {d.done ? '✓' : '○'}
               </span>
             ))}
           </Row>

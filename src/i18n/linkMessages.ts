@@ -33,7 +33,7 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
   en: {
     'wallet.link.cta': 'Link wallet',
     'wallet.link.title': 'Link wallet',
-    'wallet.link.why': 'Signing a message proves the wallet is yours. It is not a transaction and costs nothing.',
+    'wallet.link.why': "Sign a message to prove the wallet is yours. It isn't a transaction and it costs nothing.",
     'wallet.link.start': 'Choose wallet',
     'wallet.link.connecting': 'Connecting your wallet…',
     'wallet.link.signing': 'Sign the message in your wallet',
@@ -42,7 +42,7 @@ export const LINK_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {
     'wallet.link.mintingStart': 'Writing your certifications to Solana…',
     'wallet.link.done.title': 'Wallet linked',
     'wallet.link.done.body': 'The shop, lives and certifications now use this wallet.',
-    'wallet.link.explorer': 'view on explorer',
+    'wallet.link.explorer': 'View on explorer',
     'wallet.link.close': 'Close',
     'wallet.link.retry': 'Try again',
     'wallet.link.noWallet.title': 'No wallet found',
