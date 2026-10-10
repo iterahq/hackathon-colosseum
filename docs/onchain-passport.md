@@ -149,8 +149,10 @@ Reads the asset from chain and attaches the catalog row only when it is ours.
 `verified` is true only when the asset's collection is one of ours **and** that collection's update
 authority is our authority. A foreign asset answers 200 with `verified: false` and
 `achievement: null`. `400 invalid_address`, `404 asset_not_found`, `502 upstream_unavailable`.
-`?lang=pt|en` (default `pt`). No email or name is ever returned; the `learner` attribute is the
-itera user id.
+`?lang=pt|en` (default `pt`). No email or name is ever returned. The `learner` attribute is the
+wallet that owns the asset on everything written since the security hardening (review finding 8);
+an asset written before it still carries the internal itera user id there until its next ordinary
+write (a stamp, a cosmetic, a mirror). Existing assets are not rewritten on purpose.
 
 For a **companion** asset the answer also carries an optional top-level
 `companion: { lives, max_lives, outfit, level, xp, streak, image_url, metadata_url }` parsed from the

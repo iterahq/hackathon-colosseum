@@ -153,6 +153,7 @@ export function snapshotOf(row: CompanionRow, stats: CompanionStats, now: Date):
   return {
     id: row.id,
     userId: row.user_id,
+    wallet: row.wallet_address,
     lives: regenerate(livesOf(row), now).lives,
     maxLives: row.max_lives,
     outfit: row.outfit,

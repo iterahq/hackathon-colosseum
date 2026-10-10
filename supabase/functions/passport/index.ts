@@ -266,7 +266,8 @@ async function runJob(
   const kind: CollectionKind = job.type === 'create_medal' ? 'medals' : 'passports';
   const collection = await collectionAddress(db, sdk, chain, kind, config);
   // Read again right before the write: a cosmetic bought while this call ran must not be wiped by the stamp.
-  const [anchor] = await restoreCosmetics(db, [job.anchor]);
+  // The row in memory may predate the claim that stored the wallet: the asset names the wallet it is minted to.
+  const [anchor] = await restoreCosmetics(db, [{ ...job.anchor, wallet_address: job.anchor.wallet_address ?? wallet }]);
   const attributes = onchainAttributes(anchor, anchorCatalog);
 
   let asset = job.anchor.asset_address;
