@@ -11,13 +11,13 @@ import { isGuestAccessToken } from '@/services/guestSession.service';
 import { PassportCallError, callPassport } from '@/services/passport.service';
 import type { PassportResult } from '@/types/achievements';
 import type { PassportCall, TrailKnowledge } from '@/types/lessonEnd';
-import { ceremonyFromResult, mergeResults, shouldContinue, type CeremonyModel } from '@/utils/ceremony';
+import { ceremonyFromResult, shouldContinue, type CeremonyModel } from '@/utils/ceremony';
 import { lessonEndView, shouldCallPassport } from '@/utils/lessonEnd';
 import { trailName } from '@/utils/trailDashboard';
 
 const MAX_CALLS = 3;
 /** Past this the learner gets the plain card and the stamp arrives on a later visit. */
-export const PASSPORT_TIMEOUT_MS = 20_000;
+export const PASSPORT_TIMEOUT_MS = 30_000;
 /** How long the end of the lesson may wait for the trails before deciding without them. */
 export const TRAIL_HOLD_MS = 1_500;
 /** Statuses that mean "not for you / not there": nothing to say to the learner. */
@@ -34,11 +34,24 @@ interface Options {
   total: number;
 }
 
-async function callAll(locale: string, lessonId: string): Promise<PassportResult> {
-  const results: PassportResult[] = [];
-  do results.push(await callPassport(locale, lessonId));
-  while (results.length < MAX_CALLS && shouldContinue(results[results.length - 1]));
-  return mergeResults(results);
+/**
+ * The ceremony waits for ONE mint only: the certification is always the first job, so the stamp is
+ * confirmed in a single transaction. Medals earned in the same moment mint afterwards, off screen.
+ */
+async function callFirst(locale: string, lessonId: string): Promise<PassportResult> {
+  const first = await callPassport(locale, lessonId, 1);
+  if (shouldContinue(first)) void drain(locale, lessonId);
+  return first;
+}
+
+async function drain(locale: string, lessonId: string): Promise<void> {
+  try {
+    for (let calls = 0; calls < MAX_CALLS; calls += 1) {
+      if (!shouldContinue(await callPassport(locale, lessonId))) return;
+    }
+  } catch {
+    /* best effort: whatever is left mints on the learner's next visit */
+  }
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
@@ -95,7 +108,7 @@ export function usePassport({ lessonId, fresh, done, total }: Options) {
       const keep = (status: CeremonyModel['status']): PassportCall | null => (kept ? { state: 'done', result: {}, model: { ...kept, status } } : null);
       setCall(keep('minting') ?? { state: 'pending' });
       try {
-        const result = await withTimeout(callAll(locale, lessonId), PASSPORT_TIMEOUT_MS);
+        const result = await withTimeout(callFirst(locale, lessonId), PASSPORT_TIMEOUT_MS);
         if (!current()) return;
         const model = ceremonyFromResult(result, lessonId, locale);
         if (model) confirmed.current = model;

@@ -456,6 +456,11 @@ Deno.serve(async (request) => {
       maxJobs = jobs;
     } else {
       caller = await resolveCaller(db, request);
+      // A learner may ask for fewer mints in this call (the stamp first, medals on the next one), never more.
+      if (body.maxJobs !== null) {
+        if (!Number.isInteger(body.maxJobs) || body.maxJobs < 1) return json({ error: 'invalid_body' }, 400, cors);
+        maxJobs = Math.min(body.maxJobs, MAX_JOBS_PER_CALL);
+      }
     }
     if (caller instanceof Response) return caller;
 
