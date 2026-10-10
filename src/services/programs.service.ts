@@ -112,7 +112,7 @@ export async function getPrograms(): Promise<Program[]> {
   return homeProgramsOf(data, done);
 }
 
-/** Full program tree (units → lessons → activities) by slug. */
+/** Program tree (units → lessons → activities) by slug. Activities carry id, kind and status only: the trail reads nothing else, and the specs of a whole program are ~600 kB. */
 export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
   const sb = client();
   const { data, error } = await sb
@@ -123,7 +123,7 @@ export async function getProgramBySlug(slug: string): Promise<ProgramDetail> {
          id, program_id, ordinal, title_i18n,
          lessons:lessons (
            id, unit_id, ordinal, title_i18n,
-           activities:activities ( id, lesson_id, ordinal, kind, spec, rubric, artifact_policy )
+           activities:activities ( id, lesson_id, ordinal, kind )
          )
        )`
     )
