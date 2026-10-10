@@ -122,6 +122,8 @@ export interface CredentialVerification {
     stamps: { day: number }[];
   } | null;
   minted_at: string | null;
+  /** Companions only: the view is one chain snapshot; `mirrored_at` is when the chain was last written (null before the feature). */
+  snapshot?: { source: string; mirrored_at: string | null } | null;
   /** Parsed companion state, when the function sends it. */
   companion?: Record<string, unknown> | null;
 }

@@ -29,6 +29,7 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
             streak: int(c.streak),
             imageUrl: text(c.image_url),
             explorerUrl: text(c.explorer_url),
+            mirroredAt: text(c.mirrored_at),
           }
         : null,
     certifications: rows(b.certifications)

@@ -15,4 +15,10 @@ describe('parseCredential', () => {
   it('survives an empty body', () => {
     expect(parseCredential(null, 'A1')).toMatchObject({ verified: false, asset: 'A1', attributes: [], achievement: null });
   });
+
+  it('reads the optional snapshot', () => {
+    expect(parseCredential({ verified: true, snapshot: { source: 'chain', mirrored_at: '2026-10-10T12:00:00Z' } }, 'A').snapshot).toEqual({ source: 'chain', mirrored_at: '2026-10-10T12:00:00Z' });
+    expect(parseCredential({ verified: true, snapshot: { source: 'chain', mirrored_at: null } }, 'A').snapshot?.mirrored_at).toBeNull();
+    expect(parseCredential({ verified: true }, 'A').snapshot).toBeNull();
+  });
 });

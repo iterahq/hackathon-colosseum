@@ -33,6 +33,7 @@ export function parseCredential(body: unknown, asset: string): CredentialVerific
         }
       : null,
     minted_at: text(b.minted_at),
+    snapshot: b.snapshot && typeof b.snapshot === 'object' ? { source: text((b.snapshot as Record<string, unknown>).source) ?? 'chain', mirrored_at: text((b.snapshot as Record<string, unknown>).mirrored_at) } : null,
     companion: b.companion && typeof b.companion === 'object' ? (b.companion as Record<string, unknown>) : null,
   };
 }

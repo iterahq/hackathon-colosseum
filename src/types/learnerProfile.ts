@@ -10,6 +10,8 @@ export interface ProfileCompanion {
   streak: number | null;
   imageUrl: string | null;
   explorerUrl: string | null;
+  /** When the chain copy was last written; null for older mirrors. */
+  mirroredAt: string | null;
 }
 
 export interface ProfileCertification {
