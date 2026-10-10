@@ -8,7 +8,7 @@ const hook = vi.fn();
 vi.mock('@/hooks/useLinkWallet', async (orig) => ({ ...(await orig<typeof import('@/hooks/useLinkWallet')>()), useLinkWallet: () => hook() }));
 
 const show = (state: Partial<LinkState>) => {
-  hook.mockReturnValue({ state: { phase: 'idle', wallet: null, remaining: null, code: null, ...state }, start: vi.fn(), reset: vi.fn() });
+  hook.mockReturnValue({ state: { phase: 'idle', wallet: null, remaining: null, code: null, ...state }, start: vi.fn(), refresh: vi.fn() });
   render(<I18nProvider><LinkWalletDialog onClose={vi.fn()} /></I18nProvider>);
 };
 

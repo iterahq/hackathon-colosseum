@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { TeraLoader } from '@/components/tera/TeraLoader';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, FOCUS } from '@/components/shop/shopStyles';
@@ -77,9 +77,14 @@ function Body({ state, start, onClose }: { state: LinkState; start: () => void; 
 }
 
 /** The modal that explains and runs the wallet link. Mounted only while open, so each opening starts fresh. */
-export function LinkWalletDialog({ onClose }: { onClose: () => void }) {
+export function LinkWalletDialog({ onClose: close }: { onClose: () => void }) {
   const reduced = useReducedMotion();
-  const { state, start } = useLinkWallet();
+  const { state, start, refresh } = useLinkWallet();
+  const { phase, code } = state;
+  const onClose = useCallback(() => {
+    if (phase === 'done' || code === 'already_linked') refresh();
+    close();
+  }, [phase, code, refresh, close]);
   const busy = isLinkBusy(state);
   const { t } = useI18n();
 

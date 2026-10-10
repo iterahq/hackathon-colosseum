@@ -1,4 +1,8 @@
-/** The "Vincular carteira" flow: connect -> challenge -> signature -> verify -> mint what was waiting -> caches. */
+/**
+ * The "Vincular carteira" flow. The caches are refreshed by `refresh`, which the dialog calls when it closes:
+ * refreshing earlier would swap the screen under it (the "no wallet" banner that hosts it disappears).
+ * connect -> challenge -> signature -> verify -> mint what was waiting -> caches.
+ */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useI18n } from '@/i18n';
@@ -54,7 +58,6 @@ export function useLinkWallet() {
       }
       // The companion mints on its first call; a failure here only delays it.
       await getCompanion(locale).catch(() => null);
-      refresh();
       set({ phase: 'done', remaining: 0 });
     } catch (e) {
       if (e instanceof WalletSignError) {
@@ -63,12 +66,11 @@ export function useLinkWallet() {
         return void set({ phase: 'error', code: 'generic' });
       }
       const code = e instanceof ShopCallError ? e.code : null;
-      if (code === 'already_linked') refresh();
       set({ phase: 'error', code: code ?? 'generic' });
     } finally {
       running.current = false;
     }
-  }, [locale, refresh, set]);
+  }, [locale, set]);
 
-  return { state, start, reset: useCallback(() => (running.current ? undefined : setState(IDLE)), []) };
+  return { state, start, refresh, reset: useCallback(() => (running.current ? undefined : setState(IDLE)), []) };
 }
