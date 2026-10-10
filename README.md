@@ -1,3 +1,224 @@
+# Itera — proof of learning that lives in your wallet
+
+Colosseum "Crypto World's Fair" submission by Tainan Fidelis and Samuel (DevFellowship, Brazil).
+Everything on-chain runs on **Solana devnet**.
+
+**Itera** is a Duolingo-style microlearning app for programming: five-day trails of short activities, real code
+checks, five lives, and a green phoenix mascot, Tera, who explains every miss. The product existed before the
+hackathon and runs in production with real cohorts (`iterahq/itera-player`). This repository is a copy made on
+2026-10-09 on which the Web3 layer was built during the competition. What is new and what is inherited is
+spelled out in [Built during the hackathon](#what-was-built-during-the-hackathon-vs-what-existed-before) and in
+[`docs/hackathon/BUILT-DURING-HACKATHON.md`](docs/hackathon/BUILT-DURING-HACKATHON.md).
+
+**Thesis.** A beginner needs proof they built themselves, that anyone can check. A PDF proves nothing; a wallet
+does. So the learner's credential is a soulbound Metaplex Core asset that is alive: every finished day is a
+stamp (an on-chain attribute update the server pays for), the fifth turns it gold, a public page verifies it with
+no login, and the same wallet that holds it can dress it through cent-sized purchases that land on the asset.
+
+## Try it
+
+Live app: **https://hackathon-colosseum.178-105-2-230.sslip.io**
+
+You need the Phantom wallet set to **devnet** (Settings > Developer Settings > Testnet Mode). The app has a
+built-in devnet faucet, so an empty wallet can still pay for a first shop item.
+
+1. Open the site, choose "Continue with Phantom" (English UI; the language switch is in the header) and sign the sign-in message (Sign in with Solana).
+2. Pick a nickname when asked (first sign-in only).
+3. Open a trail (for example Week 1 · HTML) and open a day. Finishing a whole day is what stamps it.
+4. Finish the day. The stamp ceremony appears; the certification is minted or updated on devnet, and you pay nothing.
+5. Open the certificate page (`/c/<asset>`; the `/passport` page has a copy-link button and `/u/<your wallet>` links each asset). It reads the
+   asset from the chain with no login: owner, frozen (soulbound), `days_done`, collection, issuer. Open the
+   Explorer link to compare.
+6. Open the shop (`/shop`) and buy an item with devnet SOL (cent-sized). Phantom asks you to sign; the effect
+   (a lens, an ink, a life) is then written to your assets. Your public profile is `/u/<your wallet>`.
+
+A fresh account has day progress to earn; a full trail is 5 days of about 16 short activities each. A finished
+example to open without playing: certificate
+[`4WHw4G…ZdG`](https://hackathon-colosseum.178-105-2-230.sslip.io/c/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG)
+(gold, 5/5).
+
+## What is on-chain
+
+| Object | Standard | Soulbound? | What changes on-chain, and when | Where to verify |
+|---|---|---|---|---|
+| Certification (one per learner and trail; the UI says "Certificações do Tera") | Metaplex Core asset, collection "Itera Passports" | Yes (`PermanentFreezeDelegate`, no authority) | Created on the first completed day. Each further day is an `updatePlugin` of its `Attributes` (`days_done`); the last day sets `tier = gold` and `completed_at`. Paid inks and frames, and teacher endorsements (max 3), are also attributes | `/c/<asset>`, `credential-verify`, Explorer |
+| Medal | Core asset, collection "Itera Medals" | Yes | One asset per milestone: first stamp, 3 and 7 day streaks, program complete, early bird, night owl, weekly goal, live-class podium 1/2/3, invited | `/u/<wallet>`, Explorer |
+| Tera companion (one per wallet learner) | Core asset, collection "Itera Companions" | Yes | Mirrors `lives`, `max_lives`, `outfit`, `level`, `xp`, `streak`, `avatar`. Written on purchase, equip, lesson end and when the last life is lost, rate limited. A gifted life shows as 6/5 | `/c/<asset>`, `/u/<wallet>` |
+| Collectible Tera avatar | Core asset, collection "Itera Avatars" | **No**, transferable | Minted on a paid purchase, numbered, rarity pyramid with supply caps | `/c/<asset>`, Explorer |
+| Shop payment | System transfer + Memo (intent id) | n/a | Learner wallet to treasury | Explorer, `purchase-confirm` |
+| Circuito | System transfer + Memo `circuit:<purchase id>` | n/a | 50 % of each paid purchase, treasury to mint authority, to fund the stamps the server pays; public counter at `GET /circuit` | Explorer |
+
+Addresses (devnet):
+
+| Role | Address |
+|---|---|
+| Mint authority (pays and updates, update authority of every collection) | `CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B` |
+| Treasury (receives payments, funds the faucet) | `AMoTUQic1C5ecYfvs3T2L5cBAZcUmCn4dPvboSdmJ3cA` |
+| Collection "Itera Passports" (certifications) | `Eu6EyWEiDdCT7cKmVaGMeRFWvoNdUMGPVe1eou2du91b` |
+| Collection "Itera Medals" | `2frN2YFtKLWK4LCiqWMHppoGexSye9qk9xWue6ARsmDb` |
+| Collection "Itera Companions" | `BSRAqgdY6dUPgY2iFWY2SRrzs58ptRWTtpHQSsYzYcPu` (third entry of `issuer.collections` in the live `credential-verify` answer) |
+| Collection "Itera Avatars" | `Gy4mSSquMaH278zLbGvCvaLS2RTPoZvAFTfHsw7qHAvr` |
+
+Example assets:
+
+- Gold certification, 5/5 HTML:
+  [`4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG`](https://explorer.solana.com/address/4WHw4Ghkx5Uxk5nn6FJdSsWwuj1nkcnq3D1vXsy19ZdG?cluster=devnet)
+- Collectible avatar, "Tera · Iniciante #1" (transferable):
+  [`CPA9cX4BTNbCWcJC2wsnFNdKTZdHdbCaukP1ueqSZiYw`](https://explorer.solana.com/address/CPA9cX4BTNbCWcJC2wsnFNdKTZdHdbCaukP1ueqSZiYw?cluster=devnet)
+- Collection page of certifications:
+  [`Eu6EyW…u91b`](https://explorer.solana.com/address/Eu6EyWEiDdCT7cKmVaGMeRFWvoNdUMGPVe1eou2du91b?cluster=devnet)
+
+Assets minted before the display rename keep their on-chain name "Tera Passport · …". The keys, tables and attribute
+keys still say `passport`; only user-facing text says "Certification".
+
+## How a purchase works
+
+1. **Intent.** The app calls `purchase-intent` with an item key. The server prices it in lamports from the catalog
+   (fixed price, no live quote) and stores an intent.
+2. **Server-built transaction.** The server builds a legacy transaction: a System transfer of exactly the price
+   from the learner's wallet to the treasury, plus a Memo carrying the intent id. The browser needs no Solana library.
+3. **The wallet signs.** Phantom signs and sends it (`signAndSendTransaction`). If a wallet will only sign,
+   `purchase-submit` takes the signed transaction and broadcasts it after the same checks.
+4. **On-chain verification.** `purchase-confirm` reads the transaction from the chain and checks payer, destination
+   (treasury), amount and memo. A signature can settle one payment only (a ledger table enforces it).
+5. **Effect.** The item handler grants the item in the database and writes its effect to the NFT: an ink or frame on
+   the certification, an outfit or lives on the companion, or mints a numbered avatar. Half of the payment then goes
+   from the treasury to the mint authority (Circuito).
+
+**Trust model, plainly.**
+
+- One server authority key mints, updates and mirrors. The learner holds the asset but cannot edit it.
+- The database is the source of truth for game state (lives, progress, purchases). The companion's attributes are a
+  mirror written at defined moments and can lag between them.
+- Without trusting us, a verifier can read from the chain: that the asset sits in one of our collections, that the
+  collection's update authority is the issuer key, who owns it, that it is frozen, and its attributes
+  (`GET /credential-verify/<asset>` does exactly these checks, and anyone can repeat them in Explorer).
+- Grading runs in the browser in this build, as in the original product. The server mitigates (server clock,
+  plausibility floor, fixed XP) but does not grade. So a certification proves that the issuer wrote it for that
+  wallet according to its database, not that the person learned. Mainnet would need server-side grading. Details:
+  "Trust model" in [`docs/onchain-passport.md`](docs/onchain-passport.md).
+
+## Architecture
+
+```
+ Browser SPA (React 19 + Vite, Phantom)
+        |  HTTPS                         |  sign + send (Phantom)
+        v                                v
+ Supabase (project nyzcbnnbffsizshiolbh)        Solana devnet
+   Auth (email, Sign in with Solana)              Metaplex Core: 4 collections,
+   Postgres schema `itera` (RLS on)  <--- reads -- certifications, medals, companions, avatars
+   Edge functions (Deno, 19) --- Umi + mpl-core ---> mint / updatePlugin(Attributes) / read
+        ^         authority key + treasury key are function secrets
+        |
+ public readers: /c/<asset>, /u/<wallet>, Solana Action (Blink)
+```
+
+Edge functions in `supabase/functions/` (all have `verify_jwt = false` and check the token in code where marked):
+
+| Function | Auth | Purpose |
+|---|---|---|
+| `passport` | user token (or service role for operator sync) | Computes awards from progress, mints and stamps certifications and medals |
+| `credential-meta` | public | Metaplex metadata JSON and SVG art for every asset kind, plus avatar previews |
+| `credential-verify` | public | Reads one asset from the chain and answers `verified` with the three checks |
+| `learner-profile` | public | Every Itera asset a wallet holds, verified against the chain |
+| `circuit` | public | Counter of the Circuito (stamps funded by purchases) |
+| `action-gift` | public (Solana Action) | Blink: gift a life to a learner from any wallet |
+| `shop-items` | user token optional | Catalog with ownership, prices, avatar supply |
+| `purchase-intent` | user token | Builds the payment transaction |
+| `purchase-confirm` | user token | Verifies the payment on chain and applies the item |
+| `purchase-submit` | user token | Broadcasts a transaction the wallet only signed |
+| `shop-claim` | user token | Takes an item earned (not bought) |
+| `companion` | user token | Companion state, equip outfit or avatar |
+| `lives` | user token | Lose a life, lesson-end bonus, mirror of the last life |
+| `wallet-faucet` | user token | Devnet SOL for an empty wallet, one claim per learner and wallet, daily budget |
+| `link-wallet` | user token | Bind a wallet to an e-mail account by signed message |
+| `gifts` | user token | Gift a life in the app |
+| `referral` | user token | Invite code and invite reward |
+| `class-podium` | user token, staff only | Records a live class podium and mints medals |
+| `endorse` | user token, staff only | Teacher endorsement written on a certification |
+
+Migrations are in `db/migrations/` (see the next section for the hackathon ones). Shared pure logic with tests lives
+in `supabase/functions/_shared/`.
+
+## What was built during the hackathon vs what existed before
+
+**Existed before (inherited from `itera-player`, not part of the judged work):** the lesson player and the activity
+engine, the lesson and trail content, e-mail authentication, the Supabase schema up to migration 0109, the live-class
+feature, the instructor and admin screens, subscription billing code (Stripe), the mobile shell, and the monorepo
+tooling. Of the 2,493 tracked files at `main` when this was written, roughly 2,000 are TypeScript; the copy point already
+contained about 2,000 files. The inherited product is large and is not claimed.
+
+**Built during the hackathon** (2026-10-09 17:44 BRT to 2026-10-10, 55 commits after the copy point, merged PRs #1 to
+#57; +46.4k / -5.0k lines in 618 files against the copy point; 100 new files under `supabase/functions/` and 34 new
+migrations 0110 to 0143):
+
+- Wallet auth: Sign in with Solana (Phantom), provisioning trigger, nickname step, link a wallet to an e-mail account.
+- Credentials: Certifications (stamp per day, gold, server-paid, server-generated SVG art), medals, stamp ceremony,
+  public verify page `/c/<asset>` and public profile `/u/<wallet>`.
+- Companion and lives: Tera companion asset mirroring lives, outfit, level and avatar; lives rules (lose, regenerate,
+  bonus); out-of-lives gate.
+- Shop and payments: server-built transactions verified on chain, sign-only fallback, payments ledger, certification
+  inks and frames, outfits, earned or bought laurel, devnet faucet, the Circuito.
+- Avatars: free expressions and collectible NFT avatars with a rarity pyramid, supply caps, holds, lore, try-on and viewer.
+- Social: gift a life (in the app and as a Solana Action / Blink), invite reward, teacher endorsement, live-class podium
+  medals, weekly-goal medal.
+- UX redesign: dashboard, learner header and global search, profile ("Meu Tera"), video-course library, lesson
+  sounds and "try again", English copy and HTML trail content in English.
+- Tests: unit tests for the pure on-chain modules, devnet end-to-end scripts, a browser end-to-end run with a fake Phantom.
+- Security: hardening pass against a written review (pay-once-get-two, forgeable XP, client-written progress, unbounded
+  authority-paid writes, referral farming, public Action cost, faucet limits, internal ids in public data).
+
+In progress and **not on `main`**: "Phoenix Crystals", an earned non-purchasable currency (open PR #43). Only its header balance chip (PR #56) is on `main`, and it has no backend behind it there.
+
+The full list of PRs, migrations and functions is in
+[`docs/hackathon/BUILT-DURING-HACKATHON.md`](docs/hackathon/BUILT-DURING-HACKATHON.md).
+
+## Run locally
+
+Honest answer: **a judge cannot build this repository without registry access.** Dependencies under `@iterahq/*`
+and `@devfellowship/*` are served by GitHub Packages (`.npmrc`: `@iterahq:registry=https://npm.pkg.github.com`,
+token read from `NODE_AUTH_TOKEN`), and those packages are private. Please use the live site above.
+
+For people who do have access: Node 22 (`.node-version`), `npm ci`, `npm run dev`.
+
+- Browser variables (public by nature): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ITERA_API_BASE`.
+  Nothing secret goes in a `VITE_*` variable.
+- Edge function secrets: `SOLANA_AUTHORITY_SECRET`, `SOLANA_TREASURY_SECRET`, `SOLANA_RPC_URL`
+  (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase).
+- Migrations: `db/migrations/` (hackathon ones are 0110 to 0143). Functions: `supabase/functions/`, deployed with
+  `supabase functions deploy <name> --project-ref <ref> --use-api`.
+- Unit tests of the on-chain modules (no network, no secrets): `npx vitest run --config vitest.supabase.config.ts`.
+- `scripts/hackathon/*.mjs` are end-to-end scripts against the deployed devnet backend (passport, purchase, gift,
+  social, avatars, link-wallet, security attacks, browser run with a fake Phantom). They need operator credentials,
+  **spend devnet SOL**, and are not required to evaluate the project. See [`docs/browser-e2e.md`](docs/browser-e2e.md).
+
+## Known limits
+
+- Devnet only. No real money moves. Prices are fixed in lamports with no live quote; mainnet would use USDC.
+- The server authority pays for and signs every mint and stamp; key custody is a function secret, not a multisig.
+- Grading is client-side (see the trust model). A determined attacker can still fabricate a day slowly.
+- Avatar transfers are not tracked for equip, and the new holder gets no row. Avatar refunds are manual.
+- Some public functions have no per-IP rate limit (`credential-verify`, `credential-meta`, `learner-profile`; the
+  Blink endpoint caps unpaid intents but has no per-IP limit). The public devnet RPC is rate limited.
+- Assets minted before the security pass keep the internal learner id in their `learner` attribute until their next
+  write; new writes use the wallet.
+- The art of some legendary avatars is weaker than the rest; outfit layers were painted for the default Tera and may
+  not sit exactly over other expressions.
+- A real Phantom signing the server-built purchase message is not covered by the automated tests (a fake Phantom is);
+  the sign-only path exists as a fallback.
+- Public docs describe the behaviour at the time of writing; when a doc and the code disagree, the code wins.
+
+## Team and license
+
+Tainan Fidelis and Samuel, DevFellowship, Brazil.
+
+License: no license file yet. The repository is shared with the judges for evaluation; the inherited product code
+is proprietary to Itera.
+
+---
+
+## Notes for coding agents
+
 > # ⚠️ HACKATHON REPO — `iterahq/hackathon-colosseum`
 >
 > This is **NOT** `iterahq/itera-player`. It is an independent copy made on
@@ -13,190 +234,3 @@
 > - There is no CI here on purpose. Verify locally before merging.
 > - Everything below this banner is inherited from itera-player and may describe
 >   workflows, gates and environments that do not exist in this repo.
-
-# itera-player
-
-Learner-facing player app for **Itera** — a re-skin of `devfellowship/dfl-iterate`
-wired to the **Itera Supabase** project. Foundation batch of the Itera execution
-(plan `20260619-itera-app-foundation`, child of `20260619-itera-batches-master-plan`).
-
-> Lives in the `iterahq` GitHub org (NOT devfellowship). Itera owns its own
-> Supabase + IAM schema (ADR-3 / ADR-26), independent of `dfl-schema`.
-
-## Stack
-
-- Vite + React 19 + TypeScript (the learner code preview iframe still runs React 18.3.1 from the committed UMD build in `public/vendor/`)
-- `@devfellowship/components` (shadcn) + Tailwind, `@monaco-editor/react`,
-  `@tanstack/react-query`, `vitest`, `@devfellowship/observability` (OTel)
-- `@supabase/supabase-js` → the **Itera** Supabase project `kjefmwlopzeaqgqtlbdn`
-
-## Supported browsers
-
-Tailwind 4 sets the floor (decided 2026-10-05, plan `20261003-itera-player-mobile`, Q-12 = A):
-
-| Browser | Minimum |
-| --- | --- |
-| Safari (macOS and every browser on iOS/iPadOS) | 16.4 |
-| Chrome, Edge and Chromium-based Android browsers | 111 |
-| Firefox | 128 |
-
-Below the floor the app is not supported, and **nothing detects it**: there is no
-"update your browser" screen. What the learner sees depends on how old the browser is:
-
-- Just below the floor (for example iOS 15 or 16.0-16.3): the app loads and signs in,
-  but the stylesheet needs cascade layers, `@property` and `color-mix()`, so colours,
-  borders, shadows and spacing come out wrong or missing. Lessons may still be usable;
-  they do not look like the product.
-- Much older (below what the Vite build targets): the script does not parse and the
-  page stays blank on the background colour.
-
-Support answer for a learner on an old phone: update the system (iOS) or the browser
-(Android), or open the lesson on another device.
-
-## Layout (monorepo, ADR-F1)
-
-```
-src/                    # the player SPA
-  auth/                 # Supabase Auth context, route guard, tenant branding
-  i18n/                 # PT + EN bilingual scaffold (ADR-35)
-  lib/supabase/         # browser client (db.schema = 'itera')
-  pages/auth/LoginPage  # password auth + federated IdP buttons + white-label
-db/                     # Itera-owned schema + migrations + apply flow (ADR-F1)
-modules/judge0/         # placeholder for code-execution (ADR-30)
-packages/               # npm workspaces — publishable libraries (Fase B, 2026-08-04)
-  activities/           # @iterahq/activities — portable activity renderers
-```
-
-### npm workspaces
-
-`"workspaces": ["packages/*"]` — **npm workspaces, not Turborepo** (ADR-2 of
-plan `20260803-itera-player-activities-lib`: two packages do not pay for a
-second build tool, and the `dfl-runner` hosts are already under disk pressure).
-
-The **app stays at the repo root**; only publishable libraries live in
-`packages/*`. The plan sketched an `apps/player/` move as well — deliberately
-not done: relocating ~1000 app files buys nothing the workspace link does not
-already give, while conflicting with every open PR and rewriting every path in
-Vite/Vitest/Playwright/Storybook/Cloudflare config. Root-as-app plus
-`packages/*` is a standard npm-workspaces layout and it is reversible with a
-`git mv` when the PR queue is quiet.
-
-The app imports the package **by name** (`@iterahq/activities`), never by
-relative path — same edge an external host uses, so it is exercised rather than
-declared. `npm install` at the root links the workspace and runs its `prepare`
-build, so `dist/` exists before typecheck/test.
-
-> `iterahq/iterahq-ops` (the Octokit GitHub engine) is **referenced**, not folded
-> in yet — kept deployed as-is (ADR-101). Fold-in is a later batch.
-
-## Auth
-
-- **Password auth** works E2E (the foundation gate). `LoginPage` → Supabase
-  `signInWithPassword`. Protected routes use `RequireAuth`.
-- **Federated IdP** (DFL OIDC / Google) is wired via `signInWithOAuth` — minimal
-  in the foundation; DFL is ONE IdP among several (ADR-4 / ADR-103). User ids stay
-  Itera-local (`itera.users`); identities link in via `itera.identities`.
-- **Per-tenant white-label login**: `/login?tenant=<slug>` reads
-  `itera.tenants.branding` (logo / primary color / bg).
-- **Tenant isolation** is enforced by RLS (`itera.current_tenant_ids()`).
-
-## Develop
-
-```sh
-export NODE_AUTH_TOKEN=ghp_...   # classic PAT com read:packages — ver abaixo
-npm run setup                    # valida o token e instala
-cp .env.example .env   # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
-npm run dev
-```
-
-**Use `npm run setup`, não `npm i` direto, na primeira vez.** Ele checa o
-`NODE_AUTH_TOKEN` contra o registry ANTES de instalar e traduz a resposta. O erro
-que o npm dá sozinho manda pro caminho errado: um token fine-grained volta
-`403 does not match expected scopes`, que todo mundo lê como "faltou marcar um
-escopo" quando o problema é o TIPO do token. Isso custou a primeira story do
-designer. Depois do primeiro setup, `npm i` normal.
-
-**Só quer VER uma story, não editar?** Não precisa instalar nada: toda PR publica
-um Storybook próprio em `https://pr-<n>.itera-storybook.pages.dev`, e a `main` fica
-em `storybook.iterahq.dev`.
-
-**Use `npm` — não `pnpm` nem `yarn`.** O lockfile é `package-lock.json`, e com
-`pnpm` o install para pedindo token de auth: o `.npmrc` declara
-`//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}` para o CI, e o pnpm exige a
-variável mesmo quando não precisa do registry.
-
-**Um token É necessário para instalar** (mudou em 2026-08-04, PR #275). O
-`.npmrc` roteia o escopo `@iterahq` para o **GitHub Packages** (registry privado
-— ADR-6), e agora algo resolve mesmo de lá: `@iterahq/activity-spec` virou uma
-dependência de versão (`^0.7.0`) e o tarball em `vendor/` foi apagado.
-`@iterahq/activities` continua sendo workspace local.
-
-Exporte um PAT **classic** com o escopo `read:packages` como `NODE_AUTH_TOKEN`
-antes do `npm i`. **Classic, não fine-grained** — o registry npm do GitHub
-rejeita fine-grained com `403 … does not match expected scopes`, que se lê como
-escopo faltando e não como tipo de token não suportado. Detalhes e a matriz de
-qual token serve onde: [`packages/activities/README.md`](packages/activities/README.md).
-
-Por que não continuar com o tarball: `file:vendor/*.tgz` já quebrou a CI uma vez
-com hash de integrity divergente (PR #243, 2026-07-31), e matá-lo era exit
-criterion da Fase B do plano `20260803-itera-player-activities-lib`.
-
-Já rodou `pnpm` neste clone? Apague `node_modules` e `pnpm-lock.yaml`, e tire do
-`.npmrc` a linha `only-built-dependencies` que o `pnpm approve-builds` escreveu
-(é ela que faz o npm avisar `Unknown project config`). Depois `npm i`.
-
-## Build / test / lint
-
-```sh
-npm run build
-npm test       # vitest
-npm run lint
-```
-
-## Assets sem CDN externa (`public/vendor/`)
-
-Nada de que o aluno precisa para trabalhar vem de CDN pública em runtime — a
-aula roda em rede de escola/comunidade, onde CDN bloqueada é cenário realista.
-Além do React UMD + Tailwind Play (commitados, usados pelo `<iframe>` de
-preview do snack), o **Monaco Editor** é servido do nosso domínio em
-`/vendor/monaco/vs` e as **fontes da marca** (Barlow Condensed · Inter ·
-JetBrains Mono) em `/vendor/fonts/`.
-
-Os ~16 MB do Monaco **não são commitados**: `scripts/vendor-monaco.ts` copia
-`monaco-editor/min/vs` para `public/vendor/monaco/vs` no build (plugin
-`monacoSelfHost` do Vite + hooks `prebuild`/`prebuild-storybook`), e
-`src/lib/monaco-loader.ts` aponta o `@monaco-editor/react` para lá. Para
-regerar à mão:
-
-```sh
-npm run vendor:monaco        # idempotente; `-- --force` recopia do zero
-```
-
-As fontes, ao contrário, **são commitadas** (~313 KB): não há pacote npm delas,
-então gerá-las no build só moveria o fetch externo de runtime para a CI. Para
-atualizar pesos/subsets, edite `FAMILIES` em `scripts/vendor-fonts.ts` e rode:
-
-```sh
-npm run vendor:fonts         # rebaixa os .woff2 + regera fonts.css (precisa de rede)
-```
-
-O `<link>` para `/vendor/fonts/fonts.css` existe em **dois** lugares:
-`index.html` (app) e `.storybook/preview-head.html` (o Storybook tem
-`iframe.html` próprio).
-
-Detalhes e regras de manutenção em `CLAUDE.md` → "Zero fetch de CDN externa em
-runtime".
-
-## Mobile shell
-
-`apps/mobile` is the phone shell (Expo Go, one WebView route on the web app). It has its own
-install and lockfile and is not an npm workspace. See [`docs/mobile-shell.md`](docs/mobile-shell.md).
-
-## DB
-
-See [`db/README.md`](db/README.md) for the schema, RLS, and the migration flow.
-
-## Deploy
-
-Dokploy app (auto-deploy on push to `main`), served via Cloudflare on
-`iterahq.dev`. Env (`VITE_SUPABASE_*`) injected from Infisical `/apps/itera`.
