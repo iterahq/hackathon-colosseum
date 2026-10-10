@@ -30,7 +30,8 @@ Deno.serve(async (request) => {
     let avatars: { catalog: AvatarCatalog; supply: Map<string, AvatarSupply> } | null = null;
     if (hasAvatars) {
       try {
-        const [catalog, supply] = await Promise.all([loadAvatarCatalog(db), loadSupply(db)]);
+        // Read fresh: the shop is where a newly inserted avatar has to show up at once.
+        const [catalog, supply] = await Promise.all([loadAvatarCatalog(db, true), loadSupply(db)]);
         avatars = { catalog, supply };
       } catch (failure) {
         console.error('shop-items: avatars unavailable', failure instanceof Error ? failure.message : failure);
