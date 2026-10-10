@@ -2,7 +2,7 @@ import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
-import { avatarLore } from '@/utils/avatarLore';
+import { loreOf } from '@/content/teraLore';
 import { avatarOf, avatarState, supplyText } from '@/utils/avatarShop';
 import { itemAction } from './itemAction';
 import { BTN_PRIMARY, BTN_SECONDARY, FOCUS, MONO_LABEL } from './shopStyles';
@@ -16,7 +16,7 @@ export function AvatarTile({ item, actions }: { item: ShopItem; actions: ShopAct
   if (!avatar || !item.avatar) return null;
   const state = avatarState(item);
   const action = itemAction(item, actions, t);
-  const name = avatarLore(item.key, locale)?.name ?? item.title;
+  const name = loreOf(item.key, locale)?.name ?? item.title;
   const dim = state === 'soldout';
 
   return (

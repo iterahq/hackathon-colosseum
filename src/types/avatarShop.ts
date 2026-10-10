@@ -20,9 +20,3 @@ export interface AvatarPyramid {
 }
 
 /** Name and story of one avatar, in the viewer's language. */
-export interface AvatarLore {
-  name: string;
-  epithet: string;
-  story: string;
-  quote: string;
-}

@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n';
 import type { LearnerAvatar } from '@/types/avatar';
 import type { ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions } from '@/types/shopView';
-import { avatarLore } from '@/utils/avatarLore';
+import { loreOf } from '@/content/teraLore';
 import { supplyText } from '@/utils/avatarShop';
 import { itemAction } from './itemAction';
 import { ShopExplainer } from './ShopExplainer';
@@ -34,7 +34,7 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
   const panel = useRef<HTMLDivElement | null>(null);
   const action = itemAction(item, actions, t, { buyDisabled, withPrice: true });
   const offer = item.avatar ?? null;
-  const lore = offer ? avatarLore(item.key, locale) : null;
+  const lore = offer ? loreOf(item.key, locale) : null;
   const title = lore?.name ?? item.title;
   const cosmetic = item.kind === 'ink' || item.kind === 'frame';
   const caption = cosmetic ? (target ? t(on && item.owned ? 'tryon.real' : 'tryon.onCert', { trail: target.title }) : t('tryon.sample')) : null;

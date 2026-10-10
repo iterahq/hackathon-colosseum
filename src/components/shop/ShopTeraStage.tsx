@@ -41,7 +41,6 @@ export function ShopTeraStage({ companion, lives, secondsToNext, wallet = null, 
         <div>
           <h1 className="[font:700_48px/1_'Barlow_Condensed'] max-sm:text-[38px]">{t('shop.title')}</h1>
           <p className="mt-2 max-w-[520px] [font:400_15px/1.5_Inter] text-[#C9BFB0]">{t('shop.subtitle')}</p>
-          <Link to="/world" className="mt-2 inline-block [font:600_14px_Inter] text-[#3FD17F] hover:underline" data-testid="shop-world-link">{t('shop.worldLink')}</Link>
           <p className="mt-2 [font:600_11px_JetBrains_Mono] uppercase tracking-[.08em] text-[#A0978A]" data-testid="shop-devnet-note">
             {t('shop.devnetNote')}
           </p>

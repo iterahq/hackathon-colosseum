@@ -1,3 +1,4 @@
+import type { Locale } from '@/i18n';
 import type { ReactNode } from 'react';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { itemAction } from '@/components/shop/itemAction';
@@ -6,7 +7,7 @@ import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import type { LearnerAvatar as Avatar } from '@/types/avatar';
 import type { ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions, WardrobeGroupSpec } from '@/types/shopView';
-import { avatarLore } from '@/utils/avatarLore';
+import { loreOf } from '@/content/teraLore';
 import { avatarOf } from '@/utils/avatarShop';
 import { WardrobeCert } from './WardrobeCert';
 import { WardrobeItem } from './WardrobeItem';
@@ -18,7 +19,7 @@ interface Input {
   actions: ShopActions;
   avatar: Avatar;
   certs: CertTarget[];
-  locale: string;
+  locale: Locale;
   t: Translate;
   /** Opens the shop on a section, optionally aimed at one certification. */
   onShop: (section: string, trailId?: string) => void;
@@ -54,7 +55,7 @@ export function buildWardrobeGroups({ items, actions, avatar, certs, locale, t, 
         <div className={GRID}>
           {avatars.map((item) => {
             const face = avatarOf(item);
-            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={avatarLore(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} action={itemAction(item, actions, t)} />;
+            return face && <WardrobeItem key={item.key} itemKey={item.key} art={<LearnerAvatar avatar={face} size="lg" />} title={loreOf(item.key, locale)?.name ?? item.title} sub={item.avatar?.free ? null : `${item.avatar?.tierName} · NFT`} action={itemAction(item, actions, t)} />;
           })}
         </div>
       ),

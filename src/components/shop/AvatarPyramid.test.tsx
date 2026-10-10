@@ -17,7 +17,7 @@ describe('AvatarPyramid', () => {
     expect(tiers.map((t) => t.dataset.rarity)).toEqual(['mythic', 'legendary', 'epic', 'rare', 'common']);
     expect(tiers[0]).toHaveTextContent('Tera Mítico');
     expect(within(tiers[0]).getByTestId('avatar-tier-supply')).toHaveTextContent('7/10 emitidos');
-    expect(within(tiers[0]).getByTestId('avatar-tier-price')).toHaveTextContent('US$ 10.00 ≈ 0.055 SOL');
+    expect(within(tiers[0]).getByTestId('avatar-tier-price')).toHaveTextContent('US$ 1000.00 ≈ 5.5 SOL');
     expect(within(tiers[4]).getByTestId('avatar-tier-supply')).toHaveTextContent('ilimitado');
     expect(screen.getByTestId('avatar-free')).toHaveTextContent('Ícones grátis');
   });

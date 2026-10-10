@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { TIER_LORE } from '@/content/teraLore';
 import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
@@ -12,7 +13,7 @@ const TILES = 'grid grid-cols-2 justify-items-center gap-x-3 gap-y-5 min-[420px]
 
 /** "Visuais do Tera": the avatars as a rarity pyramid, rarest on top, the free icons as its base. */
 export function AvatarPyramid({ items, actions }: { items: ShopItem[]; actions: ShopActions }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { tiers, free } = useMemo(() => pyramidOf(items), [items]);
   const offset = STEP.length - tiers.length;
 
@@ -26,6 +27,7 @@ export function AvatarPyramid({ items, actions }: { items: ShopItem[]; actions: 
             <span className={`${MONO_LABEL} text-[#A0978A]`} data-testid="avatar-tier-supply">{tier.supply.max == null ? t('shop.avatar.unlimited') : t('shop.avatar.minted', { supply: supplyText(tier.supply, '') })}</span>
             <span className="basis-full [font:700_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="avatar-tier-price">{tier.priceLabel}</span>
           </header>
+          <p className="-mt-2 mb-4 text-center [font:400_13px/1.45_Inter] text-[#A0978A]" data-testid="avatar-tier-lore">{TIER_LORE(tier.rarity, locale).text}</p>
           <div className={TILES}>
             {tier.items.map((item) => (
               <AvatarTile key={item.key} item={item} actions={actions} />
