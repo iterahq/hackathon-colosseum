@@ -28,7 +28,7 @@ export interface CompanionState {
   imageUrl: string | null;
 }
 
-export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar';
+export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar' | 'border' | 'background' | 'app_icon';
 
 export interface InventoryEntry {
   itemKey: string;
@@ -74,6 +74,21 @@ export interface ShopItem {
   priceUsdCents: number;
   priceLamports: number;
   priceLabel: string;
+  /** Crystal price, shown as a second line; null when the item cannot be bought with crystals. */
+  priceCrystals?: number | null;
+  /** Which currencies the item can be paid in; an absent flag means enabled. */
+  solEnabled?: boolean;
+  crystalsEnabled?: boolean;
+  /** False for an item that only comes with an avatar (a signature border). */
+  forSale?: boolean;
+  /** Key of the avatar this item comes with, when it does. */
+  includedWith?: string | null;
+  /** Hex of a background or an icon colour. */
+  color?: string | null;
+  /** A border's ring, drawn by the front end. */
+  border?: ItemBorder | null;
+  /** Set on a life pack (`effect.add_lives` / `effect.unlimited_days`). */
+  lifePack?: LifePack | null;
   art: Record<string, unknown>;
   owned: boolean;
   equipped: boolean;
@@ -83,6 +98,20 @@ export interface ShopItem {
   unlock?: ShopUnlock | null;
   /** Present on items of kind `avatar`. */
   avatar?: AvatarOffer | null;
+}
+
+/** The ring of a profile border: `border` of a `border` item. */
+export interface ItemBorder {
+  style: string;
+  colors: string[];
+  glow: boolean;
+  animated: boolean;
+}
+
+/** What a life pack gives: lives added (they may go above the maximum) or days without losing any. */
+export interface LifePack {
+  addLives: number | null;
+  unlimitedDays: number | null;
 }
 
 export interface ShopUnlock {

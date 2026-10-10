@@ -72,4 +72,30 @@ describe('shop wire normalisers (shapes as deployed 2026-10-09)', () => {
     expect(crown.unlock).toBeNull();
     expect(toShopItems([{ key: 'x', unlock: { level: 5, current_level: null, unlocked: false } }])[0].unlock?.currentLevel).toBeNull();
   });
+
+  it('reads season, includes, primordial rarity and the crystal price of an avatar, and tolerates their absence', () => {
+    const base = { kind: 'avatar', image_url: 'https://x/a.webp', price_usd_cents: 10000, price_lamports: 1 };
+    const [full, bare] = toShopItems([
+      { ...base, key: 'event_natal', rarity: 'primordial', price_crystals: 2500, season: { key: 'natal', label: 'Natal', starts_at: '2026-12-01', ends_at: '2026-12-31', available: false }, includes: [{ key: 'border_pinho', kind: 'border', title: 'borda do Pinho' }, { kind: 'outfit' }] },
+      { ...base, key: 'base_lider' },
+    ]);
+    expect(full.avatar?.rarity).toBe('primordial');
+    expect(full.priceCrystals).toBe(2500);
+    expect(full.avatar?.season).toEqual({ key: 'natal', label: 'Natal', startsAt: '2026-12-01', endsAt: '2026-12-31', available: false });
+    expect(full.avatar?.includes).toEqual([{ key: 'border_pinho', kind: 'border', title: 'borda do Pinho' }]);
+    expect(bare.priceCrystals).toBeNull();
+    expect(bare.avatar?.season).toBeNull();
+    expect(bare.avatar?.includes).toEqual([]);
+  });
+
+  it('reads life packs from their effect', () => {
+    const [ten, infinite, refill] = toShopItems([
+      { key: 'lives_10', kind: 'life', effect: { add_lives: 10 }, price_usd_cents: 30 },
+      { key: 'lives_infinite', kind: 'life', effect: { unlimited_days: 30 }, price_usd_cents: 1000 },
+      { key: 'life_refill', kind: 'life', price_usd_cents: 20 },
+    ]);
+    expect(ten.lifePack).toEqual({ addLives: 10, unlimitedDays: null });
+    expect(infinite.lifePack).toEqual({ addLives: null, unlimitedDays: 30 });
+    expect(refill.lifePack).toBeNull();
+  });
 });

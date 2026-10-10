@@ -21,6 +21,8 @@ interface MockState {
   asset: string | null;
   refs: Record<string, string[]>;
   avatar: string;
+  /** Crystal balance of the mock learner. */
+  crystals: number;
 }
 
 type Body = Record<string, unknown>;
@@ -28,7 +30,7 @@ const KEY = 'itera.mockShop.v1';
 const MOCK_ASSET = 'TeRaMockCompanion1111111111111111111111111';
 let seeded = false;
 
-const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null, refs: {}, avatar: 'tera_normal' });
+const fresh = (): MockState => ({ current: DEFAULT_MAX_LIVES, nextRegenAt: null, regenSeconds: DEFAULT_REGEN_SECONDS, owned: [], outfit: null, wallet: null, attempts: [], intents: {}, asset: null, refs: {}, avatar: 'tera_normal', crystals: 400 });
 
 function read(): MockState {
   try {
@@ -58,6 +60,7 @@ function seedFromUrl(state: MockState): MockState {
     const regenSeconds = Number(q.get('mockRegen')) || next.regenSeconds;
     next = { ...next, current, regenSeconds, nextRegenAt: current < DEFAULT_MAX_LIVES ? new Date(Date.now() + regenSeconds * 1000).toISOString() : null };
   }
+  if (q.get('mockCrystals')) next = { ...next, crystals: Math.max(0, Number(q.get('mockCrystals')) || 0) };
   if (q.get('mockWallet')) next = { ...next, wallet: q.get('mockWallet'), asset: MOCK_ASSET };
   if (q.get('mockOwned')) next = { ...next, owned: (q.get('mockOwned') ?? '').split(',').filter(Boolean) };
   if (q.has('mockOutfit')) next = { ...next, outfit: q.get('mockOutfit') || null };
@@ -138,8 +141,16 @@ function shopItems(lang: string) {
     price_lamports: i.lamports,
     price_label: priceLabel(null, i.cents, i.lamports),
     art: i.art,
+    ...(i.effect ? { effect: i.effect } : {}),
+    ...(i.color ? { color: i.color } : {}),
+    ...(i.border ? { border: i.border } : {}),
+    price_crystals: i.crystals ?? null,
+    sol_enabled: i.solEnabled ?? true,
+    crystals_enabled: i.crystalsEnabled ?? true,
+    for_sale: i.forSale ?? true,
+    included_with: i.includedWith ?? null,
     owned: s.owned.includes(i.key),
-    equipped: s.outfit === i.key,
+    equipped: s.outfit === i.key || i.key === 'border_none',
     owned_refs: s.refs[i.key] ?? [],
   }));
   return [...catalog, ...mockAvatarItems(l, s)];
@@ -167,6 +178,19 @@ function purchaseIntent(body: Body) {
   };
 }
 
+/** What owning an item does to the mock learner: lives, outfit, avatar, a certification cosmetic or any other thing to own. */
+function applyItem(state: MockState, itemKey: string, ref: string | null): MockState {
+  let s = state;
+  const pack = MOCK_ITEMS.find((i) => i.key === itemKey)?.effect;
+  if (typeof pack?.add_lives === 'number') s = { ...s, current: s.current + pack.add_lives };
+  else if (itemKey === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
+  else if (isMockAvatar(itemKey)) s = { ...s, owned: [...new Set([...s.owned, itemKey])] };
+  else if (itemKey.startsWith('outfit_')) s = { ...s, owned: [...new Set([...s.owned, itemKey])], outfit: itemKey };
+  else if (ref) s = { ...s, refs: { ...s.refs, [itemKey]: [...new Set([...(s.refs[itemKey] ?? []), ref])] } };
+  else if (!itemKey.startsWith('lives_')) s = { ...s, owned: [...new Set([...s.owned, itemKey])] };
+  return s;
+}
+
 function purchaseConfirm(body: Body) {
   let s = load();
   const id = String(body.intent_id ?? '');
@@ -176,10 +200,7 @@ function purchaseConfirm(body: Body) {
     write({ ...s, intents: { [id]: { ...intent, polls: intent.polls + 1 } } });
     return { status: 'pending', item: intent.item, inventory: inventoryWire(s), explorer_url: null };
   }
-  if (intent.item === 'life_refill') s = { ...s, current: DEFAULT_MAX_LIVES, nextRegenAt: null };
-  else if (isMockAvatar(intent.item)) s = { ...s, owned: [...new Set([...s.owned, intent.item])] };
-  else if (intent.item.startsWith('outfit_')) s = { ...s, owned: [...new Set([...s.owned, intent.item])], outfit: intent.item };
-  else if (intent.ref) s = { ...s, refs: { ...s.refs, [intent.item]: [...new Set([...(s.refs[intent.item] ?? []), intent.ref])] } };
+  s = applyItem(s, intent.item, intent.ref);
   s = write({ ...s, asset: s.asset ?? MOCK_ASSET });
   return {
     status: 'paid',
@@ -200,4 +221,24 @@ export function mockShopCall(fn: string, body: Body, query: Record<string, strin
   if (fn === 'purchase-confirm') return purchaseConfirm(body);
   if (fn === 'wallet-faucet') return { signature: 'MockFaucetSignature1111111111111111' };
   throw new Error(`mock: unknown function ${fn}`);
+}
+
+/** Crystal balance of the mock learner. */
+export const mockCrystalBalance = (): number => load().crystals;
+
+export interface MockCrystalSpend {
+  ok: boolean;
+  balance: number;
+  price: number;
+  code: 'insufficient_crystals' | 'unknown_item' | null;
+}
+
+/** `?mockShop=1`: pay an item with crystals. Refuses with the balance and the price when the learner cannot afford it. */
+export function mockSpendCrystals(itemKey: string, ref: string | null): MockCrystalSpend {
+  const s = load();
+  const price = isMockAvatar(itemKey) ? (mockAvatarPrice(itemKey).crystals ?? 0) : (MOCK_ITEMS.find((i) => i.key === itemKey)?.crystals ?? 0);
+  if (price <= 0) return { ok: false, code: 'unknown_item', balance: s.crystals, price };
+  if (s.crystals < price) return { ok: false, code: 'insufficient_crystals', balance: s.crystals, price };
+  const next = write({ ...applyItem(s, itemKey, ref), crystals: s.crystals - price });
+  return { ok: true, code: null, balance: next.crystals, price };
 }
