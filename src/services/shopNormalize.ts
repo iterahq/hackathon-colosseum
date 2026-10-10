@@ -63,6 +63,10 @@ const RARITIES: readonly AvatarRarity[] = ['common', 'rare', 'epic', 'legendary'
 const GROUPS: readonly AvatarGroup[] = ['expression', 'base', 'special', 'event', 'accessory'];
 const rarityOf = (v: unknown): AvatarRarity => (RARITIES.includes(v as AvatarRarity) ? (v as AvatarRarity) : 'common');
 
+/** The backend says it; without the field only the expression icons (and the default) take an outfit. */
+const allowsOutfit = (r: Row): boolean =>
+  typeof r.allows_outfit === 'boolean' ? r.allows_outfit : r.group === 'expression' || str(r.key).startsWith('tera_');
+
 /** The default avatar when the block is absent or has no image: every learner always has a face. */
 export function toAvatar(v: unknown): LearnerAvatar {
   const r = row(v);
@@ -76,6 +80,7 @@ export function toAvatar(v: unknown): LearnerAvatar {
     imageUrl,
     thumbUrl: str(r.thumb_url) || imageUrl,
     assetAddress: orNull(r.asset_address),
+    allowsOutfit: allowsOutfit(r),
   };
 }
 
@@ -93,6 +98,7 @@ function toAvatarOffer(r: Row): AvatarOffer | null {
     thumbUrl: str(r.thumb_url) || imageUrl,
     supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
     assetAddress: orNull(r.asset_address),
+    allowsOutfit: allowsOutfit(r),
   };
 }
 
