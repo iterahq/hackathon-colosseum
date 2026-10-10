@@ -145,6 +145,11 @@ export const queryKeys = {
   companion: {
     mine: (userId: string) => ['companion', userId] as const,
   },
+  // Phoenix Crystals: balance, ledger, theme items; per learner and per language.
+  crystals: {
+    mine: (userId: string, locale: string) => ['crystals', userId, { locale }] as const,
+    all: ['crystals'] as const,
+  },
   // Gift a life and the invite reward: the gift's price per language, the learner's unseen gifts and invite status.
   gift: {
     price: (locale: string) => ['gift', 'price', { locale }] as const,

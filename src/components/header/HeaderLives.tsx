@@ -12,8 +12,10 @@ function Cell() {
   if (!active || !lives) return null;
 
   const full = lives.current >= lives.max;
+  const unlimited = Boolean(lives.unlimitedUntil && Date.parse(lives.unlimitedUntil) > Date.now());
+  const reserve = lives.current > lives.max;
   const time = formatCountdown(secondsToNext);
-  const label = full ? t('lives.hud.full', { current: lives.current, max: lives.max }) : t('lives.hud.next', { current: lives.current, max: lives.max, time });
+  const label = unlimited ? t('lives.hud.unlimited') : reserve ? t('lives.hud.reserve', { current: lives.current, max: lives.max }) : full ? t('lives.hud.full', { current: lives.current, max: lives.max }) : t('lives.hud.next', { current: lives.current, max: lives.max, time });
   const empty = lives.current <= 0;
 
   return (
@@ -27,7 +29,7 @@ function Cell() {
     >
       <Heart aria-hidden className="h-[18px] w-[18px]" strokeWidth={2.25} style={empty ? { color: '#5E574E', fill: 'transparent' } : { color: HEART, fill: HEART }} />
       <span className={`[font:700_15px_JetBrains_Mono] tabular-nums ${empty ? 'text-[#8A8276]' : 'text-[#F4EDE2]'}`}>
-        {lives.current}/{lives.max}
+        {unlimited ? '∞' : reserve ? lives.current : `${lives.current}/${lives.max}`}
       </span>
     </Link>
   );

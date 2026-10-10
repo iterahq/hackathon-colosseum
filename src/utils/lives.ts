@@ -1,7 +1,7 @@
 /** Pure lives logic: the optimistic loss, client-side regeneration, the gate predicates and the countdown text. */
 import type { LivesState } from '@/types/shop';
 
-export const DEFAULT_MAX_LIVES = 5;
+export const DEFAULT_MAX_LIVES = 10;
 export const DEFAULT_REGEN_SECONDS = 20 * 60;
 
 /** One life gone. Starts the regeneration clock when the bar was full; never goes below zero. */

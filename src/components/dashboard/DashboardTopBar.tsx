@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { CrystalChip } from '@/components/crystals/CrystalChip';
 import { HeaderHud } from '@/components/header/HeaderHud';
 import { HeaderIdentity } from '@/components/header/HeaderIdentity';
 import { HeaderLocale } from '@/components/header/HeaderLocale';
@@ -54,6 +55,7 @@ export function DashboardTopBar(_props: Props) {
               <HeaderLocale />
             </div>
             <HeaderHud />
+            <CrystalChip />
             <HeaderIdentity />
           </div>
         </div>

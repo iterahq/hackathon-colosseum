@@ -46,6 +46,7 @@ vi.mock('@/hooks/useLiveClass', () => ({
 vi.mock('@/hooks/useIteraIdentity', () => ({ useIteraIdentity: () => ({ userId: 'u1' }) }));
 vi.mock('@/hooks/useWalletLink', () => ({ useWalletLink: () => ({ wallet: null, linked: false, pending: false, userId: 'u1' }) }));
 vi.mock('@/hooks/useCompanion', () => ({ useCompanion: () => ({ data: undefined }) }));
+vi.mock('@/hooks/useCrystals', () => ({ useCrystals: () => ({ data: undefined }) }));
 vi.mock('@/hooks/useMembership', () => ({ useMembership: () => ({ data: [] }) }));
 vi.mock('@/hooks/useProfile', () => ({ useProfile: () => ({ data: { displayName: 'Sam Doe' } }) }));
 vi.mock('@/auth/AuthContext', () => ({
