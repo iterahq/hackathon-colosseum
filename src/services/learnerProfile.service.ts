@@ -1,5 +1,6 @@
 /** Public read of a wallet's Itera credentials through the `learner-profile` edge function. Anon key only. */
 import { toCircuitShare } from '@/services/circuit.service';
+import { toAvatar } from '@/services/shopNormalize';
 import type { LearnerProfile, ProfileLookup } from '@/types/learnerProfile';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -16,6 +17,18 @@ export function parseProfile(body: unknown, wallet: string, lang: 'pt' | 'en'): 
   const c = b.companion && typeof b.companion === 'object' ? row(b.companion) : null;
   return {
     wallet: text(b.wallet) ?? wallet,
+    avatar: toAvatar(b.avatar),
+    avatars: rows(b.avatars)
+      .filter((r) => text(r.key) && text(r.image_url))
+      .map((r) => ({
+        key: String(r.key),
+        title: text(r.title) ?? String(r.key),
+        tierName: text(r.tier_name) ?? '',
+        serial: int(r.serial),
+        verified: r.verified === true,
+        imageUrl: String(r.image_url),
+        explorerUrl: text(r.explorer_url),
+      })),
     verifiedCount: int(b.verified_count) ?? 0,
     companion:
       c && text(c.asset)

@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom';
+import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { HeaderIcon } from '@/components/header/HeaderIcon';
 import { HeroTera } from '@/components/dashboard/HeroTera';
+import { useCompanion } from '@/hooks/useCompanion';
 import { useHeaderStats } from '@/hooks/useHeaderStats';
+import { useLearnerAvatar } from '@/hooks/useLearnerAvatar';
 import { useProfile } from '@/hooks/useProfile';
 import { useI18n } from '@/i18n';
+import { DEFAULT_AVATAR_KEY } from '@/types/avatar';
 import type { Trail } from '@/types/trailDashboard';
 import { greetingName } from '@/utils/headerHud';
 import { currentDayOf, trailName } from '@/utils/trailDashboard';
@@ -14,6 +18,9 @@ const CHIP = 'inline-flex h-9 items-center gap-2 rounded-full border border-[#26
 export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   const { t, tText } = useI18n();
   const stats = useHeaderStats();
+  const avatar = useLearnerAvatar();
+  const companion = useCompanion();
+  const outfitTera = Boolean(companion.data) && avatar.key === DEFAULT_AVATAR_KEY && (avatar as { allowsOutfit?: boolean }).allowsOutfit !== false;
   const nickname = greetingName(useProfile().data?.displayName);
   const current = trail ? currentDayOf(trail) : null;
   const day = trail && current ? String(trail.days.indexOf(current) + 1).padStart(2, '0') : null;
@@ -21,7 +28,7 @@ export function WelcomeStrip({ trail }: { trail: Trail | null }) {
   return (
     <section className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-3" data-testid="welcome-strip">
       <div className="flex min-w-0 items-center gap-3">
-        <HeroTera />
+        {outfitTera ? <HeroTera /> : <LearnerAvatar avatar={avatar} size="lg" thumb={false} />}
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="truncate [font:700_30px/1_'Barlow_Condensed'] max-sm:text-[24px]" data-testid="welcome-title">
             {nickname ? t('dash.welcome.named', { name: nickname }) : t('dash.welcome')}

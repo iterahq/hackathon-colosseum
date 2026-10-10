@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { CertificationsSection, CompanionSection, ExplorerLink, MedalsSection, NoCompanion } from '@/components/passport/ProfileSections';
 import { CopyButton } from '@/components/passport/CopyButton';
 import { ProfileGift } from '@/components/gift/ProfileGift';
@@ -56,10 +57,7 @@ export default function LearnerProfilePage() {
           <>
             <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-[14px] border border-[#3FD17F] bg-[#141210] p-4 sm:p-5" data-testid="profile-band">
               <div className="flex min-w-0 items-center gap-3">
-                <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden className="flex-none">
-                  <circle cx="14" cy="14" r="12" stroke="#3FD17F" strokeWidth="2" />
-                  <path d="M8 14.5l4 4 8-9" stroke="#3FD17F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <LearnerAvatar avatar={profile.avatar} size="lg" thumb={false} />
                 <div className="min-w-0">
                   <h1 className="truncate [font:700_34px/1_'Barlow_Condensed'] max-sm:text-[28px]" title={profile.wallet}>{shortAddress(profile.wallet)}</h1>
                   <p className="mt-1 [font:500_13px_JetBrains_Mono] text-[#3FD17F]">{t('profile.verified', { n: profile.verifiedCount })}</p>
@@ -70,6 +68,16 @@ export default function LearnerProfilePage() {
                 <CopyButton value={`${window.location.origin}/u/${profile.wallet}`} label={t('profile.copyLink')} doneLabel={t('passport.copied')} display={t('profile.copyLink')} />
               </div>
             </section>
+            {profile.avatars.length > 0 && (
+              <ul className="flex flex-wrap gap-3 rounded-[14px] border border-[#262320] bg-[#141210] p-3" aria-label={t('profile.avatars')} data-testid="profile-avatars">
+                {profile.avatars.map((a) => (
+                  <li key={`${a.key}-${a.serial ?? ''}`} className="flex items-center gap-2 [font:500_12px_JetBrains_Mono] text-[#C9BFB0]">
+                    <img src={a.imageUrl} alt="" className="h-10 w-10 rounded-full bg-[#0A0908] object-cover ring-2 ring-[#262320]" />
+                    <span>{a.tierName || a.title}{a.serial ? ` #${a.serial}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <ProfileGift wallet={profile.wallet} />
             {profile.circuit.stampsFunded > 0 && (
               <p className="rounded-[14px] border border-[#262320] bg-[#141210] px-4 py-3 [font:500_14px/1.45_Inter] text-[#C9BFB0]" data-testid="profile-circuit">

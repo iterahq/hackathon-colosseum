@@ -2,7 +2,9 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LEGAL_AND_HELP_URLS } from '@iterahq/shell-core';
+import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { useI18n } from '@/i18n';
+import type { LearnerAvatar as Avatar } from '@/types/avatar';
 import type { WalletIdentity } from '@/types/headerHud';
 import { shortAddress } from '@/utils/headerHud';
 import { HeaderIcon } from './HeaderIcon';
@@ -13,6 +15,7 @@ import type { HeaderRoles } from './useHeaderRoles';
 
 interface Props {
   name: string;
+  avatar: Avatar;
   email: string | null;
   wallet: WalletIdentity | null;
   roles: HeaderRoles;
@@ -26,7 +29,7 @@ const explorerUrl = (address: string, network: string | null) =>
   `https://explorer.solana.com/address/${encodeURIComponent(address)}${network ? `?cluster=${encodeURIComponent(network)}` : ''}`;
 
 /** The account sheet: who is signed in, then account, help, staff areas and sign out, each under a mono label. */
-export function HeaderMenu({ name, email, wallet, roles, stats, onClose, onExplainer, onSignOut }: Props) {
+export function HeaderMenu({ name, avatar, email, wallet, roles, stats, onClose, onExplainer, onSignOut }: Props) {
   const { t } = useI18n();
   const reduced = !!useReducedMotion();
   const [copied, setCopied] = useState(false);
@@ -66,7 +69,8 @@ export function HeaderMenu({ name, email, wallet, roles, stats, onClose, onExpla
       data-testid="header-menu"
     >
       <div className="flex items-start justify-between gap-3 border-b border-[#262320] px-4 py-3">
-        <div className="min-w-0">
+        <LearnerAvatar avatar={avatar} size="md" thumb={false} />
+        <div className="min-w-0 flex-1">
           {wallet ? (
             <>
               <span className="flex items-center gap-1.5 [font:600_10px_JetBrains_Mono] uppercase tracking-[.1em] text-[#3FD17F]">
@@ -83,6 +87,11 @@ export function HeaderMenu({ name, email, wallet, roles, stats, onClose, onExpla
               <span className="mt-1 block truncate [font:700_17px_'Barlow_Condensed'] text-[#F4EDE2]">{name}</span>
               {email && email !== name && <span className="block truncate [font:400_12px_Inter] text-[#A0978A]">{email}</span>}
             </>
+          )}
+          {avatar.rarity !== 'common' && (
+            <span data-testid="header-avatar-tier" className="mt-1 block [font:600_10px_JetBrains_Mono] uppercase tracking-[.1em] text-[#A0978A]">
+              {avatar.tierName}
+            </span>
           )}
           <span
             data-testid="header-role"

@@ -17,6 +17,7 @@ import {
 import { PASSPORT_MESSAGES } from './passportMessages';
 import { SHOP_MESSAGES } from './shopMessages';
 import { UX_MESSAGES } from './uxMessages';
+import { AVATAR_MESSAGES } from './avatarMessages';
 import { LINK_MESSAGES } from './linkMessages';
 import { GIFT_MESSAGES } from './giftMessages';
 import { SOCIAL_MESSAGES } from './socialMessages';
@@ -1226,6 +1227,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...TERA_MESSAGES.pt,
     ...SHOP_MESSAGES.pt,
     ...UX_MESSAGES.pt,
+    ...AVATAR_MESSAGES.pt,
     ...LINK_MESSAGES.pt,
     ...GIFT_MESSAGES.pt,
     ...SOCIAL_MESSAGES.pt,
@@ -2413,6 +2415,7 @@ export const resources: Record<Locale, Record<string, string>> = {
     ...TERA_MESSAGES.en,
     ...SHOP_MESSAGES.en,
     ...UX_MESSAGES.en,
+    ...AVATAR_MESSAGES.en,
     ...LINK_MESSAGES.en,
     ...GIFT_MESSAGES.en,
     ...SOCIAL_MESSAGES.en,
