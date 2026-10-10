@@ -48,4 +48,20 @@ describe('LessonCompleteCard', () => {
     renderCard();
     expect(screen.queryByTestId('lesson-review-cta')).toBeNull();
   });
+
+  it('an unfinished day says how many are left, with a neutral Tera, and offers the way back', () => {
+    const onRedoMissing = vi.fn();
+    renderCard({ doneCount: 13, total: 16, missing: 3, onRedoMissing });
+    expect(screen.getByTestId('lesson-complete-title')).toHaveTextContent('Faltaram 3 atividades pra carimbar o dia');
+    expect(screen.getByTestId('lesson-complete-count')).toHaveTextContent('13 de 16');
+    expect(screen.queryByTestId('lesson-next-cta')).toBeNull();
+    fireEvent.click(screen.getByTestId('lesson-redo-missing-cta'));
+    expect(onRedoMissing).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('lesson-later-cta')).toHaveAttribute('href', '/');
+  });
+
+  it('shows the extra line only on a finished day', () => {
+    renderCard({ note: 'stamp later' });
+    expect(screen.getByTestId('lesson-complete-note')).toHaveTextContent('stamp later');
+  });
 });

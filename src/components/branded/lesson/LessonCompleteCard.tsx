@@ -20,20 +20,24 @@ import { useI18n } from '@/i18n';
 export const PHONE_FILL =
   'max-sm:min-h-[calc(100svh-3.25rem-1rem-env(safe-area-inset-bottom,0px))] max-sm:flex max-sm:flex-col max-sm:justify-center max-sm:p-6';
 
-export function LessonCompleteCard({
-  doneCount,
-  total,
-  nextLessonId,
-  onReview,
-}: {
+interface CardProps {
   doneCount: number;
   total: number;
   nextLessonId?: string;
   /** Reopens the lesson from activity 1. Absent when there is nothing to revisit. */
   onReview?: () => void;
-}) {
+  /** Activities still missing for the day's stamp. Above zero the card says so instead of celebrating. */
+  missing?: number;
+  /** Opens the first unfinished activity. */
+  onRedoMissing?: () => void;
+  /** One extra line under the count (the stamp that will land later). */
+  note?: string;
+}
+
+export function LessonCompleteCard({ doneCount, total, nextLessonId, onReview, missing = 0, onRedoMissing, note }: CardProps) {
   const { t } = useI18n();
   const { outfit } = useLessonCompanion();
+  const incomplete = missing > 0;
 
   return (
     <motion.div
@@ -41,16 +45,54 @@ export function LessonCompleteCard({
       animate={{ opacity: 1, scale: 1 }}
       className={`rounded-3xl border border-border bg-card p-10 text-center ${PHONE_FILL}`}
       data-testid="lesson-complete"
+      data-state={incomplete ? 'incomplete' : 'complete'}
     >
       <div className="mx-auto flex w-24 justify-center pt-6" data-testid="lesson-complete-tera">
-        <TeraOutfit mood="happy" size="xl" outfit={outfit} />
+        <TeraOutfit mood={incomplete ? 'neutral' : 'happy'} size="xl" outfit={outfit} />
       </div>
-      <h2 className="font-display text-3xl text-foreground mt-5">{t('lesson.complete')}</h2>
-      <p className="text-sm text-muted-foreground mt-2">
-        {doneCount}/{total} {t('label.activities').toLowerCase()}
+      <h2 className="font-display text-3xl text-foreground mt-5" data-testid="lesson-complete-title">
+        {incomplete ? (missing === 1 ? t('lessonEnd.missing.one') : t('lessonEnd.missing.many', { n: missing })) : t('lesson.complete')}
+      </h2>
+      <p className="text-sm text-muted-foreground mt-2" data-testid="lesson-complete-count">
+        {incomplete ? t('lessonEnd.missing.body', { done: doneCount, total }) : `${doneCount}/${total} ${t('label.activities').toLowerCase()}`}
       </p>
-      <LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} />
+      {note && !incomplete && (
+        <p className="text-sm text-muted-foreground mt-2" data-testid="lesson-complete-note">
+          {note}
+        </p>
+      )}
+      {incomplete ? (
+        <LessonIncompleteActions nextLessonId={nextLessonId} onRedoMissing={onRedoMissing} />
+      ) : (
+        <LessonCompleteActions nextLessonId={nextLessonId} onReview={onReview} />
+      )}
     </motion.div>
+  );
+}
+
+/** The unfinished day: back to what is missing first, and the usual way onward as "later". */
+function LessonIncompleteActions({ nextLessonId, onRedoMissing }: { nextLessonId?: string; onRedoMissing?: () => void }) {
+  const { t } = useI18n();
+  return (
+    <>
+      {onRedoMissing && (
+        <button
+          type="button"
+          onClick={onRedoMissing}
+          className={`mt-6 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_CTA}`}
+          data-testid="lesson-redo-missing-cta"
+        >
+          {t('lessonEnd.redo')}
+        </button>
+      )}
+      <Link
+        to={nextLessonId ? `/lesson/${nextLessonId}` : '/'}
+        className={`mt-3 flex w-full h-12 px-6 rounded-full items-center justify-center ${TACTILE_SECONDARY}`}
+        data-testid="lesson-later-cta"
+      >
+        {t('lessonEnd.later')}
+      </Link>
+    </>
   );
 }
 

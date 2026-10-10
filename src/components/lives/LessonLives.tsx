@@ -42,10 +42,16 @@ interface Props {
 
 const REFILL = 'life_refill';
 
-function RefillPrice({ children }: { children: (label: string | null, title: string) => ReactNode }) {
+function RefillPrice({ children }: { children: (label: string | null, title: string, pending: boolean) => ReactNode }) {
   const shop = useShop();
   const item = shop.data?.find((i) => i.key === REFILL);
-  return <>{children(item?.priceLabel ?? null, item?.title ?? '')}</>;
+  return <>{children(item?.priceLabel ?? null, item?.title ?? '', shop.isPending)}</>;
+}
+
+/** Reads the shop list while the lesson runs, so the gate's button already has its price when it opens. */
+function ShopPrefetch() {
+  useShop();
+  return null;
 }
 
 function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onLeave }: Props) {
@@ -81,16 +87,17 @@ function Layer({ ref, lessonId, reviewingVerdict, lessonCompleted, onChange, onL
   useEffect(() => () => onChange(null), [onChange]);
 
 
-  if (!gateOpen || !lives) return null;
+  if (!gateOpen || !lives) return active ? <ShopPrefetch /> : null;
   return (
     <RefillPrice>
-      {(priceLabel, title) => (
+      {(priceLabel, title, pricePending) => (
         <>
           {out && (
             <OutOfLivesGate
               lives={lives}
               secondsToNext={secondsToNext}
               priceLabel={priceLabel}
+              pricePending={pricePending}
               hasWallet={Boolean(wallet)}
               outfit={outfit}
               chainUrl={chain?.explorerUrl ?? assetUrl}

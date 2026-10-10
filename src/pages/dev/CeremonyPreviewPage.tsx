@@ -14,6 +14,7 @@ export default function CeremonyPreviewPage() {
   const last = params.get('last') === '1';
   const model: CeremonyModel = {
     day: last ? 5 : 3,
+    daysDone: last ? 5 : 3,
     totalDays: 5,
     trailTitle: 'HTML',
     status,

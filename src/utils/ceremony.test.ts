@@ -13,7 +13,7 @@ const result = (over: Partial<PassportResult> = {}): PassportResult => ({ awards
 
 describe('ceremonyFromResult', () => {
   it('takes N and total from the trail passport', () => {
-    expect(ceremonyFromResult(result(), 'l2', 'pt')).toMatchObject({ day: 2, totalDays: 5, trailTitle: 'Semana 1 · HTML', last: false, status: 'no_wallet' });
+    expect(ceremonyFromResult(result(), 'l2', 'pt')).toMatchObject({ day: 2, totalDays: 5, trailTitle: 'HTML', daysDone: 2, last: false, status: 'no_wallet' });
   });
 
   it('is null when the call stamped nothing for this lesson', () => {
@@ -29,7 +29,7 @@ describe('ceremonyFromResult', () => {
 
   it('maps a blocked authority to a neutral pending state, not a failure', () => {
     const m = ceremonyFromResult(result({ mint: { wallet: 'W', cluster: 'devnet', attempted: 0, blocked: 'authority_unfunded' } }), 'l2', 'en');
-    expect(m).toMatchObject({ status: 'pending', trailTitle: 'Week 1 · HTML' });
+    expect(m).toMatchObject({ status: 'pending', trailTitle: 'HTML' });
   });
 
   it('reports a failed transaction', () => {

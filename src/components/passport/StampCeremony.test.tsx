@@ -9,7 +9,7 @@ import type { CeremonyModel } from '@/utils/ceremony';
 vi.mock('@/hooks/useSoundEffects', () => ({ useSoundEffects: () => ({ play: vi.fn() }) }));
 
 const model = (status: CeremonyStatus, over: Partial<CeremonyModel> = {}): CeremonyModel => ({
-  day: 3, totalDays: 5, trailTitle: 'HTML', status, last: false, newMedals: [], txSignature: null, assetAddress: null, ...over,
+  day: 3, daysDone: over.day ?? 3, totalDays: 5, trailTitle: 'HTML', status, last: false, newMedals: [], txSignature: null, assetAddress: null, ...over,
 });
 
 function show(m: CeremonyModel, handlers = {}) {
@@ -81,6 +81,52 @@ describe('StampCeremony', () => {
     expect(screen.getByRole('dialog', { name: 'Trilha completa — certificação dourada!' })).toBeInTheDocument();
     expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'gold');
     expect(screen.getByTestId('confetti')).toBeInTheDocument();
+  });
+
+  it('gold names the certification that turned gold', () => {
+    show(model('minted', { day: 5, last: true }));
+    settle();
+    expect(screen.getByTestId('ceremony-gold')).toHaveTextContent('Certificação dourada: HTML');
+  });
+
+  it('preparing: page with the previous stamps, Tera and the minting row at once, nothing claimed', () => {
+    const view = show(model('minting', { day: 5, last: false }), { preparing: true });
+    act(() => void vi.advanceTimersByTime(300));
+    expect(screen.getByTestId('stamp-ceremony')).toHaveAttribute('data-phase', 'preparing');
+    expect(screen.getByRole('dialog', { name: 'Carimbando o dia 5…' })).toBeInTheDocument();
+    expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Carimbando na Solana…');
+    act(() => void vi.advanceTimersByTime(1500));
+    expect(screen.getByTestId('passport-counter')).toHaveTextContent('4/5');
+    expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'active');
+    expect(screen.queryByTestId('confetti')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ceremony-actions')).toHaveAttribute('aria-disabled', 'true');
+    act(() => void vi.advanceTimersByTime(600));
+    expect(screen.getByTestId('ceremony-actions')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.getByTestId('passport-counter')).toHaveTextContent('4/5');
+    view.unmount();
+  });
+
+  it('preparing -> server says gold: the stamp lands, then gold, in the same screen', () => {
+    const tree = (m: CeremonyModel, preparing: boolean) => (
+      <I18nProvider>
+        <MemoryRouter>
+          <StampCeremony model={m} preparing={preparing} colorIndex={1} actions={<button type="button">next</button>} />
+        </MemoryRouter>
+      </I18nProvider>
+    );
+    const view = render(tree(model('minting', { day: 5 }), true));
+    act(() => void vi.advanceTimersByTime(4000));
+    const node = screen.getByTestId('stamp-ceremony');
+    expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'active');
+    view.rerender(tree(model('minted', { day: 5, last: true, txSignature: 'sig' }), false));
+    expect(screen.getByTestId('stamp-ceremony')).toBe(node);
+    expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Carimbando na Solana…');
+    act(() => void vi.advanceTimersByTime(350));
+    expect(screen.getByTestId('passport-counter')).toHaveTextContent('5/5');
+    act(() => void vi.advanceTimersByTime(700));
+    expect(screen.getByRole('dialog', { name: 'Trilha completa — certificação dourada!' })).toBeInTheDocument();
+    expect(screen.getByTestId('passport-page')).toHaveAttribute('data-variant', 'gold');
+    expect(screen.getByTestId('ceremony-status')).toHaveTextContent('Carimbado na Solana');
   });
 
   it('keeps the lesson buttons and the passport link at the bottom', () => {

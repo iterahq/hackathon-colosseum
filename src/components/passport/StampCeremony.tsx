@@ -13,6 +13,8 @@ import { useCeremonyClock } from './useCeremonyClock';
 
 interface Props {
   model: CeremonyModel;
+  /** The server has not answered yet: the page and Tera wait in the minting state and nothing is claimed. */
+  preparing?: boolean;
   colorIndex: number;
   /** The lesson's own next/finish buttons, kept at the bottom. */
   actions?: ReactNode;
@@ -30,16 +32,20 @@ const GRID = {
 } as const;
 
 /** Full-screen stamp ceremony of a finished day: the page lands, Tera stamps it, the chain row follows. */
-export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, onConnect, outfit = null }: Props) {
+export function StampCeremony({ model, preparing = false, colorIndex, actions, onRetry, onLater, onConnect, outfit = null }: Props) {
   const { t } = useI18n();
   const reduce = Boolean(useReducedMotion());
   const sound = usePassportSound();
-  const step = useCeremonyClock(reduce, model.day);
+  const step = useCeremonyClock(reduce, 0, preparing);
+  const prepared = useRef(preparing);
+  if (preparing) prepared.current = true;
   const [locked, setLocked] = useState(model.status === 'minting');
   const played = useRef(new Set<string>());
   const color = TRAIL_COLORS[colorIndex % TRAIL_COLORS.length];
-  const { day, totalDays, last } = model;
+  const { day, daysDone, totalDays } = model;
+  const last = model.last && !preparing;
   const gold = last && step >= 5;
+  const settled = step >= 6 && !preparing;
   const once = (key: string, fn: () => void) => {
     if (played.current.has(key)) return;
     played.current.add(key);
@@ -62,15 +68,19 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
     return () => window.clearTimeout(id);
   }, [model.status]);
 
-  const headline = last ? t('passport.ceremony.headline.last') : t('passport.ceremony.headline.day', { n: day });
+  const headline = preparing
+    ? t('passport.ceremony.headline.preparing', { n: day })
+    : last
+      ? t('passport.ceremony.headline.last')
+      : t('passport.ceremony.headline.day', { n: day });
   const width = typeof window !== 'undefined' && window.innerWidth < 400 ? 260 : 300;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden text-[#F4EDE2]" style={GRID} role="dialog" aria-modal="true" aria-label={headline} data-testid="stamp-ceremony" data-step={step}>
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden text-[#F4EDE2]" style={GRID} role="dialog" aria-modal="true" aria-label={headline} data-testid="stamp-ceremony" data-step={step} data-phase={preparing ? 'preparing' : 'resolved'}>
       {last && step >= 5 && !reduce && <Confetti accent={color.c} />}
       <div className="mx-auto flex min-h-full w-full max-w-[480px] flex-col items-center gap-5 px-4 pb-8 pt-8">
         <span className="[font:500_13px_JetBrains_Mono]" style={{ color: color.cl }}>
-          {t('passport.ceremony.step', { n: day, total: totalDays, trail: model.trailTitle })}
+          {t('passport.ceremony.step', { n: day, total: Math.max(totalDays, day), trail: model.trailTitle })}
         </span>
         <h1 className="text-center [font:700_36px/1_'Barlow_Condensed'] max-sm:text-[30px]">{headline}</h1>
         <motion.div
@@ -82,12 +92,12 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
           <PassportPage
             title={model.trailTitle}
             color={color}
-            total={Math.max(totalDays, day)}
-            done={step >= 4 ? day : day - 1}
+            total={Math.max(totalDays, daysDone)}
+            done={step >= 4 ? daysDone : daysDone - 1}
             variant={gold ? 'gold' : 'active'}
             width={width}
-            dropDay={reduce ? null : day}
-            dropAfterMs={600}
+            dropDay={reduce || step < 3 ? null : daysDone}
+            dropAfterMs={0}
             ribbon={t('passport.ribbon')}
           />
           <motion.span
@@ -101,12 +111,13 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
           </motion.span>
         </motion.div>
         <div className="mt-6 min-h-[110px] w-full">
-          {step >= 6 && (
+          {(settled || prepared.current) && (
             <CeremonyStatusRow
-              status={model.status}
+              status={settled ? model.status : 'minting'}
               txSignature={model.txSignature}
               assetAddress={model.assetAddress}
-              medals={model.newMedals}
+              medals={settled ? model.newMedals : []}
+              goldTrail={settled && last ? model.trailTitle : null}
               accent={color.c}
               accentDark={color.cd}
               locked={locked}
@@ -116,7 +127,7 @@ export function StampCeremony({ model, colorIndex, actions, onRetry, onLater, on
             />
           )}
         </div>
-        <div className="flex w-full flex-col items-stretch gap-2" aria-disabled={locked} {...(locked ? ({ inert: '' } as object) : {})} style={{ opacity: locked ? 0.5 : 1 }}>
+        <div className="flex w-full flex-col items-stretch gap-2" data-testid="ceremony-actions" aria-disabled={locked} {...(locked ? ({ inert: '' } as object) : {})} style={{ opacity: locked ? 0.5 : 1 }}>
           {actions}
         </div>
         <Link to="/passport" className="inline-flex min-h-[44px] items-center [font:500_13px_JetBrains_Mono] text-[#3FD17F] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#3FD17F]">
