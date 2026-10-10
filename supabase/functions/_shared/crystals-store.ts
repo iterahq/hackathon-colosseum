@@ -15,7 +15,7 @@ import {
 import type { IteraClient } from './db.ts';
 import { ITEM_COLUMNS, PURCHASE_COLUMNS, type PurchaseRow, type ShopItem } from './shop-items.ts';
 
-export const CRYSTAL_ITEM_COLUMNS = `${ITEM_COLUMNS},price_crystals`;
+export const CRYSTAL_ITEM_COLUMNS = ITEM_COLUMNS;
 export type CrystalItem = ShopItem & { price_crystals: number | null };
 
 export interface CrystalAccount {
@@ -171,21 +171,22 @@ export async function ownedThemeKeys(db: IteraClient, userId: string, items: Pri
 }
 
 async function loadChoice(db: IteraClient, userId: string): Promise<Partial<Record<ThemeSlot, string | null>>> {
-  const { data, error } = await db.from('learner_themes').select('background_key,icon_key').eq('user_id', userId).maybeSingle();
+  const { data, error } = await db.from('learner_themes').select('background_key,icon_key,border_key').eq('user_id', userId).maybeSingle();
   if (error) throw new Error(`learner_themes: ${error.message}`);
-  return { background: data?.background_key ?? null, icon: data?.icon_key ?? null };
+  return { background: data?.background_key ?? null, icon: data?.icon_key ?? null, border: data?.border_key ?? null };
 }
 
 /** The learner's theme, always whole: the defaults fill whatever was not chosen. */
-export async function loadTheme(db: IteraClient, userId: string, items: PricedItem[], owned?: ReadonlySet<string>): Promise<Theme> {
+export async function loadTheme(db: IteraClient, userId: string, items: PricedItem[], owned?: ReadonlySet<string>, lang: 'pt' | 'en' = 'pt'): Promise<Theme> {
   const [chosen, ownedKeys] = await Promise.all([loadChoice(db, userId), owned ?? ownedThemeKeys(db, userId, items)]);
-  return themeOf(items, chosen, ownedKeys);
+  return themeOf(items, chosen, ownedKeys, lang);
 }
 
 export async function saveThemeChoice(db: IteraClient, userId: string, wanted: Partial<Record<ThemeSlot, string>>): Promise<void> {
   const row: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
   if (wanted.background) row.background_key = wanted.background;
   if (wanted.icon) row.icon_key = wanted.icon;
+  if (wanted.border) row.border_key = wanted.border;
   const { error } = await db.from('learner_themes').upsert(row, { onConflict: 'user_id' });
   if (error) throw new Error(`learner_themes save: ${error.message}`);
 }

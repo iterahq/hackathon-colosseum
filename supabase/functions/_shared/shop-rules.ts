@@ -1,6 +1,6 @@
 import { GLOBAL_REF } from './awards.ts';
 
-export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift', 'avatar'] as const;
+export const ITEM_KINDS = ['life', 'outfit', 'ink', 'frame', 'gift', 'avatar', 'border'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
 export type IneligibleCode =
@@ -66,6 +66,10 @@ export function eligibility(kind: ItemKind, facts: EligibilityFacts): Eligibilit
       if (facts.payerId === facts.refId) return refuse('self_gift');
       if ((facts.giftsReceivedToday ?? 0) >= GIFT_DAILY_LIMIT) return refuse('gift_limit');
       return facts.lives < facts.maxLives + (facts.bonusLives ?? 0) ? { ok: true } : refuse('recipient_full');
+    case 'border':
+      // Global and owned once; the default and the signature ones are not sold (the price check comes first).
+      if (!isGlobal) return refuse('invalid_ref');
+      return facts.owned ? refuse('already_owned') : { ok: true };
     case 'avatar':
       // A free avatar is everyone's already; a collectible is one per learner while units remain.
       if (!isGlobal) return refuse('invalid_ref');

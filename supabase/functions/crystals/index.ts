@@ -3,6 +3,8 @@ import { callerFailureStatus, resolveCaller, type Caller } from '../_shared/call
 import { companionResponse, ensureCompanion, inBackground, loadInventory, loadStats, syncMirror } from '../_shared/companion-store.ts';
 import { cosmeticsOf } from '../_shared/cosmetics.ts';
 import { chainBlock, pickText } from '../_shared/credential.ts';
+import { loadAvatarCatalog } from '../_shared/avatar-store.ts';
+import { includedWithMap } from '../_shared/avatars.ts';
 import { CRYSTAL_HANDLERS } from '../_shared/crystals-items.ts';
 import { crystalMetadataUrl, mirrorCrystals, tokenView } from '../_shared/crystals-mirror.ts';
 import {
@@ -24,8 +26,10 @@ import {
   THEME_SLOTS,
   earnRulesView,
   equipRequest,
+  borderOf,
   equipVerdict,
   isThemeDefault,
+  isThemeEntry,
   lifePurchase,
   lifeQty,
   priceOf,
@@ -53,9 +57,16 @@ const TOKEN_ART =
 /** Everything the crystals sheet shows. Starts the token mirror when the chain is behind. */
 async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Record<string, unknown>> {
   const userId = caller.iteraUserId;
-  const [account, ledger, items, config] = await Promise.all([loadAccount(db, userId), loadLedger(db, userId), loadCrystalItems(db), loadConfig(db)]);
+  const [account, ledger, items, config, includedWith] = await Promise.all([
+    loadAccount(db, userId),
+    loadLedger(db, userId),
+    loadCrystalItems(db),
+    loadConfig(db),
+    // Which avatar a border comes with. Never fatal for the sheet.
+    loadAvatarCatalog(db).then(includedWithMap, () => new Map<string, string>()),
+  ]);
   const owned = await ownedThemeKeys(db, userId, items);
-  const theme = await loadTheme(db, userId, items, owned);
+  const theme = await loadTheme(db, userId, items, owned, lang);
   const token = tokenView(account, config[CRYSTAL_MINT_CONFIG_KEY] ?? null, caller.wallet);
   if (caller.wallet && !token.mirrored) inBackground(mirrorCrystals(db, userId, caller.wallet));
 
@@ -68,14 +79,16 @@ async function overview(db: IteraClient, caller: Caller, lang: Lang): Promise<Re
     ledger,
     theme,
     theme_items: items
-      .filter((item) => THEME_KINDS.includes(item.kind) && themeColor(item) !== null)
+      .filter((item) => THEME_KINDS.includes(item.kind) && isThemeEntry(item))
       .map((item) => ({
         key: item.key,
         slot: slotOf(item.kind),
-        color: themeColor(item),
+        ...(item.kind === THEME_SLOTS.border ? { border: borderOf(item) } : { color: themeColor(item) }),
         title: pickText(item.title_i18n, lang),
         description: pickText(item.description_i18n, lang),
         price_crystals: priceOf(item),
+        for_sale: !isThemeDefault(item) && (priceOf(item) !== null || item.price_lamports != null),
+        included_with: includedWith.get(item.key) ?? null,
         default: isThemeDefault(item),
         owned: isThemeDefault(item) || owned.has(item.key),
         equipped: theme[slotOf(item.kind)].key === item.key,
@@ -194,7 +207,7 @@ async function spendOnItem(db: IteraClient, caller: Caller, item: CrystalItem, p
   }
   if (outcome.passport) Object.assign(body, { ref_id: refId, cosmetics: cosmeticsOf(outcome.passport.state) });
   if (outcome.chain) body.chain = chainBlock(outcome.chain);
-  if (THEME_KINDS.includes(item.kind)) body.theme = await loadTheme(db, userId, await loadCrystalItems(db));
+  if (THEME_KINDS.includes(item.kind)) body.theme = await loadTheme(db, userId, await loadCrystalItems(db), undefined, lang);
   return { status: 200, body };
 }
 
@@ -216,8 +229,9 @@ async function spend(db: IteraClient, caller: Caller, body: Record<string, unkno
   return spendOnItem(db, caller, item, price, refId.toLowerCase(), lang);
 }
 
-/** Wears a background or an icon colour the learner owns (the defaults are everybody's). */
+/** Wears a background, an icon colour or a border the learner owns (the defaults are everybody's). */
 async function equip(db: IteraClient, caller: Caller, body: Record<string, unknown>): Promise<Answer> {
+  const lang: Lang = body.lang === 'en' ? 'en' : 'pt';
   const wanted = equipRequest(body);
   if (!wanted) return { status: 400, body: { error: 'invalid_body' } };
   const items = await loadCrystalItems(db);
@@ -228,7 +242,7 @@ async function equip(db: IteraClient, caller: Caller, body: Record<string, unkno
     if (verdict === 'not_owned') return { status: 409, body: { error: 'not_owned', slot } };
   }
   await saveThemeChoice(db, caller.iteraUserId, wanted);
-  return { status: 200, body: { theme: await loadTheme(db, caller.iteraUserId, items, owned) } };
+  return { status: 200, body: { theme: await loadTheme(db, caller.iteraUserId, items, owned, lang) } };
 }
 
 Deno.serve(async (request) => {

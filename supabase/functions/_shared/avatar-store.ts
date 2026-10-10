@@ -5,6 +5,7 @@ import {
   avatarMetadataUrl,
   avatarView,
   fallbackAvatarView,
+  includesOf,
   isOwnedRow,
   reserveAvatar,
   resolveAvatar,
@@ -13,17 +14,19 @@ import {
   type AvatarItem,
   type AvatarSupply,
   type AvatarTier,
+  type IncludedItem,
   type ReservationStore,
   type ReserveInput,
   type ReserveResult,
 } from './avatars.ts';
 import type { Lang } from './art.ts';
 import { COLLECTIONS } from './chain-names.ts';
+import { loadWornBorder } from './borders-store.ts';
 import { loadConfig, type IteraClient } from './db.ts';
 import { functionsBase } from './http.ts';
 
 export const AVATAR_ITEM_COLUMNS =
-  'key,title_i18n,description_i18n,price_lamports,price_usd_cents,price_label,rarity,avatar_group,supply_cap,image_key,effect,active,sort';
+  'key,title_i18n,description_i18n,price_lamports,price_usd_cents,price_label,rarity,avatar_group,supply_cap,image_key,effect,price_crystals,active,sort';
 export const AVATAR_ASSET_COLUMNS = 'id,user_id,item_key,serial,purchase_id,mint_status,reserved_until,wallet,asset_address,tx_signature,minted_at';
 const CATALOG_TTL_MS = 60_000;
 const UNIQUE_VIOLATION = '23505';
@@ -46,9 +49,19 @@ export async function loadAvatarCatalog(db: IteraClient, fresh = false): Promise
   ]);
   if (items.error) throw new Error(`shop_items avatars: ${items.error.message}`);
   if (tiers.error) throw new Error(`avatar_tiers: ${tiers.error.message}`);
+  const avatars = (items.data ?? []) as unknown as AvatarItem[];
+  // What the avatars carry with them: one more read, only for the keys they name.
+  const includedKeys = [...new Set(avatars.flatMap((item) => includesOf(item.effect)))];
+  const included = new Map<string, IncludedItem>();
+  if (includedKeys.length > 0) {
+    const { data, error } = await db.from('shop_items').select('key,kind,title_i18n').in('key', includedKeys);
+    if (error) throw new Error(`shop_items included: ${error.message}`);
+    for (const row of (data ?? []) as unknown as IncludedItem[]) included.set(row.key, row);
+  }
   const catalog: AvatarCatalog = {
-    items: new Map(((items.data ?? []) as unknown as AvatarItem[]).map((item) => [item.key, item])),
+    items: new Map(avatars.map((item) => [item.key, item])),
     tiers: new Map(((tiers.data ?? []) as AvatarTier[]).map((tier) => [tier.rarity, tier])),
+    included,
   };
   cached = { at: Date.now(), catalog };
   return catalog;
@@ -132,7 +145,7 @@ export async function ownedAvatarKeys(db: IteraClient, userId: string): Promise<
  */
 export async function avatarBlock(db: IteraClient, userId: string, storedKey: string | null | undefined, lang: Lang) {
   try {
-    const catalog = await loadAvatarCatalog(db);
+    const [catalog, border] = await Promise.all([loadAvatarCatalog(db), loadWornBorder(db, userId)]);
     let item = resolveAvatar(catalog, storedKey);
     if (!item) return fallbackAvatarView(supabaseUrl());
     let own: AvatarAssetRow | null = null;
@@ -144,7 +157,7 @@ export async function avatarBlock(db: IteraClient, userId: string, storedKey: st
         if (!item) return fallbackAvatarView(supabaseUrl());
       }
     }
-    return avatarView(catalog, item, lang, supabaseUrl(), own?.asset_address ?? null);
+    return avatarView(catalog, item, lang, supabaseUrl(), own?.asset_address ?? null, border);
   } catch (error) {
     console.error('avatar block failed', error instanceof Error ? error.message : error);
     return fallbackAvatarView(supabaseUrl());

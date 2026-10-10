@@ -8,7 +8,7 @@ async function ownsTheme({ db, userId, item }: ShopContext): Promise<boolean> {
   return data !== null;
 }
 
-/** A background or an app icon colour: global, owned once, worn through `POST /crystals/equip`. */
+/** A background, an app icon colour or a profile border: global, owned once, worn through `POST /crystals/equip`. */
 const themeItem: ItemHandler = {
   async canBuy(context) {
     if (context.refId !== GLOBAL_REF) return { ok: false, error: 'invalid_ref' };
@@ -33,4 +33,5 @@ export const CRYSTAL_HANDLERS: Record<string, ItemHandler | undefined> = {
   frame: ITEM_HANDLERS.frame,
   background: themeItem,
   app_icon: themeItem,
+  border: themeItem,
 };

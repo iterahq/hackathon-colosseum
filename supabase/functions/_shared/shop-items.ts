@@ -11,7 +11,7 @@ import { refillLives, regenerate } from './lives.ts';
 import { inSeason, seasonData } from './seasons.ts';
 import { eligibility, type Eligibility, type EligibilityFacts, type ItemKind } from './shop-rules.ts';
 
-export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort';
+export const ITEM_COLUMNS = 'key,kind,price_lamports,price_usd_cents,price_label,title_i18n,description_i18n,effect,art,active,sort,price_crystals';
 export const PURCHASE_COLUMNS =
   'id,user_id,item_key,ref_id,lamports,price_usd_cents,status,wallet,tx_signature,memo,last_valid_block_height,expires_at,paid_at,applied_at,refund_due_at';
 
@@ -28,6 +28,8 @@ export interface ShopItem {
   art: Record<string, unknown>;
   active: boolean;
   sort: number;
+  /** What the item costs in Phoenix Crystals; `null`: not sold for crystals. */
+  price_crystals?: number | null;
 }
 
 export interface PurchaseRow {
@@ -228,6 +230,17 @@ export const ITEM_HANDLERS: Record<ItemKind, ItemHandler> = {
       if (!purchase.tx_signature) throw new Error('gift purchase has no payment signature');
       const delivery = await deliverGift(db, gift, purchase.tx_signature, GIFT_MIRROR_WAIT_MS);
       return { companion: false, passport: null, chain: delivery.write, gift: delivery.gift };
+    },
+  },
+  // A profile border: global, owned once, worn through `POST /crystals/equip`.
+  border: {
+    async canBuy(context) {
+      if (context.refId !== GLOBAL_REF) return eligibility('border', { ...NO_FACTS, refId: context.refId });
+      return eligibility('border', { ...NO_FACTS, refId: context.refId, owned: await owns(context) });
+    },
+    async apply(context) {
+      await grant(context);
+      return { companion: false, passport: null, chain: null };
     },
   },
   // A collectible avatar: one per learner, a serial out of a (possibly limited) supply, minted to the buyer's wallet.

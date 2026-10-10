@@ -6,7 +6,9 @@ import {
   earnRulesView,
   earnsForAward,
   equipRequest,
+  borderOf,
   equipVerdict,
+  isThemeEntry,
   lifePurchase,
   lifeQty,
   mirrorCooldownLeftMs,
@@ -28,7 +30,11 @@ const CATALOG: PricedItem[] = [
   item('icon_gold', 'app_icon', 75, { icon: '#F5B301' }),
   item('outfit_crown', 'outfit', 150),
   item('life_gift', 'gift', null),
+  { ...item('border_none', 'border', null, { default: true, border: null }), title_i18n: { pt: 'Sem borda', en: 'No border' } },
+  { ...item('border_bronze', 'border', 100, { border: { style: 'solid', colors: ['#CD7F32'], glow: false, animated: false } }), title_i18n: { pt: 'Borda Bronze', en: 'Bronze border' } },
+  { ...item('border_sol', 'border', null, { border: { style: 'gradient', colors: ['#F5B301', '#FFE08A'], glow: true, animated: false } }), title_i18n: { pt: 'Borda Sol', en: 'Sol border' } },
 ];
+const NO_BORDER = { key: 'border_none', title: 'Sem borda', border: null };
 
 describe('earn rules', () => {
   it('pays the amounts of the contract', () => {
@@ -67,7 +73,7 @@ describe('earn rules', () => {
 
 describe('prices', () => {
   it('lists the items sold for crystals plus the single life', () => {
-    expect(pricesOf(CATALOG)).toEqual({ bg_midnight: 75, icon_gold: 75, outfit_crown: 150, life: LIFE_PRICE });
+    expect(pricesOf(CATALOG)).toEqual({ bg_midnight: 75, border_bronze: 100, icon_gold: 75, outfit_crown: 150, life: LIFE_PRICE });
   });
 
   it('reads a missing, zero or fractional price as not for sale', () => {
@@ -110,7 +116,26 @@ describe('spending', () => {
 
 describe('theme', () => {
   it('is the defaults when nothing was chosen', () => {
-    expect(themeOf(CATALOG, {}, new Set())).toEqual({ background: { key: 'bg_obsidian', color: '#0A0908' }, icon: { key: 'icon_green', color: '#3FD17F' } });
+    expect(themeOf(CATALOG, {}, new Set())).toEqual({ background: { key: 'bg_obsidian', color: '#0A0908' }, icon: { key: 'icon_green', color: '#3FD17F' }, border: NO_BORDER });
+  });
+
+  it('wears an owned border with its spec and title, in the asked language', () => {
+    const theme = themeOf(CATALOG, { border: 'border_bronze' }, new Set(['border_bronze']), 'en');
+    expect(theme.border).toEqual({ key: 'border_bronze', title: 'Bronze border', border: { style: 'solid', colors: ['#CD7F32'], glow: false, animated: false } });
+    // Chosen but never owned (a signature border without its avatar): the default.
+    expect(themeOf(CATALOG, { border: 'border_sol' }, new Set()).border).toEqual(NO_BORDER);
+  });
+
+  it('reads only a well-formed border spec', () => {
+    const row = (border: unknown) => ({ kind: 'border', effect: { border } as Record<string, unknown> });
+    expect(borderOf(row({ style: 'conic', colors: ['#FF0000', '#00FF00'], glow: true, animated: true }))).toEqual({ style: 'conic', colors: ['#FF0000', '#00FF00'], glow: true, animated: true });
+    expect(borderOf(row({ style: 'wavy', colors: ['#FF0000'] }))).toBeNull();
+    expect(borderOf(row({ style: 'solid', colors: [] }))).toBeNull();
+    expect(borderOf(row({ style: 'solid', colors: ['red'] }))).toBeNull();
+    expect(borderOf(row(null))).toBeNull();
+    expect(borderOf({ kind: 'background', effect: { border: { style: 'solid', colors: ['#FF0000'] } } })).toBeNull();
+    expect(isThemeEntry(CATALOG.find((entry) => entry.key === 'border_none') as PricedItem)).toBe(true);
+    expect(isThemeEntry(row({ style: 'solid', colors: [] }))).toBe(false);
   });
 
   it('wears what the learner chose and owns', () => {
@@ -121,7 +146,11 @@ describe('theme', () => {
   });
 
   it('still answers with a theme when the catalog is empty', () => {
-    expect(themeOf([], { background: 'bg_midnight' }, new Set())).toEqual({ background: { key: 'bg_obsidian', color: '#0A0908' }, icon: { key: 'icon_green', color: '#3FD17F' } });
+    expect(themeOf([], { background: 'bg_midnight' }, new Set())).toEqual({
+      background: { key: 'bg_obsidian', color: '#0A0908' },
+      icon: { key: 'icon_green', color: '#3FD17F' },
+      border: { key: 'border_none', title: 'No border', border: null },
+    });
   });
 
   it('lets anyone equip a default, an owner equip a bought one, and nobody cross the kinds', () => {
@@ -132,6 +161,10 @@ describe('theme', () => {
     expect(equipVerdict('background', byKey('icon_gold'), new Set(['icon_gold']))).toBe('unknown_item');
     expect(equipVerdict('icon', byKey('outfit_crown'), new Set(['outfit_crown']))).toBe('unknown_item');
     expect(equipVerdict('icon', undefined, new Set())).toBe('unknown_item');
+    expect(equipVerdict('border', byKey('border_none'), new Set())).toBe('ok');
+    expect(equipVerdict('border', byKey('border_bronze'), new Set())).toBe('not_owned');
+    expect(equipVerdict('border', byKey('border_sol'), new Set(['border_sol']))).toBe('ok');
+    expect(equipVerdict('border', byKey('bg_midnight'), new Set(['bg_midnight']))).toBe('unknown_item');
   });
 
   it('reads the slots of an equip body, flat or under `equip`', () => {
@@ -140,6 +173,7 @@ describe('theme', () => {
     expect(equipRequest({})).toBeNull();
     expect(equipRequest({ background: 7 })).toBeNull();
     expect(equipRequest({ icon: '' })).toBeNull();
+    expect(equipRequest({ border: 'border_bronze' })).toEqual({ border: 'border_bronze' });
   });
 });
 

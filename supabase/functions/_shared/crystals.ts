@@ -73,6 +73,7 @@ export interface PricedItem {
   kind: string;
   price_crystals: number | null;
   effect: Record<string, unknown>;
+  title_i18n?: Record<string, string>;
 }
 
 /** The crystal price of an item; `null` when it is not sold for crystals. */
@@ -119,20 +120,41 @@ export function spendRef(itemKey: string, refId: string, consumable: boolean, no
   return consumable ? `${itemKey}:${nonce}` : `${itemKey}:${refId}`;
 }
 
-export const THEME_SLOTS = { background: 'background', icon: 'app_icon' } as const;
+export const THEME_SLOTS = { background: 'background', icon: 'app_icon', border: 'border' } as const;
 export type ThemeSlot = keyof typeof THEME_SLOTS;
 export const THEME_KINDS: readonly string[] = Object.values(THEME_SLOTS);
 /** Used when the catalog row of a default is missing. */
-const FALLBACK_THEME: Record<ThemeSlot, { key: string; color: string }> = {
+const FALLBACK_THEME = {
   background: { key: 'bg_obsidian', color: '#0A0908' },
   icon: { key: 'icon_green', color: '#3FD17F' },
+  border: { key: 'border_none', title: 'No border', border: null },
 };
 
-export interface ThemeChoice {
+export const BORDER_STYLES = ['solid', 'gradient', 'conic', 'dashed', 'double'] as const;
+const MAX_BORDER_COLORS = 8;
+
+/** A profile border, drawn by the front end on top of the avatar's own ring. */
+export interface BorderSpec {
+  style: (typeof BORDER_STYLES)[number];
+  colors: string[];
+  glow: boolean;
+  animated: boolean;
+}
+
+export interface ThemeColorChoice {
   key: string;
   color: string;
 }
-export type Theme = Record<ThemeSlot, ThemeChoice>;
+export interface ThemeBorderChoice {
+  key: string;
+  title: string;
+  border: BorderSpec | null;
+}
+export interface Theme {
+  background: ThemeColorChoice;
+  icon: ThemeColorChoice;
+  border: ThemeBorderChoice;
+}
 
 export const isThemeDefault = (item: Pick<PricedItem, 'effect'>): boolean => item.effect?.default === true;
 
@@ -141,21 +163,57 @@ export function themeColor(item: Pick<PricedItem, 'kind' | 'effect'>): string | 
   return typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color) ? color : null;
 }
 
+/** The `effect.border` of a row, checked: `null` when it is missing or malformed. */
+export function borderOf(item: Pick<PricedItem, 'kind' | 'effect'>): BorderSpec | null {
+  if (item.kind !== THEME_SLOTS.border) return null;
+  const raw = item.effect?.border;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const { style, colors, glow, animated } = raw as Record<string, unknown>;
+  if (!BORDER_STYLES.includes(style as BorderSpec['style'])) return null;
+  if (!Array.isArray(colors) || colors.length === 0 || colors.length > MAX_BORDER_COLORS) return null;
+  if (!colors.every((color) => typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color))) return null;
+  return { style: style as BorderSpec['style'], colors: colors as string[], glow: glow === true, animated: animated === true };
+}
+
+/** A row that can be worn in a theme slot: a colour, or a border (the default border has no spec: the art's own ring). */
+export function isThemeEntry(item: Pick<PricedItem, 'kind' | 'effect'>): boolean {
+  if (item.kind === THEME_SLOTS.border) return isThemeDefault(item) || borderOf(item) !== null;
+  return themeColor(item) !== null;
+}
+
+/** What `GET /crystals` says about who gets an item for free with an avatar: `{ item key: avatar key }`. */
+export type IncludedWith = ReadonlyMap<string, string>;
+
+const pickTitle = (item: Pick<PricedItem, 'title_i18n'>, lang: 'pt' | 'en'): string => item.title_i18n?.[lang] ?? item.title_i18n?.pt ?? '';
+
 /** The theme a learner sees: what they chose while it is still theirs to wear, otherwise the default. */
-export function themeOf(items: PricedItem[], chosen: Partial<Record<ThemeSlot, string | null>>, ownedKeys: ReadonlySet<string>): Theme {
-  const pick = (slot: ThemeSlot): ThemeChoice => {
-    const ofKind = items.filter((item) => item.kind === THEME_SLOTS[slot] && themeColor(item) !== null);
+export function themeOf(
+  items: PricedItem[],
+  chosen: Partial<Record<ThemeSlot, string | null>>,
+  ownedKeys: ReadonlySet<string>,
+  lang: 'pt' | 'en' = 'pt',
+): Theme {
+  const pick = (slot: ThemeSlot) => {
+    const ofKind = items.filter((item) => item.kind === THEME_SLOTS[slot] && isThemeEntry(item));
     const wanted = ofKind.find((item) => item.key === chosen[slot] && (isThemeDefault(item) || ownedKeys.has(item.key)));
-    const item = wanted ?? ofKind.find(isThemeDefault);
+    return wanted ?? ofKind.find(isThemeDefault) ?? null;
+  };
+  const colour = (slot: 'background' | 'icon'): ThemeColorChoice => {
+    const item = pick(slot);
     return item ? { key: item.key, color: themeColor(item) as string } : FALLBACK_THEME[slot];
   };
-  return { background: pick('background'), icon: pick('icon') };
+  const border = pick('border');
+  return {
+    background: colour('background'),
+    icon: colour('icon'),
+    border: border ? { key: border.key, title: pickTitle(border, lang), border: borderOf(border) } : FALLBACK_THEME.border,
+  };
 }
 
 export type EquipVerdict = 'ok' | 'unknown_item' | 'not_owned';
 
 export function equipVerdict(slot: ThemeSlot, item: PricedItem | undefined, ownedKeys: ReadonlySet<string>): EquipVerdict {
-  if (!item || item.kind !== THEME_SLOTS[slot] || themeColor(item) === null) return 'unknown_item';
+  if (!item || item.kind !== THEME_SLOTS[slot] || !isThemeEntry(item)) return 'unknown_item';
   return isThemeDefault(item) || ownedKeys.has(item.key) ? 'ok' : 'not_owned';
 }
 
