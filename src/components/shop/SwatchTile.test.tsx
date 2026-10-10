@@ -8,9 +8,9 @@ import { ShopBordersSlot } from './ShopBordersSlot';
 
 const actions = (): ShopActions => ({ busy: false, hasWallet: true, buy: vi.fn(), claim: vi.fn(), equip: vi.fn(), unequip: vi.fn(), tryOn: vi.fn() });
 const items = toShopItems([
-  { key: 'border_bronze', kind: 'border', title: 'Bronze', price_usd_cents: 20, price_lamports: 1, effect: { border: { style: 'solid', colors: ['#B07A4A'], glow: false, animated: false } } },
-  { key: 'border_sol', kind: 'border', title: 'Sol border', for_sale: false, included_with: 'special_dourado', effect: { border: { style: 'gradient', colors: ['#F2C66D', '#fff'], glow: true, animated: false } } },
-  { key: 'bg_midnight', kind: 'background', title: 'Midnight', owned: true, effect: { color: '#14182E' } },
+  { key: 'border_bronze', kind: 'border', title: 'Bronze', price_usd_cents: 20, price_lamports: 1, border: { style: 'solid', colors: ['#B07A4A'], glow: false, animated: false } },
+  { key: 'border_sol', kind: 'border', title: 'Sol border', for_sale: false, included_with: 'special_dourado', border: { style: 'gradient', colors: ['#F2C66D', '#ffffff'], glow: true, animated: false } },
+  { key: 'bg_midnight', kind: 'background', title: 'Midnight', owned: true, color: '#14182E' },
 ]);
 
 describe('ShopBordersSlot', () => {

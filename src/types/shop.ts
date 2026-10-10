@@ -83,8 +83,10 @@ export interface ShopItem {
   forSale?: boolean;
   /** Key of the avatar this item comes with, when it does. */
   includedWith?: string | null;
-  /** The backend's `effect` (a border's style and colours, a colour of the background or icon). */
-  effect?: Record<string, unknown>;
+  /** Hex of a background or an icon colour. */
+  color?: string | null;
+  /** A border's ring, drawn by the front end. */
+  border?: ItemBorder | null;
   /** Set on a life pack (`effect.add_lives` / `effect.unlimited_days`). */
   lifePack?: LifePack | null;
   art: Record<string, unknown>;
@@ -96,6 +98,14 @@ export interface ShopItem {
   unlock?: ShopUnlock | null;
   /** Present on items of kind `avatar`. */
   avatar?: AvatarOffer | null;
+}
+
+/** The ring of a profile border: `border` of a `border` item. */
+export interface ItemBorder {
+  style: string;
+  colors: string[];
+  glow: boolean;
+  animated: boolean;
 }
 
 /** What a life pack gives: lives added (they may go above the maximum) or days without losing any. */

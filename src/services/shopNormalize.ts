@@ -6,6 +6,7 @@ import type {
   CompanionState,
   FaucetResult,
   InventoryEntry,
+  ItemBorder,
   LifePack,
   LivesState,
   LivesUpdate,
@@ -111,6 +112,13 @@ export function toLifePack(v: unknown): LifePack | null {
   return addLives || unlimitedDays ? { addLives, unlimitedDays } : null;
 }
 
+export function toItemBorder(v: unknown): ItemBorder | null {
+  const r = row(v);
+  if (typeof r.style !== 'string') return null;
+  const colors = Array.isArray(r.colors) ? r.colors.filter((c): c is string => typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c)) : [];
+  return { style: r.style, colors, glow: r.glow === true, animated: r.animated === true };
+}
+
 const crystalsOf = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
 
 function toAvatarOffer(r: Row): AvatarOffer | null {
@@ -190,7 +198,8 @@ export function toShopItems(v: unknown): ShopItem[] {
         crystalsEnabled: r.crystals_enabled !== false,
         forSale: r.for_sale !== false,
         includedWith: orNull(r.included_with),
-        effect: row(r.effect),
+        color: typeof r.color === 'string' && /^#[0-9a-f]{3,8}$/i.test(r.color) ? r.color : null,
+        border: toItemBorder(r.border),
         lifePack: r.kind === 'life' ? toLifePack(r.effect) : null,
         art: row(r.art),
         owned: r.owned === true,

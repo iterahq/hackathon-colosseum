@@ -5,6 +5,7 @@ import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
 import { supplyText } from '@/utils/avatarShop';
 import { rowsOf } from './avatarRows';
+import { formatCount } from './pay';
 import { AvatarTile } from './AvatarTile';
 import { FOCUS, MONO_LABEL, RARITY_EDGE } from './shopStyles';
 
@@ -17,10 +18,13 @@ const rowSize = (tiles: number) => ({ flex: `${tiles} 1 ${Math.min(tiles, 8) * 1
 function Carousel({ label, children }: { label: string; children: ReactNode }) {
   const { t } = useI18n();
   const track = useRef<HTMLDivElement | null>(null);
-  const [edge, setEdge] = useState({ start: true, end: true });
+  const [edge, setEdge] = useState({ start: true, end: true, hidden: 0 });
   const measure = useCallback(() => {
     const el = track.current;
-    if (el) setEdge({ start: el.scrollLeft <= 1, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 });
+    if (!el) return;
+    const right = el.scrollLeft + el.clientWidth;
+    const hidden = Array.from(el.children).filter((c) => (c as HTMLElement).offsetLeft + (c as HTMLElement).offsetWidth > right + 1).length;
+    setEdge({ start: el.scrollLeft <= 1, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 1, hidden });
   }, []);
   useEffect(() => {
     measure();
@@ -48,6 +52,11 @@ function Carousel({ label, children }: { label: string; children: ReactNode }) {
       <div ref={track} onScroll={measure} role="group" aria-label={label} data-testid="avatar-row-track" className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-1 pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {children}
       </div>
+      {!edge.end && edge.hidden > 0 && (
+        <button type="button" onClick={() => go(1)} tabIndex={-1} aria-hidden data-testid="avatar-row-more" className={`absolute right-0 top-0 z-10 rounded-full border border-[#2E2A25] bg-[#0A0908]/90 px-2 py-[1px] ${MONO_LABEL} !text-[10px] text-[#C9BFB0]`}>
+          +{edge.hidden}
+        </button>
+      )}
       {!fits && (
         <button type="button" className={`${ARROW} -right-2`} onClick={() => go(1)} disabled={edge.end} aria-label={`${t('shop.row.next')}: ${label}`} data-testid="avatar-row-next">
           ›
@@ -83,7 +92,7 @@ export function AvatarPyramid({ items, actions }: { items: ShopItem[]; actions: 
               <h3 className="[font:700_22px/1_'Barlow_Condensed'] text-[#F4EDE2]">{row.tierName}</h3>
               <span className={`${MONO_LABEL} !text-[10px]`} style={{ color: RARITY_EDGE[row.rarity] }}>{row.rarityLabel}</span>
               <span className="[font:700_12px_JetBrains_Mono] text-[#F4EDE2]" data-testid="avatar-tier-price">{row.priceShort}</span>
-              {row.priceCrystals != null && <span className="[font:600_12px_JetBrains_Mono] text-[#A0978A]" data-testid="avatar-tier-crystals">{t('shop.crystals', { n: row.priceCrystals })}</span>}
+              {row.priceCrystals != null && <span className="[font:600_12px_JetBrains_Mono] text-[#A0978A]" data-testid="avatar-tier-crystals">{t('shop.crystals', { n: formatCount(row.priceCrystals, locale) })}</span>}
               <span className={`${MONO_LABEL} ml-auto !text-[10px] text-[#A0978A]`} data-testid="avatar-tier-supply">{row.supply.max == null ? t('shop.avatar.unlimited') : t('shop.avatar.minted', { supply: supplyText(row.supply, '') })}</span>
             </header>
             <Carousel label={row.tierName}>

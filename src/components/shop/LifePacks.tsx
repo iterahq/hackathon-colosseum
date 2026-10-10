@@ -44,7 +44,7 @@ export function LifePacks({ items, actions, full }: { items: ShopItem[]; actions
             <p className="line-clamp-2 min-h-[2.6em] [font:500_12px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="life-pack-per">{sub}</p>
             <span className="[font:700_12px/1.3_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-price">{shortPrice(item.priceLabel)}</span>
             {blocked && <p className="[font:600_11px/1.3_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">{t('shop.lives.fullReason')}</p>}
-            <PayButtons item={item} action={action} testId="shop-buy" walletLabel={action.label} className="mt-auto" />
+            <PayButtons item={item} action={action} testId="shop-buy" walletLabel={action.label} stack className="mt-auto" />
           </article>
         );
       })}

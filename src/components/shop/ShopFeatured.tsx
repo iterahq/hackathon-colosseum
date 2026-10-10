@@ -36,7 +36,7 @@ export function ShopFeatured({ item, actions }: { item: ShopItem; actions: ShopA
       </div>
       <div className="flex w-full flex-none flex-col items-stretch gap-1 sm:w-[210px]">
         {action.id === 'buy' ? (
-          <PayButtons item={item} action={action} testId="shop-featured-action" labels="full" walletLabel={action.label} className="sm:!flex-col" />
+          <PayButtons item={item} action={action} testId="shop-featured-action" labels="mid" walletLabel={action.label} className="sm:!flex-col" />
         ) : (
           <button type="button" disabled={action.disabled} onClick={action.run} data-testid="shop-featured-action" className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} !min-h-10 !px-4 ![font:700_14px_Inter]`}>
             {action.label}

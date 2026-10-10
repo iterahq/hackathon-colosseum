@@ -6,11 +6,12 @@ import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
 import { PayButtons } from './CrystalPay';
 import { itemAction } from './itemAction';
-import { borderOf, swatchColors, type BorderStyle } from './pay';
+import type { ItemBorder } from '@/types/shop';
+import { borderOf, swatchColors } from './pay';
 import { BTN_SECONDARY, CARD, MONO_LABEL } from './shopStyles';
 
 /** The ring a border is drawn with, around the learner's own picture. */
-function ringStyle(b: BorderStyle): React.CSSProperties {
+function ringStyle(b: ItemBorder): React.CSSProperties {
   const [first, second = first] = b.colors;
   const glow = b.glow ? { boxShadow: `0 0 14px ${first}99` } : {};
   if (b.style === 'gradient') return { background: `linear-gradient(135deg, ${b.colors.join(', ')})`, ...glow };

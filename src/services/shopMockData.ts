@@ -11,6 +11,8 @@ export interface MockItem {
   art: Record<string, unknown>;
   /** Wire `effect` of a life pack. */
   effect?: Record<string, unknown>;
+  color?: string;
+  border?: Record<string, unknown>;
   crystals?: number;
   /** Wire flags of the item list. */
   solEnabled?: boolean;
@@ -155,7 +157,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Bronze', en: 'Bronze border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'solid', colors: ['#B07A4A'], glow: false, animated: false } },
+    border: { style: 'solid', colors: ['#B07A4A'], glow: false, animated: false },
   },
   {
     key: 'border_emerald',
@@ -166,7 +168,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Esmeralda', en: 'Emerald border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'gradient', colors: ['#3FD17F', '#1B7F4B'], glow: true, animated: false } },
+    border: { style: 'gradient', colors: ['#3FD17F', '#1B7F4B'], glow: true, animated: false },
   },
   {
     key: 'border_pixel',
@@ -177,7 +179,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Pixel', en: 'Pixel border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'dashed', colors: ['#9B8CFF'], glow: false, animated: false } },
+    border: { style: 'dashed', colors: ['#9B8CFF'], glow: false, animated: false },
   },
   {
     key: 'border_circuit',
@@ -188,7 +190,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Circuito', en: 'Circuit border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'double', colors: ['#62D9D0'], glow: true, animated: false } },
+    border: { style: 'double', colors: ['#62D9D0'], glow: true, animated: false },
   },
   {
     key: 'border_crystal',
@@ -199,7 +201,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Cristal', en: 'Crystal border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'conic', colors: ['#9BE7FF', '#C9A6FF', '#9BE7FF'], glow: true, animated: false } },
+    border: { style: 'conic', colors: ['#9BE7FF', '#C9A6FF', '#9BE7FF'], glow: true, animated: false },
   },
   {
     key: 'border_laurel',
@@ -210,7 +212,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda Louro', en: 'Laurel border' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'solid', colors: ['#F2C66D'], glow: true, animated: false } },
+    border: { style: 'solid', colors: ['#F2C66D'], glow: true, animated: false },
   },
   {
     key: 'border_sol',
@@ -221,7 +223,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda do Sol', en: "Sol's border" },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'gradient', colors: ['#F2C66D', '#F4EDE2'], glow: true, animated: false } },
+    border: { style: 'gradient', colors: ['#F2C66D', '#F4EDE2'], glow: true, animated: false },
     forSale: false,
     includedWith: 'special_dourado',
   },
@@ -234,7 +236,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda do Nulo', en: "Nulo's border" },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'gradient', colors: ['#2A2A33', '#F4EDE2'], glow: true, animated: false } },
+    border: { style: 'gradient', colors: ['#2A2A33', '#F4EDE2'], glow: true, animated: false },
     forSale: false,
     includedWith: 'special_preto_cosmico',
   },
@@ -247,7 +249,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Borda do Prisma', en: "Prisma's border" },
     description: { pt: '', en: '' },
     art: {},
-    effect: { border: { style: 'gradient', colors: ['#FF6AD5', '#F4EDE2'], glow: true, animated: false } },
+    border: { style: 'gradient', colors: ['#FF6AD5', '#F4EDE2'], glow: true, animated: false },
     forSale: false,
     includedWith: 'special_arco_iris',
   },
@@ -260,7 +262,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Fundo Meia-noite', en: 'Midnight background' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#14182E' },
+    color: '#14182E',
   },
   {
     key: 'bg_grape',
@@ -271,7 +273,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Fundo Uva', en: 'Grape background' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#2A1740' },
+    color: '#2A1740',
   },
   {
     key: 'bg_ember',
@@ -282,7 +284,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Fundo Brasa', en: 'Ember background' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#3A1710' },
+    color: '#3A1710',
     solEnabled: false,
   },
   {
@@ -294,7 +296,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Fundo Mar fundo', en: 'Deep sea background' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#0E2A33' },
+    color: '#0E2A33',
   },
   {
     key: 'bg_graphite',
@@ -305,7 +307,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Fundo Grafite', en: 'Graphite background' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#26282B' },
+    color: '#26282B',
   },
   {
     key: 'icon_gold',
@@ -316,7 +318,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Ícone Dourado', en: 'Gold icon' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#F2C66D' },
+    color: '#F2C66D',
   },
   {
     key: 'icon_violet',
@@ -327,7 +329,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Ícone Violeta', en: 'Violet icon' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#9B8CFF' },
+    color: '#9B8CFF',
   },
   {
     key: 'icon_cyan',
@@ -338,7 +340,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Ícone Ciano', en: 'Cyan icon' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#62D9D0' },
+    color: '#62D9D0',
   },
   {
     key: 'icon_coral',
@@ -349,7 +351,7 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Ícone Coral', en: 'Coral icon' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#E0655A' },
+    color: '#E0655A',
   },
   {
     key: 'icon_white',
@@ -360,6 +362,6 @@ export const MOCK_ITEMS: readonly MockItem[] = [
     title: { pt: 'Ícone Branco', en: 'White icon' },
     description: { pt: '', en: '' },
     art: {},
-    effect: { color: '#F4EDE2' },
+    color: '#F4EDE2',
   },
 ];

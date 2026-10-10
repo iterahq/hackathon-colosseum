@@ -2,7 +2,7 @@ import { SHOP_LAYOUT_MESSAGES } from './shopLayoutMessages';
 import { WARDROBE_MESSAGES } from './wardrobeMessages';
 
 /** Backend error codes that have a friendly line (`purchase.error.<code>`). */
-export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction']);
+export const PURCHASE_ERROR_CODES: ReadonlySet<string> = new Set(['invalid_ref', 'shop_not_configured', 'intent_already_paid', 'faucet_unavailable', 'already_owned', 'not_needed', 'passport_required', 'item_inactive', 'item_not_found', 'intent_expired', 'tx_failed', 'payment_mismatch', 'signature_reused', 'rpc_unavailable', 'already_claimed', 'not_devnet', 'no_wallet', 'broadcast_failed', 'signature_invalid', 'invalid_transaction', 'sold_out', 'out_of_season', 'not_for_crystals', 'apply_failed']);
 
 /** Strings of lives, Tera's shop, the purchase flow and the companion. Never says "passport": the feature is "Certificações do Tera". */
 export const SHOP_MESSAGES: Record<'pt' | 'en', Record<string, string>> = {

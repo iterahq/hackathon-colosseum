@@ -1,4 +1,5 @@
 import { useI18n } from '@/i18n';
+import { formatCount } from './pay';
 import { FOCUS } from './shopStyles';
 
 export type ShopSection = 'avatars' | 'lives' | 'borders' | 'outfits' | 'certs' | 'backgrounds' | 'icons';
@@ -13,14 +14,17 @@ interface Props {
   sections: ShopSection[];
   active: ShopSection;
   onChange: (section: ShopSection) => void;
+  /** Crystal balance when known: shown at the end of the row. */
+  balance?: number | null;
 }
 
 /** Sticky row of category chips: one section is shown at a time, so the page never grows with the catalogue. */
-export function ShopTabs({ sections, active, onChange }: Props) {
-  const { t } = useI18n();
+export function ShopTabs({ sections, active, onChange, balance = null }: Props) {
+  const { t, locale } = useI18n();
   return (
     <nav className="sticky top-0 z-20 -mx-4 border-b border-[#262320] bg-[#0A0908]/95 px-4 py-2 backdrop-blur sm:-mx-8 sm:px-8" aria-label={t('shop.nav.label')} data-testid="shop-sections">
-      <div role="tablist" aria-label={t('shop.nav.label')} className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-3">
+      <div role="tablist" aria-label={t('shop.nav.label')} className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sections.map((section) => {
           const selected = section === active;
           return (
@@ -29,6 +33,12 @@ export function ShopTabs({ sections, active, onChange }: Props) {
             </button>
           );
         })}
+      </div>
+      {balance != null && (
+        <span className="hidden flex-none [font:700_12px_JetBrains_Mono] text-[#A0978A] sm:block" data-testid="shop-balance">
+          {t('shop.pay.balance', { n: formatCount(balance, locale) })}
+        </span>
+      )}
       </div>
     </nav>
   );

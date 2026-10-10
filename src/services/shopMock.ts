@@ -142,6 +142,8 @@ function shopItems(lang: string) {
     price_label: priceLabel(null, i.cents, i.lamports),
     art: i.art,
     ...(i.effect ? { effect: i.effect } : {}),
+    ...(i.color ? { color: i.color } : {}),
+    ...(i.border ? { border: i.border } : {}),
     price_crystals: i.crystals ?? null,
     sol_enabled: i.solEnabled ?? true,
     crystals_enabled: i.crystalsEnabled ?? true,

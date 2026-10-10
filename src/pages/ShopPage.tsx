@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import '@/components/dashboard/dashboard.css';
 import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
@@ -50,6 +50,11 @@ export default function ShopPage() {
   const [trying, setTrying] = useState<string | null>(null);
   const crystalPay = useCrystalPurchase();
   const purchase = usePurchase({ onPaid: () => setTrying(null) });
+  // A crystal payment closes the try-on the same way a wallet payment does.
+  const crystalPhase = crystalPay.state.phase;
+  useEffect(() => {
+    if (crystalPhase === 'paid') setTrying(null);
+  }, [crystalPhase]);
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
   const [section, setSection] = useState<ShopSection>('avatars');
@@ -69,6 +74,8 @@ export default function ShopPage() {
   const buying = byKey(purchase.state.itemKey);
   const tried = byKey(trying);
   const bought = buying ? avatarOf(buying) : null;
+  const crystalItem = byKey(crystalPay.state.itemKey);
+  const crystalBought = crystalItem ? avatarOf(crystalItem) : null;
 
   const actions: ShopActions = {
     busy: purchase.busy || equipOutfit.isPending || equipAvatar.isPending || claim.isPending,
@@ -100,7 +107,7 @@ export default function ShopPage() {
   };
 
   return (
-    <CrystalPayProvider value={{ onPayWithCrystals: crystalPay.pay, busy: crystalPay.busy, refId: targetId || undefined }}>
+    <CrystalPayProvider value={{ onPayWithCrystals: crystalPay.pay, busy: crystalPay.busy, balance: crystalPay.balance, refId: targetId || undefined }}>
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
       <main className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 pb-16 pt-3 sm:px-8 xl:pt-4">
@@ -136,7 +143,7 @@ export default function ShopPage() {
         {shop.isSuccess && wardrobe && <Wardrobe items={joined} actions={actions} avatar={avatar} outfit={companion.outfit} certs={certs} failed={equipAvatar.isError || equipOutfit.isError} onShop={openShelf} />}
         {shop.isSuccess && !wardrobe && (
           <>
-            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} avatar={avatar} borders={ofKind('border')} backgrounds={ofKind('background')} icons={ofKind('app_icon')} />
+            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} avatar={avatar} balance={crystalPay.balance} borders={ofKind('border')} backgrounds={ofKind('background')} icons={ofKind('app_icon')} />
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
             <section className="flex flex-col gap-4 border-t border-[#262320] pt-8" aria-label={t('shop.section.more')}>
               <CircuitStrip wallet={companion.wallet} />
@@ -145,7 +152,7 @@ export default function ShopPage() {
           </>
         )}
       </main>
-      {tried && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && !tried.lifePack && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}
+      {tried && crystalPhase === 'idle' && <TryOnDialog item={tried} actions={actions} avatar={avatar} target={targetCert} buyDisabled={(isCosmetic(tried) && !targetId) || (tried.kind === 'life' && !tried.lifePack && Boolean(lives && lives.current >= lives.max))} onClose={() => setTrying(null)} />}
       {linking && <LinkWalletDialog onClose={() => setLinking(false)} />}
       <PurchaseDialog
         state={purchase.state}
@@ -159,7 +166,19 @@ export default function ShopPage() {
         onFund={() => void purchase.fund()}
         onClose={purchase.reset}
       />
-      <CrystalNotice failure={crystalPay.failure} onClose={crystalPay.dismiss} />
+      <PurchaseDialog
+        state={crystalPay.state}
+        itemTitle={crystalItem?.title ?? ''}
+        itemKind={crystalItem?.kind ?? 'outfit'}
+        targetTitle={targetCert?.title ?? null}
+        outfit={crystalItem?.kind === 'outfit' ? crystalItem.key : companion.outfit}
+        art={crystalBought ? <LearnerAvatar avatar={crystalBought} size="xl" /> : undefined}
+        action={crystalBought && crystalPay.state.phase === 'paid' && avatar.key !== crystalBought.key ? { label: t('tryon.equipNow'), onClick: () => (equipAvatar.mutate(crystalBought), crystalPay.reset()) } : null}
+        onRetry={crystalPay.retry}
+        onFund={crystalPay.reset}
+        onClose={crystalPay.reset}
+      />
+      <CrystalNotice failure={crystalPay.failure} onClose={crystalPay.reset} />
     </div>
     </CrystalPayProvider>
   );

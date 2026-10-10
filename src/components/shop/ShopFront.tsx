@@ -30,6 +30,7 @@ interface Props {
   /** The learner's avatar: the picture inside a border preview. */
   avatar: LearnerAvatar;
   /** Swatch kinds the backend lists: profile borders, backgrounds and icon colours. */
+  balance?: number | null;
   borders?: readonly ShopItem[];
   backgrounds?: readonly ShopItem[];
   icons?: readonly ShopItem[];
@@ -47,7 +48,7 @@ function Shelf({ id, hint, children }: { id: string; hint?: string; children: Re
 }
 
 /** The shop: a sticky row of category chips and the one section it points to (avatars, lives, borders, outfits, certifications). */
-export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed, active, onActive, avatar, borders = [], backgrounds = [], icons = [] }: Props) {
+export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed, active, onActive, avatar, balance = null, borders = [], backgrounds = [], icons = [] }: Props) {
   const { t } = useI18n();
   const full = lives ? lives.current >= lives.max : false;
   const featured = featuredOf(rowsOf(shelves.avatars).rows);
@@ -69,7 +70,7 @@ export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, 
 
   return (
     <>
-      <ShopTabs sections={sections} active={shown} onChange={onActive} />
+      <ShopTabs sections={sections} active={shown} onChange={onActive} balance={balance} />
       {shown === 'avatars' && (
         <Shelf id={SECTION_ID.avatars}>
           {featured && <ShopFeatured item={featured} actions={actions} />}
