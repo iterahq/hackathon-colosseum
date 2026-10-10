@@ -3,6 +3,7 @@
  * the cast of the
  * exercises, and the legal and help links. The screen draws; this decides. componente → hook → service.
  */
+import { contactEmail } from '@/utils/contactEmail';
 import { useEffect, useReducer, useState } from 'react';
 import { EMPTY_PROFILE_DRAFT, legalHelpLinks, profileDraftReducer, profileFormView } from '@iterahq/shell-core';
 import type { ProfileScreenProps } from '@iterahq/screens/profile';
@@ -39,7 +40,7 @@ export function useProfileScreen(): { screen: Omit<ProfileScreenProps, 'header' 
   useEffect(() => setCastDraft(cast.values), [cast.values]);
 
   const form = profileFormView(draft, {
-    email: profile?.email ?? null,
+    email: contactEmail(profile?.email),
     presets: [],
     saving: update.isPending,
     saveFailed: update.isError,
