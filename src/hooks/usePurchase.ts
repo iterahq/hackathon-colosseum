@@ -9,6 +9,8 @@ import { useI18n } from '@/i18n';
 import { queryKeys } from '@/lib/queryKeys';
 import { confirmPurchase, createPurchaseIntent, requestFaucet, submitPurchase } from '@/services/shop.service';
 import { ShopCallError } from '@/services/shopTransport';
+import { txUrl } from '@/lib/explorer';
+import { bumpCredentialArt } from '@/services/credential.service';
 import { WalletSignError, connectWallet, signAndSendPurchase } from '@/services/walletSign';
 import type { CompanionSnapshot, PurchaseConfirmation } from '@/types/shop';
 import { PURCHASE_IDLE, isPurchaseBusy, purchaseReducer } from '@/utils/purchaseMachine';
@@ -17,6 +19,7 @@ const POLL_MS = 1500;
 const POLL_LIMIT_MS = 30_000;
 const FUNDING_SETTLE_MS = 2500;
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const signatureOf = (url: string | null): string | null => url?.match(/\/tx\/([^/?#]+)/)?.[1] ?? null;
 const textOf = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } = {}) {
@@ -36,6 +39,7 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
   const settle = useCallback(
     (confirmation: PurchaseConfirmation) => {
       const key = queryKeys.companion.mine(userId);
+      bumpCredentialArt();
       queryClient.setQueryData<CompanionSnapshot>(key, (prev) =>
         prev
           ? {
@@ -92,11 +96,14 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         if (!alive.current) return;
         if (confirmation.status === 'paid') {
           settle(confirmation);
+          const payment = broadcast ?? signatureOf(confirmation.explorerUrl);
+          const mirror = confirmation.chain?.signature ?? null;
           dispatch({
             type: 'paid',
             explorerUrl: confirmation.explorerUrl ?? confirmation.chain?.explorerUrl ?? null,
             proof: {
-              signature: confirmation.chain?.signature ?? broadcast,
+              signature: payment,
+              chain: confirmation.chain && mirror && mirror !== payment ? { signature: mirror, explorerUrl: confirmation.chain.explorerUrl || txUrl(mirror) } : null,
               imageUrl: confirmation.imageUrl ?? null,
               written: (confirmation.written ?? []).map((w) => ({ attribute: w.attribute, value: w.value })),
               lives: confirmation.lives ? { current: confirmation.lives.current, max: confirmation.lives.max } : null,
@@ -113,7 +120,10 @@ export function usePurchase({ onPaid }: { onPaid?: (itemKey: string) => void } =
         const detail = e instanceof WalletSignError ? e.detail : textOf(e);
         if (reason === 'cancelled') dispatch({ type: 'cancelled' });
         else if (reason === 'no_wallet') dispatch({ type: 'no_wallet' });
-        else if (reason === 'insufficient' || code === 'insufficient_funds') dispatch({ type: 'insufficient', detail });
+        else if (reason === 'insufficient' || code === 'insufficient_funds') {
+          const required = e instanceof ShopCallError ? e.body?.required_lamports : null;
+          dispatch({ type: 'insufficient', detail, neededLamports: typeof required === 'number' ? required : null });
+        }
         else {
           if (code) console.warn('[purchase]', detail);
           dispatch({ type: 'failed', detail, code });

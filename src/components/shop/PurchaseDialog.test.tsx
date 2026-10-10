@@ -4,7 +4,7 @@ import { I18nProvider } from '@/i18n';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { PURCHASE_IDLE, type PurchaseState } from '@/utils/purchaseMachine';
 
-const show = (state: PurchaseState, kind: 'life' | 'outfit' = 'life') =>
+const show = (state: PurchaseState, kind: 'life' | 'outfit' | 'ink' = 'life') =>
   render(
     <I18nProvider>
       <PurchaseDialog state={state} itemTitle="Refill" itemKind={kind} outfit={null} onRetry={vi.fn()} onFund={vi.fn()} onClose={vi.fn()} />
@@ -12,17 +12,39 @@ const show = (state: PurchaseState, kind: 'life' | 'outfit' = 'life') =>
   );
 
 describe('PurchaseDialog', () => {
-  it('paid: short signature, what changed and the refreshed art', () => {
+  it('paid: payment row links its own signature, the on-chain row links the mirror', () => {
     show({
       ...PURCHASE_IDLE,
       phase: 'paid',
-      explorerUrl: 'https://explorer.solana.com/tx/SIG?cluster=devnet',
-      proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: 'https://x.test/a.svg?v=2', written: [], lives: { current: 5, max: 5 } },
+      explorerUrl: 'https://explorer.solana.com/tx/PAY?cluster=devnet',
+      proof: {
+        signature: 'abcdefgh0123456789uvwxyz',
+        chain: { signature: 'mirror0123456789mirror99', explorerUrl: 'https://explorer.solana.com/tx/MIRROR?cluster=devnet' },
+        imageUrl: 'https://x.test/a.svg?v=2',
+        written: [{ attribute: 'lives', value: '5' }],
+        lives: { current: 5, max: 5 },
+      },
     });
     expect(screen.getByTestId('purchase-explorer')).toHaveTextContent('abcdefgh…uvwxyz');
-    expect(screen.getByTestId('purchase-explorer')).toHaveAttribute('href', 'https://explorer.solana.com/tx/SIG?cluster=devnet');
-    expect(screen.getByTestId('purchase-change')).toHaveTextContent('vidas 5/5 gravadas no seu Tera');
+    expect(screen.getByTestId('purchase-explorer')).toHaveAttribute('href', 'https://explorer.solana.com/tx/PAY?cluster=devnet');
+    expect(screen.getByTestId('purchase-explorer-row')).toHaveTextContent('Pagamento');
+    expect(screen.getByTestId('purchase-chain-explorer')).toHaveAttribute('href', 'https://explorer.solana.com/tx/MIRROR?cluster=devnet');
+    expect(screen.getByTestId('purchase-chain-explorer-row')).toHaveTextContent('Gravado on-chain');
+    expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('Vidas recarregadas: 5/5');
+    expect(screen.getByTestId('purchase-change')).toHaveTextContent('Gravado no seu Tera on-chain.');
     expect(screen.getByTestId('purchase-art')).toHaveAttribute('src', 'https://x.test/a.svg?v=2');
+  });
+
+  it('paid without a chain write: no on-chain row', () => {
+    show({ ...PURCHASE_IDLE, phase: 'paid', explorerUrl: null, proof: { signature: 'abcdefgh0123456789uvwxyz', imageUrl: null, written: [], lives: null } }, 'outfit');
+    expect(screen.queryByTestId('purchase-chain-explorer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('Você comprou: Refill. Equipe para o seu Tera usar.');
+  });
+
+  it('insufficient: friendly amount, no technical details', () => {
+    show({ ...PURCHASE_IDLE, phase: 'insufficient', detail: 'purchase-intent: insufficient_funds', neededLamports: 1_445_880 });
+    expect(screen.getByTestId('purchase-dialog')).toHaveTextContent('cerca de 0.00145 SOL');
+    expect(screen.queryByTestId('purchase-details')).not.toBeInTheDocument();
   });
 
   it('paid without proof: no art and no change line', () => {

@@ -20,10 +20,15 @@ export interface PurchaseState {
   explorerUrl: string | null;
   /** Proof shown once paid. */
   proof: PurchaseProof | null;
+  /** Lamports the wallet was short of, when the backend said (insufficient state). */
+  neededLamports?: number | null;
 }
 
 export interface PurchaseProof {
+  /** The payment transaction. */
   signature: string | null;
+  /** The on-chain write that mirrors the purchase (its own transaction), when there is one. */
+  chain?: { signature: string; explorerUrl: string } | null;
   imageUrl: string | null;
   /** The attributes the backend says it wrote on-chain. */
   written: { attribute: string; value: string }[];
@@ -38,7 +43,7 @@ export type PurchaseEvent =
   | { type: 'paid'; explorerUrl: string | null; proof?: PurchaseProof | null }
   | { type: 'cancelled' }
   | { type: 'failed'; detail: string; code?: string | null }
-  | { type: 'insufficient'; detail: string }
+  | { type: 'insufficient'; detail: string; neededLamports?: number | null }
   | { type: 'no_wallet' }
   | { type: 'funding' }
   | { type: 'funding_failed'; detail: string; code?: string | null }
@@ -66,7 +71,7 @@ export function purchaseReducer(state: PurchaseState, event: PurchaseEvent): Pur
     case 'failed':
       return isPurchaseBusy(state) ? { ...state, phase: 'failed', detail: event.detail, code: event.code ?? null } : state;
     case 'insufficient':
-      return isPurchaseBusy(state) ? { ...state, phase: 'insufficient', detail: event.detail } : state;
+      return isPurchaseBusy(state) ? { ...state, phase: 'insufficient', detail: event.detail, neededLamports: event.neededLamports ?? null } : state;
     case 'no_wallet':
       return isPurchaseBusy(state) ? { ...state, phase: 'no_wallet' } : state;
     case 'funding':
