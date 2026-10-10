@@ -20,7 +20,9 @@ const show = (wallet: string | null) =>
   );
 
 describe('CircuitStrip', () => {
-  beforeEach(() => getCircuit.mockReset());
+  beforeEach(() => {
+    getCircuit.mockReset();
+  });
 
   it('says what the learner paid forward and what the shop paid in total, with the explorer link', async () => {
     getCircuit.mockResolvedValue(counter({ wallet: { lamports: 550_000, stampsFunded: 110 } }));
@@ -41,8 +43,8 @@ describe('CircuitStrip', () => {
     expect(strip).not.toHaveTextContent('já pagaram');
   });
 
-  it('shows nothing until the counter is read', async () => {
-    getCircuit.mockReturnValue(new Promise(() => undefined));
+  it('shows nothing when the counter cannot be read', async () => {
+    getCircuit.mockRejectedValue(new Error('down'));
     show(null);
     await vi.waitFor(() => expect(getCircuit).toHaveBeenCalled());
     expect(screen.queryByTestId('circuit-strip')).toBeNull();
