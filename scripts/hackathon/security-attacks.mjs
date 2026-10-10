@@ -16,7 +16,7 @@ import { createPrivateKey, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { compactU16, base58Decode, base58Encode, buildTransferMessage, transferData, MEMO_PROGRAM, SYSTEM_PROGRAM } from '../../supabase/functions/_shared/solana-tx.ts';
-import { FUNCTIONS, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sol, summary, until } from './social-e2e.lib.mjs';
+import { FUNCTIONS, SUPABASE_URL, anonKey, balance, check, newLearner, psql, rpc, signAndSend, sol, summary, until } from './social-e2e.lib.mjs';
 
 const AUTHORITY = 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B';
 const AUTHORITY_FLOOR = 620_000_000n;
@@ -128,8 +128,64 @@ async function payOnceGetTwo(context) {
   check('A the paid signature offered to a second purchase: 409 signature_reused', otherIntent.status === 200 && crossPurchase.status === 409 && crossPurchase.body.error === 'signature_reused' && purchaseRow(otherIntent.body.intent_id)[0] === 'pending', `${crossPurchase.status} ${JSON.stringify(crossPurchase.body)}`);
 }
 
+/** A learner's own PostgREST call (anon key + own JWT), exactly what any signed-in browser can send. */
+async function restAs(learner, method, path, body, prefer) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method,
+    headers: { ...learner.headers, 'Content-Profile': 'itera', 'Accept-Profile': 'itera', ...(prefer ? { Prefer: prefer } : {}) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  let parsed = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = text;
+  }
+  return { status: response.status, body: parsed };
+}
+
+/** The published activities of a day of the demo trail, in order: `[{ id, kind }]`. */
+function lessonActivities(day = 1) {
+  const lesson = psql(
+    `select l.id from itera.programs p join itera.units u on u.program_id = p.id join itera.lessons l on l.unit_id = u.id
+     where p.slug = 'itera-v2' and exists (select 1 from itera.activities a where a.lesson_id = l.id and a.status = 'published')
+     order by u.ordinal, l.ordinal, l.id offset :skip limit 1;`,
+    { skip: day - 1 },
+  );
+  const rows = psql(`select id || '|' || kind::text from itera.activities where lesson_id = :'lesson'::uuid and status = 'published' order by ordinal, id;`, { lesson });
+  return { lesson, activities: rows.split('\n').filter(Boolean).map((row) => ({ id: row.split('|')[0], kind: row.split('|')[1] })) };
+}
+
+const xpOf = (userId) => psql(`select count(*) || '|' || coalesce(sum(amount), 0) from itera.xp_events where user_id = :'user_id'::uuid;`, { user_id: userId });
+
+// --- B. Finding 3: forgeable XP -------------------------------------------------------------------
+// Spends nothing on chain.
+async function forgeXp(context) {
+  const learner = await newLearner(context.apikey, 'B learner');
+  const { activities } = lessonActivities(1);
+  const [first, second] = activities;
+  const award = (activityId, amount) => restAs(learner, 'POST', 'rpc/award_activity_xp', { p_activity_id: activityId, p_amount: amount });
+
+  const cold = await award(first.id, 2_000_000_000);
+  check('B xp for an activity the learner never completed: nothing', cold.status === 200 && cold.body === 0 && xpOf(learner.userId) === '0|0', `${cold.status} ${JSON.stringify(cold.body)} ${xpOf(learner.userId)}`);
+
+  const done = await restAs(learner, 'POST', 'progress?on_conflict=user_id,activity_id', { user_id: learner.userId, activity_id: first.id, status: 'completed', completed_at: new Date().toISOString() }, 'resolution=merge-duplicates');
+  const forged = await award(first.id, 2_000_000_000);
+  check('B p_amount 2 000 000 000 for a completed activity: the normal 10 xp', done.status < 300 && forged.status === 200 && forged.body === 10 && xpOf(learner.userId) === '1|10', `${done.status} ${forged.status} ${JSON.stringify(forged.body)} ${xpOf(learner.userId)}`);
+  const again = await award(first.id, 2_000_000_000);
+  check('B the same activity again: nothing, still one event', again.body === 0 && xpOf(learner.userId) === '1|10', `${JSON.stringify(again.body)} ${xpOf(learner.userId)}`);
+  const negative = await award(second.id, -5);
+  check('B a negative amount, and an activity of the lesson not completed: nothing', negative.body === 0 && xpOf(learner.userId) === '1|10', JSON.stringify(negative.body));
+  const anonymous = await fetch(`${SUPABASE_URL}/rest/v1/rpc/award_activity_xp`, { method: 'POST', headers: { apikey: context.apikey, 'Content-Type': 'application/json', 'Content-Profile': 'itera' }, body: JSON.stringify({ p_activity_id: first.id, p_amount: 10 }) });
+  check('B without a session: refused', anonymous.status === 401 || anonymous.status === 403 || anonymous.status === 404, anonymous.status);
+  const direct = await restAs(learner, 'POST', 'xp_events', { user_id: learner.userId, tenant_id: '00000000-0000-0000-0000-000000000000', amount: 2_000_000_000, reason: 'forged' });
+  check('B writing xp_events directly: refused', direct.status >= 400 && xpOf(learner.userId) === '1|10', direct.status);
+}
+
 const SECTIONS = {
   a: ['A. pay once, get two (finding 2)', payOnceGetTwo],
+  b: ['B. forgeable XP (finding 3)', forgeXp],
 };
 
 async function main() {

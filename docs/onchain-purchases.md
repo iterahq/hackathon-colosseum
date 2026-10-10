@@ -642,8 +642,11 @@ read by `_shared/unlock.ts`; the level is the companion's (`floor(xp / 200) + 1`
   `409 item_inactive`, `400 invalid_body`, `401 unauthorized`.
 - The claim sends no transaction. Wearing it is the usual `companion { equip }`, which mirrors the
   `outfit` attribute like any bought outfit. E-mail learners can claim too (off chain).
-- The level is only as trustworthy as the xp ledger: until `award_activity_xp` stops accepting an
-  arbitrary amount (security review, finding 3) a client can raise its own level, and with it this unlock.
+- The level is only as trustworthy as the xp ledger. Since migration `0133` `award_activity_xp` gives
+  at most 10 xp, once per activity, and only for an activity the caller holds a `completed` progress
+  row for (security review, finding 3: the amount used to be the client's). What remains is finding 1:
+  the progress row itself is written by the client, so a learner can still reach level 5 without
+  learning anything, 10 xp at a time. See "Trust model" in `docs/onchain-passport.md`.
 
 ## Circuito: the shop pays for other learners' stamps
 
