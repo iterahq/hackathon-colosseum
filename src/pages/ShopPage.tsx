@@ -7,6 +7,8 @@ import { AppTopBar } from '@/components/header/AppTopBar';
 import { CircuitStrip } from '@/components/shop/CircuitStrip';
 import { PurchaseDialog } from '@/components/shop/PurchaseDialog';
 import { ShopFront } from '@/components/shop/ShopFront';
+import { CrystalNotice, CrystalPayProvider } from '@/components/shop/CrystalPay';
+import { useCrystalPurchase } from '@/components/shop/useCrystalPurchase';
 import { sectionOfId, type ShopSection } from '@/components/shop/ShopTabs';
 import { ShopTeraStage } from '@/components/shop/ShopTeraStage';
 import { TryOnDialog } from '@/components/shop/TryOnDialog';
@@ -46,6 +48,7 @@ export default function ShopPage() {
   const equipAvatar = useEquipAvatar();
   const claim = useClaimItem();
   const [trying, setTrying] = useState<string | null>(null);
+  const crystalPay = useCrystalPurchase();
   const purchase = usePurchase({ onPaid: () => setTrying(null) });
   const [linking, setLinking] = useState(false);
   const [target, setTarget] = useState('');
@@ -60,6 +63,7 @@ export default function ShopPage() {
   // On the shelf an ink or a frame is "owned" for the certification it is aimed at.
   const items = useMemo(() => joined.map((item) => (isCosmetic(item) ? { ...item, owned: Boolean(targetId) && item.ownedRefs.includes(targetId) } : item)), [joined, targetId]);
   const shelves = useMemo(() => shelvesOf(items), [items]);
+  const ofKind = (kind: ShopItem['kind']) => items.filter((i) => i.kind === kind);
   const byKey = (key: string | null) => items.find((i) => i.key === key);
   const hasWallet = Boolean(companion.wallet);
   const buying = byKey(purchase.state.itemKey);
@@ -96,6 +100,7 @@ export default function ShopPage() {
   };
 
   return (
+    <CrystalPayProvider value={{ onPayWithCrystals: crystalPay.pay, busy: crystalPay.busy, refId: targetId || undefined }}>
     <div className="dash-root min-h-screen overflow-x-hidden text-[#F4EDE2]" style={SHOP_GRID} data-testid="shop-page">
       <AppTopBar />
       <main className="mx-auto flex max-w-[1280px] flex-col gap-4 px-4 pb-16 pt-3 sm:px-8 xl:pt-4">
@@ -131,7 +136,7 @@ export default function ShopPage() {
         {shop.isSuccess && wardrobe && <Wardrobe items={joined} actions={actions} avatar={avatar} outfit={companion.outfit} certs={certs} failed={equipAvatar.isError || equipOutfit.isError} onShop={openShelf} />}
         {shop.isSuccess && !wardrobe && (
           <>
-            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} />
+            <ShopFront shelves={shelves} actions={actions} lives={lives} certs={certs} targetId={targetId} onTarget={setTarget} claimFailed={claim.isError ? (claim.variables ?? null) : null} active={section} onActive={setSection} avatar={avatar} borders={ofKind('border')} backgrounds={ofKind('background')} icons={ofKind('app_icon')} />
             {items.length === 0 && <p className="[font:500_15px_Inter] text-[#A0978A]">{t('shop.empty')}</p>}
             <section className="flex flex-col gap-4 border-t border-[#262320] pt-8" aria-label={t('shop.section.more')}>
               <CircuitStrip wallet={companion.wallet} />
@@ -154,6 +159,8 @@ export default function ShopPage() {
         onFund={() => void purchase.fund()}
         onClose={purchase.reset}
       />
+      <CrystalNotice failure={crystalPay.failure} onClose={crystalPay.dismiss} />
     </div>
+    </CrystalPayProvider>
   );
 }

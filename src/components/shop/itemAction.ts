@@ -25,6 +25,12 @@ export function itemAction(item: ShopItem, actions: ShopActions, t: Translate, {
     if (item.unlock?.unlocked) return { id: 'claim', label: t('shop.claim'), run: () => actions.claim(item), disabled: actions.busy, primary: true };
     return buy;
   }
+  if (item.kind === 'border' || item.kind === 'background' || item.kind === 'app_icon') {
+    // Equipping these happens in the wardrobe; here they are owned or for sale.
+    if (item.owned) return { id: item.equipped ? 'inuse' : 'applied', label: t(item.equipped ? 'wardrobe.inUse' : 'shop.owned'), disabled: true, primary: false };
+    if (item.forSale === false) return { id: 'soldout', label: t('shop.swatch.signature'), disabled: true, primary: false };
+    return buy;
+  }
   if ((item.kind === 'ink' || item.kind === 'frame') && item.owned) return { id: 'applied', label: t('shop.equipped'), disabled: true, primary: false };
   return buy;
 }

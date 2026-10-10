@@ -93,10 +93,10 @@ export const MOCK_AVATAR_KEYS: readonly string[] = [...PAID.map((r) => r[0]), ..
 export const isMockAvatar = (key: string): boolean => MOCK_AVATAR_KEYS.includes(key);
 export const isFreeMockAvatar = (key: string): boolean => FREE.some((r) => r[0] === key);
 
-export function mockAvatarPrice(key: string): { cents: number; lamports: number } {
+export function mockAvatarPrice(key: string): { cents: number; lamports: number; crystals: number | null } {
   const row = PAID.find((r) => r[0] === key);
   const cents = row ? TIERS[row[1]].cents : 0;
-  return { cents, lamports: cents * LAMPORTS_PER_CENT };
+  return { cents, lamports: cents * LAMPORTS_PER_CENT, crystals: row ? TIERS[row[1]].crystals : null };
 }
 
 interface Holder {

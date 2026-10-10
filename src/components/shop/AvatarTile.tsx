@@ -6,6 +6,7 @@ import { loreOf } from '@/content/teraLore';
 import { avatarOf, avatarState, supplyText } from '@/utils/avatarShop';
 import { includesLine, isOffSeason, returnLine, shortPrice } from './avatarRows';
 import { itemAction } from './itemAction';
+import { PayButtons } from './CrystalPay';
 import { BTN_PRIMARY, BTN_SECONDARY, FOCUS, MONO_LABEL } from './shopStyles';
 
 const KEY = '!min-h-9 w-full !px-1 ![font:700_12px_Inter]';
@@ -23,8 +24,8 @@ export function AvatarTile({ item, actions, reserveIncludes = false }: { item: S
   const includes = includesLine(item, t);
   const season = item.avatar.season;
   const supply = item.avatar.free ? '' : supplyText(item.avatar.supply, '');
-  const word = state === 'equipped' ? t('shop.avatar.stateInUse') : state === 'free' ? t('shop.avatar.stateFree') : state === 'owned' ? t('shop.avatar.stateOwned') : state === 'soldout' ? t('shop.avatar.soldOut') : off ? returnLine(item, locale, t) : '';
-  const line = [word, supply && state !== 'free' ? supply : ''].filter(Boolean).join(' · ');
+  const word = state === 'equipped' ? t('shop.avatar.stateInUse') : state === 'free' ? t('shop.avatar.stateFree') : state === 'owned' ? t('shop.avatar.stateOwned') : state === 'soldout' ? t('shop.avatar.soldOut') : off ? returnLine(item, locale, t, 'short') : '';
+  const line = [word, supply && (state === 'owned' || state === 'buy') ? supply : ''].filter(Boolean).join(' · ');
   const label = action.id === 'buy' ? shortPrice(item.priceLabel) : action.label;
 
   return (
@@ -49,9 +50,13 @@ export function AvatarTile({ item, actions, reserveIncludes = false }: { item: S
           {includes}
         </p>
       )}
-      <button type="button" disabled={action.disabled} onClick={action.run} aria-label={action.id === 'buy' ? `${action.label} ${item.priceLabel}` : undefined} data-testid="avatar-action" data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${KEY}`}>
-        {label}
-      </button>
+      {action.id === 'buy' ? (
+        <PayButtons item={item} action={action} testId="avatar-action" walletLabel={label} stack />
+      ) : (
+        <button type="button" disabled={action.disabled} onClick={action.run} data-testid="avatar-action" data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${KEY}`}>
+          {label}
+        </button>
+      )}
     </article>
   );
 }

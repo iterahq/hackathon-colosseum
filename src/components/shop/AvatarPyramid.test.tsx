@@ -30,7 +30,7 @@ describe('AvatarPyramid', () => {
     expect(within(tile('special_arco_iris')).getByTestId('avatar-action')).toBeDisabled();
     expect(tile('event_natal').dataset.season).toBe('out');
     expect(within(tile('event_natal')).getByTestId('avatar-action')).toBeDisabled();
-    expect(within(tile('event_natal')).getByTestId('avatar-state')).toHaveTextContent('Volta em dezembro');
+    expect(within(tile('event_natal')).getByTestId('avatar-state')).toHaveTextContent(/Volta em dez/i);
     expect(tile('base_lider').dataset.state).toBe('owned');
     expect(tile('tera_feliz').dataset.state).toBe('equipped');
     expect(tile('tera_normal').dataset.state).toBe('free');

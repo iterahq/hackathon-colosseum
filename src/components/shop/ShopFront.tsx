@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useI18n } from '@/i18n';
+import type { LearnerAvatar } from '@/types/avatar';
 import type { LivesState, ShopItem } from '@/types/shop';
 import type { CertTarget, ShopActions } from '@/types/shopView';
 import type { ShopShelves } from '@/utils/shop';
@@ -26,9 +27,12 @@ interface Props {
   /** The section on show; the page owns it so the wardrobe can link into a shelf. */
   active: ShopSection;
   onActive: (section: ShopSection) => void;
-  /** Profile borders for sale, fed by the crystals slice; empty today. */
+  /** The learner's avatar: the picture inside a border preview. */
+  avatar: LearnerAvatar;
+  /** Swatch kinds the backend lists: profile borders, backgrounds and icon colours. */
   borders?: readonly ShopItem[];
-  renderBorder?: (item: ShopItem) => ReactNode;
+  backgrounds?: readonly ShopItem[];
+  icons?: readonly ShopItem[];
 }
 
 const GRID = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4';
@@ -43,7 +47,7 @@ function Shelf({ id, hint, children }: { id: string; hint?: string; children: Re
 }
 
 /** The shop: a sticky row of category chips and the one section it points to (avatars, lives, borders, outfits, certifications). */
-export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed, active, onActive, borders = [], renderBorder }: Props) {
+export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, claimFailed, active, onActive, avatar, borders = [], backgrounds = [], icons = [] }: Props) {
   const { t } = useI18n();
   const full = lives ? lives.current >= lives.max : false;
   const featured = featuredOf(rowsOf(shelves.avatars).rows);
@@ -58,6 +62,8 @@ export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, 
     ...(borders.length > 0 ? (['borders'] as const) : []),
     ...(shelves.outfits.length > 0 ? (['outfits'] as const) : []),
     ...(shelves.certs.length > 0 ? (['certs'] as const) : []),
+    ...(backgrounds.length > 0 ? (['backgrounds'] as const) : []),
+    ...(icons.length > 0 ? (['icons'] as const) : []),
   ];
   const shown = sections.includes(active) ? active : sections[0];
 
@@ -102,7 +108,17 @@ export function ShopFront({ shelves, actions, lives, certs, targetId, onTarget, 
       )}
       {shown === 'borders' && (
         <Shelf id={SECTION_ID.borders}>
-          <ShopBordersSlot items={borders} render={renderBorder} />
+          <ShopBordersSlot items={borders} actions={actions} avatar={avatar} hint={t('shop.swatch.sectionBorders')} />
+        </Shelf>
+      )}
+      {shown === 'backgrounds' && (
+        <Shelf id={SECTION_ID.backgrounds}>
+          <ShopBordersSlot items={backgrounds} actions={actions} avatar={avatar} hint={t('shop.swatch.sectionBackgrounds')} />
+        </Shelf>
+      )}
+      {shown === 'icons' && (
+        <Shelf id={SECTION_ID.icons}>
+          <ShopBordersSlot items={icons} actions={actions} avatar={avatar} hint={t('shop.swatch.sectionIcons')} />
         </Shelf>
       )}
     </>

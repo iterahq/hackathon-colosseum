@@ -9,6 +9,7 @@ import type { CertTarget, ShopActions } from '@/types/shopView';
 import { loreOf } from '@/content/teraLore';
 import { supplyText } from '@/utils/avatarShop';
 import { itemAction } from './itemAction';
+import { PayButtons } from './CrystalPay';
 import { ShopExplainer } from './ShopExplainer';
 import { outfitDrawable } from './ShopLook';
 import { TryOnStage } from './TryOnStage';
@@ -107,9 +108,13 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
             <ShopExplainer item={item} />
           </div>
           <div className="flex flex-none flex-col gap-2 border-t border-[#262320] p-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:flex-row-reverse sm:px-6">
-            <button type="button" data-autofocus disabled={action.disabled} onClick={action.run} data-testid="tryon-action" data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} w-full sm:flex-1`}>
-              {action.label}
-            </button>
+            {action.id === 'buy' ? (
+              <PayButtons item={item} action={action} testId="tryon-action" labels="full" walletLabel={action.label} autoFocus className="sm:flex-1" keyClass="!min-h-12 !px-3 ![font:700_14px_Inter]" />
+            ) : (
+              <button type="button" data-autofocus disabled={action.disabled} onClick={action.run} data-testid="tryon-action" data-action={action.id} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} w-full sm:flex-1`}>
+                {action.label}
+              </button>
+            )}
             <button type="button" onClick={onClose} data-testid="tryon-close" className={`${BTN_SECONDARY} w-full sm:w-auto`}>
               {t('tryon.close')}
             </button>

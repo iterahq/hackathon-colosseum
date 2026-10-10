@@ -1,13 +1,13 @@
 import { useI18n } from '@/i18n';
 import { FOCUS } from './shopStyles';
 
-export type ShopSection = 'avatars' | 'lives' | 'borders' | 'outfits' | 'certs';
+export type ShopSection = 'avatars' | 'lives' | 'borders' | 'outfits' | 'certs' | 'backgrounds' | 'icons';
 
 /** The shelf id of each section: the wardrobe links to these. */
-export const SECTION_ID: Record<ShopSection, string> = { avatars: 'shop-avatars', lives: 'shop-lives', borders: 'shop-borders', outfits: 'shop-outfits', certs: 'shop-certs' };
+export const SECTION_ID: Record<ShopSection, string> = { avatars: 'shop-avatars', lives: 'shop-lives', borders: 'shop-borders', outfits: 'shop-outfits', certs: 'shop-certs', backgrounds: 'shop-backgrounds', icons: 'shop-icons' };
 export const sectionOfId = (id: string): ShopSection | null => (Object.keys(SECTION_ID) as ShopSection[]).find((s) => SECTION_ID[s] === id) ?? null;
 
-const LABEL: Record<ShopSection, string> = { avatars: 'shop.nav.avatars', lives: 'shop.nav.lives', borders: 'shop.nav.borders', outfits: 'shop.nav.clothes', certs: 'shop.nav.certs' };
+const LABEL: Record<ShopSection, string> = { avatars: 'shop.nav.avatars', lives: 'shop.nav.lives', borders: 'shop.nav.borders', outfits: 'shop.nav.clothes', certs: 'shop.nav.certs', backgrounds: 'shop.nav.backgrounds', icons: 'shop.nav.icons' };
 
 interface Props {
   sections: ShopSection[];

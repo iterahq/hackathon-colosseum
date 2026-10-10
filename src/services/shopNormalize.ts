@@ -28,7 +28,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const orNull = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
-const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame', 'avatar', 'border'];
+const KINDS: readonly ShopItemKind[] = ['life', 'outfit', 'ink', 'frame', 'avatar', 'border', 'background', 'app_icon'];
 const kindOf = (v: unknown): ShopItemKind => (KINDS.includes(v as ShopItemKind) ? (v as ShopItemKind) : 'outfit');
 const STATUSES: readonly PurchaseStatus[] = ['paid', 'pending', 'failed', 'expired'];
 
@@ -186,6 +186,11 @@ export function toShopItems(v: unknown): ShopItem[] {
         priceLamports,
         priceLabel: priceLabel(orNull(r.price_label), priceUsdCents, priceLamports),
         priceCrystals: crystalsOf(r.price_crystals),
+        solEnabled: r.sol_enabled !== false,
+        crystalsEnabled: r.crystals_enabled !== false,
+        forSale: r.for_sale !== false,
+        includedWith: orNull(r.included_with),
+        effect: row(r.effect),
         lifePack: r.kind === 'life' ? toLifePack(r.effect) : null,
         art: row(r.art),
         owned: r.owned === true,

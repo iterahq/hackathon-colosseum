@@ -8,7 +8,7 @@ import { rowsOf } from './avatarRows';
 import { AvatarTile } from './AvatarTile';
 import { FOCUS, MONO_LABEL, RARITY_EDGE } from './shopStyles';
 
-const ARROW = `hidden h-9 w-9 flex-none items-center justify-center rounded-full border border-[#2E2A25] bg-[#141210] [font:700_16px_Inter] text-[#F4EDE2] hover:border-[#5E574E] disabled:opacity-30 sm:flex ${FOCUS}`;
+const ARROW = `absolute top-[34px] z-10 hidden h-9 w-9 items-center justify-center rounded-full border border-[#2E2A25] bg-[#141210] [font:700_16px_Inter] text-[#F4EDE2] hover:border-[#5E574E] disabled:opacity-30 sm:flex ${FOCUS}`;
 
 /** A row is as wide as its tiles; short rows share a line, and on a phone every row takes the full width. */
 const rowSize = (tiles: number) => ({ flex: `${tiles} 1 ${Math.min(tiles, 8) * 112 + 36}px` });
@@ -39,17 +39,17 @@ function Carousel({ label, children }: { label: string; children: ReactNode }) {
   const fits = edge.start && edge.end;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative">
       {!fits && (
-        <button type="button" className={ARROW} onClick={() => go(-1)} disabled={edge.start} aria-label={`${t('shop.row.prev')}: ${label}`} data-testid="avatar-row-prev">
+        <button type="button" className={`${ARROW} -left-2`} onClick={() => go(-1)} disabled={edge.start} aria-label={`${t('shop.row.prev')}: ${label}`} data-testid="avatar-row-prev">
           ‹
         </button>
       )}
-      <div ref={track} onScroll={measure} role="group" aria-label={label} data-testid="avatar-row-track" className="flex min-w-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-1 pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div ref={track} onScroll={measure} role="group" aria-label={label} data-testid="avatar-row-track" className="flex min-w-0 snap-x snap-mandatory gap-3 overflow-x-auto scroll-pl-1 pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {children}
       </div>
       {!fits && (
-        <button type="button" className={ARROW} onClick={() => go(1)} disabled={edge.end} aria-label={`${t('shop.row.next')}: ${label}`} data-testid="avatar-row-next">
+        <button type="button" className={`${ARROW} -right-2`} onClick={() => go(1)} disabled={edge.end} aria-label={`${t('shop.row.next')}: ${label}`} data-testid="avatar-row-next">
           ›
         </button>
       )}

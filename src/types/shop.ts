@@ -28,7 +28,7 @@ export interface CompanionState {
   imageUrl: string | null;
 }
 
-export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar' | 'border';
+export type ShopItemKind = 'life' | 'outfit' | 'ink' | 'frame' | 'avatar' | 'border' | 'background' | 'app_icon';
 
 export interface InventoryEntry {
   itemKey: string;
@@ -76,6 +76,15 @@ export interface ShopItem {
   priceLabel: string;
   /** Crystal price, shown as a second line; null when the item cannot be bought with crystals. */
   priceCrystals?: number | null;
+  /** Which currencies the item can be paid in; an absent flag means enabled. */
+  solEnabled?: boolean;
+  crystalsEnabled?: boolean;
+  /** False for an item that only comes with an avatar (a signature border). */
+  forSale?: boolean;
+  /** Key of the avatar this item comes with, when it does. */
+  includedWith?: string | null;
+  /** The backend's `effect` (a border's style and colours, a colour of the background or icon). */
+  effect?: Record<string, unknown>;
   /** Set on a life pack (`effect.add_lives` / `effect.unlimited_days`). */
   lifePack?: LifePack | null;
   art: Record<string, unknown>;

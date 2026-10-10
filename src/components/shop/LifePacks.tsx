@@ -2,8 +2,9 @@ import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
 import { itemAction } from './itemAction';
+import { PayButtons } from './CrystalPay';
 import { shortPrice } from './avatarRows';
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, MONO_LABEL } from './shopStyles';
+import { CARD, MONO_LABEL } from './shopStyles';
 
 /** USD per life of a pack, or null for anything that is not a plain "+N lives" pack. */
 export const perLifeCents = (item: ShopItem): number | null => (item.lifePack?.addLives && item.priceUsdCents > 0 ? item.priceUsdCents / item.lifePack.addLives : null);
@@ -42,11 +43,8 @@ export function LifePacks({ items, actions, full }: { items: ShopItem[]; actions
             <h3 className="[font:700_24px/1_'Barlow_Condensed'] text-[#F4EDE2]">{headline}</h3>
             <p className="line-clamp-2 min-h-[2.6em] [font:500_12px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="life-pack-per">{sub}</p>
             <span className="[font:700_12px/1.3_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-price">{shortPrice(item.priceLabel)}</span>
-            {item.priceCrystals != null && <span className="[font:600_11px/1.3_JetBrains_Mono] text-[#A0978A]">{t('shop.crystals', { n: item.priceCrystals })}</span>}
             {blocked && <p className="[font:600_11px/1.3_Inter] text-[#3FD17F]" data-testid="shop-lives-full-reason">{t('shop.lives.fullReason')}</p>}
-            <button type="button" disabled={action.disabled} onClick={action.run} data-testid="shop-buy" className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} !min-h-10 mt-auto w-full !px-2 ![font:700_13px_Inter]`}>
-              {action.label}
-            </button>
+            <PayButtons item={item} action={action} testId="shop-buy" walletLabel={action.label} className="mt-auto" />
           </article>
         );
       })}

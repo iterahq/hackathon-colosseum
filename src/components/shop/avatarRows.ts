@@ -52,11 +52,11 @@ export function rowsOf(items: readonly ShopItem[]): AvatarRows {
 export const isOffSeason = (item: ShopItem): boolean => Boolean(item.avatar?.season && !item.avatar.season.available && !item.owned);
 
 /** "Back in December": the month the season opens again, in the viewer's language. */
-export function returnLine(item: ShopItem, locale: string, t: Translate): string {
+export function returnLine(item: ShopItem, locale: string, t: Translate, month: 'long' | 'short' = 'long'): string {
   const starts = item.avatar?.season?.startsAt;
   const date = starts ? new Date(starts) : null;
   if (!date || Number.isNaN(date.getTime())) return t('shop.season.out');
-  return t('shop.season.returns', { month: date.toLocaleDateString(locale, { month: 'long', timeZone: 'UTC' }) });
+  return t('shop.season.returns', { month: date.toLocaleDateString(locale, { month, timeZone: 'UTC' }) });
 }
 
 /** "Includes: Nulo's border · glasses", or '' when the avatar brings nothing along. */

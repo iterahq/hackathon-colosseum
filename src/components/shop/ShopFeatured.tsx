@@ -6,6 +6,7 @@ import type { ShopActions } from '@/types/shopView';
 import { avatarOf, supplyText } from '@/utils/avatarShop';
 import { includesLine } from './avatarRows';
 import { itemAction } from './itemAction';
+import { PayButtons } from './CrystalPay';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_TEXT, CARD, MONO_LABEL, RARITY_EDGE } from './shopStyles';
 
 /** One slim strip for the rarest avatar still on sale: portrait, name, what it costs and includes, and the one action. */
@@ -31,13 +32,16 @@ export function ShopFeatured({ item, actions }: { item: ShopItem; actions: ShopA
         {includes && <p className="[font:400_13px/1.4_Inter] text-[#C9BFB0]">{includes}</p>}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
           <span className="[font:700_13px_JetBrains_Mono] text-[#F4EDE2]" data-testid="shop-featured-price">{item.priceLabel}</span>
-          {item.priceCrystals != null && <span className="[font:600_12px_JetBrains_Mono] text-[#A0978A]">{t('shop.crystals', { n: item.priceCrystals })}</span>}
         </div>
       </div>
-      <div className="flex flex-none flex-col items-stretch gap-1 max-sm:w-[104px]">
-        <button type="button" disabled={action.disabled} onClick={action.run} data-testid="shop-featured-action" className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} !min-h-10 !px-4 ![font:700_14px_Inter]`}>
-          {action.label}
-        </button>
+      <div className="flex w-[210px] flex-none flex-col items-stretch gap-1 max-sm:w-[112px]">
+        {action.id === 'buy' ? (
+          <PayButtons item={item} action={action} testId="shop-featured-action" labels="full" walletLabel={action.label} stack />
+        ) : (
+          <button type="button" disabled={action.disabled} onClick={action.run} data-testid="shop-featured-action" className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} !min-h-10 !px-4 ![font:700_14px_Inter]`}>
+            {action.label}
+          </button>
+        )}
         <button type="button" onClick={() => actions.tryOn(item)} className={`${BTN_TEXT} !min-h-9`}>
           {t('shop.preview')}
         </button>

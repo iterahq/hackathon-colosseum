@@ -3,6 +3,7 @@ import { useI18n } from '@/i18n';
 import type { ShopItem } from '@/types/shop';
 import type { ShopActions } from '@/types/shopView';
 import { itemAction } from './itemAction';
+import { PayButtons, useDualPay } from './CrystalPay';
 import { ShopExplainer } from './ShopExplainer';
 import { BTN_PRIMARY, BTN_SECONDARY, BTN_SMALL, BTN_TEXT, CARD, FOCUS, MONO_LABEL } from './shopStyles';
 
@@ -29,6 +30,7 @@ export function ShopItemCard({ item, art, actions, children, buyDisabled = false
   const explainerId = useId();
   const action = itemAction(item, actions, t, { buyDisabled });
   const owned = item.owned && item.kind !== 'life';
+  const dual = useDualPay(item) && action.id === 'buy';
   const state = owned ? (item.equipped ? 'equipped' : 'owned') : action.id === 'claim' ? 'claim' : 'buy';
 
   return (
@@ -72,17 +74,20 @@ export function ShopItemCard({ item, art, actions, children, buyDisabled = false
           )}
         </div>
         <p className={compact ? 'line-clamp-2 [font:400_12px/1.4_Inter] text-[#C9BFB0]' : '[font:400_14px/1.45_Inter] text-[#C9BFB0]'}>{item.description}</p>
-        {item.priceCrystals != null && action.id === 'buy' && <span className="[font:600_11px/1.3_JetBrains_Mono] text-[#A0978A]" data-testid="shop-price-crystals">{t('shop.crystals', { n: item.priceCrystals })}</span>}
         {children}
         <div id={explainerId} hidden={!explaining}>
           {explaining && <ShopExplainer item={item} />}
         </div>
-        <div className="mt-auto flex items-center gap-2 pt-2">
-          <button type="button" disabled={action.disabled} onClick={action.run} data-testid={TEST_ID[action.id]} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${BTN_SMALL} flex-1`}>
-            {action.label}
-          </button>
+        <div className={`mt-auto flex gap-2 pt-2 ${dual ? 'flex-col' : 'items-center'}`}>
+          {action.id === 'buy' ? (
+            <PayButtons item={item} action={action} testId={TEST_ID.buy} walletLabel={action.label} className={dual ? '' : 'flex-1'} keyClass={dual ? '' : `!min-h-11 !px-4 ![font:700_14px_Inter]`} />
+          ) : (
+            <button type="button" disabled={action.disabled} onClick={action.run} data-testid={TEST_ID[action.id]} className={`${action.primary ? BTN_PRIMARY : BTN_SECONDARY} ${BTN_SMALL} flex-1`}>
+              {action.label}
+            </button>
+          )}
           {tryable && (
-            <button type="button" onClick={() => actions.tryOn(item)} data-testid="shop-tryon" className={BTN_TEXT}>
+            <button type="button" onClick={() => actions.tryOn(item)} data-testid="shop-tryon" className={`${BTN_TEXT} ${dual ? 'self-start' : ''}`}>
               {t('shop.preview')}
             </button>
           )}
