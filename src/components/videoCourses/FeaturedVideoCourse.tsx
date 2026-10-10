@@ -4,7 +4,7 @@ import { FOCUS } from '@/components/courses/courseStyles';
 import { useI18n } from '@/i18n';
 import type { VideoCourse } from '@/types/videoCourses';
 import { courseColor } from '@/utils/courses';
-import { courseStats, formatTotal } from '@/utils/videoCourses';
+import { courseStats, formatTotal, courseThumbnail } from '@/utils/videoCourses';
 import { CourseThumb } from './CourseThumb';
 
 const CTA = `mt-2 inline-flex h-[60px] w-full items-center justify-center rounded-xl border-0 border-b-[6px] [font:700_26px_'Barlow_Condensed'] transition-transform duration-75 active:translate-y-[5px] active:border-b-[1px] sm:w-[320px] ${FOCUS}`;
@@ -14,7 +14,7 @@ export function FeaturedVideoCourse({ course, progress }: { course: VideoCourse;
   const { t } = useI18n();
   const color = courseColor(course.slug);
   const stats = courseStats(course, progress);
-  const style = { background: color.c, color: color.ink, borderBottomColor: color.cd };
+  const style = { background: '#3FD17F', color: '#0A0908', borderBottomColor: '#1F8A4F' };
   const label = stats.state === 'in_progress' ? t('video.continue') : stats.state === 'done' ? t('video.review') : t('video.start');
 
   return (
@@ -36,7 +36,7 @@ export function FeaturedVideoCourse({ course, progress }: { course: VideoCourse;
           </Link>
         </div>
         <Link to={`/course/${course.slug}`} tabIndex={-1} aria-hidden className="block overflow-hidden rounded-xl border-2 border-b-[6px]" style={{ borderColor: color.cd }}>
-          <CourseThumb title={course.title} slug={course.slug} src={course.thumbnailUrl} play />
+          <CourseThumb title={course.title} slug={course.slug} src={courseThumbnail(course)} play />
         </Link>
       </div>
     </section>

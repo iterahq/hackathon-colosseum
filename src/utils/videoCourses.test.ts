@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VideoCourse } from '@/types/videoCourses';
-import { countByFilter, courseStats, defaultLessonId, embedUrl, filterCourses, uniqueCourses, formatClock, formatTotal, initials, nextLessonId, pickFeatured, teacherCourseCount, thumbGlyph } from '@/utils/videoCourses';
+import { countByFilter, courseStats, courseThumbnail, defaultLessonId, embedUrl, filterCourses, uniqueCourses, formatClock, formatTotal, initials, nextLessonId, pickFeatured, teacherCourseCount, thumbGlyph } from '@/utils/videoCourses';
 
 const course = (slug: string, position: number, lessonIds: string[], teacherName = 'Ana Lima'): VideoCourse => ({
   id: slug,
@@ -91,5 +91,19 @@ describe('uniqueCourses', () => {
     const a = course('a', 1, ['x']);
     const list = [a, { ...a }, { ...course('b', 2, ['y']), id: 'a' }, course('c', 3, ['z'])];
     expect(uniqueCourses(list).map((c) => c.slug)).toEqual(['a', 'c']);
+  });
+});
+
+describe('courseThumbnail', () => {
+  const lesson = (videoUrl: string, position: number) => ({ videoUrl, position });
+  it('prefers the course thumbnail', () => {
+    expect(courseThumbnail({ thumbnailUrl: 'https://x/t.png', lessons: [lesson('https://www.youtube.com/embed/abcdefghijk', 1)] })).toBe('https://x/t.png');
+  });
+  it('derives the YouTube thumbnail of the first lesson', () => {
+    expect(courseThumbnail({ thumbnailUrl: null, lessons: [lesson('https://youtu.be/zzzzzzzzzzz', 2), lesson('https://www.youtube.com/embed/abcdefghijk?rel=0', 1)] })).toBe('https://i.ytimg.com/vi/abcdefghijk/hqdefault.jpg');
+  });
+  it('is null without any usable video', () => {
+    expect(courseThumbnail({ thumbnailUrl: null, lessons: [lesson('https://vimeo.com/1', 1)] })).toBeNull();
+    expect(courseThumbnail({ thumbnailUrl: null, lessons: [] })).toBeNull();
   });
 });

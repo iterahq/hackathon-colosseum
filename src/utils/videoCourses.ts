@@ -110,3 +110,16 @@ export const thumbGlyph = (title: string): string =>
 
 /** The embeddable URL with the player chrome kept minimal. */
 export const embedUrl = (videoUrl: string): string => `${videoUrl}${videoUrl.includes('?') ? '&' : '?'}rel=0&modestbranding=1`;
+
+const YOUTUBE_ID = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?(?:[^#]*&)?v=|shorts\/)|youtu\.be\/)([\w-]{11})/;
+
+/** The YouTube video id of a lesson URL (embed, watch, shorts or short link), or null. */
+export const youtubeIdOf = (videoUrl: string): string | null => YOUTUBE_ID.exec(videoUrl)?.[1] ?? null;
+
+/** The course's own thumbnail, else the YouTube thumbnail of its first lesson, else null (the designed cover takes over). */
+export function courseThumbnail(course: { thumbnailUrl: string | null; lessons: { videoUrl: string; position: number }[] }): string | null {
+  if (course.thumbnailUrl) return course.thumbnailUrl;
+  const first = [...course.lessons].sort((a, b) => a.position - b.position).find((l) => youtubeIdOf(l.videoUrl));
+  const id = first ? youtubeIdOf(first.videoUrl) : null;
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}

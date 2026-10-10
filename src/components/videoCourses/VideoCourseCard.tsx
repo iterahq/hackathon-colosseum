@@ -4,7 +4,7 @@ import { CHIP, FOCUS, MONO_LABEL } from '@/components/courses/courseStyles';
 import { useI18n } from '@/i18n';
 import type { VideoCourse } from '@/types/videoCourses';
 import { courseColor } from '@/utils/courses';
-import { courseStats, formatTotal } from '@/utils/videoCourses';
+import { courseStats, formatTotal, courseThumbnail } from '@/utils/videoCourses';
 import { CourseThumb } from './CourseThumb';
 import { TeacherAvatar } from './TeacherAvatar';
 
@@ -22,7 +22,7 @@ export function VideoCourseCard({ course, progress }: { course: VideoCourse; pro
       className="group relative flex flex-col overflow-hidden rounded-[14px] border border-[#262320] border-b-[5px] bg-[#141210] text-left transition-transform duration-100 hover:-translate-y-1 [&:has(a:active)]:translate-y-[3px]"
       style={{ borderBottomColor: color.c }}
     >
-      <CourseThumb title={course.title} slug={course.slug} src={course.thumbnailUrl} />
+      <CourseThumb title={course.title} slug={course.slug} src={courseThumbnail(course)} />
       <span className="flex flex-1 flex-col gap-2.5 px-[18px] pb-[18px] pt-4">
         <Link
           to={`/course/${course.slug}`}

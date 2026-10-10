@@ -19,7 +19,7 @@ export function ProgramHero({ program, trails }: Props) {
   const totals = programTotals(trails);
   const current = trails.find((tr) => tr.status !== 'locked' && tr.status !== 'done')?.days.find((d) => d.state === 'current');
   const finished = totals.lessons > 0 && totals.doneLessons === totals.lessons;
-  const style = { background: color.c, color: color.ink, borderBottomColor: color.cd };
+  const style = { background: '#3FD17F', color: '#0A0908', borderBottomColor: '#1F8A4F' };
 
   return (
     <section className="flex flex-col" data-testid="program-hero">
