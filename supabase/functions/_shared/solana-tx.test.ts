@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MEMO_PROGRAM,
   SYSTEM_PROGRAM,
+  base58Bytes,
   base58Decode,
+  base64Decode,
   base58Encode,
   base64Encode,
   buildTransferMessage,
@@ -77,5 +79,27 @@ describe('transfer message', () => {
     expect(serializeTransaction(message, new Uint8Array(64).fill(9))[1]).toBe(9);
     expect(() => serializeTransaction(message, new Uint8Array(10))).toThrow();
     expect(base64Encode(Uint8Array.from([1, 2, 3]))).toBe('AQID');
+  });
+});
+
+describe('base64 and unsized base58', () => {
+  it('decodes standard and URL-safe base64, padded or not', () => {
+    const bytes = Uint8Array.from([251, 255, 190, 0, 1]);
+    expect(base64Decode(base64Encode(bytes))).toEqual(bytes);
+    expect(base64Decode('-_--AAE')).toEqual(bytes);
+    expect(base64Decode('+/++AAE')).toEqual(bytes);
+  });
+
+  it('refuses other alphabets and impossible lengths', () => {
+    expect(base64Decode('')).toBeNull();
+    expect(base64Decode('ab cd')).toBeNull();
+    expect(base64Decode('a')).toBeNull();
+    expect(base64Decode('ab=cd')).toBeNull();
+  });
+
+  it('decodes base58 of any length', () => {
+    expect(base58Bytes(base58Encode(Uint8Array.from([0, 0, 7, 255])))).toEqual(Uint8Array.from([0, 0, 7, 255]));
+    expect(base58Bytes('0OIl')).toBeNull();
+    expect(base58Bytes('')).toBeNull();
   });
 });

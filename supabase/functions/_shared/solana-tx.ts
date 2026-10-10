@@ -21,9 +21,9 @@ export function base58Encode(bytes: Uint8Array): string {
   return encoded;
 }
 
-/** `null` when the text is not base58 or does not decode to exactly `length` bytes. */
-export function base58Decode(text: string, length: number): Uint8Array | null {
-  if (typeof text !== 'string' || text.length === 0 || text.length > length * 2) return null;
+/** The bytes of a base58 text, `null` when it is not base58. */
+export function base58Bytes(text: string): Uint8Array | null {
+  if (typeof text !== 'string' || text.length === 0) return null;
   let value = 0n;
   for (const char of text) {
     const digit = ALPHABET.indexOf(char);
@@ -37,10 +37,16 @@ export function base58Decode(text: string, length: number): Uint8Array | null {
     significant.unshift(Number(value & 0xffn));
     value >>= 8n;
   }
-  if (leadingZeros + significant.length !== length) return null;
-  const bytes = new Uint8Array(length);
+  const bytes = new Uint8Array(leadingZeros + significant.length);
   bytes.set(significant, leadingZeros);
   return bytes;
+}
+
+/** `null` when the text is not base58 or does not decode to exactly `length` bytes. */
+export function base58Decode(text: string, length: number): Uint8Array | null {
+  if (typeof text !== 'string' || text.length > length * 2) return null;
+  const bytes = base58Bytes(text);
+  return bytes && bytes.length === length ? bytes : null;
 }
 
 export function isSignature(value: unknown): value is string {
@@ -51,6 +57,19 @@ export function base64Encode(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary);
+}
+
+/** Standard or URL-safe base64, padded or not. `null` when the text is neither. */
+export function base64Decode(text: string): Uint8Array | null {
+  if (typeof text !== 'string' || !/^[A-Za-z0-9+/_-]+={0,2}$/.test(text)) return null;
+  const body = text.replace(/=+$/, '').replace(/-/g, '+').replace(/_/g, '/');
+  if (body.length % 4 === 1) return null;
+  try {
+    const binary = atob(body + '='.repeat((4 - (body.length % 4)) % 4));
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  } catch {
+    return null;
+  }
 }
 
 /** Solana's compact-u16 length prefix. */
