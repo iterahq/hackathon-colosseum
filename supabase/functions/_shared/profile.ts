@@ -1,3 +1,4 @@
+import { endorsementsOf } from './endorsement.ts';
 import type { Lang } from './art.ts';
 import { companionChainImageUrl, companionFromAttributes, companionImageUrl, type CompanionValues } from './companion.ts';
 import { cosmeticsOf } from './cosmetics.ts';
@@ -84,6 +85,7 @@ export function buildProfile(input: ProfileInput) {
       const asset = row.asset_address as string;
       const { ink, frame } = cosmeticsOf(row.state);
       const daysDone = numberOf(row.state.days_done);
+      const endorsed = endorsementsOf(row.state).length;
       return {
         asset,
         verified: check(asset, config.collection_passports),
@@ -96,7 +98,8 @@ export function buildProfile(input: ProfileInput) {
         frame,
         completed_at: typeof row.state.completed_at === 'string' ? row.state.completed_at : null,
         earned_at: row.earned_at,
-        image_url: `${imageUrl(functionsBase, row.id)}${langQuery(lang, `${daysDone}-${ink ?? 'none'}-${frame ?? 'none'}`)}`,
+        ...(endorsed > 0 ? { endorsements: endorsed } : {}),
+        image_url: `${imageUrl(functionsBase, row.id)}${langQuery(lang, `${daysDone}-${ink ?? 'none'}-${frame ?? 'none'}${endorsed > 0 ? `-e${endorsed}` : ''}`)}`,
         page_url: `${APP_URL}/c/${asset}`,
         explorer_url: explorerUrl('address', asset),
       };

@@ -1,3 +1,4 @@
+import type { PublicEndorsement } from '@/types/endorsement';
 import type { I18nText } from '@/types/content';
 
 export type AchievementKind = 'day' | 'trail' | 'streak' | 'milestone';
@@ -133,6 +134,8 @@ export interface CredentialVerification {
     stamps: { day: number }[];
   } | null;
   minted_at: string | null;
+  /** Certifications only: the teachers who endorsed it, as wallets (never names). */
+  endorsements?: PublicEndorsement[];
   /** Companions only: the view is one chain snapshot; `mirrored_at` is when the chain was last written (null before the feature). */
   snapshot?: { source: string; mirrored_at: string | null } | null;
   /** Parsed companion state, when the function sends it. */

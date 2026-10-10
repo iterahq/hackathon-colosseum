@@ -25,3 +25,20 @@ ${bars}
 <path d="M200 300h112" stroke="${line}" stroke-opacity="0.45" stroke-width="2" stroke-linecap="round"/>
 </g>`;
 }
+
+/**
+ * The small seal a certification page gains when a teacher endorsed it: a
+ * notched ring with a check, and one dot per endorsement (three at most).
+ */
+export function endorsementSeal(count: number, color: string, line: string): string {
+  const shown = Math.max(1, Math.min(3, Math.floor(count)));
+  const cx = 300;
+  const cy = 443;
+  const dots = Array.from({ length: shown }, (_, index) => `<circle cx="${cx - (shown - 1) * 4 + index * 8}" cy="${cy + 24}" r="2" fill="${color}"/>`).join('');
+  return `<g data-endorsed="${shown}">
+<circle cx="${cx}" cy="${cy}" r="16" fill="${color}" fill-opacity="0.14" stroke="${color}" stroke-width="2"/>
+<circle cx="${cx}" cy="${cy}" r="20.5" fill="none" stroke="${color}" stroke-width="1.4" stroke-dasharray="2.5 3.2"/>
+<path d="M${cx - 7} ${cy}l5 5l9 -10" fill="none" stroke="${line}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+${dots}
+</g>`;
+}

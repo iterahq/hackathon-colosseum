@@ -104,3 +104,40 @@ describe('podium medal on chain and in metadata', () => {
     expect(JSON.stringify(metadata)).not.toContain(USER);
   });
 });
+
+describe('endorsed certification', () => {
+  const W = 'CPq4SPcqmwXd1wyMkdQZYJe9kfTx23EGTnXrXtAVJq8B';
+  const pass = (endorsements: unknown[]): AchievementRow => ({
+    ...row(1),
+    achievement_key: 'trail_pass',
+    state: { trail_title: { en: 'Week 1 · HTML' }, program_slug: 'itera-v2', days_done: 2, total_days: 5, stamped_days: [1, 2], tier: 'bronze', endorsements },
+  });
+  const entry: CatalogEntry = { key: 'trail_pass', kind: 'trail', tier: 'bronze', title_i18n: { en: 'Certification' }, description_i18n: { en: '' }, art: {} };
+  const one = [{ slot: 1, wallet: W, at: '2026-10-10T03:00:00.000Z' }];
+
+  it('draws a small seal with one dot per endorsement, and none on a page nobody endorsed', () => {
+    expect(renderArt(artInput(pass([]), entry, 'en', null))).not.toContain('data-endorsed');
+    expect(renderArt(artInput(pass(one), entry, 'en', null))).toContain('data-endorsed="1"');
+    const two = renderArt(artInput(pass([...one, { slot: 2, wallet: W, at: '2026-10-10T04:00:00.000Z' }]), entry, 'en', null));
+    expect(two.split('data-endorsed="2"')[1].split('</g>')[0].match(/r="2"/g)).toHaveLength(2);
+  });
+
+  it('never draws the wallet or a note: the seal is a mark only', () => {
+    const art = renderArt(artInput(pass(one.map((item) => ({ ...item, note: '<script>alert(1)</script>' }))), entry, 'en', null));
+    expect(art).not.toContain(W);
+    expect(art).not.toContain('script');
+  });
+
+  it('writes the full wallet and the time on chain after the existing attributes, which stay as they were', () => {
+    const before = onchainAttributes(pass([]), entry);
+    const after = onchainAttributes(pass(one), entry);
+    expect(after.slice(0, before.length)).toEqual(before);
+    expect(after.slice(before.length)).toEqual([{ key: 'endorsed_by_1', value: W }, { key: 'endorsed_at_1', value: '2026-10-10T03:00:00.000Z' }]);
+    expect(JSON.stringify(after)).not.toContain('note');
+  });
+
+  it('counts the endorsements in the metadata', () => {
+    expect(buildMetadata(pass(one), entry, 'en', 'https://f', null).attributes).toContainEqual({ trait_type: 'Endorsements', value: 1 });
+    expect(buildMetadata(pass([]), entry, 'en', 'https://f', null).attributes.some((attribute) => attribute.trait_type === 'Endorsements')).toBe(false);
+  });
+});

@@ -1,6 +1,7 @@
 import type { ArtInput, Lang } from './art.ts';
 import type { I18nText, Tier } from './awards.ts';
 import { cosmeticsOf } from './cosmetics.ts';
+import { endorsementAttributes, endorsementsOf } from './endorsement.ts';
 import { podiumPositionOf } from './podium.ts';
 
 export const APP_URL = 'https://hackathon-colosseum.178-105-2-230.sslip.io';
@@ -109,6 +110,7 @@ export function onchainAttributes(row: AchievementRow, catalog: CatalogEntry): O
       { key: 'learner', value: row.user_id },
       ...(ink ? [{ key: 'ink', value: ink }] : []),
       ...(frame ? [{ key: 'frame', value: frame }] : []),
+      ...endorsementAttributes(endorsementsOf(row.state)),
     ];
   }
   const position = podiumPositionOf(row.achievement_key);
@@ -193,6 +195,7 @@ export function artInput(row: AchievementRow, catalog: CatalogEntry, lang: Lang,
       serial,
       lang,
       ...cosmeticsOf(page.state),
+      endorsed: endorsementsOf(page.state).length,
     };
   }
   return {
@@ -252,6 +255,8 @@ export function buildMetadata(
   const cosmetics = page ? cosmeticsOf(page.state) : null;
   if (cosmetics?.ink) attributes.push({ trait_type: 'Ink', value: cosmetics.ink });
   if (cosmetics?.frame) attributes.push({ trait_type: 'Frame', value: cosmetics.frame });
+  const endorsed = page ? endorsementsOf(page.state).length : 0;
+  if (endorsed > 0) attributes.push({ trait_type: 'Endorsements', value: endorsed });
 
   return {
     name: trail && isPassportKey(row.achievement_key) ? clip(`${title} · ${trail}`, 80) : title,

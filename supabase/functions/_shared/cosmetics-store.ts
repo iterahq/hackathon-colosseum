@@ -1,7 +1,10 @@
 import { withCosmetics, type CosmeticPurchase } from './cosmetics.ts';
 import type { IteraClient } from './db.ts';
+import { withEndorsements, type Endorsement } from './endorsement.ts';
 
 interface TrailRow {
+  /** Present on rows read whole; the endorsements of a certification are keyed by it. */
+  id?: string;
   user_id: string;
   achievement_key: string;
   ref_id: string;
@@ -49,6 +52,29 @@ export async function trailCosmeticPurchases(db: IteraClient, userId: string, re
 export async function restoreCosmetics<Row extends TrailRow>(db: IteraClient, rows: Row[]): Promise<Row[]> {
   const passports = rows.filter((row) => row.achievement_key === 'trail_pass');
   if (passports.length === 0) return rows;
-  const paid = await paidCosmetics(db, [...new Set(passports.map((row) => row.user_id))]);
-  return rows.map((row) => (row.achievement_key === 'trail_pass' ? withCosmetics(row, paid.get(trailKey(row.user_id, row.ref_id)) ?? []) : row));
+  const [paid, endorsed] = await Promise.all([
+    paidCosmetics(db, [...new Set(passports.map((row) => row.user_id))]),
+    endorsementsByRow(db, passports.flatMap((row) => (row.id ? [row.id] : []))),
+  ]);
+  return rows.map((row) => {
+    if (row.achievement_key !== 'trail_pass') return row;
+    const worn = withCosmetics(row, paid.get(trailKey(row.user_id, row.ref_id)) ?? []);
+    return row.id ? withEndorsements(worn, endorsed.get(row.id) ?? []) : worn;
+  });
+}
+
+/**
+ * The teacher endorsements of these certification rows, from the table of
+ * record. Like the cosmetics, they ride in `state` for every reader and every
+ * chain write, so a later stamp or ink never drops them from the asset.
+ */
+export async function endorsementsByRow(db: IteraClient, rowIds: string[]): Promise<Map<string, Endorsement[]>> {
+  const byRow = new Map<string, Endorsement[]>();
+  if (rowIds.length === 0) return byRow;
+  const { data, error } = await db.from('endorsements').select('user_achievement_id,slot,wallet,created_at').in('user_achievement_id', rowIds).order('slot');
+  if (error) throw new Error(`endorsements: ${error.message}`);
+  for (const entry of (data ?? []) as Array<{ user_achievement_id: string; slot: number; wallet: string; created_at: string }>) {
+    byRow.set(entry.user_achievement_id, [...(byRow.get(entry.user_achievement_id) ?? []), { slot: entry.slot, wallet: entry.wallet, at: new Date(entry.created_at).toISOString() }]);
+  }
+  return byRow;
 }

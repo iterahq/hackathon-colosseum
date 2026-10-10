@@ -1,4 +1,4 @@
-import { podiumEmblem } from './art-podium.ts';
+import { endorsementSeal, podiumEmblem } from './art-podium.ts';
 import type { Frame, Ink } from './cosmetics.ts';
 import { MASCOT_DATA_URI } from './mascot.ts';
 import { OUTFIT_LAYERS, TERA_FACE, TERA_FACE_DATA_URI } from './outfit-art.ts';
@@ -25,6 +25,8 @@ export interface ArtInput {
   /** Passport cosmetics. Unset draws the default page. */
   ink?: Ink | null;
   frame?: Frame | null;
+  /** A certification endorsed by teachers: how many (a small seal is drawn). */
+  endorsed?: number;
   /** A live-class podium medal: the place (1 to 3) drawn instead of the glyph. */
   podium?: number | null;
   /** Only read by the `companion` shape. */
@@ -252,6 +254,7 @@ ${title}
 ${mascot(380, 42, 84)}
 ${stampGrid(input, paint, labels.day)}
 ${ribbon}
+${input.endorsed && input.endorsed > 0 ? endorsementSeal(input.endorsed, isGold ? TIER_COLORS.gold.base : GREEN, CREAM) : ''}
 <text x="52" y="452" font-family="${SANS}" font-weight="900" font-size="30" fill="${isGold ? TIER_COLORS.gold.light : CREAM}">${input.daysDone}<tspan fill-opacity="0.45" font-weight="700">/${input.totalDays}</tspan><tspan dx="8" font-size="13" font-weight="800" letter-spacing="2.4" fill="${CREAM}" fill-opacity="0.7">${labels.days}</tspan></text>
 <rect x="352" y="428" width="108" height="30" rx="15" fill="${isGold ? 'url(#metal)' : 'none'}" stroke="${pageStroke}" stroke-width="2"/>
 <text x="406" y="448" text-anchor="middle" font-family="${SANS}" font-weight="900" font-size="13" letter-spacing="2.6" fill="${isGold ? BACKGROUND : GREEN}">${labels.tier[input.tier]}</text>

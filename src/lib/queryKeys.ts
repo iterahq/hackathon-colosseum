@@ -153,6 +153,10 @@ export const queryKeys = {
   referral: {
     mine: (userId: string) => ['referral', userId] as const,
   },
+  endorsements: {
+    all: ['endorsements'] as const,
+    students: (userId: string, locale: string) => ['endorsements', 'students', userId, { locale }] as const,
+  },
   classPodium: {
     chain: (sessionId: string) => ['classPodium', 'chain', sessionId] as const,
   },
