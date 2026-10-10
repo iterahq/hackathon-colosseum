@@ -13,7 +13,7 @@ export function TeraPortrait({ avatarKey, tier, size = 'md', className = '' }: {
 }) {
   return (
     <img
-      src={teraAvatarImage(avatarKey, size === 'md' ? 'thumb' : 'full')}
+      src={teraAvatarImage(avatarKey, 'chip')}
       alt=""
       loading="lazy"
       draggable={false}

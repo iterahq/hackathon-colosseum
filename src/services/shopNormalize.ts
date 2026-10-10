@@ -63,6 +63,10 @@ const RARITIES: readonly AvatarRarity[] = ['common', 'rare', 'epic', 'legendary'
 const GROUPS: readonly AvatarGroup[] = ['expression', 'base', 'special', 'event', 'accessory'];
 const rarityOf = (v: unknown): AvatarRarity => (RARITIES.includes(v as AvatarRarity) ? (v as AvatarRarity) : 'common');
 
+/** `chip_url` when sent; else the published pattern `<key>.webp` -> `<key>_chip.webp`; else the full image. */
+const chipOf = (r: Row, imageUrl: string): string =>
+  str(r.chip_url) || (/\/[a-z0-9_]+\.webp$/.test(imageUrl) ? imageUrl.replace(/\.webp$/, '_chip.webp') : imageUrl);
+
 /** The backend says it; without the field only the expression icons (and the default) take an outfit. */
 const allowsOutfit = (r: Row): boolean =>
   typeof r.allows_outfit === 'boolean' ? r.allows_outfit : r.group === 'expression' || str(r.key).startsWith('tera_');
@@ -79,6 +83,7 @@ export function toAvatar(v: unknown): LearnerAvatar {
     tierName: str(r.tier_name) || DEFAULT_AVATAR.tierName,
     imageUrl,
     thumbUrl: str(r.thumb_url) || imageUrl,
+    chipUrl: chipOf(r, imageUrl),
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),
   };
@@ -96,6 +101,7 @@ function toAvatarOffer(r: Row): AvatarOffer | null {
     free: r.free === true,
     imageUrl,
     thumbUrl: str(r.thumb_url) || imageUrl,
+    chipUrl: chipOf(r, imageUrl),
     supply: { minted: num(supply.minted), max: typeof supply.max === 'number' ? supply.max : null },
     assetAddress: orNull(r.asset_address),
     allowsOutfit: allowsOutfit(r),

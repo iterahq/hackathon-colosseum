@@ -25,6 +25,7 @@ export function useProfileAvatars() {
       tierName: item.avatar!.tierName,
       imageUrl: item.avatar!.imageUrl,
       thumbUrl: item.avatar!.thumbUrl,
+      chipUrl: item.avatar!.chipUrl,
       assetAddress: item.avatar!.assetAddress,
       allowsOutfit: item.avatar!.allowsOutfit,
     }));

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DEFAULT_AVATAR, type AvatarRarity, type LearnerAvatar as Avatar } from '@/types/avatar';
+import { FALLBACK_AVATAR_IMAGE, type AvatarRarity, type LearnerAvatar as Avatar } from '@/types/avatar';
 
 const SIZES = { xs: 'h-7 w-7', sm: 'h-9 w-9', md: 'h-12 w-12', lg: 'h-20 w-20', xl: 'h-32 w-32' } as const;
 export type LearnerAvatarSize = keyof typeof SIZES;
@@ -13,24 +13,26 @@ export const RING: Record<AvatarRarity, string> = {
   mythic: 'ring-[#F4EDE2]',
 };
 
-/** THE one way a learner's profile picture is drawn: header, menu, welcome strip, profile, shop, ceremony. */
+/**
+ * THE one way a learner's profile picture is drawn: header, menu, welcome strip, profile, shop, ceremony.
+ * Always the `chip` art: the full image has the crest outside the ring and must not be masked to a circle.
+ */
 export function LearnerAvatar({
   avatar,
   size = 'sm',
-  thumb = true,
   className = '',
 }: {
   avatar: Avatar;
   size?: LearnerAvatarSize;
-  /** Small sizes use the 128 px thumbnail. */
+  /** Kept for callers written before the chip art existed; it no longer changes anything. */
   thumb?: boolean;
   className?: string;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
-  const wanted = thumb && size !== 'lg' && size !== 'xl' ? avatar.thumbUrl : avatar.imageUrl;
+  const wanted = avatar.chipUrl || avatar.thumbUrl || avatar.imageUrl;
   return (
     <img
-      src={failed === wanted ? DEFAULT_AVATAR.imageUrl : wanted}
+      src={failed === wanted ? FALLBACK_AVATAR_IMAGE : wanted}
       onError={() => setFailed(wanted)}
       alt=""
       draggable={false}
