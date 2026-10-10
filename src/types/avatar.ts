@@ -10,6 +10,8 @@ export interface LearnerAvatar {
   tierName: string;
   imageUrl: string;
   thumbUrl: string;
+  /** 128 px tight circular crop of the ring: use it for EVERY round picture. */
+  chipUrl: string;
   /** Set when the avatar is an NFT the learner owns. */
   assetAddress: string | null;
   /** Only the free expression icons take the outfit layer on top; a painted avatar is shown as it is. */
@@ -25,6 +27,8 @@ export interface AvatarOffer {
   free: boolean;
   imageUrl: string;
   thumbUrl: string;
+  /** 128 px tight circular crop of the ring: use it for EVERY round picture. */
+  chipUrl: string;
   supply: { minted: number; max: number | null };
   assetAddress: string | null;
   allowsOutfit: boolean;
@@ -32,14 +36,19 @@ export interface AvatarOffer {
 
 export const DEFAULT_AVATAR_KEY = 'tera_normal';
 
+const ART = 'https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars';
+/** Shipped with the app: the last resort when the published art cannot be loaded. */
+export const FALLBACK_AVATAR_IMAGE = '/mascot/tera-happy.webp';
+
 /** What every learner wears until the backend says otherwise (or when it has no avatar block yet). */
 export const DEFAULT_AVATAR: LearnerAvatar = {
   key: DEFAULT_AVATAR_KEY,
   title: 'Tera',
   rarity: 'common',
   tierName: 'Tera',
-  imageUrl: '/mascot/tera-happy.webp',
-  thumbUrl: '/mascot/tera-happy.webp',
+  imageUrl: `${ART}/${DEFAULT_AVATAR_KEY}.webp`,
+  thumbUrl: `${ART}/${DEFAULT_AVATAR_KEY}_128.webp`,
+  chipUrl: `${ART}/${DEFAULT_AVATAR_KEY}_chip.webp`,
   assetAddress: null,
   allowsOutfit: true,
 };
