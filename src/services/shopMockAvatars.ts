@@ -57,9 +57,8 @@ const FREE: readonly (readonly [string, string, string])[] = [
 ];
 
 const LAMPORTS_PER_CENT = 55_000;
-const HAPPY = '/mascot/tera-happy.webp';
-const NEUTRAL = '/mascot/tera-neutral.webp';
-const imageOf = (index: number) => (index % 2 === 0 ? HAPPY : NEUTRAL);
+const ART = 'https://nyzcbnnbffsizshiolbh.supabase.co/storage/v1/object/public/tera-avatars';
+const artOf = (key: string) => ({ image_url: `${ART}/${key}.webp`, thumb_url: `${ART}/${key}_128.webp`, chip_url: `${ART}/${key}_chip.webp` });
 const solOf = (cents: number) => String((cents * LAMPORTS_PER_CENT) / 1_000_000_000);
 
 export const MOCK_AVATAR_KEYS: readonly string[] = [...PAID.map((r) => r[0]), ...FREE.map((r) => r[0])];
@@ -80,7 +79,7 @@ interface Holder {
 
 /** The `shop-items` rows of kind `avatar`: paid tiers first, then the free icons. */
 export function mockAvatarItems(lang: Lang, holder: Holder): Record<string, unknown>[] {
-  const paid = PAID.map(([key, rarity, group, minted, pt, en], index) => {
+  const paid = PAID.map(([key, rarity, group, minted, pt, en]) => {
     const tier = TIERS[rarity];
     const owned = holder.owned.includes(key);
     return {
@@ -97,8 +96,7 @@ export function mockAvatarItems(lang: Lang, holder: Holder): Record<string, unkn
       price_usd_cents: tier.cents,
       price_lamports: tier.cents * LAMPORTS_PER_CENT,
       price_label: `US$ ${(tier.cents / 100).toFixed(2)} ≈ ${solOf(tier.cents)} SOL`,
-      image_url: imageOf(index),
-      thumb_url: imageOf(index),
+      ...artOf(key),
       supply: { minted: Math.min(tier.max ?? Infinity, minted + (owned ? 1 : 0)), max: tier.max },
       owned,
       equipped: holder.avatar === key,
@@ -106,7 +104,7 @@ export function mockAvatarItems(lang: Lang, holder: Holder): Record<string, unkn
       art: {},
     };
   });
-  const free = FREE.map(([key, pt, en], index) => ({
+  const free = FREE.map(([key, pt, en]) => ({
     key,
     kind: 'avatar',
     title: lang === 'en' ? en : pt,
@@ -120,8 +118,7 @@ export function mockAvatarItems(lang: Lang, holder: Holder): Record<string, unkn
     price_usd_cents: 0,
     price_lamports: 0,
     price_label: lang === 'en' ? 'Free' : 'Grátis',
-    image_url: imageOf(index),
-    thumb_url: imageOf(index),
+    ...artOf(key),
     supply: { minted: 0, max: null },
     owned: true,
     equipped: holder.avatar === key,

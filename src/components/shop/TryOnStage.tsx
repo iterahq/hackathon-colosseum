@@ -1,4 +1,3 @@
-import { LearnerAvatar } from '@/components/avatar/LearnerAvatar';
 import { TeraOutfit } from '@/components/tera/TeraOutfit';
 import { cosmeticOf } from '@/services/artPreview';
 import { credentialImageUrl } from '@/services/credential.service';
@@ -17,13 +16,14 @@ interface Props {
   target: CertTarget | null;
 }
 
-const BIG_FACE = '!h-44 !w-44 sm:!h-52 sm:!w-52';
+const BIG_FACE = 'h-48 w-48 sm:h-56 sm:w-56';
 
 /** The live picture of a try-on: the avatar as a large portrait, the outfit on Tera, an ink or a frame on a certification. */
 export function TryOnStage({ item, on, avatar, target }: Props) {
   const { locale } = useI18n();
   if (item.kind === 'avatar') {
-    return <LearnerAvatar avatar={(on ? avatarOf(item) : null) ?? avatar} size="xl" className={BIG_FACE} />;
+    const shown = (on ? avatarOf(item) : null) ?? avatar;
+    return <img src={shown.imageUrl} alt={shown.title} width={224} height={224} className={`${BIG_FACE} rounded-[16px] bg-[#0F0D0B] object-contain`} data-testid="tryon-avatar-art" />;
   }
   if (item.kind === 'outfit') {
     return (

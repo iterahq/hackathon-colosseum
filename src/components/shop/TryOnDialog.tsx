@@ -27,6 +27,9 @@ interface Props {
 const TOGGLE = `min-h-11 flex-1 rounded-[9px] px-4 [font:700_13px_JetBrains_Mono] uppercase tracking-[.06em] ${FOCUS}`;
 
 /** "How would it look": the item on a live stage with a before / after switch, what it changes, and the one action it offers. */
+/** Source art too small to zoom: shown at card size only. */
+const LOW_RES = new Set(['event_halloween', 'event_natal', 'event_verao', 'event_space', 'special_preto_cosmico', 'special_arco_iris']);
+
 export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false, onClose }: Props) {
   const { t, locale } = useI18n();
   const reduced = useReducedMotion();
@@ -71,7 +74,7 @@ export function TryOnDialog({ item, actions, avatar, target, buyDisabled = false
         <div className="flex flex-none flex-col items-center gap-3 border-[#262320] bg-[#0F0D0B] p-4 max-sm:border-b sm:w-[340px] sm:justify-center sm:border-r sm:p-6">
           <div className="relative flex min-h-[224px] w-full items-center justify-center" data-testid="tryon-stage" data-on={on}>
             <TryOnStage item={item} on={on} avatar={avatar} target={target} />
-            {offer && <ArtZoom title={title} line={lore?.epithet || `${offer.tierName} · ${offer.rarityLabel}`} story={lore?.story} src={offer.imageUrl} asset={offer.assetAddress} round className="absolute right-0 top-0" />}
+            {offer && !LOW_RES.has(item.key) && <ArtZoom title={title} line={lore?.epithet || `${offer.tierName} · ${offer.rarityLabel}`} story={lore?.story} src={offer.imageUrl} asset={offer.assetAddress} className="absolute right-0 top-0" />}
           </div>
           {caption && <p className="text-center [font:500_12px/1.4_JetBrains_Mono] text-[#A0978A]">{caption}</p>}
           <div role="group" aria-label={t('tryon.toggle')} className="flex w-full max-w-[240px] gap-1 rounded-[12px] border border-[#2E2A25] bg-[#141210] p-1">

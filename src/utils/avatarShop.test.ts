@@ -3,7 +3,7 @@ import type { AvatarOffer } from '@/types/avatar';
 import type { ShopItem } from '@/types/shop';
 import { avatarState, pyramidOf, supplyText } from './avatarShop';
 
-const offer = (patch: Partial<AvatarOffer>): AvatarOffer => ({ rarity: 'common', rarityLabel: 'Common', tierName: 'Tera', group: 'base', free: false, allowsOutfit: false, imageUrl: '/a.webp', thumbUrl: '/a.webp', supply: { minted: 0, max: null }, assetAddress: null, ...patch });
+const offer = (patch: Partial<AvatarOffer>): AvatarOffer => ({ rarity: 'common', rarityLabel: 'Common', tierName: 'Tera', group: 'base', free: false, allowsOutfit: false, imageUrl: '/a.webp', thumbUrl: '/a.webp', chipUrl: '/a.webp', supply: { minted: 0, max: null }, assetAddress: null, ...patch });
 const item = (key: string, avatar: Partial<AvatarOffer>, patch: Partial<ShopItem> = {}): ShopItem => ({ key, kind: 'avatar', title: key, description: '', priceUsdCents: 20, priceLamports: 1, priceLabel: 'US$ 0.20', art: {}, owned: false, equipped: false, ownedRefs: [], avatar: offer(avatar), ...patch });
 
 describe('pyramidOf', () => {
