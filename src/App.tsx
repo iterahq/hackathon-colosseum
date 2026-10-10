@@ -81,6 +81,7 @@ const GuestLiveRoute = lazy(() => import("./pages/GuestLiveRoute"));
 const PassportPage = lazy(() => import("./pages/PassportPage"));
 const ShopPage = lazy(() => import("./pages/ShopPage"));
 const CredentialPage = lazy(() => import("./pages/CredentialPage"));
+const WorldPage = lazy(() => import("./pages/WorldPage"));
 const LearnerProfilePage = lazy(() => import("./pages/LearnerProfilePage"));
 const GiftPage = lazy(() => import("./pages/GiftPage"));
 const CeremonyPreviewPage = import.meta.env.DEV ? lazy(() => import("./pages/dev/CeremonyPreviewPage")) : null;
@@ -310,6 +311,8 @@ const App = () => (
                 />
                 {/* Public credential check: anyone with the link, no session, no app shell. */}
                 <Route path="/c/:asset" element={<LazyRoute><CredentialPage /></LazyRoute>} />
+                {/* Tera's world: public lore page, readable without a session. */}
+                <Route path="/world" element={<LazyRoute><WorldPage /></LazyRoute>} />
                 <Route path="/u/:wallet" element={<LazyRoute><LearnerProfilePage /></LazyRoute>} />
                 <Route path="/gift/:wallet" element={<LazyRoute><GiftPage /></LazyRoute>} />
                 {CeremonyPreviewPage && <Route path="/dev/ceremony" element={<LazyRoute><CeremonyPreviewPage /></LazyRoute>} />}
